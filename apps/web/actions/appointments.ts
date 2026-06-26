@@ -184,7 +184,7 @@ async function resolveBranchId(supabase: Awaited<ReturnType<typeof createSupabas
     .eq('id', appointmentId)
     .single()
 
-  const branch = data?.branches as { tenant_id: string } | null
+  const branch = data?.branches as unknown as unknown as { tenant_id: string } | null
   if (!branch || branch.tenant_id !== tenantId) throw new Error('Acesso negado.')
   return data!.branch_id
 }
@@ -307,7 +307,7 @@ export async function checkinAppointment(
       .eq('id', appointmentId)
       .single()
 
-    const apptBranch = appt?.branches as { tenant_id: string } | null
+    const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'SCHEDULED') return { error: 'Check-in só é possível em agendamentos com status Agendado.' }
 
@@ -343,7 +343,7 @@ export async function startAppointment(
       .eq('id', appointmentId)
       .single()
 
-    const apptBranch = appt?.branches as { tenant_id: string } | null
+    const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'CONFIRMED') return { error: 'O cliente precisa fazer check-in antes de iniciar.' }
 
@@ -384,7 +384,7 @@ export async function reassignProfessional(
       .eq('id', appointmentId)
       .single()
 
-    const apptBranch = appt?.branches as { tenant_id: string } | null
+    const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)) {
       return { error: 'Não é possível reatribuir um atendimento já finalizado.' }
@@ -432,7 +432,7 @@ export async function cancelAppointmentSession(
       .eq('id', appointmentId)
       .single()
 
-    const apptBranch = appt?.branches as { tenant_id: string } | null
+    const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)) return { error: 'Agendamento já finalizado.' }
 
@@ -479,7 +479,7 @@ export async function finishSession(
       .eq('id', appointmentId)
       .single()
 
-    const apptBranch = appt?.branches as { tenant_id: string } | null
+    const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (appt.status === 'COMPLETED')                      return { error: 'Atendimento já concluído.' }
     if (['CANCELLED', 'NO_SHOW'].includes(appt.status as string)) return { error: 'Agendamento já finalizado.' }
@@ -707,7 +707,7 @@ export async function confirmPayment(
       .eq('id', appointmentId)
       .single()
 
-    const apptBranch = appt?.branches as { tenant_id: string } | null
+    const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'COMPLETED') return { error: 'O atendimento precisa estar concluído para confirmar pagamento.' }
 
@@ -766,7 +766,7 @@ export async function saveDraftNotes(
       .eq('id', appointmentId)
       .single()
 
-    const apptBranch = appt?.branches as { tenant_id: string } | null
+    const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
 
     // Profissional não pode editar registro já finalizado
@@ -853,7 +853,7 @@ export async function saveSessionNotes(
       .eq('id', appointmentId)
       .single()
 
-    const branch = appt?.branches as { tenant_id: string } | null
+    const branch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || branch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
 
     await admin
@@ -898,7 +898,7 @@ export async function rescheduleAppointment(
       .eq('id', appointmentId)
       .single()
 
-    const branch = existing?.branches as { tenant_id: string } | null
+    const branch = existing?.branches as unknown as { tenant_id: string } | null
     if (!existing || branch?.tenant_id !== ctx.tenantId) {
       return { error: 'Agendamento não encontrado.' }
     }
