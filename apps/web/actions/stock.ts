@@ -602,7 +602,7 @@ export async function adminAdjustStock(
     if (!reason) return { error: 'Motivo do ajuste é obrigatório.' }
 
     const qtyRaw = (formData.get('new_quantity') as string | null)?.trim()
-    if (qtyRaw === null || qtyRaw === '') return { error: 'Novo estoque é obrigatório.' }
+    if (!qtyRaw) return { error: 'Novo estoque é obrigatório.' }
     const newQty = parseFloat(qtyRaw.replace(',', '.'))
     if (isNaN(newQty) || newQty < 0) return { error: 'Novo estoque não pode ser negativo.' }
 
