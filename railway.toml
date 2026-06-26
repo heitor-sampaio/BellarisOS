@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "corepack disable && npm install -g pnpm@11.8.0 && pnpm install --frozen-lockfile && pnpm --filter=web build"
+buildCommand = "pnpm --filter=web build"
 
 [deploy]
 startCommand = "node apps/web/.next/standalone/server.js"
