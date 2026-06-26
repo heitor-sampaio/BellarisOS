@@ -78,7 +78,7 @@ export async function sendMessage(
 
   const { data: conv } = await admin
     .from('conversations')
-    .select('id, channel, tenant_id, status')
+    .select('id, channel, tenant_id, status, contact_phone')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .single()
