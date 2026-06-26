@@ -184,7 +184,7 @@ async function resolveBranchId(supabase: Awaited<ReturnType<typeof createSupabas
     .eq('id', appointmentId)
     .single()
 
-  const branch = data?.branches as unknown as unknown as { tenant_id: string } | null
+  const branch = data?.branches as unknown as { tenant_id: string } | null
   if (!branch || branch.tenant_id !== tenantId) throw new Error('Acesso negado.')
   return data!.branch_id
 }
@@ -1050,7 +1050,7 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
     .eq('id', clientPackageId)
     .maybeSingle()
   if (!pkg) return { sessions: [] }
-  const branch = (pkg as any).branches
+  const branch = (pkg as unknown as { branches: { tenant_id: string } | null }).branches
   if (branch?.tenant_id !== ctx.tenantId) return { sessions: [] }
 
   const { data } = await admin
@@ -1094,9 +1094,10 @@ export async function schedulePackageSession(params: {
     .eq('id', params.packageSessionId)
     .maybeSingle()
   if (!sess) return { error: 'Sessão não encontrada.' }
-  const tenantId = (sess as any).client_packages?.branches?.tenant_id
-  if (tenantId !== ctx.tenantId) return { error: 'Sem permissão.' }
-  if ((sess as any).appointment_id) return { error: 'Sessão já está agendada.' }
+  type SessWithJoins = { appointment_id: string | null; client_packages: { branch_id: string; branches: { tenant_id: string } | null } | null }
+  const typedSess = sess as unknown as SessWithJoins
+  if (typedSess.client_packages?.branches?.tenant_id !== ctx.tenantId) return { error: 'Sem permissão.' }
+  if (typedSess.appointment_id) return { error: 'Sessão já está agendada.' }
 
   // Cria appointment
   const { data: appt, error: apptErr } = await admin
@@ -1148,7 +1149,7 @@ export async function schedulePlanSession(params: {
     .eq('id', params.planId)
     .maybeSingle()
   if (!plan) return { error: 'Plano não encontrado.' }
-  if ((plan as any).branches?.tenant_id !== ctx.tenantId) return { error: 'Sem permissão.' }
+  if ((plan as unknown as { branches: { tenant_id: string } | null }).branches?.tenant_id !== ctx.tenantId) return { error: 'Sem permissão.' }
 
   const { data: appt, error: apptErr } = await admin
     .from('appointments')
@@ -1213,7 +1214,7 @@ export async function getSchedulingDaySlots(
     slots: (data ?? []).map((d: any) => ({
       scheduledAt: d.scheduled_at as string,
       durationMin: d.duration_min as number,
-      clientName:  (d.clients as any)?.name ?? null,
+      clientName:  (d.clients as unknown as { name: string } | null)?.name ?? null,
     })),
   }
 }

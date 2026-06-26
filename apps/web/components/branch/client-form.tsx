@@ -71,7 +71,7 @@ export function ClientForm({ branchId, slug, existingClient, onSuccess, showCanc
 
   useEffect(() => {
     if (!state?.success) return
-    const clientId = isEdit ? existingClient?.id : (state as { clientId?: string }).clientId
+    const clientId = isEdit ? existingClient?.id : (state as unknown as { clientId?: string }).clientId
     if (onSuccess) {
       onSuccess(clientId)
     } else if (!isEdit && clientId) {

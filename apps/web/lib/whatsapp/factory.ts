@@ -35,8 +35,9 @@ export async function getTenantByZAPIInstance(instanceId: string): Promise<strin
     .eq('provider', 'zapi')
     .eq('is_active', true)
 
-  const match = (data ?? []).find((r: any) => r.config?.instanceId === instanceId)
-  return (match as any)?.tenant_id ?? null
+  type ConfigRow = { tenant_id: string; config: Record<string, unknown> | null }
+  const match = (data ?? []).find((r: ConfigRow) => (r.config as any)?.instanceId === instanceId) as ConfigRow | undefined
+  return match?.tenant_id ?? null
 }
 
 // Lookup tenant by Official WhatsApp phoneNumberId
@@ -50,6 +51,7 @@ export async function getTenantByPhoneNumberId(phoneNumberId: string): Promise<s
     .eq('provider', 'official')
     .eq('is_active', true)
 
-  const match = (data ?? []).find((r: any) => r.config?.phoneNumberId === phoneNumberId)
-  return (match as any)?.tenant_id ?? null
+  type ConfigRow = { tenant_id: string; config: Record<string, unknown> | null }
+  const match = (data ?? []).find((r: ConfigRow) => (r.config as any)?.phoneNumberId === phoneNumberId) as ConfigRow | undefined
+  return match?.tenant_id ?? null
 }

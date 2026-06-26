@@ -139,9 +139,9 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
   const { data: branch } = await admin
     .from('branches')
     .select('tenant_id')
-    .eq('id', (plan as any).branch_id)
+    .eq('id', plan.branch_id)
     .maybeSingle()
-  if ((branch as any)?.tenant_id !== ctx.tenantId) return { sessions: [], total: 0 }
+  if (branch?.tenant_id !== ctx.tenantId) return { sessions: [], total: 0 }
 
   const { data: rawSessions } = await admin
     .from('treatment_plan_sessions')
@@ -272,11 +272,11 @@ export async function cancelCheckout(
   const { data: branch } = await admin
     .from('branches')
     .select('tenant_id')
-    .eq('id', (plan as any).branch_id)
+    .eq('id', plan.branch_id)
     .maybeSingle()
-  if ((branch as any)?.tenant_id !== ctx.tenantId) return { error: 'Acesso negado.' }
+  if (branch?.tenant_id !== ctx.tenantId) return { error: 'Acesso negado.' }
 
-  if ((plan as any).status === 'ACCEPTED') return { error: 'Plano já foi aprovado e não pode ser cancelado.' }
+  if (plan.status === 'ACCEPTED') return { error: 'Plano já foi aprovado e não pode ser cancelado.' }
 
   const { error } = await admin
     .from('treatment_plans')
@@ -284,9 +284,9 @@ export async function cancelCheckout(
     .eq('id', planId)
   if (error) return { error: error.message }
 
-  if ((plan as any).evaluation_appointment_id) {
+  if (plan.evaluation_appointment_id) {
     await admin.from('appointment_history').insert({
-      appointment_id:  (plan as any).evaluation_appointment_id,
+      appointment_id:  plan.evaluation_appointment_id,
       changed_by_id:   ctx.internalUserId,
       changed_by_name: 'Recepção',
       action:          'CHECKOUT_CANCELLED',
@@ -320,11 +320,11 @@ export async function cancelTreatmentPlan(
   const { data: branch } = await admin
     .from('branches')
     .select('tenant_id')
-    .eq('id', (plan as any).branch_id)
+    .eq('id', plan.branch_id)
     .maybeSingle()
-  if ((branch as any)?.tenant_id !== ctx.tenantId) return { error: 'Acesso negado.' }
+  if (branch?.tenant_id !== ctx.tenantId) return { error: 'Acesso negado.' }
 
-  if ((plan as any).status !== 'ACCEPTED') return { error: 'Apenas tratamentos ativos (aceitos) podem ser cancelados.' }
+  if (plan.status !== 'ACCEPTED') return { error: 'Apenas tratamentos ativos (aceitos) podem ser cancelados.' }
 
   // Permissão por número de sessões: multi → somente NETWORK_ADMIN
   const { count: sessionCount } = await admin
@@ -377,10 +377,10 @@ export async function cancelTreatmentPlan(
 
     // Emite crédito interno pelo valor das sessões não realizadas (plano já estava pago)
     const totalCredit = futureAppts.reduce((s, a) => s + Number(a.price ?? 0), 0)
-    if (totalCredit > 0 && (plan as any).client_id) {
+    if (totalCredit > 0 && plan.client_id) {
       await admin.from('internal_credits').insert({
-        client_id:   (plan as any).client_id,
-        branch_id:   (plan as any).branch_id,
+        client_id:   plan.client_id,
+        branch_id:   plan.branch_id,
         amount:      totalCredit,
         description: `Cancelamento de plano — ${futureAppts.length} sessão(ões) não realizada(s)`,
         created_at:  new Date().toISOString(),
@@ -388,9 +388,9 @@ export async function cancelTreatmentPlan(
     }
   }
 
-  if ((plan as any).evaluation_appointment_id) {
+  if (plan.evaluation_appointment_id) {
     await admin.from('appointment_history').insert({
-      appointment_id:  (plan as any).evaluation_appointment_id,
+      appointment_id:  plan.evaluation_appointment_id,
       changed_by_id:   ctx.internalUserId,
       changed_by_name: ctx.role === 'NETWORK_ADMIN' ? 'Admin Rede' : 'Gerente',
       action:          'TREATMENT_CANCELLED',

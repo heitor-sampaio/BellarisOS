@@ -207,7 +207,7 @@ export async function convertLeadToClient(leadId: string, slug: string) {
       new MetaAdsProvider(metaConfig as MetaAdsConfig).sendCAPIEvent({
         email:  lead.email  as string | null,
         phone:  lead.phone  as string | null,
-        fbclid: (lead as any).fbclid as string | null,
+        fbclid: lead.fbclid as string | null,
       }, 'CompleteRegistration').catch(() => null)
     }).catch(() => null)
 

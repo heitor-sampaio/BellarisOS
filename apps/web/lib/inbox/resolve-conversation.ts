@@ -29,7 +29,7 @@ export async function resolveConversation(
     .limit(1)
 
   if (convRows && convRows.length > 0) {
-    return { conversationId: (convRows[0] as any).id, branchId: (convRows[0] as any).branch_id }
+    return { conversationId: convRows[0].id, branchId: convRows[0].branch_id }
   }
 
   // 2. Try to match a lead by phone number in this tenant
@@ -45,7 +45,7 @@ export async function resolveConversation(
   let contactName = phone   // fallback to phone number as name
 
   if (leadRows && leadRows.length > 0) {
-    const lead = leadRows[0] as any
+    const lead = leadRows[0]
     leadId      = lead.id
     branchId    = lead.branch_id
     contactName = lead.name
@@ -60,7 +60,7 @@ export async function resolveConversation(
       .limit(1)
 
     if (!branches || branches.length === 0) return null
-    branchId = (branches[0] as any).id
+    branchId = branches[0].id
   }
 
   // 4. Create new conversation
@@ -79,7 +79,7 @@ export async function resolveConversation(
     .single()
 
   if (!newConv) return null
-  return { conversationId: (newConv as any).id, branchId: (newConv as any).branch_id }
+  return { conversationId: newConv.id, branchId: newConv.branch_id }
 }
 
 export async function insertInboundMessage(

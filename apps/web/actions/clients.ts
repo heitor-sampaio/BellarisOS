@@ -216,7 +216,7 @@ export async function updateClientContactData(
       .eq('document', cpfDigits)
       .neq('id', clientId)
       .maybeSingle()
-    if (dup) return { error: `CPF já cadastrado para ${(dup as { name: string }).name}.` }
+    if (dup) return { error: `CPF já cadastrado para ${dup.name}.` }
   }
 
   const { error } = await admin
@@ -262,8 +262,8 @@ export async function lookupClientByCpf(
     .maybeSingle()
 
   if (!data) return { found: false, isSelf: false }
-  const isSelf = (data as { id: string }).id === currentClientId
-  return { found: true, isSelf, name: (data as { name: string }).name }
+  const isSelf = data.id === currentClientId
+  return { found: true, isSelf, name: data.name }
 }
 
 // ─── Ativar / desativar cliente ────────────────────────────────────

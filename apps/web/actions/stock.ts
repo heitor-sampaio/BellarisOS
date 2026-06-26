@@ -682,7 +682,7 @@ export async function saveBarcodeToProduct(productId: string, barcode: string) {
       .select('tenant_id')
       .eq('id', productId)
       .maybeSingle()
-    if (!prod || (prod as any).tenant_id !== ctx.tenantId)
+    if (!prod || prod.tenant_id !== ctx.tenantId)
       return { error: 'Produto não encontrado.' }
 
     const code = barcode.trim()
@@ -694,7 +694,7 @@ export async function saveBarcodeToProduct(productId: string, barcode: string) {
       .neq('id', productId)
       .maybeSingle()
     if (conflict)
-      return { error: `Código já vinculado ao produto "${(conflict as any).name}".` }
+      return { error: `Código já vinculado ao produto "${conflict.name}".` }
 
     await admin
       .from('products')

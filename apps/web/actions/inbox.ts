@@ -93,7 +93,7 @@ export async function sendMessage(
     .select('name')
     .eq('id', ctx.userId)
     .single()
-  senderName = (profile as any)?.name ?? null
+  senderName = profile?.name ?? null
 
   const { data: msg, error } = await admin
     .from('messages')
@@ -112,6 +112,8 @@ export async function sendMessage(
 
   if (error) return { ok: false, error: error.message }
 
+  const msgTyped = msg as unknown as { id: string; status: string }
+
   // Dispatch to WhatsApp channel if configured
   if ((conv.channel === 'whatsapp') && conv.contact_phone) {
     try {
@@ -123,24 +125,24 @@ export async function sendMessage(
         await admin
           .from('messages')
           .update({ status: 'sent', external_id: externalId })
-          .eq('id', (msg as any).id)
-        ;(msg as any).status = 'sent'
+          .eq('id', msgTyped.id)
+        msgTyped.status = 'sent'
       } else {
-        await admin.from('messages').update({ status: 'sent' }).eq('id', (msg as any).id)
-        ;(msg as any).status = 'sent'
+        await admin.from('messages').update({ status: 'sent' }).eq('id', msgTyped.id)
+        msgTyped.status = 'sent'
       }
     } catch (sendErr: any) {
-      await admin.from('messages').update({ status: 'failed' }).eq('id', (msg as any).id)
-      ;(msg as any).status = 'failed'
+      await admin.from('messages').update({ status: 'failed' }).eq('id', msgTyped.id)
+      msgTyped.status = 'failed'
     }
   } else {
     // manual channel — mark as sent immediately
-    await admin.from('messages').update({ status: 'sent' }).eq('id', (msg as any).id)
-    ;(msg as any).status = 'sent'
+    await admin.from('messages').update({ status: 'sent' }).eq('id', msgTyped.id)
+    msgTyped.status = 'sent'
   }
 
   revalidatePath('/admin/crm')
-  return { ok: true, message: msg as Message }
+  return { ok: true, message: msg as unknown as Message }
 }
 
 export async function markConversationRead(conversationId: string) {
@@ -205,12 +207,12 @@ export async function createConversationForLead(
     .from('conversations')
     .insert({
       tenant_id:     ctx.tenantId!,
-      branch_id:     (lead as any).branch_id,
+      branch_id:     lead.branch_id,
       lead_id:       leadId,
       channel,
       status:        'open',
-      contact_name:  (lead as any).name,
-      contact_phone: (lead as any).phone ?? null,
+      contact_name:  lead.name,
+      contact_phone: lead.phone ?? null,
     })
     .select('id')
     .single()
@@ -218,5 +220,5 @@ export async function createConversationForLead(
   if (error) return { error: error.message }
 
   revalidatePath('/admin/crm')
-  return { conversationId: (conv as any).id }
+  return { conversationId: (conv as unknown as { id: string }).id }
 }
