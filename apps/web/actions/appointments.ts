@@ -1003,7 +1003,7 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
   type RawAppt = { id: string; status: string; scheduled_at: string; professional: { name: string } | null } | null
   type RawSess = { id: string; sort_order: number; appointment_id: string | null; treatment_plan_session_procedures: RawSessProc[]; appointments: RawAppt }
 
-  const sessions = ((rawSessions ?? []) as RawSess[]).map((s, i) => {
+  const sessions = ((rawSessions ?? []) as unknown as RawSess[]).map((s, i) => {
     const procs = (s.treatment_plan_session_procedures ?? [])
       .sort((a, b) => a.sort_order - b.sort_order)
     const firstProc  = procs[0]
