@@ -1,0 +1,24 @@
+{
+  "name": "estetica-os",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:migrate": "turbo run db:migrate --filter=@estetica-os/db",
+    "db:studio": "turbo run db:studio --filter=@estetica-os/db",
+    "db:seed": "turbo run db:seed --filter=@estetica-os/db",
+    "db:reset": "turbo run db:reset --filter=@estetica-os/db"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@11.8.0"
+}

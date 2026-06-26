@@ -1,0 +1,37 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+.next
+dist
+out
+.expo
+.expo-shared
+
+# Turbo
+.turbo
+
+# Supabase
+supabase/.temp
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+
+# Claude Code
+.claude/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

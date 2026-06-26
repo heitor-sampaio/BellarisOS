@@ -1,0 +1,148 @@
+import { createHash } from 'crypto'
+import type { AdsProvider, Campaign, DateRange, MetaAdsConfig } from './types'
+
+const GRAPH_API_VERSION = 'v19.0'
+const BASE_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`
+
+const PRESET_MAP: Record<string, string> = {
+  today: 'today',
+  '7d':  'last_7d',
+  '30d': 'last_30d',
+  '90d': 'last_90d',
+  all:   'lifetime',
+}
+
+export class MetaAdsProvider implements AdsProvider {
+  constructor(private config: MetaAdsConfig) {}
+
+  async getCampaigns(dateRange: DateRange): Promise<Campaign[]> {
+    const preset = PRESET_MAP[dateRange.preset] ?? 'last_30d'
+    const fields = [
+      'id', 'name', 'status',
+      `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,reach,conversions,cost_per_conversion}`,
+    ].join(',')
+
+    const url = new URL(`${BASE_URL}/act_${this.config.adAccountId}/campaigns`)
+    url.searchParams.set('fields', fields)
+    url.searchParams.set('access_token', this.config.accessToken)
+    url.searchParams.set('limit', '200')
+
+    const res = await fetch(url.toString(), { cache: 'no-store' })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error((err as any)?.error?.message ?? `Meta API error ${res.status}`)
+    }
+
+    const body = await res.json() as { data: MetaCampaign[] }
+    return (body.data ?? []).map(c => this.mapCampaign(c))
+  }
+
+  async testConnection(): Promise<{ ok: boolean; detail?: string }> {
+    try {
+      const url = new URL(`${BASE_URL}/act_${this.config.adAccountId}`)
+      url.searchParams.set('fields', 'name,account_status')
+      url.searchParams.set('access_token', this.config.accessToken)
+
+      const res = await fetch(url.toString(), { cache: 'no-store' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        return { ok: false, detail: (err as any)?.error?.message ?? `HTTP ${res.status}` }
+      }
+      const body = await res.json() as { name?: string }
+      return { ok: true, detail: body.name }
+    } catch (e) {
+      return { ok: false, detail: (e as Error).message }
+    }
+  }
+
+  async sendCAPIEvent(lead: CAPILead, eventName: string): Promise<void> {
+    const eventTime = Math.floor(Date.now() / 1000)
+    const userData: Record<string, string> = {}
+
+    if (lead.email) userData['em'] = sha256(lead.email.toLowerCase().trim())
+    if (lead.phone) userData['ph'] = sha256(lead.phone.replace(/\D/g, ''))
+    if (lead.fbclid) userData['fbc'] = `fb.1.${eventTime}.${lead.fbclid}`
+
+    const payload = {
+      data: [{
+        event_name: eventName,
+        event_time: eventTime,
+        action_source: 'website',
+        user_data: userData,
+        custom_data: lead.customData ?? {},
+      }],
+      access_token: this.config.accessToken,
+    }
+
+    await fetch(`${BASE_URL}/${this.config.pixelId}/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  }
+
+  private mapCampaign(c: MetaCampaign): Campaign {
+    const ins = c.insights?.data?.[0]
+    const spend      = parseFloat(ins?.spend ?? '0')
+    const impressions = parseInt(ins?.impressions ?? '0', 10)
+    const clicks     = parseInt(ins?.clicks ?? '0', 10)
+    const ctr        = parseFloat(ins?.ctr ?? '0')
+    const cpc        = parseFloat(ins?.cpc ?? '0')
+    const cpm        = parseFloat(ins?.cpm ?? '0')
+    const reach      = parseInt(ins?.reach ?? '0', 10)
+    const conversions = parseFloat(ins?.conversions ?? '0')
+    const cpa        = parseFloat(ins?.cost_per_conversion ?? '0')
+
+    return {
+      id: c.id,
+      name: c.name,
+      status: normalizeMetaStatus(c.status),
+      platform: 'meta',
+      spend,
+      impressions,
+      clicks,
+      ctr,
+      cpc,
+      cpm,
+      reach: reach || undefined,
+      conversions: conversions || undefined,
+      costPerConversion: cpa || undefined,
+    }
+  }
+}
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex')
+}
+
+function normalizeMetaStatus(s: string): Campaign['status'] {
+  if (s === 'ACTIVE')   return 'ACTIVE'
+  if (s === 'PAUSED')   return 'PAUSED'
+  if (s === 'ARCHIVED') return 'ARCHIVED'
+  return s
+}
+
+export interface CAPILead {
+  email?: string | null
+  phone?: string | null
+  fbclid?: string | null
+  customData?: Record<string, unknown>
+}
+
+interface MetaCampaignInsight {
+  spend?: string
+  impressions?: string
+  clicks?: string
+  ctr?: string
+  cpc?: string
+  cpm?: string
+  reach?: string
+  conversions?: string
+  cost_per_conversion?: string
+}
+interface MetaCampaign {
+  id: string
+  name: string
+  status: string
+  insights?: { data: MetaCampaignInsight[] }
+}

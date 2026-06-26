@@ -1,0 +1,734 @@
+// EstéticaOS — Prisma Schema
+// Versão 1.1 | Junho 2026
+// Stack: PostgreSQL + Supabase
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  NETWORK_ADMIN   // dono/gestor da rede — acessa todas as filiais
+  BRANCH_ADMIN    // gerente da filial
+  RECEPTIONIST    // recepcionista
+  PROFESSIONAL    // esteticista / profissional
+  FINANCIAL       // acesso financeiro somente leitura
+  CLIENT          // cliente final — acessa apenas os próprios dados via app
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentMethod {
+  CASH
+  PIX
+  DEBIT_CARD
+  CREDIT_CARD
+  INTERNAL_CREDIT   // saldo do cliente no sistema
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum StockMovementType {
+  PURCHASE            // entrada por compra
+  PROCEDURE_USAGE     // saída por consumo de procedimento
+  MANUAL_ADJUSTMENT   // ajuste manual (perda, inventário)
+  TRANSFER_IN         // entrada por transferência de outra filial
+  TRANSFER_OUT        // saída por transferência para outra filial
+}
+
+enum TransferStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum CommissionType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum CommissionStatus {
+  OPEN
+  PAID
+}
+
+enum PackageSessionStatus {
+  AVAILABLE
+  USED
+  EXPIRED
+}
+
+enum ConsentStatus {
+  PENDING
+  SIGNED
+}
+
+enum AppointmentSource {
+  INTERNAL      // criado pela recepção/profissional no web ou app operacional
+  ONLINE        // agendamento via link público (web)
+  CLIENT_APP    // agendamento feito pelo cliente no app mobile
+}
+
+// ============================================================
+// TENANT & BRANCH (Multi-tenant core)
+// ============================================================
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  document    String?  @unique                // CNPJ da rede
+  email       String
+  phone       String?
+  logoUrl     String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // billing
+  planName    String?
+  planStatus  String?  @default("trial")      // trial | active | suspended | cancelled
+  trialEndsAt DateTime?
+
+  branches      Branch[]
+  users         User[]
+  procedures    Procedure[]                   // catálogo base da rede
+  loyaltyConfig LoyaltyConfig?
+
+  @@map("tenants")
+}
+
+model Branch {
+  id        String  @id @default(uuid())
+  tenantId  String
+  name      String
+  slug      String                            // ex: "centro" → agenda.esteticaos.com.br/centro
+  document  String?
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  logoUrl   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  users               User[]
+  clients             Client[]
+  appointments        Appointment[]
+  products            Product[]
+  stockMovements      StockMovement[]
+  stockTransfersFrom  StockTransfer[] @relation("TransferFrom")
+  stockTransfersTo    StockTransfer[] @relation("TransferTo")
+  transactions        FinancialTransaction[]
+  cashRegisters       CashRegister[]
+  commissions         Commission[]
+  procedures          Procedure[]             // procedimentos locais da filial
+  rooms               Room[]
+
+  @@unique([tenantId, slug])
+  @@map("branches")
+}
+
+// ============================================================
+// USERS & AUTH
+// ============================================================
+
+// Usuários operacionais: admins, gerentes, profissionais, recepcionistas, financeiro
+model User {
+  id        String   @id @default(uuid())
+  tenantId  String
+  branchId  String?                           // null = NETWORK_ADMIN (acesso à rede toda)
+  authId    String   @unique                  // Supabase Auth UUID
+  name      String
+  email     String
+  phone     String?
+  avatarUrl String?
+  role      UserRole
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  appointments         Appointment[]
+  medicalRecordEntries MedicalRecordEntry[]
+  commissions          Commission[]
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+// ============================================================
+// CLIENTS & CRM
+// ============================================================
+
+// Clientes das clínicas — podem ou não ter conta no app mobile
+model Client {
+  id         String    @id @default(uuid())
+  tenantId   String                           // cliente pertence à rede
+  branchId   String                           // filial de cadastro
+  authId     String?   @unique                // Supabase Auth UUID — preenchido quando o cliente cria conta no app
+  name       String
+  document   String?                          // CPF
+  email      String?
+  phone      String
+  birthDate  DateTime?
+  gender     String?
+  avatarUrl  String?
+  address    String?
+  city       String?
+  state      String?
+  zipCode    String?
+  referredBy String?                          // client.id de quem indicou
+  tags       String[]  @default([])
+  notes      String?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // controle de conta no app
+  appAccountCreatedAt DateTime?               // quando o cliente criou a conta no app
+  lastAppLoginAt      DateTime?
+
+  branch Branch @relation(fields: [branchId], references: [id])
+
+  appointments    Appointment[]
+  medicalRecord   MedicalRecord?
+  loyaltyAccount  LoyaltyAccount?
+  packages        ClientPackage[]
+  internalCredits InternalCredit[]
+  lgpdRequests    LgpdRequest[]
+
+  @@unique([tenantId, document])              // CPF único por rede
+  @@map("clients")
+}
+
+model LoyaltyConfig {
+  id                String  @id @default(uuid())
+  tenantId          String  @unique
+  pointsPerReal     Float   @default(1)       // pontos por R$ gasto
+  redeemPointsValue Float   @default(0.01)    // R$ por ponto no resgate
+  scopePerBranch    Boolean @default(false)   // false = pontos consolidados na rede
+  firstAppLoginBonus Int    @default(0)       // pontos de bônus no primeiro login do app
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("loyalty_configs")
+}
+
+model LoyaltyAccount {
+  id        String   @id @default(uuid())
+  clientId  String   @unique
+  balance   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client       Client               @relation(fields: [clientId], references: [id])
+  transactions LoyaltyTransaction[]
+
+  @@map("loyalty_accounts")
+}
+
+model LoyaltyTransaction {
+  id               String   @id @default(uuid())
+  loyaltyAccountId String
+  points           Int                        // positivo = ganho, negativo = resgate
+  description      String
+  appointmentId    String?
+  createdAt        DateTime @default(now())
+
+  loyaltyAccount LoyaltyAccount @relation(fields: [loyaltyAccountId], references: [id])
+
+  @@map("loyalty_transactions")
+}
+
+model InternalCredit {
+  id          String   @id @default(uuid())
+  clientId    String
+  branchId    String
+  amount      Decimal  @db.Decimal(10, 2)
+  description String
+  createdAt   DateTime @default(now())
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("internal_credits")
+}
+
+model LgpdRequest {
+  id          String   @id @default(uuid())
+  clientId    String
+  type        String                          // "export" | "delete"
+  status      String   @default("pending")   // pending | processing | completed
+  requestedAt DateTime @default(now())
+  completedAt DateTime?
+  requestedVia String  @default("web")       // "web" | "app"
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("lgpd_requests")
+}
+
+// ============================================================
+// PROCEDURES & PACKAGES
+// ============================================================
+
+model Procedure {
+  id          String   @id @default(uuid())
+  tenantId    String
+  branchId    String?                         // null = catálogo base da rede
+  name        String
+  category    String
+  description String?
+  durationMin Int
+  price       Decimal  @db.Decimal(10, 2)
+  isActive    Boolean  @default(true)
+  // visível no app do cliente para agendamento self-service
+  visibleOnClientApp Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
+
+  products        ProcedureProduct[]
+  appointments    Appointment[]
+  packages        ServicePackage[]
+  commissionRules CommissionRule[]
+  priceHistory    ProcedurePriceHistory[]
+
+  @@map("procedures")
+}
+
+model ProcedurePriceHistory {
+  id          String   @id @default(uuid())
+  procedureId String
+  price       Decimal  @db.Decimal(10, 2)
+  changedAt   DateTime @default(now())
+  changedBy   String                          // user.id
+
+  procedure Procedure @relation(fields: [procedureId], references: [id])
+
+  @@map("procedure_price_history")
+}
+
+model ProcedureProduct {
+  id          String  @id @default(uuid())
+  procedureId String
+  productId   String
+  quantity    Decimal @db.Decimal(10, 4)
+
+  procedure Procedure @relation(fields: [procedureId], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@unique([procedureId, productId])
+  @@map("procedure_products")
+}
+
+model ServicePackage {
+  id            String   @id @default(uuid())
+  tenantId      String
+  branchId      String?
+  procedureId   String
+  name          String
+  totalSessions Int
+  price         Decimal  @db.Decimal(10, 2)
+  validityDays  Int?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  procedure Procedure      @relation(fields: [procedureId], references: [id])
+  purchases ClientPackage[]
+
+  @@map("service_packages")
+}
+
+model ClientPackage {
+  id            String    @id @default(uuid())
+  clientId      String
+  packageId     String
+  branchId      String
+  purchasedAt   DateTime  @default(now())
+  expiresAt     DateTime?
+  totalSessions Int
+  usedSessions  Int       @default(0)
+
+  client   Client         @relation(fields: [clientId], references: [id])
+  package  ServicePackage @relation(fields: [packageId], references: [id])
+  sessions PackageSession[]
+
+  @@map("client_packages")
+}
+
+model PackageSession {
+  id              String               @id @default(uuid())
+  clientPackageId String
+  appointmentId   String?              @unique
+  status          PackageSessionStatus @default(AVAILABLE)
+  usedAt          DateTime?
+
+  clientPackage ClientPackage @relation(fields: [clientPackageId], references: [id])
+  appointment   Appointment?  @relation(fields: [appointmentId], references: [id])
+
+  @@map("package_sessions")
+}
+
+// ============================================================
+// APPOINTMENTS (AGENDA)
+// ============================================================
+
+model Room {
+  id       String  @id @default(uuid())
+  branchId String
+  name     String
+  isActive Boolean @default(true)
+
+  branch       Branch        @relation(fields: [branchId], references: [id])
+  appointments Appointment[]
+
+  @@map("rooms")
+}
+
+model Appointment {
+  id             String            @id @default(uuid())
+  branchId       String
+  clientId       String
+  procedureId    String
+  professionalId String
+  roomId         String?
+  status         AppointmentStatus @default(SCHEDULED)
+  source         AppointmentSource @default(INTERNAL)
+  scheduledAt    DateTime
+  durationMin    Int
+  price          Decimal           @db.Decimal(10, 2)
+  notes          String?
+  clientNotes    String?                              // observações enviadas pelo cliente no app
+  cancellationReason String?
+  cancelledAt    DateTime?
+  confirmedAt    DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  branch       Branch    @relation(fields: [branchId], references: [id])
+  client       Client    @relation(fields: [clientId], references: [id])
+  procedure    Procedure @relation(fields: [procedureId], references: [id])
+  professional User      @relation(fields: [professionalId], references: [id])
+  room         Room?     @relation(fields: [roomId], references: [id])
+
+  medicalRecordEntry MedicalRecordEntry?
+  packageSession     PackageSession?
+  transaction        FinancialTransaction?
+
+  @@map("appointments")
+}
+
+// ============================================================
+// MEDICAL RECORDS (PRONTUÁRIO)
+// ============================================================
+
+model MedicalRecord {
+  id        String   @id @default(uuid())
+  clientId  String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client  Client               @relation(fields: [clientId], references: [id])
+  entries MedicalRecordEntry[]
+  consents ConsentTerm[]
+
+  @@map("medical_records")
+}
+
+model MedicalRecordEntry {
+  id              String   @id @default(uuid())
+  medicalRecordId String
+  appointmentId   String   @unique
+  professionalId  String
+  notes           String?
+  productsUsed    Json?
+  intercurrences  String?
+  createdAt       DateTime @default(now())
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+  appointment   Appointment   @relation(fields: [appointmentId], references: [id])
+  professional  User          @relation(fields: [professionalId], references: [id])
+  photos        RecordPhoto[]
+  anamnesisData AnamnesisData?
+
+  @@map("medical_record_entries")
+}
+
+model AnamnesisData {
+  id       String @id @default(uuid())
+  entryId  String @unique
+  formData Json                             // respostas da anamnese (flexível por categoria)
+
+  entry MedicalRecordEntry @relation(fields: [entryId], references: [id])
+
+  @@map("anamnesis_data")
+}
+
+model RecordPhoto {
+  id        String   @id @default(uuid())
+  entryId   String
+  url       String                          // URL no Supabase Storage
+  type      String                          // "before" | "after" | "during"
+  source    String   @default("web")        // "web" | "mobile" — de onde foi feito o upload
+  createdAt DateTime @default(now())
+
+  entry MedicalRecordEntry @relation(fields: [entryId], references: [id])
+
+  @@map("record_photos")
+}
+
+model ConsentTerm {
+  id              String        @id @default(uuid())
+  medicalRecordId String
+  procedureId     String?
+  title           String
+  content         String        @db.Text
+  status          ConsentStatus @default(PENDING)
+  signedAt        DateTime?
+  signedIp        String?
+  signedVia       String?                   // "web" | "mobile"
+  createdAt       DateTime      @default(now())
+
+  medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id])
+
+  @@map("consent_terms")
+}
+
+// ============================================================
+// STOCK (ESTOQUE)
+// ============================================================
+
+model Product {
+  id           String   @id @default(uuid())
+  branchId     String
+  name         String
+  sku          String?
+  category     String?
+  unit         String
+  supplier     String?
+  costPrice    Decimal? @db.Decimal(10, 2)
+  salePrice    Decimal? @db.Decimal(10, 2)
+  minStock     Decimal  @db.Decimal(10, 4) @default(0)
+  currentStock Decimal  @db.Decimal(10, 4) @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  branch         Branch              @relation(fields: [branchId], references: [id])
+  stockMovements StockMovement[]
+  procedureLinks ProcedureProduct[]
+  transferItems  StockTransferItem[]
+  batches        ProductBatch[]
+
+  @@map("products")
+}
+
+model ProductBatch {
+  id          String    @id @default(uuid())
+  productId   String
+  batchNumber String?
+  expiresAt   DateTime?
+  quantity    Decimal   @db.Decimal(10, 4)
+  receivedAt  DateTime  @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("product_batches")
+}
+
+model StockMovement {
+  id            String            @id @default(uuid())
+  branchId      String
+  productId     String
+  type          StockMovementType
+  quantity      Decimal           @db.Decimal(10, 4)
+  balanceAfter  Decimal           @db.Decimal(10, 4)
+  appointmentId String?
+  transferId    String?
+  notes         String?
+  createdBy     String            // user.id
+  createdAt     DateTime          @default(now())
+
+  branch  Branch  @relation(fields: [branchId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("stock_movements")
+}
+
+model StockTransfer {
+  id           String         @id @default(uuid())
+  fromBranchId String
+  toBranchId   String
+  status       TransferStatus @default(PENDING)
+  notes        String?
+  requestedBy  String
+  confirmedBy  String?
+  requestedAt  DateTime       @default(now())
+  confirmedAt  DateTime?
+
+  fromBranch Branch              @relation("TransferFrom", fields: [fromBranchId], references: [id])
+  toBranch   Branch              @relation("TransferTo", fields: [toBranchId], references: [id])
+  items      StockTransferItem[]
+
+  @@map("stock_transfers")
+}
+
+model StockTransferItem {
+  id         String  @id @default(uuid())
+  transferId String
+  productId  String
+  quantity   Decimal @db.Decimal(10, 4)
+
+  transfer StockTransfer @relation(fields: [transferId], references: [id])
+  product  Product       @relation(fields: [productId], references: [id])
+
+  @@map("stock_transfer_items")
+}
+
+// ============================================================
+// FINANCIAL (FINANCEIRO)
+// ============================================================
+
+model CashRegister {
+  id             String    @id @default(uuid())
+  branchId       String
+  openedBy       String
+  closedBy       String?
+  openedAt       DateTime  @default(now())
+  closedAt       DateTime?
+  openingBalance Decimal   @db.Decimal(10, 2) @default(0)
+  closingBalance Decimal?  @db.Decimal(10, 2)
+  notes          String?
+
+  branch       Branch                 @relation(fields: [branchId], references: [id])
+  transactions FinancialTransaction[]
+
+  @@map("cash_registers")
+}
+
+model FinancialTransaction {
+  id             String          @id @default(uuid())
+  branchId       String
+  cashRegisterId String?
+  appointmentId  String?         @unique
+  type           TransactionType
+  category       String
+  description    String
+  amount         Decimal         @db.Decimal(10, 2)
+  paymentMethod  PaymentMethod?
+  dueDate        DateTime?
+  paidAt         DateTime?
+  isPaid         Boolean         @default(false)
+  notes          String?
+  createdBy      String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  branch       Branch        @relation(fields: [branchId], references: [id])
+  cashRegister CashRegister? @relation(fields: [cashRegisterId], references: [id])
+  appointment  Appointment?  @relation(fields: [appointmentId], references: [id])
+  installments Installment[]
+
+  @@map("financial_transactions")
+}
+
+model Installment {
+  id            String   @id @default(uuid())
+  transactionId String
+  number        Int
+  total         Int
+  amount        Decimal  @db.Decimal(10, 2)
+  dueDate       DateTime
+  paidAt        DateTime?
+  isPaid        Boolean  @default(false)
+
+  transaction FinancialTransaction @relation(fields: [transactionId], references: [id])
+
+  @@map("installments")
+}
+
+// ============================================================
+// COMMISSIONS (COMISSÕES)
+// ============================================================
+
+model CommissionRule {
+  id             String         @id @default(uuid())
+  branchId       String
+  professionalId String
+  procedureId    String?        // null = regra geral para o profissional
+  type           CommissionType
+  value          Decimal        @db.Decimal(10, 4)
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+
+  procedure Procedure? @relation(fields: [procedureId], references: [id])
+
+  @@map("commission_rules")
+}
+
+model Commission {
+  id             String           @id @default(uuid())
+  branchId       String
+  professionalId String
+  appointmentId  String
+  amount         Decimal          @db.Decimal(10, 2)
+  type           CommissionType
+  ruleValue      Decimal          @db.Decimal(10, 4)
+  status         CommissionStatus @default(OPEN)
+  periodRef      String                             // "YYYY-MM"
+  paidAt         DateTime?
+  paidBy         String?
+
+  branch       Branch @relation(fields: [branchId], references: [id])
+  professional User   @relation(fields: [professionalId], references: [id])
+
+  @@map("commissions")
+}
+
+// ============================================================
+// PUSH NOTIFICATIONS (APP MOBILE)
+// ============================================================
+
+model PushToken {
+  id        String   @id @default(uuid())
+  token     String   @unique                 // Expo push token
+  platform  String                           // "ios" | "android"
+  // pode pertencer a um usuário operacional ou a um cliente
+  userId    String?
+  clientId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("push_tokens")
+}

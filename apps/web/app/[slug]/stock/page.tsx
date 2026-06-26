@@ -1,0 +1,268 @@
+import { notFound } from 'next/navigation'
+import { getTenantContext, assertRole } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { AdminStockView } from '@/components/admin/admin-stock-view'
+import { ProductCategoryModal } from '@/components/admin/product-category-modal'
+import { StockProductModal } from '@/components/branch/stock-product-modal'
+import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
+
+const fmtBRL = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+export default async function BranchStockPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+  const ctx      = await getTenantContext()
+  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'])
+  const readOnly = !(['NETWORK_ADMIN', 'BRANCH_ADMIN'] as string[]).includes(ctx.role)
+
+  const admin = createAdminClient()
+
+  const { data: branch } = await admin
+    .from('branches')
+    .select('id, name, slug, tenant_id')
+    .eq('slug', slug)
+    .eq('tenant_id', ctx.tenantId!)
+    .single()
+  if (!branch) notFound()
+
+  const branchId = branch.id
+
+  // Produtos e categorias em paralelo
+  const [{ data: raw }, { data: categoriesRaw }] = await Promise.all([
+    admin
+      .from('products')
+      .select(`
+        id, name, sku, barcode, category, category_id, unit, supplier,
+        cost_price, sale_price, consumption_unit, units_per_package, is_active,
+        branch_product_stock(
+          current_stock, min_stock, current_rendimento,
+          branches(id, name, slug)
+        )
+      `)
+      .eq('tenant_id', ctx.tenantId!)
+      .eq('is_active', true)
+      .order('name'),
+
+    admin
+      .from('product_categories')
+      .select('id, name')
+      .eq('tenant_id', ctx.tenantId!)
+      .order('name'),
+  ])
+
+  // Normaliza — filtra estoque apenas desta filial
+  const products = (raw ?? []).map((p: any) => {
+    const bps: { current_stock: number; min_stock: number; branches: { id: string; name: string; slug: string } }[] =
+      p.branch_product_stock ?? []
+
+    const branchStocks = bps
+      .filter(b => b.branches && b.branches.id === branchId)
+      .map(b => ({
+        branchId:          b.branches.id,
+        branchName:        b.branches.name,
+        branchSlug:        b.branches.slug,
+        currentStock:      Number(b.current_stock),
+        minStock:          Number(b.min_stock),
+        currentRendimento: (b as any).current_rendimento != null ? Number((b as any).current_rendimento) : null,
+      }))
+
+    const totalStock = branchStocks.reduce((s, b) => s + b.currentStock, 0)
+
+    const upp = p.units_per_package ? Number(p.units_per_package) : null
+    const totalRendimento = upp
+      ? branchStocks.reduce((s, b) =>
+          s + (b.currentRendimento != null ? b.currentRendimento : b.currentStock * upp), 0)
+      : null
+
+    return {
+      id:               p.id as string,
+      name:             p.name as string,
+      sku:              p.sku as string | null,
+      barcode:          p.barcode as string | null,
+      category:         p.category as string | null,
+      categoryId:       p.category_id as string | null,
+      unit:             p.unit as string,
+      supplier:         p.supplier as string | null,
+      costPrice:        Number(p.cost_price ?? 0),
+      salePrice:        p.sale_price != null ? Number(p.sale_price) : null,
+      consumptionUnit:  p.consumption_unit as string | null,
+      unitsPerPackage:  upp,
+      totalStock,
+      totalRendimento,
+      branches:         branchStocks,
+    }
+  })
+
+  const branchData   = [{ id: branch.id, name: branch.name, slug: branch.slug }]
+  const categories   = categoriesRaw ?? []
+  const productIds   = products.map(p => p.id)
+
+  const now             = new Date()
+  const startOfMonth    = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const in30Days        = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+
+  const [{ data: movementsRaw }, { data: batchesRaw }] = productIds.length > 0
+    ? await Promise.all([
+        admin
+          .from('stock_movements')
+          .select('product_id, quantity')
+          .in('product_id', productIds)
+          .eq('branch_id', branchId)
+          .eq('type', 'PROCEDURE_USAGE')
+          .gte('created_at', startOfMonth),
+
+        admin
+          .from('product_batches')
+          .select('product_id')
+          .in('product_id', productIds)
+          .eq('branch_id', branchId)
+          .gt('quantity', 0)
+          .gte('expires_at', now.toISOString())
+          .lte('expires_at', in30Days.toISOString()),
+      ])
+    : [{ data: [] as any }, { data: [] as any }]
+
+  // KPIs da filial
+  const valorEstoque = products.reduce(
+    (sum, p) => sum + p.costPrice * p.totalStock,
+    0,
+  )
+
+  const costMap  = Object.fromEntries(products.map(p => [p.id, p.costPrice]))
+  const valorGiro = (movementsRaw ?? []).reduce(
+    (sum: number, m: any) => sum + Math.abs(Number(m.quantity)) * (costMap[m.product_id] ?? 0),
+    0,
+  )
+
+  const abaixoMinimo = products.filter(p =>
+    p.branches.some(b => b.minStock > 0 && b.currentStock <= b.minStock),
+  ).length
+
+  const semEstoque = products.filter(p => p.branches.every(b => b.currentStock === 0)).length
+
+  const validadeProxima = new Set((batchesRaw ?? []).map((b: any) => b.product_id)).size
+
+  const suppliers       = [...new Set(products.map(p => p.supplier).filter(Boolean) as string[])].sort()
+  const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <RealtimeRefresher tables={['products', 'branch_product_stock', 'stock_movements']} />
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
+            Estoque
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
+            {branch.name}
+          </p>
+        </div>
+
+        {!readOnly && (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <ProductCategoryModal categories={categories} />
+            <StockProductModal
+              suppliers={suppliers}
+              categories={categories}
+              trigger={
+                <button type="button" className="btn-primary">
+                  <Package size={15} />
+                  Novo produto
+                </button>
+              }
+            />
+          </div>
+        )}
+      </div>
+
+      {/* KPIs */}
+      {(() => {
+        const allKpis = [
+          ...(!readOnly ? [
+            {
+              label: 'VALOR EM ESTOQUE',
+              value: fmtBRL(valorEstoque),
+              icon:  <ShoppingCart size={18} style={{ color: 'var(--on-brand)' }} />,
+              iconBg: 'rgba(255,255,255,0.2)', color: 'var(--on-brand)',
+              labelColor: 'rgba(255,255,255,0.75)', brand: true,
+            },
+            {
+              label: `GIRO — ${now.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).toUpperCase()}`,
+              value: fmtBRL(valorGiro),
+              icon:  <ShoppingCart size={18} style={{ color: 'var(--brand)' }} />,
+              iconBg: 'var(--brand-soft)', color: 'var(--text)',
+              labelColor: 'var(--text-muted)', brand: false,
+            },
+          ] : []),
+          {
+            label: 'ABAIXO DO MÍNIMO',
+            value: String(abaixoMinimo),
+            icon:  <AlertTriangle size={18} style={{ color: abaixoMinimo > 0 ? '#d97706' : 'var(--text-faint)' }} />,
+            iconBg: abaixoMinimo > 0 ? '#fffbeb' : 'var(--bg-app)',
+            color: abaixoMinimo > 0 ? '#d97706' : 'var(--text)',
+            labelColor: 'var(--text-muted)', brand: false,
+          },
+          {
+            label: 'SEM ESTOQUE',
+            value: String(semEstoque),
+            icon:  <Package size={18} style={{ color: semEstoque > 0 ? '#dc2626' : 'var(--text-faint)' }} />,
+            iconBg: semEstoque > 0 ? '#fef2f2' : 'var(--bg-app)',
+            color: semEstoque > 0 ? '#dc2626' : 'var(--text)',
+            labelColor: 'var(--text-muted)', brand: false,
+          },
+          {
+            label: 'VALIDADE EM 30 DIAS',
+            value: String(validadeProxima),
+            icon:  <CalendarClock size={18} style={{ color: validadeProxima > 0 ? '#d97706' : 'var(--text-faint)' }} />,
+            iconBg: validadeProxima > 0 ? '#fffbeb' : 'var(--bg-app)',
+            color: validadeProxima > 0 ? '#d97706' : 'var(--text)',
+            labelColor: 'var(--text-muted)', brand: false,
+          },
+        ]
+        return (
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${allKpis.length}, 1fr)`, gap: 12 }}>
+        {allKpis.map(k => (
+          <div
+            key={k.label}
+            className={k.brand ? 'card-brand' : 'card'}
+            style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}
+          >
+            <div style={{
+              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+              background: k.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {k.icon}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: 10.5, fontWeight: 700, color: k.labelColor, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                {k.label}
+              </p>
+              <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: k.color, marginTop: 3, whiteSpace: 'nowrap' }}>
+                {k.value}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+        )
+      })()}
+
+      <AdminStockView
+        products={products}
+        branches={branchData}
+        categories={stockCategories}
+        productCategories={categories as { id: string; name: string }[]}
+        suppliers={suppliers}
+        defaultBranchId={branchId}
+        readOnly={readOnly}
+      />
+    </div>
+  )
+}

@@ -1,0 +1,545 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+/* ============================================================
+   LUMIÈRE DESIGN SYSTEM — TOKENS
+   Fonte: .claude/skills/lumiere-design/tokens/
+   Não introduza cores, fontes ou sombras fora deste :root.
+   ============================================================ */
+
+@theme inline {
+  /* Mapeamento dos tokens Lumière para o Tailwind v4 */
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-soft: var(--brand-soft);
+  --color-surface: var(--surface);
+  --color-bg-app: var(--bg-app);
+  --color-border-card: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+
+  --font-sans: var(--font-sans-custom);
+
+  --radius-card: var(--radius-card-token);
+  --radius-field: var(--radius-field-token);
+  --radius-chip: var(--radius-chip-token);
+}
+
+@layer base {
+  :root {
+    /* ─── Brand (rosé) ─────────────────────────────── */
+    --brand: #c34d6b;
+    --brand-deep: #a63a55;
+    --brand-soft: #fbe7ec;
+    --brand-soft-border: #f3c7d3;
+    --brand-2: #dd7f96;
+    --brand-3: #eeb0bf;
+
+    /* ─── Surfaces & neutrals (warm nude) ──────────── */
+    --bg-app: #faf5f3;
+    --surface: #ffffff;
+    --border: #f0e6e3;
+    --hairline: #f4ebe8;
+    --track: #f7eaee;
+
+    /* ─── Text ─────────────────────────────────────── */
+    --text: #221619;
+    --text-muted: #8a7a7e;
+    --text-faint: #b7a8ac;
+    --text-soft: #6b5d61;
+
+    /* ─── Semantic ─────────────────────────────────── */
+    --success: #3f9b6f;
+    --success-soft: #e2f1ea;
+    --success-bg: #f3faf5;
+    --success-border: #cfe9da;
+    --warning: #c98a1e;
+    --warning-soft: #fbeed6;
+    --gold: #c9a227;
+
+    /* ─── Aliases ───────────────────────────────────── */
+    --on-brand: #ffffff;
+    --accent: var(--brand);
+
+    /* ─── Typography ────────────────────────────────── */
+    --font-sans-custom: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+    --text-display: 30px;
+    --text-title: 28px;
+    --text-name: 22px;
+    --text-kpi: 28px;
+    --text-card-title: 15px;
+    --text-base-sz: 13px;
+    --text-sm-sz: 12.5px;
+    --text-xs-sz: 11.5px;
+    --text-2xs: 11px;
+    --text-overline: 10.5px;
+
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+    --weight-extrabold: 800;
+
+    --tracking-tight: -0.02em;
+    --tracking-overline: 0.12em;
+    --tracking-wordmark: 0.3em;
+
+    --leading-tight: 1;
+    --leading-snug: 1.4;
+    --leading-normal: 1.55;
+
+    /* ─── Radii ─────────────────────────────────────── */
+    --radius-card-token: 18px;
+    --radius-card-sm: 15px;
+    --radius-field-token: 12px;
+    --radius-row: 13px;
+    --radius-squircle: 22px;
+    --radius-chip-token: 20px;
+    --radius-full: 9999px;
+
+    /* ─── Shadows (brand-tinted) ────────────────────── */
+    --shadow-brand-card: 0 16px 34px -14px rgba(195, 77, 107, .5);
+    --shadow-brand-btn: 0 10px 24px -8px rgba(195, 77, 107, .6);
+    --shadow-nav-active: 0 8px 18px -6px rgba(195, 77, 107, .55);
+    --shadow-agenda-card: 0 2px 8px -3px rgba(63, 155, 111, .25);
+
+    /* ─── Layout constants ──────────────────────────── */
+    --sidebar-w: 244px;
+    --topbar-h: 68px;
+    --client-list-w: 336px;
+    --content-pad-y: 30px;
+    --content-pad-x: 34px;
+    --card-pad: 24px;
+    --card-pad-sm: 20px;
+    --row-pad: 12px;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: var(--font-sans-custom);
+    color: var(--text);
+    background-color: var(--bg-app);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-size: var(--text-base-sz);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-normal);
+    color: var(--text);
+    background-color: var(--bg-app);
+  }
+}
+
+/* ============================================================
+   COMPONENTES BASE (usados via className nos componentes React)
+   ============================================================ */
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card-token);
+    padding: var(--card-pad);
+  }
+
+  .card-hover {
+    transition: background 0.12s;
+    cursor: pointer;
+  }
+  .card-hover:hover {
+    background: var(--bg-app);
+  }
+
+  .card-sm {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card-sm);
+    padding: var(--card-pad-sm);
+  }
+
+  .card-brand {
+    background: var(--brand);
+    border-radius: var(--radius-card-token);
+    padding: var(--card-pad);
+    box-shadow: var(--shadow-brand-card);
+    color: var(--on-brand);
+  }
+
+  .overline {
+    font-size: var(--text-overline);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-overline);
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: var(--radius-chip-token);
+    font-size: var(--text-xs-sz);
+    font-weight: var(--weight-bold);
+    white-space: nowrap;
+  }
+
+  .chip-brand   { background: var(--brand-soft); color: var(--brand); }
+  .chip-success { background: var(--success-soft); color: var(--success); }
+  .chip-warning { background: var(--warning-soft); color: var(--warning); }
+  .chip-muted   { background: var(--bg-app); color: var(--text-muted); border: 1px solid var(--border); }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: var(--brand);
+    color: var(--on-brand);
+    border-radius: var(--radius-field-token);
+    font-size: var(--text-sm-sz);
+    font-weight: var(--weight-bold);
+    border: none;
+    cursor: pointer;
+    box-shadow: var(--shadow-brand-btn);
+    transition: background 120ms ease;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .btn-primary:hover { background: var(--brand-deep); }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: var(--bg-app);
+    color: var(--text);
+    border-radius: var(--radius-field-token);
+    font-size: var(--text-sm-sz);
+    font-weight: var(--weight-bold);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 120ms ease;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .btn-secondary:hover { background: var(--brand-soft); }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: var(--radius-field-token);
+    font-size: var(--text-sm-sz);
+    font-weight: var(--weight-semibold);
+    border: none;
+    cursor: pointer;
+    transition: color 120ms ease, background 120ms ease;
+    font-family: inherit;
+  }
+  .btn-ghost:hover { color: var(--brand); background: var(--brand-soft); }
+
+  .field {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--bg-app);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-field-token);
+    font-family: var(--font-sans-custom);
+    font-size: var(--text-sm-sz);
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+    outline: none;
+    transition: border-color 120ms ease;
+  }
+  .field:focus { border-color: var(--brand); }
+  .field::placeholder { color: var(--text-faint); }
+
+  /* Modal (<dialog> nativo) — estilos base para todos os modais */
+  dialog.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    border: none;
+    padding: 0;
+    border-radius: 20px;
+    max-width: 560px;
+    width: calc(100% - 32px);
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    box-shadow: 0 24px 64px rgba(34, 22, 25, .22);
+    outline: none;
+    background: var(--surface);
+    scrollbar-color: var(--brand) transparent;
+    scrollbar-width: thin;
+  }
+  dialog.modal::-webkit-scrollbar        { width: 5px; }
+  dialog.modal::-webkit-scrollbar-track  { background: transparent; }
+  dialog.modal::-webkit-scrollbar-thumb  { background: var(--brand); border-radius: 99px; }
+  dialog.modal::-webkit-scrollbar-thumb:hover { background: var(--brand-deep); }
+  dialog.modal::backdrop {
+    background: rgba(34, 22, 25, .45);
+    backdrop-filter: blur(3px);
+  }
+
+  /* Modais com layout flex (header fixo + corpo rolável):
+     adicionar classe modal-flex ao dialog para ativar este modo */
+  dialog.modal.modal-flex {
+    background: transparent;
+    overflow: visible;
+    max-height: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  .modal-container {
+    border-radius: 20px;
+    overflow: hidden;
+    max-height: calc(100dvh - 48px);
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    box-shadow: 0 24px 64px rgba(34, 22, 25, .22);
+  }
+  .modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-color: var(--brand) transparent;
+    scrollbar-width: thin;
+  }
+  .modal-body::-webkit-scrollbar        { width: 5px; }
+  .modal-body::-webkit-scrollbar-track  { background: transparent; }
+  .modal-body::-webkit-scrollbar-thumb  { background: var(--brand); border-radius: 99px; }
+  .modal-body::-webkit-scrollbar-thumb:hover { background: var(--brand-deep); }
+
+  .table-row-hover { transition: background 0.1s; }
+  .table-row-hover:hover { background: var(--bg-app); }
+}
+
+/* ============================================================
+   RESPONSIVE UTILITIES
+   Breakpoints:  lg ≥ 1024px  |  md ≥ 768px  |  sm ≥ 640px
+   ============================================================ */
+
+/* ── Layout: sidebar desaparece abaixo de 1024px ─────────── */
+@media (max-width: 1023px) {
+  :root {
+    --sidebar-w: 0px;
+  }
+}
+
+/* ── Espaçamento reduzido em telas menores ───────────────── */
+@media (max-width: 767px) {
+  :root {
+    --content-pad-x: 20px;
+    --content-pad-y: 20px;
+    --card-pad:      16px;
+    --card-pad-sm:   12px;
+    --text-display:  26px;
+    --text-title:    22px;
+    --text-name:     18px;
+    --text-kpi:      24px;
+  }
+}
+
+@media (max-width: 479px) {
+  :root {
+    --content-pad-x: 16px;
+    --content-pad-y: 16px;
+    --card-pad:      12px;
+  }
+}
+
+/* ── Sidebar mobile ─────────────────────────────────────── */
+.main-sidebar {
+  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (max-width: 1023px) {
+  .main-sidebar {
+    transform: translateX(-100%);
+    box-shadow: none;
+  }
+  .main-sidebar.sidebar-open {
+    transform: translateX(0);
+    box-shadow: 8px 0 32px rgba(34, 22, 25, .18);
+  }
+}
+
+/* Overlay que escurece o conteúdo quando o sidebar está aberto */
+.sidebar-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(34, 22, 25, .4);
+  backdrop-filter: blur(1px);
+  z-index: 48;
+  animation: scrim-in 200ms ease;
+}
+@keyframes scrim-in { from { opacity: 0 } to { opacity: 1 } }
+
+@media (max-width: 1023px) {
+  .sidebar-scrim { display: block; }
+}
+
+/* ── Visibilidade por breakpoint ────────────────────────── */
+.show-mobile { display: none !important; }
+@media (max-width: 1023px) {
+  .show-mobile { display: flex !important; }
+  .hide-mobile { display: none !important; }
+}
+
+/* ── Grids responsivos ──────────────────────────────────── */
+
+/* 4 colunas → 2 → 1 */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1199px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 479px)  { .kpi-grid { grid-template-columns: 1fr; } }
+
+/* 3 colunas → 2 → 1 */
+.rg-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1023px) { .rg-3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 639px)  { .rg-3 { grid-template-columns: 1fr; } }
+
+/* 2 colunas → 1 */
+.rg-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (max-width: 639px) { .rg-2 { grid-template-columns: 1fr; } }
+
+/* 2 colunas para formulários (gap menor) */
+.form-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (max-width: 639px) { .form-2col { grid-template-columns: 1fr; } }
+
+/* 3 colunas para formulários */
+.form-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 767px) { .form-3col { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 479px) { .form-3col { grid-template-columns: 1fr; } }
+
+/* ── Header de página (título + botão de ação) ──────────── */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+@media (max-width: 639px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .page-header > :last-child {
+    width: 100%;
+  }
+}
+
+/* ── Barra de seleção de período ─────────────────────────── */
+.period-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.period-bar .period-btn {
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 100ms;
+  white-space: nowrap;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+.period-bar .period-btn.active {
+  border: 1.5px solid var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+/* ── Tabelas: scroll horizontal em telas pequenas ────────── */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Flex: empilhar em mobile ────────────────────────────── */
+@media (max-width: 639px) {
+  .flex-wrap-mobile {
+    flex-wrap: wrap !important;
+  }
+  .flex-col-mobile {
+    flex-direction: column !important;
+  }
+  .w-full-mobile {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+}
+
+/* ── Charts: altura reduzida em mobile ──────────────────── */
+@media (max-width: 639px) {
+  .chart-h {
+    height: 180px !important;
+  }
+}
+
+/* ── Modais: bottom-sheet em mobile ─────────────────────── */
+@media (max-width: 639px) {
+  dialog.modal {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 92dvh;
+  }
+}
+
+/* ── Topbar: padding reduzido em mobile ─────────────────── */
+@media (max-width: 639px) {
+  :root {
+    --topbar-h: 60px;
+  }
+}
