@@ -114,6 +114,7 @@ model Tenant {
   procedures    Procedure[]                   // catálogo base da rede
   products      Product[]                     // catálogo de produtos da rede
   loyaltyConfig LoyaltyConfig?
+  leads         Lead[]
 
   @@map("tenants")
 }
@@ -230,6 +231,7 @@ model Client {
   internalCredits InternalCredit[]
   lgpdRequests    LgpdRequest[]
   documents       ClientDocument[]
+  leads           Lead[]
 
   @@unique([tenantId, document])              // CPF único por rede
   @@map("clients")
