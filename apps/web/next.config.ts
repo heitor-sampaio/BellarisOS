@@ -9,6 +9,7 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   transpilePackages: [
     '@estetica-os/types',
     '@estetica-os/validators',
