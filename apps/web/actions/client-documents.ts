@@ -102,7 +102,7 @@ export async function deleteClientDocument(
 
   if (!doc) return { error: 'Documento não encontrado.' }
 
-  const tenantId = (doc.branches as { tenant_id: string }).tenant_id
+  const tenantId = (doc.branches as unknown as { tenant_id: string }).tenant_id
   if (tenantId !== ctx.tenantId) return { error: 'Acesso negado.' }
 
   // Extract storage path from URL
