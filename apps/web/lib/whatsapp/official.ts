@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import type { WhatsAppProvider, InboundMsg, StatusUpdate, OfficialConfig } from './types'
 
-const GRAPH = 'https://graph.facebook.com/v19.0'
+const GRAPH = 'https://graph.facebook.com/v25.0'
 
 const STATUS_MAP: Record<string, StatusUpdate['status']> = {
   sent:      'sent',

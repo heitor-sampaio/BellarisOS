@@ -1,7 +1,7 @@
 import { createHash } from 'crypto'
 import type { AdsProvider, Campaign, DateRange, MetaAdsConfig } from './types'
 
-const GRAPH_API_VERSION = 'v19.0'
+const GRAPH_API_VERSION = 'v25.0'
 const BASE_URL = `https://graph.facebook.com/${GRAPH_API_VERSION}`
 
 const PRESET_MAP: Record<string, string> = {

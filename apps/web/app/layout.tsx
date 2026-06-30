@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const runtimeConfig = `
     window.__SUPABASE_URL__=${JSON.stringify(supabaseUrl)};
     window.__SUPABASE_KEY__=${JSON.stringify(supabaseKey)};
-    window.fbAsyncInit=function(){FB.init({appId:${JSON.stringify(metaAppId)},cookie:true,xfbml:true,version:'v19.0'});FB.AppEvents.logPageView();};
+    window.fbAsyncInit=function(){FB.init({appId:${JSON.stringify(metaAppId)},cookie:true,xfbml:true,version:'v25.0'});FB.AppEvents.logPageView();};
   `.trim()
 
   return (

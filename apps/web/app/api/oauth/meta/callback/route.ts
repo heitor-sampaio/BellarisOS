@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const GRAPH = 'https://graph.facebook.com/v19.0'
+const GRAPH = 'https://graph.facebook.com/v25.0'
 const BACK  = '/admin/settings?tab=integrations'
 
 export async function GET(req: NextRequest) {
