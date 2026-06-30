@@ -11,7 +11,6 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: 'standalone',
   typescript: { ignoreBuildErrors: true },
-  eslint:     { ignoreDuringBuilds: true },
   transpilePackages: [
     '@estetica-os/types',
     '@estetica-os/validators',

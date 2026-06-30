@@ -1,14 +1,8 @@
-import dynamic from 'next/dynamic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getTenantContext, assertRole } from '@/lib/auth'
-import type { ReportsBiProps } from '@/components/admin/reports-bi-view'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-
-const ReportsBiView = dynamic(
-  () => import('@/components/admin/reports-bi-view').then(m => m.ReportsBiView),
-  { ssr: false },
-)
+import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
 
 type Tab    = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque'
 type Period = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'

@@ -12,7 +12,7 @@ const META_APP_ID = process.env.NEXT_PUBLIC_META_APP_ID ?? ''
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>
+      <body suppressHydrationWarning>
         {children}
         {/* Facebook JS SDK — obrigatório para o fluxo de Login com Facebook (Meta Ads OAuth) */}
         <script
