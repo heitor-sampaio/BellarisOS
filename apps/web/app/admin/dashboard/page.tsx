@@ -1,14 +1,21 @@
+import dynamic from 'next/dynamic'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { geocodeCities, geocodeCeps } from '@/lib/geocoding'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import {
-  AdminDashboardView,
-  type BranchStat,
-  type TodayBranchStat,
-  type AlertPendingPlan,
-  type AlertLowStock,
+import type {
+  BranchStat,
+  TodayBranchStat,
+  AlertPendingPlan,
+  AlertLowStock,
 } from '@/components/admin/admin-dashboard-view'
+
+// recharts e leaflet (via hotmap) acessam APIs de DOM — desativa SSR para evitar
+// "window is not defined" durante o render do servidor
+const AdminDashboardView = dynamic(
+  () => import('@/components/admin/admin-dashboard-view').then(m => m.AdminDashboardView),
+  { ssr: false },
+)
 
 export default async function AdminDashboardPage({
   searchParams,
