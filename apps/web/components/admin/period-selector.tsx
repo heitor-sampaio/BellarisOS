@@ -40,7 +40,7 @@ export function PeriodSelector({ current, fromDate, toDate }: Props) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <div style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: 3, background: 'var(--surface)', borderRadius: 10, padding: 3, border: '1px solid var(--border)' }}>
         {PERIODS.map(p => {
           const active = current === p.key
           return (
@@ -50,7 +50,7 @@ export function PeriodSelector({ current, fromDate, toDate }: Props) {
               onClick={() => select(p.key)}
               className={active ? 'btn-primary' : undefined}
               style={{
-                padding: '6px 14px', fontSize: 12.5, fontWeight: 700,
+                padding: '6px 14px', fontSize: 12, fontWeight: 700,
                 cursor: 'pointer', transition: 'all 100ms', fontFamily: 'inherit',
                 whiteSpace: 'nowrap',
                 ...(active ? {} : {

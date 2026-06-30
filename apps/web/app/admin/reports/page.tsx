@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { ReportsBiView, type ReportsBiProps } from '@/components/admin/reports-bi-view'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
+import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 
 type Tab    = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque'
 type Period = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
@@ -94,6 +95,7 @@ export default async function AdminReportsPage({
   const needBps         = tab === 'estoque'
   const needBatches     = tab === 'estoque'
   const needInstall     = tab === 'financeiro'
+  const needProcCosts   = tab === 'procedimentos'
 
   // ── Queries paralelas ─────────────────────────────────────────────
   const [
@@ -110,6 +112,7 @@ export default async function AdminReportsPage({
     { data: bpsRaw },
     { data: productBatchesRaw },
     { data: installmentsRaw },
+    { data: procedureCostsRaw },
   ] = await Promise.all([
 
     // 0 — Transações do período (ricas: todas as colunas usadas nos tabs)
@@ -128,7 +131,7 @@ export default async function AdminReportsPage({
 
     // 2 — Atendimentos COMPLETED do período
     admin.from('appointments')
-      .select('id, branch_id, procedure_id, professional_id, client_id, price, scheduled_at, source, procedures(name, category), users(name)')
+      .select('id, branch_id, procedure_id, professional_id, client_id, price, scheduled_at, source, procedures(name, category), users(name), clients(birth_date)')
       .in('branch_id', branchIds)
       .eq('status', 'COMPLETED')
       .gte('scheduled_at', startDate.toISOString())
@@ -218,20 +221,28 @@ export default async function AdminReportsPage({
           .order('due_date', { ascending: true })
           .limit(50)
       : Promise.resolve({ data: [] as any[] }),
+
+    // 13 — Custo de insumos por procedimento (aba procedimentos — margem por faixa etária)
+    needProcCosts
+      ? admin.from('procedure_products')
+          .select('procedure_id, quantity, products(cost_price), procedures!inner(tenant_id)')
+          .eq('procedures.tenant_id', ctx.tenantId!)
+      : Promise.resolve({ data: [] as any[] }),
   ])
 
   // ── Cast + filter ─────────────────────────────────────────────────
-  const txsCurr      = (txsCurrRaw      ?? []) as any[]
-  const txsPrev      = (txsPrevRaw      ?? []) as any[]
-  const apptsCurr    = (apptsCurrRaw    ?? []) as any[]
-  const clientsCurr  = (clientsCurrRaw  ?? []) as any[]
-  const clientsAll   = (clientsAllRaw   ?? []) as any[]
-  const allAppts     = (allApptsRaw     ?? []) as any[]
-  const commissions  = (commissionsRaw  ?? []) as any[]
-  const stockMoves   = (stockMovesRaw   ?? []) as any[]
-  const bps          = (bpsRaw          ?? []) as any[]
+  const txsCurr        = (txsCurrRaw        ?? []) as any[]
+  const txsPrev        = (txsPrevRaw        ?? []) as any[]
+  const apptsCurr      = (apptsCurrRaw      ?? []) as any[]
+  const clientsCurr    = (clientsCurrRaw    ?? []) as any[]
+  const clientsAll     = (clientsAllRaw     ?? []) as any[]
+  const allAppts       = (allApptsRaw       ?? []) as any[]
+  const commissions    = (commissionsRaw    ?? []) as any[]
+  const stockMoves     = (stockMovesRaw     ?? []) as any[]
+  const bps            = (bpsRaw            ?? []) as any[]
   const productBatches = (productBatchesRaw ?? []) as any[]
-  const installments = ((installmentsRaw ?? []) as any[])
+  const procedureCosts = (procedureCostsRaw ?? []) as any[]
+  const installments   = ((installmentsRaw  ?? []) as any[])
     .filter(i => branchIds.includes(i.financial_transactions?.branch_id))
 
   // ── Gráfico de evolução (mesmo padrão do dashboard) ───────────────
@@ -270,28 +281,42 @@ export default async function AdminReportsPage({
 
   // ── Render ────────────────────────────────────────────────────────
   return (
-    <ReportsBiView
-      tab={tab}
-      period={period}
-      periodLabel={periodLabel}
-      customFrom={rawFrom}
-      customTo={rawTo}
-      granularity={granularity}
-      branches={branches}
-      txsCurr={txsCurr}
-      txsPrev={txsPrev}
-      installments={installments}
-      apptsCurr={apptsCurr}
-      apptsPrevCount={apptsPrevCount ?? 0}
-      allAppts={allAppts}
-      clientsCurr={clientsCurr}
-      clientsPrevCount={clientsPrevCount ?? 0}
-      clientsAll={clientsAll}
-      commissions={commissions}
-      stockMoves={stockMoves}
-      bps={bps}
-      productBatches={productBatches}
-      evolutionData={evolutionData}
-    />
+    <>
+      <RealtimeRefresher tables={[
+        'appointments',
+        'financial_transactions',
+        'clients',
+        'commissions',
+        'stock_movements',
+        'branch_product_stock',
+        'installments',
+        'product_batches',
+        'procedure_products',
+      ]} />
+      <ReportsBiView
+        tab={tab}
+        period={period}
+        periodLabel={periodLabel}
+        customFrom={rawFrom}
+        customTo={rawTo}
+        granularity={granularity}
+        branches={branches}
+        txsCurr={txsCurr}
+        txsPrev={txsPrev}
+        installments={installments}
+        apptsCurr={apptsCurr}
+        apptsPrevCount={apptsPrevCount ?? 0}
+        allAppts={allAppts}
+        clientsCurr={clientsCurr}
+        clientsPrevCount={clientsPrevCount ?? 0}
+        clientsAll={clientsAll}
+        commissions={commissions}
+        stockMoves={stockMoves}
+        bps={bps}
+        productBatches={productBatches}
+        procedureCosts={procedureCosts}
+        evolutionData={evolutionData}
+      />
+    </>
   )
 }

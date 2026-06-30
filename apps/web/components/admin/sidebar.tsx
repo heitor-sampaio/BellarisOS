@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  LayoutGrid, Users, BarChart3,
+  LayoutGrid, Calendar, Users, BarChart3,
   Settings, LogOut, Sparkles, Boxes, Contact, CreditCard, Layers, Megaphone,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
@@ -65,25 +65,25 @@ export function AdminSidebar({ role }: { role: string }) {
           {!isRestricted && (
             <>
               <NavItem icon={<LayoutGrid size={18} />} label="Dashboard" href="/admin/dashboard" />
-              <NavItem icon={<Users      size={18} />} label="Equipe"    href="/admin/team" />
+              <NavItem icon={<Calendar   size={18} />} label="Agenda"    href="/admin/agenda" />
             </>
           )}
           {/* Marketing: apenas Marketing, CRM e Relatórios */}
           {isMarketing ? (
             <>
-              <NavItem icon={<Megaphone  size={18} />} label="Marketing"     href="/admin/marketing" />
-              <NavItem icon={<Layers     size={18} />} label="CRM"           href="/admin/crm" />
               <NavItem icon={<BarChart3  size={18} />} label="Relatórios"    href="/admin/reports" />
+              <NavItem icon={<Layers     size={18} />} label="CRM"           href="/admin/crm" />
+              <NavItem icon={<Megaphone  size={18} />} label="Marketing"     href="/admin/marketing" />
             </>
           ) : (
             <>
               <NavItem icon={<Contact    size={18} />} label="Clientes"      href="/admin/clients" />
+              <NavItem icon={<BarChart3  size={18} />} label="Relatórios"    href="/admin/reports" />
+              <NavItem icon={<CreditCard size={18} />} label="Financeiro"    href="/admin/financeiro" />
+              <NavItem icon={<Boxes      size={18} />} label="Estoque"       href="/admin/estoque" />
+              <NavItem icon={<Sparkles   size={18} />} label="Procedimentos" href="/admin/procedures" />
               <NavItem icon={<Layers     size={18} />} label="CRM"           href="/admin/crm" />
               <NavItem icon={<Megaphone  size={18} />} label="Marketing"     href="/admin/marketing" />
-              <NavItem icon={<Sparkles   size={18} />} label="Procedimentos" href="/admin/procedures" />
-              <NavItem icon={<Boxes      size={18} />} label="Estoque"       href="/admin/estoque" />
-              <NavItem icon={<CreditCard size={18} />} label="Financeiro"    href="/admin/financeiro" />
-              <NavItem icon={<BarChart3  size={18} />} label="Relatórios"    href="/admin/reports" />
               {!isFinancial && (
                 <NavItem icon={<Settings size={18} />} label="Configurações" href="/admin/settings" />
               )}

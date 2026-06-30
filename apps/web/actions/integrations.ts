@@ -8,7 +8,7 @@ import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 export interface IntegrationConfig {
   id:         string
   provider:   string
-  config:     Record<string, string>
+  config:     Record<string, unknown>
   is_active:  boolean
   updated_at: string
 }
@@ -117,4 +117,71 @@ export async function testAdsConnection(
 
   if (!config) return { ok: false, detail: 'Configuração não encontrada ou não ativa' }
   return resolveAdsProvider(config).testConnection()
+}
+
+// ─── Meta Ads OAuth ───────────────────────────────────────────────────────────
+
+export async function confirmMetaAdsSelection(
+  adAccountId: string,
+  pixelId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getTenantContext()
+  assertRole(ctx, ['NETWORK_ADMIN'])
+
+  const admin = createAdminClient()
+
+  const { data: existing } = await admin
+    .from('integration_configs')
+    .select('config')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('provider', 'meta_ads')
+    .single()
+
+  if (!existing?.config) return { ok: false, error: 'Reconecte com o Facebook primeiro' }
+
+  const prev = existing.config as Record<string, unknown>
+
+  const { error } = await admin
+    .from('integration_configs')
+    .update({
+      config: {
+        access_token:   prev.access_token,
+        meta_user_name: prev.meta_user_name ?? '',
+        adAccountId,
+        pixelId,
+      },
+      is_active:  true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('provider', 'meta_ads')
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/admin/settings')
+  revalidatePath('/admin/marketing')
+  return { ok: true }
+}
+
+export async function disconnectMetaAds(): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getTenantContext()
+  assertRole(ctx, ['NETWORK_ADMIN'])
+
+  const admin = createAdminClient()
+
+  const { error } = await admin
+    .from('integration_configs')
+    .update({
+      config:     {},
+      is_active:  false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('provider', 'meta_ads')
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/admin/settings')
+  revalidatePath('/admin/marketing')
+  return { ok: true }
 }

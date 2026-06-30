@@ -45,6 +45,7 @@ export interface ReportsBiProps {
   stockMoves: any[]
   bps: any[]
   productBatches: any[]
+  procedureCosts: any[]
   evolutionData: ChartPoint[]
 }
 
@@ -569,10 +570,73 @@ function TabClientes(p: ReportsBiProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Helpers — faixa etária e ranking por idade
+// ─────────────────────────────────────────────────────────────────────────────
+const AGE_GROUP_ORDER = ['< 18', '18–24', '25–34', '35–44', '45–54', '55–64', '65+', 'Não informado']
+
+function getAgeGroup(birthDate: string | null, ref: Date): string {
+  if (!birthDate) return 'Não informado'
+  const born = new Date(birthDate)
+  let age = ref.getFullYear() - born.getFullYear()
+  const m = ref.getMonth() - born.getMonth()
+  if (m < 0 || (m === 0 && ref.getDate() < born.getDate())) age--
+  if (age < 18) return '< 18'
+  if (age < 25) return '18–24'
+  if (age < 35) return '25–34'
+  if (age < 45) return '35–44'
+  if (age < 55) return '45–54'
+  if (age < 65) return '55–64'
+  return '65+'
+}
+
+function AgeRankCard({ data }: {
+  data: { ageGroup: string; top3: { name: string; label: string }[] }[]
+}) {
+  if (data.length === 0) {
+    return <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Sem dados para exibir.</p>
+  }
+  const rankColors = ['var(--brand)', 'var(--text-muted)', 'var(--text-faint)']
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {data.map(({ ageGroup, top3 }) => (
+        <div key={ageGroup}>
+          <div style={{
+            fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8,
+          }}>
+            {ageGroup}
+          </div>
+          {top3.map((item, idx) => (
+            <div key={item.name} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '6px 0',
+              borderBottom: idx < top3.length - 1 ? '1px solid var(--hairline)' : 'none',
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: rankColors[idx], minWidth: 20 }}>
+                #{idx + 1}
+              </span>
+              <span style={{
+                flex: 1, fontSize: 13, color: 'var(--text)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {item.name}
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                {item.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TAB: PROCEDIMENTOS
 // ─────────────────────────────────────────────────────────────────────────────
 function TabProcedimentos(p: ReportsBiProps) {
-  const { apptsCurr, txsPrev, apptsPrevCount } = p
+  const { apptsCurr, txsPrev, apptsPrevCount, procedureCosts } = p
   const prevRevenue = txsPrev.filter(t => t.type === 'INCOME' && t.is_paid).reduce((s, t) => s + Number(t.amount), 0)
   const prevAvgTicket = (apptsPrevCount ?? 0) > 0 ? prevRevenue / (apptsPrevCount ?? 1) : 0
 
@@ -583,6 +647,63 @@ function TabProcedimentos(p: ReportsBiProps) {
     procData[k].revenue += Number(a.price)
     procData[k].count++
   })
+
+  // ── Custo por procedure_id → para cálculo de margem ────────────────
+  const costByProcedure = new Map<string, number>()
+  for (const pp of procedureCosts) {
+    const qty  = Number(pp.quantity ?? 0)
+    const cost = Number(pp.products?.cost_price ?? 0)
+    costByProcedure.set(pp.procedure_id, (costByProcedure.get(pp.procedure_id) ?? 0) + qty * cost)
+  }
+
+  // ── Agrupamento por faixa etária ───────────────────────────────────
+  const refDate = new Date()
+  const ageVolumeMap = new Map<string, Map<string, number>>()
+  const ageMarginMap = new Map<string, Map<string, { total: number; count: number }>>()
+
+  apptsCurr.filter(a => a.procedures?.name).forEach(a => {
+    const procName = a.procedures.name as string
+    const ageGroup = getAgeGroup(a.clients?.birth_date ?? null, refDate)
+    const price    = Number(a.price)
+    const cost     = costByProcedure.get(a.procedure_id) ?? 0
+
+    // Volume
+    if (!ageVolumeMap.has(ageGroup)) ageVolumeMap.set(ageGroup, new Map())
+    const vm = ageVolumeMap.get(ageGroup)!
+    vm.set(procName, (vm.get(procName) ?? 0) + 1)
+
+    // Margem (só com custo configurado)
+    if (cost > 0) {
+      const margin = price > 0 ? ((price - cost) / price) * 100 : 0
+      if (!ageMarginMap.has(ageGroup)) ageMarginMap.set(ageGroup, new Map())
+      const mm = ageMarginMap.get(ageGroup)!
+      const prev = mm.get(procName) ?? { total: 0, count: 0 }
+      mm.set(procName, { total: prev.total + margin, count: prev.count + 1 })
+    }
+  })
+
+  const topByAgeVolume = AGE_GROUP_ORDER
+    .filter(ag => ageVolumeMap.has(ag))
+    .map(ag => ({
+      ageGroup: ag,
+      top3: [...ageVolumeMap.get(ag)!.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name, count]) => ({ name, label: `${count} exec.` })),
+    }))
+
+  const topByAgeMargin = AGE_GROUP_ORDER
+    .filter(ag => ageMarginMap.has(ag))
+    .map(ag => ({
+      ageGroup: ag,
+      top3: [...ageMarginMap.get(ag)!.entries()]
+        .sort((a, b) => (b[1].total / b[1].count) - (a[1].total / a[1].count))
+        .slice(0, 3)
+        .map(([name, d]) => ({
+          name,
+          label: `${(d.total / d.count).toFixed(1).replace('.', ',')}%`,
+        })),
+    }))
 
   const totalExec   = Object.values(procData).reduce((s, d) => s + d.count, 0)
   const totalRev    = Object.values(procData).reduce((s, d) => s + d.revenue, 0)
@@ -647,6 +768,17 @@ function TabProcedimentos(p: ReportsBiProps) {
             data={byCategory.sort((a, b) => b.value - a.value)}
             color={CHART_COLORS[2]}
           />
+        </SCard>
+        <SCard title="Top 3 por Faixa de Idade — Volume">
+          <AgeRankCard data={topByAgeVolume} />
+        </SCard>
+        <SCard title="Top 3 por Faixa de Idade — Margem">
+          {procedureCosts.length === 0
+            ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>
+                Configure o custo dos insumos em Procedimentos para visualizar a margem por faixa etária.
+              </p>
+            : <AgeRankCard data={topByAgeMargin} />
+          }
         </SCard>
         <SCard title="Detalhamento por Procedimento" style={{ gridColumn: '1 / -1' }}>
           <SimpleTable columns={tableCols} rows={tableRows} />
@@ -872,54 +1004,54 @@ export function ReportsBiView(props: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <p style={{
-            fontSize: 10, fontWeight: 700, color: 'var(--brand)',
-            textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px',
-          }}>
-            ✦ Rede
-          </p>
-          <h1 style={{
-            fontSize: 22, fontWeight: 800, color: 'var(--text)',
-            margin: 0, letterSpacing: '-0.02em',
-          }}>
-            BI — Relatórios
-          </h1>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-            {props.periodLabel}
-          </p>
+      <div>
+        <p style={{
+          fontSize: 10, fontWeight: 700, color: 'var(--brand)',
+          textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px',
+        }}>
+          ✦ Rede
+        </p>
+        <h1 style={{
+          fontSize: 22, fontWeight: 800, color: 'var(--text)',
+          margin: 0, letterSpacing: '-0.02em',
+        }}>
+          BI — Relatórios
+        </h1>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          {props.periodLabel}
+        </p>
+      </div>
+
+      {/* Tab nav + seletor de período na mesma linha */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{
+          display: 'flex', gap: 3, flexWrap: 'wrap',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 10, padding: 3,
+        }}>
+          {TABS.map(t => (
+            <button
+              key={t.key}
+              onClick={() => switchTab(t.key)}
+              style={{
+                padding: '6px 16px', borderRadius: 7, border: 'none',
+                fontSize: 12, fontWeight: tab === t.key ? 700 : 500,
+                background: tab === t.key ? 'var(--brand,#c34d6b)' : 'transparent',
+                color:      tab === t.key ? '#fff' : 'var(--text-muted)',
+                cursor: 'pointer', transition: 'all .15s',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
         <PeriodSelector
           current={period}
           fromDate={props.customFrom}
           toDate={props.customTo}
         />
-      </div>
-
-      {/* Tab nav */}
-      <div style={{
-        display: 'flex', gap: 3, flexWrap: 'wrap',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 10, padding: 3, alignSelf: 'flex-start',
-      }}>
-        {TABS.map(t => (
-          <button
-            key={t.key}
-            onClick={() => switchTab(t.key)}
-            style={{
-              padding: '6px 16px', borderRadius: 7, border: 'none',
-              fontSize: 12, fontWeight: tab === t.key ? 700 : 500,
-              background: tab === t.key ? 'var(--brand,#c34d6b)' : 'transparent',
-              color:      tab === t.key ? '#fff' : 'var(--text-muted)',
-              cursor: 'pointer', transition: 'all .15s',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
       </div>
 
       {/* Active section */}

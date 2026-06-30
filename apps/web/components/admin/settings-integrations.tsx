@@ -1,10 +1,15 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Phone, CheckCircle2, AlertCircle, Loader2, ChevronDown, ExternalLink, Megaphone,
 } from 'lucide-react'
-import { saveWhatsAppConfig, testWhatsAppConnection, saveAdsConfig, testAdsConnection } from '@/actions/integrations'
+import {
+  saveWhatsAppConfig, testWhatsAppConnection,
+  saveAdsConfig, testAdsConnection,
+  confirmMetaAdsSelection, disconnectMetaAds,
+} from '@/actions/integrations'
 import type { IntegrationConfig } from '@/actions/integrations'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 
@@ -61,7 +66,7 @@ function ConnectionStatus({ ok, detail }: { ok: boolean; detail?: string }) {
 // ─── Z-API config form ────────────────────────────────────────────────────────
 
 function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
-  const existing = initial?.config ?? {}
+  const existing = (initial?.config ?? {}) as Record<string, string>
   const [instanceId, setInstanceId] = useState(existing.instanceId ?? '')
   const [token,      setToken]      = useState(existing.token ?? '')
   const [baseUrl,    setBaseUrl]    = useState(existing.baseUrl ?? '')
@@ -180,7 +185,7 @@ function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
 // ─── WhatsApp Oficial form ────────────────────────────────────────────────────
 
 function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
-  const existing = initial?.config ?? {}
+  const existing = (initial?.config ?? {}) as Record<string, string>
   const [phoneNumberId, setPhoneNumberId] = useState(existing.phoneNumberId ?? '')
   const [accessToken,   setAccessToken]   = useState(existing.accessToken ?? '')
   const [verifyToken,   setVerifyToken]   = useState(existing.verifyToken ?? '')
@@ -297,111 +302,217 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   )
 }
 
-// ─── Meta Ads form ────────────────────────────────────────────────────────────
+// ─── Meta Ads — OAuth Connect ─────────────────────────────────────────────────
 
-function MetaAdsForm({ initial }: { initial?: IntegrationConfig }) {
-  const existing = initial?.config ?? {}
-  const [adAccountId, setAdAccountId] = useState(existing.adAccountId ?? '')
-  const [accessToken, setAccessToken] = useState(existing.accessToken ?? '')
-  const [pixelId,     setPixelId]     = useState(existing.pixelId ?? '')
-  const [isActive,    setIsActive]    = useState(initial?.is_active ?? false)
-  const [testResult,  setTestResult]  = useState<{ ok: boolean; detail?: string } | null>(null)
-  const [isPending,   startTransition] = useTransition()
-  const [isTesting,   startTest]       = useTransition()
-  const [saved,       setSaved]        = useState(false)
+function MetaAdsConnect({
+  initial, metaStep, metaError,
+}: {
+  initial?:   IntegrationConfig
+  metaStep?:  string
+  metaError?: boolean
+}) {
+  const router = useRouter()
+  const config      = (initial?.config ?? {}) as Record<string, unknown>
+  const hasToken    = !!config.access_token
+  const adAccounts  = (config.ad_accounts ?? []) as Array<{ id: string; name: string }>
+  const pixels      = (config.pixels      ?? []) as Array<{ id: string; name: string }>
 
-  function handleSave() {
-    setSaved(false)
+  const isActive     = !!initial?.is_active && !!config.adAccountId
+  const isSelectStep = !isActive && hasToken && adAccounts.length > 0
+
+  const [selectedAccount, setSelectedAccount] = useState(adAccounts[0]?.id ?? '')
+  const [selectedPixel,   setSelectedPixel]   = useState(pixels[0]?.id ?? '')
+  const [confirmError,    setConfirmError]     = useState<string | null>(null)
+  const [isPending,       startTransition]     = useTransition()
+  const [isDisconnecting, startDisconnect]     = useTransition()
+
+  function handleConnect() {
+    window.location.href = '/api/oauth/meta'
+  }
+
+  function handleConfirm() {
+    if (!selectedAccount) return
+    setConfirmError(null)
     startTransition(async () => {
-      const res = await saveAdsConfig('meta_ads', { adAccountId, accessToken, pixelId }, isActive)
-      if (res.ok) setSaved(true)
+      const res = await confirmMetaAdsSelection(selectedAccount, selectedPixel)
+      if (res.ok) {
+        router.refresh()
+      } else {
+        setConfirmError(res.error ?? 'Erro ao salvar')
+      }
     })
   }
 
-  function handleTest() {
-    setTestResult(null)
-    startTest(async () => {
-      await saveAdsConfig('meta_ads', { adAccountId, accessToken, pixelId }, true)
-      const res = await testAdsConnection('meta_ads')
-      setTestResult(res)
+  function handleDisconnect() {
+    startDisconnect(async () => {
+      await disconnectMetaAds()
+      router.refresh()
     })
   }
 
+  // Estado 3 — Conectado e ativo
+  if (isActive) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 7,
+          padding: '10px 14px', borderRadius: 8,
+          background: '#f0fdf4', border: '1px solid #3f9b6f33',
+          fontSize: 13, fontWeight: 600, color: '#3f9b6f',
+        }}>
+          <CheckCircle2 size={15} />
+          Conectado como <strong>{(config.meta_user_name as string) || 'Usuário Facebook'}</strong>
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
+          Conta: <strong>act_{config.adAccountId as string}</strong>
+          {config.pixelId && <> · Pixel: <strong>{config.pixelId as string}</strong></>}
+        </p>
+        <button
+          type="button"
+          onClick={handleDisconnect}
+          disabled={isDisconnecting}
+          className="btn-secondary"
+          style={{ alignSelf: 'flex-start' }}
+        >
+          {isDisconnecting && <Loader2 size={14} className="animate-spin" />}
+          Desconectar
+        </button>
+      </div>
+    )
+  }
+
+  // Estado 2 — OAuth feito, aguardando seleção de conta
+  if (isSelectStep) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 7,
+          padding: '10px 14px', borderRadius: 8,
+          background: '#1877F210', border: '1px solid #1877F230',
+          fontSize: 13, fontWeight: 600, color: '#1877F2',
+        }}>
+          <CheckCircle2 size={15} />
+          Facebook conectado como <strong>{(config.meta_user_name as string) || 'Usuário Facebook'}</strong>
+        </div>
+
+        {adAccounts.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              CONTA DE ANÚNCIOS
+            </label>
+            <select
+              value={selectedAccount}
+              onChange={e => setSelectedAccount(e.target.value)}
+              className="field"
+              style={{ fontSize: 13 }}
+            >
+              {adAccounts.map(a => (
+                <option key={a.id} value={a.id}>act_{a.id} — {a.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <p style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+            Nenhuma conta de anúncios encontrada neste perfil. Certifique-se de ter acesso a uma conta no Meta Business Manager.
+          </p>
+        )}
+
+        {pixels.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              PIXEL (OPCIONAL)
+            </label>
+            <select
+              value={selectedPixel}
+              onChange={e => setSelectedPixel(e.target.value)}
+              className="field"
+              style={{ fontSize: 13 }}
+            >
+              <option value="">Sem pixel</option>
+              {pixels.map(p => (
+                <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {confirmError && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '8px 12px', borderRadius: 8,
+            background: '#fef2f2', border: '1px solid #dc262633',
+            fontSize: 12.5, fontWeight: 600, color: '#dc2626',
+          }}>
+            <AlertCircle size={14} /> {confirmError}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!selectedAccount || isPending}
+            className="btn-primary"
+          >
+            {isPending && <Loader2 size={14} className="animate-spin" />}
+            Confirmar integração
+          </button>
+          <button
+            type="button"
+            onClick={handleDisconnect}
+            disabled={isDisconnecting}
+            className="btn-secondary"
+          >
+            Desconectar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Estado 1 — Não conectado
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{
-        padding: '10px 14px', borderRadius: 8,
-        background: '#1877F208', border: '1px solid #1877F230',
-        fontSize: 12, color: 'var(--text-muted)',
-      }}>
-        Configure uma <strong>Conta de Anúncios</strong> do Meta Business Suite com um System User Access Token de nível de conta.
-      </div>
-      <Field
-        label="Ad Account ID"
-        name="adAccountId"
-        value={adAccountId}
-        onChange={setAdAccountId}
-        placeholder="Ex: 1234567890123456"
-        hint="Encontrado no Gerenciador de Anúncios → Configurações da conta (sem o prefixo 'act_')"
-      />
-      <Field
-        label="Access Token (System User)"
-        name="accessToken"
-        value={accessToken}
-        onChange={setAccessToken}
-        type="password"
-        placeholder="EAAxxxxxxxxxxxxxxxxxx"
-        hint="System User com permissão ads_read na conta de anúncios"
-      />
-      <Field
-        label="Pixel ID"
-        name="pixelId"
-        value={pixelId}
-        onChange={setPixelId}
-        placeholder="Ex: 987654321098765"
-        hint="Encontrado no Gerenciador de Eventos → Pixel → Configurações. Usado para Conversions API."
-      />
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
-        <input
-          id="meta-active"
-          type="checkbox"
-          checked={isActive}
-          onChange={e => setIsActive(e.target.checked)}
-          style={{ width: 16, height: 16, cursor: 'pointer' }}
-        />
-        <label htmlFor="meta-active" style={{ fontSize: 13, cursor: 'pointer', color: 'var(--text)' }}>
-          Ativar integração Meta Ads
-        </label>
-      </div>
-
-      {testResult && <ConnectionStatus ok={testResult.ok} detail={testResult.detail} />}
-      {saved && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--success)', fontWeight: 700 }}>
-          <CheckCircle2 size={14} /> Configuração salva.
+      {metaError && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 7,
+          padding: '10px 14px', borderRadius: 8,
+          background: '#fef2f2', border: '1px solid #dc262633',
+          fontSize: 13, fontWeight: 600, color: '#dc2626',
+        }}>
+          <AlertCircle size={15} />
+          Falha ao conectar com o Facebook. Verifique as permissões do app e tente novamente.
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={handleTest}
-          disabled={!adAccountId || !accessToken || isTesting}
-          className="btn-secondary"
-        >
-          {isTesting ? <Loader2 size={14} className="animate-spin" /> : null}
-          Testar conexão
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={!adAccountId || !accessToken || !pixelId || isPending}
-          className="btn-primary"
-        >
-          {isPending ? <Loader2 size={14} className="animate-spin" /> : null}
-          Salvar
-        </button>
+      <div style={{
+        padding: '10px 14px', borderRadius: 8,
+        background: '#1877F208', border: '1px solid #1877F220',
+        fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.6,
+      }}>
+        Conecte sua conta do Facebook para importar automaticamente suas contas de anúncios e pixels. Nenhuma configuração manual necessária.
       </div>
+
+      <button
+        type="button"
+        onClick={handleConnect}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 9,
+          padding: '10px 20px', borderRadius: 10, cursor: 'pointer',
+          background: '#1877F2', border: 'none', color: '#fff',
+          fontWeight: 700, fontSize: 14, fontFamily: 'inherit',
+          alignSelf: 'flex-start', transition: 'opacity 120ms',
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+          <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.026 1.791-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.27h3.328l-.532 3.49H13.875V24C19.612 23.094 24 18.1 24 12.073z" />
+        </svg>
+        Continuar com Facebook
+      </button>
+
+      <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+        Você será redirecionado para o Facebook para autorizar o acesso às suas contas de anúncios.
+      </p>
     </div>
   )
 }
@@ -409,7 +520,7 @@ function MetaAdsForm({ initial }: { initial?: IntegrationConfig }) {
 // ─── Google Ads form ──────────────────────────────────────────────────────────
 
 function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
-  const existing = initial?.config ?? {}
+  const existing = (initial?.config ?? {}) as Record<string, string>
   const [customerId,     setCustomerId]     = useState(existing.customerId ?? '')
   const [developerToken, setDeveloperToken] = useState(existing.developerToken ?? '')
   const [clientId,       setClientId]       = useState(existing.clientId ?? '')
@@ -553,11 +664,13 @@ function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
 
 interface SettingsIntegrationsProps {
   initialConfigs: IntegrationConfig[]
+  metaStep?:      string
+  metaError?:     boolean
 }
 
 type Section = 'whatsapp' | 'meta_ads' | 'google_ads' | null
 
-export function SettingsIntegrations({ initialConfigs }: SettingsIntegrationsProps) {
+export function SettingsIntegrations({ initialConfigs, metaStep, metaError }: SettingsIntegrationsProps) {
   const [section,    setSection]    = useState<Section>('whatsapp')
   const [wpProvider, setWpProvider] = useState<ProviderType>(() => {
     const existing = initialConfigs.find(c => c.provider === 'zapi' || c.provider === 'official')
@@ -714,10 +827,10 @@ export function SettingsIntegrations({ initialConfigs }: SettingsIntegrationsPro
         icon={<Megaphone size={18} color="#1877F2" />}
         iconBg="#1877F215" iconColor="#1877F2"
         title="Meta Ads"
-        subtitle={hasMetaAds ? `Conectado · Conta ${metaAdsConfig?.config?.adAccountId ?? ''}` : 'Facebook · Instagram'}
+        subtitle={hasMetaAds ? `Conectado · Conta act_${String(metaAdsConfig?.config?.adAccountId ?? '')}` : 'Facebook · Instagram'}
         isActive={!!hasMetaAds}
       >
-        <MetaAdsForm initial={metaAdsConfig} />
+        <MetaAdsConnect initial={metaAdsConfig} metaStep={metaStep} metaError={metaError} />
       </SectionCard>
 
       <SectionCard
@@ -725,7 +838,7 @@ export function SettingsIntegrations({ initialConfigs }: SettingsIntegrationsPro
         icon={<Megaphone size={18} color="#34A853" />}
         iconBg="#34A85315" iconColor="#34A853"
         title="Google Ads"
-        subtitle={hasGoogleAds ? `Conectado · Cliente ${googleAdsConfig?.config?.customerId ?? ''}` : 'Google Search · Display · YouTube'}
+        subtitle={hasGoogleAds ? `Conectado · Cliente ${String(googleAdsConfig?.config?.customerId ?? '')}` : 'Google Search · Display · YouTube'}
         isActive={!!hasGoogleAds}
       >
         <GoogleAdsForm initial={googleAdsConfig} />

@@ -20,12 +20,12 @@ type TabKey = typeof TABS[number]['key']
 export default async function AdminSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; meta_step?: string; meta_error?: string }>
 }) {
   const ctx = await getTenantContext()
   assertRole(ctx, ['NETWORK_ADMIN'])
 
-  const { tab: tabParam } = await searchParams
+  const { tab: tabParam, meta_step, meta_error } = await searchParams
   const activeTab: TabKey = (tabParam as TabKey) ?? 'permissions'
 
   const supabase = await createClient()
@@ -138,7 +138,11 @@ export default async function AdminSettingsPage({
       )}
 
       {activeTab === 'integrations' && (
-        <SettingsIntegrations initialConfigs={integrationConfigs} />
+        <SettingsIntegrations
+          initialConfigs={integrationConfigs}
+          metaStep={meta_step}
+          metaError={meta_error === '1'}
+        />
       )}
 
       {activeTab === 'general' && (
