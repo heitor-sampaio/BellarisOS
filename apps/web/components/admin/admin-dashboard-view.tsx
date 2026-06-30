@@ -10,7 +10,7 @@ import {
 import { PieChart, Pie, Cell, Tooltip as RechartsTip, ResponsiveContainer } from 'recharts'
 import { EvolutionChart, type ChartPoint } from './evolution-chart'
 import { HotmapSection } from './hotmap-section'
-import type { BranchPoint, HeatPoint } from './hotmap-client'
+import type { BranchPoint, HeatPoint } from './hotmap-types'
 import { PeriodSelector, type Period } from './period-selector'
 
 // ─── Types ───────────────────────────────────────────────────────────────────

@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import type { BranchPoint, HeatPoint } from './hotmap-client'
-import { GRADIENT_CLIENTS, GRADIENT_LTV } from './hotmap-client'
+import type { BranchPoint, HeatPoint } from './hotmap-types'
+import { GRADIENT_CLIENTS, GRADIENT_LTV } from './hotmap-types'
 
 const HotmapClient = dynamic(
   () => import('./hotmap-client').then(m => m.HotmapClient),
