@@ -305,11 +305,12 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
 // ─── Meta Ads — OAuth Connect ─────────────────────────────────────────────────
 
 function MetaAdsConnect({
-  initial, metaStep, metaError,
+  initial, metaStep, metaError, metaErrorReason,
 }: {
-  initial?:   IntegrationConfig
-  metaStep?:  string
-  metaError?: boolean
+  initial?:          IntegrationConfig
+  metaStep?:         string
+  metaError?:        boolean
+  metaErrorReason?:  string
 }) {
   const router = useRouter()
   const config      = (initial?.config ?? {}) as Record<string, unknown>
@@ -475,13 +476,20 @@ function MetaAdsConnect({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {metaError && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 7,
+          display: 'flex', flexDirection: 'column', gap: 4,
           padding: '10px 14px', borderRadius: 8,
           background: '#fef2f2', border: '1px solid #dc262633',
           fontSize: 13, fontWeight: 600, color: '#dc2626',
         }}>
-          <AlertCircle size={15} />
-          Falha ao conectar com o Facebook. Verifique as permissões do app e tente novamente.
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <AlertCircle size={15} />
+            Falha ao conectar com o Facebook. Verifique as permissões do app e tente novamente.
+          </div>
+          {metaErrorReason && (
+            <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.8, paddingLeft: 22 }}>
+              Motivo: {metaErrorReason}
+            </span>
+          )}
         </div>
       )}
 
@@ -663,14 +671,15 @@ function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
 // ─── Main export ─────────────────────────────────────────────────────────────
 
 interface SettingsIntegrationsProps {
-  initialConfigs: IntegrationConfig[]
-  metaStep?:      string
-  metaError?:     boolean
+  initialConfigs:   IntegrationConfig[]
+  metaStep?:        string
+  metaError?:       boolean
+  metaErrorReason?: string
 }
 
 type Section = 'whatsapp' | 'meta_ads' | 'google_ads' | null
 
-export function SettingsIntegrations({ initialConfigs, metaStep, metaError }: SettingsIntegrationsProps) {
+export function SettingsIntegrations({ initialConfigs, metaStep, metaError, metaErrorReason }: SettingsIntegrationsProps) {
   const [section,    setSection]    = useState<Section>('whatsapp')
   const [wpProvider, setWpProvider] = useState<ProviderType>(() => {
     const existing = initialConfigs.find(c => c.provider === 'zapi' || c.provider === 'official')
@@ -830,7 +839,7 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError }: Se
         subtitle={hasMetaAds ? `Conectado · Conta act_${String(metaAdsConfig?.config?.adAccountId ?? '')}` : 'Facebook · Instagram'}
         isActive={!!hasMetaAds}
       >
-        <MetaAdsConnect initial={metaAdsConfig} metaStep={metaStep} metaError={metaError} />
+        <MetaAdsConnect initial={metaAdsConfig} metaStep={metaStep} metaError={metaError} metaErrorReason={metaErrorReason} />
       </SectionCard>
 
       <SectionCard

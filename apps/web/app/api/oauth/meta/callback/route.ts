@@ -17,11 +17,18 @@ export async function GET(req: NextRequest) {
   const savedState  = cookieStore.get('meta_oauth_state')?.value
   cookieStore.delete('meta_oauth_state')
 
-  const errUrl = new URL(`${BACK}&meta_error=1`, req.url)
-
-  if (error || !code || !state || state !== savedState) {
-    return NextResponse.redirect(errUrl)
+  const makeErrUrl = (reason: string) => {
+    const u = new URL(BACK, req.url)
+    u.searchParams.set('meta_error', '1')
+    u.searchParams.set('meta_error_reason', reason)
+    return u
   }
+
+  if (error)               return NextResponse.redirect(makeErrUrl(`meta:${error}`))
+  if (!code)               return NextResponse.redirect(makeErrUrl('no_code'))
+  if (!state)              return NextResponse.redirect(makeErrUrl('no_state'))
+  if (!savedState)         return NextResponse.redirect(makeErrUrl('no_cookie'))
+  if (state !== savedState) return NextResponse.redirect(makeErrUrl('state_mismatch'))
 
   try {
     const origin      = req.nextUrl.origin
