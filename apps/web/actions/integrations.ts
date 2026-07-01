@@ -163,6 +163,49 @@ export async function confirmMetaAdsSelection(
   return { ok: true }
 }
 
+export async function fetchMetaAdAccounts(): Promise<{
+  ok: boolean
+  adAccounts?: Array<{ id: string; name: string }>
+  pixels?: Array<{ id: string; name: string }>
+  error?: string
+}> {
+  const ctx = await getTenantContext()
+  assertRole(ctx, ['NETWORK_ADMIN'])
+
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('integration_configs')
+    .select('config')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('provider', 'meta_ads')
+    .single()
+
+  const token = (data?.config as Record<string, unknown>)?.access_token as string | undefined
+  if (!token) return { ok: false, error: 'Token não encontrado. Reconecte com o Facebook.' }
+
+  const GRAPH = 'https://graph.facebook.com/v25.0'
+
+  try {
+    const [acctRes, pixRes] = await Promise.all([
+      fetch(`${GRAPH}/me/adaccounts?fields=id,name,account_status&limit=200&access_token=${token}`),
+      fetch(`${GRAPH}/me/adspixels?fields=id,name&limit=200&access_token=${token}`),
+    ])
+
+    const acctData = await acctRes.json() as { data?: Array<{ id: string; name: string }>; error?: { message: string } }
+    if (acctData.error) return { ok: false, error: acctData.error.message }
+
+    const pixData = await pixRes.json() as { data?: Array<{ id: string; name: string }> }
+
+    return {
+      ok: true,
+      adAccounts: (acctData.data ?? []).map(a => ({ id: a.id.replace('act_', ''), name: a.name })),
+      pixels:     (pixData.data ?? []).map(p => ({ id: p.id, name: p.name })),
+    }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
+
 export async function disconnectMetaAds(): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertRole(ctx, ['NETWORK_ADMIN'])

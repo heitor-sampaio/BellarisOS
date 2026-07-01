@@ -8,7 +8,7 @@ import {
 import {
   saveWhatsAppConfig, testWhatsAppConnection,
   saveAdsConfig, testAdsConnection,
-  confirmMetaAdsSelection, disconnectMetaAds,
+  confirmMetaAdsSelection, disconnectMetaAds, fetchMetaAdAccounts,
 } from '@/actions/integrations'
 import type { IntegrationConfig } from '@/actions/integrations'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
@@ -321,14 +321,36 @@ function MetaAdsConnect({
   const isActive     = !!initial?.is_active && !!config.adAccountId
   const isSelectStep = !isActive && hasToken && adAccounts.length > 0
 
-  const [selectedAccount, setSelectedAccount] = useState(adAccounts[0]?.id ?? '')
-  const [selectedPixel,   setSelectedPixel]   = useState(pixels[0]?.id ?? '')
+  const [selectedAccount, setSelectedAccount] = useState((config.adAccountId as string) || '')
+  const [selectedPixel,   setSelectedPixel]   = useState((config.pixelId as string)    || '')
   const [confirmError,    setConfirmError]     = useState<string | null>(null)
   const [isPending,       startTransition]     = useTransition()
   const [isDisconnecting, startDisconnect]     = useTransition()
+  const [isChanging,      setIsChanging]       = useState(false)
+  const [liveAccounts,    setLiveAccounts]     = useState<Array<{ id: string; name: string }>>([])
+  const [livePixels,      setLivePixels]       = useState<Array<{ id: string; name: string }>>([])
+  const [isFetching,      setIsFetching]       = useState(false)
+  const [fetchError,      setFetchError]       = useState<string | null>(null)
 
   function handleConnect() {
     window.location.href = '/api/oauth/meta'
+  }
+
+  async function handleOpenChange() {
+    setIsChanging(true)
+    setFetchError(null)
+    setIsFetching(true)
+    const res = await fetchMetaAdAccounts()
+    setIsFetching(false)
+    if (!res.ok) {
+      setFetchError(res.error ?? 'Erro ao buscar contas')
+      return
+    }
+    setLiveAccounts(res.adAccounts ?? [])
+    setLivePixels(res.pixels ?? [])
+    const currentAccountId = config.adAccountId as string | undefined
+    setSelectedAccount(currentAccountId || res.adAccounts?.[0]?.id || '')
+    setSelectedPixel((config.pixelId as string) || res.pixels?.[0]?.id || '')
   }
 
   function handleConfirm() {
@@ -353,6 +375,111 @@ function MetaAdsConnect({
 
   // Estado 3 — Conectado e ativo
   if (isActive) {
+    if (isChanging) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '10px 14px', borderRadius: 8,
+            background: '#1877F210', border: '1px solid #1877F230',
+            fontSize: 13, fontWeight: 600, color: '#1877F2',
+          }}>
+            <CheckCircle2 size={15} />
+            Conectado como <strong>{(config.meta_user_name as string) || 'Usuário Facebook'}</strong>
+          </div>
+
+          {isFetching ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
+              <Loader2 size={14} className="animate-spin" />
+              Buscando contas de anúncios...
+            </div>
+          ) : fetchError ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '8px 12px', borderRadius: 8,
+              background: '#fef2f2', border: '1px solid #dc262633',
+              fontSize: 12.5, fontWeight: 600, color: '#dc2626',
+            }}>
+              <AlertCircle size={14} /> {fetchError}
+            </div>
+          ) : (
+            <>
+              {liveAccounts.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                    CONTA DE ANÚNCIOS
+                  </label>
+                  <select
+                    value={selectedAccount}
+                    onChange={e => setSelectedAccount(e.target.value)}
+                    className="field"
+                    style={{ fontSize: 13 }}
+                  >
+                    {liveAccounts.map(a => (
+                      <option key={a.id} value={a.id}>act_{a.id} — {a.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <p style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                  Nenhuma conta de anúncios encontrada. Certifique-se de ter acesso a uma conta no Meta Business Manager.
+                </p>
+              )}
+
+              {livePixels.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                    PIXEL (OPCIONAL)
+                  </label>
+                  <select
+                    value={selectedPixel}
+                    onChange={e => setSelectedPixel(e.target.value)}
+                    className="field"
+                    style={{ fontSize: 13 }}
+                  >
+                    <option value="">Sem pixel</option>
+                    {livePixels.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {confirmError && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '8px 12px', borderRadius: 8,
+                  background: '#fef2f2', border: '1px solid #dc262633',
+                  fontSize: 12.5, fontWeight: 600, color: '#dc2626',
+                }}>
+                  <AlertCircle size={14} /> {confirmError}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleConfirm}
+                  disabled={!selectedAccount || isPending}
+                  className="btn-primary"
+                >
+                  {isPending && <Loader2 size={14} className="animate-spin" />}
+                  Salvar alteração
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setIsChanging(false); setConfirmError(null) }}
+                  className="btn-secondary"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )
+    }
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{
@@ -368,16 +495,26 @@ function MetaAdsConnect({
           Conta: <strong>act_{config.adAccountId as string}</strong>
           {config.pixelId && <> · Pixel: <strong>{config.pixelId as string}</strong></>}
         </p>
-        <button
-          type="button"
-          onClick={handleDisconnect}
-          disabled={isDisconnecting}
-          className="btn-secondary"
-          style={{ alignSelf: 'flex-start' }}
-        >
-          {isDisconnecting && <Loader2 size={14} className="animate-spin" />}
-          Desconectar
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            onClick={handleOpenChange}
+            className="btn-secondary"
+            style={{ alignSelf: 'flex-start' }}
+          >
+            Alterar conta
+          </button>
+          <button
+            type="button"
+            onClick={handleDisconnect}
+            disabled={isDisconnecting}
+            className="btn-secondary"
+            style={{ alignSelf: 'flex-start' }}
+          >
+            {isDisconnecting && <Loader2 size={14} className="animate-spin" />}
+            Desconectar
+          </button>
+        </div>
       </div>
     )
   }
