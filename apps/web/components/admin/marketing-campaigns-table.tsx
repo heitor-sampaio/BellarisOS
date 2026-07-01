@@ -153,7 +153,7 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
         <tfoot>
           <tr>
             <td colSpan={2} style={{ ...totalCellStyle, textAlign: 'left', fontWeight: 'var(--weight-bold)' }}>
-              Total ({campaigns.length} campanhas)
+              Total — {campaigns.length} {campaigns.length === 1 ? 'campanha ativa' : 'campanhas ativas'}
             </td>
             <td style={totalCellStyle}>{fmtBRL(totals.spend)}</td>
             <td style={totalCellStyle}>{fmtNum(totals.impressions)}</td>
