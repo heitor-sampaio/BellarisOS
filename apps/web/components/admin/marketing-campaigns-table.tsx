@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, X } from 'lucide-react'
 import type { Campaign } from '@/lib/ads/types'
 
-type SortKey = keyof Pick<Campaign, 'spend' | 'impressions' | 'clicks' | 'ctr' | 'cpc' | 'conversions'>
+type SortKey = keyof Pick<Campaign, 'spend' | 'impressions' | 'cpm' | 'clicks' | 'ctr' | 'cpc' | 'conversions'>
 type StatusFilter = 'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -65,6 +65,7 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
 
   const totalCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0
   const totalCpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0
+  const totalCpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { ALL: campaigns.length }
@@ -172,6 +173,9 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
                 <th style={headerStyle} onClick={() => handleSort('impressions')}>
                   Impressões <SortIcon k="impressions" />
                 </th>
+                <th style={headerStyle} onClick={() => handleSort('cpm')}>
+                  CPM <SortIcon k="cpm" />
+                </th>
                 <th style={headerStyle} onClick={() => handleSort('clicks')}>
                   Cliques <SortIcon k="clicks" />
                 </th>
@@ -209,6 +213,7 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
                   </td>
                   <td style={cellStyle}>{fmtBRL(c.spend)}</td>
                   <td style={cellStyle}>{fmtNum(c.impressions)}</td>
+                  <td style={cellStyle}>{fmtBRL(c.cpm)}</td>
                   <td style={cellStyle}>{fmtNum(c.clicks)}</td>
                   <td style={cellStyle}>{fmtPct(c.ctr)}</td>
                   <td style={cellStyle}>{fmtBRL(c.cpc)}</td>
@@ -225,6 +230,7 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
                 </td>
                 <td style={totalCellStyle}>{fmtBRL(totals.spend)}</td>
                 <td style={totalCellStyle}>{fmtNum(totals.impressions)}</td>
+                <td style={totalCellStyle}>{fmtBRL(totalCpm)}</td>
                 <td style={totalCellStyle}>{fmtNum(totals.clicks)}</td>
                 <td style={totalCellStyle}>{fmtPct(totalCtr)}</td>
                 <td style={totalCellStyle}>{fmtBRL(totalCpc)}</td>
