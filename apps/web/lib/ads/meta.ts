@@ -24,7 +24,6 @@ export class MetaAdsProvider implements AdsProvider {
 
     const url = new URL(`${BASE_URL}/act_${this.config.adAccountId}/campaigns`)
     url.searchParams.set('fields', fields)
-    url.searchParams.set('effective_status', JSON.stringify(['ACTIVE']))
     url.searchParams.set('access_token', this.config.accessToken)
     url.searchParams.set('limit', '200')
 
