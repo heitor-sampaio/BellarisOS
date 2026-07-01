@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Search, X } from 'lucide-react'
 import type { Campaign } from '@/lib/ads/types'
-import { CampaignDetailPanel } from './campaign-detail-panel'
 
-type SortKey = 'spend' | 'impressions' | 'cpm' | 'linkClicks' | 'linkCtr' | 'linkCpc' | 'conversions'
+type SortKey = 'spend' | 'impressions' | 'cpm' | 'linkClicks' | 'linkCtr' | 'conversions' | 'costPerConversion' | 'conversionValue'
 type StatusFilter = 'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -15,9 +15,9 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  ACTIVE:   'var(--success)',
-  PAUSED:   'var(--warning, #d97706)',
-  ARCHIVED: 'var(--text-muted)',
+  ACTIVE:   '#16a34a',
+  PAUSED:   '#6b7280',
+  ARCHIVED: '#9ca3af',
 }
 
 function fmtBRL(v: number) {
@@ -29,13 +29,18 @@ function fmtPct(v: number) {
 function fmtNum(v: number) {
   return v.toLocaleString('pt-BR')
 }
+const UNAVAIL = <span style={{ color: 'var(--text-muted)', fontSize: 11, fontStyle: 'italic' }}>Indisponível</span>
+
+function fmtRoi(v: number) {
+  return (v >= 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + '%'
+}
 
 export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaigns: Campaign[]; preset?: string }) {
-  const [sortKey, setSortKey]       = useState<SortKey>('spend')
-  const [sortDir, setSortDir]       = useState<'desc' | 'asc'>('desc')
-  const [statusFilter, setStatus]   = useState<StatusFilter>('ALL')
-  const [search, setSearch]         = useState('')
-  const [selected, setSelected]     = useState<Campaign | null>(null)
+  const router = useRouter()
+  const [sortKey, setSortKey]     = useState<SortKey>('spend')
+  const [sortDir, setSortDir]     = useState<'desc' | 'asc'>('desc')
+  const [statusFilter, setStatus] = useState<StatusFilter>('ALL')
+  const [search, setSearch]       = useState('')
 
   function handleSort(key: SortKey) {
     if (key === sortKey) setSortDir(d => d === 'desc' ? 'asc' : 'desc')
@@ -59,15 +64,17 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
   }, [filtered, sortKey, sortDir])
 
   const totals = useMemo(() => filtered.reduce((acc, c) => ({
-    spend:       acc.spend       + c.spend,
-    impressions: acc.impressions + c.impressions,
-    linkClicks:  acc.linkClicks  + (c.linkClicks ?? 0),
-    conversions: acc.conversions + (c.conversions ?? 0),
-  }), { spend: 0, impressions: 0, linkClicks: 0, conversions: 0 }), [filtered])
+    spend:           acc.spend           + c.spend,
+    impressions:     acc.impressions     + c.impressions,
+    linkClicks:      acc.linkClicks      + (c.linkClicks      ?? 0),
+    conversions:     acc.conversions     + (c.conversions     ?? 0),
+    conversionValue: acc.conversionValue + (c.conversionValue ?? 0),
+  }), { spend: 0, impressions: 0, linkClicks: 0, conversions: 0, conversionValue: 0 }), [filtered])
 
-  const totalCpm     = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0
-  const totalLinkCtr = totals.impressions > 0 ? (totals.linkClicks / totals.impressions) * 100 : 0
-  const totalLinkCpc = totals.linkClicks  > 0 ? totals.spend / totals.linkClicks : 0
+  const totalCpm     = totals.impressions > 0  ? (totals.spend / totals.impressions) * 1000 : 0
+  const totalLinkCtr = totals.impressions > 0  ? (totals.linkClicks / totals.impressions) * 100 : 0
+  const totalCpa     = totals.conversions > 0  ? totals.spend / totals.conversions : 0
+  const totalRoi     = totals.spend > 0 ? ((totals.conversionValue - totals.spend) / totals.spend) * 100 : 0
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { ALL: campaigns.length }
@@ -114,14 +121,6 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
   ]
 
   return (
-    <>
-    {selected && (
-      <CampaignDetailPanel
-        campaign={selected}
-        preset={preset}
-        onClose={() => setSelected(null)}
-      />
-    )}
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Filtros */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -176,7 +175,7 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 <th style={{ ...headerStyle, textAlign: 'left' }}>Campanha</th>
-                <th style={headerStyle}>Status</th>
+                <th style={{ ...headerStyle, textAlign: 'center' }}>Status</th>
                 <th style={headerStyle} onClick={() => handleSort('spend')}>
                   Gasto <SortIcon k="spend" />
                 </th>
@@ -192,19 +191,23 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
                 <th style={headerStyle} onClick={() => handleSort('linkCtr')}>
                   CTR (link) <SortIcon k="linkCtr" />
                 </th>
-                <th style={headerStyle} onClick={() => handleSort('linkCpc')}>
-                  CPC (link) <SortIcon k="linkCpc" />
-                </th>
                 <th style={headerStyle} onClick={() => handleSort('conversions')}>
                   Conversões <SortIcon k="conversions" />
                 </th>
+                <th style={headerStyle} onClick={() => handleSort('conversionValue')}>
+                  Valor conv. <SortIcon k="conversionValue" />
+                </th>
+                <th style={headerStyle} onClick={() => handleSort('costPerConversion')}>
+                  Custo/conv. <SortIcon k="costPerConversion" />
+                </th>
+                <th style={{ ...headerStyle, cursor: 'default' }}>ROI</th>
               </tr>
             </thead>
             <tbody>
               {sorted.map(c => (
                 <tr
                   key={c.id}
-                  onClick={() => setSelected(c)}
+                  onClick={() => router.push(`/admin/marketing/campanhas/${c.id}?period=${preset}`)}
                   style={{ cursor: 'pointer' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-raised, #fafaf9)')}
                   onMouseLeave={e => (e.currentTarget.style.background = '')}
@@ -230,10 +233,16 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
                   <td style={cellStyle}>{fmtBRL(c.spend)}</td>
                   <td style={cellStyle}>{fmtNum(c.impressions)}</td>
                   <td style={cellStyle}>{fmtBRL(c.cpm)}</td>
-                  <td style={cellStyle}>{c.linkClicks != null ? fmtNum(c.linkClicks) : '—'}</td>
-                  <td style={cellStyle}>{c.linkCtr   != null ? fmtPct(c.linkCtr)   : '—'}</td>
-                  <td style={cellStyle}>{c.linkCpc   != null ? fmtBRL(c.linkCpc)   : '—'}</td>
-                  <td style={cellStyle}>{c.conversions != null ? fmtNum(c.conversions) : '—'}</td>
+                  <td style={cellStyle}>{c.linkClicks != null ? fmtNum(c.linkClicks) : UNAVAIL}</td>
+                  <td style={cellStyle}>{c.linkCtr   != null ? fmtPct(c.linkCtr)   : UNAVAIL}</td>
+                  <td style={cellStyle}>{c.conversions       != null ? fmtNum(c.conversions)       : UNAVAIL}</td>
+                  <td style={cellStyle}>{c.conversionValue   != null ? fmtBRL(c.conversionValue)   : UNAVAIL}</td>
+                  <td style={cellStyle}>{c.costPerConversion != null ? fmtBRL(c.costPerConversion) : UNAVAIL}</td>
+                  <td style={cellStyle}>
+                    {c.conversionValue != null && c.spend > 0
+                      ? fmtRoi((c.conversionValue - c.spend) / c.spend * 100)
+                      : UNAVAIL}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -249,14 +258,15 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
                 <td style={totalCellStyle}>{fmtBRL(totalCpm)}</td>
                 <td style={totalCellStyle}>{fmtNum(totals.linkClicks)}</td>
                 <td style={totalCellStyle}>{fmtPct(totalLinkCtr)}</td>
-                <td style={totalCellStyle}>{fmtBRL(totalLinkCpc)}</td>
                 <td style={totalCellStyle}>{fmtNum(totals.conversions)}</td>
+                <td style={totalCellStyle}>{totals.conversionValue > 0 ? fmtBRL(totals.conversionValue) : '—'}</td>
+                <td style={totalCellStyle}>{totalCpa > 0 ? fmtBRL(totalCpa) : '—'}</td>
+                <td style={totalCellStyle}>{totals.conversionValue > 0 && totals.spend > 0 ? fmtRoi(totalRoi) : '—'}</td>
               </tr>
             </tfoot>
           </table>
         </div>
       )}
     </div>
-    </>
   )
 }

@@ -21,6 +21,7 @@ export interface Campaign {
   reach?: number
   conversions?: number
   costPerConversion?: number
+  conversionValue?: number
   roas?: number
 }
 
@@ -61,22 +62,68 @@ export interface AdInsights {
 }
 
 export interface Ad {
-  id:     string
-  name:   string
-  status: string
+  id:       string
+  name:     string
+  status:   string
+  adsetId?: string
   creative: {
-    title?:       string
-    body?:        string
-    imageUrl?:    string
+    title?:        string
+    body?:         string
+    imageUrl?:     string
     thumbnailUrl?: string
     callToAction?: string
   }
   insights: AdInsights
 }
 
+export interface CampaignSummary {
+  id:                string
+  name:              string
+  status:            string
+  spend:             number
+  impressions:       number
+  cpm:               number
+  linkClicks:        number
+  linkCtr:           number
+  linkCpc:           number
+  reach?:            number
+  conversions?:      number
+  costPerConversion?: number
+  conversionValue?:  number
+  roas?:             number
+}
+
+export interface AgeBreakdown {
+  age:         string
+  spend:       number
+  impressions: number
+  linkClicks:  number
+}
+
+export interface GeoBreakdown {
+  country:     string
+  spend:       number
+  impressions: number
+  reach?:      number
+}
+
+export interface PlacementBreakdown {
+  platform:    string
+  position:    string
+  spend:       number
+  impressions: number
+}
+
 export interface CampaignDetail {
-  adSets: AdSet[]
-  ads:    Ad[]
+  campaign:      CampaignSummary
+  adSets:        AdSet[]
+  ads:           Ad[]
+  ageBreakdowns: AgeBreakdown[]
+  geoBreakdowns: GeoBreakdown[]
+  adSetAgeBreakdowns:       Record<string, AgeBreakdown[]>
+  adSetPlacementBreakdowns: Record<string, PlacementBreakdown[]>
+  adAgeBreakdowns:          Record<string, AgeBreakdown[]>
+  adPlacementBreakdowns:    Record<string, PlacementBreakdown[]>
 }
 
 export interface AdsProvider {

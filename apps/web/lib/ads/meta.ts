@@ -19,7 +19,7 @@ export class MetaAdsProvider implements AdsProvider {
     const preset = PRESET_MAP[dateRange.preset] ?? 'last_30d'
     const fields = [
       'id', 'name', 'status',
-      `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,reach,conversions,cost_per_conversion,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click}`,
+      `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,reach,conversions,cost_per_conversion,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,purchase_roas,action_values}`,
     ].join(',')
 
     const qs = new URLSearchParams({
@@ -93,11 +93,23 @@ export class MetaAdsProvider implements AdsProvider {
     const cpc         = parseFloat(ins?.cpc ?? '0')
     const cpm         = parseFloat(ins?.cpm ?? '0')
     const reach       = parseInt(ins?.reach ?? '0', 10)
-    const conversions = parseFloat(ins?.conversions ?? '0')
-    const cpa         = parseFloat(ins?.cost_per_conversion ?? '0')
-    const linkClicks  = ins?.inline_link_clicks  != null ? parseInt(ins.inline_link_clicks, 10)    : undefined
-    const linkCtr     = ins?.inline_link_click_ctr         != null ? parseFloat(ins.inline_link_click_ctr)         : undefined
-    const linkCpc     = ins?.cost_per_inline_link_click    != null ? parseFloat(ins.cost_per_inline_link_click)    : undefined
+    const conversions = ins?.conversions         != null ? parseFloat(ins.conversions)         : undefined
+    const cpa         = ins?.cost_per_conversion != null ? parseFloat(ins.cost_per_conversion) : undefined
+    const linkClicks  = ins?.inline_link_clicks       != null ? parseInt(ins.inline_link_clicks, 10)         : undefined
+    const linkCtr     = ins?.inline_link_click_ctr    != null ? parseFloat(ins.inline_link_click_ctr)        : undefined
+    const linkCpc     = ins?.cost_per_inline_link_click != null ? parseFloat(ins.cost_per_inline_link_click) : undefined
+
+    // purchase_roas: [{ action_type, value }] — take the first entry
+    const roasArr = ins?.purchase_roas as Array<{ value: string }> | undefined
+    const roas    = roasArr && roasArr.length > 0 ? parseFloat(roasArr[0].value) : undefined
+
+    // action_values: [{ action_type, value }] — sum all purchase-type entries to get total conversion value
+    const actionVals = ins?.action_values as Array<{ action_type: string; value: string }> | undefined
+    const conversionValue = actionVals && actionVals.length > 0
+      ? actionVals
+          .filter(a => a.action_type.includes('purchase') || a.action_type.includes('omni_'))
+          .reduce((s, a) => s + parseFloat(a.value ?? '0'), 0)
+      : roas != null && spend > 0 ? roas * spend : undefined
 
     return {
       id: c.id,
@@ -110,12 +122,14 @@ export class MetaAdsProvider implements AdsProvider {
       ctr,
       cpc,
       cpm,
-      linkClicks:        linkClicks || undefined,
-      linkCtr:           linkCtr    || undefined,
-      linkCpc:           linkCpc    || undefined,
-      reach:             reach      || undefined,
-      conversions:       conversions || undefined,
-      costPerConversion: cpa        || undefined,
+      linkClicks:        linkClicks       || undefined,
+      linkCtr:           linkCtr          || undefined,
+      linkCpc:           linkCpc          || undefined,
+      reach:             reach    != null ? reach    : undefined,
+      conversions,
+      costPerConversion: cpa,
+      conversionValue,
+      roas,
     }
   }
 }
@@ -151,6 +165,8 @@ interface MetaCampaignInsight {
   inline_link_clicks?: string
   inline_link_click_ctr?: string
   cost_per_inline_link_click?: string
+  purchase_roas?: Array<{ action_type: string; value: string }>
+  action_values?: Array<{ action_type: string; value: string }>
 }
 interface MetaCampaign {
   id: string
