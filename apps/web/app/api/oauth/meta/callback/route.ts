@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     const ctx   = await getTenantContext()
     const admin = createAdminClient()
 
-    await admin
+    const { error: upsertError } = await admin
       .from('integration_configs')
       .upsert({
         tenant_id:  ctx.tenantId!,
@@ -88,6 +88,8 @@ export async function GET(req: NextRequest) {
         is_active:  false,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'tenant_id,provider' })
+
+    if (upsertError) throw new Error(upsertError.message)
 
     revalidatePath('/admin/settings')
 
