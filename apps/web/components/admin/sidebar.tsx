@@ -87,7 +87,7 @@ export function AdminSidebar({ role }: { role: string }) {
               <NavItem icon={<Megaphone  size={18} />} label="Marketing"     href="/admin/marketing" />
               {!isFinancial && (
                 <>
-                  <NavItem icon={<UsersRound size={18} />} label="Equipes"        href="/admin/teams" />
+                  <NavItem icon={<UsersRound size={18} />} label="Equipes"        href="/admin/team" />
                   <NavItem icon={<Settings   size={18} />} label="Configurações"  href="/admin/settings" />
                 </>
               )}
