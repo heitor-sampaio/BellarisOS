@@ -94,6 +94,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL(`${BACK}&meta_step=select`, req.url))
   } catch (e) {
     console.error('[meta-oauth-callback]', e)
-    return NextResponse.redirect(errUrl)
+    return NextResponse.redirect(makeErrUrl(e instanceof Error ? e.message : 'unknown'))
   }
 }
