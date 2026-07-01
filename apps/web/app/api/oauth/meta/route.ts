@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const appId = process.env.META_APP_ID
   if (!appId) {
     return new NextResponse('META_APP_ID não configurado', { status: 500 })
@@ -19,8 +19,8 @@ export async function GET() {
     path:     '/',
   })
 
-  const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-  const redirectUri = `${appUrl}/api/oauth/meta/callback`
+  const origin      = req.nextUrl.origin
+  const redirectUri = `${origin}/api/oauth/meta/callback`
 
   const url = new URL('https://www.facebook.com/dialog/oauth')
   url.searchParams.set('client_id',     appId)

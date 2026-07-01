@@ -24,10 +24,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const appUrl      = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+    const origin      = req.nextUrl.origin
     const appId       = process.env.META_APP_ID!
     const appSecret   = process.env.META_APP_SECRET!
-    const redirectUri = `${appUrl}/api/oauth/meta/callback`
+    const redirectUri = `${origin}/api/oauth/meta/callback`
 
     // 1. Troca code → short-lived token
     const shortParams = new URLSearchParams({ client_id: appId, client_secret: appSecret, redirect_uri: redirectUri, code })
