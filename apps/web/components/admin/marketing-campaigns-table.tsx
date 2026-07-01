@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, X } from 'lucide-react'
 import type { Campaign } from '@/lib/ads/types'
 
-type SortKey = keyof Pick<Campaign, 'spend' | 'impressions' | 'cpm' | 'clicks' | 'ctr' | 'cpc' | 'conversions'>
+type SortKey = 'spend' | 'impressions' | 'cpm' | 'linkClicks' | 'linkCtr' | 'linkCpc' | 'conversions'
 type StatusFilter = 'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -59,13 +59,13 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
   const totals = useMemo(() => filtered.reduce((acc, c) => ({
     spend:       acc.spend       + c.spend,
     impressions: acc.impressions + c.impressions,
-    clicks:      acc.clicks      + c.clicks,
+    linkClicks:  acc.linkClicks  + (c.linkClicks ?? 0),
     conversions: acc.conversions + (c.conversions ?? 0),
-  }), { spend: 0, impressions: 0, clicks: 0, conversions: 0 }), [filtered])
+  }), { spend: 0, impressions: 0, linkClicks: 0, conversions: 0 }), [filtered])
 
-  const totalCtr = totals.impressions > 0 ? (totals.clicks / totals.impressions) * 100 : 0
-  const totalCpc = totals.clicks > 0 ? totals.spend / totals.clicks : 0
-  const totalCpm = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0
+  const totalCpm     = totals.impressions > 0 ? (totals.spend / totals.impressions) * 1000 : 0
+  const totalLinkCtr = totals.impressions > 0 ? (totals.linkClicks / totals.impressions) * 100 : 0
+  const totalLinkCpc = totals.linkClicks  > 0 ? totals.spend / totals.linkClicks : 0
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { ALL: campaigns.length }
@@ -176,14 +176,14 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
                 <th style={headerStyle} onClick={() => handleSort('cpm')}>
                   CPM <SortIcon k="cpm" />
                 </th>
-                <th style={headerStyle} onClick={() => handleSort('clicks')}>
-                  Cliques <SortIcon k="clicks" />
+                <th style={headerStyle} onClick={() => handleSort('linkClicks')}>
+                  Cliques no link <SortIcon k="linkClicks" />
                 </th>
-                <th style={headerStyle} onClick={() => handleSort('ctr')}>
-                  CTR <SortIcon k="ctr" />
+                <th style={headerStyle} onClick={() => handleSort('linkCtr')}>
+                  CTR (link) <SortIcon k="linkCtr" />
                 </th>
-                <th style={headerStyle} onClick={() => handleSort('cpc')}>
-                  CPC <SortIcon k="cpc" />
+                <th style={headerStyle} onClick={() => handleSort('linkCpc')}>
+                  CPC (link) <SortIcon k="linkCpc" />
                 </th>
                 <th style={headerStyle} onClick={() => handleSort('conversions')}>
                   Conversões <SortIcon k="conversions" />
@@ -214,9 +214,9 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
                   <td style={cellStyle}>{fmtBRL(c.spend)}</td>
                   <td style={cellStyle}>{fmtNum(c.impressions)}</td>
                   <td style={cellStyle}>{fmtBRL(c.cpm)}</td>
-                  <td style={cellStyle}>{fmtNum(c.clicks)}</td>
-                  <td style={cellStyle}>{fmtPct(c.ctr)}</td>
-                  <td style={cellStyle}>{fmtBRL(c.cpc)}</td>
+                  <td style={cellStyle}>{c.linkClicks != null ? fmtNum(c.linkClicks) : '—'}</td>
+                  <td style={cellStyle}>{c.linkCtr   != null ? fmtPct(c.linkCtr)   : '—'}</td>
+                  <td style={cellStyle}>{c.linkCpc   != null ? fmtBRL(c.linkCpc)   : '—'}</td>
                   <td style={cellStyle}>{c.conversions != null ? fmtNum(c.conversions) : '—'}</td>
                 </tr>
               ))}
@@ -231,9 +231,9 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
                 <td style={totalCellStyle}>{fmtBRL(totals.spend)}</td>
                 <td style={totalCellStyle}>{fmtNum(totals.impressions)}</td>
                 <td style={totalCellStyle}>{fmtBRL(totalCpm)}</td>
-                <td style={totalCellStyle}>{fmtNum(totals.clicks)}</td>
-                <td style={totalCellStyle}>{fmtPct(totalCtr)}</td>
-                <td style={totalCellStyle}>{fmtBRL(totalCpc)}</td>
+                <td style={totalCellStyle}>{fmtNum(totals.linkClicks)}</td>
+                <td style={totalCellStyle}>{fmtPct(totalLinkCtr)}</td>
+                <td style={totalCellStyle}>{fmtBRL(totalLinkCpc)}</td>
                 <td style={totalCellStyle}>{fmtNum(totals.conversions)}</td>
               </tr>
             </tfoot>

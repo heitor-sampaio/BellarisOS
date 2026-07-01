@@ -19,7 +19,7 @@ export class MetaAdsProvider implements AdsProvider {
     const preset = PRESET_MAP[dateRange.preset] ?? 'last_30d'
     const fields = [
       'id', 'name', 'status',
-      `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,reach,conversions,cost_per_conversion}`,
+      `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,reach,conversions,cost_per_conversion,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click}`,
     ].join(',')
 
     const url = new URL(`${BASE_URL}/act_${this.config.adAccountId}/campaigns`)
@@ -83,15 +83,18 @@ export class MetaAdsProvider implements AdsProvider {
 
   private mapCampaign(c: MetaCampaign): Campaign {
     const ins = c.insights?.data?.[0]
-    const spend      = parseFloat(ins?.spend ?? '0')
+    const spend       = parseFloat(ins?.spend ?? '0')
     const impressions = parseInt(ins?.impressions ?? '0', 10)
-    const clicks     = parseInt(ins?.clicks ?? '0', 10)
-    const ctr        = parseFloat(ins?.ctr ?? '0')
-    const cpc        = parseFloat(ins?.cpc ?? '0')
-    const cpm        = parseFloat(ins?.cpm ?? '0')
-    const reach      = parseInt(ins?.reach ?? '0', 10)
+    const clicks      = parseInt(ins?.clicks ?? '0', 10)
+    const ctr         = parseFloat(ins?.ctr ?? '0')
+    const cpc         = parseFloat(ins?.cpc ?? '0')
+    const cpm         = parseFloat(ins?.cpm ?? '0')
+    const reach       = parseInt(ins?.reach ?? '0', 10)
     const conversions = parseFloat(ins?.conversions ?? '0')
-    const cpa        = parseFloat(ins?.cost_per_conversion ?? '0')
+    const cpa         = parseFloat(ins?.cost_per_conversion ?? '0')
+    const linkClicks  = ins?.inline_link_clicks  != null ? parseInt(ins.inline_link_clicks, 10)    : undefined
+    const linkCtr     = ins?.inline_link_click_ctr         != null ? parseFloat(ins.inline_link_click_ctr)         : undefined
+    const linkCpc     = ins?.cost_per_inline_link_click    != null ? parseFloat(ins.cost_per_inline_link_click)    : undefined
 
     return {
       id: c.id,
@@ -104,9 +107,12 @@ export class MetaAdsProvider implements AdsProvider {
       ctr,
       cpc,
       cpm,
-      reach: reach || undefined,
-      conversions: conversions || undefined,
-      costPerConversion: cpa || undefined,
+      linkClicks:        linkClicks || undefined,
+      linkCtr:           linkCtr    || undefined,
+      linkCpc:           linkCpc    || undefined,
+      reach:             reach      || undefined,
+      conversions:       conversions || undefined,
+      costPerConversion: cpa        || undefined,
     }
   }
 }
@@ -139,6 +145,9 @@ interface MetaCampaignInsight {
   reach?: string
   conversions?: string
   cost_per_conversion?: string
+  inline_link_clicks?: string
+  inline_link_click_ctr?: string
+  cost_per_inline_link_click?: string
 }
 interface MetaCampaign {
   id: string

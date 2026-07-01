@@ -11,10 +11,13 @@ export interface Campaign {
   platform: 'meta' | 'google'
   spend: number
   impressions: number
-  clicks: number
-  ctr: number
-  cpc: number
+  clicks: number        // todos os cliques
+  ctr: number           // CTR total
+  cpc: number           // CPC total
   cpm: number
+  linkClicks?: number   // cliques no link (outbound)
+  linkCtr?: number      // CTR de link
+  linkCpc?: number      // CPC de link
   reach?: number
   conversions?: number
   costPerConversion?: number
