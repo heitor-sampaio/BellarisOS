@@ -197,7 +197,7 @@ export default async function AdminMarketingPage({
           ) : !metaConfig ? (
             <EmptyState platform="Meta Ads" configured={false} />
           ) : (
-            <MarketingCampaignsTable campaigns={metaResult.data} />
+            <MarketingCampaignsTable campaigns={metaResult.data} preset={activePeriod} />
           )}
         </div>
       )}

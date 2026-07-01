@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Search, X } from 'lucide-react'
 import type { Campaign } from '@/lib/ads/types'
+import { CampaignDetailPanel } from './campaign-detail-panel'
 
 type SortKey = 'spend' | 'impressions' | 'cpm' | 'linkClicks' | 'linkCtr' | 'linkCpc' | 'conversions'
 type StatusFilter = 'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'
@@ -29,11 +30,12 @@ function fmtNum(v: number) {
   return v.toLocaleString('pt-BR')
 }
 
-export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }) {
+export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaigns: Campaign[]; preset?: string }) {
   const [sortKey, setSortKey]       = useState<SortKey>('spend')
   const [sortDir, setSortDir]       = useState<'desc' | 'asc'>('desc')
   const [statusFilter, setStatus]   = useState<StatusFilter>('ALL')
   const [search, setSearch]         = useState('')
+  const [selected, setSelected]     = useState<Campaign | null>(null)
 
   function handleSort(key: SortKey) {
     if (key === sortKey) setSortDir(d => d === 'desc' ? 'asc' : 'desc')
@@ -112,6 +114,14 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
   ]
 
   return (
+    <>
+    {selected && (
+      <CampaignDetailPanel
+        campaign={selected}
+        preset={preset}
+        onClose={() => setSelected(null)}
+      />
+    )}
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Filtros */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -192,7 +202,13 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
             </thead>
             <tbody>
               {sorted.map(c => (
-                <tr key={c.id}>
+                <tr
+                  key={c.id}
+                  onClick={() => setSelected(c)}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-raised, #fafaf9)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '')}
+                >
                   <td style={{ ...cellStyle, textAlign: 'left', maxWidth: 260 }}>
                     <span style={{
                       display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -241,5 +257,6 @@ export function MarketingCampaignsTable({ campaigns }: { campaigns: Campaign[] }
         </div>
       )}
     </div>
+    </>
   )
 }
