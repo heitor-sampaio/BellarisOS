@@ -22,12 +22,15 @@ export class MetaAdsProvider implements AdsProvider {
       `insights.date_preset(${preset}){spend,impressions,clicks,ctr,cpc,cpm,reach,conversions,cost_per_conversion,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click}`,
     ].join(',')
 
-    const url = new URL(`${BASE_URL}/act_${this.config.adAccountId}/campaigns`)
-    url.searchParams.set('fields', fields)
-    url.searchParams.set('access_token', this.config.accessToken)
-    url.searchParams.set('limit', '200')
+    const qs = new URLSearchParams({
+      access_token: this.config.accessToken,
+      limit:        '200',
+    })
+    // fields contém parênteses e chaves — encodeURIComponent evita que
+    // URLSearchParams os codifique de forma que a Meta API não reconheça
+    const endpoint = `${BASE_URL}/act_${this.config.adAccountId}/campaigns?${qs}&fields=${encodeURIComponent(fields)}`
 
-    const res = await fetch(url.toString(), { cache: 'no-store' })
+    const res = await fetch(endpoint, { cache: 'no-store' })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       throw new Error((err as any)?.error?.message ?? `Meta API error ${res.status}`)

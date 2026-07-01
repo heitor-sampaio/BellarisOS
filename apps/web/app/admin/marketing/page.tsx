@@ -7,6 +7,8 @@ import { MarketingCampaignsTable } from '@/components/admin/marketing-campaigns-
 import { MarketingAttribution } from '@/components/admin/marketing-attribution'
 import type { Campaign, DatePreset } from '@/lib/ads/types'
 
+export const dynamic = 'force-dynamic'
+
 type View = 'overview' | 'meta' | 'google' | 'attribution'
 
 const VIEWS: { key: View; label: string }[] = [
