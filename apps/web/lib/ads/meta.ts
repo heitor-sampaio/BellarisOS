@@ -9,7 +9,7 @@ const PRESET_MAP: Record<string, string> = {
   '7d':  'last_7d',
   '30d': 'last_30d',
   '90d': 'last_90d',
-  all:   'lifetime',
+  all:   'maximum',
 }
 
 export class MetaAdsProvider implements AdsProvider {
