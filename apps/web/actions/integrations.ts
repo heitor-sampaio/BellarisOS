@@ -124,6 +124,8 @@ export async function testAdsConnection(
 export async function confirmMetaAdsSelection(
   adAccountId: string,
   pixelId: string,
+  adAccountName?: string,
+  pixelName?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertRole(ctx, ['NETWORK_ADMIN'])
@@ -145,10 +147,12 @@ export async function confirmMetaAdsSelection(
     .from('integration_configs')
     .update({
       config: {
-        access_token:   prev.access_token,
-        meta_user_name: prev.meta_user_name ?? '',
+        access_token:    prev.access_token,
+        meta_user_name:  prev.meta_user_name ?? '',
         adAccountId,
+        adAccountName:   adAccountName ?? '',
         pixelId,
+        pixelName:       pixelName ?? '',
       },
       is_active:  true,
       updated_at: new Date().toISOString(),

@@ -356,8 +356,10 @@ function MetaAdsConnect({
   function handleConfirm() {
     if (!selectedAccount) return
     setConfirmError(null)
+    const accountName = liveAccounts.find(a => a.id === selectedAccount)?.name ?? adAccounts.find(a => a.id === selectedAccount)?.name
+    const pixName     = livePixels.find(p => p.id === selectedPixel)?.name    ?? pixels.find(p => p.id === selectedPixel)?.name
     startTransition(async () => {
-      const res = await confirmMetaAdsSelection(selectedAccount, selectedPixel)
+      const res = await confirmMetaAdsSelection(selectedAccount, selectedPixel, accountName, pixName)
       if (res.ok) {
         router.refresh()
       } else {
@@ -492,8 +494,8 @@ function MetaAdsConnect({
           Conectado como <strong>{(config.meta_user_name as string) || 'Usuário Facebook'}</strong>
         </div>
         <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
-          Conta: <strong>act_{config.adAccountId as string}</strong>
-          {config.pixelId && <> · Pixel: <strong>{config.pixelId as string}</strong></>}
+          Conta: <strong>{(config.adAccountName as string) || `act_${config.adAccountId as string}`}</strong>
+          {config.pixelId && <> · Pixel: <strong>{(config.pixelName as string) || (config.pixelId as string)}</strong></>}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
