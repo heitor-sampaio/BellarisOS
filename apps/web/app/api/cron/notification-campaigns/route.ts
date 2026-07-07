@@ -5,11 +5,14 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { dispatchCampaignInline } from '@/actions/notification-campaigns'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-)
+function getWebPush() {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT!,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+  )
+  return webpush
+}
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -389,7 +392,7 @@ async function sendWebPushBatch(
     subs.map((sub: any) => {
       const client = clients.find(c => c.id === sub.client_id)
       if (!client) return Promise.resolve()
-      return webpush.sendNotification(
+      return getWebPush().sendNotification(
         { endpoint: sub.endpoint, keys: sub.keys },
         JSON.stringify({
           title: applyTemplate(titleTpl, client.name),

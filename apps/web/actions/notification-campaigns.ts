@@ -7,11 +7,14 @@ import { redirect } from 'next/navigation'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!,
-)
+function getWebPush() {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT!,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+  )
+  return webpush
+}
 
 // -- Types --------------------------------------------------------------
 
@@ -467,7 +470,7 @@ async function sendWebPush(
         title: applyTemplate(titleTpl, client.name),
         body:  applyTemplate(bodyTpl,  client.name),
       })
-      return webpush.sendNotification(
+      return getWebPush().sendNotification(
         { endpoint: sub.endpoint, keys: sub.keys },
         payload,
       )
