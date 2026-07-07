@@ -1,0 +1,14 @@
+{
+  "name": "estetica-os-native",
+  "private": true,
+  "dependencies": {
+    "@capacitor/android": "^7",
+    "@capacitor/app": "^7",
+    "@capacitor/core": "^7",
+    "@capacitor/ios": "^7",
+    "@capacitor/push-notifications": "^7"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7"
+  }
+}

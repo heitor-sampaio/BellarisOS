@@ -40,7 +40,7 @@ export default async function CheckoutPage({
   }
 
   type RawClient = { name: string; document: string | null; phone: string | null }
-  const cli = planRaw.clients as RawClient | null
+  const cli = planRaw.clients as unknown as RawClient | null
 
   const [{ sessions, total }, { data: professionalsRaw }, { data: medRecordRaw }, { data: branchesRaw }] = await Promise.all([
     getTreatmentPlanSessions(planId),

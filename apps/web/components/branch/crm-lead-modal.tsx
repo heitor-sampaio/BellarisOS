@@ -116,11 +116,11 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           notes:        (dialogRef.current?.querySelector<HTMLTextAreaElement>('[name="notes"]')?.value ?? '').trim() || null,
           crm_stage_id: stageId || null,
           client_id:    null,
-          created_at:   (state.createdAt as string) ?? new Date().toISOString(),
+          created_at:   ((state as any).createdAt as string) ?? new Date().toISOString(),
           lead_procedures: selectedProcs.map(pid => ({
             procedure_id: pid,
             procedures:   procedures.find(p => p.id === pid)
-              ? { name: procedures.find(p => p.id === pid)!.name }
+              ? { name: procedures.find(p => p.id === pid)!.name, price: 0 }
               : null,
           })),
         }

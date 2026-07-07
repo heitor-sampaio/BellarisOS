@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef, useEffect, useTransition } from 'react'
 import { X, Barcode, PackagePlus, RotateCcw, Loader2, Link2, Search } from 'lucide-react'
@@ -206,7 +206,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
 
       <div style={{ padding: '22px 22px 28px', display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-        {/* ── Passo 1: leitura ── */}
+        {/* -- Passo 1: leitura -- */}
         {step === 'scan' && (
           <>
             <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55 }}>
@@ -251,7 +251,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
           </>
         )}
 
-        {/* ── Passo 2: produto não encontrado → vincular ── */}
+        {/* -- Passo 2: produto não encontrado → vincular -- */}
         {step === 'not-found' && (
           <>
             <div style={{
@@ -361,7 +361,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
           </>
         )}
 
-        {/* ── Passo 3: entrada ── */}
+        {/* -- Passo 3: entrada -- */}
         {step === 'entry' && product && (
           <>
             {/* Card do produto */}

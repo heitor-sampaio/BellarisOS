@@ -94,7 +94,7 @@ export default async function BranchCRMPage({
 
       {/* Board */}
       <CRMBoard
-        initialLeads={leads ?? []}
+        initialLeads={(leads ?? []) as unknown as import('@/components/branch/crm-board').Lead[]}
         stages={stages}
         procedures={procedures}
         branchId={branch.id}

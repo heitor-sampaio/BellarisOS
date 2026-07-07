@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef, useEffect } from 'react'
 import {
@@ -36,7 +36,7 @@ interface Props {
 type Tab   = 'movimentacoes' | 'min-stock'
 type MovOp = 'entrada' | 'transferencia' | 'ajuste'
 
-// ── Primitivos ────────────────────────────────────────────────────────
+// -- Primitivos --------------------------------------------------------
 function Label({ children }: { children: React.ReactNode }) {
   return (
     <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
@@ -86,7 +86,7 @@ function BranchSelect({
         <option value="" disabled>Selecionar filial…</option>
         {allBranches.map(b => (
           <option key={b.id} value={b.id}>
-            {b.name}{stockMap[b.id] !== undefined ? ` · ${stockMap[b.id].toLocaleString('pt-BR')}` : ''}
+            {b.name}{stockMap[b.id] !== undefined ? ` · ${stockMap[b.id]!.toLocaleString('pt-BR')}` : ''}
           </option>
         ))}
       </select>
@@ -94,7 +94,7 @@ function BranchSelect({
   )
 }
 
-// ── Formulário: Entrada ───────────────────────────────────────────────
+// -- Formulário: Entrada -----------------------------------------------
 function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
   defaultBranchId?: string
@@ -175,7 +175,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
   )
 }
 
-// ── Formulário: Transferência ─────────────────────────────────────────
+// -- Formulário: Transferência -----------------------------------------
 function TransferenciaForm({ product, allBranches, onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
   onClose: () => void; onSuccess: () => void
@@ -252,7 +252,7 @@ function TransferenciaForm({ product, allBranches, onClose, onSuccess }: {
   )
 }
 
-// ── Formulário: Ajuste ────────────────────────────────────────────────
+// -- Formulário: Ajuste ------------------------------------------------
 function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
   defaultBranchId?: string
@@ -386,7 +386,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
   )
 }
 
-// ── Tab: Estoque mínimo ───────────────────────────────────────────────
+// -- Tab: Estoque mínimo -----------------------------------------------
 function MinStockTab({ product, allBranches, defaultBranchId }: {
   product:          ProductInfo
   allBranches:      AllBranch[]
@@ -504,7 +504,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
   )
 }
 
-// ── Modal principal ───────────────────────────────────────────────────
+// -- Modal principal ---------------------------------------------------
 export function AdminStockManageModal({ product, allBranches, defaultBranchId, onClose, onSuccess }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [tab,   setTab]   = useState<Tab>('movimentacoes')

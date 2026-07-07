@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getTenantContext } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
@@ -9,7 +9,7 @@ import { format, subMonths, subDays, startOfMonth, endOfMonth, differenceInDays 
 import { ptBR } from 'date-fns/locale'
 import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
 
-// ─── Avatar colorido determinístico ──────────────────────────────
+// --- Avatar colorido determinístico ------------------------------
 const PALETTE = [
   { bg: '#e8f4f0', color: '#2a7a5e' },
   { bg: '#f0e8f4', color: '#7a2d68' },
@@ -27,7 +27,7 @@ function initials(name: string) {
   return (p.length >= 2 ? p[0]![0]! + p[p.length - 1]![0]! : p[0]!.substring(0, 2)).toUpperCase()
 }
 
-// ─── Avatar pill ──────────────────────────────────────────────────
+// --- Avatar pill --------------------------------------------------
 function Avatar({ name, size = 32 }: { name: string; size?: number }) {
   const c = avatarColor(name)
   return (
@@ -42,7 +42,7 @@ function Avatar({ name, size = 32 }: { name: string; size?: number }) {
   )
 }
 
-// ─── Status chips ─────────────────────────────────────────────────
+// --- Status chips -------------------------------------------------
 const STATUS_STYLE: Record<string, { label: string; bg: string; color: string }> = {
   SCHEDULED:   { label: 'Aguardando',  bg: 'var(--bg-app)',      color: 'var(--text-muted)' },
   CONFIRMED:   { label: 'Confirmado',  bg: 'var(--brand-soft)',  color: 'var(--brand)'      },
@@ -74,7 +74,7 @@ function pct(a: number, b: number) {
   return { value: Math.abs(d).toFixed(1), up: d >= 0 }
 }
 
-// ─────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------
 export default async function BranchDashboardPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const ctx      = await getTenantContext()
@@ -162,7 +162,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       .eq('branch_id', branchId).gte('created_at', monthStart.toISOString()),
   ])
 
-  // ── KPI calculations ──────────────────────────────────────────
+  // -- KPI calculations ------------------------------------------
   const monthRevenue   = (monthRevTx ?? []).reduce((s, t) => s + parseFloat(String(t.amount)), 0)
   const lastRevenue    = (lastMonthRevTx ?? []).reduce((s, t) => s + parseFloat(String(t.amount)), 0)
   const revDelta       = pct(monthRevenue, lastRevenue)
@@ -175,7 +175,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const capacityMin    = (professionalsCount ?? 1) * 8 * 60
   const occupancy      = professionalsCount ? Math.min(Math.round((scheduledMin / capacityMin) * 100), 100) : 0
 
-  // ── Chart ─────────────────────────────────────────────────────
+  // -- Chart -----------------------------------------------------
   const chartData = Array.from({ length: 6 }, (_, i) => {
     const month = subMonths(now, 5 - i)
     const key   = format(month, 'yyyy-MM')
@@ -188,10 +188,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const semesterTotal = chartData.reduce((s, d) => s + d.value, 0)
   const semesterDelta = semesterTotal - chartData[0]!.value // vs. 6 months ago
 
-  // ── Top procedimentos ─────────────────────────────────────────
+  // -- Top procedimentos -----------------------------------------
   const procMap = new Map<string, { name: string; count: number }>()
   for (const a of (procedureAppts ?? [])) {
-    const proc = a.procedures as { name: string } | null
+    const proc = a.procedures as unknown as { name: string } | null
     if (!proc) continue
     const curr = procMap.get(a.procedure_id)
     if (curr) curr.count++
@@ -200,7 +200,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const topProcs   = [...procMap.values()].sort((a, b) => b.count - a.count).slice(0, 4)
   const maxProc    = topProcs[0]?.count ?? 1
 
-  // ── Funil CRM ─────────────────────────────────────────────────
+  // -- Funil CRM -------------------------------------------------
   const totalActive        = allActiveClients?.length ?? 0
   const withScheduled      = new Set(validToday.filter(a => a.status === 'SCHEDULED').map(a => a.client_id ?? '')).size
   const withConfirmed      = new Set(validToday.filter(a => ['CONFIRMED', 'IN_PROGRESS'].includes(a.status)).map(a => a.client_id ?? '')).size
@@ -214,7 +214,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     { label: 'Concluídos no mês', count: completedThisMonth,      color: 'var(--success)' },
   ]
 
-  // ── Reativar clientes ─────────────────────────────────────────
+  // -- Reativar clientes -----------------------------------------
   const recentIds = new Set((recentVisitorIds ?? []).map(a => a.client_id))
   const inactiveClients = (allActiveClients ?? []).filter(c => !recentIds.has(c.id))
 
@@ -246,12 +246,12 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       .slice(0, 3)
   }
 
-  // ─────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <RealtimeRefresher tables={['appointments', 'financial_transactions', 'clients', 'treatment_plans']} />
 
-      {/* ── Row 0: Header ─────────────────────────────────────── */}
+      {/* -- Row 0: Header --------------------------------------- */}
       <div>
         <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
           Dashboard
@@ -261,7 +261,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </p>
       </div>
 
-      {/* ── Checkout pendente ─────────────────────────────────── */}
+      {/* -- Checkout pendente ----------------------------------- */}
       {canSeeCheckout && (pendingCheckouts ?? 0) > 0 && (
         <Link href={`/${slug}/checkout`} style={{ textDecoration: 'none' }}>
           <div style={{
@@ -290,7 +290,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </Link>
       )}
 
-      {/* ── Row 1: 4 KPI cards ────────────────────────────────── */}
+      {/* -- Row 1: 4 KPI cards ---------------------------------- */}
       <div className="kpi-grid">
 
         {/* Faturamento — brand card */}
@@ -349,7 +349,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </div>
       </div>
 
-      {/* ── Row 2: Gráfico + Agenda ────────────────────────────── */}
+      {/* -- Row 2: Gráfico + Agenda ------------------------------ */}
       <div className="rg-2">
 
         {/* Gráfico */}
@@ -386,8 +386,8 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           ) : (
             <div>
               {validToday.slice(0, 5).map((a, i) => {
-                const client    = a.clients    as { name: string } | null
-                const procedure = a.procedures as { name: string } | null
+                const client    = a.clients    as unknown as { name: string } | null
+                const procedure = a.procedures as unknown as { name: string } | null
                 const isLast    = i === Math.min(validToday.length, 5) - 1
                 return (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
@@ -417,7 +417,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </div>
       </div>
 
-      {/* ── Row 3: Procedimentos | Funil CRM | Reativar ───────── */}
+      {/* -- Row 3: Procedimentos | Funil CRM | Reativar --------- */}
       <div className="rg-3">
 
         {/* Procedimentos mais procurados */}

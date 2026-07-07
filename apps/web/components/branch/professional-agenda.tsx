@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -84,7 +84,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
   const [weekBase,     setWeekBase] = useState<Date>(today)
   const [monthBase,    setMonthBase] = useState<Date>(today)
 
-  // ── Lookup por dia ──────────────────────────────────────────────────
+  // -- Lookup por dia --------------------------------------------------
   const eventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>()
     for (const ev of events) {
@@ -107,7 +107,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
     [eventsByDay, today],
   )
 
-  // ── KPIs ──────────────────────────────────────────────────────────
+  // -- KPIs ----------------------------------------------------------
   const heroEvent = useMemo(() => {
     const inProgress = todayEvents.find(e => e.status === 'IN_PROGRESS')
     if (inProgress) return { ev: inProgress, label: 'Em atendimento agora' }
@@ -141,18 +141,18 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
 
   function selectDay(d: Date) { setSelected(d); setWeekBase(d); setMonthBase(d); setView('dia') }
 
-  // ── Semana (nav) ──────────────────────────────────────────────────
+  // -- Semana (nav) --------------------------------------------------
   const navWeekStart = startOfWeek(weekBase, { weekStartsOn: 1 })
   const weekDays     = Array.from({ length: 7 }, (_, i) => addDays(navWeekStart, i))
 
-  // ── Mês (grid) ────────────────────────────────────────────────────
+  // -- Mês (grid) ----------------------------------------------------
   const mStart    = startOfMonth(monthBase)
   const mEnd      = endOfMonth(monthBase)
   const firstDow  = getDay(mStart) === 0 ? 6 : getDay(mStart) - 1
   const totalCell = Math.ceil((firstDow + mEnd.getDate()) / 7) * 7
   const monthCells = Array.from({ length: totalCell }, (_, i) => addDays(mStart, i - firstDow))
 
-  // ── Time grid (dia) ───────────────────────────────────────────────
+  // -- Time grid (dia) -----------------------------------------------
   const gridHeight = (DAY_END - DAY_START) * PX_PER_HOUR
   const hourLines  = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => i + DAY_START)
 
@@ -169,7 +169,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
     if (dayEvents.length < 2) return []
     return dayEvents.slice(0, -1).flatMap((ev, i) => {
       const endMs  = parseISO(ev.start).getTime() + ev.durationMin * 60000
-      const nextMs = parseISO(dayEvents[i + 1].start).getTime()
+      const nextMs = parseISO(dayEvents[i + 1]!.start).getTime()
       const gapMin = (nextMs - endMs) / 60000
       if (gapMin < 30) return []
       const endDate  = new Date(endMs)
@@ -186,7 +186,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* ── Header ─────────────────────────────────────────────────── */}
+      {/* -- Header --------------------------------------------------- */}
       <div className="page-header">
         <div>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
@@ -215,7 +215,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
         </div>
       </div>
 
-      {/* ── KPI strip ──────────────────────────────────────────────── */}
+      {/* -- KPI strip ------------------------------------------------ */}
       <div className="kpi-grid" style={{ gap: 12 }}>
 
         {/* Card hero */}
@@ -371,7 +371,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
 
               {/* Cards de atendimento */}
               {dayEvents.map(ev => {
-                const st     = STATUS_COLORS[ev.status] ?? STATUS_COLORS.SCHEDULED
+                const st     = STATUS_COLORS[ev.status] ?? STATUS_COLORS['SCHEDULED']!
                 const top    = evTop(ev)
                 const height = evHeight(ev)
                 const time   = format(parseISO(ev.start), 'HH:mm')
@@ -455,7 +455,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
               <ChevronLeft size={15} />
             </button>
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-              {format(weekDays[0], "d 'de' MMM", { locale: ptBR })} – {format(weekDays[6], "d 'de' MMM yyyy", { locale: ptBR })}
+              {format(weekDays[0]!, "d 'de' MMM", { locale: ptBR })} – {format(weekDays[6]!, "d 'de' MMM yyyy", { locale: ptBR })}
             </span>
             <button type="button" onClick={() => setWeekBase(w => addWeeks(w, 1))} className="btn-ghost" style={{ padding: '5px 10px' }}>
               <ChevronRight size={15} />

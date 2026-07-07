@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useActionState, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -10,7 +10,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { uploadClientDocument, deleteClientDocument } from '@/actions/client-documents'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface ClientDocumentItem {
   id:          string
@@ -31,7 +31,7 @@ interface Props {
   slug:      string
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// -- Constants -----------------------------------------------------------------
 
 const CATEGORIES: { value: string; label: string }[] = [
   { value: 'termo_consentimento', label: 'Termo de consentimento' },
@@ -53,7 +53,7 @@ const CATEGORY_COLOR: Record<string, { bg: string; text: string }> = {
   outro:               { bg: 'var(--bg-app)', text: 'var(--text-faint)' },
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 function fileSizeLabel(bytes: number | null): string {
   if (!bytes) return ''
@@ -75,7 +75,7 @@ function categoryLabel(cat: string): string {
   return CATEGORIES.find(c => c.value === cat)?.label ?? cat
 }
 
-// ── Upload form ───────────────────────────────────────────────────────────────
+// -- Upload form ---------------------------------------------------------------
 
 function UploadForm({
   clientId, branchId, slug, onClose,
@@ -185,7 +185,7 @@ function UploadForm({
   )
 }
 
-// ── Document row ──────────────────────────────────────────────────────────────
+// -- Document row --------------------------------------------------------------
 
 function DocumentRow({
   doc, slug, clientId, onDelete,
@@ -193,7 +193,7 @@ function DocumentRow({
   doc: ClientDocumentItem; slug: string; clientId: string; onDelete: (id: string) => void
 }) {
   const [deleting, setDeleting] = useState(false)
-  const catColor = CATEGORY_COLOR[doc.category] ?? CATEGORY_COLOR['outro']
+  const catColor = CATEGORY_COLOR[doc.category] ?? CATEGORY_COLOR['outro']!
 
   async function handleDelete() {
     if (!confirm('Excluir este documento? Esta ação não pode ser desfeita.')) return
@@ -267,7 +267,7 @@ function DocumentRow({
   )
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// -- Main component ------------------------------------------------------------
 
 export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Props) {
   const router = useRouter()
@@ -362,7 +362,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Prop
 
         {/* Document list grouped by category */}
         {localDocs.length > 0 && Object.entries(grouped).map(([catKey, items]) => {
-          const catColor = CATEGORY_COLOR[catKey] ?? CATEGORY_COLOR['outro']
+          const catColor = CATEGORY_COLOR[catKey] ?? CATEGORY_COLOR['outro']!
           const catName  = categoryLabel(catKey)
           return (
             <div key={catKey}>

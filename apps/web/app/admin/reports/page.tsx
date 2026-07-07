@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+﻿import { createAdminClient } from '@/lib/supabase/admin'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -23,7 +23,7 @@ export default async function AdminReportsPage({
   const tab    = (rawTab    ?? 'overview') as Tab
   const period = (rawPeriod ?? 'month')   as Period
 
-  // ── Período ───────────────────────────────────────────────────────
+  // -- Período -------------------------------------------------------
   const msPerDay = 86_400_000
   let startDate: Date, endDate: Date, prevStart: Date, prevEnd: Date
 
@@ -68,7 +68,7 @@ export default async function AdminReportsPage({
     period === 'custom' ? `${startDate.toLocaleDateString('pt-BR')} – ${endDate.toLocaleDateString('pt-BR')}` :
     now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())
 
-  // ── Filiais ───────────────────────────────────────────────────────
+  // -- Filiais -------------------------------------------------------
   const { data: branchesRaw } = await admin
     .from('branches')
     .select('id, name, slug')
@@ -87,7 +87,7 @@ export default async function AdminReportsPage({
     )
   }
 
-  // ── Flags condicionais ────────────────────────────────────────────
+  // -- Flags condicionais --------------------------------------------
   const needAllAppts    = tab === 'overview' || tab === 'agenda'
   const needCommissions = tab === 'overview' || tab === 'profissionais'
   const needStockMoves  = tab === 'overview' || tab === 'estoque' || tab === 'financeiro'
@@ -97,7 +97,7 @@ export default async function AdminReportsPage({
   const needInstall     = tab === 'financeiro'
   const needProcCosts   = tab === 'procedimentos'
 
-  // ── Queries paralelas ─────────────────────────────────────────────
+  // -- Queries paralelas ---------------------------------------------
   const [
     { data: txsCurrRaw },
     { data: txsPrevRaw },
@@ -230,7 +230,7 @@ export default async function AdminReportsPage({
       : Promise.resolve({ data: [] as any[] }),
   ])
 
-  // ── Cast + filter ─────────────────────────────────────────────────
+  // -- Cast + filter -------------------------------------------------
   const txsCurr        = (txsCurrRaw        ?? []) as any[]
   const txsPrev        = (txsPrevRaw        ?? []) as any[]
   const apptsCurr      = (apptsCurrRaw      ?? []) as any[]
@@ -245,7 +245,7 @@ export default async function AdminReportsPage({
   const installments   = ((installmentsRaw  ?? []) as any[])
     .filter(i => branchIds.includes(i.financial_transactions?.branch_id))
 
-  // ── Gráfico de evolução (mesmo padrão do dashboard) ───────────────
+  // -- Gráfico de evolução (mesmo padrão do dashboard) ---------------
   const granularity = period === 'today' ? 'hour' : 'day'
 
   function buildSlice(sliceStart: number, sliceEnd: number, idx: number): ChartPoint {
@@ -279,7 +279,7 @@ export default async function AdminReportsPage({
           })
         })()
 
-  // ── Render ────────────────────────────────────────────────────────
+  // -- Render --------------------------------------------------------
   return (
     <>
       <RealtimeRefresher tables={[

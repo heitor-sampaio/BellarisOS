@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -16,7 +16,7 @@ import {
 import { cancelTreatmentPlan } from '@/actions/treatment-plans'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 type Session = {
   id:               string
@@ -52,7 +52,7 @@ interface Props {
   onClose:          () => void
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
   const h = Math.floor(i / 2) + 8
@@ -69,7 +69,7 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   CANCELLED:   { label: 'Cancelada',     color: '#dc2626' },
 }
 
-// ── Mini-scheduler inline ─────────────────────────────────────────────────────
+// -- Mini-scheduler inline -----------------------------------------------------
 
 function SessionScheduler({
   branches,
@@ -225,7 +225,7 @@ function SessionScheduler({
   )
 }
 
-// ── Modal principal ───────────────────────────────────────────────────────────
+// -- Modal principal -----------------------------------------------------------
 
 export function TreatmentSessionsModal({
   clientPackageId, planId, planStatus,

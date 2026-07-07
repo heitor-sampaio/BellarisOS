@@ -114,6 +114,27 @@ export interface PlacementBreakdown {
   impressions: number
 }
 
+export interface PreviousPeriod {
+  spend:              number
+  impressions:        number
+  linkClicks:         number
+  linkCtr:            number
+  linkCpc:            number
+  cpm:                number
+  reach?:             number
+  conversions?:       number
+  costPerConversion?: number
+  conversionValue?:   number
+}
+
+export interface DailyInsight {
+  date:             string
+  spend:            number
+  conversions?:     number
+  conversionValue?: number
+  roi?:             number
+}
+
 export interface CampaignDetail {
   campaign:      CampaignSummary
   adSets:        AdSet[]
@@ -124,6 +145,8 @@ export interface CampaignDetail {
   adSetPlacementBreakdowns: Record<string, PlacementBreakdown[]>
   adAgeBreakdowns:          Record<string, AgeBreakdown[]>
   adPlacementBreakdowns:    Record<string, PlacementBreakdown[]>
+  dailyInsights:            DailyInsight[]
+  previousPeriod?:          PreviousPeriod
 }
 
 export interface AdsProvider {

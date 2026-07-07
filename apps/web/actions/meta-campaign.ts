@@ -2,7 +2,7 @@
 
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { getAdsConfig } from '@/lib/ads/factory'
-import type { AdSet, Ad, CampaignDetail, CampaignSummary, AgeBreakdown, GeoBreakdown, PlacementBreakdown, AdSetTargeting } from '@/lib/ads/types'
+import type { AdSet, Ad, CampaignDetail, CampaignSummary, AgeBreakdown, GeoBreakdown, PlacementBreakdown, DailyInsight, PreviousPeriod, AdSetTargeting } from '@/lib/ads/types'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
 
@@ -53,8 +53,22 @@ export async function getCampaignDetail(
   const adSetPosParams = new URLSearchParams({ access_token: token, date_preset: datePreset, level: 'adset', breakdowns: 'publisher_platform,platform_position', fields: 'adset_id,spend,impressions' })
   const adAgeParams    = new URLSearchParams({ access_token: token, date_preset: datePreset, level: 'ad',    breakdowns: 'age',                              fields: 'ad_id,spend,impressions' })
   const adPosParams    = new URLSearchParams({ access_token: token, date_preset: datePreset, level: 'ad',    breakdowns: 'publisher_platform,platform_position', fields: 'ad_id,spend,impressions' })
+  const dailyParams    = new URLSearchParams({ access_token: token, date_preset: datePreset, time_increment: '1', fields: 'spend,conversions,action_values,purchase_roas' })
 
-  const [campaignRes, adSetsRes, adsRes, ageRes, geoRes, adSetAgeRes, adSetPosRes, adAgeRes, adPosRes] = await Promise.all([
+  // Período anterior: deslocar N dias para trás usando since/until
+  const DAYS_MAP: Record<string, number> = { today: 1, '7d': 7, '30d': 30, '90d': 90 }
+  const prevDays = DAYS_MAP[preset]
+  let prevParams: URLSearchParams | null = null
+  if (prevDays) {
+    const now    = new Date()
+    const until  = new Date(now); until.setDate(until.getDate() - prevDays)
+    const since  = new Date(until); since.setDate(since.getDate() - prevDays)
+    const fmt    = (d: Date) => d.toISOString().slice(0, 10)
+    const prevFields = `spend,impressions,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,cpm,reach,conversions,cost_per_conversion,purchase_roas,action_values`
+    prevParams = new URLSearchParams({ access_token: token, since: fmt(since), until: fmt(until), fields: prevFields })
+  }
+
+  const [campaignRes, adSetsRes, adsRes, ageRes, geoRes, adSetAgeRes, adSetPosRes, adAgeRes, adPosRes, dailyRes, prevRes] = await Promise.all([
     fetch(`${GRAPH}/${campaignId}?${base}&fields=${campaignFields}`,     { cache: 'no-store' }),
     fetch(`${GRAPH}/${campaignId}/adsets?${list}&fields=${adSetFields}`, { cache: 'no-store' }),
     fetch(`${GRAPH}/${campaignId}/ads?${list}&fields=${adFields}`,       { cache: 'no-store' }),
@@ -64,6 +78,10 @@ export async function getCampaignDetail(
     fetch(`${GRAPH}/${campaignId}/insights?${adSetPosParams}`,           { cache: 'no-store' }),
     fetch(`${GRAPH}/${campaignId}/insights?${adAgeParams}`,              { cache: 'no-store' }),
     fetch(`${GRAPH}/${campaignId}/insights?${adPosParams}`,              { cache: 'no-store' }),
+    fetch(`${GRAPH}/${campaignId}/insights?${dailyParams}`,              { cache: 'no-store' }),
+    prevParams
+      ? fetch(`${GRAPH}/${campaignId}/insights?${prevParams}`,           { cache: 'no-store' })
+      : Promise.resolve(null),
   ])
 
   if (!campaignRes.ok) {
@@ -84,12 +102,14 @@ export async function getCampaignDetail(
   const adSetPosBody  = await adSetPosRes.json().catch(()  => ({ data: [] })) as { data: any[] }
   const adAgeBody     = await adAgeRes.json().catch(()     => ({ data: [] })) as { data: any[] }
   const adPosBody     = await adPosRes.json().catch(()     => ({ data: [] })) as { data: any[] }
+  const dailyBody     = await dailyRes.json().catch(()     => ({ data: [] })) as { data: any[] }
+  const prevBody      = prevRes ? await prevRes.json().catch(() => ({ data: [] })) as { data: any[] } : null
 
   const cins = campaignBody.insights?.data?.[0]
   const cSpend = parseFloat(cins?.spend ?? '0')
 
   const cRoasArr = cins?.purchase_roas as Array<{ value: string }> | undefined
-  const cRoas    = cRoasArr && cRoasArr.length > 0 ? parseFloat(cRoasArr[0].value) : undefined
+  const cRoas    = cRoasArr && cRoasArr.length > 0 ? parseFloat(cRoasArr[0]?.value ?? '0') : undefined
 
   const cActionVals = cins?.action_values as Array<{ action_type: string; value: string }> | undefined
   const cConvValue  = cActionVals && cActionVals.length > 0
@@ -203,7 +223,7 @@ export async function getCampaignDetail(
         linkClicks:  parseInt(row.inline_link_clicks ?? '0', 10),
       }]
     }
-    for (const id of Object.keys(map)) map[id].sort((a, b) => b.spend - a.spend)
+    for (const [, items] of Object.entries(map)) items.sort((a, b) => b.spend - a.spend)
     return map
   }
 
@@ -218,7 +238,7 @@ export async function getCampaignDetail(
         impressions: parseInt(row.impressions ?? '0', 10),
       }]
     }
-    for (const id of Object.keys(map)) map[id].sort((a, b) => b.spend - a.spend)
+    for (const [, items] of Object.entries(map)) items.sort((a, b) => b.spend - a.spend)
     return map
   }
 
@@ -227,12 +247,51 @@ export async function getCampaignDetail(
   const adAgeBreakdowns          = groupAge(adAgeBody.data ?? [], 'ad_id')
   const adPlacementBreakdowns    = groupPlacement(adPosBody.data ?? [], 'ad_id')
 
+  const dailyInsights: DailyInsight[] = (dailyBody.data ?? []).map((row: any) => {
+    const spend = parseFloat(row.spend ?? '0')
+    const conversions = row.conversions != null ? parseFloat(row.conversions) : undefined
+    const actionVals  = row.action_values as Array<{ action_type: string; value: string }> | undefined
+    const roasArr     = row.purchase_roas as Array<{ value: string }> | undefined
+    const convValue   = actionVals && actionVals.length > 0
+      ? actionVals.filter((a: any) => a.action_type.includes('purchase') || a.action_type.includes('omni_'))
+                  .reduce((s: number, a: any) => s + parseFloat(a.value ?? '0'), 0)
+      : roasArr && roasArr.length > 0 && spend > 0 ? parseFloat(roasArr[0]?.value ?? '0') * spend : undefined
+    const roi = convValue != null && spend > 0 ? (convValue - spend) / spend * 100 : undefined
+    return { date: row.date_start, spend, conversions, conversionValue: convValue, roi }
+  }).sort((a: DailyInsight, b: DailyInsight) => a.date.localeCompare(b.date))
+
+  let previousPeriod: PreviousPeriod | undefined
+  const prow = prevBody?.data?.[0]
+  if (prow) {
+    const pSpend = parseFloat(prow.spend ?? '0')
+    const pRoasArr = prow.purchase_roas as Array<{ value: string }> | undefined
+    const pRoas    = pRoasArr && pRoasArr.length > 0 ? parseFloat(pRoasArr[0]?.value ?? '0') : undefined
+    const pAvals   = prow.action_values as Array<{ action_type: string; value: string }> | undefined
+    const pConvVal = pAvals && pAvals.length > 0
+      ? pAvals.filter(a => a.action_type.includes('purchase') || a.action_type.includes('omni_'))
+               .reduce((s, a) => s + parseFloat(a.value ?? '0'), 0)
+      : pRoas != null && pSpend > 0 ? pRoas * pSpend : undefined
+    previousPeriod = {
+      spend:              pSpend,
+      impressions:        parseInt(prow.impressions ?? '0', 10),
+      linkClicks:         parseInt(prow.inline_link_clicks ?? '0', 10),
+      linkCtr:            parseFloat(prow.inline_link_click_ctr ?? '0'),
+      linkCpc:            parseFloat(prow.cost_per_inline_link_click ?? '0'),
+      cpm:                parseFloat(prow.cpm ?? '0'),
+      reach:              prow.reach != null ? parseInt(prow.reach, 10) : undefined,
+      conversions:        prow.conversions != null ? parseFloat(prow.conversions) : undefined,
+      costPerConversion:  prow.cost_per_conversion != null ? parseFloat(prow.cost_per_conversion) : undefined,
+      conversionValue:    pConvVal,
+    }
+  }
+
   return {
     ok: true,
     data: {
       campaign, adSets, ads, ageBreakdowns, geoBreakdowns,
       adSetAgeBreakdowns, adSetPlacementBreakdowns,
       adAgeBreakdowns, adPlacementBreakdowns,
+      dailyInsights, previousPeriod,
     },
   }
 }

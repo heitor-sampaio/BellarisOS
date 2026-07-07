@@ -3,7 +3,7 @@
 import {
   LayoutGrid, Calendar, Users, BarChart3,
   Settings, LogOut, Sparkles, Boxes, Contact, CreditCard, Layers, Megaphone,
-  UsersRound,
+  UsersRound, Bell,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
 import { logoutAction } from '@/actions/auth'
@@ -84,6 +84,7 @@ export function AdminSidebar({ role }: { role: string }) {
               <NavItem icon={<Boxes      size={18} />} label="Estoque"       href="/admin/estoque" />
               <NavItem icon={<Sparkles   size={18} />} label="Procedimentos" href="/admin/procedures" />
               <NavItem icon={<Layers     size={18} />} label="CRM"           href="/admin/crm" />
+              <NavItem icon={<Bell       size={18} />} label="Notificações"  href="/admin/notificacoes" />
               <NavItem icon={<Megaphone  size={18} />} label="Marketing"     href="/admin/marketing" />
               {!isFinancial && (
                 <>

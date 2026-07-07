@@ -1,4 +1,4 @@
-import { getTenantContext, assertRole } from '@/lib/auth'
+﻿import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminAgendaView } from '@/components/admin/admin-agenda-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -21,7 +21,7 @@ export default async function AdminAgendaPage({
   const todayStr    = now.toISOString().slice(0, 10)
   const selectedStr = rawDate ?? todayStr
 
-  // ── Intervalo de datas a buscar ───────────────────────────────────
+  // -- Intervalo de datas a buscar -----------------------------------
   let startDate: Date
   let endDate: Date
 
@@ -38,7 +38,7 @@ export default async function AdminAgendaPage({
     endDate   = new Date(selectedStr + 'T23:59:59.999')
   }
 
-  // ── Filiais ───────────────────────────────────────────────────────
+  // -- Filiais -------------------------------------------------------
   const { data: branchesRaw } = await admin
     .from('branches')
     .select('id, name, slug')
@@ -57,7 +57,7 @@ export default async function AdminAgendaPage({
     )
   }
 
-  // ── Agendamentos do intervalo ─────────────────────────────────────
+  // -- Agendamentos do intervalo -------------------------------------
   const { data: apptsRaw } = await admin
     .from('appointments')
     .select('id, scheduled_at, started_at, completed_at, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name), users(name)')

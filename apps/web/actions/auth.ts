@@ -101,8 +101,22 @@ export async function loginAction(
   const ctx = await getTenantContext()
 
   if (ctx.isClient) {
+    const admin = createAdminClient()
+    const { data: client } = await admin
+      .from('clients')
+      .select('branch_id')
+      .eq('id', ctx.clientId!)
+      .single()
+    if (client?.branch_id) {
+      const { data: br } = await admin
+        .from('branches')
+        .select('slug')
+        .eq('id', client.branch_id)
+        .single()
+      if (br?.slug) redirect(`/${br.slug}/cliente`)
+    }
     await supabase.auth.signOut()
-    return { error: 'Clientes devem usar o app móvel Lumière.' }
+    return { error: 'Conta não vinculada a uma filial.' }
   }
 
   let branchSlug: string | null = null

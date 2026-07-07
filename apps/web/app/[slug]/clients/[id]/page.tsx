@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+﻿import { notFound } from 'next/navigation'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -338,7 +338,7 @@ export default async function ClientProfilePage({
     INTERNAL_CREDIT: 'Crédito interno',
   }
 
-  // ── Unified client history ────────────────────────────────────────────────
+  // -- Unified client history ------------------------------------------------
   const appAccountCreatedAt = (raw as any).app_account_created_at as string | null
 
   type RawHistoryPlan = { id: string; status: string; created_at: string; updated_at: string | null }

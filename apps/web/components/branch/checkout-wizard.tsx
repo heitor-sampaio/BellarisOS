@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -9,7 +9,7 @@ import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actio
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface CheckoutPlan {
   id:                string
@@ -53,7 +53,7 @@ interface Props {
   slug: string
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -74,7 +74,7 @@ const STEPS = [
   { label: 'Agendamento',   icon: CalendarCheck },
 ]
 
-// ── Componente principal ──────────────────────────────────────────────────────
+// -- Componente principal ------------------------------------------------------
 
 export function CheckoutWizard({ plan, slug }: Props) {
   const router = useRouter()
@@ -161,7 +161,7 @@ export function CheckoutWizard({ plan, slug }: Props) {
     }) ?? null
   }
 
-  // ── Passo 1: gerar documentos ao entrar em Documentação ─────────────────────
+  // -- Passo 1: gerar documentos ao entrar em Documentação ---------------------
   function handleGoToDocs() {
     if (terms) { setStep(1); return }
     startCreateTerms(async () => {
@@ -182,7 +182,7 @@ export function CheckoutWizard({ plan, slug }: Props) {
     })
   }
 
-  // ── Finalizar checkout ───────────────────────────────────────────────────────
+  // -- Finalizar checkout -------------------------------------------------------
   function handleFinish() {
     setError(null)
     const schedules: SessionScheduleInput[] = plan.sessions
@@ -262,7 +262,7 @@ export function CheckoutWizard({ plan, slug }: Props) {
     </button>
   )
 
-  // ── Progress bar ─────────────────────────────────────────────────────────────
+  // -- Progress bar -------------------------------------------------------------
   const progressBar = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 32 }}>
       {STEPS.map((s, i) => {
@@ -299,7 +299,7 @@ export function CheckoutWizard({ plan, slug }: Props) {
     </div>
   )
 
-  // ── Renderização dos passos ───────────────────────────────────────────────────
+  // -- Renderização dos passos ---------------------------------------------------
 
   // PASSO 0: Revisão do plano
   if (step === 0) return (

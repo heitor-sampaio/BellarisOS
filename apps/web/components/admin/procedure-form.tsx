@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useActionState, useState, useEffect } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
@@ -188,7 +188,7 @@ function ProcedureFormInner({ branches, products, existing, onSuccess, onCancel,
       <input type="hidden" name="products"       value={JSON.stringify(insumos)} />
       <input type="hidden" name="branch_pricing" value={branchPricingPayload} />
 
-      {/* ── Dados básicos ── */}
+      {/* -- Dados básicos -- */}
       <div className="form-2col">
         <div style={{ gridColumn: '1 / -1' }}>
           <Field label="Nome *">
@@ -245,7 +245,7 @@ function ProcedureFormInner({ branches, products, existing, onSuccess, onCancel,
         </div>
       </div>
 
-      {/* ── Disponibilidade por filial ── */}
+      {/* -- Disponibilidade por filial -- */}
       <div>
         <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 8 }}>
           DISPONÍVEL NAS FILIAIS
@@ -273,7 +273,7 @@ function ProcedureFormInner({ branches, products, existing, onSuccess, onCancel,
         </div>
       </div>
 
-      {/* ── Insumos ── */}
+      {/* -- Insumos -- */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
@@ -366,7 +366,7 @@ function ProcedureFormInner({ branches, products, existing, onSuccess, onCancel,
         </div>
       </div>
 
-      {/* ── Custos e margem ── */}
+      {/* -- Custos e margem -- */}
       <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px' }}>
         <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>
           Custos
@@ -416,7 +416,7 @@ function ProcedureFormInner({ branches, products, existing, onSuccess, onCancel,
         </div>
       </div>
 
-      {/* ── Personalizar valores por filial (acordeão) ── */}
+      {/* -- Personalizar valores por filial (acordeão) -- */}
       {branches.length > 0 && (
         <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
           {/* Gatilho do acordeão */}
@@ -487,7 +487,7 @@ function ProcedureFormInner({ branches, products, existing, onSuccess, onCancel,
         </div>
       )}
 
-      {/* ── Feedback ── */}
+      {/* -- Feedback -- */}
       {state?.error && (
         <p style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 'var(--radius-field-token)', padding: '8px 12px', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)' }}>
           {state.error}

@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
@@ -54,7 +54,7 @@ async function getUpp(admin: ReturnType<typeof createAdminClient>, productId: st
   return Number(data.units_per_package)
 }
 
-// ─── Catálogo de produtos ──────────────────────────────────────────
+// --- Catálogo de produtos ------------------------------------------
 
 export async function createProduct(
   _prev: { error?: string; success?: boolean } | undefined,
@@ -81,7 +81,9 @@ export async function createProduct(
 
     const sku = await nextSku(ctx.tenantId!, categoryName)
 
-    const { error } = await admin.from('products').insert({
+    const minStock = num(formData, 'min_stock') ?? 0
+
+    const { data: newProduct, error } = await admin.from('products').insert({
       tenant_id:   ctx.tenantId!,
       name,
       sku,
@@ -92,12 +94,63 @@ export async function createProduct(
       barcode:           str(formData, 'barcode'),
       cost_price:        num(formData, 'cost_price'),
       sale_price:        num(formData, 'sale_price'),
-      min_stock:         num(formData, 'min_stock') ?? 0,
+      min_stock:         minStock,
       consumption_unit:  str(formData, 'consumption_unit'),
       units_per_package: num(formData, 'units_per_package'),
-    })
+    }).select('id').single()
 
     if (error) return { error: error.message }
+
+    // Estoque inicial — só cria movimento se for usuário de filial e informou quantidade
+    const initialQty  = num(formData, 'initial_qty')
+    const initialCost = num(formData, 'initial_cost')
+    if (initialQty && initialQty > 0 && ctx.branchId && newProduct) {
+      await admin.from('stock_movements').insert({
+        branch_id:     ctx.branchId,
+        product_id:    newProduct.id,
+        type:          'PURCHASE',
+        quantity:      initialQty,
+        balance_after: initialQty,
+        notes:         str(formData, 'initial_notes') ?? 'Estoque inicial',
+        created_by:    ctx.internalUserId,
+      })
+
+      await admin.from('branch_product_stock').upsert({
+        product_id:    newProduct.id,
+        branch_id:     ctx.branchId,
+        current_stock: initialQty,
+        min_stock:     minStock,
+        updated_at:    new Date().toISOString(),
+      }, { onConflict: 'product_id,branch_id' })
+
+      const initialBatch   = str(formData, 'initial_batch')
+      const initialExpires = str(formData, 'initial_expires_at')
+      if (initialBatch) {
+        await admin.from('product_batches').insert({
+          product_id:   newProduct.id,
+          batch_number: initialBatch,
+          expires_at:   initialExpires ?? null,
+          quantity:     initialQty,
+        })
+      }
+
+      // Atualiza custo do produto e registra despesa financeira
+      if (initialCost && initialCost > 0) {
+        await admin.from('products').update({ cost_price: initialCost }).eq('id', newProduct.id)
+
+        await admin.from('financial_transactions').insert({
+          branch_id:   ctx.branchId,
+          type:        'EXPENSE',
+          category:    'Estoque',
+          description: `Compra: ${name}`,
+          amount:      initialCost * initialQty,
+          is_paid:     true,
+          paid_at:     new Date().toISOString(),
+          notes:       str(formData, 'initial_notes') ?? 'Estoque inicial',
+          created_by:  ctx.internalUserId,
+        })
+      }
+    }
 
     revalidatePath('/admin/produtos')
     revalidatePath('/admin/estoque')
@@ -208,7 +261,7 @@ export async function toggleProductActive(productId: string, isActive: boolean) 
   }
 }
 
-// ─── Categorias de produto ───────────────────────────────────────
+// --- Categorias de produto ---------------------------------------
 
 export async function createCategory(
   _prev: { error?: string; success?: boolean } | undefined,
@@ -261,7 +314,7 @@ export async function deleteCategory(categoryId: string) {
   }
 }
 
-// ─── Estoque por filial ───────────────────────────────────────────
+// --- Estoque por filial -------------------------------------------
 
 export async function createStockMovement(
   _prev: { error?: string; success?: boolean; balanceAfter?: number } | undefined,
@@ -347,7 +400,30 @@ export async function createStockMovement(
       })
     }
 
+    // Em entrada de compra: atualiza custo do produto e registra despesa financeira
+    if (movType === 'PURCHASE' && delta > 0) {
+      const costPerPkg = num(formData, 'cost_price')
+      if (costPerPkg && costPerPkg > 0) {
+        const productName = str(formData, '_productName') ?? 'Produto'
+
+        await admin.from('products').update({ cost_price: costPerPkg }).eq('id', productId)
+
+        await admin.from('financial_transactions').insert({
+          branch_id:   branchId,
+          type:        'EXPENSE',
+          category:    'Estoque',
+          description: `Compra: ${productName}`,
+          amount:      costPerPkg * delta,
+          is_paid:     true,
+          paid_at:     new Date().toISOString(),
+          notes:       str(formData, 'notes'),
+          created_by:  ctx.internalUserId,
+        })
+      }
+    }
+
     revalidatePath(`/${slug}/stock`)
+    revalidatePath(`/${slug}/financial`)
     return { success: true, balanceAfter }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -397,7 +473,7 @@ export async function updateBranchMinStock(productId: string, branchId: string, 
   }
 }
 
-// ─── Gestão de estoque (NETWORK_ADMIN) ───────────────────────────
+// --- Gestão de estoque (NETWORK_ADMIN) ---------------------------
 
 export async function adminAddStock(
   _prev: { error?: string; success?: boolean } | undefined,

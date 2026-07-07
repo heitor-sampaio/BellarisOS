@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import {
   useRef, useCallback, useState, useActionState, useTransition, useEffect,
@@ -19,7 +19,7 @@ interface CRMStageSettingsProps {
   stages: CRMStage[]
 }
 
-// ─── Linha de etapa ──────────────────────────────────────────────
+// --- Linha de etapa ----------------------------------------------
 function StageRow({
   stage, slug,
   isDragging, onDragStart, onDragEnd,
@@ -136,7 +136,7 @@ function StageRow({
   )
 }
 
-// ─── Modal de configuração ────────────────────────────────────────
+// --- Modal de configuração ----------------------------------------
 export function CRMStageSettings({ slug, stages: initialStages }: CRMStageSettingsProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
@@ -152,7 +152,7 @@ export function CRMStageSettings({ slug, stages: initialStages }: CRMStageSettin
   // Sync com server (revalidate atualiza initialStages via page)
   useEffect(() => { setStages(initialStages) }, [initialStages])
 
-  // ─── DnD para reordenar ──────────────────────────────────────
+  // --- DnD para reordenar --------------------------------------
   function handleDragStart(e: React.DragEvent, id: string) {
     setDraggingId(id)
     e.dataTransfer.effectAllowed = 'move'
@@ -189,6 +189,7 @@ export function CRMStageSettings({ slug, stages: initialStages }: CRMStageSettin
 
     const next = [...stages]
     const [moved] = next.splice(fromIdx, 1)
+    if (!moved) { setDraggingId(null); setOverIdx(null); enterCounts.current = {}; return }
     next.splice(targetIdx, 0, moved)
     const reordered = next.map((s, i) => ({ ...s, position: i }))
 
@@ -198,7 +199,7 @@ export function CRMStageSettings({ slug, stages: initialStages }: CRMStageSettin
     startReorder(() => reorderStages(reordered.map(s => s.id), slug))
   }
 
-  // ─── Adicionar nova etapa ─────────────────────────────────────
+  // --- Adicionar nova etapa -------------------------------------
   const [newState, newAction, newPending] = useActionState(createStage, undefined)
 
   useEffect(() => {

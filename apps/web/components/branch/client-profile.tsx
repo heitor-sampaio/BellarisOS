@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useActionState, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -11,7 +11,7 @@ import type { ClientDocumentItem } from './client-documents-tab'
 import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------------
 
 export interface ProfileClient {
   id:                 string
@@ -136,7 +136,7 @@ interface Props {
   clientHistory:         ClientHistoryEvent[]
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 function getInitials(name: string) {
   const p = name.trim().split(' ')
@@ -151,7 +151,7 @@ function maskCPF(doc: string) {
   return doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
 }
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+// -- Sub-components -----------------------------------------------------------
 
 const STATUS_LABEL: Record<string, string> = {
   COMPLETED:   'Concluído',
@@ -171,7 +171,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'dados',      label: 'Dados' },
 ]
 
-// ── Payment method labels ─────────────────────────────────────────────────────
+// -- Payment method labels -----------------------------------------------------
 
 const PAYMENT_LABEL: Record<string, string> = {
   CASH:            'Dinheiro',
@@ -270,7 +270,7 @@ function HistoryEventRow({ ev, isLast, slug }: { ev: ClientHistoryEvent; isLast:
   return <div style={rowStyle}>{content}</div>
 }
 
-// ── Dados sub-component ───────────────────────────────────────────────────────
+// -- Dados sub-component -------------------------------------------------------
 
 function applyDocMask(v: string) {
   const d = v.replace(/\D/g, '').slice(0, 11)
@@ -536,7 +536,7 @@ function DadosTab({ client, slug }: { client: ProfileClient; slug: string }) {
   )
 }
 
-// ── Financeiro sub-component ──────────────────────────────────────────────────
+// -- Financeiro sub-component --------------------------------------------------
 
 function GrantCreditForm({
   clientId, branchId, slug, onClose,
@@ -789,7 +789,7 @@ function FinanceiroTab({
   )
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// -- Main component ------------------------------------------------------------
 
 const STATUS_ICON: Record<string, React.ReactNode> = {
   SCHEDULED:   <Clock size={11} />,
@@ -827,7 +827,7 @@ export function ClientProfile({
         />
       )}
 
-      {/* ── Hero card ───────────────────────────────────────────────── */}
+      {/* -- Hero card ------------------------------------------------- */}
       <div className="card" style={{ padding: '20px 24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
           {/* Avatar + name + meta */}
@@ -891,7 +891,7 @@ export function ClientProfile({
         </div>
       </div>
 
-      {/* ── KPI row ─────────────────────────────────────────────────── */}
+      {/* -- KPI row --------------------------------------------------- */}
       <div className="kpi-grid" style={{ gap: 8 }}>
         {[
           { label: 'SESSÕES',          value: String(stats.totalSessions) },
@@ -910,7 +910,7 @@ export function ClientProfile({
         ))}
       </div>
 
-      {/* ── Tabs ────────────────────────────────────────────────────── */}
+      {/* -- Tabs ------------------------------------------------------ */}
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)' }}>
         {TABS.map(t => (
           <button
@@ -931,7 +931,7 @@ export function ClientProfile({
         ))}
       </div>
 
-      {/* ── Tab: Visão geral ────────────────────────────────────────── */}
+      {/* -- Tab: Visão geral ------------------------------------------ */}
       {tab === 'visao' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div className="rg-3" style={{ gap: 12, alignItems: 'start' }}>
@@ -1078,7 +1078,7 @@ export function ClientProfile({
         </div>
       )}
 
-      {/* ── Tab: Histórico ──────────────────────────────────────────── */}
+      {/* -- Tab: Histórico -------------------------------------------- */}
       {tab === 'historico' && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* header */}
@@ -1110,12 +1110,12 @@ export function ClientProfile({
         </div>
       )}
 
-      {/* ── Tab: Dados ──────────────────────────────────────────────── */}
+      {/* -- Tab: Dados ------------------------------------------------ */}
       {tab === 'dados' && (
         <DadosTab client={client} slug={slug} />
       )}
 
-      {/* ── Tab: Financeiro ─────────────────────────────────────────── */}
+      {/* -- Tab: Financeiro ------------------------------------------- */}
       {tab === 'financeiro' && (
         <FinanceiroTab
           transactions={transactions}
@@ -1127,7 +1127,7 @@ export function ClientProfile({
         />
       )}
 
-      {/* ── Tab: Documentos ─────────────────────────────────────────── */}
+      {/* -- Tab: Documentos ------------------------------------------- */}
       {tab === 'documentos' && (
         <ClientDocumentsTab
           documents={documents}

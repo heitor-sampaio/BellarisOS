@@ -178,7 +178,7 @@ export default async function AdminProceduresPage() {
                       </td>
                       <td style={{ padding: '13px 16px' }}>
                         {p.visible_on_client_app
-                          ? <Smartphone size={14} color="var(--brand)" title="Visível no app" />
+                          ? <Smartphone size={14} color="var(--brand)" aria-label="Visível no app" />
                           : <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>—</span>}
                       </td>
                       <td style={{ padding: '13px 16px' }}>

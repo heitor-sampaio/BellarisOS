@@ -1,11 +1,11 @@
-'use client'
+﻿'use client'
 
 import { useActionState, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Edit2, Save, X, Loader2, ClipboardList } from 'lucide-react'
 import { saveGeneralAnamnesis } from '@/actions/anamnesis'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface GeneralAnamnesis {
   skinType:                  string
@@ -28,7 +28,7 @@ interface Props {
   canEdit:          boolean
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// -- Constants -----------------------------------------------------------------
 
 const SKIN_TYPES = [
   { value: '',         label: 'Não informado' },
@@ -41,7 +41,7 @@ const SKIN_TYPES = [
 
 const SKIN_TYPE_LABEL: Record<string, string> = Object.fromEntries(SKIN_TYPES.map(s => [s.value, s.label]))
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 function FieldRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
@@ -74,7 +74,7 @@ function BoolRow({ label, value }: { label: string; value: boolean }) {
   )
 }
 
-// ── Read-only view ─────────────────────────────────────────────────────────────
+// -- Read-only view -------------------------------------------------------------
 
 function AnamnesisView({ data, onEdit, canEdit }: { data: GeneralAnamnesis; onEdit: () => void; canEdit: boolean }) {
   return (
@@ -114,7 +114,7 @@ function AnamnesisView({ data, onEdit, canEdit }: { data: GeneralAnamnesis; onEd
   )
 }
 
-// ── Anamnesis form ─────────────────────────────────────────────────────────────
+// -- Anamnesis form -------------------------------------------------------------
 
 function AnamnesisForm({
   initial, clientId, branchId, slug, onClose,
@@ -260,7 +260,7 @@ function AnamnesisForm({
   )
 }
 
-// ── Main export ───────────────────────────────────────────────────────────────
+// -- Main export ---------------------------------------------------------------
 
 export function AnamnesisTab({ anamnesis, clientId, branchId, slug, canEdit }: Props) {
   const [editing, setEditing] = useState(false)

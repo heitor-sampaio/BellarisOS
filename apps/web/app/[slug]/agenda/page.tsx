@@ -96,9 +96,9 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
 
   // Mapeia appointments para eventos do FullCalendar
   const events = (rawAppointments ?? []).map(a => {
-    const client       = a.clients       as { name: string } | null
-    const procedure    = a.procedures    as { name: string } | null
-    const professional = a.users         as { name: string } | null
+    const client       = a.clients       as unknown as { name: string } | null
+    const procedure    = a.procedures    as unknown as { name: string } | null
+    const professional = a.users         as unknown as { name: string } | null
     const endDate      = new Date(new Date(a.scheduled_at).getTime() + a.duration_min * 60000)
 
     return {

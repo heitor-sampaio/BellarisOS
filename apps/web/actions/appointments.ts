@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
@@ -8,7 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 const WRITABLE_ROLES    = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'] as const
 const ALL_BRANCH_ROLES  = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
 
-// ─── Helpers internos ─────────────────────────────────────────────
+// --- Helpers internos ---------------------------------------------
 async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
   const { data } = await admin.from('users').select('name').eq('auth_id', authId).maybeSingle()
   return data?.name ?? 'Usuário'
@@ -34,7 +34,7 @@ async function logHistory(
   })
 }
 
-// ─── Criar agendamento ────────────────────────────────────────────
+// --- Criar agendamento --------------------------------------------
 export async function addAppointment(
   _prev: { error?: string; success?: boolean; id?: string } | undefined,
   formData: FormData,
@@ -124,7 +124,7 @@ export async function addAppointment(
   }
 }
 
-// ─── Atualizar status do agendamento ─────────────────────────────
+// --- Atualizar status do agendamento -----------------------------
 export async function updateAppointmentStatus(
   appointmentId: string,
   status: 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW',
@@ -189,7 +189,7 @@ async function resolveBranchId(supabase: Awaited<ReturnType<typeof createSupabas
   return data!.branch_id
 }
 
-// ─── Concluir atendimento (transação completa) ────────────────────
+// --- Concluir atendimento (transação completa) --------------------
 async function completeAppointment(appointmentId: string, slug: string) {
   // Nota: idealmente em prisma.$transaction — aqui sequencial via Supabase
   const admin = createAdminClient()
@@ -291,7 +291,7 @@ async function completeAppointment(appointmentId: string, slug: string) {
   revalidatePath(`/${slug}/financial`)
 }
 
-// ─── Check-in do cliente (SCHEDULED → CONFIRMED) ─────────────────
+// --- Check-in do cliente (SCHEDULED → CONFIRMED) -----------------
 export async function checkinAppointment(
   appointmentId: string,
   slug: string,
@@ -327,7 +327,7 @@ export async function checkinAppointment(
   }
 }
 
-// ─── Iniciar atendimento (CONFIRMED → IN_PROGRESS) ───────────────
+// --- Iniciar atendimento (CONFIRMED → IN_PROGRESS) ---------------
 export async function startAppointment(
   appointmentId: string,
   slug: string,
@@ -367,7 +367,7 @@ export async function startAppointment(
   }
 }
 
-// ─── Reatribuir profissional ──────────────────────────────────────
+// --- Reatribuir profissional --------------------------------------
 export async function reassignProfessional(
   appointmentId: string,
   professionalId: string,
@@ -410,7 +410,7 @@ export async function reassignProfessional(
   }
 }
 
-// ─── Cancelar atendimento ─────────────────────────────────────────
+// --- Cancelar atendimento -----------------------------------------
 export async function cancelAppointmentSession(
   _prev: { error?: string } | null,
   formData: FormData,
@@ -454,8 +454,8 @@ export async function cancelAppointmentSession(
   }
 }
 
-// ─── Concluir atendimento (fluxo completo) ────────────────────────
-// ── Profissional finaliza o atendimento (clínico) ─────────────────────────────
+// --- Concluir atendimento (fluxo completo) ------------------------
+// -- Profissional finaliza o atendimento (clínico) -----------------------------
 // Cria prontuário, baixa estoque, registra comissão e pontos.
 // NÃO cria transação financeira — isso é responsabilidade de confirmPayment.
 export async function finishSession(
@@ -684,7 +684,7 @@ export async function finishSession(
   }
 }
 
-// ── Recepcionista/admin confirma pagamento ─────────────────────────────────────
+// -- Recepcionista/admin confirma pagamento -------------------------------------
 export async function confirmPayment(
   _prev: { error?: string } | null,
   formData: FormData,
@@ -746,7 +746,7 @@ export async function confirmPayment(
   }
 }
 
-// ─── Salvar rascunho de notas (sem concluir) ─────────────────────
+// --- Salvar rascunho de notas (sem concluir) ---------------------
 export async function saveDraftNotes(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData,
@@ -813,7 +813,7 @@ export async function saveDraftNotes(
   }
 }
 
-// ─── Salvar queixas do cliente na avaliação ──────────────────────
+// --- Salvar queixas do cliente na avaliação ----------------------
 export async function saveEvaluationComplaints(
   appointmentId: string,
   complaints: string,
@@ -833,7 +833,7 @@ export async function saveEvaluationComplaints(
   }
 }
 
-// ─── Salvar anotações da sessão (anamnese) ────────────────────────
+// --- Salvar anotações da sessão (anamnese) ------------------------
 export async function saveSessionNotes(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
@@ -873,7 +873,7 @@ export async function saveSessionNotes(
   }
 }
 
-// ─── Reagendar ────────────────────────────────────────────────────
+// --- Reagendar ----------------------------------------------------
 export async function rescheduleAppointment(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
@@ -927,7 +927,7 @@ export async function rescheduleAppointment(
   }
 }
 
-// ── Dados de agendamento pelo checkout ───────────────────────────────────────
+// -- Dados de agendamento pelo checkout ---------------------------------------
 
 export async function getSchedulingBranchProfessionals(
   branchId: string,
@@ -955,7 +955,7 @@ export async function getSchedulingBranchProfessionals(
   return { professionals: (data ?? []) as { id: string; name: string }[] }
 }
 
-// ─── Sessões de pacote ────────────────────────────────────────────
+// --- Sessões de pacote --------------------------------------------
 
 export async function getPlannedSessionAppointments(planId: string): Promise<{
   sessions: Array<{
@@ -1177,6 +1177,144 @@ export async function schedulePlanSession(params: {
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
   return { appointmentId: appt.id }
+}
+
+// --- Portal do cliente: slots disponíveis ------------------------
+export async function getClientAvailableSlots(
+  branchId: string,
+  professionalId: string,
+  date: string,
+  durationMin: number,
+): Promise<{ slots: string[] }> {
+  const ctx = await getTenantContext()
+  assertRole(ctx, ['CLIENT'])
+
+  const admin = createAdminClient()
+
+  const { data: branch } = await admin
+    .from('branches')
+    .select('id')
+    .eq('id', branchId)
+    .maybeSingle()
+  if (!branch) return { slots: [] }
+
+  const dayStart = new Date(`${date}T08:00:00-03:00`).toISOString()
+  const dayEnd   = new Date(`${date}T20:00:00-03:00`).toISOString()
+
+  const { data: booked } = await admin
+    .from('appointments')
+    .select('scheduled_at, duration_min')
+    .eq('branch_id', branchId)
+    .eq('professional_id', professionalId)
+    .gte('scheduled_at', dayStart)
+    .lt('scheduled_at', dayEnd)
+    .not('status', 'in', '("CANCELLED","NO_SHOW")')
+
+  // Gera slots de 30min entre 08:00 e 20:00
+  const allSlots: string[] = []
+  for (let h = 8; h < 20; h++) {
+    for (const m of [0, 30]) {
+      allSlots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    }
+  }
+
+  const occupied = (booked ?? []).map(b => ({
+    start: new Date(b.scheduled_at as string).getTime(),
+    end:   new Date(b.scheduled_at as string).getTime() + Number(b.duration_min) * 60000,
+  }))
+
+  const cutoff = new Date(`${date}T20:00:00-03:00`).getTime()
+
+  const available = allSlots.filter(slot => {
+    const [hh, mm]  = slot.split(':').map(Number)
+    const slotStart = new Date(`${date}T${String(hh!).padStart(2, '0')}:${String(mm!).padStart(2, '0')}:00-03:00`).getTime()
+    const slotEnd   = slotStart + durationMin * 60000
+    if (slotEnd > cutoff) return false
+    return !occupied.some(o => slotStart < o.end && slotEnd > o.start)
+  })
+
+  return { slots: available }
+}
+
+// --- Portal do cliente: criar agendamento self-service ------------
+export async function createClientAppointment(params: {
+  branchId:       string
+  procedureId:    string
+  professionalId: string
+  scheduledAt:    string
+  slug:           string
+}): Promise<{ error?: string; id?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRole(ctx, ['CLIENT'])
+
+    const admin = createAdminClient()
+
+    const { data: branch } = await admin
+      .from('branches')
+      .select('tenant_id')
+      .eq('id', params.branchId)
+      .single()
+    if (!branch) return { error: 'Filial não encontrada.' }
+
+    const { data: procedure } = await admin
+      .from('procedures')
+      .select('id, price, duration_min, visible_on_client_app')
+      .eq('id', params.procedureId)
+      .eq('tenant_id', branch.tenant_id as string)
+      .single()
+    if (!procedure || !(procedure.visible_on_client_app as boolean)) {
+      return { error: 'Procedimento não disponível.' }
+    }
+
+    const { data: prof } = await admin
+      .from('users')
+      .select('id')
+      .eq('id', params.professionalId)
+      .eq('branch_id', params.branchId)
+      .in('role', ['BRANCH_ADMIN', 'PROFESSIONAL'])
+      .eq('is_active', true)
+      .maybeSingle()
+    if (!prof) return { error: 'Profissional não disponível.' }
+
+    // Verifica conflito de horário (race condition guard)
+    const durationMs = Number(procedure.duration_min) * 60000
+    const start = new Date(params.scheduledAt).getTime()
+    const end   = start + durationMs
+    const { data: conflict } = await admin
+      .from('appointments')
+      .select('id')
+      .eq('branch_id', params.branchId)
+      .eq('professional_id', params.professionalId)
+      .not('status', 'in', '("CANCELLED","NO_SHOW")')
+      .lt('scheduled_at', new Date(end).toISOString())
+      .gt('scheduled_at', new Date(start - durationMs).toISOString())
+      .maybeSingle()
+    if (conflict) return { error: 'Este horário não está mais disponível. Escolha outro.' }
+
+    const { data: appt, error } = await admin
+      .from('appointments')
+      .insert({
+        branch_id:       params.branchId,
+        client_id:       ctx.clientId!,
+        procedure_id:    params.procedureId,
+        professional_id: params.professionalId,
+        scheduled_at:    params.scheduledAt,
+        duration_min:    procedure.duration_min,
+        price:           procedure.price,
+        status:          'SCHEDULED',
+        source:          'ONLINE',
+      })
+      .select('id')
+      .single()
+
+    if (error || !appt) return { error: `Erro ao criar agendamento: ${error?.message}` }
+
+    revalidatePath(`/${params.slug}/cliente/agendamentos`)
+    return { id: appt.id as string }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+  }
 }
 
 export async function getSchedulingDaySlots(

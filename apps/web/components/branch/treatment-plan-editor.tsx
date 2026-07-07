@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, forwardRef, useImperativeHandle } from 'react'
 import { Plus, Trash2, Send, Save, Copy, ChevronDown, ChevronUp, FlaskConical } from 'lucide-react'
@@ -10,7 +10,7 @@ export interface TreatmentPlanEditorRef {
   getNotes:    () => string
 }
 
-// ── Tipos exportados ──────────────────────────────────────────────────────────
+// -- Tipos exportados ----------------------------------------------------------
 
 export interface TreatmentProcedureProduct {
   productId: string
@@ -57,7 +57,7 @@ export interface SerializedPlanItem {
   products:         { productId: string; quantity: number }[]
 }
 
-// ── Tipos internos ────────────────────────────────────────────────────────────
+// -- Tipos internos ------------------------------------------------------------
 
 interface EditorProduct {
   localId:   string
@@ -99,7 +99,7 @@ interface Props {
   onPlanChange?:        (items: SerializedPlanItem[], notes: string) => void
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 function uid() {
   return Math.random().toString(36).slice(2)
@@ -123,7 +123,7 @@ function fromExisting(plan: ExistingPlan | null): EditorSession[] {
   }))
 }
 
-// ── Sub-componentes ───────────────────────────────────────────────────────────
+// -- Sub-componentes -----------------------------------------------------------
 
 function ProcRow({
   proc, procedures, availableProducts,
@@ -396,7 +396,7 @@ function SessionCard({
   )
 }
 
-// ── Componente principal ──────────────────────────────────────────────────────
+// -- Componente principal ------------------------------------------------------
 
 export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(function TreatmentPlanEditor({
   appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [],
@@ -413,7 +413,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     0,
   )
 
-  // ── Handlers de sessão ────────────────────────────────────────────
+  // -- Handlers de sessão --------------------------------------------
 
   function addSession() {
     setSessions(prev => [...prev, { localId: uid(), procs: [] }])
@@ -437,7 +437,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     setSessions(prev => prev.filter(s => s.localId !== sessLocalId))
   }
 
-  // ── Handlers de procedimento ──────────────────────────────────────
+  // -- Handlers de procedimento --------------------------------------
 
   function addProc(sessLocalId: string) {
     setSessions(prev => prev.map(s =>
@@ -521,7 +521,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     ))
   }
 
-  // ── Serialização para action ──────────────────────────────────────
+  // -- Serialização para action --------------------------------------
 
   function toActionSessions(): PlanSessionInput[] {
     return sessions.map((s, i) => ({
@@ -544,7 +544,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     getNotes:    () => notes,
   }))
 
-  // ── Salvar rascunho ───────────────────────────────────────────────
+  // -- Salvar rascunho -----------------------------------------------
 
   function handleSave() {
     startTransition(async () => {
@@ -554,7 +554,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     })
   }
 
-  // ── Enviar para recepção ──────────────────────────────────────────
+  // -- Enviar para recepção ------------------------------------------
 
   function handlePropose() {
     if (!existingPlan?.id && sessions.length === 0) {
@@ -571,7 +571,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     })
   }
 
-  // ── Render ────────────────────────────────────────────────────────
+  // -- Render --------------------------------------------------------
 
   if (isPlanLocked) {
     // Modo leitura: plano já foi enviado/aprovado

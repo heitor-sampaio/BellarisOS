@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
@@ -36,7 +36,7 @@ async function saveProcedures(
   }
 }
 
-// ─── Criar lead ───────────────────────────────────────────────────
+// --- Criar lead ---------------------------------------------------
 export async function createLead(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
@@ -95,7 +95,7 @@ export async function createLead(
   }
 }
 
-// ─── Editar lead ──────────────────────────────────────────────────
+// --- Editar lead --------------------------------------------------
 export async function updateLead(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
@@ -143,7 +143,7 @@ export async function updateLead(
   }
 }
 
-// ─── Mover entre colunas (drag & drop) ───────────────────────────
+// --- Mover entre colunas (drag & drop) ---------------------------
 export async function updateLeadStage(leadId: string, crm_stage_id: string, slug: string) {
   try {
     const ctx = await getTenantContext()
@@ -163,7 +163,7 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
   }
 }
 
-// ─── Converter lead em cliente ────────────────────────────────────
+// --- Converter lead em cliente ------------------------------------
 export async function convertLeadToClient(leadId: string, slug: string) {
   try {
     const ctx = await getTenantContext()
@@ -222,7 +222,7 @@ export async function convertLeadToClient(leadId: string, slug: string) {
   }
 }
 
-// ─── Excluir lead ─────────────────────────────────────────────────
+// --- Excluir lead -------------------------------------------------
 export async function deleteLead(leadId: string, slug: string) {
   try {
     const ctx = await getTenantContext()

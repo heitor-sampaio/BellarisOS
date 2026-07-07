@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -74,7 +74,7 @@ export async function testWhatsAppConnection(
   return prov.testConnection()
 }
 
-// ─── Ads integrations ─────────────────────────────────────────────────────────
+// --- Ads integrations ---------------------------------------------------------
 
 export async function saveAdsConfig(
   provider: 'meta_ads' | 'google_ads',
@@ -119,7 +119,7 @@ export async function testAdsConnection(
   return resolveAdsProvider(config).testConnection()
 }
 
-// ─── Meta Ads OAuth ───────────────────────────────────────────────────────────
+// --- Meta Ads OAuth -----------------------------------------------------------
 
 export async function confirmMetaAdsSelection(
   adAccountId: string,

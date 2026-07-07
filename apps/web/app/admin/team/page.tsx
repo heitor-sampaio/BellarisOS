@@ -149,7 +149,7 @@ export default async function AdminTeamPage({
             </thead>
             <tbody>
               {members.map((m, i) => {
-                const branchName = (m.branches as { name: string } | null)?.name
+                const branchName = (m.branches as unknown as { name: string } | null)?.name
                   ?? branchMap[m.branch_id]
                   ?? '—'
                 const label = roleLabel[m.role] ?? m.role

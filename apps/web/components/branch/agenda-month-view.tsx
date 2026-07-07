@@ -76,7 +76,7 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
       {/* Day cells */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, padding: '0 2px' }}>
         {days.map((day, i) => {
-          const count      = counts[i]
+          const count      = counts[i] ?? 0
           const inMonth    = isSameMonth(day, currentDate)
           const isToday    = isSameDay(day, today)
           const barW       = count === 0 ? 0 : Math.round(Math.min(100, (count / Math.max(maxCount, 10)) * 100))

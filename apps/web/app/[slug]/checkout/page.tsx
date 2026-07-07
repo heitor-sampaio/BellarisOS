@@ -42,7 +42,7 @@ export default async function CheckoutListPage({
   type RawItem   = { unit_price: number; sessions: number }
 
   const plans = (plansRaw ?? []).map(p => {
-    const cli   = p.clients as RawClient | null
+    const cli   = p.clients as unknown as RawClient | null
     const items = (p.treatment_plan_items as RawItem[]) ?? []
     const total = items.reduce((s, it) => s + Number(it.unit_price) * it.sessions, 0)
     return {

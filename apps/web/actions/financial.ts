@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
@@ -70,7 +70,7 @@ export async function createTransaction(
   }
 }
 
-// ─── Nova movimentação com suporte a parcelas e recorrência ───────
+// --- Nova movimentação com suporte a parcelas e recorrência -------
 
 type RecurringFreq = 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'yearly'
 
@@ -116,7 +116,7 @@ export async function createTransactionAdvanced(
 
     const admin = createAdminClient()
 
-    // ── Parcelado ─────────────────────────────────────────────────
+    // -- Parcelado -------------------------------------------------
     if (scheduleMode === 'installments' && type === 'EXPENSE') {
       const count      = parseInt(str(formData, 'installment_count') ?? '2', 10)
       const firstDue   = str(formData, 'first_due_date')
@@ -158,7 +158,7 @@ export async function createTransactionAdvanced(
       const { error: instErr } = await admin.from('installments').insert(rows)
       if (instErr) return { error: instErr.message }
 
-    // ── Recorrente ────────────────────────────────────────────────
+    // -- Recorrente ------------------------------------------------
     } else if (scheduleMode === 'recurring' && type === 'EXPENSE') {
       const freq       = (str(formData, 'recurring_freq') ?? 'monthly') as RecurringFreq
       const count      = parseInt(str(formData, 'recurring_count') ?? '2', 10)
@@ -185,7 +185,7 @@ export async function createTransactionAdvanced(
       const { error: txErr } = await admin.from('financial_transactions').insert(rows)
       if (txErr) return { error: txErr.message }
 
-    // ── Único (comportamento padrão) ──────────────────────────────
+    // -- Único (comportamento padrão) ------------------------------
     } else {
       const { error } = await admin.from('financial_transactions').insert({
         branch_id:      branchId,
@@ -260,6 +260,73 @@ export async function reverseTransaction(transactionId: string, branchId: string
       notes:      'Estornada',
       updated_at: new Date().toISOString(),
     }).eq('id', transactionId)
+
+    revalidatePath(`/${slug}/financial`)
+    return { success: true }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+  }
+}
+
+export async function openCashRegister(
+  _prev: { success?: boolean; error?: string } | undefined,
+  formData: FormData,
+): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRole(ctx, [...FINANCIAL_ROLES])
+
+    const branchId       = str(formData, '_branchId')
+    const slug           = str(formData, '_slug') ?? ''
+    const openingBalance = num(formData, 'opening_balance') ?? 0
+    const notes          = str(formData, 'notes')
+
+    if (!branchId) return { error: 'Filial não identificada.' }
+
+    const admin = createAdminClient()
+    const { error } = await admin.from('cash_registers').insert({
+      branch_id:       branchId,
+      opening_balance: openingBalance,
+      notes,
+      opened_by:       ctx.internalUserId,
+      opened_at:       new Date().toISOString(),
+      status:          'open',
+    })
+
+    if (error) return { error: error.message }
+
+    revalidatePath(`/${slug}/financial`)
+    return { success: true }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+  }
+}
+
+export async function closeCashRegister(
+  _prev: { success?: boolean; error?: string } | undefined,
+  formData: FormData,
+): Promise<{ success?: boolean; error?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRole(ctx, [...FINANCIAL_ROLES])
+
+    const registerId     = str(formData, '_registerId')
+    const slug           = str(formData, '_slug') ?? ''
+    const closingBalance = num(formData, 'closing_balance') ?? 0
+    const notes          = str(formData, 'notes')
+
+    if (!registerId) return { error: 'Caixa não identificado.' }
+
+    const admin = createAdminClient()
+    const { error } = await admin.from('cash_registers').update({
+      closing_balance: closingBalance,
+      notes,
+      closed_by:  ctx.internalUserId,
+      closed_at:  new Date().toISOString(),
+      status:     'closed',
+    }).eq('id', registerId)
+
+    if (error) return { error: error.message }
 
     revalidatePath(`/${slug}/financial`)
     return { success: true }

@@ -1,11 +1,11 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// ─── Criar procedimento (apenas NETWORK_ADMIN) ─────────────────────
+// --- Criar procedimento (apenas NETWORK_ADMIN) ---------------------
 export async function addProcedure(
   _prev: { error?: string; success?: boolean; procedureId?: string } | undefined,
   formData: FormData,
@@ -77,7 +77,7 @@ export async function addProcedure(
   return { success: true, procedureId: procedure.id }
 }
 
-// ─── Atualizar procedimento (apenas NETWORK_ADMIN) ─────────────────
+// --- Atualizar procedimento (apenas NETWORK_ADMIN) -----------------
 export async function updateProcedure(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
@@ -161,7 +161,7 @@ export async function updateProcedure(
   return { success: true }
 }
 
-// ─── Criar procedimento local da filial (apenas NETWORK_ADMIN) ────────────────
+// --- Criar procedimento local da filial (apenas NETWORK_ADMIN) ----------------
 export async function createBranchProcedure(
   _prev: { error?: string } | null,
   formData: FormData,
@@ -212,7 +212,7 @@ export async function createBranchProcedure(
   return {}
 }
 
-// ─── Ativar / desativar (apenas NETWORK_ADMIN) ────────────────────
+// --- Ativar / desativar (apenas NETWORK_ADMIN) --------------------
 export async function toggleProcedureStatus(procedureId: string, isActive: boolean) {
   const ctx = await getTenantContext()
   assertRole(ctx, ['NETWORK_ADMIN'])

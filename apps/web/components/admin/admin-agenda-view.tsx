@@ -1,9 +1,9 @@
-'use client'
+﻿'use client'
 
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
+// -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
 
 interface Branch      { id: string; name: string; slug: string }
@@ -28,7 +28,7 @@ interface Props {
   appointments: Appointment[]
 }
 
-// ── Constantes visuais ────────────────────────────────────────────────────────
+// -- Constantes visuais --------------------------------------------------------
 const GRID_START = 7    // 07:00
 const GRID_END   = 21   // 21:00
 const HOUR_H     = 72   // px por hora
@@ -44,7 +44,7 @@ const STATUS_STYLE: Record<string, { bg: string; border: string; text: string; l
   NO_SHOW:     { bg: '#fef2f2', border: '#fca5a5', text: '#b91c1c', label: 'Não compareceu' },
 }
 
-// ── Helpers de data ───────────────────────────────────────────────────────────
+// -- Helpers de data -----------------------------------------------------------
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + 'T00:00:00')
   d.setDate(d.getDate() + n)
@@ -94,7 +94,7 @@ function apptHeight(a: Appointment): number {
   return Math.max(58, (apptDuration(a) / 60) * HOUR_H)
 }
 
-// ── View Dia ─────────────────────────────────────────────────────────────────
+// -- View Dia -----------------------------------------------------------------
 function DayGrid({ branches, appointments }: { branches: Branch[]; appointments: Appointment[] }) {
   const byBranch: Record<string, Appointment[]> = {}
   for (const b of branches) byBranch[b.id] = []
@@ -257,7 +257,7 @@ function DayGrid({ branches, appointments }: { branches: Branch[]; appointments:
   )
 }
 
-// ── View Semana ───────────────────────────────────────────────────────────────
+// -- View Semana ---------------------------------------------------------------
 function WeekGrid({
   mondayStr, todayStr, branches, appointments, onDayClick,
 }: {
@@ -383,7 +383,7 @@ function WeekGrid({
   )
 }
 
-// ── Legenda de status ─────────────────────────────────────────────────────────
+// -- Legenda de status ---------------------------------------------------------
 function StatusLegend() {
   return (
     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -397,7 +397,7 @@ function StatusLegend() {
   )
 }
 
-// ── Componente principal ──────────────────────────────────────────────────────
+// -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({ view, selectedDate, todayStr, branches, appointments }: Props) {
   const router = useRouter()
 

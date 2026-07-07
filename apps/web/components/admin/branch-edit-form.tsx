@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useActionState, useState } from 'react'
 import { updateBranch } from '@/actions/branches'
@@ -72,7 +72,7 @@ export function BranchEditForm({ branch }: Props) {
   return (
     <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-      {/* ── Identificação ── */}
+      {/* -- Identificação -- */}
       <section className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <p className="overline" style={{ marginBottom: 4 }}>Identificação</p>
 
@@ -101,7 +101,7 @@ export function BranchEditForm({ branch }: Props) {
         </div>
       </section>
 
-      {/* ── Documentos fiscais ── */}
+      {/* -- Documentos fiscais -- */}
       <section className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <p className="overline" style={{ marginBottom: 4 }}>Documentos fiscais</p>
 
@@ -121,7 +121,7 @@ export function BranchEditForm({ branch }: Props) {
         </div>
       </section>
 
-      {/* ── Endereço ── */}
+      {/* -- Endereço -- */}
       <section className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <p className="overline" style={{ marginBottom: 4 }}>Endereço</p>
 

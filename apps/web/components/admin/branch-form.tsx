@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useActionState, useState, useEffect } from 'react'
 import { Plus, X, Loader2 } from 'lucide-react'
@@ -103,7 +103,7 @@ export function BranchForm() {
 
             <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-              {/* ── Identificação ── */}
+              {/* -- Identificação -- */}
               <section>
                 <p className="overline" style={{ marginBottom: 10 }}>Identificação</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -146,7 +146,7 @@ export function BranchForm() {
                 </div>
               </section>
 
-              {/* ── Documentos fiscais ── */}
+              {/* -- Documentos fiscais -- */}
               <section>
                 <p className="overline" style={{ marginBottom: 10 }}>Documentos fiscais</p>
                 <div className="form-2col">
@@ -161,7 +161,7 @@ export function BranchForm() {
                 </div>
               </section>
 
-              {/* ── Endereço ── */}
+              {/* -- Endereço -- */}
               <section>
                 <p className="overline" style={{ marginBottom: 10 }}>Endereço</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

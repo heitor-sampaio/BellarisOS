@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import {
   useState, useRef, useEffect, useTransition, useCallback,
@@ -16,7 +16,7 @@ import {
   type Conversation, type Message, type InboxChannel, type ConvStatus,
 } from '@/actions/inbox'
 
-// ─── Channel meta ────────────────────────────────────────────────────────────
+// --- Channel meta ------------------------------------------------------------
 
 const CH = {
   whatsapp:  { label: 'WhatsApp',  color: '#25D366', bg: '#f0fdf4', border: '#25D36633' },
@@ -63,7 +63,7 @@ function relTime(iso: string | null) {
   return format(d, 'dd/MM', { locale: ptBR })
 }
 
-// ─── Status chip ─────────────────────────────────────────────────────────────
+// --- Status chip -------------------------------------------------------------
 
 const STATUS_META: Record<ConvStatus, { label: string; color: string; bg: string; border: string }> = {
   open:    { label: 'Aberta',    color: '#3f9b6f', bg: '#f0fdf4', border: '#3f9b6f33' },
@@ -71,7 +71,7 @@ const STATUS_META: Record<ConvStatus, { label: string; color: string; bg: string
   closed:  { label: 'Encerrada', color: 'var(--text-faint)', bg: 'var(--bg-app)', border: 'var(--border)' },
 }
 
-// ─── Left: conversation list item ────────────────────────────────────────────
+// --- Left: conversation list item --------------------------------------------
 
 function ConvItem({ conv, selected, onClick }: { conv: Conversation; selected: boolean; onClick: () => void }) {
   return (
@@ -97,7 +97,7 @@ function ConvItem({ conv, selected, onClick }: { conv: Conversation; selected: b
           fontSize: 14, fontWeight: 800,
           color: selected ? '#fff' : 'var(--text-muted)',
         }}>
-          {(conv.contact_name ?? '?')[0].toUpperCase()}
+          {(conv.contact_name ?? '?')[0]!.toUpperCase()}
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -146,7 +146,7 @@ function ConvItem({ conv, selected, onClick }: { conv: Conversation; selected: b
   )
 }
 
-// ─── Right: message bubble ───────────────────────────────────────────────────
+// --- Right: message bubble ---------------------------------------------------
 
 function Bubble({ msg }: { msg: Message }) {
   const out = msg.direction === 'outbound'
@@ -185,7 +185,7 @@ function Bubble({ msg }: { msg: Message }) {
   )
 }
 
-// ─── New conversation modal ──────────────────────────────────────────────────
+// --- New conversation modal --------------------------------------------------
 
 interface Lead { id: string; name: string; phone?: string | null; branch_name?: string | null }
 
@@ -292,14 +292,14 @@ function NewConvModal({
   )
 }
 
-// ─── Channel filter ──────────────────────────────────────────────────────────
+// --- Channel filter ----------------------------------------------------------
 
 const FILTERS: { key: InboxChannel | 'all'; label: string }[] = [
   { key: 'all', label: 'Todos' },
   ...(Object.keys(CH) as InboxChannel[]).map(c => ({ key: c, label: CH[c].label })),
 ]
 
-// ─── Main export ─────────────────────────────────────────────────────────────
+// --- Main export -------------------------------------------------------------
 
 interface CRMInboxProps {
   initialConversations: Conversation[]
@@ -475,7 +475,7 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
         height: 'calc(100vh - var(--topbar-h) - 200px)',
         minHeight: 520,
       }}>
-        {/* ── Left panel: conversation list ── */}
+        {/* -- Left panel: conversation list -- */}
         <div style={{
           width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column',
           borderRight: '1px solid var(--border)',
@@ -559,7 +559,7 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
           </div>
         </div>
 
-        {/* ── Right panel: thread ── */}
+        {/* -- Right panel: thread -- */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           {!selectedConv ? (
             /* Empty state */
@@ -597,7 +597,7 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 15, fontWeight: 800, color: 'var(--brand)',
                 }}>
-                  {(selectedConv.contact_name ?? '?')[0].toUpperCase()}
+                  {(selectedConv.contact_name ?? '?')[0]!.toUpperCase()}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -653,7 +653,7 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px' }}>
                         <div style={{ flex: 1, height: 1, background: 'var(--hairline)' }} />
                         <span style={{ fontSize: 10.5, color: 'var(--text-faint)', fontWeight: 700 }}>
-                          {dayLabel(g.msgs[0].created_at)}
+                          {dayLabel(g.msgs[0]!.created_at)}
                         </span>
                         <div style={{ flex: 1, height: 1, background: 'var(--hairline)' }} />
                       </div>
@@ -727,7 +727,7 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
   )
 }
 
-// ─── Status dropdown ─────────────────────────────────────────────────────────
+// --- Status dropdown ---------------------------------------------------------
 
 function StatusDropdown({
   status, disabled, onChange,

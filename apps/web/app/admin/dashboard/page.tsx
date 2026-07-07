@@ -1,4 +1,4 @@
-import { getTenantContext, assertRole } from '@/lib/auth'
+﻿import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { geocodeCities, geocodeCeps } from '@/lib/geocoding'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -23,7 +23,7 @@ export default async function AdminDashboardPage({
   const admin = createAdminClient()
   const now   = new Date()
 
-  // ── Período selecionado ───────────────────────────────────────────
+  // -- Período selecionado -------------------------------------------
   const msPerDay = 86_400_000
   type Period = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
   const period = ((rawPeriod ?? 'month') as Period)
@@ -75,11 +75,11 @@ export default async function AdminDashboardPage({
     period === 'custom' ? `${startDate.toLocaleDateString('pt-BR')} – ${endDate.toLocaleDateString('pt-BR')}` :
     now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())
 
-  // ── Datas fixas (não afetadas pelo seletor) ───────────────────────
+  // -- Datas fixas (não afetadas pelo seletor) -----------------------
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const endOfToday   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
 
-  // ── Filiais ───────────────────────────────────────────────────────
+  // -- Filiais -------------------------------------------------------
   const { data: branchesRaw } = await admin
     .from('branches')
     .select('id, name, slug, city, state')
@@ -98,7 +98,7 @@ export default async function AdminDashboardPage({
     )
   }
 
-  // ── Queries paralelas ─────────────────────────────────────────────
+  // -- Queries paralelas ---------------------------------------------
   const [
     { data: txsCurrRaw },
     { data: txsPrevRaw },
@@ -251,7 +251,7 @@ export default async function AdminDashboardPage({
   const clientsCurr = (clientsCurrRaw ?? []) as any[]
   const todayAppts  = (todayApptsRaw  ?? []) as any[]
 
-  // ── KPIs consolidados ─────────────────────────────────────────────
+  // -- KPIs consolidados ---------------------------------------------
   const totalRevenue = txsCurr
     .filter(t => t.type === 'INCOME' && t.is_paid)
     .reduce((s, t) => s + Number(t.amount), 0)
@@ -265,7 +265,7 @@ export default async function AdminDashboardPage({
   const newClients        = clientsCurr.length
   const ticketMedio       = totalAppointments > 0 ? totalRevenue / totalAppointments : 0
 
-  // ── Por filial ────────────────────────────────────────────────────
+  // -- Por filial ----------------------------------------------------
   const branchStats: BranchStat[] = branches.map(branch => {
     const bTxs   = txsCurr.filter(t => t.branch_id === branch.id)
     const bAppts = apptsCurr.filter(a => a.branch_id === branch.id)
@@ -283,7 +283,7 @@ export default async function AdminDashboardPage({
     }
   })
 
-  // ── Hoje por filial ───────────────────────────────────────────────
+  // -- Hoje por filial -----------------------------------------------
   const todayByBranch: TodayBranchStat[] = branches
     .map(branch => {
       const bToday = todayAppts.filter(a => a.branch_id === branch.id)
@@ -301,7 +301,7 @@ export default async function AdminDashboardPage({
     })
     .filter(Boolean) as TodayBranchStat[]
 
-  // ── Alertas ───────────────────────────────────────────────────────
+  // -- Alertas -------------------------------------------------------
   const pendingPlans: AlertPendingPlan[] = (pendingPlansRaw ?? []).map((p: any) => ({
     id:         p.id,
     clientName: p.clients?.name ?? 'Cliente',
@@ -323,7 +323,7 @@ export default async function AdminDashboardPage({
       minStock:     Number(b.min_stock),
     }))
 
-  // ── Indicador de saúde do estoque ────────────────────────────────
+  // -- Indicador de saúde do estoque --------------------------------
   const zeroStockCount = allBps.filter(b =>
     Number(b.current_stock) === 0 && b.products?.is_active !== false
   ).length
@@ -343,7 +343,7 @@ export default async function AdminDashboardPage({
     .filter(t => t.type === 'EXPENSE')
     .reduce((s, t) => s + Number(t.amount), 0)
 
-  // ── Gráfico de evolução ───────────────────────────────────────────
+  // -- Gráfico de evolução -------------------------------------------
   const stockMoves  = (stockMovementsRaw ?? []) as any[]
   const granularity = period === 'today' ? 'hour' : 'day'
 
@@ -374,7 +374,7 @@ export default async function AdminDashboardPage({
         })
       })()
 
-  // ── Ocupação por filial ───────────────────────────────────────────
+  // -- Ocupação por filial -------------------------------------------
   // Numerador: slots que viraram atendimento (COMPLETED + IN_PROGRESS)
   // Denominador: todos os horários passados do mês (exceto futuros ainda agendados)
   const allMonthlyAppts = (allMonthlyApptsRaw ?? []) as any[]
@@ -394,7 +394,7 @@ export default async function AdminDashboardPage({
     }
   }).filter(b => b.total > 0).sort((a, b) => b.occupancyPct - a.occupancyPct)
 
-  // ── Analytics avançados ───────────────────────────────────────────
+  // -- Analytics avançados -------------------------------------------
 
   // 1. Top procedimentos por atendimentos
   const procCountMap: Record<string, { name: string; count: number }> = {}
@@ -575,7 +575,7 @@ export default async function AdminDashboardPage({
   const maxCityCount  = sortedCities[0]?.[1] ?? 1
   const topClientsByLocation = sortedCities.map(([city, count]) => ({ city, count, pct: (count / maxCityCount) * 100 }))
 
-  // ── Hotmap: geocodificar filiais (por cidade) + clientes (por CEP) ──
+  // -- Hotmap: geocodificar filiais (por cidade) + clientes (por CEP) --
   const branchCities    = branches.map(b => [b.city, b.state].filter(Boolean).join(', ')).filter(Boolean)
   const geocodedBranches = await geocodeCities(branchCities)
 
@@ -606,7 +606,7 @@ export default async function AdminDashboardPage({
     })
     .filter((p): p is NonNullable<typeof p> => p !== null)
 
-  // ── Hotmap LTV: gasto acumulado por CEP ───────────────────────────
+  // -- Hotmap LTV: gasto acumulado por CEP ---------------------------
   const clientLtvMap: Record<string, number> = {}
   for (const tx of (ltvTxsRaw ?? []) as any[]) {
     const clientId = tx.client_id as string | null

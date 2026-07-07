@@ -101,7 +101,7 @@ export class MetaAdsProvider implements AdsProvider {
 
     // purchase_roas: [{ action_type, value }] — take the first entry
     const roasArr = ins?.purchase_roas as Array<{ value: string }> | undefined
-    const roas    = roasArr && roasArr.length > 0 ? parseFloat(roasArr[0].value) : undefined
+    const roas    = roasArr && roasArr.length > 0 ? parseFloat(roasArr[0]!.value) : undefined
 
     // action_values: [{ action_type, value }] — sum all purchase-type entries to get total conversion value
     const actionVals = ins?.action_values as Array<{ action_type: string; value: string }> | undefined

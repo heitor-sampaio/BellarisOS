@@ -7,6 +7,47 @@ import type { Campaign } from '@/lib/ads/types'
 
 type SortKey = 'spend' | 'impressions' | 'cpm' | 'linkClicks' | 'linkCtr' | 'conversions' | 'costPerConversion' | 'conversionValue'
 type StatusFilter = 'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'
+type Signal = 'scale' | 'watch' | 'review' | 'neutral'
+
+const SIGNAL_CONFIG: Record<Signal, { label: string; color: string; bg: string; rowBg: string }> = {
+  scale:   { label: 'Escalar',  color: '#15803d', bg: '#dcfce7', rowBg: '#f0fdf440' },
+  watch:   { label: 'Observar', color: '#92400e', bg: '#fef3c7', rowBg: '#fffbeb40' },
+  review:  { label: 'Revisar',  color: '#991b1b', bg: '#fee2e2', rowBg: '#fef2f240' },
+  neutral: { label: '',         color: 'var(--text-muted)', bg: 'transparent', rowBg: '' },
+}
+
+function computeSignal(
+  c: Campaign,
+  avgRoi: number,
+  avgCpa: number,
+  avgCtr: number,
+  totalSpend: number,
+): Signal {
+  const roi = c.conversionValue != null && c.spend > 0
+    ? (c.conversionValue - c.spend) / c.spend * 100
+    : null
+  const cpa = c.costPerConversion ?? null
+  const ctr = c.linkCtr ?? null
+  const spendShare = totalSpend > 0 ? c.spend / totalSpend : 0
+  const hasConversionData = roi !== null
+
+  // Revisar: ROI negativo, ou gasto relevante com zero conversões confirmadas
+  if (roi !== null && roi < 0) return 'review'
+  if (spendShare > 0.05 && c.conversions === 0 && c.spend > 0) return 'review'
+  // Sem conversão configurada: CTR muito abaixo da média com gasto relevante
+  if (!hasConversionData && spendShare > 0.1 && ctr !== null && avgCtr > 0 && ctr < avgCtr * 0.5) return 'review'
+
+  // Escalar: ROI acima da média E CPA abaixo da média
+  if (roi !== null && roi > avgRoi && (cpa === null || cpa < avgCpa)) return 'scale'
+  // Sem conversão configurada: CTR expressivamente acima da média
+  if (!hasConversionData && ctr !== null && avgCtr > 0 && ctr > avgCtr * 1.5) return 'scale'
+
+  // Observar: ROI positivo; ou CTR abaixo da média com gasto relevante
+  if (roi !== null && roi >= 0) return 'watch'
+  if (ctr !== null && avgCtr > 0 && ctr < avgCtr * 0.8 && spendShare > 0.05) return 'watch'
+
+  return 'neutral'
+}
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE:   'Ativo',
@@ -70,6 +111,35 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
     conversions:     acc.conversions     + (c.conversions     ?? 0),
     conversionValue: acc.conversionValue + (c.conversionValue ?? 0),
   }), { spend: 0, impressions: 0, linkClicks: 0, conversions: 0, conversionValue: 0 }), [filtered])
+
+  // Sinais de decisão — calculados sobre todas as campanhas ativas visíveis
+  const { avgRoi, avgCpa, avgCtr } = useMemo(() => {
+    const withRoi = filtered.filter(c => c.conversionValue != null && c.spend > 0)
+    const withCpa = filtered.filter(c => c.costPerConversion != null)
+    const withCtr = filtered.filter(c => c.linkCtr != null)
+    const avgRoi = withRoi.length > 0
+      ? withRoi.reduce((s, c) => s + (c.conversionValue! - c.spend) / c.spend * 100, 0) / withRoi.length
+      : 0
+    const avgCpa = withCpa.length > 0
+      ? withCpa.reduce((s, c) => s + c.costPerConversion!, 0) / withCpa.length
+      : 0
+    const avgCtr = withCtr.length > 0
+      ? withCtr.reduce((s, c) => s + c.linkCtr!, 0) / withCtr.length
+      : 0
+    return { avgRoi, avgCpa, avgCtr }
+  }, [filtered])
+
+  const signals = useMemo(() =>
+    Object.fromEntries(
+      filtered.map(c => [c.id, computeSignal(c, avgRoi, avgCpa, avgCtr, totals.spend)])
+    ) as Record<string, Signal>,
+  [filtered, avgRoi, avgCpa, avgCtr, totals.spend])
+
+  const signalCounts = useMemo(() => {
+    const counts = { scale: 0, watch: 0, review: 0, neutral: 0 }
+    for (const s of Object.values(signals)) counts[s]++
+    return counts
+  }, [signals])
 
   const totalCpm     = totals.impressions > 0  ? (totals.spend / totals.impressions) * 1000 : 0
   const totalLinkCtr = totals.impressions > 0  ? (totals.linkClicks / totals.impressions) * 100 : 0
@@ -164,6 +234,28 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
         </div>
       </div>
 
+      {/* Card de resumo de sinais */}
+      {filtered.length > 0 && (signalCounts.scale > 0 || signalCounts.watch > 0 || signalCounts.review > 0) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 4 }}>Sinais</span>
+          {signalCounts.scale > 0 && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: SIGNAL_CONFIG.scale.color, background: SIGNAL_CONFIG.scale.bg, borderRadius: 99, padding: '3px 10px' }}>
+              ↑ {signalCounts.scale} para escalar
+            </span>
+          )}
+          {signalCounts.watch > 0 && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: SIGNAL_CONFIG.watch.color, background: SIGNAL_CONFIG.watch.bg, borderRadius: 99, padding: '3px 10px' }}>
+              ◎ {signalCounts.watch} para observar
+            </span>
+          )}
+          {signalCounts.review > 0 && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: SIGNAL_CONFIG.review.color, background: SIGNAL_CONFIG.review.bg, borderRadius: 99, padding: '3px 10px' }}>
+              ↓ {signalCounts.review} para revisar
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Tabela */}
       {sorted.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
@@ -175,6 +267,7 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 <th style={{ ...headerStyle, textAlign: 'left' }}>Campanha</th>
+                <th style={{ ...headerStyle, textAlign: 'center', cursor: 'default' }}>Sinal</th>
                 <th style={{ ...headerStyle, textAlign: 'center' }}>Status</th>
                 <th style={headerStyle} onClick={() => handleSort('spend')}>
                   Gasto <SortIcon k="spend" />
@@ -208,9 +301,9 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
                 <tr
                   key={c.id}
                   onClick={() => router.push(`/admin/marketing/campanhas/${c.id}?period=${preset}`)}
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: 'pointer', background: SIGNAL_CONFIG[signals[c.id] ?? 'neutral'].rowBg || undefined }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-raised, #fafaf9)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = '')}
+                  onMouseLeave={e => (e.currentTarget.style.background = SIGNAL_CONFIG[signals[c.id] ?? 'neutral'].rowBg || '')}
                 >
                   <td style={{ ...cellStyle, textAlign: 'left', maxWidth: 260 }}>
                     <span style={{
@@ -219,6 +312,18 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
                     }}>
                       {c.name}
                     </span>
+                  </td>
+                  <td style={{ ...cellStyle, textAlign: 'center' }}>
+                    {(() => {
+                      const sig = signals[c.id] ?? 'neutral'
+                      const cfg = SIGNAL_CONFIG[sig]
+                      if (sig === 'neutral') return <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
+                      return (
+                        <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: cfg.color, background: cfg.bg, whiteSpace: 'nowrap' }}>
+                          {sig === 'scale' ? '↑' : sig === 'review' ? '↓' : '◎'} {cfg.label}
+                        </span>
+                      )
+                    })()}
                   </td>
                   <td style={{ ...cellStyle, textAlign: 'center' }}>
                     <span style={{
@@ -248,7 +353,7 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={2} style={{ ...totalCellStyle, textAlign: 'left' }}>
+                <td colSpan={3} style={{ ...totalCellStyle, textAlign: 'left' }}>
                   {filtered.length} {filtered.length === 1 ? 'campanha' : 'campanhas'}
                   {statusFilter !== 'ALL' && ` · ${STATUS_LABEL[statusFilter]?.toLowerCase()}`}
                   {search && ` · "${search}"`}

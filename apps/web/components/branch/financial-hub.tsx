@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -11,7 +11,7 @@ import { FinancialTransactionModal }                        from './financial-tr
 import { ClientCreditModal, ClientCreditModalHandle }       from './client-credit-modal'
 import { FinancialTable, Transaction }                      from './financial-table'
 
-// ─── Types ────────────────────────────────────────────────────────
+// --- Types --------------------------------------------------------
 
 interface PrevTx { type: 'INCOME' | 'EXPENSE'; amount: number; is_paid: boolean }
 
@@ -41,7 +41,7 @@ interface Props {
   clients:          { id: string; name: string }[]
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────
+// --- Helpers ------------------------------------------------------
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -83,7 +83,7 @@ function delta(curr: number, prev: number): { pct: number; up: boolean; neutral:
   return { pct: Math.abs(pct), up: pct >= 0, neutral: false }
 }
 
-// ─── KPI Card ─────────────────────────────────────────────────────
+// --- KPI Card -----------------------------------------------------
 
 function KpiCardFull({
   label, curr, prev, icon, iconBg, valueColor, invertDelta = false, format = fmtBRL, highlight = false,
@@ -150,7 +150,7 @@ function KpiCardFull({
   )
 }
 
-// ─── Evolution Chart (SVG bar chart) ─────────────────────────────
+// --- Evolution Chart (SVG bar chart) -----------------------------
 
 interface BarDatum { label: string; income: number; expense: number }
 
@@ -168,8 +168,8 @@ function groupByPeriod(
     txs.forEach(tx => {
       if (!tx.is_paid) return
       const h = new Date(tx.created_at).getHours()
-      if (tx.type === 'INCOME')  hours[h].income  += Number(tx.amount)
-      if (tx.type === 'EXPENSE') hours[h].expense += Number(tx.amount)
+      if (tx.type === 'INCOME')  hours[h]!.income  += Number(tx.amount)
+      if (tx.type === 'EXPENSE') hours[h]!.expense += Number(tx.amount)
     })
     return hours
   }
@@ -294,7 +294,7 @@ function EvolutionChart({ data }: { data: BarDatum[] }) {
   )
 }
 
-// ─── Payment Method Donut ─────────────────────────────────────────
+// --- Payment Method Donut -----------------------------------------
 
 interface DonutSegment { label: string; value: number; color: string }
 
@@ -354,7 +354,7 @@ function DonutChart({ segments, total }: { segments: DonutSegment[]; total: numb
   )
 }
 
-// ─── Category Horizontal Bars ─────────────────────────────────────
+// --- Category Horizontal Bars -------------------------------------
 
 function CategoryBars({
   items, color,
@@ -396,7 +396,7 @@ function CategoryBars({
   )
 }
 
-// ─── Commissions Card ─────────────────────────────────────────────
+// --- Commissions Card ---------------------------------------------
 
 function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
   const totalComm = entries.reduce((s, e) => s + e.amount, 0)
@@ -410,7 +410,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
       seen[e.professionalId] = groups.length
       groups.push({ id: e.professionalId, name: e.professionalName, items: [] })
     }
-    groups[seen[e.professionalId]].items.push(e)
+    groups[seen[e.professionalId]!]!.items.push(e)
   }
 
   return (
@@ -504,7 +504,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
   )
 }
 
-// ─── Main Hub ─────────────────────────────────────────────────────
+// --- Main Hub -----------------------------------------------------
 
 export function FinancialHub({
   branchId, branchName, slug,
@@ -524,7 +524,7 @@ export function FinancialHub({
     startTransition(() => { router.push(`?period=${p}`) })
   }
 
-  // ── KPIs ──────────────────────────────────────────────────────
+  // -- KPIs ------------------------------------------------------
   const { income, expense, pendingIncome, pendingExpense, avgTicket } = useMemo(() => {
     const paid      = transactions.filter(t => t.is_paid && t.notes !== 'Estornada')
     const unpaid    = transactions.filter(t => !t.is_paid)
@@ -550,7 +550,7 @@ export function FinancialHub({
   const saldo     = income - expense
   const prevSaldo = prevIncome - prevExpense
 
-  // ── Charts ────────────────────────────────────────────────────
+  // -- Charts ----------------------------------------------------
   const barData = useMemo(
     () => groupByPeriod(transactions, period, periodStart),
     [transactions, period, periodStart],

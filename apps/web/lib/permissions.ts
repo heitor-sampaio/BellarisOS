@@ -1,4 +1,4 @@
-export type AppModule = 'agenda' | 'clients' | 'procedures' | 'stock' | 'financial' | 'settings'
+﻿export type AppModule = 'agenda' | 'clients' | 'procedures' | 'stock' | 'financial' | 'settings'
 export type ConfigurableRole = 'BRANCH_ADMIN' | 'RECEPTIONIST' | 'PROFESSIONAL' | 'FINANCIAL'
 
 export const MODULE_LABELS: Record<AppModule, string> = {
@@ -26,7 +26,7 @@ export interface MatrixRole {
   permissions: ResolvedPermissions
 }
 
-// ─── Defaults dos cargos de sistema ─────────────────────────────
+// --- Defaults dos cargos de sistema -----------------------------
 const DEFAULT_VIEW: Record<string, Record<AppModule, boolean>> = {
   BRANCH_ADMIN: { agenda: true,  clients: true,  procedures: true,  stock: true,  financial: true,  settings: true  },
   RECEPTIONIST: { agenda: true,  clients: true,  procedures: true,  stock: true,  financial: true,  settings: false },

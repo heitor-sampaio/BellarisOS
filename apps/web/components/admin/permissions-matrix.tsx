@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useActionState, useState } from 'react'
 import { saveRolePermissions } from '@/actions/permissions'
@@ -8,7 +8,7 @@ import {
 } from '@/lib/permissions'
 import { CheckCircle2 } from 'lucide-react'
 
-// ─── Toggle individual ───────────────────────────────────────────
+// --- Toggle individual -------------------------------------------
 function Toggle({
   name, checked, onChange, disabled,
 }: {
@@ -43,7 +43,7 @@ function Toggle({
   )
 }
 
-// ─── Par Ver + Editar por célula ─────────────────────────────────
+// --- Par Ver + Editar por célula ---------------------------------
 function CellPair({
   roleKey, module, defaultView, defaultWrite,
 }: {
@@ -73,7 +73,7 @@ function CellPair({
   )
 }
 
-// ─── Matriz principal ────────────────────────────────────────────
+// --- Matriz principal --------------------------------------------
 interface PermissionsMatrixProps {
   matrix: MatrixRole[]
 }

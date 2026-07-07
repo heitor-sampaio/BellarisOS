@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, ImageOff } from 'lucide-react'
-import type { CampaignDetail, AdSet, Ad, AgeBreakdown, PlacementBreakdown } from '@/lib/ads/types'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import type { CampaignDetail, AdSet, Ad, AgeBreakdown, PlacementBreakdown, DailyInsight } from '@/lib/ads/types'
 
 const STATUS_COLOR: Record<string, string> = {
   ACTIVE:   'var(--success)',
@@ -166,14 +167,27 @@ function AdSetRow({
         <div style={{ borderTop: '1px solid var(--hairline)', background: 'var(--surface-raised, #fafaf9)' }}>
           {/* Métricas do conjunto */}
           <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8 }}>
-              <MetricMini label="Gasto"      value={fmtBRL(s.insights.spend)} />
-              <MetricMini label="Impressões" value={fmtNum(s.insights.impressions)} />
-              <MetricMini label="CPM"        value={fmtBRL(s.insights.cpm)} />
-              <MetricMini label="Cliques"    value={fmtNum(s.insights.linkClicks)} />
-              <MetricMini label="CTR"        value={fmtPct(s.insights.ctr)} />
-              <MetricMini label="CPC"        value={fmtBRL(s.insights.cpc)} />
-            </div>
+            {(() => {
+              const freq = s.insights.reach != null && s.insights.reach > 0
+                ? s.insights.impressions / s.insights.reach : null
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${freq != null ? 7 : 6}, 1fr)`, gap: 8 }}>
+                  <MetricMini label="Gasto"      value={fmtBRL(s.insights.spend)} />
+                  <MetricMini label="Impressões" value={fmtNum(s.insights.impressions)} />
+                  <MetricMini label="CPM"        value={fmtBRL(s.insights.cpm)} />
+                  <MetricMini label="Cliques"    value={fmtNum(s.insights.linkClicks)} />
+                  <MetricMini label="CTR"        value={fmtPct(s.insights.ctr)} />
+                  <MetricMini label="CPC"        value={fmtBRL(s.insights.cpc)} />
+                  {freq != null && (
+                    <div style={{ padding: '8px 12px', borderRadius: 7, border: `1px solid ${freq > 3 ? '#fcd34d' : 'var(--border)'}`, background: freq > 3 ? '#fef9c3' : '#fff' }}>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 3 }}>Frequência</span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: freq > 3 ? '#92400e' : 'var(--text)', letterSpacing: 'var(--tracking-tight)' }}>{freq.toFixed(2).replace('.', ',')}</span>
+                      {freq > 3 && <span style={{ display: 'block', fontSize: 9, fontWeight: 600, color: '#92400e', marginTop: 2 }}>Saturando</span>}
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {tags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -426,6 +440,119 @@ function BreakdownBar({ label, spend, maxSpend, totalSpend }: { label: string; s
   )
 }
 
+type TrendMetric = 'spend' | 'conversions' | 'roi'
+
+const TREND_METRICS: { key: TrendMetric; label: string; fmt: (v: number) => string; color: string }[] = [
+  { key: 'spend',       label: 'Gasto',       fmt: v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), color: 'var(--brand)' },
+  { key: 'conversions', label: 'Conversões',  fmt: v => v.toLocaleString('pt-BR'),                                          color: '#2563eb' },
+  { key: 'roi',         label: 'ROI',         fmt: v => (v >= 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + '%',         color: '#16a34a' },
+]
+
+function TrendChart({ daily }: { daily: DailyInsight[] }) {
+  const [metric, setMetric] = useState<TrendMetric>('spend')
+
+  const cfg = TREND_METRICS.find(m => m.key === metric)!
+
+  const chartData = daily.map(d => ({
+    date: d.date,
+    value: metric === 'spend'
+      ? d.spend
+      : metric === 'conversions'
+      ? (d.conversions ?? null)
+      : (d.roi ?? null),
+  }))
+
+  const hasData = chartData.some(p => p.value != null)
+
+  if (!hasData) {
+    return (
+      <div className="card">
+        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Tendência</p>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>Dados insuficientes para o período selecionado.</p>
+      </div>
+    )
+  }
+
+  function yFmt(v: number): string {
+    if (metric === 'spend') {
+      if (v >= 1000) return `R$${(v / 1000).toFixed(1).replace('.', ',')}k`
+      return `R$${v.toFixed(0)}`
+    }
+    if (metric === 'roi') return v.toFixed(0) + '%'
+    return v.toFixed(0)
+  }
+
+  function xFmt(dateStr: string): string {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  }
+
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Tendência diária</p>
+        <div style={{ display: 'flex', gap: 3, background: 'var(--surface-raised, #fafaf9)', borderRadius: 7, padding: 3, border: '1px solid var(--border)' }}>
+          {TREND_METRICS.map(m => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => setMetric(m.key)}
+              className={metric === m.key ? 'btn-primary' : 'btn-ghost'}
+              style={{ fontSize: 11, padding: '4px 10px', whiteSpace: 'nowrap' }}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <ResponsiveContainer width="100%" height={200}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 16, bottom: 0, left: 10 }}>
+          <defs>
+            <linearGradient id={`grad-${metric}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%"  stopColor={cfg.color} stopOpacity={0.15} />
+              <stop offset="95%" stopColor={cfg.color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline, #e8e5e0)" vertical={false} />
+          <XAxis
+            dataKey="date"
+            tickFormatter={xFmt}
+            tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+            tickLine={false}
+            axisLine={false}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            tickFormatter={yFmt}
+            tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+            tickLine={false}
+            axisLine={false}
+            width={58}
+          />
+          <Tooltip
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', padding: '8px 12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+            labelFormatter={(label: unknown) => xFmt(String(label))}
+            formatter={(value: unknown) => {
+              if (typeof value === 'number') return [cfg.fmt(value), cfg.label]
+              return [String(value ?? ''), cfg.label]
+            }}
+          />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke={cfg.color}
+            strokeWidth={2}
+            fill={`url(#grad-${metric})`}
+            dot={{ r: 3, fill: cfg.color, strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: cfg.color, stroke: '#fff', strokeWidth: 2 }}
+            connectNulls={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 export function CampaignDetailContent({ data }: { data: CampaignDetail }) {
   const { adSets, ads, ageBreakdowns, geoBreakdowns } = data
   const adSetAgeMap = data.adSetAgeBreakdowns
@@ -450,6 +577,9 @@ export function CampaignDetailContent({ data }: { data: CampaignDetail }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Gráfico de tendência temporal */}
+      {data.dailyInsights.length > 1 && <TrendChart daily={data.dailyInsights} />}
+
       <div style={{ display: 'grid', gridTemplateColumns: hasSegmentation ? '1fr 360px' : '1fr', gap: 16, alignItems: 'start' }}>
         {/* Ad Sets com criativos aninhados */}
         {adSets.length > 0 && (

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
@@ -11,7 +11,7 @@ import {
   type TableColumn,
 } from './reports-charts'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 type Tab = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque'
 
 const TABS: { key: Tab; label: string }[] = [
@@ -49,7 +49,7 @@ export interface ReportsBiProps {
   evolutionData: ChartPoint[]
 }
 
-// ── Animated number ───────────────────────────────────────────────────────────
+// -- Animated number -----------------------------------------------------------
 function useCountUp(target: number, duration = 900): number {
   const [val, setVal] = useState(0)
   const frameRef = useRef<number>(0)
@@ -79,7 +79,7 @@ function AnimatedNum({ value, format = 'brl' }: {
   return <>{Math.round(n).toLocaleString('pt-BR')}</>
 }
 
-// ── KPI card ──────────────────────────────────────────────────────────────────
+// -- KPI card ------------------------------------------------------------------
 function KpiCard({
   label, value, format = 'brl', delta, accent, showDelta = false,
 }: {
@@ -123,7 +123,7 @@ function KpiCard({
   )
 }
 
-// ── Section card ──────────────────────────────────────────────────────────────
+// -- Section card --------------------------------------------------------------
 function SCard({
   title, children, style,
 }: {
@@ -146,13 +146,13 @@ function SCard({
   )
 }
 
-// ── Delta helper ──────────────────────────────────────────────────────────────
+// -- Delta helper --------------------------------------------------------------
 function pctDelta(curr: number, prev: number): number | null {
   if (prev === 0) return null
   return ((curr - prev) / prev) * 100
 }
 
-// ── Formatters ────────────────────────────────────────────────────────────────
+// -- Formatters ----------------------------------------------------------------
 const PAY_LABELS: Record<string, string> = {
   CASH: 'Dinheiro', PIX: 'Pix',
   DEBIT_CARD: 'Débito', CREDIT_CARD: 'Crédito', INTERNAL_CREDIT: 'Crédito Interno',
@@ -167,9 +167,9 @@ const STATUS_LABELS: Record<string, string> = {
   SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', IN_PROGRESS: 'Em Andamento',
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // TAB: VISÃO GERAL
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 function TabOverview(p: ReportsBiProps) {
   const { txsCurr, txsPrev, apptsCurr, apptsPrevCount, clientsCurr, clientsPrevCount,
     stockMoves, allAppts, commissions, branches, evolutionData, granularity } = p
@@ -254,16 +254,16 @@ function TabOverview(p: ReportsBiProps) {
           <DonutChart data={byPayment} />
         </SCard>
         <SCard title="Status dos Agendamentos">
-          <DonutChart data={byStatus} colors={[CHART_COLORS[3], CHART_COLORS[4], '#dc2626', CHART_COLORS[2], CHART_COLORS[0], CHART_COLORS[5]]} />
+          <DonutChart data={byStatus} colors={[CHART_COLORS[3]!, CHART_COLORS[4]!, '#dc2626', CHART_COLORS[2]!, CHART_COLORS[0]!, CHART_COLORS[5]!]} />
         </SCard>
       </div>
     </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // TAB: FINANCEIRO
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 function TabFinanceiro(p: ReportsBiProps) {
   const { txsCurr, txsPrev, stockMoves, branches, installments } = p
 
@@ -291,10 +291,10 @@ function TabFinanceiro(p: ReportsBiProps) {
   const branchMap: Record<string, { curr: number; prev: number }> = {}
   branches.forEach(b => { branchMap[b.id] = { curr: 0, prev: 0 } })
   txsCurr.filter(t => t.type === 'INCOME' && t.is_paid).forEach(t => {
-    if (branchMap[t.branch_id]) branchMap[t.branch_id].curr += Number(t.amount)
+    const bm = branchMap[t.branch_id]; if (bm) bm.curr += Number(t.amount)
   })
   txsPrev.filter(t => t.type === 'INCOME' && t.is_paid).forEach(t => {
-    if (branchMap[t.branch_id]) branchMap[t.branch_id].prev += Number(t.amount)
+    const bm = branchMap[t.branch_id]; if (bm) bm.prev += Number(t.amount)
   })
   const branchCompareCurr  = branches.map(b => ({ name: b.name, value: branchMap[b.id]?.curr  ?? 0 }))
   const branchComparePrev  = branches.map(b => ({ name: b.name, value: branchMap[b.id]?.prev  ?? 0 }))
@@ -362,9 +362,9 @@ function TabFinanceiro(p: ReportsBiProps) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // TAB: AGENDA
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 function TabAgenda(p: ReportsBiProps) {
   const { allAppts, apptsCurr, apptsPrevCount, branches } = p
 
@@ -430,7 +430,7 @@ function TabAgenda(p: ReportsBiProps) {
         <SCard title="Distribuição por Status">
           <DonutChart
             data={byStatus}
-            colors={[CHART_COLORS[3], CHART_COLORS[4], '#dc2626', CHART_COLORS[5]]}
+            colors={[CHART_COLORS[3]!, CHART_COLORS[4]!, '#dc2626', CHART_COLORS[5]!]}
             formatLabel={(v, t) => `${v} (${((v/t)*100).toFixed(0)}%)`}
           />
         </SCard>
@@ -452,9 +452,9 @@ function TabAgenda(p: ReportsBiProps) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // TAB: CLIENTES
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 function TabClientes(p: ReportsBiProps) {
   const { clientsCurr, clientsPrevCount, clientsAll, txsCurr, apptsCurr } = p
 
@@ -497,14 +497,14 @@ function TabClientes(p: ReportsBiProps) {
   const thisYear = new Date().getFullYear()
   clientsAll.filter(c => c.birth_date).forEach(c => {
     const age = thisYear - new Date(c.birth_date).getFullYear()
-    if (age < 18)      ageBuckets[0]++
-    else if (age < 25) ageBuckets[1]++
-    else if (age < 35) ageBuckets[2]++
-    else if (age < 45) ageBuckets[3]++
-    else if (age < 55) ageBuckets[4]++
-    else               ageBuckets[5]++
+    if (age < 18)      ageBuckets[0]!++
+    else if (age < 25) ageBuckets[1]!++
+    else if (age < 35) ageBuckets[2]!++
+    else if (age < 45) ageBuckets[3]!++
+    else if (age < 55) ageBuckets[4]!++
+    else               ageBuckets[5]!++
   })
-  const byAge = AGE_LABELS.map((name, i) => ({ name, value: ageBuckets[i] }))
+  const byAge = AGE_LABELS.map((name, i) => ({ name, value: ageBuckets[i] ?? 0 }))
 
   // Gender
   const genderMap: Record<string, number> = {}
@@ -556,7 +556,7 @@ function TabClientes(p: ReportsBiProps) {
           <DonutChart data={byAge} />
         </SCard>
         <SCard title="Gênero">
-          <DonutChart data={byGender} colors={[CHART_COLORS[0], CHART_COLORS[2], CHART_COLORS[5]]} />
+          <DonutChart data={byGender} colors={[CHART_COLORS[0]!, CHART_COLORS[2]!, CHART_COLORS[5]!]} />
         </SCard>
         <SCard title="Top 10 Cidades">
           <HBarChart data={byCities} formatValue={(v) => String(v)} color={CHART_COLORS[2]} />
@@ -569,9 +569,9 @@ function TabClientes(p: ReportsBiProps) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // Helpers — faixa etária e ranking por idade
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 const AGE_GROUP_ORDER = ['< 18', '18–24', '25–34', '35–44', '45–54', '55–64', '65+', 'Não informado']
 
 function getAgeGroup(birthDate: string | null, ref: Date): string {
@@ -632,9 +632,9 @@ function AgeRankCard({ data }: {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // TAB: PROCEDIMENTOS
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 function TabProcedimentos(p: ReportsBiProps) {
   const { apptsCurr, txsPrev, apptsPrevCount, procedureCosts } = p
   const prevRevenue = txsPrev.filter(t => t.type === 'INCOME' && t.is_paid).reduce((s, t) => s + Number(t.amount), 0)
@@ -648,7 +648,7 @@ function TabProcedimentos(p: ReportsBiProps) {
     procData[k].count++
   })
 
-  // ── Custo por procedure_id → para cálculo de margem ────────────────
+  // -- Custo por procedure_id → para cálculo de margem ----------------
   const costByProcedure = new Map<string, number>()
   for (const pp of procedureCosts) {
     const qty  = Number(pp.quantity ?? 0)
@@ -656,7 +656,7 @@ function TabProcedimentos(p: ReportsBiProps) {
     costByProcedure.set(pp.procedure_id, (costByProcedure.get(pp.procedure_id) ?? 0) + qty * cost)
   }
 
-  // ── Agrupamento por faixa etária ───────────────────────────────────
+  // -- Agrupamento por faixa etária -----------------------------------
   const refDate = new Date()
   const ageVolumeMap = new Map<string, Map<string, number>>()
   const ageMarginMap = new Map<string, Map<string, { total: number; count: number }>>()
@@ -788,9 +788,9 @@ function TabProcedimentos(p: ReportsBiProps) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // TAB: PROFISSIONAIS
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 function TabProfissionais(p: ReportsBiProps) {
   const { apptsCurr, commissions, branches, apptsPrevCount } = p
 
@@ -874,9 +874,9 @@ function TabProfissionais(p: ReportsBiProps) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // TAB: ESTOQUE
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 function TabEstoque(p: ReportsBiProps) {
   const { stockMoves, bps, productBatches, branches } = p
 
@@ -982,9 +982,9 @@ function TabEstoque(p: ReportsBiProps) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 // MAIN: ReportsBiView
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 export function ReportsBiView(props: ReportsBiProps) {
   const router = useRouter()
   const { tab, period } = props

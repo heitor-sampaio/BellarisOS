@@ -1,11 +1,11 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// ─── Helper: valida que o branchId pertence ao tenant ────────────
+// --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
   const supabase = await createSupabase()
   const { data } = await supabase
@@ -17,7 +17,7 @@ async function resolveBranch(tenantId: string, branchId: string) {
   return data
 }
 
-// ─── Criar cliente ────────────────────────────────────────────────
+// --- Criar cliente ------------------------------------------------
 export async function addClient(
   _prev: { error?: string; success?: boolean; clientId?: string } | undefined,
   formData: FormData,
@@ -79,11 +79,31 @@ export async function addClient(
   // LoyaltyAccount criada automaticamente
   await supabase.from('loyalty_accounts').insert({ client_id: client.id })
 
+  // Criar conta Supabase Auth (login = email, senha temporária = CPF)
+  if (email && document) {
+    const authAdmin = createAdminClient()
+    const { data: authUser, error: authErr } = await authAdmin.auth.admin.createUser({
+      email,
+      password: document,
+      email_confirm: true,
+    })
+    if (!authErr && authUser?.user) {
+      await authAdmin.rpc('set_client_claims', {
+        p_auth_id:   authUser.user.id,
+        p_client_id: client.id,
+      })
+      await authAdmin.from('clients')
+        .update({ auth_id: authUser.user.id })
+        .eq('id', client.id)
+    }
+    // Falha silenciosa — cliente é cadastrado mesmo sem conta auth
+  }
+
   revalidatePath(`/${slug}/clients`)
   return { success: true, clientId: client.id }
 }
 
-// ─── Atualizar dados do cliente ────────────────────────────────────
+// --- Atualizar dados do cliente ------------------------------------
 export async function updateClient(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
@@ -140,7 +160,7 @@ export async function updateClient(
   return { success: true }
 }
 
-// ─── Conceder crédito interno ──────────────────────────────────────
+// --- Conceder crédito interno --------------------------------------
 export async function grantInternalCredit(
   _prev: { error?: string } | null,
   formData: FormData,
@@ -182,7 +202,7 @@ export async function grantInternalCredit(
   return {}
 }
 
-// ─── Atualizar dados cadastrais (CPF + endereço) ──────────────────
+// --- Atualizar dados cadastrais (CPF + endereço) ------------------
 export async function updateClientContactData(
   clientId: string,
   data: {
@@ -244,7 +264,7 @@ export async function updateClientContactData(
   return {}
 }
 
-// ─── Buscar cliente por CPF (para autocomplete interno) ───────────
+// --- Buscar cliente por CPF (para autocomplete interno) -----------
 export async function lookupClientByCpf(
   cpf: string,
   currentClientId: string,
@@ -266,7 +286,46 @@ export async function lookupClientByCpf(
   return { found: true, isSelf, name: data.name }
 }
 
-// ─── Ativar / desativar cliente ────────────────────────────────────
+// --- Atualizar próprios dados (CLIENT) ----------------------------
+export async function updateClientSelf(
+  _prev: { error?: string; success?: boolean } | undefined,
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean }> {
+  const ctx = await getTenantContext()
+  assertRole(ctx, ['CLIENT'])
+
+  const admin   = createAdminClient()
+  const phone   = (formData.get('phone') as string)?.replace(/\D/g, '') || null
+  const email   = (formData.get('email') as string)?.trim() || null
+  const zip     = (formData.get('zip_code') as string)?.replace(/\D/g, '') || null
+  const addr    = (formData.get('address') as string)?.trim() || null
+  const addrNum = (formData.get('address_number') as string)?.trim() || null
+  const addrCmp = (formData.get('address_complement') as string)?.trim() || null
+  const hood    = (formData.get('neighborhood') as string)?.trim() || null
+  const city    = (formData.get('city') as string)?.trim() || null
+  const state   = (formData.get('state') as string)?.trim() || null
+
+  const { error } = await admin
+    .from('clients')
+    .update({
+      phone,
+      email,
+      zip_code:           zip,
+      address:            addr,
+      address_number:     addrNum,
+      address_complement: addrCmp,
+      neighborhood:       hood,
+      city,
+      state,
+      updated_at:         new Date().toISOString(),
+    })
+    .eq('id', ctx.clientId!)
+
+  if (error) return { error: error.message }
+  return { success: true }
+}
+
+// --- Ativar / desativar cliente ------------------------------------
 export async function toggleClientStatus(clientId: string, isActive: boolean, slug: string) {
   const ctx = await getTenantContext()
   assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])

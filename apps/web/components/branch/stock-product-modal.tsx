@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import {
   useRef, useCallback, useState, useMemo,
@@ -128,9 +128,9 @@ function Label({ children }: { children: React.ReactNode }) {
   )
 }
 
-// ── Campos compartilhados ────────────────────────────────────────────
+// -- Campos compartilhados --------------------------------------------
 function ProductFields({
-  product, suppliers, categories = [], onClose, state, pending, submitLabel,
+  product, suppliers, categories = [], onClose, state, pending, submitLabel, isCreate = false,
 }: {
   product?:    StockProduct
   suppliers:   string[]
@@ -139,6 +139,7 @@ function ProductFields({
   state:       { error?: string; success?: boolean } | undefined
   pending:     boolean
   submitLabel: string
+  isCreate?:   boolean
 }) {
   const [categoryId,       setCategoryId]       = useState(product?.category_id ?? '')
   const [barcodeValue,     setBarcodeValue]     = useState(product?.barcode ?? '')
@@ -147,6 +148,7 @@ function ProductFields({
   const [unitsPerPkgStr,   setUnitsPerPkgStr]   = useState(product?.units_per_package != null ? String(product.units_per_package) : '')
   const [consumptionUnit,  setConsumptionUnit]  = useState(product?.consumption_unit ?? '')
   const [vendaDireta,      setVendaDireta]      = useState((product?.sale_price ?? null) !== null)
+  const [showStock,        setShowStock]        = useState(false)
 
   const selectedCat = useMemo(() => categories.find(c => c.id === categoryId), [categories, categoryId])
   const skuPreview  = useMemo(
@@ -297,36 +299,6 @@ function ProductFields({
         </p>
       </div>
 
-      {/* Preço de custo — largura total */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <Label>
-            Preço de custo{' '}
-            <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
-              por embalagem
-            </span>
-          </Label>
-          {costPerUnit !== null && (
-            <span style={{ fontSize: 11, color: 'var(--brand)', fontWeight: 700 }}>
-              = R$ {costPerUnit.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 6 })} / {consumptionUnit}
-            </span>
-          )}
-        </div>
-        <div style={{ position: 'relative' }}>
-          <span style={{
-            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-            fontSize: 11.5, color: 'var(--text-faint)', pointerEvents: 'none',
-          }}>R$</span>
-          <input name="cost_price" type="number" step="0.01" min="0" className="field"
-            value={costPriceStr}
-            onChange={e => setCostPriceStr(e.target.value)}
-            placeholder="0,00" style={{ paddingLeft: 28 }} />
-        </div>
-        <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-          O sistema calcula automaticamente o custo por unidade (ml, UI, g…)
-        </p>
-      </div>
-
       {/* Toggle: Venda direta */}
       <div style={{
         display: 'flex', flexDirection: 'column', gap: vendaDireta ? 12 : 0,
@@ -402,6 +374,107 @@ function ProductFields({
         </div>
       </div>
 
+      {/* Estoque inicial — só na criação */}
+      {isCreate && (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: showStock ? 12 : 0,
+          border: `1px solid ${showStock ? 'var(--brand-soft, #f3d9e0)' : 'var(--border)'}`,
+          borderRadius: 10, padding: '12px 14px',
+          background: showStock ? 'var(--brand-soft, #fdf4f6)' : 'transparent',
+          transition: 'background 200ms, border-color 200ms',
+        }}>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showStock}
+            onClick={() => setShowStock(v => !v)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left',
+            }}
+          >
+            <div style={{
+              width: 36, height: 20, borderRadius: 10, flexShrink: 0,
+              background: showStock ? 'var(--brand)' : 'var(--border)',
+              position: 'relative', transition: 'background 200ms',
+            }}>
+              <div style={{
+                position: 'absolute', top: 3,
+                left: showStock ? 19 : 3,
+                width: 14, height: 14, borderRadius: '50%',
+                background: 'white',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                transition: 'left 200ms',
+              }} />
+            </div>
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'block' }}>
+                Adicionar estoque inicial
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                {showStock ? 'Lançamento de entrada registrado junto ao cadastro' : 'Registrar quantidade disponível agora'}
+              </span>
+            </div>
+          </button>
+
+          {showStock && (
+            <>
+              {/* Quantidade + Preço de custo por embalagem */}
+              <div className="form-2col">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <Label>Quantidade *</Label>
+                  <input
+                    name="initial_qty"
+                    type="number" step="0.001" min="0.001"
+                    required
+                    className="field"
+                    placeholder="0"
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                    <Label>Custo por embalagem</Label>
+                    {costPerUnit !== null && (
+                      <span style={{ fontSize: 10, color: 'var(--brand)', fontWeight: 700 }}>
+                        = R$ {costPerUnit.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} / {consumptionUnit}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{
+                      position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                      fontSize: 11.5, color: 'var(--text-faint)', pointerEvents: 'none',
+                    }}>R$</span>
+                    <input name="initial_cost" type="number" step="0.01" min="0" className="field"
+                      value={costPriceStr}
+                      onChange={e => setCostPriceStr(e.target.value)}
+                      placeholder="0,00" style={{ paddingLeft: 28 }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Lote + Validade */}
+              <div className="form-2col">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <Label>Número do lote</Label>
+                  <input name="initial_batch" type="text" className="field" placeholder="Ex: LOT-2024-001" />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <Label>Data de validade</Label>
+                  <input name="initial_expires_at" type="date" className="field" />
+                </div>
+              </div>
+
+              {/* Observações */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <Label>Observações</Label>
+                <input name="initial_notes" type="text" className="field" placeholder="Ex: Compra inicial, NF 1234" />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {state?.error && (
         <p style={{
           color: 'var(--warning)', background: 'var(--warning-soft)',
@@ -425,7 +498,7 @@ function ProductFields({
   )
 }
 
-// ── Form de criação ───────────────────────────────────────────────────
+// -- Form de criação ---------------------------------------------------
 function CreateForm({ suppliers, categories, onClose, onSuccess }: {
   suppliers:  string[]
   categories: ProductCategory[]
@@ -453,6 +526,7 @@ function CreateForm({ suppliers, categories, onClose, onSuccess }: {
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <ProductFields
+        isCreate
         suppliers={suppliers} categories={categories} onClose={onClose}
         state={error ? { error } : undefined}
         pending={pending} submitLabel="Criar produto"
@@ -461,7 +535,7 @@ function CreateForm({ suppliers, categories, onClose, onSuccess }: {
   )
 }
 
-// ── Form de edição ───────────────────────────────────────────────────
+// -- Form de edição ---------------------------------------------------
 function EditForm({ product, suppliers, categories, onClose, onSuccess }: {
   product:    StockProduct
   suppliers:  string[]
@@ -499,7 +573,7 @@ function EditForm({ product, suppliers, categories, onClose, onSuccess }: {
   )
 }
 
-// ── Modal wrapper ─────────────────────────────────────────────────────
+// -- Modal wrapper -----------------------------------------------------
 export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
   function StockProductModal({ product, trigger, suppliers = [], categories = [], onSuccess }, ref) {
     const isEdit    = !!product

@@ -31,8 +31,8 @@ function getInitials(name: string) {
 
 function shortName(name: string) {
   const parts = name.trim().split(' ')
-  if (parts.length === 1) return parts[0]
-  return `${parts[0]} ${parts[parts.length - 1][0]}.`
+  if (parts.length === 1) return parts[0] ?? name
+  return `${parts[0] ?? ''} ${(parts[parts.length - 1] ?? '')[0] ?? ''}.`
 }
 
 function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) {
@@ -117,7 +117,7 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
 
         <tbody>
           {professionals.map((pro, pi) => {
-            const clr = PROF_COLORS[pi % PROF_COLORS.length]
+            const clr = PROF_COLORS[pi % PROF_COLORS.length]!
             return (
               <tr key={pro.id}>
                 {/* Professional cell */}

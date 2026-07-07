@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, type ReactNode } from 'react'
 import {
@@ -13,7 +13,7 @@ import { HotmapSection } from './hotmap-section'
 import type { BranchPoint, HeatPoint } from './hotmap-types'
 import { PeriodSelector, type Period } from './period-selector'
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// --- Types -------------------------------------------------------------------
 
 export interface BranchStat {
   id:           string
@@ -105,7 +105,7 @@ export interface AdminDashboardProps {
   granularity:    'hour' | 'day'
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// --- Helpers -----------------------------------------------------------------
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -125,7 +125,7 @@ function pctDelta(curr: number, prev: number) {
 
 const AGE_PIE_COLORS = ['#c34d6b', '#7c3aed', '#0ea5e9', '#16a34a', '#d97706', '#64748b']
 
-// ─── Animation primitives ─────────────────────────────────────────────────────
+// --- Animation primitives -----------------------------------------------------
 
 function useCountUp(target: number, duration = 900): number {
   const [val, setVal] = useState(0)
@@ -199,7 +199,7 @@ function timeSince(dateStr: string) {
   return 'agora'
 }
 
-// ─── Section Header ──────────────────────────────────────────────────────────
+// --- Section Header ----------------------------------------------------------
 
 function SectionHeader({ title }: { title: string }) {
   return (
@@ -215,7 +215,7 @@ function SectionHeader({ title }: { title: string }) {
   )
 }
 
-// ─── Mini bar row (para rankings) ────────────────────────────────────────────
+// --- Mini bar row (para rankings) --------------------------------------------
 
 function MiniBarRow({
   rank, name, label, pct, accent = 'var(--brand)',
@@ -246,7 +246,7 @@ function MiniBarRow({
   )
 }
 
-// ─── Star display ─────────────────────────────────────────────────────────────
+// --- Star display -------------------------------------------------------------
 
 function RatingBadge({ value, max = 5 }: { value: number; max?: number }) {
   const pct = (value / max) * 100
@@ -262,7 +262,7 @@ function RatingBadge({ value, max = 5 }: { value: number; max?: number }) {
   )
 }
 
-// ─── KPI Card ────────────────────────────────────────────────────────────────
+// --- KPI Card ----------------------------------------------------------------
 
 function KpiCard({
   label, value, format = 'brl', sub, delta, icon, brand = false,
@@ -329,7 +329,7 @@ function KpiCard({
   )
 }
 
-// ─── Status dot ──────────────────────────────────────────────────────────────
+// --- Status dot --------------------------------------------------------------
 
 const STATUS_COLORS: Record<string, string> = {
   scheduled:  '#94a3b8',
@@ -354,7 +354,7 @@ function StatusPill({ label, count, colorKey }: { label: string; count: number; 
   )
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// --- Main component -----------------------------------------------------------
 
 export function AdminDashboardView({
   monthLabel,
@@ -384,7 +384,7 @@ export function AdminDashboardView({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* ── Header ── */}
+      {/* -- Header -- */}
       <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{
@@ -412,7 +412,7 @@ export function AdminDashboardView({
         <PeriodSelector current={currentPeriod} fromDate={customFrom} toDate={customTo} />
       </div>
 
-      {/* ── KPI cards ── */}
+      {/* -- KPI cards -- */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
         <KpiCard
           brand
@@ -454,7 +454,7 @@ export function AdminDashboardView({
         />
       </div>
 
-      {/* ── Middle: ranking + hoje ── */}
+      {/* -- Middle: ranking + hoje -- */}
       <div style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 16, alignItems: 'start' }}>
 
         {/* Ranking de filiais + gráfico de evolução */}
@@ -649,7 +649,7 @@ export function AdminDashboardView({
         </div>{/* fim coluna direita */}
       </div>
 
-      {/* ── Alertas ── */}
+      {/* -- Alertas -- */}
       {hasAlerts && (
         <div className={pendingPlans.length > 0 && lowStockItems.length > 0 ? 'rg-2' : undefined} style={{ gap: 16 }}>
 

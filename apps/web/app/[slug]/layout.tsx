@@ -1,6 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import { getTenantContext } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { BranchSidebar } from '@/components/branch/sidebar'
 import { Topbar } from '@/components/shared/topbar'
 import { SidebarProvider } from '@/components/shared/sidebar-context'
@@ -18,7 +19,24 @@ export default async function BranchLayout({
   const { slug } = await params
   const ctx = await getTenantContext()
 
-  if (ctx.role === 'CLIENT') redirect('/login')
+  // Portal do cliente: valida vínculo com a filial e devolve children sem chrome de staff
+  if (ctx.isClient) {
+    const adminClient = createAdminClient()
+    const { data: clientData } = await adminClient
+      .from('clients')
+      .select('branch_id')
+      .eq('id', ctx.clientId!)
+      .single()
+    if (!clientData?.branch_id) redirect('/login')
+    const { data: clientBranch } = await adminClient
+      .from('branches')
+      .select('slug')
+      .eq('id', clientData.branch_id)
+      .single()
+    if (clientBranch?.slug !== slug) redirect('/login')
+    return <>{children}</>
+  }
+
   if (ctx.role !== 'NETWORK_ADMIN' && !BRANCH_ROLES.includes(ctx.role as typeof BRANCH_ROLES[number])) {
     redirect('/login')
   }

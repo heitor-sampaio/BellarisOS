@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { CalendarDays, Users, TrendingUp } from 'lucide-react'
 
 const FEATURES = [
@@ -23,7 +23,7 @@ export default function LandingPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-app)', fontFamily: 'var(--font-sans)' }}>
 
-      {/* ── Header ──────────────────────────────────────── */}
+      {/* -- Header ---------------------------------------- */}
       <header style={{
         maxWidth: 1100,
         margin: '0 auto',
@@ -61,7 +61,7 @@ export default function LandingPage() {
         </nav>
       </header>
 
-      {/* ── Hero ────────────────────────────────────────── */}
+      {/* -- Hero ------------------------------------------ */}
       <section style={{
         maxWidth: 760,
         margin: '0 auto',
@@ -114,7 +114,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Features ────────────────────────────────────── */}
+      {/* -- Features -------------------------------------- */}
       <section style={{
         maxWidth: 1100,
         margin: '0 auto',
@@ -156,7 +156,7 @@ export default function LandingPage() {
         })}
       </section>
 
-      {/* ── Footer ──────────────────────────────────────── */}
+      {/* -- Footer ---------------------------------------- */}
       <footer style={{
         borderTop: '1px solid var(--border)',
         padding: '24px',

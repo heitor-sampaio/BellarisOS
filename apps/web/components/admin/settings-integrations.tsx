@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -63,7 +63,7 @@ function ConnectionStatus({ ok, detail }: { ok: boolean; detail?: string }) {
   )
 }
 
-// ─── Z-API config form ────────────────────────────────────────────────────────
+// --- Z-API config form --------------------------------------------------------
 
 function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
   const existing = (initial?.config ?? {}) as Record<string, string>
@@ -182,7 +182,7 @@ function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
   )
 }
 
-// ─── WhatsApp Oficial form ────────────────────────────────────────────────────
+// --- WhatsApp Oficial form ----------------------------------------------------
 
 function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   const existing = (initial?.config ?? {}) as Record<string, string>
@@ -302,7 +302,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   )
 }
 
-// ─── Meta Ads — OAuth Connect ─────────────────────────────────────────────────
+// --- Meta Ads — OAuth Connect -------------------------------------------------
 
 function MetaAdsConnect({
   initial, metaStep, metaError, metaErrorReason,
@@ -495,7 +495,7 @@ function MetaAdsConnect({
         </div>
         <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
           Conta: <strong>{(config.adAccountName as string) || `act_${config.adAccountId as string}`}</strong>
-          {config.pixelId && <> · Pixel: <strong>{(config.pixelName as string) || (config.pixelId as string)}</strong></>}
+          {!!config.pixelId && <> · Pixel: <strong>{(config.pixelName as string) || (config.pixelId as string)}</strong></>}
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
@@ -664,7 +664,7 @@ function MetaAdsConnect({
   )
 }
 
-// ─── Google Ads form ──────────────────────────────────────────────────────────
+// --- Google Ads form ----------------------------------------------------------
 
 function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
   const existing = (initial?.config ?? {}) as Record<string, string>
@@ -807,7 +807,7 @@ function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
   )
 }
 
-// ─── Main export ─────────────────────────────────────────────────────────────
+// --- Main export -------------------------------------------------------------
 
 interface SettingsIntegrationsProps {
   initialConfigs:   IntegrationConfig[]
@@ -891,7 +891,7 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 640 }}>
-      {/* ── Seção: Comunicação ────────────────────────────────────────────── */}
+      {/* -- Seção: Comunicação ---------------------------------------------- */}
       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
         Comunicação
       </p>
@@ -965,7 +965,7 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
         </div>
       ))}
 
-      {/* ── Seção: Marketing ──────────────────────────────────────────────── */}
+      {/* -- Seção: Marketing ------------------------------------------------ */}
       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 8 }}>
         Marketing
       </p>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// --- Types -------------------------------------------------------------------
 
 interface BranchStat {
   id:          string
@@ -52,9 +52,10 @@ interface Props {
   transactions:     AdminTx[]
   branchSlugMap:    Record<string, string>
   branches:         { id: string; name: string; slug: string }[]
+  canWrite?:        boolean
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// --- Helpers -----------------------------------------------------------------
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -89,7 +90,7 @@ function pctDelta(curr: number, prev: number) {
   return { pct: Math.abs(pct), up: pct >= 0 }
 }
 
-// ─── KPI Card ────────────────────────────────────────────────────────────────
+// --- KPI Card ----------------------------------------------------------------
 
 function KpiCard({
   label, value, delta, icon, brand = false,
@@ -142,7 +143,7 @@ function KpiCard({
   )
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// --- Main component -----------------------------------------------------------
 
 export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
@@ -8,7 +8,7 @@ import { updateLeadStage, convertLeadToClient, deleteLead } from '@/actions/lead
 import type { CRMStage } from '@/actions/crm-stages'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
 
-// ─── Filtros e ordenação ─────────────────────────────────────────
+// --- Filtros e ordenação -----------------------------------------
 interface FiltersState {
   sources:      string[]
   procedureIds: string[]
@@ -199,7 +199,7 @@ function FiltersBar({
   )
 }
 
-// ─── Tipos ───────────────────────────────────────────────────────
+// --- Tipos -------------------------------------------------------
 export interface Lead {
   id:           string
   name:         string
@@ -227,11 +227,11 @@ interface CRMBoardProps {
   branches?:    { id: string; name: string; slug: string }[]
 }
 
-// ─── Cores suaves a partir de hex ────────────────────────────────
+// --- Cores suaves a partir de hex --------------------------------
 function softBg(hex: string)     { return hex + '18' }
 function softBorder(hex: string) { return hex + '50' }
 
-// ─── Origem badges ───────────────────────────────────────────────
+// --- Origem badges -----------------------------------------------
 const SOURCE_COLORS: Record<string, { bg: string; color: string }> = {
   Instagram:  { bg: '#fce8f4', color: '#b52d7c' },
   Google:     { bg: '#e8f0fe', color: '#1a56db' },
@@ -242,7 +242,7 @@ const SOURCE_COLORS: Record<string, { bg: string; color: string }> = {
   Outro:      { bg: 'var(--bg-app)', color: 'var(--text-muted)' },
 }
 
-// ─── Cartão do lead ──────────────────────────────────────────────
+// --- Cartão do lead ----------------------------------------------
 function LeadCard({
   lead, slug, branchId, stages, procedures,
   isDragging, onDragStart, onDragEnd, onLeadDeleted,
@@ -554,7 +554,7 @@ function LeadCard({
   )
 }
 
-// ─── Board principal ─────────────────────────────────────────────
+// --- Board principal ---------------------------------------------
 export function CRMBoard({ initialLeads, stages, procedures, branchId, slug, networkMode, branches }: CRMBoardProps) {
   const [leads, setLeads]     = useState<Lead[]>(initialLeads)
   const [draggingId, setDraggingId] = useState<string | null>(null)

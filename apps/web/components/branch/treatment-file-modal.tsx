@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -11,7 +11,7 @@ import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import type { TreatmentFileDetails } from '@/actions/treatment-plans'
 import type { ProfileClient, ProfilePackage } from './client-profile'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 function fmtDate(d: string) {
   return format(new Date(d), "dd/MM/yyyy", { locale: ptBR })
@@ -64,7 +64,7 @@ function Divider() {
   return <div style={{ height: 1, background: 'var(--hairline)', margin: '4px 0' }} />
 }
 
-// ── Sessão item ───────────────────────────────────────────────────────────────
+// -- Sessão item ---------------------------------------------------------------
 
 function SessionItem({
   session, index, isLast, slug, onSessionClick,
@@ -165,7 +165,7 @@ function SessionItem({
   )
 }
 
-// ── Linha do tempo ────────────────────────────────────────────────────────────
+// -- Linha do tempo ------------------------------------------------------------
 
 function Timeline({ details }: { details: TreatmentFileDetails }) {
   type TLEvent = { date: string; label: string; sub: string | null; color: string; icon: React.ReactNode }
@@ -242,7 +242,7 @@ function Timeline({ details }: { details: TreatmentFileDetails }) {
   )
 }
 
-// ── Props ─────────────────────────────────────────────────────────────────────
+// -- Props ---------------------------------------------------------------------
 
 interface Props {
   client:          ProfileClient
@@ -254,7 +254,7 @@ interface Props {
   onClose:         () => void
 }
 
-// ── Modal principal ───────────────────────────────────────────────────────────
+// -- Modal principal -----------------------------------------------------------
 
 export function TreatmentFileModal({ client, activePackage, branches, currentBranchId, slug, role, onClose }: Props) {
   const [details,      setDetails]      = useState<TreatmentFileDetails | null>(null)
@@ -295,7 +295,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
     return () => { supabase.removeChannel(channel) }
   }, [activePackage.planId, fetchDetails])
 
-  const status  = details ? STATUS_MAP[details.status] ?? STATUS_MAP.ACCEPTED : STATUS_MAP.ACCEPTED
+  const status  = details ? (STATUS_MAP[details.status] ?? STATUS_MAP['ACCEPTED']!) : STATUS_MAP['ACCEPTED']!
   const pct     = activePackage.totalSessions > 0
     ? Math.round((activePackage.usedSessions / activePackage.totalSessions) * 100)
     : 0
@@ -351,7 +351,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
         overflow: 'hidden',
       }}>
 
-        {/* ── Header ─────────────────────────────────────────────────── */}
+        {/* -- Header --------------------------------------------------- */}
         <div style={{
           background: 'linear-gradient(135deg, var(--brand), var(--brand-deep, #a03358))',
           padding: '20px 24px', color: '#fff',
@@ -397,7 +397,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
           </button>
         </div>
 
-        {/* ── Body ───────────────────────────────────────────────────── */}
+        {/* -- Body ----------------------------------------------------- */}
         <div style={{ overflowY: 'auto', flex: 1, padding: '24px' }}>
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '40px 0', color: 'var(--text-faint)', justifyContent: 'center' }}>
@@ -409,12 +409,12 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
-              {/* ── Informações do cliente ─────────────────────────── */}
+              {/* -- Informações do cliente --------------------------- */}
               <div className="rg-2">
                 <div>
                   <SectionTitle>Informações do cliente</SectionTitle>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ display: 'flex', align: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
                         width: 40, height: 40, borderRadius: 12,
                         background: 'var(--brand-soft)', flexShrink: 0,
@@ -509,9 +509,9 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                 )}
               </div>
 
-              {/* ── Anamnese ──────────────────────────────────────── */}
+              {/* -- Anamnese ---------------------------------------- */}
               {details?.anamnesis && Object.keys(details.anamnesis).some(k => {
-                const v = (details.anamnesis as Record<string, unknown>)[k]
+                const v = (details.anamnesis as unknown as Record<string, unknown>)[k]
                 return v !== null && v !== '' && v !== undefined
               }) && (
                 <>
@@ -519,7 +519,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                   <div>
                     <SectionTitle>Anamnese</SectionTitle>
                     <div className="rg-2">
-                      {Object.entries(details.anamnesis as Record<string, unknown>).map(([k, v]) => {
+                      {Object.entries(details.anamnesis as unknown as Record<string, unknown>).map(([k, v]) => {
                         const label = ANAMNESE_LABELS[k]
                         if (!label) return null
                         const strVal = typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : String(v ?? '')
@@ -541,7 +541,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                 </>
               )}
 
-              {/* ── Sessões ───────────────────────────────────────── */}
+              {/* -- Sessões ----------------------------------------- */}
               {(details?.sessions ?? []).length > 0 && (
                 <>
                   <Divider />
@@ -577,7 +577,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                 </>
               )}
 
-              {/* ── Para pacotes sem plan (sem sessões do plano) ── */}
+              {/* -- Para pacotes sem plan (sem sessões do plano) -- */}
               {!hasPlan && !loading && (
                 <>
                   <Divider />
@@ -604,7 +604,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                 </>
               )}
 
-              {/* ── Linha do tempo ────────────────────────────────── */}
+              {/* -- Linha do tempo ---------------------------------- */}
               {details && (
                 <>
                   <Divider />

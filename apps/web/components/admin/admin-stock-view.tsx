@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Search, X, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, PackageX, Settings, Barcode, Pencil } from 'lucide-react'
@@ -314,7 +314,7 @@ export function AdminStockView({ products, branches, categories, productCategori
             <p style={{ color: 'var(--text-faint)', fontSize: 12.5, marginTop: 4 }}>Ajuste os filtros.</p>
           </div>
         ) : view === 'consolidado' ? (
-          /* ── VISTA CONSOLIDADA ────────────────── */
+          /* -- VISTA CONSOLIDADA ------------------ */
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -459,7 +459,7 @@ export function AdminStockView({ products, branches, categories, productCategori
             </table>
           </div>
         ) : (
-          /* ── VISTA POR UNIDADE ────────────────── */
+          /* -- VISTA POR UNIDADE ------------------ */
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>

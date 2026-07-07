@@ -1,11 +1,11 @@
-'use client'
+﻿'use client'
 
 import { useActionState, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Clock, Star, Plus, Smartphone, X, Loader2, Save } from 'lucide-react'
 import { createBranchProcedure } from '@/actions/procedures'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types ---------------------------------------------------------------------
 
 export interface ProcedureItem {
   id:                 string
@@ -28,19 +28,19 @@ interface Props {
   canManage:   boolean
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// -- Constants -----------------------------------------------------------------
 
 const PRESET_CATEGORIES = [
   'Facial', 'Corporal', 'Injetáveis', 'Laser', 'Capilar', 'Massagem', 'Pacotes', 'Outros',
 ]
 
-// ── Helper ─────────────────────────────────────────────────────────────────────
+// -- Helper ---------------------------------------------------------------------
 
 function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-// ── New procedure modal ───────────────────────────────────────────────────────
+// -- New procedure modal -------------------------------------------------------
 
 function NewProcedureModal({
   branchId, slug, onClose,
@@ -177,7 +177,7 @@ function NewProcedureModal({
   )
 }
 
-// ── Card ─────────────────────────────────────────────────────────────────────
+// -- Card ---------------------------------------------------------------------
 
 function ProcedureCard({ p }: { p: ProcedureItem }) {
   return (
@@ -211,7 +211,7 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
           {p.name}
         </p>
         {p.visibleOnClientApp && (
-          <Smartphone size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} title="Disponível no app do cliente" />
+          <Smartphone size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} aria-label="Disponível no app do cliente" />
         )}
       </div>
 
@@ -241,7 +241,7 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
   )
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// -- Main ----------------------------------------------------------------------
 
 export function ProceduresClient({
   procedures, categories, totalCount, ticketMedio, slug, branchId, canManage,

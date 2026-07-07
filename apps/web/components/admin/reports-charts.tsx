@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { type ReactNode } from 'react'
 import {
@@ -6,10 +6,10 @@ import {
   PieChart, Pie, Cell, AreaChart, Area,
 } from 'recharts'
 
-// ── Palette ───────────────────────────────────────────────────────────────────
+// -- Palette -------------------------------------------------------------------
 export const CHART_COLORS = ['#c34d6b', '#7c3aed', '#0ea5e9', '#16a34a', '#d97706', '#64748b']
 
-// ── Formatters ────────────────────────────────────────────────────────────────
+// -- Formatters ----------------------------------------------------------------
 const _fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -21,7 +21,7 @@ export const fmtBRLShort = (v: number): string => {
 
 export const fmtBRLFull = (v: number): string => _fmtBRL(v)
 
-// ── Shared empty state ────────────────────────────────────────────────────────
+// -- Shared empty state --------------------------------------------------------
 function EmptyChart({ msg = 'Sem dados no período.' }: { msg?: string }) {
   return (
     <div style={{
@@ -33,7 +33,7 @@ function EmptyChart({ msg = 'Sem dados no período.' }: { msg?: string }) {
   )
 }
 
-// ── HBarChart ─────────────────────────────────────────────────────────────────
+// -- HBarChart -----------------------------------------------------------------
 export function HBarChart({
   data,
   color = CHART_COLORS[0],
@@ -65,7 +65,7 @@ export function HBarChart({
           tickLine={false} axisLine={false} width={130}
         />
         <Tooltip
-          formatter={(v: number) => [formatValue(v), '']}
+          formatter={(v) => [formatValue(Number(v ?? 0)), '']}
           contentStyle={{
             background: 'white', border: '1px solid var(--border,#f0e6e3)',
             borderRadius: 10, fontSize: 12,
@@ -74,14 +74,14 @@ export function HBarChart({
         />
         <Bar
           dataKey="value" fill={color} radius={[0, 4, 4, 0]} maxBarSize={22}
-          label={{ position: 'right', fontSize: 10, fill: 'var(--text-muted)', formatter: formatValue }}
+          label={{ position: 'right', fontSize: 10, fill: 'var(--text-muted)', formatter: (v: unknown) => formatValue(Number(v ?? 0)) }}
         />
       </BarChart>
     </ResponsiveContainer>
   )
 }
 
-// ── WeekBarChart ──────────────────────────────────────────────────────────────
+// -- WeekBarChart --------------------------------------------------------------
 export function WeekBarChart({ data }: { data: { day: number; count: number }[] }) {
   const DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
   const chartData = DAYS.map((name, i) => ({
@@ -113,7 +113,7 @@ export function WeekBarChart({ data }: { data: { day: number; count: number }[] 
   )
 }
 
-// ── DonutChart ────────────────────────────────────────────────────────────────
+// -- DonutChart ----------------------------------------------------------------
 export function DonutChart({
   data,
   colors = CHART_COLORS,
@@ -142,7 +142,7 @@ export function DonutChart({
             {rows.map((_, i) => <Cell key={i} fill={colors[i % colors.length]} />)}
           </Pie>
           <Tooltip
-            formatter={(v: number, name: string) => [fmt(v, total), name]}
+            formatter={(v, name) => [fmt(Number(v ?? 0), total), String(name ?? '')]}
             contentStyle={{
               background: 'white', border: '1px solid var(--border)',
               borderRadius: 10, fontSize: 12,
@@ -174,10 +174,10 @@ export function DonutChart({
   )
 }
 
-// ── MiniAreaChart ─────────────────────────────────────────────────────────────
+// -- MiniAreaChart -------------------------------------------------------------
 export function MiniAreaChart({
   data,
-  color = CHART_COLORS[0],
+  color = CHART_COLORS[0]!,
   height = 144,
 }: {
   data: { label: string; value: number }[]
@@ -223,7 +223,7 @@ export function MiniAreaChart({
   )
 }
 
-// ── DreWaterfall ──────────────────────────────────────────────────────────────
+// -- DreWaterfall --------------------------------------------------------------
 export function DreWaterfall({
   receita, custoProdutos, despesas, lucro,
 }: {
@@ -282,7 +282,7 @@ export function DreWaterfall({
   )
 }
 
-// ── SimpleTable ───────────────────────────────────────────────────────────────
+// -- SimpleTable ---------------------------------------------------------------
 export interface TableColumn {
   key: string
   label: string
@@ -345,7 +345,7 @@ export function SimpleTable({
   )
 }
 
-// ── Badge helper ──────────────────────────────────────────────────────────────
+// -- Badge helper --------------------------------------------------------------
 export function Badge({
   label, color = 'gray',
 }: {

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useActionState, useState, useRef, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -26,7 +26,7 @@ import { AnamnesisTab } from '@/components/branch/anamnesis-tab'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 
-// ── Types ──────────────────────────────────────────────────────────────────────
+// -- Types ----------------------------------------------------------------------
 
 export interface SessionAppointment {
   id:                  string
@@ -109,7 +109,7 @@ interface Props {
   isPartOfPlan?:         boolean
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers -------------------------------------------------------------------
 
 function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -153,7 +153,7 @@ const PAYMENT_METHODS = [
   { value: 'INTERNAL_CREDIT', label: 'Crédito interno' },
 ]
 
-// ── Modais ────────────────────────────────────────────────────────────────────
+// -- Modais --------------------------------------------------------------------
 
 function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; slug: string; onClose: () => void }) {
   const router = useRouter()
@@ -287,7 +287,7 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
   )
 }
 
-// ── Insumos ───────────────────────────────────────────────────────────────────
+// -- Insumos -------------------------------------------------------------------
 
 function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd, onRemove, readonly }: {
   items:       SessionProduct[]
@@ -409,7 +409,7 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
   )
 }
 
-// ── Observações ───────────────────────────────────────────────────────────────
+// -- Observações ---------------------------------------------------------------
 
 function ObservacoesCard({ appointmentId, initialNotes, initialIntercurrences, readonly }: {
   appointmentId: string; initialNotes: string | null; initialIntercurrences: string | null; readonly: boolean
@@ -450,7 +450,7 @@ function ObservacoesCard({ appointmentId, initialNotes, initialIntercurrences, r
   )
 }
 
-// ── Dores / Queixas do cliente (controlado pelo pai) ──────────────────────────
+// -- Dores / Queixas do cliente (controlado pelo pai) --------------------------
 
 function DorasCard({ value, onChange, readonly }: {
   value:    string
@@ -475,7 +475,7 @@ function DorasCard({ value, onChange, readonly }: {
   )
 }
 
-// ── Anamnese inline para avaliação (sempre em modo edição, controlado) ─────────
+// -- Anamnese inline para avaliação (sempre em modo edição, controlado) ---------
 
 const EVAL_SKIN_TYPES = [
   { value: '',         label: 'Não informado' },
@@ -560,7 +560,7 @@ function EvaluationAnamnesisFields({
   )
 }
 
-// ── Linha de anamnese ─────────────────────────────────────────────────────────
+// -- Linha de anamnese ---------------------------------------------------------
 
 function AnamneseRow({ label, value, alert }: { label: string; value: string; alert?: boolean }) {
   return (
@@ -571,7 +571,7 @@ function AnamneseRow({ label, value, alert }: { label: string; value: string; al
   )
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// -- Main component ------------------------------------------------------------
 
 export function AppointmentSession({
   appointment, client, anamnesis, products, availableProducts,
@@ -673,7 +673,7 @@ export function AppointmentSession({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* ── Top bar ─────────────────────────────────────────────────── */}
+        {/* -- Top bar --------------------------------------------------- */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
           <Link href={`/${slug}/agenda`} style={{ display: 'flex', alignItems: 'center', marginTop: 6, color: 'var(--text-faint)', textDecoration: 'none', flexShrink: 0 }}>
             <ArrowLeft size={18} />
@@ -757,7 +757,7 @@ export function AppointmentSession({
           </div>
         </div>
 
-        {/* ── Client strip ─────────────────────────────────────────────── */}
+        {/* -- Client strip ----------------------------------------------- */}
         <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {/* Avatar */}
@@ -811,7 +811,7 @@ export function AppointmentSession({
           )}
         </div>
 
-        {/* ── Banner de bloqueio / edição ──────────────────────────────── */}
+        {/* -- Banner de bloqueio / edição -------------------------------- */}
         {isDone && (
           <div style={{
             padding: '12px 20px', borderRadius: 12,
@@ -854,7 +854,7 @@ export function AppointmentSession({
           </div>
         )}
 
-        {/* ── Concluído / Cancelado banner ─────────────────────────────── */}
+        {/* -- Concluído / Cancelado banner ------------------------------- */}
         {isDone && (
           <div style={{
             padding: '14px 20px', borderRadius: 12,
@@ -891,10 +891,10 @@ export function AppointmentSession({
           </div>
         )}
 
-        {/* ── Duas colunas ─────────────────────────────────────────────── */}
+        {/* -- Duas colunas ----------------------------------------------- */}
         <div className="rg-2" style={{ alignItems: 'start' }}>
 
-          {/* ── COLUNA ESQUERDA ────────────────────────────────────────── */}
+          {/* -- COLUNA ESQUERDA ------------------------------------------ */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Dados do procedimento */}
@@ -1210,7 +1210,7 @@ export function AppointmentSession({
             </div>
           </div>
 
-          {/* ── COLUNA DIREITA ─────────────────────────────────────────── */}
+          {/* -- COLUNA DIREITA ------------------------------------------- */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 'calc(var(--topbar-h, 68px) + 16px)' }}>
 
             {/* Anamnese resumo (somente em atendimentos normais; avaliações mostram na coluna principal) */}

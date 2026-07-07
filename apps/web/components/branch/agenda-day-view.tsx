@@ -236,7 +236,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
       }}>
         <div style={{ width: TIME_COL_W, flexShrink: 0 }} />
         {professionals.map((pro, i) => {
-          const clr    = PROF_COLORS[i % PROF_COLORS.length]
+          const clr    = PROF_COLORS[i % PROF_COLORS.length]!
           const proEvs = todayEvents.filter(e => e.professionalId === pro.id)
           return (
             <div key={pro.id} style={{
@@ -289,7 +289,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
             <ProfColumn
               key={pro.id}
               pro={pro}
-              profColor={PROF_COLORS[i % PROF_COLORS.length]}
+              profColor={PROF_COLORS[i % PROF_COLORS.length]!}
               events={proEvs}
               currentDate={currentDate}
               isFirst={i === 0}

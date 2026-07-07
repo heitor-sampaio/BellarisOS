@@ -1,4 +1,4 @@
-import Link from 'next/link'
+﻿import Link from 'next/link'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultStages } from '@/actions/crm-stages'
@@ -38,7 +38,7 @@ export default async function AdminCRMPage({
 
   const canEdit = ctx.role === 'NETWORK_ADMIN'
 
-  // ── Funil data (always needed for stats) ──
+  // -- Funil data (always needed for stats) --
   const stages = await seedDefaultStages(ctx.tenantId!)
 
   const { data: allProcs } = await admin
@@ -75,7 +75,7 @@ export default async function AdminCRMPage({
   const convertidos = leads.filter((l: any) => l.client_id).length
   const conversion  = total > 0 ? Math.round((convertidos / total) * 100) : 0
 
-  // ── Inbox data (only when on inbox view) ──
+  // -- Inbox data (only when on inbox view) --
   const conversations = view === 'inbox' ? await getConversations() : []
   const totalUnread   = conversations.reduce((sum, c) => sum + c.unread_count, 0)
 
@@ -91,7 +91,7 @@ export default async function AdminCRMPage({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <RealtimeRefresher tables={['leads', 'crm_stages']} />
 
-      {/* ── Header ── */}
+      {/* -- Header -- */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
@@ -122,7 +122,7 @@ export default async function AdminCRMPage({
         </div>
       </div>
 
-      {/* ── Tabs ── */}
+      {/* -- Tabs -- */}
       <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--hairline)', marginBottom: -8 }}>
         <TabLink href="/admin/crm?view=funil" active={view === 'funil'}>
           Funil
@@ -141,7 +141,7 @@ export default async function AdminCRMPage({
         </TabLink>
       </div>
 
-      {/* ── Content ── */}
+      {/* -- Content -- */}
       {branches.length === 0 ? (
         <div className="card" style={{ padding: '56px 24px', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>

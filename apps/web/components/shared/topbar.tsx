@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { Bell, Menu } from 'lucide-react'
 import { useSidebar } from '@/components/shared/sidebar-context'
+import { savePushToken } from '@/actions/push-subscriptions'
 
 interface TopbarProps {
   userName: string
@@ -17,8 +19,22 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export function Topbar({ userName, userRole }: TopbarProps) {
-  const firstName      = userName.split(' ')[0] ?? userName
-  const { toggle }     = useSidebar()
+  const firstName  = userName.split(' ')[0] ?? userName
+  const { toggle } = useSidebar()
+
+  useEffect(() => {
+    import('@capacitor/core').then(({ Capacitor }) => {
+      if (!Capacitor.isNativePlatform()) return
+      import('@capacitor/push-notifications').then(async ({ PushNotifications }) => {
+        const { receive } = await PushNotifications.requestPermissions()
+        if (receive !== 'granted') return
+        await PushNotifications.register()
+        await PushNotifications.addListener('registration', async ({ value: token }) => {
+          await savePushToken({ token, platform: Capacitor.getPlatform() as 'android' | 'ios' })
+        })
+      })
+    }).catch(() => { /* not in Capacitor context */ })
+  }, [])
 
   return (
     <header style={{

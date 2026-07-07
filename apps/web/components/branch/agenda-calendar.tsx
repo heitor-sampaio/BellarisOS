@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -42,7 +42,7 @@ interface AgendaCalendarProps {
   userRole:      string
 }
 
-// ── KPI helpers ─────────────────────────────────────────────────────────────
+// -- KPI helpers -------------------------------------------------------------
 
 function calcKPIs(
   events: CalendarEvent[],
@@ -80,7 +80,7 @@ function calcKPIs(
   return { totalCount, waitingCount, occupancy }
 }
 
-// ── Label helpers ────────────────────────────────────────────────────────────
+// -- Label helpers ------------------------------------------------------------
 
 function navLabel(view: ViewMode, date: Date): string {
   if (view === 'dia')    return format(date, "EEEE, d 'de' MMMM", { locale: ptBR })
@@ -113,7 +113,7 @@ function todayDate(view: ViewMode): Date {
   return new Date()
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+// -- Component ----------------------------------------------------------------
 
 export function AgendaCalendar({
   branchId, branchName, slug, events, clients, procedures, professionals, rooms, canWrite, userRole,
@@ -129,7 +129,7 @@ export function AgendaCalendar({
 
   const { totalCount, waitingCount, occupancy } = calcKPIs(events, professionals, view, currentDate)
 
-  // ── Drag-and-drop ──────────────────────────────────────────────────────────
+  // -- Drag-and-drop ----------------------------------------------------------
   const handleDrop = useCallback(async (eventId: string, newStart: Date, newProfId: string) => {
     const formData = new FormData()
     formData.set('_appointmentId', eventId)
@@ -146,20 +146,20 @@ export function AgendaCalendar({
     }
   }, [slug, router])
 
-  // ── Slot click (open create modal) ────────────────────────────────────────
+  // -- Slot click (open create modal) ----------------------------------------
   function handleSlotClick(date: Date, _profId?: string) {
     if (!canWrite) return
     setDefaultDate(toLocalDT(date))
     setShowCreate(true)
   }
 
-  // ── Month day click → switch to day view ──────────────────────────────────
+  // -- Month day click → switch to day view ----------------------------------
   function handleDayClick(date: Date) {
     setCurrentDate(date)
     setView('dia')
   }
 
-  // ── View switcher button ──────────────────────────────────────────────────
+  // -- View switcher button --------------------------------------------------
   const viewLabel: Record<ViewMode, string> = { dia: 'Dia', semana: 'Semana', mes: 'Mês' }
 
   return (

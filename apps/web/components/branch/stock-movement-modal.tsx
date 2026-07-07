@@ -16,6 +16,7 @@ export interface MovProduct {
   name:          string
   unit:          string
   current_stock: number
+  cost_price?:   number | null
 }
 
 interface Props {
@@ -119,11 +120,12 @@ export const StockMovementModal = forwardRef<StockMovementModalHandle, Props>(
           </div>
 
           <form ref={formRef} action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <input type="hidden" name="_branchId"  value={branchId} />
-            <input type="hidden" name="_slug"       value={slug} />
-            <input type="hidden" name="_productId"  value={product?.id ?? ''} />
-            <input type="hidden" name="type"        value={movType} />
-            <input type="hidden" name="is_exact"    value={String(isExact)} />
+            <input type="hidden" name="_branchId"    value={branchId} />
+            <input type="hidden" name="_slug"        value={slug} />
+            <input type="hidden" name="_productId"   value={product?.id ?? ''} />
+            <input type="hidden" name="_productName" value={product?.name ?? ''} />
+            <input type="hidden" name="type"         value={movType} />
+            <input type="hidden" name="is_exact"     value={String(isExact)} />
 
             {/* Estoque atual */}
             <div style={{
@@ -159,18 +161,37 @@ export const StockMovementModal = forwardRef<StockMovementModalHandle, Props>(
               )}
             </div>
 
-            {/* Lote + Validade (entrada) */}
+            {/* Custo + Lote + Validade (entrada) */}
             {mode === 'entrada' && (
-              <div className="form-2col">
+              <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Nº do lote</Label>
-                  <input name="batch_number" type="text" className="field" placeholder="LOT-001" />
+                  <Label>Custo por embalagem</Label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{
+                      position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                      fontSize: 11.5, color: 'var(--text-faint)', pointerEvents: 'none',
+                    }}>R$</span>
+                    <input
+                      name="cost_price" type="number" step="0.01" min="0" className="field"
+                      defaultValue={product?.cost_price ?? ''}
+                      placeholder="0,00" style={{ paddingLeft: 28 }}
+                    />
+                  </div>
+                  <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                    Usado para registrar despesa no financeiro. Deixe vazio para não registrar.
+                  </p>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Validade</Label>
-                  <input name="expires_at" type="date" className="field" />
+                <div className="form-2col">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <Label>Nº do lote</Label>
+                    <input name="batch_number" type="text" className="field" placeholder="LOT-001" />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <Label>Validade</Label>
+                    <input name="expires_at" type="date" className="field" />
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Observações */}

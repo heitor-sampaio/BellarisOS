@@ -1,10 +1,10 @@
-import { type NextRequest, NextResponse } from 'next/server'
+﻿import { type NextRequest, NextResponse } from 'next/server'
 import { OfficialAPIProvider } from '@/lib/whatsapp/official'
 import { getTenantByPhoneNumberId, getWhatsAppConfig } from '@/lib/whatsapp/factory'
 import { resolveConversation, insertInboundMessage, updateMessageStatus } from '@/lib/inbox/resolve-conversation'
 import type { OfficialConfig } from '@/lib/whatsapp/types'
 
-// ── GET: Meta webhook subscription verification ──────────────────────────────
+// -- GET: Meta webhook subscription verification ------------------------------
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
 
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   return new Response('Forbidden', { status: 403 })
 }
 
-// ── POST: Receive messages + status updates ───────────────────────────────────
+// -- POST: Receive messages + status updates -----------------------------------
 export async function POST(req: NextRequest) {
   let rawText: string
   let body: unknown

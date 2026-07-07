@@ -1,4 +1,4 @@
-export type WhatsAppProviderType = 'zapi' | 'official'
+﻿export type WhatsAppProviderType = 'zapi' | 'official'
 
 export type MessageType = 'text' | 'image' | 'audio' | 'video' | 'document' | 'other'
 
@@ -23,7 +23,7 @@ export interface WhatsAppProvider {
   testConnection(): Promise<{ ok: boolean; detail?: string }>
 }
 
-// ── Config shapes stored in integration_configs.config (jsonb) ──
+// -- Config shapes stored in integration_configs.config (jsonb) --
 
 export interface ZAPIConfig {
   provider:    'zapi'

@@ -23,7 +23,7 @@ export function ClientsFilters({ tags, initialQ, initialStatus, initialTag }: Cl
   const router      = useRouter()
   const pathname    = usePathname()
   const params      = useSearchParams()
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [search, setSearch] = useState(initialQ)
 
   const hasFilters = !!(initialQ || initialStatus || initialTag)

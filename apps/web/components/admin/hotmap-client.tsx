@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet'
@@ -10,7 +10,7 @@ import type { BranchPoint, HeatPoint, LayerConfig } from './hotmap-types'
 export type { BranchPoint, HeatPoint, LayerConfig }
 export { GRADIENT_CLIENTS, GRADIENT_LTV } from './hotmap-types'
 
-// ─── Components ──────────────────────────────────────────────────────────────
+// --- Components --------------------------------------------------------------
 
 function HeatLayer({ points, gradient }: LayerConfig) {
   const map = useMap()

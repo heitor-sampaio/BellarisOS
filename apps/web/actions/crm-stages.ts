@@ -1,4 +1,4 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
@@ -41,7 +41,7 @@ export async function seedDefaultStages(tenantId: string): Promise<CRMStage[]> {
   return (seeded ?? []) as CRMStage[]
 }
 
-// ─── Criar etapa (NETWORK_ADMIN only) ────────────────────────────
+// --- Criar etapa (NETWORK_ADMIN only) ----------------------------
 export async function createStage(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
@@ -83,7 +83,7 @@ export async function createStage(
   }
 }
 
-// ─── Renomear (NETWORK_ADMIN only) ───────────────────────────────
+// --- Renomear (NETWORK_ADMIN only) -------------------------------
 export async function renameStage(stageId: string, name: string, slug: string) {
   try {
     const ctx = await getTenantContext()
@@ -104,7 +104,7 @@ export async function renameStage(stageId: string, name: string, slug: string) {
   }
 }
 
-// ─── Mudar cor (NETWORK_ADMIN only) ──────────────────────────────
+// --- Mudar cor (NETWORK_ADMIN only) ------------------------------
 export async function updateStageColor(stageId: string, color: string, slug: string) {
   try {
     const ctx = await getTenantContext()
@@ -124,7 +124,7 @@ export async function updateStageColor(stageId: string, color: string, slug: str
   }
 }
 
-// ─── Excluir (NETWORK_ADMIN only) ────────────────────────────────
+// --- Excluir (NETWORK_ADMIN only) --------------------------------
 export async function deleteStage(stageId: string, slug: string) {
   try {
     const ctx = await getTenantContext()
@@ -156,7 +156,7 @@ export async function deleteStage(stageId: string, slug: string) {
   }
 }
 
-// ─── Reordenar (NETWORK_ADMIN only) ──────────────────────────────
+// --- Reordenar (NETWORK_ADMIN only) ------------------------------
 export async function reorderStages(orderedIds: string[], slug: string) {
   try {
     const ctx = await getTenantContext()

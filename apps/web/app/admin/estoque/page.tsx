@@ -1,4 +1,4 @@
-import { getTenantContext, assertRole } from '@/lib/auth'
+﻿import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
 import { ProductCategoryModal } from '@/components/admin/product-category-modal'
@@ -117,7 +117,7 @@ export default async function AdminEstoquePage() {
       ])
     : [{ data: [] as any }, { data: [] as any }]
 
-  // ── KPIs ────────────────────────────────────────────────────────────
+  // -- KPIs ------------------------------------------------------------
   const valorEstoque = products.reduce(
     (sum, p) => sum + p.costPrice * p.totalStock,
     0,

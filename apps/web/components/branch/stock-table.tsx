@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useMemo, useRef, useTransition } from 'react'
 import {
@@ -95,7 +95,7 @@ function ExpiryWarning({ batches }: { batches: { expires_at: string | null }[] }
   )
 }
 
-// ─── Modal de histórico ────────────────────────────────────────────
+// --- Modal de histórico --------------------------------------------
 function HistoryModal({
   dialogRef, product, branchId, history, loading,
 }: {
@@ -190,7 +190,7 @@ function HistoryModal({
   )
 }
 
-// ─── Componente principal ─────────────────────────────────────────
+// --- Componente principal -----------------------------------------
 export function StockTable({ initialProducts, categories, branchId, slug, canWrite = true }: Props) {
   const [search,      setSearch]      = useState('')
   const [category,    setCategory]    = useState('')
@@ -212,6 +212,7 @@ export function StockTable({ initialProducts, categories, branchId, slug, canWri
     const mp: MovProduct = {
       id: p.id, name: p.name, unit: p.unit,
       current_stock: stock.current_stock,
+      cost_price:    p.cost_price,
     }
     movRef.current?.open(mp)
   }

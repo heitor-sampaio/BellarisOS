@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -24,7 +24,7 @@ function toSlug(name: string) {
     .replace(/-+/g, '-')
 }
 
-// ── Stepper ──────────────────────────────────────────────────────────────────
+// -- Stepper ------------------------------------------------------------------
 
 const STEPS = ['Sua rede', 'Primeira unidade', 'Pronto!']
 
@@ -87,7 +87,7 @@ function Stepper({ current }: { current: number }) {
   )
 }
 
-// ── Step 1 — Dados da rede ────────────────────────────────────────────────────
+// -- Step 1 — Dados da rede ----------------------------------------------------
 
 function StepNetwork({
   initialName,
@@ -109,7 +109,7 @@ function StepNetwork({
     startTransition(async () => {
       const result = await updateTenantProfile({ name, document, phone, website })
       if (result && 'error' in result) {
-        setError(result.error)
+        setError(result.error ?? null)
       } else {
         onNext(name)
       }
@@ -202,7 +202,7 @@ function StepNetwork({
   )
 }
 
-// ── Step 2 — Primeira unidade ─────────────────────────────────────────────────
+// -- Step 2 — Primeira unidade -------------------------------------------------
 
 function StepBranch({ onNext }: { onNext: () => void }) {
   const [name,       setName]       = useState('')
@@ -253,7 +253,7 @@ function StepBranch({ onNext }: { onNext: () => void }) {
     startTransition(async () => {
       const result = await createBranch(undefined, formData)
       if (result && 'error' in result) {
-        setError(result.error)
+        setError(result.error ?? null)
       } else {
         onNext()
       }
@@ -417,7 +417,7 @@ function StepBranch({ onNext }: { onNext: () => void }) {
   )
 }
 
-// ── Step 3 — Concluído ────────────────────────────────────────────────────────
+// -- Step 3 — Concluído --------------------------------------------------------
 
 function StepDone({ tenantName }: { tenantName: string }) {
   const router = useRouter()
@@ -486,7 +486,7 @@ function StepDone({ tenantName }: { tenantName: string }) {
   )
 }
 
-// ── Wizard root ───────────────────────────────────────────────────────────────
+// -- Wizard root ---------------------------------------------------------------
 
 export function SetupWizard({ tenantName }: { tenantName: string }) {
   const [step, setStep] = useState(0)

@@ -1,10 +1,10 @@
-'use server'
+﻿'use server'
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// ── Tipos ─────────────────────────────────────────────────────────────────────
+// -- Tipos ---------------------------------------------------------------------
 
 export interface PlanSessionProduct {
   productId: string
@@ -52,7 +52,7 @@ export interface AnamnesisData {
   observations:              string
 }
 
-// ── Salvar rascunho do plano (profissional) ───────────────────────────────────
+// -- Salvar rascunho do plano (profissional) -----------------------------------
 
 export async function saveTreatmentPlan(
   appointmentId: string,
@@ -117,7 +117,7 @@ export async function saveTreatmentPlan(
   return { planId: plan.id }
 }
 
-// ── Buscar sessões do plano (para checkout wizard) ────────────────────────────
+// -- Buscar sessões do plano (para checkout wizard) ----------------------------
 
 const ALL_BRANCH_ROLES = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
 
@@ -156,7 +156,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
   type RawProc = { procedure_id: string; price: number; sort_order: number; products: RawProcProduct[]; procedures: { name: string; duration_min: number } | null }
   type RawSess = { id: string; sort_order: number; appointment_id: string | null; treatment_plan_session_procedures: RawProc[] }
 
-  const sessions: PlanSessionForCheckout[] = ((rawSessions ?? []) as RawSess[]).map(s => {
+  const sessions: PlanSessionForCheckout[] = ((rawSessions ?? []) as unknown as RawSess[]).map(s => {
     const procs = (s.treatment_plan_session_procedures ?? [])
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(p => ({
@@ -184,7 +184,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
   return { sessions, total }
 }
 
-// ── Enviar plano para recepção (DRAFT → PROPOSED) ─────────────────────────────
+// -- Enviar plano para recepção (DRAFT → PROPOSED) -----------------------------
 
 export async function proposeTreatmentPlan(planId: string, slug: string) {
   const ctx = await getTenantContext()
@@ -251,7 +251,7 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
   return {}
 }
 
-// ── Cancelar checkout (PROPOSED → DRAFT) ─────────────────────────────────────
+// -- Cancelar checkout (PROPOSED → DRAFT) -------------------------------------
 
 export async function cancelCheckout(
   planId: string,
@@ -299,7 +299,7 @@ export async function cancelCheckout(
   return {}
 }
 
-// ── Cancelar tratamento em andamento (ACCEPTED → CANCELLED) ──────────────────
+// -- Cancelar tratamento em andamento (ACCEPTED → CANCELLED) ------------------
 
 export async function cancelTreatmentPlan(
   planId: string,
@@ -402,7 +402,7 @@ export async function cancelTreatmentPlan(
   return {}
 }
 
-// ── Gerar plano completo de uma só vez (avaliação) ────────────────────────────
+// -- Gerar plano completo de uma só vez (avaliação) ----------------------------
 
 export async function generateEvaluationPlan(
   appointmentId:         string,
@@ -512,7 +512,7 @@ export async function generateEvaluationPlan(
   return { planId: plan.id }
 }
 
-// ── Assinar termo de consentimento digitalmente ───────────────────────────────
+// -- Assinar termo de consentimento digitalmente -------------------------------
 
 export async function signConsentTerm(consentId: string, signatureDataUrl: string, slug: string) {
   const ctx = await getTenantContext()
@@ -536,7 +536,7 @@ export async function signConsentTerm(consentId: string, signatureDataUrl: strin
   return {}
 }
 
-// ── Criar termos de consentimento para o checkout ─────────────────────────────
+// -- Criar termos de consentimento para o checkout -----------------------------
 
 export async function createCheckoutConsentTerms(
   planId: string,
@@ -610,7 +610,7 @@ Li, entendi e concordo com os termos deste Contrato de Prestação de Serviços.
   return { terms }
 }
 
-// ── Finalizar checkout (pagamento + agendamento de execução) ──────────────────
+// -- Finalizar checkout (pagamento + agendamento de execução) ------------------
 
 export type SessionScheduleInput = {
   planSessionId:  string
@@ -728,7 +728,7 @@ export async function checkoutTreatmentPlan(
   return { transactionId: transaction.id, newAppointmentId }
 }
 
-// ── Ficha de tratamento ───────────────────────────────────────────────────────
+// -- Ficha de tratamento -------------------------------------------------------
 
 export interface TreatmentFileSession {
   id:          string
@@ -809,7 +809,7 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
     const sortedAppts = (appts ?? []).slice().sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at))
     const sessions: TreatmentFileSession[] = (sessionsRaw ?? []).map((s, i) => {
       type RawProc = { procedure_id: string; price: number; procedures: { name: string; duration_min: number } | null }
-      const procs = (s.treatment_plan_session_procedures as RawProc[] | null) ?? []
+      const procs = (s.treatment_plan_session_procedures as unknown as RawProc[] | null) ?? []
       const appt  = sortedAppts[i] ?? null
       return {
         id:        s.id,

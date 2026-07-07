@@ -85,7 +85,7 @@ export default async function AdminMarketingPage({
   // Busca campanhas em paralelo
   type CampaignResult = { data: Campaign[]; error: string | null }
 
-  const [metaResult, googleResult] = await Promise.all<CampaignResult>([
+  const campaignResults = await Promise.all<CampaignResult>([
     metaConfig
       ? resolveAdsProvider(metaConfig).getCampaigns({ preset: activePeriod })
           .then(data => ({ data, error: null }))
@@ -98,6 +98,8 @@ export default async function AdminMarketingPage({
           .catch(e  => ({ data: [] as Campaign[], error: (e as Error).message }))
       : Promise.resolve({ data: [] as Campaign[], error: null }),
   ])
+  const metaResult    = campaignResults[0] as CampaignResult
+  const googleResult  = campaignResults[1] as CampaignResult
 
   // Busca leads com atribuição
   const now = new Date()

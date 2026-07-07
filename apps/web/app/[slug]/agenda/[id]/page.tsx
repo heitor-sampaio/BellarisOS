@@ -58,10 +58,10 @@ export default async function AppointmentSessionPage({
   type RawRoom   = { id: string; name: string } | null
   type RawClient = { id: string; name: string; phone: string | null; birth_date: string | null; tags: string[] | null; notes: string | null; document: string | null }
 
-  const proc = apptRaw.procedures   as RawProc   | null
-  const prof = apptRaw.professional as RawProf   | null
-  const room = apptRaw.room         as RawRoom
-  const cli  = apptRaw.client       as RawClient | null
+  const proc = apptRaw.procedures   as unknown as RawProc   | null
+  const prof = apptRaw.professional as unknown as RawProf   | null
+  const room = apptRaw.room         as unknown as RawRoom
+  const cli  = apptRaw.client       as unknown as RawClient | null
   if (!cli) notFound()
 
   const procedureId = apptRaw.procedure_id as string | null
@@ -164,7 +164,7 @@ export default async function AppointmentSessionPage({
   const anamnesis = (medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null
 
   // Produtos do procedimento (insumos padrão)
-  const defaultProducts: SessionProduct[] = ((procProductsRaw ?? []) as RawProcProduct[])
+  const defaultProducts: SessionProduct[] = ((procProductsRaw ?? []) as unknown as RawProcProduct[])
     .filter(pp => pp.products !== null)
     .map(pp => {
       const p = pp.products!
@@ -229,7 +229,7 @@ export default async function AppointmentSessionPage({
     procedure_products: RawProcInsumo[]
   }
 
-  const allProcs = (allProceduresRaw ?? []) as RawAllProc[]
+  const allProcs = (allProceduresRaw ?? []) as unknown as RawAllProc[]
 
   const treatmentProcedures = allProcs.map(p => ({
     id:          p.id,
@@ -264,14 +264,14 @@ export default async function AppointmentSessionPage({
   }))
 
   // Plano de tratamento existente (se houver)
-  type RawProcProduct = { product_id: string; name: string; unit: string; quantity: number }
-  type RawSessProc = { procedure_id: string; price: number; sort_order: number; products: RawProcProduct[]; procedures: { name: string } | null }
-  type RawPlanSess = { id: string; sort_order: number; treatment_plan_session_procedures: RawSessProc[] }
+  type RawPlanProcProduct = { product_id: string; name: string; unit: string; quantity: number }
+  type RawPlanSessProc = { procedure_id: string; price: number; sort_order: number; products: RawPlanProcProduct[]; procedures: { name: string } | null }
+  type RawPlanSess = { id: string; sort_order: number; treatment_plan_session_procedures: RawPlanSessProc[] }
   const existingPlan = planRaw ? {
     id:       planRaw.id as string,
     status:   planRaw.status as string,
     notes:    (planRaw.professional_notes as string | null) ?? null,
-    sessions: ((planRaw.treatment_plan_sessions as RawPlanSess[]) ?? [])
+    sessions: ((planRaw.treatment_plan_sessions as unknown as RawPlanSess[]) ?? [])
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(sess => ({
         procedures: (sess.treatment_plan_session_procedures ?? [])
@@ -280,7 +280,7 @@ export default async function AppointmentSessionPage({
             procedureId: p.procedure_id,
             name:        (p.procedures as { name?: string } | null)?.name ?? '—',
             price:       Number(p.price),
-            products:    (p.products ?? []).map((pr: RawProcProduct) => ({
+            products:    (p.products ?? []).map((pr: RawPlanProcProduct) => ({
               productId: pr.product_id, name: pr.name, unit: pr.unit, quantity: Number(pr.quantity),
             })),
           })),
