@@ -1,7 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { savePushToken } from '@/actions/push-subscriptions'
 
+// Static import forces the wizard module into this chunk so it lands in the
+// client registry on initial page load — without this, Next.js loads it via
+// dynamic import() during SPA navigation, which fails silently in Capacitor
+// Android WebView.
 import '@/components/client-portal/new-appointment-wizard'
 
 export function CapacitorNavFix() {
@@ -16,8 +21,7 @@ export function CapacitorNavFix() {
       .then(async ({ Capacitor }) => {
         if (!Capacitor.isNativePlatform()) return
 
-        // -- Navigation fix: intercept anchor clicks so Next.js client-router
-        //    doesn't break inside the Capacitor WebView ----------------------
+        // -- Navigation fix ------------------------------------------------
         const handler = (e: MouseEvent) => {
           const anchor = (e.target as HTMLElement).closest('a')
           if (!anchor?.href) return
@@ -32,33 +36,20 @@ export function CapacitorNavFix() {
         document.addEventListener('click', handler, { capture: true })
         navCleanup = () => document.removeEventListener('click', handler, { capture: true })
 
-        // -- FCM push notification setup -----------------------------------
+        // -- FCM: silent re-registration (no dialog) -----------------------
+        // Only runs if permission was already granted in a previous session.
+        // First-time permission request happens in NotificationBell (bell tap).
+        // Avoids showing a system dialog on mount, which pauses the Android
+        // WebView and drops the Supabase realtime WebSocket connection.
         try {
           const { PushNotifications } = await import('@capacitor/push-notifications')
-          const { savePushToken }      = await import('@/actions/push-subscriptions')
+          const { state } = await PushNotifications.checkPermissions()
+          if (state !== 'granted') return
 
-          const { receive } = await PushNotifications.requestPermissions()
-          if (receive !== 'granted') return
-
-          // Listeners BEFORE register() — avoids race condition where the
-          // 'registration' event fires before the listener is attached.
+          // Listeners BEFORE register() — avoids race condition
           await PushNotifications.addListener('registration', async ({ value: token }) => {
             await savePushToken({ token, platform: Capacitor.getPlatform() as 'android' | 'ios' })
           })
-
-          await PushNotifications.addListener('registrationError', (err) => {
-            console.error('[FCM] Registration error:', err)
-          })
-
-          // Foreground: Capacitor doesn't show a native banner automatically —
-          // the Supabase realtime channel in NotificationBell already updates
-          // the in-app badge/list, so no extra handling needed here.
-          await PushNotifications.addListener('pushNotificationReceived', (_notification) => {
-            // intentionally no-op: realtime channel handles in-app display
-          })
-
-          // Deep link: tapping a background/killed notification navigates to
-          // the URL embedded in the FCM data payload.
           await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
             const url: string | undefined =
               (action.notification.data as Record<string, string>)?.url
@@ -66,9 +57,7 @@ export function CapacitorNavFix() {
           })
 
           await PushNotifications.register()
-        } catch (err) {
-          console.error('[FCM] Setup error:', err)
-        }
+        } catch { /* push is optional */ }
       })
       .catch(() => {})
 

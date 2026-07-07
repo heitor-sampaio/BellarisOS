@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect, useRef } from 'react'
 import { Bell, X, CalendarDays, Star, Sparkles, CheckCircle2, AlertCircle, BellOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getClientNotifications, markAllNotificationsReceived, markNotificationRead } from '@/actions/notifications'
-import { saveWebPushSubscription } from '@/actions/push-subscriptions'
+import { saveWebPushSubscription, savePushToken } from '@/actions/push-subscriptions'
 import type { ClientNotification } from '@/actions/notifications'
 
 // -- Type config ----------------------------------------------------------
@@ -32,10 +32,25 @@ function relativeTime(iso: string): string {
   return `${d} dias atrás`
 }
 
-// -- Browser VAPID push registration (web/PWA only) ----------------------
-// Native (Capacitor) registration is handled in CapacitorNavFix on layout mount.
+// -- Push registration (native FCM via Capacitor or browser VAPID) --------
 
-async function registerWebPush() {
+async function registerPush() {
+  try {
+    const { Capacitor } = await import('@capacitor/core')
+    if (Capacitor.isNativePlatform()) {
+      const { PushNotifications } = await import('@capacitor/push-notifications')
+      const { receive } = await PushNotifications.requestPermissions()
+      if (receive !== 'granted') return
+      // Listeners BEFORE register() — avoids race condition on fast devices
+      await PushNotifications.addListener('registration', async ({ value: token }) => {
+        await savePushToken({ token, platform: Capacitor.getPlatform() as 'android' | 'ios' })
+      })
+      await PushNotifications.register()
+      return
+    }
+  } catch { /* not in Capacitor context */ }
+
+  // Browser VAPID flow
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return
@@ -156,11 +171,8 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
         await markAllNotificationsReceived()
       }
     })
-    // Web/PWA only — native registration is handled by CapacitorNavFix
     if (typeof Notification !== 'undefined' && Notification.permission !== 'denied') {
-      import('@capacitor/core')
-        .then(({ Capacitor }) => { if (!Capacitor.isNativePlatform()) registerWebPush() })
-        .catch(() => registerWebPush())
+      registerPush()
     }
   }
 
