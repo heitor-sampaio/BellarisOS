@@ -4,7 +4,7 @@ import { useState, useTransition, useEffect, useRef } from 'react'
 import { Bell, X, CalendarDays, Star, Sparkles, CheckCircle2, AlertCircle, BellOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getClientNotifications, markAllNotificationsReceived, markNotificationRead } from '@/actions/notifications'
-import { saveWebPushSubscription, savePushToken } from '@/actions/push-subscriptions'
+import { saveWebPushSubscription } from '@/actions/push-subscriptions'
 import type { ClientNotification } from '@/actions/notifications'
 
 // -- Type config ----------------------------------------------------------
@@ -32,24 +32,10 @@ function relativeTime(iso: string): string {
   return `${d} dias atrás`
 }
 
-// -- Push registration (native via Capacitor FCM or browser via VAPID) ---
+// -- Browser VAPID push registration (web/PWA only) ----------------------
+// Native (Capacitor) registration is handled in CapacitorNavFix on layout mount.
 
-async function registerPush() {
-  try {
-    const { Capacitor } = await import('@capacitor/core')
-    if (Capacitor.isNativePlatform()) {
-      const { PushNotifications } = await import('@capacitor/push-notifications')
-      const { receive } = await PushNotifications.requestPermissions()
-      if (receive !== 'granted') return
-      await PushNotifications.register()
-      await PushNotifications.addListener('registration', async ({ value: token }) => {
-        await savePushToken({ token, platform: Capacitor.getPlatform() as 'android' | 'ios' })
-      })
-      return
-    }
-  } catch { /* not in Capacitor context */ }
-
-  // Browser VAPID flow
+async function registerWebPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return
@@ -133,23 +119,6 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
     }
   }, [clientId])
 
-  // Deep link: tap em push nativo navega para a URL incluida no payload
-  useEffect(() => {
-    let cleanup: (() => void) | undefined
-    import('@capacitor/core')
-      .then(({ Capacitor }) => {
-        if (!Capacitor.isNativePlatform()) return
-        return import('@capacitor/push-notifications').then(({ PushNotifications }) =>
-          PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
-            const url: string | undefined = (action.notification.data as Record<string, string>)?.url
-            if (url) window.location.href = url
-          }).then(handle => { cleanup = () => handle.remove() }),
-        )
-      })
-      .catch(() => { /* deep link setup is optional */ })
-    return () => { cleanup?.() }
-  }, [])
-
   // Close panel on outside click
   useEffect(() => {
     if (!open) return
@@ -187,8 +156,11 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
         await markAllNotificationsReceived()
       }
     })
+    // Web/PWA only — native registration is handled by CapacitorNavFix
     if (typeof Notification !== 'undefined' && Notification.permission !== 'denied') {
-      registerPush()
+      import('@capacitor/core')
+        .then(({ Capacitor }) => { if (!Capacitor.isNativePlatform()) registerWebPush() })
+        .catch(() => registerWebPush())
     }
   }
 

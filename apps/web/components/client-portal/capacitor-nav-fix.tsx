@@ -2,10 +2,6 @@
 
 import { useEffect, useState } from 'react'
 
-// Static import forces the wizard module into this chunk so it lands in the
-// client registry on initial page load — without this, Next.js loads it via
-// dynamic import() during SPA navigation, which fails silently in Capacitor
-// Android WebView.
 import '@/components/client-portal/new-appointment-wizard'
 
 export function CapacitorNavFix() {
@@ -14,12 +10,14 @@ export function CapacitorNavFix() {
   useEffect(() => {
     setLayoutMounted(true)
 
-    let cleanup: (() => void) | undefined
+    let navCleanup: (() => void) | undefined
 
     import('@capacitor/core')
-      .then(({ Capacitor }) => {
+      .then(async ({ Capacitor }) => {
         if (!Capacitor.isNativePlatform()) return
 
+        // -- Navigation fix: intercept anchor clicks so Next.js client-router
+        //    doesn't break inside the Capacitor WebView ----------------------
         const handler = (e: MouseEvent) => {
           const anchor = (e.target as HTMLElement).closest('a')
           if (!anchor?.href) return
@@ -31,17 +29,52 @@ export function CapacitorNavFix() {
             window.location.href = anchor.href
           } catch { /* ignore malformed hrefs */ }
         }
-
         document.addEventListener('click', handler, { capture: true })
-        cleanup = () => document.removeEventListener('click', handler, { capture: true })
+        navCleanup = () => document.removeEventListener('click', handler, { capture: true })
+
+        // -- FCM push notification setup -----------------------------------
+        try {
+          const { PushNotifications } = await import('@capacitor/push-notifications')
+          const { savePushToken }      = await import('@/actions/push-subscriptions')
+
+          const { receive } = await PushNotifications.requestPermissions()
+          if (receive !== 'granted') return
+
+          // Listeners BEFORE register() — avoids race condition where the
+          // 'registration' event fires before the listener is attached.
+          await PushNotifications.addListener('registration', async ({ value: token }) => {
+            await savePushToken({ token, platform: Capacitor.getPlatform() as 'android' | 'ios' })
+          })
+
+          await PushNotifications.addListener('registrationError', (err) => {
+            console.error('[FCM] Registration error:', err)
+          })
+
+          // Foreground: Capacitor doesn't show a native banner automatically —
+          // the Supabase realtime channel in NotificationBell already updates
+          // the in-app badge/list, so no extra handling needed here.
+          await PushNotifications.addListener('pushNotificationReceived', (_notification) => {
+            // intentionally no-op: realtime channel handles in-app display
+          })
+
+          // Deep link: tapping a background/killed notification navigates to
+          // the URL embedded in the FCM data payload.
+          await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+            const url: string | undefined =
+              (action.notification.data as Record<string, string>)?.url
+            if (url) window.location.href = url
+          })
+
+          await PushNotifications.register()
+        } catch (err) {
+          console.error('[FCM] Setup error:', err)
+        }
       })
       .catch(() => {})
 
-    return () => { cleanup?.() }
+    return () => { navCleanup?.() }
   }, [])
 
-  // Green badge: confirms React is running in the layout.
-  // If this never appears → React is broken at the layout level too.
   return (
     <div
       style={{
