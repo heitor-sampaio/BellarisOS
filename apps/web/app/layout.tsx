@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import './globals.css'
+import { CapacitorSessionSync } from '@/components/capacitor-session-sync'
 
 export const metadata: Metadata = {
   title: 'Lumière — Gestão de Clínicas',
@@ -49,6 +50,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: mcPolyfill }} />
         {/* Injeta config em runtime antes de qualquer componente React */}
         <script dangerouslySetInnerHTML={{ __html: runtimeConfig }} />
+        {/* Mantém armazenamento nativo (Preferences) sincronizado com a sessão */}
+        <CapacitorSessionSync />
         {children}
         <Script
           id="facebook-jssdk"

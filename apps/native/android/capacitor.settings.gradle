@@ -8,5 +8,8 @@ project(':capacitor-app').projectDir = new File('../../../node_modules/.pnpm/@ca
 include ':capacitor-local-notifications'
 project(':capacitor-local-notifications').projectDir = new File('../../../node_modules/.pnpm/@capacitor+local-notifications@7.0.7_@capacitor+core@7.6.7/node_modules/@capacitor/local-notifications/android')
 
+include ':capacitor-preferences'
+project(':capacitor-preferences').projectDir = new File('../../../node_modules/.pnpm/@capacitor+preferences@7.0.4_@capacitor+core@7.6.7/node_modules/@capacitor/preferences/android')
+
 include ':capacitor-push-notifications'
 project(':capacitor-push-notifications').projectDir = new File('../../../node_modules/.pnpm/@capacitor+push-notifications@7.0.7_@capacitor+core@7.6.7/node_modules/@capacitor/push-notifications/android')

@@ -2,17 +2,27 @@
 
 import { useActionState, useEffect } from 'react'
 import { loginAction } from '@/actions/auth'
+import { createClient } from '@/lib/supabase/client'
+import { nativeStore } from '@/lib/supabase/native-store'
 import Link from 'next/link'
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(loginAction, undefined)
 
   useEffect(() => {
-    if (state && 'redirectTo' in state && state.redirectTo) {
-      // Full navigation garante que o cookie de sessão está commitado no WebView
-      // antes de renderizar a próxima página (evita race condition no Capacitor).
-      window.location.href = state.redirectTo
-    }
+    if (!(state && 'redirectTo' in state && state.redirectTo)) return
+    const dest = state.redirectTo
+    // Persiste tokens no armazenamento nativo (Android SharedPreferences / iOS NSUserDefaults)
+    // para que o cold start funcione mesmo quando os cookies do WebView não forem enviados.
+    createClient().auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        await nativeStore.save({
+          access_token:  session.access_token,
+          refresh_token: session.refresh_token,
+        })
+      }
+      window.location.href = dest
+    })
   }, [state])
 
   return (
