@@ -156,7 +156,13 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
           const n = payload.new as ClientNotification
           setUnread(prev => prev + 1)
           setNotifications(prev => prev ? [n, ...prev] : null)
-          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          // No nativo (Capacitor) o FCM já dispara a notificação nativa via
+          // pushNotificationReceived → LocalNotifications. Aqui só mostramos a
+          // Web Notification no BROWSER (onde não há FCM) — senão duplica.
+          const isNative = typeof window !== 'undefined'
+            && !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
+              .Capacitor?.isNativePlatform?.()
+          if (!isNative && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
             new Notification(n.title, { body: n.body ?? '', icon: '/icon-192.png' })
           }
         },
