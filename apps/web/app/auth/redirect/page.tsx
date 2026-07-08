@@ -5,8 +5,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 export const dynamic = 'force-dynamic'
 
 export default async function AuthRedirectPage() {
+  // Resolve o destino sem chamar redirect() dentro do try/catch.
+  // redirect() lança NEXT_REDIRECT internamente; se estiver dentro de
+  // um catch, o catch o captura e sobrescreve com redirect('/login').
+  let dest = '/login'
+
   try {
-    const ctx = await getTenantContext()
+    const ctx   = await getTenantContext()
     const admin = createAdminClient()
 
     if (ctx.isClient && ctx.clientId) {
@@ -15,16 +20,18 @@ export default async function AuthRedirectPage() {
       if (client?.branch_id) {
         const { data: br } = await admin
           .from('branches').select('slug').eq('id', client.branch_id).single()
-        if (br?.slug) redirect(`/${br.slug}/cliente`)
+        if (br?.slug) dest = `/${br.slug}/cliente`
       }
     } else if (ctx.branchId) {
       const { data: br } = await admin
         .from('branches').select('slug').eq('id', ctx.branchId).single()
-      redirect(getRedirectPath(ctx.role, br?.slug ?? null))
+      dest = getRedirectPath(ctx.role, br?.slug ?? null)
     } else {
-      redirect(getRedirectPath(ctx.role, null))
+      dest = getRedirectPath(ctx.role, null)
     }
   } catch {
-    redirect('/login')
+    dest = '/login'
   }
+
+  redirect(dest)
 }
