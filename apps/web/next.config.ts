@@ -18,7 +18,23 @@ const nextConfig: NextConfig = {
     '@estetica-os/db',
   ],
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }]
+    return [
+      {
+        // Páginas HTML nunca ficam em cache — evita Server Action IDs desatualizados no WebView
+        source: '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        headers: [
+          ...securityHeaders,
+          { key: 'Cache-Control', value: 'no-store' },
+        ],
+      },
+      {
+        // Assets estáticos podem usar cache longo (hash no nome do arquivo)
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+    ]
   },
 };
 

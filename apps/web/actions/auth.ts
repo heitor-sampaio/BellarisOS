@@ -3,7 +3,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getTenantContext, getRedirectPath } from '@/lib/auth'
 import { LoginSchema, RegisterSchema } from '@estetica-os/validators'
 
 function toSlug(name: string): string {
@@ -98,38 +97,9 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
   if (error) return { error: 'E-mail ou senha incorretos' }
 
-  const ctx = await getTenantContext()
-
-  if (ctx.isClient) {
-    const admin = createAdminClient()
-    const { data: client } = await admin
-      .from('clients')
-      .select('branch_id')
-      .eq('id', ctx.clientId!)
-      .single()
-    if (client?.branch_id) {
-      const { data: br } = await admin
-        .from('branches')
-        .select('slug')
-        .eq('id', client.branch_id)
-        .single()
-      if (br?.slug) return { redirectTo: `/${br.slug}/cliente` }
-    }
-    await supabase.auth.signOut()
-    return { error: 'Conta não vinculada a uma filial.' }
-  }
-
-  let branchSlug: string | null = null
-  if (ctx.branchId) {
-    const { data: branch } = await supabase
-      .from('branches')
-      .select('slug')
-      .eq('id', ctx.branchId)
-      .single()
-    branchSlug = branch?.slug ?? null
-  }
-
-  return { redirectTo: getRedirectPath(ctx.role, branchSlug) }
+  // Delega o routing para /auth/redirect que usa admin client (bypassa RLS)
+  // e conhece o role/branch do usuário após a sessão estar estabelecida.
+  return { redirectTo: '/auth/redirect' }
 }
 
 export async function logoutAction() {
