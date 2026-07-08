@@ -3,6 +3,9 @@ import Link from 'next/link'
 import { CalendarDays, Users, TrendingUp } from 'lucide-react'
 import { getTenantContext, getRedirectPath } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { AuthRedirect } from '@/components/auth-redirect'
+
+export const dynamic = 'force-dynamic'
 
 const FEATURES = [
   {
@@ -48,6 +51,8 @@ export default async function LandingPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-app)', fontFamily: 'var(--font-sans)' }}>
+      {/* Fallback client-side: detecta sessão após WebView carregar cookie store */}
+      <AuthRedirect />
 
       {/* -- Header ---------------------------------------- */}
       <header style={{
