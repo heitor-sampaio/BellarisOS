@@ -38,7 +38,7 @@ export function AdminSidebar({ role }: { role: string }) {
           borderRight:   asideBorder,
           display:       'flex',
           flexDirection: 'column',
-          padding:       '0 12px',
+          padding:       'env(safe-area-inset-top, 0px) 12px env(safe-area-inset-bottom, 0px)',
           zIndex:        50,
           overflowY:     'auto',
           overflowX:     'hidden',

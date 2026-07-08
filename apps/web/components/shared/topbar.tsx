@@ -42,7 +42,7 @@ export function Topbar({ userName, userRole, internalUserId, initialUnread }: To
   return (
     <header style={{
       position:        'fixed',
-      top:             0,
+      top:             'env(safe-area-inset-top, 0px)',
       left:            'var(--sidebar-w)',
       right:           0,
       height:          'var(--topbar-h)',

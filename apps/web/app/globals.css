@@ -417,6 +417,21 @@
   .hide-mobile { display: none !important; }
 }
 
+/* -- App nativo: faixas rosé cobrindo as barras do sistema (só no app) ---- */
+/* Os ícones do SO (status bar / nav bar) desenham por cima; aqui só o fundo. */
+html.capacitor::before,
+html.capacitor::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  background: var(--brand);
+  z-index: 2000;
+  pointer-events: none;
+}
+html.capacitor::before { top: 0;    height: env(safe-area-inset-top, 0px); }
+html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
+
 /* -- Grids responsivos ------------------------------------ */
 
 /* 4 colunas → 2 → 1 */
