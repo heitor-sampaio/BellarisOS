@@ -13,20 +13,13 @@ export default function LoginPage() {
     if (!(state && 'redirectTo' in state && state.redirectTo)) return
     const dest = state.redirectTo
 
-    ;(async () => {
-      try {
-        const { data: { session } } = await createClient().auth.getSession()
-        if (session) {
-          await nativeStore.save({
-            access_token:  session.access_token,
-            refresh_token: session.refresh_token,
-          })
-        }
-      } catch {
-        // falha ao salvar sessão nativa — segue com o redirect de qualquer forma
-      }
-      window.location.href = dest
-    })()
+    // Fire-and-forget: salva sessão no Preferences sem bloquear o redirect.
+    // CapacitorSessionSync mantém o store atualizado em segundo plano.
+    createClient().auth.getSession().then(({ data: { session } }) => {
+      if (session) nativeStore.save({ access_token: session.access_token, refresh_token: session.refresh_token })
+    }).catch(() => {})
+
+    window.location.href = dest
   }, [state])
 
   return (

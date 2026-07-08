@@ -1,7 +1,8 @@
+import { cache } from 'react'
 import type { TenantContext, UserRole, JwtClaims } from '@estetica-os/types'
 import { createClient } from '@/lib/supabase/server'
 
-export async function getTenantContext(): Promise<TenantContext> {
+export const getTenantContext = cache(async function getTenantContext(): Promise<TenantContext> {
   const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
 
@@ -26,7 +27,7 @@ export async function getTenantContext(): Promise<TenantContext> {
     isNetworkAdmin: claims.role === 'NETWORK_ADMIN',
     isClient: (claims.role ?? 'CLIENT') === 'CLIENT',
   }
-}
+})
 
 export function assertRole(ctx: TenantContext, allowed: UserRole[]): void {
   if (!allowed.includes(ctx.role)) {

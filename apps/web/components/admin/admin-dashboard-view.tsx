@@ -9,8 +9,7 @@ import {
 } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip as RechartsTip, ResponsiveContainer } from 'recharts'
 import { EvolutionChart, type ChartPoint } from './evolution-chart'
-import { HotmapSection } from './hotmap-section'
-import type { BranchPoint, HeatPoint } from './hotmap-types'
+import { HotmapSection, type RawBranch } from './hotmap-section'
 import { PeriodSelector, type Period } from './period-selector'
 
 // --- Types -------------------------------------------------------------------
@@ -96,9 +95,9 @@ export interface AdminDashboardProps {
   topClientsByRecurrence:  { name: string; count: number; pct: number }[]
   clientAgeGroups:         { label: string; count: number; pct: number }[]
   topClientsByLocation:    { city: string; count: number; pct: number }[]
-  hotmapBranches:          BranchPoint[]
-  hotmapHeatPoints:        HeatPoint[]
-  hotmapLtvPoints:         HeatPoint[]
+  hotmapRawBranches:       RawBranch[]
+  hotmapRawCepCounts:      Record<string, number>
+  hotmapRawCepLtv:         Record<string, number>
   currentPeriod:  Period
   customFrom?:    string
   customTo?:      string
@@ -368,7 +367,7 @@ export function AdminDashboardView({
   topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, procedureMargins,
   avgDurationMinutes, bestRatedPros, worstRatedPros,
   topClients, topClientsByRecurrence, clientAgeGroups, topClientsByLocation,
-  hotmapBranches, hotmapHeatPoints, hotmapLtvPoints,
+  hotmapRawBranches, hotmapRawCepCounts, hotmapRawCepLtv,
   currentPeriod, customFrom, customTo, granularity,
 }: AdminDashboardProps) {
 
@@ -1235,9 +1234,9 @@ export function AdminDashboardView({
       <SectionHeader title="Hotmap" />
 
       <HotmapSection
-        branches={hotmapBranches}
-        heatPoints={hotmapHeatPoints}
-        heatLtvPoints={hotmapLtvPoints}
+        rawBranches={hotmapRawBranches}
+        rawCepCounts={hotmapRawCepCounts}
+        rawCepLtv={hotmapRawCepLtv}
       />
 
     </div>

@@ -3,7 +3,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getRedirectPath } from '@/lib/auth'
 import { LoginSchema, RegisterSchema } from '@estetica-os/validators'
+import type { JwtClaims } from '@estetica-os/types'
 
 function toSlug(name: string): string {
   return name
@@ -97,9 +99,31 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
   if (error) return { error: 'E-mail ou senha incorretos' }
 
-  // Delega o routing para /auth/redirect que usa admin client (bypassa RLS)
-  // e conhece o role/branch do usuário após a sessão estar estabelecida.
-  return { redirectTo: '/auth/redirect' }
+  // Resolve o destino final diretamente, eliminando a navegação extra para /auth/redirect.
+  // Fallback: /auth/redirect (OAuth, links mágicos, erros inesperados).
+  let dest = '/auth/redirect'
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const claims = (user.app_metadata ?? {}) as JwtClaims
+      const admin  = createAdminClient()
+
+      if (claims.role === 'NETWORK_ADMIN' || claims.role === 'FINANCIAL' || claims.role === 'MARKETING') {
+        dest = getRedirectPath(claims.role, null)
+      } else if (claims.branch_id) {
+        const { data: br } = await admin.from('branches').select('slug').eq('id', claims.branch_id).single()
+        dest = getRedirectPath(claims.role, br?.slug ?? null)
+      } else if (claims.client_id) {
+        const { data: cl } = await admin.from('clients').select('branch_id').eq('id', claims.client_id).single()
+        if (cl?.branch_id) {
+          const { data: br } = await admin.from('branches').select('slug').eq('id', cl.branch_id).single()
+          if (br?.slug) dest = `/${br.slug}/cliente`
+        }
+      }
+    }
+  } catch { /* mantém fallback /auth/redirect */ }
+
+  return { redirectTo: dest }
 }
 
 export async function logoutAction() {

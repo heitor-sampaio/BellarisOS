@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import type { BranchPoint, HeatPoint } from './hotmap-types'
 import { GRADIENT_CLIENTS, GRADIENT_LTV } from './hotmap-types'
@@ -42,14 +42,73 @@ const LEGENDS: Record<HeatMode, Array<{ gradient: string; label: string }>> = {
   ],
 }
 
-interface Props {
-  branches:      BranchPoint[]
-  heatPoints:    HeatPoint[]
-  heatLtvPoints: HeatPoint[]
+export interface RawBranch {
+  id:   string
+  name: string
+  slug: string
+  cityKey: string  // "[city], [state]" para geocoding
 }
 
-export function HotmapSection({ branches, heatPoints, heatLtvPoints }: Props) {
+interface Props {
+  rawBranches:   RawBranch[]
+  rawCepCounts:  Record<string, number>   // cep (8 dígitos) → nº de clientes
+  rawCepLtv:     Record<string, number>   // cep (8 dígitos) → LTV acumulado
+}
+
+export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
   const [mode, setMode] = useState<HeatMode>('clients')
+  const [branches,      setBranches]      = useState<BranchPoint[]>([])
+  const [heatPoints,    setHeatPoints]    = useState<HeatPoint[]>([])
+  const [heatLtvPoints, setHeatLtvPoints] = useState<HeatPoint[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const cities = [...new Set(rawBranches.map(b => b.cityKey).filter(Boolean))]
+    const ceps   = Object.keys(rawCepCounts)
+
+    if (cities.length === 0 && ceps.length === 0) { setLoading(false); return }
+
+    fetch('/api/geocode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cities, ceps }),
+    })
+      .then(r => r.json() as Promise<{
+        cities: Record<string, { lat: number; lng: number } | null>
+        ceps:   Record<string, { lat: number; lng: number } | null>
+      }>)
+      .then(({ cities: cityCoords, ceps: cepCoords }) => {
+        const bpts = rawBranches
+          .map(b => {
+            const coords = cityCoords[b.cityKey]
+            if (!coords) return null
+            return { id: b.id, name: b.name, slug: b.slug, lat: coords.lat, lng: coords.lng }
+          })
+          .filter((b): b is BranchPoint => b !== null)
+
+        const hpts = Object.entries(rawCepCounts)
+          .map(([cep, count]) => {
+            const coords = cepCoords[cep]
+            if (!coords) return null
+            return { label: cep, lat: coords.lat, lng: coords.lng, count }
+          })
+          .filter((p): p is HeatPoint => p !== null)
+
+        const lpts = Object.entries(rawCepLtv)
+          .map(([cep, ltv]) => {
+            const coords = cepCoords[cep]
+            if (!coords) return null
+            return { label: cep, lat: coords.lat, lng: coords.lng, count: ltv }
+          })
+          .filter((p): p is HeatPoint => p !== null)
+
+        setBranches(bpts)
+        setHeatPoints(hpts)
+        setHeatLtvPoints(lpts)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const layers =
     mode === 'clients'
@@ -61,7 +120,7 @@ export function HotmapSection({ branches, heatPoints, heatLtvPoints }: Props) {
             { points: heatLtvPoints, gradient: GRADIENT_LTV     },
           ]
 
-  const hasData = branches.length > 0 || layers.some(l => l.points.length > 0)
+  const hasData = !loading && (branches.length > 0 || layers.some(l => l.points.length > 0))
 
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -120,7 +179,11 @@ export function HotmapSection({ branches, heatPoints, heatLtvPoints }: Props) {
       </div>
 
       {/* Map */}
-      {hasData ? (
+      {loading ? (
+        <div style={{ height: 480, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fdf8f9' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Carregando mapa…</span>
+        </div>
+      ) : hasData ? (
         <div style={{ height: 480 }}>
           <HotmapClient branches={branches} layers={layers} />
         </div>

@@ -1,6 +1,5 @@
 ﻿import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { geocodeCities, geocodeCeps } from '@/lib/geocoding'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type {
   BranchStat,
@@ -575,38 +574,23 @@ export default async function AdminDashboardPage({
   const maxCityCount  = sortedCities[0]?.[1] ?? 1
   const topClientsByLocation = sortedCities.map(([city, count]) => ({ city, count, pct: (count / maxCityCount) * 100 }))
 
-  // -- Hotmap: geocodificar filiais (por cidade) + clientes (por CEP) --
-  const branchCities    = branches.map(b => [b.city, b.state].filter(Boolean).join(', ')).filter(Boolean)
-  const geocodedBranches = await geocodeCities(branchCities)
+  // -- Hotmap: dados brutos para geocoding client-side ------------------
+  // O geocoding (BrasilAPI + Nominatim) é feito pelo componente HotmapSection
+  // no browser para não bloquear o SSR do dashboard.
+  const hotmapRawBranches = branches.map(b => ({
+    id:      b.id as string,
+    name:    b.name as string,
+    slug:    b.slug as string,
+    cityKey: [b.city, b.state].filter(Boolean).join(', '),
+  }))
 
-  const branchPoints = branches
-    .map(b => {
-      const cityKey = [b.city, b.state].filter(Boolean).join(', ')
-      const coords  = geocodedBranches.get(cityKey) ?? geocodedBranches.get(b.city ?? '')
-      if (!coords) return null
-      return { id: b.id, name: b.name, slug: b.slug, lat: coords.lat, lng: coords.lng }
-    })
-    .filter((b): b is NonNullable<typeof b> => b !== null)
-
-  // Agrupa clientes por CEP (8 dígitos)
-  const cepMap: Record<string, number> = {}
+  const hotmapRawCepCounts: Record<string, number> = {}
   for (const c of clientsDemo) {
     const digits = ((c.zip_code as string | null) ?? '').replace(/\D/g, '')
     if (digits.length !== 8) continue
-    cepMap[digits] = (cepMap[digits] ?? 0) + 1
+    hotmapRawCepCounts[digits] = (hotmapRawCepCounts[digits] ?? 0) + 1
   }
 
-  const geocodedCeps = await geocodeCeps(Object.keys(cepMap))
-
-  const heatPoints = Object.entries(cepMap)
-    .map(([cep, count]) => {
-      const coords = geocodedCeps.get(cep)
-      if (!coords) return null
-      return { label: cep, lat: coords.lat, lng: coords.lng, count }
-    })
-    .filter((p): p is NonNullable<typeof p> => p !== null)
-
-  // -- Hotmap LTV: gasto acumulado por CEP ---------------------------
   const clientLtvMap: Record<string, number> = {}
   for (const tx of (ltvTxsRaw ?? []) as any[]) {
     const clientId = tx.client_id as string | null
@@ -614,22 +598,14 @@ export default async function AdminDashboardPage({
     clientLtvMap[clientId] = (clientLtvMap[clientId] ?? 0) + Number(tx.amount)
   }
 
-  const cepLtvMap: Record<string, number> = {}
+  const hotmapRawCepLtv: Record<string, number> = {}
   for (const c of clientsDemo) {
     const digits = ((c.zip_code as string | null) ?? '').replace(/\D/g, '')
     if (digits.length !== 8) continue
     const ltv = clientLtvMap[c.id as string] ?? 0
     if (ltv === 0) continue
-    cepLtvMap[digits] = (cepLtvMap[digits] ?? 0) + ltv
+    hotmapRawCepLtv[digits] = (hotmapRawCepLtv[digits] ?? 0) + ltv
   }
-
-  const heatLtvPoints = Object.entries(cepLtvMap)
-    .map(([cep, ltv]) => {
-      const coords = geocodedCeps.get(cep)
-      if (!coords) return null
-      return { label: cep, lat: coords.lat, lng: coords.lng, count: ltv }
-    })
-    .filter((p): p is NonNullable<typeof p> => p !== null)
 
   return (
     <>
@@ -677,9 +653,9 @@ export default async function AdminDashboardPage({
         topClientsByRecurrence={topClientsByRecurrence}
         clientAgeGroups={clientAgeGroups}
         topClientsByLocation={topClientsByLocation}
-        hotmapBranches={branchPoints}
-        hotmapHeatPoints={heatPoints}
-        hotmapLtvPoints={heatLtvPoints}
+        hotmapRawBranches={hotmapRawBranches}
+        hotmapRawCepCounts={hotmapRawCepCounts}
+        hotmapRawCepLtv={hotmapRawCepLtv}
       />
     </>
   )
