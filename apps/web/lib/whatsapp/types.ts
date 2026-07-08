@@ -26,10 +26,11 @@ export interface WhatsAppProvider {
 // -- Config shapes stored in integration_configs.config (jsonb) --
 
 export interface ZAPIConfig {
-  provider:    'zapi'
-  instanceId:  string
-  token:       string
-  baseUrl?:    string   // default: https://api.z-api.io
+  provider:      'zapi'
+  instanceId:    string
+  token:         string
+  baseUrl?:      string   // default: https://api.z-api.io
+  webhookToken?: string   // Security Token configurado no painel Z-API (client-token header)
 }
 
 export interface OfficialConfig {

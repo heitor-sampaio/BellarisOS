@@ -42,25 +42,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 })();
 `.trim()
 
-  const errorCapture = `
-(function(){
-  var ok=document.createElement('div');
-  ok.style.cssText='position:fixed;top:0;right:0;font-size:10px;background:#2563eb;color:#fff;padding:2px 8px;z-index:999999;pointer-events:none;font-family:monospace;line-height:1.4';
-  ok.textContent='JS ok';
-  document.body.appendChild(ok);
-  document.addEventListener('readystatechange',function(){ok.textContent='RS:'+document.readyState;ok.style.background=document.readyState==='complete'?'#16a34a':'#d97706';});
-  document.addEventListener('DOMContentLoaded',function(){ok.textContent='DOMok';ok.style.background='#16a34a';});
-  setTimeout(function(){ok.textContent+=' T✓';},800);
-})();
-`.trim()
-
   return (
     <html lang="pt-BR">
       <body suppressHydrationWarning>
         {/* MessageChannel polyfill must be first — before any deferred script (React) runs */}
         <script dangerouslySetInnerHTML={{ __html: mcPolyfill }} />
-        {/* Diagnostic: remove once Capacitor WebView issue is confirmed fixed */}
-        <script dangerouslySetInnerHTML={{ __html: errorCapture }} />
         {/* Injeta config em runtime antes de qualquer componente React */}
         <script dangerouslySetInnerHTML={{ __html: runtimeConfig }} />
         {children}

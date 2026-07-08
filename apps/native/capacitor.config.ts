@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   server: {
     // Dev:  http://SEU_IP:3000  +  cleartext: true
     // Prod: https://app.esteticaos.com.br  +  cleartext: false
-    url: 'http://192.168.0.188:3000',
+    url: 'https://bellarisos-production.up.railway.app',
     cleartext: true,
   },
   plugins: {

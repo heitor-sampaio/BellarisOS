@@ -37,6 +37,13 @@ apps/native/android/app/google-services.json
 # Equivalente iOS (caso seja adicionado futuramente)
 apps/native/ios/App/App/GoogleService-Info.plist
 
+# Android/iOS signing keys — nunca commitar
+*.keystore
+*.jks
+*.p12
+*.p8
+*.cer
+
 # Logs
 *.log
 npm-debug.log*

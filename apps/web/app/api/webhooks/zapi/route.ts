@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { ZAPIProvider } from '@/lib/whatsapp/zapi'
 import { getTenantByZAPIInstance, getWhatsAppConfig } from '@/lib/whatsapp/factory'
 import { resolveConversation, insertInboundMessage, updateMessageStatus } from '@/lib/inbox/resolve-conversation'
@@ -26,6 +27,21 @@ export async function POST(req: NextRequest) {
 
   const config = await getWhatsAppConfig(tenantId)
   if (!config || config.provider !== 'zapi') return NextResponse.json({ ok: true })
+
+  // Validate Security Token (client-token header) when configured in the Z-API dashboard
+  const zapiConfig = config as ZAPIConfig
+  if (zapiConfig.webhookToken) {
+    const incoming = req.headers.get('client-token') ?? ''
+    try {
+      const a = Buffer.from(incoming)
+      const b = Buffer.from(zapiConfig.webhookToken)
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
 
   const provider = new ZAPIProvider(config as ZAPIConfig)
 
