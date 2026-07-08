@@ -3,6 +3,11 @@ import Script from 'next/script'
 import './globals.css'
 import { CapacitorSessionSync } from '@/components/capacitor-session-sync'
 
+// Garante renderização dinâmica em todas as páginas para que as env vars de
+// runtime (NEXT_PUBLIC_SUPABASE_URL, etc.) sejam lidas no servidor a cada
+// request — não baked-in no HTML estático durante o build do Railway.
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Lumière — Gestão de Clínicas',
   description: 'Sistema de gestão para redes de clínicas de estética',
