@@ -26,12 +26,24 @@ export function NavItem({ icon, label, href }: NavItemProps) {
     startT(() => router.push(href))
   }
 
+  // Expandido = sidebar branco (original): ativo = pill rosé + texto branco.
+  // Recolhido = sidebar rosé: ativo = pill branco + texto rosé; inativo = branco translúcido.
+  const background = showActive
+    ? (collapsed ? 'var(--on-brand)' : 'var(--brand)')
+    : 'transparent'
+  const color = showActive
+    ? (collapsed ? 'var(--brand)' : 'var(--on-brand)')
+    : (collapsed ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)')
+  const boxShadow = showActive
+    ? (collapsed ? '0 6px 16px -6px rgba(90, 20, 40, 0.4)' : 'var(--shadow-nav-active)')
+    : 'none'
+
   return (
     <button
       type="button"
       onClick={handleClick}
       title={collapsed ? label : undefined}
-      onMouseEnter={e => { if (!showActive) e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
+      onMouseEnter={e => { if (!showActive && collapsed) e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
       onMouseLeave={e => { if (!showActive) e.currentTarget.style.background = 'transparent' }}
       style={{
         display:        'flex',
@@ -49,10 +61,9 @@ export function NavItem({ icon, label, href }: NavItemProps) {
         whiteSpace:     'nowrap',
         overflow:       'hidden',
         transition:     'background 120ms ease, color 120ms ease, box-shadow 120ms ease',
-        // Sidebar rosé: item ativo INVERTE (pill branco + texto rosé); inativo = branco translúcido
-        background:     showActive ? 'var(--on-brand)' : 'transparent',
-        color:          showActive ? 'var(--brand)' : 'rgba(255,255,255,0.85)',
-        boxShadow:      showActive ? '0 6px 16px -6px rgba(90, 20, 40, 0.4)' : 'none',
+        background,
+        color,
+        boxShadow,
       }}
     >
       <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

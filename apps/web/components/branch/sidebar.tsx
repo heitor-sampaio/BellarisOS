@@ -21,7 +21,6 @@ interface BranchSidebarProps {
 }
 
 const SIDEBAR_GRADIENT = 'linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%)'
-const HAIRLINE_ON_BRAND = '1px solid rgba(255,255,255,0.15)'
 
 export function BranchSidebar({
   slug, branchName, permissions, isNetworkAdmin, allBranches = [],
@@ -29,6 +28,14 @@ export function BranchSidebar({
   const base = `/${slug}`
   const [switcherOpen, setSwitcherOpen] = useState(false)
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
+
+  // Recolhido = rosé; expandido = branco (original)
+  const asideBg     = collapsed ? SIDEBAR_GRADIENT : 'var(--surface)'
+  const asideBorder = collapsed ? 'none' : '1px solid var(--border)'
+  const hairline    = collapsed ? '1px solid rgba(255,255,255,0.15)' : '1px solid var(--hairline)'
+  const wordColor   = collapsed ? 'var(--on-brand)' : 'var(--brand)'
+  const footerColor = collapsed ? 'var(--on-brand)' : 'var(--text-muted)'
+  const footerHover = collapsed ? 'rgba(255,255,255,0.14)' : 'var(--bg-app)'
 
   return (
     <>
@@ -39,9 +46,8 @@ export function BranchSidebar({
         style={{
           position:      'fixed',
           left:          0, top: 0, bottom: 0,
-          background:    SIDEBAR_GRADIENT,
-          color:         'var(--on-brand)',
-          borderRight:   'none',
+          background:    asideBg,
+          borderRight:   asideBorder,
           display:       'flex',
           flexDirection: 'column',
           padding:       '0 12px',
@@ -52,26 +58,26 @@ export function BranchSidebar({
       >
         {/* Wordmark */}
         <div style={{
-          height:       'var(--topbar-h)',
-          display:      'flex',
-          alignItems:   'center',
+          height:         'var(--topbar-h)',
+          display:        'flex',
+          alignItems:     'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
-          paddingLeft:  collapsed ? 0 : 4,
-          borderBottom: HAIRLINE_ON_BRAND,
-          marginBottom: 8,
-          flexShrink:   0,
+          paddingLeft:    collapsed ? 0 : 4,
+          borderBottom:   hairline,
+          marginBottom:   8,
+          flexShrink:     0,
         }}>
           <span style={{
             fontSize:      18,
             fontWeight:    'var(--weight-extrabold)',
-            color:         'var(--on-brand)',
+            color:         wordColor,
             letterSpacing: 'var(--tracking-tight)',
           }}>
             {collapsed ? '✦' : 'Lumière ✦'}
           </span>
         </div>
 
-        {/* Network admin: voltar para rede + seletor de filial (oculto quando recolhido) */}
+        {/* Network admin: voltar para rede + seletor (oculto quando recolhido) */}
         {!collapsed && (isNetworkAdmin ? (
           <div style={{ padding: '0 4px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <Link
@@ -79,12 +85,12 @@ export function BranchSidebar({
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '5px 8px', borderRadius: 8,
-                fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.72)',
+                fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
                 textDecoration: 'none', letterSpacing: '0.03em',
                 transition: 'background 0.1s, color 0.1s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.color = 'var(--on-brand)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-app)'; e.currentTarget.style.color = 'var(--brand)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'var(--text-muted)' }}
             >
               <ArrowLeft size={13} />
               Voltar para a rede
@@ -97,8 +103,8 @@ export function BranchSidebar({
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '7px 10px', borderRadius: 8, cursor: 'pointer',
-                  background: 'rgba(255,255,255,0.16)', border: '1.5px solid rgba(255,255,255,0.28)',
-                  fontSize: 12, fontWeight: 700, color: 'var(--on-brand)',
+                  background: 'var(--brand-soft)', border: '1.5px solid var(--brand-soft-border)',
+                  fontSize: 12, fontWeight: 700, color: 'var(--brand)',
                   transition: 'background 0.1s',
                 }}
               >
@@ -140,7 +146,7 @@ export function BranchSidebar({
           </div>
         ) : (
           <div style={{ padding: '4px 12px', marginBottom: 16 }}>
-            <span className="overline" style={{ color: 'rgba(255,255,255,0.7)' }}>{branchName}</span>
+            <span className="overline">{branchName}</span>
           </div>
         ))}
 
@@ -156,7 +162,7 @@ export function BranchSidebar({
         </nav>
 
         {/* Rodapé: recolher (desktop) + logout */}
-        <div style={{ paddingBottom: 16, borderTop: HAIRLINE_ON_BRAND, paddingTop: 12, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ paddingBottom: 16, borderTop: hairline, paddingTop: 12, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <button
             type="button"
             onClick={toggleCollapsed}
@@ -167,11 +173,11 @@ export function BranchSidebar({
               display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
               gap: collapsed ? 0 : 10, padding: collapsed ? '10px 0' : '9px 12px',
               borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
-              background: 'transparent', color: 'rgba(255,255,255,0.72)',
+              background: 'transparent', color: footerColor,
               fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
               transition: 'background 120ms ease',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+            onMouseEnter={e => (e.currentTarget.style.background = footerHover)}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
             <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -188,11 +194,11 @@ export function BranchSidebar({
                 display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
                 gap: collapsed ? 0 : 10, padding: collapsed ? '10px 0' : '9px 12px',
                 borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
-                background: 'transparent', color: 'var(--on-brand)',
+                background: 'transparent', color: footerColor,
                 fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
                 transition: 'background 120ms ease',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+              onMouseEnter={e => (e.currentTarget.style.background = footerHover)}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

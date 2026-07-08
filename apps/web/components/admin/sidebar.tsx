@@ -10,13 +10,20 @@ import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
 
 const SIDEBAR_GRADIENT = 'linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%)'
-const HAIRLINE_ON_BRAND = '1px solid rgba(255,255,255,0.15)'
 
 export function AdminSidebar({ role }: { role: string }) {
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
   const isFinancial  = role === 'FINANCIAL'
   const isMarketing  = role === 'MARKETING'
   const isRestricted = isFinancial || isMarketing  // sem Dashboard/Unidades/Equipe
+
+  // Recolhido = rosé; expandido = branco (original)
+  const asideBg     = collapsed ? SIDEBAR_GRADIENT : 'var(--surface)'
+  const asideBorder = collapsed ? 'none' : '1px solid var(--border)'
+  const hairline    = collapsed ? '1px solid rgba(255,255,255,0.15)' : '1px solid var(--hairline)'
+  const wordColor   = collapsed ? 'var(--on-brand)' : 'var(--brand)'
+  const footerColor = collapsed ? 'var(--on-brand)' : 'var(--text-muted)'
+  const footerHover = collapsed ? 'rgba(255,255,255,0.14)' : 'var(--bg-app)'
 
   return (
     <>
@@ -27,9 +34,8 @@ export function AdminSidebar({ role }: { role: string }) {
         style={{
           position:      'fixed',
           left:          0, top: 0, bottom: 0,
-          background:    SIDEBAR_GRADIENT,
-          color:         'var(--on-brand)',
-          borderRight:   'none',
+          background:    asideBg,
+          borderRight:   asideBorder,
           display:       'flex',
           flexDirection: 'column',
           padding:       '0 12px',
@@ -45,14 +51,14 @@ export function AdminSidebar({ role }: { role: string }) {
           alignItems:     'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
           paddingLeft:    collapsed ? 0 : 4,
-          borderBottom:   HAIRLINE_ON_BRAND,
+          borderBottom:   hairline,
           marginBottom:   8,
           flexShrink:     0,
         }}>
           <span style={{
             fontSize:      18,
             fontWeight:    'var(--weight-extrabold)',
-            color:         'var(--on-brand)',
+            color:         wordColor,
             letterSpacing: 'var(--tracking-tight)',
           }}>
             {collapsed ? '✦' : 'Lumière ✦'}
@@ -61,7 +67,7 @@ export function AdminSidebar({ role }: { role: string }) {
 
         {!collapsed && (
           <div style={{ padding: '4px 12px', marginBottom: 16 }}>
-            <span className="overline" style={{ color: 'rgba(255,255,255,0.7)' }}>Rede</span>
+            <span className="overline">Rede</span>
           </div>
         )}
 
@@ -99,7 +105,7 @@ export function AdminSidebar({ role }: { role: string }) {
         </nav>
 
         {/* Rodapé: recolher (desktop) + logout */}
-        <div style={{ paddingBottom: 16, borderTop: HAIRLINE_ON_BRAND, paddingTop: 12, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ paddingBottom: 16, borderTop: hairline, paddingTop: 12, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <button
             type="button"
             onClick={toggleCollapsed}
@@ -110,11 +116,11 @@ export function AdminSidebar({ role }: { role: string }) {
               display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
               gap: collapsed ? 0 : 10, padding: collapsed ? '10px 0' : '9px 12px',
               borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
-              background: 'transparent', color: 'rgba(255,255,255,0.72)',
+              background: 'transparent', color: footerColor,
               fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
               transition: 'background 120ms ease',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+            onMouseEnter={e => (e.currentTarget.style.background = footerHover)}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
             <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -131,11 +137,11 @@ export function AdminSidebar({ role }: { role: string }) {
                 display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
                 gap: collapsed ? 0 : 10, padding: collapsed ? '10px 0' : '9px 12px',
                 borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
-                background: 'transparent', color: 'var(--on-brand)',
+                background: 'transparent', color: footerColor,
                 fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
                 transition: 'background 120ms ease',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+              onMouseEnter={e => (e.currentTarget.style.background = footerHover)}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
