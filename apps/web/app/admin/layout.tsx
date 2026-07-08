@@ -15,21 +15,26 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const supabase  = await createClient()
   const admin     = createAdminClient()
 
-  const [tenantResult, userResult] = await Promise.all([
+  const [tenantResult, userResult, unreadRes] = await Promise.all([
     (ctx.role === 'NETWORK_ADMIN' && ctx.tenantId)
       ? admin.from('tenants').select('onboarding_completed_at').eq('id', ctx.tenantId).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     supabase.from('users').select('name').eq('auth_id', ctx.userId).single(),
+    ctx.internalUserId
+      ? admin.from('user_notifications').select('id', { count: 'exact', head: true })
+          .eq('user_id', ctx.internalUserId).eq('is_received', false)
+      : Promise.resolve({ count: 0 }),
   ])
 
   if (ctx.role === 'NETWORK_ADMIN' && !tenantResult.data?.onboarding_completed_at) redirect('/setup')
 
   const user = userResult.data
+  const initialUnread = unreadRes.count ?? 0
 
   return (
     <SidebarProvider>
       <AdminSidebar role={ctx.role} />
-      <Topbar userName={user?.name ?? 'Admin'} userRole={ctx.role} />
+      <Topbar userName={user?.name ?? 'Admin'} userRole={ctx.role} internalUserId={ctx.internalUserId} initialUnread={initialUnread} />
       <main style={{
         marginLeft: 'var(--sidebar-w)',
         marginTop:  'var(--topbar-h)',

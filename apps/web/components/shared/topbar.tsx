@@ -1,13 +1,16 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Bell, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { savePushToken } from '@/actions/push-subscriptions'
+import { StaffNotificationBell } from '@/components/shared/staff-notification-bell'
 
 interface TopbarProps {
-  userName: string
-  userRole: string
+  userName:       string
+  userRole:       string
+  internalUserId: string | null
+  initialUnread:  number
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -18,7 +21,7 @@ const ROLE_LABELS: Record<string, string> = {
   FINANCIAL:     'Financeiro',
 }
 
-export function Topbar({ userName, userRole }: TopbarProps) {
+export function Topbar({ userName, userRole, internalUserId, initialUnread }: TopbarProps) {
   const firstName  = userName.split(' ')[0] ?? userName
   const { toggle } = useSidebar()
 
@@ -73,13 +76,9 @@ export function Topbar({ userName, userRole }: TopbarProps) {
       </p>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button
-          className="btn-ghost"
-          style={{ padding: 8 }}
-          aria-label="Notificações"
-        >
-          <Bell size={18} />
-        </button>
+        {internalUserId && (
+          <StaffNotificationBell internalUserId={internalUserId} initialUnread={initialUnread} />
+        )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{

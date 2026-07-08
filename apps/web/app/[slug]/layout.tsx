@@ -55,7 +55,7 @@ export default async function BranchLayout({
   }
 
   // Busca overrides de permissão, nome do usuário e filiais (NETWORK_ADMIN) em paralelo
-  const [permOverrides, { data: user }, allBranches] = await Promise.all([
+  const [permOverrides, { data: user }, allBranches, unreadRes] = await Promise.all([
     getCachedRolePermissions(ctx.tenantId!, ctx.role),
     supabase
       .from('users')
@@ -71,9 +71,17 @@ export default async function BranchLayout({
           .order('name')
           .then(r => r.data ?? [])
       : Promise.resolve([]),
+    ctx.internalUserId
+      ? createAdminClient()
+          .from('user_notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', ctx.internalUserId)
+          .eq('is_received', false)
+      : Promise.resolve({ count: 0 }),
   ])
 
-  const permissions = resolvePermissions(ctx.role, permOverrides ?? [])
+  const permissions   = resolvePermissions(ctx.role, permOverrides ?? [])
+  const initialUnread = unreadRes.count ?? 0
 
   return (
     <SidebarProvider>
@@ -84,7 +92,7 @@ export default async function BranchLayout({
         isNetworkAdmin={ctx.role === 'NETWORK_ADMIN'}
         allBranches={allBranches}
       />
-      <Topbar userName={user?.name ?? 'Usuário'} userRole={ctx.role} />
+      <Topbar userName={user?.name ?? 'Usuário'} userRole={ctx.role} internalUserId={ctx.internalUserId} initialUnread={initialUnread} />
       <main style={{
         marginLeft:  'var(--sidebar-w)',
         marginTop:   'var(--topbar-h)',

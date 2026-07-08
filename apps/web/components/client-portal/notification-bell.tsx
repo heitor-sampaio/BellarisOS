@@ -1,36 +1,15 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
-import { Bell, X, CalendarDays, Star, Sparkles, CheckCircle2, AlertCircle, BellOff } from 'lucide-react'
+import { Bell, X, BellOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getClientNotifications, markAllNotificationsReceived, markNotificationRead } from '@/actions/notifications'
 import { saveWebPushSubscription, savePushToken } from '@/actions/push-subscriptions'
 import type { ClientNotification } from '@/actions/notifications'
-
-// -- Type config ----------------------------------------------------------
-
-const TYPE_CFG: Record<string, { Icon: React.ElementType; color: string }> = {
-  appointment_confirmed:  { Icon: CheckCircle2, color: '#22c55e' },
-  appointment_reminder:   { Icon: CalendarDays, color: 'var(--brand)' },
-  appointment_cancelled:  { Icon: AlertCircle,  color: '#ef4444' },
-  appointment_completed:  { Icon: CheckCircle2, color: 'var(--text-muted)' },
-  points_earned:          { Icon: Star,         color: '#f59e0b' },
-  package_activated:      { Icon: Sparkles,     color: 'var(--brand)' },
-  promotion:              { Icon: Sparkles,     color: '#f59e0b' },
-  general:                { Icon: Bell,         color: 'var(--text-muted)' },
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1)  return 'agora'
-  if (mins < 60) return `${mins} min atrás`
-  const h = Math.floor(mins / 60)
-  if (h < 24)    return `${h}h atrás`
-  const d = Math.floor(h / 24)
-  if (d === 1)   return 'ontem'
-  return `${d} dias atrás`
-}
+import {
+  NOTIFICATION_TYPE_CFG as TYPE_CFG,
+  notificationRelativeTime as relativeTime,
+} from '@/components/shared/notification-types'
 
 // -- Push registration (native FCM via Capacitor or browser VAPID) --------
 // Guard so os listeners nativos são registrados apenas uma vez por sessão do app

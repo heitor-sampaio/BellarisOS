@@ -17,7 +17,9 @@ export async function savePushToken({
       token,
       platform,
       client_id: ctx.isClient ? ctx.clientId : null,
-      user_id:   ctx.isClient ? null : ctx.userId,
+      // user_id = public.users.id interno (bate com appointments.professional_id
+      // e com notifyUser). NÃO usar ctx.userId (que é o auth id).
+      user_id:   ctx.isClient ? null : ctx.internalUserId,
     },
     { onConflict: 'token' },
   )

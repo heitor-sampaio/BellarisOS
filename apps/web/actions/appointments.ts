@@ -1,10 +1,14 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { after } from 'next/server'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
+import { notifyClient, notifyUser } from '@/lib/notifications/notify'
 
 const WRITABLE_ROLES    = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'] as const
 const ALL_BRANCH_ROLES  = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
@@ -32,6 +36,143 @@ async function logHistory(
     action,
     description,
     metadata: metadata ?? null,
+  })
+}
+
+// ─── Notificações de eventos de agendamento ───────────────────────────────────
+// Disparadas via after() — rodam APÓS a resposta da action, sem atrasá-la.
+
+function fmtDateTime(iso: string): string {
+  try { return format(new Date(iso), "dd/MM 'às' HH:mm", { locale: ptBR }) } catch { return '' }
+}
+
+type ApptCtx = {
+  clientId: string; professionalId: string | null
+  clientName: string; procedureName: string; scheduledAt: string
+}
+
+async function loadApptCtx(
+  admin: ReturnType<typeof createAdminClient>,
+  appointmentId: string,
+): Promise<ApptCtx | null> {
+  const { data } = await admin
+    .from('appointments')
+    .select('client_id, professional_id, scheduled_at, clients(name), procedures(name)')
+    .eq('id', appointmentId)
+    .maybeSingle()
+  if (!data) return null
+  return {
+    clientId:       data.client_id as string,
+    professionalId: (data.professional_id ?? null) as string | null,
+    clientName:     ((data.clients as unknown as { name?: string } | null)?.name ?? 'Cliente'),
+    procedureName:  ((data.procedures as unknown as { name?: string } | null)?.name ?? 'Atendimento'),
+    scheduledAt:    data.scheduled_at as string,
+  }
+}
+
+/** Novo agendamento → cliente ('confirmado') + profissional ('novo'). */
+function notifyNewAppointment(appointmentId: string): void {
+  after(async () => {
+    const admin = createAdminClient()
+    const c = await loadApptCtx(admin, appointmentId)
+    if (!c) return
+    const when = fmtDateTime(c.scheduledAt)
+    const data = { appointment_id: appointmentId }
+    await notifyClient(admin, c.clientId, {
+      type: 'appointment_confirmed', title: 'Agendamento confirmado',
+      body: `${c.procedureName} em ${when}.`, data,
+    })
+    if (c.professionalId) {
+      await notifyUser(admin, c.professionalId, {
+        type: 'appointment_new', title: 'Novo agendamento',
+        body: `${c.clientName} — ${c.procedureName} em ${when}.`, data,
+      })
+    }
+  })
+}
+
+/** Cancelamento → cliente + profissional. */
+function notifyCancelledAppointment(appointmentId: string, reason?: string | null): void {
+  after(async () => {
+    const admin = createAdminClient()
+    const c = await loadApptCtx(admin, appointmentId)
+    if (!c) return
+    const when = fmtDateTime(c.scheduledAt)
+    const motivo = reason?.trim() ? ` Motivo: ${reason.trim()}.` : ''
+    const data = { appointment_id: appointmentId }
+    await notifyClient(admin, c.clientId, {
+      type: 'appointment_cancelled', title: 'Agendamento cancelado',
+      body: `${c.procedureName} de ${when} foi cancelado.${motivo}`, data,
+    })
+    if (c.professionalId) {
+      await notifyUser(admin, c.professionalId, {
+        type: 'appointment_cancelled', title: 'Agendamento cancelado',
+        body: `${c.clientName} — ${c.procedureName} de ${when} foi cancelado.${motivo}`, data,
+      })
+    }
+  })
+}
+
+/** Remarcação → cliente + profissional com o novo horário. */
+function notifyRescheduledAppointment(appointmentId: string): void {
+  after(async () => {
+    const admin = createAdminClient()
+    const c = await loadApptCtx(admin, appointmentId)
+    if (!c) return
+    const when = fmtDateTime(c.scheduledAt)
+    const data = { appointment_id: appointmentId }
+    await notifyClient(admin, c.clientId, {
+      type: 'appointment_rescheduled', title: 'Agendamento remarcado',
+      body: `Novo horário: ${c.procedureName} em ${when}.`, data,
+    })
+    if (c.professionalId) {
+      await notifyUser(admin, c.professionalId, {
+        type: 'appointment_rescheduled', title: 'Agendamento remarcado',
+        body: `${c.clientName} — novo horário: ${when}.`, data,
+      })
+    }
+  })
+}
+
+/** Check-in → profissional ('cliente chegou'). */
+function notifyCheckin(appointmentId: string): void {
+  after(async () => {
+    const admin = createAdminClient()
+    const c = await loadApptCtx(admin, appointmentId)
+    if (!c?.professionalId) return
+    await notifyUser(admin, c.professionalId, {
+      type: 'client_checkin', title: 'Cliente chegou',
+      body: `${c.clientName} fez check-in para ${c.procedureName}.`,
+      data: { appointment_id: appointmentId },
+    })
+  })
+}
+
+/** Conclusão → cliente ('atendimento concluído'). */
+function notifyCompleted(appointmentId: string): void {
+  after(async () => {
+    const admin = createAdminClient()
+    const c = await loadApptCtx(admin, appointmentId)
+    if (!c) return
+    await notifyClient(admin, c.clientId, {
+      type: 'appointment_completed', title: 'Atendimento concluído',
+      body: `Seu ${c.procedureName} foi concluído. Obrigado pela visita!`,
+      data: { appointment_id: appointmentId },
+    })
+  })
+}
+
+/** Pagamento confirmado → cliente. */
+function notifyPayment(appointmentId: string): void {
+  after(async () => {
+    const admin = createAdminClient()
+    const c = await loadApptCtx(admin, appointmentId)
+    if (!c) return
+    await notifyClient(admin, c.clientId, {
+      type: 'payment_received', title: 'Pagamento confirmado',
+      body: `Pagamento do ${c.procedureName} confirmado.`,
+      data: { appointment_id: appointmentId },
+    })
   })
 }
 
@@ -119,6 +260,7 @@ export async function addAppointment(
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/dashboard`)
+    notifyNewAppointment(data.id)
     return { success: true, id: data.id }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -175,6 +317,7 @@ export async function updateAppointmentStatus(
   await logHistory(admin, appointmentId, ctx.internalUserId, userName, status, actionDescMap[status] ?? status)
 
   revalidatePath(`/${slug}/agenda`)
+  if (status === 'CANCELLED') notifyCancelledAppointment(appointmentId, cancellationReason)
 }
 
 // Resolve o branchId pelo appointmentId (para validar acesso)
@@ -322,6 +465,7 @@ export async function checkinAppointment(
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
+    notifyCheckin(appointmentId)
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -381,7 +525,7 @@ export async function reassignProfessional(
     const admin = createAdminClient()
     const { data: appt } = await admin
       .from('appointments')
-      .select('id, status, branches!inner(tenant_id)')
+      .select('id, status, professional_id, branches!inner(tenant_id)')
       .eq('id', appointmentId)
       .single()
 
@@ -391,6 +535,7 @@ export async function reassignProfessional(
       return { error: 'Não é possível reatribuir um atendimento já finalizado.' }
     }
 
+    const oldProfId = (appt.professional_id ?? null) as string | null
     const { data: newProf } = await admin.from('users').select('name').eq('id', professionalId).single()
     await admin
       .from('appointments')
@@ -405,6 +550,23 @@ export async function reassignProfessional(
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
+    after(async () => {
+      const a = createAdminClient()
+      const c = await loadApptCtx(a, appointmentId)
+      if (!c) return
+      const when = fmtDateTime(c.scheduledAt)
+      const data = { appointment_id: appointmentId }
+      if (oldProfId && oldProfId !== professionalId) {
+        await notifyUser(a, oldProfId, {
+          type: 'appointment_reassigned', title: 'Agendamento reatribuído',
+          body: `${c.clientName} — ${c.procedureName} de ${when} passou para outro profissional.`, data,
+        })
+      }
+      await notifyUser(a, professionalId, {
+        type: 'appointment_new', title: 'Novo agendamento',
+        body: `${c.clientName} — ${c.procedureName} em ${when}.`, data,
+      })
+    })
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -450,6 +612,7 @@ export async function cancelAppointmentSession(
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
     revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+    notifyCancelledAppointment(appointmentId, cancellationReason)
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -681,6 +844,7 @@ export async function finishSession(
     revalidatePath(`/${slug}/dashboard`)
     revalidatePath(`/${slug}/stock`)
     revalidateTag(`appointments:${apptBranch!.tenant_id}`, 'max')
+    notifyCompleted(appointmentId)
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -744,6 +908,7 @@ export async function confirmPayment(
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
     revalidatePath(`/${slug}/financial`)
     revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+    notifyPayment(appointmentId)
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -926,6 +1091,7 @@ export async function rescheduleAppointment(
 
     revalidatePath(`/${slug}/agenda`)
     revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+    notifyRescheduledAppointment(appointmentId)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -1124,6 +1290,7 @@ export async function schedulePackageSession(params: {
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+  notifyNewAppointment(appt.id)
   return { appointmentId: appt.id }
 }
 
@@ -1177,6 +1344,7 @@ export async function schedulePlanSession(params: {
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+  notifyNewAppointment(appt.id)
   return { appointmentId: appt.id }
 }
 
@@ -1312,6 +1480,7 @@ export async function createClientAppointment(params: {
     if (error || !appt) return { error: `Erro ao criar agendamento: ${error?.message}` }
 
     revalidatePath(`/${params.slug}/cliente/agendamentos`)
+    notifyNewAppointment(appt.id as string)
     return { id: appt.id as string }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
