@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { ALL_MODULES } from '@/lib/permissions'
@@ -34,5 +34,6 @@ export async function saveRolePermissions(
   if (error) return { error: 'Erro ao salvar permissões. Tente novamente.' }
 
   revalidatePath('/admin/settings')
+  revalidateTag(`permissions:${ctx.tenantId!}`, 'max')
   return { success: true }
 }

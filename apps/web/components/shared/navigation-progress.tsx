@@ -14,7 +14,7 @@ export function NavigationProgress() {
   const [opacity, setOpacity] = useState(1)
   const [active,  setActive]  = useState(false)
   const prevPath   = useRef(pathname)
-  const doneRef    = useRef<ReturnType<typeof setTimeout>>()
+  const doneRef    = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     const handler = () => {

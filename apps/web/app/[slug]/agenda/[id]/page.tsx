@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
+import { getCachedProductsReference } from '@/lib/cached-queries'
 import { AppointmentSession } from '@/components/branch/appointment-session'
 import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry } from '@/components/branch/appointment-session'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
@@ -71,7 +72,7 @@ export default async function AppointmentSessionPage({
   const isPartOfPlan    = !!treatmentPlanId && !apptRaw.is_evaluation
 
   const [
-    { data: medRecord }, { data: procProductsRaw }, { data: branchProductsRaw },
+    { data: medRecord }, { data: procProductsRaw }, branchProductsRaw,
     { data: professionalsRaw }, { data: historyRaw }, { data: paymentRaw },
     { data: allProceduresRaw }, { data: packagesRaw }, { data: planRaw },
     { data: planSessionRaw },
@@ -89,12 +90,7 @@ export default async function AppointmentSessionPage({
           .eq('procedure_id', procedureId)
       : Promise.resolve({ data: [] as never[], error: null }),
 
-    admin
-      .from('products')
-      .select('id, name, unit, consumption_unit, units_per_package')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name'),
+    getCachedProductsReference(ctx.tenantId!),
 
     admin
       .from('users')

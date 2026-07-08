@@ -100,7 +100,7 @@ export async function addClient(
   }
 
   revalidatePath(`/${slug}/clients`)
-  revalidateTag(`clients:${ctx.tenantId!}`)
+  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
   return { success: true, clientId: client.id }
 }
 
@@ -158,7 +158,7 @@ export async function updateClient(
   if (error) return { error: 'Erro ao atualizar cliente.' }
 
   revalidatePath(`/${slug}/clients/${clientId}`)
-  revalidateTag(`clients:${ctx.tenantId!}`)
+  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
   return { success: true }
 }
 
@@ -263,7 +263,7 @@ export async function updateClientContactData(
 
   if (error) return { error: error.message }
   revalidatePath(`/${slug}/clients/${clientId}`)
-  revalidateTag(`clients:${ctx.tenantId!}`)
+  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
   return {}
 }
 
@@ -342,5 +342,5 @@ export async function toggleClientStatus(clientId: string, isActive: boolean, sl
 
   revalidatePath(`/${slug}/clients`)
   revalidatePath(`/${slug}/clients/${clientId}`)
-  revalidateTag(`clients:${ctx.tenantId!}`)
+  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
 }

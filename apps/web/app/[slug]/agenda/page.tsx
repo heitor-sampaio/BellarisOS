@@ -6,6 +6,10 @@ import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
 import { resolvePermissions } from '@/lib/permissions'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
+import {
+  getCachedBranchBySlug, getCachedBranchProcedures,
+  getCachedBranchProfessionals, getCachedRoomsByBranch, getCachedRolePermissions,
+} from '@/lib/cached-queries'
 
 export default async function AgendaPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -14,12 +18,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
 
   const supabase = await createSupabase()
 
-  const { data: branch } = await supabase
-    .from('branches')
-    .select('id, name')
-    .eq('slug', slug)
-    .eq('tenant_id', ctx.tenantId!)
-    .single()
+  const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
   if (!branch) notFound()
 
   const branchId = branch.id
@@ -49,10 +48,10 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
   const [
     { data: rawAppointments },
     { data: clients },
-    { data: procedures },
-    { data: professionals },
-    { data: rooms },
-    { data: permOverrides },
+    procedures,
+    professionals,
+    rooms,
+    permOverrides,
   ] = await Promise.all([
     appointmentsQuery,
 
@@ -63,33 +62,10 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
       .eq('is_active', true)
       .order('name'),
 
-    supabase
-      .from('procedures')
-      .select('id, name, category, duration_min, price')
-      .eq('tenant_id', ctx.tenantId!)
-      .or(`branch_id.is.null,branch_id.eq.${branchId}`)
-      .eq('is_active', true)
-      .order('name'),
-
-    supabase
-      .from('users')
-      .select('id, name')
-      .eq('branch_id', branchId)
-      .in('role', ['BRANCH_ADMIN', 'PROFESSIONAL'])
-      .eq('is_active', true)
-      .order('name'),
-
-    supabase
-      .from('rooms')
-      .select('id, name')
-      .eq('branch_id', branchId)
-      .eq('is_active', true),
-
-    supabase
-      .from('role_permissions')
-      .select('module, can_view, can_write')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('role', ctx.role),
+    getCachedBranchProcedures(branchId, ctx.tenantId!),
+    getCachedBranchProfessionals(branchId, ctx.tenantId!),
+    getCachedRoomsByBranch(branchId, ctx.tenantId!),
+    getCachedRolePermissions(ctx.tenantId!, ctx.role),
   ])
 
   const permissions = resolvePermissions(ctx.role, permOverrides ?? [])

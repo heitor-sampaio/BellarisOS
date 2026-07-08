@@ -1,6 +1,6 @@
 ﻿'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -74,6 +74,7 @@ export async function addProcedure(
   }
 
   revalidatePath('/admin/procedures')
+  revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
   return { success: true, procedureId: procedure.id }
 }
 
@@ -158,6 +159,7 @@ export async function updateProcedure(
   }
 
   revalidatePath('/admin/procedures')
+  revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
   return { success: true }
 }
 
@@ -209,6 +211,7 @@ export async function createBranchProcedure(
   if (error) return { error: `Erro ao criar: ${error.message}` }
 
   revalidatePath(`/${slug}/procedures`)
+  revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
   return {}
 }
 
@@ -225,4 +228,5 @@ export async function toggleProcedureStatus(procedureId: string, isActive: boole
     .eq('tenant_id', ctx.tenantId!)
 
   revalidatePath('/admin/procedures')
+  revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
 }

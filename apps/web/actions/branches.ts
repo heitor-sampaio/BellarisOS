@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -65,6 +65,7 @@ export async function createBranch(
   if (insertError) return { error: 'Erro ao criar unidade. Tente novamente.' }
 
   revalidatePath('/admin/branches')
+  revalidateTag(`branches:${ctx.tenantId!}`, 'max')
   return { success: true }
 }
 
@@ -110,6 +111,7 @@ export async function updateBranch(
 
   revalidatePath('/admin/branches')
   revalidatePath(`/admin/branches/${branchId}`)
+  revalidateTag(`branches:${ctx.tenantId!}`, 'max')
   return { success: true }
 }
 
@@ -126,4 +128,5 @@ export async function toggleBranchStatus(branchId: string, isActive: boolean) {
 
   revalidatePath('/admin/branches')
   revalidatePath(`/admin/branches/${branchId}`)
+  revalidateTag(`branches:${ctx.tenantId!}`, 'max')
 }

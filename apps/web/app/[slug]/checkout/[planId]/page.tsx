@@ -3,6 +3,7 @@ import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { getTreatmentPlanSessions } from '@/actions/treatment-plans'
+import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { CheckoutWizard } from '@/components/branch/checkout-wizard'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 
@@ -42,9 +43,9 @@ export default async function CheckoutPage({
   type RawClient = { name: string; document: string | null; phone: string | null }
   const cli = planRaw.clients as unknown as RawClient | null
 
-  const [{ sessions, total }, { data: professionalsRaw }, { data: medRecordRaw }, { data: branchesRaw }] = await Promise.all([
+  const [{ sessions, total }, professionalsRaw, { data: medRecordRaw }, { data: branchesRaw }] = await Promise.all([
     getTreatmentPlanSessions(planId),
-    admin.from('users').select('id, name').eq('branch_id', branch.id).in('role', ['BRANCH_ADMIN', 'PROFESSIONAL']).eq('is_active', true).order('name'),
+    getCachedBranchProfessionals(branch.id, ctx.tenantId!),
     admin.from('medical_records').select('id').eq('client_id', planRaw.client_id).maybeSingle(),
     admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
   ])

@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 
 const WRITABLE_ROLES    = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'] as const
 const ALL_BRANCH_ROLES  = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
@@ -448,6 +449,7 @@ export async function cancelAppointmentSession(
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
+    revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -678,7 +680,7 @@ export async function finishSession(
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
     revalidatePath(`/${slug}/dashboard`)
     revalidatePath(`/${slug}/stock`)
-    revalidateTag(`appointments:${apptBranch!.tenant_id}`)
+    revalidateTag(`appointments:${apptBranch!.tenant_id}`, 'max')
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -741,6 +743,7 @@ export async function confirmPayment(
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
     revalidatePath(`/${slug}/financial`)
+    revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -922,6 +925,7 @@ export async function rescheduleAppointment(
       `Reagendado para ${dtStr}`, { scheduled_at: scheduledAt })
 
     revalidatePath(`/${slug}/agenda`)
+    revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -945,15 +949,9 @@ export async function getSchedulingBranchProfessionals(
     .maybeSingle()
   if (!branch) return { professionals: [] }
 
-  const { data } = await admin
-    .from('users')
-    .select('id, name')
-    .eq('branch_id', branchId)
-    .in('role', ['BRANCH_ADMIN', 'PROFESSIONAL'])
-    .eq('is_active', true)
-    .order('name')
+  const data = await getCachedBranchProfessionals(branchId, ctx.tenantId!)
 
-  return { professionals: (data ?? []) as { id: string; name: string }[] }
+  return { professionals: data as { id: string; name: string }[] }
 }
 
 // --- Sessões de pacote --------------------------------------------
@@ -1125,6 +1123,7 @@ export async function schedulePackageSession(params: {
     .eq('id', params.packageSessionId)
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
+  revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
   return { appointmentId: appt.id }
 }
 
@@ -1177,6 +1176,7 @@ export async function schedulePlanSession(params: {
     .eq('id', params.sessionId)
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
+  revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
   return { appointmentId: appt.id }
 }
 

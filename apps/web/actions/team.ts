@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -75,6 +75,7 @@ export async function createTeamMember(
   }
 
   revalidatePath(redirectPath)
+  revalidateTag(`professionals:${ctx.tenantId!}`, 'max')
   return { success: true }
 }
 
@@ -90,4 +91,5 @@ export async function deactivateTeamMember(userId: string, redirectPath: string 
     .eq('tenant_id', ctx.tenantId!)
 
   revalidatePath(redirectPath)
+  revalidateTag(`professionals:${ctx.tenantId!}`, 'max')
 }

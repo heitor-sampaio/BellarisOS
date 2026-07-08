@@ -3,6 +3,7 @@ import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultStages } from '@/actions/crm-stages'
 import { getConversations } from '@/actions/inbox'
+import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
@@ -41,14 +42,9 @@ export default async function AdminCRMPage({
   // -- Funil data (always needed for stats) --
   const stages = await seedDefaultStages(ctx.tenantId!)
 
-  const { data: allProcs } = await admin
-    .from('procedures')
-    .select('id, name')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .order('name')
+  const allProcs = await getCachedNetworkProcedures(ctx.tenantId!)
 
-  const procedures = (allProcs ?? []).map(p => ({ id: p.id as string, name: p.name as string }))
+  const procedures = allProcs.map(p => ({ id: p.id as string, name: p.name as string }))
 
   const { data: leadsRaw } = branchIds.length > 0
     ? await admin

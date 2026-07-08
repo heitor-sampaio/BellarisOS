@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { NotificationCampaignForm } from '@/components/admin/notification-campaign-form'
 
 export const dynamic = 'force-dynamic'
@@ -12,19 +13,14 @@ export default async function NovaCampanhaPage() {
 
   const admin = createAdminClient()
 
-  const [{ data: branches }, { data: procedures }] = await Promise.all([
+  const [{ data: branches }, procedures] = await Promise.all([
     admin
       .from('branches')
       .select('id, name, city')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
       .order('name'),
-    admin
-      .from('procedures')
-      .select('id, name, category')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name'),
+    getCachedNetworkProcedures(ctx.tenantId!),
   ])
 
   return (

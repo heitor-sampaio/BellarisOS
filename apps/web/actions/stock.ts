@@ -1,6 +1,6 @@
 ﻿'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -155,6 +155,7 @@ export async function createProduct(
     revalidatePath('/admin/produtos')
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
+    revalidateTag(`products:${ctx.tenantId!}`, 'max')
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -217,6 +218,7 @@ export async function updateProduct(
     revalidatePath('/admin/produtos')
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
+    revalidateTag(`products:${ctx.tenantId!}`, 'max')
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -255,6 +257,7 @@ export async function toggleProductActive(productId: string, isActive: boolean) 
       .eq('tenant_id', ctx.tenantId!)
 
     revalidatePath('/admin/produtos')
+    revalidateTag(`products:${ctx.tenantId!}`, 'max')
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }

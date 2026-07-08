@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getCachedProductsReference } from '@/lib/cached-queries'
 import { ProcedureModal } from '@/components/admin/procedure-modal'
 import { ToggleProcedureBtn } from '@/components/admin/toggle-procedure-btn'
 import { Pencil, Smartphone } from 'lucide-react'
@@ -21,7 +22,7 @@ export default async function AdminProceduresPage() {
   const [
     { data: branches },
     { data: procedures, error: proceduresError },
-    { data: products },
+    products,
   ] = await Promise.all([
     admin.from('branches').select('id, name')
       .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
@@ -31,8 +32,7 @@ export default async function AdminProceduresPage() {
       .eq('tenant_id', ctx.tenantId!).is('branch_id', null)
       .order('category').order('name'),
 
-    admin.from('products').select('id, name, unit, branch_id, cost_price, consumption_unit, units_per_package')
-      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
+    getCachedProductsReference(ctx.tenantId!),
   ])
 
   if (proceduresError) console.error('[AdminProcedures]', proceduresError.message)

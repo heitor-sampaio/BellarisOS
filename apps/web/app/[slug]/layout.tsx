@@ -6,6 +6,7 @@ import { BranchSidebar } from '@/components/branch/sidebar'
 import { Topbar } from '@/components/shared/topbar'
 import { SidebarProvider } from '@/components/shared/sidebar-context'
 import { resolvePermissions } from '@/lib/permissions'
+import { getCachedBranchBySlug, getCachedRolePermissions } from '@/lib/cached-queries'
 
 const BRANCH_ROLES = ['BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
 
@@ -43,13 +44,7 @@ export default async function BranchLayout({
 
   const supabase = await createClient()
 
-  const { data: branch } = await supabase
-    .from('branches')
-    .select('id, name, slug')
-    .eq('slug', slug)
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .single()
+  const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
 
   if (!branch) notFound()
 
@@ -64,12 +59,8 @@ export default async function BranchLayout({
   }
 
   // Busca overrides de permissão, nome do usuário e filiais (NETWORK_ADMIN) em paralelo
-  const [{ data: permOverrides }, { data: user }, allBranches] = await Promise.all([
-    supabase
-      .from('role_permissions')
-      .select('module, can_view, can_write')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('role', ctx.role),
+  const [permOverrides, { data: user }, allBranches] = await Promise.all([
+    getCachedRolePermissions(ctx.tenantId!, ctx.role),
     supabase
       .from('users')
       .select('name')

@@ -1,7 +1,7 @@
 ﻿import { notFound } from 'next/navigation'
 import { getTenantContext, assertRole } from '@/lib/auth'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-queries'
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
@@ -20,15 +20,9 @@ export default async function ClientProfilePage({
   const ctx = await getTenantContext()
   assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'])
 
-  const supabase = await createSupabase()
-  const admin    = createAdminClient()
+  const admin = createAdminClient()
 
-  const { data: branch } = await supabase
-    .from('branches')
-    .select('id')
-    .eq('slug', slug)
-    .eq('tenant_id', ctx.tenantId!)
-    .single()
+  const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
   if (!branch) notFound()
 
   const { data: raw } = await admin
@@ -59,106 +53,20 @@ export default async function ClientProfilePage({
     state:             (raw as any).state ?? null,
   }
 
-  // Parallel data fetches
-  const [
-    { data: appts },
-    { data: loyalty },
-    { data: medRecord },
-    { data: pkgs },
-    { data: docsRaw },
-    { data: txAppts },
-    { data: directTxRaw },
-    { data: credits },
-    { data: branchesRaw },
-    { data: activePlansRaw },
-    { data: allPlansHistRaw },
-  ] = await Promise.all([
-    admin
-      .from('appointments')
-      .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, is_evaluation, procedures(name), professional:users!professional_id(name)')
-      .eq('client_id', id)
-      .order('scheduled_at', { ascending: false })
-      .limit(60),
-
-    admin
-      .from('loyalty_accounts')
-      .select('balance')
-      .eq('client_id', id)
-      .maybeSingle(),
-
-    admin
-      .from('medical_records')
-      .select('id, general_anamnesis, consent_terms(id, title, signed_at, signed_via), entries:medical_record_entries(notes, created_at)')
-      .eq('client_id', id)
-      .maybeSingle(),
-
-    admin
-      .from('client_packages')
-      .select('id, total_sessions, used_sessions, expires_at, service_packages(name, procedure_id, price, procedures(name, duration_min))')
-      .eq('client_id', id)
-      .order('purchased_at', { ascending: false })
-      .limit(10),
-
-    admin
-      .from('client_documents')
-      .select('id, name, category, file_url, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at')
-      .eq('client_id', id)
-      .eq('branch_id', branch.id)
-      .order('created_at', { ascending: false }),
-
-    // Transações via agendamentos concluídos
-    admin
-      .from('appointments')
-      .select(`
-        scheduled_at,
-        procedures(name),
-        transaction:financial_transactions(
-          id, description, amount, payment_method, is_paid, paid_at, created_at,
-          installments(id, number, total, amount, due_date, is_paid, paid_at)
-        )
-      `)
-      .eq('client_id', id)
-      .not('transaction', 'is', null)
-      .order('scheduled_at', { ascending: false })
-      .limit(50),
-
-    // Transações diretas de checkout (client_id preenchido diretamente)
-    admin
-      .from('financial_transactions')
-      .select('id, description, amount, payment_method, is_paid, paid_at, created_at')
-      .eq('client_id', id)
-      .order('created_at', { ascending: false })
-      .limit(50),
-
-    admin
-      .from('internal_credits')
-      .select('id, amount, description, created_at')
-      .eq('client_id', id)
-      .order('created_at', { ascending: false }),
-
-    admin
-      .from('branches')
-      .select('id, name')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name'),
-
-    // Plano de tratamento avulso ACCEPTED (sem client_package) — modelo sessão-primeiro
-    admin
-      .from('treatment_plans')
-      .select('id, status, treatment_plan_sessions(id, treatment_plan_session_procedures(procedure_id, price, procedures(name, duration_min)))')
-      .eq('client_id', id)
-      .eq('status', 'ACCEPTED')
-      .order('created_at', { ascending: false })
-      .limit(1),
-
-    // Todos os planos para histórico (sem filtro de status)
-    admin
-      .from('treatment_plans')
-      .select('id, status, created_at, updated_at')
-      .eq('client_id', id)
-      .order('created_at', { ascending: false }),
-  ])
+  // Parallel data fetches (cacheadas — TTL 60s, tags clients/appointments do tenant)
+  const {
+    appts,
+    loyalty,
+    medRecord,
+    pkgs,
+    docsRaw,
+    txAppts,
+    directTxRaw,
+    credits,
+    branchesRaw,
+    activePlansRaw,
+    allPlansHistRaw,
+  } = await getCachedClientProfileData(id, branch.id, ctx.tenantId!)
 
   // KPIs
   const completedAppts  = (appts ?? []).filter(a => a.status === 'COMPLETED')
