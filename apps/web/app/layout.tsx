@@ -48,11 +48,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 })();
 `.trim()
 
+  // Auto-reload when WebView has cached stale HTML with old Server Action IDs.
+  // Next.js throws UnrecognizedActionError (POST 404) after a new deployment.
+  // Reloading once fetches the current HTML with up-to-date action hashes.
+  const staleActionGuard = `
+(function(){
+  var _reloading=false;
+  function reload(){if(_reloading)return;_reloading=true;window.location.reload();}
+  window.addEventListener('unhandledrejection',function(e){
+    var m=e&&e.reason&&(e.reason.message||String(e.reason));
+    if(m&&(m.indexOf('UnrecognizedActionError')!==-1||(m.indexOf('Server Action')!==-1&&m.indexOf('was not found')!==-1))){reload();}
+  });
+})();
+`.trim()
+
   return (
     <html lang="pt-BR">
       <body suppressHydrationWarning>
         {/* MessageChannel polyfill must be first — before any deferred script (React) runs */}
         <script dangerouslySetInnerHTML={{ __html: mcPolyfill }} />
+        {/* Auto-reload on stale Server Action IDs (WebView cache after deploy) */}
+        <script dangerouslySetInnerHTML={{ __html: staleActionGuard }} />
         {/* Injeta config em runtime antes de qualquer componente React */}
         <script dangerouslySetInnerHTML={{ __html: runtimeConfig }} />
         {/* Mantém armazenamento nativo (Preferences) sincronizado com a sessão */}

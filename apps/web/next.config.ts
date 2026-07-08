@@ -20,18 +20,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Páginas HTML nunca ficam em cache — evita Server Action IDs desatualizados no WebView
-        source: '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        // Páginas HTML: sem cache para evitar Server Action IDs desatualizados no WebView.
+        // Next.js gerencia o cache de _next/static automaticamente (não incluir aqui).
+        source: '/((?!_next/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
         headers: [
           ...securityHeaders,
           { key: 'Cache-Control', value: 'no-store' },
-        ],
-      },
-      {
-        // Assets estáticos podem usar cache longo (hash no nome do arquivo)
-        source: '/_next/static/:path*',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
     ]
