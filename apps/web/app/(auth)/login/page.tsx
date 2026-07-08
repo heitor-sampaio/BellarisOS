@@ -12,17 +12,21 @@ export default function LoginPage() {
   useEffect(() => {
     if (!(state && 'redirectTo' in state && state.redirectTo)) return
     const dest = state.redirectTo
-    // Persiste tokens no armazenamento nativo (Android SharedPreferences / iOS NSUserDefaults)
-    // para que o cold start funcione mesmo quando os cookies do WebView não forem enviados.
-    createClient().auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        await nativeStore.save({
-          access_token:  session.access_token,
-          refresh_token: session.refresh_token,
-        })
+
+    ;(async () => {
+      try {
+        const { data: { session } } = await createClient().auth.getSession()
+        if (session) {
+          await nativeStore.save({
+            access_token:  session.access_token,
+            refresh_token: session.refresh_token,
+          })
+        }
+      } catch {
+        // falha ao salvar sessão nativa — segue com o redirect de qualquer forma
       }
       window.location.href = dest
-    })
+    })()
   }, [state])
 
   return (
