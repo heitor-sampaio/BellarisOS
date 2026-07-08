@@ -33,31 +33,56 @@ function relativeTime(iso: string): string {
 }
 
 // -- Push registration (native FCM via Capacitor or browser VAPID) --------
+// Guard so os listeners nativos são registrados apenas uma vez por sessão do app
+// (a montagem + o toque do sino não podem acumular listeners duplicados).
+let pushListenersAdded = false
 
-async function registerPush() {
+/**
+ * Garante que o token de push do dispositivo esteja salvo no backend.
+ * @param requestPermission  true = solicita permissão (toque do sino, intenção do usuário).
+ *                           false = registra silenciosamente SÓ se a permissão já foi concedida
+ *                           (chamado na montagem — re-registra tokens perdidos, ex: após migração).
+ */
+async function ensurePushRegistered(requestPermission: boolean) {
   try {
     const { Capacitor } = await import('@capacitor/core')
     if (Capacitor.isNativePlatform()) {
       const { PushNotifications } = await import('@capacitor/push-notifications')
-      const { receive } = await PushNotifications.requestPermissions()
-      if (receive !== 'granted') return
-      // Listeners BEFORE register() — avoids race condition on fast devices
-      await PushNotifications.addListener('registration', async ({ value: token }) => {
-        await savePushToken({ token, platform: Capacitor.getPlatform() as 'android' | 'ios' })
-      })
-      await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
-        try {
-          const { LocalNotifications } = await import('@capacitor/local-notifications')
-          await LocalNotifications.schedule({
-            notifications: [{
-              id:    Math.floor(Math.random() * 100000),
-              title: notification.title ?? '',
-              body:  notification.body  ?? '',
-              extra: notification.data,
-            }],
-          })
-        } catch { /* local notifications are optional */ }
-      })
+
+      let perm = await PushNotifications.checkPermissions()
+      if (perm.receive !== 'granted') {
+        if (!requestPermission) return
+        perm = await PushNotifications.requestPermissions()
+        if (perm.receive !== 'granted') return
+      }
+
+      // Permissão de LocalNotifications (foreground) — mesmo OS permission no Android
+      try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications')
+        await LocalNotifications.requestPermissions()
+      } catch { /* opcional */ }
+
+      if (!pushListenersAdded) {
+        pushListenersAdded = true
+        // Listeners BEFORE register() — avoids race condition on fast devices
+        await PushNotifications.addListener('registration', async ({ value: token }) => {
+          await savePushToken({ token, platform: Capacitor.getPlatform() as 'android' | 'ios' })
+        })
+        // Foreground: o SO não exibe automaticamente — agenda uma notificação nativa
+        await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+          try {
+            const { LocalNotifications } = await import('@capacitor/local-notifications')
+            await LocalNotifications.schedule({
+              notifications: [{
+                id:    Math.floor(Math.random() * 100000),
+                title: notification.title ?? '',
+                body:  notification.body  ?? '',
+                extra: notification.data,
+              }],
+            })
+          } catch { /* local notifications are optional */ }
+        })
+      }
       await PushNotifications.register()
       return
     }
@@ -65,8 +90,12 @@ async function registerPush() {
 
   // Browser VAPID flow
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
-  const permission = await Notification.requestPermission()
-  if (permission !== 'granted') return
+  let permission = Notification.permission
+  if (permission !== 'granted') {
+    if (!requestPermission) return
+    permission = await Notification.requestPermission()
+    if (permission !== 'granted') return
+  }
   try {
     const reg = await navigator.serviceWorker.register('/sw.js')
     await navigator.serviceWorker.ready
@@ -147,6 +176,13 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
     }
   }, [clientId])
 
+  // Registra o token de push na montagem — silencioso se a permissão já foi
+  // concedida. Cobre o caso da migração: quem já autorizou re-registra o token
+  // perdido automaticamente, sem novo prompt. Primeira permissão: no toque do sino.
+  useEffect(() => {
+    ensurePushRegistered(false)
+  }, [])
+
   // Close panel on outside click
   useEffect(() => {
     if (!open) return
@@ -184,9 +220,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
         await markAllNotificationsReceived()
       }
     })
-    if (typeof Notification !== 'undefined' && Notification.permission !== 'denied') {
-      registerPush()
-    }
+    ensurePushRegistered(true)
   }
 
   function handleNotifClick(n: ClientNotification) {
