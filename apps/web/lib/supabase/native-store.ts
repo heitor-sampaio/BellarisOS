@@ -2,32 +2,30 @@ const SESSION_KEY = 'supabase-session'
 
 type StoredSession = { access_token: string; refresh_token: string }
 
-// Lazy-loads @capacitor/preferences only on native platforms (Android + iOS).
-// Returns null silently on web browser — no-op in that context.
-async function getPrefs() {
-  if (typeof window === 'undefined') return null
+async function isNative(): Promise<boolean> {
+  if (typeof window === 'undefined') return false
   try {
     const { Capacitor } = await import('@capacitor/core')
-    if (!Capacitor.isNativePlatform()) return null
-    const { Preferences } = await import('@capacitor/preferences')
-    return Preferences
+    return Capacitor.isNativePlatform()
   } catch {
-    return null
+    return false
   }
 }
 
 export const nativeStore = {
   async save(session: StoredSession): Promise<void> {
-    const prefs = await getPrefs()
-    if (!prefs) return
-    await prefs.set({ key: SESSION_KEY, value: JSON.stringify(session) })
+    if (!(await isNative())) return
+    try {
+      const { Preferences } = await import('@capacitor/preferences')
+      await Preferences.set({ key: SESSION_KEY, value: JSON.stringify(session) })
+    } catch { /* ignore */ }
   },
 
   async load(): Promise<StoredSession | null> {
-    const prefs = await getPrefs()
-    if (!prefs) return null
+    if (!(await isNative())) return null
     try {
-      const { value } = await prefs.get({ key: SESSION_KEY })
+      const { Preferences } = await import('@capacitor/preferences')
+      const { value } = await Preferences.get({ key: SESSION_KEY })
       if (!value) return null
       return JSON.parse(value) as StoredSession
     } catch {
@@ -36,8 +34,10 @@ export const nativeStore = {
   },
 
   async clear(): Promise<void> {
-    const prefs = await getPrefs()
-    if (!prefs) return
-    await prefs.remove({ key: SESSION_KEY })
+    if (!(await isNative())) return
+    try {
+      const { Preferences } = await import('@capacitor/preferences')
+      await Preferences.remove({ key: SESSION_KEY })
+    } catch { /* ignore */ }
   },
 }
