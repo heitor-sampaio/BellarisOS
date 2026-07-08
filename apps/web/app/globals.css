@@ -368,12 +368,16 @@
 }
 
 /* -- Sidebar: largura dirigida pela var + recolhimento ----- */
+/* Easing e duração únicos para sidebar + conteúdo + topbar animarem em sincronia. */
+:root { --sidebar-ease: cubic-bezier(0.22, 1, 0.36, 1); --sidebar-anim: 340ms; }
+
 .main-sidebar {
   width: var(--sidebar-w);
-  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1),
-              width     240ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform var(--sidebar-anim) var(--sidebar-ease),
+              width     var(--sidebar-anim) var(--sidebar-ease);
+  will-change: width, transform;
 }
-/* Desktop recolhido: trilha de ícones (76px) */
+/* Desktop recolhido: trilha de ícones */
 @media (min-width: 1024px) {
   html.sidebar-collapsed { --sidebar-w: 76px; }
 }

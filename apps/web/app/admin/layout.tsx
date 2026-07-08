@@ -40,7 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         marginTop:  'var(--topbar-h)',
         padding:    'var(--content-pad-y) var(--content-pad-x)',
         minHeight:  'calc(100vh - var(--topbar-h))',
-        transition: 'margin-left 240ms cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'margin-left var(--sidebar-anim) var(--sidebar-ease)',
       }}>
         {children}
       </main>

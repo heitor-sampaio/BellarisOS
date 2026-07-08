@@ -46,11 +46,13 @@ export function NavItem({ icon, label, href }: NavItemProps) {
       onMouseEnter={e => { if (!showActive && collapsed) e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
       onMouseLeave={e => { if (!showActive) e.currentTarget.style.background = 'transparent' }}
       style={{
+        // Layout constante entre estados (ícone não "pula"): a largura da barra é
+        // que anima; o rótulo some com fade + clip conforme encolhe.
         display:        'flex',
         alignItems:     'center',
-        justifyContent: collapsed ? 'center' : 'flex-start',
-        gap:            collapsed ? 0 : 10,
-        padding:        collapsed ? '10px 0' : '9px 12px',
+        justifyContent: 'flex-start',
+        gap:            10,
+        padding:        '9px 12px',
         borderRadius:   'var(--radius-field-token)',
         fontSize:       'var(--text-sm-sz)',
         fontWeight:     'var(--weight-bold)',
@@ -71,7 +73,14 @@ export function NavItem({ icon, label, href }: NavItemProps) {
           ? <Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} />
           : icon}
       </span>
-      {!collapsed && label}
+      <span style={{
+        opacity:    collapsed ? 0 : 1,
+        transition: 'opacity 160ms ease',
+        overflow:   'hidden',
+        textOverflow: 'ellipsis',
+      }}>
+        {label}
+      </span>
     </button>
   )
 }

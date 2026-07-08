@@ -53,7 +53,7 @@ export function Topbar({ userName, userRole, internalUserId, initialUnread }: To
       justifyContent:  'space-between',
       padding:         '0 var(--content-pad-x)',
       zIndex:          40,
-      transition:      'left 240ms cubic-bezier(0.4, 0, 0.2, 1)',
+      transition:      'left var(--sidebar-anim) var(--sidebar-ease)',
     }}>
       {/* Hamburger — visível apenas em mobile (< 1024px) */}
       <button

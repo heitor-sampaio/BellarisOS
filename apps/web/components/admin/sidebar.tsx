@@ -113,12 +113,12 @@ export function AdminSidebar({ role }: { role: string }) {
             title={collapsed ? 'Expandir menu' : 'Recolher menu'}
             aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
-              gap: collapsed ? 0 : 10, padding: collapsed ? '10px 0' : '9px 12px',
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+              gap: 10, padding: '9px 12px',
               borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
               background: 'transparent', color: footerColor,
               fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
-              transition: 'background 120ms ease',
+              whiteSpace: 'nowrap', overflow: 'hidden', transition: 'background 120ms ease',
             }}
             onMouseEnter={e => (e.currentTarget.style.background = footerHover)}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -126,7 +126,7 @@ export function AdminSidebar({ role }: { role: string }) {
             <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </span>
-            {!collapsed && 'Recolher'}
+            <span style={{ opacity: collapsed ? 0 : 1, transition: 'opacity 160ms ease' }}>Recolher</span>
           </button>
 
           <form action={logoutAction}>
@@ -134,12 +134,12 @@ export function AdminSidebar({ role }: { role: string }) {
               type="submit"
               title={collapsed ? 'Sair' : undefined}
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
-                gap: collapsed ? 0 : 10, padding: collapsed ? '10px 0' : '9px 12px',
+                display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
+                gap: 10, padding: '9px 12px',
                 borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
                 background: 'transparent', color: footerColor,
                 fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
-                transition: 'background 120ms ease',
+                whiteSpace: 'nowrap', overflow: 'hidden', transition: 'background 120ms ease',
               }}
               onMouseEnter={e => (e.currentTarget.style.background = footerHover)}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -147,7 +147,7 @@ export function AdminSidebar({ role }: { role: string }) {
               <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <LogOut size={16} />
               </span>
-              {!collapsed && 'Sair'}
+              <span style={{ opacity: collapsed ? 0 : 1, transition: 'opacity 160ms ease' }}>Sair</span>
             </button>
           </form>
         </div>
