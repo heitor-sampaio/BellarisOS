@@ -46,13 +46,13 @@ export function NavItem({ icon, label, href }: NavItemProps) {
       onMouseEnter={e => { if (!showActive && collapsed) e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
       onMouseLeave={e => { if (!showActive) e.currentTarget.style.background = 'transparent' }}
       style={{
-        // Layout constante entre estados (ícone não "pula"): a largura da barra é
-        // que anima; o rótulo some com fade + clip conforme encolhe.
+        // Ícone fica praticamente parado (padding simétrico centraliza no recolhido);
+        // o rótulo colapsa (max-width 0 + fade) enquanto a barra encolhe ao redor.
         display:        'flex',
         alignItems:     'center',
         justifyContent: 'flex-start',
-        gap:            10,
-        padding:        '9px 12px',
+        gap:            collapsed ? 0 : 10,
+        padding:        collapsed ? '9px 17px' : '9px 12px',
         borderRadius:   'var(--radius-field-token)',
         fontSize:       'var(--text-sm-sz)',
         fontWeight:     'var(--weight-bold)',
@@ -62,7 +62,7 @@ export function NavItem({ icon, label, href }: NavItemProps) {
         textAlign:      'left',
         whiteSpace:     'nowrap',
         overflow:       'hidden',
-        transition:     'background 120ms ease, color 120ms ease, box-shadow 120ms ease',
+        transition:     'background 120ms ease, color 120ms ease, box-shadow 120ms ease, padding var(--sidebar-anim) var(--sidebar-ease)',
         background,
         color,
         boxShadow,
@@ -75,9 +75,10 @@ export function NavItem({ icon, label, href }: NavItemProps) {
       </span>
       <span style={{
         opacity:    collapsed ? 0 : 1,
-        transition: 'opacity 160ms ease',
+        maxWidth:   collapsed ? 0 : 220,
         overflow:   'hidden',
         textOverflow: 'ellipsis',
+        transition: 'opacity 160ms ease, max-width var(--sidebar-anim) var(--sidebar-ease)',
       }}>
         {label}
       </span>
