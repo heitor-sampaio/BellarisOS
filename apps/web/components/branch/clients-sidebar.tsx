@@ -84,7 +84,7 @@ export function ClientsSidebar({
   const addHref = newClientHref === undefined ? `${basePath}/new` : newClientHref
 
   return (
-    <div style={{
+    <div className="clients-master-list" style={{
       width: 'var(--client-list-w)', flexShrink: 0,
       background: 'var(--surface)',
       border: '1px solid var(--border)',

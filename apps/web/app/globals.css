@@ -522,10 +522,80 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   color: var(--brand);
 }
 
+/* KPI/stat grid que auto-ajusta a qualquer nº de colunas (4, 5, ...) */
+.kpi-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+/* Conteúdo principal + aside fixo (ex: 1fr 360px) → empilha no mobile */
+.split-aside {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 899px) {
+  .split-aside { grid-template-columns: 1fr; }
+}
+
+/* Master-detail (lista fixa + detalhe): empilha e vira largura cheia no mobile */
+.master-detail {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+@media (max-width: 899px) {
+  .master-detail { flex-direction: column; }
+  .master-detail > * { width: 100% !important; max-width: 100% !important; }
+  /* Lista mestre não-sticky e mais baixa no mobile (detalhe fica acessível abaixo) */
+  .clients-master-list {
+    position: static !important;
+    max-height: 60vh !important;
+  }
+}
+
 /* -- Tabelas: scroll horizontal em telas pequenas ---------- */
 .table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* -- Tabela → cards no mobile ------------------------------ */
+/* Uso: <table class="cards-mobile"> com <td data-label="Rótulo"> nas células. */
+@media (max-width: 767px) {
+  table.cards-mobile thead { display: none; }
+  table.cards-mobile,
+  table.cards-mobile tbody,
+  table.cards-mobile tr,
+  table.cards-mobile td { display: block; width: 100%; }
+  table.cards-mobile tr {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-row);
+    padding: 6px 12px;
+    margin-bottom: 10px;
+    background: var(--surface);
+  }
+  table.cards-mobile td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    border: none !important;
+    text-align: right;
+  }
+  table.cards-mobile td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: left;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  table.cards-mobile td[data-label='']::before,
+  table.cards-mobile td:not([data-label])::before { content: none; }
 }
 
 /* -- Flex: empilhar em mobile ------------------------------ */

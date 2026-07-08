@@ -50,13 +50,13 @@ export default async function ClientsLayout({
   const totalActive = clients.filter(c => c.isActive).length
 
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+    <div className="master-detail">
       <ClientsSidebar
         clients={clients}
         basePath={`/${slug}/clients`}
         totalActive={totalActive}
       />
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
         {children}
       </div>
     </div>

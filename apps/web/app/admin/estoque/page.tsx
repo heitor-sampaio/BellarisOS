@@ -172,8 +172,8 @@ export default async function AdminEstoquePage() {
         </div>
       </div>
 
-      {/* KPIs — 5 cards na mesma linha */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
+      {/* KPIs — 5 cards (auto-colapsa no mobile) */}
+      <div className="kpi-grid-auto">
         {[
           {
             label:   'VALOR EM ESTOQUE',

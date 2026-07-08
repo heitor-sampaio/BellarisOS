@@ -412,7 +412,7 @@ export function AdminDashboardView({
       </div>
 
       {/* -- KPI cards -- */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14 }}>
+      <div className="kpi-grid-auto" style={{ gap: 14 }}>
         <KpiCard
           brand
           label="Receita bruta do mês"

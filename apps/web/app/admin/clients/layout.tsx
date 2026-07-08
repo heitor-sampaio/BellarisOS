@@ -43,7 +43,7 @@ export default async function AdminClientsLayout({
   const branches       = (branchesRaw ?? []) as { id: string; name: string }[]
 
   return (
-    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+    <div className="master-detail">
       <ClientsSidebar
         clients={clients}
         basePath="/admin/clients"
@@ -51,7 +51,7 @@ export default async function AdminClientsLayout({
         newClientHref={null}
         availableBranches={branches}
       />
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
         {children}
       </div>
     </div>

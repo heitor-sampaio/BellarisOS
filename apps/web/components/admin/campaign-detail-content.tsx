@@ -580,7 +580,7 @@ export function CampaignDetailContent({ data }: { data: CampaignDetail }) {
       {/* Gráfico de tendência temporal */}
       {data.dailyInsights.length > 1 && <TrendChart daily={data.dailyInsights} />}
 
-      <div style={{ display: 'grid', gridTemplateColumns: hasSegmentation ? '1fr 360px' : '1fr', gap: 16, alignItems: 'start' }}>
+      <div className="split-aside" style={hasSegmentation ? undefined : { gridTemplateColumns: '1fr' }}>
         {/* Ad Sets com criativos aninhados */}
         {adSets.length > 0 && (
           <div className="card">

@@ -188,7 +188,7 @@ export default async function CampaignDetailPage({
       </div>
 
       {/* Metric cards — linha 2: conversões */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 24 }}>
+      <div className="kpi-grid-auto" style={{ gap: 10, marginBottom: 24 }}>
         {conversionMetrics.map(m => <MetricCard key={m.label} m={m} />)}
       </div>
 
