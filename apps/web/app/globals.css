@@ -544,6 +544,11 @@
   }
 }
 
+/* -- Spin animation (used by NavItem loader) -------------- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* -- Skeleton loading animation --------------------------- */
 @keyframes skeleton-pulse {
   0%   { background-position: 200% 0; }

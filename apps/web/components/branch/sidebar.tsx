@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import {
   LayoutGrid, Calendar, Users, Sparkles,
   Package, CreditCard, Settings, LogOut, UserCircle,
@@ -73,7 +74,7 @@ export function BranchSidebar({
         {/* Network admin: voltar para rede + seletor de filial */}
         {isNetworkAdmin ? (
           <div style={{ padding: '0 4px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <a
+            <Link
               href="/admin/dashboard"
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -87,7 +88,7 @@ export function BranchSidebar({
             >
               <ArrowLeft size={13} />
               Voltar para a rede
-            </a>
+            </Link>
 
             <div style={{ position: 'relative' }}>
               <button
@@ -121,7 +122,7 @@ export function BranchSidebar({
                     overflow: 'hidden',
                   }}>
                     {allBranches.map(b => (
-                      <a
+                      <Link
                         key={b.slug}
                         href={`/${b.slug}/dashboard`}
                         onClick={() => { setSwitcherOpen(false); close() }}
@@ -138,7 +139,7 @@ export function BranchSidebar({
                       >
                         {b.name}
                         {b.slug === slug && <Check size={12} color="var(--brand)" />}
-                      </a>
+                      </Link>
                     ))}
                   </div>
                 </>

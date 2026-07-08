@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import './globals.css'
-import { CapacitorSessionSync } from '@/components/capacitor-session-sync'
+import { CapacitorSessionSync }  from '@/components/capacitor-session-sync'
+import { NavigationProgress }    from '@/components/shared/navigation-progress'
 
 // Garante renderização dinâmica em todas as páginas para que as env vars de
 // runtime (NEXT_PUBLIC_SUPABASE_URL, etc.) sejam lidas no servidor a cada
@@ -73,6 +74,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: runtimeConfig }} />
         {/* Mantém armazenamento nativo (Preferences) sincronizado com a sessão */}
         <CapacitorSessionSync />
+        {/* Barra de progresso de navegação — aparece ao clicar em qualquer NavItem */}
+        <NavigationProgress />
         {children}
         <Script
           id="facebook-jssdk"
