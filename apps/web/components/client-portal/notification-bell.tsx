@@ -45,6 +45,19 @@ async function registerPush() {
       await PushNotifications.addListener('registration', async ({ value: token }) => {
         await savePushToken({ token, platform: Capacitor.getPlatform() as 'android' | 'ios' })
       })
+      await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+        try {
+          const { LocalNotifications } = await import('@capacitor/local-notifications')
+          await LocalNotifications.schedule({
+            notifications: [{
+              id:    Math.floor(Math.random() * 100000),
+              title: notification.title ?? '',
+              body:  notification.body  ?? '',
+              extra: notification.data,
+            }],
+          })
+        } catch { /* local notifications are optional */ }
+      })
       await PushNotifications.register()
       return
     }

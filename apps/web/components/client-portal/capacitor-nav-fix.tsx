@@ -50,6 +50,23 @@ export function CapacitorNavFix() {
           await PushNotifications.addListener('registration', async ({ value: token }) => {
             await savePushToken({ token, platform: Capacitor.getPlatform() as 'android' | 'ios' })
           })
+
+          // Foreground: show a native banner via LocalNotifications because
+          // FCM does not display banners when the app is open.
+          await PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+            try {
+              const { LocalNotifications } = await import('@capacitor/local-notifications')
+              await LocalNotifications.schedule({
+                notifications: [{
+                  id:    Math.floor(Math.random() * 100000),
+                  title: notification.title ?? '',
+                  body:  notification.body  ?? '',
+                  extra: notification.data,
+                }],
+              })
+            } catch { /* local notifications are optional */ }
+          })
+
           await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
             const url: string | undefined =
               (action.notification.data as Record<string, string>)?.url
