@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { getTenantContext } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getCachedBranchBySlug } from '@/lib/cached-queries'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { RevenueBarChart } from '@/components/branch/revenue-bar-chart'
 import { format, subMonths, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns'
@@ -80,9 +81,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const ctx      = await getTenantContext()
   const supabase = await createSupabase()
 
-  const { data: branch } = await supabase
-    .from('branches').select('id, name')
-    .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single()
+  const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
   if (!branch) notFound()
 
   const branchId = branch.id
@@ -90,13 +89,6 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const admin = createAdminClient()
 
   const canSeeCheckout = ['RECEPTIONIST', 'BRANCH_ADMIN', 'NETWORK_ADMIN'].includes(ctx.role)
-  const { count: pendingCheckouts } = canSeeCheckout
-    ? await admin
-        .from('treatment_plans')
-        .select('id', { count: 'exact', head: true })
-        .eq('branch_id', branchId)
-        .eq('status', 'PROPOSED')
-    : { count: 0 }
 
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0)
   const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999)
@@ -108,6 +100,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const ninetyDaysAgo  = subDays(now, 90)
 
   const [
+    { count: pendingCheckouts },
     { data: monthRevTx },
     { data: lastMonthRevTx },
     { data: todayAppts },
@@ -119,6 +112,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     { data: allActiveClients },
     { count: newClientsCount },
   ] = await Promise.all([
+    canSeeCheckout
+      ? admin.from('treatment_plans').select('id', { count: 'exact', head: true })
+          .eq('branch_id', branchId).eq('status', 'PROPOSED')
+      : Promise.resolve({ count: 0 }),
+
     supabase.from('financial_transactions').select('amount')
       .eq('branch_id', branchId).eq('type', 'INCOME')
       .gte('created_at', monthStart.toISOString()),

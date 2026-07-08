@@ -20,21 +20,17 @@ export default async function BranchLayout({
   const { slug } = await params
   const ctx = await getTenantContext()
 
-  // Portal do cliente: valida vínculo com a filial e devolve children sem chrome de staff
+  // Portal do cliente: valida vínculo com a filial e devolve children sem chrome de staff.
+  // 1 query com join (antes eram 2 sequenciais: clients → branches).
   if (ctx.isClient) {
     const adminClient = createAdminClient()
     const { data: clientData } = await adminClient
       .from('clients')
-      .select('branch_id')
+      .select('branch_id, branches!inner(slug)')
       .eq('id', ctx.clientId!)
       .single()
-    if (!clientData?.branch_id) redirect('/login')
-    const { data: clientBranch } = await adminClient
-      .from('branches')
-      .select('slug')
-      .eq('id', clientData.branch_id)
-      .single()
-    if (clientBranch?.slug !== slug) redirect('/login')
+    const clientBranch = clientData?.branches as unknown as { slug: string } | null
+    if (!clientData?.branch_id || clientBranch?.slug !== slug) redirect('/login')
     return <>{children}</>
   }
 
