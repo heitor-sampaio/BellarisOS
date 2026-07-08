@@ -3,6 +3,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useTransition, type ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 import { emitNavStart } from '@/components/shared/navigation-progress'
+import { useSidebar } from '@/components/shared/sidebar-context'
 
 interface NavItemProps {
   icon:  ReactNode
@@ -14,6 +15,7 @@ export function NavItem({ icon, label, href }: NavItemProps) {
   const pathname             = usePathname()
   const router               = useRouter()
   const [isPending, startT]  = useTransition()
+  const { collapsed }        = useSidebar()
 
   const active     = pathname === href || pathname.startsWith(href + '/')
   const showActive = active || isPending
@@ -28,11 +30,15 @@ export function NavItem({ icon, label, href }: NavItemProps) {
     <button
       type="button"
       onClick={handleClick}
+      title={collapsed ? label : undefined}
+      onMouseEnter={e => { if (!showActive) e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
+      onMouseLeave={e => { if (!showActive) e.currentTarget.style.background = 'transparent' }}
       style={{
         display:        'flex',
         alignItems:     'center',
-        gap:            10,
-        padding:        '9px 12px',
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        gap:            collapsed ? 0 : 10,
+        padding:        collapsed ? '10px 0' : '9px 12px',
         borderRadius:   'var(--radius-field-token)',
         fontSize:       'var(--text-sm-sz)',
         fontWeight:     'var(--weight-bold)',
@@ -40,10 +46,13 @@ export function NavItem({ icon, label, href }: NavItemProps) {
         cursor:         active && !isPending ? 'default' : 'pointer',
         width:          '100%',
         textAlign:      'left',
-        transition:     'background 80ms ease, color 80ms ease, box-shadow 80ms ease',
-        background:     showActive ? 'var(--brand)' : 'transparent',
-        color:          showActive ? 'var(--on-brand)' : 'var(--text-muted)',
-        boxShadow:      showActive ? 'var(--shadow-nav-active)' : 'none',
+        whiteSpace:     'nowrap',
+        overflow:       'hidden',
+        transition:     'background 120ms ease, color 120ms ease, box-shadow 120ms ease',
+        // Sidebar rosé: item ativo INVERTE (pill branco + texto rosé); inativo = branco translúcido
+        background:     showActive ? 'var(--on-brand)' : 'transparent',
+        color:          showActive ? 'var(--brand)' : 'rgba(255,255,255,0.85)',
+        boxShadow:      showActive ? '0 6px 16px -6px rgba(90, 20, 40, 0.4)' : 'none',
       }}
     >
       <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -51,7 +60,7 @@ export function NavItem({ icon, label, href }: NavItemProps) {
           ? <Loader2 size={16} style={{ animation: 'spin 0.7s linear infinite' }} />
           : icon}
       </span>
-      {label}
+      {!collapsed && label}
     </button>
   )
 }

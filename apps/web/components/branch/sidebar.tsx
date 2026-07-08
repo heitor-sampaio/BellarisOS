@@ -4,8 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   LayoutGrid, Calendar, Users, Sparkles,
-  Package, CreditCard, Settings, LogOut, UserCircle,
-  ArrowLeft, ChevronDown, Check,
+  Package, CreditCard, LogOut, UserCircle,
+  ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
 import { logoutAction } from '@/actions/auth'
@@ -20,35 +20,34 @@ interface BranchSidebarProps {
   allBranches?:    { name: string; slug: string }[]
 }
 
+const SIDEBAR_GRADIENT = 'linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%)'
+const HAIRLINE_ON_BRAND = '1px solid rgba(255,255,255,0.15)'
+
 export function BranchSidebar({
   slug, branchName, permissions, isNetworkAdmin, allBranches = [],
 }: BranchSidebarProps) {
   const base = `/${slug}`
   const [switcherOpen, setSwitcherOpen] = useState(false)
-  const { isOpen, close } = useSidebar()
+  const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
 
   return (
     <>
-      {/* Scrim (overlay) — clique fecha o sidebar no mobile */}
-      {isOpen && (
-        <div className="sidebar-scrim" onClick={close} aria-hidden="true" />
-      )}
+      {isOpen && <div className="sidebar-scrim" onClick={close} aria-hidden="true" />}
 
       <aside
         className={`main-sidebar${isOpen ? ' sidebar-open' : ''}`}
         style={{
-          position:        'fixed',
-          left:            0,
-          top:             0,
-          bottom:          0,
-          width:           244,
-          background:      'var(--surface)',
-          borderRight:     '1px solid var(--border)',
-          display:         'flex',
-          flexDirection:   'column',
-          padding:         '0 12px',
-          zIndex:          50,
-          overflowY:       'auto',
+          position:      'fixed',
+          left:          0, top: 0, bottom: 0,
+          background:    SIDEBAR_GRADIENT,
+          color:         'var(--on-brand)',
+          borderRight:   'none',
+          display:       'flex',
+          flexDirection: 'column',
+          padding:       '0 12px',
+          zIndex:        50,
+          overflowY:     'auto',
+          overflowX:     'hidden',
         }}
       >
         {/* Wordmark */}
@@ -56,35 +55,36 @@ export function BranchSidebar({
           height:       'var(--topbar-h)',
           display:      'flex',
           alignItems:   'center',
-          paddingLeft:  4,
-          borderBottom: '1px solid var(--hairline)',
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          paddingLeft:  collapsed ? 0 : 4,
+          borderBottom: HAIRLINE_ON_BRAND,
           marginBottom: 8,
           flexShrink:   0,
         }}>
           <span style={{
             fontSize:      18,
             fontWeight:    'var(--weight-extrabold)',
-            color:         'var(--brand)',
+            color:         'var(--on-brand)',
             letterSpacing: 'var(--tracking-tight)',
           }}>
-            Lumière ✦
+            {collapsed ? '✦' : 'Lumière ✦'}
           </span>
         </div>
 
-        {/* Network admin: voltar para rede + seletor de filial */}
-        {isNetworkAdmin ? (
+        {/* Network admin: voltar para rede + seletor de filial (oculto quando recolhido) */}
+        {!collapsed && (isNetworkAdmin ? (
           <div style={{ padding: '0 4px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <Link
               href="/admin/dashboard"
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '5px 8px', borderRadius: 8,
-                fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+                fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.72)',
                 textDecoration: 'none', letterSpacing: '0.03em',
                 transition: 'background 0.1s, color 0.1s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-app)'; e.currentTarget.style.color = 'var(--brand)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'var(--text-muted)' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.14)'; e.currentTarget.style.color = 'var(--on-brand)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.color = 'rgba(255,255,255,0.72)' }}
             >
               <ArrowLeft size={13} />
               Voltar para a rede
@@ -97,29 +97,22 @@ export function BranchSidebar({
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '7px 10px', borderRadius: 8, cursor: 'pointer',
-                  background: 'var(--brand-soft)', border: '1.5px solid var(--brand-soft-border)',
-                  fontSize: 12, fontWeight: 700, color: 'var(--brand)',
+                  background: 'rgba(255,255,255,0.16)', border: '1.5px solid rgba(255,255,255,0.28)',
+                  fontSize: 12, fontWeight: 700, color: 'var(--on-brand)',
                   transition: 'background 0.1s',
                 }}
               >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {branchName}
-                </span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{branchName}</span>
                 <ChevronDown size={13} style={{ flexShrink: 0, transform: switcherOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
               </button>
 
               {switcherOpen && (
                 <>
-                  <div
-                    style={{ position: 'fixed', inset: 0, zIndex: 49 }}
-                    onClick={() => setSwitcherOpen(false)}
-                  />
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setSwitcherOpen(false)} />
                   <div style={{
                     position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
                     background: 'var(--surface)', border: '1px solid var(--border)',
-                    borderRadius: 10, zIndex: 51,
-                    boxShadow: '0 8px 24px -6px rgba(34,22,25,.14)',
-                    overflow: 'hidden',
+                    borderRadius: 10, zIndex: 51, boxShadow: '0 8px 24px -6px rgba(34,22,25,.14)', overflow: 'hidden',
                   }}>
                     {allBranches.map(b => (
                       <Link
@@ -131,8 +124,7 @@ export function BranchSidebar({
                           padding: '9px 12px', textDecoration: 'none',
                           fontSize: 12, fontWeight: b.slug === slug ? 700 : 500,
                           color: b.slug === slug ? 'var(--brand)' : 'var(--text)',
-                          borderBottom: '1px solid var(--hairline)',
-                          transition: 'background 0.1s',
+                          borderBottom: '1px solid var(--hairline)', transition: 'background 0.1s',
                         }}
                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                         onMouseLeave={e => (e.currentTarget.style.background = '')}
@@ -148,9 +140,9 @@ export function BranchSidebar({
           </div>
         ) : (
           <div style={{ padding: '4px 12px', marginBottom: 16 }}>
-            <span className="overline">{branchName}</span>
+            <span className="overline" style={{ color: 'rgba(255,255,255,0.7)' }}>{branchName}</span>
           </div>
-        )}
+        ))}
 
         {/* Navegação */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }} onClick={close}>
@@ -163,16 +155,50 @@ export function BranchSidebar({
           {permissions.settings.view   && <NavItem icon={<UserCircle  size={18} />} label="Equipe"        href={`${base}/settings/team`} />}
         </nav>
 
-        {/* Logout */}
-        <div style={{ paddingBottom: 16, borderTop: '1px solid var(--hairline)', paddingTop: 12, flexShrink: 0 }}>
+        {/* Rodapé: recolher (desktop) + logout */}
+        <div style={{ paddingBottom: 16, borderTop: HAIRLINE_ON_BRAND, paddingTop: 12, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className="hide-mobile"
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: collapsed ? 0 : 10, padding: collapsed ? '10px 0' : '9px 12px',
+              borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
+              background: 'transparent', color: 'rgba(255,255,255,0.72)',
+              fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
+              transition: 'background 120ms ease',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </span>
+            {!collapsed && 'Recolher'}
+          </button>
+
           <form action={logoutAction}>
             <button
               type="submit"
-              className="btn-ghost"
-              style={{ width: '100%', justifyContent: 'flex-start', gap: 10 }}
+              title={collapsed ? 'Sair' : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
+                gap: collapsed ? 0 : 10, padding: collapsed ? '10px 0' : '9px 12px',
+                borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
+                background: 'transparent', color: 'var(--on-brand)',
+                fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
+                transition: 'background 120ms ease',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
-              <LogOut size={16} />
-              Sair
+              <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <LogOut size={16} />
+              </span>
+              {!collapsed && 'Sair'}
             </button>
           </form>
         </div>

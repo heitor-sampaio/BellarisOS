@@ -367,12 +367,20 @@
   }
 }
 
-/* -- Sidebar mobile --------------------------------------- */
+/* -- Sidebar: largura dirigida pela var + recolhimento ----- */
 .main-sidebar {
-  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+  width: var(--sidebar-w);
+  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1),
+              width     240ms cubic-bezier(0.4, 0, 0.2, 1);
 }
+/* Desktop recolhido: trilha de ícones (76px) */
+@media (min-width: 1024px) {
+  html.sidebar-collapsed { --sidebar-w: 76px; }
+}
+/* Mobile: painel off-canvas mantém largura cheia (offset --sidebar-w = 0) */
 @media (max-width: 1023px) {
   .main-sidebar {
+    width: 244px;
     transform: translateX(-100%);
     box-shadow: none;
   }

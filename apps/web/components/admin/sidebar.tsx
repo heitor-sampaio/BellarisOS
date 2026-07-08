@@ -1,66 +1,69 @@
 'use client'
 
 import {
-  LayoutGrid, Calendar, Users, BarChart3,
+  LayoutGrid, Calendar, BarChart3,
   Settings, LogOut, Sparkles, Boxes, Contact, CreditCard, Layers, Megaphone,
-  UsersRound, Bell,
+  UsersRound, Bell, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
 
+const SIDEBAR_GRADIENT = 'linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%)'
+const HAIRLINE_ON_BRAND = '1px solid rgba(255,255,255,0.15)'
+
 export function AdminSidebar({ role }: { role: string }) {
-  const { isOpen, close } = useSidebar()
+  const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
   const isFinancial  = role === 'FINANCIAL'
   const isMarketing  = role === 'MARKETING'
   const isRestricted = isFinancial || isMarketing  // sem Dashboard/Unidades/Equipe
 
   return (
     <>
-      {isOpen && (
-        <div className="sidebar-scrim" onClick={close} aria-hidden="true" />
-      )}
+      {isOpen && <div className="sidebar-scrim" onClick={close} aria-hidden="true" />}
 
       <aside
         className={`main-sidebar${isOpen ? ' sidebar-open' : ''}`}
         style={{
           position:      'fixed',
-          left:          0,
-          top:           0,
-          bottom:        0,
-          width:         244,
-          background:    'var(--surface)',
-          borderRight:   '1px solid var(--border)',
+          left:          0, top: 0, bottom: 0,
+          background:    SIDEBAR_GRADIENT,
+          color:         'var(--on-brand)',
+          borderRight:   'none',
           display:       'flex',
           flexDirection: 'column',
           padding:       '0 12px',
           zIndex:        50,
           overflowY:     'auto',
+          overflowX:     'hidden',
         }}
       >
         {/* Wordmark */}
         <div style={{
-          height:       'var(--topbar-h)',
-          display:      'flex',
-          alignItems:   'center',
-          paddingLeft:  4,
-          borderBottom: '1px solid var(--hairline)',
-          marginBottom: 8,
-          flexShrink:   0,
+          height:         'var(--topbar-h)',
+          display:        'flex',
+          alignItems:     'center',
+          justifyContent: collapsed ? 'center' : 'flex-start',
+          paddingLeft:    collapsed ? 0 : 4,
+          borderBottom:   HAIRLINE_ON_BRAND,
+          marginBottom:   8,
+          flexShrink:     0,
         }}>
           <span style={{
             fontSize:      18,
             fontWeight:    'var(--weight-extrabold)',
-            color:         'var(--brand)',
+            color:         'var(--on-brand)',
             letterSpacing: 'var(--tracking-tight)',
           }}>
-            Lumière ✦
+            {collapsed ? '✦' : 'Lumière ✦'}
           </span>
         </div>
 
-        <div style={{ padding: '4px 12px', marginBottom: 16 }}>
-          <span className="overline">Rede</span>
-        </div>
+        {!collapsed && (
+          <div style={{ padding: '4px 12px', marginBottom: 16 }}>
+            <span className="overline" style={{ color: 'rgba(255,255,255,0.7)' }}>Rede</span>
+          </div>
+        )}
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }} onClick={close}>
           {!isRestricted && (
@@ -69,7 +72,6 @@ export function AdminSidebar({ role }: { role: string }) {
               <NavItem icon={<Calendar   size={18} />} label="Agenda"    href="/admin/agenda" />
             </>
           )}
-          {/* Marketing: apenas Marketing, CRM e Relatórios */}
           {isMarketing ? (
             <>
               <NavItem icon={<BarChart3  size={18} />} label="Relatórios"    href="/admin/reports" />
@@ -96,15 +98,50 @@ export function AdminSidebar({ role }: { role: string }) {
           )}
         </nav>
 
-        <div style={{ paddingBottom: 16, borderTop: '1px solid var(--hairline)', paddingTop: 12, flexShrink: 0 }}>
+        {/* Rodapé: recolher (desktop) + logout */}
+        <div style={{ paddingBottom: 16, borderTop: HAIRLINE_ON_BRAND, paddingTop: 12, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className="hide-mobile"
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
+              gap: collapsed ? 0 : 10, padding: collapsed ? '10px 0' : '9px 12px',
+              borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
+              background: 'transparent', color: 'rgba(255,255,255,0.72)',
+              fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
+              transition: 'background 120ms ease',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </span>
+            {!collapsed && 'Recolher'}
+          </button>
+
           <form action={logoutAction}>
             <button
               type="submit"
-              className="btn-ghost"
-              style={{ width: '100%', justifyContent: 'flex-start', gap: 10 }}
+              title={collapsed ? 'Sair' : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: collapsed ? 'center' : 'flex-start',
+                gap: collapsed ? 0 : 10, padding: collapsed ? '10px 0' : '9px 12px',
+                borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
+                background: 'transparent', color: 'var(--on-brand)',
+                fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
+                transition: 'background 120ms ease',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.14)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
-              <LogOut size={16} />
-              Sair
+              <span style={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <LogOut size={16} />
+              </span>
+              {!collapsed && 'Sair'}
             </button>
           </form>
         </div>

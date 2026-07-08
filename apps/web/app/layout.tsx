@@ -72,6 +72,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: staleActionGuard }} />
         {/* Injeta config em runtime antes de qualquer componente React */}
         <script dangerouslySetInnerHTML={{ __html: runtimeConfig }} />
+        {/* Aplica o estado recolhido do sidebar antes do paint (evita flash) */}
+        <script dangerouslySetInnerHTML={{ __html: "(function(){try{if(localStorage.getItem('sidebar-collapsed')==='1')document.documentElement.classList.add('sidebar-collapsed')}catch(e){}})()" }} />
         {/* Mantém armazenamento nativo (Preferences) sincronizado com a sessão */}
         <CapacitorSessionSync />
         {/* Barra de progresso de navegação — aparece ao clicar em qualquer NavItem */}
