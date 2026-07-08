@@ -62,7 +62,7 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
   return (
     <div>
       {/* Day-of-week headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, padding: '0 2px', marginBottom: 4 }}>
+      <div className="agenda-month-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, padding: '0 2px', marginBottom: 4 }}>
         {WEEKDAYS.map(d => (
           <div key={d} style={{
             textAlign: 'center', fontSize: 10, fontWeight: 700,
@@ -74,7 +74,7 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
       </div>
 
       {/* Day cells */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, padding: '0 2px' }}>
+      <div className="agenda-month-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, padding: '0 2px' }}>
         {days.map((day, i) => {
           const count      = counts[i] ?? 0
           const inMonth    = isSameMonth(day, currentDate)
@@ -86,6 +86,7 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
             <div
               key={i}
               onClick={() => inMonth && onDayClick(day)}
+              className="agenda-month-cell"
               style={{
                 background:   'var(--surface)',
                 border:       isToday ? '2px solid var(--brand)' : '1px solid var(--border)',
@@ -109,7 +110,7 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
 
               {count > 0 ? (
                 <>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
+                  <span className="agenda-cell-label" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
                     {count} atend.
                   </span>
                   <div style={{ marginTop: 'auto' }}>
@@ -123,7 +124,7 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
                 </>
               ) : (
                 inMonth && (
-                  <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 600 }}>
+                  <span className="agenda-cell-label" style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 600 }}>
                     Sem agenda
                   </span>
                 )

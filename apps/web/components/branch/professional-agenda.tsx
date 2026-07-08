@@ -462,7 +462,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
+          <div className="agenda-week-strip" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }}>
             {weekDays.map(day => {
               const key    = format(day, 'yyyy-MM-dd')
               const dayEvs = eventsByDay.get(key) ?? []

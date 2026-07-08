@@ -9,7 +9,7 @@ export default function Loading() {
         <div className="skeleton" style={{ height: 36, width: 140, ...S }} />
       </div>
       {/* Split: lista de conversas + detalhe */}
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'flex-start' }}>
+      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 16, alignItems: 'flex-start' }}>
         {/* Lista de conversas */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div className="skeleton" style={{ height: 38, ...S }} />

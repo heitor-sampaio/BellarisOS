@@ -540,6 +540,11 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   .split-aside { grid-template-columns: 1fr; }
 }
 
+/* Colapsa grids multi-coluna para 1 coluna no mobile/tablet estreito. */
+@media (max-width: 899px) {
+  .grid-stack-md { grid-template-columns: 1fr !important; }
+}
+
 /* Master-detail (lista fixa + detalhe): empilha e vira largura cheia no mobile */
 .master-detail {
   display: flex;
@@ -608,6 +613,18 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
     justify-content: flex-start;
     text-align: left;
   }
+}
+
+/* -- Agenda: mês compacto no mobile ------------------------ */
+@media (max-width: 560px) {
+  .agenda-month-grid { gap: 3px !important; }
+  .agenda-month-cell {
+    min-height: 52px !important;
+    padding: 6px 5px 7px !important;
+    border-radius: 8px !important;
+  }
+  .agenda-cell-label { display: none !important; }
+  .agenda-week-strip { gap: 4px !important; }
 }
 
 /* -- Flex: empilhar em mobile ------------------------------ */

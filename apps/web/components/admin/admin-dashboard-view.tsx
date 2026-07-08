@@ -454,7 +454,7 @@ export function AdminDashboardView({
       </div>
 
       {/* -- Middle: ranking + hoje -- */}
-      <div style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 16, alignItems: 'start' }}>
+      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 16, alignItems: 'start' }}>
 
         {/* Ranking de filiais + gráfico de evolução */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -786,7 +786,7 @@ export function AdminDashboardView({
               return (
                 <div
                   key={b.slug}
-                  className="flex-wrap-mobile"
+                  className="grid-stack-md"
                   style={{
                     padding: '14px 20px',
                     borderBottom: i < branchOccupancy.length - 1 ? '1px solid var(--hairline)' : 'none',
@@ -1081,7 +1081,7 @@ export function AdminDashboardView({
       ══════════════════════════════════════════════════════════════ */}
       <SectionHeader title="Clientes" />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
 
         {/* Ranking — Valor gasto */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
