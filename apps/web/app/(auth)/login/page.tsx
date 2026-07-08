@@ -1,11 +1,19 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
 import { loginAction } from '@/actions/auth'
 import Link from 'next/link'
 
 export default function LoginPage() {
   const [state, action, pending] = useActionState(loginAction, undefined)
+
+  useEffect(() => {
+    if (state && 'redirectTo' in state && state.redirectTo) {
+      // Full navigation garante que o cookie de sessão está commitado no WebView
+      // antes de renderizar a próxima página (evita race condition no Capacitor).
+      window.location.href = state.redirectTo
+    }
+  }, [state])
 
   return (
     <div className="card">

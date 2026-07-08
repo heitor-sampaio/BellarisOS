@@ -87,7 +87,7 @@ export async function registerAction(
 }
 
 export async function loginAction(
-  _prevState: { error: string } | undefined,
+  _prevState: { error: string } | { redirectTo: string } | undefined,
   formData: FormData,
 ) {
   const raw = { email: formData.get('email'), password: formData.get('password') }
@@ -113,7 +113,7 @@ export async function loginAction(
         .select('slug')
         .eq('id', client.branch_id)
         .single()
-      if (br?.slug) redirect(`/${br.slug}/cliente`)
+      if (br?.slug) return { redirectTo: `/${br.slug}/cliente` }
     }
     await supabase.auth.signOut()
     return { error: 'Conta não vinculada a uma filial.' }
@@ -129,7 +129,7 @@ export async function loginAction(
     branchSlug = branch?.slug ?? null
   }
 
-  redirect(getRedirectPath(ctx.role, branchSlug))
+  return { redirectTo: getRedirectPath(ctx.role, branchSlug) }
 }
 
 export async function logoutAction() {

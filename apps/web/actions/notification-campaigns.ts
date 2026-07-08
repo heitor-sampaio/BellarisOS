@@ -487,22 +487,59 @@ function applyTemplate(text: string, clientName: string): string {
 
 let _fcmAccessToken: string | null = null
 let _fcmTokenExpiry = 0
+let _fcmProjectId: string | null = null
 
-async function getFcmAccessToken(): Promise<string | null> {
+function parseServiceAccount(raw: string): Record<string, unknown> {
+  // Try multiple formats in order of likelihood
+  const candidates = [
+    raw.trim(),
+    // strip single-quote wrapper: '{...}'
+    raw.trim().replace(/^'([\s\S]*)'$/, '$1'),
+    // strip double-quote wrapper: "{...}" → then unescape inner \"
+    raw.trim().replace(/^"([\s\S]*)"$/, '$1').replace(/\\"/g, '"'),
+  ]
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as Record<string, unknown>
+      if (parsed && typeof parsed === 'object') {
+        if (typeof parsed.private_key === 'string') {
+          parsed.private_key = (parsed.private_key as string).replace(/\\n/g, '\n')
+        }
+        return parsed
+      }
+    } catch { /* try next */ }
+  }
+
+  throw new Error(
+    `GOOGLE_SERVICE_ACCOUNT is not valid JSON. First 40 chars: ${JSON.stringify(raw.trim().slice(0, 40))}`
+  )
+}
+
+async function getFcmReady(): Promise<{ accessToken: string; projectId: string } | null> {
   const sa = process.env.GOOGLE_SERVICE_ACCOUNT
   if (!sa) return null
-  if (_fcmAccessToken && Date.now() < _fcmTokenExpiry) return _fcmAccessToken
+  // Re-parse only when token is expired — also refreshes projectId
+  if (_fcmAccessToken && _fcmProjectId && Date.now() < _fcmTokenExpiry) {
+    return { accessToken: _fcmAccessToken, projectId: _fcmProjectId }
+  }
   try {
+    const creds = parseServiceAccount(sa)
+    _fcmProjectId = (creds.project_id as string) ?? null
     const auth = new GoogleAuth({
-      credentials: JSON.parse(sa),
+      credentials: creds,
       scopes: ['https://www.googleapis.com/auth/firebase.messaging'],
     })
     const client = await auth.getClient()
     const res = await client.getAccessToken()
     _fcmAccessToken = res.token ?? null
-    _fcmTokenExpiry = Date.now() + 55 * 60 * 1000  // 55 min cache
-    return _fcmAccessToken
-  } catch { return null }
+    _fcmTokenExpiry = Date.now() + 55 * 60 * 1000
+    if (!_fcmAccessToken || !_fcmProjectId) return null
+    return { accessToken: _fcmAccessToken, projectId: _fcmProjectId }
+  } catch (e) {
+    console.error('[FCM]', e)
+    return null
+  }
 }
 
 async function sendFcmBatch(
@@ -518,19 +555,17 @@ async function sendFcmBatch(
 
   if (!rows?.length) return
 
-  const sa = process.env.GOOGLE_SERVICE_ACCOUNT
-  if (!sa) return
-  const projectId = (JSON.parse(sa) as { project_id: string }).project_id
-  const accessToken = await getFcmAccessToken()
-  if (!accessToken) return
+  const fcm = await getFcmReady()
+  if (!fcm) return
 
+  const { accessToken, projectId } = fcm
   const endpoint = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
 
   await Promise.allSettled(
-    rows.map((r: any) => {
+    rows.map(async (r: any) => {
       const client = clients.find(c => c.id === r.client_id)
-      if (!client) return Promise.resolve()
-      return fetch(endpoint, {
+      if (!client) return
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -548,6 +583,14 @@ async function sendFcmBatch(
           },
         }),
       })
+      if (!res.ok) {
+        const body = await res.text()
+        console.error(`[FCM] send failed — client=${r.client_id} token=...${r.token.slice(-8)} status=${res.status}:`, body)
+        // Token inválido (UNREGISTERED / NOT_FOUND) → limpar do banco
+        if (res.status === 404 || body.includes('UNREGISTERED') || body.includes('NOT_FOUND')) {
+          await adminClient.from('push_tokens').delete().eq('token', r.token)
+        }
+      }
     }),
   )
 }
