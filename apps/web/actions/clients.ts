@@ -1,6 +1,6 @@
 ﻿'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -100,6 +100,7 @@ export async function addClient(
   }
 
   revalidatePath(`/${slug}/clients`)
+  revalidateTag(`clients:${ctx.tenantId!}`)
   return { success: true, clientId: client.id }
 }
 
@@ -157,6 +158,7 @@ export async function updateClient(
   if (error) return { error: 'Erro ao atualizar cliente.' }
 
   revalidatePath(`/${slug}/clients/${clientId}`)
+  revalidateTag(`clients:${ctx.tenantId!}`)
   return { success: true }
 }
 
@@ -261,6 +263,7 @@ export async function updateClientContactData(
 
   if (error) return { error: error.message }
   revalidatePath(`/${slug}/clients/${clientId}`)
+  revalidateTag(`clients:${ctx.tenantId!}`)
   return {}
 }
 
@@ -339,4 +342,5 @@ export async function toggleClientStatus(clientId: string, isActive: boolean, sl
 
   revalidatePath(`/${slug}/clients`)
   revalidatePath(`/${slug}/clients/${clientId}`)
+  revalidateTag(`clients:${ctx.tenantId!}`)
 }

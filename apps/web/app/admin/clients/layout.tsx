@@ -1,7 +1,7 @@
 import { subDays } from 'date-fns'
 import { getTenantContext, assertRole } from '@/lib/auth'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
+import { getCachedNetworkClients, getCachedNetworkCompletedAppointments, getCachedNetworkBranches } from '@/lib/cached-queries'
 
 export default async function AdminClientsLayout({
   children,
@@ -11,29 +11,10 @@ export default async function AdminClientsLayout({
   const ctx = await getTenantContext()
   assertRole(ctx, ['NETWORK_ADMIN'])
 
-  const admin = createAdminClient()
-
-  const [{ data: rawClients }, { data: recentAppts }, { data: branchesRaw }] = await Promise.all([
-    admin
-      .from('clients')
-      .select('id, name, phone, tags, is_active, created_at, branch_id, branches!branch_id(id, name)')
-      .eq('tenant_id', ctx.tenantId!)
-      .order('name'),
-
-    admin
-      .from('appointments')
-      .select('client_id, scheduled_at')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('status', 'COMPLETED')
-      .order('scheduled_at', { ascending: false })
-      .limit(2000),
-
-    admin
-      .from('branches')
-      .select('id, name')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name'),
+  const [rawClients, recentAppts, branchesRaw] = await Promise.all([
+    getCachedNetworkClients(ctx.tenantId!),
+    getCachedNetworkCompletedAppointments(ctx.tenantId!),
+    getCachedNetworkBranches(ctx.tenantId!),
   ])
 
   const lastVisitMap = new Map<string, string>()

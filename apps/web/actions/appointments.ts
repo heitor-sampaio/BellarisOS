@@ -1,6 +1,6 @@
 ﻿'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -678,6 +678,7 @@ export async function finishSession(
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
     revalidatePath(`/${slug}/dashboard`)
     revalidatePath(`/${slug}/stock`)
+    revalidateTag(`appointments:${apptBranch!.tenant_id}`)
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }

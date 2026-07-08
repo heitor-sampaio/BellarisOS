@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation'
 import { subDays } from 'date-fns'
 import { getTenantContext, assertRole } from '@/lib/auth'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
+import { getCachedBranchClients, getCachedBranchCompletedAppointments } from '@/lib/cached-queries'
 
 export default async function ClientsLayout({
   children,
@@ -25,22 +25,9 @@ export default async function ClientsLayout({
     .single()
   if (!branch) notFound()
 
-  const admin = createAdminClient()
-
-  const [{ data: rawClients }, { data: recentAppts }] = await Promise.all([
-    admin
-      .from('clients')
-      .select('id, name, phone, tags, is_active, created_at')
-      .eq('branch_id', branch.id)
-      .order('name'),
-
-    admin
-      .from('appointments')
-      .select('client_id, scheduled_at')
-      .eq('branch_id', branch.id)
-      .eq('status', 'COMPLETED')
-      .order('scheduled_at', { ascending: false })
-      .limit(800),
+  const [rawClients, recentAppts] = await Promise.all([
+    getCachedBranchClients(branch.id, ctx.tenantId!),
+    getCachedBranchCompletedAppointments(branch.id, ctx.tenantId!),
   ])
 
   // Build last-visit map (first occurrence = most recent, since sorted desc)
