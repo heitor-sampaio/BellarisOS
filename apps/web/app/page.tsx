@@ -1,5 +1,8 @@
-﻿import Link from 'next/link'
+﻿import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { CalendarDays, Users, TrendingUp } from 'lucide-react'
+import { getTenantContext, getRedirectPath } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 const FEATURES = [
   {
@@ -19,7 +22,30 @@ const FEATURES = [
   },
 ]
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  try {
+    const ctx = await getTenantContext()
+    const admin = createAdminClient()
+
+    if (ctx.isClient && ctx.clientId) {
+      const { data: client } = await admin
+        .from('clients').select('branch_id').eq('id', ctx.clientId).single()
+      if (client?.branch_id) {
+        const { data: br } = await admin
+          .from('branches').select('slug').eq('id', client.branch_id).single()
+        if (br?.slug) redirect(`/${br.slug}/cliente`)
+      }
+    } else if (ctx.branchId) {
+      const { data: br } = await admin
+        .from('branches').select('slug').eq('id', ctx.branchId).single()
+      redirect(getRedirectPath(ctx.role, br?.slug ?? null))
+    } else {
+      redirect(getRedirectPath(ctx.role, null))
+    }
+  } catch {
+    // Não autenticado — exibe landing page normalmente
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-app)', fontFamily: 'var(--font-sans)' }}>
 
