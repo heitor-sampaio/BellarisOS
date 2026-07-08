@@ -32,6 +32,11 @@ Thumbs.db
 # Claude Code
 .claude/
 
+# Firebase — não commitar; arquivo contém API key do Android client
+apps/native/android/app/google-services.json
+# Equivalente iOS (caso seja adicionado futuramente)
+apps/native/ios/App/App/GoogleService-Info.plist
+
 # Logs
 *.log
 npm-debug.log*
