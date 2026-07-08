@@ -33,25 +33,33 @@ export default async function ClientPortalLayout({
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg-app)' }}>
       {/* -- Topbar mínima ---------------------------------------- */}
+      {/* Header cresce para cobrir a status bar (edge-to-edge).
+          O inner div de 52px mantém o conteúdo verticalmente centrado
+          abaixo da safe area, sem depender de align-items no wrapper. */}
       <header style={{
-        position:       'sticky',
-        top:            0,
-        zIndex:         50,
-        background:     'var(--surface)',
-        borderBottom:   '1px solid var(--hairline)',
-        height:         52,
-        display:        'flex',
-        alignItems:     'center',
-        justifyContent: 'space-between',
-        padding:        '0 20px',
+        position:    'sticky',
+        top:         0,
+        zIndex:      50,
+        background:  'var(--surface)',
+        borderBottom: '1px solid var(--hairline)',
+        paddingTop:  'env(safe-area-inset-top, 0px)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-          <span style={{ fontSize: 15, color: 'var(--brand)', fontWeight: 800, marginRight: 8, lineHeight: 1 }}>✦</span>
-          <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
-            {branchName}
-          </span>
+        <div style={{
+          height:         52,
+          display:        'flex',
+          alignItems:     'center',
+          justifyContent: 'space-between',
+          paddingLeft:    '20px',
+          paddingRight:   '20px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+            <span style={{ fontSize: 15, color: 'var(--brand)', fontWeight: 800, marginRight: 8, lineHeight: 1 }}>✦</span>
+            <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+              {branchName}
+            </span>
+          </div>
+          <NotificationBell initialUnread={initialUnread} clientId={ctx.clientId!} />
         </div>
-        <NotificationBell initialUnread={initialUnread} clientId={ctx.clientId!} />
       </header>
 
       {/* -- Conteúdo ---------------------------------------------- */}
