@@ -190,7 +190,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse }: Pro
           </div>
         ) : (
           <div className="table-wrap">
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={thStyle}>DATA</th>
@@ -215,14 +215,14 @@ export function FinancialTable({ transactions, branchId, slug, canReverse }: Pro
                       opacity: isReversed ? 0.5 : 1,
                     }}>
                       {/* Data */}
-                      <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                      <td data-label="Data" style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                         <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)' }}>
                           {fmtDatetime(tx.created_at)}
                         </p>
                       </td>
 
                       {/* Descrição */}
-                      <td style={{ padding: '13px 16px', maxWidth: 260 }}>
+                      <td data-label="" style={{ padding: '13px 16px', maxWidth: 260 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <div style={{
                             width: 28, height: 28, borderRadius: 8, flexShrink: 0,
@@ -245,7 +245,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse }: Pro
                       </td>
 
                       {/* Categoria */}
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="Categoria" style={{ padding: '13px 16px' }}>
                         <span style={{
                           fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                           background: tx.category === 'Estorno' ? '#fef2f2' : 'var(--bg-app)',
@@ -257,7 +257,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse }: Pro
                       </td>
 
                       {/* Pagamento */}
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="Pagamento" style={{ padding: '13px 16px' }}>
                         {tx.payment_method && pmStyle ? (
                           <span style={{
                             fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
@@ -272,7 +272,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse }: Pro
                       </td>
 
                       {/* Valor */}
-                      <td style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <td data-label="Valor" style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <span style={{
                           fontSize: 14, fontWeight: 800, letterSpacing: '-0.01em',
                           color: isIncome ? '#16a34a' : '#dc2626',
@@ -282,7 +282,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse }: Pro
                       </td>
 
                       {/* Status */}
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="Status" style={{ padding: '13px 16px' }}>
                         {isReversed ? (
                           <span style={{
                             fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
@@ -311,7 +311,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse }: Pro
                       </td>
 
                       {/* Ações */}
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="" style={{ padding: '13px 16px' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                           {!tx.is_paid && !isReversed && (
                             <button type="button" onClick={() => handleMarkPaid(tx.id)} title="Marcar como pago" style={{

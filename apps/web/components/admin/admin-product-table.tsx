@@ -167,7 +167,7 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   {([['name', 'Produto'], ['category', 'Categoria'], ['unit', 'Unidade']] as [SortKey, string][]).map(([key, label]) => (
@@ -190,7 +190,7 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
                       : i % 2 === 0 ? 'var(--surface)' : 'transparent',
                     opacity: p.is_active ? 1 : 0.55,
                   }}>
-                    <td style={{ padding: '13px 16px' }}>
+                    <td data-label="" style={{ padding: '13px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div>
                           <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
@@ -206,12 +206,12 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
                         )}
                       </div>
                     </td>
-                    <td style={{ padding: '13px 16px' }}>
+                    <td data-label="Categoria" style={{ padding: '13px 16px' }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
                         {p.category ?? '—'}
                       </span>
                     </td>
-                    <td style={{ padding: '13px 16px' }}>
+                    <td data-label="Unidade" style={{ padding: '13px 16px' }}>
                       <span style={{
                         fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                         background: 'var(--bg-app)', color: 'var(--text-muted)',
@@ -220,10 +220,10 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
                         {p.unit}
                       </span>
                     </td>
-                    <td style={{ padding: '13px 16px' }}>
+                    <td data-label="Fornecedor" style={{ padding: '13px 16px' }}>
                       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.supplier ?? '—'}</span>
                     </td>
-                    <td style={{ padding: '13px 16px' }}>
+                    <td data-label="" style={{ padding: '13px 16px' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         <button type="button" title="Editar" onClick={() => handleEditClick(p)} style={{
                           width: 32, height: 32, borderRadius: 8,

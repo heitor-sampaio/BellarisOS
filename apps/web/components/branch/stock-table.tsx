@@ -333,7 +333,7 @@ export function StockTable({ initialProducts, categories, branchId, slug, canWri
           </div>
         ) : (
           <div className="table-wrap">
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   {([['name', 'Produto'], ['category', 'Categoria'], ['current_stock', 'Estoque nesta filial']] as [SortKey, string][]).map(([key, label]) => (
@@ -356,18 +356,18 @@ export function StockTable({ initialProducts, categories, branchId, slug, canWri
                       borderBottom: i < filteredProducts.length - 1 ? '1px solid var(--hairline)' : 'none',
                       background: i % 2 === 0 ? 'var(--surface)' : 'transparent',
                     }}>
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="" style={{ padding: '13px 16px' }}>
                         <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
                         {p.sku && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>{p.sku}</p>}
                       </td>
 
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="Categoria" style={{ padding: '13px 16px' }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
                           {p.category ?? '—'}
                         </span>
                       </td>
 
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="Estoque" style={{ padding: '13px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
                             {fmt(stock.current_stock)}
@@ -385,11 +385,11 @@ export function StockTable({ initialProducts, categories, branchId, slug, canWri
                         )}
                       </td>
 
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="Fornecedor" style={{ padding: '13px 16px' }}>
                         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.supplier ?? '—'}</span>
                       </td>
 
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="" style={{ padding: '13px 16px' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                           {canWrite && (
                             <button type="button" onClick={() => handleMoveClick(p)} style={{

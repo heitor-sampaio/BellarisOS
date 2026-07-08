@@ -570,6 +570,7 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   table.cards-mobile tbody,
   table.cards-mobile tr,
   table.cards-mobile td { display: block; width: 100%; }
+  table.cards-mobile { min-width: 0 !important; }
   table.cards-mobile tr {
     border: 1px solid var(--border);
     border-radius: var(--radius-row);
@@ -582,20 +583,31 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 7px 0;
+    padding: 8px 0;
     border: none !important;
+    border-bottom: 1px solid var(--hairline) !important;
     text-align: right;
   }
+  table.cards-mobile tr td:last-child { border-bottom: none !important; }
   table.cards-mobile td::before {
     content: attr(data-label);
     font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
     color: var(--text-muted);
     text-align: left;
     white-space: nowrap;
     flex-shrink: 0;
   }
+  /* Células sem rótulo (nome principal / ações): ocupam a linha inteira, à esquerda. */
   table.cards-mobile td[data-label='']::before,
   table.cards-mobile td:not([data-label])::before { content: none; }
+  table.cards-mobile td[data-label=''],
+  table.cards-mobile td:not([data-label]) {
+    justify-content: flex-start;
+    text-align: left;
+  }
 }
 
 /* -- Flex: empilhar em mobile ------------------------------ */

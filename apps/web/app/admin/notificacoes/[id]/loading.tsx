@@ -8,7 +8,7 @@ export default function Loading() {
         <div className="skeleton" style={{ height: 32, width: 320, ...S }} />
         <div className="skeleton" style={{ height: 18, width: 240, ...S }} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+      <div className="kpi-grid-auto" style={{ gap: 16 }}>
         {[...Array(3)].map((_, i) => (
           <div key={i} className="skeleton" style={{ height: 80 }} />
         ))}

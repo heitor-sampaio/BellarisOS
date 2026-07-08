@@ -12,7 +12,7 @@ export default function Loading() {
         <div className="skeleton" style={{ height: 22, width: 80, borderRadius: 'var(--radius-chip-token)' }} />
       </div>
       {/* Métricas */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
+      <div className="kpi-grid-auto" style={{ gap: 16 }}>
         {[...Array(5)].map((_, i) => (
           <div key={i} className="skeleton" style={{ height: 88 }} />
         ))}

@@ -2,7 +2,7 @@ export default function Loading() {
   return (
     <div style={{ padding: 'var(--content-pad-y) var(--content-pad-x)', display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* KPI cards — linha 1 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
+      <div className="kpi-grid-auto" style={{ gap: 16 }}>
         {[...Array(5)].map((_, i) => (
           <div key={i} className="skeleton" style={{ height: 96 }} />
         ))}

@@ -18,7 +18,7 @@ export default function Loading() {
         <div className="skeleton" style={{ height: 36, width: 130, ...S }} />
       </div>
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div className="kpi-grid-auto">
         {[...Array(4)].map((_, i) => (
           <div key={i} className="skeleton" style={{ height: 80 }} />
         ))}
