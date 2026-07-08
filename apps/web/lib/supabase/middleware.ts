@@ -24,7 +24,12 @@ export async function updateSession(request: NextRequest) {
       }
     )
 
-    const { data: { user } } = await supabase.auth.getUser()
+    // getClaims() valida o JWT localmente (ES256/WebCrypto) — sem round-trip ao
+    // servidor de Auth em toda request. Quando o access token expira, o
+    // getSession() interno renova via refresh token (7 dias) e o setAll acima
+    // grava os novos cookies. Substitui o antigo getUser() (rede por request).
+    const { data: claimsData } = await supabase.auth.getClaims()
+    const user = claimsData?.claims ?? null
 
     const pathname = request.nextUrl.pathname
     const isAuthRoute = pathname === '/login' || pathname === '/register'

@@ -1,31 +1,37 @@
 import { cache } from 'react'
 import type { TenantContext, UserRole, JwtClaims } from '@estetica-os/types'
 import { createClient } from '@/lib/supabase/server'
+import { getCachedInternalUserId } from '@/lib/cached-queries'
 
 export const getTenantContext = cache(async function getTenantContext(): Promise<TenantContext> {
   const supabase = await createClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
 
-  if (error || !user) throw new Error('Unauthenticated')
+  // getClaims() valida o JWT LOCALMENTE (ES256/WebCrypto) — sem round-trip ao
+  // servidor de Auth. Em token expirado ele renova via getSession() (o refresh
+  // token de 7 dias permanece válido). Substitui o antigo getUser() (rede).
+  const { data: claimsData, error } = await supabase.auth.getClaims()
+  const claims = claimsData?.claims
 
-  const claims = (user.app_metadata ?? {}) as JwtClaims
+  if (error || !claims?.sub) throw new Error('Unauthenticated')
 
-  // Resolve o users.id interno (diferente do auth user id)
-  const { data: userRecord } = await supabase
-    .from('users')
-    .select('id')
-    .eq('auth_id', user.id)
-    .maybeSingle()
+  // As claims custom ficam sob `app_metadata` no payload do JWT (setadas via
+  // set_user_claims/set_client_claims). O `role` de topo do JWT é o role do
+  // Postgres ('authenticated') — NÃO usar; usar sempre app_metadata.role.
+  const meta = (claims.app_metadata ?? {}) as Partial<JwtClaims>
+  const authId = claims.sub as string
+
+  // users.id interno — cacheado por auth_id (evita round-trip por request)
+  const internalUserId = await getCachedInternalUserId(authId)
 
   return {
-    userId: user.id,
-    internalUserId: userRecord?.id ?? null,
-    tenantId: claims.tenant_id ?? null,
-    branchId: claims.branch_id ?? null,
-    role: claims.role ?? 'CLIENT',
-    clientId: claims.client_id ?? null,
-    isNetworkAdmin: claims.role === 'NETWORK_ADMIN',
-    isClient: (claims.role ?? 'CLIENT') === 'CLIENT',
+    userId: authId,
+    internalUserId,
+    tenantId: meta.tenant_id ?? null,
+    branchId: meta.branch_id ?? null,
+    role: meta.role ?? 'CLIENT',
+    clientId: meta.client_id ?? null,
+    isNetworkAdmin: meta.role === 'NETWORK_ADMIN',
+    isClient: (meta.role ?? 'CLIENT') === 'CLIENT',
   }
 })
 

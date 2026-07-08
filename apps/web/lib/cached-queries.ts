@@ -1,6 +1,24 @@
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+// ─── Mapa auth_id → users.id interno (usado no getTenantContext) ──────────────
+// Evita um round-trip PostgREST por request. Invalidar em actions/team.ts.
+export function getCachedInternalUserId(authId: string) {
+  return unstable_cache(
+    async () => {
+      const admin = createAdminClient()
+      const { data } = await admin
+        .from('users')
+        .select('id')
+        .eq('auth_id', authId)
+        .maybeSingle()
+      return data?.id ?? null
+    },
+    [`internal-user-id-${authId}`],
+    { revalidate: 3600, tags: [`user:${authId}`] },
+  )()
+}
+
 // ─── Branch: clientes da filial ──────────────────────────────────────────────
 export function getCachedBranchClients(branchId: string, tenantId: string) {
   return unstable_cache(

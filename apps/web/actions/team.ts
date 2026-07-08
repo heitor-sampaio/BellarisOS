@@ -76,6 +76,7 @@ export async function createTeamMember(
 
   revalidatePath(redirectPath)
   revalidateTag(`professionals:${ctx.tenantId!}`, 'max')
+  revalidateTag(`user:${authId}`, 'max')  // limpa mapa auth_id→users.id (getTenantContext)
   return { success: true }
 }
 
