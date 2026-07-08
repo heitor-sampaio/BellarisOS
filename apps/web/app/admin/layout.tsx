@@ -11,24 +11,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!['NETWORK_ADMIN', 'FINANCIAL', 'MARKETING'].includes(ctx.role)) redirect('/login')
 
-  // NETWORK_ADMIN sem onboarding concluído → redireciona para o wizard
-  if (ctx.role === 'NETWORK_ADMIN' && ctx.tenantId) {
-    const admin = createAdminClient()
-    const { data: tenant } = await admin
-      .from('tenants')
-      .select('onboarding_completed_at')
-      .eq('id', ctx.tenantId)
-      .maybeSingle()
+  // Tenant check + users query em paralelo — economiza 1 round-trip sequencial
+  const supabase  = await createClient()
+  const admin     = createAdminClient()
 
-    if (!tenant?.onboarding_completed_at) redirect('/setup')
-  }
+  const [tenantResult, userResult] = await Promise.all([
+    (ctx.role === 'NETWORK_ADMIN' && ctx.tenantId)
+      ? admin.from('tenants').select('onboarding_completed_at').eq('id', ctx.tenantId).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    supabase.from('users').select('name').eq('auth_id', ctx.userId).single(),
+  ])
 
-  const supabase = await createClient()
-  const { data: user } = await supabase
-    .from('users')
-    .select('name')
-    .eq('auth_id', ctx.userId)
-    .single()
+  if (ctx.role === 'NETWORK_ADMIN' && !tenantResult.data?.onboarding_completed_at) redirect('/setup')
+
+  const user = userResult.data
 
   return (
     <SidebarProvider>

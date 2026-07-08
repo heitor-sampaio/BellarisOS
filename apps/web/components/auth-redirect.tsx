@@ -33,7 +33,9 @@ export function AuthRedirect() {
       })
 
       if (res.ok) {
-        window.location.href = '/auth/redirect'
+        // API retorna o destino final — navega direto sem bounce via /auth/redirect
+        const { redirectTo } = await res.json() as { redirectTo: string }
+        window.location.href = redirectTo ?? '/auth/redirect'
       } else {
         // Tokens expirados ou inválidos — limpa storage nativo
         await nativeStore.clear()

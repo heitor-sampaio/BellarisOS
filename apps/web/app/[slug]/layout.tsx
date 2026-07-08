@@ -63,8 +63,8 @@ export default async function BranchLayout({
     redirect(`/${userBranch?.slug ?? ''}/dashboard`)
   }
 
-  // Busca overrides de permissão e nome do usuário em paralelo
-  const [{ data: permOverrides }, { data: user }] = await Promise.all([
+  // Busca overrides de permissão, nome do usuário e filiais (NETWORK_ADMIN) em paralelo
+  const [{ data: permOverrides }, { data: user }, allBranches] = await Promise.all([
     supabase
       .from('role_permissions')
       .select('module, can_view, can_write')
@@ -75,20 +75,18 @@ export default async function BranchLayout({
       .select('name')
       .eq('auth_id', ctx.userId)
       .single(),
+    ctx.role === 'NETWORK_ADMIN'
+      ? supabase
+          .from('branches')
+          .select('name, slug')
+          .eq('tenant_id', ctx.tenantId!)
+          .eq('is_active', true)
+          .order('name')
+          .then(r => r.data ?? [])
+      : Promise.resolve([]),
   ])
 
   const permissions = resolvePermissions(ctx.role, permOverrides ?? [])
-
-  // Para o NETWORK_ADMIN: busca todas as filiais para o seletor de unidade
-  const allBranches = ctx.role === 'NETWORK_ADMIN'
-    ? await supabase
-        .from('branches')
-        .select('name, slug')
-        .eq('tenant_id', ctx.tenantId!)
-        .eq('is_active', true)
-        .order('name')
-        .then(r => r.data ?? [])
-    : []
 
   return (
     <SidebarProvider>
