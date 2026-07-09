@@ -610,7 +610,7 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 /* -- Anamnese: linha com colunas automáticas (máx 4; máx 2 no mobile) ---- */
 .anamnesis-row {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   align-items: start;
 }
 .anamnesis-row[data-cols='1'] { grid-template-columns: 1fr; }

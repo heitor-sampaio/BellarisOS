@@ -160,7 +160,7 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
         onDragOver={e => { if (drag) { e.preventDefault(); setOver({ kind: 'sep', index }) } }}
         onDrop={e => { e.preventDefault(); e.stopPropagation(); performDrop({ kind: 'sep', index }) }}
         style={{
-          height: active ? 26 : 8, borderRadius: 8, transition: 'height 120ms, background 120ms',
+          height: active ? 24 : 6, borderRadius: 8, transition: 'height 120ms, background 120ms',
           background: active ? 'var(--brand-soft)' : 'transparent',
           border: active ? '2px dashed var(--brand)' : '2px dashed transparent',
         }}
@@ -179,7 +179,7 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
         <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Anamnese — Toxina botulínica" />
       </div>
 
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         {/* Paleta (desktop) */}
         <aside className="anamnesis-palette" style={{ flex: '0 0 200px', minWidth: 180 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Blocos</p>
@@ -208,7 +208,7 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
         </aside>
 
         {/* Canvas */}
-        <div className="anamnesis-canvas" style={{ flex: '1 1 380px', minWidth: 0, background: 'var(--bg-app)', border: '1px dashed var(--border)', borderRadius: 12, padding: 12 }}>
+        <div className="anamnesis-canvas" style={{ flex: '1 1 380px', minWidth: 0, background: 'var(--bg-app)', border: '1px dashed var(--border)', borderRadius: 12, padding: 10 }}>
           {rows.length === 0 ? (
             <div
               onDragOver={e => { if (drag) { e.preventDefault(); setOver({ kind: 'sep', index: 0 }) } }}
@@ -224,9 +224,9 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
                 const rowOver = !!drag && over?.kind === 'row' && over.rowId === row.id
                 return (
                   <div key={row.id}>
-                    <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'stretch', gap: 6 }}>
                       {/* Reordenar linha */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'center', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center', flexShrink: 0 }}>
                         <IconBtn title="Subir linha" disabled={ri === 0} onClick={() => moveRow(ri, -1)}><ArrowUp size={13} /></IconBtn>
                         <IconBtn title="Descer linha" disabled={ri === rows.length - 1} onClick={() => moveRow(ri, 1)}><ArrowDown size={13} /></IconBtn>
                       </div>
@@ -236,7 +236,7 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
                         data-cols={row.fields.length}
                         onDragOver={e => { if (drag) { e.preventDefault(); setOver({ kind: 'row', rowId: row.id }) } }}
                         onDrop={e => { e.preventDefault(); e.stopPropagation(); performDrop({ kind: 'row', rowId: row.id }) }}
-                        style={{ flex: 1, minWidth: 0, padding: 6, borderRadius: 10, border: `1.5px solid ${rowOver ? 'var(--brand)' : 'transparent'}`, background: rowOver ? 'var(--brand-soft)' : 'transparent', transition: 'border-color 120ms, background 120ms' }}
+                        style={{ flex: 1, minWidth: 0, padding: 4, borderRadius: 10, border: `1.5px solid ${rowOver ? 'var(--brand)' : 'transparent'}`, background: rowOver ? 'var(--brand-soft)' : 'transparent', transition: 'border-color 120ms, background 120ms' }}
                       >
                         {row.fields.map(f => (
                           <FieldCard
@@ -342,19 +342,19 @@ function FieldCard({ field: f, dragging, onDragStart, onDragEnd, onChangeType, o
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 12, padding: '10px 12px', opacity: dragging ? 0.45 : 1 }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '7px 9px', opacity: dragging ? 0.45 : 1 }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <span title="Arraste para reordenar" style={{ cursor: 'grab', color: 'var(--text-faint)', display: 'flex', flexShrink: 0 }}><GripVertical size={16} /></span>
-        <select className="field" style={{ width: 'auto', flex: '1 1 110px', minWidth: 100, fontSize: 12, padding: '5px 8px' }} value={f.type} onChange={e => onChangeType(e.target.value as AnamnesisFieldType)}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <span title="Arraste para reordenar" style={{ cursor: 'grab', color: 'var(--text-faint)', display: 'flex', flexShrink: 0 }}><GripVertical size={15} /></span>
+        <select className="field" style={{ width: 'auto', flex: '1 1 90px', minWidth: 88, fontSize: 11.5, padding: '4px 6px', height: 28 }} value={f.type} onChange={e => onChangeType(e.target.value as AnamnesisFieldType)}>
           {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
-        <button type="button" onClick={onRemove} title="Remover" style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-          <Trash2 size={14} />
+        <button type="button" onClick={onRemove} title="Remover" style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+          <Trash2 size={13} />
         </button>
       </div>
 
-      <input className="field" value={f.label} onChange={e => onPatch({ label: e.target.value })} placeholder={isSection ? 'Título da seção' : 'Pergunta / rótulo do campo'} />
+      <input className="field" style={{ fontSize: 12.5, padding: '6px 9px' }} value={f.label} onChange={e => onPatch({ label: e.target.value })} placeholder={isSection ? 'Título da seção' : 'Rótulo do campo'} />
 
       {OPTION_TYPES.includes(f.type) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -374,12 +374,12 @@ function FieldCard({ field: f, dragging, onDragStart, onDragEnd, onChangeType, o
       )}
 
       {(f.type === 'text' || f.type === 'textarea' || f.type === 'number') && (
-        <input className="field" style={{ fontSize: 12.5, padding: '6px 10px' }} value={f.placeholder ?? ''} onChange={e => onPatch({ placeholder: e.target.value })} placeholder="Placeholder (opcional)" />
+        <input className="field" style={{ fontSize: 12, padding: '5px 9px' }} value={f.placeholder ?? ''} onChange={e => onPatch({ placeholder: e.target.value })} placeholder="Placeholder (opcional)" />
       )}
 
       {!isSection && (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12.5, color: 'var(--text-soft)' }}>
-          <input type="checkbox" checked={!!f.required} onChange={e => onPatch({ required: e.target.checked })} style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text-soft)' }}>
+          <input type="checkbox" checked={!!f.required} onChange={e => onPatch({ required: e.target.checked })} style={{ accentColor: 'var(--brand)', width: 14, height: 14 }} />
           Obrigatório
         </label>
       )}
