@@ -29,7 +29,8 @@ const TYPE_ICON: Record<AnamnesisFieldType, ComponentType<{ size?: number }>> = 
 }
 
 type Drag = { kind: 'new'; type: AnamnesisFieldType } | { kind: 'move'; fieldId: string } | null
-type Over = { kind: 'sep'; index: number } | { kind: 'row'; rowId: string } | null
+type Over = { kind: 'sep'; index: number } | { kind: 'row'; rowId: string } | { kind: 'field'; fieldId: string } | null
+type DropTarget = { kind: 'sep'; index: number } | { kind: 'row'; rowId: string } | { kind: 'field'; fieldId: string }
 
 function newField(type: AnamnesisFieldType = 'text'): AnamnesisField {
   return { id: newId(), type, label: '', required: false, ...(OPTION_TYPES.includes(type) ? { options: [''] } : {}) }
@@ -122,37 +123,40 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
   }
 
   // -- drag and drop --
-  function performDrop(target: { kind: 'sep'; index: number } | { kind: 'row'; rowId: string }) {
+  function performDrop(target: DropTarget) {
     if (!drag) return
+    const dragSnapshot = drag
     setRows(prev => {
       let list = prev.map(r => ({ ...r, fields: [...r.fields] }))
       let field: AnamnesisField
-      if (drag.kind === 'new') {
-        field = newField(drag.type)
+      if (dragSnapshot.kind === 'new') {
+        field = newField(dragSnapshot.type)
       } else {
         let found: AnamnesisField | undefined
-        for (const r of list) { const i = r.fields.findIndex(f => f.id === drag.fieldId); if (i >= 0) { found = r.fields[i]; r.fields.splice(i, 1); break } }
+        for (const r of list) { const i = r.fields.findIndex(f => f.id === dragSnapshot.fieldId); if (i >= 0) { found = r.fields[i]; r.fields.splice(i, 1); break } }
         list = list.filter(r => r.fields.length > 0)
         if (!found) return prev
         field = found
       }
       const isSection = field.type === 'section'
+      const canAddToRow = (row: AnamnesisRow) => !isSection && !row.fields.some(f => f.type === 'section') && row.fields.length < MAX_COLS
 
       if (target.kind === 'sep') {
         const at = Math.max(0, Math.min(target.index, list.length))
         list.splice(at, 0, { id: newId(), fields: [field] })
+      } else if (target.kind === 'field') {
+        // Inserir ANTES do campo alvo (reordenar colunas / posicionar na linha)
+        let tri = -1, tci = -1
+        for (let i = 0; i < list.length; i++) { const j = list[i]!.fields.findIndex(f => f.id === target.fieldId); if (j >= 0) { tri = i; tci = j; break } }
+        if (tri < 0) { list.push({ id: newId(), fields: [field] }) }
+        else if (canAddToRow(list[tri]!)) { list[tri]!.fields.splice(tci, 0, field) }
+        else { list.splice(tri, 0, { id: newId(), fields: [field] }) }
       } else {
+        // 'row' — anexa ao fim da linha
         const ri = list.findIndex(r => r.id === target.rowId)
         if (ri < 0) { list.push({ id: newId(), fields: [field] }) }
-        else {
-          const row = list[ri]!
-          const rowHasSection = row.fields.some(f => f.type === 'section')
-          if (isSection || rowHasSection || row.fields.length >= MAX_COLS) {
-            list.splice(ri + 1, 0, { id: newId(), fields: [field] })
-          } else {
-            row.fields.push(field)
-          }
-        }
+        else if (canAddToRow(list[ri]!)) { list[ri]!.fields.push(field) }
+        else { list.splice(ri + 1, 0, { id: newId(), fields: [field] }) }
       }
       return list
     })
@@ -279,6 +283,7 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
                             <FieldCard
                               key={f.id} field={f}
                               dragging={drag?.kind === 'move' && drag.fieldId === f.id}
+                              insertHighlight={!!drag && over?.kind === 'field' && over.fieldId === f.id && !(drag.kind === 'move' && drag.fieldId === f.id)}
                               canMergeUp={canMergeUp} canSplit={canSplit}
                               onMergeUp={() => mergeUp(f.id)} onSplit={() => splitToNewRow(f.id)}
                               onOpen={() => setEditingId(f.id)}
@@ -290,6 +295,8 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
                                 try { e.dataTransfer.setData('text/plain', `move:${f.id}`) } catch {}
                               }}
                               onDragEnd={() => { setDrag(null); setOver(null) }}
+                              onDragOverField={e => { if (drag) { e.preventDefault(); e.stopPropagation(); setOver({ kind: 'field', fieldId: f.id }) } }}
+                              onDropField={e => { e.preventDefault(); e.stopPropagation(); performDrop({ kind: 'field', fieldId: f.id }) }}
                             />
                           )
                         })}
@@ -382,9 +389,10 @@ function CardBtn({ children, onClick, title, danger }: { children: React.ReactNo
 }
 
 // Bloco compacto no canvas: só rótulo + tipo + ações. Clique abre o modal.
-function FieldCard({ field: f, dragging, canMergeUp, canSplit, onMergeUp, onSplit, onOpen, onRemove, onDragStart, onDragEnd }: {
+function FieldCard({ field: f, dragging, insertHighlight, canMergeUp, canSplit, onMergeUp, onSplit, onOpen, onRemove, onDragStart, onDragEnd, onDragOverField, onDropField }: {
   field: AnamnesisField
   dragging: boolean
+  insertHighlight: boolean
   canMergeUp: boolean
   canSplit: boolean
   onMergeUp: () => void
@@ -393,14 +401,17 @@ function FieldCard({ field: f, dragging, canMergeUp, canSplit, onMergeUp, onSpli
   onRemove: () => void
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
+  onDragOverField: (e: React.DragEvent) => void
+  onDropField: (e: React.DragEvent) => void
 }) {
   const Icon = TYPE_ICON[f.type]
   const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn() }
   return (
     <div
       draggable onClick={onOpen} onDragStart={onDragStart} onDragEnd={onDragEnd}
+      onDragOver={onDragOverField} onDrop={onDropField}
       title="Clique para configurar"
-      style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '7px 8px', cursor: 'pointer', opacity: dragging ? 0.45 : 1 }}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, background: 'var(--surface)', border: `1px solid ${insertHighlight ? 'var(--brand)' : 'var(--border)'}`, borderRadius: 10, padding: '7px 8px', cursor: 'pointer', opacity: dragging ? 0.45 : 1, boxShadow: insertHighlight ? 'inset 3px 0 0 var(--brand)' : undefined }}
     >
       <span style={{ display: 'flex', color: 'var(--brand)', flexShrink: 0 }}><Icon size={15} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
