@@ -81,7 +81,7 @@ export function BranchEditForm({ branch }: Props) {
           <input
             id="be-name" name="name" type="text" required className="field"
             defaultValue={branch.name}
-            placeholder="Ex: Lumière Pinheiros"
+            placeholder="Ex: BellarisOS Pinheiros"
           />
         </div>
 
@@ -96,7 +96,7 @@ export function BranchEditForm({ branch }: Props) {
             <label className="overline" htmlFor="be-email">E-mail</label>
             <input id="be-email" name="email" type="email" className="field"
               defaultValue={branch.email ?? ''}
-              placeholder="contato@lumiere.com" />
+              placeholder="contato@bellaris.com" />
           </div>
         </div>
       </section>

@@ -11,7 +11,7 @@ import { NativeShell }           from '@/components/native-shell'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Lumière — Gestão de Clínicas',
+  title: 'BellarisOS — Gestão de Clínicas',
   description: 'Sistema de gestão para redes de clínicas de estética',
 }
 

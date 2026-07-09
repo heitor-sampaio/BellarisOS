@@ -73,7 +73,7 @@ export function BranchSidebar({
             color:         wordColor,
             letterSpacing: 'var(--tracking-tight)',
           }}>
-            {collapsed ? '✦' : 'Lumière ✦'}
+            {collapsed ? '✦' : 'BellarisOS ✦'}
           </span>
         </div>
 

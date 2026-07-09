@@ -4,12 +4,12 @@ const prisma = new PrismaClient()
 
 async function main() {
   const tenant = await prisma.tenant.upsert({
-    where: { slug: 'lumiere-dev' },
+    where: { slug: 'bellaris-dev' },
     update: {},
     create: {
-      name: 'Lumière Dev',
-      slug: 'lumiere-dev',
-      email: 'dev@lumiere.com',
+      name: 'BellarisOS Dev',
+      slug: 'bellaris-dev',
+      email: 'dev@bellaris.com',
       planStatus: 'active',
     },
   })
@@ -19,9 +19,9 @@ async function main() {
     update: {},
     create: {
       tenantId: tenant.id,
-      name: 'Lumière Centro',
+      name: 'BellarisOS Centro',
       slug: 'centro',
-      email: 'centro@lumiere.com',
+      email: 'centro@bellaris.com',
       phone: '11999999999',
     },
   })

@@ -68,7 +68,7 @@ export function TeamForm({ branchId, slug, isNetworkAdmin }: TeamFormProps) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <label className="overline" htmlFor="tm-email">E-mail</label>
-                <input id="tm-email" name="email" type="email" required className="field" placeholder="ana@lumiere.com" />
+                <input id="tm-email" name="email" type="email" required className="field" placeholder="ana@bellaris.com" />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

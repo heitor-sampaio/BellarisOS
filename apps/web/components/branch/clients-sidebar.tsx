@@ -20,7 +20,7 @@ interface ClientItem {
 
 interface Props {
   clients:           ClientItem[]
-  basePath:          string          // e.g. "/lumiere-sp/clients" or "/admin/clients"
+  basePath:          string          // e.g. "/bellaris-sp/clients" or "/admin/clients"
   totalActive:       number
   newClientHref?:    string | null   // null = hide button; undefined = basePath + "/new"
   availableBranches?: { id: string; name: string }[]  // admin-only: shows branch filter

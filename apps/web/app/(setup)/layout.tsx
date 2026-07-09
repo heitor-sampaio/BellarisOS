@@ -12,7 +12,7 @@ export default function SetupLayout({ children }: { children: React.ReactNode })
             color: 'var(--brand)',
             letterSpacing: 'var(--tracking-tight)',
           }}>
-            Lumière ✦
+            BellarisOS ✦
           </span>
         </div>
         {children}

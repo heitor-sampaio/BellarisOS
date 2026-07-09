@@ -61,7 +61,7 @@ export function AdminSidebar({ role }: { role: string }) {
             color:         wordColor,
             letterSpacing: 'var(--tracking-tight)',
           }}>
-            {collapsed ? '✦' : 'Lumière ✦'}
+            {collapsed ? '✦' : 'BellarisOS ✦'}
           </span>
         </div>
 

@@ -3,13 +3,13 @@
 @import "tailwindcss";
 
 /* ============================================================
-   LUMIÈRE DESIGN SYSTEM — TOKENS
+   BELLARISOS DESIGN SYSTEM — TOKENS
    Fonte: .claude/skills/lumiere-design/tokens/
    Não introduza cores, fontes ou sombras fora deste :root.
    ============================================================ */
 
 @theme inline {
-  /* Mapeamento dos tokens Lumière para o Tailwind v4 */
+  /* Mapeamento dos tokens BellarisOS para o Tailwind v4 */
   --color-brand: var(--brand);
   --color-brand-deep: var(--brand-deep);
   --color-brand-soft: var(--brand-soft);

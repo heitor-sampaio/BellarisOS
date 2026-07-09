@@ -140,7 +140,7 @@ function StepNetwork({
           type="text"
           className="field"
           required
-          placeholder="Ex: Lumière Estética"
+          placeholder="Ex: BellarisOS Estética"
           value={name}
           onChange={e => setName(e.target.value)}
         />
@@ -176,7 +176,7 @@ function StepNetwork({
             id="net-site"
             type="url"
             className="field"
-            placeholder="https://lumiere.com"
+            placeholder="https://bellaris.com"
             value={website}
             onChange={e => setWebsite(e.target.value)}
           />
@@ -285,7 +285,7 @@ function StepBranch({ onNext }: { onNext: () => void }) {
           type="text"
           className="field"
           required
-          placeholder="Ex: Lumière Pinheiros"
+          placeholder="Ex: BellarisOS Pinheiros"
           value={name}
           onChange={e => setName(e.target.value)}
         />

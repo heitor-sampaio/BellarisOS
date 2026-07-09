@@ -34,7 +34,7 @@ export default function LoginPage() {
         Entrar
       </h1>
       <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 28 }}>
-        Portal de gestão Lumière
+        Portal de gestão BellarisOS
       </p>
 
       <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

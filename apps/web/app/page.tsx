@@ -70,7 +70,7 @@ export default async function LandingPage() {
           color: 'var(--brand)',
           letterSpacing: 'var(--tracking-tight)',
         }}>
-          Lumière ✦
+          BellarisOS ✦
         </span>
 
         <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -194,7 +194,7 @@ export default async function LandingPage() {
         textAlign: 'center',
       }}>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-          © 2026 Lumière · Todos os direitos reservados
+          © 2026 BellarisOS · Todos os direitos reservados
         </p>
       </footer>
     </div>

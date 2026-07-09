@@ -112,7 +112,7 @@ export function BranchForm() {
                     <label className="overline" htmlFor="br-name">Nome da unidade *</label>
                     <input
                       id="br-name" name="name" type="text" required className="field"
-                      placeholder="Ex: Lumière Pinheiros"
+                      placeholder="Ex: BellarisOS Pinheiros"
                       value={name}
                       onChange={e => setName(e.target.value)}
                     />
@@ -122,7 +122,7 @@ export function BranchForm() {
                     <label className="overline" htmlFor="br-slug">
                       Slug (URL)
                       <span style={{ color: 'var(--text-faint)', fontWeight: 400, marginLeft: 4, textTransform: 'none' }}>
-                        — lumiere.com/<strong>{slug || 'nome-da-unidade'}</strong>
+                        — bellaris.com/<strong>{slug || 'nome-da-unidade'}</strong>
                       </span>
                     </label>
                     <input
@@ -140,7 +140,7 @@ export function BranchForm() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       <label className="overline" htmlFor="br-email">E-mail</label>
-                      <input id="br-email" name="email" type="email" className="field" placeholder="contato@lumiere.com" />
+                      <input id="br-email" name="email" type="email" className="field" placeholder="contato@bellaris.com" />
                     </div>
                   </div>
                 </div>

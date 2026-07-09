@@ -18,7 +18,7 @@ Registro cronológico de decisões, bloqueios e entregas. Uma entrada por sessã
 - [x] Schema completo aplicado (33 tabelas + 11 enums)
 - [x] JWT custom claims functions (`set_user_claims`, `set_client_claims`)
 - [x] RLS policies para todas as tabelas
-- [x] Seed de dev: tenant `lumiere-dev`, branch `centro`, loyalty config
+- [x] Seed de dev: tenant `bellaris-dev`, branch `centro`, loyalty config
 - [x] `.env.local` criado com URL e anon key
 
 ### Pendente (manual)
@@ -49,7 +49,7 @@ Início do projeto do zero. Apenas o schema.prisma, PRD e CLAUDE.md existiam.
 
 **React 19 Server Actions:** `useActionState` requer `(prevState, formData)` na assinatura da action, não só `(formData)`.
 
-**Design system:** Todos os tokens CSS do Lumière (cores, tipo, raios, sombras, espaçamento, layout) vivem em `apps/web/app/globals.css`. Skill `/lumiere-design` é a referência canônica para componentes novos.
+**Design system:** Todos os tokens CSS do BellarisOS (cores, tipo, raios, sombras, espaçamento, layout) vivem em `apps/web/app/globals.css`. Skill `/lumiere-design` é a referência canônica para componentes novos.
 
 ### O que foi feito
 - [x] Monorepo root (Turborepo + pnpm + turbo.json + tsconfig.base.json + .gitignore)
@@ -58,15 +58,15 @@ Início do projeto do zero. Apenas o schema.prisma, PRD e CLAUDE.md existiam.
 - [x] `packages/utils` — formatBRL, formatDate, maskCPF, maskPhone, CLIENT_TAGS
 - [x] `packages/db` — Prisma schema (copiado), client singleton, seed de dev
 - [x] `apps/web` (Next.js 16, Tailwind v4) — todas as dependências instaladas
-- [x] `apps/web/app/globals.css` — tokens Lumière completos + componentes base CSS
+- [x] `apps/web/app/globals.css` — tokens BellarisOS completos + componentes base CSS
 - [x] Supabase clients (server, browser, middleware) com tipos explícitos
 - [x] `lib/auth.ts` — getTenantContext, assertRole, assertBranchAccess, getRedirectPath
 - [x] `middleware.ts` — proteção de rotas + refresh de sessão
-- [x] `(auth)/login` — tela de login operacional com design Lumière
+- [x] `(auth)/login` — tela de login operacional com design BellarisOS
 - [x] `(auth)/reset-password` — recuperação de senha
 - [x] Layout `/admin` — sidebar + topbar + proteção NETWORK_ADMIN
 - [x] Layout `/[slug]` — sidebar por filial + validação de acesso à filial correta
-- [x] `NavItem`, `BranchSidebar`, `AdminSidebar`, `Topbar` — componentes Lumière
+- [x] `NavItem`, `BranchSidebar`, `AdminSidebar`, `Topbar` — componentes BellarisOS
 - [x] Migrations SQL: functions JWT claims + RLS policies completas
 - [x] `.env.local.example` para onboarding de devs
 - [x] TypeScript sem erros (`tsc --noEmit` limpo)

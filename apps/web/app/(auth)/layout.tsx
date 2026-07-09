@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             color: 'var(--brand)',
             letterSpacing: 'var(--tracking-tight)',
           }}>
-            Lumière ✦
+            BellarisOS ✦
           </span>
         </div>
         {children}

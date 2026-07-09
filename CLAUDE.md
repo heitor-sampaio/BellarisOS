@@ -489,7 +489,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 
 ---
 
-## 13. Design System — Lumière ("Rosé Vivo")
+## 13. Design System — BellarisOS ("Rosé Vivo")
 
 > **OBRIGATÓRIO:** Antes de construir qualquer componente visual, invoque a skill `/lumiere-design`.
 > Ela contém tokens, componentes primitivos e guidelines completos da linguagem visual do projeto.
