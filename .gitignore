@@ -25,6 +25,9 @@ supabase/.temp
 .DS_Store
 Thumbs.db
 
+# Prints / screenshots locais (uso de debug)
+prints/
+
 # IDE
 .vscode
 .idea

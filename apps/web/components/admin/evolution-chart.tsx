@@ -98,7 +98,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
 
   return (
     <div style={{ padding: '18px 20px 8px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
           Evolução — {monthLabel}
         </span>
@@ -120,7 +120,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
       </div>
 
       <ResponsiveContainer width="100%" height={220}>
-        <AreaChart data={data} margin={{ top: 6, right: 4, left: 8, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="gradRevenue" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%"   stopColor={COLORS.revenue} stopOpacity={0.18} />
@@ -156,7 +156,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
             tickLine={false}
             axisLine={false}
             tickFormatter={fmtAxis}
-            width={62}
+            width={44}
           />
 
           <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border, #e8dde0)', strokeWidth: 1.5, strokeDasharray: '4 3' }} />
