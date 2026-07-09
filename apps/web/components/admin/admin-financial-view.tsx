@@ -123,7 +123,7 @@ function KpiCard({
         </div>
       </div>
       <span style={{
-        fontSize: 26, fontWeight: 800, letterSpacing: '-0.025em',
+        fontSize: 'clamp(20px, 5.4vw, 26px)', fontWeight: 800, letterSpacing: '-0.025em',
         color: brand ? '#fff' : 'var(--text)',
       }}>{value}</span>
       {delta !== null && delta !== undefined && (
@@ -222,7 +222,7 @@ export function AdminFinancialView({
       </div>
 
       {/* KPI Cards consolidados */}
-      <div className="kpi-grid" style={{ gap: 14 }}>
+      <div className="kpi-grid-auto" style={{ gap: 14 }}>
         <KpiCard
           label="Receita total"
           value={fmtBRL(totalRevenue)}

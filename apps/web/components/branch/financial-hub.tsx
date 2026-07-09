@@ -131,7 +131,7 @@ function KpiCardFull({
           {icon}
         </div>
       </div>
-      <p style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.025em', color: valColor, lineHeight: 1 }}>
+      <p style={{ fontSize: 'clamp(18px, 5vw, 24px)', fontWeight: 800, letterSpacing: '-0.025em', color: valColor, lineHeight: 1 }}>
         {format(curr)}
       </p>
       {!d.neutral ? (
@@ -654,7 +654,7 @@ export function FinancialHub({
 
 
       {/* KPI grid — 6 cards em linha */}
-      <div className="kpi-grid">
+      <div className="kpi-grid-auto">
         <KpiCardFull
           label="Lucro Líquido"
           curr={saldo} prev={prevSaldo}

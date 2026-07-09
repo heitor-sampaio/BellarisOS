@@ -365,6 +365,11 @@
   .kpi-grid { gap: 10px; }
   /* KPI hero (cards principais do dashboard): mais compactos no mobile */
   .kpi-hero { padding: 13px 15px !important; gap: 7px !important; }
+  /* Condensação padrão de qualquer card KPI (em grades kpi) no mobile */
+  .kpi-grid > .card, .kpi-grid > .card-brand,
+  .kpi-grid-auto > .card, .kpi-grid-auto > .card-brand {
+    padding: 13px 15px !important;
+  }
 }
 
 /* Seletores segmentados (período/categoria): quebram em linha em vez de
