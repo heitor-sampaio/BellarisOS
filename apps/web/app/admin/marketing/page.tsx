@@ -6,6 +6,7 @@ import { MarketingOverview } from '@/components/admin/marketing-overview'
 import { MarketingCampaignsTable } from '@/components/admin/marketing-campaigns-table'
 import { MarketingAttribution } from '@/components/admin/marketing-attribution'
 import type { Campaign, DatePreset } from '@/lib/ads/types'
+import { SegSelect } from '@/components/shared/seg-select'
 
 export const dynamic = 'force-dynamic'
 
@@ -137,18 +138,14 @@ export default async function AdminMarketingPage({
         </div>
 
         {/* Period selector */}
-        <div className="seg-bar" style={{ display: 'flex', gap: 4, flexShrink: 0, background: '#fff', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
-          {PERIODS.map(p => (
-            <Link
-              key={p.key}
-              href={`/admin/marketing?view=${activeView}&period=${p.key}`}
-              className={activePeriod === p.key ? 'btn-primary' : 'btn-ghost'}
-              style={{ fontSize: 'var(--text-xs-sz)', padding: '6px 12px', whiteSpace: 'nowrap' }}
-            >
-              {p.label}
-            </Link>
-          ))}
-        </div>
+        <SegSelect
+          options={PERIODS}
+          value={activePeriod}
+          basePath="/admin/marketing"
+          paramName="period"
+          extraParams={{ view: activeView }}
+          ariaLabel="Selecionar período"
+        />
       </div>
 
       {/* Tabs */}

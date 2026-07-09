@@ -374,6 +374,14 @@
   .seg-bar { width: 100%; }
 }
 
+/* SegSelect: segmentado no desktop, botão dropdown no mobile. */
+.seg-mobile { display: none; }
+@media (max-width: 639px) {
+  .seg-root     { width: 100%; }
+  .seg-desktop  { display: none !important; }
+  .seg-mobile   { display: inline-flex !important; }
+}
+
 @media (max-width: 479px) {
   :root {
     --content-pad-x: 16px;

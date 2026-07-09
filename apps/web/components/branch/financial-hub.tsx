@@ -10,6 +10,7 @@ import {
 import { FinancialTransactionModal }                        from './financial-transaction-modal'
 import { ClientCreditModal, ClientCreditModalHandle }       from './client-credit-modal'
 import { FinancialTable, Transaction }                      from './financial-table'
+import { SegSelect }                                        from '@/components/shared/seg-select'
 
 // --- Types --------------------------------------------------------
 
@@ -598,31 +599,12 @@ export function FinancialHub({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div className="seg-bar" style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
-            {PERIOD_OPTIONS.map(opt => {
-              const active = period === opt.value
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => navigatePeriod(opt.value)}
-                  className={active ? 'btn-primary' : undefined}
-                  style={{
-                    padding: '6px 14px', fontSize: 12.5, fontWeight: 700,
-                    cursor: 'pointer', transition: 'all 100ms', fontFamily: 'inherit',
-                    ...(active ? {} : {
-                      borderRadius: 'var(--radius-field-token)',
-                      border: '1px solid transparent',
-                      background: 'transparent',
-                      color: 'var(--text-muted)',
-                    }),
-                  }}
-                >
-                  {opt.label}
-                </button>
-              )
-            })}
-          </div>
+          <SegSelect
+            options={PERIOD_OPTIONS.map(o => ({ key: o.value, label: o.label }))}
+            value={period}
+            onSelect={(k) => navigatePeriod(k)}
+            ariaLabel="Selecionar período"
+          />
           {period === 'custom' && (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               <input

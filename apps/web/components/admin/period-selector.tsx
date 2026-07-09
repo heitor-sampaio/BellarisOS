@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { SegSelect } from '@/components/shared/seg-select'
 
 export type Period = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
 
@@ -40,32 +41,12 @@ export function PeriodSelector({ current, fromDate, toDate }: Props) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <div className="seg-bar" style={{ display: 'flex', gap: 3, background: 'var(--surface)', borderRadius: 10, padding: 3, border: '1px solid var(--border)' }}>
-        {PERIODS.map(p => {
-          const active = current === p.key
-          return (
-            <button
-              key={p.key}
-              type="button"
-              onClick={() => select(p.key)}
-              className={active ? 'btn-primary' : undefined}
-              style={{
-                padding: '6px 14px', fontSize: 12, fontWeight: 700,
-                cursor: 'pointer', transition: 'all 100ms', fontFamily: 'inherit',
-                whiteSpace: 'nowrap',
-                ...(active ? {} : {
-                  borderRadius: 'var(--radius-field-token)',
-                  border: '1px solid transparent',
-                  background: 'transparent',
-                  color: 'var(--text-muted)',
-                }),
-              }}
-            >
-              {p.label}
-            </button>
-          )
-        })}
-      </div>
+      <SegSelect
+        options={PERIODS}
+        value={current}
+        onSelect={(k) => select(k as Period)}
+        ariaLabel="Selecionar período"
+      />
       {showCustom && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           <input

@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { getCampaignDetail } from '@/actions/meta-campaign'
 import { CampaignDetailContent } from '@/components/admin/campaign-detail-content'
 import type { DatePreset } from '@/lib/ads/types'
+import { SegSelect } from '@/components/shared/seg-select'
 
 export const dynamic = 'force-dynamic'
 
@@ -168,18 +169,13 @@ export default async function CampaignDetailPage({
         </div>
 
         {/* Period selector */}
-        <div className="seg-bar" style={{ display: 'flex', gap: 4, flexShrink: 0, background: '#fff', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
-          {PERIODS.map(p => (
-            <Link
-              key={p.key}
-              href={`/admin/marketing/campanhas/${id}?period=${p.key}`}
-              className={period === p.key ? 'btn-primary' : 'btn-ghost'}
-              style={{ fontSize: 'var(--text-xs-sz)', padding: '6px 12px', whiteSpace: 'nowrap' }}
-            >
-              {p.label}
-            </Link>
-          ))}
-        </div>
+        <SegSelect
+          options={PERIODS}
+          value={period}
+          basePath={`/admin/marketing/campanhas/${id}`}
+          paramName="period"
+          ariaLabel="Selecionar período"
+        />
       </div>
 
       {/* Metric cards — linha 1: entrega */}
