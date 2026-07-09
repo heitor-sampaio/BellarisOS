@@ -374,10 +374,11 @@
   .seg-bar { width: 100%; }
 }
 
-/* SegSelect: segmentado no desktop, botão dropdown no mobile. */
+/* SegSelect: segmentado no desktop, botão dropdown no mobile.
+   O botão tem largura de conteúdo para que múltiplos seletores caibam na
+   mesma linha (não forçamos width:100%). */
 .seg-mobile { display: none; }
 @media (max-width: 639px) {
-  .seg-root     { width: 100%; }
   .seg-desktop  { display: none !important; }
   .seg-mobile   { display: inline-flex !important; }
 }

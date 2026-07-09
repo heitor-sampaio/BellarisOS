@@ -35,9 +35,20 @@ export function SegSelect({
   ariaLabel,
 }: Props) {
   const [open, setOpen] = useState(false)
+  const [alignRight, setAlignRight] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   const current = options.find(o => o.key === value) ?? options[0]
+
+  const toggle = () => {
+    if (!open) {
+      const rect = ref.current?.getBoundingClientRect()
+      // Abre o menu à direita se o botão estiver na metade direita da tela,
+      // para não estourar/ser cortado pela viewport.
+      if (rect) setAlignRight(rect.left + rect.width / 2 > window.innerWidth / 2)
+    }
+    setOpen(v => !v)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -105,15 +116,21 @@ export function SegSelect({
         {options.map(renderChip)}
       </div>
 
-      {/* Mobile — botão dropdown */}
+      {/* Mobile — botão dropdown (fundo branco) */}
       <button
         type="button"
-        className="seg-mobile btn-secondary"
+        className="seg-mobile"
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen(v => !v)}
-        style={{ width: '100%', justifyContent: 'space-between' }}
+        onClick={toggle}
+        style={{
+          alignItems: 'center', gap: 8,
+          padding: '8px 14px', borderRadius: 10,
+          border: '1px solid var(--border)', background: 'var(--surface)',
+          color: 'var(--text)', fontWeight: 700, fontSize: 'var(--text-sm-sz)',
+          fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
+        }}
       >
         {current?.label}
         <ChevronDown size={15} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 150ms', flexShrink: 0 }} />
@@ -123,7 +140,9 @@ export function SegSelect({
         <div
           role="menu"
           style={{
-            position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+            position: 'absolute', top: 'calc(100% + 6px)',
+            ...(alignRight ? { right: 0 } : { left: 0 }),
+            minWidth: 180, width: 'max-content', maxWidth: 'min(78vw, 280px)',
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 12, padding: 6, zIndex: 60,
             display: 'flex', flexDirection: 'column', gap: 2,
