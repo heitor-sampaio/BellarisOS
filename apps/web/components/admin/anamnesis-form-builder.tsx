@@ -7,7 +7,7 @@ import {
   Type, AlignLeft, Hash, Calendar, List, CircleDot, CheckSquare, Heading, Image as ImageIcon,
 } from 'lucide-react'
 import {
-  FIELD_TYPES, OPTION_TYPES, MAX_COLS, newId,
+  FIELD_TYPES, FIELD_TYPE_LABEL, OPTION_TYPES, MAX_COLS, newId,
   type AnamnesisField, type AnamnesisFieldType, type AnamnesisRow,
 } from '@/lib/anamnesis'
 import { createAnamnesisForm, updateAnamnesisForm } from '@/actions/anamnesis-forms'
@@ -43,10 +43,13 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
 
   const [drag, setDrag] = useState<Drag>(null)
   const [over, setOver] = useState<Over>(null)
-  const [showAdd, setShowAdd] = useState(false) // menu do botão + no mobile
+  const [showAdd, setShowAdd] = useState(false)     // menu do botão + no mobile
+  const [editingId, setEditingId] = useState<string | null>(null) // campo aberto no modal
 
   function addRowAtEnd(type: AnamnesisFieldType) {
-    setRows(rs => [...rs, { id: newId(), fields: [newField(type)] }])
+    const id = newId()
+    setRows(rs => [...rs, { id: newId(), fields: [{ id, type, label: '', required: false, ...(OPTION_TYPES.includes(type) ? { options: [''] } : {}) }] }])
+    setEditingId(id)  // abre as configurações do novo campo
   }
 
   // -- edição de campo --
@@ -196,6 +199,8 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
     )
   }
 
+  const editingField = editingId ? rows.flatMap(r => r.fields).find(f => f.id === editingId) ?? null : null
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <button type="button" onClick={onDone} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
@@ -276,19 +281,15 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
                               dragging={drag?.kind === 'move' && drag.fieldId === f.id}
                               canMergeUp={canMergeUp} canSplit={canSplit}
                               onMergeUp={() => mergeUp(f.id)} onSplit={() => splitToNewRow(f.id)}
+                              onOpen={() => setEditingId(f.id)}
+                              onRemove={() => removeField(f.id)}
                               onDragStart={e => {
                                 const t = e.target as HTMLElement
-                                if (t.closest('input,select,textarea,button,label,a')) { e.preventDefault(); return }
+                                if (t.closest('button,a')) { e.preventDefault(); return }
                                 setDrag({ kind: 'move', fieldId: f.id }); e.dataTransfer.effectAllowed = 'move'
                                 try { e.dataTransfer.setData('text/plain', `move:${f.id}`) } catch {}
                               }}
                               onDragEnd={() => { setDrag(null); setOver(null) }}
-                              onChangeType={type => changeType(f.id, type)}
-                              onPatch={ch => patch(f.id, ch)}
-                              onRemove={() => removeField(f.id)}
-                              onSetOption={(i, v) => setOption(f.id, i, v)}
-                              onAddOption={() => addOption(f.id)}
-                              onRemoveOption={i => removeOption(f.id, i)}
                             />
                           )
                         })}
@@ -346,6 +347,18 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
           <CheckCircle2 size={15} /> {saving ? 'Salvando…' : (existing ? 'Salvar ficha' : 'Criar ficha')}
         </button>
       </div>
+
+      {editingField && (
+        <FieldSettingsModal
+          field={editingField}
+          onChangeType={type => changeType(editingField.id, type)}
+          onPatch={ch => patch(editingField.id, ch)}
+          onSetOption={(i, v) => setOption(editingField.id, i, v)}
+          onAddOption={() => addOption(editingField.id)}
+          onRemoveOption={i => removeOption(editingField.id, i)}
+          onClose={() => setEditingId(null)}
+        />
+      )}
     </div>
   )
 }
@@ -359,71 +372,133 @@ function IconBtn({ children, onClick, title, disabled }: { children: React.React
   )
 }
 
-function FieldCard({ field: f, dragging, canMergeUp, canSplit, onMergeUp, onSplit, onDragStart, onDragEnd, onChangeType, onPatch, onRemove, onSetOption, onAddOption, onRemoveOption }: {
+function CardBtn({ children, onClick, title, danger }: { children: React.ReactNode; onClick: (e: React.MouseEvent) => void; title: string; danger?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} title={title}
+      style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: danger ? '#dc2626' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+      {children}
+    </button>
+  )
+}
+
+// Bloco compacto no canvas: só rótulo + tipo + ações. Clique abre o modal.
+function FieldCard({ field: f, dragging, canMergeUp, canSplit, onMergeUp, onSplit, onOpen, onRemove, onDragStart, onDragEnd }: {
   field: AnamnesisField
   dragging: boolean
   canMergeUp: boolean
   canSplit: boolean
   onMergeUp: () => void
   onSplit: () => void
+  onOpen: () => void
+  onRemove: () => void
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
+}) {
+  const Icon = TYPE_ICON[f.type]
+  const stop = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn() }
+  return (
+    <div
+      draggable onClick={onOpen} onDragStart={onDragStart} onDragEnd={onDragEnd}
+      title="Clique para configurar"
+      style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer', opacity: dragging ? 0.45 : 1 }}
+    >
+      <span title="Arraste para reordenar" style={{ cursor: 'grab', color: 'var(--text-faint)', display: 'flex', flexShrink: 0 }}><GripVertical size={15} /></span>
+      <span style={{ display: 'flex', color: 'var(--brand)', flexShrink: 0 }}><Icon size={15} /></span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: f.label ? 'var(--text)' : 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {f.label || 'Sem título'}
+        </p>
+        <p style={{ fontSize: 10.5, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {FIELD_TYPE_LABEL[f.type]}{f.required ? ' · obrigatório' : ''}
+        </p>
+      </div>
+      {canMergeUp && <CardBtn title="Juntar na linha de cima" onClick={stop(onMergeUp)}><ArrowUpToLine size={13} /></CardBtn>}
+      {canSplit && <CardBtn title="Separar em nova linha" onClick={stop(onSplit)}><SeparatorHorizontal size={13} /></CardBtn>}
+      <CardBtn title="Remover" danger onClick={stop(onRemove)}><Trash2 size={13} /></CardBtn>
+    </div>
+  )
+}
+
+function ModalField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>{label}</label>
+      {children}
+    </div>
+  )
+}
+
+// Configurações específicas do campo — modal.
+function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAddOption, onRemoveOption, onClose }: {
+  field: AnamnesisField
   onChangeType: (t: AnamnesisFieldType) => void
   onPatch: (ch: Partial<AnamnesisField>) => void
-  onRemove: () => void
   onSetOption: (i: number, v: string) => void
   onAddOption: () => void
   onRemoveOption: (i: number) => void
+  onClose: () => void
 }) {
   const isSection = f.type === 'section'
   return (
-    <div
-      draggable
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '7px 9px', opacity: dragging ? 0.45 : 1 }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-        <span title="Arraste para reordenar" style={{ cursor: 'grab', color: 'var(--text-faint)', display: 'flex', flexShrink: 0 }}><GripVertical size={15} /></span>
-        <select className="field" style={{ width: 'auto', flex: '1 1 80px', minWidth: 78, fontSize: 11.5, padding: '4px 6px', height: 28 }} value={f.type} onChange={e => onChangeType(e.target.value as AnamnesisFieldType)}>
-          {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        {canMergeUp && <IconBtn title="Juntar na linha de cima" onClick={onMergeUp}><ArrowUpToLine size={13} /></IconBtn>}
-        {canSplit && <IconBtn title="Separar em nova linha" onClick={onSplit}><SeparatorHorizontal size={13} /></IconBtn>}
-        <button type="button" onClick={onRemove} title="Remover" style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-          <Trash2 size={13} />
-        </button>
-      </div>
-
-      <input className="field" style={{ fontSize: 12.5, padding: '6px 9px' }} value={f.label} onChange={e => onPatch({ label: e.target.value })} placeholder={isSection ? 'Título da seção' : 'Rótulo do campo'} />
-
-      {OPTION_TYPES.includes(f.type) && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Opções</span>
-          {(f.options ?? []).map((opt, oi) => (
-            <div key={oi} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <input className="field" style={{ flex: 1, fontSize: 12.5, padding: '6px 10px' }} value={opt} onChange={e => onSetOption(oi, e.target.value)} placeholder={`Opção ${oi + 1}`} />
-              <button type="button" onClick={() => onRemoveOption(oi)} title="Remover opção" style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-                <X size={13} />
-              </button>
-            </div>
-          ))}
-          <button type="button" onClick={onAddOption} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 700, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <Plus size={13} /> Adicionar opção
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(2px)', zIndex: 500 }} />
+      <div role="dialog" aria-modal="true"
+        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(440px, calc(100vw - 24px))', maxHeight: '88dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 24px 64px rgba(34,22,25,0.22)' }}
+      >
+        <div style={{ position: 'sticky', top: 0, background: 'var(--surface)', borderBottom: '1px solid var(--hairline)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Configurar campo</span>
+          <button type="button" onClick={onClose} title="Fechar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <X size={15} />
           </button>
         </div>
-      )}
 
-      {(f.type === 'text' || f.type === 'textarea' || f.type === 'number') && (
-        <input className="field" style={{ fontSize: 12, padding: '5px 9px' }} value={f.placeholder ?? ''} onChange={e => onPatch({ placeholder: e.target.value })} placeholder="Placeholder (opcional)" />
-      )}
+        <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <ModalField label="Tipo do campo">
+            <select className="field" value={f.type} onChange={e => onChangeType(e.target.value as AnamnesisFieldType)}>
+              {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </ModalField>
 
-      {!isSection && (
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text-soft)' }}>
-          <input type="checkbox" checked={!!f.required} onChange={e => onPatch({ required: e.target.checked })} style={{ accentColor: 'var(--brand)', width: 14, height: 14 }} />
-          Obrigatório
-        </label>
-      )}
-    </div>
+          <ModalField label={isSection ? 'Título da seção' : 'Rótulo / pergunta'}>
+            <input className="field" value={f.label} onChange={e => onPatch({ label: e.target.value })} placeholder={isSection ? 'Ex: Histórico de saúde' : 'Ex: Você tem alergias?'} autoFocus />
+          </ModalField>
+
+          {OPTION_TYPES.includes(f.type) && (
+            <ModalField label="Opções">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {(f.options ?? []).map((opt, oi) => (
+                  <div key={oi} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input className="field" style={{ flex: 1 }} value={opt} onChange={e => onSetOption(oi, e.target.value)} placeholder={`Opção ${oi + 1}`} />
+                    <button type="button" onClick={() => onRemoveOption(oi)} title="Remover opção" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button type="button" onClick={onAddOption} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 700, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  <Plus size={14} /> Adicionar opção
+                </button>
+              </div>
+            </ModalField>
+          )}
+
+          {(f.type === 'text' || f.type === 'textarea' || f.type === 'number') && (
+            <ModalField label="Placeholder (opcional)">
+              <input className="field" value={f.placeholder ?? ''} onChange={e => onPatch({ placeholder: e.target.value })} placeholder="Texto de exemplo dentro do campo" />
+            </ModalField>
+          )}
+
+          {!isSection && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-soft)' }}>
+              <input type="checkbox" checked={!!f.required} onChange={e => onPatch({ required: e.target.checked })} style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
+              Campo obrigatório
+            </label>
+          )}
+        </div>
+
+        <div style={{ padding: '0 18px 18px', display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onClose} className="btn-primary">Concluir</button>
+        </div>
+      </div>
+    </>
   )
 }
