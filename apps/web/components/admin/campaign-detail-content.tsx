@@ -490,7 +490,7 @@ function TrendChart({ daily }: { daily: DailyInsight[] }) {
     <div className="card">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Tendência diária</p>
-        <div style={{ display: 'flex', gap: 3, background: 'var(--surface-raised, #fafaf9)', borderRadius: 7, padding: 3, border: '1px solid var(--border)' }}>
+        <div className="seg-bar" style={{ display: 'flex', gap: 3, background: 'var(--surface-raised, #fafaf9)', borderRadius: 7, padding: 3, border: '1px solid var(--border)' }}>
           {TREND_METRICS.map(m => (
             <button
               key={m.key}

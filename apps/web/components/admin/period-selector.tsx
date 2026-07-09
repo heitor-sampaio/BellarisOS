@@ -40,7 +40,7 @@ export function PeriodSelector({ current, fromDate, toDate }: Props) {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <div style={{ display: 'flex', gap: 3, background: 'var(--surface)', borderRadius: 10, padding: 3, border: '1px solid var(--border)' }}>
+      <div className="seg-bar" style={{ display: 'flex', gap: 3, background: 'var(--surface)', borderRadius: 10, padding: 3, border: '1px solid var(--border)' }}>
         {PERIODS.map(p => {
           const active = current === p.key
           return (

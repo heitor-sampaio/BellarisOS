@@ -363,6 +363,15 @@
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
   .kpi-grid { gap: 10px; }
+  /* KPI hero (cards principais do dashboard): mais compactos no mobile */
+  .kpi-hero { padding: 13px 15px !important; gap: 7px !important; }
+}
+
+/* Seletores segmentados (período/categoria): quebram em linha em vez de
+   estourar/cortar no mobile; ocupam a largura toda em telas estreitas. */
+.seg-bar { flex-wrap: wrap !important; }
+@media (max-width: 639px) {
+  .seg-bar { width: 100%; }
 }
 
 @media (max-width: 479px) {

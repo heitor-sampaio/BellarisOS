@@ -137,7 +137,7 @@ export default async function AdminMarketingPage({
         </div>
 
         {/* Period selector */}
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0, background: '#fff', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
+        <div className="seg-bar" style={{ display: 'flex', gap: 4, flexShrink: 0, background: '#fff', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
           {PERIODS.map(p => (
             <Link
               key={p.key}

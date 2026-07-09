@@ -192,7 +192,7 @@ export function AdminFinancialView({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
+          <div className="seg-bar" style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
             {PERIOD_OPTIONS.map(opt => {
               const active = period === opt.value
               return (

@@ -99,7 +99,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
       {/* -- Header ----------------------------------------------- */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         {/* Filters */}
-        <div style={{ display: 'flex', gap: 4, background: 'var(--surface)', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
+        <div className="seg-bar" style={{ display: 'flex', gap: 4, background: 'var(--surface)', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
           {FILTERS.map(f => (
             <button
               key={f.key}

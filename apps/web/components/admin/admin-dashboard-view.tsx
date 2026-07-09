@@ -275,7 +275,7 @@ function KpiCard({
   brand?:  boolean
 }) {
   return (
-    <div className="card" style={{
+    <div className="card kpi-hero" style={{
       padding: '20px 22px',
       background: brand ? 'var(--brand)' : 'var(--surface)',
       display: 'flex', flexDirection: 'column', gap: 10,
@@ -298,7 +298,7 @@ function KpiCard({
         value={value}
         format={format}
         style={{
-          fontSize: 28, fontWeight: 800, letterSpacing: '-0.028em', lineHeight: 1,
+          fontSize: 'clamp(21px, 5.4vw, 28px)', fontWeight: 800, letterSpacing: '-0.028em', lineHeight: 1,
           color: brand ? '#fff' : 'var(--text)',
         }}
       />

@@ -219,7 +219,7 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
         </div>
 
         {/* Filtro de status */}
-        <div style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 8, padding: 3, border: '1px solid var(--border)', flexShrink: 0 }}>
+        <div className="seg-bar" style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 8, padding: 3, border: '1px solid var(--border)', flexShrink: 0 }}>
           {STATUS_FILTERS.map(f => (
             <button
               key={f.key}

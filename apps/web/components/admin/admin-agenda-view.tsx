@@ -488,7 +488,7 @@ export function AdminAgendaView({ view, selectedDate, todayStr, branches, appoin
         </div>
 
         {/* Toggle de view */}
-        <div style={{
+        <div className="seg-bar" style={{
           display: 'flex', gap: 3,
           background: 'var(--surface)',
           border: '1px solid var(--border)',

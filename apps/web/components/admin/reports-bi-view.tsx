@@ -1024,7 +1024,7 @@ export function ReportsBiView(props: ReportsBiProps) {
 
       {/* Tab nav + seletor de período na mesma linha */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{
+        <div className="seg-bar" style={{
           display: 'flex', gap: 3, flexWrap: 'wrap',
           background: 'var(--surface)',
           border: '1px solid var(--border)',
