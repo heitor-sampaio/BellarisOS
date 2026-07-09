@@ -3,6 +3,7 @@
 import { useState, type ComponentType } from 'react'
 import {
   Plus, Trash2, X, CheckCircle2, ChevronLeft, GripVertical, ArrowUp, ArrowDown,
+  ArrowUpToLine, SeparatorHorizontal,
   Type, AlignLeft, Hash, Calendar, List, CircleDot, CheckSquare, Heading, Image as ImageIcon,
 } from 'lucide-react'
 import {
@@ -77,6 +78,33 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
   }
   function moveRow(index: number, dir: -1 | 1) {
     setRows(rs => { const j = index + dir; if (j < 0 || j >= rs.length) return rs; const c = [...rs]; [c[index], c[j]] = [c[j]!, c[index]!]; return c })
+  }
+  // Junta o campo à linha de cima (cria/aumenta colunas). Botão-alternativa ao arraste.
+  function mergeUp(fieldId: string) {
+    setRows(rs => {
+      const copy = rs.map(r => ({ ...r, fields: [...r.fields] }))
+      let ri = -1, ci = -1
+      for (let i = 0; i < copy.length; i++) { const j = copy[i]!.fields.findIndex(f => f.id === fieldId); if (j >= 0) { ri = i; ci = j; break } }
+      if (ri <= 0) return rs
+      const f = copy[ri]!.fields[ci]!
+      const prev = copy[ri - 1]!
+      if (f.type === 'section' || prev.fields.some(x => x.type === 'section') || prev.fields.length >= MAX_COLS) return rs
+      copy[ri]!.fields.splice(ci, 1)
+      prev.fields.push(f)
+      return copy.filter(r => r.fields.length > 0)
+    })
+  }
+  // Separa o campo em uma linha própria (logo abaixo).
+  function splitToNewRow(fieldId: string) {
+    setRows(rs => {
+      const copy = rs.map(r => ({ ...r, fields: [...r.fields] }))
+      let ri = -1, ci = -1
+      for (let i = 0; i < copy.length; i++) { const j = copy[i]!.fields.findIndex(f => f.id === fieldId); if (j >= 0) { ri = i; ci = j; break } }
+      if (ri < 0 || copy[ri]!.fields.length <= 1) return rs
+      const [f] = copy[ri]!.fields.splice(ci, 1)
+      copy.splice(ri + 1, 0, { id: newId(), fields: [f!] })
+      return copy
+    })
   }
 
   // -- opções --
@@ -238,25 +266,32 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
                         onDrop={e => { e.preventDefault(); e.stopPropagation(); performDrop({ kind: 'row', rowId: row.id }) }}
                         style={{ flex: 1, minWidth: 0, padding: 4, borderRadius: 10, border: `1.5px solid ${rowOver ? 'var(--brand)' : 'transparent'}`, background: rowOver ? 'var(--brand-soft)' : 'transparent', transition: 'border-color 120ms, background 120ms' }}
                       >
-                        {row.fields.map(f => (
-                          <FieldCard
-                            key={f.id} field={f}
-                            dragging={drag?.kind === 'move' && drag.fieldId === f.id}
-                            onDragStart={e => {
-                              const t = e.target as HTMLElement
-                              if (t.closest('input,select,textarea,button,label,a')) { e.preventDefault(); return }
-                              setDrag({ kind: 'move', fieldId: f.id }); e.dataTransfer.effectAllowed = 'move'
-                              try { e.dataTransfer.setData('text/plain', `move:${f.id}`) } catch {}
-                            }}
-                            onDragEnd={() => { setDrag(null); setOver(null) }}
-                            onChangeType={type => changeType(f.id, type)}
-                            onPatch={ch => patch(f.id, ch)}
-                            onRemove={() => removeField(f.id)}
-                            onSetOption={(i, v) => setOption(f.id, i, v)}
-                            onAddOption={() => addOption(f.id)}
-                            onRemoveOption={i => removeOption(f.id, i)}
-                          />
-                        ))}
+                        {row.fields.map(f => {
+                          const prev = rows[ri - 1]
+                          const canMergeUp = ri > 0 && f.type !== 'section' && !!prev && prev.fields.length < MAX_COLS && !prev.fields.some(x => x.type === 'section')
+                          const canSplit = row.fields.length > 1
+                          return (
+                            <FieldCard
+                              key={f.id} field={f}
+                              dragging={drag?.kind === 'move' && drag.fieldId === f.id}
+                              canMergeUp={canMergeUp} canSplit={canSplit}
+                              onMergeUp={() => mergeUp(f.id)} onSplit={() => splitToNewRow(f.id)}
+                              onDragStart={e => {
+                                const t = e.target as HTMLElement
+                                if (t.closest('input,select,textarea,button,label,a')) { e.preventDefault(); return }
+                                setDrag({ kind: 'move', fieldId: f.id }); e.dataTransfer.effectAllowed = 'move'
+                                try { e.dataTransfer.setData('text/plain', `move:${f.id}`) } catch {}
+                              }}
+                              onDragEnd={() => { setDrag(null); setOver(null) }}
+                              onChangeType={type => changeType(f.id, type)}
+                              onPatch={ch => patch(f.id, ch)}
+                              onRemove={() => removeField(f.id)}
+                              onSetOption={(i, v) => setOption(f.id, i, v)}
+                              onAddOption={() => addOption(f.id)}
+                              onRemoveOption={i => removeOption(f.id, i)}
+                            />
+                          )
+                        })}
                       </div>
                     </div>
                     <Separator index={ri + 1} />
@@ -324,9 +359,13 @@ function IconBtn({ children, onClick, title, disabled }: { children: React.React
   )
 }
 
-function FieldCard({ field: f, dragging, onDragStart, onDragEnd, onChangeType, onPatch, onRemove, onSetOption, onAddOption, onRemoveOption }: {
+function FieldCard({ field: f, dragging, canMergeUp, canSplit, onMergeUp, onSplit, onDragStart, onDragEnd, onChangeType, onPatch, onRemove, onSetOption, onAddOption, onRemoveOption }: {
   field: AnamnesisField
   dragging: boolean
+  canMergeUp: boolean
+  canSplit: boolean
+  onMergeUp: () => void
+  onSplit: () => void
   onDragStart: (e: React.DragEvent) => void
   onDragEnd: () => void
   onChangeType: (t: AnamnesisFieldType) => void
@@ -344,11 +383,13 @@ function FieldCard({ field: f, dragging, onDragStart, onDragEnd, onChangeType, o
       onDragEnd={onDragEnd}
       style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '7px 9px', opacity: dragging ? 0.45 : 1 }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
         <span title="Arraste para reordenar" style={{ cursor: 'grab', color: 'var(--text-faint)', display: 'flex', flexShrink: 0 }}><GripVertical size={15} /></span>
-        <select className="field" style={{ width: 'auto', flex: '1 1 90px', minWidth: 88, fontSize: 11.5, padding: '4px 6px', height: 28 }} value={f.type} onChange={e => onChangeType(e.target.value as AnamnesisFieldType)}>
+        <select className="field" style={{ width: 'auto', flex: '1 1 80px', minWidth: 78, fontSize: 11.5, padding: '4px 6px', height: 28 }} value={f.type} onChange={e => onChangeType(e.target.value as AnamnesisFieldType)}>
           {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
+        {canMergeUp && <IconBtn title="Juntar na linha de cima" onClick={onMergeUp}><ArrowUpToLine size={13} /></IconBtn>}
+        {canSplit && <IconBtn title="Separar em nova linha" onClick={onSplit}><SeparatorHorizontal size={13} /></IconBtn>}
         <button type="button" onClick={onRemove} title="Remover" style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
           <Trash2 size={13} />
         </button>
