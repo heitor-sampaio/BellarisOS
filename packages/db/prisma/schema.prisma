@@ -502,7 +502,10 @@ model Appointment {
   confirmedAt    DateTime?
   startedAt      DateTime?
   completedAt    DateTime?
-  clientRating   Int?                                 // 1–5, avaliação deixada pelo cliente após o atendimento
+  clientConfirmedAt DateTime?                          // cliente confirmou pelo app que o atendimento foi realizado
+  clientRating   Int?                                 // 1–5, avaliação do PROFISSIONAL deixada pelo cliente
+  procedureRating Int?                                // 1–5, avaliação do PROCEDIMENTO deixada pelo cliente
+  clientFeedback String?                              // comentário livre opcional do cliente
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 

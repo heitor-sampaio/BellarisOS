@@ -148,15 +148,15 @@ function notifyCheckin(appointmentId: string): void {
   })
 }
 
-/** Conclusão → cliente ('atendimento concluído'). */
+/** Conclusão → cliente: pedir confirmação + avaliação do atendimento. */
 function notifyCompleted(appointmentId: string): void {
   after(async () => {
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
     if (!c) return
     await notifyClient(admin, c.clientId, {
-      type: 'appointment_completed', title: 'Atendimento concluído',
-      body: `Seu ${c.procedureName} foi concluído. Obrigado pela visita!`,
+      type: 'appointment_completed', title: 'Confirme seu atendimento',
+      body: `Seu ${c.procedureName} foi concluído. Confirme e avalie pelo app.`,
       data: { appointment_id: appointmentId },
     })
   })
@@ -1524,5 +1524,78 @@ export async function getSchedulingDaySlots(
       durationMin: d.duration_min as number,
       clientName:  (d.clients as unknown as { name: string } | null)?.name ?? null,
     })),
+  }
+}
+
+// --- Cliente confirma o atendimento (substitui a ficha de papel) + avalia -------
+export async function confirmAndRateAppointment(params: {
+  appointmentId:      string
+  slug:               string
+  professionalRating?: number | null
+  procedureRating?:    number | null
+  feedback?:           string | null
+}): Promise<{ error?: string; ok?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertRole(ctx, ['CLIENT'])
+
+    const admin = createAdminClient()
+
+    const { data: appt } = await admin
+      .from('appointments')
+      .select('id, client_id, professional_id, status, client_confirmed_at, procedures(name)')
+      .eq('id', params.appointmentId)
+      .maybeSingle()
+
+    if (!appt || appt.client_id !== ctx.clientId) return { error: 'Atendimento não encontrado.' }
+    if (appt.status !== 'COMPLETED')               return { error: 'Este atendimento ainda não foi concluído.' }
+    if (appt.client_confirmed_at)                  return { error: 'Você já confirmou este atendimento.' }
+
+    // Notas são opcionais; quando enviadas, precisam estar entre 1 e 5.
+    const clean = (r?: number | null): number | null => {
+      if (r == null) return null
+      const n = Math.round(Number(r))
+      if (!Number.isFinite(n) || n < 1 || n > 5) return null
+      return n
+    }
+    const professionalRating = clean(params.professionalRating)
+    const procedureRating    = clean(params.procedureRating)
+    const feedback = params.feedback?.trim() ? params.feedback.trim().slice(0, 1000) : null
+
+    const { error } = await admin
+      .from('appointments')
+      .update({
+        client_confirmed_at: new Date().toISOString(),
+        client_rating:       professionalRating,
+        procedure_rating:    procedureRating,
+        client_feedback:     feedback,
+      })
+      .eq('id', params.appointmentId)
+      .eq('client_id', ctx.clientId!)   // guarda dupla de posse
+
+    if (error) return { error: `Erro ao confirmar: ${error.message}` }
+
+    revalidatePath(`/${params.slug}/cliente/home`)
+    revalidatePath(`/${params.slug}/cliente/historico`)
+
+    // Avisa o profissional que o cliente confirmou/avaliou (não bloqueia a resposta).
+    const professionalId = (appt.professional_id ?? null) as string | null
+    const procedureName  = ((appt.procedures as unknown as { name?: string } | null)?.name ?? 'Atendimento')
+    if (professionalId) {
+      after(async () => {
+        const a = createAdminClient()
+        const stars = professionalRating ? ` (${professionalRating}★)` : ''
+        await notifyUser(a, professionalId, {
+          type: 'appointment_completed',
+          title: 'Atendimento confirmado',
+          body: `O cliente confirmou o ${procedureName}${stars}.`,
+          data: { appointment_id: params.appointmentId },
+        })
+      })
+    }
+
+    return { ok: true }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }
 }

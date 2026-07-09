@@ -47,7 +47,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
 
   const admin = createAdminClient()
 
-  const [clientRes, nextApptRes, packagesRes, plansRes, loyaltyRes] = await Promise.all([
+  const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, loyaltyRes] = await Promise.all([
     admin.from('clients').select('name').eq('id', ctx.clientId!).single(),
     admin.from('appointments')
       .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
@@ -57,6 +57,13 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('scheduled_at')
       .limit(1)
       .maybeSingle(),
+    admin.from('appointments')
+      .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
+      .eq('client_id', ctx.clientId!)
+      .eq('status', 'COMPLETED')
+      .is('client_confirmed_at', null)
+      .order('scheduled_at', { ascending: false })
+      .limit(5),
     admin.from('client_packages')
       .select('id, total_sessions, used_sessions, expires_at, service_packages(name)')
       .eq('client_id', ctx.clientId!)
@@ -77,6 +84,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const clientName   = (clientRes.data as { name: string } | null)?.name ?? 'você'
   const firstName    = clientName.split(' ')[0] ?? clientName
   const nextAppt     = nextApptRes.data as NextAppt | null
+  const pendingConfirm = (pendingConfirmRes.data ?? []) as unknown as NextAppt[]
   const allPackages  = (packagesRes.data ?? []) as unknown as ActivePackage[]
   const activePkgs   = allPackages.filter(p => Number(p.used_sessions) < Number(p.total_sessions))
   const activePlans  = (plansRes.data ?? []) as unknown as ActivePlan[]
@@ -124,6 +132,37 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
           </div>
           <Star size={32} strokeWidth={1.5} style={{ opacity: 0.5 }} />
         </div>
+      )}
+
+      {/* -- Aguardando confirmação --------------------------------- */}
+      {pendingConfirm.length > 0 && (
+        <section>
+          <SectionHeader label="Aguardando sua confirmação" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {pendingConfirm.map(a => (
+              <Link
+                key={a.id}
+                href={`/${slug}/cliente/atendimentos/${a.id}/confirmar`}
+                className="card"
+                style={{
+                  padding: '14px 16px', textDecoration: 'none',
+                  border: '1.5px solid var(--brand)', background: 'var(--brand-soft)',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 14.5, letterSpacing: '-0.01em', marginBottom: 2 }}>
+                    {a.procedures?.name ?? 'Procedimento'}
+                  </p>
+                  <p style={{ fontSize: 12.5, color: 'var(--brand-deep, var(--brand))', fontWeight: 600 }}>
+                    Toque para confirmar e avaliar
+                  </p>
+                </div>
+                <ChevronRight size={18} color="var(--brand)" style={{ flexShrink: 0 }} />
+              </Link>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* -- Próximo agendamento ------------------------------------- */}

@@ -4,10 +4,13 @@ import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
 
 // -- Types ----------------------------------------------------------
 export type ProcedimentoItem = {
-  id:               string
-  scheduled_at:     string
-  procedure_name:   string
-  professional_name: string | null
+  id:                  string
+  scheduled_at:        string
+  procedure_name:      string
+  professional_name:   string | null
+  confirmed:           boolean
+  procedure_rating:    number | null
+  professional_rating: number | null
 }
 
 export type PagamentoItem = {
@@ -34,7 +37,8 @@ export type DocumentoItem = {
   kind:       'consent'
 }
 
-export default async function HistoricoPage({ params: _params }: { params: Promise<{ slug: string }> }) {
+export default async function HistoricoPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const ctx = await getTenantContext()
   assertRole(ctx, ['CLIENT'])
 
@@ -43,7 +47,7 @@ export default async function HistoricoPage({ params: _params }: { params: Promi
   const [procedimentosRes, pagamentosRes, docsRes, consentRes] = await Promise.all([
     // Procedimentos = appointments concluídos
     admin.from('appointments')
-      .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
+      .select('id, scheduled_at, client_confirmed_at, procedure_rating, client_rating, procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       .eq('status', 'COMPLETED')
       .order('scheduled_at', { ascending: false })
@@ -78,10 +82,13 @@ export default async function HistoricoPage({ params: _params }: { params: Promi
 
   // -- Procedimentos ----------------------------------------------
   const procedimentos: ProcedimentoItem[] = (procedimentosRes.data ?? []).map((r: any) => ({
-    id:               r.id as string,
-    scheduled_at:     r.scheduled_at as string,
-    procedure_name:   (r.procedures as { name: string } | null)?.name ?? 'Procedimento',
-    professional_name: (r.professionals as { name: string } | null)?.name ?? null,
+    id:                  r.id as string,
+    scheduled_at:        r.scheduled_at as string,
+    procedure_name:      (r.procedures as { name: string } | null)?.name ?? 'Procedimento',
+    professional_name:   (r.professionals as { name: string } | null)?.name ?? null,
+    confirmed:           r.client_confirmed_at != null,
+    procedure_rating:    r.procedure_rating != null ? Number(r.procedure_rating) : null,
+    professional_rating: r.client_rating != null ? Number(r.client_rating) : null,
   }))
 
   // -- Pagamentos -------------------------------------------------
@@ -118,6 +125,7 @@ export default async function HistoricoPage({ params: _params }: { params: Promi
         Histórico
       </h1>
       <HistoricoTabs
+        slug={slug}
         procedimentos={procedimentos}
         pagamentos={pagamentos}
         documentos={clientDocs}

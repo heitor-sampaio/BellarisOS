@@ -48,6 +48,10 @@ export interface SessionAppointment {
   savedIntercurrences: string | null
   isEvaluation:        boolean
   complaints:          string | null
+  clientConfirmedAt:   string | null
+  clientRating:        number | null
+  procedureRating:     number | null
+  clientFeedback:      string | null
 }
 
 export interface SessionClient {
@@ -877,6 +881,31 @@ export function AppointmentSession({
                 ) : (
                   <p style={{ fontSize: 12, color: '#d97706', fontWeight: 600 }}>
                     ⏳ Aguardando confirmação de pagamento pela recepcionista
+                  </p>
+                )}
+
+                {/* Confirmação do cliente pelo app (prova que substitui a ficha de papel) */}
+                {appointment.clientConfirmedAt ? (
+                  <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid #cde8d9' }}>
+                    <p style={{ fontSize: 12, color: '#2a8a5c', fontWeight: 700 }}>
+                      ✓ Confirmado pelo cliente em {format(new Date(appointment.clientConfirmedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </p>
+                    {(appointment.procedureRating != null || appointment.clientRating != null) && (
+                      <p style={{ fontSize: 12, color: '#4b7a62', marginTop: 2 }}>
+                        {appointment.procedureRating != null && <>Procedimento {appointment.procedureRating}/5</>}
+                        {appointment.procedureRating != null && appointment.clientRating != null && ' · '}
+                        {appointment.clientRating != null && <>Profissional {appointment.clientRating}/5</>}
+                      </p>
+                    )}
+                    {appointment.clientFeedback && (
+                      <p style={{ fontSize: 12, color: '#4b7a62', marginTop: 2, fontStyle: 'italic' }}>
+                        “{appointment.clientFeedback}”
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 12, color: '#d97706', fontWeight: 600, marginTop: 6, paddingTop: 8, borderTop: '1px solid #cde8d9' }}>
+                    ⏳ Aguardando confirmação do cliente pelo app
                   </p>
                 )}
               </div>

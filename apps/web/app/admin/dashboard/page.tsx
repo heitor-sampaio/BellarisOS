@@ -134,7 +134,7 @@ export default async function AdminDashboardPage({
 
     // Atendimentos concluídos no período corrente
     admin.from('appointments')
-      .select('id, branch_id, procedure_id, professional_id, client_id, started_at, completed_at, price, procedures(name), users(name), clients(name, id)')
+      .select('id, branch_id, procedure_id, professional_id, client_id, started_at, completed_at, price, client_rating, procedure_rating, procedures(name), users(name), clients(name, id)')
       .in('branch_id', branchIds)
       .eq('status', 'COMPLETED')
       .gte('scheduled_at', startDate.toISOString())
@@ -516,6 +516,23 @@ export default async function AdminDashboardPage({
   const bestRatedPros  = [...ratedProfessionals].sort((a, b) => b.avgRating - a.avgRating).slice(0, 5)
   const worstRatedPros = [...ratedProfessionals].sort((a, b) => a.avgRating - b.avgRating).slice(0, 5)
 
+  // 5b. Avaliações de procedimentos (campo procedure_rating em appointments)
+  const procRatingMap: Record<string, { name: string; total: number; count: number }> = {}
+  for (const a of apptsCurr) {
+    if (!a.procedure_id || a.procedure_rating == null) continue
+    if (!procRatingMap[a.procedure_id]) {
+      procRatingMap[a.procedure_id] = { name: (a.procedures as any)?.name ?? '—', total: 0, count: 0 }
+    }
+    procRatingMap[a.procedure_id]!.total += Number(a.procedure_rating)
+    procRatingMap[a.procedure_id]!.count++
+  }
+  const ratedProcedures = Object.values(procRatingMap)
+    .filter(p => p.count >= 1)
+    .map(p => ({ name: p.name, avgRating: p.total / p.count, count: p.count }))
+
+  const bestRatedProcedures  = [...ratedProcedures].sort((a, b) => b.avgRating - a.avgRating).slice(0, 5)
+  const worstRatedProcedures = [...ratedProcedures].sort((a, b) => a.avgRating - b.avgRating).slice(0, 5)
+
   // 6. Top 10 clientes por valor gasto no período
   const clientNameMap: Record<string, string> = {}
   for (const c of (clientsDemoRaw ?? []) as any[]) {
@@ -649,6 +666,8 @@ export default async function AdminDashboardPage({
         avgDurationMinutes={avgDurationMinutes}
         bestRatedPros={bestRatedPros}
         worstRatedPros={worstRatedPros}
+        bestRatedProcedures={bestRatedProcedures}
+        worstRatedProcedures={worstRatedProcedures}
         topClients={topClients}
         topClientsByRecurrence={topClientsByRecurrence}
         clientAgeGroups={clientAgeGroups}

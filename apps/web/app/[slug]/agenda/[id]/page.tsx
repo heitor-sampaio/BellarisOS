@@ -36,6 +36,7 @@ export default async function AppointmentSessionPage({
         id, status, scheduled_at, started_at, completed_at, cancelled_at,
         cancellation_reason, price, duration_min, client_notes, notes, procedure_id, professional_id,
         is_evaluation, treatment_plan_id,
+        client_confirmed_at, client_rating, procedure_rating, client_feedback,
         procedures(id, name, category, duration_min),
         professional:users!professional_id(id, name),
         room:rooms(id, name),
@@ -303,6 +304,10 @@ export default async function AppointmentSessionPage({
     savedIntercurrences: mreRaw?.intercurrences ?? null,
     isEvaluation:        Boolean((apptRaw as any).is_evaluation),
     complaints:          (apptRaw as any).notes ?? null,
+    clientConfirmedAt:   (apptRaw as any).client_confirmed_at ?? null,
+    clientRating:        (apptRaw as any).client_rating ?? null,
+    procedureRating:     (apptRaw as any).procedure_rating ?? null,
+    clientFeedback:      (apptRaw as any).client_feedback ?? null,
   }
 
   const client: SessionClient = {

@@ -91,6 +91,8 @@ export interface AdminDashboardProps {
   avgDurationMinutes: number
   bestRatedPros:      { name: string; avgRating: number; count: number }[]
   worstRatedPros:     { name: string; avgRating: number; count: number }[]
+  bestRatedProcedures:  { name: string; avgRating: number; count: number }[]
+  worstRatedProcedures: { name: string; avgRating: number; count: number }[]
   topClients:              { id: string; name: string; totalSpent: number; appointmentCount: number }[]
   topClientsByRecurrence:  { name: string; count: number; pct: number }[]
   clientAgeGroups:         { label: string; count: number; pct: number }[]
@@ -365,7 +367,7 @@ export function AdminDashboardView({
   evolutionData,
   branchOccupancy,
   topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, procedureMargins,
-  avgDurationMinutes, bestRatedPros, worstRatedPros,
+  avgDurationMinutes, bestRatedPros, worstRatedPros, bestRatedProcedures, worstRatedProcedures,
   topClients, topClientsByRecurrence, clientAgeGroups, topClientsByLocation,
   hotmapRawBranches, hotmapRawCepCounts, hotmapRawCepLtv,
   currentPeriod, customFrom, customTo, granularity,
@@ -960,6 +962,56 @@ export function AdminDashboardView({
               </tbody>
             </table>
             </div>
+          )}
+        </div>
+
+        {/* Procedimentos melhor avaliados */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: '#f0fdf4' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#166534' }}>★ Procedimentos melhor avaliados</span>
+          </div>
+          {bestRatedProcedures.length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {bestRatedProcedures.map((p, i) => (
+                  <tr key={i} style={{ borderBottom: i < bestRatedProcedures.length - 1 ? '1px solid var(--hairline)' : 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                    <td style={{ padding: '10px 14px', width: 28 }}><span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-faint)' }}>{i + 1}</span></td>
+                    <td style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{p.name}</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right' }}><RatingBadge value={p.avgRating} /></td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{p.count} aval.</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Procedimentos pior avaliados */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: '#fff1f2' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#991b1b' }}>⚠ Procedimentos pior avaliados</span>
+          </div>
+          {worstRatedProcedures.length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {worstRatedProcedures.map((p, i) => (
+                  <tr key={i} style={{ borderBottom: i < worstRatedProcedures.length - 1 ? '1px solid var(--hairline)' : 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                    <td style={{ padding: '10px 14px', width: 28 }}><span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-faint)' }}>{i + 1}</span></td>
+                    <td style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{p.name}</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right' }}><RatingBadge value={p.avgRating} /></td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{p.count} aval.</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
 

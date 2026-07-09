@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import { useState } from 'react'
-import { FileText, Download, CheckCircle2, Clock3 } from 'lucide-react'
+import Link from 'next/link'
+import { FileText, Download, CheckCircle2, Clock3, Star, ChevronRight } from 'lucide-react'
 import type { ProcedimentoItem, PagamentoItem } from '@/app/[slug]/cliente/historico/page'
 
 // -- Types ----------------------------------------------------------
@@ -22,10 +23,31 @@ type ConsentDoc = {
 }
 
 interface Props {
+  slug:           string
   procedimentos:  ProcedimentoItem[]
   pagamentos:     PagamentoItem[]
   documentos:     ClientDoc[]
   consentimentos: ConsentDoc[]
+}
+
+// Estrelas somente-leitura para exibir uma nota já dada.
+function MiniStars({ label, value }: { label: string; value: number }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
+      <span style={{ display: 'inline-flex', gap: 1 }}>
+        {[1, 2, 3, 4, 5].map(n => (
+          <Star
+            key={n}
+            size={12}
+            strokeWidth={2}
+            color={n <= value ? 'var(--brand)' : 'var(--text-faint)'}
+            fill={n <= value ? 'var(--brand)' : 'none'}
+          />
+        ))}
+      </span>
+    </span>
+  )
 }
 
 type Tab = 'procedimentos' | 'pagamentos' | 'documentos'
@@ -47,7 +69,7 @@ const DOC_CATEGORY: Record<string, string> = {
 }
 
 // -- Component ------------------------------------------------------
-export function HistoricoTabs({ procedimentos, pagamentos, documentos, consentimentos }: Props) {
+export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, consentimentos }: Props) {
   const [tab, setTab] = useState<Tab>('procedimentos')
 
   const TABS: { key: Tab; label: string; count: number }[] = [
@@ -114,21 +136,47 @@ export function HistoricoTabs({ procedimentos, pagamentos, documentos, consentim
           {procedimentos.length === 0 && (
             <EmptyState message="Nenhum procedimento realizado ainda." />
           )}
-          {procedimentos.map(p => (
-            <div key={p.id} className="card" style={{ padding: '13px 18px' }}>
-              <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14, marginBottom: 3 }}>
-                {p.procedure_name}
-              </p>
-              <div style={{ display: 'flex', gap: 12, fontSize: 12.5, color: 'var(--text-muted)' }}>
-                {p.professional_name && <span>{p.professional_name}</span>}
-                <span>
-                  {new Date(p.scheduled_at).toLocaleDateString('pt-BR', {
-                    day: '2-digit', month: 'short', year: 'numeric',
-                  })}
-                </span>
+          {procedimentos.map(p => {
+            const hasRating = p.procedure_rating != null || p.professional_rating != null
+            return (
+              <div key={p.id} className="card" style={{ padding: '13px 18px' }}>
+                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14, marginBottom: 3 }}>
+                  {p.procedure_name}
+                </p>
+                <div style={{ display: 'flex', gap: 12, fontSize: 12.5, color: 'var(--text-muted)' }}>
+                  {p.professional_name && <span>{p.professional_name}</span>}
+                  <span>
+                    {new Date(p.scheduled_at).toLocaleDateString('pt-BR', {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                    })}
+                  </span>
+                </div>
+
+                {/* Confirmação / avaliação */}
+                {!p.confirmed ? (
+                  <Link
+                    href={`/${slug}/cliente/atendimentos/${p.id}/confirmar`}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 10,
+                      fontSize: 12.5, fontWeight: 700, color: 'var(--brand)', textDecoration: 'none',
+                      background: 'var(--brand-soft)', padding: '6px 12px', borderRadius: 8,
+                    }}
+                  >
+                    Confirmar e avaliar <ChevronRight size={14} />
+                  </Link>
+                ) : hasRating ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 10 }}>
+                    {p.procedure_rating != null && <MiniStars label="Procedimento" value={p.procedure_rating} />}
+                    {p.professional_rating != null && <MiniStars label="Profissional" value={p.professional_rating} />}
+                  </div>
+                ) : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 11.5, color: '#22c55e', fontWeight: 700 }}>
+                    <CheckCircle2 size={12} /> Confirmado
+                  </span>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
