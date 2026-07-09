@@ -5,6 +5,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import { getCachedProductsReference } from '@/lib/cached-queries'
 import { AppointmentSession } from '@/components/branch/appointment-session'
 import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry } from '@/components/branch/appointment-session'
+import { normalizeFormSchema, type AnamnesisField } from '@/lib/anamnesis'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 
@@ -37,7 +38,7 @@ export default async function AppointmentSessionPage({
         cancellation_reason, price, duration_min, client_notes, notes, procedure_id, professional_id,
         is_evaluation, treatment_plan_id,
         client_confirmed_at, client_rating, procedure_rating, client_feedback,
-        procedures(id, name, category, duration_min),
+        procedures(id, name, category, duration_min, anamnesis_form_id),
         professional:users!professional_id(id, name),
         room:rooms(id, name),
         client:clients(id, name, phone, birth_date, tags, notes, document)
@@ -48,7 +49,7 @@ export default async function AppointmentSessionPage({
 
     admin
       .from('medical_record_entries')
-      .select('notes, intercurrences')
+      .select('notes, intercurrences, anamnesis_data')
       .eq('appointment_id', id)
       .maybeSingle(),
   ])
@@ -334,6 +335,24 @@ export default async function AppointmentSessionPage({
     ? { id: paymentRawTyped.id, paymentMethod: paymentRawTyped.payment_method, amount: Number(paymentRawTyped.amount) }
     : null
 
+  // Ficha de anamnese vinculada ao procedimento (construtor) + respostas já salvas
+  const procedureFormId = (apptRaw.procedures as unknown as { anamnesis_form_id?: string | null } | null)?.anamnesis_form_id ?? null
+  let anamnesisForm: { name: string; fields: AnamnesisField[] } | null = null
+  let anamnesisAnswers: Record<string, unknown> = {}
+  if (procedureFormId) {
+    const { data: formRow } = await admin
+      .from('anamnesis_forms')
+      .select('name, schema')
+      .eq('id', procedureFormId)
+      .eq('tenant_id', ctx.tenantId!)
+      .maybeSingle()
+    if (formRow) {
+      anamnesisForm = { name: formRow.name as string, fields: normalizeFormSchema(formRow.schema).fields }
+      const cf = (mreRaw?.anamnesis_data as { customForm?: { answers?: Record<string, unknown> } } | null)?.customForm
+      if (cf?.answers && typeof cf.answers === 'object') anamnesisAnswers = cf.answers
+    }
+  }
+
   return (
     <>
       <RealtimeRefresher tables={['appointments', 'medical_record_entries', 'financial_transactions']} />
@@ -341,6 +360,8 @@ export default async function AppointmentSessionPage({
         appointment={appointment}
         client={client}
         anamnesis={anamnesis}
+        anamnesisForm={anamnesisForm}
+        anamnesisAnswers={anamnesisAnswers}
         products={products}
         availableProducts={availableProducts}
         professionals={professionals}

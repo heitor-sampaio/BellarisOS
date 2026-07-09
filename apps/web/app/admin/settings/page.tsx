@@ -7,11 +7,14 @@ import { PermissionsMatrix } from '@/components/admin/permissions-matrix'
 import { RoleManager } from '@/components/admin/role-manager'
 import { SettingsIntegrations } from '@/components/admin/settings-integrations'
 import { SettingsBranches } from '@/components/admin/settings-branches'
+import { SettingsAnamnesis, type AdminAnamnesisForm } from '@/components/admin/settings-anamnesis'
+import { normalizeFormSchema } from '@/lib/anamnesis'
 import type { IntegrationConfig } from '@/actions/integrations'
 
 const TABS = [
   { key: 'unidades',      label: 'Unidades'     },
   { key: 'permissions',   label: 'Cargos'       },
+  { key: 'anamnese',      label: 'Anamnese'     },
   { key: 'integrations',  label: 'Integrações'  },
   { key: 'general',       label: 'Geral'        },
 ] as const
@@ -31,7 +34,7 @@ export default async function AdminSettingsPage({
   const supabase = await createClient()
   const admin    = createAdminClient()
 
-  const [{ data: allRoles }, { data: overrides }, { data: integrationRows }] = await Promise.all([
+  const [{ data: allRoles }, { data: overrides }, { data: integrationRows }, { data: anamnesisRows }] = await Promise.all([
     supabase
       .from('tenant_roles')
       .select('id, key, label, is_system')
@@ -46,9 +49,20 @@ export default async function AdminSettingsPage({
       .from('integration_configs')
       .select('id, provider, config, is_active, updated_at')
       .eq('tenant_id', ctx.tenantId!),
+    admin
+      .from('anamnesis_forms')
+      .select('id, name, schema, is_active')
+      .eq('tenant_id', ctx.tenantId!)
+      .order('created_at'),
   ])
 
   const integrationConfigs = (integrationRows ?? []) as IntegrationConfig[]
+  const anamnesisForms: AdminAnamnesisForm[] = (anamnesisRows ?? []).map((r: any) => ({
+    id:       r.id as string,
+    name:     r.name as string,
+    fields:   normalizeFormSchema(r.schema).fields,
+    isActive: !!r.is_active,
+  }))
 
   // Filtra cargos que não devem aparecer na matriz
   const matrixRoles = (allRoles ?? []).filter(r => !HIDDEN_ROLES.has(r.key))
@@ -135,6 +149,10 @@ export default async function AdminSettingsPage({
           </div>
 
         </div>
+      )}
+
+      {activeTab === 'anamnese' && (
+        <SettingsAnamnesis forms={anamnesisForms} />
       )}
 
       {activeTab === 'integrations' && (

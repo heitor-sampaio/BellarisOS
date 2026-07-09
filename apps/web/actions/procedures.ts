@@ -22,6 +22,7 @@ export async function addProcedure(
   const laborCostRaw = (formData.get('labor_cost') as string)?.replace(/\./g, '').replace(',', '.')
   const laborCost    = parseFloat(laborCostRaw) || 0
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
+  const anamnesisFormId = (formData.get('anamnesis_form_id') as string)?.trim() || null
   const branchIds      = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
   const products       = JSON.parse((formData.get('products')       as string) || '[]') as { product_id: string; quantity: number; unit_cost: number }[]
   const branchPricing  = JSON.parse((formData.get('branch_pricing') as string) || '[]') as { branch_id: string; price: number | null; labor_cost: number | null }[]
@@ -45,6 +46,7 @@ export async function addProcedure(
       price,
       labor_cost:            laborCost,
       visible_on_client_app: visibleOnClientApp,
+      anamnesis_form_id:     anamnesisFormId,
       is_active:             true,
     })
     .select('id')
@@ -106,6 +108,7 @@ export async function updateProcedure(
   const laborCostRaw = (formData.get('labor_cost') as string)?.replace(/\./g, '').replace(',', '.')
   const laborCost    = parseFloat(laborCostRaw) || 0
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
+  const anamnesisFormId = (formData.get('anamnesis_form_id') as string)?.trim() || null
   const branchIds     = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
   const products      = JSON.parse((formData.get('products')       as string) || '[]') as { product_id: string; quantity: number; unit_cost: number }[]
   const branchPricing = JSON.parse((formData.get('branch_pricing') as string) || '[]') as { branch_id: string; price: number | null; labor_cost: number | null }[]
@@ -128,7 +131,7 @@ export async function updateProcedure(
   // Atualiza dados básicos
   const { error } = await admin
     .from('procedures')
-    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, visible_on_client_app: visibleOnClientApp })
+    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, visible_on_client_app: visibleOnClientApp, anamnesis_form_id: anamnesisFormId })
     .eq('id', procedureId)
     .eq('tenant_id', ctx.tenantId!)
 

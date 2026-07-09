@@ -109,12 +109,13 @@ model Tenant {
   planStatus  String?  @default("trial")      // trial | active | suspended | cancelled
   trialEndsAt DateTime?
 
-  branches      Branch[]
-  users         User[]
-  procedures    Procedure[]                   // catálogo base da rede
-  products      Product[]                     // catálogo de produtos da rede
-  loyaltyConfig LoyaltyConfig?
-  leads         Lead[]
+  branches       Branch[]
+  users          User[]
+  procedures     Procedure[]                   // catálogo base da rede
+  products       Product[]                     // catálogo de produtos da rede
+  loyaltyConfig  LoyaltyConfig?
+  leads          Lead[]
+  anamnesisForms AnamnesisForm[]               // fichas de anamnese da rede
 
   @@map("tenants")
 }
@@ -366,11 +367,13 @@ model Procedure {
   isActive    Boolean  @default(true)
   // visível no app do cliente para agendamento self-service
   visibleOnClientApp Boolean @default(true)
+  anamnesisFormId String?                        // ficha de anamnese vinculada (opcional)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant Tenant  @relation(fields: [tenantId], references: [id])
-  branch Branch? @relation(fields: [branchId], references: [id])
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  branch        Branch?        @relation(fields: [branchId], references: [id])
+  anamnesisForm AnamnesisForm? @relation(fields: [anamnesisFormId], references: [id])
 
   products            ProcedureProduct[]
   appointments        Appointment[]
@@ -380,6 +383,21 @@ model Procedure {
   branchAvailability  ProcedureBranchAvailability[]
 
   @@map("procedures")
+}
+
+model AnamnesisForm {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  schema    Json     @default("{\"fields\":[]}") // { fields: AnamnesisField[] }
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  procedures Procedure[]
+
+  @@map("anamnesis_forms")
 }
 
 model ProcedureBranchAvailability {

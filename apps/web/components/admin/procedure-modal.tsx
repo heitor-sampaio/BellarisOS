@@ -21,16 +21,18 @@ interface ExistingProcedure {
   branch_ids: string[]
   procedure_products: { product_id: string; quantity: number }[]
   branch_pricing?: { branch_id: string; price: number | null; labor_cost: number | null }[]
+  anamnesis_form_id?: string | null
 }
 
 interface ProcedureModalProps {
   branches: Branch[]
   products: Product[]
+  anamnesisForms?: { id: string; name: string }[]
   existing?: ExistingProcedure
   trigger?: React.ReactNode
 }
 
-export function ProcedureModal({ branches, products, existing, trigger }: ProcedureModalProps) {
+export function ProcedureModal({ branches, products, anamnesisForms = [], existing, trigger }: ProcedureModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
 
@@ -98,6 +100,7 @@ export function ProcedureModal({ branches, products, existing, trigger }: Proced
             <ProcedureForm
               branches={branches}
               products={products}
+              anamnesisForms={anamnesisForms}
               existing={existing}
               onSuccess={handleSuccess}
               onCancel={close}
