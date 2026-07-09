@@ -2,7 +2,7 @@
 
 import { useState, type ComponentType } from 'react'
 import {
-  Plus, Trash2, X, CheckCircle2, ChevronLeft, GripVertical, ArrowUp, ArrowDown,
+  Plus, Trash2, X, CheckCircle2, ChevronLeft, ArrowUp, ArrowDown,
   ArrowUpToLine, SeparatorHorizontal,
   Type, AlignLeft, Hash, Calendar, List, CircleDot, CheckSquare, Heading, Image as ImageIcon,
 } from 'lucide-react'
@@ -375,7 +375,7 @@ function IconBtn({ children, onClick, title, disabled }: { children: React.React
 function CardBtn({ children, onClick, title, danger }: { children: React.ReactNode; onClick: (e: React.MouseEvent) => void; title: string; danger?: boolean }) {
   return (
     <button type="button" onClick={onClick} title={title}
-      style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)', color: danger ? '#dc2626' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+      style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: danger ? '#dc2626' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
       {children}
     </button>
   )
@@ -400,21 +400,22 @@ function FieldCard({ field: f, dragging, canMergeUp, canSplit, onMergeUp, onSpli
     <div
       draggable onClick={onOpen} onDragStart={onDragStart} onDragEnd={onDragEnd}
       title="Clique para configurar"
-      style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', cursor: 'pointer', opacity: dragging ? 0.45 : 1 }}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '7px 8px', cursor: 'pointer', opacity: dragging ? 0.45 : 1 }}
     >
-      <span title="Arraste para reordenar" style={{ cursor: 'grab', color: 'var(--text-faint)', display: 'flex', flexShrink: 0 }}><GripVertical size={15} /></span>
       <span style={{ display: 'flex', color: 'var(--brand)', flexShrink: 0 }}><Icon size={15} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: f.label ? 'var(--text)' : 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ fontSize: 12.5, fontWeight: 700, color: f.label ? 'var(--text)' : 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {f.label || 'Sem título'}
         </p>
-        <p style={{ fontSize: 10.5, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {FIELD_TYPE_LABEL[f.type]}{f.required ? ' · obrigatório' : ''}
+        <p style={{ fontSize: 10, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {FIELD_TYPE_LABEL[f.type]}{f.required ? ' · obrig.' : ''}
         </p>
       </div>
-      {canMergeUp && <CardBtn title="Juntar na linha de cima" onClick={stop(onMergeUp)}><ArrowUpToLine size={13} /></CardBtn>}
-      {canSplit && <CardBtn title="Separar em nova linha" onClick={stop(onSplit)}><SeparatorHorizontal size={13} /></CardBtn>}
-      <CardBtn title="Remover" danger onClick={stop(onRemove)}><Trash2 size={13} /></CardBtn>
+      <div style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+        {canMergeUp && <CardBtn title="Juntar na linha de cima" onClick={stop(onMergeUp)}><ArrowUpToLine size={12} /></CardBtn>}
+        {canSplit && <CardBtn title="Separar em nova linha" onClick={stop(onSplit)}><SeparatorHorizontal size={12} /></CardBtn>}
+        <CardBtn title="Remover" danger onClick={stop(onRemove)}><Trash2 size={12} /></CardBtn>
+      </div>
     </div>
   )
 }

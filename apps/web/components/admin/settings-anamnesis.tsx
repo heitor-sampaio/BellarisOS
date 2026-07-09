@@ -54,7 +54,7 @@ export function SettingsAnamnesis({ forms }: Props) {
 
   if (view.mode !== 'list') {
     return (
-      <div className="card" style={{ padding: '20px 22px' }}>
+      <div className="card" style={{ padding: '20px 11px' }}>
         <AnamnesisFormBuilder
           existing={view.mode === 'edit' ? view.form : null}
           onDone={done}
