@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, ImageOff } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { numericAxisWidth } from '@/lib/chart-utils'
 import type { CampaignDetail, AdSet, Ad, AgeBreakdown, PlacementBreakdown, DailyInsight } from '@/lib/ads/types'
 
 const STATUS_COLOR: Record<string, string> = {
@@ -463,6 +464,7 @@ function TrendChart({ daily }: { daily: DailyInsight[] }) {
   }))
 
   const hasData = chartData.some(p => p.value != null)
+  const yAxisW = numericAxisWidth(chartData.map(p => Number(p.value ?? 0)), yFmt)
 
   if (!hasData) {
     return (
@@ -527,7 +529,7 @@ function TrendChart({ daily }: { daily: DailyInsight[] }) {
             tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
             tickLine={false}
             axisLine={false}
-            width={34}
+            width={yAxisW}
           />
           <Tooltip
             contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', padding: '8px 12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}

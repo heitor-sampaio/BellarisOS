@@ -4,6 +4,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
 } from 'recharts'
+import { numericAxisWidth } from '@/lib/chart-utils'
 
 export interface ChartPoint {
   day:     number
@@ -95,6 +96,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
   const totalRevenue = data.reduce((s, d) => s + d.revenue, 0)
   const totalCost    = data.reduce((s, d) => s + d.cost,    0)
   const totals = { revenue: totalRevenue, cost: totalCost, profit: totalRevenue - totalCost }
+  const yAxisW = numericAxisWidth(data.flatMap(d => [d.revenue, d.cost, d.profit]), fmtAxis)
 
   return (
     <div style={{ padding: '18px 20px 8px' }}>
@@ -156,7 +158,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
             tickLine={false}
             axisLine={false}
             tickFormatter={fmtAxis}
-            width={32}
+            width={yAxisW}
           />
 
           <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border, #e8dde0)', strokeWidth: 1.5, strokeDasharray: '4 3' }} />

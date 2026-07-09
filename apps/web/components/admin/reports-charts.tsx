@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area,
 } from 'recharts'
+import { categoryAxisWidth, numericAxisWidth } from '@/lib/chart-utils'
 
 // -- Palette -------------------------------------------------------------------
 export const CHART_COLORS = ['#c34d6b', '#7c3aed', '#0ea5e9', '#16a34a', '#d97706', '#64748b']
@@ -62,7 +63,8 @@ export function HBarChart({
         <YAxis
           type="category" dataKey="name"
           tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
-          tickLine={false} axisLine={false} width={130}
+          tickLine={false} axisLine={false}
+          width={categoryAxisWidth(rows.map(r => r.name), { fontPx: 11 })}
         />
         <Tooltip
           formatter={(v) => [formatValue(Number(v ?? 0)), '']}
@@ -88,6 +90,7 @@ export function WeekBarChart({ data }: { data: { day: number; count: number }[] 
     name,
     count: data.find(d => d.day === i)?.count ?? 0,
   }))
+  const yAxisW = numericAxisWidth(chartData.map(d => d.count))
   return (
     <ResponsiveContainer width="100%" height={176}>
       <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -100,7 +103,7 @@ export function WeekBarChart({ data }: { data: { day: number; count: number }[] 
         <YAxis
           tick={{ fontSize: 9, fill: 'var(--text-faint)' }}
           tickLine={false} axisLine={false} allowDecimals={false}
-          width={32}
+          width={yAxisW}
         />
         <Tooltip
           contentStyle={{
@@ -187,6 +190,7 @@ export function MiniAreaChart({
 }) {
   if (!data.length || data.every(d => d.value === 0)) return <EmptyChart />
   const id = `mcg${color.replace(/[^a-z0-9]/gi, '')}`
+  const yAxisW = numericAxisWidth(data.map(d => d.value))
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
@@ -206,7 +210,7 @@ export function MiniAreaChart({
         <YAxis
           tick={{ fontSize: 9, fill: 'var(--text-faint)' }}
           tickLine={false} axisLine={false} allowDecimals={false}
-          width={32}
+          width={yAxisW}
         />
         <Tooltip
           contentStyle={{
