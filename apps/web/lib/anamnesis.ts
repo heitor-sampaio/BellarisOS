@@ -1,18 +1,37 @@
 // Tipos e helpers do construtor de fichas de anamnese.
 // Módulo neutro (sem 'use server'/'use client') — importável por actions e componentes.
 
+import type { CSSProperties } from 'react'
+
 export type AnamnesisFieldType =
   | 'text' | 'textarea' | 'number' | 'date'
   | 'select' | 'radio' | 'checkbox' | 'section' | 'photo'
+
+/** Largura do campo na linha — permite mais de um campo por linha (colunas). */
+export type AnamnesisFieldWidth = 'full' | 'half' | 'third'
 
 export interface AnamnesisField {
   id:           string
   type:         AnamnesisFieldType
   label:        string
+  width?:       AnamnesisFieldWidth
   required?:    boolean
   options?:     string[]        // select / radio / checkbox
   placeholder?: string
   help?:        string
+}
+
+export const WIDTHS: { value: AnamnesisFieldWidth; label: string; basis: string }[] = [
+  { value: 'full',  label: 'Linha inteira', basis: '1 1 100%' },
+  { value: 'half',  label: 'Metade',        basis: '1 1 calc(50% - 6px)' },
+  { value: 'third', label: 'Um terço',      basis: '1 1 calc(33.333% - 8px)' },
+]
+const WIDTH_SET = new Set<AnamnesisFieldWidth>(['full', 'half', 'third'])
+
+/** Estilo flex para posicionar um campo conforme sua largura (linha inteira / colunas). */
+export function widthFlex(w: AnamnesisFieldWidth | undefined): CSSProperties {
+  const found = WIDTHS.find(x => x.value === (w ?? 'full')) ?? WIDTHS[0]!
+  return { flex: found.basis, minWidth: 200 }
 }
 
 export interface AnamnesisFormSchema {
@@ -52,10 +71,15 @@ export function normalizeFormSchema(raw: unknown): AnamnesisFormSchema {
     if (!VALID_TYPES.has(type)) continue
     const label = typeof (f as AnamnesisField).label === 'string' ? (f as AnamnesisField).label.trim() : ''
     if (!label) continue
+    const rawWidth = (f as AnamnesisField).width
+    const width: AnamnesisFieldWidth = type === 'section'
+      ? 'full'
+      : (rawWidth && WIDTH_SET.has(rawWidth) ? rawWidth : 'full')
     const field: AnamnesisField = {
       id:    typeof (f as AnamnesisField).id === 'string' && (f as AnamnesisField).id ? (f as AnamnesisField).id : newId(),
       type,
       label,
+      width,
     }
     if ((f as AnamnesisField).required) field.required = true
     const ph = (f as AnamnesisField).placeholder

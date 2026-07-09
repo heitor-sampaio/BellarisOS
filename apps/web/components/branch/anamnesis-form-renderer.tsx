@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { Save, Upload, X, ImageIcon, CheckCircle2 } from 'lucide-react'
-import type { AnamnesisField } from '@/lib/anamnesis'
+import { widthFlex, type AnamnesisField } from '@/lib/anamnesis'
 import { saveProcedureAnamnesis, uploadAnamnesisPhoto } from '@/actions/anamnesis'
 
 type AnswerValue = string | string[]
@@ -49,14 +49,18 @@ export function AnamnesisFormRenderer({ appointmentId, slug, formName, fields, i
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {fields.map(f => (
-        <FieldView
-          key={f.id} field={f} value={answers[f.id]} canEdit={canEdit}
-          appointmentId={appointmentId}
-          onChange={v => setAnswer(f.id, v)}
-          onToggle={opt => toggleCheckbox(f.id, opt)}
-        />
-      ))}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-start' }}>
+        {fields.map(f => (
+          <div key={f.id} style={widthFlex(f.width)}>
+            <FieldView
+              field={f} value={answers[f.id]} canEdit={canEdit}
+              appointmentId={appointmentId}
+              onChange={v => setAnswer(f.id, v)}
+              onToggle={opt => toggleCheckbox(f.id, opt)}
+            />
+          </div>
+        ))}
+      </div>
 
       {error && <p style={{ color: '#dc2626', fontSize: 12.5, fontWeight: 600 }}>{error}</p>}
 
