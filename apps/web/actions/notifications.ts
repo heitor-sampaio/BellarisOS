@@ -11,6 +11,7 @@ export type ClientNotification = {
   is_read:     boolean
   is_received: boolean
   created_at:  string
+  data:        { appointment_id?: string; link?: string } | null
 }
 
 export async function getClientNotifications(): Promise<{ notifications: ClientNotification[] }> {
@@ -20,7 +21,7 @@ export async function getClientNotifications(): Promise<{ notifications: ClientN
   const admin = createAdminClient()
   const { data } = await admin
     .from('client_notifications')
-    .select('id, title, body, type, is_read, is_received, created_at')
+    .select('id, title, body, type, is_read, is_received, created_at, data')
     .eq('client_id', ctx.clientId!)
     .eq('is_read', false)
     .order('created_at', { ascending: false })

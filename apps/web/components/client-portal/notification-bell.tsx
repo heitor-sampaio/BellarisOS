@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Bell, X, BellOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getClientNotifications, markAllNotificationsReceived, markNotificationRead } from '@/actions/notifications'
@@ -112,6 +113,29 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
   const [isPending,     startTransition]  = useTransition()
   const panelRef = useRef<HTMLDivElement>(null)
   const bellRef  = useRef<HTMLButtonElement>(null)
+  const router   = useRouter()
+
+  function openLink(link?: string | null) {
+    if (!link) return
+    setSelected(null)
+    setOpen(false)
+    router.push(link)
+  }
+
+  // Deep link: tocar na notificação nativa (FCM) abre a tela correspondente.
+  useEffect(() => {
+    let cleanup: (() => void) | undefined
+    import('@capacitor/core').then(async ({ Capacitor }) => {
+      if (!Capacitor.isNativePlatform()) return
+      const { PushNotifications } = await import('@capacitor/push-notifications')
+      const handle = await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+        const link = (action.notification?.data as { link?: string } | undefined)?.link
+        if (link) router.push(link)
+      })
+      cleanup = () => { handle.remove() }
+    }).catch(() => { /* not in Capacitor context */ })
+    return () => { cleanup?.() }
+  }, [router])
 
   // Realtime: set auth token and subscribe to new notifications.
   // createBrowserClient is a singleton — supabase.channel() returns any existing
@@ -142,7 +166,9 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
             && !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
               .Capacitor?.isNativePlatform?.()
           if (!isNative && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            new Notification(n.title, { body: n.body ?? '', icon: '/icon-192.png' })
+            const webNotif = new Notification(n.title, { body: n.body ?? '', icon: '/icon-192.png' })
+            const link = (n.data as { link?: string } | null)?.link
+            if (link) webNotif.onclick = () => { window.focus(); router.push(link) }
           }
         },
       )
@@ -401,12 +427,22 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
             </div>
 
             {/* Modal footer */}
-            <div style={{ padding: '0 20px 20px' }}>
+            <div style={{ padding: '0 20px 20px', display: 'flex', gap: 10 }}>
+              {selected.data?.link && (
+                <button
+                  type="button"
+                  onClick={() => openLink(selected.data?.link)}
+                  className="btn-primary"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {selected.type === 'appointment_completed' ? 'Confirmar atendimento' : 'Abrir'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="btn-primary"
-                style={{ width: '100%', justifyContent: 'center' }}
+                className={selected.data?.link ? 'btn-secondary' : 'btn-primary'}
+                style={{ flex: 1, justifyContent: 'center' }}
               >
                 Fechar
               </button>

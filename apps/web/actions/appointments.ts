@@ -49,6 +49,7 @@ function fmtDateTime(iso: string): string {
 type ApptCtx = {
   clientId: string; professionalId: string | null
   clientName: string; procedureName: string; scheduledAt: string
+  slug: string
 }
 
 async function loadApptCtx(
@@ -57,7 +58,7 @@ async function loadApptCtx(
 ): Promise<ApptCtx | null> {
   const { data } = await admin
     .from('appointments')
-    .select('client_id, professional_id, scheduled_at, clients(name), procedures(name)')
+    .select('client_id, professional_id, scheduled_at, clients(name), procedures(name), branches(slug)')
     .eq('id', appointmentId)
     .maybeSingle()
   if (!data) return null
@@ -67,6 +68,7 @@ async function loadApptCtx(
     clientName:     ((data.clients as unknown as { name?: string } | null)?.name ?? 'Cliente'),
     procedureName:  ((data.procedures as unknown as { name?: string } | null)?.name ?? 'Atendimento'),
     scheduledAt:    data.scheduled_at as string,
+    slug:           ((data.branches as unknown as { slug?: string } | null)?.slug ?? ''),
   }
 }
 
@@ -157,7 +159,10 @@ function notifyCompleted(appointmentId: string): void {
     await notifyClient(admin, c.clientId, {
       type: 'appointment_completed', title: 'Confirme seu atendimento',
       body: `Seu ${c.procedureName} foi concluído. Confirme e avalie pelo app.`,
-      data: { appointment_id: appointmentId },
+      data: {
+        appointment_id: appointmentId,
+        link: c.slug ? `/${c.slug}/cliente/atendimentos/${appointmentId}/confirmar` : undefined,
+      },
     })
   })
 }
