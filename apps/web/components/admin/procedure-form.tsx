@@ -399,8 +399,8 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
       </div>
 
       {/* -- Calculadora de custos -- */}
-      <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px' }}>
-        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>
+      <div>
+        <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>
           Calculadora de custos
         </p>
         <div className="form-3col">
