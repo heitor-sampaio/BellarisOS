@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
@@ -97,7 +98,7 @@ export default async function AdminClientProfilePage({
 
     admin
       .from('client_documents')
-      .select('id, name, category, file_url, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at')
+      .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at')
       .eq('client_id', id)
       .eq('branch_id', branchId)
       .order('created_at', { ascending: false }),
@@ -284,9 +285,11 @@ export default async function AdminClientProfilePage({
     id: c.id, amount: parseFloat(c.amount), description: c.description, createdAt: c.created_at,
   }))
 
-  type RawDoc = { id: string; name: string; category: string; file_url: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string }
-  const documents: ClientDocumentItem[] = ((docsRaw as RawDoc[] | null) ?? []).map(d => ({
-    id: d.id, name: d.name, category: d.category, fileUrl: d.file_url, fileName: d.file_name,
+  type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string }
+  const rawDocs = (docsRaw as RawDoc[] | null) ?? []
+  const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(d => d.file_path))
+  const documents: ClientDocumentItem[] = rawDocs.map(d => ({
+    id: d.id, name: d.name, category: d.category, fileUrl: docUrlMap[d.file_path] ?? '', fileName: d.file_name,
     fileSize: d.file_size, mimeType: d.mime_type, uploadedBy: d.uploaded_by?.name ?? null, createdAt: d.created_at,
   }))
 

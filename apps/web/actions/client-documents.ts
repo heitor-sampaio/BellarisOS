@@ -4,8 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
+import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
 
-const BUCKET        = 'client-documents'
+const BUCKET        = CLIENT_DOCS_BUCKET
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
 
 export async function uploadClientDocument(
@@ -39,11 +40,8 @@ export async function uploadClientDocument(
 
   const admin = createAdminClient()
 
-  // Ensure storage bucket exists
-  const { data: buckets } = await admin.storage.listBuckets()
-  if (!buckets?.find(b => b.name === BUCKET)) {
-    await admin.storage.createBucket(BUCKET, { public: false })
-  }
+  // Bucket PRIVADO (LGPD) — nunca público. Guardamos o path; servimos por signed URL.
+  await ensurePrivateBucket(BUCKET)
 
   // Upload file
   const ext      = file.name.split('.').pop() ?? 'bin'
@@ -57,16 +55,13 @@ export async function uploadClientDocument(
 
   if (uploadError) return { error: `Falha no upload: ${uploadError.message}` }
 
-  // Get public URL (signed, valid 10 years — or use signed URL per download)
-  const { data: urlData } = admin.storage.from(BUCKET).getPublicUrl(path)
-
-  // Insert record
+  // Insert record — guardamos o PATH, não uma URL pública
   const { error: dbError } = await admin.from('client_documents').insert({
     client_id:   clientId,
     branch_id:   branchId,
     name,
     category,
-    file_url:    urlData.publicUrl,
+    file_path:   path,
     file_name:   file.name,
     file_size:   file.size,
     mime_type:   file.type || `application/${ext}`,
@@ -96,7 +91,7 @@ export async function deleteClientDocument(
   // Verify ownership via branch → tenant
   const { data: doc } = await admin
     .from('client_documents')
-    .select('id, file_url, branch_id, branches!inner(tenant_id)')
+    .select('id, file_path, branch_id, branches!inner(tenant_id)')
     .eq('id', documentId)
     .single()
 
@@ -105,10 +100,8 @@ export async function deleteClientDocument(
   const tenantId = (doc.branches as unknown as { tenant_id: string }).tenant_id
   if (tenantId !== ctx.tenantId) return { error: 'Acesso negado.' }
 
-  // Extract storage path from URL
-  const urlParts = doc.file_url.split(`/${BUCKET}/`)
-  if (urlParts.length === 2) {
-    await admin.storage.from(BUCKET).remove([urlParts[1]])
+  if (doc.file_path) {
+    await admin.storage.from(BUCKET).remove([doc.file_path])
   }
 
   await admin.from('client_documents').delete().eq('id', documentId)

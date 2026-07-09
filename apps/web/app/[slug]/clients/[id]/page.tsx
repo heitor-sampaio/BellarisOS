@@ -1,6 +1,7 @@
 ﻿import { notFound } from 'next/navigation'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-queries'
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -222,13 +223,15 @@ export default async function ClientProfilePage({
     createdAt:   c.created_at,
   }))
 
-  // Documents
-  type RawDoc = { id: string; name: string; category: string; file_url: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string }
-  const documents: ClientDocumentItem[] = ((docsRaw as RawDoc[] | null) ?? []).map(d => ({
+  // Documents — bucket privado: assinamos os paths (signed URLs, 1h) para download
+  type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string }
+  const rawDocs = (docsRaw as RawDoc[] | null) ?? []
+  const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(d => d.file_path))
+  const documents: ClientDocumentItem[] = rawDocs.map(d => ({
     id:          d.id,
     name:        d.name,
     category:    d.category,
-    fileUrl:     d.file_url,
+    fileUrl:     docUrlMap[d.file_path] ?? '',
     fileName:    d.file_name,
     fileSize:    d.file_size,
     mimeType:    d.mime_type,

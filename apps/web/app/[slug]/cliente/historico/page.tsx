@@ -1,5 +1,6 @@
 ﻿import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
 
 // -- Types ----------------------------------------------------------
@@ -66,7 +67,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
 
     // Documentos = arquivos enviados pela clínica para o cliente
     admin.from('client_documents')
-      .select('id, name, category, file_url, created_at')
+      .select('id, name, category, file_path, created_at')
       .eq('client_id', ctx.clientId!)
       .order('created_at', { ascending: false })
       .limit(30),
@@ -103,11 +104,13 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   }))
 
   // -- Documentos -------------------------------------------------
-  const clientDocs = (docsRes.data ?? []).map((r: any) => ({
+  const rawDocs = (docsRes.data ?? []) as any[]
+  const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(r => r.file_path as string))
+  const clientDocs = rawDocs.map((r: any) => ({
     id:         r.id as string,
     name:       r.name as string,
     category:   r.category as string,
-    file_url:   r.file_url as string,
+    file_url:   docUrlMap[r.file_path as string] ?? '',
     created_at: r.created_at as string,
   }))
 

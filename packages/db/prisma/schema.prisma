@@ -244,9 +244,9 @@ model ClientDocument {
   branchId    String
   name        String
   category    String   @default("outro")
-  fileUrl     String
+  filePath    String   @map("file_path") // path no bucket privado (LGPD) — servido via signed URL
   fileName    String
-  fileSize    Int?
+  fileSize    BigInt?
   mimeType    String?
   uploadedBy  String?
   createdAt   DateTime @default(now())

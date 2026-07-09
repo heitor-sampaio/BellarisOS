@@ -5,8 +5,9 @@ import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizeFormSchema } from '@/lib/anamnesis'
+import { ANAMNESIS_BUCKET, ensurePrivateBucket, getSignedUrl, getSignedUrls } from '@/lib/storage'
 
-const ANAMNESIS_BUCKET = 'anamnesis-photos'
+const STAFF_ROLES = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'] as const
 
 export async function saveGeneralAnamnesis(
   _prev: { error?: string } | null,
@@ -62,13 +63,16 @@ export async function saveGeneralAnamnesis(
 
 // ─── Ficha de anamnese por procedimento (construtor) ──────────────────────────
 
-/** Upload de foto de um campo de anamnese → retorna URL pública. */
+/**
+ * Upload de foto de um campo de anamnese para bucket PRIVADO.
+ * Guarda-se o `path` na resposta; a `url` retornada é uma signed URL (1h) só para preview.
+ */
 export async function uploadAnamnesisPhoto(
   formData: FormData,
-): Promise<{ error?: string; url?: string }> {
+): Promise<{ error?: string; path?: string; url?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'])
+    assertRole(ctx, [...STAFF_ROLES])
 
     const file          = formData.get('file') as File | null
     const appointmentId = (formData.get('appointment_id') as string | null)?.trim()
@@ -78,10 +82,7 @@ export async function uploadAnamnesisPhoto(
     if (file.size > 15 * 1024 * 1024)    return { error: 'Imagem deve ter no máximo 15 MB.' }
 
     const admin = createAdminClient()
-    const { data: buckets } = await admin.storage.listBuckets()
-    if (!buckets?.find(b => b.name === ANAMNESIS_BUCKET)) {
-      await admin.storage.createBucket(ANAMNESIS_BUCKET, { public: true })
-    }
+    await ensurePrivateBucket(ANAMNESIS_BUCKET)
 
     const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
     const path     = `${ctx.tenantId}/${appointmentId}/${safeName}`
@@ -91,10 +92,22 @@ export async function uploadAnamnesisPhoto(
       .upload(path, buffer, { contentType: file.type, upsert: false })
     if (upErr) return { error: `Falha no upload: ${upErr.message}` }
 
-    const { data: urlData } = admin.storage.from(ANAMNESIS_BUCKET).getPublicUrl(path)
-    return { url: urlData.publicUrl }
+    const url = await getSignedUrl(ANAMNESIS_BUCKET, path)
+    return { path, url: url ?? undefined }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro no upload.' }
+  }
+}
+
+/** Gera signed URLs (1h) para paths de fotos — só do próprio tenant. */
+export async function signAnamnesisPhotos(paths: string[]): Promise<Record<string, string>> {
+  try {
+    const ctx = await getTenantContext()
+    assertRole(ctx, [...STAFF_ROLES])
+    const own = (paths ?? []).filter(p => typeof p === 'string' && p.startsWith(`${ctx.tenantId}/`))
+    return await getSignedUrls(ANAMNESIS_BUCKET, own)
+  } catch {
+    return {}
   }
 }
 
