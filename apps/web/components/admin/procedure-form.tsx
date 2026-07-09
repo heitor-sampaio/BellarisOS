@@ -135,11 +135,11 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
   // Serializa apenas overrides com pelo menos um valor preenchido
   const branchPricingPayload = JSON.stringify(
     branchPricing
-      .filter(b => b.price !== '' || b.labor_cost !== '')
+      .filter(b => b.price !== '')
       .map(b => ({
         branch_id:  b.branch_id,
-        price:      b.price      !== '' ? parseBRL(b.price)      : null,
-        labor_cost: b.labor_cost !== '' ? parseBRL(b.labor_cost) : null,
+        price:      b.price !== '' ? parseBRL(b.price) : null,
+        labor_cost: null,
       }))
   )
 
@@ -471,9 +471,9 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
               <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                 Personalizar valores por filial
               </span>
-              {branchPricing.some(b => b.price !== '' || b.labor_cost !== '') && (
+              {branchPricing.some(b => b.price !== '') && (
                 <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--brand-soft)', color: 'var(--brand)', border: '1px solid var(--brand-soft-border)', borderRadius: 99, padding: '1px 7px' }}>
-                  {branchPricing.filter(b => b.price !== '' || b.labor_cost !== '').length} filial(is) com override
+                  {branchPricing.filter(b => b.price !== '').length} filial(is) com override
                 </span>
               )}
             </div>
@@ -491,15 +491,15 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
                 Deixe em branco para usar os valores base do procedimento.
               </p>
               {/* Header da tabela */}
-              <div className="form-3col" style={{ background: 'var(--bg-app)', borderTop: '1px solid var(--hairline)', borderBottom: '1px solid var(--border)', padding: '6px 12px' }}>
-                {['Filial', 'Preço', 'Mão de obra'].map(h => (
+              <div className="form-2col" style={{ background: 'var(--bg-app)', borderTop: '1px solid var(--hairline)', borderBottom: '1px solid var(--border)', padding: '6px 12px' }}>
+                {['Filial', 'Preço'].map(h => (
                   <span key={h} style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</span>
                 ))}
               </div>
               {branches.map((b, i) => {
                 const ov = branchPricing.find(bp => bp.branch_id === b.id) ?? { branch_id: b.id, price: '', labor_cost: '' }
                 return (
-                  <div key={b.id} className="form-3col" style={{
+                  <div key={b.id} className="form-2col" style={{
                     padding: '8px 12px', alignItems: 'center',
                     borderBottom: i < branches.length - 1 ? '1px solid var(--hairline)' : undefined,
                   }}>
@@ -509,13 +509,6 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
                       <input type="text" className="field" value={ov.price}
                         onChange={branchOverrideInput(b.id, 'price')}
                         placeholder={price || '—'}
-                        style={{ paddingLeft: 26, fontSize: 12, height: 32 }} />
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 11.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
-                      <input type="text" className="field" value={ov.labor_cost}
-                        onChange={branchOverrideInput(b.id, 'labor_cost')}
-                        placeholder={laborCost || '—'}
                         style={{ paddingLeft: 26, fontSize: 12, height: 32 }} />
                     </div>
                   </div>
