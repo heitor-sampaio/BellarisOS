@@ -475,8 +475,8 @@ function TrendChart({ daily }: { daily: DailyInsight[] }) {
 
   function yFmt(v: number): string {
     if (metric === 'spend') {
-      if (v >= 1000) return `R$${(v / 1000).toFixed(1).replace('.', ',')}k`
-      return `R$${v.toFixed(0)}`
+      if (v >= 1000) return `${(v / 1000).toFixed(1).replace('.', ',')}k`
+      return `${v.toFixed(0)}`
     }
     if (metric === 'roi') return v.toFixed(0) + '%'
     return v.toFixed(0)
@@ -506,7 +506,7 @@ function TrendChart({ daily }: { daily: DailyInsight[] }) {
       </div>
 
       <ResponsiveContainer width="100%" height={200}>
-        <AreaChart data={chartData} margin={{ top: 10, right: 16, bottom: 0, left: 10 }}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
           <defs>
             <linearGradient id={`grad-${metric}`} x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%"  stopColor={cfg.color} stopOpacity={0.15} />
@@ -527,7 +527,7 @@ function TrendChart({ daily }: { daily: DailyInsight[] }) {
             tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
             tickLine={false}
             axisLine={false}
-            width={58}
+            width={34}
           />
           <Tooltip
             contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', padding: '8px 12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}

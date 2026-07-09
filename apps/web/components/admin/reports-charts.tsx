@@ -90,7 +90,7 @@ export function WeekBarChart({ data }: { data: { day: number; count: number }[] 
   }))
   return (
     <ResponsiveContainer width="100%" height={176}>
-      <BarChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+      <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 0" stroke="var(--hairline)" vertical={false} />
         <XAxis
           dataKey="name"
@@ -100,6 +100,7 @@ export function WeekBarChart({ data }: { data: { day: number; count: number }[] 
         <YAxis
           tick={{ fontSize: 9, fill: 'var(--text-faint)' }}
           tickLine={false} axisLine={false} allowDecimals={false}
+          width={32}
         />
         <Tooltip
           contentStyle={{
@@ -188,7 +189,7 @@ export function MiniAreaChart({
   const id = `mcg${color.replace(/[^a-z0-9]/gi, '')}`
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%"  stopColor={color} stopOpacity={0.2} />
@@ -205,6 +206,7 @@ export function MiniAreaChart({
         <YAxis
           tick={{ fontSize: 9, fill: 'var(--text-faint)' }}
           tickLine={false} axisLine={false} allowDecimals={false}
+          width={32}
         />
         <Tooltip
           contentStyle={{

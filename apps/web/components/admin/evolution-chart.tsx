@@ -35,9 +35,9 @@ function fmtBRL(v: number) {
 }
 
 function fmtAxis(v: number) {
-  if (Math.abs(v) >= 1_000_000) return `R$${(v / 1_000_000).toFixed(1)}M`
-  if (Math.abs(v) >= 1_000)     return `R$${(v / 1_000).toFixed(0)}k`
-  return `R$${v}`
+  if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`
+  if (Math.abs(v) >= 1_000)     return `${(v / 1_000).toFixed(0)}k`
+  return `${v}`
 }
 
 function CustomTooltip({ active, payload, label }: any) {
@@ -156,7 +156,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
             tickLine={false}
             axisLine={false}
             tickFormatter={fmtAxis}
-            width={44}
+            width={32}
           />
 
           <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border, #e8dde0)', strokeWidth: 1.5, strokeDasharray: '4 3' }} />
