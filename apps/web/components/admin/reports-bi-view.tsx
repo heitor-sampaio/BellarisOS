@@ -239,11 +239,11 @@ function TabOverview(p: ReportsBiProps) {
       </div>
       {/* Charts grid */}
       <div className="rg-2" style={{ gap: 16 }}>
+        <SCard title="Evolução do Período" style={{ gridColumn: '1 / -1' }}>
+          <EvolutionChart data={evolutionData} monthLabel={p.periodLabel} granularity={granularity} />
+        </SCard>
         <SCard title="Faturamento por Unidade">
           <HBarChart data={byBranch} />
-        </SCard>
-        <SCard title="Evolução do Período">
-          <EvolutionChart data={evolutionData} monthLabel={p.periodLabel} granularity={granularity} />
         </SCard>
         <SCard title="Top 5 Procedimentos por Receita">
           <HBarChart data={topProcs} />
