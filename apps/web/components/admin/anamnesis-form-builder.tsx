@@ -3,7 +3,7 @@
 import { useState, type ComponentType } from 'react'
 import {
   Plus, Trash2, X, CheckCircle2, ChevronLeft, ArrowUp, ArrowDown,
-  ArrowUpToLine, SeparatorHorizontal,
+  ArrowUpToLine, SeparatorHorizontal, Eye, Upload,
   Type, AlignLeft, Hash, Calendar, List, CircleDot, CheckSquare, Heading, Image as ImageIcon,
 } from 'lucide-react'
 import {
@@ -46,6 +46,7 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
   const [over, setOver] = useState<Over>(null)
   const [showAdd, setShowAdd] = useState(false)     // menu do botão + no mobile
   const [editingId, setEditingId] = useState<string | null>(null) // campo aberto no modal
+  const [showPreview, setShowPreview] = useState(false)
 
   function addRowAtEnd(type: AnamnesisFieldType) {
     const id = newId()
@@ -207,9 +208,14 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <button type="button" onClick={onDone} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-        <ChevronLeft size={16} /> Voltar às fichas
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <button type="button" onClick={onDone} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+          <ChevronLeft size={16} /> Voltar às fichas
+        </button>
+        <button type="button" onClick={() => setShowPreview(true)} className="btn-secondary" style={{ fontSize: 13 }}>
+          <Eye size={15} /> Pré-visualizar
+        </button>
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>Nome da ficha *</label>
@@ -366,6 +372,10 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
           onClose={() => setEditingId(null)}
         />
       )}
+
+      {showPreview && (
+        <FormPreviewModal name={name} rows={rows} onClose={() => setShowPreview(false)} />
+      )}
     </div>
   )
 }
@@ -512,5 +522,89 @@ function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAd
         </div>
       </div>
     </>
+  )
+}
+
+// Pré-visualização da ficha (somente leitura) — modal.
+function FormPreviewModal({ name, rows, onClose }: { name: string; rows: AnamnesisRow[]; onClose: () => void }) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(2px)', zIndex: 500 }} />
+      <div role="dialog" aria-modal="true"
+        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(560px, calc(100vw - 24px))', maxHeight: '90dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 24px 64px rgba(34,22,25,0.22)' }}
+      >
+        <div style={{ position: 'sticky', top: 0, background: 'var(--surface)', borderBottom: '1px solid var(--hairline)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Pré-visualização</span>
+          <button type="button" onClick={onClose} title="Fechar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+            <X size={15} />
+          </button>
+        </div>
+        <div style={{ padding: '18px 18px 24px' }}>
+          {name.trim() && <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 16 }}>{name}</p>}
+          {rows.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--text-faint)', textAlign: 'center', padding: '24px 0' }}>Nenhum campo ainda.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {rows.map(row => (
+                <div key={row.id} className="anamnesis-row" data-cols={row.fields.length}>
+                  {row.fields.map(f => <PreviewField key={f.id} field={f} />)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
+function PreviewField({ field: f }: { field: AnamnesisField }) {
+  if (f.type === 'section') {
+    return (
+      <div style={{ marginTop: 4, paddingBottom: 4, borderBottom: '1px solid var(--hairline)' }}>
+        <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label || 'Seção'}</p>
+      </div>
+    )
+  }
+  const opts = f.options ?? []
+  return (
+    <div>
+      <label style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', marginBottom: 6, display: 'block' }}>
+        {f.label || 'Sem título'}{f.required && <span style={{ color: 'var(--brand)' }}> *</span>}
+      </label>
+      {f.type === 'text' && <input className="field" disabled placeholder={f.placeholder} />}
+      {f.type === 'textarea' && <textarea className="field" rows={3} disabled placeholder={f.placeholder} style={{ resize: 'vertical' }} />}
+      {f.type === 'number' && <input className="field" type="number" disabled placeholder={f.placeholder} />}
+      {f.type === 'date' && <input className="field" type="date" disabled />}
+      {f.type === 'select' && (
+        <select className="field" disabled defaultValue="">
+          <option value="">Selecione…</option>
+          {opts.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+      )}
+      {f.type === 'radio' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {opts.map(o => (
+            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-soft)' }}>
+              <input type="radio" disabled style={{ accentColor: 'var(--brand)' }} /> {o}
+            </label>
+          ))}
+        </div>
+      )}
+      {f.type === 'checkbox' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {opts.map(o => (
+            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-soft)' }}>
+              <input type="checkbox" disabled style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} /> {o}
+            </label>
+          ))}
+        </div>
+      )}
+      {f.type === 'photo' && (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>
+          <Upload size={16} /> Enviar foto
+        </div>
+      )}
+    </div>
   )
 }
