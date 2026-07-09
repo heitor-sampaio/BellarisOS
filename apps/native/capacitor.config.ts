@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'com.archlabs.bellarisos',
-  appName: 'EstéticaOS',
+  appName: 'BellarisOS',
   webDir: 'dist',
   server: {
     // Dev:  http://SEU_IP:3000  +  cleartext: true
