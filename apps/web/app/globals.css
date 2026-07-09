@@ -622,6 +622,13 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   .anamnesis-row[data-cols='3'],
   .anamnesis-row[data-cols='4'] { grid-template-columns: repeat(2, 1fr); }
 }
+/* No mobile a paleta de arrastar some e usamos o botão + rosé. */
+.anamnesis-add-mobile { display: none; }
+@media (max-width: 639px) {
+  .anamnesis-palette   { display: none !important; }
+  .anamnesis-add-mobile { display: flex !important; }
+  .anamnesis-canvas    { border: none !important; background: transparent !important; padding: 0 !important; }
+}
 
 /* -- Tabelas: scroll horizontal em telas pequenas ---------- */
 .table-wrap {

@@ -42,6 +42,11 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
 
   const [drag, setDrag] = useState<Drag>(null)
   const [over, setOver] = useState<Over>(null)
+  const [showAdd, setShowAdd] = useState(false) // menu do botão + no mobile
+
+  function addRowAtEnd(type: AnamnesisFieldType) {
+    setRows(rs => [...rs, { id: newId(), fields: [newField(type)] }])
+  }
 
   // -- edição de campo --
   function patch(fieldId: string, changes: Partial<AnamnesisField>) {
@@ -175,8 +180,8 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
       </div>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-        {/* Paleta */}
-        <aside style={{ flex: '0 0 200px', minWidth: 180 }}>
+        {/* Paleta (desktop) */}
+        <aside className="anamnesis-palette" style={{ flex: '0 0 200px', minWidth: 180 }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Blocos</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {FIELD_TYPES.map(t => {
@@ -187,7 +192,8 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
                   draggable
                   onDragStart={e => { setDrag({ kind: 'new', type: t.value }); e.dataTransfer.effectAllowed = 'copy'; try { e.dataTransfer.setData('text/plain', `new:${t.value}`) } catch {} }}
                   onDragEnd={() => { setDrag(null); setOver(null) }}
-                  title="Arraste para o formulário — solte sobre uma linha para criar colunas"
+                  onClick={() => addRowAtEnd(t.value)}
+                  title="Arraste para o formulário (ou clique para adicionar ao fim)"
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, cursor: 'grab', fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}
                 >
                   <Icon size={15} /> {t.label}
@@ -202,14 +208,14 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
         </aside>
 
         {/* Canvas */}
-        <div style={{ flex: '1 1 380px', minWidth: 0, background: 'var(--bg-app)', border: '1px dashed var(--border)', borderRadius: 12, padding: 12 }}>
+        <div className="anamnesis-canvas" style={{ flex: '1 1 380px', minWidth: 0, background: 'var(--bg-app)', border: '1px dashed var(--border)', borderRadius: 12, padding: 12 }}>
           {rows.length === 0 ? (
             <div
               onDragOver={e => { if (drag) { e.preventDefault(); setOver({ kind: 'sep', index: 0 }) } }}
               onDrop={e => { e.preventDefault(); performDrop({ kind: 'sep', index: 0 }) }}
-              style={{ minHeight: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', border: `2px dashed ${drag && over?.kind === 'sep' ? 'var(--brand)' : 'transparent'}`, borderRadius: 10, color: 'var(--text-faint)', fontSize: 13 }}
+              style={{ minHeight: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', border: `2px dashed ${drag && over?.kind === 'sep' ? 'var(--brand)' : 'transparent'}`, borderRadius: 10, color: 'var(--text-faint)', fontSize: 13, padding: '8px' }}
             >
-              Arraste blocos aqui para montar a ficha
+              Arraste um bloco aqui ou toque em <strong style={{ margin: '0 3px' }}>+</strong> para adicionar
             </div>
           ) : (
             <>
@@ -259,6 +265,41 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
               })}
             </>
           )}
+
+          {/* Mobile: botão + rosé abaixo do último campo */}
+          <div className="anamnesis-add-mobile" style={{ flexDirection: 'column', gap: 8, marginTop: rows.length ? 10 : 0 }}>
+            {!showAdd ? (
+              <button
+                type="button" onClick={() => setShowAdd(true)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: 12, borderRadius: 12, border: 'none', background: 'var(--brand)', color: 'var(--on-brand)', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}
+              >
+                <Plus size={18} /> Adicionar campo
+              </button>
+            ) : (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>Escolha um bloco</span>
+                  <button type="button" onClick={() => setShowAdd(false)} title="Fechar" style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <X size={14} />
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                  {FIELD_TYPES.map(t => {
+                    const Icon = TYPE_ICON[t.value]
+                    return (
+                      <button
+                        key={t.value} type="button"
+                        onClick={() => { addRowAtEnd(t.value); setShowAdd(false) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                      >
+                        <Icon size={15} /> {t.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
