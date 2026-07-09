@@ -349,14 +349,20 @@
 @media (max-width: 767px) {
   :root {
     --content-pad-x: 20px;
-    --content-pad-y: 20px;
-    --card-pad:      16px;
+    --content-pad-y: 16px;
+    --card-pad:      14px;
     --card-pad-sm:   12px;
     --text-display:  26px;
     --text-title:    22px;
     --text-name:     18px;
     --text-kpi:      24px;
   }
+  /* Cards/KPIs mais densos no mobile */
+  .kpi-grid-auto {
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .kpi-grid { gap: 10px; }
 }
 
 @media (max-width: 479px) {
@@ -543,6 +549,23 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 /* Colapsa grids multi-coluna para 1 coluna no mobile/tablet estreito. */
 @media (max-width: 899px) {
   .grid-stack-md { grid-template-columns: 1fr !important; }
+}
+
+/* Linha de ocupação por filial: desktop em colunas; mobile em card compacto. */
+@media (max-width: 639px) {
+  .occupancy-row {
+    grid-template-columns: 1fr auto !important;
+    grid-template-areas:
+      "name pct"
+      "bar bar"
+      "details details" !important;
+    gap: 8px 10px !important;
+    align-items: center !important;
+  }
+  .occupancy-row .occ-name    { grid-area: name; }
+  .occupancy-row .occ-pct     { grid-area: pct; justify-self: end; }
+  .occupancy-row .occ-bar     { grid-area: bar; }
+  .occupancy-row .occ-details { grid-area: details; flex-wrap: wrap; }
 }
 
 /* Master-detail (lista fixa + detalhe): empilha e vira largura cheia no mobile */

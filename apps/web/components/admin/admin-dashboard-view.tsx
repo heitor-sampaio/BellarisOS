@@ -786,7 +786,7 @@ export function AdminDashboardView({
               return (
                 <div
                   key={b.slug}
-                  className="grid-stack-md"
+                  className="occupancy-row"
                   style={{
                     padding: '14px 20px',
                     borderBottom: i < branchOccupancy.length - 1 ? '1px solid var(--hairline)' : 'none',
@@ -801,16 +801,19 @@ export function AdminDashboardView({
                   {/* Nome */}
                   <a
                     href={`/${b.slug}/agenda`}
+                    className="occ-name"
                     style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textDecoration: 'none' }}
                   >
                     {b.name}
                   </a>
 
                   {/* Barra */}
-                  <AnimatedBar pct={pct} color={color} height={8} borderRadius={4} />
+                  <div className="occ-bar">
+                    <AnimatedBar pct={pct} color={color} height={8} borderRadius={4} />
+                  </div>
 
                   {/* % */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div className="occ-pct" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <AnimatedNum value={pct} format="pct" style={{
                       fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em',
                       color,
@@ -824,7 +827,7 @@ export function AdminDashboardView({
                   </div>
 
                   {/* Detalhes */}
-                  <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
+                  <div className="occ-details" style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
                     <span style={{ color: '#16a34a', fontWeight: 700 }}>{b.completed} concluídos</span>
                     <span>{b.cancelled} cancelados</span>
                     <span>{b.noShow} no-show</span>
@@ -967,7 +970,7 @@ export function AdminDashboardView({
       ══════════════════════════════════════════════════════════════ */}
       <SectionHeader title="Profissionais" />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, alignItems: 'start' }}>
+      <div className="kpi-grid" style={{ gap: 16, alignItems: 'start' }}>
 
         {/* Ranking — Mais solicitados */}
         <div className="card" style={{ padding: '18px 20px' }}>

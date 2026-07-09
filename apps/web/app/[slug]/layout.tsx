@@ -100,6 +100,8 @@ export default async function BranchLayout({
         paddingBottom: 'calc(var(--content-pad-y) + env(safe-area-inset-bottom, 0px))',
         minHeight:     'calc(100vh - var(--topbar-h))',
         transition:    'margin-left var(--sidebar-anim) var(--sidebar-ease)',
+        overflowX:     'clip',
+        minWidth:      0,
       }}>
         {children}
       </main>
