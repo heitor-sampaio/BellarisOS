@@ -98,7 +98,7 @@ export function SegSelect({
       <div
         className="seg-desktop"
         style={{
-          display: 'inline-flex', gap: 4, background: 'var(--surface)',
+          display: 'inline-flex', flexWrap: 'wrap', gap: 4, background: 'var(--surface)',
           borderRadius: 10, padding: 4, border: '1px solid var(--border)',
         }}
       >

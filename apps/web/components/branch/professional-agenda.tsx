@@ -10,6 +10,7 @@ import {
   parseISO, getHours, getMinutes,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { SegSelect } from '@/components/shared/seg-select'
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -198,21 +199,12 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
         </div>
 
         {/* Switcher Dia / Semana / Mês */}
-        <div style={{ display: 'flex', border: '1.5px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface)' }}>
-          {(['dia', 'semana', 'mes'] as ViewMode[]).map(v => (
-            <button key={v} type="button" onClick={() => setView(v)} style={{
-              padding: '7px 16px', fontSize: 13, fontWeight: 700,
-              border: 'none', cursor: 'pointer',
-              background: view === v ? 'var(--brand)' : 'transparent',
-              color: view === v ? '#fff' : 'var(--text-muted)',
-              textTransform: 'capitalize',
-              boxShadow: view === v ? '0 1px 6px rgba(195,77,107,.28)' : 'none',
-              transition: 'all 0.15s',
-            }}>
-              {v === 'dia' ? 'Dia' : v === 'semana' ? 'Semana' : 'Mês'}
-            </button>
-          ))}
-        </div>
+        <SegSelect
+          options={[{ key: 'dia', label: 'Dia' }, { key: 'semana', label: 'Semana' }, { key: 'mes', label: 'Mês' }]}
+          value={view}
+          onSelect={(k) => setView(k as ViewMode)}
+          ariaLabel="Modo de visualização"
+        />
       </div>
 
       {/* -- KPI strip ------------------------------------------------ */}

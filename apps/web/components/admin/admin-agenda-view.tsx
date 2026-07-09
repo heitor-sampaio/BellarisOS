@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { SegSelect } from '@/components/shared/seg-select'
 
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
@@ -488,28 +489,12 @@ export function AdminAgendaView({ view, selectedDate, todayStr, branches, appoin
         </div>
 
         {/* Toggle de view */}
-        <div className="seg-bar" style={{
-          display: 'flex', gap: 3,
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 10, padding: 3,
-        }}>
-          {(['day', 'week'] as AgendaView[]).map(v => (
-            <button
-              key={v}
-              onClick={() => navigate(selectedDate, v)}
-              style={{
-                padding: '6px 16px', borderRadius: 7, border: 'none',
-                fontSize: 12, fontWeight: view === v ? 700 : 500, cursor: 'pointer',
-                transition: 'all .15s',
-                background: view === v ? 'var(--brand)' : 'transparent',
-                color:      view === v ? '#fff' : 'var(--text-muted)',
-              }}
-            >
-              {v === 'day' ? 'Dia' : 'Semana'}
-            </button>
-          ))}
-        </div>
+        <SegSelect
+          options={[{ key: 'day', label: 'Dia' }, { key: 'week', label: 'Semana' }]}
+          value={view}
+          onSelect={(k) => navigate(selectedDate, k as AgendaView)}
+          ariaLabel="Modo de visualização"
+        />
       </div>
 
       {/* KPIs compactos */}

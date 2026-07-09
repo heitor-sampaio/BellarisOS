@@ -7,6 +7,7 @@ import {
   startOfWeek, endOfWeek, startOfMonth, endOfMonth, isSameDay,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { SegSelect } from '@/components/shared/seg-select'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 
 import { AppointmentModal } from './appointment-modal'
@@ -197,25 +198,12 @@ export function AgendaCalendar({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* View switcher */}
-          <div style={{ display: 'flex', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-            {(['dia', 'semana', 'mes'] as ViewMode[]).map(v => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                style={{
-                  padding: '8px 16px',
-                  fontSize: 'var(--text-xs-sz)', fontWeight: 700,
-                  border: 'none', cursor: 'pointer',
-                  background: view === v ? 'var(--brand)' : 'transparent',
-                  color:      view === v ? '#fff' : 'var(--text-muted)',
-                  transition: 'background 0.12s, color 0.12s',
-                }}
-              >
-                {viewLabel[v]}
-              </button>
-            ))}
-          </div>
+          <SegSelect
+            options={(['dia', 'semana', 'mes'] as ViewMode[]).map(v => ({ key: v, label: viewLabel[v] }))}
+            value={view}
+            onSelect={(k) => setView(k as ViewMode)}
+            ariaLabel="Modo de visualização"
+          />
 
           {canWrite && (
             <button

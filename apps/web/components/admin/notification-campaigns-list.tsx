@@ -6,6 +6,7 @@ import { Plus, Archive, Eye, Pause, Play, Clock, Zap, RefreshCw } from 'lucide-r
 import { archiveCampaign, pauseCampaign, activateCampaign } from '@/actions/notification-campaigns'
 import type { NotificationCampaign, CampaignStatus, CampaignType } from '@/actions/notification-campaigns'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { SegSelect } from '@/components/shared/seg-select'
 
 // -- Constants ----------------------------------------------------------
 
@@ -99,19 +100,12 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
       {/* -- Header ----------------------------------------------- */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         {/* Filters */}
-        <div className="seg-bar" style={{ display: 'flex', gap: 4, background: 'var(--surface)', borderRadius: 10, padding: 4, border: '1px solid var(--border)' }}>
-          {FILTERS.map(f => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setFilter(f.key)}
-              className={filter === f.key ? 'btn-primary' : 'btn-ghost'}
-              style={{ fontSize: 12, padding: '5px 12px', whiteSpace: 'nowrap' }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <SegSelect
+          options={FILTERS}
+          value={filter}
+          onSelect={(k) => setFilter(k as Filter)}
+          ariaLabel="Filtrar por status"
+        />
 
         <button
           type="button"

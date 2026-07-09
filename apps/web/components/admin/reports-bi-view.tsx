@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from 
 import { useRouter } from 'next/navigation'
 import { EvolutionChart, type ChartPoint } from './evolution-chart'
 import { PeriodSelector, type Period } from './period-selector'
+import { SegSelect } from '@/components/shared/seg-select'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
   DreWaterfall, SimpleTable, Badge,
@@ -1024,29 +1025,12 @@ export function ReportsBiView(props: ReportsBiProps) {
 
       {/* Tab nav + seletor de período na mesma linha */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-        <div className="seg-bar" style={{
-          display: 'flex', gap: 3, flexWrap: 'wrap',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          borderRadius: 10, padding: 3,
-        }}>
-          {TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => switchTab(t.key)}
-              style={{
-                padding: '6px 16px', borderRadius: 7, border: 'none',
-                fontSize: 12, fontWeight: tab === t.key ? 700 : 500,
-                background: tab === t.key ? 'var(--brand,#c34d6b)' : 'transparent',
-                color:      tab === t.key ? '#fff' : 'var(--text-muted)',
-                cursor: 'pointer', transition: 'all .15s',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <SegSelect
+          options={TABS}
+          value={tab}
+          onSelect={(k) => switchTab(k as Tab)}
+          ariaLabel="Seção do relatório"
+        />
         <PeriodSelector
           current={period}
           fromDate={props.customFrom}
