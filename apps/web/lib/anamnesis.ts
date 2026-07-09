@@ -1,42 +1,32 @@
 // Tipos e helpers do construtor de fichas de anamnese.
 // Módulo neutro (sem 'use server'/'use client') — importável por actions e componentes.
 
-import type { CSSProperties } from 'react'
-
 export type AnamnesisFieldType =
   | 'text' | 'textarea' | 'number' | 'date'
   | 'select' | 'radio' | 'checkbox' | 'section' | 'photo'
-
-/** Largura do campo na linha — permite mais de um campo por linha (colunas). */
-export type AnamnesisFieldWidth = 'full' | 'half' | 'third'
 
 export interface AnamnesisField {
   id:           string
   type:         AnamnesisFieldType
   label:        string
-  width?:       AnamnesisFieldWidth
   required?:    boolean
   options?:     string[]        // select / radio / checkbox
   placeholder?: string
   help?:        string
 }
 
-export const WIDTHS: { value: AnamnesisFieldWidth; label: string; basis: string }[] = [
-  { value: 'full',  label: 'Linha inteira', basis: '1 1 100%' },
-  { value: 'half',  label: 'Metade',        basis: '1 1 calc(50% - 6px)' },
-  { value: 'third', label: 'Um terço',      basis: '1 1 calc(33.333% - 8px)' },
-]
-const WIDTH_SET = new Set<AnamnesisFieldWidth>(['full', 'half', 'third'])
-
-/** Estilo flex para posicionar um campo conforme sua largura (linha inteira / colunas). */
-export function widthFlex(w: AnamnesisFieldWidth | undefined): CSSProperties {
-  const found = WIDTHS.find(x => x.value === (w ?? 'full')) ?? WIDTHS[0]!
-  return { flex: found.basis, minWidth: 200 }
+/** Uma linha do formulário — os campos dentro dela viram colunas automáticas. */
+export interface AnamnesisRow {
+  id:     string
+  fields: AnamnesisField[]      // 1..MAX_COLS
 }
 
 export interface AnamnesisFormSchema {
-  fields: AnamnesisField[]
+  rows: AnamnesisRow[]
 }
+
+/** Máximo de colunas (campos) por linha. */
+export const MAX_COLS = 4
 
 export const FIELD_TYPES: { value: AnamnesisFieldType; label: string; hasOptions?: boolean; isInput: boolean }[] = [
   { value: 'text',     label: 'Texto curto',      isInput: true },
@@ -56,51 +46,78 @@ export const FIELD_TYPE_LABEL: Record<AnamnesisFieldType, string> =
 export const OPTION_TYPES: AnamnesisFieldType[] = ['select', 'radio', 'checkbox']
 const VALID_TYPES = new Set<AnamnesisFieldType>(FIELD_TYPES.map(t => t.value))
 
-function newId(): string {
+export function newId(): string {
   try { return crypto.randomUUID() } catch { return `f_${Math.random().toString(36).slice(2)}` }
 }
 
-/** Normaliza um schema vindo do builder/DB para uma forma segura. */
-export function normalizeFormSchema(raw: unknown): AnamnesisFormSchema {
-  const fields: AnamnesisField[] = []
-  const arr = (raw as { fields?: unknown })?.fields
-  if (!Array.isArray(arr)) return { fields }
-  for (const f of arr) {
-    if (!f || typeof f !== 'object') continue
-    const type = (f as AnamnesisField).type
-    if (!VALID_TYPES.has(type)) continue
-    const label = typeof (f as AnamnesisField).label === 'string' ? (f as AnamnesisField).label.trim() : ''
-    if (!label) continue
-    const rawWidth = (f as AnamnesisField).width
-    const width: AnamnesisFieldWidth = type === 'section'
-      ? 'full'
-      : (rawWidth && WIDTH_SET.has(rawWidth) ? rawWidth : 'full')
-    const field: AnamnesisField = {
-      id:    typeof (f as AnamnesisField).id === 'string' && (f as AnamnesisField).id ? (f as AnamnesisField).id : newId(),
-      type,
-      label,
-      width,
-    }
-    if ((f as AnamnesisField).required) field.required = true
-    const ph = (f as AnamnesisField).placeholder
-    if (typeof ph === 'string' && ph.trim()) field.placeholder = ph.trim()
-    const help = (f as AnamnesisField).help
-    if (typeof help === 'string' && help.trim()) field.help = help.trim()
-    if (OPTION_TYPES.includes(type)) {
-      const opts = Array.isArray((f as AnamnesisField).options)
-        ? (f as AnamnesisField).options!.map(o => String(o).trim()).filter(Boolean)
-        : []
-      field.options = opts
-    }
-    fields.push(field)
+function normField(f: unknown): AnamnesisField | null {
+  if (!f || typeof f !== 'object') return null
+  const raw = f as Partial<AnamnesisField>
+  const type = raw.type as AnamnesisFieldType
+  if (!VALID_TYPES.has(type)) return null
+  const label = typeof raw.label === 'string' ? raw.label.trim() : ''
+  if (!label) return null
+  const field: AnamnesisField = {
+    id: typeof raw.id === 'string' && raw.id ? raw.id : newId(),
+    type, label,
   }
-  return { fields }
+  if (raw.required && type !== 'section') field.required = true
+  if (typeof raw.placeholder === 'string' && raw.placeholder.trim()) field.placeholder = raw.placeholder.trim()
+  if (typeof raw.help === 'string' && raw.help.trim()) field.help = raw.help.trim()
+  if (OPTION_TYPES.includes(type)) {
+    field.options = Array.isArray(raw.options) ? raw.options.map(o => String(o).trim()).filter(Boolean) : []
+  }
+  return field
+}
+
+/** Garante invariantes: seções isoladas em sua linha; no máximo MAX_COLS por linha. */
+function sanitizeRows(rows: AnamnesisRow[]): AnamnesisRow[] {
+  const out: AnamnesisRow[] = []
+  for (const row of rows) {
+    let bucket: AnamnesisField[] = []
+    const flush = () => { if (bucket.length) { out.push({ id: newId(), fields: bucket }); bucket = [] } }
+    for (const f of row.fields) {
+      if (f.type === 'section') { flush(); out.push({ id: newId(), fields: [f] }); continue }
+      bucket.push(f)
+      if (bucket.length === MAX_COLS) flush()
+    }
+    flush()
+  }
+  return out
+}
+
+/** Normaliza um schema do DB/builder — aceita o formato novo (rows) e o legado (fields). */
+export function normalizeFormSchema(raw: unknown): AnamnesisFormSchema {
+  const rawRows   = (raw as { rows?: unknown })?.rows
+  const rawFields = (raw as { fields?: unknown })?.fields
+  const rows: AnamnesisRow[] = []
+
+  if (Array.isArray(rawRows)) {
+    for (const r of rawRows) {
+      const fs = (Array.isArray((r as { fields?: unknown })?.fields) ? (r as { fields: unknown[] }).fields : [])
+        .map(normField).filter((x): x is AnamnesisField => x !== null)
+      if (fs.length) rows.push({ id: newId(), fields: fs })
+    }
+  } else if (Array.isArray(rawFields)) {
+    // Legado: lista plana de campos → uma linha por campo.
+    for (const f of rawFields) {
+      const nf = normField(f)
+      if (nf) rows.push({ id: newId(), fields: [nf] })
+    }
+  }
+
+  return { rows: sanitizeRows(rows) }
+}
+
+export function flattenFields(schema: AnamnesisFormSchema): AnamnesisField[] {
+  return schema.rows.flatMap(r => r.fields)
 }
 
 /** Retorna mensagem de erro se o schema for inválido; null se ok. */
 export function validateFormSchema(schema: AnamnesisFormSchema): string | null {
-  if (!schema.fields.length) return 'Adicione ao menos um campo à ficha.'
-  for (const f of schema.fields) {
+  const fields = flattenFields(schema)
+  if (!fields.length) return 'Adicione ao menos um campo à ficha.'
+  for (const f of fields) {
     if (!f.label.trim()) return 'Todos os campos precisam de um rótulo.'
     if (OPTION_TYPES.includes(f.type) && (!f.options || f.options.length < 1)) {
       return `O campo "${f.label}" precisa de ao menos uma opção.`

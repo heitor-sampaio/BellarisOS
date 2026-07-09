@@ -24,7 +24,7 @@ import type { AnamnesisData } from '@/actions/treatment-plans'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { AnamnesisTab } from '@/components/branch/anamnesis-tab'
 import { AnamnesisFormRenderer, type AnamnesisAnswers } from '@/components/branch/anamnesis-form-renderer'
-import type { AnamnesisField } from '@/lib/anamnesis'
+import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 
@@ -96,7 +96,7 @@ interface Props {
   appointment:        SessionAppointment
   client:             SessionClient
   anamnesis:          GeneralAnamnesis | null
-  anamnesisForm:      { name: string; fields: AnamnesisField[] } | null
+  anamnesisForm:      { name: string; rows: AnamnesisRow[] } | null
   anamnesisAnswers:   Record<string, unknown>
   products:           SessionProduct[]
   availableProducts:  AvailableProduct[]
@@ -1074,7 +1074,7 @@ export function AppointmentSession({
                     <AnamnesisTab anamnesis={anamnesis} clientId={client.id} branchId={branchId} slug={slug} canEdit={canManage} />
                   </div>
 
-                  {anamnesisForm && anamnesisForm.fields.length > 0 && (
+                  {anamnesisForm && anamnesisForm.rows.length > 0 && (
                     <div className="card" style={{ padding: '18px 20px' }}>
                       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
                         Ficha do procedimento
@@ -1084,7 +1084,7 @@ export function AppointmentSession({
                         appointmentId={appointment.id}
                         slug={slug}
                         formName={anamnesisForm.name}
-                        fields={anamnesisForm.fields}
+                        rows={anamnesisForm.rows}
                         initial={anamnesisAnswers as AnamnesisAnswers}
                         canEdit={canManage}
                       />

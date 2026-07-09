@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { Save, Upload, X, ImageIcon, CheckCircle2 } from 'lucide-react'
-import { widthFlex, type AnamnesisField } from '@/lib/anamnesis'
+import { flattenFields, type AnamnesisField, type AnamnesisRow } from '@/lib/anamnesis'
 import { saveProcedureAnamnesis, uploadAnamnesisPhoto } from '@/actions/anamnesis'
 
 type AnswerValue = string | string[]
@@ -12,12 +12,12 @@ interface Props {
   appointmentId: string
   slug:          string
   formName:      string
-  fields:        AnamnesisField[]
+  rows:          AnamnesisRow[]
   initial:       AnamnesisAnswers
   canEdit:       boolean
 }
 
-export function AnamnesisFormRenderer({ appointmentId, slug, formName, fields, initial, canEdit }: Props) {
+export function AnamnesisFormRenderer({ appointmentId, slug, formName, rows, initial, canEdit }: Props) {
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
   const [saving, setSaving]   = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
@@ -39,7 +39,7 @@ export function AnamnesisFormRenderer({ appointmentId, slug, formName, fields, i
   async function save() {
     setSaving(true); setError(null)
     // valida obrigatórios
-    const missing = fields.find(f => f.required && f.type !== 'section' && isEmpty(answers[f.id]))
+    const missing = flattenFields({ rows }).find(f => f.required && f.type !== 'section' && isEmpty(answers[f.id]))
     if (missing) { setError(`Preencha "${missing.label}".`); setSaving(false); return }
     const res = await saveProcedureAnamnesis({ appointmentId, slug, answers })
     setSaving(false)
@@ -49,15 +49,17 @@ export function AnamnesisFormRenderer({ appointmentId, slug, formName, fields, i
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-start' }}>
-        {fields.map(f => (
-          <div key={f.id} style={widthFlex(f.width)}>
-            <FieldView
-              field={f} value={answers[f.id]} canEdit={canEdit}
-              appointmentId={appointmentId}
-              onChange={v => setAnswer(f.id, v)}
-              onToggle={opt => toggleCheckbox(f.id, opt)}
-            />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {rows.map(row => (
+          <div key={row.id} className="anamnesis-row" data-cols={row.fields.length}>
+            {row.fields.map(f => (
+              <FieldView
+                key={f.id} field={f} value={answers[f.id]} canEdit={canEdit}
+                appointmentId={appointmentId}
+                onChange={v => setAnswer(f.id, v)}
+                onToggle={opt => toggleCheckbox(f.id, opt)}
+              />
+            ))}
           </div>
         ))}
       </div>

@@ -139,7 +139,7 @@ export async function saveProcedureAnamnesis(params: {
       .maybeSingle()
     if (!form) return { error: 'Ficha não encontrada.' }
 
-    const fields = normalizeFormSchema(form.schema).fields
+    const rows = normalizeFormSchema(form.schema).rows
 
     // medical_records (get or create)
     let { data: medRecord } = await admin
@@ -161,7 +161,7 @@ export async function saveProcedureAnamnesis(params: {
 
     const merged = {
       ...existing,
-      customForm: { formId: form.id, name: form.name, fields, answers: params.answers },
+      customForm: { formId: form.id, name: form.name, rows, answers: params.answers },
     }
 
     const { error } = await admin.from('medical_record_entries').upsert({

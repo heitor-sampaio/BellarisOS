@@ -5,7 +5,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import { getCachedProductsReference } from '@/lib/cached-queries'
 import { AppointmentSession } from '@/components/branch/appointment-session'
 import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry } from '@/components/branch/appointment-session'
-import { normalizeFormSchema, type AnamnesisField } from '@/lib/anamnesis'
+import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 
@@ -337,7 +337,7 @@ export default async function AppointmentSessionPage({
 
   // Ficha de anamnese vinculada ao procedimento (construtor) + respostas já salvas
   const procedureFormId = (apptRaw.procedures as unknown as { anamnesis_form_id?: string | null } | null)?.anamnesis_form_id ?? null
-  let anamnesisForm: { name: string; fields: AnamnesisField[] } | null = null
+  let anamnesisForm: { name: string; rows: AnamnesisRow[] } | null = null
   let anamnesisAnswers: Record<string, unknown> = {}
   if (procedureFormId) {
     const { data: formRow } = await admin
@@ -347,7 +347,7 @@ export default async function AppointmentSessionPage({
       .eq('tenant_id', ctx.tenantId!)
       .maybeSingle()
     if (formRow) {
-      anamnesisForm = { name: formRow.name as string, fields: normalizeFormSchema(formRow.schema).fields }
+      anamnesisForm = { name: formRow.name as string, rows: normalizeFormSchema(formRow.schema).rows }
       const cf = (mreRaw?.anamnesis_data as { customForm?: { answers?: Record<string, unknown> } } | null)?.customForm
       if (cf?.answers && typeof cf.answers === 'object') anamnesisAnswers = cf.answers
     }

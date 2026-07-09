@@ -60,7 +60,7 @@ export default async function AdminSettingsPage({
   const anamnesisForms: AdminAnamnesisForm[] = (anamnesisRows ?? []).map((r: any) => ({
     id:       r.id as string,
     name:     r.name as string,
-    fields:   normalizeFormSchema(r.schema).fields,
+    rows:     normalizeFormSchema(r.schema).rows,
     isActive: !!r.is_active,
   }))
 

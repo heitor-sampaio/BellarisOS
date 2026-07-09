@@ -5,13 +5,17 @@ import { useRouter } from 'next/navigation'
 import { Plus, Pencil, Trash2, ClipboardList, FileText } from 'lucide-react'
 import { AnamnesisFormBuilder, type ExistingForm } from '@/components/admin/anamnesis-form-builder'
 import { deleteAnamnesisForm, setAnamnesisFormActive } from '@/actions/anamnesis-forms'
-import type { AnamnesisField } from '@/lib/anamnesis'
+import type { AnamnesisRow } from '@/lib/anamnesis'
 
 export interface AdminAnamnesisForm {
   id:       string
   name:     string
-  fields:   AnamnesisField[]
+  rows:     AnamnesisRow[]
   isActive: boolean
+}
+
+function fieldCount(rows: AnamnesisRow[]): number {
+  return rows.reduce((s, r) => s + r.fields.length, 0)
 }
 
 interface Props {
@@ -89,7 +93,7 @@ export function SettingsAnamnesis({ forms }: Props) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>{f.name}</p>
                 <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  {f.fields.length} campo{f.fields.length !== 1 ? 's' : ''}
+                  {fieldCount(f.rows)} campo{fieldCount(f.rows) !== 1 ? 's' : ''}
                   {!f.isActive && ' · inativa'}
                 </p>
               </div>
@@ -104,7 +108,7 @@ export function SettingsAnamnesis({ forms }: Props) {
               </button>
               <button
                 type="button" title="Editar"
-                onClick={() => setView({ mode: 'edit', form: { id: f.id, name: f.name, fields: f.fields } })}
+                onClick={() => setView({ mode: 'edit', form: { id: f.id, name: f.name, rows: f.rows } })}
                 style={iconBtn}
               >
                 <Pencil size={14} />

@@ -607,6 +607,22 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   }
 }
 
+/* -- Anamnese: linha com colunas automáticas (máx 4; máx 2 no mobile) ---- */
+.anamnesis-row {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+}
+.anamnesis-row[data-cols='1'] { grid-template-columns: 1fr; }
+.anamnesis-row[data-cols='2'] { grid-template-columns: repeat(2, 1fr); }
+.anamnesis-row[data-cols='3'] { grid-template-columns: repeat(3, 1fr); }
+.anamnesis-row[data-cols='4'] { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 639px) {
+  .anamnesis-row[data-cols='2'],
+  .anamnesis-row[data-cols='3'],
+  .anamnesis-row[data-cols='4'] { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* -- Tabelas: scroll horizontal em telas pequenas ---------- */
 .table-wrap {
   overflow-x: auto;
