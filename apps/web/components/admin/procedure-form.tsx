@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useActionState, useState, useEffect } from 'react'
+import { useActionState, useState, useEffect, useRef } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
 
@@ -36,6 +36,7 @@ interface ExistingProcedure {
   duration_min: number
   price: string | number
   labor_cost?: string | number
+  other_costs?: string | number
   visible_on_client_app: boolean
   is_active: boolean
   branch_ids: string[]
@@ -96,8 +97,11 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
       unit_cost: pp.unit_cost ?? products.find(p => p.id === pp.product_id)?.cost_price ?? 0,
     }))
   )
-  const [price,     setPrice]     = useState(existing ? formatPrice(existing.price)      : '')
-  const [laborCost, setLaborCost] = useState(existing?.labor_cost ? formatPrice(existing.labor_cost) : '')
+  const [price,      setPrice]      = useState(existing ? formatPrice(existing.price)      : '')
+  const [laborCost,  setLaborCost]  = useState(existing?.labor_cost  ? formatPrice(existing.labor_cost)  : '')
+  const [otherCosts, setOtherCosts] = useState(existing?.other_costs ? formatPrice(existing.other_costs) : '')
+  const [marginPct,  setMarginPct]  = useState('')  // % — vinculado ao preço (bidirecional)
+  const lastAnchor = useRef<'margin' | 'price'>('price')
 
   type BranchOverrideState = { branch_id: string; price: string; labor_cost: string }
   const [branchPricing, setBranchPricing] = useState<BranchOverrideState[]>(
@@ -142,10 +146,42 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
   const productsCostCalc = insumos.reduce((sum, ins) => sum + (ins.unit_cost ?? 0) * ins.quantity, 0)
 
   function parseBRL(v: string) { return parseFloat(v.replace(/\./g, '').replace(',', '.')) || 0 }
-  const priceNum     = parseBRL(price)
-  const laborCostNum = parseBRL(laborCost)
-  const margin       = priceNum - laborCostNum - productsCostCalc
-  const marginPct    = priceNum > 0 ? (margin / priceNum) * 100 : 0
+  const laborCostNum  = parseBRL(laborCost)
+  const otherCostsNum = parseBRL(otherCosts)
+  const totalCost     = laborCostNum + otherCostsNum + productsCostCalc
+  const priceNum      = parseBRL(price)
+
+  const fmtMargin = (pct: number) => pct.toFixed(1).replace('.', ',')
+  const priceFromMargin = (m: number) => (m < 100 ? totalCost / (1 - m / 100) : 0)
+  const marginFromPrice = (p: number) => (p > 0 ? ((p - totalCost) / p) * 100 : 0)
+
+  // Quando o custo muda (mão de obra, insumos, outros), reprojeta mantendo a
+  // última intenção do usuário: margem fixa → recalcula preço; preço fixo → recalcula margem.
+  useEffect(() => {
+    if (lastAnchor.current === 'margin') {
+      const m = parseFloat(marginPct.replace(',', '.')) || 0
+      if (m < 100) setPrice(formatPrice(priceFromMargin(m)))
+    } else {
+      const p = parseBRL(price)
+      setMarginPct(p > 0 ? fmtMargin(marginFromPrice(p)) : '')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalCost])
+
+  function handleMarginInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const cleaned = e.target.value.replace(/[^\d.,]/g, '').replace('.', ',')
+    lastAnchor.current = 'margin'
+    setMarginPct(cleaned)
+    const m = parseFloat(cleaned.replace(',', '.')) || 0
+    setPrice(m > 0 && m < 100 ? formatPrice(priceFromMargin(m)) : (m <= 0 ? formatPrice(totalCost) : ''))
+  }
+  function handlePriceCalcInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/\D/g, '')
+    const num    = parseInt(digits || '0', 10) / 100
+    lastAnchor.current = 'price'
+    setPrice(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+    setMarginPct(num > 0 ? fmtMargin(marginFromPrice(num)) : '')
+  }
 
   useEffect(() => {
     if (state?.success) onSuccess?.()
@@ -180,8 +216,8 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
       setter(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
     }
   }
-  const handlePriceInput     = makeCurrencyHandler(setPrice)
-  const handleLaborCostInput = makeCurrencyHandler(setLaborCost)
+  const handleLaborCostInput  = makeCurrencyHandler(setLaborCost)
+  const handleOtherCostsInput = makeCurrencyHandler(setOtherCosts)
 
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -209,21 +245,6 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
         <Field label="Duração (minutos) *">
           <input name="duration_min" type="number" required className="field"
             min={1} defaultValue={existing?.duration_min ?? 60} />
-        </Field>
-
-        <Field label="Preço (R$) *">
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>
-              R$
-            </span>
-            <input
-              name="price" type="text" required className="field"
-              value={price}
-              onChange={handlePriceInput}
-              placeholder="0,00"
-              style={{ paddingLeft: 30 }}
-            />
-          </div>
         </Field>
 
         <Field label="Visível no app do cliente">
@@ -377,55 +398,62 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
         </div>
       </div>
 
-      {/* -- Custos e margem -- */}
+      {/* -- Calculadora de custos -- */}
       <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px' }}>
         <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12 }}>
-          Custos
+          Calculadora de custos
         </p>
         <div className="form-3col">
           {/* Mão de obra */}
           <Field label="Mão de obra">
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
-              <input
-                name="labor_cost" type="text" className="field"
-                value={laborCost}
-                onChange={handleLaborCostInput}
-                placeholder="0,00"
-                style={{ paddingLeft: 30 }}
-              />
+              <input name="labor_cost" type="text" className="field" value={laborCost} onChange={handleLaborCostInput} placeholder="0,00" style={{ paddingLeft: 30 }} />
             </div>
           </Field>
 
-          {/* Custo dos produtos — calculado dos insumos */}
-          <Field label="Custo dos produtos" hint="Calculado dos insumos">
+          {/* Insumos — calculado da lista de insumos */}
+          <Field label="Insumos" hint="Calculado dos insumos">
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
-              <div className="field" style={{ paddingLeft: 30, background: 'var(--surface)', color: insumos.length > 0 ? 'var(--text)' : 'var(--text-faint)', cursor: 'default', userSelect: 'none' }}>
-                {insumos.length > 0 ? formatPrice(productsCostCalc) : '—'}
+              <div className="field" style={{ paddingLeft: 30, background: 'var(--surface)', color: 'var(--text)', cursor: 'default', userSelect: 'none' }}>
+                {formatPrice(productsCostCalc)}
               </div>
             </div>
           </Field>
 
-          {/* Margem bruta */}
-          <Field label="Margem bruta">
-            <div className="field" style={{
-              background: 'var(--surface)', cursor: 'default', userSelect: 'none',
-              fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6,
-              color: priceNum === 0 ? 'var(--text-faint)' : margin >= 0 ? '#16a34a' : '#dc2626',
-            }}>
-              {priceNum === 0 ? '—' : (
-                <>
-                  {formatPrice(margin)}
-                  <span style={{ fontWeight: 600, fontSize: 11, opacity: 0.75 }}>
-                    {marginPct.toFixed(1).replace('.', ',')}%
-                  </span>
-                </>
-              )}
+          {/* Outros custos */}
+          <Field label="Outros custos">
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
+              <input name="other_costs" type="text" className="field" value={otherCosts} onChange={handleOtherCostsInput} placeholder="0,00" style={{ paddingLeft: 30 }} />
+            </div>
+          </Field>
+        </div>
+
+        {/* Custo total + margem desejada */}
+        <div className="form-2col" style={{ marginTop: 12 }}>
+          <Field label="Custo total" hint="Mão de obra + insumos + outros">
+            <div className="field" style={{ background: 'var(--surface)', cursor: 'default', userSelect: 'none', fontWeight: 800 }}>
+              R$ {formatPrice(totalCost)}
+            </div>
+          </Field>
+          <Field label="Margem de lucro" hint="Defina a margem e o preço se ajusta">
+            <div style={{ position: 'relative' }}>
+              <input type="text" inputMode="decimal" className="field" value={marginPct} onChange={handleMarginInput} placeholder="0,0" style={{ paddingRight: 26 }} />
+              <span style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
             </div>
           </Field>
         </div>
       </div>
+
+      {/* -- Preço do procedimento (abaixo da calculadora, vinculado à margem) -- */}
+      <Field label="Preço do procedimento (R$) *" hint="Edite a margem ou o preço — o outro se ajusta automaticamente.">
+        <div style={{ position: 'relative' }}>
+          <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
+          <input name="price" type="text" required className="field" value={price} onChange={handlePriceCalcInput} placeholder="0,00" style={{ paddingLeft: 30, fontWeight: 700 }} />
+        </div>
+      </Field>
 
       {/* -- Personalizar valores por filial (acordeão) -- */}
       {branches.length > 0 && (

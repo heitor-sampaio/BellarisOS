@@ -16,6 +16,7 @@ interface ExistingProcedure {
   duration_min: number
   price: string | number
   labor_cost?: string | number
+  other_costs?: string | number
   visible_on_client_app: boolean
   is_active: boolean
   branch_ids: string[]

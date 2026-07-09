@@ -21,6 +21,8 @@ export async function addProcedure(
   const price       = parseFloat(priceRaw)
   const laborCostRaw = (formData.get('labor_cost') as string)?.replace(/\./g, '').replace(',', '.')
   const laborCost    = parseFloat(laborCostRaw) || 0
+  const otherCostsRaw = (formData.get('other_costs') as string)?.replace(/\./g, '').replace(',', '.')
+  const otherCosts    = parseFloat(otherCostsRaw) || 0
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
   const anamnesisFormId = (formData.get('anamnesis_form_id') as string)?.trim() || null
   const branchIds      = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
@@ -45,6 +47,7 @@ export async function addProcedure(
       duration_min:          durationMin,
       price,
       labor_cost:            laborCost,
+      other_costs:           otherCosts,
       visible_on_client_app: visibleOnClientApp,
       anamnesis_form_id:     anamnesisFormId,
       is_active:             true,
@@ -107,6 +110,8 @@ export async function updateProcedure(
   const price       = parseFloat(priceRaw)
   const laborCostRaw = (formData.get('labor_cost') as string)?.replace(/\./g, '').replace(',', '.')
   const laborCost    = parseFloat(laborCostRaw) || 0
+  const otherCostsRaw = (formData.get('other_costs') as string)?.replace(/\./g, '').replace(',', '.')
+  const otherCosts    = parseFloat(otherCostsRaw) || 0
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
   const anamnesisFormId = (formData.get('anamnesis_form_id') as string)?.trim() || null
   const branchIds     = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
@@ -131,7 +136,7 @@ export async function updateProcedure(
   // Atualiza dados básicos
   const { error } = await admin
     .from('procedures')
-    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, visible_on_client_app: visibleOnClientApp, anamnesis_form_id: anamnesisFormId })
+    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, anamnesis_form_id: anamnesisFormId })
     .eq('id', procedureId)
     .eq('tenant_id', ctx.tenantId!)
 

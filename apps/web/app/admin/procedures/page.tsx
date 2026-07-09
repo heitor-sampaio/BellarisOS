@@ -29,7 +29,7 @@ export default async function AdminProceduresPage() {
       .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
 
     admin.from('procedures')
-      .select('id, name, category, description, duration_min, price, labor_cost, visible_on_client_app, is_active, created_at, anamnesis_form_id')
+      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, anamnesis_form_id')
       .eq('tenant_id', ctx.tenantId!).is('branch_id', null)
       .order('category').order('name'),
 
@@ -148,6 +148,7 @@ export default async function AdminProceduresPage() {
                     duration_min:         p.duration_min,
                     price:                p.price,
                     labor_cost:           p.labor_cost,
+                    other_costs:          p.other_costs,
                     visible_on_client_app: p.visible_on_client_app,
                     is_active:            p.is_active,
                     branch_ids:           (availability ?? []).map(a => a.branch_id),

@@ -364,6 +364,8 @@ model Procedure {
   description String?
   durationMin Int
   price       Decimal  @db.Decimal(10, 2)
+  laborCost   Decimal  @default(0) @db.Decimal(10, 2)   // mão de obra
+  otherCosts  Decimal  @default(0) @db.Decimal(10, 2)   // outros custos (calculadora)
   isActive    Boolean  @default(true)
   // visível no app do cliente para agendamento self-service
   visibleOnClientApp Boolean @default(true)
