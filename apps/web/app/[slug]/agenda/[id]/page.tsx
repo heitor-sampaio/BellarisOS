@@ -38,7 +38,7 @@ export default async function AppointmentSessionPage({
         cancellation_reason, price, duration_min, client_notes, notes, procedure_id, professional_id,
         is_evaluation, treatment_plan_id,
         client_confirmed_at, client_rating, procedure_rating, client_feedback,
-        procedures(id, name, category, duration_min, anamnesis_form_id),
+        procedures(id, name, category, duration_min, anamnesis_form_id, attendance_form_id),
         professional:users!professional_id(id, name),
         room:rooms(id, name),
         client:clients(id, name, phone, birth_date, tags, notes, document)
@@ -49,7 +49,7 @@ export default async function AppointmentSessionPage({
 
     admin
       .from('medical_record_entries')
-      .select('notes, intercurrences, anamnesis_data')
+      .select('notes, intercurrences, anamnesis_data, attendance_data')
       .eq('appointment_id', id)
       .maybeSingle(),
   ])
@@ -335,8 +335,11 @@ export default async function AppointmentSessionPage({
     ? { id: paymentRawTyped.id, paymentMethod: paymentRawTyped.payment_method, amount: Number(paymentRawTyped.amount) }
     : null
 
-  // Ficha de anamnese vinculada ao procedimento (construtor) + respostas já salvas
-  const procedureFormId = (apptRaw.procedures as unknown as { anamnesis_form_id?: string | null } | null)?.anamnesis_form_id ?? null
+  // Fichas vinculadas ao procedimento (construtor) + respostas já salvas
+  const procForm = apptRaw.procedures as unknown as { anamnesis_form_id?: string | null; attendance_form_id?: string | null } | null
+  const procedureFormId  = procForm?.anamnesis_form_id ?? null
+  const attendanceFormId = procForm?.attendance_form_id ?? null
+
   let anamnesisForm: { name: string; rows: AnamnesisRow[] } | null = null
   let anamnesisAnswers: Record<string, unknown> = {}
   if (procedureFormId) {
@@ -353,6 +356,22 @@ export default async function AppointmentSessionPage({
     }
   }
 
+  let attendanceForm: { name: string; rows: AnamnesisRow[] } | null = null
+  let attendanceAnswers: Record<string, unknown> = {}
+  if (attendanceFormId) {
+    const { data: formRow } = await admin
+      .from('attendance_forms')
+      .select('name, schema')
+      .eq('id', attendanceFormId)
+      .eq('tenant_id', ctx.tenantId!)
+      .maybeSingle()
+    if (formRow) {
+      attendanceForm = { name: formRow.name as string, rows: normalizeFormSchema(formRow.schema).rows }
+      const af = (mreRaw?.attendance_data as { attendanceForm?: { answers?: Record<string, unknown> } } | null)?.attendanceForm
+      if (af?.answers && typeof af.answers === 'object') attendanceAnswers = af.answers
+    }
+  }
+
   return (
     <>
       <RealtimeRefresher tables={['appointments', 'medical_record_entries', 'financial_transactions']} />
@@ -362,6 +381,8 @@ export default async function AppointmentSessionPage({
         anamnesis={anamnesis}
         anamnesisForm={anamnesisForm}
         anamnesisAnswers={anamnesisAnswers}
+        attendanceForm={attendanceForm}
+        attendanceAnswers={attendanceAnswers}
         products={products}
         availableProducts={availableProducts}
         professionals={professionals}

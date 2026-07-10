@@ -8,6 +8,8 @@ import { TreatmentSessionsModal } from './treatment-sessions-modal'
 import { TreatmentFileModal } from './treatment-file-modal'
 import { ClientDocumentsTab } from './client-documents-tab'
 import type { ClientDocumentItem } from './client-documents-tab'
+import { AnamnesisFormRenderer, type AnamnesisAnswers } from './anamnesis-form-renderer'
+import type { AnamnesisRow } from '@/lib/anamnesis'
 import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -115,6 +117,20 @@ export interface ClientHistoryEvent {
   link:     string | null
 }
 
+export interface ProfileFormSnapshot {
+  name:    string
+  rows:    AnamnesisRow[]
+  answers: Record<string, unknown>
+}
+
+export interface ProfileRecordEntry {
+  appointmentId: string
+  createdAt:     string
+  procedureName: string | null
+  anamnesis:     ProfileFormSnapshot | null
+  attendance:    ProfileFormSnapshot | null
+}
+
 interface Props {
   client:                ProfileClient
   branchId:              string
@@ -128,6 +144,7 @@ interface Props {
   transactions:          ProfileTransaction[]
   internalCredits:       ProfileInternalCredit[]
   documents:             ClientDocumentItem[]
+  recordForms?:          ProfileRecordEntry[]
   canGrantCredit:        boolean
   branches:              { id: string; name: string }[]
   currentBranchId:       string
@@ -162,10 +179,11 @@ const STATUS_LABEL: Record<string, string> = {
   NO_SHOW:     'Não compareceu',
 }
 
-type TabKey = 'visao' | 'historico' | 'financeiro' | 'documentos' | 'dados'
+type TabKey = 'visao' | 'historico' | 'fichas' | 'financeiro' | 'documentos' | 'dados'
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'visao',      label: 'Visão geral' },
   { key: 'historico',  label: 'Histórico' },
+  { key: 'fichas',     label: 'Fichas' },
   { key: 'financeiro', label: 'Financeiro' },
   { key: 'documentos', label: 'Documentos' },
   { key: 'dados',      label: 'Dados' },
@@ -801,10 +819,11 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments,
   loyaltyBalance, activePackage, sessionNotes,
-  transactions, internalCredits, documents, canGrantCredit, branches, currentBranchId, slug, role, clientHistory,
+  transactions, internalCredits, documents, recordForms = [], canGrantCredit, branches, currentBranchId, slug, role, clientHistory,
 }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>('visao')
+  const visibleTabs = TABS.filter(t => t.key !== 'fichas' || recordForms.length > 0)
   const [treatmentModalOpen, setTreatmentModalOpen] = useState(false)
 
   const isVip    = client.tags.includes('VIP')
@@ -911,8 +930,8 @@ export function ClientProfile({
       </div>
 
       {/* -- Tabs ------------------------------------------------------ */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)' }}>
-        {TABS.map(t => (
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
+        {visibleTabs.map(t => (
           <button
             key={t.key}
             type="button"
@@ -1106,6 +1125,62 @@ export function ClientProfile({
                 />
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* -- Tab: Fichas ---------------------------------------------- */}
+      {tab === 'fichas' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {recordForms.length === 0 ? (
+            <div className="card" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              Nenhuma ficha preenchida ainda.
+            </div>
+          ) : (
+            recordForms.map(entry => (
+              <div key={entry.appointmentId} className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+                    {entry.procedureName ?? 'Atendimento'}
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    {format(new Date(entry.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </p>
+                </div>
+
+                {entry.anamnesis && entry.anamnesis.rows.length > 0 && (
+                  <div>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                      Ficha de anamnese · {entry.anamnesis.name}
+                    </p>
+                    <AnamnesisFormRenderer
+                      appointmentId={entry.appointmentId}
+                      slug={slug}
+                      formName={entry.anamnesis.name}
+                      rows={entry.anamnesis.rows}
+                      initial={entry.anamnesis.answers as AnamnesisAnswers}
+                      canEdit={false}
+                    />
+                  </div>
+                )}
+
+                {entry.attendance && entry.attendance.rows.length > 0 && (
+                  <div>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                      Ficha de atendimento · {entry.attendance.name}
+                    </p>
+                    <AnamnesisFormRenderer
+                      appointmentId={entry.appointmentId}
+                      slug={slug}
+                      formName={entry.attendance.name}
+                      rows={entry.attendance.rows}
+                      initial={entry.attendance.answers as AnamnesisAnswers}
+                      canEdit={false}
+                    />
+                  </div>
+                )}
+              </div>
+            ))
           )}
         </div>
       )}

@@ -8,6 +8,7 @@ import { RoleManager } from '@/components/admin/role-manager'
 import { SettingsIntegrations } from '@/components/admin/settings-integrations'
 import { SettingsBranches } from '@/components/admin/settings-branches'
 import { SettingsAnamnesis, type AdminAnamnesisForm } from '@/components/admin/settings-anamnesis'
+import { SettingsAttendance, type AdminAttendanceForm } from '@/components/admin/settings-attendance'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import type { IntegrationConfig } from '@/actions/integrations'
 
@@ -15,6 +16,7 @@ const TABS = [
   { key: 'unidades',      label: 'Unidades'     },
   { key: 'permissions',   label: 'Cargos'       },
   { key: 'anamnese',      label: 'Anamnese'     },
+  { key: 'atendimento',   label: 'Atendimento'  },
   { key: 'integrations',  label: 'Integrações'  },
   { key: 'general',       label: 'Geral'        },
 ] as const
@@ -34,7 +36,7 @@ export default async function AdminSettingsPage({
   const supabase = await createClient()
   const admin    = createAdminClient()
 
-  const [{ data: allRoles }, { data: overrides }, { data: integrationRows }, { data: anamnesisRows }] = await Promise.all([
+  const [{ data: allRoles }, { data: overrides }, { data: integrationRows }, { data: anamnesisRows }, { data: attendanceRows }] = await Promise.all([
     supabase
       .from('tenant_roles')
       .select('id, key, label, is_system')
@@ -54,10 +56,21 @@ export default async function AdminSettingsPage({
       .select('id, name, schema, is_active')
       .eq('tenant_id', ctx.tenantId!)
       .order('created_at'),
+    admin
+      .from('attendance_forms')
+      .select('id, name, schema, is_active')
+      .eq('tenant_id', ctx.tenantId!)
+      .order('created_at'),
   ])
 
   const integrationConfigs = (integrationRows ?? []) as IntegrationConfig[]
   const anamnesisForms: AdminAnamnesisForm[] = (anamnesisRows ?? []).map((r: any) => ({
+    id:       r.id as string,
+    name:     r.name as string,
+    rows:     normalizeFormSchema(r.schema).rows,
+    isActive: !!r.is_active,
+  }))
+  const attendanceForms: AdminAttendanceForm[] = (attendanceRows ?? []).map((r: any) => ({
     id:       r.id as string,
     name:     r.name as string,
     rows:     normalizeFormSchema(r.schema).rows,
@@ -153,6 +166,10 @@ export default async function AdminSettingsPage({
 
       {activeTab === 'anamnese' && (
         <SettingsAnamnesis forms={anamnesisForms} />
+      )}
+
+      {activeTab === 'atendimento' && (
+        <SettingsAttendance forms={attendanceForms} />
       )}
 
       {activeTab === 'integrations' && (

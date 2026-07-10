@@ -116,6 +116,7 @@ model Tenant {
   loyaltyConfig  LoyaltyConfig?
   leads          Lead[]
   anamnesisForms AnamnesisForm[]               // fichas de anamnese da rede
+  attendanceForms AttendanceForm[]             // fichas de atendimento da rede
 
   @@map("tenants")
 }
@@ -370,12 +371,14 @@ model Procedure {
   // visível no app do cliente para agendamento self-service
   visibleOnClientApp Boolean @default(true)
   anamnesisFormId String?                        // ficha de anamnese vinculada (opcional)
+  attendanceFormId String?                       // ficha de atendimento vinculada (opcional)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant        Tenant         @relation(fields: [tenantId], references: [id])
-  branch        Branch?        @relation(fields: [branchId], references: [id])
-  anamnesisForm AnamnesisForm? @relation(fields: [anamnesisFormId], references: [id])
+  tenant         Tenant          @relation(fields: [tenantId], references: [id])
+  branch         Branch?         @relation(fields: [branchId], references: [id])
+  anamnesisForm  AnamnesisForm?  @relation(fields: [anamnesisFormId], references: [id])
+  attendanceForm AttendanceForm? @relation(fields: [attendanceFormId], references: [id])
 
   products            ProcedureProduct[]
   appointments        Appointment[]
@@ -400,6 +403,21 @@ model AnamnesisForm {
   procedures Procedure[]
 
   @@map("anamnesis_forms")
+}
+
+model AttendanceForm {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  schema    Json     @default("{\"rows\":[]}") // { rows: AnamnesisRow[] } — mesmo schema do construtor
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant     Tenant      @relation(fields: [tenantId], references: [id])
+  procedures Procedure[]
+
+  @@map("attendance_forms")
 }
 
 model ProcedureBranchAvailability {
@@ -568,6 +586,10 @@ model MedicalRecordEntry {
   notes           String?
   productsUsed    Json?
   intercurrences  String?
+  // Respostas dos construtores de ficha (runtime PostgREST, colunas jsonb):
+  //   anamnesis_data.customForm      = snapshot { formId, name, rows, answers }
+  //   attendance_data.attendanceForm = snapshot { formId, name, rows, answers }
+  attendanceData  Json?    @map("attendance_data")
   createdAt       DateTime @default(now())
 
   medicalRecord MedicalRecord @relation(fields: [medicalRecordId], references: [id])

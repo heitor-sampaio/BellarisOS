@@ -18,9 +18,14 @@ export interface ExistingForm {
   rows: AnamnesisRow[]
 }
 
+type SaveResult = { error?: string; id?: string; ok?: true }
+
 interface Props {
   existing?: ExistingForm | null
   onDone:    () => void
+  // Ações de persistência injetáveis — default: anamnese (retrocompatível).
+  createAction?: (input: { name: string; schema: unknown }) => Promise<SaveResult>
+  updateAction?: (input: { id: string; name: string; schema: unknown }) => Promise<SaveResult>
 }
 
 const TYPE_ICON: Record<AnamnesisFieldType, ComponentType<{ size?: number }>> = {
@@ -36,7 +41,9 @@ function newField(type: AnamnesisFieldType = 'text'): AnamnesisField {
   return { id: newId(), type, label: '', required: false, ...(OPTION_TYPES.includes(type) ? { options: [''] } : {}) }
 }
 
-export function AnamnesisFormBuilder({ existing, onDone }: Props) {
+export function AnamnesisFormBuilder({ existing, onDone, createAction, updateAction }: Props) {
+  const createFn = createAction ?? createAnamnesisForm
+  const updateFn = updateAction ?? updateAnamnesisForm
   const [name, setName] = useState(existing?.name ?? '')
   const [rows, setRows] = useState<AnamnesisRow[]>(existing?.rows ?? [])
   const [saving, setSaving] = useState(false)
@@ -183,7 +190,7 @@ export function AnamnesisFormBuilder({ existing, onDone }: Props) {
 
     setSaving(true)
     const payload = { name: name.trim(), schema: { rows: cleanRows } }
-    const res = existing ? await updateAnamnesisForm({ id: existing.id, ...payload }) : await createAnamnesisForm(payload)
+    const res = existing ? await updateFn({ id: existing.id, ...payload }) : await createFn(payload)
     setSaving(false)
     if (res.error) { setError(res.error); return }
     onDone()

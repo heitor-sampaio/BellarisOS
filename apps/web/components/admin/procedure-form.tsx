@@ -43,12 +43,14 @@ interface ExistingProcedure {
   procedure_products: { product_id: string; quantity: number; unit_cost?: number | null }[]
   branch_pricing?: BranchPricingOverride[]
   anamnesis_form_id?: string | null
+  attendance_form_id?: string | null
 }
 
 interface ProcedureFormProps {
   branches: Branch[]
   products: Product[]
   anamnesisForms?: { id: string; name: string }[]
+  attendanceForms?: { id: string; name: string }[]
   existing?: ExistingProcedure
   onSuccess?: () => void
   onCancel?: () => void
@@ -88,7 +90,7 @@ export function ProcedureForm(props: ProcedureFormProps) {
   return props.existing ? <EditProcedureForm {...props} /> : <CreateProcedureForm {...props} />
 }
 
-function ProcedureFormInner({ branches, products, anamnesisForms = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending }: InnerProps) {
+function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanceForms = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending }: InnerProps) {
 
   const [selectedBranches, setSelectedBranches] = useState<string[]>(existing?.branch_ids ?? [])
   const [insumos, setInsumos] = useState<{ product_id: string; quantity: number; unit_cost: number }[]>(
@@ -263,6 +265,15 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], existing,
             <select name="anamnesis_form_id" className="field" defaultValue={existing?.anamnesis_form_id ?? ''}>
               <option value="">Nenhuma</option>
               {anamnesisForms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </Field>
+        </div>
+
+        <div style={{ gridColumn: '1 / -1' }}>
+          <Field label="Ficha de atendimento" hint="Opcional — preenchida pelo profissional durante o atendimento">
+            <select name="attendance_form_id" className="field" defaultValue={existing?.attendance_form_id ?? ''}>
+              <option value="">Nenhuma</option>
+              {attendanceForms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </Field>
         </div>

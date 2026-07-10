@@ -111,11 +111,19 @@ export async function signAnamnesisPhotos(paths: string[]): Promise<Record<strin
   }
 }
 
-/** Salva as respostas da ficha de anamnese do procedimento no prontuário (entry). */
-export async function saveProcedureAnamnesis(params: {
+/**
+ * Salva as respostas de uma ficha do construtor (anamnese OU atendimento) no prontuário (entry).
+ * Parametrizado pela ficha vinculada ao procedimento, tabela da ficha, coluna jsonb e chave do snapshot.
+ */
+async function saveProcedureForm(params: {
   appointmentId: string
   slug:          string
   answers:       Record<string, unknown>
+  formIdField:   'anamnesis_form_id' | 'attendance_form_id'
+  formTable:     'anamnesis_forms' | 'attendance_forms'
+  dataColumn:    'anamnesis_data' | 'attendance_data'
+  dataKey:       'customForm' | 'attendanceForm'
+  notLinkedMsg:  string
 }): Promise<{ error?: string; ok?: true }> {
   try {
     const ctx = await getTenantContext()
@@ -138,14 +146,14 @@ export async function saveProcedureAnamnesis(params: {
     // Ficha vinculada ao procedimento (para snapshot dos campos)
     const { data: proc } = await admin
       .from('procedures')
-      .select('anamnesis_form_id')
+      .select(params.formIdField)
       .eq('id', appt.procedure_id)
       .maybeSingle()
-    const formId = (proc?.anamnesis_form_id as string | null) ?? null
-    if (!formId) return { error: 'Este procedimento não tem ficha de anamnese vinculada.' }
+    const formId = ((proc as Record<string, unknown> | null)?.[params.formIdField] as string | null) ?? null
+    if (!formId) return { error: params.notLinkedMsg }
 
     const { data: form } = await admin
-      .from('anamnesis_forms')
+      .from(params.formTable)
       .select('id, name, schema')
       .eq('id', formId)
       .eq('tenant_id', ctx.tenantId!)
@@ -164,24 +172,24 @@ export async function saveProcedureAnamnesis(params: {
     }
     if (!medRecord) return { error: 'Erro ao abrir o prontuário.' }
 
-    // Merge preservando o restante do anamnesis_data existente
+    // Merge preservando o restante da coluna jsonb existente
     const { data: entry } = await admin
       .from('medical_record_entries')
-      .select('anamnesis_data')
+      .select(params.dataColumn)
       .eq('appointment_id', params.appointmentId)
       .maybeSingle()
-    const existing = (entry?.anamnesis_data as Record<string, unknown> | null) ?? {}
+    const existing = ((entry as Record<string, unknown> | null)?.[params.dataColumn] as Record<string, unknown> | null) ?? {}
 
     const merged = {
       ...existing,
-      customForm: { formId: form.id, name: form.name, rows, answers: params.answers },
+      [params.dataKey]: { formId: form.id, name: form.name, rows, answers: params.answers },
     }
 
     const { error } = await admin.from('medical_record_entries').upsert({
       medical_record_id: medRecord.id,
       appointment_id:    params.appointmentId,
       professional_id:   appt.professional_id,
-      anamnesis_data:    merged,
+      [params.dataColumn]: merged,
     }, { onConflict: 'appointment_id' })
 
     if (error) return { error: `Erro ao salvar: ${error.message}` }
@@ -191,4 +199,36 @@ export async function saveProcedureAnamnesis(params: {
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }
+}
+
+/** Salva as respostas da ficha de ANAMNESE do procedimento no prontuário (entry). */
+export async function saveProcedureAnamnesis(params: {
+  appointmentId: string
+  slug:          string
+  answers:       Record<string, unknown>
+}): Promise<{ error?: string; ok?: true }> {
+  return saveProcedureForm({
+    ...params,
+    formIdField:  'anamnesis_form_id',
+    formTable:    'anamnesis_forms',
+    dataColumn:   'anamnesis_data',
+    dataKey:      'customForm',
+    notLinkedMsg: 'Este procedimento não tem ficha de anamnese vinculada.',
+  })
+}
+
+/** Salva as respostas da ficha de ATENDIMENTO do procedimento no prontuário (entry). */
+export async function saveProcedureAttendance(params: {
+  appointmentId: string
+  slug:          string
+  answers:       Record<string, unknown>
+}): Promise<{ error?: string; ok?: true }> {
+  return saveProcedureForm({
+    ...params,
+    formIdField:  'attendance_form_id',
+    formTable:    'attendance_forms',
+    dataColumn:   'attendance_data',
+    dataKey:      'attendanceForm',
+    notLinkedMsg: 'Este procedimento não tem ficha de atendimento vinculada.',
+  })
 }

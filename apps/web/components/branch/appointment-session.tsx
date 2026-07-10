@@ -24,6 +24,7 @@ import type { AnamnesisData } from '@/actions/treatment-plans'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { AnamnesisTab } from '@/components/branch/anamnesis-tab'
 import { AnamnesisFormRenderer, type AnamnesisAnswers } from '@/components/branch/anamnesis-form-renderer'
+import { saveProcedureAttendance } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
@@ -98,6 +99,8 @@ interface Props {
   anamnesis:          GeneralAnamnesis | null
   anamnesisForm:      { name: string; rows: AnamnesisRow[] } | null
   anamnesisAnswers:   Record<string, unknown>
+  attendanceForm:     { name: string; rows: AnamnesisRow[] } | null
+  attendanceAnswers:  Record<string, unknown>
   products:           SessionProduct[]
   availableProducts:  AvailableProduct[]
   professionals:      SessionProfessional[]
@@ -582,7 +585,7 @@ function AnamneseRow({ label, value, alert }: { label: string; value: string; al
 // -- Main component ------------------------------------------------------------
 
 export function AppointmentSession({
-  appointment, client, anamnesis, anamnesisForm, anamnesisAnswers, products, availableProducts,
+  appointment, client, anamnesis, anamnesisForm, anamnesisAnswers, attendanceForm, attendanceAnswers, products, availableProducts,
   professionals, history, branchId, slug,
   canCheckin, canManage, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
@@ -1077,7 +1080,7 @@ export function AppointmentSession({
                   {anamnesisForm && anamnesisForm.rows.length > 0 && (
                     <div className="card" style={{ padding: '18px 20px' }}>
                       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-                        Ficha do procedimento
+                        Ficha de anamnese
                       </p>
                       <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>{anamnesisForm.name}</p>
                       <AnamnesisFormRenderer
@@ -1087,6 +1090,24 @@ export function AppointmentSession({
                         rows={anamnesisForm.rows}
                         initial={anamnesisAnswers as AnamnesisAnswers}
                         canEdit={canManage}
+                      />
+                    </div>
+                  )}
+
+                  {attendanceForm && attendanceForm.rows.length > 0 && (
+                    <div className="card" style={{ padding: '18px 20px' }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                        Ficha de atendimento
+                      </p>
+                      <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>{attendanceForm.name}</p>
+                      <AnamnesisFormRenderer
+                        appointmentId={appointment.id}
+                        slug={slug}
+                        formName={attendanceForm.name}
+                        rows={attendanceForm.rows}
+                        initial={attendanceAnswers as AnamnesisAnswers}
+                        canEdit={canManage}
+                        saveAction={saveProcedureAttendance}
                       />
                     </div>
                   )}

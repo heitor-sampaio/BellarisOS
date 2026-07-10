@@ -9,6 +9,7 @@ import { ClientProfile } from '@/components/branch/client-profile'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ProfileTransaction, ProfileInternalCredit, ClientHistoryEvent } from '@/components/branch/client-profile'
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
+import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS']
 
@@ -158,12 +159,15 @@ export default async function ClientProfilePage({
   }
 
   // Session notes from most recent MRE
-  type MreEntry = { notes?: string | null; created_at?: string }
-  const mreEntries = (medRecord?.entries as MreEntry[] | null) ?? []
-  const latestEntry = mreEntries.sort((a, b) =>
+  const mreEntries = (medRecord?.entries as RawMreEntry[] | null) ?? []
+  const latestEntry = [...mreEntries].sort((a, b) =>
     (b.created_at ?? '').localeCompare(a.created_at ?? '')
   )[0]
   const sessionNotes = latestEntry?.notes ?? ''
+
+  // Fichas preenchidas (anamnese + atendimento) por atendimento, read-only
+  const apptNameById = new Map(allAppointments.map(a => [a.id, a.procedureName]))
+  const recordForms = buildRecordForms(mreEntries, apptNameById)
 
   // Transactions
   type RawInstallment = { id: string; number: number; total: number; amount: string; due_date: string; is_paid: boolean; paid_at: string | null }
@@ -406,6 +410,7 @@ export default async function ClientProfilePage({
       upcomingAppointments={upcomingAppointments}
       recentAppointments={recentAppointments}
       allAppointments={allAppointments}
+      recordForms={recordForms}
       loyaltyBalance={loyalty?.balance ?? 0}
       activePackage={activePackage}
       sessionNotes={sessionNotes}

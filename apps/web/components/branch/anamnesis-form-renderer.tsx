@@ -8,6 +8,8 @@ import { saveProcedureAnamnesis, uploadAnamnesisPhoto, signAnamnesisPhotos } fro
 type AnswerValue = string | string[]
 export type AnamnesisAnswers = Record<string, AnswerValue>
 
+type SaveArgs = { appointmentId: string; slug: string; answers: Record<string, unknown> }
+
 interface Props {
   appointmentId: string
   slug:          string
@@ -15,9 +17,12 @@ interface Props {
   rows:          AnamnesisRow[]
   initial:       AnamnesisAnswers
   canEdit:       boolean
+  // Ação de persistência injetável — default: ficha de anamnese.
+  saveAction?:   (args: SaveArgs) => Promise<{ error?: string; ok?: true }>
 }
 
-export function AnamnesisFormRenderer({ appointmentId, slug, formName, rows, initial, canEdit }: Props) {
+export function AnamnesisFormRenderer({ appointmentId, slug, formName, rows, initial, canEdit, saveAction }: Props) {
+  const doSave = saveAction ?? saveProcedureAnamnesis
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
   const [saving, setSaving]   = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)
@@ -56,7 +61,7 @@ export function AnamnesisFormRenderer({ appointmentId, slug, formName, rows, ini
     // valida obrigatórios
     const missing = flattenFields({ rows }).find(f => f.required && f.type !== 'section' && isEmpty(answers[f.id]))
     if (missing) { setError(`Preencha "${missing.label}".`); setSaving(false); return }
-    const res = await saveProcedureAnamnesis({ appointmentId, slug, answers })
+    const res = await doSave({ appointmentId, slug, answers })
     setSaving(false)
     if (res.error) { setError(res.error); return }
     setSavedAt(Date.now())
