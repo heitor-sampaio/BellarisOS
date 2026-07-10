@@ -26,6 +26,8 @@ interface Props {
   branchId:         string
   slug:             string
   canEdit:          boolean
+  // Modo seção: sem card externo/título próprio (usado dentro da Ficha de atendimento).
+  embedded?:        boolean
 }
 
 // -- Constants -----------------------------------------------------------------
@@ -76,7 +78,41 @@ function BoolRow({ label, value }: { label: string; value: boolean }) {
 
 // -- Read-only view -------------------------------------------------------------
 
-function AnamnesisView({ data, onEdit, canEdit }: { data: GeneralAnamnesis; onEdit: () => void; canEdit: boolean }) {
+function AnamnesisView({ data, onEdit, canEdit, embedded }: { data: GeneralAnamnesis; onEdit: () => void; canEdit: boolean; embedded?: boolean }) {
+  const grid = (
+    <div className="form-2col" style={{ padding: embedded ? 0 : '20px 24px', gap: '18px 28px' }}>
+      <FieldRow label="Tipo de pele"          value={SKIN_TYPE_LABEL[data.skinType] || 'Não informado'} />
+      <BoolRow  label="Usa protetor solar"     value={data.useSunscreen} />
+      <BoolRow  label="Grávida ou amamentando" value={data.isPregnantOrBreastfeeding} />
+      <FieldRow label="Alergias"               value={data.allergies} />
+      <FieldRow label="Medicamentos em uso"    value={data.medications} />
+      <FieldRow label="Condições de saúde"     value={data.healthConditions} />
+      <div style={{ gridColumn: '1 / -1' }}>
+        <FieldRow label="Procedimentos anteriores" value={data.previousProcedures} />
+      </div>
+      {data.observations && (
+        <div style={{ gridColumn: '1 / -1' }}>
+          <FieldRow label="Observações gerais" value={data.observations} />
+        </div>
+      )}
+    </div>
+  )
+
+  if (embedded) {
+    return (
+      <div>
+        {canEdit && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+            <button type="button" onClick={onEdit} className="btn-secondary" style={{ fontSize: 12, gap: 5 }}>
+              <Edit2 size={12} /> Editar
+            </button>
+          </div>
+        )}
+        {grid}
+      </div>
+    )
+  }
+
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -93,23 +129,7 @@ function AnamnesisView({ data, onEdit, canEdit }: { data: GeneralAnamnesis; onEd
           </button>
         )}
       </div>
-
-      <div className="form-2col" style={{ padding: '20px 24px', gap: '18px 28px' }}>
-        <FieldRow label="Tipo de pele"          value={SKIN_TYPE_LABEL[data.skinType] || 'Não informado'} />
-        <BoolRow  label="Usa protetor solar"     value={data.useSunscreen} />
-        <BoolRow  label="Grávida ou amamentando" value={data.isPregnantOrBreastfeeding} />
-        <FieldRow label="Alergias"               value={data.allergies} />
-        <FieldRow label="Medicamentos em uso"    value={data.medications} />
-        <FieldRow label="Condições de saúde"     value={data.healthConditions} />
-        <div style={{ gridColumn: '1 / -1' }}>
-          <FieldRow label="Procedimentos anteriores" value={data.previousProcedures} />
-        </div>
-        {data.observations && (
-          <div style={{ gridColumn: '1 / -1' }}>
-            <FieldRow label="Observações gerais" value={data.observations} />
-          </div>
-        )}
-      </div>
+      {grid}
     </div>
   )
 }
@@ -117,13 +137,14 @@ function AnamnesisView({ data, onEdit, canEdit }: { data: GeneralAnamnesis; onEd
 // -- Anamnesis form -------------------------------------------------------------
 
 function AnamnesisForm({
-  initial, clientId, branchId, slug, onClose,
+  initial, clientId, branchId, slug, onClose, embedded,
 }: {
   initial:  GeneralAnamnesis | null
   clientId: string
   branchId: string
   slug:     string
   onClose:  () => void
+  embedded?: boolean
 }) {
   const router = useRouter()
   const [state, action, pending] = useActionState(saveGeneralAnamnesis, null)
@@ -137,18 +158,20 @@ function AnamnesisForm({
   const def = initial ?? {} as Partial<GeneralAnamnesis>
 
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <ClipboardList size={15} style={{ color: 'var(--brand)' }} />
-        <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand)', flex: 1 }}>
-          {initial ? 'Editar anamnese' : 'Preencher ficha de anamnese'}
-        </h3>
-        <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '4px 6px' }}>
-          <X size={14} />
-        </button>
-      </div>
+    <div className={embedded ? '' : 'card'} style={embedded ? undefined : { padding: 0, overflow: 'hidden' }}>
+      {!embedded && (
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <ClipboardList size={15} style={{ color: 'var(--brand)' }} />
+          <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand)', flex: 1 }}>
+            {initial ? 'Editar anamnese' : 'Preencher ficha de anamnese'}
+          </h3>
+          <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '4px 6px' }}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
-      <form action={action} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <form action={action} style={{ padding: embedded ? 0 : '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
         <input type="hidden" name="client_id" value={clientId} />
         <input type="hidden" name="branch_id" value={branchId} />
         <input type="hidden" name="slug"      value={slug} />
@@ -262,7 +285,7 @@ function AnamnesisForm({
 
 // -- Main export ---------------------------------------------------------------
 
-export function AnamnesisTab({ anamnesis, clientId, branchId, slug, canEdit }: Props) {
+export function AnamnesisTab({ anamnesis, clientId, branchId, slug, canEdit, embedded }: Props) {
   const [editing, setEditing] = useState(false)
 
   if (editing || (!anamnesis && canEdit)) {
@@ -273,15 +296,23 @@ export function AnamnesisTab({ anamnesis, clientId, branchId, slug, canEdit }: P
         branchId={branchId}
         slug={slug}
         onClose={() => setEditing(false)}
+        embedded={embedded}
       />
     )
   }
 
   if (anamnesis) {
-    return <AnamnesisView data={anamnesis} onEdit={() => setEditing(true)} canEdit={canEdit} />
+    return <AnamnesisView data={anamnesis} onEdit={() => setEditing(true)} canEdit={canEdit} embedded={embedded} />
   }
 
   // No data, no permission
+  if (embedded) {
+    return (
+      <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>
+        Anamnese geral não preenchida.
+      </p>
+    )
+  }
   return (
     <div className="card" style={{ padding: '48px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
       <div style={{

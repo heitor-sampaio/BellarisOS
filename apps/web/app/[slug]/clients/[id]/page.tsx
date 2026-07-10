@@ -10,6 +10,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ProfileTransaction, ProfileInternalCredit, ClientHistoryEvent } from '@/components/branch/client-profile'
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
+import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS']
 
@@ -168,6 +169,7 @@ export default async function ClientProfilePage({
   // Fichas preenchidas (anamnese + atendimento) por atendimento, read-only
   const apptNameById = new Map(allAppointments.map(a => [a.id, a.procedureName]))
   const recordForms = buildRecordForms(mreEntries, apptNameById)
+  const generalAnamnesis = (medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null
 
   // Transactions
   type RawInstallment = { id: string; number: number; total: number; amount: string; due_date: string; is_paid: boolean; paid_at: string | null }
@@ -411,6 +413,7 @@ export default async function ClientProfilePage({
       recentAppointments={recentAppointments}
       allAppointments={allAppointments}
       recordForms={recordForms}
+      generalAnamnesis={generalAnamnesis}
       loyaltyBalance={loyalty?.balance ?? 0}
       activePackage={activePackage}
       sessionNotes={sessionNotes}

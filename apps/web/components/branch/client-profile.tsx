@@ -9,6 +9,8 @@ import { TreatmentFileModal } from './treatment-file-modal'
 import { ClientDocumentsTab } from './client-documents-tab'
 import type { ClientDocumentItem } from './client-documents-tab'
 import { AnamnesisFormRenderer, type AnamnesisAnswers } from './anamnesis-form-renderer'
+import { AttendanceRecordCard } from './attendance-record-card'
+import { AnamnesisTab, type GeneralAnamnesis } from './anamnesis-tab'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -145,6 +147,7 @@ interface Props {
   internalCredits:       ProfileInternalCredit[]
   documents:             ClientDocumentItem[]
   recordForms?:          ProfileRecordEntry[]
+  generalAnamnesis?:     GeneralAnamnesis | null
   canGrantCredit:        boolean
   branches:              { id: string; name: string }[]
   currentBranchId:       string
@@ -819,7 +822,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments,
   loyaltyBalance, activePackage, sessionNotes,
-  transactions, internalCredits, documents, recordForms = [], canGrantCredit, branches, currentBranchId, slug, role, clientHistory,
+  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, role, clientHistory,
 }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>('visao')
@@ -1138,48 +1141,34 @@ export function ClientProfile({
             </div>
           ) : (
             recordForms.map(entry => (
-              <div key={entry.appointmentId} className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
-                    {entry.procedureName ?? 'Atendimento'}
-                  </p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    {format(new Date(entry.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                  </p>
-                </div>
-
-                {entry.anamnesis && entry.anamnesis.rows.length > 0 && (
-                  <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-                      Ficha de anamnese · {entry.anamnesis.name}
-                    </p>
+              <AttendanceRecordCard
+                key={entry.appointmentId}
+                client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
+                subtitle={`${entry.procedureName ?? 'Atendimento'} · ${format(new Date(entry.createdAt), "dd/MM/yyyy", { locale: ptBR })}`}
+                generalAnamnesis={
+                  <AnamnesisTab embedded anamnesis={generalAnamnesis} clientId={client.id} branchId={branchId} slug={slug} canEdit={false} />
+                }
+                anamnesis={entry.anamnesis && entry.anamnesis.rows.length > 0 ? {
+                  name: entry.anamnesis.name,
+                  node: (
                     <AnamnesisFormRenderer
-                      appointmentId={entry.appointmentId}
-                      slug={slug}
-                      formName={entry.anamnesis.name}
-                      rows={entry.anamnesis.rows}
-                      initial={entry.anamnesis.answers as AnamnesisAnswers}
-                      canEdit={false}
+                      appointmentId={entry.appointmentId} slug={slug}
+                      formName={entry.anamnesis.name} rows={entry.anamnesis.rows}
+                      initial={entry.anamnesis.answers as AnamnesisAnswers} canEdit={false}
                     />
-                  </div>
-                )}
-
-                {entry.attendance && entry.attendance.rows.length > 0 && (
-                  <div>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-                      Ficha de atendimento · {entry.attendance.name}
-                    </p>
+                  ),
+                } : null}
+                attendance={entry.attendance && entry.attendance.rows.length > 0 ? {
+                  name: entry.attendance.name,
+                  node: (
                     <AnamnesisFormRenderer
-                      appointmentId={entry.appointmentId}
-                      slug={slug}
-                      formName={entry.attendance.name}
-                      rows={entry.attendance.rows}
-                      initial={entry.attendance.answers as AnamnesisAnswers}
-                      canEdit={false}
+                      appointmentId={entry.appointmentId} slug={slug}
+                      formName={entry.attendance.name} rows={entry.attendance.rows}
+                      initial={entry.attendance.answers as AnamnesisAnswers} canEdit={false}
                     />
-                  </div>
-                )}
-              </div>
+                  ),
+                } : null}
+              />
             ))
           )}
         </div>

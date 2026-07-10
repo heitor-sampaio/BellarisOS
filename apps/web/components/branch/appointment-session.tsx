@@ -24,6 +24,7 @@ import type { AnamnesisData } from '@/actions/treatment-plans'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { AnamnesisTab } from '@/components/branch/anamnesis-tab'
 import { AnamnesisFormRenderer, type AnamnesisAnswers } from '@/components/branch/anamnesis-form-renderer'
+import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
 import { saveProcedureAttendance } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
@@ -664,6 +665,38 @@ export function AppointmentSession({
     setStarting(false)
   }
 
+  // Ficha de atendimento = Dados do cliente (identidade + anamnese geral) + ficha de
+  // anamnese (construtor) + ficha de atendimento (construtor). Documento único.
+  const fichaAtendimentoCard = (
+    <AttendanceRecordCard
+      client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
+      generalAnamnesis={
+        <AnamnesisTab embedded anamnesis={anamnesis} clientId={client.id} branchId={branchId} slug={slug} canEdit={canManage} />
+      }
+      anamnesis={anamnesisForm && anamnesisForm.rows.length > 0 ? {
+        name: anamnesisForm.name,
+        node: (
+          <AnamnesisFormRenderer
+            appointmentId={appointment.id} slug={slug}
+            formName={anamnesisForm.name} rows={anamnesisForm.rows}
+            initial={anamnesisAnswers as AnamnesisAnswers} canEdit={canManage}
+          />
+        ),
+      } : null}
+      attendance={attendanceForm && attendanceForm.rows.length > 0 ? {
+        name: attendanceForm.name,
+        node: (
+          <AnamnesisFormRenderer
+            appointmentId={appointment.id} slug={slug}
+            formName={attendanceForm.name} rows={attendanceForm.rows}
+            initial={attendanceAnswers as AnamnesisAnswers} canEdit={canManage}
+            saveAction={saveProcedureAttendance}
+          />
+        ),
+      } : null}
+    />
+  )
+
   return (
     <>
       {showCancel  && <CancelModal appointmentId={appointment.id} slug={slug} onClose={() => setShowCancel(false)} />}
@@ -1072,45 +1105,7 @@ export function AppointmentSession({
                       </div>
                     </div>
                   )}
-                  <div className="card" style={{ padding: '18px 20px' }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>Anamnese</p>
-                    <AnamnesisTab anamnesis={anamnesis} clientId={client.id} branchId={branchId} slug={slug} canEdit={canManage} />
-                  </div>
-
-                  {anamnesisForm && anamnesisForm.rows.length > 0 && (
-                    <div className="card" style={{ padding: '18px 20px' }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-                        Ficha de anamnese
-                      </p>
-                      <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>{anamnesisForm.name}</p>
-                      <AnamnesisFormRenderer
-                        appointmentId={appointment.id}
-                        slug={slug}
-                        formName={anamnesisForm.name}
-                        rows={anamnesisForm.rows}
-                        initial={anamnesisAnswers as AnamnesisAnswers}
-                        canEdit={canManage}
-                      />
-                    </div>
-                  )}
-
-                  {attendanceForm && attendanceForm.rows.length > 0 && (
-                    <div className="card" style={{ padding: '18px 20px' }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
-                        Ficha de atendimento
-                      </p>
-                      <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>{attendanceForm.name}</p>
-                      <AnamnesisFormRenderer
-                        appointmentId={appointment.id}
-                        slug={slug}
-                        formName={attendanceForm.name}
-                        rows={attendanceForm.rows}
-                        initial={attendanceAnswers as AnamnesisAnswers}
-                        canEdit={canManage}
-                        saveAction={saveProcedureAttendance}
-                      />
-                    </div>
-                  )}
+                  {fichaAtendimentoCard}
                   <TreatmentPlanEditor
                     appointmentId={appointment.id} slug={slug}
                     procedures={treatmentProcedures} servicePackages={treatmentPackages}
@@ -1230,6 +1225,8 @@ export function AppointmentSession({
               )
             })() : (
               <>
+                {fichaAtendimentoCard}
+
                 <InsumoCard
                   items={insumos}
                   available={availableProducts}
