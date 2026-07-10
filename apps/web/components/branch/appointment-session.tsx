@@ -1,11 +1,11 @@
-﻿'use client'
+'use client'
 
 import { useActionState, useState, useRef, useMemo, useEffect, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
-  XCircle, Camera, Clock, Lock, LockOpen, Send,
+  XCircle, Clock, Lock, LockOpen, Send,
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -579,15 +579,6 @@ function EvaluationAnamnesisFields({
 
 // -- Linha de anamnese ---------------------------------------------------------
 
-function AnamneseRow({ label, value, alert }: { label: string; value: string; alert?: boolean }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--hairline)' }}>
-      <span style={{ fontSize: 12.5, color: 'var(--text-muted)', flexShrink: 0 }}>{label}</span>
-      <span style={{ fontSize: 12.5, fontWeight: 700, color: alert ? 'var(--brand)' : 'var(--text)', textAlign: 'right' }}>{value || '—'}</span>
-    </div>
-  )
-}
-
 // -- Main component ------------------------------------------------------------
 
 export function AppointmentSession({
@@ -670,8 +661,109 @@ export function AppointmentSession({
     setStarting(false)
   }
 
-  // Ficha de atendimento = documento único: Dados do cliente (identidade + anamnese geral),
-  // Ficha de anamnese (construtor), Dados do procedimento, Insumos, Ficha de atendimento (construtor).
+  // Bloco "Dados do procedimento" (profissional com reassign, horários, sala/valor, duração).
+  const procedureNode = (
+    <div className="form-2col">
+      {!isProfessional && (
+        <>
+          <div>
+            <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Profissional</p>
+            {editingProf && canReassign ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <select value={selectedProfId} onChange={e => setSelectedProfId(e.target.value)} className="field" style={{ fontSize: 12.5, padding: '4px 8px', height: 30 }} autoFocus>
+                  {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <button type="button" disabled={savingProf}
+                  onClick={async () => { setSavingProf(true); await reassignProfessional(appointment.id, selectedProfId, slug); setSavingProf(false); setEditingProf(false); router.refresh() }}
+                  style={{ height: 30, padding: '0 10px', borderRadius: 6, border: 'none', background: 'var(--brand)', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {savingProf ? <Loader2 size={11} className="animate-spin" /> : 'Salvar'}
+                </button>
+                <button type="button" onClick={() => { setEditingProf(false); setSelectedProfId(appointment.professionalId) }}
+                  style={{ height: 30, width: 30, borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{selectedProfName}</p>
+                {canReassign && !isDone && professionals.length > 1 && (
+                  <button type="button" onClick={() => setEditingProf(true)}
+                    style={{ width: 22, height: 22, borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Pencil size={10} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <div>
+            <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Procedimento</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{appointment.procedureName}{appointment.procedureCategory ? ` · ${appointment.procedureCategory}` : ''}</p>
+          </div>
+        </>
+      )}
+
+      <div>
+        <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Agendado para</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+          {format(new Date(appointment.scheduledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
+        </p>
+      </div>
+
+      <div>
+        <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Duração prevista</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <Clock size={12} style={{ color: 'var(--text-faint)' }} /> {appointment.durationMin} min
+        </p>
+      </div>
+
+      {!isProfessional && (
+        <div>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{appointment.roomName ? 'Sala / Cabine' : 'Valor'}</p>
+          {appointment.roomName ? (
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{appointment.roomName}</p>
+          ) : (
+            <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{fmtBRL(appointment.price)}</p>
+          )}
+        </div>
+      )}
+
+      {appointment.startedAt && (
+        <div>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Início real</p>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{format(new Date(appointment.startedAt), 'HH:mm', { locale: ptBR })}</p>
+        </div>
+      )}
+      {appointment.completedAt && (
+        <div>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Término</p>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{format(new Date(appointment.completedAt), 'HH:mm', { locale: ptBR })}</p>
+        </div>
+      )}
+      {(() => {
+        const real = realDurationMin(appointment.startedAt, appointment.completedAt)
+        if (real === null) return null
+        const delta = real - appointment.durationMin
+        return (
+          <div style={{ gridColumn: 'span 2' }}>
+            <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Duração real</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Clock size={13} style={{ color: 'var(--brand)' }} /> {real} min
+              </p>
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                background: delta <= 0 ? '#dcfce7' : delta <= 10 ? '#fef3c7' : '#fee2e2',
+                color:      delta <= 0 ? '#16a34a' : delta <= 10 ? '#d97706' : '#dc2626' }}>
+                {delta === 0 ? '= previsto' : delta > 0 ? `▲ ${delta} min vs previsto` : `▼ ${Math.abs(delta)} min vs previsto`}
+              </span>
+            </div>
+          </div>
+        )
+      })()}
+    </div>
+  )
+
+  // Ficha de atendimento = documento único (4 seções): Dados do cliente (+ anamnese geral),
+  // Dados do procedimento (com insumos), Ficha de anamnese (construtor), Ficha de atendimento (construtor).
   // insumosNode só é passado no fluxo de atendimento normal (avaliações não consomem insumos).
   const renderFichaCard = (insumosNode?: ReactNode) => (
     <AttendanceRecordCard
@@ -679,6 +771,8 @@ export function AppointmentSession({
       generalAnamnesis={
         <AnamnesisTab embedded anamnesis={anamnesis} clientId={client.id} branchId={branchId} slug={slug} canEdit={canManage} />
       }
+      procedureNode={procedureNode}
+      insumos={insumosNode ?? null}
       anamnesis={anamnesisForm && anamnesisForm.rows.length > 0 ? {
         name: anamnesisForm.name,
         node: (
@@ -689,15 +783,6 @@ export function AppointmentSession({
           />
         ),
       } : null}
-      procedure={{
-        name:         appointment.procedureName,
-        category:     appointment.procedureCategory,
-        durationMin:  appointment.durationMin,
-        professional: selectedProfName,
-        scheduledAt:  appointment.scheduledAt,
-        room:         appointment.roomName,
-      }}
-      insumos={insumosNode ?? null}
       attendance={attendanceForm && attendanceForm.rows.length > 0 ? {
         name: attendanceForm.name,
         node: (
@@ -989,135 +1074,10 @@ export function AppointmentSession({
           </div>
         )}
 
-        {/* -- Duas colunas ----------------------------------------------- */}
-        <div className="rg-2" style={{ alignItems: 'start' }}>
-
-          {/* -- COLUNA ESQUERDA ------------------------------------------ */}
+        {/* -- Conteúdo do atendimento (coluna única) --------------------- */}
+        <div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            {/* Dados do procedimento */}
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Dados do procedimento</h3>
-                {appointment.procedureCategory && (
-                  <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 500 }}>{appointment.procedureCategory}</span>
-                )}
-              </div>
-              <div className="form-2col" style={{ padding: '16px 20px' }}>
-                {/* Profissional */}
-                {!isProfessional && (
-                  <>
-                    <div>
-                      <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Profissional</p>
-                      {editingProf && canReassign ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <select value={selectedProfId} onChange={e => setSelectedProfId(e.target.value)} className="field" style={{ fontSize: 12.5, padding: '4px 8px', height: 30 }} autoFocus>
-                            {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                          </select>
-                          <button type="button" disabled={savingProf}
-                            onClick={async () => { setSavingProf(true); await reassignProfessional(appointment.id, selectedProfId, slug); setSavingProf(false); setEditingProf(false); router.refresh() }}
-                            style={{ height: 30, padding: '0 10px', borderRadius: 6, border: 'none', background: 'var(--brand)', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            {savingProf ? <Loader2 size={11} className="animate-spin" /> : 'Salvar'}
-                          </button>
-                          <button type="button" onClick={() => { setEditingProf(false); setSelectedProfId(appointment.professionalId) }}
-                            style={{ height: 30, width: 30, borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{selectedProfName}</p>
-                          {canReassign && !isDone && professionals.length > 1 && (
-                            <button type="button" onClick={() => setEditingProf(true)}
-                              style={{ width: 22, height: 22, borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <Pencil size={10} />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                        {appointment.roomName ? 'Sala / Cabine' : 'Valor'}
-                      </p>
-                      {appointment.roomName ? (
-                        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{appointment.roomName}</p>
-                      ) : (
-                        <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{fmtBRL(appointment.price)}</p>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {/* Agendado para */}
-                <div>
-                  <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Agendado para</p>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                    {format(new Date(appointment.scheduledAt), 'HH:mm', { locale: ptBR })}
-                  </p>
-                </div>
-
-                {/* Duração prevista */}
-                <div>
-                  <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Duração prevista</p>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <Clock size={12} style={{ color: 'var(--text-faint)' }} /> {appointment.durationMin} min
-                  </p>
-                </div>
-
-                {/* Início real (quando iniciado) */}
-                {appointment.startedAt && (
-                  <div>
-                    <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Início real</p>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                      {format(new Date(appointment.startedAt), 'HH:mm', { locale: ptBR })}
-                    </p>
-                  </div>
-                )}
-
-                {/* Término (quando concluído) */}
-                {appointment.completedAt && (
-                  <div>
-                    <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Término</p>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                      {format(new Date(appointment.completedAt), 'HH:mm', { locale: ptBR })}
-                    </p>
-                  </div>
-                )}
-
-                {/* Duração real + delta (quando concluído) */}
-                {(() => {
-                  const real = realDurationMin(appointment.startedAt, appointment.completedAt)
-                  if (real === null) return null
-                  const delta = real - appointment.durationMin
-                  return (
-                    <div style={{ gridColumn: 'span 2' }}>
-                      <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Duração real</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <Clock size={13} style={{ color: 'var(--brand)' }} /> {real} min
-                        </p>
-                        <span style={{
-                          fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-                          background: delta <= 0 ? '#dcfce7' : delta <= 10 ? '#fef3c7' : '#fee2e2',
-                          color:      delta <= 0 ? '#16a34a' : delta <= 10 ? '#d97706' : '#dc2626',
-                        }}>
-                          {delta === 0 ? '= previsto' : delta > 0 ? `▲ ${delta} min vs previsto` : `▼ ${Math.abs(delta)} min vs previsto`}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Valor (se sala foi mostrada acima, mostra valor aqui) */}
-                {!isProfessional && appointment.roomName && (
-                  <div>
-                    <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Valor</p>
-                    <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{fmtBRL(appointment.price)}</p>
-                  </div>
-                )}
-              </div>
-            </div>
 
             {appointment.isEvaluation ? (() => {
               // Plano já gerado e enviado para recepção → modo leitura
@@ -1296,80 +1256,6 @@ export function AppointmentSession({
             </div>
           </div>
 
-          {/* -- COLUNA DIREITA ------------------------------------------- */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 'calc(var(--topbar-h, 68px) + 16px)' }}>
-
-            {/* Anamnese resumo (somente em atendimentos normais; avaliações mostram na coluna principal) */}
-            {!appointment.isEvaluation && (
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Anamnese</h3>
-                  <Link href={`/${slug}/clients/${client.id}`} style={{ fontSize: 12, color: 'var(--brand)', fontWeight: 700, textDecoration: 'none' }}>
-                    Ficha completa →
-                  </Link>
-                </div>
-                <div style={{ padding: '4px 20px 12px' }}>
-                  {anamnesis ? (
-                    <>
-                      <AnamneseRow label="Tipo de pele"         value={anamnesis.skinType || '—'} />
-                      <AnamneseRow label="Alergias"             value={anamnesis.allergies || 'Nenhuma relatada'} alert={!!anamnesis.allergies} />
-                      <AnamneseRow label="Gestante / lactante"  value={anamnesis.isPregnantOrBreastfeeding ? 'Sim' : 'Não'} alert={anamnesis.isPregnantOrBreastfeeding} />
-                      <AnamneseRow label="Medicamentos"         value={anamnesis.medications || 'Nenhum relatado'} alert={!!anamnesis.medications} />
-                      <AnamneseRow label="Proc. anteriores"     value={anamnesis.previousProcedures || '—'} />
-                      {anamnesis.healthConditions && <AnamneseRow label="Condições"  value={anamnesis.healthConditions} alert />}
-                      {anamnesis.observations     && <AnamneseRow label="Observações" value={anamnesis.observations} />}
-                    </>
-                  ) : (
-                    <div style={{ padding: '16px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <AlertTriangle size={15} style={{ color: '#d97706', flexShrink: 0 }} />
-                      <div>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>Anamnese não preenchida</p>
-                        <Link href={`/${slug}/clients/${client.id}`} style={{ fontSize: 12, color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>
-                          Preencher no perfil →
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Antes / Depois (somente em atendimentos normais) */}
-            {!appointment.isEvaluation && (
-              <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Antes / Depois</h3>
-                </div>
-                <div style={{ padding: '16px 20px' }}>
-                  <div className="rg-2">
-                    <div>
-                      <div style={{ aspectRatio: '3/4', borderRadius: 10, background: '#f9f0f3', border: '1.5px dashed #e2c8d0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}>
-                        <Camera size={22} style={{ color: '#c4a0ad' }} />
-                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#c4a0ad' }}>Capturar antes</span>
-                      </div>
-                      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', textAlign: 'center', marginTop: 6 }}>Antes</p>
-                    </div>
-                    <div>
-                      <div style={{ aspectRatio: '3/4', borderRadius: 10, background: '#f9f0f3', border: '1.5px dashed #e2c8d0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer' }}>
-                        <Camera size={22} style={{ color: '#c4a0ad' }} />
-                        <span style={{ fontSize: 11.5, fontWeight: 700, color: '#c4a0ad' }}>Capturar depois</span>
-                      </div>
-                      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-faint)', textAlign: 'center', marginTop: 6 }}>Depois</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Link para perfil do cliente */}
-            <Link href={`/${slug}/clients/${client.id}`} className="card"
-              style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', textDecoration: 'none' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Perfil completo da cliente</span>
-              <span style={{ fontSize: 13, color: 'var(--brand)', fontWeight: 700 }}>→</span>
-            </Link>
-          </div>
         </div>
       </div>
     </>

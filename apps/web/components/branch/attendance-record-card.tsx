@@ -5,10 +5,11 @@ import { FileText } from 'lucide-react'
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
-// Ficha de atendimento = documento único com 3 seções:
+// Ficha de atendimento = documento único com 4 seções:
 //   1. Dados do cliente (identificação + anamnese geral)
-//   2. Ficha de anamnese (construtor)
-//   3. Ficha de atendimento (construtor)
+//   2. Dados do procedimento (com insumos — baixa automática)
+//   3. Ficha de anamnese (construtor / padrão)
+//   4. Ficha de atendimento (construtor / padrão)
 // Usado tanto na tela de atendimento (editável) quanto no prontuário (leitura).
 
 interface CardClient {
@@ -23,22 +24,13 @@ interface FormSection {
   node: React.ReactNode
 }
 
-interface ProcedureData {
-  name:          string
-  category?:     string | null
-  durationMin?:  number | null
-  professional?: string | null
-  scheduledAt?:  string | null
-  room?:         string | null
-}
-
 interface Props {
   client:           CardClient
   subtitle?:        React.ReactNode        // ex.: procedimento · data (no prontuário)
   generalAnamnesis: React.ReactNode        // AnamnesisTab embedded
+  procedureNode?:   React.ReactNode | null // bloco "Dados do procedimento" (com reassign, horários…)
+  insumos?:         React.ReactNode | null // InsumoCard embedded
   anamnesis?:       FormSection | null
-  procedure?:       ProcedureData | null
-  insumos?:         React.ReactNode | null
   attendance?:      FormSection | null
 }
 
@@ -75,10 +67,9 @@ function SectionOverline({ label, subtitle }: { label: string; subtitle?: string
   )
 }
 
-export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, anamnesis, procedure, insumos, attendance }: Props) {
+export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, procedureNode, insumos, anamnesis, attendance }: Props) {
   const age = client.birthDate ? differenceInYears(new Date(), new Date(client.birthDate)) : null
   const birth = client.birthDate ? format(new Date(client.birthDate), 'dd/MM/yyyy', { locale: ptBR }) : null
-  const procDateTime = procedure?.scheduledAt ? format(new Date(procedure.scheduledAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : null
 
   const sectionDivider: React.CSSProperties = {
     borderTop: '1px solid var(--hairline)', paddingTop: 20, marginTop: 20,
@@ -104,7 +95,21 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, anamn
         </div>
         {generalAnamnesis}
 
-        {/* Seção 2 — Ficha de anamnese (construtor) */}
+        {/* Seção 2 — Dados do procedimento (com insumos) */}
+        {(procedureNode || insumos) && (
+          <div style={sectionDivider}>
+            <SectionOverline label="Dados do procedimento" />
+            {procedureNode}
+            {insumos && (
+              <div style={{ marginTop: procedureNode ? 18 : 0 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Insumos</p>
+                {insumos}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Seção 3 — Ficha de anamnese (construtor) */}
         {anamnesis && (
           <div style={sectionDivider}>
             <SectionOverline label="Ficha de anamnese" subtitle={anamnesis.name} />
@@ -112,30 +117,7 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, anamn
           </div>
         )}
 
-        {/* Seção 3 — Dados do procedimento */}
-        {procedure && (
-          <div style={sectionDivider}>
-            <SectionOverline label="Dados do procedimento" />
-            <div className="form-2col" style={{ gap: '14px 28px' }}>
-              <IdentityRow label="Procedimento"     value={procedure.name} />
-              <IdentityRow label="Categoria"        value={procedure.category} />
-              <IdentityRow label="Duração prevista" value={procedure.durationMin ? `${procedure.durationMin} min` : null} />
-              <IdentityRow label="Profissional"     value={procedure.professional} />
-              <IdentityRow label="Data / hora"      value={procDateTime} />
-              <IdentityRow label="Sala / cabine"    value={procedure.room} />
-            </div>
-          </div>
-        )}
-
-        {/* Seção 4 — Insumos (baixa automática do procedimento) */}
-        {insumos && (
-          <div style={sectionDivider}>
-            <SectionOverline label="Insumos" />
-            {insumos}
-          </div>
-        )}
-
-        {/* Seção 5 — Ficha de atendimento (construtor) */}
+        {/* Seção 4 — Ficha de atendimento (construtor) */}
         {attendance && (
           <div style={sectionDivider}>
             <SectionOverline label="Ficha de atendimento" subtitle={attendance.name} />
