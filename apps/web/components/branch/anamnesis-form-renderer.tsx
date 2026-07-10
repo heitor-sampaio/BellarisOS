@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Save, Upload, X, ImageIcon, CheckCircle2 } from 'lucide-react'
 import { flattenFields, type AnamnesisField, type AnamnesisRow } from '@/lib/anamnesis'
 import { saveProcedureAnamnesis, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
@@ -9,6 +9,9 @@ type AnswerValue = string | string[]
 export type AnamnesisAnswers = Record<string, AnswerValue>
 
 type SaveArgs = { appointmentId: string; slug: string; answers: Record<string, unknown> }
+
+/** Handle imperativo para salvar via um botão externo ("salvar tudo"). */
+export interface AnamnesisFormHandle { save: () => Promise<{ error?: string }> }
 
 interface Props {
   appointmentId: string
@@ -19,9 +22,13 @@ interface Props {
   canEdit:       boolean
   // Ação de persistência injetável — default: ficha de anamnese.
   saveAction?:   (args: SaveArgs) => Promise<{ error?: string; ok?: true }>
+  // Oculta o botão de salvar interno (quando um botão externo salva tudo).
+  hideSaveButton?: boolean
 }
 
-export function AnamnesisFormRenderer({ appointmentId, slug, formName, rows, initial, canEdit, saveAction }: Props) {
+export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(function AnamnesisFormRenderer(
+  { appointmentId, slug, formName, rows, initial, canEdit, saveAction, hideSaveButton }, ref,
+) {
   const doSave = saveAction ?? saveProcedureAnamnesis
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
   const [saving, setSaving]   = useState(false)
@@ -56,16 +63,20 @@ export function AnamnesisFormRenderer({ appointmentId, slug, formName, rows, ini
     setSavedAt(null)
   }
 
-  async function save() {
+  async function save(): Promise<{ error?: string }> {
+    if (!canEdit) return {}
     setSaving(true); setError(null)
     // valida obrigatórios
     const missing = flattenFields({ rows }).find(f => f.required && f.type !== 'section' && isEmpty(answers[f.id]))
-    if (missing) { setError(`Preencha "${missing.label}".`); setSaving(false); return }
+    if (missing) { const msg = `Preencha "${missing.label}".`; setError(msg); setSaving(false); return { error: msg } }
     const res = await doSave({ appointmentId, slug, answers })
     setSaving(false)
-    if (res.error) { setError(res.error); return }
+    if (res.error) { setError(res.error); return { error: res.error } }
     setSavedAt(Date.now())
+    return {}
   }
+
+  useImperativeHandle(ref, () => ({ save }))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -88,7 +99,7 @@ export function AnamnesisFormRenderer({ appointmentId, slug, formName, rows, ini
 
       {error && <p style={{ color: '#dc2626', fontSize: 12.5, fontWeight: 600 }}>{error}</p>}
 
-      {canEdit && (
+      {canEdit && !hideSaveButton && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 2 }}>
           <button type="button" onClick={save} disabled={saving} className="btn-primary" style={{ fontSize: 13 }}>
             <Save size={14} /> {saving ? 'Salvando…' : 'Salvar ficha'}
@@ -102,7 +113,7 @@ export function AnamnesisFormRenderer({ appointmentId, slug, formName, rows, ini
       )}
     </div>
   )
-}
+})
 
 function isEmpty(v: AnswerValue | undefined): boolean {
   if (v == null) return true

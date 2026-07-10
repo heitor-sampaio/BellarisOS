@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
-  XCircle, Clock, Lock, LockOpen, Send,
+  XCircle, Clock, Lock, LockOpen, Send, Save,
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -23,7 +23,7 @@ import { generateEvaluationPlan } from '@/actions/treatment-plans'
 import type { AnamnesisData } from '@/actions/treatment-plans'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { AnamnesisTab } from '@/components/branch/anamnesis-tab'
-import { AnamnesisFormRenderer, type AnamnesisAnswers } from '@/components/branch/anamnesis-form-renderer'
+import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
 import { saveProcedureAttendance } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
@@ -428,41 +428,30 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
 
 // -- Observações ---------------------------------------------------------------
 
-function ObservacoesCard({ appointmentId, initialNotes, initialIntercurrences, readonly }: {
-  appointmentId: string; initialNotes: string | null; initialIntercurrences: string | null; readonly: boolean
+function ObservacoesCard({ notes, intercurrences, onNotesChange, onIntercurrencesChange, readonly }: {
+  notes: string; intercurrences: string
+  onNotesChange: (v: string) => void; onIntercurrencesChange: (v: string) => void
+  readonly: boolean
 }) {
-  const [state, action, pending] = useActionState(saveDraftNotes, null)
-  const saved = state !== null && !state?.error && !pending
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
         <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Observações do atendimento</h3>
       </div>
-      <form action={action} style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <input type="hidden" name="appointment_id" value={appointmentId} />
+      <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label className="field-label">O que foi realizado</label>
-          <textarea name="notes" rows={4} defaultValue={initialNotes ?? ''} readOnly={readonly}
+          <textarea rows={4} value={notes} onChange={e => onNotesChange(e.target.value)} readOnly={readonly}
             placeholder={readonly ? '—' : 'Descreva técnicas, áreas tratadas, produtos utilizados…'}
             className="field" style={{ resize: 'vertical', background: readonly ? 'var(--bg-app)' : undefined }} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label className="field-label">Intercorrências</label>
-          <textarea name="intercurrences" rows={2} defaultValue={initialIntercurrences ?? ''} readOnly={readonly}
+          <textarea rows={2} value={intercurrences} onChange={e => onIntercurrencesChange(e.target.value)} readOnly={readonly}
             placeholder={readonly ? '—' : 'Reações, intercorrências ou observações…'}
             className="field" style={{ resize: 'vertical', background: readonly ? 'var(--bg-app)' : undefined }} />
         </div>
-        {!readonly && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button type="submit" disabled={pending} className="btn-secondary" style={{ gap: 5, fontSize: 12 }}>
-              {pending ? <Loader2 size={12} className="animate-spin" /> : null}
-              {pending ? 'Salvando…' : 'Salvar rascunho'}
-            </button>
-            {saved && <span style={{ fontSize: 12, color: '#2a8a5c', fontWeight: 600 }}>✓ Salvo</span>}
-            {state?.error && <span style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>{state.error}</span>}
-          </div>
-        )}
-      </form>
+      </div>
     </div>
   )
 }
@@ -632,6 +621,33 @@ export function AppointmentSession({
   // Somente BRANCH_ADMIN e NETWORK_ADMIN podem desbloquear edição pós-conclusão
   const editLocked = isDone && !isUnlocked
 
+  // Observações (controladas) + salvar unificado da ficha
+  const [notes,          setNotes]          = useState(appointment.savedNotes ?? '')
+  const [intercurrences, setIntercurrences] = useState(appointment.savedIntercurrences ?? '')
+  const anamnesisFormRef  = useRef<AnamnesisFormHandle>(null)
+  const attendanceFormRef = useRef<AnamnesisFormHandle>(null)
+  const [savingAll,   setSavingAll]   = useState(false)
+  const [saveAllError, setSaveAllError] = useState<string | null>(null)
+  const [savedAllAt,  setSavedAllAt]  = useState<number | null>(null)
+
+  async function handleSaveAll() {
+    setSavingAll(true); setSaveAllError(null)
+    const fd = new FormData()
+    fd.set('appointment_id', appointment.id)
+    fd.set('notes', notes)
+    fd.set('intercurrences', intercurrences)
+    const results = await Promise.all([
+      anamnesisFormRef.current?.save() ?? Promise.resolve({ error: undefined }),
+      attendanceFormRef.current?.save() ?? Promise.resolve({ error: undefined }),
+      saveDraftNotes(null, fd),
+    ])
+    setSavingAll(false)
+    const err = results.find(r => (r as { error?: string })?.error) as { error?: string } | undefined
+    if (err?.error) { setSaveAllError(err.error); return }
+    setSavedAllAt(Date.now())
+    router.refresh()
+  }
+
   const confirmedInsumos = useMemo(
     () => insumos.filter(i => checkedIds.has(i.productId)),
     [insumos, checkedIds],
@@ -765,7 +781,8 @@ export function AppointmentSession({
   // Ficha de atendimento = documento único (4 seções): Dados do cliente (+ anamnese geral),
   // Dados do procedimento (com insumos), Ficha de anamnese (construtor), Ficha de atendimento (construtor).
   // insumosNode só é passado no fluxo de atendimento normal (avaliações não consomem insumos).
-  const renderFichaCard = (insumosNode?: ReactNode) => (
+  // unified = botão único "Salvar" externo salva as fichas (oculta os botões internos e usa refs).
+  const renderFichaCard = (insumosNode?: ReactNode, unified = false) => (
     <AttendanceRecordCard
       client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
       generalAnamnesis={
@@ -777,9 +794,11 @@ export function AppointmentSession({
         name: anamnesisForm.name,
         node: (
           <AnamnesisFormRenderer
+            ref={unified ? anamnesisFormRef : null}
             appointmentId={appointment.id} slug={slug}
             formName={anamnesisForm.name} rows={anamnesisForm.rows}
             initial={anamnesisAnswers as AnamnesisAnswers} canEdit={canManage}
+            hideSaveButton={unified}
           />
         ),
       } : null}
@@ -787,10 +806,12 @@ export function AppointmentSession({
         name: attendanceForm.name,
         node: (
           <AnamnesisFormRenderer
+            ref={unified ? attendanceFormRef : null}
             appointmentId={appointment.id} slug={slug}
             formName={attendanceForm.name} rows={attendanceForm.rows}
             initial={attendanceAnswers as AnamnesisAnswers} canEdit={canManage}
             saveAction={saveProcedureAttendance}
+            hideSaveButton={unified}
           />
         ),
       } : null}
@@ -871,13 +892,6 @@ export function AppointmentSession({
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 13 }}>
                 {starting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
                 {starting ? 'Iniciando…' : 'Iniciar atendimento'}
-              </button>
-            )}
-
-            {/* Pausar (IN_PROGRESS — visual only) */}
-            {status === 'IN_PROGRESS' && (
-              <button type="button" className="btn-secondary" style={{ padding: '9px 16px', fontSize: 13, fontWeight: 700 }}>
-                Pausar
               </button>
             )}
 
@@ -1102,9 +1116,10 @@ export function AppointmentSession({
                     availableProducts={availableProducts}
                   />
                   <ObservacoesCard
-                    appointmentId={appointment.id}
-                    initialNotes={appointment.savedNotes}
-                    initialIntercurrences={appointment.savedIntercurrences}
+                    notes={notes}
+                    intercurrences={intercurrences}
+                    onNotesChange={setNotes}
+                    onIntercurrencesChange={setIntercurrences}
                     readonly={editLocked}
                   />
                 </>
@@ -1214,14 +1229,31 @@ export function AppointmentSession({
               )
             })() : (
               <>
-                {renderFichaCard(insumosSection)}
+                {renderFichaCard(insumosSection, true)}
 
                 <ObservacoesCard
-                  appointmentId={appointment.id}
-                  initialNotes={appointment.savedNotes}
-                  initialIntercurrences={appointment.savedIntercurrences}
+                  notes={notes}
+                  intercurrences={intercurrences}
+                  onNotesChange={setNotes}
+                  onIntercurrencesChange={setIntercurrences}
                   readonly={editLocked}
                 />
+
+                {/* Salvar tudo de uma vez */}
+                {!editLocked && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <button type="button" onClick={handleSaveAll} disabled={savingAll} className="btn-primary" style={{ gap: 7, fontSize: 14, padding: '10px 22px' }}>
+                      {savingAll ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                      {savingAll ? 'Salvando…' : 'Salvar'}
+                    </button>
+                    {savedAllAt && !savingAll && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#16a34a', fontWeight: 700 }}>
+                        <CheckCircle2 size={15} /> Tudo salvo
+                      </span>
+                    )}
+                    {saveAllError && <span style={{ fontSize: 13, color: 'var(--warning)', fontWeight: 600 }}>{saveAllError}</span>}
+                  </div>
+                )}
               </>
             )}
 
