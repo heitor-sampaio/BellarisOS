@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useActionState, useState, useRef, useMemo, useEffect } from 'react'
+import { useActionState, useState, useRef, useMemo, useEffect, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
@@ -301,7 +301,7 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
 
 // -- Insumos -------------------------------------------------------------------
 
-function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd, onRemove, readonly }: {
+function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd, onRemove, readonly, embedded }: {
   items:       SessionProduct[]
   available:   AvailableProduct[]
   checkedIds:  Set<string>
@@ -310,6 +310,7 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
   onAdd:       (p: AvailableProduct) => void
   onRemove:    (id: string) => void
   readonly:    boolean
+  embedded?:   boolean
 }) {
   const [adding,  setAdding]  = useState(false)
   const [search,  setSearch]  = useState('')
@@ -321,11 +322,15 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
   }, [available, search, alreadyIn])
 
   return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Insumos utilizados</h3>
-        <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 500 }}>Baixa automática no estoque</span>
-      </div>
+    <div className={embedded ? '' : 'card'} style={embedded ? { position: 'relative' } : { padding: 0, overflow: 'hidden' }}>
+      {embedded ? (
+        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>Baixa automática no estoque</p>
+      ) : (
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Insumos utilizados</h3>
+          <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 500 }}>Baixa automática no estoque</span>
+        </div>
+      )}
 
       {adding && !readonly && (
         <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--hairline)', position: 'relative' }}>
@@ -665,9 +670,10 @@ export function AppointmentSession({
     setStarting(false)
   }
 
-  // Ficha de atendimento = Dados do cliente (identidade + anamnese geral) + ficha de
-  // anamnese (construtor) + ficha de atendimento (construtor). Documento único.
-  const fichaAtendimentoCard = (
+  // Ficha de atendimento = documento único: Dados do cliente (identidade + anamnese geral),
+  // Ficha de anamnese (construtor), Dados do procedimento, Insumos, Ficha de atendimento (construtor).
+  // insumosNode só é passado no fluxo de atendimento normal (avaliações não consomem insumos).
+  const renderFichaCard = (insumosNode?: ReactNode) => (
     <AttendanceRecordCard
       client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
       generalAnamnesis={
@@ -683,6 +689,15 @@ export function AppointmentSession({
           />
         ),
       } : null}
+      procedure={{
+        name:         appointment.procedureName,
+        category:     appointment.procedureCategory,
+        durationMin:  appointment.durationMin,
+        professional: selectedProfName,
+        scheduledAt:  appointment.scheduledAt,
+        room:         appointment.roomName,
+      }}
+      insumos={insumosNode ?? null}
       attendance={attendanceForm && attendanceForm.rows.length > 0 ? {
         name: attendanceForm.name,
         node: (
@@ -694,6 +709,20 @@ export function AppointmentSession({
           />
         ),
       } : null}
+    />
+  )
+
+  const insumosSection = (
+    <InsumoCard
+      embedded
+      items={insumos}
+      available={availableProducts}
+      checkedIds={checkedIds}
+      readonly={isDone}
+      onToggle={id => setCheckedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })}
+      onChangeQty={(id, qty) => setInsumos(prev => prev.map(i => i.productId === id ? { ...i, quantity: qty } : i))}
+      onAdd={p => setInsumos(prev => [...prev, { productId: p.id, name: p.name, unit: p.unit, quantity: 1 }])}
+      onRemove={id => { setInsumos(prev => prev.filter(i => i.productId !== id)); setCheckedIds(prev => { const n = new Set(prev); n.delete(id); return n }) }}
     />
   )
 
@@ -1105,7 +1134,7 @@ export function AppointmentSession({
                       </div>
                     </div>
                   )}
-                  {fichaAtendimentoCard}
+                  {renderFichaCard()}
                   <TreatmentPlanEditor
                     appointmentId={appointment.id} slug={slug}
                     procedures={treatmentProcedures} servicePackages={treatmentPackages}
@@ -1225,18 +1254,7 @@ export function AppointmentSession({
               )
             })() : (
               <>
-                {fichaAtendimentoCard}
-
-                <InsumoCard
-                  items={insumos}
-                  available={availableProducts}
-                  checkedIds={checkedIds}
-                  readonly={isDone}
-                  onToggle={id => setCheckedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })}
-                  onChangeQty={(id, qty) => setInsumos(prev => prev.map(i => i.productId === id ? { ...i, quantity: qty } : i))}
-                  onAdd={p => setInsumos(prev => [...prev, { productId: p.id, name: p.name, unit: p.unit, quantity: 1 }])}
-                  onRemove={id => { setInsumos(prev => prev.filter(i => i.productId !== id)); setCheckedIds(prev => { const n = new Set(prev); n.delete(id); return n }) }}
-                />
+                {renderFichaCard(insumosSection)}
 
                 <ObservacoesCard
                   appointmentId={appointment.id}
