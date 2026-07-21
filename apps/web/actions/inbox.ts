@@ -37,7 +37,7 @@ export interface Message {
 
 export async function getConversations(): Promise<Conversation[]> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL', 'GERENTE_COMERCIAL'])
   const admin = createAdminClient()
 
   const { data } = await admin
@@ -73,7 +73,7 @@ export async function sendMessage(
   content: string,
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
   const admin = createAdminClient()
 
   const { data: conv } = await admin
@@ -163,7 +163,7 @@ export async function markConversationRead(conversationId: string) {
 
 export async function setConversationStatus(conversationId: string, status: ConvStatus) {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
   const admin = createAdminClient()
 
   await admin
@@ -180,7 +180,7 @@ export async function createConversationForLead(
   channel: InboxChannel,
 ): Promise<{ conversationId?: string; error?: string }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
   const admin = createAdminClient()
 
   // Return existing conversation if any
