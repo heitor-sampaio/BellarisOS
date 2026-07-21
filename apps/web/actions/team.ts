@@ -4,8 +4,12 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const ALLOWED_ROLES = ['BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
+const ALLOWED_ROLES = ['BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL', 'COMERCIAL', 'GERENTE_COMERCIAL'] as const
 type AssignableRole = typeof ALLOWED_ROLES[number]
+
+// Cargos de nível-rede criáveis pela UI: sem filial (branch_id = null, igual ao claim do JWT)
+// e restritos ao NETWORK_ADMIN.
+const NETWORK_ASSIGNABLE_ROLES: readonly string[] = ['COMERCIAL', 'GERENTE_COMERCIAL']
 
 export async function createTeamMember(
   _prevState: { error: string } | { success: boolean } | undefined,
@@ -21,7 +25,9 @@ export async function createTeamMember(
   const branchId     = formData.get('branchId') as string
   const redirectPath = (formData.get('redirectPath') as string) ?? '/admin/team'
 
-  if (!name || !email || !role || !password || !branchId) {
+  const isNetworkRole = NETWORK_ASSIGNABLE_ROLES.includes(role)
+
+  if (!name || !email || !role || !password || (!branchId && !isNetworkRole)) {
     return { error: 'Preencha todos os campos.' }
   }
   if (password.length < 8) {
@@ -32,6 +38,10 @@ export async function createTeamMember(
   }
   if (ctx.role === 'BRANCH_ADMIN' && role === 'BRANCH_ADMIN') {
     return { error: 'Sem permissão para criar outro gerente.' }
+  }
+  // Cargos de rede (comercial) só o admin da rede cria — não têm filial.
+  if (isNetworkRole && ctx.role !== 'NETWORK_ADMIN') {
+    return { error: 'Apenas o admin da rede pode criar esse cargo.' }
   }
 
   const supabase = createAdminClient()
@@ -51,11 +61,14 @@ export async function createTeamMember(
 
   const authId = authData.user.id
 
+  // branch_id null para cargos de rede — mantém users.branch_id coerente com o claim do JWT
+  const effectiveBranchId = isNetworkRole ? null : branchId
+
   // 2. Setar claims no JWT
   await supabase.rpc('set_user_claims', {
     p_auth_id: authId,
     p_tenant_id: ctx.tenantId!,
-    p_branch_id: branchId,
+    p_branch_id: effectiveBranchId,
     p_role: role,
   })
 
@@ -63,7 +76,7 @@ export async function createTeamMember(
   const { error: insertError } = await supabase.from('users').insert({
     auth_id: authId,
     tenant_id: ctx.tenantId!,
-    branch_id: branchId,
+    branch_id: effectiveBranchId,
     name,
     email,
     role,

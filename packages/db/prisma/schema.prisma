@@ -17,12 +17,14 @@ datasource db {
 // ============================================================
 
 enum UserRole {
-  NETWORK_ADMIN   // dono/gestor da rede — acessa todas as filiais
-  BRANCH_ADMIN    // gerente da filial
-  RECEPTIONIST    // recepcionista
-  PROFESSIONAL    // esteticista / profissional
-  FINANCIAL       // acesso financeiro somente leitura
-  CLIENT          // cliente final — acessa apenas os próprios dados via app
+  NETWORK_ADMIN      // dono/gestor da rede — acessa todas as filiais
+  BRANCH_ADMIN       // gerente da filial
+  RECEPTIONIST       // recepcionista
+  PROFESSIONAL       // esteticista / profissional
+  FINANCIAL          // acesso financeiro somente leitura
+  COMERCIAL          // vendas nível-rede: agenda da rede + CRM/leads (branch_id null)
+  GERENTE_COMERCIAL  // gestão comercial nível-rede: KPIs/relatórios (branch_id null)
+  CLIENT             // cliente final — acessa apenas os próprios dados via app
 }
 
 enum AppointmentStatus {
@@ -86,6 +88,7 @@ enum AppointmentSource {
   INTERNAL      // criado pela recepção/profissional no web ou app operacional
   ONLINE        // agendamento via link público (web)
   CLIENT_APP    // agendamento feito pelo cliente no app mobile
+  COMMERCIAL    // criado por um cargo comercial (extensão) — atribuição de KPIs
 }
 
 // ============================================================
@@ -287,6 +290,7 @@ model Lead {
   stage     String   @default("NOVO")
   notes     String?
   clientId  String?
+  ownerId   String?  // vendedor comercial dono do lead (users.id) — KPIs por vendedor
 
   tenant Tenant  @relation(fields: [tenantId], references: [id])
   branch Branch  @relation(fields: [branchId], references: [id])
@@ -544,6 +548,7 @@ model Appointment {
   clientRating   Int?                                 // 1–5, avaliação do PROFISSIONAL deixada pelo cliente
   procedureRating Int?                                // 1–5, avaliação do PROCEDIMENTO deixada pelo cliente
   clientFeedback String?                              // comentário livre opcional do cliente
+  createdById    String?                              // quem criou (users.id) — atribuição comercial/KPIs
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 

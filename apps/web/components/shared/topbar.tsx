@@ -14,11 +14,14 @@ interface TopbarProps {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  NETWORK_ADMIN: 'Admin da rede',
-  BRANCH_ADMIN:  'Gerente',
-  RECEPTIONIST:  'Recepcionista',
-  PROFESSIONAL:  'Profissional',
-  FINANCIAL:     'Financeiro',
+  NETWORK_ADMIN:     'Admin da rede',
+  BRANCH_ADMIN:      'Gerente',
+  RECEPTIONIST:      'Recepcionista',
+  PROFESSIONAL:      'Profissional',
+  FINANCIAL:         'Financeiro',
+  MARKETING:         'Marketing',
+  COMERCIAL:         'Comercial',
+  GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
 export function Topbar({ userName, userRole, internalUserId, initialUnread }: TopbarProps) {

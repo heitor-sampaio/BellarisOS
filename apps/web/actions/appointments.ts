@@ -9,6 +9,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { notifyClient, notifyUser } from '@/lib/notifications/notify'
+import { createAppointmentCore, computeAvailableSlots } from '@/lib/appointments/core'
 
 const WRITABLE_ROLES    = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'] as const
 const ALL_BRANCH_ROLES  = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
@@ -190,83 +191,27 @@ export async function addAppointment(
     const ctx = await getTenantContext()
     assertRole(ctx, [...WRITABLE_ROLES, 'PROFESSIONAL'])
 
-    const slug           = formData.get('_slug') as string
-    const branchId       = formData.get('_branchId') as string
-    const clientId       = formData.get('client_id') as string
-    const procedureId    = formData.get('procedure_id') as string
-    const professionalId = formData.get('professional_id') as string
-    const scheduledAt    = formData.get('scheduled_at') as string
-    const notes          = (formData.get('notes') as string)?.trim() || null
-    const roomId         = (formData.get('room_id') as string) || null
-    const isEvaluation   = formData.get('is_evaluation') === 'true'
-
-    if (!clientId)                         return { error: 'Selecione um cliente.' }
-    if (!isEvaluation && !procedureId)     return { error: 'Selecione um procedimento.' }
-    if (!professionalId)                   return { error: 'Selecione um profissional.' }
-    if (!scheduledAt)                      return { error: 'Informe data e hora.' }
-    if (!branchId)                         return { error: 'Filial não identificada.' }
-
-    // Admin client para contornar qualquer edge-case de RLS nos lookups internos
+    const slug = formData.get('_slug') as string
     const admin = createAdminClient()
 
-    // Busca preço e duração do procedimento (apenas quando houver procedimento selecionado)
-    let procedure: { price: number; duration_min: number } | null = null
-    if (procedureId) {
-      const { data, error: procError } = await admin
-        .from('procedures')
-        .select('price, duration_min')
-        .eq('id', procedureId)
-        .eq('tenant_id', ctx.tenantId!)
-        .single()
-      if (procError || !data) return { error: 'Procedimento não encontrado.' }
-      procedure = data
-    }
+    const result = await createAppointmentCore(admin, ctx, {
+      branchId:       formData.get('_branchId') as string,
+      clientId:       formData.get('client_id') as string,
+      procedureId:    (formData.get('procedure_id') as string) || null,
+      professionalId: formData.get('professional_id') as string,
+      scheduledAt:    formData.get('scheduled_at') as string,
+      roomId:         (formData.get('room_id') as string) || null,
+      notes:          (formData.get('notes') as string)?.trim() || null,
+      isEvaluation:   formData.get('is_evaluation') === 'true',
+      source:         'INTERNAL',
+    })
 
-    // Validação de conflito de sala (só faz sentido quando há duração definida)
-    if (roomId && procedure) {
-      const start = new Date(scheduledAt)
-      const end   = new Date(start.getTime() + procedure.duration_min * 60000)
-      const { data: conflict } = await admin
-        .from('appointments')
-        .select('id')
-        .eq('branch_id', branchId)
-        .eq('room_id', roomId)
-        .not('status', 'in', '("CANCELLED","NO_SHOW")')
-        .lt('scheduled_at', end.toISOString())
-        .gt('scheduled_at', new Date(start.getTime() - procedure.duration_min * 60000).toISOString())
-        .maybeSingle()
-      if (conflict) return { error: 'Esta sala já está ocupada nesse horário.' }
-    }
-
-    const { data, error } = await admin
-      .from('appointments')
-      .insert({
-        branch_id:       branchId,
-        client_id:       clientId,
-        procedure_id:    procedureId || null,
-        professional_id: professionalId,
-        room_id:         roomId,
-        scheduled_at:    scheduledAt,
-        duration_min:    procedure?.duration_min ?? 60,
-        price:           procedure?.price ?? 0,
-        notes,
-        status:          'SCHEDULED',
-        source:          'INTERNAL',
-        is_evaluation:   isEvaluation,
-      })
-      .select('id')
-      .single()
-
-    if (error) return { error: `Erro ao criar agendamento: ${error.message}` }
-    if (!data) return { error: 'Erro ao criar agendamento.' }
-
-    const userName = await getUserName(admin, ctx.userId)
-    await logHistory(admin, data.id, ctx.internalUserId, userName, 'CREATED', 'Agendamento criado')
+    if ('error' in result) return { error: result.error }
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/dashboard`)
-    notifyNewAppointment(data.id)
-    return { success: true, id: data.id }
+    notifyNewAppointment(result.id)
+    return { success: true, id: result.id }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }
@@ -1372,42 +1317,8 @@ export async function getClientAvailableSlots(
     .maybeSingle()
   if (!branch) return { slots: [] }
 
-  const dayStart = new Date(`${date}T08:00:00-03:00`).toISOString()
-  const dayEnd   = new Date(`${date}T20:00:00-03:00`).toISOString()
-
-  const { data: booked } = await admin
-    .from('appointments')
-    .select('scheduled_at, duration_min')
-    .eq('branch_id', branchId)
-    .eq('professional_id', professionalId)
-    .gte('scheduled_at', dayStart)
-    .lt('scheduled_at', dayEnd)
-    .not('status', 'in', '("CANCELLED","NO_SHOW")')
-
-  // Gera slots de 30min entre 08:00 e 20:00
-  const allSlots: string[] = []
-  for (let h = 8; h < 20; h++) {
-    for (const m of [0, 30]) {
-      allSlots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
-    }
-  }
-
-  const occupied = (booked ?? []).map(b => ({
-    start: new Date(b.scheduled_at as string).getTime(),
-    end:   new Date(b.scheduled_at as string).getTime() + Number(b.duration_min) * 60000,
-  }))
-
-  const cutoff = new Date(`${date}T20:00:00-03:00`).getTime()
-
-  const available = allSlots.filter(slot => {
-    const [hh, mm]  = slot.split(':').map(Number)
-    const slotStart = new Date(`${date}T${String(hh!).padStart(2, '0')}:${String(mm!).padStart(2, '0')}:00-03:00`).getTime()
-    const slotEnd   = slotStart + durationMin * 60000
-    if (slotEnd > cutoff) return false
-    return !occupied.some(o => slotStart < o.end && slotEnd > o.start)
-  })
-
-  return { slots: available }
+  const slots = await computeAvailableSlots(admin, branchId, professionalId, date, durationMin)
+  return { slots }
 }
 
 // --- Portal do cliente: criar agendamento self-service ------------

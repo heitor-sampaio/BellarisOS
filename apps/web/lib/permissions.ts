@@ -13,7 +13,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
 export const ALL_MODULES: AppModule[] = ['agenda', 'clients', 'procedures', 'stock', 'financial', 'settings']
 
 // Roles que nunca aparecem na matriz de configuração (atuam em nível de rede)
-export const HIDDEN_ROLES = new Set(['NETWORK_ADMIN', 'FINANCIAL', 'MARKETING', 'CLIENT', 'NAO_DEFINIDO'])
+export const HIDDEN_ROLES = new Set(['NETWORK_ADMIN', 'FINANCIAL', 'MARKETING', 'COMERCIAL', 'GERENTE_COMERCIAL', 'CLIENT', 'NAO_DEFINIDO'])
 
 export interface ModulePermission { view: boolean; write: boolean }
 export type ResolvedPermissions = Record<AppModule, ModulePermission>

@@ -5,6 +5,8 @@ export type UserRole =
   | 'PROFESSIONAL'
   | 'FINANCIAL'
   | 'MARKETING'
+  | 'COMERCIAL'
+  | 'GERENTE_COMERCIAL'
   | 'CLIENT'
 
 export interface JwtClaims {

@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getRedirectPath } from '@/lib/auth'
+import { getRedirectPath, NETWORK_LEVEL_ROLES } from '@/lib/auth'
 import { LoginSchema, RegisterSchema } from '@estetica-os/validators'
 import type { JwtClaims } from '@estetica-os/types'
 
@@ -108,7 +108,7 @@ export async function loginAction(
       const claims = (user.app_metadata ?? {}) as JwtClaims
       const admin  = createAdminClient()
 
-      if (claims.role === 'NETWORK_ADMIN' || claims.role === 'FINANCIAL' || claims.role === 'MARKETING') {
+      if (NETWORK_LEVEL_ROLES.includes(claims.role)) {
         dest = getRedirectPath(claims.role, null)
       } else if (claims.branch_id) {
         const { data: br } = await admin.from('branches').select('slug').eq('id', claims.branch_id).single()

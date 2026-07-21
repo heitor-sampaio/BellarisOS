@@ -5,11 +5,16 @@ import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 
 const ROLE_OPTIONS = [
-  { value: 'BRANCH_ADMIN',  label: 'Gerente de filial' },
-  { value: 'RECEPTIONIST',  label: 'Recepcionista' },
-  { value: 'PROFESSIONAL',  label: 'Profissional' },
-  { value: 'FINANCIAL',     label: 'Financeiro' },
+  { value: 'BRANCH_ADMIN',      label: 'Gerente de filial' },
+  { value: 'RECEPTIONIST',      label: 'Recepcionista' },
+  { value: 'PROFESSIONAL',      label: 'Profissional' },
+  { value: 'FINANCIAL',         label: 'Financeiro' },
+  { value: 'COMERCIAL',         label: 'Comercial' },
+  { value: 'GERENTE_COMERCIAL', label: 'Gerente comercial' },
 ] as const
+
+// Cargos de rede não têm filial (atuam sobre toda a rede)
+const NETWORK_ROLES = ['COMERCIAL', 'GERENTE_COMERCIAL']
 
 interface Branch { id: string; name: string }
 
@@ -19,7 +24,10 @@ interface AdminTeamFormProps {
 
 export function AdminTeamForm({ branches }: AdminTeamFormProps) {
   const [open, setOpen] = useState(false)
+  const [role, setRole] = useState('')
   const [state, action, pending] = useActionState(createTeamMember, undefined)
+
+  const isNetworkRole = NETWORK_ROLES.includes(role)
 
   if (state?.success && open) setOpen(false)
 
@@ -68,24 +76,31 @@ export function AdminTeamForm({ branches }: AdminTeamFormProps) {
                   <input id="tm-email" name="email" type="email" required className="field" placeholder="ana@bellaris.com" />
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label className="overline" htmlFor="tm-branch">Filial</label>
-                  <select id="tm-branch" name="branchId" required className="field" defaultValue="">
-                    <option value="" disabled>Selecione…</option>
-                    {branches.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
-                </div>
+                {!isNetworkRole && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <label className="overline" htmlFor="tm-branch">Filial</label>
+                    <select id="tm-branch" name="branchId" required className="field" defaultValue="">
+                      <option value="" disabled>Selecione…</option>
+                      {branches.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, gridColumn: isNetworkRole ? '1 / -1' : undefined }}>
                   <label className="overline" htmlFor="tm-role">Cargo</label>
-                  <select id="tm-role" name="role" required className="field" defaultValue="">
+                  <select id="tm-role" name="role" required className="field" value={role} onChange={e => setRole(e.target.value)}>
                     <option value="" disabled>Selecione…</option>
                     {ROLE_OPTIONS.map(r => (
                       <option key={r.value} value={r.value}>{r.label}</option>
                     ))}
                   </select>
+                  {isNetworkRole && (
+                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                      Cargo de rede — acesso a todas as unidades, sem filial fixa.
+                    </span>
+                  )}
                 </div>
 
                 <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>

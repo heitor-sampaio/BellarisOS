@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getRedirectPath } from '@/lib/auth'
+import { getRedirectPath, NETWORK_LEVEL_ROLES } from '@/lib/auth'
 import type { JwtClaims } from '@estetica-os/types'
 
 // Recebe tokens do armazenamento nativo (Capacitor Preferences),
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
   let redirectTo = '/auth/redirect'  // fallback seguro
   try {
-    if (['NETWORK_ADMIN', 'FINANCIAL', 'MARKETING'].includes(claims.role)) {
+    if (NETWORK_LEVEL_ROLES.includes(claims.role)) {
       redirectTo = getRedirectPath(claims.role, null)
     } else if (claims.branch_id) {
       const { data: br } = await admin

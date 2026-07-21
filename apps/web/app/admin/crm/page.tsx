@@ -19,7 +19,7 @@ export default async function AdminCRMPage({
   searchParams: Promise<{ view?: string }>
 }) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL'])
+  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'COMERCIAL', 'GERENTE_COMERCIAL'])
 
   const { view: viewParam } = await searchParams
   const view: View = viewParam === 'inbox' ? 'inbox' : 'funil'
@@ -37,7 +37,8 @@ export default async function AdminCRMPage({
   const branches = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
   const branchIds = branches.map(b => b.id)
 
-  const canEdit = ctx.role === 'NETWORK_ADMIN'
+  // COMERCIAL opera o funil; GERENTE_COMERCIAL e FINANCIAL só leem.
+  const canEdit = ctx.role === 'NETWORK_ADMIN' || ctx.role === 'COMERCIAL'
 
   // -- Funil data (always needed for stats) --
   const stages = await seedDefaultStages(ctx.tenantId!)

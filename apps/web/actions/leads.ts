@@ -43,7 +43,7 @@ export async function createLead(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
 
     const branchId   = str(formData, '_branchId')
     const slug       = str(formData, '_slug') ?? ''
@@ -76,6 +76,8 @@ export async function createLead(
         source, notes, crm_stage_id: crmStageId ?? null,
         fbclid, gclid,
         utm_source: utmSource, utm_medium: utmMedium, utm_campaign: utmCampaign,
+        // Atribui o lead ao vendedor que o criou (base para KPIs por vendedor)
+        owner_id: ctx.role === 'COMERCIAL' ? ctx.internalUserId : null,
       })
       .select('id, created_at')
       .single()
@@ -102,7 +104,7 @@ export async function updateLead(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
 
     const leadId     = str(formData, '_leadId')
     const slug       = str(formData, '_slug') ?? ''
@@ -147,7 +149,7 @@ export async function updateLead(
 export async function updateLeadStage(leadId: string, crm_stage_id: string, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
 
     const admin = createAdminClient()
     await admin
@@ -167,7 +169,7 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
 export async function convertLeadToClient(leadId: string, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
 
     const supabase = await createSupabase()
     const { data: lead } = await supabase

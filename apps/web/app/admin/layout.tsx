@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, NETWORK_LEVEL_ROLES } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminSidebar } from '@/components/admin/sidebar'
@@ -9,7 +9,7 @@ import { SidebarProvider } from '@/components/shared/sidebar-context'
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getTenantContext()
 
-  if (!['NETWORK_ADMIN', 'FINANCIAL', 'MARKETING'].includes(ctx.role)) redirect('/login')
+  if (!NETWORK_LEVEL_ROLES.includes(ctx.role)) redirect('/login')
 
   // Tenant check + users query em paralelo — economiza 1 round-trip sequencial
   const supabase  = await createClient()

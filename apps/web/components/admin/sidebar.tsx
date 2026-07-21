@@ -13,9 +13,12 @@ const SIDEBAR_GRADIENT = 'linear-gradient(165deg, var(--brand) 0%, var(--brand-d
 
 export function AdminSidebar({ role }: { role: string }) {
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
-  const isFinancial  = role === 'FINANCIAL'
-  const isMarketing  = role === 'MARKETING'
-  const isRestricted = isFinancial || isMarketing  // sem Dashboard/Unidades/Equipe
+  const isFinancial        = role === 'FINANCIAL'
+  const isMarketing        = role === 'MARKETING'
+  const isComercial        = role === 'COMERCIAL'
+  const isGerenteComercial = role === 'GERENTE_COMERCIAL'
+  // Cargos de rede com menu enxuto — sem Dashboard/Agenda/Equipe
+  const isRestricted = isFinancial || isMarketing || isComercial || isGerenteComercial
 
   // Recolhido = rosé; expandido = branco (original)
   const asideBg     = collapsed ? SIDEBAR_GRADIENT : 'var(--surface)'
@@ -83,6 +86,13 @@ export function AdminSidebar({ role }: { role: string }) {
               <NavItem icon={<BarChart3  size={18} />} label="Relatórios"    href="/admin/reports" />
               <NavItem icon={<Layers     size={18} />} label="CRM"           href="/admin/crm" />
               <NavItem icon={<Megaphone  size={18} />} label="Marketing"     href="/admin/marketing" />
+            </>
+          ) : isComercial ? (
+            <NavItem icon={<Layers size={18} />} label="CRM" href="/admin/crm" />
+          ) : isGerenteComercial ? (
+            <>
+              <NavItem icon={<BarChart3 size={18} />} label="Comercial" href="/admin/comercial" />
+              <NavItem icon={<Layers    size={18} />} label="CRM"       href="/admin/crm" />
             </>
           ) : (
             <>
