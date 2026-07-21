@@ -109,7 +109,8 @@ export async function createCrmAppointment(
 
   let clientId = (leadRow as { client_id: string | null }).client_id
   if (!clientId) {
-    const conv = await convertLeadToClient(input.leadId, '__admin__') as { clientId?: string; error?: string }
+    // A unidade do agendamento vira a unidade de cadastro do cliente.
+    const conv = await convertLeadToClient(input.leadId, '__admin__', input.branchId) as { clientId?: string; error?: string }
     if (conv.error) return { error: conv.error }
     clientId = conv.clientId ?? null
   }

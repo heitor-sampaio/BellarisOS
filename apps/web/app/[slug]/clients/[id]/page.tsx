@@ -28,11 +28,13 @@ export default async function ClientProfilePage({
   const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
   if (!branch) notFound()
 
+  // Cliente pertence à REDE: abre qualquer cliente do tenant a partir de qualquer
+  // portal de filial (a unidade é apenas uma TAG, não um lock de acesso).
   const { data: raw } = await admin
     .from('clients')
     .select('*')
     .eq('id', id)
-    .eq('branch_id', branch.id)
+    .eq('tenant_id', ctx.tenantId!)
     .single()
   if (!raw) notFound()
 

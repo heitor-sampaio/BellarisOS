@@ -60,6 +60,7 @@ export function InboxLeadPanel({
   const [stageId, setStageId] = useState('')
   const [tags,   setTags]   = useState<string[]>([])
   const [tagDraft, setTagDraft] = useState('')
+  const [convertBranchId, setConvertBranchId] = useState('')  // unidade de cadastro ao converter
 
   useEffect(() => {
     let active = true
@@ -78,6 +79,7 @@ export function InboxLeadPanel({
         setNotes(res.lead.notes ?? '')
         setStageId(res.lead.crm_stage_id ?? '')
         setTags(res.lead.tags ?? [])
+        setConvertBranchId(res.lead.branch_id ?? branches[0]?.id ?? '')
       }
       setLoading(false)
     })
@@ -124,9 +126,9 @@ export function InboxLeadPanel({
   }
 
   function handleConvert() {
-    if (!lead) return
+    if (!lead || !convertBranchId) return
     startConvert(async () => {
-      await convertLeadToClient(lead.id, SLUG)
+      await convertLeadToClient(lead.id, SLUG, convertBranchId)
       const res = await getLeadForConversation(conversation.id)
       setLead(res.lead)
       onLeadChanged?.()
@@ -182,9 +184,16 @@ export function InboxLeadPanel({
               <UserCheck size={14} /> Já é cliente
             </span>
           ) : (
-            <button type="button" className="btn-secondary" onClick={handleConvert} disabled={converting}>
-              <UserCheck size={14} /> {converting ? 'Convertendo…' : 'Converter em cliente'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span style={labelStyle}>Converter em cliente — unidade de cadastro</span>
+              <select className="field" value={convertBranchId} onChange={e => setConvertBranchId(e.target.value)} style={fieldStyle}>
+                {branches.length === 0 && <option value="">Nenhuma filial</option>}
+                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+              <button type="button" className="btn-secondary" onClick={handleConvert} disabled={converting || !convertBranchId}>
+                <UserCheck size={14} /> {converting ? 'Convertendo…' : 'Converter em cliente'}
+              </button>
+            </div>
           )}
         </div>
       )}

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Search, UserPlus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { unitTag } from '@estetica-os/utils'
 
 interface ClientItem {
   id:         string
@@ -57,6 +58,9 @@ export function ClientsSidebar({
   const [filter,           setFilter]           = useState<Filter>('todos')
   const [selectedBranchId, setSelectedBranchId] = useState<string>('')
 
+  // Unidade é uma TAG (quem frequenta), não o branch_id de cadastro.
+  const selectedBranchName = availableBranches?.find(b => b.id === selectedBranchId)?.name
+
   const filtered = clients.filter(c => {
     const matchSearch = !search ||
       c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -66,7 +70,8 @@ export function ClientsSidebar({
       filter === 'vip'      ? c.isActive && c.tags.includes('VIP') :
       filter === 'novos'    ? c.isActive && c.isNew :
       filter === 'inativos' ? !c.isActive : true
-    const matchBranch = !selectedBranchId || c.branchId === selectedBranchId
+    const matchBranch = !selectedBranchId
+      || (selectedBranchName ? c.tags.includes(unitTag(selectedBranchName)) : c.branchId === selectedBranchId)
     return matchSearch && matchFilter && matchBranch
   })
 

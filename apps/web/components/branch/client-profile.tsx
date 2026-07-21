@@ -12,6 +12,8 @@ import { AnamnesisFormRenderer, type AnamnesisAnswers } from './anamnesis-form-r
 import { AttendanceRecordCard } from './attendance-record-card'
 import { AnamnesisTab, type GeneralAnamnesis } from './anamnesis-tab'
 import type { AnamnesisRow } from '@/lib/anamnesis'
+import { TagBadge } from '@/components/shared/tag-badge'
+import { CLIENT_TAGS, isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
 import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -306,7 +308,7 @@ function applyCepMask(v: string) {
   return d.replace(/(\d{5})(\d)/, '$1-$2')
 }
 
-function DadosTab({ client, slug }: { client: ProfileClient; slug: string }) {
+function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: string; branches: { id: string; name: string }[] }) {
   const router = useRouter()
 
   const [cpf,        setCpf]        = useState(client.document ? applyDocMask(client.document) : '')
@@ -513,7 +515,7 @@ function DadosTab({ client, slug }: { client: ProfileClient; slug: string }) {
       <div>
         <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Tags</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {['VIP', 'Indicação', 'Retorno', 'Alergias', 'Gestante', 'Idoso', 'Plano', 'Desconto'].map(tag => {
+          {CLIENT_TAGS.map(tag => {
             const active = selectedTags.includes(tag)
             return (
               <button
@@ -536,6 +538,56 @@ function DadosTab({ client, slug }: { client: ProfileClient; slug: string }) {
             )
           })}
         </div>
+      </div>
+
+      {/* Unidades que frequenta (tags "Unidade: <nome>") */}
+      <div>
+        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Unidades que frequenta</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {branches.map(b => {
+            const tag = unitTag(b.name)
+            const active = selectedTags.includes(tag)
+            return (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => {
+                  setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
+                  setSaved(false)
+                }}
+                style={{
+                  padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer', border: active ? '1.5px solid #3b6cbf' : '1px solid var(--border)',
+                  background: active ? '#e7f0fc' : 'var(--surface)',
+                  color: active ? '#3b6cbf' : 'var(--text-muted)',
+                  transition: 'all 0.12s',
+                }}
+              >
+                {b.name}
+              </button>
+            )
+          })}
+        </div>
+        {/* Unit tags sem filial correspondente (renomeada/inativa) — removíveis */}
+        {(() => {
+          const orphans = selectedTags.filter(t => isUnitTag(t) && !branches.some(b => unitTag(b.name) === t))
+          if (orphans.length === 0) return null
+          return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+              {orphans.map(tag => (
+                <TagBadge
+                  key={tag}
+                  label={unitTagName(tag)}
+                  style={{ bg: '#e7f0fc', color: '#3b6cbf' }}
+                  onRemove={() => {
+                    setSelectedTags(prev => prev.filter(t => t !== tag))
+                    setSaved(false)
+                  }}
+                />
+              ))}
+            </div>
+          )
+        })()}
       </div>
 
       {saveError && <p style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>{saveError}</p>}
@@ -829,7 +881,6 @@ export function ClientProfile({
   const visibleTabs = TABS.filter(t => t.key !== 'fichas' || recordForms.length > 0)
   const [treatmentModalOpen, setTreatmentModalOpen] = useState(false)
 
-  const isVip    = client.tags.includes('VIP')
   const initials = getInitials(client.name)
   const since    = format(new Date(client.createdAt), "MMM yyyy", { locale: ptBR })
 
@@ -863,18 +914,19 @@ export function ClientProfile({
               {initials}
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
                   {client.name}
                 </h1>
-                {isVip && (
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 10,
-                    background: '#fce7ec', color: '#c34d6b',
-                  }}>
-                    VIP · Ouro
-                  </span>
-                )}
+                {client.tags.map(tag => {
+                  if (isUnitTag(tag)) {
+                    return <TagBadge key={tag} label={unitTagName(tag)} size="xs" style={{ bg: '#e7f0fc', color: '#3b6cbf' }} />
+                  }
+                  if (tag === 'VIP') {
+                    return <TagBadge key={tag} label="VIP · Ouro" size="xs" style={{ bg: '#fce7ec', color: '#c34d6b' }} />
+                  }
+                  return <TagBadge key={tag} label={tag} size="xs" />
+                })}
               </div>
               <div style={{ display: 'flex', gap: 14, marginTop: 5, flexWrap: 'wrap' }}>
                 {client.phone && (
@@ -1176,7 +1228,7 @@ export function ClientProfile({
 
       {/* -- Tab: Dados ------------------------------------------------ */}
       {tab === 'dados' && (
-        <DadosTab client={client} slug={slug} />
+        <DadosTab client={client} slug={slug} branches={branches} />
       )}
 
       {/* -- Tab: Financeiro ------------------------------------------- */}

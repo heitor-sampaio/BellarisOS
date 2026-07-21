@@ -4,13 +4,14 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { unitTag } from '@estetica-os/utils'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
   const supabase = await createSupabase()
   const { data } = await supabase
     .from('branches')
-    .select('id, slug')
+    .select('id, slug, name')
     .eq('id', branchId)
     .eq('tenant_id', tenantId)
     .single()
@@ -39,7 +40,12 @@ export async function addClient(
   const gender    = (formData.get('gender') as string) || null
   const notes     = (formData.get('notes') as string)?.trim() || null
   const tagsRaw   = formData.get('tags') as string
-  const tags      = tagsRaw ? JSON.parse(tagsRaw) : []
+  const tags: string[] = tagsRaw ? JSON.parse(tagsRaw) : []
+
+  // Unidade de cadastro entra como tag (métrica). O trigger de agendamento adiciona
+  // as demais unidades que o cliente vier a frequentar.
+  const unitName = (branch as { name?: string }).name
+  if (unitName && !tags.includes(unitTag(unitName))) tags.push(unitTag(unitName))
 
   if (!name || !phone) return { error: 'Nome e telefone são obrigatórios.' }
 

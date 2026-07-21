@@ -3,9 +3,9 @@
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addClient, updateClient } from '@/actions/clients'
-import { UserPlus, X, CheckCircle2 } from 'lucide-react'
-
-const TAGS = ['VIP', 'Indicação', 'Retorno', 'Alergias', 'Gestante', 'Idoso', 'Plano', 'Desconto']
+import { UserPlus, CheckCircle2 } from 'lucide-react'
+import { TagBadge } from '@/components/shared/tag-badge'
+import { CLIENT_TAGS, isUnitTag, unitTagName } from '@estetica-os/utils'
 
 const GENDERS = [
   { value: 'F', label: 'Feminino' },
@@ -15,8 +15,9 @@ const GENDERS = [
 ]
 
 interface ClientFormProps {
-  branchId: string
-  slug:     string
+  branchId:   string
+  slug:       string
+  branchName?: string
   existingClient?: {
     id:         string
     name:       string
@@ -58,7 +59,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export function ClientForm({ branchId, slug, existingClient, onSuccess, showCancelButton, onCancel }: ClientFormProps) {
+export function ClientForm({ branchId, slug, branchName, existingClient, onSuccess, showCancelButton, onCancel }: ClientFormProps) {
   const isEdit = !!existingClient
   const action = isEdit ? updateClient : addClient
 
@@ -89,6 +90,17 @@ export function ClientForm({ branchId, slug, existingClient, onSuccess, showCanc
       <input type="hidden" name="_slug" value={slug} />
       {isEdit && <input type="hidden" name="_clientId" value={existingClient!.id} />}
       <input type="hidden" name="tags" value={JSON.stringify(selectedTags)} />
+
+      {!isEdit && branchName && (
+        <div style={{
+          fontSize: 12.5, color: 'var(--text-muted)',
+          background: 'var(--bg-app)', border: '1px solid var(--hairline)',
+          borderRadius: 10, padding: '8px 12px', display: 'flex', gap: 6, alignItems: 'center',
+        }}>
+          <span style={{ fontWeight: 700, color: 'var(--text)' }}>Unidade de cadastro:</span> {branchName}
+          <span style={{ color: 'var(--text-faint)' }}>— o cliente pode ser atendido em qualquer unidade</span>
+        </div>
+      )}
 
       {/* Seção 1: Dados essenciais */}
       <div className="form-2col">
@@ -146,7 +158,7 @@ export function ClientForm({ branchId, slug, existingClient, onSuccess, showCanc
       {/* Tags */}
       <Field label="Tags">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {TAGS.map(tag => {
+          {CLIENT_TAGS.map(tag => {
             const active = selectedTags.includes(tag)
             return (
               <button
@@ -167,6 +179,19 @@ export function ClientForm({ branchId, slug, existingClient, onSuccess, showCanc
             )
           })}
         </div>
+        {/* Unidades que o cliente frequenta (tags "Unidade: <nome>") — removíveis */}
+        {selectedTags.some(isUnitTag) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+            {selectedTags.filter(isUnitTag).map(tag => (
+              <TagBadge
+                key={tag}
+                label={unitTagName(tag)}
+                style={{ bg: '#e7f0fc', color: '#3b6cbf' }}
+                onRemove={() => toggleTag(tag)}
+              />
+            ))}
+          </div>
+        )}
       </Field>
 
       {/* Observações */}

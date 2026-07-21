@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { unitTag } from '@estetica-os/utils'
 
 // ─── Mapa auth_id → users.id interno (usado no getTenantContext) ──────────────
 // Evita um round-trip PostgREST por request. Invalidar em actions/team.ts.
@@ -19,15 +20,24 @@ export function getCachedInternalUserId(authId: string) {
   )()
 }
 
-// ─── Branch: clientes da filial ──────────────────────────────────────────────
+// ─── Branch: clientes que FREQUENTAM a filial (via unit tag "Unidade: <nome>") ─
+// Cliente pertence à REDE; a unidade é uma TAG. Listamos quem tem a tag da filial.
 export function getCachedBranchClients(branchId: string, tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
+      const { data: branch } = await admin
+        .from('branches')
+        .select('name')
+        .eq('id', branchId)
+        .eq('tenant_id', tenantId)
+        .maybeSingle()
+      if (!branch?.name) return []
       const { data } = await admin
         .from('clients')
         .select('id, name, phone, tags, is_active, created_at')
-        .eq('branch_id', branchId)
+        .eq('tenant_id', tenantId)
+        .contains('tags', [unitTag(branch.name)])
         .order('name')
       return data ?? []
     },
@@ -274,7 +284,6 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
           .from('client_documents')
           .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at')
           .eq('client_id', clientId)
-          .eq('branch_id', branchId)
           .order('created_at', { ascending: false }),
         admin
           .from('appointments')

@@ -88,11 +88,9 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [tags,      setTags]      = useState<string[]>(existing?.tags ?? [])
     const [tagDraft,  setTagDraft]  = useState('')
 
-    // Sugestões rápidas: origens canônicas + designação de filial ("Unidade: <nome>")
-    const suggestedTags = [
-      ...LEAD_SOURCES.map(s => s.key),
-      ...(branches ?? []).map(b => `Unidade: ${b.name}`),
-    ]
+    // Sugestões rápidas: só origens canônicas. Lead não tem unidade (é de rede);
+    // a unidade é informada na conversão em cliente.
+    const suggestedTags = LEAD_SOURCES.map(s => s.key)
 
     const networkMode    = !!branches && branches.length > 0
     const activeBranchId = networkMode ? selectedBranchId : (branchId ?? '')

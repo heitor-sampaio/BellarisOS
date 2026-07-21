@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig } from '@/lib/ads/factory'
 import { MetaAdsProvider } from '@/lib/ads/meta'
 import type { MetaAdsConfig } from '@/lib/ads/types'
-import { resolveLeadSource, mergeTags } from '@estetica-os/utils'
+import { resolveLeadSource, mergeTags, unitTag } from '@estetica-os/utils'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -186,7 +186,7 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
 }
 
 // --- Converter lead em cliente ------------------------------------
-export async function convertLeadToClient(leadId: string, slug: string) {
+export async function convertLeadToClient(leadId: string, slug: string, branchId?: string | null) {
   try {
     const ctx = await getTenantContext()
     assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
@@ -202,15 +202,27 @@ export async function convertLeadToClient(leadId: string, slug: string) {
     if (!lead)          return { error: 'Lead não encontrado.' }
     if (lead.client_id) return { clientId: lead.client_id as string }
 
+    // Cliente sempre nasce com uma UNIDADE informada (métrica de origem; não fica preso a ela).
+    const unitBranchId = branchId ?? (lead.branch_id as string | null)
+    if (!unitBranchId) return { error: 'Informe a unidade de cadastro do cliente.' }
+
     const admin = createAdminClient()
+
+    const { data: unitBranch } = await admin
+      .from('branches')
+      .select('name')
+      .eq('id', unitBranchId)
+      .eq('tenant_id', lead.tenant_id)
+      .maybeSingle()
+    if (!unitBranch) return { error: 'Unidade inválida.' }
 
     const { data: client, error } = await admin
       .from('clients')
       .insert({
         tenant_id: lead.tenant_id,
-        branch_id: lead.branch_id,
+        branch_id: unitBranchId,
         name: lead.name, phone: lead.phone ?? '', email: lead.email,
-        is_active: true, tags: [],
+        is_active: true, tags: [unitTag((unitBranch as { name: string }).name)],
       })
       .select('id')
       .single()

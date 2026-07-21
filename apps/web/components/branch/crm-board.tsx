@@ -636,7 +636,12 @@ function LeadCard({
         {/* Footer */}
         <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{ageLabel}</span>
-          {!lead.client_id ? (
+          {lead.client_id ? (
+            <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700 }}>✓ Cliente</span>
+          ) : networkMode ? (
+            // Lead de rede converte no painel do inbox (escolhe a unidade de cadastro).
+            null
+          ) : (
             <button
               type="button" onClick={handleConvert} disabled={converting}
               style={{
@@ -649,8 +654,6 @@ function LeadCard({
             >
               {converting ? 'Convertendo…' : <><ArrowRight size={10} /> Converter</>}
             </button>
-          ) : (
-            <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700 }}>✓ Cliente</span>
           )}
         </div>
       </div>

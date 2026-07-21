@@ -33,11 +33,8 @@ export default async function AdminClientProfilePage({
     .single()
   if (!raw) notFound()
 
+  // Cliente pertence à REDE — pode não ter filial vinculada (branch_id nullable).
   const branchRow = raw.branches as { id: string; name: string; slug: string } | null
-  if (!branchRow) notFound()
-
-  const branchId  = branchRow.id
-  const slug      = branchRow.slug
 
   const client: ProfileClient = {
     id:                raw.id,
@@ -102,7 +99,6 @@ export default async function AdminClientProfilePage({
       .from('client_documents')
       .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at')
       .eq('client_id', id)
-      .eq('branch_id', branchId)
       .order('created_at', { ascending: false }),
 
     admin
@@ -135,7 +131,7 @@ export default async function AdminClientProfilePage({
 
     admin
       .from('branches')
-      .select('id, name')
+      .select('id, name, slug')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
       .order('name'),
@@ -154,6 +150,12 @@ export default async function AdminClientProfilePage({
       .eq('client_id', id)
       .order('created_at', { ascending: false }),
   ])
+
+  // Filial "efetiva": a vinculada ao cliente ou, na ausência, a primeira ativa da
+  // rede — usada só como contexto para sub-componentes/links que exigem uma filial.
+  const effBranch = branchRow ?? ((branchesRaw?.[0] ?? null) as { id: string; name: string; slug: string } | null)
+  const branchId  = effBranch?.id ?? ''
+  const slug      = effBranch?.slug ?? ''
 
   // KPIs
   const completedAppts   = (appts ?? []).filter(a => a.status === 'COMPLETED')

@@ -40,7 +40,7 @@ export default async function NewClientPage({ params }: { params: Promise<{ slug
       </div>
 
       <div className="card">
-        <ClientForm branchId={branch.id} slug={slug} />
+        <ClientForm branchId={branch.id} slug={slug} branchName={branch.name} />
       </div>
     </div>
   )
