@@ -373,7 +373,12 @@ function LeadCard({
     const targetSlug = lead.branch_slug ?? slug
     startConvert(async () => {
       const res = await convertLeadToClient(lead.id, targetSlug)
-      if (res?.clientId) router.push(`/${targetSlug}/clients/${res.clientId}`)
+      if (!res?.clientId) return
+      // Funil de filial: leva à ficha do cliente (rota /{slug}/clients existe).
+      // Funil da rede (/admin): cliente pode ser de rede (sem filial) e a ficha por
+      // filial não se aplica — atualiza o funil no lugar (card vira "✓ Cliente").
+      if (networkMode) router.refresh()
+      else router.push(`/${targetSlug}/clients/${res.clientId}`)
     })
   }
 
