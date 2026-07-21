@@ -169,7 +169,8 @@ async function processBirthdayCampaign(
     .not('birth_date', 'is', null)
 
   if (rules.branch_ids?.length) query = query.in('branch_id', rules.branch_ids)
-  if (rules.has_app_account)    query = query.not('auth_id', 'is', null)
+  // cast quebra a instanciação de tipo excessivamente profunda do builder do Supabase
+  if (rules.has_app_account)    query = (query as any).not('auth_id', 'is', null)
 
   const { data: allClients } = await query.limit(5000)
 

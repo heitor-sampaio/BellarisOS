@@ -495,6 +495,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
               ANNUAL_DATE: `${annualDay}/${annualMonth} todo ano`,
               DAYS_AFTER_VISIT: `${triggerDays} dias após última visita`,
               DAYS_BEFORE_EXPIRY: `${triggerDays} dias antes do vencimento`,
+              BEFORE_APPOINTMENT: `${triggerHours}h antes do agendamento`,
             }[triggerType]} />
           )}
           <ReviewRow label="Título"     value={previewTitle} />

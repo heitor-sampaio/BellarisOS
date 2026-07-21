@@ -43,8 +43,8 @@ export function CapacitorNavFix() {
         // WebView and drops the Supabase realtime WebSocket connection.
         try {
           const { PushNotifications } = await import('@capacitor/push-notifications')
-          const { state } = await PushNotifications.checkPermissions()
-          if (state !== 'granted') return
+          const { receive } = await PushNotifications.checkPermissions()
+          if (receive !== 'granted') return
 
           // Listeners BEFORE register() — avoids race condition
           await PushNotifications.addListener('registration', async ({ value: token }) => {

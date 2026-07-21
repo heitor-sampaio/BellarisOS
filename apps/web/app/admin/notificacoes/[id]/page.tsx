@@ -89,7 +89,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
           {['DRAFT', 'PAUSED'].includes(campaign.status) && (
-            <form action={activateCampaign.bind(null, id)}>
+            <form action={async () => { 'use server'; await activateCampaign(id) }}>
               <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Send size={14} />
                 {campaign.type === 'IMMEDIATE' ? 'Enviar agora' : 'Ativar'}
@@ -97,12 +97,12 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
             </form>
           )}
           {campaign.status === 'ACTIVE' && campaign.type === 'AUTOMATED' && (
-            <form action={pauseCampaign.bind(null, id)}>
+            <form action={async () => { 'use server'; await pauseCampaign(id) }}>
               <button type="submit" className="btn-secondary">Pausar</button>
             </form>
           )}
           {!['ARCHIVED', 'COMPLETED'].includes(campaign.status) && (
-            <form action={archiveCampaign.bind(null, id)}>
+            <form action={async () => { 'use server'; await archiveCampaign(id) }}>
               <button type="submit" className="btn-ghost" style={{ color: 'var(--text-muted)' }}>Arquivar</button>
             </form>
           )}
