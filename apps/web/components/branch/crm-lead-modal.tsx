@@ -5,12 +5,12 @@ import {
   useState, forwardRef, useImperativeHandle,
 } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, UserPlus, CheckCircle2, Check } from 'lucide-react'
+import { X, UserPlus, CheckCircle2, Check, Plus } from 'lucide-react'
 import { createLead, updateLead } from '@/actions/leads'
 import type { CRMStage } from '@/actions/crm-stages'
 import type { Lead } from './crm-board'
-
-const SOURCES = ['Instagram', 'Google', 'Indicação', 'WhatsApp', 'Site', 'Evento', 'Outro']
+import { LEAD_SOURCES } from '@estetica-os/utils'
+import { TagBadge } from '@/components/shared/tag-badge'
 
 export interface Procedure { id: string; name: string }
 
@@ -23,6 +23,7 @@ interface ExistingLead {
   source?:        string | null
   notes?:         string | null
   crm_stage_id?:  string | null
+  tags?:          string[] | null
   lead_procedures?: { procedure_id: string }[]
 }
 
@@ -84,6 +85,14 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [selectedBranchId, setSelectedBranchId] = useState(
       branchId ?? branches?.[0]?.id ?? '',
     )
+    const [tags,      setTags]      = useState<string[]>(existing?.tags ?? [])
+    const [tagDraft,  setTagDraft]  = useState('')
+
+    // Sugestões rápidas: origens canônicas + designação de filial ("Unidade: <nome>")
+    const suggestedTags = [
+      ...LEAD_SOURCES.map(s => s.key),
+      ...(branches ?? []).map(b => `Unidade: ${b.name}`),
+    ]
 
     const networkMode    = !!branches && branches.length > 0
     const activeBranchId = networkMode ? selectedBranchId : (branchId ?? '')
@@ -95,6 +104,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       setPhone(existing?.phone ?? '')
       setSelectedProcs(existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [])
       setStageId(existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '')
+      setTags(existing?.tags ?? [])
+      setTagDraft('')
       dialogRef.current?.showModal()
     }, [existing, initialStageId, stages])
 
@@ -117,6 +128,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           crm_stage_id: stageId || null,
           client_id:    null,
           created_at:   ((state as any).createdAt as string) ?? new Date().toISOString(),
+          tags,
           lead_procedures: selectedProcs.map(pid => ({
             procedure_id: pid,
             procedures:   procedures.find(p => p.id === pid)
@@ -132,6 +144,21 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
     function toggleProc(id: string) {
       setSelectedProcs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+    }
+
+    function addTag(raw: string) {
+      const value = raw.trim()
+      if (!value) return
+      setTags(prev => prev.includes(value) ? prev : [...prev, value])
+      setTagDraft('')
+    }
+
+    function toggleTag(value: string) {
+      setTags(prev => prev.includes(value) ? prev.filter(t => t !== value) : [...prev, value])
+    }
+
+    function removeTag(value: string) {
+      setTags(prev => prev.filter(t => t !== value))
     }
 
     return (
@@ -175,6 +202,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               <input type="hidden" name="_branchId"     value={activeBranchId} />
               <input type="hidden" name="_slug"         value={activeBranchSlug} />
               <input type="hidden" name="procedure_ids" value={JSON.stringify(selectedProcs)} />
+              <input type="hidden" name="tags" value={JSON.stringify(tags)} />
               {isEdit && <input type="hidden" name="_leadId" value={existing!.id} />}
 
               {/* Filial — seletor visível apenas no modo rede */}
@@ -272,7 +300,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   <Label>Origem</Label>
                   <select name="source" className="field" defaultValue={existing?.source ?? ''}>
                     <option value="">Não informado</option>
-                    {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                    {LEAD_SOURCES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                   </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -282,6 +310,71 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                     {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 4 }}>
+                  TAGS
+                </p>
+                <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 10 }}>
+                  Classifique o lead (origem manual, filial, campanha…)
+                </p>
+
+                {/* Tags selecionadas */}
+                {tags.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                    {tags.map(t => (
+                      <TagBadge key={t} label={t} size="sm" onRemove={() => removeTag(t)} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Entrada de tag livre */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input
+                    type="text"
+                    className="field"
+                    style={{ flex: 1 }}
+                    value={tagDraft}
+                    onChange={e => setTagDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); addTag(tagDraft) }
+                    }}
+                    placeholder="Digite uma tag e Enter"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => addTag(tagDraft)}
+                    disabled={!tagDraft.trim()}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 4,
+                      fontSize: 12, fontWeight: 700, padding: '7px 12px', borderRadius: 10,
+                      border: '1.5px solid var(--border)', background: 'var(--bg-app)',
+                      color: 'var(--text-muted)', cursor: tagDraft.trim() ? 'pointer' : 'default',
+                      opacity: tagDraft.trim() ? 1 : 0.5, flexShrink: 0,
+                    }}
+                  >
+                    <Plus size={13} /> Adicionar
+                  </button>
+                </div>
+
+                {/* Sugestões rápidas */}
+                {suggestedTags.some(s => !tags.includes(s)) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                    {suggestedTags.filter(s => !tags.includes(s)).map(s => (
+                      <button key={s} type="button" onClick={() => toggleTag(s)} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 99, cursor: 'pointer',
+                        border: '1.5px dashed var(--border)', background: 'var(--surface)',
+                        color: 'var(--text-muted)', transition: 'all 120ms',
+                      }}>
+                        <Plus size={11} strokeWidth={3} />
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Observações */}

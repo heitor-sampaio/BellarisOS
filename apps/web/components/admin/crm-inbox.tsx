@@ -15,12 +15,19 @@ import {
   setConversationStatus, createConversationForLead,
   type Conversation, type Message, type InboxChannel, type ConvStatus,
 } from '@/actions/inbox'
+import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
+import { TagBadge } from '@/components/shared/tag-badge'
+import {
+  secondsSince, agingLevel, AGING_STYLE, AWAITING_THRESHOLDS,
+  formatDurationShort, formatDurationLong,
+} from '@estetica-os/utils'
 
 // --- Channel meta ------------------------------------------------------------
 
 const CH = {
   whatsapp:  { label: 'WhatsApp',  color: '#25D366', bg: '#f0fdf4', border: '#25D36633' },
   instagram: { label: 'Instagram', color: '#E1306C', bg: '#fff0f5', border: '#E1306C33' },
+  messenger: { label: 'Messenger', color: '#0084FF', bg: '#eff6ff', border: '#0084FF33' },
   email:     { label: 'E-mail',    color: '#3B82F6', bg: '#eff6ff', border: '#3B82F633' },
   manual:    { label: 'Nota',      color: 'var(--text-faint)', bg: 'var(--bg-app)', border: 'var(--border)' },
 } satisfies Record<InboxChannel, { label: string; color: string; bg: string; border: string }>
@@ -44,6 +51,7 @@ function ChannelIcon({ ch }: { ch: InboxChannel }) {
   const p = { size: 13, color: CH[ch].color }
   if (ch === 'whatsapp')  return <Phone {...p} />
   if (ch === 'instagram') return <AtSign {...p} />
+  if (ch === 'messenger') return <MessageSquare {...p} />
   if (ch === 'email')     return <Mail {...p} />
   return <MessageSquare size={13} color="var(--text-faint)" />
 }
@@ -73,7 +81,8 @@ const STATUS_META: Record<ConvStatus, { label: string; color: string; bg: string
 
 // --- Left: conversation list item --------------------------------------------
 
-function ConvItem({ conv, selected, onClick }: { conv: Conversation; selected: boolean; onClick: () => void }) {
+function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; selected: boolean; onClick: () => void; nowMs: number }) {
+  const awaitingSecs = secondsSince(conv.awaiting_since, nowMs)
   return (
     <button
       type="button"
@@ -135,11 +144,20 @@ function ConvItem({ conv, selected, onClick }: { conv: Conversation; selected: b
             )}
           </div>
 
-          {conv.branch_name && (
-            <span style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 2, display: 'block' }}>
-              {conv.branch_name}
-            </span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+            {conv.awaiting_since && awaitingSecs != null && (
+              <TagBadge
+                size="xs"
+                label={`Aguardando ${formatDurationShort(awaitingSecs)}`}
+                style={AGING_STYLE[agingLevel(awaitingSecs, AWAITING_THRESHOLDS)]}
+              />
+            )}
+            {conv.branch_name && (
+              <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>
+                {conv.branch_name}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </button>
@@ -305,11 +323,14 @@ interface CRMInboxProps {
   initialConversations: Conversation[]
   leads:                { id: string; name: string; phone?: string | null; branch_name?: string | null }[]
   canEdit:              boolean
+  branches:             PanelBranch[]
+  /** conversa pré-selecionada (deep-link ?c= vindo do card do funil) */
+  initialSelectedId?:   string | null
 }
 
-export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps) {
+export function CRMInbox({ initialConversations, leads, canEdit, branches, initialSelectedId = null }: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)
-  const [selectedId,    setSelectedId]    = useState<string | null>(null)
+  const [selectedId,    setSelectedId]    = useState<string | null>(initialSelectedId)
   const [messages,      setMessages]      = useState<Message[]>([])
   const [loadingMsgs,   setLoadingMsgs]   = useState(false)
   const [search,        setSearch]        = useState('')
@@ -317,6 +338,7 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
   const [draft,         setDraft]         = useState('')
   const [isPending,     startTransition]  = useTransition()
   const [showNewConv,   setShowNewConv]   = useState(false)
+  const [nowMs,         setNowMs]         = useState(() => Date.now())
   const bottomRef  = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -392,6 +414,12 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
 
+  // Reactive "now" for aging metrics — refresh every minute
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60000)
+    return () => clearInterval(id)
+  }, [])
+
   const handleSelect = useCallback((conv: Conversation) => {
     setSelectedId(conv.id)
     if (conv.unread_count > 0) {
@@ -459,6 +487,13 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
   }
 
   const integrationRequired = selectedConv && selectedConv.channel !== 'manual'
+
+  // Awaiting-response counter (aging over the visible/filtered conversations)
+  const awaitingConvs = filtered.filter(c => c.awaiting_since != null)
+  const awaitingCount = awaitingConvs.length
+  const hasAwaitingAlert = awaitingConvs.some(
+    c => agingLevel(secondsSince(c.awaiting_since, nowMs), AWAITING_THRESHOLDS) === 'alert'
+  )
 
   return (
     <>
@@ -532,6 +567,24 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
             </div>
           </div>
 
+          {/* Awaiting-response counter */}
+          {awaitingCount > 0 && (
+            <div style={{
+              flexShrink: 0, padding: '7px 14px',
+              borderBottom: '1px solid var(--hairline)',
+              display: 'flex', alignItems: 'center', gap: 7,
+              fontSize: 11.5, fontWeight: 700,
+              color: hasAwaitingAlert ? AGING_STYLE.alert.color : AGING_STYLE.warn.color,
+              background: hasAwaitingAlert ? AGING_STYLE.alert.bg : AGING_STYLE.warn.bg,
+            }}>
+              <span style={{
+                width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                background: 'currentColor',
+              }} />
+              {awaitingCount} aguardando resposta
+            </div>
+          )}
+
           {/* List */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {filtered.length === 0 ? (
@@ -553,7 +606,7 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
               </div>
             ) : (
               filtered.map(c => (
-                <ConvItem key={c.id} conv={c} selected={c.id === selectedId} onClick={() => handleSelect(c)} />
+                <ConvItem key={c.id} conv={c} selected={c.id === selectedId} onClick={() => handleSelect(c)} nowMs={nowMs} />
               ))
             )}
           </div>
@@ -616,6 +669,29 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
                         · {selectedConv.branch_name}
                       </span>
                     )}
+                  </div>
+
+                  {/* Service metrics */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                      Última interação há {formatDurationShort(secondsSince(selectedConv.last_message_at, nowMs))}
+                      {selectedConv.first_response_seconds != null && (
+                        <> · 1ª resposta em {formatDurationLong(selectedConv.first_response_seconds)}</>
+                      )}
+                    </span>
+                    {selectedConv.awaiting_since && (() => {
+                      const s = secondsSince(selectedConv.awaiting_since, nowMs)
+                      const st = AGING_STYLE[agingLevel(s, AWAITING_THRESHOLDS)]
+                      return (
+                        <span style={{
+                          fontSize: 11, fontWeight: 700,
+                          padding: '1px 8px', borderRadius: 99,
+                          background: st.bg, color: st.color, whiteSpace: 'nowrap',
+                        }}>
+                          Aguardando resposta há {formatDurationShort(s)}
+                        </span>
+                      )
+                    })()}
                   </div>
                 </div>
 
@@ -722,6 +798,21 @@ export function CRMInbox({ initialConversations, leads, canEdit }: CRMInboxProps
             </>
           )}
         </div>
+
+        {/* -- 3rd panel: lead card -- */}
+        {selectedConv && (
+          <div style={{
+            width: 320, flexShrink: 0, overflowY: 'auto',
+            borderLeft: '1px solid var(--border)', background: 'var(--surface)',
+          }}>
+            <InboxLeadPanel
+              conversation={selectedConv}
+              canEdit={canEdit}
+              branches={branches}
+              onLeadChanged={() => { getConversations_client().then(setConversations) }}
+            />
+          </div>
+        )}
       </div>
     </>
   )

@@ -42,9 +42,10 @@ export class ZAPIProvider implements WhatsAppProvider {
 
   parseInbound(payload: unknown): InboundMsg | null {
     const p = payload as any
-    // Z-API inbound webhook: { phone, text.message, messageId, momment, isStatusReply }
+    // Z-API inbound webhook: { phone, text.message, messageId, momment, isStatusReply, senderName }
     if (!p?.phone || !p?.text?.message) return null
-    return {
+
+    const out: InboundMsg = {
       from:       p.phone.replace(/\D/g, ''),
       content:    p.text.message as string,
       externalId: (p.messageId ?? p.zaapId ?? '') as string,
@@ -53,6 +54,24 @@ export class ZAPIProvider implements WhatsAppProvider {
         : new Date().toISOString(),
       type: 'text',
     }
+
+    const pushName = p.senderName ?? p.chatName ?? p.notifyName
+    if (pushName) out.pushName = pushName as string
+
+    // Referral de anúncio click-to-WhatsApp (Z-API expõe de forma inconsistente; parsing defensivo)
+    const ref = p.referral ?? p.adReferral ?? p.ctwaContext
+    if (ref && typeof ref === 'object') {
+      const r = ref as any
+      out.referral = {
+        sourceType: r.sourceType ?? r.source_type ?? undefined,
+        sourceId:   r.sourceId   ?? r.source_id   ?? undefined,
+        sourceUrl:  r.sourceUrl  ?? r.source_url  ?? undefined,
+        ctwaClid:   r.ctwaClid   ?? r.ctwa_clid   ?? undefined,
+        headline:   r.headline   ?? r.title       ?? undefined,
+      }
+    }
+
+    return out
   }
 
   parseStatus(payload: unknown): StatusUpdate | null {

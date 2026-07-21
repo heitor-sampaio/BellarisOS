@@ -5,19 +5,27 @@ import { useRouter } from 'next/navigation'
 import { Plus, ArrowRight, Trash2, Phone, Mail, X, AlertTriangle } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 import { updateLeadStage, convertLeadToClient, deleteLead } from '@/actions/leads'
+import { openLeadConversation } from '@/actions/inbox'
 import type { CRMStage } from '@/actions/crm-stages'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
+import {
+  sourceStyle,
+  secondsSince, agingLevel, AGING_STYLE,
+  AWAITING_THRESHOLDS, STALE_THRESHOLDS, formatDurationShort,
+} from '@estetica-os/utils'
+import { TagBadge } from '@/components/shared/tag-badge'
 
 // --- Filtros e ordenação -----------------------------------------
 interface FiltersState {
   sources:      string[]
+  tags:         string[]
   procedureIds: string[]
   situation:    'all' | 'converted' | 'not_converted'
   period:       'all' | '7d' | '30d' | '90d'
 }
 type SortOrder = 'newest' | 'oldest' | 'name_asc' | 'name_desc'
 
-const DEFAULT_FILTERS: FiltersState = { sources: [], procedureIds: [], situation: 'all', period: 'all' }
+const DEFAULT_FILTERS: FiltersState = { sources: [], tags: [], procedureIds: [], situation: 'all', period: 'all' }
 
 function FiltersBar({
   leads, filters, sort,
@@ -32,6 +40,12 @@ function FiltersBar({
 }) {
   const availableSources = useMemo(
     () => [...new Set(leads.map(l => l.source).filter(Boolean))].sort() as string[],
+    [leads],
+  )
+
+  // Tags que aparecem em pelo menos um lead
+  const availableTags = useMemo(
+    () => [...new Set(leads.flatMap(l => l.tags ?? []))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     [leads],
   )
 
@@ -50,6 +64,7 @@ function FiltersBar({
 
   const activeCount =
     (filters.sources.length > 0 ? 1 : 0) +
+    (filters.tags.length > 0 ? 1 : 0) +
     (filters.procedureIds.length > 0 ? 1 : 0) +
     (filters.situation !== 'all' ? 1 : 0) +
     (filters.period !== 'all' ? 1 : 0)
@@ -59,6 +74,13 @@ function FiltersBar({
       ? filters.sources.filter(s => s !== src)
       : [...filters.sources, src]
     onFiltersChange({ ...filters, sources: next })
+  }
+
+  function toggleTag(tag: string) {
+    const next = filters.tags.includes(tag)
+      ? filters.tags.filter(t => t !== tag)
+      : [...filters.tags, tag]
+    onFiltersChange({ ...filters, tags: next })
   }
 
   function toggleProcedure(id: string) {
@@ -104,10 +126,40 @@ function FiltersBar({
         </div>
       )}
 
+      {/* Tags */}
+      {availableTags.length > 0 && (
+        <>
+          {availableSources.length > 0 && (
+            <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)' }}>Tags</span>
+            {availableTags.map(tag => {
+              const active = filters.tags.includes(tag)
+              return (
+                <button
+                  key={tag} type="button"
+                  onClick={() => toggleTag(tag)}
+                  style={{
+                    fontSize: 11.5, fontWeight: 600, padding: '4px 10px', borderRadius: 99,
+                    cursor: 'pointer', transition: 'all 120ms',
+                    border: active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
+                    background: active ? 'var(--brand-soft)' : 'var(--surface)',
+                    color: active ? 'var(--brand)' : 'var(--text-muted)',
+                  }}
+                >
+                  {tag}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+
       {/* Procedimentos */}
       {availableProcs.length > 0 && (
         <>
-          {availableSources.length > 0 && (
+          {(availableSources.length > 0 || availableTags.length > 0) && (
             <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -211,6 +263,9 @@ export interface Lead {
   notes:        string | null
   client_id:    string | null
   created_at:   string
+  tags:         string[]
+  last_interaction_at?: string | null
+  awaiting_since?:      string | null
   branch_name?: string | null
   branch_slug?: string | null
   lead_procedures: { procedure_id: string; procedures: { name: string; price: number } | null }[]
@@ -231,20 +286,9 @@ interface CRMBoardProps {
 function softBg(hex: string)     { return hex + '18' }
 function softBorder(hex: string) { return hex + '50' }
 
-// --- Origem badges -----------------------------------------------
-const SOURCE_COLORS: Record<string, { bg: string; color: string }> = {
-  Instagram:  { bg: '#fce8f4', color: '#b52d7c' },
-  Google:     { bg: '#e8f0fe', color: '#1a56db' },
-  Indicação:  { bg: '#fef3e8', color: '#8a5a1a' },
-  WhatsApp:   { bg: '#e8f5ec', color: '#1a7a3a' },
-  Site:       { bg: '#e8edf4', color: '#2d4e7a' },
-  Evento:     { bg: '#f4e8f4', color: '#7a2d7a' },
-  Outro:      { bg: 'var(--bg-app)', color: 'var(--text-muted)' },
-}
-
 // --- Cartão do lead ----------------------------------------------
 function LeadCard({
-  lead, slug, branchId, stages, procedures,
+  lead, slug, branchId, stages, procedures, branches, networkMode, nowMs,
   isDragging, onDragStart, onDragEnd, onLeadDeleted,
 }: {
   lead:           Lead
@@ -252,6 +296,9 @@ function LeadCard({
   branchId:       string
   stages:         CRMStage[]
   procedures:     Procedure[]
+  branches?:      { id: string; name: string; slug: string }[]
+  networkMode?:   boolean
+  nowMs:          number
   isDragging:     boolean
   onDragStart:    (e: React.DragEvent, id: string) => void
   onDragEnd:      () => void
@@ -259,6 +306,7 @@ function LeadCard({
 }) {
   const [converting, startConvert] = useTransition()
   const [deleting,   startDelete]  = useTransition()
+  const [opening,    startOpening] = useTransition()
   const router     = useRouter()
   const editRef    = useRef<CRMLeadModalHandle>(null)
   const confirmRef = useRef<HTMLDialogElement>(null)
@@ -270,7 +318,22 @@ function LeadCard({
     : ageInDays === 1 ? 'ontem'
     : `há ${ageInDays} dias`
 
-  const srcStyle  = lead.source ? (SOURCE_COLORS[lead.source] ?? SOURCE_COLORS['Outro']!) : null
+  // --- Métricas de atendimento -----------------------------------
+  // Cliente aguardando resposta (prioridade máxima de sinal).
+  const awaitingSecs = lead.awaiting_since != null
+    ? secondsSince(lead.awaiting_since, nowMs)
+    : null
+  // Tempo desde a última interação (para "esfriando").
+  const lastSecs = secondsSince(lead.last_interaction_at, nowMs)
+  // Frieza: baseada na última interação, ou na idade do lead se nunca houve interação.
+  const staleSecs  = secondsSince(lead.last_interaction_at ?? lead.created_at, nowMs)
+  const staleLevel = agingLevel(staleSecs, STALE_THRESHOLDS)
+  const staleColor = staleLevel === 'alert'
+    ? AGING_STYLE.alert.color
+    : staleLevel === 'warn'
+      ? AGING_STYLE.warn.color
+      : 'var(--text-faint)'
+
   const procNames = lead.lead_procedures
     .map(lp => lp.procedures?.name)
     .filter(Boolean) as string[]
@@ -294,6 +357,14 @@ function LeadCard({
 
   function handleCardClick() {
     if (wasDragging.current) return
+    // No CRM da rede (/admin), o card abre a visão de inbox do lead (conversa + card).
+    if (networkMode) {
+      startOpening(async () => {
+        const res = await openLeadConversation(lead.id)
+        if (res.conversationId) router.push(`/admin/crm?view=inbox&c=${res.conversationId}`)
+      })
+      return
+    }
     editRef.current?.open()
   }
 
@@ -320,12 +391,14 @@ function LeadCard({
       <CRMLeadModal
         ref={editRef}
         branchId={branchId} slug={slug} stages={stages} procedures={procedures}
+        branches={branches}
         existing={{
           id: lead.id, name: lead.name,
           phone: lead.phone, email: lead.email,
           social_media: lead.social_media,
           source: lead.source, notes: lead.notes,
           crm_stage_id: lead.crm_stage_id,
+          tags: lead.tags,
           lead_procedures: lead.lead_procedures.map(lp => ({ procedure_id: lp.procedure_id })),
         }}
       />
@@ -410,28 +483,31 @@ function LeadCard({
           background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: 12, padding: '12px 14px',
-          cursor: isDragging ? 'grabbing' : 'pointer',
-          opacity: isDragging ? 0.35 : 1,
+          cursor: opening ? 'wait' : isDragging ? 'grabbing' : 'pointer',
+          opacity: isDragging ? 0.35 : opening ? 0.6 : 1,
           transition: 'opacity 150ms, box-shadow 150ms',
           userSelect: 'none',
         }}
         onMouseEnter={e => { if (!isDragging) (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 12px rgba(34,22,25,.1)' }}
         onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'none' }}
       >
-        {/* Linha 1: origem + lixeira */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-          {srcStyle ? (
-            <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 99, background: srcStyle.bg, color: srcStyle.color }}>
-              {lead.source}
-            </span>
-          ) : <span />}
+        {/* Linha 1: origem + tags + lixeira */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 7 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, minWidth: 0 }}>
+            {lead.source && (
+              <TagBadge label={lead.source} style={sourceStyle(lead.source)} size="xs" />
+            )}
+            {lead.tags?.map(t => (
+              <TagBadge key={t} label={t} size="xs" />
+            ))}
+          </div>
 
           <button
             type="button"
             onClick={e => { e.stopPropagation(); confirmRef.current?.showModal() }}
             disabled={deleting}
             style={{
-              width: 24, height: 24, borderRadius: 6,
+              width: 24, height: 24, borderRadius: 6, flexShrink: 0,
               border: '1px solid var(--border)', background: 'var(--bg-app)',
               color: 'var(--text-faint)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
@@ -529,6 +605,29 @@ function LeadCard({
           </div>
         )}
 
+        {/* Métricas de atendimento: aguardando resposta / lead esfriando */}
+        {(awaitingSecs != null || lead.last_interaction_at || staleLevel === 'alert') && (
+          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {awaitingSecs != null ? (
+              <TagBadge
+                size="xs"
+                label={`Aguardando ${formatDurationShort(awaitingSecs)}`}
+                style={AGING_STYLE[agingLevel(awaitingSecs, AWAITING_THRESHOLDS)]}
+              />
+            ) : staleLevel === 'alert' ? (
+              <TagBadge
+                size="xs"
+                label={`Frio há ${formatDurationShort(staleSecs)}`}
+                style={AGING_STYLE.alert}
+              />
+            ) : lead.last_interaction_at ? (
+              <span style={{ fontSize: 11, fontWeight: staleLevel === 'warn' ? 700 : 400, color: staleColor }}>
+                Última interação há {formatDurationShort(lastSecs)}
+              </span>
+            ) : null}
+          </div>
+        )}
+
         {/* Footer */}
         <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{ageLabel}</span>
@@ -565,6 +664,13 @@ export function CRMBoard({ initialLeads, stages, procedures, branchId, slug, net
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS)
   const [sort,    setSort]    = useState<SortOrder>('newest')
 
+  // "Agora" compartilhado para as métricas de aging; atualiza a cada minuto.
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60000)
+    return () => clearInterval(id)
+  }, [])
+
   // Sincroniza quando o servidor revalida (ex: "Novo lead" do header da página)
   useEffect(() => {
     if (!draggingId) setLeads(initialLeads)
@@ -576,6 +682,9 @@ export function CRMBoard({ initialLeads, stages, procedures, branchId, slug, net
 
     if (filters.sources.length > 0)
       result = result.filter(l => l.source && filters.sources.includes(l.source))
+
+    if (filters.tags.length > 0)
+      result = result.filter(l => (l.tags ?? []).some(t => filters.tags.includes(t)))
 
     if (filters.procedureIds.length > 0)
       result = result.filter(l =>
@@ -745,7 +854,9 @@ export function CRMBoard({ initialLeads, stages, procedures, branchId, slug, net
                 <LeadCard
                   key={lead.id}
                   lead={lead} slug={slug} branchId={branchId}
-                  stages={stages} procedures={procedures}
+                  stages={stages} procedures={procedures} branches={branches}
+                  networkMode={networkMode}
+                  nowMs={nowMs}
                   isDragging={draggingId === lead.id}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}

@@ -2,6 +2,15 @@
 
 export type MessageType = 'text' | 'image' | 'audio' | 'video' | 'document' | 'other'
 
+// Dados de atribuição de anúncio click-to-WhatsApp (Meta) ou equivalente do provedor.
+export interface InboundReferral {
+  sourceType?: string   // 'ad' | 'post' (Meta CTWA)
+  sourceId?:   string   // ad id
+  sourceUrl?:  string   // usado para inferir plataforma (facebook|instagram)
+  ctwaClid?:   string   // click id do click-to-WhatsApp
+  headline?:   string   // título do anúncio
+}
+
 export interface InboundMsg {
   from:       string      // phone number, only digits (E.164 sem +)
   content:    string      // text content (or caption for media)
@@ -9,6 +18,8 @@ export interface InboundMsg {
   timestamp:  string      // ISO 8601
   type:       MessageType
   mediaUrl?:  string
+  pushName?:  string      // nome público do contato (vira o nome do card)
+  referral?:  InboundReferral   // presente quando o lead veio de anúncio
 }
 
 export interface StatusUpdate {

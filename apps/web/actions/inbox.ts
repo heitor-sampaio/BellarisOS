@@ -2,9 +2,10 @@
 
 import { getTenantContext, assertRole } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { seedDefaultStages } from '@/actions/crm-stages'
 import { revalidatePath } from 'next/cache'
 
-export type InboxChannel = 'whatsapp' | 'instagram' | 'email' | 'manual'
+export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
 
 export interface Conversation {
@@ -18,9 +19,14 @@ export interface Conversation {
   last_message:    string | null
   contact_name:    string | null
   contact_phone:   string | null
-  branch_id:       string
+  branch_id:       string | null
   branch_name:     string | null
   created_at:      string
+  // Métricas de atendimento (mantidas pelo trigger on_new_message)
+  last_message_direction: 'inbound' | 'outbound' | null
+  last_inbound_at:        string | null
+  awaiting_since:         string | null
+  first_response_seconds: number | null
 }
 
 export interface Message {
@@ -42,7 +48,7 @@ export async function getConversations(): Promise<Conversation[]> {
 
   const { data } = await admin
     .from('conversations')
-    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, branch_id, created_at, branches(name)')
+    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, branches(name)')
     .eq('tenant_id', ctx.tenantId!)
     .order('last_message_at', { ascending: false, nullsFirst: false })
     .limit(200)
@@ -66,6 +72,123 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
     .limit(500)
 
   return (data ?? []) as Message[]
+}
+
+// --- Card do lead ligado à conversa (3a coluna do inbox) ---------------------
+
+export interface InboxLead {
+  id:            string
+  name:          string
+  phone:         string | null
+  email:         string | null
+  social_media:  string | null
+  source:        string | null
+  notes:         string | null
+  crm_stage_id:  string | null
+  tags:          string[]
+  branch_id:     string | null
+  client_id:     string | null
+  procedure_ids: string[]
+}
+
+export interface InboxStage { id: string; name: string; color: string; position: number }
+
+export interface ConversationCard {
+  lead:   InboxLead | null
+  stages: InboxStage[]
+}
+
+export async function getLeadForConversation(conversationId: string): Promise<ConversationCard> {
+  const ctx = await getTenantContext()
+  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL', 'GERENTE_COMERCIAL'])
+  const admin = createAdminClient()
+
+  const stages = (await seedDefaultStages(ctx.tenantId!)) as InboxStage[]
+
+  const { data: conv } = await admin
+    .from('conversations')
+    .select('lead_id')
+    .eq('id', conversationId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+
+  const leadId = (conv as { lead_id: string | null } | null)?.lead_id ?? null
+  if (!leadId) return { lead: null, stages }
+
+  const { data: leadRow } = await admin
+    .from('leads')
+    .select('id, name, phone, email, social_media, source, notes, crm_stage_id, tags, branch_id, client_id, lead_procedures(procedure_id)')
+    .eq('id', leadId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+
+  if (!leadRow) return { lead: null, stages }
+
+  const l = leadRow as any
+  const lead: InboxLead = {
+    id:           l.id,
+    name:         l.name,
+    phone:        l.phone,
+    email:        l.email,
+    social_media: l.social_media,
+    source:       l.source,
+    notes:        l.notes,
+    crm_stage_id: l.crm_stage_id,
+    tags:         (l.tags ?? []) as string[],
+    branch_id:    l.branch_id,
+    client_id:    l.client_id,
+    procedure_ids: ((l.lead_procedures ?? []) as { procedure_id: string }[]).map(p => p.procedure_id),
+  }
+  return { lead, stages }
+}
+
+/** Acha (ou cria) a conversa de um lead — usado pelo deep-link "card do funil -> inbox". */
+export async function openLeadConversation(leadId: string): Promise<{ conversationId: string | null }> {
+  const ctx = await getTenantContext()
+  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL', 'GERENTE_COMERCIAL'])
+  const admin = createAdminClient()
+
+  // Conversa existente para este lead (qualquer canal), mais recente primeiro
+  const { data: existing } = await admin
+    .from('conversations')
+    .select('id')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('lead_id', leadId)
+    .order('last_message_at', { ascending: false, nullsFirst: false })
+    .limit(1)
+  if (existing && existing.length > 0) return { conversationId: existing[0]!.id }
+
+  // Cria uma conversa a partir do lead (whatsapp se tem telefone; senão manual)
+  const { data: leadRow } = await admin
+    .from('leads')
+    .select('name, phone, branch_id')
+    .eq('id', leadId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+  if (!leadRow) return { conversationId: null }
+
+  const l = leadRow as { name: string; phone: string | null; branch_id: string | null }
+  const contactPhone = l.phone ? l.phone.replace(/\D/g, '') : null
+  const channel: InboxChannel = contactPhone ? 'whatsapp' : 'manual'
+
+  const { data: created } = await admin
+    .from('conversations')
+    .upsert(
+      {
+        tenant_id:     ctx.tenantId!,
+        branch_id:     l.branch_id,
+        lead_id:       leadId,
+        channel,
+        status:        'open',
+        contact_name:  l.name,
+        contact_phone: contactPhone,
+      },
+      contactPhone ? { onConflict: 'tenant_id,channel,contact_phone', ignoreDuplicates: false } : undefined,
+    )
+    .select('id')
+    .single()
+
+  return { conversationId: (created as { id: string } | null)?.id ?? null }
 }
 
 export async function sendMessage(

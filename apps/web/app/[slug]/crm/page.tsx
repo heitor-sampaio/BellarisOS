@@ -48,7 +48,8 @@ export default async function BranchCRMPage({
     .from('leads')
     .select(`
       id, name, phone, email, social_media, source,
-      crm_stage_id, notes, client_id, created_at,
+      crm_stage_id, notes, client_id, created_at, tags,
+      conversations(last_message_at, awaiting_since),
       lead_procedures(procedure_id, procedures(name, price))
     `)
     .eq('branch_id', branch.id)
@@ -58,6 +59,28 @@ export default async function BranchCRMPage({
   const total       = leads?.length ?? 0
   const convertidos = leads?.filter(l => l.client_id).length ?? 0
   const conversion  = total > 0 ? Math.round((convertidos / total) * 100) : 0
+
+  // Métricas de atendimento derivadas das conversas de cada lead.
+  const leadsData = (leads ?? []).map((l: any) => {
+    const { conversations, ...rest } = l
+    const convs = (conversations ?? []) as { last_message_at: string | null; awaiting_since: string | null }[]
+    const lastInteractionAt = convs
+      .map(c => c.last_message_at)
+      .filter((v): v is string => v != null)
+      .sort()
+      .at(-1) ?? null
+    const awaitingSince = convs
+      .map(c => c.awaiting_since)
+      .filter((v): v is string => v != null)
+      .sort()
+      .at(0) ?? null
+    return {
+      ...rest,
+      tags:                l.tags ?? [],
+      last_interaction_at: lastInteractionAt,
+      awaiting_since:      awaitingSince,
+    }
+  })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -94,7 +117,7 @@ export default async function BranchCRMPage({
 
       {/* Board */}
       <CRMBoard
-        initialLeads={(leads ?? []) as unknown as import('@/components/branch/crm-board').Lead[]}
+        initialLeads={leadsData as unknown as import('@/components/branch/crm-board').Lead[]}
         stages={stages}
         procedures={procedures}
         branchId={branch.id}

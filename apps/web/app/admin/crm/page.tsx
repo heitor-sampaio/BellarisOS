@@ -16,13 +16,14 @@ type View = 'funil' | 'inbox'
 export default async function AdminCRMPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>
+  searchParams: Promise<{ view?: string; c?: string }>
 }) {
   const ctx = await getTenantContext()
   assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'COMERCIAL', 'GERENTE_COMERCIAL'])
 
-  const { view: viewParam } = await searchParams
-  const view: View = viewParam === 'inbox' ? 'inbox' : 'funil'
+  const { view: viewParam, c: convParam } = await searchParams
+  // Uma conversa selecionada (?c=) força a aba inbox (deep-link vindo do card do funil).
+  const view: View = (viewParam === 'inbox' || convParam) ? 'inbox' : 'funil'
 
   const admin = createAdminClient()
 
@@ -47,26 +48,42 @@ export default async function AdminCRMPage({
 
   const procedures = allProcs.map(p => ({ id: p.id as string, name: p.name as string }))
 
-  const { data: leadsRaw } = branchIds.length > 0
-    ? await admin
-        .from('leads')
-        .select(`
-          id, name, phone, email, social_media, source,
-          crm_stage_id, notes, client_id, created_at,
-          branch_id,
-          branches(name, slug),
-          lead_procedures(procedure_id, procedures(name, price))
-        `)
-        .in('branch_id', branchIds)
-        .eq('tenant_id', ctx.tenantId!)
-        .order('created_at', { ascending: false })
-    : { data: [] }
+  // Funil da REDE: inclui leads de rede (branch_id null) + leads de filiais do tenant.
+  const { data: leadsRaw } = await admin
+    .from('leads')
+    .select(`
+      id, name, phone, email, social_media, source,
+      crm_stage_id, notes, client_id, created_at, tags,
+      branch_id,
+      branches(name, slug),
+      conversations(last_message_at, awaiting_since),
+      lead_procedures(procedure_id, procedures(name, price))
+    `)
+    .eq('tenant_id', ctx.tenantId!)
+    .order('created_at', { ascending: false })
 
-  const leads = (leadsRaw ?? []).map((l: any) => ({
-    ...l,
-    branch_name: l.branches?.name ?? null,
-    branch_slug: l.branches?.slug ?? null,
-  }))
+  const leads = (leadsRaw ?? []).map((l: any) => {
+    const { conversations, ...rest } = l
+    const convs = (conversations ?? []) as { last_message_at: string | null; awaiting_since: string | null }[]
+    const lastInteractionAt = convs
+      .map(c => c.last_message_at)
+      .filter((v): v is string => v != null)
+      .sort()
+      .at(-1) ?? null
+    const awaitingSince = convs
+      .map(c => c.awaiting_since)
+      .filter((v): v is string => v != null)
+      .sort()
+      .at(0) ?? null
+    return {
+      ...rest,
+      tags:                l.tags ?? [],
+      last_interaction_at: lastInteractionAt,
+      awaiting_since:      awaitingSince,
+      branch_name:         l.branches?.name ?? null,
+      branch_slug:         l.branches?.slug ?? null,
+    }
+  })
 
   const total       = leads.length
   const convertidos = leads.filter((l: any) => l.client_id).length
@@ -150,6 +167,8 @@ export default async function AdminCRMPage({
           initialConversations={conversations}
           leads={inboxLeads}
           canEdit={canEdit}
+          branches={branches}
+          initialSelectedId={convParam ?? null}
         />
       ) : (
         <CRMBoard

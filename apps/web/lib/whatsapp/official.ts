@@ -51,7 +51,7 @@ export class OfficialAPIProvider implements WhatsAppProvider {
       ? (msg.text?.body ?? '')
       : (msg.image?.caption ?? msg.document?.caption ?? msg.video?.caption ?? `[${type}]`)
 
-    return {
+    const out: InboundMsg = {
       from:       msg.from as string,
       content,
       externalId: msg.id as string,
@@ -63,6 +63,24 @@ export class OfficialAPIProvider implements WhatsAppProvider {
                : type === 'document' ? 'document'
                : 'other',
     }
+
+    // pushName: value.contacts[0].profile.name
+    const pushName = value?.contacts?.[0]?.profile?.name
+    if (pushName) out.pushName = pushName as string
+
+    // referral: anúncio click-to-WhatsApp (só na primeira mensagem da conversa)
+    const ref = msg.referral
+    if (ref) {
+      out.referral = {
+        sourceType: ref.source_type ?? undefined,
+        sourceId:   ref.source_id   ?? undefined,
+        sourceUrl:  ref.source_url  ?? undefined,
+        ctwaClid:   ref.ctwa_clid   ?? undefined,
+        headline:   ref.headline    ?? undefined,
+      }
+    }
+
+    return out
   }
 
   parseStatus(payload: unknown): StatusUpdate | null {
