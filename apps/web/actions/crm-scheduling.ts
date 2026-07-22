@@ -17,7 +17,6 @@ import {
   getCachedBranchProcedures,
   getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
-import { convertLeadToClient } from '@/actions/leads'
 import { revalidatePath } from 'next/cache'
 
 const CRM_READ_ROLES  = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL', 'GERENTE_COMERCIAL', 'FINANCIAL'] as const
@@ -107,14 +106,9 @@ export async function createCrmAppointment(
     .maybeSingle()
   if (!leadRow) return { error: 'Lead não encontrado.' }
 
-  let clientId = (leadRow as { client_id: string | null }).client_id
-  if (!clientId) {
-    // A unidade do agendamento vira a unidade de cadastro do cliente.
-    const conv = await convertLeadToClient(input.leadId, '__admin__', input.branchId) as { clientId?: string; error?: string }
-    if (conv.error) return { error: conv.error }
-    clientId = conv.clientId ?? null
-  }
-  if (!clientId) return { error: 'Não foi possível criar o cliente para agendar.' }
+  // Agendar exige um cliente. A conversão (com e-mail + CPF) é um passo deliberado, feito antes.
+  const clientId = (leadRow as { client_id: string | null }).client_id
+  if (!clientId) return { error: 'Converta o lead em cliente (e-mail + CPF) antes de agendar.' }
 
   const isComercial = ctx.role === 'COMERCIAL' || ctx.role === 'GERENTE_COMERCIAL'
   const res = await createAppointmentCore(admin, ctx, {

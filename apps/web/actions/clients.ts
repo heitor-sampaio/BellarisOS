@@ -5,6 +5,9 @@ import { getTenantContext, assertRole } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
+import { getAdsConfig } from '@/lib/ads/factory'
+import { MetaAdsProvider } from '@/lib/ads/meta'
+import type { MetaAdsConfig } from '@/lib/ads/types'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
@@ -24,16 +27,18 @@ export async function addClient(
   formData: FormData,
 ) {
   const ctx     = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
 
   const branchId = formData.get('_branchId') as string
   const slug     = formData.get('_slug') as string
+  // _leadId presente = criação a partir da conversão de um lead (mesma regra do cadastro manual).
+  const leadId   = (formData.get('_leadId') as string | null)?.trim() || null
   const branch   = await resolveBranch(ctx.tenantId!, branchId)
   if (!branch) return { error: 'Filial inválida.' }
 
   const name      = (formData.get('name') as string)?.trim()
   const phone     = (formData.get('phone') as string)?.trim()
-  const email     = (formData.get('email') as string)?.trim() || null
+  const email     = (formData.get('email') as string)?.trim().toLowerCase() || null
   const rawDoc    = (formData.get('document') as string)?.trim() || null
   const document  = rawDoc ? rawDoc.replace(/\D/g, '') : null
   const birthDate = (formData.get('birth_date') as string) || null
@@ -47,67 +52,83 @@ export async function addClient(
   const unitName = (branch as { name?: string }).name
   if (unitName && !tags.includes(unitTag(unitName))) tags.push(unitTag(unitName))
 
-  if (!name || !phone) return { error: 'Nome e telefone são obrigatórios.' }
+  // Regra de negócio de CRIAR CLIENTE — idêntica no cadastro manual e na conversão de lead.
+  if (!name || !phone)                     return { error: 'Nome e telefone são obrigatórios.' }
+  if (!email)                              return { error: 'E-mail é obrigatório.' }
+  if (!document || document.length !== 11) return { error: 'CPF válido é obrigatório.' }
 
-  const supabase = await createSupabase()
+  const admin = createAdminClient()
 
-  // CPF único por rede
-  if (document) {
-    const { data: existing } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('document', document)
-      .maybeSingle()
-    if (existing) return { error: 'Já existe um cliente com este CPF nesta rede.' }
+  // CPF único por rede. Na conversão (leadId), se o CPF já é de um cliente, liga o lead a ele (dedupe).
+  const { data: existing } = await admin
+    .from('clients')
+    .select('id')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('document', document)
+    .maybeSingle()
+  if (existing) {
+    if (leadId) {
+      await admin.from('leads').update({ client_id: existing.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
+      revalidatePath('/admin/crm')
+      revalidatePath(`/${slug}/crm`)
+      revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+      return { success: true, clientId: existing.id as string }
+    }
+    return { error: 'Já existe um cliente com este CPF nesta rede.' }
   }
 
-  const { data: client, error } = await supabase
+  // 1) Conta de login PRIMEIRO (login = e-mail, senha = CPF). E-mail já usado → aborta sem criar cliente órfão.
+  const { data: authUser, error: authErr } = await admin.auth.admin.createUser({
+    email,
+    password: document,
+    email_confirm: true,
+  })
+  if (authErr || !authUser?.user) {
+    const already = /already|registered|exists/i.test(authErr?.message ?? '')
+    return { error: already ? 'Este e-mail já está em uso por outra conta.' : `Erro ao criar login do cliente: ${authErr?.message ?? 'desconhecido'}` }
+  }
+  const authId = authUser.user.id
+
+  // 2) Cliente (com auth_id já vinculado)
+  const { data: client, error } = await admin
     .from('clients')
     .insert({
-      tenant_id:  ctx.tenantId!,
-      branch_id:  branchId,
-      name,
-      phone,
-      email,
-      document,
-      birth_date: birthDate,
-      gender,
-      notes,
-      tags,
-      is_active: true,
+      tenant_id: ctx.tenantId!, branch_id: branchId,
+      name, phone, email, document,
+      birth_date: birthDate, gender, notes, tags,
+      is_active: true, auth_id: authId,
     })
     .select('id')
     .single()
 
-  if (error || !client) return { error: 'Erro ao cadastrar cliente. Tente novamente.' }
+  if (error || !client) {
+    await admin.auth.admin.deleteUser(authId).catch(() => {})  // rollback do login órfão
+    return { error: 'Erro ao cadastrar cliente. Tente novamente.' }
+  }
 
-  // LoyaltyAccount criada automaticamente
-  await supabase.from('loyalty_accounts').insert({ client_id: client.id })
+  // 3) Claims do cliente + conta de fidelidade
+  await admin.rpc('set_client_claims', { p_auth_id: authId, p_client_id: client.id })
+  await admin.from('loyalty_accounts').insert({ client_id: client.id })
 
-  // Criar conta Supabase Auth (login = email, senha temporária = CPF)
-  if (email && document) {
-    const authAdmin = createAdminClient()
-    const { data: authUser, error: authErr } = await authAdmin.auth.admin.createUser({
-      email,
-      password: document,
-      email_confirm: true,
-    })
-    if (!authErr && authUser?.user) {
-      await authAdmin.rpc('set_client_claims', {
-        p_auth_id:   authUser.user.id,
-        p_client_id: client.id,
-      })
-      await authAdmin.from('clients')
-        .update({ auth_id: authUser.user.id })
-        .eq('id', client.id)
-    }
-    // Falha silenciosa — cliente é cadastrado mesmo sem conta auth
+  // 4) Conversão de lead: liga o lead e dispara Meta CAPI (CompleteRegistration)
+  if (leadId) {
+    const { data: leadRow } = await admin
+      .from('leads').select('fbclid').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle()
+    await admin.from('leads').update({ client_id: client.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
+    getAdsConfig(ctx.tenantId!, 'meta_ads').then(metaConfig => {
+      if (!metaConfig) return
+      new MetaAdsProvider(metaConfig as MetaAdsConfig).sendCAPIEvent(
+        { email, phone, fbclid: (leadRow as { fbclid?: string | null } | null)?.fbclid ?? null },
+        'CompleteRegistration',
+      ).catch(() => null)
+    }).catch(() => null)
+    revalidatePath('/admin/crm')
+    revalidatePath(`/${slug}/crm`)
   }
 
   revalidatePath(`/${slug}/clients`)
   revalidateTag(`clients:${ctx.tenantId!}`, 'max')
-  return { success: true, clientId: client.id }
+  return { success: true, clientId: client.id as string }
 }
 
 // --- Atualizar dados do cliente ------------------------------------

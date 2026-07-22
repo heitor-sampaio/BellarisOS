@@ -4,8 +4,9 @@ import { useState, useTransition, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, ArrowRight, Trash2, Phone, Mail, X, AlertTriangle } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
-import { updateLeadStage, convertLeadToClient, deleteLead } from '@/actions/leads'
+import { updateLeadStage, deleteLead } from '@/actions/leads'
 import { openLeadConversation } from '@/actions/inbox'
+import { ClientForm } from './client-form'
 import type { CRMStage } from '@/actions/crm-stages'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
 import {
@@ -304,7 +305,7 @@ function LeadCard({
   onDragEnd:      () => void
   onLeadDeleted:  (id: string) => void
 }) {
-  const [converting, startConvert] = useTransition()
+  const [convertOpen, setConvertOpen] = useState(false)
   const [deleting,   startDelete]  = useTransition()
   const [opening,    startOpening] = useTransition()
   const router     = useRouter()
@@ -368,18 +369,9 @@ function LeadCard({
     editRef.current?.open()
   }
 
-  async function handleConvert(e: React.MouseEvent) {
+  function handleConvert(e: React.MouseEvent) {
     e.stopPropagation()
-    const targetSlug = lead.branch_slug ?? slug
-    startConvert(async () => {
-      const res = await convertLeadToClient(lead.id, targetSlug)
-      if (!res?.clientId) return
-      // Funil de filial: leva à ficha do cliente (rota /{slug}/clients existe).
-      // Funil da rede (/admin): cliente pode ser de rede (sem filial) e a ficha por
-      // filial não se aplica — atualiza o funil no lugar (card vira "✓ Cliente").
-      if (networkMode) router.refresh()
-      else router.push(`/${targetSlug}/clients/${res.clientId}`)
-    })
+    setConvertOpen(true)   // abre o form de cliente (e-mail + CPF) pré-preenchido
   }
 
   async function handleDelete() {
@@ -643,20 +635,48 @@ function LeadCard({
             null
           ) : (
             <button
-              type="button" onClick={handleConvert} disabled={converting}
+              type="button" onClick={handleConvert}
               style={{
                 display: 'flex', alignItems: 'center', gap: 4,
                 fontSize: 11, fontWeight: 700, color: 'var(--success)',
                 background: 'var(--success-soft)', border: '1px solid var(--success-border)',
                 borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
-                opacity: converting ? 0.6 : 1,
               }}
             >
-              {converting ? 'Convertendo…' : <><ArrowRight size={10} /> Converter</>}
+              <ArrowRight size={10} /> Converter
             </button>
           )}
         </div>
       </div>
+
+      {convertOpen && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+          }}
+          onClick={() => setConvertOpen(false)}
+        >
+          <div className="card" style={{ width: 480, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto' }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>Converter em cliente</h3>
+            <ClientForm
+              branchId={branchId}
+              slug={slug}
+              branchName={lead.branch_name ?? undefined}
+              leadId={lead.id}
+              prefill={{ name: lead.name, phone: lead.phone ?? undefined, email: lead.email ?? undefined }}
+              onSuccess={(clientId) => {
+                setConvertOpen(false)
+                if (clientId) router.push(`/${lead.branch_slug ?? slug}/clients/${clientId}`)
+              }}
+              showCancelButton
+              onCancel={() => setConvertOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </>
   )
 }

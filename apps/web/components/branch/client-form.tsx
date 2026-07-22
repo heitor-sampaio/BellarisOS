@@ -18,6 +18,12 @@ interface ClientFormProps {
   branchId:   string
   slug:       string
   branchName?: string
+  /** quando fornecido, mostra seletor de unidade (uso na conversão de lead pelo CRM) */
+  branches?:  { id: string; name: string }[]
+  /** pré-preenchimento na criação (ex.: conversão de lead) */
+  prefill?:   { name?: string; phone?: string; email?: string }
+  /** liga o cliente criado a este lead (conversão) */
+  leadId?:    string
   existingClient?: {
     id:         string
     name:       string
@@ -59,14 +65,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export function ClientForm({ branchId, slug, branchName, existingClient, onSuccess, showCancelButton, onCancel }: ClientFormProps) {
+export function ClientForm({ branchId, slug, branchName, branches, prefill, leadId, existingClient, onSuccess, showCancelButton, onCancel }: ClientFormProps) {
   const isEdit = !!existingClient
   const action = isEdit ? updateClient : addClient
 
   const [state, formAction, pending] = useActionState(action, undefined)
   const [selectedTags, setSelectedTags] = useState<string[]>(existingClient?.tags ?? [])
-  const [phone, setPhone] = useState(existingClient?.phone ?? '')
+  const [phone, setPhone] = useState(existingClient?.phone ?? prefill?.phone ?? '')
   const [document, setDocument] = useState(existingClient?.document ?? '')
+  const [unitId, setUnitId] = useState(branchId || branches?.[0]?.id || '')
 
   const router = useRouter()
 
@@ -86,12 +93,22 @@ export function ClientForm({ branchId, slug, branchName, existingClient, onSucce
 
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <input type="hidden" name="_branchId" value={branchId} />
+      <input type="hidden" name="_branchId" value={branches && branches.length > 0 ? unitId : branchId} />
       <input type="hidden" name="_slug" value={slug} />
       {isEdit && <input type="hidden" name="_clientId" value={existingClient!.id} />}
+      {leadId && <input type="hidden" name="_leadId" value={leadId} />}
       <input type="hidden" name="tags" value={JSON.stringify(selectedTags)} />
 
-      {!isEdit && branchName && (
+      {!isEdit && branches && branches.length > 0 ? (
+        <Field label="Unidade de cadastro *">
+          <select className="field" value={unitId} onChange={e => setUnitId(e.target.value)} required>
+            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          <span style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 4, display: 'block' }}>
+            O cliente pode ser atendido em qualquer unidade.
+          </span>
+        </Field>
+      ) : !isEdit && branchName ? (
         <div style={{
           fontSize: 12.5, color: 'var(--text-muted)',
           background: 'var(--bg-app)', border: '1px solid var(--hairline)',
@@ -100,7 +117,7 @@ export function ClientForm({ branchId, slug, branchName, existingClient, onSucce
           <span style={{ fontWeight: 700, color: 'var(--text)' }}>Unidade de cadastro:</span> {branchName}
           <span style={{ color: 'var(--text-faint)' }}>— o cliente pode ser atendido em qualquer unidade</span>
         </div>
-      )}
+      ) : null}
 
       {/* Seção 1: Dados essenciais */}
       <div className="form-2col">
@@ -108,7 +125,7 @@ export function ClientForm({ branchId, slug, branchName, existingClient, onSucce
           <Field label="Nome completo *">
             <input
               name="name" type="text" required className="field"
-              defaultValue={existingClient?.name}
+              defaultValue={existingClient?.name ?? prefill?.name ?? ''}
               placeholder="Ana Paula Silva"
             />
           </Field>
@@ -123,17 +140,17 @@ export function ClientForm({ branchId, slug, branchName, existingClient, onSucce
           />
         </Field>
 
-        <Field label="E-mail">
+        <Field label="E-mail *">
           <input
-            name="email" type="email" className="field"
-            defaultValue={existingClient?.email ?? ''}
+            name="email" type="email" required className="field"
+            defaultValue={existingClient?.email ?? prefill?.email ?? ''}
             placeholder="ana@email.com"
           />
         </Field>
 
-        <Field label="CPF">
+        <Field label="CPF *">
           <input
-            name="document" type="text" className="field"
+            name="document" type="text" required className="field"
             value={document}
             onChange={e => setDocument(maskCPF(e.target.value))}
             placeholder="000.000.000-00"
@@ -217,6 +234,18 @@ export function ClientForm({ branchId, slug, branchName, existingClient, onSucce
       {state?.success && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)' }}>
           <CheckCircle2 size={14} /> {isEdit ? 'Dados atualizados.' : 'Cliente cadastrado com sucesso.'}
+        </div>
+      )}
+
+      {!isEdit && (
+        <div style={{
+          fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5,
+          background: 'var(--bg-app)', border: '1px solid var(--hairline)',
+          borderRadius: 10, padding: '10px 12px',
+        }}>
+          Ao cadastrar, será criado um acesso do cliente ao app com{' '}
+          <b style={{ color: 'var(--text)' }}>login = e-mail</b> e{' '}
+          <b style={{ color: 'var(--text)' }}>senha = CPF</b>.
         </div>
       )}
 

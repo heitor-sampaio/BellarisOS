@@ -10,7 +10,8 @@ import {
   type InboxLead,
   type InboxStage,
 } from '@/actions/inbox'
-import { updateLead, updateLeadStage, convertLeadToClient } from '@/actions/leads'
+import { updateLead, updateLeadStage } from '@/actions/leads'
+import { ClientForm } from '@/components/branch/client-form'
 import {
   getCrmSchedulingData,
   getCrmSlots,
@@ -47,8 +48,9 @@ export function InboxLeadPanel({
   const [stages,  setStages]  = useState<InboxStage[]>([])
   const [loading, setLoading] = useState(true)
   const [saving,  startSave]  = useTransition()
-  const [converting, startConvert] = useTransition()
   const [scheduling, setScheduling] = useState(false)
+  const [convertOpen, setConvertOpen] = useState(false)
+  const [chainToSchedule, setChainToSchedule] = useState(false)  // converter e emendar no agendamento
 
   // Campos editáveis
   const [name,   setName]   = useState('')
@@ -60,7 +62,6 @@ export function InboxLeadPanel({
   const [stageId, setStageId] = useState('')
   const [tags,   setTags]   = useState<string[]>([])
   const [tagDraft, setTagDraft] = useState('')
-  const [convertBranchId, setConvertBranchId] = useState('')  // unidade de cadastro ao converter
 
   useEffect(() => {
     let active = true
@@ -79,8 +80,8 @@ export function InboxLeadPanel({
         setNotes(res.lead.notes ?? '')
         setStageId(res.lead.crm_stage_id ?? '')
         setTags(res.lead.tags ?? [])
-        setConvertBranchId(res.lead.branch_id ?? branches[0]?.id ?? '')
       }
+      setConvertOpen(false)
       setLoading(false)
     })
     return () => { active = false }
@@ -125,14 +126,30 @@ export function InboxLeadPanel({
     })
   }
 
-  function handleConvert() {
-    if (!lead || !convertBranchId) return
-    startConvert(async () => {
-      await convertLeadToClient(lead.id, SLUG, convertBranchId)
-      const res = await getLeadForConversation(conversation.id)
-      setLead(res.lead)
-      onLeadChanged?.()
-    })
+  // "Novo agendamento": se já é cliente, agenda direto; senão converte primeiro e emenda no agendamento.
+  function handleScheduleClick() {
+    if (!lead) return
+    if (lead.client_id) {
+      setScheduling(true)
+    } else {
+      setChainToSchedule(true)
+      setConvertOpen(true)
+    }
+  }
+
+  function handleConverted() {
+    setConvertOpen(false)
+    getLeadForConversation(conversation.id).then(res => setLead(res.lead))
+    onLeadChanged?.()
+    if (chainToSchedule) {
+      setChainToSchedule(false)
+      setScheduling(true)   // emenda no agendamento (o cliente já foi criado)
+    }
+  }
+
+  function closeConvert() {
+    setConvertOpen(false)
+    setChainToSchedule(false)
   }
 
   const tagSuggestions = LEAD_SOURCES.map(s => s.key).filter(k => !tags.includes(k))
@@ -176,7 +193,7 @@ export function InboxLeadPanel({
       {/* Ações rápidas */}
       {!disabled && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button type="button" className="btn-primary" onClick={() => setScheduling(true)}>
+          <button type="button" className="btn-primary" onClick={handleScheduleClick}>
             <CalendarPlus size={14} /> Novo agendamento
           </button>
           {lead.client_id ? (
@@ -184,16 +201,9 @@ export function InboxLeadPanel({
               <UserCheck size={14} /> Já é cliente
             </span>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <span style={labelStyle}>Converter em cliente — unidade de cadastro</span>
-              <select className="field" value={convertBranchId} onChange={e => setConvertBranchId(e.target.value)} style={fieldStyle}>
-                {branches.length === 0 && <option value="">Nenhuma filial</option>}
-                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-              <button type="button" className="btn-secondary" onClick={handleConvert} disabled={converting || !convertBranchId}>
-                <UserCheck size={14} /> {converting ? 'Convertendo…' : 'Converter em cliente'}
-              </button>
-            </div>
+            <button type="button" className="btn-secondary" onClick={() => { setChainToSchedule(false); setConvertOpen(true) }}>
+              <UserCheck size={14} /> Converter em cliente
+            </button>
           )}
         </div>
       )}
@@ -287,6 +297,44 @@ export function InboxLeadPanel({
           onClose={() => setScheduling(false)}
           onScheduled={() => { setScheduling(false); onLeadChanged?.() }}
         />
+      )}
+
+      {convertOpen && lead && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+          }}
+          onClick={closeConvert}
+        >
+          <div className="card" style={{ width: 480, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
+                {chainToSchedule ? 'Converter em cliente para agendar' : 'Converter em cliente'}
+              </h3>
+              <button type="button" onClick={closeConvert} style={{
+                width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)',
+                background: 'var(--bg-app)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
+              }}>
+                <X size={14} />
+              </button>
+            </div>
+            <div style={{ padding: 20 }}>
+              <ClientForm
+                branchId=""
+                slug={SLUG}
+                branches={branches}
+                leadId={lead.id}
+                prefill={{ name: lead.name, phone: lead.phone ?? undefined, email: lead.email ?? undefined }}
+                onSuccess={handleConverted}
+                showCancelButton
+                onCancel={closeConvert}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
