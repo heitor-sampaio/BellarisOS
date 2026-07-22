@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 
@@ -19,7 +19,9 @@ export function AdminTeamForm({ branches, roles, isNetworkAdmin }: AdminTeamForm
   const [state, action, pending] = useActionState(createTeamMember, undefined)
   const stateError = state && 'error' in state ? state.error : null
 
-  if (state && 'success' in state && state.success && open) setOpen(false)
+  useEffect(() => {
+    if (state && 'success' in state && state.success) setOpen(false)
+  }, [state])
 
   return (
     <>

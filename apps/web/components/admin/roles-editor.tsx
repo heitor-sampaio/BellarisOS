@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useActionState, useState, useTransition } from 'react'
+import React, { useActionState, useEffect, useState, useTransition } from 'react'
 import { Plus, Lock, Trash2, Pencil, Check, X, CheckCircle2 } from 'lucide-react'
 import { createRole, updateRole, deleteRole } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
@@ -75,10 +75,14 @@ function RoleList({
   const [error, setError] = useState<string | null>(null)
   const [createState, createAction, creating] = useActionState(createRole, undefined)
 
-  if (createState && 'success' in createState && createState.success && showForm) {
-    setShowForm(false)
-    if (createState.role) onSelect(createState.role.id)
-  }
+  // Só reage quando o resultado da action muda (não a cada render) — senão o
+  // reabrir o form seria imediatamente fechado enquanto createState.success persiste.
+  useEffect(() => {
+    if (createState && 'success' in createState && createState.success) {
+      setShowForm(false)
+      if (createState.role) onSelect(createState.role.id)
+    }
+  }, [createState, onSelect])
 
   function handleDelete(role: EditorRole) {
     if (!confirm(`Excluir o cargo "${role.label}"?`)) return
@@ -191,7 +195,9 @@ function RoleList({
 
 function RenameChip({ role, onDone }: { role: EditorRole; onDone: () => void }) {
   const [state, action, pending] = useActionState(updateRole, undefined)
-  if (state && 'success' in state && state.success) onDone()
+  useEffect(() => {
+    if (state && 'success' in state && state.success) onDone()
+  }, [state, onDone])
   return (
     <form
       action={action}
