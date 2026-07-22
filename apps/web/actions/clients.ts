@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertRole, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
@@ -322,7 +322,7 @@ export async function updateClientSelf(
   formData: FormData,
 ): Promise<{ error?: string; success?: boolean }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['CLIENT'])
+  assertClient(ctx)
 
   const admin   = createAdminClient()
   const phone   = (formData.get('phone') as string)?.replace(/\D/g, '') || null

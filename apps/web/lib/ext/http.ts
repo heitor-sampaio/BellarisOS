@@ -2,16 +2,12 @@
 // Autenticação por Bearer (JWT do usuário) + CORS para origens de extensão.
 
 import { type NextRequest, NextResponse } from 'next/server'
-import type { TenantContext, UserRole } from '@estetica-os/types'
+import type { TenantContext } from '@estetica-os/types'
 import { getTenantContextFromToken } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// Operacionais: filial fixa no JWT (branch_id preenchido). Comerciais: nível-rede
-// (branch_id null) — a filial-alvo vem do request e é validada contra o tenant.
-const OPERATIONAL_ROLES: UserRole[] = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL']
-export const COMMERCIAL_ROLES: UserRole[] = ['COMERCIAL', 'GERENTE_COMERCIAL']
-const EXT_ROLES: UserRole[] = [...OPERATIONAL_ROLES, ...COMMERCIAL_ROLES]
-
+// Acesso da extensao: qualquer usuario operacional (nao-cliente). A abrangencia
+// (filial fixa vs rede) e derivada de branch_id no JWT em resolveExtBranch/isNetworkMode.
 /** CORS: reflete origens de extensão (chrome/moz); a segurança real é o Bearer JWT. */
 export function corsHeaders(origin: string | null): Record<string, string> {
   const allow =

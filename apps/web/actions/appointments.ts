@@ -4,15 +4,12 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { getTenantContext, assertRole, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { notifyClient, notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots } from '@/lib/appointments/core'
-
-const WRITABLE_ROLES    = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'] as const
-const ALL_BRANCH_ROLES  = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
 
 // --- Helpers internos ---------------------------------------------
 async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
@@ -1306,7 +1303,7 @@ export async function getClientAvailableSlots(
   durationMin: number,
 ): Promise<{ slots: string[] }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['CLIENT'])
+  assertClient(ctx)
 
   const admin = createAdminClient()
 
@@ -1331,7 +1328,7 @@ export async function createClientAppointment(params: {
 }): Promise<{ error?: string; id?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['CLIENT'])
+    assertClient(ctx)
 
     const admin = createAdminClient()
 
@@ -1453,7 +1450,7 @@ export async function confirmAndRateAppointment(params: {
 }): Promise<{ error?: string; ok?: true }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['CLIENT'])
+    assertClient(ctx)
 
     const admin = createAdminClient()
 

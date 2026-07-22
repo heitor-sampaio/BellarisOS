@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertRole } from '@/lib/auth'
+﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logoutAction } from '@/actions/auth'
 import { EditProfileForm } from '@/components/client-portal/edit-profile-form'
@@ -13,7 +13,7 @@ function maskCpf(cpf: string | null) {
 
 export default async function ClientProfilePage({ params: _params }: { params: Promise<{ slug: string }> }) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['CLIENT'])
+  assertClient(ctx)
 
   const admin = createAdminClient()
   const { data } = await admin

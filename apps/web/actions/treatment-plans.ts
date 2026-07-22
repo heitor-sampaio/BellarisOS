@@ -119,7 +119,6 @@ export async function saveTreatmentPlan(
 
 // -- Buscar sessões do plano (para checkout wizard) ----------------------------
 
-const ALL_BRANCH_ROLES = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
 
 export async function getTreatmentPlanSessions(planId: string): Promise<{
   sessions: PlanSessionForCheckout[]

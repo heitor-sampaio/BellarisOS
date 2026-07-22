@@ -1,4 +1,4 @@
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 type TxRow = {
@@ -23,7 +23,7 @@ const METHOD_LABEL: Record<string, string> = {
 export default async function ClientFinancialPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug: _slug } = await params
   const ctx = await getTenantContext()
-  assertRole(ctx, ['CLIENT'])
+  assertClient(ctx)
 
   const admin = createAdminClient()
 

@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertRole } from '@/lib/auth'
+﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { CalendarDays, Star, ChevronRight, Sparkles } from 'lucide-react'
@@ -43,7 +43,7 @@ type ActivePlan = {
 export default async function ClientHomePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const ctx = await getTenantContext()
-  assertRole(ctx, ['CLIENT'])
+  assertClient(ctx)
 
   const admin = createAdminClient()
 

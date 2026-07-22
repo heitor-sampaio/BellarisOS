@@ -88,7 +88,7 @@ export async function deleteRole(roleId: string): Promise<{ error: string } | { 
 
   const { data: role } = await supabase
     .from('tenant_roles')
-    .select('key, is_system')
+    .select('is_system')
     .eq('id', roleId)
     .eq('tenant_id', ctx.tenantId!)
     .single()
@@ -107,8 +107,8 @@ export async function deleteRole(roleId: string): Promise<{ error: string } | { 
     return { error: 'Há membros com esse cargo. Reatribua-os antes de excluir.' }
   }
 
-  // Remove as permissões associadas e o cargo
-  await supabase.from('role_permissions').delete().eq('tenant_id', ctx.tenantId!).eq('role', role.key)
+  // Remove as permissões associadas e o cargo (role_permissions cascateia por FK)
+  await supabase.from('role_permissions').delete().eq('tenant_id', ctx.tenantId!).eq('role_id', roleId)
   await supabase.from('tenant_roles').delete().eq('id', roleId).eq('tenant_id', ctx.tenantId!)
 
   revalidatePath('/admin/settings')

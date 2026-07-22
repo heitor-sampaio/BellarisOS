@@ -77,7 +77,6 @@ export async function registerAction(
     branch_id: null,
     name:      email,
     email:     email,
-    role:      'NETWORK_ADMIN',
     role_id:   adminRole?.id ?? null,
   })
 

@@ -7,7 +7,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import { ANAMNESIS_BUCKET, ensurePrivateBucket, getSignedUrl, getSignedUrls } from '@/lib/storage'
 
-const STAFF_ROLES = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'] as const
 
 export async function saveGeneralAnamnesis(
   _prev: { error?: string } | null,

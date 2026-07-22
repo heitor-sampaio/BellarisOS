@@ -1,12 +1,12 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NewAppointmentWizard } from '@/components/client-portal/new-appointment-wizard'
 
 export default async function NewClientAppointmentPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const ctx = await getTenantContext()
-  assertRole(ctx, ['CLIENT'])
+  assertClient(ctx)
 
   const admin = createAdminClient()
 

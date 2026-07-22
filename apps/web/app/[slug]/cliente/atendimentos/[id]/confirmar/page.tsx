@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ConfirmAppointmentForm } from '@/components/client-portal/confirm-appointment-form'
 
@@ -14,7 +14,7 @@ export default async function ConfirmAppointmentPage({
 }) {
   const { slug, id } = await params
   const ctx = await getTenantContext()
-  assertRole(ctx, ['CLIENT'])
+  assertClient(ctx)
 
   const admin = createAdminClient()
   const { data: appt } = await admin

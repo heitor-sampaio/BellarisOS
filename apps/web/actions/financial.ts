@@ -5,11 +5,6 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 
-// Escrita financeira manual: apenas gestores e o próprio role FINANCIAL
-const FINANCE_WRITE_ROLES = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'FINANCIAL'] as const
-// Leitura e operações de caixa (checkout): inclui RECEPTIONIST
-const FINANCIAL_ROLES = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'FINANCIAL'] as const
-
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
 }

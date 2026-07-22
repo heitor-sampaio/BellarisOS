@@ -10,8 +10,6 @@ const VALID_LEVELS: PermissionLevel[] = ['NONE', 'VIEW', 'MANAGE']
 
 /**
  * Salva a matriz de um único cargo: um nível (NONE/VIEW/MANAGE) por módulo.
- * Grava role_id + level (fonte de verdade) e mantém role/can_view/can_write
- * preenchidos por compatibilidade com o schema legado.
  */
 export async function saveRolePermissions(
   _prev: { error: string } | { success: boolean } | undefined,
@@ -25,10 +23,10 @@ export async function saveRolePermissions(
 
   const supabase = await createClient()
 
-  // Valida que o cargo pertence à rede e pega a key (coluna legada NOT NULL)
+  // Valida que o cargo pertence à rede
   const { data: role } = await supabase
     .from('tenant_roles')
-    .select('key, is_system')
+    .select('is_system')
     .eq('id', roleId)
     .eq('tenant_id', ctx.tenantId!)
     .single()
@@ -38,20 +36,12 @@ export async function saveRolePermissions(
   const rows = ALL_MODULES.map(module => {
     const raw = (formData.get(`level:${module}`) as string) ?? 'NONE'
     const level = (VALID_LEVELS.includes(raw as PermissionLevel) ? raw : 'NONE') as PermissionLevel
-    return {
-      tenant_id: ctx.tenantId!,
-      role_id:   roleId,
-      role:      role.key,
-      module,
-      level,
-      can_view:  level !== 'NONE',
-      can_write: level === 'MANAGE',
-    }
+    return { tenant_id: ctx.tenantId!, role_id: roleId, module, level }
   })
 
   const { error } = await supabase
     .from('role_permissions')
-    .upsert(rows, { onConflict: 'tenant_id,role,module' })
+    .upsert(rows, { onConflict: 'role_id,module' })
 
   if (error) return { error: 'Erro ao salvar permissões. Tente novamente.' }
 

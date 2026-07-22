@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertRole } from '@/lib/auth'
+﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { CalendarDays, Clock3, User, Plus } from 'lucide-react'
@@ -34,7 +34,7 @@ type Appt = {
 export default async function ClientAgendaPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug }   = await params
   const ctx        = await getTenantContext()
-  assertRole(ctx, ['CLIENT'])
+  assertClient(ctx)
 
   const admin = createAdminClient()
   const { data } = await admin

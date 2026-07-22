@@ -86,8 +86,9 @@ export async function getTenantContextFromToken(accessToken: string): Promise<Te
   return buildContext(user.id, meta)
 }
 
-export function assertRole(ctx: TenantContext, allowed: UserRole[]): void {
-  if (!allowed.includes(ctx.role)) {
+/** Gate do portal do cliente (role CLIENT). */
+export function assertClient(ctx: TenantContext): void {
+  if (!ctx.isClient) {
     throw new Error('Forbidden')
   }
 }

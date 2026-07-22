@@ -149,7 +149,7 @@ export async function updateTeamMember(
 
   const { error } = await admin
     .from('users')
-    .update({ role_id: roleId, branch_id: effectiveBranchId, provides_services: providesServices, role: null })
+    .update({ role_id: roleId, branch_id: effectiveBranchId, provides_services: providesServices })
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)
   if (error) return { error: 'Erro ao atualizar membro.' }

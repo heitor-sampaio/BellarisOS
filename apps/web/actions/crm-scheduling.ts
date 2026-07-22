@@ -19,8 +19,6 @@ import {
 } from '@/lib/cached-queries'
 import { revalidatePath } from 'next/cache'
 
-const CRM_READ_ROLES  = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL', 'GERENTE_COMERCIAL', 'FINANCIAL'] as const
-const CRM_WRITE_ROLES = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'] as const
 
 export interface CrmSchedProcedure { id: string; name: string; duration_min: number; price: number }
 export interface CrmSchedNamed     { id: string; name: string }
