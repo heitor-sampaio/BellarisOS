@@ -6,7 +6,7 @@ import { unitTag } from '@estetica-os/utils'
 // Traz id interno + cargo dinâmico + flag de profissional. Fonte de fallback dos
 // claims (role_id/provides_services) enquanto o JWT antigo não carrega role_id.
 // Invalidar em actions/team.ts via tag `user:${authId}`.
-export type CachedMember = { id: string; roleId: string | null; providesServices: boolean }
+export type CachedMember = { id: string; name: string; roleId: string | null; roleLabel: string; providesServices: boolean }
 
 export function getCachedMember(authId: string) {
   return unstable_cache(
@@ -14,13 +14,16 @@ export function getCachedMember(authId: string) {
       const admin = createAdminClient()
       const { data } = await admin
         .from('users')
-        .select('id, role_id, provides_services')
+        .select('id, name, role_id, provides_services, tenant_roles(label)')
         .eq('auth_id', authId)
         .maybeSingle()
       if (!data) return null
+      const roleRef = data.tenant_roles as unknown as { label: string } | null
       return {
         id: data.id,
+        name: data.name ?? '',
         roleId: data.role_id ?? null,
+        roleLabel: roleRef?.label ?? '',
         providesServices: data.provides_services ?? false,
       }
     },

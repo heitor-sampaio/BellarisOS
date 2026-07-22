@@ -9,6 +9,7 @@ import { StaffNotificationBell } from '@/components/shared/staff-notification-be
 interface TopbarProps {
   userName:       string
   userRole:       string
+  roleLabel?:     string
   internalUserId: string | null
   initialUnread:  number
 }
@@ -24,7 +25,7 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, internalUserId, initialUnread }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread }: TopbarProps) {
   const firstName  = userName.split(' ')[0] ?? userName
   const { toggle } = useSidebar()
 
@@ -105,7 +106,7 @@ export function Topbar({ userName, userRole, internalUserId, initialUnread }: To
               {firstName}
             </p>
             <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
-              {ROLE_LABELS[userRole] ?? userRole}
+              {roleLabel || ROLE_LABELS[userRole] || userRole}
             </p>
           </div>
         </div>

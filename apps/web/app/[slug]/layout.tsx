@@ -51,13 +51,8 @@ export default async function BranchLayout({
     redirect(`/${userBranch?.slug ?? ''}/dashboard`)
   }
 
-  // Nome do usuário e filiais (NETWORK_ADMIN) em paralelo. Permissões já vêm no ctx.
-  const [{ data: user }, allBranches, unreadRes] = await Promise.all([
-    supabase
-      .from('users')
-      .select('name')
-      .eq('auth_id', ctx.userId)
-      .single(),
+  // Filiais (NETWORK_ADMIN) + não-lidas em paralelo. Nome e permissões já vêm no ctx.
+  const [allBranches, unreadRes] = await Promise.all([
     ctx.role === 'NETWORK_ADMIN'
       ? supabase
           .from('branches')
@@ -88,7 +83,7 @@ export default async function BranchLayout({
         isNetworkAdmin={ctx.role === 'NETWORK_ADMIN'}
         allBranches={allBranches}
       />
-      <Topbar userName={user?.name ?? 'Usuário'} userRole={ctx.role} internalUserId={ctx.internalUserId} initialUnread={initialUnread} />
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} />
       <main style={{
         marginLeft:    'var(--sidebar-w)',
         marginTop:     'calc(var(--topbar-h) + env(safe-area-inset-top, 0px))',

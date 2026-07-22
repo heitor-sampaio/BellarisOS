@@ -31,6 +31,8 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   return {
     userId: authId,
     internalUserId: member?.id ?? null,
+    userName: member?.name ?? '',
+    roleLabel: member?.roleLabel ?? '',
     tenantId,
     branchId: meta.branch_id ?? null,
     role,

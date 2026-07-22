@@ -44,6 +44,8 @@ export interface JwtClaims {
 export interface TenantContext {
   userId: string          // auth.users.id (Supabase auth UUID)
   internalUserId: string | null  // public.users.id (FK usada em professional_id, created_by, etc.)
+  userName: string        // nome do usuário (users.name) — vazio para CLIENT
+  roleLabel: string       // rótulo do cargo (tenant_roles.label) — vazio para CLIENT
   tenantId: string | null
   branchId: string | null
   role: UserRole
