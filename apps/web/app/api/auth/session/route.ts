@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getRedirectPath, NETWORK_LEVEL_ROLES } from '@/lib/auth'
+import { getRedirectPath } from '@/lib/auth'
 import type { JwtClaims } from '@estetica-os/types'
 
 // Recebe tokens do armazenamento nativo (Capacitor Preferences),
@@ -46,13 +46,7 @@ export async function POST(req: NextRequest) {
 
   let redirectTo = '/auth/redirect'  // fallback seguro
   try {
-    if (NETWORK_LEVEL_ROLES.includes(claims.role)) {
-      redirectTo = getRedirectPath(claims.role, null)
-    } else if (claims.branch_id) {
-      const { data: br } = await admin
-        .from('branches').select('slug').eq('id', claims.branch_id).single()
-      redirectTo = getRedirectPath(claims.role, br?.slug ?? null)
-    } else if (claims.client_id) {
+    if (claims.client_id) {
       const { data: cl } = await admin
         .from('clients').select('branch_id').eq('id', claims.client_id).single()
       if (cl?.branch_id) {
@@ -60,6 +54,12 @@ export async function POST(req: NextRequest) {
           .from('branches').select('slug').eq('id', cl.branch_id).single()
         if (br?.slug) redirectTo = `/${br.slug}/cliente`
       }
+    } else if (claims.branch_id) {
+      const { data: br } = await admin
+        .from('branches').select('slug').eq('id', claims.branch_id).single()
+      redirectTo = getRedirectPath(claims.role, br?.slug ?? null)
+    } else {
+      redirectTo = getRedirectPath(claims.role, null)
     }
   } catch { /* mantém fallback */ }
 

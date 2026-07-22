@@ -1,25 +1,9 @@
 import { getTenantContext } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { TeamForm } from '@/components/branch/team-form'
-import { deactivateTeamMember } from '@/actions/team'
-import { UserMinus } from 'lucide-react'
+import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
+import { UserMinus, UserCheck } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-
-const ROLE_LABEL: Record<string, string> = {
-  NETWORK_ADMIN: 'Admin rede',
-  BRANCH_ADMIN:  'Gerente',
-  RECEPTIONIST:  'Recepcionista',
-  PROFESSIONAL:  'Profissional',
-  FINANCIAL:     'Financeiro',
-}
-
-const ROLE_CHIP: Record<string, string> = {
-  NETWORK_ADMIN: 'chip chip-brand',
-  BRANCH_ADMIN:  'chip chip-brand',
-  PROFESSIONAL:  'chip chip-success',
-  RECEPTIONIST:  'chip chip-muted',
-  FINANCIAL:     'chip chip-warning',
-}
 
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(' ')
@@ -57,13 +41,23 @@ export default async function TeamPage({
 
   const branchId = branch?.id ?? ctx.branchId!
 
-  const { data: members } = await supabase
-    .from('users')
-    .select('id, name, email, role, is_active')
-    .eq('branch_id', branchId)
-    .order('name')
+  const [{ data: members }, { data: tenantRoles }] = await Promise.all([
+    supabase
+      .from('users')
+      .select('id, name, email, role_id, is_active, provides_services')
+      .eq('branch_id', branchId)
+      .order('name'),
+    supabase
+      .from('tenant_roles')
+      .select('id, key, label, is_system')
+      .eq('tenant_id', ctx.tenantId!)
+      .order('label'),
+  ])
 
-  const canManage = ctx.role === 'NETWORK_ADMIN'
+  const allRoles = tenantRoles ?? []
+  const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
+  const roleLabel = Object.fromEntries(allRoles.map(r => [r.id, r.label]))
+  const canManage = ctx.permissions.team === 'MANAGE'
 
   return (
     <div>
@@ -82,11 +76,7 @@ export default async function TeamPage({
           </p>
         </div>
         {canManage && (
-          <TeamForm
-            branchId={branchId}
-            slug={slug}
-            isNetworkAdmin={ctx.role === 'NETWORK_ADMIN'}
-          />
+          <TeamForm branchId={branchId} slug={slug} roles={assignableRoles} />
         )}
       </div>
 
@@ -140,9 +130,12 @@ export default async function TeamPage({
 
                   {/* Cargo */}
                   <td style={{ padding: '14px 20px' }}>
-                    <span className={ROLE_CHIP[m.role] ?? 'chip chip-muted'}>
-                      {ROLE_LABEL[m.role] ?? m.role}
+                    <span className="chip chip-brand">
+                      {(m.role_id ? roleLabel[m.role_id] : null) ?? '—'}
                     </span>
+                    {m.provides_services && (
+                      <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>
+                    )}
                   </td>
 
                   {/* Situação */}
@@ -154,7 +147,7 @@ export default async function TeamPage({
 
                   {/* Ações */}
                   <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                    {canManage && m.is_active && (
+                    {canManage && (m.is_active ? (
                       <form action={async () => {
                         'use server'
                         await deactivateTeamMember(m.id, slug)
@@ -168,7 +161,21 @@ export default async function TeamPage({
                           <UserMinus size={15} />
                         </button>
                       </form>
-                    )}
+                    ) : (
+                      <form action={async () => {
+                        'use server'
+                        await reactivateTeamMember(m.id, slug)
+                      }}>
+                        <button
+                          type="submit"
+                          className="btn-ghost"
+                          style={{ padding: '5px 8px', color: 'var(--brand)' }}
+                          title="Reativar membro"
+                        >
+                          <UserCheck size={15} />
+                        </button>
+                      </form>
+                    ))}
                   </td>
                 </tr>
               ))}

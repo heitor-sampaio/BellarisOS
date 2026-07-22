@@ -153,12 +153,12 @@ export function BranchSidebar({
         {/* Navegação */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }} onClick={close}>
           <NavItem icon={<LayoutGrid size={18} />} label="Dashboard"      href={`${base}/dashboard`} />
-          {permissions.agenda.view     && <NavItem icon={<Calendar    size={18} />} label="Agenda"        href={`${base}/agenda`} />}
-          {permissions.clients.view    && <NavItem icon={<Users       size={18} />} label="Clientes"      href={`${base}/clients`} />}
-          {permissions.financial.view  && <NavItem icon={<CreditCard  size={18} />} label="Financeiro"    href={`${base}/financial`} />}
-          {permissions.procedures.view && <NavItem icon={<Sparkles    size={18} />} label="Procedimentos" href={`${base}/procedures`} />}
-          {permissions.stock.view      && <NavItem icon={<Package     size={18} />} label="Estoque"       href={`${base}/stock`} />}
-          {permissions.settings.view   && <NavItem icon={<UserCircle  size={18} />} label="Equipe"        href={`${base}/settings/team`} />}
+          {permissions.agenda     !== 'NONE' && <NavItem icon={<Calendar    size={18} />} label="Agenda"        href={`${base}/agenda`} />}
+          {permissions.clients    !== 'NONE' && <NavItem icon={<Users       size={18} />} label="Clientes"      href={`${base}/clients`} />}
+          {permissions.financial  !== 'NONE' && <NavItem icon={<CreditCard  size={18} />} label="Financeiro"    href={`${base}/financial`} />}
+          {permissions.procedures !== 'NONE' && <NavItem icon={<Sparkles    size={18} />} label="Procedimentos" href={`${base}/procedures`} />}
+          {permissions.stock      !== 'NONE' && <NavItem icon={<Package     size={18} />} label="Estoque"       href={`${base}/stock`} />}
+          {permissions.team       !== 'NONE' && <NavItem icon={<UserCircle  size={18} />} label="Equipe"        href={`${base}/settings/team`} />}
         </nav>
 
         {/* Rodapé: recolher (desktop) + logout */}

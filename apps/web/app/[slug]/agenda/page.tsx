@@ -1,20 +1,23 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { AgendaCalendar } from '@/components/branch/agenda-calendar'
 import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
-import { resolvePermissions } from '@/lib/permissions'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns'
 import {
   getCachedBranchBySlug, getCachedBranchProcedures,
-  getCachedBranchProfessionals, getCachedRoomsByBranch, getCachedRolePermissions,
+  getCachedBranchProfessionals, getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
 
 export default async function AgendaPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const ctx      = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'])
+  assertPermission(ctx, 'agenda', 'VIEW')
+
+  // Profissional que atende clientes e não gerencia a agenda inteira: vê só a própria.
+  const canManageAgenda  = ctx.permissions.agenda === 'MANAGE'
+  const professionalOnly = ctx.providesServices && !canManageAgenda
 
   const supabase = await createSupabase()
 
@@ -41,7 +44,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
     .not('status', 'in', '("CANCELLED","NO_SHOW")')
     .order('scheduled_at')
 
-  if (ctx.role === 'PROFESSIONAL' && ctx.internalUserId) {
+  if (professionalOnly && ctx.internalUserId) {
     appointmentsQuery = appointmentsQuery.eq('professional_id', ctx.internalUserId)
   }
 
@@ -51,7 +54,6 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
     procedures,
     professionals,
     rooms,
-    permOverrides,
   ] = await Promise.all([
     appointmentsQuery,
 
@@ -65,10 +67,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
     getCachedBranchProcedures(branchId, ctx.tenantId!),
     getCachedBranchProfessionals(branchId, ctx.tenantId!),
     getCachedRoomsByBranch(branchId, ctx.tenantId!),
-    getCachedRolePermissions(ctx.tenantId!, ctx.role),
   ])
-
-  const permissions = resolvePermissions(ctx.role, permOverrides ?? [])
 
   // Mapeia appointments para eventos do FullCalendar
   const events = (rawAppointments ?? []).map(a => {
@@ -92,7 +91,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
     }
   })
 
-  if (ctx.role === 'PROFESSIONAL') {
+  if (professionalOnly) {
     const currentPro = professionals?.find(p => p.id === ctx.internalUserId)
     return (
       <div style={{ padding: '0 4px' }}>
@@ -121,7 +120,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
         procedures={procedures ?? []}
         professionals={professionals ?? []}
         rooms={rooms ?? []}
-        canWrite={permissions.agenda.write}
+        canWrite={canManageAgenda}
         userRole={ctx.role}
       />
     </div>

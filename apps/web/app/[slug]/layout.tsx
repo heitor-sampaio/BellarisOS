@@ -5,8 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { BranchSidebar } from '@/components/branch/sidebar'
 import { Topbar } from '@/components/shared/topbar'
 import { SidebarProvider } from '@/components/shared/sidebar-context'
-import { resolvePermissions } from '@/lib/permissions'
-import { getCachedBranchBySlug, getCachedRolePermissions } from '@/lib/cached-queries'
+import { getCachedBranchBySlug } from '@/lib/cached-queries'
 
 const BRANCH_ROLES = ['BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
 
@@ -54,9 +53,8 @@ export default async function BranchLayout({
     redirect(`/${userBranch?.slug ?? ''}/dashboard`)
   }
 
-  // Busca overrides de permissão, nome do usuário e filiais (NETWORK_ADMIN) em paralelo
-  const [permOverrides, { data: user }, allBranches, unreadRes] = await Promise.all([
-    getCachedRolePermissions(ctx.tenantId!, ctx.role),
+  // Nome do usuário e filiais (NETWORK_ADMIN) em paralelo. Permissões já vêm no ctx.
+  const [{ data: user }, allBranches, unreadRes] = await Promise.all([
     supabase
       .from('users')
       .select('name')
@@ -80,7 +78,7 @@ export default async function BranchLayout({
       : Promise.resolve({ count: 0 }),
   ])
 
-  const permissions   = resolvePermissions(ctx.role, permOverrides ?? [])
+  const permissions   = ctx.permissions
   const initialUnread = unreadRes.count ?? 0
 
   return (

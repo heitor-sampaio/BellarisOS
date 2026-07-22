@@ -8,17 +8,13 @@ import {
 import { NavItem }    from '@/components/shared/nav-item'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
+import type { ResolvedPermissions } from '@estetica-os/types'
 
 const SIDEBAR_GRADIENT = 'linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%)'
 
-export function AdminSidebar({ role }: { role: string }) {
+export function AdminSidebar({ permissions }: { permissions: ResolvedPermissions }) {
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
-  const isFinancial        = role === 'FINANCIAL'
-  const isMarketing        = role === 'MARKETING'
-  const isComercial        = role === 'COMERCIAL'
-  const isGerenteComercial = role === 'GERENTE_COMERCIAL'
-  // Cargos de rede com menu enxuto — sem Dashboard/Agenda/Equipe
-  const isRestricted = isFinancial || isMarketing || isComercial || isGerenteComercial
+  const can = (m: keyof ResolvedPermissions) => permissions[m] !== 'NONE'
 
   // Recolhido = rosé; expandido = branco (original)
   const asideBg     = collapsed ? SIDEBAR_GRADIENT : 'var(--surface)'
@@ -75,43 +71,18 @@ export function AdminSidebar({ role }: { role: string }) {
         )}
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }} onClick={close}>
-          {!isRestricted && (
-            <>
-              <NavItem icon={<LayoutGrid size={18} />} label="Dashboard" href="/admin/dashboard" />
-              <NavItem icon={<Calendar   size={18} />} label="Agenda"    href="/admin/agenda" />
-            </>
-          )}
-          {isMarketing ? (
-            <>
-              <NavItem icon={<BarChart3  size={18} />} label="Relatórios"    href="/admin/reports" />
-              <NavItem icon={<Layers     size={18} />} label="CRM"           href="/admin/crm" />
-              <NavItem icon={<Megaphone  size={18} />} label="Marketing"     href="/admin/marketing" />
-            </>
-          ) : isComercial ? (
-            <NavItem icon={<Layers size={18} />} label="CRM" href="/admin/crm" />
-          ) : isGerenteComercial ? (
-            <>
-              <NavItem icon={<BarChart3 size={18} />} label="Comercial" href="/admin/comercial" />
-              <NavItem icon={<Layers    size={18} />} label="CRM"       href="/admin/crm" />
-            </>
-          ) : (
-            <>
-              <NavItem icon={<Contact    size={18} />} label="Clientes"      href="/admin/clients" />
-              <NavItem icon={<BarChart3  size={18} />} label="Relatórios"    href="/admin/reports" />
-              <NavItem icon={<CreditCard size={18} />} label="Financeiro"    href="/admin/financeiro" />
-              <NavItem icon={<Boxes      size={18} />} label="Estoque"       href="/admin/estoque" />
-              <NavItem icon={<Sparkles   size={18} />} label="Procedimentos" href="/admin/procedures" />
-              <NavItem icon={<Layers     size={18} />} label="CRM"           href="/admin/crm" />
-              <NavItem icon={<Bell       size={18} />} label="Notificações"  href="/admin/notificacoes" />
-              <NavItem icon={<Megaphone  size={18} />} label="Marketing"     href="/admin/marketing" />
-              {!isFinancial && (
-                <>
-                  <NavItem icon={<UsersRound size={18} />} label="Equipes"        href="/admin/team" />
-                  <NavItem icon={<Settings   size={18} />} label="Configurações"  href="/admin/settings" />
-                </>
-              )}
-            </>
-          )}
+          {can('reports')    && <NavItem icon={<LayoutGrid size={18} />} label="Dashboard"     href="/admin/dashboard" />}
+          {can('agenda')     && <NavItem icon={<Calendar   size={18} />} label="Agenda"        href="/admin/agenda" />}
+          {can('clients')    && <NavItem icon={<Contact    size={18} />} label="Clientes"      href="/admin/clients" />}
+          {can('reports')    && <NavItem icon={<BarChart3  size={18} />} label="Relatórios"    href="/admin/reports" />}
+          {can('financial')  && <NavItem icon={<CreditCard size={18} />} label="Financeiro"    href="/admin/financeiro" />}
+          {can('stock')      && <NavItem icon={<Boxes      size={18} />} label="Estoque"       href="/admin/estoque" />}
+          {can('procedures') && <NavItem icon={<Sparkles   size={18} />} label="Procedimentos" href="/admin/procedures" />}
+          {can('crm')        && <NavItem icon={<Layers     size={18} />} label="CRM"           href="/admin/crm" />}
+          {can('marketing')  && <NavItem icon={<Bell       size={18} />} label="Notificações"  href="/admin/notificacoes" />}
+          {can('marketing')  && <NavItem icon={<Megaphone  size={18} />} label="Marketing"     href="/admin/marketing" />}
+          {can('team')       && <NavItem icon={<UsersRound size={18} />} label="Equipes"       href="/admin/team" />}
+          {can('settings')   && <NavItem icon={<Settings   size={18} />} label="Configurações" href="/admin/settings" />}
         </nav>
 
         {/* Rodapé: recolher (desktop) + logout */}

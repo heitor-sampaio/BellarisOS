@@ -1,19 +1,10 @@
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { AdminTeamForm } from '@/components/admin/team-form'
 import { TeamFilters } from '@/components/admin/team-filters'
-import { deactivateTeamMember } from '@/actions/team'
-import { UserMinus } from 'lucide-react'
+import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
+import { UserMinus, UserCheck } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { HIDDEN_ROLES } from '@/lib/permissions'
-
-const ROLE_CHIP: Record<string, string> = {
-  NETWORK_ADMIN: 'chip chip-brand',
-  BRANCH_ADMIN:  'chip chip-brand',
-  PROFESSIONAL:  'chip chip-success',
-  RECEPTIONIST:  'chip chip-muted',
-  FINANCIAL:     'chip chip-warning',
-}
 
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(' ')
@@ -39,7 +30,7 @@ export default async function AdminTeamPage({
   searchParams: Promise<{ q?: string; branch?: string; role?: string; status?: string }>
 }) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'team', 'MANAGE')
 
   const { q = '', branch = '', role = '', status = '' } = await searchParams
 
@@ -56,21 +47,20 @@ export default async function AdminTeamPage({
 
     supabase
       .from('tenant_roles')
-      .select('key, label')
+      .select('id, key, label, is_system')
       .eq('tenant_id', ctx.tenantId!)
-      .not('key', 'in', `(${[...HIDDEN_ROLES].join(',')})`)
       .order('is_system', { ascending: false })
       .order('label'),
 
     (() => {
       let query = supabase
         .from('users')
-        .select('id, name, email, role, is_active, branch_id, branches(name)')
+        .select('id, name, email, role_id, is_active, branch_id, provides_services, branches(name)')
         .eq('tenant_id', ctx.tenantId!)
 
       if (q)      query = query.or(`name.ilike.%${q}%,email.ilike.%${q}%`)
       if (branch) query = query.eq('branch_id', branch)
-      if (role)   query = query.eq('role', role)
+      if (role)   query = query.eq('role_id', role)
       if (status === 'active')   query = query.eq('is_active', true)
       if (status === 'inactive') query = query.eq('is_active', false)
 
@@ -80,8 +70,13 @@ export default async function AdminTeamPage({
 
   const members = membersResult.data ?? []
 
-  // Mapa de label dos cargos (sistema + customizados)
-  const roleLabel = Object.fromEntries((tenantRoles ?? []).map(r => [r.key, r.label]))
+  const allRoles = tenantRoles ?? []
+  // Cargos atribuíveis pela UI: sem os de sistema (NETWORK_ADMIN)
+  const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
+  // Mapa id → label (inclui sistema, para exibir o Admin da rede)
+  const roleLabel = Object.fromEntries(allRoles.map(r => [r.id, r.label]))
+  // Filtro por cargo: value = role_id
+  const filterRoles = allRoles.map(r => ({ key: r.id, label: r.label }))
 
   const branchMap: Record<string, string> = {}
   for (const b of branches ?? []) branchMap[b.id] = b.name
@@ -106,14 +101,14 @@ export default async function AdminTeamPage({
             {!hasFilters && ' em toda a rede'}
           </p>
         </div>
-        <AdminTeamForm branches={branches ?? []} />
+        <AdminTeamForm branches={branches ?? []} roles={assignableRoles} isNetworkAdmin={ctx.isNetworkAdmin} />
       </div>
 
       {/* Filtros */}
       <div style={{ marginBottom: 16 }}>
         <TeamFilters
           branches={branches ?? []}
-          roles={tenantRoles ?? []}
+          roles={filterRoles}
           initialQ={q}
           initialBranch={branch}
           initialRole={role}
@@ -150,9 +145,9 @@ export default async function AdminTeamPage({
             <tbody>
               {members.map((m, i) => {
                 const branchName = (m.branches as unknown as { name: string } | null)?.name
-                  ?? branchMap[m.branch_id]
-                  ?? '—'
-                const label = roleLabel[m.role] ?? m.role
+                  ?? (m.branch_id ? branchMap[m.branch_id] : null)
+                  ?? (m.branch_id ? '—' : 'Rede inteira')
+                const label = (m.role_id ? roleLabel[m.role_id] : null) ?? '—'
 
                 return (
                   <tr
@@ -180,9 +175,10 @@ export default async function AdminTeamPage({
                     </td>
 
                     <td style={{ padding: '14px 20px' }}>
-                      <span className={ROLE_CHIP[m.role] ?? 'chip chip-muted'}>
-                        {label}
-                      </span>
+                      <span className="chip chip-brand">{label}</span>
+                      {m.provides_services && (
+                        <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>
+                      )}
                     </td>
 
                     <td style={{ padding: '14px 20px' }}>
@@ -192,7 +188,7 @@ export default async function AdminTeamPage({
                     </td>
 
                     <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                      {m.is_active && (
+                      {m.is_active ? (
                         <form action={async () => {
                           'use server'
                           await deactivateTeamMember(m.id, '/admin/team')
@@ -204,6 +200,20 @@ export default async function AdminTeamPage({
                             title="Desativar membro"
                           >
                             <UserMinus size={15} />
+                          </button>
+                        </form>
+                      ) : (
+                        <form action={async () => {
+                          'use server'
+                          await reactivateTeamMember(m.id, '/admin/team')
+                        }}>
+                          <button
+                            type="submit"
+                            className="btn-ghost"
+                            style={{ padding: '5px 8px', color: 'var(--brand)' }}
+                            title="Reativar membro"
+                          >
+                            <UserCheck size={15} />
                           </button>
                         </form>
                       )}

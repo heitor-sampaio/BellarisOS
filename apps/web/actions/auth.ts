@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getRedirectPath, NETWORK_LEVEL_ROLES } from '@/lib/auth'
+import { getRedirectPath } from '@/lib/auth'
 import { LoginSchema, RegisterSchema } from '@estetica-os/validators'
 import type { JwtClaims } from '@estetica-os/types'
 
@@ -63,6 +63,14 @@ export async function registerAction(
 
   if (tenantError || !tenant) return { error: 'Erro ao configurar conta. Tente novamente.' }
 
+  // O cargo-sistema NETWORK_ADMIN é semeado pela trigger after-insert em tenants.
+  const { data: adminRole } = await admin
+    .from('tenant_roles')
+    .select('id')
+    .eq('tenant_id', tenant.id)
+    .eq('key', 'NETWORK_ADMIN')
+    .single()
+
   await admin.from('users').insert({
     auth_id:   authUser.id,
     tenant_id: tenant.id,
@@ -70,13 +78,14 @@ export async function registerAction(
     name:      email,
     email:     email,
     role:      'NETWORK_ADMIN',
+    role_id:   adminRole?.id ?? null,
   })
 
   await admin.rpc('set_user_claims', {
     p_auth_id:   authUser.id,
     p_tenant_id: tenant.id,
     p_branch_id: null,
-    p_role:      'NETWORK_ADMIN',
+    p_role_id:   adminRole?.id ?? null,
   })
 
   // Se o Supabase exigir confirmação de e-mail, a sessão não estará disponível ainda
@@ -108,17 +117,17 @@ export async function loginAction(
       const claims = (user.app_metadata ?? {}) as JwtClaims
       const admin  = createAdminClient()
 
-      if (NETWORK_LEVEL_ROLES.includes(claims.role)) {
-        dest = getRedirectPath(claims.role, null)
-      } else if (claims.branch_id) {
-        const { data: br } = await admin.from('branches').select('slug').eq('id', claims.branch_id).single()
-        dest = getRedirectPath(claims.role, br?.slug ?? null)
-      } else if (claims.client_id) {
+      if (claims.client_id) {
         const { data: cl } = await admin.from('clients').select('branch_id').eq('id', claims.client_id).single()
         if (cl?.branch_id) {
           const { data: br } = await admin.from('branches').select('slug').eq('id', cl.branch_id).single()
           if (br?.slug) dest = `/${br.slug}/cliente`
         }
+      } else if (claims.branch_id) {
+        const { data: br } = await admin.from('branches').select('slug').eq('id', claims.branch_id).single()
+        dest = getRedirectPath(claims.role, br?.slug ?? null)
+      } else {
+        dest = getRedirectPath(claims.role, null)
       }
     }
   } catch { /* mantém fallback /auth/redirect */ }

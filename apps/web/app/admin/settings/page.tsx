@@ -1,10 +1,9 @@
 import Link from 'next/link'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { buildFullMatrix, HIDDEN_ROLES } from '@/lib/permissions'
-import { PermissionsMatrix } from '@/components/admin/permissions-matrix'
-import { RoleManager } from '@/components/admin/role-manager'
+import { RolesEditor } from '@/components/admin/roles-editor'
+import type { AppModule, PermissionLevel } from '@estetica-os/types'
 import { SettingsIntegrations } from '@/components/admin/settings-integrations'
 import { SettingsBranches } from '@/components/admin/settings-branches'
 import { SettingsAnamnesis, type AdminAnamnesisForm } from '@/components/admin/settings-anamnesis'
@@ -28,7 +27,7 @@ export default async function AdminSettingsPage({
   searchParams: Promise<{ tab?: string; meta_step?: string; meta_error?: string; meta_error_reason?: string }>
 }) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const { tab: tabParam, meta_step, meta_error, meta_error_reason } = await searchParams
   const activeTab: TabKey = (tabParam as TabKey) ?? 'permissions'
@@ -45,7 +44,7 @@ export default async function AdminSettingsPage({
       .order('created_at'),
     supabase
       .from('role_permissions')
-      .select('role, module, can_view, can_write')
+      .select('role_id, module, level')
       .eq('tenant_id', ctx.tenantId!),
     admin
       .from('integration_configs')
@@ -77,9 +76,12 @@ export default async function AdminSettingsPage({
     isActive: !!r.is_active,
   }))
 
-  // Filtra cargos que não devem aparecer na matriz
-  const matrixRoles = (allRoles ?? []).filter(r => !HIDDEN_ROLES.has(r.key))
-  const matrix      = buildFullMatrix(matrixRoles, overrides ?? [])
+  // Mapa cargo → { módulo: nível } para o editor
+  const permsByRole: Record<string, Partial<Record<AppModule, PermissionLevel>>> = {}
+  for (const o of (overrides ?? []) as { role_id: string | null; module: string; level: PermissionLevel }[]) {
+    if (!o.role_id) continue
+    ;(permsByRole[o.role_id] ??= {})[o.module as AppModule] = o.level
+  }
 
   return (
     <div>
@@ -123,44 +125,15 @@ export default async function AdminSettingsPage({
 
       {activeTab === 'permissions' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* Seção: Cargos */}
-          <div className="card">
-            <div style={{ marginBottom: 16 }}>
-              <h2 style={{
-                fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)',
-              }}>
-                Cargos
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
-                Cargos com <span style={{ opacity: 0.5 }}>🔒</span> são do sistema e não podem ser excluídos.
-                Ao excluir um cargo personalizado, usuários com esse cargo perdem todos os acessos.
-              </p>
-            </div>
-            <RoleManager roles={allRoles ?? []} />
+          <div>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
+              Cargos e acessos
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
+              Crie um cargo com qualquer nome e defina, por módulo, o nível de acesso. O cargo <strong>Admin da rede</strong> tem acesso total e não pode ser editado.
+            </p>
           </div>
-
-          {/* Seção: Permissões */}
-          <div className="card">
-            <div style={{ marginBottom: 22 }}>
-              <h2 style={{
-                fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)',
-              }}>
-                Acesso por cargo
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
-                Define quais módulos cada cargo pode visualizar e editar.
-              </p>
-            </div>
-            {matrix.length > 0 ? (
-              <PermissionsMatrix matrix={matrix} />
-            ) : (
-              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-                Nenhum cargo configurável encontrado.
-              </p>
-            )}
-          </div>
-
+          <RolesEditor roles={allRoles ?? []} permsByRole={permsByRole} />
         </div>
       )}
 

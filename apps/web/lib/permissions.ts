@@ -1,79 +1,82 @@
-﻿export type AppModule = 'agenda' | 'clients' | 'procedures' | 'stock' | 'financial' | 'settings'
-export type ConfigurableRole = 'BRANCH_ADMIN' | 'RECEPTIONIST' | 'PROFESSIONAL' | 'FINANCIAL'
+import { APP_MODULES } from '@estetica-os/types'
+import type { AppModule, PermissionLevel, ResolvedPermissions } from '@estetica-os/types'
 
+// Re-export para consumidores que importam de '@/lib/permissions'
+export type { AppModule, PermissionLevel, ResolvedPermissions }
+
+export const ALL_MODULES: readonly AppModule[] = APP_MODULES
+
+// Rótulos pt-BR de cada módulo (usados na matriz de cargos e afins)
 export const MODULE_LABELS: Record<AppModule, string> = {
-  agenda:      'Agenda',
-  clients:     'Clientes',
-  procedures:  'Procedimentos',
-  stock:       'Estoque',
-  financial:   'Financeiro',
-  settings:    'Configurações',
+  agenda:          'Agenda',
+  clients:         'Clientes',
+  medical_records: 'Prontuário',
+  procedures:      'Procedimentos e pacotes',
+  stock:           'Estoque',
+  financial:       'Financeiro e comissões',
+  crm:             'CRM',
+  marketing:       'Marketing',
+  reports:         'Relatórios e dashboard',
+  loyalty:         'Fidelidade',
+  team:            'Equipe e usuários',
+  settings:        'Configurações',
 }
 
-export const ALL_MODULES: AppModule[] = ['agenda', 'clients', 'procedures', 'stock', 'financial', 'settings']
-
-// Roles que nunca aparecem na matriz de configuração (atuam em nível de rede)
-export const HIDDEN_ROLES = new Set(['NETWORK_ADMIN', 'FINANCIAL', 'MARKETING', 'COMERCIAL', 'GERENTE_COMERCIAL', 'CLIENT', 'NAO_DEFINIDO'])
-
-export interface ModulePermission { view: boolean; write: boolean }
-export type ResolvedPermissions = Record<AppModule, ModulePermission>
-
-export interface MatrixRole {
-  id:         string
-  key:        string
-  label:      string
-  is_system:  boolean
-  permissions: ResolvedPermissions
+// Descrição curta de cada módulo (ajuda na tela de montagem do cargo)
+export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
+  agenda:          'Agendamentos, check-in e atendimentos',
+  clients:         'Cadastro e ficha de clientes',
+  medical_records: 'Anamnese, evolução e fotos clínicas',
+  procedures:      'Catálogo de procedimentos e pacotes',
+  stock:           'Produtos, movimentações e transferências',
+  financial:       'Caixa, transações e comissões',
+  crm:             'Leads, funil e conversas',
+  marketing:       'Campanhas e notificações',
+  reports:         'Indicadores e relatórios da rede',
+  loyalty:         'Pontos e pacotes de fidelidade',
+  team:            'Membros da equipe e cargos',
+  settings:        'Configurações da rede e filiais',
 }
 
-// --- Defaults dos cargos de sistema -----------------------------
-const DEFAULT_VIEW: Record<string, Record<AppModule, boolean>> = {
-  BRANCH_ADMIN: { agenda: true,  clients: true,  procedures: true,  stock: true,  financial: true,  settings: true  },
-  RECEPTIONIST: { agenda: true,  clients: true,  procedures: true,  stock: true,  financial: true,  settings: false },
-  PROFESSIONAL: { agenda: true,  clients: true,  procedures: true,  stock: true,  financial: false, settings: false },
-  FINANCIAL:    { agenda: false, clients: false, procedures: false, stock: true,  financial: true,  settings: false },
+// ─── Níveis ──────────────────────────────────────────────────────────────────
+const LEVEL_RANK: Record<PermissionLevel, number> = { NONE: 0, VIEW: 1, MANAGE: 2 }
+
+export function hasLevel(level: PermissionLevel | undefined, required: PermissionLevel): boolean {
+  return LEVEL_RANK[level ?? 'NONE'] >= LEVEL_RANK[required]
 }
 
-const DEFAULT_WRITE: Record<string, Record<AppModule, boolean>> = {
-  BRANCH_ADMIN: { agenda: true,  clients: true,  procedures: true,  stock: true,  financial: true,  settings: true  },
-  RECEPTIONIST: { agenda: true,  clients: true,  procedures: false, stock: false, financial: false, settings: false },
-  PROFESSIONAL: { agenda: false, clients: false, procedures: false, stock: false, financial: false, settings: false },
-  FINANCIAL:    { agenda: false, clients: false, procedures: false, stock: false, financial: true,  settings: false },
+export function canView(perms: ResolvedPermissions, module: AppModule): boolean {
+  return hasLevel(perms[module], 'VIEW')
 }
 
-// Mescla defaults com overrides do banco; cargos desconhecidos = tudo false
+export function canManage(perms: ResolvedPermissions, module: AppModule): boolean {
+  return hasLevel(perms[module], 'MANAGE')
+}
+
+export const NO_PERMISSIONS: ResolvedPermissions = Object.fromEntries(
+  APP_MODULES.map(m => [m, 'NONE'] as const),
+) as ResolvedPermissions
+
+export const ALL_PERMISSIONS: ResolvedPermissions = Object.fromEntries(
+  APP_MODULES.map(m => [m, 'MANAGE'] as const),
+) as ResolvedPermissions
+
+// Resolve os níveis por módulo a partir das linhas de override do banco (por cargo).
+// allAccess = true ⇒ NETWORK_ADMIN (tudo MANAGE). Sem override ⇒ NONE.
 export function resolvePermissions(
-  roleKey: string,
-  overrides: { module: string; can_view: boolean; can_write: boolean }[],
+  overrides: { module: string; level: PermissionLevel }[],
+  opts?: { allAccess?: boolean },
 ): ResolvedPermissions {
-  if (roleKey === 'NETWORK_ADMIN') {
-    return Object.fromEntries(ALL_MODULES.map(m => [m, { view: true, write: true }])) as ResolvedPermissions
-  }
-
-  const defView  = DEFAULT_VIEW[roleKey]  ?? Object.fromEntries(ALL_MODULES.map(m => [m, false]))
-  const defWrite = DEFAULT_WRITE[roleKey] ?? Object.fromEntries(ALL_MODULES.map(m => [m, false]))
-
-  const overrideMap = Object.fromEntries(
-    overrides.map(o => [o.module, { can_view: o.can_view, can_write: o.can_write }])
-  )
-
+  if (opts?.allAccess) return { ...ALL_PERMISSIONS }
+  const map = new Map(overrides.map(o => [o.module, o.level]))
   return Object.fromEntries(
-    ALL_MODULES.map(m => {
-      const ov    = overrideMap[m]
-      const write = ov ? ov.can_write : (defWrite as Record<string, boolean>)[m] ?? false
-      const view  = ov ? ov.can_view  : (defView  as Record<string, boolean>)[m] ?? false
-      return [m, { view: view || write, write }]
-    })
+    APP_MODULES.map(m => [m, map.get(m) ?? 'NONE'] as const),
   ) as ResolvedPermissions
 }
 
-// Monta a matriz completa para a página de settings (cargos dinâmicos)
-export function buildFullMatrix(
-  roles: { id: string; key: string; label: string; is_system: boolean }[],
-  overrides: { role: string; module: string; can_view: boolean; can_write: boolean }[],
-): MatrixRole[] {
-  return roles.map(role => ({
-    ...role,
-    permissions: resolvePermissions(role.key, overrides.filter(o => o.role === role.key)),
-  }))
+// Rótulo pt-BR de cada nível (para selects/segmented controls)
+export const LEVEL_LABELS: Record<PermissionLevel, string> = {
+  NONE:   'Sem acesso',
+  VIEW:   'Ver',
+  MANAGE: 'Gerenciar',
 }

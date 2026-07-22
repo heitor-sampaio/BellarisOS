@@ -1,8 +1,47 @@
 import { cache } from 'react'
 import { createClient as createSupabaseJsClient } from '@supabase/supabase-js'
-import type { TenantContext, UserRole, JwtClaims } from '@estetica-os/types'
+import type { TenantContext, UserRole, JwtClaims, AppModule, ResolvedPermissions } from '@estetica-os/types'
 import { createClient } from '@/lib/supabase/server'
-import { getCachedInternalUserId } from '@/lib/cached-queries'
+import { getCachedMember, getCachedRolePermissions } from '@/lib/cached-queries'
+import { resolvePermissions, hasLevel, NO_PERMISSIONS, ALL_PERMISSIONS } from '@/lib/permissions'
+
+// Resolve permissões + campos derivados do membro a partir das claims do JWT.
+// Durante a transição, role_id/provides_services vêm do banco (getCachedMember)
+// caso o JWT ainda não os carregue.
+async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<TenantContext> {
+  const tenantId = meta.tenant_id ?? null
+  const role = (meta.role ?? 'CLIENT') as UserRole
+  const isNetworkAdmin = role === 'NETWORK_ADMIN'
+  const isClient = role === 'CLIENT'
+
+  const member = isClient ? null : await getCachedMember(authId)
+  const roleId = meta.role_id ?? member?.roleId ?? null
+
+  let permissions: ResolvedPermissions
+  if (isClient) {
+    permissions = NO_PERMISSIONS
+  } else if (isNetworkAdmin) {
+    permissions = ALL_PERMISSIONS
+  } else if (roleId && tenantId) {
+    permissions = resolvePermissions(await getCachedRolePermissions(tenantId, roleId))
+  } else {
+    permissions = NO_PERMISSIONS
+  }
+
+  return {
+    userId: authId,
+    internalUserId: member?.id ?? null,
+    tenantId,
+    branchId: meta.branch_id ?? null,
+    role,
+    roleId,
+    clientId: meta.client_id ?? null,
+    permissions,
+    providesServices: member?.providesServices ?? false,
+    isNetworkAdmin,
+    isClient,
+  }
+}
 
 export const getTenantContext = cache(async function getTenantContext(): Promise<TenantContext> {
   const supabase = await createClient()
@@ -21,19 +60,7 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
   const meta = (claims.app_metadata ?? {}) as Partial<JwtClaims>
   const authId = claims.sub as string
 
-  // users.id interno — cacheado por auth_id (evita round-trip por request)
-  const internalUserId = await getCachedInternalUserId(authId)
-
-  return {
-    userId: authId,
-    internalUserId,
-    tenantId: meta.tenant_id ?? null,
-    branchId: meta.branch_id ?? null,
-    role: meta.role ?? 'CLIENT',
-    clientId: meta.client_id ?? null,
-    isNetworkAdmin: meta.role === 'NETWORK_ADMIN',
-    isClient: (meta.role ?? 'CLIENT') === 'CLIENT',
-  }
+  return buildContext(authId, meta)
 })
 
 /**
@@ -56,25 +83,33 @@ export async function getTenantContextFromToken(accessToken: string): Promise<Te
   if (error || !user) throw new Error('Unauthenticated')
 
   const meta = (user.app_metadata ?? {}) as Partial<JwtClaims>
-  const authId = user.id
-  const internalUserId = await getCachedInternalUserId(authId)
-
-  return {
-    userId: authId,
-    internalUserId,
-    tenantId: meta.tenant_id ?? null,
-    branchId: meta.branch_id ?? null,
-    role: meta.role ?? 'CLIENT',
-    clientId: meta.client_id ?? null,
-    isNetworkAdmin: meta.role === 'NETWORK_ADMIN',
-    isClient: (meta.role ?? 'CLIENT') === 'CLIENT',
-  }
+  return buildContext(user.id, meta)
 }
 
 export function assertRole(ctx: TenantContext, allowed: UserRole[]): void {
   if (!allowed.includes(ctx.role)) {
     throw new Error('Forbidden')
   }
+}
+
+/**
+ * Autorização por funcionalidade — fonte única de verdade.
+ * NETWORK_ADMIN passa em tudo (permissions = ALL_PERMISSIONS).
+ * `required` é o nível mínimo exigido para a operação ('VIEW' | 'MANAGE').
+ */
+export function assertPermission(
+  ctx: TenantContext,
+  module: AppModule,
+  required: 'VIEW' | 'MANAGE',
+): void {
+  if (!hasLevel(ctx.permissions[module], required)) {
+    throw new Error('Forbidden')
+  }
+}
+
+/** Versão booleana (para esconder UI / derivar canWrite em pages) */
+export function can(ctx: TenantContext, module: AppModule, required: 'VIEW' | 'MANAGE' = 'VIEW'): boolean {
+  return hasLevel(ctx.permissions[module], required)
 }
 
 export function assertBranchAccess(ctx: TenantContext): asserts ctx is TenantContext & { branchId: string } {
@@ -85,15 +120,9 @@ export function assertNetworkAccess(ctx: TenantContext): asserts ctx is TenantCo
   if (!ctx.tenantId) throw new Error('Tenant context required')
 }
 
-export function getRedirectPath(role: UserRole, branchSlug?: string | null): string {
-  if (role === 'NETWORK_ADMIN')      return '/admin/dashboard'
-  if (role === 'FINANCIAL')          return '/admin/financeiro'
-  if (role === 'MARKETING')          return '/admin/marketing'
-  if (role === 'COMERCIAL')          return '/admin/crm'
-  if (role === 'GERENTE_COMERCIAL')  return '/admin/comercial'
+// Destino pós-login: abrangência de filial → dashboard da filial; rede → /admin.
+// A autorização fina de cada página é feita por assertPermission.
+export function getRedirectPath(_role: string, branchSlug?: string | null): string {
   if (branchSlug) return `/${branchSlug}/dashboard`
-  return '/login'
+  return '/admin/dashboard'
 }
-
-/** Roles que operam em nível de rede (sem branch_id no JWT) */
-export const NETWORK_LEVEL_ROLES: UserRole[] = ['NETWORK_ADMIN', 'FINANCIAL', 'MARKETING', 'COMERCIAL', 'GERENTE_COMERCIAL']

@@ -27,6 +27,13 @@ enum UserRole {
   CLIENT             // cliente final — acessa apenas os próprios dados via app
 }
 
+// Nível de acesso por módulo — fonte única de verdade das permissões dinâmicas.
+enum PermissionLevel {
+  NONE               // some do menu / sem acesso
+  VIEW               // leitura; botões de ação escondidos
+  MANAGE             // acesso total ao módulo
+}
+
 enum AppointmentStatus {
   SCHEDULED
   CONFIRMED
@@ -114,6 +121,8 @@ model Tenant {
 
   branches       Branch[]
   users          User[]
+  roles          TenantRole[]                  // cargos dinâmicos da rede
+  rolePermissions RolePermission[]             // matriz de permissões por cargo
   procedures     Procedure[]                   // catálogo base da rede
   products       Product[]                     // catálogo de produtos da rede
   loyaltyConfig  LoyaltyConfig?
@@ -178,13 +187,16 @@ model User {
   email     String
   phone     String?
   avatarUrl String?
-  role      UserRole
+  role      UserRole                          // LEGADO — mantido durante a transição; autoridade passa a ser roleId
+  roleId           String?  @map("role_id")   // cargo dinâmico (tenant_roles) — fonte de verdade das permissões
+  providesServices Boolean  @default(false) @map("provides_services") // atende clientes (profissional): agenda própria + comissão
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tenant Tenant  @relation(fields: [tenantId], references: [id])
-  branch Branch? @relation(fields: [branchId], references: [id])
+  tenant   Tenant      @relation(fields: [tenantId], references: [id])
+  branch   Branch?     @relation(fields: [branchId], references: [id])
+  roleRef  TenantRole? @relation(fields: [roleId], references: [id])
 
   appointments         Appointment[]
   medicalRecordEntries MedicalRecordEntry[]
@@ -193,6 +205,42 @@ model User {
 
   @@unique([tenantId, email])
   @@map("users")
+}
+
+// Cargo dinâmico por rede. Nome livre; NETWORK_ADMIN é o único cargo-sistema (all-access).
+model TenantRole {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  key       String                             // slug UPPER_SNAKE derivado do label
+  label     String                             // nome exibido (pt-BR)
+  isSystem  Boolean  @default(false) @map("is_system")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions RolePermission[]
+  members     User[]
+
+  @@unique([tenantId, key])
+  @@map("tenant_roles")
+}
+
+// Matriz módulo × nível por cargo. Uma linha por (cargo, módulo).
+model RolePermission {
+  id        String          @id @default(uuid())
+  tenantId  String          @map("tenant_id")
+  roleId    String?         @map("role_id")
+  role      String                              // LEGADO — key do cargo (mantido durante a transição)
+  module    String
+  level     PermissionLevel @default(NONE)
+  canView   Boolean         @default(true)  @map("can_view")  // LEGADO
+  canWrite  Boolean         @default(false) @map("can_write") // LEGADO
+  updatedAt DateTime        @default(now()) @updatedAt @map("updated_at")
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roleRef TenantRole? @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, role, module])
+  @@map("role_permissions")
 }
 
 // ============================================================

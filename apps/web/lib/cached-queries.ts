@@ -2,20 +2,29 @@ import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
 
-// ─── Mapa auth_id → users.id interno (usado no getTenantContext) ──────────────
-// Evita um round-trip PostgREST por request. Invalidar em actions/team.ts.
-export function getCachedInternalUserId(authId: string) {
+// ─── Membro por auth_id (usado no getTenantContext) ───────────────────────────
+// Traz id interno + cargo dinâmico + flag de profissional. Fonte de fallback dos
+// claims (role_id/provides_services) enquanto o JWT antigo não carrega role_id.
+// Invalidar em actions/team.ts via tag `user:${authId}`.
+export type CachedMember = { id: string; roleId: string | null; providesServices: boolean }
+
+export function getCachedMember(authId: string) {
   return unstable_cache(
-    async () => {
+    async (): Promise<CachedMember | null> => {
       const admin = createAdminClient()
       const { data } = await admin
         .from('users')
-        .select('id')
+        .select('id, role_id, provides_services')
         .eq('auth_id', authId)
         .maybeSingle()
-      return data?.id ?? null
+      if (!data) return null
+      return {
+        id: data.id,
+        roleId: data.role_id ?? null,
+        providesServices: data.provides_services ?? false,
+      }
     },
-    [`internal-user-id-${authId}`],
+    [`member-${authId}`],
     { revalidate: 3600, tags: [`user:${authId}`] },
   )()
 }
@@ -138,19 +147,19 @@ export function getCachedBranchBySlug(slug: string, tenantId: string) {
   )()
 }
 
-// ─── Permissões por role (roda no layout da filial → toda navegação) ──────────
-export function getCachedRolePermissions(tenantId: string, role: string) {
+// ─── Permissões por cargo (resolvidas no getTenantContext → toda navegação) ────
+export function getCachedRolePermissions(tenantId: string, roleId: string) {
   return unstable_cache(
-    async () => {
+    async (): Promise<{ module: string; level: 'NONE' | 'VIEW' | 'MANAGE' }[]> => {
       const admin = createAdminClient()
       const { data } = await admin
         .from('role_permissions')
-        .select('module, can_view, can_write')
+        .select('module, level')
         .eq('tenant_id', tenantId)
-        .eq('role', role)
-      return data ?? []
+        .eq('role_id', roleId)
+      return (data ?? []) as { module: string; level: 'NONE' | 'VIEW' | 'MANAGE' }[]
     },
-    [`role-permissions-${tenantId}-${role}`],
+    [`role-permissions-${tenantId}-${roleId}`],
     { revalidate: 600, tags: [`permissions:${tenantId}`] },
   )()
 }
@@ -192,7 +201,7 @@ export function getCachedNetworkProcedures(tenantId: string) {
   )()
 }
 
-// ─── Profissionais da filial (BRANCH_ADMIN + PROFESSIONAL ativos) ─────────────
+// ─── Profissionais da filial (quem atende clientes: provides_services) ────────
 export function getCachedBranchProfessionals(branchId: string, tenantId: string) {
   return unstable_cache(
     async () => {
@@ -201,7 +210,7 @@ export function getCachedBranchProfessionals(branchId: string, tenantId: string)
         .from('users')
         .select('id, name')
         .eq('branch_id', branchId)
-        .in('role', ['BRANCH_ADMIN', 'PROFESSIONAL'])
+        .eq('provides_services', true)
         .eq('is_active', true)
         .order('name')
       return data ?? []

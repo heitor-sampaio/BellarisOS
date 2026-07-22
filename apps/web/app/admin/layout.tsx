@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getTenantContext, NETWORK_LEVEL_ROLES } from '@/lib/auth'
+import { getTenantContext } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminSidebar } from '@/components/admin/sidebar'
@@ -9,7 +9,9 @@ import { SidebarProvider } from '@/components/shared/sidebar-context'
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getTenantContext()
 
-  if (!NETWORK_LEVEL_ROLES.includes(ctx.role)) redirect('/login')
+  // Portal da rede: apenas usuários de abrangência de rede (branch_id null) ou o admin.
+  if (ctx.isClient) redirect('/login')
+  if (ctx.branchId !== null && !ctx.isNetworkAdmin) redirect('/')
 
   // Tenant check + users query em paralelo — economiza 1 round-trip sequencial
   const supabase  = await createClient()
@@ -33,7 +35,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <SidebarProvider>
-      <AdminSidebar role={ctx.role} />
+      <AdminSidebar permissions={ctx.permissions} />
       <Topbar userName={user?.name ?? 'Admin'} userRole={ctx.role} internalUserId={ctx.internalUserId} initialUnread={initialUnread} />
       <main style={{
         marginLeft:    'var(--sidebar-w)',
