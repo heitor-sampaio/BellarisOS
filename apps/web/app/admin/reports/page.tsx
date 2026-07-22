@@ -1,5 +1,5 @@
 ﻿import { createAdminClient } from '@/lib/supabase/admin'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
@@ -15,7 +15,7 @@ export default async function AdminReportsPage({
   const { tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo } = await searchParams
 
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'MARKETING'])
+  assertPermission(ctx, 'reports', 'VIEW')
 
   const admin = createAdminClient()
   const now   = new Date()

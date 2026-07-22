@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { NotificationCampaignForm } from '@/components/admin/notification-campaign-form'
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function NovaCampanhaPage() {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
 

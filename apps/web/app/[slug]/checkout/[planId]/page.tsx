@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { getTreatmentPlanSessions } from '@/actions/treatment-plans'
@@ -14,7 +14,7 @@ export default async function CheckoutPage({
 }) {
   const { slug, planId } = await params
   const ctx              = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'procedures', 'VIEW')
 
   const supabase = await createSupabase()
   const admin    = createAdminClient()

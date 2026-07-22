@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 
@@ -25,7 +25,7 @@ export default async function AdminComercialPage({
   searchParams: Promise<{ period?: string }>
 }) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'GERENTE_COMERCIAL'])
+  assertPermission(ctx, 'reports', 'VIEW')
 
   const { period: rawPeriod } = await searchParams
   const period = (PERIODS.some(p => p.key === rawPeriod) ? rawPeriod : 'month') as Period

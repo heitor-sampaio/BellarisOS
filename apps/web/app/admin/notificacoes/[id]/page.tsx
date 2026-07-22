@@ -1,7 +1,7 @@
 ﻿import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronLeft, Zap, Clock, RefreshCw, Users, Send, BookOpen } from 'lucide-react'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { getCampaign, activateCampaign, pauseCampaign, archiveCampaign, deleteCampaign } from '@/actions/notification-campaigns'
 import type { CampaignStatus, CampaignType, TriggerType } from '@/actions/notification-campaigns'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -34,7 +34,7 @@ const TRIGGER_LABELS: Record<TriggerType, string> = {
 export default async function CampanhaDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'VIEW')
 
   let campaign, dispatches
   try {

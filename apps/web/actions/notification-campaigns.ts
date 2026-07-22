@@ -4,7 +4,7 @@ import webpush from 'web-push'
 import { GoogleAuth } from 'google-auth-library'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 function getWebPush() {
@@ -77,7 +77,7 @@ export async function listCampaigns(): Promise<{
   activeCount: number
 }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -102,7 +102,7 @@ export async function getCampaign(id: string): Promise<{
   dispatches: { client_name: string; sent_at: string; status: string }[]
 }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
   const [{ data: camp, error }, { data: dispatches }] = await Promise.all([
@@ -133,7 +133,7 @@ export async function createCampaign(
   input: CreateCampaignInput,
 ): Promise<{ id: string } | { error: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -169,7 +169,7 @@ export async function updateCampaign(
   input: Partial<CreateCampaignInput>,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
 
@@ -211,7 +211,7 @@ export async function updateCampaign(
 
 export async function activateCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
   const { data: camp } = await admin
@@ -247,7 +247,7 @@ export async function activateCampaign(id: string): Promise<{ error?: string }> 
 
 export async function pauseCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -265,7 +265,7 @@ export async function pauseCampaign(id: string): Promise<{ error?: string }> {
 
 export async function archiveCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -281,7 +281,7 @@ export async function archiveCampaign(id: string): Promise<{ error?: string }> {
 
 export async function deleteCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
 
@@ -314,7 +314,7 @@ export async function previewAudienceCount(
   rules: AudienceRules,
 ): Promise<{ count: number }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
   let query = admin

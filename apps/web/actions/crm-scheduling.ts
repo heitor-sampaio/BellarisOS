@@ -5,7 +5,7 @@
 // A filial do agendamento (branchId) é a UNIDADE onde o cliente será atendido —
 // é a dimensão de métrica por unidade (o cliente pertence à rede).
 
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   createAppointmentCore,
@@ -45,7 +45,7 @@ async function assertBranchInTenant(branchId: string, tenantId: string): Promise
 /** Profissionais, procedimentos e salas de uma filial (para o form de agendamento). */
 export async function getCrmSchedulingData(branchId: string): Promise<CrmSchedulingData> {
   const ctx = await getTenantContext()
-  assertRole(ctx, [...CRM_READ_ROLES])
+  assertPermission(ctx, 'crm', 'VIEW')
   if (!branchId || !(await assertBranchInTenant(branchId, ctx.tenantId!))) {
     return { professionals: [], procedures: [], rooms: [] }
   }
@@ -73,7 +73,7 @@ export async function getCrmSlots(
   durationMin: number,
 ): Promise<string[]> {
   const ctx = await getTenantContext()
-  assertRole(ctx, [...CRM_READ_ROLES])
+  assertPermission(ctx, 'crm', 'VIEW')
   if (!branchId || !professionalId || !date) return []
   const admin = createAdminClient()
   return computeAvailableSlots(admin, branchId, professionalId, date, durationMin || 60)
@@ -95,7 +95,7 @@ export async function createCrmAppointment(
   input: CreateCrmAppointmentInput,
 ): Promise<{ id?: string; error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, [...CRM_WRITE_ROLES])
+  assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
 
   const { data: leadRow } = await admin
@@ -110,7 +110,7 @@ export async function createCrmAppointment(
   const clientId = (leadRow as { client_id: string | null }).client_id
   if (!clientId) return { error: 'Converta o lead em cliente (e-mail + CPF) antes de agendar.' }
 
-  const isComercial = ctx.role === 'COMERCIAL' || ctx.role === 'GERENTE_COMERCIAL'
+  const isComercial = ctx.branchId === null
   const res = await createAppointmentCore(admin, ctx, {
     branchId:       input.branchId,
     clientId,

@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -62,7 +62,7 @@ export async function createProduct(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
 
     const name = str(formData, 'name')
     if (!name) return { error: 'Nome é obrigatório.' }
@@ -168,7 +168,7 @@ export async function updateProduct(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
 
     const productId = str(formData, '_productId')
     if (!productId) return { error: 'Produto não identificado.' }
@@ -248,7 +248,7 @@ export async function findProductByBarcode(barcode: string) {
 export async function toggleProductActive(productId: string, isActive: boolean) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
 
     const admin = createAdminClient()
     await admin.from('products')
@@ -272,7 +272,7 @@ export async function createCategory(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
 
     const name = (formData.get('name') as string | null)?.trim()
     if (!name) return { error: 'Nome é obrigatório.' }
@@ -299,7 +299,7 @@ export async function createCategory(
 export async function deleteCategory(categoryId: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
 
     const admin = createAdminClient()
     const { error } = await admin.from('product_categories')
@@ -325,7 +325,7 @@ export async function createStockMovement(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+    assertPermission(ctx, 'stock', 'MANAGE')
 
     const branchId  = str(formData, '_branchId')
     const slug      = str(formData, '_slug') ?? ''
@@ -436,8 +436,8 @@ export async function createStockMovement(
 export async function adminUpdateMinStock(productId: string, branchId: string, minStock: number) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
-    if (ctx.role === 'BRANCH_ADMIN' && branchId !== ctx.branchId)
+    assertPermission(ctx, 'stock', 'MANAGE')
+    if (ctx.branchId !== null && branchId !== ctx.branchId)
       return { error: 'Operação não permitida fora da sua filial.' }
 
     const admin = createAdminClient()
@@ -459,7 +459,7 @@ export async function adminUpdateMinStock(productId: string, branchId: string, m
 export async function updateBranchMinStock(productId: string, branchId: string, minStock: number, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
 
     const admin = createAdminClient()
     await admin.from('branch_product_stock').upsert({
@@ -484,13 +484,13 @@ export async function adminAddStock(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
 
     const productId = str(formData, 'productId')
     const branchId  = str(formData, 'branchId')
     if (!productId) return { error: 'Produto não identificado.' }
     if (!branchId)  return { error: 'Selecione uma filial.' }
-    if (ctx.role === 'BRANCH_ADMIN' && branchId !== ctx.branchId)
+    if (ctx.branchId !== null && branchId !== ctx.branchId)
       return { error: 'Operação não permitida fora da sua filial.' }
 
     const qtyRaw = str(formData, 'quantity')
@@ -572,7 +572,7 @@ export async function adminTransferStock(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
 
     const productId    = str(formData, 'productId')
     const fromBranchId = str(formData, 'fromBranchId')
@@ -668,13 +668,13 @@ export async function adminAdjustStock(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
 
     const productId = str(formData, 'productId')
     const branchId  = str(formData, 'branchId')
     if (!productId) return { error: 'Produto não identificado.' }
     if (!branchId)  return { error: 'Selecione uma filial.' }
-    if (ctx.role === 'BRANCH_ADMIN' && branchId !== ctx.branchId)
+    if (ctx.branchId !== null && branchId !== ctx.branchId)
       return { error: 'Operação não permitida fora da sua filial.' }
 
     const reason = str(formData, 'reason')
@@ -736,7 +736,7 @@ export async function adminAdjustStock(
 
 export async function getProductMovements(productId: string, branchId: string) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'])
+  assertPermission(ctx, 'stock', 'VIEW')
 
   const supabase = await createSupabase()
   const { data } = await supabase
@@ -753,7 +753,7 @@ export async function getProductMovements(productId: string, branchId: string) {
 export async function saveBarcodeToProduct(productId: string, barcode: string) {
   try {
     const ctx   = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
     const admin = createAdminClient()
 
     const { data: prod } = await admin
@@ -790,7 +790,7 @@ export async function saveBarcodeToProduct(productId: string, barcode: string) {
 export async function searchProducts(query: string) {
   try {
     const ctx   = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'stock', 'MANAGE')
     const admin = createAdminClient()
 
     const { data } = await admin

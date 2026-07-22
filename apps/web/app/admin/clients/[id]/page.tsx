@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { differenceInYears, format } from 'date-fns'
@@ -20,7 +20,7 @@ export default async function AdminClientProfilePage({
 }) {
   const { id } = await params
   const ctx     = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'clients', 'VIEW')
 
   const admin = createAdminClient()
 

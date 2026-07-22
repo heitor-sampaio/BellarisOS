@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -11,7 +11,7 @@ export async function addProcedure(
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
 
   const name        = (formData.get('name') as string)?.trim()
   const category    = (formData.get('category') as string)?.trim()
@@ -91,7 +91,7 @@ export async function updateProcedure(
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
 
   const procedureId = formData.get('_procedureId') as string
 
@@ -180,7 +180,7 @@ export async function createBranchProcedure(
   formData: FormData,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
 
   const name        = (formData.get('name')        as string | null)?.trim()
   const category    = (formData.get('category')    as string | null)?.trim()
@@ -229,7 +229,7 @@ export async function createBranchProcedure(
 // --- Ativar / desativar (apenas NETWORK_ADMIN) --------------------
 export async function toggleProcedureStatus(procedureId: string, isActive: boolean) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
 
   const admin = createAdminClient()
   await admin

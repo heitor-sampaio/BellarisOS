@@ -1,6 +1,6 @@
 ﻿'use server'
 
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
@@ -15,7 +15,7 @@ export interface IntegrationConfig {
 
 export async function getIntegrations(): Promise<IntegrationConfig[]> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
   const admin = createAdminClient()
 
   const { data } = await admin
@@ -33,7 +33,7 @@ export async function saveWhatsAppConfig(
   isActive:  boolean,
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   // Remove empty strings to keep config clean
   const cleanConfig = Object.fromEntries(
@@ -62,7 +62,7 @@ export async function testWhatsAppConnection(
   provider: WhatsAppConfig['provider'],
 ): Promise<{ ok: boolean; detail?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const { getWhatsAppConfig, resolveProvider } = await import('@/lib/whatsapp/factory')
   const config = await getWhatsAppConfig(ctx.tenantId!)
@@ -82,7 +82,7 @@ export async function saveAdsConfig(
   isActive: boolean,
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const cleanConfig = Object.fromEntries(
     Object.entries(config).filter(([, v]) => v.trim() !== '')
@@ -110,7 +110,7 @@ export async function testAdsConnection(
   provider: 'meta_ads' | 'google_ads',
 ): Promise<{ ok: boolean; detail?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const { getAdsConfig, resolveAdsProvider } = await import('@/lib/ads/factory')
   const config = await getAdsConfig(ctx.tenantId!, provider)
@@ -128,7 +128,7 @@ export async function confirmMetaAdsSelection(
   pixelName?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()
 
@@ -174,7 +174,7 @@ export async function fetchMetaAdAccounts(): Promise<{
   error?: string
 }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()
   const { data } = await admin
@@ -212,7 +212,7 @@ export async function fetchMetaAdAccounts(): Promise<{
 
 export async function disconnectMetaAds(): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()
 

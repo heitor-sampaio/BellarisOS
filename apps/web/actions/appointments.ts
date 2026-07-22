@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertRole, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
@@ -189,7 +189,7 @@ export async function addAppointment(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, [...WRITABLE_ROLES, 'PROFESSIONAL'])
+    assertPermission(ctx, 'agenda', 'MANAGE')
 
     const slug = formData.get('_slug') as string
     const admin = createAdminClient()
@@ -225,10 +225,10 @@ export async function updateAppointmentStatus(
   cancellationReason?: string,
 ) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'])
+  assertPermission(ctx, 'agenda', 'VIEW')
 
   // Profissional só pode iniciar (IN_PROGRESS) ou concluir (COMPLETED)
-  if (ctx.role === 'PROFESSIONAL' && !(['IN_PROGRESS', 'COMPLETED'] as string[]).includes(status)) {
+  if (ctx.providesServices && ctx.permissions.agenda !== 'MANAGE' && !(['IN_PROGRESS', 'COMPLETED'] as string[]).includes(status)) {
     throw new Error('Forbidden')
   }
 
@@ -392,7 +392,7 @@ export async function checkinAppointment(
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+    assertPermission(ctx, 'agenda', 'MANAGE')
 
     const admin = createAdminClient()
     const { data: appt } = await admin
@@ -429,7 +429,7 @@ export async function startAppointment(
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'PROFESSIONAL'])
+    assertPermission(ctx, 'agenda', 'VIEW')
 
     const admin = createAdminClient()
     const { data: appt } = await admin
@@ -442,7 +442,7 @@ export async function startAppointment(
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'CONFIRMED') return { error: 'O cliente precisa fazer check-in antes de iniciar.' }
 
-    if (ctx.role === 'PROFESSIONAL' && appt.professional_id !== ctx.internalUserId) {
+    if (ctx.providesServices && ctx.permissions.agenda !== 'MANAGE' && appt.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode iniciar este atendimento.' }
     }
 
@@ -470,7 +470,7 @@ export async function reassignProfessional(
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'agenda', 'MANAGE')
 
     const admin = createAdminClient()
     const { data: appt } = await admin
@@ -530,7 +530,7 @@ export async function cancelAppointmentSession(
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+    assertPermission(ctx, 'agenda', 'MANAGE')
 
     const appointmentId      = (formData.get('appointment_id') as string)?.trim()
     const cancellationReason = (formData.get('cancellation_reason') as string)?.trim()
@@ -579,7 +579,7 @@ export async function finishSession(
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'PROFESSIONAL'])
+    assertPermission(ctx, 'agenda', 'VIEW')
 
     const appointmentId  = (formData.get('appointment_id') as string)?.trim()
     const notes          = (formData.get('notes') as string)?.trim() || null
@@ -599,7 +599,7 @@ export async function finishSession(
     if (appt.status === 'COMPLETED')                      return { error: 'Atendimento já concluído.' }
     if (['CANCELLED', 'NO_SHOW'].includes(appt.status as string)) return { error: 'Agendamento já finalizado.' }
 
-    if (ctx.role === 'PROFESSIONAL' && appt.professional_id !== ctx.internalUserId) {
+    if (ctx.providesServices && ctx.permissions.agenda !== 'MANAGE' && appt.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode concluir este atendimento.' }
     }
 
@@ -808,7 +808,7 @@ export async function confirmPayment(
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'FINANCIAL'])
+    assertPermission(ctx, 'financial', 'MANAGE')
 
     const appointmentId = (formData.get('appointment_id') as string)?.trim()
     const paymentMethod = (formData.get('payment_method') as string)?.trim()
@@ -872,7 +872,7 @@ export async function saveDraftNotes(
 ): Promise<{ error?: string; success?: boolean }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'PROFESSIONAL'])
+    assertPermission(ctx, 'agenda', 'VIEW')
 
     const appointmentId  = (formData.get('appointment_id') as string)?.trim()
     const notes          = (formData.get('notes') as string)?.trim() || null
@@ -890,7 +890,7 @@ export async function saveDraftNotes(
 
     // Profissional não pode editar registro já finalizado
     const isFinalised = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)
-    const isAdmin     = ['NETWORK_ADMIN', 'BRANCH_ADMIN'].includes(ctx.role)
+    const isAdmin     = ctx.permissions.agenda === 'MANAGE'
     if (isFinalised && !isAdmin) return { error: 'Registro finalizado. Apenas gerentes podem editar.' }
 
     // Get or create medical_records
@@ -939,7 +939,7 @@ export async function saveEvaluationComplaints(
 ): Promise<{ error?: string }> {
   try {
     const ctx   = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'PROFESSIONAL'])
+    assertPermission(ctx, 'agenda', 'VIEW')
     const admin = createAdminClient()
     const { error } = await admin
       .from('appointments')
@@ -959,7 +959,7 @@ export async function saveSessionNotes(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'PROFESSIONAL', 'RECEPTIONIST'])
+    assertPermission(ctx, 'agenda', 'VIEW')
 
     const appointmentId = formData.get('_appointmentId') as string
     const notes         = (formData.get('session_notes') as string)?.trim() ?? ''
@@ -999,7 +999,7 @@ export async function rescheduleAppointment(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, [...WRITABLE_ROLES])
+    assertPermission(ctx, 'agenda', 'MANAGE')
 
     const appointmentId  = formData.get('_appointmentId') as string
     const scheduledAt    = formData.get('scheduled_at') as string
@@ -1054,7 +1054,7 @@ export async function getSchedulingBranchProfessionals(
   branchId: string,
 ): Promise<{ professionals: { id: string; name: string }[] }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, [...ALL_BRANCH_ROLES])
+  assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
   const { data: branch } = await admin
@@ -1086,7 +1086,7 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
   }>
 }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, [...ALL_BRANCH_ROLES])
+  assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -1155,7 +1155,7 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
   }>
 }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, [...ALL_BRANCH_ROLES])
+  assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
   // Valida que o client_package pertence ao tenant
@@ -1199,7 +1199,7 @@ export async function schedulePackageSession(params: {
   slug:             string
 }): Promise<{ error?: string; appointmentId?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'agenda', 'MANAGE')
   const admin = createAdminClient()
 
   // Valida sessão pertence ao tenant
@@ -1257,7 +1257,7 @@ export async function schedulePlanSession(params: {
   slug:           string
 }): Promise<{ error?: string; appointmentId?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'agenda', 'MANAGE')
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -1409,7 +1409,7 @@ export async function getSchedulingDaySlots(
   date: string,
 ): Promise<{ slots: { scheduledAt: string; durationMin: number; clientName: string | null }[] }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, [...ALL_BRANCH_ROLES])
+  assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
   const { data: branch } = await admin

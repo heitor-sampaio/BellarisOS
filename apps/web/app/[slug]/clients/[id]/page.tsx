@@ -1,5 +1,5 @@
 ﻿import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-queries'
@@ -21,7 +21,7 @@ export default async function ClientProfilePage({
 }) {
   const { slug, id } = await params
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'])
+  assertPermission(ctx, 'clients', 'VIEW')
 
   const admin = createAdminClient()
 
@@ -247,7 +247,7 @@ export default async function ClientProfilePage({
     createdAt:   d.created_at,
   }))
 
-  const canGrantCredit = ['NETWORK_ADMIN', 'BRANCH_ADMIN'].includes(ctx.role)
+  const canGrantCredit = ctx.permissions.financial === 'MANAGE'
 
   const PAYMENT_METHOD_LABELS: Record<string, string> = {
     CASH:            'Dinheiro',

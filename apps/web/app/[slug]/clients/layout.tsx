@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { subDays } from 'date-fns'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { getCachedBranchClients, getCachedBranchCompletedAppointments } from '@/lib/cached-queries'
@@ -14,7 +14,7 @@ export default async function ClientsLayout({
 }) {
   const { slug } = await params
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'])
+  assertPermission(ctx, 'clients', 'VIEW')
 
   const supabase = await createSupabase()
   const { data: branch } = await supabase

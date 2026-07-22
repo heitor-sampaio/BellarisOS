@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { getCachedProductsReference } from '@/lib/cached-queries'
@@ -16,7 +16,7 @@ export default async function AppointmentSessionPage({
 }) {
   const { slug, id } = await params
   const ctx          = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'])
+  assertPermission(ctx, 'agenda', 'VIEW')
 
   const supabase = await createSupabase()
   const admin    = createAdminClient()
@@ -321,13 +321,13 @@ export default async function AppointmentSessionPage({
     document:  cli.document ?? null,
   }
 
-  const isAdmin   = ['NETWORK_ADMIN', 'BRANCH_ADMIN'].includes(ctx.role)
-  const isResponsibleProfessional = ctx.role === 'PROFESSIONAL' && ctx.internalUserId === apptRaw.professional_id
+  const isAdmin   = ctx.permissions.agenda === 'MANAGE'
+  const isResponsibleProfessional = ctx.providesServices && ctx.internalUserId === apptRaw.professional_id
 
-  const canCheckin   = ['RECEPTIONIST', 'BRANCH_ADMIN', 'NETWORK_ADMIN'].includes(ctx.role)
+  const canCheckin   = ctx.permissions.agenda === 'MANAGE'
   const canManage    = isResponsibleProfessional || isAdmin
   const canReassign  = isAdmin
-  const canPayment   = ['RECEPTIONIST', 'BRANCH_ADMIN', 'NETWORK_ADMIN', 'FINANCIAL'].includes(ctx.role)
+  const canPayment   = ctx.permissions.financial === 'MANAGE'
 
   type RawPayment = { id: string; payment_method: string; amount: number } | null
   const paymentRawTyped = paymentRaw as RawPayment
@@ -393,7 +393,7 @@ export default async function AppointmentSessionPage({
         canManage={canManage}
         canReassign={canReassign}
         canPayment={canPayment}
-        isProfessional={ctx.role === 'PROFESSIONAL'}
+        isProfessional={ctx.providesServices}
         paymentTransaction={paymentTransaction}
         treatmentProcedures={treatmentProcedures}
         treatmentPackages={treatmentPackages}

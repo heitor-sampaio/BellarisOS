@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
 import { ProductCategoryModal } from '@/components/admin/product-category-modal'
@@ -17,8 +17,8 @@ export default async function BranchStockPage({
 }) {
   const { slug } = await params
   const ctx      = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'])
-  const readOnly = !(['NETWORK_ADMIN', 'BRANCH_ADMIN'] as string[]).includes(ctx.role)
+  assertPermission(ctx, 'stock', 'VIEW')
+  const readOnly = ctx.permissions.stock !== 'MANAGE'
 
   const admin = createAdminClient()
 

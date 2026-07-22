@@ -33,10 +33,8 @@ export default async function BranchLayout({
     return <>{children}</>
   }
 
-  if (ctx.role !== 'NETWORK_ADMIN' && !BRANCH_ROLES.includes(ctx.role as typeof BRANCH_ROLES[number])) {
-    redirect('/login')
-  }
-
+  // Usuário operacional (não-cliente). O acesso a cada módulo é gateado por
+  // assertPermission nas páginas; aqui só validamos vínculo com a filial (abaixo).
   const supabase = await createClient()
 
   const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)

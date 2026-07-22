@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ProceduresClient } from '@/components/branch/procedures-client'
@@ -13,7 +13,7 @@ export default async function BranchProceduresPage({
 }) {
   const { slug } = await params
   const ctx      = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'])
+  assertPermission(ctx, 'procedures', 'VIEW')
 
   const supabase = await createSupabase()
   const admin    = createAdminClient()
@@ -87,7 +87,7 @@ export default async function BranchProceduresPage({
     ? items.reduce((s, p) => s + p.price, 0) / totalCount
     : 0
 
-  const canManage = ctx.role === 'NETWORK_ADMIN'
+  const canManage = ctx.permissions.procedures === 'MANAGE'
 
   return (
     <>

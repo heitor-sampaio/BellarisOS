@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface CRMStage {
@@ -48,7 +48,7 @@ export async function createStage(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'crm', 'MANAGE')
 
     const name  = (formData.get('name')  as string)?.trim()
     const color = (formData.get('color') as string)?.trim() || '#c34d6b'
@@ -87,7 +87,7 @@ export async function createStage(
 export async function renameStage(stageId: string, name: string, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'crm', 'MANAGE')
     if (!name.trim()) return
 
     const admin = createAdminClient()
@@ -108,7 +108,7 @@ export async function renameStage(stageId: string, name: string, slug: string) {
 export async function updateStageColor(stageId: string, color: string, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
     await admin
@@ -128,7 +128,7 @@ export async function updateStageColor(stageId: string, color: string, slug: str
 export async function deleteStage(stageId: string, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
 
@@ -160,7 +160,7 @@ export async function deleteStage(stageId: string, slug: string) {
 export async function reorderStages(orderedIds: string[], slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
     await Promise.all(

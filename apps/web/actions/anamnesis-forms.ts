@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizeFormSchema, validateFormSchema } from '@/lib/anamnesis'
 
@@ -15,7 +15,7 @@ function revalidate() {
 export async function createAnamnesisForm(input: { name: string; schema: unknown }): Promise<Result> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'settings', 'MANAGE')
 
     const name = (input.name ?? '').trim()
     if (!name) return { error: 'Informe um nome para a ficha.' }
@@ -44,7 +44,7 @@ export async function updateAnamnesisForm(input: {
 }): Promise<Result> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'settings', 'MANAGE')
 
     const name = (input.name ?? '').trim()
     if (!name) return { error: 'Informe um nome para a ficha.' }
@@ -74,7 +74,7 @@ export async function updateAnamnesisForm(input: {
 export async function setAnamnesisFormActive(id: string, isActive: boolean): Promise<Result> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'settings', 'MANAGE')
     const admin = createAdminClient()
     const { error } = await admin
       .from('anamnesis_forms')
@@ -92,7 +92,7 @@ export async function setAnamnesisFormActive(id: string, isActive: boolean): Pro
 export async function deleteAnamnesisForm(id: string): Promise<Result> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN'])
+    assertPermission(ctx, 'settings', 'MANAGE')
     const admin = createAdminClient()
     // FK procedures.anamnesis_form_id é ON DELETE SET NULL — remoção é segura.
     const { error } = await admin

@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertRole } from '@/lib/auth'
+﻿import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type {
@@ -17,7 +17,7 @@ export default async function AdminDashboardPage({
   const { period: rawPeriod, from: rawFrom, to: rawTo } = await searchParams
 
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'reports', 'VIEW')
 
   const admin = createAdminClient()
   const now   = new Date()

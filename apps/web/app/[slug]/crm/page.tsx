@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { seedDefaultStages } from '@/actions/crm-stages'
 import { CRMBoard } from '@/components/branch/crm-board'
@@ -15,7 +15,7 @@ export default async function BranchCRMPage({
 }) {
   const { slug } = await params
   const ctx      = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'crm', 'VIEW')
 
   const supabase = await createSupabase()
 

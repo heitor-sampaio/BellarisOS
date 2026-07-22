@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertRole } from '@/lib/auth'
+﻿import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminStockView } from '@/components/admin/admin-stock-view'
 import { ProductCategoryModal } from '@/components/admin/product-category-modal'
@@ -10,8 +10,8 @@ const fmtBRL = (v: number) =>
 
 export default async function AdminEstoquePage() {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL'])
-  const canEdit = ctx.role === 'NETWORK_ADMIN'
+  assertPermission(ctx, 'stock', 'VIEW')
+  const canEdit = ctx.permissions.stock === 'MANAGE'
 
   const admin = createAdminClient()
 

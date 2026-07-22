@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
@@ -14,7 +14,7 @@ export async function uploadClientDocument(
   formData: FormData,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'])
+  assertPermission(ctx, 'clients', 'MANAGE')
 
   const file      = formData.get('file') as File | null
   const name      = (formData.get('name') as string | null)?.trim()
@@ -84,7 +84,7 @@ export async function deleteClientDocument(
   clientId: string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'clients', 'MANAGE')
 
   const admin = createAdminClient()
 

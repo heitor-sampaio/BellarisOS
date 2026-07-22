@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { toggleBranchStatus } from '@/actions/branches'
 import { BranchEditForm } from '@/components/admin/branch-edit-form'
@@ -13,7 +13,7 @@ interface Props {
 export default async function BranchDetailPage({ params }: Props) {
   const { id } = await params
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const supabase = await createClient()
 

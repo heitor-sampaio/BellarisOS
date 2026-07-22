@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
 import { MarketingOverview } from '@/components/admin/marketing-overview'
@@ -69,7 +69,7 @@ export default async function AdminMarketingPage({
   searchParams: Promise<{ view?: string; period?: string }>
 }) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'MARKETING'])
+  assertPermission(ctx, 'marketing', 'VIEW')
 
   const { view: rawView, period: rawPeriod } = await searchParams
   const activeView   = (rawView   as View       ?? 'overview')

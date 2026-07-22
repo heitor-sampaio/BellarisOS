@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // -- Tipos ---------------------------------------------------------------------
@@ -61,7 +61,7 @@ export async function saveTreatmentPlan(
   slug: string,
 ) {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'PROFESSIONAL'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
   const admin = createAdminClient()
 
   const { data: appt, error: apptErr } = await admin
@@ -126,7 +126,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
   total:    number
 }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, [...ALL_BRANCH_ROLES])
+  assertPermission(ctx, 'procedures', 'VIEW')
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -188,7 +188,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
 
 export async function proposeTreatmentPlan(planId: string, slug: string) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'PROFESSIONAL'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
 
   const admin = createAdminClient()
 
@@ -259,7 +259,7 @@ export async function cancelCheckout(
   slug:   string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -307,7 +307,7 @@ export async function cancelTreatmentPlan(
   slug:   string,
 ): Promise<{ error?: string }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -415,7 +415,7 @@ export async function generateEvaluationPlan(
   slug:                  string,
 ): Promise<{ error?: string; planId?: string }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'PROFESSIONAL'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
   const admin = createAdminClient()
 
   if (!complaints.trim()) return { error: 'Registre as dores/queixas do cliente.' }
@@ -516,7 +516,7 @@ export async function generateEvaluationPlan(
 
 export async function signConsentTerm(consentId: string, signatureDataUrl: string, slug: string) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
 
   const admin = createAdminClient()
 
@@ -547,7 +547,7 @@ export async function createCheckoutConsentTerms(
   totalAmount: number,
 ) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
 
   const admin  = createAdminClient()
   const today  = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -626,7 +626,7 @@ export async function checkoutTreatmentPlan(
   slug:             string,
 ) {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'procedures', 'MANAGE')
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -759,7 +759,7 @@ export interface TreatmentFileDetails {
 export async function getTreatmentPlanDetails(planId: string, clientId: string): Promise<{ data?: TreatmentFileDetails; error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'])
+    assertPermission(ctx, 'procedures', 'VIEW')
 
     const admin = createAdminClient()
 

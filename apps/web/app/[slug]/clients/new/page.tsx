@@ -1,14 +1,14 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ClientForm } from '@/components/branch/client-form'
 
 export default async function NewClientPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const ctx      = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'clients', 'MANAGE')
 
   const supabase = await createSupabase()
   const { data: branch } = await supabase

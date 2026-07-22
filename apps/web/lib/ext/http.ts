@@ -59,7 +59,7 @@ export async function requireExtAccess(
 ): Promise<{ ctx: TenantContext & { tenantId: string } } | { res: NextResponse }> {
   const ctx = await authenticate(req)
   if (!ctx) return { res: jsonCors(req, { error: 'Unauthorized' }, 401) }
-  if (!EXT_ROLES.includes(ctx.role)) return { res: jsonCors(req, { error: 'Forbidden' }, 403) }
+  if (ctx.isClient) return { res: jsonCors(req, { error: 'Forbidden' }, 403) }
   if (!ctx.tenantId) {
     return { res: jsonCors(req, { error: 'Contexto sem rede.' }, 400) }
   }
@@ -68,7 +68,7 @@ export async function requireExtAccess(
 
 /** true quando o usuário opera a rede toda (comercial, sem filial fixa no JWT). */
 export function isNetworkMode(ctx: TenantContext): boolean {
-  return !ctx.branchId && COMMERCIAL_ROLES.includes(ctx.role)
+  return !ctx.branchId && !ctx.isClient
 }
 
 /**

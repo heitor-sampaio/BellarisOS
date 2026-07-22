@@ -1,5 +1,5 @@
 import { subDays } from 'date-fns'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { getCachedNetworkClients, getCachedNetworkCompletedAppointments, getCachedNetworkBranches } from '@/lib/cached-queries'
 
@@ -9,7 +9,7 @@ export default async function AdminClientsLayout({
   children: React.ReactNode
 }) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'clients', 'VIEW')
 
   const [rawClients, recentAppts, branchesRaw] = await Promise.all([
     getCachedNetworkClients(ctx.tenantId!),

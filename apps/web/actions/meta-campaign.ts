@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { getAdsConfig } from '@/lib/ads/factory'
 import type { AdSet, Ad, CampaignDetail, CampaignSummary, AgeBreakdown, GeoBreakdown, PlacementBreakdown, DailyInsight, PreviousPeriod, AdSetTargeting } from '@/lib/ads/types'
 
@@ -19,7 +19,7 @@ export async function getCampaignDetail(
   preset: string,
 ): Promise<{ ok: true; data: CampaignDetail } | { ok: false; error: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'MARKETING'])
+  assertPermission(ctx, 'marketing', 'MANAGE')
 
   const config = await getAdsConfig(ctx.tenantId!, 'meta_ads')
   if (!config || config.provider !== 'meta_ads') {

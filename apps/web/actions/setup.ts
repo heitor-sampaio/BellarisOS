@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function updateTenantProfile(data: {
@@ -11,7 +11,7 @@ export async function updateTenantProfile(data: {
   website?: string
 }) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const name     = data.name?.trim()
   const document = data.document?.trim() || null
@@ -33,7 +33,7 @@ export async function updateTenantProfile(data: {
 
 export async function completeOnboarding() {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()
   const { error } = await admin

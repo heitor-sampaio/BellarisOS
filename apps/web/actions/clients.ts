@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertRole, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
@@ -27,7 +27,7 @@ export async function addClient(
   formData: FormData,
 ) {
   const ctx     = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
+  assertPermission(ctx, 'clients', 'MANAGE')
 
   const branchId = formData.get('_branchId') as string
   const slug     = formData.get('_slug') as string
@@ -137,7 +137,7 @@ export async function updateClient(
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'clients', 'MANAGE')
 
   const clientId = formData.get('_clientId') as string
   const slug     = formData.get('_slug') as string
@@ -195,7 +195,7 @@ export async function grantInternalCredit(
   formData: FormData,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'FINANCIAL'])
+  assertPermission(ctx, 'financial', 'MANAGE')
 
   const clientId    = (formData.get('client_id')   as string | null)?.trim()
   const branchId    = (formData.get('branch_id')   as string | null)?.trim()
@@ -251,7 +251,7 @@ export async function updateClientContactData(
   slug: string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'clients', 'MANAGE')
 
   const admin = createAdminClient()
 
@@ -358,7 +358,7 @@ export async function updateClientSelf(
 // --- Ativar / desativar cliente ------------------------------------
 export async function toggleClientStatus(clientId: string, isActive: boolean, slug: string) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+  assertPermission(ctx, 'clients', 'MANAGE')
 
   const supabase = await createSupabase()
   await supabase

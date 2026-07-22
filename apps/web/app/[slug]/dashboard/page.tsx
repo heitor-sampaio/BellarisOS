@@ -88,7 +88,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const now = new Date()
   const admin = createAdminClient()
 
-  const canSeeCheckout = ['RECEPTIONIST', 'BRANCH_ADMIN', 'NETWORK_ADMIN'].includes(ctx.role)
+  const canSeeCheckout = ctx.permissions.agenda === 'MANAGE'
 
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0)
   const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999)

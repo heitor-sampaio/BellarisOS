@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createAppointmentCore, notifyAppointmentCreated } from '@/lib/appointments/core'
-import { preflight, jsonCors, requireExtAccess, resolveExtBranch, COMMERCIAL_ROLES } from '@/lib/ext/http'
+import { preflight, jsonCors, requireExtAccess, resolveExtBranch } from '@/lib/ext/http'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     notes:          body.notes ? String(body.notes) : null,
     isEvaluation:   body.isEvaluation === true,
     // Carimba origem comercial quando criado por um cargo comercial (KPIs)
-    source:         COMMERCIAL_ROLES.includes(ctx.role) ? 'COMMERCIAL' : 'INTERNAL',
+    source:         !ctx.branchId ? 'COMMERCIAL' : 'INTERNAL',
   })
 
   if ('error' in result) {

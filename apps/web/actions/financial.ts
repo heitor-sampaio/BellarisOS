@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 
@@ -26,7 +26,7 @@ export async function createTransaction(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, [...FINANCE_WRITE_ROLES])
+    assertPermission(ctx, 'financial', 'MANAGE')
 
     const branchId      = str(formData, '_branchId')
     const slug          = str(formData, '_slug') ?? ''
@@ -93,7 +93,7 @@ export async function createTransactionAdvanced(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, [...FINANCE_WRITE_ROLES])
+    assertPermission(ctx, 'financial', 'MANAGE')
 
     const branchId      = str(formData, '_branchId')
     const slug          = str(formData, '_slug') ?? ''
@@ -213,7 +213,7 @@ export async function createTransactionAdvanced(
 export async function markTransactionPaid(transactionId: string, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, [...FINANCE_WRITE_ROLES])
+    assertPermission(ctx, 'financial', 'MANAGE')
 
     const admin = createAdminClient()
     await admin.from('financial_transactions').update({
@@ -232,7 +232,7 @@ export async function markTransactionPaid(transactionId: string, slug: string) {
 export async function reverseTransaction(transactionId: string, branchId: string, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'FINANCIAL'])
+    assertPermission(ctx, 'financial', 'MANAGE')
 
     const supabase = await createSupabase()
     const { data: tx } = await supabase
@@ -274,7 +274,7 @@ export async function openCashRegister(
 ): Promise<{ success?: boolean; error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, [...FINANCIAL_ROLES])
+    assertPermission(ctx, 'financial', 'MANAGE')
 
     const branchId       = str(formData, '_branchId')
     const slug           = str(formData, '_slug') ?? ''
@@ -308,7 +308,7 @@ export async function closeCashRegister(
 ): Promise<{ success?: boolean; error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, [...FINANCIAL_ROLES])
+    assertPermission(ctx, 'financial', 'MANAGE')
 
     const registerId     = str(formData, '_registerId')
     const slug           = str(formData, '_slug') ?? ''

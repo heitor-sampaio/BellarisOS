@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultStages } from '@/actions/crm-stages'
 import { revalidatePath } from 'next/cache'
@@ -43,7 +43,7 @@ export interface Message {
 
 export async function getConversations(): Promise<Conversation[]> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL', 'GERENTE_COMERCIAL'])
+  assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
 
   const { data } = await admin
@@ -100,7 +100,7 @@ export interface ConversationCard {
 
 export async function getLeadForConversation(conversationId: string): Promise<ConversationCard> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL', 'GERENTE_COMERCIAL'])
+  assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
 
   const stages = (await seedDefaultStages(ctx.tenantId!)) as InboxStage[]
@@ -145,7 +145,7 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
 /** Acha (ou cria) a conversa de um lead — usado pelo deep-link "card do funil -> inbox". */
 export async function openLeadConversation(leadId: string): Promise<{ conversationId: string | null }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL', 'GERENTE_COMERCIAL'])
+  assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
 
   // Conversa existente para este lead (qualquer canal), mais recente primeiro
@@ -196,7 +196,7 @@ export async function sendMessage(
   content: string,
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
+  assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
 
   const { data: conv } = await admin
@@ -286,7 +286,7 @@ export async function markConversationRead(conversationId: string) {
 
 export async function setConversationStatus(conversationId: string, status: ConvStatus) {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
+  assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
 
   await admin
@@ -303,7 +303,7 @@ export async function createConversationForLead(
   channel: InboxChannel,
 ): Promise<{ conversationId?: string; error?: string }> {
   const ctx   = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
+  assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
 
   // Return existing conversation if any

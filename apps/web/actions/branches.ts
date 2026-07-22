@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 function toSlug(name: string): string {
@@ -20,7 +20,7 @@ export async function createBranch(
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const name     = (formData.get('name') as string)?.trim()
   const slugRaw  = (formData.get('slug') as string)?.trim()
@@ -75,7 +75,7 @@ export async function updateBranch(
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const name              = (formData.get('name') as string)?.trim()
   const document          = (formData.get('document') as string)?.trim() || null
@@ -117,7 +117,7 @@ export async function updateBranch(
 
 export async function toggleBranchStatus(branchId: string, isActive: boolean) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'settings', 'MANAGE')
 
   const supabase = createAdminClient()
   await supabase

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
@@ -14,7 +14,7 @@ export default async function CheckoutListPage({
 }) {
   const { slug } = await params
   const ctx      = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST'])
+  assertPermission(ctx, 'procedures', 'VIEW')
 
   const supabase = await createSupabase()
   const admin    = createAdminClient()

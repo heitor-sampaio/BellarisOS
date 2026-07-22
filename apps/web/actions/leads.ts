@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLeadSource, mergeTags } from '@estetica-os/utils'
 
@@ -44,7 +44,7 @@ export async function createLead(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
+    assertPermission(ctx, 'crm', 'MANAGE')
 
     // branch_id opcional: lead sem filial = lead de REDE (designação de filial via tag depois)
     const branchId   = str(formData, '_branchId')
@@ -87,7 +87,7 @@ export async function createLead(
         ctwa_clid: derived.ctwa_clid ?? null,
         tags,
         // Atribui o lead ao vendedor que o criou (base para KPIs por vendedor)
-        owner_id: ctx.role === 'COMERCIAL' ? ctx.internalUserId : null,
+        owner_id: ctx.internalUserId,
       })
       .select('id, created_at')
       .single()
@@ -114,7 +114,7 @@ export async function updateLead(
 ) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
+    assertPermission(ctx, 'crm', 'MANAGE')
 
     const leadId     = str(formData, '_leadId')
     const slug       = str(formData, '_slug') ?? ''
@@ -165,7 +165,7 @@ export async function updateLead(
 export async function updateLeadStage(leadId: string, crm_stage_id: string, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'COMERCIAL'])
+    assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
     await admin
@@ -188,7 +188,7 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
 export async function deleteLead(leadId: string, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN'])
+    assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
     await admin

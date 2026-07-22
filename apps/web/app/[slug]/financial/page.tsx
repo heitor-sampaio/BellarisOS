@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -64,7 +64,7 @@ export default async function FinancialPage({
   const { start, end, label } = resolvePeriod(period, sp.from, sp.to)
 
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'RECEPTIONIST', 'FINANCIAL'])
+  assertPermission(ctx, 'financial', 'VIEW')
 
   const supabase = await createSupabase()
 
@@ -111,8 +111,8 @@ export default async function FinancialPage({
     createdAt:        c.created_at as string,
   }))
 
-  const canReverse = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'FINANCIAL'].includes(ctx.role)
-  const canWrite   = ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'FINANCIAL'].includes(ctx.role)
+  const canWrite   = ctx.permissions.financial === 'MANAGE'
+  const canReverse = canWrite
 
   const { data: clientsRaw } = canWrite
     ? await supabase

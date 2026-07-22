@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizeFormSchema } from '@/lib/anamnesis'
@@ -14,7 +14,7 @@ export async function saveGeneralAnamnesis(
   formData: FormData,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'PROFESSIONAL'])
+  assertPermission(ctx, 'medical_records', 'MANAGE')
 
   const clientId = (formData.get('client_id') as string | null)?.trim()
   const branchId = (formData.get('branch_id') as string | null)?.trim()
@@ -72,7 +72,7 @@ export async function uploadAnamnesisPhoto(
 ): Promise<{ error?: string; path?: string; url?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, [...STAFF_ROLES])
+    assertPermission(ctx, 'medical_records', 'MANAGE')
 
     const file          = formData.get('file') as File | null
     const appointmentId = (formData.get('appointment_id') as string | null)?.trim()
@@ -103,7 +103,7 @@ export async function uploadAnamnesisPhoto(
 export async function signAnamnesisPhotos(paths: string[]): Promise<Record<string, string>> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, [...STAFF_ROLES])
+    assertPermission(ctx, 'medical_records', 'MANAGE')
     const own = (paths ?? []).filter(p => typeof p === 'string' && p.startsWith(`${ctx.tenantId}/`))
     return await getSignedUrls(ANAMNESIS_BUCKET, own)
   } catch {
@@ -127,7 +127,7 @@ async function saveProcedureForm(params: {
 }): Promise<{ error?: string; ok?: true }> {
   try {
     const ctx = await getTenantContext()
-    assertRole(ctx, ['NETWORK_ADMIN', 'BRANCH_ADMIN', 'PROFESSIONAL'])
+    assertPermission(ctx, 'medical_records', 'MANAGE')
 
     const admin = createAdminClient()
     const { data: appt } = await admin
@@ -140,7 +140,7 @@ async function saveProcedureForm(params: {
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
 
     const isFinalised = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)
-    const isAdmin     = ['NETWORK_ADMIN', 'BRANCH_ADMIN'].includes(ctx.role)
+    const isAdmin     = ctx.permissions.medical_records === 'MANAGE'
     if (isFinalised && !isAdmin) return { error: 'Registro finalizado. Apenas gerentes podem editar.' }
 
     // Ficha vinculada ao procedimento (para snapshot dos campos)

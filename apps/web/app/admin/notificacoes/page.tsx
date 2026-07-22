@@ -1,4 +1,4 @@
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { listCampaigns } from '@/actions/notification-campaigns'
 import { NotificationCampaignsList } from '@/components/admin/notification-campaigns-list'
 
@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function AdminNotificacoesPage() {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'marketing', 'VIEW')
 
   const { campaigns, totalSent, activeCount } = await listCampaigns()
 

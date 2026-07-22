@@ -1,4 +1,4 @@
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -60,7 +60,7 @@ export default async function AdminFinanceiroPage({
   const { start, end, label } = resolvePeriod(period, sp.from, sp.to)
 
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL'])
+  assertPermission(ctx, 'financial', 'VIEW')
 
   const admin = createAdminClient()
 
@@ -175,7 +175,7 @@ export default async function AdminFinanceiroPage({
         transactions={transactions}
         branchSlugMap={branchSlugMap}
         branches={branches}
-        canWrite={ctx.role === 'NETWORK_ADMIN' || ctx.role === 'FINANCIAL'}
+        canWrite={ctx.permissions.financial === 'MANAGE'}
       />
     </>
   )

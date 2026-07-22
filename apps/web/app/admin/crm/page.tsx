@@ -1,5 +1,5 @@
 ﻿import Link from 'next/link'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultStages } from '@/actions/crm-stages'
 import { getConversations } from '@/actions/inbox'
@@ -19,7 +19,7 @@ export default async function AdminCRMPage({
   searchParams: Promise<{ view?: string; c?: string }>
 }) {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL', 'COMERCIAL', 'GERENTE_COMERCIAL'])
+  assertPermission(ctx, 'crm', 'VIEW')
 
   const { view: viewParam, c: convParam } = await searchParams
   // Uma conversa selecionada (?c=) força a aba inbox (deep-link vindo do card do funil).
@@ -39,7 +39,7 @@ export default async function AdminCRMPage({
   const branchIds = branches.map(b => b.id)
 
   // COMERCIAL opera o funil; GERENTE_COMERCIAL e FINANCIAL só leem.
-  const canEdit = ctx.role === 'NETWORK_ADMIN' || ctx.role === 'COMERCIAL'
+  const canEdit = ctx.permissions.crm === 'MANAGE'
 
   // -- Funil data (always needed for stats) --
   const stages = await seedDefaultStages(ctx.tenantId!)

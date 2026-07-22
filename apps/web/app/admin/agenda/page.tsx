@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertRole } from '@/lib/auth'
+﻿import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminAgendaView } from '@/components/admin/admin-agenda-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -13,7 +13,7 @@ export default async function AdminAgendaPage({
   const { view: rawView, date: rawDate } = await searchParams
 
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN'])
+  assertPermission(ctx, 'agenda', 'VIEW')
 
   const admin       = createAdminClient()
   const view        = ((rawView ?? 'day') as AgendaView)

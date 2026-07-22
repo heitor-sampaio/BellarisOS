@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertRole } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference } from '@/lib/cached-queries'
 import { ProcedureModal } from '@/components/admin/procedure-modal'
@@ -13,8 +13,8 @@ function formatBRL(v: string | number) {
 
 export default async function AdminProceduresPage() {
   const ctx = await getTenantContext()
-  assertRole(ctx, ['NETWORK_ADMIN', 'FINANCIAL'])
-  const canEdit = ctx.role === 'NETWORK_ADMIN'
+  assertPermission(ctx, 'procedures', 'VIEW')
+  const canEdit = ctx.permissions.procedures === 'MANAGE'
 
   const admin = createAdminClient()
 
