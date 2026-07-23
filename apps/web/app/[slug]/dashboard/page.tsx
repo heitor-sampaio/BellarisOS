@@ -4,8 +4,11 @@ import { getTenantContext } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
+import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
+import type { AppModule } from '@estetica-os/types'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { RevenueBarChart } from '@/components/branch/revenue-bar-chart'
+import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
 import { format, subMonths, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
@@ -88,7 +91,17 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const now = new Date()
   const admin = createAdminClient()
 
-  const canSeeCheckout = ctx.permissions.agenda === 'MANAGE'
+  const perm = ctx.permissions
+  const canFinancial  = perm.financial  !== 'NONE'
+  const canAgenda     = perm.agenda     !== 'NONE'
+  const canProcedures = perm.procedures !== 'NONE'
+  const canClients    = perm.clients    !== 'NONE'
+  const canCheckout   = canProcedures
+  // Profissional que atende e não gerencia a agenda: dashboard escopado a ele.
+  const professionalOnly = ctx.providesServices && perm.agenda !== 'MANAGE'
+  const proId = professionalOnly ? ctx.internalUserId : null
+
+  const hasAnyWidget = canFinancial || canAgenda || canProcedures || canClients
 
   const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0)
   const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999)
@@ -112,52 +125,80 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     { data: allActiveClients },
     { count: newClientsCount },
   ] = await Promise.all([
-    canSeeCheckout
+    canCheckout
       ? admin.from('treatment_plans').select('id', { count: 'exact', head: true })
           .eq('branch_id', branchId).eq('status', 'PROPOSED')
       : Promise.resolve({ count: 0 }),
 
-    supabase.from('financial_transactions').select('amount')
-      .eq('branch_id', branchId).eq('type', 'INCOME')
-      .gte('created_at', monthStart.toISOString()),
+    canFinancial
+      ? supabase.from('financial_transactions').select('amount')
+          .eq('branch_id', branchId).eq('type', 'INCOME')
+          .gte('created_at', monthStart.toISOString())
+      : Promise.resolve({ data: [] }),
 
-    supabase.from('financial_transactions').select('amount')
-      .eq('branch_id', branchId).eq('type', 'INCOME')
-      .gte('created_at', lastMonthStart.toISOString())
-      .lte('created_at', lastMonthEnd.toISOString()),
+    canFinancial
+      ? supabase.from('financial_transactions').select('amount')
+          .eq('branch_id', branchId).eq('type', 'INCOME')
+          .gte('created_at', lastMonthStart.toISOString())
+          .lte('created_at', lastMonthEnd.toISOString())
+      : Promise.resolve({ data: [] }),
 
-    supabase.from('appointments')
-      .select('id, client_id, scheduled_at, duration_min, status, price, clients(name), procedures(name), users(name)')
-      .eq('branch_id', branchId)
-      .gte('scheduled_at', todayStart.toISOString())
-      .lte('scheduled_at', todayEnd.toISOString())
-      .order('scheduled_at'),
+    canAgenda
+      ? (() => {
+          let q = supabase.from('appointments')
+            .select('id, client_id, scheduled_at, duration_min, status, price, clients(name), procedures(name), users(name)')
+            .eq('branch_id', branchId)
+            .gte('scheduled_at', todayStart.toISOString())
+            .lte('scheduled_at', todayEnd.toISOString())
+            .order('scheduled_at')
+          if (proId) q = q.eq('professional_id', proId)
+          return q
+        })()
+      : Promise.resolve({ data: [] }),
 
-    supabase.from('users').select('id', { count: 'exact', head: true })
-      .eq('branch_id', branchId).in('role', ['BRANCH_ADMIN', 'PROFESSIONAL']).eq('is_active', true),
+    (canAgenda && !professionalOnly)
+      ? supabase.from('users').select('id', { count: 'exact', head: true })
+          .eq('branch_id', branchId).eq('provides_services', true).eq('is_active', true)
+      : Promise.resolve({ count: 0 }),
 
-    supabase.from('appointments').select('id', { count: 'exact', head: true })
-      .eq('branch_id', branchId).eq('status', 'COMPLETED')
-      .gte('scheduled_at', monthStart.toISOString()),
+    (canAgenda || canFinancial)
+      ? (() => {
+          let q = supabase.from('appointments').select('id', { count: 'exact', head: true })
+            .eq('branch_id', branchId).eq('status', 'COMPLETED')
+            .gte('scheduled_at', monthStart.toISOString())
+          if (proId) q = q.eq('professional_id', proId)
+          return q
+        })()
+      : Promise.resolve({ count: 0 }),
 
-    supabase.from('financial_transactions').select('amount, created_at')
-      .eq('branch_id', branchId).eq('type', 'INCOME')
-      .gte('created_at', sixMonthsAgo.toISOString()),
+    canFinancial
+      ? supabase.from('financial_transactions').select('amount, created_at')
+          .eq('branch_id', branchId).eq('type', 'INCOME')
+          .gte('created_at', sixMonthsAgo.toISOString())
+      : Promise.resolve({ data: [] }),
 
-    supabase.from('appointments').select('procedure_id, procedures(name)')
-      .eq('branch_id', branchId).eq('status', 'COMPLETED')
-      .gte('scheduled_at', thirtyDaysAgo.toISOString()),
+    canProcedures
+      ? supabase.from('appointments').select('procedure_id, procedures(name)')
+          .eq('branch_id', branchId).eq('status', 'COMPLETED')
+          .gte('scheduled_at', thirtyDaysAgo.toISOString())
+      : Promise.resolve({ data: [] }),
 
-    supabase.from('appointments').select('client_id')
-      .eq('branch_id', branchId)
-      .in('status', ['COMPLETED', 'SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'])
-      .gte('scheduled_at', ninetyDaysAgo.toISOString()),
+    canClients
+      ? supabase.from('appointments').select('client_id')
+          .eq('branch_id', branchId)
+          .in('status', ['COMPLETED', 'SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'])
+          .gte('scheduled_at', ninetyDaysAgo.toISOString())
+      : Promise.resolve({ data: [] }),
 
-    supabase.from('clients').select('id, name, phone')
-      .eq('branch_id', branchId).eq('is_active', true).limit(400),
+    canClients
+      ? supabase.from('clients').select('id, name, phone')
+          .eq('branch_id', branchId).eq('is_active', true).limit(400)
+      : Promise.resolve({ data: [] }),
 
-    supabase.from('clients').select('id', { count: 'exact', head: true })
-      .eq('branch_id', branchId).gte('created_at', monthStart.toISOString()),
+    canClients
+      ? supabase.from('clients').select('id', { count: 'exact', head: true })
+          .eq('branch_id', branchId).gte('created_at', monthStart.toISOString())
+      : Promise.resolve({ count: 0 }),
   ])
 
   // -- KPI calculations ------------------------------------------
@@ -244,6 +285,20 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       .slice(0, 3)
   }
 
+  // Atalhos para o estado vazio (módulos que o cargo acessa)
+  const BRANCH_ROUTES: Partial<Record<AppModule, string>> = {
+    agenda:     `/${slug}/agenda`,
+    clients:    `/${slug}/clients`,
+    financial:  `/${slug}/financial`,
+    procedures: `/${slug}/procedures`,
+    stock:      `/${slug}/stock`,
+    crm:        `/${slug}/crm`,
+    team:       `/${slug}/settings/team`,
+  }
+  const shortcuts = ALL_MODULES
+    .filter(m => BRANCH_ROUTES[m] && perm[m] !== 'NONE')
+    .map(m => ({ label: MODULE_LABELS[m], href: BRANCH_ROUTES[m]! }))
+
   // -------------------------------------------------------------
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -259,8 +314,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </p>
       </div>
 
+      {!hasAnyWidget && <DashboardEmptyState userName={ctx.userName} shortcuts={shortcuts} />}
+
       {/* -- Checkout pendente ----------------------------------- */}
-      {canSeeCheckout && (pendingCheckouts ?? 0) > 0 && (
+      {canCheckout && (pendingCheckouts ?? 0) > 0 && (
         <Link href={`/${slug}/checkout`} style={{ textDecoration: 'none' }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 14,
@@ -288,10 +345,12 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         </Link>
       )}
 
-      {/* -- Row 1: 4 KPI cards ---------------------------------- */}
+      {/* -- Row 1: KPI cards ------------------------------------ */}
+      {(canFinancial || canAgenda) && (
       <div className="kpi-grid">
 
         {/* Faturamento — brand card */}
+        {canFinancial && (
         <div style={{ background: 'var(--brand)', borderRadius: 18, padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: '#fff' }}>
           <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }}>
             Faturamento do mês
@@ -306,10 +365,12 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             </p>
           )}
         </div>
+        )}
 
         {/* Agendamentos hoje */}
+        {canAgenda && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <p className="overline">Agendamentos hoje</p>
+          <p className="overline">{professionalOnly ? 'Meus agendamentos hoje' : 'Agendamentos hoje'}</p>
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
             {todayCount}
           </p>
@@ -317,14 +378,23 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             {awaitingCount} aguardando confirmação
           </p>
         </div>
+        )}
 
-        {/* Taxa de ocupação */}
+        {/* Ocupação (filial) OU Meus atendimentos (profissional) */}
+        {canAgenda && (professionalOnly ? (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <p className="overline">Meus atendimentos</p>
+          <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
+            {monthCompletedCount ?? 0}
+          </p>
+          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 8 }}>concluídos neste mês</p>
+        </div>
+        ) : (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <p className="overline">Taxa de ocupação</p>
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
             {professionalsCount ? `${occupancy}%` : '—'}
           </p>
-          {/* Barra de progresso */}
           <div>
             <div style={{ height: 5, borderRadius: 99, background: 'var(--bg-app)', overflow: 'hidden', marginTop: 8 }}>
               <div style={{ height: '100%', width: `${occupancy}%`, background: occupancy > 70 ? 'var(--brand)' : occupancy > 40 ? 'var(--warning)' : 'var(--border)', borderRadius: 99, transition: 'width 600ms ease' }} />
@@ -334,8 +404,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             </p>
           </div>
         </div>
+        ))}
 
         {/* Ticket médio */}
+        {canFinancial && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <p className="overline">Ticket médio</p>
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
@@ -345,12 +417,16 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             {monthCompletedCount ?? 0} atendimentos concluídos
           </p>
         </div>
+        )}
       </div>
+      )}
 
       {/* -- Row 2: Gráfico + Agenda ------------------------------ */}
+      {(canFinancial || canAgenda) && (
       <div className="rg-2">
 
         {/* Gráfico */}
+        {canFinancial && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
             <div>
@@ -367,8 +443,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           </div>
           <RevenueBarChart data={chartData} />
         </div>
+        )}
 
         {/* Agenda de hoje */}
+        {canAgenda && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '18px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Agenda de hoje</h2>
@@ -413,12 +491,16 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             </div>
           )}
         </div>
+        )}
       </div>
+      )}
 
       {/* -- Row 3: Procedimentos | Funil CRM | Reativar --------- */}
+      {(canProcedures || canClients) && (
       <div className="rg-3">
 
         {/* Procedimentos mais procurados */}
+        {canProcedures && (
         <div className="card">
           <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
             Procedimentos mais procurados
@@ -450,8 +532,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             </div>
           )}
         </div>
+        )}
 
-        {/* Funil de leads / CRM */}
+        {/* Funil de leads / ciclo de cliente */}
+        {canClients && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
@@ -486,8 +570,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             })}
           </div>
         </div>
+        )}
 
         {/* Reativar clientes */}
+        {canClients && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: 4 }}>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -537,8 +623,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             </>
           )}
         </div>
+        )}
 
       </div>
+      )}
     </div>
   )
 }

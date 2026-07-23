@@ -71,7 +71,7 @@ export function AdminSidebar({ permissions }: { permissions: ResolvedPermissions
         )}
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }} onClick={close}>
-          {can('reports')    && <NavItem icon={<LayoutGrid size={18} />} label="Dashboard"     href="/admin/dashboard" />}
+          <NavItem icon={<LayoutGrid size={18} />} label="Dashboard"     href="/admin/dashboard" />
           {can('agenda')     && <NavItem icon={<Calendar   size={18} />} label="Agenda"        href="/admin/agenda" />}
           {can('clients')    && <NavItem icon={<Contact    size={18} />} label="Clientes"      href="/admin/clients" />}
           {can('reports')    && <NavItem icon={<BarChart3  size={18} />} label="Relatórios"    href="/admin/reports" />}
