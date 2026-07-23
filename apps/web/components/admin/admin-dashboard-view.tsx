@@ -11,6 +11,9 @@ import { PieChart, Pie, Cell, Tooltip as RechartsTip, ResponsiveContainer } from
 import { EvolutionChart, type ChartPoint } from './evolution-chart'
 import { HotmapSection, type RawBranch } from './hotmap-section'
 import { PeriodSelector, type Period } from './period-selector'
+import type { ResolvedPermissions, AppModule } from '@estetica-os/types'
+import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
+import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
 
 // --- Types -------------------------------------------------------------------
 
@@ -52,6 +55,13 @@ export interface AlertLowStock {
 }
 
 export interface AdminDashboardProps {
+  permissions:      ResolvedPermissions
+  userName:         string
+  leadFunnel:       { name: string; count: number }[]
+  leadsTotal:       number
+  leadsConverted:   number
+  conversionRate:   number
+  marketing:        { connected: boolean; spend: number; reach: number; activeCampaigns: number; totalCampaigns: number; notifActive: number } | null
   monthLabel:       string
   totalRevenue:      number
   totalCost:         number
@@ -358,6 +368,7 @@ function StatusPill({ label, count, colorKey }: { label: string; count: number; 
 // --- Main component -----------------------------------------------------------
 
 export function AdminDashboardView({
+  permissions, userName, leadFunnel, leadsTotal, leadsConverted, conversionRate, marketing,
   monthLabel,
   totalRevenue, totalCost, totalAppointments, newClients, ticketMedio,
   totalClientsEver, branchCount,
@@ -381,6 +392,16 @@ export function AdminDashboardView({
   const sortedStats = [...branchStats].sort((a, b) => b.revenue - a.revenue)
 
   const hasAlerts = pendingPlans.length > 0 || lowStockItems.length > 0
+
+  const can = (m: AppModule) => permissions[m] !== 'NONE'
+  const hasAnyWidget = ALL_MODULES.some(m => can(m))
+  const maxFunnel = Math.max(1, ...leadFunnel.map(f => f.count))
+  const ADMIN_ROUTES: Partial<Record<AppModule, string>> = {
+    agenda: '/admin/agenda', clients: '/admin/clients', financial: '/admin/financeiro',
+    stock: '/admin/estoque', procedures: '/admin/procedures', crm: '/admin/crm',
+    marketing: '/admin/marketing', reports: '/admin/reports', team: '/admin/team', settings: '/admin/settings',
+  }
+  const shortcuts = ALL_MODULES.filter(m => ADMIN_ROUTES[m] && can(m)).map(m => ({ label: MODULE_LABELS[m], href: ADMIN_ROUTES[m]! }))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -413,52 +434,58 @@ export function AdminDashboardView({
         <PeriodSelector current={currentPeriod} fromDate={customFrom} toDate={customTo} />
       </div>
 
+      {!hasAnyWidget && <DashboardEmptyState userName={userName} shortcuts={shortcuts} />}
+
       {/* -- KPI cards -- */}
+      {(can('financial') || can('agenda') || can('clients')) && (
       <div className="kpi-grid-auto" style={{ gap: 14 }}>
-        <KpiCard
+        {can('financial') && <KpiCard
           brand
           label="Receita bruta do mês"
           value={totalRevenue}
           format="brl"
           delta={deltaRevenue}
           icon={<TrendingUp size={16} color="#fff" />}
-        />
-        <KpiCard
+        />}
+        {can('financial') && <KpiCard
           label="Custo do mês"
           value={totalCost}
           format="brl"
           sub="despesas registradas"
           icon={<TrendingDown size={16} color="var(--brand)" />}
-        />
-        <KpiCard
+        />}
+        {can('agenda') && <KpiCard
           label="Atendimentos"
           value={totalAppointments}
           format="int"
           sub="concluídos no mês"
           delta={deltaAppointments}
           icon={<Calendar size={16} color="var(--brand)" />}
-        />
-        <KpiCard
+        />}
+        {can('clients') && <KpiCard
           label="Novos clientes"
           value={newClients}
           format="int"
           sub={`${totalClientsEver.toLocaleString('pt-BR')} no total`}
           delta={deltaNewClients}
           icon={<Users size={16} color="var(--brand)" />}
-        />
-        <KpiCard
+        />}
+        {can('financial') && <KpiCard
           label="Ticket médio"
           value={ticketMedio}
           format="brl"
           sub="receita ÷ atendimentos"
           icon={<Zap size={16} color="var(--brand)" />}
-        />
+        />}
       </div>
+      )}
 
       {/* -- Middle: ranking + hoje -- */}
+      {(can('reports') || can('financial') || can('agenda') || can('stock')) && (
       <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 16, alignItems: 'start' }}>
 
         {/* Ranking de filiais + gráfico de evolução */}
+        {(can('reports') || can('financial')) && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Gráfico animado */}
           <EvolutionChart data={evolutionData} monthLabel={monthLabel} granularity={granularity} />
@@ -536,11 +563,14 @@ export function AdminDashboardView({
           )}
           </div>
         </div>
+        )}
 
         {/* Coluna direita: Hoje na rede + Estoque */}
+        {(can('agenda') || can('stock')) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Hoje na rede */}
+        {can('agenda') && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -594,9 +624,10 @@ export function AdminDashboardView({
             </div>
           )}
         </div>
+        )}
 
         {/* Card indicador de estoque */}
-        {(() => {
+        {can('stock') && (() => {
           const cfg = {
             healthy:  { label: 'Saudável',   bg: '#f0fdf4', border: '#bbf7d0', dot: '#16a34a', text: '#15803d' },
             warning:  { label: 'Atenção',    bg: '#fffbeb', border: '#fde68a', dot: '#d97706', text: '#92400e' },
@@ -647,15 +678,17 @@ export function AdminDashboardView({
           )
         })()}
 
-        </div>{/* fim coluna direita */}
+        </div>
+        )}{/* fim coluna direita */}
       </div>
+      )}
 
       {/* -- Alertas -- */}
-      {hasAlerts && (
-        <div className={pendingPlans.length > 0 && lowStockItems.length > 0 ? 'rg-2' : undefined} style={{ gap: 16 }}>
+      {((can('procedures') && pendingPlans.length > 0) || (can('stock') && lowStockItems.length > 0)) && (
+        <div className={(can('procedures') && pendingPlans.length > 0) && (can('stock') && lowStockItems.length > 0) ? 'rg-2' : undefined} style={{ gap: 16 }}>
 
           {/* Planos aguardando checkout */}
-          {pendingPlans.length > 0 && (
+          {can('procedures') && pendingPlans.length > 0 && (
             <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1.5px solid #fde68a' }}>
               <div style={{ padding: '14px 18px', borderBottom: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 8, background: '#fffbeb' }}>
                 <ClipboardList size={14} color="#d97706" />
@@ -706,7 +739,7 @@ export function AdminDashboardView({
           )}
 
           {/* Estoque crítico */}
-          {lowStockItems.length > 0 && (
+          {can('stock') && lowStockItems.length > 0 && (
             <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1.5px solid #fecaca' }}>
               <div style={{ padding: '14px 18px', borderBottom: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: 8, background: '#fff1f2' }}>
                 <Package size={14} color="#dc2626" />
@@ -762,6 +795,7 @@ export function AdminDashboardView({
       {/* ══════════════════════════════════════════════════════════════
           SEÇÃO: OCUPAÇÃO
       ══════════════════════════════════════════════════════════════ */}
+      {can('agenda') && (<>
       <SectionHeader title="Ocupação por filial" />
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -840,10 +874,12 @@ export function AdminDashboardView({
           </div>
         )}
       </div>
+      </>)}
 
       {/* ══════════════════════════════════════════════════════════════
           SEÇÃO: PROCEDIMENTOS
       ══════════════════════════════════════════════════════════════ */}
+      {can('procedures') && (<>
       <SectionHeader title="Procedimentos" />
 
       <div className="kpi-grid" style={{ gap: 16, alignItems: 'start' }}>
@@ -1016,10 +1052,12 @@ export function AdminDashboardView({
         </div>
 
       </div>
+      </>)}
 
       {/* ══════════════════════════════════════════════════════════════
           SEÇÃO: PROFISSIONAIS
       ══════════════════════════════════════════════════════════════ */}
+      {can('team') && (<>
       <SectionHeader title="Profissionais" />
 
       <div className="kpi-grid" style={{ gap: 16, alignItems: 'start' }}>
@@ -1130,10 +1168,12 @@ export function AdminDashboardView({
           )}
         </div>
       </div>
+      </>)}
 
       {/* ══════════════════════════════════════════════════════════════
           SEÇÃO: CLIENTES
       ══════════════════════════════════════════════════════════════ */}
+      {can('clients') && (<>
       <SectionHeader title="Clientes" />
 
       <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
@@ -1282,10 +1322,12 @@ export function AdminDashboardView({
         </div>
 
       </div>
+      </>)}
 
       {/* ══════════════════════════════════════════════════════════════
           SEÇÃO: HOTMAP
       ══════════════════════════════════════════════════════════════ */}
+      {can('clients') && (<>
       <SectionHeader title="Hotmap" />
 
       <HotmapSection
@@ -1293,6 +1335,73 @@ export function AdminDashboardView({
         rawCepCounts={hotmapRawCepCounts}
         rawCepLtv={hotmapRawCepLtv}
       />
+      </>)}
+
+      {/* ══════════════════════════════════════════════════════════════
+          SEÇÃO: COMERCIAL
+      ══════════════════════════════════════════════════════════════ */}
+      {can('crm') && (<>
+      <SectionHeader title="Comercial" />
+      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, alignItems: 'start' }}>
+        {/* Funil de leads por estágio */}
+        <div className="card" style={{ padding: '18px 20px' }}>
+          <div style={{ marginBottom: 16 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Funil de leads por estágio</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 10 }}>{monthLabel}</span>
+          </div>
+          {leadFunnel.length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Nenhum estágio de CRM configurado.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {leadFunnel.map((f, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)', minWidth: 120, flexShrink: 0 }}>{f.name}</span>
+                  <div style={{ flex: 1, height: 22, borderRadius: 6, background: 'var(--bg-app)', overflow: 'hidden', position: 'relative' }}>
+                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.max((f.count / maxFunnel) * 100, f.count > 0 ? 12 : 0)}%`, background: 'var(--brand)', borderRadius: 6 }} />
+                    {f.count > 0 && <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 800, color: '#fff' }}>{f.count}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Taxa de conversão */}
+        <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <span className="overline">Taxa de conversão</span>
+          <p style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--brand)', marginTop: 8, lineHeight: 1 }}>
+            {conversionRate.toFixed(1).replace('.', ',')}%
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+            {leadsConverted} de {leadsTotal} leads convertidos
+          </p>
+        </div>
+      </div>
+      </>)}
+
+      {/* ══════════════════════════════════════════════════════════════
+          SEÇÃO: MARKETING
+      ══════════════════════════════════════════════════════════════ */}
+      {can('marketing') && marketing && (<>
+      <SectionHeader title="Marketing" />
+      {marketing.connected ? (
+        <div className="kpi-grid-auto" style={{ gap: 14 }}>
+          <KpiCard label="Investimento (Meta)" value={marketing.spend} format="brl" sub="no período" icon={<TrendingUp size={16} color="var(--brand)" />} />
+          <KpiCard label="Alcance" value={marketing.reach} format="int" sub="pessoas alcançadas" icon={<Users size={16} color="var(--brand)" />} />
+          <KpiCard label="Campanhas ativas" value={marketing.activeCampaigns} format="int" sub={`${marketing.totalCampaigns} no total`} icon={<Zap size={16} color="var(--brand)" />} />
+          <KpiCard label="Notificações ativas" value={marketing.notifActive} format="int" sub="campanhas rodando" icon={<Calendar size={16} color="var(--brand)" />} />
+        </div>
+      ) : (
+        <div className="card" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Conecte o Meta Ads</p>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+              Integre sua conta de anúncios para ver alcance e gasto. {marketing.notifActive} campanha(s) de notificação ativa(s).
+            </p>
+          </div>
+          <a href="/admin/settings?tab=integrations" style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Configurar →</a>
+        </div>
+      )}
+      </>)}
 
     </div>
   )

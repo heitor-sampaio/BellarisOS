@@ -1,5 +1,7 @@
-﻿import { getTenantContext, assertPermission } from '@/lib/auth'
+﻿import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
+import type { DatePreset } from '@/lib/ads/types'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type {
   BranchStat,
@@ -17,7 +19,19 @@ export default async function AdminDashboardPage({
   const { period: rawPeriod, from: rawFrom, to: rawTo } = await searchParams
 
   const ctx   = await getTenantContext()
-  assertPermission(ctx, 'reports', 'VIEW')
+
+  const perm = ctx.permissions
+  const canFinancial  = perm.financial  !== 'NONE'
+  const canAgenda     = perm.agenda     !== 'NONE'
+  const canClients    = perm.clients    !== 'NONE'
+  const canStock      = perm.stock      !== 'NONE'
+  const canProcedures = perm.procedures !== 'NONE'
+  const canTeam       = perm.team       !== 'NONE'
+  const canReports    = perm.reports    !== 'NONE'
+  const canCrm        = perm.crm        !== 'NONE'
+  const canMarketing  = perm.marketing  !== 'NONE'
+  // Queries "core" (analytics internos) só rodam se o cargo tem algum módulo core.
+  const needsCore = canFinancial || canAgenda || canClients || canStock || canProcedures || canTeam || canReports
 
   const admin = createAdminClient()
   const now   = new Date()
@@ -116,7 +130,7 @@ export default async function AdminDashboardPage({
     { data: clientsDemoRaw },
     { data: ltvTxsRaw },
     { count: prevClientsCount },
-  ] = await Promise.all([
+  ] = needsCore ? await Promise.all([
 
     // Transações do período corrente (created_at incluído para gráfico diário)
     admin.from('financial_transactions')
@@ -241,7 +255,12 @@ export default async function AdminDashboardPage({
       .in('branch_id', branchIds)
       .gte('created_at', prevStart.toISOString())
       .lte('created_at', prevEnd.toISOString()),
-  ])
+  ]) : [
+    { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] },
+    { count: 0 }, { data: [] }, { data: [] }, { data: [] }, { data: [] },
+    { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] },
+    { data: [] }, { count: 0 },
+  ]
 
   const txsCurr     = (txsCurrRaw     ?? []) as any[]
   const txsPrev     = (txsPrevRaw     ?? []) as any[]
@@ -624,12 +643,63 @@ export default async function AdminDashboardPage({
     hotmapRawCepLtv[digits] = (hotmapRawCepLtv[digits] ?? 0) + ltv
   }
 
+  // -- Comercial: funil de leads por estágio + conversão (gate crm) --------
+  const [{ data: crmStagesRaw }, { data: crmLeadsRaw }] = await Promise.all([
+    canCrm
+      ? admin.from('crm_stages').select('id, name, position').eq('tenant_id', ctx.tenantId!).order('position')
+      : Promise.resolve({ data: [] }),
+    canCrm
+      ? admin.from('leads').select('id, crm_stage_id, client_id, created_at')
+          .eq('tenant_id', ctx.tenantId!)
+          .gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString())
+      : Promise.resolve({ data: [] }),
+  ])
+  const crmStages = (crmStagesRaw ?? []) as any[]
+  const crmLeads  = (crmLeadsRaw ?? []) as any[]
+  const leadFunnel = crmStages.map(s => ({ name: s.name as string, count: crmLeads.filter(l => l.crm_stage_id === s.id).length }))
+  const leadsTotal     = crmLeads.length
+  const leadsConverted = crmLeads.filter(l => l.client_id).length
+  const conversionRate = leadsTotal > 0 ? (leadsConverted / leadsTotal) * 100 : 0
+
+  // -- Marketing: alcance/gasto (Meta Ads, tempo real) + campanhas (gate marketing) --
+  let marketing: {
+    connected: boolean; spend: number; reach: number
+    activeCampaigns: number; totalCampaigns: number; notifActive: number
+  } | null = null
+  if (canMarketing) {
+    const adsPreset: DatePreset =
+      period === 'today' ? 'today' : period === '7d' ? '7d' : period === 'all' ? 'all' : '30d'
+    let spend = 0, reach = 0, activeCampaigns = 0, totalCampaigns = 0, connected = false
+    try {
+      const cfg = await getAdsConfig(ctx.tenantId!, 'meta_ads')
+      if (cfg) {
+        connected = true
+        const campaigns = await resolveAdsProvider(cfg).getCampaigns({ preset: adsPreset })
+        spend           = campaigns.reduce((s, c) => s + (c.spend ?? 0), 0)
+        reach           = campaigns.reduce((s, c) => s + (c.reach ?? 0), 0)
+        activeCampaigns = campaigns.filter(c => c.status === 'ACTIVE').length
+        totalCampaigns  = campaigns.length
+      }
+    } catch { /* integração indisponível → connected=false */ }
+    const { count: notifActive } = await admin
+      .from('notification_campaigns').select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId!).eq('status', 'ACTIVE')
+    marketing = { connected, spend, reach, activeCampaigns, totalCampaigns, notifActive: notifActive ?? 0 }
+  }
+
   return (
     <>
       <RealtimeRefresher
         tables={['appointments', 'financial_transactions', 'treatment_plans', 'branch_product_stock']}
       />
       <AdminDashboardView
+        permissions={ctx.permissions}
+        userName={ctx.userName}
+        leadFunnel={leadFunnel}
+        leadsTotal={leadsTotal}
+        leadsConverted={leadsConverted}
+        conversionRate={conversionRate}
+        marketing={marketing}
         monthLabel={periodLabel}
         currentPeriod={period}
         customFrom={rawFrom}
