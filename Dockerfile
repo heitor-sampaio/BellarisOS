@@ -1,9 +1,12 @@
 FROM node:22-slim AS builder
 WORKDIR /repo
 
-RUN apt-get update -y && apt-get install -y openssl tzdata && rm -rf /var/lib/apt/lists/*
-
+# TZ antes do apt-get e DEBIAN_FRONTEND=noninteractive: o tzdata pergunta a
+# região na instalação e trava o build sem essas duas variáveis.
+ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Sao_Paulo
+
+RUN apt-get update -y && apt-get install -y openssl tzdata && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g pnpm@11.8.0
 
@@ -16,12 +19,14 @@ RUN pnpm --filter=web build
 FROM node:22-slim AS runner
 WORKDIR /app
 
-# tzdata + TZ: sem isso o container roda em UTC e toda janela de "hoje"/"este mes"
-# dos indicadores comeca as 21h do dia anterior em horario de Brasilia.
+# tzdata + TZ: sem isso o container roda em UTC e toda janela de "hoje" / "este
+# mês" dos indicadores começa às 21h do dia anterior em horário de Brasília.
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=America/Sao_Paulo
+
 RUN apt-get update -y && apt-get install -y openssl tzdata && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
-ENV TZ=America/Sao_Paulo
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
