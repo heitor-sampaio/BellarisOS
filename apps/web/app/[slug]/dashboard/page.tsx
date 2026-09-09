@@ -111,7 +111,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const thirtyDaysAgo = addDaysTZ(now, -30)
   const ninetyDaysAgo = addDaysTZ(now, -90)
 
-  const metricArgs = { tenantId: ctx.tenantId!, branchIds: [branchId], from: period.from, to: period.to }
+  // Profissional que atende e não gerencia a agenda vê só os próprios números.
+  const metricArgs = {
+    tenantId: ctx.tenantId!, branchIds: [branchId],
+    from: period.from, to: period.to, professionalId: proId,
+  }
 
   const [
     core,

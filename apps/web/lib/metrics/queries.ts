@@ -61,7 +61,14 @@ export type FunnelStage       = { stageId: string; name: string; position: numbe
 const n = (v: unknown): number => (v == null ? 0 : Number(v))
 const nullableN = (v: unknown): number | null => (v == null ? null : Number(v))
 
-type Args = { tenantId: string; branchIds?: string[] | null; from: Date; to: Date }
+type Args = {
+  tenantId: string
+  branchIds?: string[] | null
+  from: Date
+  to: Date
+  /** Escopa tudo a um profissional (dashboard do profissional que atende). */
+  professionalId?: string | null
+}
 
 function baseArgs({ tenantId, branchIds, from, to }: Args) {
   return {
@@ -81,7 +88,9 @@ function logRpcError(fn: string, error: { message: string } | null): void {
 }
 
 export async function getCore(args: Args): Promise<MetricsCore> {
-  const { data, error } = await createAdminClient().rpc('metrics_core', baseArgs(args))
+  const { data, error } = await createAdminClient().rpc('metrics_core', {
+    ...baseArgs(args), p_professional_id: args.professionalId ?? null,
+  })
   logRpcError('metrics_core', error)
   const row = (data as Record<string, unknown>[] | null)?.[0]
   if (!row) return { ...EMPTY_CORE }
