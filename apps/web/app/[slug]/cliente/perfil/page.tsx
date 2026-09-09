@@ -2,6 +2,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logoutAction } from '@/actions/auth'
 import { EditProfileForm } from '@/components/client-portal/edit-profile-form'
+import { DataRequestCard } from '@/components/client-portal/data-request-card'
+import { getMyDataRequests } from '@/actions/lgpd'
 import { LogOut } from 'lucide-react'
 
 function maskCpf(cpf: string | null) {
@@ -40,6 +42,8 @@ export default async function ClientProfilePage({ params: _params }: { params: P
 
   const client = data as ClientRow | null
   if (!client) return null
+
+  const dataRequests = await getMyDataRequests()
 
   const genderMap: Record<string, string> = { M: 'Masculino', F: 'Feminino', O: 'Outro' }
 
@@ -115,6 +119,11 @@ export default async function ClientProfilePage({ params: _params }: { params: P
           city:               client.city,
           state:              client.state,
         }} />
+      </section>
+
+      {/* -- Dados pessoais (LGPD) --------------------------------- */}
+      <section>
+        <DataRequestCard requests={dataRequests} />
       </section>
 
       {/* -- Logout ------------------------------------------------ */}

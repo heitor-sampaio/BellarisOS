@@ -10,6 +10,8 @@ import { SettingsAnamnesis, type AdminAnamnesisForm } from '@/components/admin/s
 import { SettingsAttendance, type AdminAttendanceForm } from '@/components/admin/settings-attendance'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import type { IntegrationConfig } from '@/actions/integrations'
+import { SettingsLgpd } from '@/components/admin/settings-lgpd'
+import { listDataRequests } from '@/actions/lgpd'
 
 const TABS = [
   { key: 'unidades',      label: 'Unidades'     },
@@ -17,6 +19,7 @@ const TABS = [
   { key: 'anamnese',      label: 'Anamnese'     },
   { key: 'atendimento',   label: 'Atendimento'  },
   { key: 'integrations',  label: 'Integrações'  },
+  { key: 'lgpd',          label: 'LGPD'         },
   { key: 'general',       label: 'Geral'        },
 ] as const
 type TabKey = typeof TABS[number]['key']
@@ -61,6 +64,9 @@ export default async function AdminSettingsPage({
       .eq('tenant_id', ctx.tenantId!)
       .order('created_at'),
   ])
+
+  // Só carrega quando a aba está aberta: a lista não é usada nas outras.
+  const lgpdRequests = activeTab === 'lgpd' ? await listDataRequests() : []
 
   const integrationConfigs = (integrationRows ?? []) as IntegrationConfig[]
   const anamnesisForms: AdminAnamnesisForm[] = (anamnesisRows ?? []).map((r: any) => ({
@@ -151,6 +157,13 @@ export default async function AdminSettingsPage({
           metaStep={meta_step}
           metaError={meta_error === '1'}
           metaErrorReason={meta_error_reason}
+        />
+      )}
+
+      {activeTab === 'lgpd' && (
+        <SettingsLgpd
+          requests={lgpdRequests}
+          canReviewMedical={ctx.permissions.medical_records === 'MANAGE'}
         />
       )}
 

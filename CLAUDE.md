@@ -61,8 +61,7 @@ estetica-os/                          (raiz do monorepo)
 │   │   │   │   ├── stock/
 │   │   │   │   ├── financial/
 │   │   │   │   └── settings/
-│   │   │   └── schedule/             agendamento online público
-│   │   │       └── [slug]/
+│   │   │   └── [slug]/cliente/       portal do cliente final (agendamento self-service)
 │   │   ├── components/
 │   │   │   ├── ui/                   shadcn/ui (não editar diretamente)
 │   │   │   ├── shared/               componentes reutilizáveis entre portais
@@ -201,7 +200,12 @@ Quando um cliente cria conta no app:
 |---|---|---|
 | `/admin/*` | Rede | NETWORK_ADMIN |
 | `/[slug]/*` | Filial | BRANCH_ADMIN, RECEPTIONIST, PROFESSIONAL, FINANCIAL |
-| `/schedule/[slug]` | Público | Sem autenticação |
+| `/[slug]/cliente/*` | Cliente final | CLIENT (autenticado) |
+
+**Não existe agendamento público sem login.** Só há dois caminhos para criar um
+agendamento: a equipe autenticada, ou o próprio cliente pelo portal/app — e
+neste caso apenas para procedimentos marcados como `visible_on_client_app`
+(self-service). Decisão de produto de 2026-09-09.
 
 Redirect pós-login:
 ```
@@ -322,7 +326,7 @@ const clients = await prisma.client.findMany()
 ### 9.1 Agenda
 - Status: `SCHEDULED → CONFIRMED → IN_PROGRESS → COMPLETED → CANCELLED | NO_SHOW`
 - Campos de timestamp por transição: `confirmedAt`, `startedAt`, `completedAt`, `cancelledAt`
-- Campo `source`: `INTERNAL` (web/app operacional), `ONLINE` (link público), `CLIENT_APP` (app do cliente)
+- Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (extensão do time comercial). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
 - `clientNotes`: observações que o cliente envia ao agendar pelo app
 - `roomId`: sala/cabine opcional — uma sala não pode ter dois agendamentos simultâneos (validar no action)
 - `cancellationReason`: obrigatório ao cancelar para rastreabilidade
@@ -336,7 +340,19 @@ const clients = await prisma.client.findMany()
 - `LoyaltyConfig.scopePerBranch`: `false` = pontos consolidados em toda a rede
 - Tags como `String[]` — constantes em `packages/utils/client-tags.ts`
 - `InternalCredit`: saldo de crédito do cliente na filial (gerado por estorno); usado como método de pagamento `INTERNAL_CREDIT`
-- `LgpdRequest`: solicitação de exportação ou exclusão de dados (`type: "export" | "delete"`); processar de forma assíncrona
+- `LgpdRequest`: pedido de acesso aos dados pelo titular. Só `type: "export"`
+  está implementado — a exclusão continua fora de escopo por conflitar com a
+  guarda legal de prontuário e de registros fiscais. Fluxo: o cliente solicita
+  em `/[slug]/cliente/perfil`, `actions/lgpd.ts` grava o pedido e processa em
+  `after()` (não há fila no projeto); `/api/cron/lgpd-exports` recolhe o que
+  ficar para trás. O pacote sai em PDF (legível) + JSON (portabilidade) no
+  bucket privado `lgpd-exports`, com download por signed URL e validade de
+  30 dias. Um pedido em aberto por cliente, garantido por índice único parcial.
+- **Prontuário no pacote depende de liberação**: `include_medical` marca o que o
+  titular pediu e `medical_status` (`not_requested | pending | approved |
+  denied`) registra a decisão de quem tem `medical_records: MANAGE`, na aba
+  LGPD de `/admin/settings`. Aprovar recoloca o pedido em `pending` e o pacote
+  é regerado com a parte clínica.
 
 ### 9.3 Procedimentos
 - `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)
@@ -480,7 +496,7 @@ ZAPI_TOKEN=
 
 # App
 NEXT_PUBLIC_APP_URL=https://app.esteticaos.com.br
-NEXT_PUBLIC_SCHEDULE_URL=https://agenda.esteticaos.com.br
+# (NEXT_PUBLIC_SCHEDULE_URL existia para o agendamento público, descartado — não é lida por nenhum código)
 
 # Mobile (Expo — em app.config.ts)
 EXPO_PUBLIC_SUPABASE_URL=
@@ -587,7 +603,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Deletar registros financeiros ou de prontuário — usar soft delete ou flags
 ❌ Criar lógica de negócio duplicada no web e no mobile — extrair para packages/
 ❌ Alterar price de um procedimento sem criar ProcedurePriceHistory
-❌ Processar LgpdRequest de exclusão de forma síncrona — sempre via fila (BullMQ)
+❌ Gerar exportação de LGPD dentro do request — usar after() + o cron de retomada
+❌ Entregar pacote de LGPD com consulta que falhou em silêncio — no export, erro aborta
 ❌ Construir componente visual sem invocar /lumiere-design primeiro
 ❌ Somar/contar indicador na tela em vez de usar lib/metrics (trunca em 1000 linhas)
 ❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
