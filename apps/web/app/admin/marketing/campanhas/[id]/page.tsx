@@ -30,7 +30,7 @@ function fmtNum(v: number) { return v.toLocaleString('pt-BR') }
 function fmtRoi(v: number) { return (v >= 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + '%' }
 
 function MetricCard({ m }: {
-  m: { label: string; fmt: string | null; highlight?: boolean; alert?: string; delta?: number; deltaPositiveIsGood?: boolean }
+  m: { label: string; fmt: string | null; highlight?: boolean; alert?: string; delta?: number; deltaUnit?: '%' | ' p.p.'; deltaPositiveIsGood?: boolean }
 }) {
   const showDelta = m.delta != null && isFinite(m.delta)
   const deltaGood = showDelta
@@ -55,7 +55,7 @@ function MetricCard({ m }: {
           </span>
           {showDelta && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10.5, fontWeight: 700, color: deltaColor, marginTop: 3, marginLeft: 6 }}>
-              {m.delta! > 0 ? '↑' : '↓'} {deltaSign}{m.delta!.toFixed(1).replace('.', ',')}%
+              {m.delta! > 0 ? '↑' : '↓'} {deltaSign}{m.delta!.toFixed(1).replace('.', ',')}{m.deltaUnit ?? '%'}
             </span>
           )}
           {m.alert && (
@@ -113,12 +113,21 @@ export default async function CampaignDetailPage({
     ? ((previousPeriod.conversionValue - previousPeriod.spend) / previousPeriod.spend) * 100
     : undefined
 
-  function pctDelta(curr: number, prev: number | undefined): number | undefined {
-    if (prev == null || prev === 0) return undefined
+  // Sem valor atual OU sem base anterior não há variação. Antes o ROI passava
+  // `roi ?? 0` quando não havia dado de conversão, e o card exibia uma queda
+  // inventada de 0% contra o ROI anterior.
+  function pctDelta(curr: number | undefined, prev: number | undefined): number | undefined {
+    if (curr == null || prev == null || prev === 0) return undefined
     return ((curr - prev) / Math.abs(prev)) * 100
   }
 
-  type Metric = { label: string; fmt: string | null; highlight?: boolean; alert?: string; delta?: number; deltaPositiveIsGood?: boolean }
+  /** Diferença em pontos percentuais, para métricas que já são percentuais. */
+  function ppDelta(curr: number | undefined, prev: number | undefined): number | undefined {
+    if (curr == null || prev == null) return undefined
+    return curr - prev
+  }
+
+  type Metric = { label: string; fmt: string | null; highlight?: boolean; alert?: string; delta?: number; deltaUnit?: '%' | ' p.p.'; deltaPositiveIsGood?: boolean }
 
   const frequency = campaign.reach != null && campaign.reach > 0
     ? campaign.impressions / campaign.reach
@@ -136,10 +145,11 @@ export default async function CampaignDetailPage({
   ]
 
   const conversionMetrics: Metric[] = [
-    { label: 'Conversões',  fmt: campaign.conversions       != null ? fmtNum(campaign.conversions)       : null, delta: pctDelta(campaign.conversions ?? 0, previousPeriod?.conversions),           deltaPositiveIsGood: true },
-    { label: 'Valor conv.', fmt: campaign.conversionValue   != null ? fmtBRL(campaign.conversionValue)   : null, delta: pctDelta(campaign.conversionValue ?? 0, previousPeriod?.conversionValue),     deltaPositiveIsGood: true },
-    { label: 'Custo/conv.', fmt: campaign.costPerConversion != null ? fmtBRL(campaign.costPerConversion) : null, delta: pctDelta(campaign.costPerConversion ?? 0, previousPeriod?.costPerConversion), deltaPositiveIsGood: false },
-    { label: 'ROI',         fmt: roi != null ? fmtRoi(roi) : null, highlight: roi != null ? roi >= 0 : undefined, delta: pctDelta(roi ?? 0, prevRoi), deltaPositiveIsGood: true },
+    { label: 'Conversões',  fmt: campaign.conversions       != null ? fmtNum(campaign.conversions)       : null, delta: pctDelta(campaign.conversions, previousPeriod?.conversions),           deltaPositiveIsGood: true },
+    { label: 'Valor conv.', fmt: campaign.conversionValue   != null ? fmtBRL(campaign.conversionValue)   : null, delta: pctDelta(campaign.conversionValue, previousPeriod?.conversionValue),     deltaPositiveIsGood: true },
+    { label: 'Custo/conv.', fmt: campaign.costPerConversion != null ? fmtBRL(campaign.costPerConversion) : null, delta: pctDelta(campaign.costPerConversion, previousPeriod?.costPerConversion), deltaPositiveIsGood: false },
+    // ROI já é percentual: a variação é em pontos percentuais.
+    { label: 'ROI',         fmt: roi != null ? fmtRoi(roi) : null, highlight: roi != null ? roi >= 0 : undefined, delta: ppDelta(roi, prevRoi), deltaUnit: ' p.p.', deltaPositiveIsGood: true },
   ]
 
   return (

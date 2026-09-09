@@ -112,20 +112,29 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
     conversionValue: acc.conversionValue + (c.conversionValue ?? 0),
   }), { spend: 0, impressions: 0, linkClicks: 0, conversions: 0, conversionValue: 0 }), [filtered])
 
-  // Sinais de decisão — calculados sobre todas as campanhas ativas visíveis
+  // Referências dos sinais, PONDERADAS pelo investimento. Antes eram médias
+  // simples por campanha: uma campanha de R$ 5 com ROI de +900% puxava a média
+  // para cima e jogava todas as campanhas reais em "Observar"/"Revisar".
+  // Ponderar por gasto (e por impressões, no CTR) é a mesma conta que o total
+  // da tabela já faz, então referência e total passam a concordar.
   const { avgRoi, avgCpa, avgCtr } = useMemo(() => {
     const withRoi = filtered.filter(c => c.conversionValue != null && c.spend > 0)
-    const withCpa = filtered.filter(c => c.costPerConversion != null)
+    const roiSpend = withRoi.reduce((s, c) => s + c.spend, 0)
+    const roiValue = withRoi.reduce((s, c) => s + c.conversionValue!, 0)
+    const avgRoi = roiSpend > 0 ? ((roiValue - roiSpend) / roiSpend) * 100 : 0
+
+    // CPA agregado = investimento total ÷ conversões totais.
+    const withCpa  = filtered.filter(c => c.costPerConversion != null && (c.conversions ?? 0) > 0)
+    const cpaSpend = withCpa.reduce((s, c) => s + c.spend, 0)
+    const cpaConv  = withCpa.reduce((s, c) => s + (c.conversions ?? 0), 0)
+    const avgCpa   = cpaConv > 0 ? cpaSpend / cpaConv : 0
+
+    // CTR agregado = cliques no link ÷ impressões.
     const withCtr = filtered.filter(c => c.linkCtr != null)
-    const avgRoi = withRoi.length > 0
-      ? withRoi.reduce((s, c) => s + (c.conversionValue! - c.spend) / c.spend * 100, 0) / withRoi.length
-      : 0
-    const avgCpa = withCpa.length > 0
-      ? withCpa.reduce((s, c) => s + c.costPerConversion!, 0) / withCpa.length
-      : 0
-    const avgCtr = withCtr.length > 0
-      ? withCtr.reduce((s, c) => s + c.linkCtr!, 0) / withCtr.length
-      : 0
+    const ctrImpr = withCtr.reduce((s, c) => s + c.impressions, 0)
+    const ctrClk  = withCtr.reduce((s, c) => s + (c.linkClicks ?? 0), 0)
+    const avgCtr  = ctrImpr > 0 ? (ctrClk / ctrImpr) * 100 : 0
+
     return { avgRoi, avgCpa, avgCtr }
   }, [filtered])
 

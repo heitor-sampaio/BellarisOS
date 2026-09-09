@@ -4,7 +4,7 @@ import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
 import { addDaysTZ, startOfDayTZ } from '@/lib/datetime'
-import { resolvePeriod } from '@/lib/metrics'
+import { resolvePeriod, getRetention, getNewClientsSeries } from '@/lib/metrics'
 
 type Tab    = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque'
 type Period = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
@@ -81,6 +81,8 @@ export default async function AdminReportsPage({
     { data: productBatchesRaw },
     { data: installmentsRaw },
     { data: procedureCostsRaw },
+    retention,
+    newClientsSeries,
   ] = await Promise.all([
 
     // 0 — Transações do período (ricas: todas as colunas usadas nos tabs).
@@ -202,12 +204,27 @@ export default async function AdminReportsPage({
           .limit(50)
       : Promise.resolve({ data: [] as any[] }),
 
-    // 13 — Custo de insumos por procedimento (aba procedimentos — margem por faixa etária)
+    // 13 — Custo por procedimento (aba procedimentos — margem por faixa etária).
+    // Traz também mão de obra e outros custos: a margem considerava só os
+    // insumos e por isso saía sistematicamente otimista.
     needProcCosts
       ? admin.from('procedure_products')
-          .select('procedure_id, quantity, products(cost_price), procedures!inner(tenant_id)')
+          .select('procedure_id, quantity, products(cost_price), procedures!inner(tenant_id, labor_cost, other_costs)')
           .eq('procedures.tenant_id', ctx.tenantId!)
       : Promise.resolve({ data: [] as any[] }),
+
+    // 14 — Retenção real (quem já era cliente antes do período e voltou)
+    needClientsAll
+      ? getRetention({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate })
+      : Promise.resolve({ clientsServed: 0, returningClients: 0, firstTimeClients: 0 }),
+
+    // 15 — Novos clientes por dia, dentro da janela e no fuso do negócio
+    needClientsAll
+      ? getNewClientsSeries({
+          tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
+          granularity: period === 'all' ? 'month' : 'day',
+        })
+      : Promise.resolve([]),
   ])
 
   // -- Cast + filter -------------------------------------------------
@@ -298,6 +315,8 @@ export default async function AdminReportsPage({
         bps={bps}
         productBatches={productBatches}
         procedureCosts={procedureCosts}
+        retention={retention}
+        newClientsSeries={newClientsSeries}
         evolutionData={evolutionData}
       />
     </>

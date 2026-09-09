@@ -2,6 +2,7 @@
 
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { getAdsConfig } from '@/lib/ads/factory'
+import { addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import type { AdSet, Ad, CampaignDetail, CampaignSummary, AgeBreakdown, GeoBreakdown, PlacementBreakdown, DailyInsight, PreviousPeriod, AdSetTargeting } from '@/lib/ads/types'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
@@ -55,17 +56,30 @@ export async function getCampaignDetail(
   const adPosParams    = new URLSearchParams({ access_token: token, date_preset: datePreset, level: 'ad',    breakdowns: 'publisher_platform,platform_position', fields: 'ad_id,spend,impressions' })
   const dailyParams    = new URLSearchParams({ access_token: token, date_preset: datePreset, time_increment: '1', fields: 'spend,conversions,action_values,purchase_roas' })
 
-  // Período anterior: deslocar N dias para trás usando since/until
+  // Período anterior, imediatamente antes do atual e do mesmo tamanho.
+  //
+  // O Meta trata `since`/`until` como INCLUSIVOS, e `last_Nd` cobre os N dias
+  // que terminam ONTEM. A janela anterior ia de hoje−2N a hoje−N: 31 dias em
+  // vez de 30, com o dia hoje−N pertencendo às duas — todo delta saía ~3%
+  // pessimista. Agora vai de hoje−2N a hoje−(N+1), exatamente N dias e sem
+  // sobreposição. `today` é o caso à parte: o atual é hoje, o anterior é ontem.
   const DAYS_MAP: Record<string, number> = { today: 1, '7d': 7, '30d': 30, '90d': 90 }
   const prevDays = DAYS_MAP[preset]
   let prevParams: URLSearchParams | null = null
   if (prevDays) {
-    const now    = new Date()
-    const until  = new Date(now); until.setDate(until.getDate() - prevDays)
-    const since  = new Date(until); since.setDate(since.getDate() - prevDays)
-    const fmt    = (d: Date) => d.toISOString().slice(0, 10)
+    const now = new Date()
+    const [sinceOffset, untilOffset] = preset === 'today'
+      ? [1, 1]
+      : [prevDays * 2, prevDays + 1]
+    // Datas no fuso do negócio: `toISOString()` gera a data em UTC, e o Meta
+    // interpreta no fuso da conta — depois das 21h a janela pulava um dia.
     const prevFields = `spend,impressions,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,cpm,reach,conversions,cost_per_conversion,purchase_roas,action_values`
-    prevParams = new URLSearchParams({ access_token: token, since: fmt(since), until: fmt(until), fields: prevFields })
+    prevParams = new URLSearchParams({
+      access_token: token,
+      since:  dayKeyTZ(addDaysTZ(now, -sinceOffset)),
+      until:  dayKeyTZ(addDaysTZ(now, -untilOffset)),
+      fields: prevFields,
+    })
   }
 
   const [campaignRes, adSetsRes, adsRes, ageRes, geoRes, adSetAgeRes, adSetPosRes, adAgeRes, adPosRes, dailyRes, prevRes] = await Promise.all([

@@ -216,6 +216,46 @@ export async function getCommissionsDetail(args: Args): Promise<CommissionEntry[
   }))
 }
 
+export type Retention = {
+  /** Clientes distintos atendidos no período. */
+  clientsServed:    number
+  /** Destes, os que já tinham sido atendidos ANTES do período. */
+  returningClients: number
+  /** Destes, os que foram atendidos pela primeira vez no período. */
+  firstTimeClients: number
+}
+
+/**
+ * Retenção de verdade: quem já era cliente antes do período e voltou nele.
+ * O que a tela chamava de "taxa de retenção" era a proporção de clientes com
+ * 2+ atendimentos dentro da própria janela — em "hoje" isso tende a zero por
+ * construção, e não mede retenção.
+ */
+export async function getRetention(args: Args): Promise<Retention> {
+  const { data, error } = await createAdminClient().rpc('metrics_retention', baseArgs(args))
+  logRpcError('metrics_retention', error)
+  const row = (data as Record<string, unknown>[] | null)?.[0]
+  return {
+    clientsServed:    n(row?.clients_served),
+    returningClients: n(row?.returning_clients),
+    firstTimeClients: n(row?.first_time_clients),
+  }
+}
+
+/** Novos clientes por bucket, no fuso do negócio e dentro da janela. */
+export async function getNewClientsSeries(
+  args: Args & { granularity?: 'hour' | 'day' | 'month' },
+): Promise<{ bucket: string; count: number }[]> {
+  const { data, error } = await createAdminClient().rpc('metrics_new_clients_series', {
+    ...baseArgs(args), p_granularity: args.granularity ?? 'day',
+  })
+  logRpcError('metrics_new_clients_series', error)
+  return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
+    bucket: String(r.bucket),
+    count:  n(r.count),
+  }))
+}
+
 export async function getLeadFunnel(args: Args): Promise<FunnelStage[]> {
   const { data, error } = await createAdminClient().rpc('metrics_lead_funnel', baseArgs(args))
   logRpcError('metrics_lead_funnel', error)

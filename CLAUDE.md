@@ -551,6 +551,16 @@ Princípios inegociáveis:
   - `ticketMedio` = `serviceRevenue ÷ atendimentos concluídos` — **numerador e
     denominador do mesmo conjunto**
   - `occupancy` = minutos agendados ÷ capacidade (`occupancyPct()`)
+  - `retenção` = clientes atendidos no período que **já tinham sido atendidos
+    antes dele** ÷ atendidos no período (`getRetention`). Não confundir com
+    recorrência dentro da janela, que em períodos curtos dá zero por construção.
+- **Zero é um dado, não ausência de dado.** Em métricas de anúncio, `0 ||
+  undefined` transformava "zero clique no link" em "Indisponível" e escondia
+  justamente a campanha problemática. Só use `undefined` quando a origem
+  realmente não devolveu o campo.
+- **Médias de referência são ponderadas** pela grandeza que as sustenta (ROI e
+  CPA por investimento, CTR por impressões). Média simples por campanha deixa
+  uma campanha de R$ 5 ditar a régua de todas as outras.
 - **Estorno** sai dos dois lados: a transação marcada `notes='Estornada'` e a
   contra-transação `category='Estorno'`. Contar só uma faz o estorno bater duas
   vezes no resultado.

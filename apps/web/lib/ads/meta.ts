@@ -122,10 +122,14 @@ export class MetaAdsProvider implements AdsProvider {
       ctr,
       cpc,
       cpm,
-      linkClicks:        linkClicks       || undefined,
-      linkCtr:           linkCtr          || undefined,
-      linkCpc:           linkCpc          || undefined,
-      reach:             reach    != null ? reach    : undefined,
+      // `|| undefined` transformava 0 em "Indisponível" na tabela, escondendo
+      // exatamente a campanha problemática: zero clique no link é um dado, não
+      // ausência de dado. Só ausência real (a API não devolveu o campo) vira
+      // undefined — e por isso o teste é `!= null`.
+      linkClicks,
+      linkCtr,
+      linkCpc,
+      reach,
       conversions,
       costPerConversion: cpa,
       conversionValue,

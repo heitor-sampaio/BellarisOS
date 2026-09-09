@@ -18,6 +18,11 @@
 --   Taxa de conclusão ................ 20/28 = 71,4%
 --   Novos clientes ................... 12
 --   Leads ............................ 20, sendo 8 convertidos = 40%
+--   Taxa de retenção ................. 25,0%  (3 dos 12 atendidos já eram
+--                                              clientes antes do mês)
+--
+-- Fora da janela do mês, o seed cria 3 atendimentos no mês anterior (R$ 600)
+-- só para a retenção ter um valor conferível diferente de zero.
 
 do $seed$
 declare
@@ -236,6 +241,38 @@ begin
     ('dddddddd-4000-0000-0000-000000000002', v_centro,  10, 4),
     ('dddddddd-4000-0000-0000-000000000001', v_jardins, 12, 5),
     ('dddddddd-4000-0000-0000-000000000002', v_jardins,  2, 4);  -- abaixo do mínimo
+
+  -- ── Histórico do mês anterior: 3 clientes já atendidos antes ──────────────
+  -- Faz a taxa de retenção ter valor conferível (3 dos 12 atendidos no mês já
+  -- eram clientes = 25%). Sem histórico, retenção seria 0% e não daria para
+  -- distinguir "métrica certa" de "métrica quebrada".
+  for i in 1..3 loop
+    insert into public.appointments
+      (id, branch_id, client_id, procedure_id, professional_id, status, source,
+       scheduled_at, duration_min, price, completed_at, started_at)
+    values (
+      ('dddddddd-7f00-0000-0000-00000000000' || i)::uuid,
+      v_centro,
+      ('dddddddd-2000-0000-0000-0000000000' || lpad(to_hex(i), 2, '0'))::uuid,
+      v_proc_a, 'dddddddd-1000-0000-0000-000000000001'::uuid,
+      'COMPLETED', 'INTERNAL',
+      v_month - interval '10 days' + (i || ' hours')::interval,
+      60, 200,
+      v_month - interval '10 days' + (i || ' hours')::interval + interval '1 hour',
+      v_month - interval '10 days' + (i || ' hours')::interval
+    );
+
+    insert into public.financial_transactions
+      (branch_id, appointment_id, client_id, type, category, description, amount,
+       payment_method, is_paid, paid_at, created_by, created_at)
+    values (
+      v_centro, ('dddddddd-7f00-0000-0000-00000000000' || i)::uuid,
+      ('dddddddd-2000-0000-0000-0000000000' || lpad(to_hex(i), 2, '0'))::uuid,
+      'INCOME', 'Serviços', 'Atendimento concluído', 200,
+      'PIX', true, v_month - interval '10 days' + (i || ' hours')::interval + interval '1 hour',
+      'seed-demo', v_month - interval '10 days' + (i || ' hours')::interval + interval '1 hour'
+    );
+  end loop;
 
   -- ── CRM: 20 leads no mês, 8 convertidos ───────────────────────────────────
   select id into v_stage from public.crm_stages

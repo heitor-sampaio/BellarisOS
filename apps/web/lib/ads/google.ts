@@ -134,8 +134,12 @@ export class GoogleAdsProvider implements AdsProvider {
       ctr,
       cpc,
       cpm,
-      conversions: conversions || undefined,
-      costPerConversion: cpa || undefined,
+      // Zero conversões é informação, não ausência dela. Com `|| undefined` o
+      // sinal "Revisar" da tabela — que exige `conversions === 0` — nunca
+      // disparava para campanha do Google queimando verba sem converter.
+      conversions,
+      // Custo por conversão só existe quando houve conversão.
+      costPerConversion: conversions > 0 ? cpa : undefined,
     }
   }
 }

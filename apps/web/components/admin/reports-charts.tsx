@@ -46,8 +46,12 @@ export function HBarChart({
   formatValue?: (v: number) => string
   emptyMsg?: string
 }) {
-  const rows = data.filter(d => d.value > 0).sort((a, b) => b.value - a.value)
-  if (!rows.length) return <EmptyChart msg={emptyMsg} />
+  // Zeros ficam no gráfico: uma unidade que faturou R$ 0 no período precisa
+  // aparecer na comparação. Escondê-la fazia o ranking parecer completo quando
+  // faltava justamente a linha que interessava. Só negativos saem, porque a
+  // barra horizontal não os representa.
+  const rows = data.filter(d => d.value >= 0).sort((a, b) => b.value - a.value)
+  if (!rows.length || rows.every(d => d.value === 0)) return <EmptyChart msg={emptyMsg} />
 
   const h = Math.max(100, Math.min(rows.length * 46, 400))
   return (

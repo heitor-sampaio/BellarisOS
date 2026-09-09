@@ -102,14 +102,20 @@ export function MarketingOverview({
     spend:       acc.spend       + c.spend,
     impressions: acc.impressions + c.impressions,
     clicks:      acc.clicks      + c.clicks,
+    linkClicks:  acc.linkClicks  + (c.linkClicks ?? 0),
     conversions: acc.conversions + (c.conversions ?? 0),
-  }), { spend: 0, impressions: 0, clicks: 0, conversions: 0 })
+  }), { spend: 0, impressions: 0, clicks: 0, linkClicks: 0, conversions: 0 })
 
   const metaSpend   = metaCampaigns.reduce((s, c)   => s + c.spend, 0)
   const googleSpend = googleCampaigns.reduce((s, c) => s + c.spend, 0)
 
+  // CTR de clique no LINK, a mesma base da tabela de campanhas. O `clicks` do
+  // Meta inclui curtida, comentário e expansão, então este card mostrava um
+  // CTR sistematicamente maior que o da tabela, para o mesmo período.
+  const hasLinkClicks = allCampaigns.some(c => c.linkClicks != null)
   const ctr = totals.impressions > 0
-    ? (totals.clicks / totals.impressions) * 100 : 0
+    ? ((hasLinkClicks ? totals.linkClicks : totals.clicks) / totals.impressions) * 100
+    : 0
   const cpl = attributedLeadsCount > 0
     ? totals.spend / attributedLeadsCount : 0
 
@@ -120,7 +126,7 @@ export function MarketingOverview({
         <KpiCard label="Total investido"  value={totals.spend}       format="brl" />
         <KpiCard label="Impressões"       value={totals.impressions} format="int" />
         <KpiCard label="Cliques"          value={totals.clicks}      format="int" />
-        <KpiCard label="CTR médio"        value={ctr}                format="pct" />
+        <KpiCard label="CTR médio"        value={ctr}                format="pct" sub={hasLinkClicks ? "cliques no link" : "todos os cliques"} />
         <KpiCard
           label="CPL (custo por lead)"
           value={cpl}

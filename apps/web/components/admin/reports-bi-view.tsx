@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { EvolutionChart, type ChartPoint } from './evolution-chart'
 import { PeriodSelector, type Period } from './period-selector'
 import { SegSelect } from '@/components/shared/seg-select'
+import { weekdayTZ } from '@/lib/datetime'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
   DreWaterfall, SimpleTable, Badge,
@@ -47,6 +48,8 @@ export interface ReportsBiProps {
   bps: any[]
   productBatches: any[]
   procedureCosts: any[]
+  retention: { clientsServed: number; returningClients: number; firstTimeClients: number }
+  newClientsSeries: { bucket: string; count: number }[]
   evolutionData: ChartPoint[]
 }
 
@@ -197,7 +200,7 @@ const STATUS_LABELS: Record<string, string> = {
 // -----------------------------------------------------------------------------
 function TabOverview(p: ReportsBiProps) {
   const { txsCurr, txsPrev, apptsCurr, apptsPrevCount, clientsCurr, clientsPrevCount,
-    stockMoves, allAppts, commissions, branches, evolutionData, granularity } = p
+    allAppts, branches, evolutionData, granularity } = p
 
   const revenue      = sumRevenue(txsCurr)
   const prevRevenue  = sumRevenue(txsPrev)
@@ -408,7 +411,7 @@ function TabFinanceiro(p: ReportsBiProps) {
 // TAB: AGENDA
 // -----------------------------------------------------------------------------
 function TabAgenda(p: ReportsBiProps) {
-  const { allAppts, apptsCurr, apptsPrevCount, branches } = p
+  const { allAppts, apptsPrevCount, branches } = p
 
   const total      = allAppts.length
   const completed  = allAppts.filter(a => a.status === 'COMPLETED').length
@@ -423,9 +426,11 @@ function TabAgenda(p: ReportsBiProps) {
     { name: 'Outros',         value: Math.max(0, total - completed - cancelled - noShow) },
   ]
 
+  // Dia da semana no fuso do negócio: um atendimento das 22h de sábado cairia
+  // em domingo se o cálculo seguisse o fuso do processo.
   const weekMap: Record<number, number> = {}
   allAppts.forEach(a => {
-    const d = new Date(a.scheduled_at).getDay()
+    const d = weekdayTZ(a.scheduled_at)
     weekMap[d] = (weekMap[d] ?? 0) + 1
   })
   const byWeekday = Array.from({ length: 7 }, (_, i) => ({ day: i, count: weekMap[i] ?? 0 }))
@@ -498,55 +503,58 @@ function TabAgenda(p: ReportsBiProps) {
 // TAB: CLIENTES
 // -----------------------------------------------------------------------------
 function TabClientes(p: ReportsBiProps) {
-  const { clientsCurr, clientsPrevCount, clientsAll, txsCurr, apptsCurr } = p
+  const { clientsCurr, clientsPrevCount, clientsAll, txsCurr, apptsCurr, retention, newClientsSeries } = p
 
-  const totalAtivos  = clientsAll.length
-  const novos        = clientsCurr.length
-  // Recorrentes = clientes que aparecem ≥2 vezes em apptsCurr
+  const totalAtivos = clientsAll.length
+  const novos       = clientsCurr.length
+
   const apptByClient: Record<string, number> = {}
   apptsCurr.filter(a => a.client_id).forEach(a => {
     apptByClient[a.client_id] = (apptByClient[a.client_id] ?? 0) + 1
   })
-  const recorrentes = Object.values(apptByClient).filter(n => n >= 2).length
-  const taxaRetencao = Object.keys(apptByClient).length > 0
-    ? (recorrentes / Object.keys(apptByClient).length) * 100 : 0
 
-  // LTV no período: média de gasto por cliente em txsCurr
+  // Retenção agora vem do banco: clientes atendidos no período que JÁ tinham
+  // sido atendidos antes dele. O cálculo anterior — "2+ atendimentos dentro da
+  // janela" — media recorrência, não retenção, e em janelas curtas dava zero
+  // por construção.
+  const { clientsServed, returningClients, firstTimeClients } = retention
+  const taxaRetencao = clientsServed > 0 ? (returningClients / clientsServed) * 100 : 0
+
+  // Gasto por cliente, com estorno excluído dos dois lados.
   const spendByClient: Record<string, number> = {}
-  txsCurr.filter(t => t.type === 'INCOME' && t.is_paid && t.client_id).forEach(t => {
-    spendByClient[t.client_id] = (spendByClient[t.client_id] ?? 0) + Number(t.amount)
-  })
+  txsCurr
+    .filter(t => t.type === 'INCOME' && t.is_paid && t.client_id
+                 && t.notes !== 'Estornada' && t.category !== 'Estorno')
+    .forEach(t => {
+      spendByClient[t.client_id] = (spendByClient[t.client_id] ?? 0) + Number(t.amount)
+    })
   const spends = Object.values(spendByClient)
   const gastoMedio = spends.length > 0 ? spends.reduce((s, v) => s + v, 0) / spends.length : 0
 
-  // New clients by day (from clientsAll within period — using clientsCurr as proxy)
-  const dayMap: Record<string, number> = {}
-  clientsCurr.forEach(() => {
-    // We only have id/branch_id for clientsCurr; use clientsAll created_at if available
-  })
-  clientsAll.forEach(c => {
-    if (!c.created_at) return
-    const d = new Date(c.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-    dayMap[d] = (dayMap[d] ?? 0) + 1
-  })
-  const acquisitionData = Object.entries(dayMap)
-    .slice(-30)
-    .map(([label, value]) => ({ label, value }))
+  // Série de aquisição agregada no banco, dentro da janela e no fuso do
+  // negócio. Antes era montada sobre TODOS os clientes já cadastrados, com
+  // chave 'dd/MM' (a mesma data de anos diferentes somava no mesmo ponto) e um
+  // corte final que seguia a ordem de inserção do objeto, não a cronológica.
+  const acquisitionData = newClientsSeries.map(pt => ({
+    label: new Date(pt.bucket).toLocaleDateString('pt-BR', {
+      day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo',
+    }),
+    value: pt.count,
+  }))
 
-  // Age groups
-  const AGE_LABELS = ['<18', '18–24', '25–34', '35–44', '45–54', '55+']
-  const ageBuckets = [0, 0, 0, 0, 0, 0]
-  const thisYear = new Date().getFullYear()
-  clientsAll.filter(c => c.birth_date).forEach(c => {
-    const age = thisYear - new Date(c.birth_date).getFullYear()
-    if (age < 18)      ageBuckets[0]!++
-    else if (age < 25) ageBuckets[1]!++
-    else if (age < 35) ageBuckets[2]!++
-    else if (age < 45) ageBuckets[3]!++
-    else if (age < 55) ageBuckets[4]!++
-    else               ageBuckets[5]!++
+  // Faixa etária pelo mesmo getAgeGroup usado na aba Procedimentos: aqui a
+  // idade era `anoAtual - anoNascimento`, que erra em até um ano e classificava
+  // a mesma pessoa em faixas diferentes nas duas telas.
+  const refDate = new Date()
+  const ageCount = new Map<string, number>()
+  clientsAll.forEach(c => {
+    const group = getAgeGroup(c.birth_date ?? null, refDate)
+    if (group === 'Não informado') return
+    ageCount.set(group, (ageCount.get(group) ?? 0) + 1)
   })
-  const byAge = AGE_LABELS.map((name, i) => ({ name, value: ageBuckets[i] ?? 0 }))
+  const byAge = AGE_GROUP_ORDER
+    .filter(g => g !== 'Não informado' && (ageCount.get(g) ?? 0) > 0)
+    .map(name => ({ name, value: ageCount.get(name) ?? 0 }))
 
   // Gender
   const genderMap: Record<string, number> = {}
@@ -586,8 +594,9 @@ function TabClientes(p: ReportsBiProps) {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Total Ativos"     value={totalAtivos}  format="int" />
         <KpiCard label="Novos no Período" value={novos}        format="int" delta={pctDelta(novos, clientsPrevCount)} showDelta />
-        <KpiCard label="Recorrentes"      value={recorrentes}  format="int" accent={CHART_COLORS[1]} />
-        <KpiCard label="Taxa de Retenção" value={taxaRetencao} format="pct" accent={taxaRetencao >= 40 ? '#16a34a' : '#d97706'} />
+        <KpiCard label="Atendidos no Período" value={clientsServed}    format="int" accent={CHART_COLORS[1]} />
+        <KpiCard label="Primeira Vez"         value={firstTimeClients} format="int" accent={CHART_COLORS[2]} />
+        <KpiCard label="Taxa de Retenção"     value={taxaRetencao}     format="pct" accent={taxaRetencao >= 40 ? '#16a34a' : '#d97706'} />
         <KpiCard label="Gasto Médio"      value={gastoMedio}   format="brl" />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
@@ -678,9 +687,7 @@ function AgeRankCard({ data }: {
 // TAB: PROCEDIMENTOS
 // -----------------------------------------------------------------------------
 function TabProcedimentos(p: ReportsBiProps) {
-  const { apptsCurr, txsPrev, apptsPrevCount, procedureCosts } = p
-  const prevRevenue = txsPrev.filter(t => t.type === 'INCOME' && t.is_paid).reduce((s, t) => s + Number(t.amount), 0)
-  const prevAvgTicket = (apptsPrevCount ?? 0) > 0 ? prevRevenue / (apptsPrevCount ?? 1) : 0
+  const { apptsCurr, apptsPrevCount, procedureCosts } = p
 
   const procData: Record<string, { revenue: number; count: number; category: string }> = {}
   apptsCurr.filter(a => a.procedures?.name).forEach(a => {
@@ -691,11 +698,23 @@ function TabProcedimentos(p: ReportsBiProps) {
   })
 
   // -- Custo por procedure_id → para cálculo de margem ----------------
-  const costByProcedure = new Map<string, number>()
+  // Insumos + mão de obra + outros custos. As duas últimas parcelas existem no
+  // cadastro (e são usadas na tela de procedimentos) mas ficavam de fora aqui,
+  // então a margem exibida era sistematicamente otimista.
+  const inputCostByProcedure = new Map<string, number>()
+  const fixedCostByProcedure = new Map<string, number>()
   for (const pp of procedureCosts) {
     const qty  = Number(pp.quantity ?? 0)
     const cost = Number(pp.products?.cost_price ?? 0)
-    costByProcedure.set(pp.procedure_id, (costByProcedure.get(pp.procedure_id) ?? 0) + qty * cost)
+    inputCostByProcedure.set(pp.procedure_id, (inputCostByProcedure.get(pp.procedure_id) ?? 0) + qty * cost)
+    fixedCostByProcedure.set(
+      pp.procedure_id,
+      Number(pp.procedures?.labor_cost ?? 0) + Number(pp.procedures?.other_costs ?? 0),
+    )
+  }
+  const costByProcedure = new Map<string, number>()
+  for (const id of inputCostByProcedure.keys()) {
+    costByProcedure.set(id, (inputCostByProcedure.get(id) ?? 0) + (fixedCostByProcedure.get(id) ?? 0))
   }
 
   // -- Agrupamento por faixa etária -----------------------------------
@@ -747,7 +766,10 @@ function TabProcedimentos(p: ReportsBiProps) {
         })),
     }))
 
-  const totalExec   = Object.values(procData).reduce((s, d) => s + d.count, 0)
+  // Conta todos os atendimentos concluídos do período, para casar com o
+  // denominador do período anterior (apptsPrevCount). Os rankings abaixo é que
+  // se restringem aos que têm procedimento nomeado.
+  const totalExec   = apptsCurr.length
   const totalRev    = Object.values(procData).reduce((s, d) => s + d.revenue, 0)
   const avgTicket   = totalExec > 0 ? totalRev / totalExec : 0
   const topByName   = Object.entries(procData).sort(([, a], [, b]) => b.revenue - a.revenue)
@@ -783,9 +805,13 @@ function TabProcedimentos(p: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {/* Só "Total Execuções" tem delta: é a única grandeza cujo período
+            anterior é medido do mesmo jeito (atendimentos concluídos). Receita
+            e ticket aqui vêm de appointments.price, e o comparativo disponível
+            do período anterior é de caixa — comparar os dois media outra coisa. */}
         <KpiCard label="Total Execuções" value={totalExec} format="int" delta={pctDelta(totalExec, apptsPrevCount ?? 0)} showDelta />
-        <KpiCard label="Receita Total"   value={totalRev}  format="brl" delta={pctDelta(totalRev, prevRevenue)}           showDelta />
-        <KpiCard label="Ticket Médio"    value={avgTicket} format="brl" delta={pctDelta(avgTicket, prevAvgTicket)}         showDelta />
+        <KpiCard label="Receita Total"   value={totalRev}  format="brl" />
+        <KpiCard label="Ticket Médio"    value={avgTicket} format="brl" />
         <div className="card" style={{ padding: '16px 20px', flex: '1 1 160px' }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
             Mais Realizado
@@ -834,7 +860,7 @@ function TabProcedimentos(p: ReportsBiProps) {
 // TAB: PROFISSIONAIS
 // -----------------------------------------------------------------------------
 function TabProfissionais(p: ReportsBiProps) {
-  const { apptsCurr, commissions, branches, apptsPrevCount } = p
+  const { apptsCurr, commissions, apptsPrevCount } = p
 
   const profData: Record<string, { revenue: number; count: number }> = {}
   apptsCurr.filter(a => a.users?.name).forEach(a => {
