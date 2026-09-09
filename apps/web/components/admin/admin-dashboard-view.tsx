@@ -98,7 +98,7 @@ export interface AdminDashboardProps {
   topProfessionalsByRevenue:     { name: string; revenue: number; pct: number }[]
   topProfessionalsByCommission:  { name: string; amount: number; pct: number }[]
   procedureMargins:   { name: string; price: number; cost: number; marginPct: number }[]
-  avgDurationMinutes: number
+
   bestRatedPros:      { name: string; avgRating: number; count: number }[]
   worstRatedPros:     { name: string; avgRating: number; count: number }[]
   bestRatedProcedures:  { name: string; avgRating: number; count: number }[]
@@ -378,7 +378,7 @@ export function AdminDashboardView({
   evolutionData,
   branchOccupancy,
   topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, procedureMargins,
-  avgDurationMinutes, bestRatedPros, worstRatedPros, bestRatedProcedures, worstRatedProcedures,
+  bestRatedPros, worstRatedPros, bestRatedProcedures, worstRatedProcedures,
   topClients, topClientsByRecurrence, clientAgeGroups, topClientsByLocation,
   hotmapRawBranches, hotmapRawCepCounts, hotmapRawCepLtv,
   currentPeriod, customFrom, customTo, granularity,

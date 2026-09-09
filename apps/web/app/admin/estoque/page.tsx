@@ -4,6 +4,7 @@ import { AdminStockView } from '@/components/admin/admin-stock-view'
 import { ProductCategoryModal } from '@/components/admin/product-category-modal'
 import { StockProductModal } from '@/components/branch/stock-product-modal'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
+import { startOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -92,27 +93,29 @@ export default async function AdminEstoquePage() {
   const productIds = products.map(p => p.id)
 
   // Segunda rodada: movimentos e lotes (dependem dos product IDs)
-  const now         = new Date()
-  const in30Days    = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-  const ago30Days   = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const now       = new Date()
+  const in30Days  = addDaysTZ(now, 30)
+  const monthStart = startOfMonthTZ(now)
 
   const [{ data: movementsRaw }, { data: batchesRaw }] = productIds.length > 0
     ? await Promise.all([
-        // Consumo dos últimos 30 dias (quantity negativa = saída)
+        // Giro = consumo em procedimentos no mês, a mesma definição usada na
+        // tela da filial. Antes a rede somava QUALQUER saída dos últimos 30
+        // dias — incluindo transferência entre unidades da própria rede, que
+        // não é consumo — e por isso a soma das filiais nunca fechava com ela.
         admin
           .from('stock_movements')
-          .select('product_id, quantity')
+          .select('product_id, quantity, unit_cost')
           .in('product_id', productIds)
-          .lt('quantity', 0)
-          .gte('created_at', ago30Days.toISOString()),
+          .eq('type', 'PROCEDURE_USAGE')
+          .gte('created_at', monthStart.toISOString()),
 
-        // Lotes com validade vencendo em até 30 dias e ainda com saldo
+        // Lotes com saldo vencendo em até 30 dias (inclui os já vencidos)
         admin
           .from('product_batches')
-          .select('product_id')
+          .select('product_id, expires_at')
           .in('product_id', productIds)
           .gt('quantity', 0)
-          .gte('expires_at', now.toISOString())
           .lte('expires_at', in30Days.toISOString()),
       ])
     : [{ data: [] as any }, { data: [] as any }]
@@ -125,7 +128,8 @@ export default async function AdminEstoquePage() {
 
   const costMap = Object.fromEntries(products.map(p => [p.id, p.costPrice]))
   const valorGiro = (movementsRaw ?? []).reduce(
-    (sum: number, m: any) => sum + Math.abs(Number(m.quantity)) * (costMap[m.product_id] ?? 0),
+    (sum: number, m: any) =>
+      sum + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? costMap[m.product_id] ?? 0),
     0,
   )
 
@@ -137,7 +141,8 @@ export default async function AdminEstoquePage() {
     p.branches.length > 0 && p.branches.every(b => b.currentStock === 0),
   ).length
 
-  const validadeProxima = new Set((batchesRaw ?? []).map((b: any) => b.product_id)).size
+  // Conta lotes, não produtos distintos.
+  const validadeProxima = (batchesRaw ?? []).length
 
   const suppliers      = [...new Set(products.map(p => p.supplier).filter(Boolean) as string[])].sort()
   const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()

@@ -1,55 +1,10 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
+
 import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-
-function resolvePeriod(
-  period: string,
-  from?: string,
-  to?: string,
-): { start: Date; end: Date; label: string } {
-  const now   = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-  switch (period) {
-    case 'today':
-      return { start: today, end: now, label: 'Hoje' }
-    case 'week': {
-      const s = new Date(today)
-      s.setDate(today.getDate() - ((today.getDay() + 6) % 7))
-      return { start: s, end: now, label: 'Esta semana' }
-    }
-    case 'month':
-      return {
-        start: new Date(now.getFullYear(), now.getMonth(), 1),
-        end:   now,
-        label: now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-      }
-    case 'last_month': {
-      const s = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const e = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
-      return { start: s, end: e, label: 'Mês anterior' }
-    }
-    case 'quarter': {
-      const s = new Date(today)
-      s.setDate(today.getDate() - 89)
-      return { start: s, end: now, label: 'Últimos 90 dias' }
-    }
-    case 'custom':
-      return {
-        start: from ? new Date(from) : new Date(now.getFullYear(), now.getMonth(), 1),
-        end:   to   ? new Date(`${to}T23:59:59`) : now,
-        label: 'Período personalizado',
-      }
-    default:
-      return {
-        start: new Date(now.getFullYear(), now.getMonth(), 1),
-        end:   now,
-        label: now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-      }
-  }
-}
+import { resolvePeriod, getCommissionsDetail } from '@/lib/metrics'
 
 export default async function FinancialPage({
   params,
@@ -61,7 +16,9 @@ export default async function FinancialPage({
   const { slug } = await params
   const sp       = await searchParams
   const period   = sp.period ?? 'month'
-  const { start, end, label } = resolvePeriod(period, sp.from, sp.to)
+  // Janela no fuso do negócio e período anterior de mesma duração decorrida.
+  const { from: start, to: end, prevFrom: prevStart, prevTo: prevEnd, label } =
+    resolvePeriod(period, sp.from, sp.to)
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'financial', 'VIEW')
@@ -81,34 +38,27 @@ export default async function FinancialPage({
     .lte('created_at', end.toISOString())
     .order('created_at', { ascending: false })
 
-  const prevDiff  = end.getTime() - start.getTime()
-  const prevEnd   = new Date(start.getTime() - 1)
-  const prevStart = new Date(prevEnd.getTime() - prevDiff)
 
   const { data: prevTxs } = await supabase
     .from('financial_transactions')
-    .select('type, amount, is_paid')
+    .select('type, amount, is_paid, notes, category')
     .eq('branch_id', branch.id)
     .gte('created_at', prevStart.toISOString())
     .lte('created_at', prevEnd.toISOString())
 
-  // Comissões do período (registros individuais)
-  const { data: commissionsRaw } = await supabase
-    .from('commissions')
-    .select('id, amount, is_paid, professional_id, created_at, users(name)')
-    .eq('branch_id', branch.id)
-    .gte('created_at', start.toISOString())
-    .lte('created_at', end.toISOString())
-    .order('professional_id')
-    .order('created_at', { ascending: false })
-
-  const commissions = (commissionsRaw ?? []).map((c: any) => ({
-    id:               c.id as string,
-    professionalId:   c.professional_id as string,
-    professionalName: (c.users?.name ?? 'Profissional') as string,
-    amount:           Number(c.amount),
-    isPaid:           c.is_paid as boolean,
-    createdAt:        c.created_at as string,
+  // Comissões do período (registros individuais).
+  // `commissions` não tem `created_at` nem `is_paid` — a consulta anterior
+  // pedia as duas, o PostgREST devolvia erro 42703, o erro era descartado e o
+  // card ficava zerado. O período vem do atendimento e o pagamento, de `status`.
+  const commissions = (await getCommissionsDetail({
+    tenantId: ctx.tenantId!, branchIds: [branch.id], from: start, to: end,
+  })).map(c => ({
+    id:               c.id,
+    professionalId:   c.professionalId,
+    professionalName: c.professionalName,
+    amount:           c.amount,
+    isPaid:           c.isPaid,
+    createdAt:        c.referenceAt,
   }))
 
   const canWrite   = ctx.permissions.financial === 'MANAGE'

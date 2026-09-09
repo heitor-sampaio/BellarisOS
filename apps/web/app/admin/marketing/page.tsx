@@ -7,6 +7,7 @@ import { MarketingCampaignsTable } from '@/components/admin/marketing-campaigns-
 import { MarketingAttribution } from '@/components/admin/marketing-attribution'
 import type { Campaign, DatePreset } from '@/lib/ads/types'
 import { SegSelect } from '@/components/shared/seg-select'
+import { startOfDayTZ, addDaysTZ } from '@/lib/datetime'
 
 export const dynamic = 'force-dynamic'
 
@@ -102,22 +103,39 @@ export default async function AdminMarketingPage({
   const metaResult    = campaignResults[0] as CampaignResult
   const googleResult  = campaignResults[1] as CampaignResult
 
-  // Busca leads com atribuição
+  // Busca leads com atribuição. Janela no fuso do negócio.
   const now = new Date()
   const since = activePeriod === 'all'
     ? new Date(0).toISOString()
     : activePeriod === 'today'
-      ? new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-      : new Date(Date.now() - ({ '7d': 7, '30d': 30, '90d': 90 }[activePeriod] ?? 30) * 86_400_000).toISOString()
+      ? startOfDayTZ(now).toISOString()
+      : startOfDayTZ(addDaysTZ(now, -(({ '7d': 7, '30d': 30, '90d': 90 }[activePeriod] ?? 30) - 1))).toISOString()
 
-  const { data: attributedLeads } = await admin
-    .from('leads')
-    .select('id, name, phone, created_at, utm_source, utm_medium, utm_campaign, fbclid, gclid, client_id')
-    .eq('tenant_id', ctx.tenantId!)
-    .not('utm_source', 'is', null)
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
-    .limit(200)
+  // Atribuição não é só utm_source: lead vindo de anúncio no Meta chega por
+  // fbclid ou por click-to-WhatsApp (ctwa_clid), e o Google por gclid. Com o
+  // filtro só de utm_source esses leads ficavam de fora, o que inflava o CPL.
+  const attributionFilter = 'utm_source.not.is.null,fbclid.not.is.null,gclid.not.is.null,ctwa_clid.not.is.null'
+
+  const [{ data: attributedLeads }, { count: attributedLeadsTotal }] = await Promise.all([
+    admin
+      .from('leads')
+      .select('id, name, phone, created_at, utm_source, utm_medium, utm_campaign, fbclid, gclid, client_id')
+      .eq('tenant_id', ctx.tenantId!)
+      .or(attributionFilter)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(200),
+
+    // O CPL e a taxa de conversão precisam do total, não da amostra exibida:
+    // com mais de 200 leads o CPL travava em `gasto / 200` e crescia junto
+    // com o investimento, como se cada lead custasse mais.
+    admin
+      .from('leads')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId!)
+      .or(attributionFilter)
+      .gte('created_at', since),
+  ])
 
   const leads = attributedLeads ?? []
 
@@ -175,7 +193,7 @@ export default async function AdminMarketingPage({
         <MarketingOverview
           metaCampaigns={metaResult.data}
           googleCampaigns={googleResult.data}
-          attributedLeadsCount={leads.length}
+          attributedLeadsCount={attributedLeadsTotal ?? leads.length}
         />
       )}
 

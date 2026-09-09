@@ -526,6 +526,45 @@ Princípios inegociáveis:
 
 ---
 
+## 13.1 Indicadores — fonte única
+
+> **OBRIGATÓRIO:** todo número exibido (KPI, gráfico, ranking, taxa, média) vem
+> de `apps/web/lib/metrics/`. Nenhuma tela soma, conta ou divide por conta própria.
+
+- **Agregação no Postgres**, nunca em JavaScript. As funções `metrics_*`
+  (migrations `20260909000001..2`) fazem a conta no banco. Somar em JS o
+  resultado de um `select` significa somar no máximo 1000 linhas — o teto do
+  PostgREST — e subcontar em silêncio quando a base cresce.
+- **Fuso**: janelas de período por `apps/web/lib/datetime.ts`
+  (`startOfDayTZ`, `startOfMonthTZ`, `dayKeyTZ`…), nunca `new Date(y, m, d)`
+  nem `startOfMonth()` do date-fns. O container roda com `TZ=America/Sao_Paulo`,
+  mas os helpers não dependem do fuso do processo.
+- **Período** por `resolvePeriod()`: o período anterior tem a mesma duração
+  decorrida do atual. Comparar mês parcial com mês anterior inteiro faz todo
+  delta nascer negativo.
+- **Sem base de comparação, sem delta.** `delta()` retorna `null`; a UI mostra
+  "sem dados anteriores". Nunca "▲ 100%" a partir do zero.
+- **Definições canônicas** (uma só por indicador):
+  - `revenueCash` — recebido (INCOME pago, eixo em `paid_at`)
+  - `revenuePending` — a receber
+  - `serviceRevenue` — preço dos atendimentos concluídos (eixo em `scheduled_at`)
+  - `ticketMedio` = `serviceRevenue ÷ atendimentos concluídos` — **numerador e
+    denominador do mesmo conjunto**
+  - `occupancy` = minutos agendados ÷ capacidade (`occupancyPct()`)
+- **Estorno** sai dos dois lados: a transação marcada `notes='Estornada'` e a
+  contra-transação `category='Estorno'`. Contar só uma faz o estorno bater duas
+  vezes no resultado.
+- **Receita e despesa simétricas**: se a receita exige `is_paid`, a despesa
+  também. Senão o "lucro" mistura caixa de um lado com competência do outro.
+- **Percentual de percentual não existe**: variação de margem é em **p.p.**
+- Erro de query nunca é descartado (`const { data } = await …`). Sem checar
+  `error`, drift de schema vira "R$ 0,00" silencioso em vez de falha visível.
+
+Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
+(idempotente; os valores esperados estão no cabeçalho do arquivo).
+
+---
+
 ## 14. O que nunca fazer
 
 ```
@@ -540,6 +579,10 @@ Princípios inegociáveis:
 ❌ Alterar price de um procedimento sem criar ProcedurePriceHistory
 ❌ Processar LgpdRequest de exclusão de forma síncrona — sempre via fila (BullMQ)
 ❌ Construir componente visual sem invocar /lumiere-design primeiro
+❌ Somar/contar indicador na tela em vez de usar lib/metrics (trunca em 1000 linhas)
+❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
+❌ Comparar período parcial com período anterior inteiro
+❌ Descartar o error de uma query (vira R$ 0,00 silencioso)
 ❌ Introduzir cores, fontes ou sombras fora dos tokens da skill /lumiere-design
 ```
 

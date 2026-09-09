@@ -3,6 +3,8 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
+import { addDaysTZ, startOfDayTZ } from '@/lib/datetime'
+import { resolvePeriod } from '@/lib/metrics'
 
 type Tab    = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque'
 type Period = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
@@ -24,49 +26,15 @@ export default async function AdminReportsPage({
   const period = (rawPeriod ?? 'month')   as Period
 
   // -- Período -------------------------------------------------------
-  const msPerDay = 86_400_000
-  let startDate: Date, endDate: Date, prevStart: Date, prevEnd: Date
-
-  if (period === 'today') {
-    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    endDate   = now
-    prevStart = new Date(startDate.getTime() - msPerDay)
-    prevEnd   = new Date(startDate.getTime() - 1)
-  } else if (period === '7d') {
-    startDate = new Date(now.getTime() - 7 * msPerDay); startDate.setHours(0, 0, 0, 0)
-    endDate   = now
-    prevEnd   = new Date(startDate.getTime() - 1)
-    prevStart = new Date(prevEnd.getTime() - 7 * msPerDay); prevStart.setHours(0, 0, 0, 0)
-  } else if (period === '15d') {
-    startDate = new Date(now.getTime() - 15 * msPerDay); startDate.setHours(0, 0, 0, 0)
-    endDate   = now
-    prevEnd   = new Date(startDate.getTime() - 1)
-    prevStart = new Date(prevEnd.getTime() - 15 * msPerDay); prevStart.setHours(0, 0, 0, 0)
-  } else if (period === 'custom' && rawFrom && rawTo) {
-    startDate = new Date(rawFrom + 'T00:00:00')
-    endDate   = new Date(rawTo   + 'T23:59:59.999')
-    const dur = endDate.getTime() - startDate.getTime()
-    prevEnd   = new Date(startDate.getTime() - 1)
-    prevStart = new Date(prevEnd.getTime() - dur)
-  } else if (period === 'all') {
-    startDate = new Date(2000, 0, 1)
-    endDate   = now
-    prevStart = new Date(1999, 0, 1)
-    prevEnd   = new Date(1999, 11, 31, 23, 59, 59, 999)
-  } else {
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-    endDate   = now
-    prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    prevEnd   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
-  }
-
-  const periodLabel =
-    period === 'today'  ? `Hoje, ${now.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}` :
-    period === '7d'     ? 'Últimos 7 dias' :
-    period === '15d'    ? 'Últimos 15 dias' :
-    period === 'all'    ? 'Todo período' :
-    period === 'custom' ? `${startDate.toLocaleDateString('pt-BR')} – ${endDate.toLocaleDateString('pt-BR')}` :
-    now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())
+  // Janela no fuso do negócio, com período anterior de mesma duração decorrida.
+  // Antes o mês parcial era comparado com o mês anterior inteiro (todo delta
+  // nascia negativo), "7d" cobria 8 dias e "all" comparava contra 1999.
+  const periodInfo  = resolvePeriod(period, rawFrom, rawTo, now)
+  const startDate   = periodInfo.from
+  const endDate     = periodInfo.to
+  const prevStart   = periodInfo.prevFrom
+  const prevEnd     = periodInfo.prevTo
+  const periodLabel = periodInfo.label
 
   // -- Filiais -------------------------------------------------------
   const { data: branchesRaw } = await admin
@@ -115,12 +83,15 @@ export default async function AdminReportsPage({
     { data: procedureCostsRaw },
   ] = await Promise.all([
 
-    // 0 — Transações do período (ricas: todas as colunas usadas nos tabs)
+    // 0 — Transações do período (ricas: todas as colunas usadas nos tabs).
+    // `client_id` é lido pela view para "Gasto médio" e "Top 10 clientes" mas
+    // não vinha no select: os dois indicadores ficavam zerados/vazios.
     admin.from('financial_transactions')
-      .select('id, amount, type, is_paid, branch_id, payment_method, category, created_at')
+      .select('id, amount, type, is_paid, branch_id, client_id, payment_method, category, notes, created_at, paid_at')
       .in('branch_id', branchIds)
       .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString()),
+      .lte('created_at', endDate.toISOString())
+      .limit(5000),
 
     // 1 — Transações do período anterior (só comparação de delta)
     admin.from('financial_transactions')
@@ -176,13 +147,16 @@ export default async function AdminReportsPage({
           .lte('scheduled_at', endDate.toISOString())
       : Promise.resolve({ data: [] as any[] }),
 
-    // 8 — Comissões — overview + profissionais
+    // 8 — Comissões — overview + profissionais.
+    // `commissions` não tem created_at: a consulta antiga falhava com 42703,
+    // o erro era descartado e "Comissões em aberto/pagas" ficava sempre R$ 0.
+    // O período agora é o do atendimento que originou a comissão.
     needCommissions
       ? admin.from('commissions')
-          .select('amount, professional_id, status, branch_id, users(name)')
+          .select('amount, professional_id, status, branch_id, users(name), appointments!inner(scheduled_at)')
           .in('branch_id', branchIds)
-          .gte('created_at', startDate.toISOString())
-          .lte('created_at', endDate.toISOString())
+          .gte('appointments.scheduled_at', startDate.toISOString())
+          .lte('appointments.scheduled_at', endDate.toISOString())
       : Promise.resolve({ data: [] as any[] }),
 
     // 9 — Movimentações de estoque (PROCEDURE_USAGE) — overview + estoque
@@ -202,21 +176,27 @@ export default async function AdminReportsPage({
           .in('branch_id', branchIds)
       : Promise.resolve({ data: [] as any[] }),
 
-    // 11 — Lotes vencendo em ≤ 30 dias
+    // 11 — Lotes vencendo em ≤ 30 dias.
+    // O filtro por tenant vem do produto: sem ele esta consulta rodava com o
+    // service role (RLS desligada) e trazia lotes de OUTROS tenants.
     needBatches
       ? admin.from('product_batches')
-          .select('id, product_id, batch_number, expires_at, quantity, products(name)')
-          .lte('expires_at', new Date(now.getTime() + 30 * msPerDay).toISOString())
-          .gte('expires_at', now.toISOString())
+          .select('id, product_id, batch_number, expires_at, quantity, products!inner(name, tenant_id)')
+          .eq('products.tenant_id', ctx.tenantId!)
+          .lte('expires_at', addDaysTZ(now, 30).toISOString())
           .gt('quantity', 0)
           .order('expires_at', { ascending: true })
           .limit(20)
       : Promise.resolve({ data: [] as any[] }),
 
-    // 12 — Parcelas pendentes (financeiro tab)
+    // 12 — Parcelas pendentes (aba financeiro).
+    // Mesmo problema: sem o vínculo com as filiais do tenant, as 50 vagas do
+    // limite podiam ser ocupadas por parcelas de outros clientes da plataforma
+    // — e a tabela aparecia vazia mesmo havendo parcelas desta rede.
     needInstall
       ? admin.from('installments')
-          .select('id, amount, due_date, financial_transactions(branch_id, clients(name))')
+          .select('id, amount, due_date, financial_transactions!inner(branch_id, clients(name))')
+          .in('financial_transactions.branch_id', branchIds)
           .eq('is_paid', false)
           .order('due_date', { ascending: true })
           .limit(50)
@@ -266,16 +246,19 @@ export default async function AdminReportsPage({
   const evolutionData: ChartPoint[] =
     granularity === 'hour'
       ? Array.from({ length: 24 }, (_, i) => {
-          const s = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), i).getTime()
+          // Fatias horárias a partir do início do dia no fuso do negócio.
+          const s = startDate.getTime() + i * 3_600_000
           return buildSlice(s, s + 3_600_000 - 1, i)
         })
       : (() => {
-          const days = Math.max(1, Math.floor((endDate.getTime() - startDate.getTime()) / msPerDay) + 1)
+          const MS_DAY = 86_400_000
+          const days = Math.max(1, Math.floor((endDate.getTime() - startDate.getTime()) / MS_DAY) + 1)
           return Array.from({ length: days }, (_, i) => {
-            const base = new Date(startDate)
-            base.setDate(base.getDate() + i)
-            base.setHours(0, 0, 0, 0)
-            return buildSlice(base.getTime(), base.getTime() + msPerDay - 1, i + 1)
+            // addDaysTZ respeita o calendário local; setHours() usava o fuso do
+            // processo e deslocava as barras em 3h, fazendo a soma do gráfico
+            // divergir do KPI do período.
+            const base = startOfDayTZ(addDaysTZ(startDate, i))
+            return buildSlice(base.getTime(), base.getTime() + MS_DAY - 1, i + 1)
           })
         })()
 

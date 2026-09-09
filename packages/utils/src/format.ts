@@ -1,14 +1,18 @@
 export const formatBRL = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
+// Fuso do negócio fixo: no servidor (container) o fuso do processo não é o de
+// Brasília, e sem isto o mesmo horário aparecia diferente no SSR e no cliente.
+const BUSINESS_TZ = 'America/Sao_Paulo'
+
 export const formatDate = (date: Date | string) =>
-  new Intl.DateTimeFormat('pt-BR').format(new Date(date))
+  new Intl.DateTimeFormat('pt-BR', { timeZone: BUSINESS_TZ }).format(new Date(date))
 
 export const formatDateTime = (date: Date | string) =>
-  new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(date))
+  new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: BUSINESS_TZ }).format(new Date(date))
 
 export const formatTime = (date: Date | string) =>
-  new Intl.DateTimeFormat('pt-BR', { timeStyle: 'short' }).format(new Date(date))
+  new Intl.DateTimeFormat('pt-BR', { timeStyle: 'short', timeZone: BUSINESS_TZ }).format(new Date(date))
 
 export const formatPercent = (value: number, decimals = 1) =>
   `${value.toFixed(decimals).replace('.', ',')}%`

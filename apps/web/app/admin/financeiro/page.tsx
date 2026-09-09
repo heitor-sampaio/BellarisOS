@@ -2,53 +2,7 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-
-function resolvePeriod(
-  period: string,
-  from?: string,
-  to?: string,
-): { start: Date; end: Date; label: string } {
-  const now   = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-
-  switch (period) {
-    case 'today':
-      return { start: today, end: now, label: 'Hoje' }
-    case 'week': {
-      const s = new Date(today)
-      s.setDate(today.getDate() - ((today.getDay() + 6) % 7))
-      return { start: s, end: now, label: 'Esta semana' }
-    }
-    case 'month':
-      return {
-        start: new Date(now.getFullYear(), now.getMonth(), 1),
-        end:   now,
-        label: now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-      }
-    case 'last_month': {
-      const s = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const e = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59)
-      return { start: s, end: e, label: 'Mês anterior' }
-    }
-    case 'quarter': {
-      const s = new Date(today)
-      s.setDate(today.getDate() - 89)
-      return { start: s, end: now, label: 'Últimos 90 dias' }
-    }
-    case 'custom':
-      return {
-        start: from ? new Date(from) : new Date(now.getFullYear(), now.getMonth(), 1),
-        end:   to   ? new Date(`${to}T23:59:59`) : now,
-        label: 'Período personalizado',
-      }
-    default:
-      return {
-        start: new Date(now.getFullYear(), now.getMonth(), 1),
-        end:   now,
-        label: now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
-      }
-  }
-}
+import { resolvePeriod, getCore, getByBranch, EMPTY_CORE } from '@/lib/metrics'
 
 export default async function AdminFinanceiroPage({
   searchParams,
@@ -57,7 +11,12 @@ export default async function AdminFinanceiroPage({
 }) {
   const sp     = await searchParams
   const period = sp.period ?? 'month'
-  const { start, end, label } = resolvePeriod(period, sp.from, sp.to)
+  // Janela e comparação vêm da camada de métricas: no fuso do negócio e com o
+  // período anterior de mesma duração. A resolução local antes montava "custom"
+  // com o início em UTC e o fim no fuso do processo — duas convenções na mesma
+  // função — e comparava o mês parcial com uma janela de tamanho diferente.
+  const { from: start, to: end, prevFrom: prevStart, prevTo: prevEnd, label } =
+    resolvePeriod(period, sp.from, sp.to)
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'financial', 'VIEW')
@@ -82,73 +41,51 @@ export default async function AdminFinanceiroPage({
       </div>
     )
   }
+  const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  // Período anterior (para comparação nos KPIs)
-  const prevDiff  = end.getTime() - start.getTime()
-  const prevEnd   = new Date(start.getTime() - 1)
-  const prevStart = new Date(prevEnd.getTime() - prevDiff)
+  const [core, prevCore, branchMetrics, { data: txsRaw }] = await Promise.all([
+    getCore(metricArgs),
+    getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
+    getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
 
-  const [
-    { data: txsRaw },
-    { data: prevTxsRaw },
-    { data: commissionsRaw },
-  ] = await Promise.all([
+    // A lista de lançamentos continua sendo lida direto — é extrato, não KPI.
     admin
       .from('financial_transactions')
       .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id')
       .in('branch_id', branchIds)
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString())
-      .order('created_at', { ascending: false }),
-
-    admin
-      .from('financial_transactions')
-      .select('type, amount, is_paid, branch_id')
-      .in('branch_id', branchIds)
-      .gte('created_at', prevStart.toISOString())
-      .lte('created_at', prevEnd.toISOString()),
-
-    admin
-      .from('commissions')
-      .select('id, amount, is_paid, professional_id, branch_id, created_at, users(name)')
-      .in('branch_id', branchIds)
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString()),
+      .order('created_at', { ascending: false })
+      .limit(500),
   ])
 
-  const txs         = (txsRaw         ?? []) as any[]
-  const prevTxs     = (prevTxsRaw     ?? []) as any[]
-  const commissions = (commissionsRaw ?? []) as any[]
+  const txs = (txsRaw ?? []) as any[]
 
   // KPIs consolidados
-  const totalRevenue  = txs.filter(t => t.type === 'INCOME'  && t.is_paid).reduce((s: number, t: any) => s + Number(t.amount), 0)
-  const totalExpenses = txs.filter(t => t.type === 'EXPENSE' && t.is_paid).reduce((s: number, t: any) => s + Number(t.amount), 0)
-  const totalComm     = commissions.filter((c: any) => c.is_paid).reduce((s: number, c: any) => s + Number(c.amount), 0)
+  const totalRevenue  = core.revenueCash
+  const totalExpenses = core.expensesCash
+  // Comissões geradas no período (abertas + pagas). Antes a query filtrava
+  // `commissions.is_paid` e `commissions.created_at`, colunas que não existem:
+  // o erro era descartado e o card mostrava R$ 0,00 permanentemente.
+  const totalComm     = core.commissionsOpen + core.commissionsPaid
 
-  const prevRevenue  = prevTxs.filter(t => t.type === 'INCOME'  && t.is_paid).reduce((s: number, t: any) => s + Number(t.amount), 0)
-  const prevExpenses = prevTxs.filter(t => t.type === 'EXPENSE' && t.is_paid).reduce((s: number, t: any) => s + Number(t.amount), 0)
+  const prevRevenue  = prevCore.revenueCash
+  const prevExpenses = prevCore.expensesCash
 
   // KPIs por filial
   const branchNameMap = Object.fromEntries(branches.map(b => [b.id, b.name]))
   const branchSlugMap = Object.fromEntries(branches.map(b => [b.id, b.slug]))
 
-  const branchStats = branches.map(branch => {
-    const bTxs  = txs.filter((t: any) => t.branch_id === branch.id)
-    const bComm = commissions.filter((c: any) => c.branch_id === branch.id)
-    const revenue  = bTxs.filter((t: any) => t.type === 'INCOME'  && t.is_paid).reduce((s: number, t: any) => s + Number(t.amount), 0)
-    const expenses = bTxs.filter((t: any) => t.type === 'EXPENSE' && t.is_paid).reduce((s: number, t: any) => s + Number(t.amount), 0)
-    const comm     = bComm.filter((c: any) => c.is_paid).reduce((s: number, c: any) => s + Number(c.amount), 0)
-    return {
-      id:          branch.id,
-      name:        branch.name,
-      slug:        branch.slug,
-      revenue,
-      expenses,
-      result:      revenue - expenses,
-      commissions: comm,
-      txCount:     bTxs.length,
-    }
-  })
+  const branchStats = branchMetrics.map(b => ({
+    id:          b.branchId,
+    name:        b.branchName,
+    slug:        b.branchSlug,
+    revenue:     b.revenueCash,
+    expenses:    b.expensesCash,
+    result:      b.revenueCash - b.expensesCash,
+    commissions: b.commissionsOpen + b.commissionsPaid,
+    txCount:     b.transactionsCount,
+  }))
 
   // Transações enriquecidas com nome da filial
   const transactions = txs.map((t: any) => ({

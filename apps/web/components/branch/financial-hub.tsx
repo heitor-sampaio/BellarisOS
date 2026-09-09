@@ -14,7 +14,7 @@ import { SegSelect }                                        from '@/components/s
 
 // --- Types --------------------------------------------------------
 
-interface PrevTx { type: 'INCOME' | 'EXPENSE'; amount: number; is_paid: boolean }
+interface PrevTx { type: 'INCOME' | 'EXPENSE'; amount: number; is_paid: boolean; notes?: string | null; category?: string | null }
 
 interface CommissionEntry {
   id:               string
@@ -78,8 +78,9 @@ const PERIOD_OPTIONS = [
 ]
 
 function delta(curr: number, prev: number): { pct: number; up: boolean; neutral: boolean } {
-  if (prev === 0 && curr === 0) return { pct: 0, up: true, neutral: true }
-  if (prev === 0) return { pct: 100, up: true, neutral: false }
+  // `neutral` = sem base de comparação. Antes um período anterior zerado
+  // virava "▲ 100%", um crescimento que nunca existiu.
+  if (prev === 0) return { pct: 0, up: true, neutral: true }
   const pct = ((curr - prev) / prev) * 100
   return { pct: Math.abs(pct), up: pct >= 0, neutral: false }
 }
@@ -526,9 +527,16 @@ export function FinancialHub({
   }
 
   // -- KPIs ------------------------------------------------------
+  // Estorno sai dos DOIS lados: a transação marcada "Estornada" e a
+  // contra-transação de categoria "Estorno". Antes só a original era excluída
+  // e a contra-transação continuava somando como despesa — o estorno derrubava
+  // a receita E subia a despesa, batendo duas vezes no resultado.
+  const notReversal = (t: { notes?: string | null; category?: string | null }) =>
+    t.notes !== 'Estornada' && t.category !== 'Estorno'
+
   const { income, expense, pendingIncome, pendingExpense, avgTicket } = useMemo(() => {
-    const paid      = transactions.filter(t => t.is_paid && t.notes !== 'Estornada')
-    const unpaid    = transactions.filter(t => !t.is_paid)
+    const paid      = transactions.filter(t => t.is_paid && notReversal(t))
+    const unpaid    = transactions.filter(t => !t.is_paid && notReversal(t))
     const income    = paid.filter(t => t.type === 'INCOME').reduce((s, t)  => s + Number(t.amount), 0)
     const expense   = paid.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0)
     const pendingIncome  = unpaid.filter(t => t.type === 'INCOME').reduce((s, t)  => s + Number(t.amount), 0)
@@ -538,8 +546,10 @@ export function FinancialHub({
   }, [transactions])
 
   const { prevIncome, prevExpense, prevPendingIncome, prevPendingExpense } = useMemo(() => {
-    const paid   = prevTransactions.filter(t => t.is_paid)
-    const unpaid = prevTransactions.filter(t => !t.is_paid)
+    // Mesmo tratamento de estorno do período atual — sem isso os dois lados
+    // do delta mediam coisas diferentes.
+    const paid   = prevTransactions.filter(t => t.is_paid && notReversal(t))
+    const unpaid = prevTransactions.filter(t => !t.is_paid && notReversal(t))
     return {
       prevIncome:         paid.filter(t => t.type === 'INCOME').reduce((s, t)  => s + Number(t.amount), 0),
       prevExpense:        paid.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0),
@@ -677,8 +687,11 @@ export function FinancialHub({
           valueColor="#dc2626"
           invertDelta
         />
+        {/* Denominador explícito no rótulo: aqui é por LANÇAMENTO de receita.
+            "Ticket médio" por atendimento é o do dashboard, e o mesmo nome
+            para as duas contas fazia parecer que uma delas estava errada. */}
         <KpiCardFull
-          label="Ticket Médio"
+          label="Receita por lançamento"
           curr={avgTicket} prev={0}
           icon={<BarChart2 size={13} style={{ color: '#2563eb' }} />}
           iconBg="#eff6ff"

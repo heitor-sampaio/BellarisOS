@@ -1,7 +1,9 @@
 FROM node:22-slim AS builder
 WORKDIR /repo
 
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y openssl tzdata && rm -rf /var/lib/apt/lists/*
+
+ENV TZ=America/Sao_Paulo
 
 RUN npm install -g pnpm@11.8.0
 
@@ -14,9 +16,12 @@ RUN pnpm --filter=web build
 FROM node:22-slim AS runner
 WORKDIR /app
 
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# tzdata + TZ: sem isso o container roda em UTC e toda janela de "hoje"/"este mes"
+# dos indicadores comeca as 21h do dia anterior em horario de Brasilia.
+RUN apt-get update -y && apt-get install -y openssl tzdata && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
+ENV TZ=America/Sao_Paulo
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 

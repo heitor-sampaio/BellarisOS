@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { resolvePeriod, percent, getLeadFunnel } from '@/lib/metrics'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 
 type Period = '7d' | '30d' | 'month' | 'all'
@@ -29,16 +30,12 @@ export default async function AdminComercialPage({
 
   const { period: rawPeriod } = await searchParams
   const period = (PERIODS.some(p => p.key === rawPeriod) ? rawPeriod : 'month') as Period
-
-  const now = new Date()
-  const msPerDay = 86_400_000
-  let startDate: Date
-  if (period === '7d')        { startDate = new Date(now.getTime() - 7 * msPerDay);  startDate.setHours(0, 0, 0, 0) }
-  else if (period === '30d')  { startDate = new Date(now.getTime() - 30 * msPerDay); startDate.setHours(0, 0, 0, 0) }
-  else if (period === 'all')  { startDate = new Date(2000, 0, 1) }
-  else                        { startDate = new Date(now.getFullYear(), now.getMonth(), 1) }
+  // Janela no fuso do negócio; o fim é o fim do período, não "agora" — antes
+  // uma avaliação marcada para amanhã não era contada e o KPI de "avaliações
+  // agendadas" crescia ao longo do dia sem nenhum agendamento novo.
+  const { from: startDate, fullTo: endDate } = resolvePeriod(period)
   const startISO = startDate.toISOString()
-  const endISO   = now.toISOString()
+  const endISO   = endDate.toISOString()
 
   const admin = createAdminClient()
 
@@ -55,21 +52,25 @@ export default async function AdminComercialPage({
     )
   }
 
-  const [{ data: stagesRaw }, { data: leadsRaw }, { data: apptsRaw }, { data: usersRaw }] = await Promise.all([
-    admin.from('crm_stages').select('id, name, position').eq('tenant_id', ctx.tenantId!).order('position'),
+  const [funnelStages, { data: leadsRaw }, { data: apptsRaw }, { data: usersRaw }] = await Promise.all([
+    // Funil vindo do banco: inclui leads da REDE (branch_id null) e os sem
+    // etapa. Antes o filtro `.in('branch_id', ...)` nunca casava com NULL, e
+    // como o inbox cria todo lead na rede, o painel inteiro ficava vazio.
+    getLeadFunnel({ tenantId: ctx.tenantId!, branchIds: null, from: startDate, to: endDate }),
+
     admin.from('leads')
       .select('id, crm_stage_id, client_id, owner_id, created_at')
-      .in('branch_id', branchIds)
       .eq('tenant_id', ctx.tenantId!)
       .gte('created_at', startISO).lte('created_at', endISO),
+
     admin.from('appointments')
       .select('id, status, source, is_evaluation, price, created_by_id, scheduled_at')
       .in('branch_id', branchIds)
       .gte('scheduled_at', startISO).lte('scheduled_at', endISO),
+
     admin.from('users').select('id, name').eq('tenant_id', ctx.tenantId!),
   ])
 
-  const stages = (stagesRaw ?? []) as { id: string; name: string; position: number }[]
   const leads  = (leadsRaw  ?? []) as { id: string; crm_stage_id: string | null; client_id: string | null; owner_id: string | null }[]
   const appts  = (apptsRaw  ?? []) as { status: string; source: string; is_evaluation: boolean; price: number; created_by_id: string | null }[]
   const userName = new Map((usersRaw ?? []).map((u: { id: string; name: string }) => [u.id, u.name]))
@@ -77,38 +78,49 @@ export default async function AdminComercialPage({
   // -- KPIs de conversão --------------------------------------------
   const totalLeads   = leads.length
   const convertidos  = leads.filter(l => l.client_id).length
-  const conversao    = totalLeads > 0 ? (convertidos / totalLeads) * 100 : 0
+  const conversao    = percent(convertidos, totalLeads) ?? 0
 
   // -- Avaliações (agendadas × realizadas) --------------------------
-  const evals          = appts.filter(a => a.is_evaluation)
-  const evalAgendadas  = evals.length
-  const evalRealizadas = evals.filter(a => a.status === 'COMPLETED').length
-  const comparecimento = evalAgendadas > 0 ? (evalRealizadas / evalAgendadas) * 100 : 0
+  // Comparecimento exclui as canceladas do denominador: com elas dentro a
+  // métrica misturava "não cancelou" com "compareceu" e ficava sempre baixa.
+  const evals             = appts.filter(a => a.is_evaluation)
+  const evalAgendadas     = evals.length
+  const evalConsideradas  = evals.filter(a => a.status !== 'CANCELLED').length
+  const evalRealizadas    = evals.filter(a => a.status === 'COMPLETED').length
+  const comparecimento    = percent(evalRealizadas, evalConsideradas) ?? 0
 
   // -- Agendamentos de origem comercial -----------------------------
   const comerciais = appts.filter(a => a.source === 'COMMERCIAL')
 
   // -- Funil por estágio --------------------------------------------
-  const funil = stages.map(s => ({
-    name:  s.name,
-    count: leads.filter(l => l.crm_stage_id === s.id).length,
-  }))
+  const funil = funnelStages.map(s => ({ name: s.name, count: s.leads }))
   const funilMax = Math.max(1, ...funil.map(f => f.count))
 
   // -- Ranking por vendedor -----------------------------------------
+  // Leads sem dono entram numa linha própria em vez de sumirem: antes o
+  // ranking somava menos leads que o KPI de leads recebidos, sem explicação.
   type Seller = { id: string; name: string; leads: number; convertidos: number; agendamentos: number }
   const sellers = new Map<string, Seller>()
-  const bump = (id: string | null): Seller | null => {
-    if (!id) return null
-    let s = sellers.get(id)
-    if (!s) { s = { id, name: userName.get(id) ?? 'Sem nome', leads: 0, convertidos: 0, agendamentos: 0 }; sellers.set(id, s) }
+  const UNASSIGNED = '__sem_responsavel__'
+  const bump = (id: string | null): Seller => {
+    const key = id ?? UNASSIGNED
+    let s = sellers.get(key)
+    if (!s) {
+      s = {
+        id: key,
+        name: id ? (userName.get(id) ?? 'Sem nome') : 'Sem responsável',
+        leads: 0, convertidos: 0, agendamentos: 0,
+      }
+      sellers.set(key, s)
+    }
     return s
   }
   for (const l of leads) {
     const s = bump(l.owner_id)
-    if (s) { s.leads++; if (l.client_id) s.convertidos++ }
+    s.leads++
+    if (l.client_id) s.convertidos++
   }
-  for (const a of comerciais) { const s = bump(a.created_by_id); if (s) s.agendamentos++ }
+  for (const a of comerciais) { const s = bump(a.created_by_id); s.agendamentos++ }
   const ranking = [...sellers.values()]
     .sort((a, b) => (b.leads + b.agendamentos) - (a.leads + a.agendamentos))
 
@@ -140,7 +152,7 @@ export default async function AdminComercialPage({
         <KpiHero label="Conversão de leads" value={fmtPct(conversao)} sub={`${fmtInt(convertidos)} de ${fmtInt(totalLeads)} leads`} />
         <Kpi label="Leads recebidos"        value={fmtInt(totalLeads)} />
         <Kpi label="Avaliações agendadas"   value={fmtInt(evalAgendadas)} sub={`${fmtInt(evalRealizadas)} realizadas`} />
-        <Kpi label="Comparecimento"         value={fmtPct(comparecimento)} sub="das avaliações" />
+        <Kpi label="Comparecimento"         value={fmtPct(comparecimento)} sub={`${fmtInt(evalRealizadas)} de ${fmtInt(evalConsideradas)} não canceladas`} />
         <Kpi label="Agendamentos comerciais" value={fmtInt(comerciais.length)} sub="gerados pelo comercial" />
       </div>
 

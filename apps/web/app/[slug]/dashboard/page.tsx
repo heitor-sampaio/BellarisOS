@@ -1,7 +1,6 @@
 ﻿import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getTenantContext } from '@/lib/auth'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
 import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
@@ -9,8 +8,14 @@ import type { AppModule } from '@estetica-os/types'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { RevenueBarChart } from '@/components/branch/revenue-bar-chart'
 import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
-import { format, subMonths, subDays, startOfMonth, endOfMonth, differenceInDays } from 'date-fns'
+import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { unitTag } from '@estetica-os/utils'
+import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ } from '@/lib/datetime'
+import {
+  resolvePeriod, delta, ratio, occupancyPct, CAPACITY_HOURS_PER_DAY,
+  getCore, getSeries, getTopProcedures, EMPTY_CORE,
+} from '@/lib/metrics'
 import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
 
 // --- Avatar colorido determinístico ------------------------------
@@ -72,17 +77,11 @@ function StatusChip({ status }: { status: string }) {
 function formatBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 }
-function pct(a: number, b: number) {
-  if (!b) return null
-  const d = ((a - b) / b) * 100
-  return { value: Math.abs(d).toFixed(1), up: d >= 0 }
-}
 
 // -----------------------------------------------------------------
 export default async function BranchDashboardPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const ctx      = await getTenantContext()
-  const supabase = await createSupabase()
 
   const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
   if (!branch) notFound()
@@ -103,49 +102,54 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
   const hasAnyWidget = canFinancial || canAgenda || canProcedures || canClients
 
-  const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0)
-  const todayEnd   = new Date(now); todayEnd.setHours(23, 59, 59, 999)
-  const monthStart = startOfMonth(now)
-  const lastMonthStart = startOfMonth(subMonths(now, 1))
-  const lastMonthEnd   = endOfMonth(subMonths(now, 1))
-  const sixMonthsAgo   = startOfMonth(subMonths(now, 5))
-  const thirtyDaysAgo  = subDays(now, 30)
-  const ninetyDaysAgo  = subDays(now, 90)
+  // Janelas no fuso do negócio. Antes eram montadas no fuso do processo (UTC
+  // em produção), então "hoje" e "este mês" começavam 3h cedo demais.
+  const period     = resolvePeriod('month', undefined, undefined, now)
+  const todayStart = startOfDayTZ(now)
+  const todayEnd   = endOfDayTZ(now)
+  const sixMonthsAgo = startOfMonthTZ(addMonthsTZ(now, -5))
+  const thirtyDaysAgo = addDaysTZ(now, -30)
+  const ninetyDaysAgo = addDaysTZ(now, -90)
+
+  const metricArgs = { tenantId: ctx.tenantId!, branchIds: [branchId], from: period.from, to: period.to }
 
   const [
+    core,
+    prevCore,
+    monthSeries,
     { count: pendingCheckouts },
-    { data: monthRevTx },
-    { data: lastMonthRevTx },
     { data: todayAppts },
     { count: professionalsCount },
-    { count: monthCompletedCount },
-    { data: sixMonthsTx },
-    { data: procedureAppts },
+    procedureStats,
     { data: recentVisitorIds },
     { data: allActiveClients },
-    { count: newClientsCount },
   ] = await Promise.all([
+    // O núcleo é uma chamada só, agregada no Postgres: receita, atendimentos,
+    // novos clientes e comissões saem coerentes entre si por construção.
+    (canFinancial || canAgenda || canClients)
+      ? getCore(metricArgs)
+      : Promise.resolve({ ...EMPTY_CORE }),
+
+    (canFinancial || canAgenda || canClients)
+      ? getCore({ ...metricArgs, from: period.prevFrom, to: period.prevTo })
+      : Promise.resolve({ ...EMPTY_CORE }),
+
+    canFinancial
+      ? getSeries({
+          tenantId: ctx.tenantId!, branchIds: [branchId],
+          from: sixMonthsAgo, to: period.to, granularity: 'month',
+        })
+      : Promise.resolve([]),
+
     canCheckout
       ? admin.from('treatment_plans').select('id', { count: 'exact', head: true })
           .eq('branch_id', branchId).eq('status', 'PROPOSED')
       : Promise.resolve({ count: 0 }),
 
-    canFinancial
-      ? supabase.from('financial_transactions').select('amount')
-          .eq('branch_id', branchId).eq('type', 'INCOME')
-          .gte('created_at', monthStart.toISOString())
-      : Promise.resolve({ data: [] }),
-
-    canFinancial
-      ? supabase.from('financial_transactions').select('amount')
-          .eq('branch_id', branchId).eq('type', 'INCOME')
-          .gte('created_at', lastMonthStart.toISOString())
-          .lte('created_at', lastMonthEnd.toISOString())
-      : Promise.resolve({ data: [] }),
-
+    // Agenda do dia: a lista em si, não uma agregação.
     canAgenda
       ? (() => {
-          let q = supabase.from('appointments')
+          let q = admin.from('appointments')
             .select('id, client_id, scheduled_at, duration_min, status, price, clients(name), procedures(name), users(name)')
             .eq('branch_id', branchId)
             .gte('scheduled_at', todayStart.toISOString())
@@ -157,101 +161,81 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       : Promise.resolve({ data: [] }),
 
     (canAgenda && !professionalOnly)
-      ? supabase.from('users').select('id', { count: 'exact', head: true })
+      ? admin.from('users').select('id', { count: 'exact', head: true })
           .eq('branch_id', branchId).eq('provides_services', true).eq('is_active', true)
       : Promise.resolve({ count: 0 }),
 
-    (canAgenda || canFinancial)
-      ? (() => {
-          let q = supabase.from('appointments').select('id', { count: 'exact', head: true })
-            .eq('branch_id', branchId).eq('status', 'COMPLETED')
-            .gte('scheduled_at', monthStart.toISOString())
-          if (proId) q = q.eq('professional_id', proId)
-          return q
-        })()
-      : Promise.resolve({ count: 0 }),
-
-    canFinancial
-      ? supabase.from('financial_transactions').select('amount, created_at')
-          .eq('branch_id', branchId).eq('type', 'INCOME')
-          .gte('created_at', sixMonthsAgo.toISOString())
-      : Promise.resolve({ data: [] }),
-
     canProcedures
-      ? supabase.from('appointments').select('procedure_id, procedures(name)')
-          .eq('branch_id', branchId).eq('status', 'COMPLETED')
-          .gte('scheduled_at', thirtyDaysAgo.toISOString())
-      : Promise.resolve({ data: [] }),
+      ? getTopProcedures({
+          tenantId: ctx.tenantId!, branchIds: [branchId],
+          from: thirtyDaysAgo, to: now, limit: 4,
+        })
+      : Promise.resolve([]),
 
     canClients
-      ? supabase.from('appointments').select('client_id')
+      ? admin.from('appointments').select('client_id')
           .eq('branch_id', branchId)
           .in('status', ['COMPLETED', 'SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'])
           .gte('scheduled_at', ninetyDaysAgo.toISOString())
       : Promise.resolve({ data: [] }),
 
     canClients
-      ? supabase.from('clients').select('id, name, phone')
-          .eq('branch_id', branchId).eq('is_active', true).limit(400)
+      ? admin.from('clients').select('id, name, phone')
+          .eq('tenant_id', ctx.tenantId!).eq('is_active', true)
+          .contains('tags', [unitTag(branch.name)])
       : Promise.resolve({ data: [] }),
-
-    canClients
-      ? supabase.from('clients').select('id', { count: 'exact', head: true })
-          .eq('branch_id', branchId).gte('created_at', monthStart.toISOString())
-      : Promise.resolve({ count: 0 }),
   ])
 
-  // -- KPI calculations ------------------------------------------
-  const monthRevenue   = (monthRevTx ?? []).reduce((s, t) => s + parseFloat(String(t.amount)), 0)
-  const lastRevenue    = (lastMonthRevTx ?? []).reduce((s, t) => s + parseFloat(String(t.amount)), 0)
-  const revDelta       = pct(monthRevenue, lastRevenue)
-  const avgTicket      = monthCompletedCount ? monthRevenue / monthCompletedCount : 0
+  // -- KPIs ------------------------------------------------------
+  const monthRevenue       = core.revenueCash
+  const monthCompletedCount = core.appointmentsCompleted
+  const rawDelta           = delta(monthRevenue, prevCore.revenueCash)
+  const revDelta           = rawDelta
+    ? { value: rawDelta.value.toFixed(1).replace('.', ','), up: rawDelta.up }
+    : null
 
-  const validToday     = (todayAppts ?? []).filter(a => !['CANCELLED', 'NO_SHOW'].includes(a.status))
-  const todayCount     = validToday.length
-  const awaitingCount  = validToday.filter(a => a.status === 'SCHEDULED').length
-  const scheduledMin   = validToday.reduce((s, a) => s + (a.duration_min ?? 0), 0)
-  const capacityMin    = (professionalsCount ?? 1) * 8 * 60
-  const occupancy      = professionalsCount ? Math.min(Math.round((scheduledMin / capacityMin) * 100), 100) : 0
+  // Ticket médio = receita dos atendimentos ÷ atendimentos concluídos.
+  // Numerador e denominador do mesmo conjunto — antes o numerador era o caixa
+  // (que inclui venda de produto e plano) sobre a contagem da agenda.
+  const avgTicket = ratio(core.serviceRevenue, core.appointmentsCompleted) ?? 0
 
-  // -- Chart -----------------------------------------------------
+  const validToday    = (todayAppts ?? []).filter(a => !['CANCELLED', 'NO_SHOW'].includes(a.status))
+  const todayCount    = validToday.length
+  const awaitingCount = validToday.filter(a => a.status === 'SCHEDULED').length
+  const scheduledMin  = validToday.reduce((s, a) => s + (a.duration_min ?? 0), 0)
+
+  // Capacidade do DIA (a agenda mostrada é a de hoje), não do mês.
+  const capacityMin = (professionalsCount ?? 0) * CAPACITY_HOURS_PER_DAY * 60
+  const occupancy   = occupancyPct(scheduledMin, professionalsCount ?? 0, todayStart, todayEnd) ?? 0
+
+  // -- Gráfico dos últimos 6 meses -------------------------------
+  const seriesByMonth = new Map(monthSeries.map(p => [monthKeyTZ(p.bucket), p.revenue]))
   const chartData = Array.from({ length: 6 }, (_, i) => {
-    const month = subMonths(now, 5 - i)
-    const key   = format(month, 'yyyy-MM')
-    const label = format(month, 'MMM', { locale: ptBR })
-    const value = (sixMonthsTx ?? [])
-      .filter(t => t.created_at.substring(0, 7) === key)
-      .reduce((s, t) => s + parseFloat(String(t.amount)), 0)
-    return { label, value }
+    const month = addMonthsTZ(now, -(5 - i))
+    return {
+      label: format(month, 'MMM', { locale: ptBR }),
+      value: seriesByMonth.get(monthKeyTZ(month)) ?? 0,
+    }
   })
-  const semesterTotal = chartData.reduce((s, d) => s + d.value, 0)
-  const semesterDelta = semesterTotal - chartData[0]!.value // vs. 6 months ago
+  // Variação do semestre = último mês vs. primeiro. Antes era o total dos 6
+  // meses menos o primeiro mês, o que não comparava nada.
+  const semesterDelta = (chartData[5]?.value ?? 0) - (chartData[0]?.value ?? 0)
 
   // -- Top procedimentos -----------------------------------------
-  const procMap = new Map<string, { name: string; count: number }>()
-  for (const a of (procedureAppts ?? [])) {
-    const proc = a.procedures as unknown as { name: string } | null
-    if (!proc) continue
-    const curr = procMap.get(a.procedure_id)
-    if (curr) curr.count++
-    else procMap.set(a.procedure_id, { name: proc.name, count: 1 })
-  }
-  const topProcs   = [...procMap.values()].sort((a, b) => b.count - a.count).slice(0, 4)
-  const maxProc    = topProcs[0]?.count ?? 1
+  const topProcs = procedureStats.map(p => ({ name: p.name, count: p.appointments }))
+  const maxProc  = topProcs[0]?.count ?? 1
 
-  // -- Funil CRM -------------------------------------------------
-  const totalActive        = allActiveClients?.length ?? 0
-  const withScheduled      = new Set(validToday.filter(a => a.status === 'SCHEDULED').map(a => a.client_id ?? '')).size
-  const withConfirmed      = new Set(validToday.filter(a => ['CONFIRMED', 'IN_PROGRESS'].includes(a.status)).map(a => a.client_id ?? '')).size
-  const completedThisMonth = monthCompletedCount ?? 0
-  const funnelMax = newClientsCount ?? 1
-
+  // -- Funil ------------------------------------------------------
+  // Todas as etapas no mesmo recorte (o mês) e no mesmo universo. Antes o
+  // funil misturava "novos no mês" com "agendados hoje", e a barra usava
+  // "novos clientes" como base — o que estourava 100%.
   const funnel = [
-    { label: 'Novos este mês',   count: newClientsCount ?? 0,     color: 'var(--brand)' },
-    { label: 'Agendados hoje',   count: withScheduled,            color: 'var(--brand-2)' },
-    { label: 'Em atendimento',   count: withConfirmed,            color: 'var(--brand-3)' },
-    { label: 'Concluídos no mês', count: completedThisMonth,      color: 'var(--success)' },
+    { label: 'Novos clientes',    count: core.newClients,            color: 'var(--brand)' },
+    { label: 'Agendamentos',      count: core.appointmentsTotal,     color: 'var(--brand-2)' },
+    { label: 'Concluídos',        count: core.appointmentsCompleted, color: 'var(--brand-3)' },
+    { label: 'Cancelados/faltas', count: core.appointmentsCancelled + core.appointmentsNoShow, color: 'var(--border)' },
   ]
+  const funnelMax = Math.max(1, ...funnel.map(f => f.count))
 
   // -- Reativar clientes -----------------------------------------
   const recentIds = new Set((recentVisitorIds ?? []).map(a => a.client_id))
@@ -261,10 +245,14 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   let toReactivate: RC[] = []
 
   if (inactiveClients.length > 0) {
-    const ids = inactiveClients.slice(0, 60).map(c => c.id)
-    const { data: lastAppts } = await supabase
+    // A última visita precisa ser buscada para TODOS os inativos: antes só os
+    // 60 primeiros eram consultados, e como os não consultados ficavam com
+    // daysSince null — ordenados na frente — a lista mostrava justamente
+    // quem não tinha sido medido.
+    const { data: lastAppts } = await admin
       .from('appointments').select('client_id, scheduled_at')
-      .in('client_id', ids).eq('status', 'COMPLETED')
+      .in('client_id', inactiveClients.map(c => c.id))
+      .eq('status', 'COMPLETED')
       .order('scheduled_at', { ascending: false })
 
     const lastMap = new Map<string, string>()
@@ -277,11 +265,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         ...c,
         daysSince: lastMap.has(c.id) ? differenceInDays(now, new Date(lastMap.get(c.id)!)) : null,
       }))
-      .sort((a, b) => {
-        if (a.daysSince === null) return -1
-        if (b.daysSince === null) return 1
-        return b.daysSince - a.daysSince
-      })
+      // Quem tem mais tempo sem vir primeiro; quem nunca veio vai para o fim,
+      // porque não é caso de reativação e sim de primeira visita.
+      .sort((a, b) => (b.daysSince ?? -1) - (a.daysSince ?? -1))
       .slice(0, 3)
   }
 

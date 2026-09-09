@@ -82,7 +82,7 @@ function AnimatedNum({ value, format = 'brl' }: {
 
 // -- KPI card ------------------------------------------------------------------
 function KpiCard({
-  label, value, format = 'brl', delta, accent, showDelta = false,
+  label, value, format = 'brl', delta, accent, showDelta = false, deltaUnit = '%',
 }: {
   label: string
   value: number
@@ -90,6 +90,8 @@ function KpiCard({
   delta?: number | null
   accent?: string
   showDelta?: boolean
+  /** Unidade da variação. Métricas que já são percentuais variam em "p.p.". */
+  deltaUnit?: '%' | 'p.p.'
 }) {
   const hasDelta = delta != null
   return (
@@ -113,7 +115,7 @@ function KpiCard({
           color: delta! >= 0 ? 'var(--success)' : '#dc2626',
           fontWeight: 600,
         }}>
-          {delta! >= 0 ? '▲' : '▼'} {Math.abs(delta!).toFixed(1).replace('.', ',')}% vs anterior
+          {delta! >= 0 ? '▲' : '▼'} {Math.abs(delta!).toFixed(1).replace('.', ',')}{deltaUnit} vs anterior
         </p>
       ) : showDelta ? (
         <p style={{ fontSize: 11, margin: '4px 0 0', color: 'var(--text-faint)', fontWeight: 500 }}>
@@ -159,8 +161,30 @@ const PAY_LABELS: Record<string, string> = {
   DEBIT_CARD: 'Débito', CREDIT_CARD: 'Crédito', INTERNAL_CREDIT: 'Crédito Interno',
 }
 
+/**
+ * Somas de caixa, com a mesma regra usada nas funções de métrica do banco:
+ * só transações pagas, e o par estorno/estornada fora dos dois lados — antes
+ * a receita original continuava contando E a contra-transação entrava como
+ * despesa, então um estorno impactava o resultado duas vezes.
+ */
+type MoneyRow = { type: string; amount: number | string; is_paid?: boolean; category?: string | null; notes?: string | null }
+
+const isReversal = (t: MoneyRow) => t.notes === 'Estornada' || t.category === 'Estorno'
+
+export function sumRevenue(rows: MoneyRow[]): number {
+  return rows
+    .filter(t => t.type === 'INCOME' && t.is_paid && !isReversal(t))
+    .reduce((s, t) => s + Number(t.amount), 0)
+}
+
+export function sumExpenses(rows: MoneyRow[]): number {
+  return rows
+    .filter(t => t.type === 'EXPENSE' && t.is_paid && !isReversal(t))
+    .reduce((s, t) => s + Number(t.amount), 0)
+}
+
 const SRC_LABELS: Record<string, string> = {
-  INTERNAL: 'Interno', ONLINE: 'Online', CLIENT_APP: 'App do Cliente',
+  INTERNAL: 'Interno', ONLINE: 'Online', CLIENT_APP: 'App do Cliente', COMMERCIAL: 'Comercial',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -175,15 +199,21 @@ function TabOverview(p: ReportsBiProps) {
   const { txsCurr, txsPrev, apptsCurr, apptsPrevCount, clientsCurr, clientsPrevCount,
     stockMoves, allAppts, commissions, branches, evolutionData, granularity } = p
 
-  const revenue      = txsCurr.filter(t => t.type === 'INCOME' && t.is_paid).reduce((s, t) => s + Number(t.amount), 0)
-  const prevRevenue  = txsPrev.filter(t => t.type === 'INCOME' && t.is_paid).reduce((s, t) => s + Number(t.amount), 0)
-  const stockCOGS    = stockMoves.reduce((s, m) => s + Math.abs(Number(m.quantity)) * Number(m.products?.cost_price ?? 0), 0)
-  const expenses     = txsCurr.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0) + stockCOGS
-  const prevExpenses = txsPrev.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0)
+  const revenue      = sumRevenue(txsCurr)
+  const prevRevenue  = sumRevenue(txsPrev)
+  // Despesa simétrica à receita: só o que foi pago. Antes a receita exigia
+  // is_paid e a despesa não, então uma conta com vencimento futuro derrubava
+  // o lucro do mês corrente — e esta tela discordava de /admin/financeiro.
+  const expenses     = sumExpenses(txsCurr)
+  const prevExpenses = sumExpenses(txsPrev)
   const profit       = revenue - expenses
   const prevProfit   = prevRevenue - prevExpenses
-  const avgTicket    = apptsCurr.length > 0 ? revenue / apptsCurr.length : 0
-  const prevAvgTicket = apptsPrevCount > 0 ? prevRevenue / apptsPrevCount : 0
+  // Ticket médio: receita dos ATENDIMENTOS ÷ atendimentos. Antes era o caixa
+  // do período (que inclui venda de produto e pacote) sobre a contagem da
+  // agenda — dois conjuntos diferentes, e a conta não fechava na mão.
+  const serviceRevenue = apptsCurr.reduce((s, a) => s + Number(a.price ?? 0), 0)
+  const avgTicket      = apptsCurr.length > 0 ? serviceRevenue / apptsCurr.length : 0
+
 
   const byBranch = branches
     .map(b => ({
@@ -235,7 +265,9 @@ function TabOverview(p: ReportsBiProps) {
         <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? '#16a34a' : '#dc2626'} delta={pctDelta(profit, prevProfit)}     showDelta />
         <KpiCard label="Atendimentos"   value={apptsCurr.length}  format="int" delta={pctDelta(apptsCurr.length, apptsPrevCount)}         showDelta />
         <KpiCard label="Novos Clientes" value={clientsCurr.length} format="int" delta={pctDelta(clientsCurr.length, clientsPrevCount)}    showDelta />
-        <KpiCard label="Ticket Médio"   value={avgTicket}         format="brl" delta={pctDelta(avgTicket, prevAvgTicket)}                  showDelta />
+        {/* Sem delta: a receita de serviço do período anterior não é carregada,
+            e comparar com o caixa anterior daria uma variação de outra métrica. */}
+        <KpiCard label="Ticket Médio"   value={avgTicket}         format="brl" />
       </div>
       {/* Charts grid */}
       <div className="rg-2" style={{ gap: 16 }}>
@@ -268,15 +300,22 @@ function TabOverview(p: ReportsBiProps) {
 function TabFinanceiro(p: ReportsBiProps) {
   const { txsCurr, txsPrev, stockMoves, branches, installments } = p
 
-  const revenue     = txsCurr.filter(t => t.type === 'INCOME' && t.is_paid).reduce((s, t) => s + Number(t.amount), 0)
-  const prevRevenue = txsPrev.filter(t => t.type === 'INCOME' && t.is_paid).reduce((s, t) => s + Number(t.amount), 0)
-  const stockCOGS   = stockMoves.reduce((s, m) => s + Math.abs(Number(m.quantity)) * Number(m.products?.cost_price ?? 0), 0)
-  const opEx        = txsCurr.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0)
-  const prevOpEx    = txsPrev.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0)
-  const profit      = revenue - stockCOGS - opEx
+  const revenue     = sumRevenue(txsCurr)
+  const prevRevenue = sumRevenue(txsPrev)
+  // Consumo de insumos é indicador gerencial, exibido à parte. NÃO entra no
+  // resultado: a compra do insumo já foi lançada como despesa (categoria
+  // "Estoque"), e somar o consumo de novo contava o mesmo custo duas vezes.
+  const stockCOGS   = stockMoves.reduce(
+    (s, m) => s + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? m.products?.cost_price ?? 0), 0)
+  const opEx        = sumExpenses(txsCurr)
+  const prevOpEx    = sumExpenses(txsPrev)
+  const profit      = revenue - opEx
   const prevProfit  = prevRevenue - prevOpEx
   const margin      = revenue > 0 ? (profit / revenue) * 100 : 0
   const prevMargin  = prevRevenue > 0 ? (prevProfit / prevRevenue) * 100 : 0
+  // Margem é percentual: a variação se mede em pontos percentuais, não em
+  // "percentual de percentual" (20% → 22% não é "+10%", é "+2,0 p.p.").
+  const marginDeltaPp = margin - prevMargin
 
   const payMap: Record<string, number> = {}
   txsCurr.filter(t => t.type === 'INCOME' && t.is_paid && t.payment_method).forEach(t => {
@@ -326,14 +365,16 @@ function TabFinanceiro(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Receita Bruta"   value={revenue}   format="brl" delta={pctDelta(revenue, prevRevenue)}   showDelta />
-        <KpiCard label="Custo Insumos"   value={stockCOGS} format="brl" accent="#dc2626" />
+        <KpiCard label="Consumo de insumos" value={stockCOGS} format="brl" accent="#dc2626" />
         <KpiCard label="Despesas Op."    value={opEx}      format="brl" accent="#d97706"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
         <KpiCard label="Lucro"           value={profit}    format="brl" accent={profit >= 0 ? '#16a34a' : '#dc2626'} delta={pctDelta(profit, prevProfit)}   showDelta />
-        <KpiCard label="Margem"          value={margin}    format="pct" accent={margin >= 20 ? '#16a34a' : margin >= 0 ? '#d97706' : '#dc2626'} delta={pctDelta(margin, prevMargin)} showDelta />
+        <KpiCard label="Margem"          value={margin}    format="pct" accent={margin >= 20 ? '#16a34a' : margin >= 0 ? '#d97706' : '#dc2626'} delta={prevRevenue > 0 ? marginDeltaPp : null} showDelta deltaUnit="p.p." />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }}>
-          <DreWaterfall receita={revenue} custoProdutos={stockCOGS} despesas={opEx} lucro={profit} />
+          {/* O consumo de insumos não entra no DRE: já está dentro das
+              despesas, na categoria "Estoque", pela compra. */}
+          <DreWaterfall receita={revenue} custoProdutos={0} despesas={opEx} lucro={profit} />
         </SCard>
         <SCard title="Receita por Forma de Pagamento">
           <HBarChart data={Object.entries(payMap).map(([name, value]) => ({ name, value }))} />

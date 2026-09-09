@@ -6,6 +6,7 @@ import { ProductCategoryModal } from '@/components/admin/product-category-modal'
 import { StockProductModal } from '@/components/branch/stock-product-modal'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
+import { startOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -102,27 +103,30 @@ export default async function BranchStockPage({
   const categories   = categoriesRaw ?? []
   const productIds   = products.map(p => p.id)
 
-  const now             = new Date()
-  const startOfMonth    = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const in30Days        = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+  const now          = new Date()
+  const startOfMonth = startOfMonthTZ(now).toISOString()
+  const in30Days     = addDaysTZ(now, 30)
 
   const [{ data: movementsRaw }, { data: batchesRaw }] = productIds.length > 0
     ? await Promise.all([
+        // Giro ao custo do movimento (unit_cost), que preserva o custo da
+        // época; o custo atual do produto é só o fallback.
         admin
           .from('stock_movements')
-          .select('product_id, quantity')
+          .select('product_id, quantity, unit_cost')
           .in('product_id', productIds)
           .eq('branch_id', branchId)
           .eq('type', 'PROCEDURE_USAGE')
           .gte('created_at', startOfMonth),
 
+        // `product_batches` não tem branch_id — o filtro por filial que existia
+        // aqui fazia o PostgREST devolver erro e o alerta ficava sempre vazio.
+        // O lote é do produto; o recorte da filial vem de productIds.
         admin
           .from('product_batches')
-          .select('product_id')
+          .select('product_id, expires_at')
           .in('product_id', productIds)
-          .eq('branch_id', branchId)
           .gt('quantity', 0)
-          .gte('expires_at', now.toISOString())
           .lte('expires_at', in30Days.toISOString()),
       ])
     : [{ data: [] as any }, { data: [] as any }]
@@ -135,7 +139,8 @@ export default async function BranchStockPage({
 
   const costMap  = Object.fromEntries(products.map(p => [p.id, p.costPrice]))
   const valorGiro = (movementsRaw ?? []).reduce(
-    (sum: number, m: any) => sum + Math.abs(Number(m.quantity)) * (costMap[m.product_id] ?? 0),
+    (sum: number, m: any) =>
+      sum + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? costMap[m.product_id] ?? 0),
     0,
   )
 
@@ -143,9 +148,15 @@ export default async function BranchStockPage({
     p.branches.some(b => b.minStock > 0 && b.currentStock <= b.minStock),
   ).length
 
-  const semEstoque = products.filter(p => p.branches.every(b => b.currentStock === 0)).length
+  // `every` sobre lista vazia é true: sem a guarda de comprimento, todo produto
+  // do catálogo da rede que nunca teve estoque nesta filial entrava na conta.
+  const semEstoque = products.filter(p =>
+    p.branches.length > 0 && p.branches.every(b => b.currentStock === 0),
+  ).length
 
-  const validadeProxima = new Set((batchesRaw ?? []).map((b: any) => b.product_id)).size
+  // Conta LOTES, não produtos — cinco lotes do mesmo produto vencendo são cinco
+  // avisos. Lotes já vencidos entram no alerta em vez de sumirem dele.
+  const validadeProxima = (batchesRaw ?? []).length
 
   const suppliers       = [...new Set(products.map(p => p.supplier).filter(Boolean) as string[])].sort()
   const stockCategories = [...new Set(products.map(p => p.category).filter(Boolean) as string[])].sort()

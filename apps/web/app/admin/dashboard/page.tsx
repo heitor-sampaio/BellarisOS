@@ -10,6 +10,12 @@ import type {
   AlertLowStock,
 } from '@/components/admin/admin-dashboard-view'
 import { AdminDashboardDynamic as AdminDashboardView } from '@/components/admin/admin-dashboard-dynamic'
+import { startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ, partsInTZ } from '@/lib/datetime'
+import {
+  resolvePeriod, ratio, percent, EMPTY_CORE,
+  getCore, getByBranch, getSeries, getTopProcedures, getTopProfessionals,
+  getTopClients, getLeadFunnel,
+} from '@/lib/metrics'
 
 export default async function AdminDashboardPage({
   searchParams,
@@ -37,60 +43,27 @@ export default async function AdminDashboardPage({
   const now   = new Date()
 
   // -- Período selecionado -------------------------------------------
-  const msPerDay = 86_400_000
-  type Period = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
-  const period = ((rawPeriod ?? 'month') as Period)
+  // Janela e comparação resolvidas em America/Sao_Paulo, com o período
+  // anterior de mesma duração decorrida (antes o mês parcial era comparado
+  // com o mês anterior inteiro, e todo delta nascia negativo).
+  const periodInfo  = resolvePeriod(rawPeriod, rawFrom, rawTo, now)
+  const period      = periodInfo.key
+  const startDate   = periodInfo.from
+  const endDate     = periodInfo.to
+  const prevStart   = periodInfo.prevFrom
+  const prevEnd     = periodInfo.prevTo
+  const periodLabel = periodInfo.label
 
-  let startDate: Date
-  let endDate:   Date
-  let prevStart: Date
-  let prevEnd:   Date
-
-  if (period === 'today') {
-    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    endDate   = now
-    prevStart = new Date(startDate.getTime() - msPerDay)
-    prevEnd   = new Date(startDate.getTime() - 1)
-  } else if (period === '7d') {
-    startDate = new Date(now.getTime() - 7 * msPerDay); startDate.setHours(0, 0, 0, 0)
-    endDate   = now
-    prevEnd   = new Date(startDate.getTime() - 1)
-    prevStart = new Date(prevEnd.getTime() - 7 * msPerDay); prevStart.setHours(0, 0, 0, 0)
-  } else if (period === '15d') {
-    startDate = new Date(now.getTime() - 15 * msPerDay); startDate.setHours(0, 0, 0, 0)
-    endDate   = now
-    prevEnd   = new Date(startDate.getTime() - 1)
-    prevStart = new Date(prevEnd.getTime() - 15 * msPerDay); prevStart.setHours(0, 0, 0, 0)
-  } else if (period === 'custom' && rawFrom && rawTo) {
-    startDate = new Date(rawFrom + 'T00:00:00')
-    endDate   = new Date(rawTo   + 'T23:59:59.999')
-    const dur = endDate.getTime() - startDate.getTime()
-    prevEnd   = new Date(startDate.getTime() - 1)
-    prevStart = new Date(prevEnd.getTime() - dur)
-  } else if (period === 'all') {
-    startDate = new Date(2000, 0, 1)
-    endDate   = now
-    prevStart = new Date(1999, 0, 1)
-    prevEnd   = new Date(1999, 11, 31, 23, 59, 59, 999)
-  } else {
-    // month (default)
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-    endDate   = now
-    prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    prevEnd   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
-  }
-
-  const periodLabel =
-    period === 'today'  ? `Hoje, ${now.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })}` :
-    period === '7d'     ? 'Últimos 7 dias' :
-    period === '15d'    ? 'Últimos 15 dias' :
-    period === 'all'    ? 'Todo período' :
-    period === 'custom' ? `${startDate.toLocaleDateString('pt-BR')} – ${endDate.toLocaleDateString('pt-BR')}` :
-    now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, c => c.toUpperCase())
+  // O seletor da tela oferece um subconjunto dos períodos; qualquer outro
+  // valor vindo da URL cai em "month", que é o padrão exibido.
+  const SELECTOR_PERIODS = ['today', '7d', '15d', 'month', 'all', 'custom'] as const
+  const selectorPeriod = (SELECTOR_PERIODS as readonly string[]).includes(period)
+    ? (period as typeof SELECTOR_PERIODS[number])
+    : 'month'
 
   // -- Datas fixas (não afetadas pelo seletor) -----------------------
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const endOfToday   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+  const startOfToday = startOfDayTZ(now)
+  const endOfToday   = endOfDayTZ(now)
 
   // -- Filiais -------------------------------------------------------
   const { data: branchesRaw } = await admin
@@ -112,67 +85,49 @@ export default async function AdminDashboardPage({
   }
 
   // -- Queries paralelas ---------------------------------------------
+  const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate }
+  const prevArgs   = { tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd }
+
   const [
-    { data: txsCurrRaw },
-    { data: txsPrevRaw },
-    { data: apptsCurrRaw },
-    { data: apptsPrevRaw },
-    { data: clientsCurrRaw },
+    core,
+    prevCore,
+    branchMetrics,
+    seriesData,
+    procedureStats,
+    professionalStats,
+    clientStats,
+    ltvStats,
     { count: totalClientsEver },
     { data: todayApptsRaw },
     { data: pendingPlansRaw },
     { data: bpsRaw },
     { data: proceduresRaw },
-    { data: txWithClientRaw },
-    { data: allMonthlyApptsRaw },
     { data: stockMovementsRaw },
-    { data: commissionsRaw },
     { data: clientsDemoRaw },
-    { data: ltvTxsRaw },
-    { count: prevClientsCount },
   ] = needsCore ? await Promise.all([
 
-    // Transações do período corrente (created_at incluído para gráfico diário)
-    admin.from('financial_transactions')
-      .select('amount, type, is_paid, branch_id, created_at')
-      .in('branch_id', branchIds)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString()),
+    // Núcleo agregado no Postgres: receita, atendimentos, novos clientes,
+    // comissões e minutos agendados numa chamada só e coerentes entre si.
+    getCore(metricArgs),
+    getCore(prevArgs),
+    getByBranch({ tenantId: ctx.tenantId!, from: startDate, to: endDate }),
+    getSeries({ ...metricArgs, granularity: period === 'today' ? 'hour' : 'day' }),
+    getTopProcedures({ ...metricArgs, limit: 5 }),
+    getTopProfessionals({ ...metricArgs, limit: 5 }),
+    getTopClients({ ...metricArgs, limit: 10 }),
 
-    // Transações do período anterior (para comparação de delta)
-    admin.from('financial_transactions')
-      .select('amount, type, is_paid, branch_id')
-      .in('branch_id', branchIds)
-      .gte('created_at', prevStart.toISOString())
-      .lte('created_at', prevEnd.toISOString()),
-
-    // Atendimentos concluídos no período corrente
-    admin.from('appointments')
-      .select('id, branch_id, procedure_id, professional_id, client_id, started_at, completed_at, price, client_rating, procedure_rating, procedures(name), users(name), clients(name, id)')
-      .in('branch_id', branchIds)
-      .eq('status', 'COMPLETED')
-      .gte('scheduled_at', startDate.toISOString())
-      .lte('scheduled_at', endDate.toISOString()),
-
-    // Atendimentos concluídos no período anterior (só contagem)
-    admin.from('appointments')
-      .select('id, branch_id')
-      .in('branch_id', branchIds)
-      .eq('status', 'COMPLETED')
-      .gte('scheduled_at', prevStart.toISOString())
-      .lte('scheduled_at', prevEnd.toISOString()),
-
-    // Novos clientes no período corrente
-    admin.from('clients')
-      .select('id, branch_id')
-      .in('branch_id', branchIds)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString()),
+    // LTV desde sempre. O limite alto é do SQL, não do PostgREST: antes esta
+    // consulta trazia "todas" as transações da história e era cortada em 1000.
+    getTopClients({
+      tenantId: ctx.tenantId!, branchIds,
+      from: new Date(Date.UTC(2000, 0, 1)), to: endDate, limit: 5000,
+    }),
 
     // Total de clientes da rede (all time)
     admin.from('clients')
       .select('id', { count: 'exact', head: true })
-      .eq('tenant_id', ctx.tenantId!),
+      .eq('tenant_id', ctx.tenantId!)
+      .eq('is_active', true),
 
     // Agendamentos de hoje (exceto cancelados e no-show)
     admin.from('appointments')
@@ -200,106 +155,55 @@ export default async function AdminDashboardPage({
 
     // Procedimentos ativos com custo variável (para cálculo de margem)
     admin.from('procedures')
-      .select('id, name, price, procedure_products(quantity, products(cost_price))')
+      .select('id, name, price, labor_cost, other_costs, procedure_products(quantity, products(cost_price))')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true),
 
-    // Transações do período com client_id direto (ranking de clientes por gasto)
-    admin.from('financial_transactions')
-      .select('amount, client_id')
-      .in('branch_id', branchIds)
-      .eq('type', 'INCOME')
-      .eq('is_paid', true)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
-      .not('client_id', 'is', null),
-
-    // Todos os agendamentos do período (qualquer status) para cálculo de ocupação
-    admin.from('appointments')
-      .select('id, branch_id, status')
-      .in('branch_id', branchIds)
-      .gte('scheduled_at', startDate.toISOString())
-      .lte('scheduled_at', endDate.toISOString()),
-
-    // Giro do período: apenas consumo de procedimentos (PROCEDURE_USAGE)
+    // Giro do período: consumo em procedimentos, ao custo do movimento
     admin.from('stock_movements')
-      .select('quantity, created_at, products(cost_price)')
+      .select('quantity, unit_cost, created_at, products(cost_price)')
       .in('branch_id', branchIds)
       .eq('type', 'PROCEDURE_USAGE')
-      .gte('created_at', startDate.toISOString()),
-
-    // Comissões do período corrente por profissional
-    admin.from('commissions')
-      .select('amount, professional_id, users(name)')
-      .in('branch_id', branchIds)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString()),
 
-    // Dados demográficos — todos os clientes da rede (tenant_id, não branch_id)
+    // Demografia — todos os clientes da rede
     admin.from('clients')
       .select('id, name, birth_date, city, zip_code')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true),
-
-    // LTV all-time: transações pagas com client_id direto (sem join via appointment)
-    admin.from('financial_transactions')
-      .select('amount, client_id')
-      .in('branch_id', branchIds)
-      .eq('type', 'INCOME')
-      .eq('is_paid', true)
-      .not('client_id', 'is', null),
-
-    // Novos clientes no período anterior (para delta de novos clientes)
-    admin.from('clients')
-      .select('id', { count: 'exact', head: true })
-      .in('branch_id', branchIds)
-      .gte('created_at', prevStart.toISOString())
-      .lte('created_at', prevEnd.toISOString()),
   ]) : [
-    { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] },
+    { ...EMPTY_CORE }, { ...EMPTY_CORE }, [], [], [], [], [], [],
     { count: 0 }, { data: [] }, { data: [] }, { data: [] }, { data: [] },
-    { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] },
-    { data: [] }, { count: 0 },
+    { data: [] }, { data: [] },
   ]
 
-  const txsCurr     = (txsCurrRaw     ?? []) as any[]
-  const txsPrev     = (txsPrevRaw     ?? []) as any[]
-  const apptsCurr   = (apptsCurrRaw   ?? []) as any[]
-  const apptsPrev   = (apptsPrevRaw   ?? []) as any[]
-  const clientsCurr = (clientsCurrRaw ?? []) as any[]
-  const todayAppts  = (todayApptsRaw  ?? []) as any[]
+  const todayAppts = (todayApptsRaw ?? []) as any[]
 
   // -- KPIs consolidados ---------------------------------------------
-  const totalRevenue = txsCurr
-    .filter(t => t.type === 'INCOME' && t.is_paid)
-    .reduce((s, t) => s + Number(t.amount), 0)
+  const totalRevenue      = core.revenueCash
+  const prevRevenue       = prevCore.revenueCash
+  const totalAppointments = core.appointmentsCompleted
+  const prevAppointments  = prevCore.appointmentsCompleted
+  const newClients        = core.newClients
+  const prevClientsCount  = prevCore.newClients
 
-  const prevRevenue = txsPrev
-    .filter(t => t.type === 'INCOME' && t.is_paid)
-    .reduce((s, t) => s + Number(t.amount), 0)
-
-  const totalAppointments = apptsCurr.length
-  const prevAppointments  = apptsPrev.length
-  const newClients        = clientsCurr.length
-  const ticketMedio       = totalAppointments > 0 ? totalRevenue / totalAppointments : 0
+  // Ticket médio = receita dos atendimentos ÷ atendimentos concluídos.
+  // Antes o numerador era o caixa do período (que inclui venda de produto,
+  // pacote e lançamento avulso) sobre a contagem da agenda: a conta nunca
+  // fechava quando conferida na mão.
+  const ticketMedio = ratio(core.serviceRevenue, core.appointmentsCompleted) ?? 0
 
   // -- Por filial ----------------------------------------------------
-  const branchStats: BranchStat[] = branches.map(branch => {
-    const bTxs   = txsCurr.filter(t => t.branch_id === branch.id)
-    const bAppts = apptsCurr.filter(a => a.branch_id === branch.id)
-    const bNew   = clientsCurr.filter(c => c.branch_id === branch.id)
-    const rev    = bTxs.filter(t => t.type === 'INCOME' && t.is_paid)
-                       .reduce((s, t) => s + Number(t.amount), 0)
-    return {
-      id:           branch.id,
-      name:         branch.name,
-      slug:         branch.slug,
-      revenue:      rev,
-      appointments: bAppts.length,
-      newClients:   bNew.length,
-      ticketMedio:  bAppts.length > 0 ? rev / bAppts.length : 0,
-    }
-  })
+  const branchStats: BranchStat[] = branchMetrics.map(b => ({
+    id:           b.branchId,
+    name:         b.branchName,
+    slug:         b.branchSlug,
+    revenue:      b.revenueCash,
+    appointments: b.appointmentsCompleted,
+    newClients:   b.newClients,
+    ticketMedio:  ratio(b.serviceRevenue, b.appointmentsCompleted) ?? 0,
+  }))
 
   // -- Hoje por filial -----------------------------------------------
   const todayByBranch: TodayBranchStat[] = branches
@@ -352,156 +256,112 @@ export default async function AdminDashboardPage({
   ).length
   const stockStatus: 'critical' | 'warning' | 'healthy' =
     zeroStockCount > 0 ? 'critical' : lowStockCount > 0 ? 'warning' : 'healthy'
+  // Giro ao custo do MOVIMENTO (unit_cost), não ao custo atual do produto —
+  // a coluna existe e antes nem era selecionada, então o giro era recalculado
+  // toda vez que o preço de compra mudava.
   const stockTurnover = ((stockMovementsRaw ?? []) as any[])
     .reduce((s, m) => s + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? m.products?.cost_price ?? 0), 0)
 
-  // totalCost = apenas despesas financeiras registradas (FinancialTransactions)
-  // stockTurnover é métrica derivada de margem — não entra no total de despesas
-  const totalCost = txsCurr
-    .filter(t => t.type === 'EXPENSE')
-    .reduce((s, t) => s + Number(t.amount), 0)
+  // Despesas do período. Simétrico à receita: só o que foi efetivamente pago
+  // (antes a receita exigia is_paid e a despesa não, então o "lucro" misturava
+  // caixa de um lado com competência do outro).
+  const totalCost = core.expensesCash
 
   // -- Gráfico de evolução -------------------------------------------
-  const stockMoves  = (stockMovementsRaw ?? []) as any[]
+  // Buckets vêm prontos do Postgres, já no fuso do negócio. A soma das barras
+  // fecha com o KPI do período — antes as fatias eram remontadas em JS sobre
+  // o fuso do servidor e divergiam do total.
   const granularity = period === 'today' ? 'hour' : 'day'
 
-  function buildSlice(sliceStart: number, sliceEnd: number, idx: number) {
-    const inSlice = (t: any) => {
-      const ts = new Date(t.created_at).getTime()
-      return ts >= sliceStart && ts <= sliceEnd
-    }
-    const dayRevenue = txsCurr
-      .filter(t => inSlice(t) && t.type === 'INCOME' && t.is_paid)
-      .reduce((s: number, t: any) => s + Number(t.amount), 0)
-    const expenseCost = txsCurr
-      .filter(t => inSlice(t) && t.type === 'EXPENSE')
-      .reduce((s: number, t: any) => s + Number(t.amount), 0)
-    return { day: idx, revenue: dayRevenue, cost: expenseCost, profit: dayRevenue - expenseCost }
-  }
+  const seriesByBucket = new Map(
+    seriesData.map(p => [
+      granularity === 'hour' ? String(partsInTZ(new Date(p.bucket)).hour) : dayKeyTZ(p.bucket),
+      p,
+    ]),
+  )
 
   const evolutionData = granularity === 'hour'
     ? Array.from({ length: 24 }, (_, i) => {
-        const s = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), i).getTime()
-        return buildSlice(s, s + 3_600_000 - 1, i)
+        const point = seriesByBucket.get(String(i))
+        const revenue = point?.revenue ?? 0
+        const cost    = point?.expenses ?? 0
+        return { day: i, revenue, cost, profit: revenue - cost }
       })
     : (() => {
-        const days = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / msPerDay) + 1)
+        const days = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1)
         return Array.from({ length: days }, (_, i) => {
-          const base = new Date(startDate); base.setDate(base.getDate() + i); base.setHours(0, 0, 0, 0)
-          return buildSlice(base.getTime(), base.getTime() + msPerDay - 1, i + 1)
+          const point   = seriesByBucket.get(dayKeyTZ(addDaysTZ(startDate, i)))
+          const revenue = point?.revenue ?? 0
+          const cost    = point?.expenses ?? 0
+          return { day: i + 1, revenue, cost, profit: revenue - cost }
         })
       })()
 
-  // -- Ocupação por filial -------------------------------------------
-  // Numerador: slots que viraram atendimento (COMPLETED + IN_PROGRESS)
-  // Denominador: todos os horários passados do mês (exceto futuros ainda agendados)
-  const allMonthlyAppts = (allMonthlyApptsRaw ?? []) as any[]
-
-  const branchOccupancy = branches.map(branch => {
-    const bAppts    = allMonthlyAppts.filter(a => a.branch_id === branch.id)
-    const completed = bAppts.filter(a => a.status === 'COMPLETED' || a.status === 'IN_PROGRESS').length
-    const total     = bAppts.length
-    return {
-      name:          branch.name,
-      slug:          branch.slug,
-      completed,
-      cancelled:     bAppts.filter(a => a.status === 'CANCELLED').length,
-      noShow:        bAppts.filter(a => a.status === 'NO_SHOW').length,
-      total,
-      occupancyPct:  total > 0 ? (completed / total) * 100 : 0,
-    }
-  }).filter(b => b.total > 0).sort((a, b) => b.occupancyPct - a.occupancyPct)
+  // -- Aproveitamento da agenda por filial ---------------------------
+  // Renomeado de "ocupação": o denominador é o total marcado, não a
+  // capacidade instalada. É taxa de comparecimento, e o rótulo agora diz isso.
+  const branchOccupancy = branchMetrics.map(b => ({
+    name:         b.branchName,
+    slug:         b.branchSlug,
+    completed:    b.appointmentsCompleted,
+    cancelled:    b.appointmentsCancelled,
+    noShow:       b.appointmentsNoShow,
+    total:        b.appointmentsTotal,
+    occupancyPct: percent(b.appointmentsCompleted, b.appointmentsTotal) ?? 0,
+  })).filter(b => b.total > 0).sort((a, b) => b.occupancyPct - a.occupancyPct)
 
   // -- Analytics avançados -------------------------------------------
+  // Rankings vêm agregados do Postgres. Antes eram montados em JS sobre a
+  // lista de atendimentos do período — que o PostgREST cortava em 1000 linhas.
+  const barPct = (value: number, max: number) => (max > 0 ? (value / max) * 100 : 0)
 
   // 1. Top procedimentos por atendimentos
-  const procCountMap: Record<string, { name: string; count: number }> = {}
-  for (const a of apptsCurr) {
-    if (!a.procedure_id) continue
-    if (!procCountMap[a.procedure_id]) {
-      procCountMap[a.procedure_id] = { name: (a.procedures as any)?.name ?? '—', count: 0 }
-    }
-    procCountMap[a.procedure_id]!.count++
-  }
-  const sortedProcs   = Object.values(procCountMap).sort((a, b) => b.count - a.count).slice(0, 5)
-  const maxProcCount  = sortedProcs[0]?.count ?? 1
-  const topProcedures = sortedProcs.map(p => ({ ...p, pct: (p.count / maxProcCount) * 100 }))
+  const maxProcCount  = procedureStats[0]?.appointments ?? 0
+  const topProcedures = procedureStats.map(p => ({
+    name: p.name, count: p.appointments, pct: barPct(p.appointments, maxProcCount),
+  }))
 
-  // 1a. Top procedimentos por receita bruta
-  const procRevenueMap: Record<string, { name: string; revenue: number }> = {}
-  for (const a of apptsCurr) {
-    if (!a.procedure_id) continue
-    if (!procRevenueMap[a.procedure_id])
-      procRevenueMap[a.procedure_id] = { name: (a.procedures as any)?.name ?? '—', revenue: 0 }
-    procRevenueMap[a.procedure_id]!.revenue += Number(a.price ?? 0)
-  }
-  const sortedProcsByRev      = Object.values(procRevenueMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
-  const maxProcRevenue        = sortedProcsByRev[0]?.revenue ?? 1
-  const topProceduresByRevenue = sortedProcsByRev.map(p => ({ ...p, pct: (p.revenue / maxProcRevenue) * 100 }))
+  // 1a. Top procedimentos por receita de serviço
+  const byProcRevenue    = [...procedureStats].sort((a, b) => b.revenue - a.revenue)
+  const maxProcRevenue   = byProcRevenue[0]?.revenue ?? 0
+  const topProceduresByRevenue = byProcRevenue.map(p => ({
+    name: p.name, revenue: p.revenue, pct: barPct(p.revenue, maxProcRevenue),
+  }))
 
-  // 1b. Top 5 procedimentos por recorrência (retornos do mesmo cliente no período)
-  const procRecMap: Record<string, { name: string; clientCounts: Record<string, number> }> = {}
-  for (const a of apptsCurr) {
-    if (!a.procedure_id || !a.client_id) continue
-    if (!procRecMap[a.procedure_id]) {
-      procRecMap[a.procedure_id] = { name: (a.procedures as any)?.name ?? '—', clientCounts: {} }
-    }
-    const m = procRecMap[a.procedure_id]!
-    m.clientCounts[a.client_id] = (m.clientCounts[a.client_id] ?? 0) + 1
-  }
-  const topRecurring = Object.values(procRecMap)
-    .map(p => ({
-      name:         p.name,
-      repeatVisits: Object.values(p.clientCounts).reduce((s, c) => s + Math.max(0, c - 1), 0),
-    }))
+  // 1b. Recorrência: retornos do mesmo cliente no período
+  const topRecurring = [...procedureStats]
+    .map(p => ({ name: p.name, repeatVisits: p.repeatVisits }))
     .sort((a, b) => b.repeatVisits - a.repeatVisits)
-    .slice(0, 5)
 
   // 2. Top profissionais por atendimentos
-  const profCountMap: Record<string, { name: string; count: number }> = {}
-  for (const a of apptsCurr) {
-    if (!a.professional_id) continue
-    if (!profCountMap[a.professional_id]) {
-      profCountMap[a.professional_id] = { name: (a.users as any)?.name ?? '—', count: 0 }
-    }
-    profCountMap[a.professional_id]!.count++
-  }
-  const sortedProfs    = Object.values(profCountMap).sort((a, b) => b.count - a.count).slice(0, 5)
-  const maxProfCount   = sortedProfs[0]?.count ?? 1
-  const topProfessionals = sortedProfs.map(p => ({ ...p, pct: (p.count / maxProfCount) * 100 }))
+  const maxProfCount     = professionalStats[0]?.appointments ?? 0
+  const topProfessionals = professionalStats.map(p => ({
+    name: p.name, count: p.appointments, pct: barPct(p.appointments, maxProfCount),
+  }))
 
-  // Top 5 profissionais por receita gerada
-  const profRevenueMap: Record<string, { name: string; revenue: number }> = {}
-  for (const a of apptsCurr) {
-    if (!a.professional_id) continue
-    if (!profRevenueMap[a.professional_id])
-      profRevenueMap[a.professional_id] = { name: (a.users as any)?.name ?? '—', revenue: 0 }
-    profRevenueMap[a.professional_id]!.revenue += Number(a.price ?? 0)
-  }
-  const sortedProfsByRev    = Object.values(profRevenueMap).sort((a, b) => b.revenue - a.revenue).slice(0, 5)
-  const maxProfRevenue      = sortedProfsByRev[0]?.revenue ?? 1
-  const topProfessionalsByRevenue = sortedProfsByRev.map(p => ({ ...p, pct: (p.revenue / maxProfRevenue) * 100 }))
+  const byProfRevenue  = [...professionalStats].sort((a, b) => b.revenue - a.revenue)
+  const maxProfRevenue = byProfRevenue[0]?.revenue ?? 0
+  const topProfessionalsByRevenue = byProfRevenue.map(p => ({
+    name: p.name, revenue: p.revenue, pct: barPct(p.revenue, maxProfRevenue),
+  }))
 
-  // Top 5 profissionais por comissão
-  const commissionsArr = (commissionsRaw ?? []) as any[]
-  const profCommMap: Record<string, { name: string; amount: number }> = {}
-  for (const c of commissionsArr) {
-    if (!c.professional_id) continue
-    if (!profCommMap[c.professional_id])
-      profCommMap[c.professional_id] = { name: (c.users as any)?.name ?? '—', amount: 0 }
-    profCommMap[c.professional_id]!.amount += Number(c.amount ?? 0)
-  }
-  const sortedProfsByComm   = Object.values(profCommMap).sort((a, b) => b.amount - a.amount).slice(0, 5)
-  const maxProfComm         = sortedProfsByComm[0]?.amount ?? 1
-  const topProfessionalsByCommission = sortedProfsByComm.map(p => ({ ...p, pct: (p.amount / maxProfComm) * 100 }))
+  // Comissões por profissional — a consulta antiga filtrava por
+  // `commissions.created_at`, coluna que não existe: o PostgREST devolvia erro,
+  // o erro era descartado e o ranking ficava permanentemente vazio.
+  const byProfComm  = [...professionalStats].sort((a, b) => b.commission - a.commission)
+  const maxProfComm = byProfComm[0]?.commission ?? 0
+  const topProfessionalsByCommission = byProfComm.map(p => ({
+    name: p.name, amount: p.commission, pct: barPct(p.commission, maxProfComm),
+  }))
 
-  // 3. Top 5 procedimentos por margem de lucro bruta
+  // 3. Margem por procedimento — inclui mão de obra e outros custos, que já
+  // existem no cadastro e ficavam de fora (a margem saía sempre otimista).
   const procedureMargins = ((proceduresRaw ?? []) as any[])
     .map(proc => {
-      const cost = ((proc.procedure_products as any[]) ?? []).reduce((s: number, pp: any) => {
-        return s + (Number(pp.quantity) * Number(pp.products?.cost_price ?? 0))
-      }, 0)
-      const price    = Number(proc.price ?? 0)
+      const inputs = ((proc.procedure_products as any[]) ?? []).reduce((s: number, pp: any) =>
+        s + (Number(pp.quantity) * Number(pp.products?.cost_price ?? 0)), 0)
+      const cost      = inputs + Number(proc.labor_cost ?? 0) + Number(proc.other_costs ?? 0)
+      const price     = Number(proc.price ?? 0)
       const marginPct = price > 0 ? ((price - cost) / price) * 100 : 0
       return { name: proc.name as string, price, cost, marginPct }
     })
@@ -509,80 +369,35 @@ export default async function AdminDashboardPage({
     .sort((a, b) => b.marginPct - a.marginPct)
     .slice(0, 5)
 
-  // 4. Tempo médio de atendimento (entre started_at e completed_at)
-  const durations = apptsCurr
-    .filter(a => a.started_at && a.completed_at)
-    .map(a => (new Date(a.completed_at).getTime() - new Date(a.started_at).getTime()) / 60000)
-    .filter(d => d > 0 && d < 480) // exclui outliers > 8h
-  const avgDurationMinutes = durations.length > 0
-    ? durations.reduce((s, d) => s + d, 0) / durations.length
-    : 0
+  // 4. Avaliações — exige pelo menos 3 notas para entrar no ranking; com uma
+  // nota só, um único atendimento definia o "melhor" e o "pior" da rede.
+  const MIN_RATINGS = 3
 
-  // 5. Avaliações de profissionais (campo client_rating em appointments)
-  const ratingMap: Record<string, { name: string; total: number; count: number }> = {}
-  for (const a of apptsCurr) {
-    if (!a.professional_id || a.client_rating == null) continue
-    if (!ratingMap[a.professional_id]) {
-      ratingMap[a.professional_id] = { name: (a.users as any)?.name ?? '—', total: 0, count: 0 }
-    }
-    ratingMap[a.professional_id]!.total += Number(a.client_rating)
-    ratingMap[a.professional_id]!.count++
-  }
-  const ratedProfessionals = Object.values(ratingMap)
-    .filter(p => p.count >= 1)
-    .map(p => ({ name: p.name, avgRating: p.total / p.count, count: p.count }))
+  const ratedProfessionals = professionalStats
+    .filter(p => p.avgRating != null && p.ratingCount >= MIN_RATINGS)
+    .map(p => ({ name: p.name, avgRating: p.avgRating!, count: p.ratingCount }))
 
   const bestRatedPros  = [...ratedProfessionals].sort((a, b) => b.avgRating - a.avgRating).slice(0, 5)
   const worstRatedPros = [...ratedProfessionals].sort((a, b) => a.avgRating - b.avgRating).slice(0, 5)
 
-  // 5b. Avaliações de procedimentos (campo procedure_rating em appointments)
-  const procRatingMap: Record<string, { name: string; total: number; count: number }> = {}
-  for (const a of apptsCurr) {
-    if (!a.procedure_id || a.procedure_rating == null) continue
-    if (!procRatingMap[a.procedure_id]) {
-      procRatingMap[a.procedure_id] = { name: (a.procedures as any)?.name ?? '—', total: 0, count: 0 }
-    }
-    procRatingMap[a.procedure_id]!.total += Number(a.procedure_rating)
-    procRatingMap[a.procedure_id]!.count++
-  }
-  const ratedProcedures = Object.values(procRatingMap)
-    .filter(p => p.count >= 1)
-    .map(p => ({ name: p.name, avgRating: p.total / p.count, count: p.count }))
+  const ratedProcedures = procedureStats
+    .filter(p => p.avgRating != null && p.ratingCount >= MIN_RATINGS)
+    .map(p => ({ name: p.name, avgRating: p.avgRating!, count: p.ratingCount }))
 
   const bestRatedProcedures  = [...ratedProcedures].sort((a, b) => b.avgRating - a.avgRating).slice(0, 5)
   const worstRatedProcedures = [...ratedProcedures].sort((a, b) => a.avgRating - b.avgRating).slice(0, 5)
 
-  // 6. Top 10 clientes por valor gasto no período
-  const clientNameMap: Record<string, string> = {}
-  for (const c of (clientsDemoRaw ?? []) as any[]) {
-    clientNameMap[c.id as string] = (c.name as string) ?? 'Cliente'
-  }
-  const clientSpendMap: Record<string, { name: string; total: number; count: number }> = {}
-  for (const tx of (txWithClientRaw ?? []) as any[]) {
-    const clientId = tx.client_id as string | null
-    if (!clientId) continue
-    if (!clientSpendMap[clientId]) {
-      clientSpendMap[clientId] = { name: clientNameMap[clientId] ?? 'Cliente', total: 0, count: 0 }
-    }
-    clientSpendMap[clientId].total += Number(tx.amount)
-    clientSpendMap[clientId].count++
-  }
-  const topClients = Object.entries(clientSpendMap)
-    .map(([id, v]) => ({ id, name: v.name, totalSpent: v.total, appointmentCount: v.count }))
-    .sort((a, b) => b.totalSpent - a.totalSpent)
-    .slice(0, 5)
+  // 5. Clientes — "Atend." agora é a contagem de atendimentos concluídos, não
+  // a de transações financeiras (que inclui venda de produto e parcelas).
+  const topClients = clientStats.slice(0, 5).map(c => ({
+    id: c.clientId, name: c.name, totalSpent: c.totalSpent, appointmentCount: c.appointments,
+  }))
 
-  // 7. Top 5 clientes por recorrência (nº de atendimentos no mês)
-  const clientApptCountMap: Record<string, { name: string; count: number }> = {}
-  for (const a of apptsCurr) {
-    if (!a.client_id) continue
-    if (!clientApptCountMap[a.client_id])
-      clientApptCountMap[a.client_id] = { name: (a.clients as any)?.name ?? '—', count: 0 }
-    clientApptCountMap[a.client_id]!.count++
-  }
-  const sortedClientsByRec  = Object.values(clientApptCountMap).sort((a, b) => b.count - a.count).slice(0, 5)
-  const maxClientCount      = sortedClientsByRec[0]?.count ?? 1
-  const topClientsByRecurrence = sortedClientsByRec.map(c => ({ ...c, pct: (c.count / maxClientCount) * 100 }))
+  const byRecurrence   = [...clientStats].sort((a, b) => b.appointments - a.appointments).slice(0, 5)
+  const maxClientCount = byRecurrence[0]?.appointments ?? 0
+  const topClientsByRecurrence = byRecurrence.map(c => ({
+    name: c.name, count: c.appointments, pct: barPct(c.appointments, maxClientCount),
+  }))
 
   // 8. Distribuição de clientes por faixa etária
   const clientsDemo = (clientsDemoRaw ?? []) as any[]
@@ -597,8 +412,13 @@ export default async function AdminDashboardPage({
   const sortedAgeGroups = Object.entries(ageBuckets)
     .filter(([, count]) => count > 0)
     .sort(([, a], [, b]) => b - a)
-  const maxAgeCount  = sortedAgeGroups[0]?.[1] ?? 1
-  const clientAgeGroups = sortedAgeGroups.map(([label, count]) => ({ label, count, pct: (count / maxAgeCount) * 100 }))
+  // Percentual sobre o TOTAL de clientes classificados — é a legenda de uma
+  // pizza. Antes era sobre o maior grupo, então a maior faixa mostrava sempre
+  // 100% e a soma da legenda não fechava em 100%.
+  const totalAgeClassified = sortedAgeGroups.reduce((s, [, count]) => s + count, 0)
+  const clientAgeGroups = sortedAgeGroups.map(([label, count]) => ({
+    label, count, pct: percent(count, totalAgeClassified) ?? 0,
+  }))
 
   // 9. Top 5 cidades por número de clientes
   const cityMap: Record<string, number> = {}
@@ -627,12 +447,10 @@ export default async function AdminDashboardPage({
     hotmapRawCepCounts[digits] = (hotmapRawCepCounts[digits] ?? 0) + 1
   }
 
+  // LTV por cliente desde sempre, agregado no banco. Antes vinha de um select
+  // sem limite de "todas as transações da história", cortado em 1000 linhas.
   const clientLtvMap: Record<string, number> = {}
-  for (const tx of (ltvTxsRaw ?? []) as any[]) {
-    const clientId = tx.client_id as string | null
-    if (!clientId) continue
-    clientLtvMap[clientId] = (clientLtvMap[clientId] ?? 0) + Number(tx.amount)
-  }
+  for (const c of ltvStats) clientLtvMap[c.clientId] = c.totalSpent
 
   const hotmapRawCepLtv: Record<string, number> = {}
   for (const c of clientsDemo) {
@@ -644,22 +462,17 @@ export default async function AdminDashboardPage({
   }
 
   // -- Comercial: funil de leads por estágio + conversão (gate crm) --------
-  const [{ data: crmStagesRaw }, { data: crmLeadsRaw }] = await Promise.all([
-    canCrm
-      ? admin.from('crm_stages').select('id, name, position').eq('tenant_id', ctx.tenantId!).order('position')
-      : Promise.resolve({ data: [] }),
-    canCrm
-      ? admin.from('leads').select('id, crm_stage_id, client_id, created_at')
-          .eq('tenant_id', ctx.tenantId!)
-          .gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString())
-      : Promise.resolve({ data: [] }),
-  ])
-  const crmStages = (crmStagesRaw ?? []) as any[]
-  const crmLeads  = (crmLeadsRaw ?? []) as any[]
-  const leadFunnel = crmStages.map(s => ({ name: s.name as string, count: crmLeads.filter(l => l.crm_stage_id === s.id).length }))
-  const leadsTotal     = crmLeads.length
-  const leadsConverted = crmLeads.filter(l => l.client_id).length
-  const conversionRate = leadsTotal > 0 ? (leadsConverted / leadsTotal) * 100 : 0
+  // O funil vem do banco e inclui os leads da REDE (branch_id null) e os que
+  // ainda não têm etapa — que caem na primeira, como no board do CRM. Antes
+  // esses leads sumiam do funil e a soma das barras não fechava com o total.
+  const funnelStages = canCrm
+    ? await getLeadFunnel({ tenantId: ctx.tenantId!, branchIds: null, from: startDate, to: endDate })
+    : []
+
+  const leadFunnel     = funnelStages.map(s => ({ name: s.name, count: s.leads }))
+  const leadsTotal     = funnelStages.reduce((s, st) => s + st.leads, 0)
+  const leadsConverted = funnelStages.reduce((s, st) => s + st.converted, 0)
+  const conversionRate = percent(leadsConverted, leadsTotal) ?? 0
 
   // -- Marketing: alcance/gasto (Meta Ads, tempo real) + campanhas (gate marketing) --
   let marketing: {
@@ -701,7 +514,7 @@ export default async function AdminDashboardPage({
         conversionRate={conversionRate}
         marketing={marketing}
         monthLabel={periodLabel}
-        currentPeriod={period}
+        currentPeriod={selectorPeriod}
         customFrom={rawFrom}
         customTo={rawTo}
         granularity={granularity}
@@ -733,7 +546,7 @@ export default async function AdminDashboardPage({
         topProfessionalsByRevenue={topProfessionalsByRevenue}
         topProfessionalsByCommission={topProfessionalsByCommission}
         procedureMargins={procedureMargins}
-        avgDurationMinutes={avgDurationMinutes}
+
         bestRatedPros={bestRatedPros}
         worstRatedPros={worstRatedPros}
         bestRatedProcedures={bestRatedProcedures}

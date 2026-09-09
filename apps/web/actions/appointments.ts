@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { notifyClient, notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots } from '@/lib/appointments/core'
+import { periodRef } from '@/lib/datetime'
 
 // --- Helpers internos ---------------------------------------------
 async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
@@ -243,7 +244,7 @@ export async function updateAppointmentStatus(
   const supabase = await createSupabase()
 
   if (status === 'COMPLETED') {
-    await completeAppointment(appointmentId, slug)
+    await completeAppointment(appointmentId, slug, ctx)
     return
   }
 
@@ -281,13 +282,17 @@ async function resolveBranchId(supabase: Awaited<ReturnType<typeof createSupabas
 }
 
 // --- Concluir atendimento (transação completa) --------------------
-async function completeAppointment(appointmentId: string, slug: string) {
+async function completeAppointment(
+  appointmentId: string,
+  slug: string,
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+) {
   // Nota: idealmente em prisma.$transaction — aqui sequencial via Supabase
   const admin = createAdminClient()
 
   const { data: appt } = await admin
     .from('appointments')
-    .select('id, branch_id, client_id, procedure_id, professional_id, price')
+    .select('id, branch_id, client_id, procedure_id, professional_id, price, treatment_plan_id')
     .eq('id', appointmentId)
     .single()
 
@@ -315,66 +320,38 @@ async function completeAppointment(appointmentId: string, slug: string) {
     { onConflict: 'appointment_id', ignoreDuplicates: true }
   )
 
-  // 3. Cria transação financeira
-  await admin.from('financial_transactions').insert({
-    branch_id:       appt.branch_id,
-    appointment_id:  appointmentId,
-    type:            'INCOME',
-    amount:          appt.price,
-    description:     'Atendimento concluído',
-    payment_method:  'PIX',
-  })
-
-  // 4. Cria comissão (busca regra)
-  const { data: rule } = await admin
-    .from('commission_rules')
-    .select('type, value')
-    .eq('professional_id', appt.professional_id)
-    .or(`procedure_id.eq.${appt.procedure_id},procedure_id.is.null`)
-    .order('procedure_id', { nullsFirst: false })
-    .limit(1)
+  // 3. Lança a receita do atendimento como CONTA A RECEBER; confirmPayment
+  //    depois dá baixa (is_paid). Comissão, fidelidade, estoque e pacote já
+  //    foram gravados por finishSession (obrigatório antes daqui) — repetir
+  //    aqui duplicaria. Sessão de plano ou de pacote também não gera receita:
+  //    já foi cobrada na venda.
+  const { data: pkgSession } = await admin
+    .from('package_sessions')
+    .select('id')
+    .eq('appointment_id', appointmentId)
     .maybeSingle()
 
-  if (rule) {
-    const amount = rule.type === 'PERCENTAGE'
-      ? (parseFloat(String(appt.price)) * rule.value / 100)
-      : rule.value
-    const periodRef = new Date().toISOString().substring(0, 7)
-    await admin.from('commissions').insert({
-      branch_id:       appt.branch_id,
-      professional_id: appt.professional_id,
-      appointment_id:  appointmentId,
-      amount,
-      period_ref:      periodRef,
-      status:          'OPEN',
+  const alreadyCharged = Boolean(appt.treatment_plan_id) || Boolean(pkgSession)
+
+  const { data: existingTx } = await admin
+    .from('financial_transactions')
+    .select('id')
+    .eq('appointment_id', appointmentId)
+    .maybeSingle()
+
+  if (!existingTx && !alreadyCharged) {
+    const { error: txErr } = await admin.from('financial_transactions').insert({
+      branch_id:      appt.branch_id,
+      appointment_id: appointmentId,
+      client_id:      appt.client_id,
+      type:           'INCOME',
+      category:       'Serviços',
+      description:    'Atendimento concluído',
+      amount:         appt.price,
+      is_paid:        false,
+      created_by:     ctx.internalUserId ?? ctx.userId,
     })
-  }
-
-  // 5. Credita pontos de fidelidade
-  const { data: loyaltyConfig } = await admin
-    .from('loyalty_configs')
-    .select('points_per_real')
-    .eq('tenant_id', (await admin.from('branches').select('tenant_id').eq('id', appt.branch_id).single()).data?.tenant_id)
-    .maybeSingle()
-
-  if (loyaltyConfig) {
-    const points = Math.floor(parseFloat(String(appt.price)) * loyaltyConfig.points_per_real)
-    if (points > 0) {
-      const { data: loyaltyAcc } = await admin
-        .from('loyalty_accounts')
-        .select('id, balance')
-        .eq('client_id', appt.client_id)
-        .single()
-      if (loyaltyAcc) {
-        await admin.from('loyalty_accounts').update({ balance: loyaltyAcc.balance + points }).eq('id', loyaltyAcc.id)
-        await admin.from('loyalty_transactions').insert({
-          loyalty_account_id: loyaltyAcc.id,
-          points,
-          description:        'Atendimento concluído',
-          appointment_id:     appointmentId,
-        })
-      }
-    }
+    if (txErr) throw new Error(`Erro ao lançar a receita do atendimento: ${txErr.message}`)
   }
 
   revalidatePath(`/${slug}/agenda`)
@@ -634,28 +611,49 @@ export async function finishSession(
       }, { onConflict: 'appointment_id' })
     }
 
-    // 3. Comissão
-    const { data: rule } = await admin
+    // 3. Comissão — regra específica do procedimento tem precedência sobre a geral.
+    //    `type` e `rule_value` são NOT NULL em commissions: gravam a regra aplicada,
+    //    para o extrato continuar auditável se a regra mudar depois.
+    let ruleQuery = admin
       .from('commission_rules')
       .select('type, value')
       .eq('professional_id', appt.professional_id)
-      .or(`procedure_id.eq.${appt.procedure_id},procedure_id.is.null`)
+      .eq('branch_id', appt.branch_id)
+      .eq('is_active', true)
+
+    ruleQuery = appt.procedure_id
+      ? ruleQuery.or(`procedure_id.eq.${appt.procedure_id},procedure_id.is.null`)
+      : ruleQuery.is('procedure_id', null)
+
+    const { data: rule } = await ruleQuery
       .order('procedure_id', { nullsFirst: false })
       .limit(1)
       .maybeSingle()
 
     if (rule) {
-      const commissionAmount = rule.type === 'PERCENTAGE'
-        ? (parseFloat(String(appt.price)) * parseFloat(String(rule.value)) / 100)
-        : parseFloat(String(rule.value))
-      await admin.from('commissions').insert({
-        branch_id:       appt.branch_id,
-        professional_id: appt.professional_id,
-        appointment_id:  appointmentId,
-        amount:          commissionAmount,
-        period_ref:      now.substring(0, 7),
-        status:          'OPEN',
-      })
+      const { data: existingComm } = await admin
+        .from('commissions')
+        .select('id')
+        .eq('appointment_id', appointmentId)
+        .maybeSingle()
+
+      if (!existingComm) {
+        const ruleValue = parseFloat(String(rule.value))
+        const commissionAmount = rule.type === 'PERCENTAGE'
+          ? (parseFloat(String(appt.price)) * ruleValue / 100)
+          : ruleValue
+        const { error: commErr } = await admin.from('commissions').insert({
+          branch_id:       appt.branch_id,
+          professional_id: appt.professional_id,
+          appointment_id:  appointmentId,
+          amount:          commissionAmount,
+          type:            rule.type,
+          rule_value:      ruleValue,
+          period_ref:      periodRef(now),
+          status:          'OPEN',
+        })
+        if (commErr) return { error: `Erro ao registrar a comissão: ${commErr.message}` }
+      }
     }
 
     // 4. Pontos de fidelidade
@@ -817,7 +815,7 @@ export async function confirmPayment(
 
     const { data: appt } = await admin
       .from('appointments')
-      .select('id, status, branch_id, price, branches!inner(tenant_id)')
+      .select('id, status, branch_id, client_id, price, branches!inner(tenant_id)')
       .eq('id', appointmentId)
       .single()
 
@@ -825,27 +823,42 @@ export async function confirmPayment(
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'COMPLETED') return { error: 'O atendimento precisa estar concluído para confirmar pagamento.' }
 
-    // Garante idempotência — não cria duplicata
+    // A conclusão do atendimento já lançou a receita como conta a receber.
+    // Confirmar pagamento é dar baixa nela — não criar uma segunda transação.
     const { data: existing } = await admin
       .from('financial_transactions')
-      .select('id')
+      .select('id, is_paid')
       .eq('appointment_id', appointmentId)
       .maybeSingle()
-    if (existing) return { error: 'Pagamento já registrado para este atendimento.' }
+
+    if (existing?.is_paid) return { error: 'Pagamento já registrado para este atendimento.' }
 
     const now = new Date().toISOString()
 
-    await admin.from('financial_transactions').insert({
-      branch_id:      appt.branch_id,
-      appointment_id: appointmentId,
-      type:           'INCOME',
-      amount:         appt.price,
-      description:    'Atendimento concluído',
-      payment_method: paymentMethod,
-      is_paid:        true,
-      paid_at:        now,
-      created_by:     ctx.internalUserId,
-    })
+    if (existing) {
+      const { error: updErr } = await admin.from('financial_transactions').update({
+        payment_method: paymentMethod,
+        is_paid:        true,
+        paid_at:        now,
+        updated_at:     now,
+      }).eq('id', existing.id)
+      if (updErr) return { error: `Erro ao registrar o pagamento: ${updErr.message}` }
+    } else {
+      const { error: insErr } = await admin.from('financial_transactions').insert({
+        branch_id:      appt.branch_id,
+        appointment_id: appointmentId,
+        client_id:      appt.client_id,
+        type:           'INCOME',
+        category:       'Serviços',
+        description:    'Atendimento concluído',
+        amount:         appt.price,
+        payment_method: paymentMethod,
+        is_paid:        true,
+        paid_at:        now,
+        created_by:     ctx.internalUserId ?? ctx.userId,
+      })
+      if (insErr) return { error: `Erro ao registrar o pagamento: ${insErr.message}` }
+    }
 
     const userName = await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'PAYMENT_CONFIRMED',

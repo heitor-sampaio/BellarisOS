@@ -85,8 +85,9 @@ const PM_LABELS: Record<string, string> = {
 }
 
 function pctDelta(curr: number, prev: number) {
-  if (prev === 0 && curr === 0) return null
-  if (prev === 0) return { pct: 100, up: true }
+  // Sem base de comparação não existe variação: antes o primeiro mês de uso
+  // exibia "▲ 100%" de crescimento inventado a partir do zero.
+  if (prev === 0) return null
   const pct = ((curr - prev) / prev) * 100
   return { pct: Math.abs(pct), up: pct >= 0 }
 }
