@@ -34,5 +34,11 @@ COPY --from=builder /repo/apps/web/.next/standalone ./
 COPY --from=builder /repo/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /repo/apps/web/public ./apps/web/public
 
+# Disparador dos jobs agendados. Vive na mesma imagem porque o serviço de cron
+# do Railway compartilha este Dockerfile: o railway.toml da raiz fixa o
+# dockerfilePath, e config-as-code por serviço foi depreciada pelo Railway.
+# O serviço de cron sobrescreve o CMD com `node /app/cron.mjs`.
+COPY scripts/cron.mjs /app/cron.mjs
+
 EXPOSE 3000
 CMD ["node", "apps/web/server.js"]
