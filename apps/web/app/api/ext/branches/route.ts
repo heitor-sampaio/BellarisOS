@@ -12,7 +12,7 @@ export async function OPTIONS(req: NextRequest) {
 // Unidades disponíveis para o usuário. Operacional: só a própria filial.
 // Comercial (nível-rede): todas as filiais ativas do tenant (seletor de unidade).
 export async function GET(req: NextRequest) {
-  const guard = await requireExtAccess(req)
+  const guard = await requireExtAccess(req, { module: 'agenda', level: 'VIEW' })
   if ('res' in guard) return guard.res
   const { ctx } = guard
 

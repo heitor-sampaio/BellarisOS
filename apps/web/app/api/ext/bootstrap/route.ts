@@ -16,7 +16,7 @@ export async function OPTIONS(req: NextRequest) {
 // Dados para montar o formulário de agendamento: filial + procedimentos + profissionais + salas.
 // Comercial: exige ?branchId= (a unidade escolhida no seletor).
 export async function GET(req: NextRequest) {
-  const guard = await requireExtAccess(req)
+  const guard = await requireExtAccess(req, { module: 'agenda', level: 'VIEW' })
   if ('res' in guard) return guard.res
   const { ctx } = guard
 

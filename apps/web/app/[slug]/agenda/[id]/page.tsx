@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
-import { getCachedProductsReference } from '@/lib/cached-queries'
+import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { AppointmentSession } from '@/components/branch/appointment-session'
 import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry } from '@/components/branch/appointment-session'
 import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
@@ -75,7 +75,7 @@ export default async function AppointmentSessionPage({
 
   const [
     { data: medRecord }, { data: procProductsRaw }, branchProductsRaw,
-    { data: professionalsRaw }, { data: historyRaw }, { data: paymentRaw },
+    professionalsRaw, { data: historyRaw }, { data: paymentRaw },
     { data: allProceduresRaw }, { data: packagesRaw }, { data: planRaw },
     { data: planSessionRaw },
   ] = await Promise.all([
@@ -94,13 +94,10 @@ export default async function AppointmentSessionPage({
 
     getCachedProductsReference(ctx.tenantId!),
 
-    admin
-      .from('users')
-      .select('id, name')
-      .eq('branch_id', branch.id)
-      .eq('role', 'PROFESSIONAL')
-      .eq('is_active', true)
-      .order('name'),
+    // `users.role` foi removida na migração de cargos dinâmicos: quem atende é
+    // marcado por `provides_services`. A consulta antiga falhava com 42703 e,
+    // com o erro descartado, a lista de profissionais para reatribuir ficava vazia.
+    getCachedBranchProfessionals(branch.id, ctx.tenantId!),
 
     admin
       .from('appointment_history')
@@ -159,7 +156,10 @@ export default async function AppointmentSessionPage({
     products:   { name: string; unit: string; consumption_unit: string | null; units_per_package: number | null } | null
   }
 
-  const anamnesis = (medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null
+  // Dado clínico só para quem tem o módulo. A tela continua abrindo sem ele —
+  // check-in e status são de agenda, não de prontuário.
+  const canViewRecords = can(ctx, 'medical_records', 'VIEW')
+  const anamnesis = canViewRecords ? ((medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null) : null
 
   // Produtos do procedimento (insumos padrão)
   const defaultProducts: SessionProduct[] = ((procProductsRaw ?? []) as unknown as RawProcProduct[])
@@ -337,8 +337,8 @@ export default async function AppointmentSessionPage({
 
   // Fichas vinculadas ao procedimento (construtor) + respostas já salvas
   const procForm = apptRaw.procedures as unknown as { anamnesis_form_id?: string | null; attendance_form_id?: string | null } | null
-  const procedureFormId  = procForm?.anamnesis_form_id ?? null
-  const attendanceFormId = procForm?.attendance_form_id ?? null
+  const procedureFormId  = canViewRecords ? (procForm?.anamnesis_form_id ?? null) : null
+  const attendanceFormId = canViewRecords ? (procForm?.attendance_form_id ?? null) : null
 
   let anamnesisForm: { name: string; rows: AnamnesisRow[] } | null = null
   let anamnesisAnswers: Record<string, unknown> = {}

@@ -11,7 +11,7 @@ export async function OPTIONS(req: NextRequest) {
 // Busca cliente por nome / telefone / CPF, retornando o id para agendar.
 // Operacional: escopo da própria filial. Comercial: rede toda (CPF é único por tenant).
 export async function GET(req: NextRequest) {
-  const guard = await requireExtAccess(req)
+  const guard = await requireExtAccess(req, { module: 'clients', level: 'VIEW' })
   if ('res' in guard) return guard.res
   const { ctx } = guard
 

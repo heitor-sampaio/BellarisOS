@@ -7,8 +7,6 @@ import { Topbar } from '@/components/shared/topbar'
 import { SidebarProvider } from '@/components/shared/sidebar-context'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
 
-const BRANCH_ROLES = ['BRANCH_ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'FINANCIAL'] as const
-
 export default async function BranchLayout({
   children,
   params,

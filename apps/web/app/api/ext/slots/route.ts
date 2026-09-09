@@ -12,7 +12,7 @@ export async function OPTIONS(req: NextRequest) {
 // Slots livres de um profissional num dia (para escolher horário).
 // Comercial: exige ?branchId= (a unidade escolhida).
 export async function GET(req: NextRequest) {
-  const guard = await requireExtAccess(req)
+  const guard = await requireExtAccess(req, { module: 'agenda', level: 'VIEW' })
   if ('res' in guard) return guard.res
   const { ctx } = guard
 

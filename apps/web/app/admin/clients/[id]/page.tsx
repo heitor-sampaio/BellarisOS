@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { differenceInYears, format } from 'date-fns'
@@ -249,8 +249,10 @@ export default async function AdminClientProfilePage({
   const sessionNotes = latestEntry?.notes ?? ''
 
   const apptNameById = new Map(allAppointments.map(a => [a.id, a.procedureName]))
-  const recordForms  = buildRecordForms(mreEntries, apptNameById)
-  const generalAnamnesis = (medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null
+  // Prontuário é dado sensível de saúde: sem o módulo, nem carrega.
+  const canViewRecords = can(ctx, 'medical_records', 'VIEW')
+  const recordForms  = canViewRecords ? buildRecordForms(mreEntries, apptNameById) : []
+  const generalAnamnesis = canViewRecords ? ((medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null) : null
 
   type RawInstallment = { id: string; number: number; total: number; amount: string; due_date: string; is_paid: boolean; paid_at: string | null }
   type RawTx    = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string; installments: RawInstallment[] }

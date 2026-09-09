@@ -1362,15 +1362,20 @@ export async function createClientAppointment(params: {
       return { error: 'Procedimento não disponível.' }
     }
 
-    const { data: prof } = await admin
+    // Quem atende é marcado por `provides_services`. A validação antiga filtrava
+    // por `users.role`, coluna removida na migração de cargos dinâmicos: a query
+    // falhava com 42703, `prof` vinha null e TODO agendamento pelo app do cliente
+    // era recusado com "Profissional não disponível".
+    const { data: prof, error: profErr } = await admin
       .from('users')
       .select('id')
       .eq('id', params.professionalId)
       .eq('branch_id', params.branchId)
-      .in('role', ['BRANCH_ADMIN', 'PROFESSIONAL'])
+      .eq('provides_services', true)
       .eq('is_active', true)
       .maybeSingle()
-    if (!prof) return { error: 'Profissional não disponível.' }
+    if (profErr) return { error: `Erro ao validar o profissional: ${profErr.message}` }
+    if (!prof)   return { error: 'Profissional não disponível.' }
 
     // Verifica conflito de horário (race condition guard)
     const durationMs = Number(procedure.duration_min) * 60000

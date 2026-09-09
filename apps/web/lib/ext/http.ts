@@ -2,12 +2,14 @@
 // Autenticação por Bearer (JWT do usuário) + CORS para origens de extensão.
 
 import { type NextRequest, NextResponse } from 'next/server'
-import type { TenantContext } from '@estetica-os/types'
+import type { TenantContext, AppModule } from '@estetica-os/types'
 import { getTenantContextFromToken } from '@/lib/auth'
+import { hasLevel } from '@/lib/permissions'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// Acesso da extensao: qualquer usuario operacional (nao-cliente). A abrangencia
-// (filial fixa vs rede) e derivada de branch_id no JWT em resolveExtBranch/isNetworkMode.
+// Acesso da extensao: usuario operacional (nao-cliente) COM a permissao do modulo
+// que a rota usa. A abrangencia (filial fixa vs rede) e derivada de branch_id no
+// JWT em resolveExtBranch/isNetworkMode.
 /** CORS: reflete origens de extensão (chrome/moz); a segurança real é o Bearer JWT. */
 export function corsHeaders(origin: string | null): Record<string, string> {
   const allow =
@@ -46,18 +48,27 @@ export async function authenticate(req: NextRequest): Promise<TenantContext | nu
 }
 
 /**
- * Guard da extensão: autentica e exige role operacional OU comercial + tenant no
- * contexto. NÃO exige filial (comerciais são nível-rede). Retorna o ctx (tenant
- * garantido) OU uma NextResponse de erro (com CORS).
+ * Guard da extensão: autentica, exige usuário operacional + tenant, e checa a
+ * permissão do módulo que a rota consome.
+ *
+ * A checagem de módulo é obrigatória: sem ela qualquer cargo — inclusive um com
+ * `agenda: NONE` — lia a agenda, buscava clientes e criava agendamentos pela
+ * extensão, que roda fora das páginas e não passa por nenhum outro gate.
+ *
+ * Não exige filial: cargos de abrangência de rede operam sem filial fixa.
  */
 export async function requireExtAccess(
   req: NextRequest,
+  required: { module: AppModule; level: 'VIEW' | 'MANAGE' },
 ): Promise<{ ctx: TenantContext & { tenantId: string } } | { res: NextResponse }> {
   const ctx = await authenticate(req)
   if (!ctx) return { res: jsonCors(req, { error: 'Unauthorized' }, 401) }
   if (ctx.isClient) return { res: jsonCors(req, { error: 'Forbidden' }, 403) }
   if (!ctx.tenantId) {
     return { res: jsonCors(req, { error: 'Contexto sem rede.' }, 400) }
+  }
+  if (!hasLevel(ctx.permissions[required.module], required.level)) {
+    return { res: jsonCors(req, { error: 'Forbidden' }, 403) }
   }
   return { ctx: ctx as TenantContext & { tenantId: string } }
 }

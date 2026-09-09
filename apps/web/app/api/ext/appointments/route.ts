@@ -12,7 +12,7 @@ export async function OPTIONS(req: NextRequest) {
 // Cria o agendamento reusando a lógica do app (conflito de sala/profissional, preço,
 // notificações). Operacional: filial do JWT. Comercial: filial do body, validada contra o tenant.
 export async function POST(req: NextRequest) {
-  const guard = await requireExtAccess(req)
+  const guard = await requireExtAccess(req, { module: 'agenda', level: 'MANAGE' })
   if ('res' in guard) return guard.res
   const { ctx } = guard
 

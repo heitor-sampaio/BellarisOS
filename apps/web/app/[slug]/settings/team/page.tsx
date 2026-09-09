@@ -1,4 +1,4 @@
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { TeamForm } from '@/components/branch/team-form'
 import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
@@ -30,6 +30,9 @@ export default async function TeamPage({
 }) {
   const { slug } = await params
   const ctx = await getTenantContext()
+  // A página lista a equipe da filial e todos os cargos do tenant. Sem este gate
+  // bastava a URL direta: o cargo sem acesso a Equipe via tudo, só sem botões.
+  assertPermission(ctx, 'team', 'VIEW')
   const supabase = await createClient()
 
   const { data: branch } = await supabase

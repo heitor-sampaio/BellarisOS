@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { NewAppointmentWizard } from '@/components/client-portal/new-appointment-wizard'
 
 export default async function NewClientAppointmentPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -30,7 +31,7 @@ export default async function NewClientAppointmentPage({ params }: { params: Pro
 
   const branchTyped = branch as { id: string; name: string; tenant_id: string }
 
-  const [{ data: rawProcedures }, { data: rawProfessionals }] = await Promise.all([
+  const [{ data: rawProcedures }, rawProfessionals] = await Promise.all([
     admin
       .from('procedures')
       .select('id, name, price, duration_min')
@@ -39,13 +40,9 @@ export default async function NewClientAppointmentPage({ params }: { params: Pro
       .eq('is_active', true)
       .eq('visible_on_client_app', true)
       .order('name'),
-    admin
-      .from('users')
-      .select('id, name')
-      .eq('branch_id', branchTyped.id)
-      .in('role', ['BRANCH_ADMIN', 'PROFESSIONAL'])
-      .eq('is_active', true)
-      .order('name'),
+    // Filtrava por `users.role`, coluna removida na migração de cargos: a lista
+    // vinha vazia e o cliente não tinha profissional para escolher.
+    getCachedBranchProfessionals(branchTyped.id, branchTyped.tenant_id as string),
   ])
 
   const procedures    = (rawProcedures ?? []) as { id: string; name: string; price: number; duration_min: number }[]

@@ -11,7 +11,7 @@ export async function OPTIONS(req: NextRequest) {
 // Agendamentos do dia da filial — para a atendente/comercial ver a ocupação e achar encaixes.
 // Comercial: exige ?branchId= (a unidade escolhida).
 export async function GET(req: NextRequest) {
-  const guard = await requireExtAccess(req)
+  const guard = await requireExtAccess(req, { module: 'agenda', level: 'VIEW' })
   if ('res' in guard) return guard.res
   const { ctx } = guard
 
