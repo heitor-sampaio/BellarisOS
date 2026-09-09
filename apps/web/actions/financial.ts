@@ -208,7 +208,7 @@ export async function createTransactionAdvanced(
 export async function markTransactionPaid(transactionId: string, slug: string) {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'financial', 'MANAGE')
+    assertPermission(ctx, 'cashier', 'MANAGE')
 
     const admin = createAdminClient()
     await admin.from('financial_transactions').update({
@@ -269,7 +269,7 @@ export async function openCashRegister(
 ): Promise<{ success?: boolean; error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'financial', 'MANAGE')
+    assertPermission(ctx, 'cashier', 'MANAGE')
 
     const branchId       = str(formData, '_branchId')
     const slug           = str(formData, '_slug') ?? ''
@@ -303,7 +303,7 @@ export async function closeCashRegister(
 ): Promise<{ success?: boolean; error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'financial', 'MANAGE')
+    assertPermission(ctx, 'cashier', 'MANAGE')
 
     const registerId     = str(formData, '_registerId')
     const slug           = str(formData, '_slug') ?? ''

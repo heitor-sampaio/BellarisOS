@@ -287,7 +287,7 @@ export async function cancelCheckout(
     await admin.from('appointment_history').insert({
       appointment_id:  plan.evaluation_appointment_id,
       changed_by_id:   ctx.internalUserId,
-      changed_by_name: 'Recepção',
+      changed_by_name: ctx.userName || ctx.roleLabel || 'Recepção',
       action:          'CHECKOUT_CANCELLED',
       description:     reason.trim() ? `Checkout cancelado: ${reason.trim()}` : 'Checkout cancelado pela recepção',
     })
@@ -325,14 +325,16 @@ export async function cancelTreatmentPlan(
 
   if (plan.status !== 'ACCEPTED') return { error: 'Apenas tratamentos ativos (aceitos) podem ser cancelados.' }
 
-  // Permissão por número de sessões: multi → somente NETWORK_ADMIN
+  // Cancelar tratamento é gestão de procedimentos. Para os de múltiplas sessões
+  // exige-se também abrangência de rede — que é atributo do membro
+  // (`users.branch_id = null`), não mais o nome do cargo NETWORK_ADMIN.
   const { count: sessionCount } = await admin
     .from('treatment_plan_sessions')
     .select('id', { count: 'exact', head: true })
     .eq('plan_id', planId)
 
-  if ((sessionCount ?? 0) > 1 && ctx.role !== 'NETWORK_ADMIN') {
-    return { error: 'Somente o administrador da rede pode cancelar tratamentos com múltiplas sessões.' }
+  if ((sessionCount ?? 0) > 1 && ctx.branchId !== null) {
+    return { error: 'Tratamentos com múltiplas sessões só podem ser cancelados por quem tem abrangência de rede.' }
   }
 
   const { error } = await admin
@@ -368,7 +370,7 @@ export async function cancelTreatmentPlan(
       apptIds.map(apptId => ({
         appointment_id:  apptId,
         changed_by_id:   ctx.internalUserId,
-        changed_by_name: ctx.role === 'NETWORK_ADMIN' ? 'Admin Rede' : 'Gerente',
+        changed_by_name: ctx.userName || ctx.roleLabel || 'Equipe',
         action:          'CANCELLED',
         description:     cancelReason,
       }))
@@ -391,7 +393,7 @@ export async function cancelTreatmentPlan(
     await admin.from('appointment_history').insert({
       appointment_id:  plan.evaluation_appointment_id,
       changed_by_id:   ctx.internalUserId,
-      changed_by_name: ctx.role === 'NETWORK_ADMIN' ? 'Admin Rede' : 'Gerente',
+      changed_by_name: ctx.userName || ctx.roleLabel || 'Equipe',
       action:          'TREATMENT_CANCELLED',
       description:     cancelReason,
     })
@@ -500,7 +502,7 @@ export async function generateEvaluationPlan(
   await admin.from('appointment_history').insert({
     appointment_id:  appointmentId,
     changed_by_id:   ctx.internalUserId,
-    changed_by_name: 'Profissional',
+    changed_by_name: ctx.userName || ctx.roleLabel || 'Profissional',
     action:          'PLAN_PROPOSED',
     description:     `Plano de tratamento enviado para recepção — ${count} sessão(ões)`,
   })
@@ -715,7 +717,7 @@ export async function checkoutTreatmentPlan(
     await admin.from('appointment_history').insert({
       appointment_id:    plan.evaluation_appointment_id,
       changed_by_id:     ctx.internalUserId,
-      changed_by_name:   'Recepção',
+      changed_by_name:   ctx.userName || ctx.roleLabel || 'Recepção',
       action:            'CHECKOUT_COMPLETED',
       description:       `Checkout concluído — R$ ${total.toFixed(2).replace('.', ',')} — ${paymentMethod}`,
     })

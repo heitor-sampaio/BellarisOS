@@ -1,5 +1,5 @@
 ﻿import Link from 'next/link'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultStages } from '@/actions/crm-stages'
 import { getConversations } from '@/actions/inbox'
@@ -49,7 +49,8 @@ export default async function AdminCRMPage({
   const procedures = allProcs.map(p => ({ id: p.id as string, name: p.name as string }))
 
   // Funil da REDE: inclui leads de rede (branch_id null) + leads de filiais do tenant.
-  const { data: leadsRaw } = await admin
+  const leadOwner = ownerFilter(ctx, 'crm')
+  let leadsQuery = admin
     .from('leads')
     .select(`
       id, name, phone, email, social_media, source,
@@ -60,7 +61,8 @@ export default async function AdminCRMPage({
       lead_procedures(procedure_id, procedures(name, price))
     `)
     .eq('tenant_id', ctx.tenantId!)
-    .order('created_at', { ascending: false })
+  if (leadOwner) leadsQuery = leadsQuery.eq('owner_id', leadOwner)
+  const { data: leadsRaw } = await leadsQuery.order('created_at', { ascending: false })
 
   const leads = (leadsRaw ?? []).map((l: any) => {
     const { conversations, ...rest } = l

@@ -250,13 +250,14 @@ interface Props {
   branches:        { id: string; name: string }[]
   currentBranchId: string
   slug:            string
-  role:            string
+  canManageProcedures: boolean
+  isNetworkWide:       boolean
   onClose:         () => void
 }
 
 // -- Modal principal -----------------------------------------------------------
 
-export function TreatmentFileModal({ client, activePackage, branches, currentBranchId, slug, role, onClose }: Props) {
+export function TreatmentFileModal({ client, activePackage, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, onClose }: Props) {
   const [details,      setDetails]      = useState<TreatmentFileDetails | null>(null)
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState<string | null>(null)
@@ -326,7 +327,8 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
         slug={slug}
         branches={branches}
         currentBranchId={currentBranchId}
-        role={role}
+        canManageProcedures={canManageProcedures}
+        isNetworkWide={isNetworkWide}
         onClose={() => setSessionsOpen(false)}
       />
     )

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { seedDefaultStages } from '@/actions/crm-stages'
 import { CRMBoard } from '@/components/branch/crm-board'
@@ -43,8 +43,10 @@ export default async function BranchCRMPage({
     })
     .map(p => ({ id: p.id, name: p.name }))
 
-  // Leads com procedimentos de interesse
-  const { data: leads } = await supabase
+  // Leads com procedimentos de interesse. `ownerFilter` aplica o alcance do
+  // cargo: "só os próprios leads" vira filtro por `owner_id`.
+  const leadOwner = ownerFilter(ctx, 'crm')
+  let leadsQuery = supabase
     .from('leads')
     .select(`
       id, name, phone, email, social_media, source,
@@ -54,7 +56,8 @@ export default async function BranchCRMPage({
     `)
     .eq('branch_id', branch.id)
     .eq('tenant_id', ctx.tenantId!)
-    .order('created_at', { ascending: false })
+  if (leadOwner) leadsQuery = leadsQuery.eq('owner_id', leadOwner)
+  const { data: leads } = await leadsQuery.order('created_at', { ascending: false })
 
   const total       = leads?.length ?? 0
   const convertidos = leads?.filter(l => l.client_id).length ?? 0

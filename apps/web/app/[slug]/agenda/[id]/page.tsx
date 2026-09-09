@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/cached-queries'
@@ -158,7 +158,10 @@ export default async function AppointmentSessionPage({
 
   // Dado clínico só para quem tem o módulo. A tela continua abrindo sem ele —
   // check-in e status são de agenda, não de prontuário.
-  const canViewRecords = can(ctx, 'medical_records', 'VIEW')
+  // Com alcance próprio, só o responsável pelo atendimento vê o clínico.
+  const canViewRecords = can(ctx, 'medical_records', 'VIEW') && (
+    !isOwnScope(ctx, 'medical_records') || ctx.internalUserId === apptRaw.professional_id
+  )
   const anamnesis = canViewRecords ? ((medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null) : null
 
   // Produtos do procedimento (insumos padrão)
@@ -327,7 +330,7 @@ export default async function AppointmentSessionPage({
   const canCheckin   = ctx.permissions.agenda === 'MANAGE'
   const canManage    = isResponsibleProfessional || isAdmin
   const canReassign  = isAdmin
-  const canPayment   = ctx.permissions.financial === 'MANAGE'
+  const canPayment   = ctx.permissions.cashier === 'MANAGE'
 
   type RawPayment = { id: string; payment_method: string; amount: number } | null
   const paymentRawTyped = paymentRaw as RawPayment

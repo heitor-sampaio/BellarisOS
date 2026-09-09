@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 
 import { FinancialHub } from '@/components/branch/financial-hub'
@@ -50,9 +50,14 @@ export default async function FinancialPage({
   // `commissions` não tem `created_at` nem `is_paid` — a consulta anterior
   // pedia as duas, o PostgREST devolvia erro 42703, o erro era descartado e o
   // card ficava zerado. O período vem do atendimento e o pagamento, de `status`.
+  // Alcance "só as próprias comissões": o cargo continua entrando na tela, mas
+  // ela se resume ao que é dele. O resto (receita, despesas, lançamentos da
+  // filial) não é renderizado — ver `ownScope` no hub.
+  const ownFinancial = ownerFilter(ctx, 'financial')
+
   const commissions = (await getCommissionsDetail({
     tenantId: ctx.tenantId!, branchIds: [branch.id], from: start, to: end,
-  })).map(c => ({
+  })).filter(c => !ownFinancial || c.professionalId === ownFinancial).map(c => ({
     id:               c.id,
     professionalId:   c.professionalId,
     professionalName: c.professionalName,
@@ -61,8 +66,11 @@ export default async function FinancialPage({
     createdAt:        c.referenceAt,
   }))
 
-  const canWrite   = ctx.permissions.financial === 'MANAGE'
+  // Lançar e estornar são do financeiro; receber é do caixa. Antes as três
+  // coisas saíam do mesmo nível, e quem operava o caixa também estornava.
+  const canWrite   = ctx.permissions.financial === 'MANAGE' && !ownFinancial
   const canReverse = canWrite
+  const canPay     = ctx.permissions.cashier === 'MANAGE'
 
   const { data: clientsRaw } = canWrite
     ? await supabase
@@ -93,6 +101,8 @@ export default async function FinancialPage({
         commissions={commissions}
         canReverse={canReverse}
         canWrite={canWrite}
+        canPay={canPay}
+        ownScope={!!ownFinancial}
         clients={clients}
       />
     </>

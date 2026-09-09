@@ -1,6 +1,7 @@
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { AdminTeamForm } from '@/components/admin/team-form'
+import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { TeamFilters } from '@/components/admin/team-filters'
 import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
 import { UserMinus, UserCheck } from 'lucide-react'
@@ -101,7 +102,7 @@ export default async function AdminTeamPage({
             {!hasFilters && ' em toda a rede'}
           </p>
         </div>
-        <AdminTeamForm branches={branches ?? []} roles={assignableRoles} isNetworkAdmin={ctx.isNetworkAdmin} />
+        <AdminTeamForm branches={branches ?? []} roles={assignableRoles} isNetworkAdmin={ctx.branchId === null} />
       </div>
 
       {/* Filtros */}
@@ -188,6 +189,21 @@ export default async function AdminTeamPage({
                     </td>
 
                     <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                      <TeamMemberEdit
+                        member={{
+                          id:               m.id,
+                          name:             m.name,
+                          email:            m.email ?? '',
+                          roleId:           m.role_id ?? null,
+                          branchId:         m.branch_id ?? null,
+                          providesServices: !!m.provides_services,
+                        }}
+                        branches={branches ?? []}
+                        roles={assignableRoles}
+                        canChooseScope={ctx.branchId === null}
+                        redirectPath="/admin/team"
+                      />
                       {m.is_active ? (
                         <form action={async () => {
                           'use server'
@@ -217,6 +233,7 @@ export default async function AdminTeamPage({
                           </button>
                         </form>
                       )}
+                      </div>
                     </td>
                   </tr>
                 )

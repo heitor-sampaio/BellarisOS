@@ -29,7 +29,8 @@ declare
   v_tenant   uuid := '880e0566-d467-4fdd-a3a9-fed682ad1cc3';
   v_centro   uuid := '2aa146cd-5416-4351-912d-268524054212';
   v_jardins  uuid := 'dddddddd-0000-0000-0000-000000000002';
-  v_role     uuid;
+  v_role_prof uuid := 'dddddddd-9100-0000-0000-000000000001';
+  v_role_rec  uuid := 'dddddddd-9100-0000-0000-000000000002';
   v_proc_a   uuid := 'dddddddd-3000-0000-0000-000000000001';  -- R$ 200 / 60min
   v_proc_b   uuid := 'dddddddd-3000-0000-0000-000000000002';  -- R$ 300 / 90min
   v_stage    uuid;
@@ -57,10 +58,35 @@ begin
   delete from public.procedures            where id::text like 'dddddddd%';
   delete from public.rooms                 where id::text like 'dddddddd%';
   delete from public.users                 where id::text like 'dddddddd%';
+  delete from public.role_permissions      where role_id::text like 'dddddddd%';
+  delete from public.tenant_roles          where id::text like 'dddddddd%';
   delete from public.branches              where id::text like 'dddddddd%';
 
-  select id into v_role from public.tenant_roles
-   where tenant_id = v_tenant and key = 'NETWORK_ADMIN' limit 1;
+  -- ── Cargos de demonstração ────────────────────────────────────────────────
+  -- Antes os profissionais do seed nasciam com "Admin da rede", o que os fazia
+  -- passar em qualquer gate e tornava a demonstração inútil para conferir
+  -- permissão. Agora cada um recebe um cargo com o alcance que teria de verdade.
+  insert into public.tenant_roles (id, tenant_id, key, label, is_system)
+  values
+    (v_role_prof, v_tenant, 'DEMO_PROFISSIONAL', 'Profissional (demo)', false),
+    (v_role_rec,  v_tenant, 'DEMO_RECEPCAO',     'Recepção (demo)',     false);
+
+  -- Profissional: gerencia a PRÓPRIA agenda e os PRÓPRIOS pacientes, e vê só as
+  -- próprias comissões. É o caso que a heurística antiga não conseguia exprimir.
+  insert into public.role_permissions (tenant_id, role_id, module, level, scope)
+  values
+    (v_tenant, v_role_prof, 'agenda',          'MANAGE', 'OWN'),
+    (v_tenant, v_role_prof, 'medical_records', 'MANAGE', 'OWN'),
+    (v_tenant, v_role_prof, 'financial',       'VIEW',   'OWN'),
+    (v_tenant, v_role_prof, 'clients',         'VIEW',   'ALL'),
+    (v_tenant, v_role_prof, 'procedures',      'VIEW',   'ALL'),
+    -- Recepção: agenda de todo mundo e caixa, mas sem lançar nem estornar.
+    (v_tenant, v_role_rec,  'agenda',          'MANAGE', 'ALL'),
+    (v_tenant, v_role_rec,  'clients',         'MANAGE', 'ALL'),
+    (v_tenant, v_role_rec,  'cashier',         'MANAGE', 'ALL'),
+    (v_tenant, v_role_rec,  'crm',             'MANAGE', 'OWN'),
+    (v_tenant, v_role_rec,  'procedures',      'VIEW',   'ALL');
+
 
   -- ── 2ª filial (para exercitar a consolidação da rede) ──────────────────────
   insert into public.branches (id, tenant_id, name, slug, phone, city, state, is_active)
@@ -69,16 +95,17 @@ begin
   -- ── Profissionais ─────────────────────────────────────────────────────────
   insert into public.users (id, tenant_id, branch_id, auth_id, name, email, is_active, provides_services, role_id)
   values
-    ('dddddddd-1000-0000-0000-000000000001', v_tenant, v_centro,  'dddddddd-1000-0000-0000-00000000a001', 'Ana Prado',    'ana.demo@bellaris.com.br',    true, true, v_role),
-    ('dddddddd-1000-0000-0000-000000000002', v_tenant, v_centro,  'dddddddd-1000-0000-0000-00000000a002', 'Bruna Ferraz', 'bruna.demo@bellaris.com.br',  true, true, v_role),
-    ('dddddddd-1000-0000-0000-000000000003', v_tenant, v_jardins, 'dddddddd-1000-0000-0000-00000000a003', 'Carla Nunes',  'carla.demo@bellaris.com.br',  true, true, v_role);
+    ('dddddddd-1000-0000-0000-000000000001', v_tenant, v_centro,  'dddddddd-1000-0000-0000-00000000a001', 'Ana Prado',    'ana.demo@bellaris.com.br',    true, true, v_role_prof),
+    ('dddddddd-1000-0000-0000-000000000002', v_tenant, v_centro,  'dddddddd-1000-0000-0000-00000000a002', 'Bruna Ferraz', 'bruna.demo@bellaris.com.br',  true, true, v_role_prof),
+    ('dddddddd-1000-0000-0000-000000000003', v_tenant, v_jardins, 'dddddddd-1000-0000-0000-00000000a003', 'Carla Nunes',  'carla.demo@bellaris.com.br',  true, true, v_role_prof),
+    ('dddddddd-1000-0000-0000-000000000004', v_tenant, v_centro,  'dddddddd-1000-0000-0000-00000000a004', 'Diana Rocha',  'diana.demo@bellaris.com.br',  true, false, v_role_rec);
 
   -- Comissão de 10% para todos, em ambas as filiais
   insert into public.commission_rules (branch_id, professional_id, procedure_id, type, value, is_active)
   select b.id, u.id, null, 'PERCENTAGE', 10, true
   from public.users u
   cross join (select v_centro as id union all select v_jardins) b
-  where u.id::text like 'dddddddd%' and u.branch_id = b.id;
+  where u.id::text like 'dddddddd%' and u.provides_services and u.branch_id = b.id;
 
   -- ── Salas ─────────────────────────────────────────────────────────────────
   insert into public.rooms (id, branch_id, name, is_active) values
@@ -288,10 +315,12 @@ begin
   end if;
 
   for i in 1..20 loop
-    insert into public.leads (id, tenant_id, branch_id, name, phone, source, crm_stage_id, client_id, created_at)
+    -- owner_id na recepção: com o cargo "Recepção (demo)" tendo CRM com alcance
+    -- próprio, sem dono nenhum lead apareceria para ela.
+    insert into public.leads (id, tenant_id, branch_id, owner_id, name, phone, source, crm_stage_id, client_id, created_at)
     values (
       ('dddddddd-9000-0000-0000-0000000000' || lpad(to_hex(i), 2, '0'))::uuid,
-      v_tenant, null,
+      v_tenant, null, 'dddddddd-1000-0000-0000-000000000004'::uuid,
       'Lead Demo ' || lpad(i::text, 2, '0'),
       '1197777' || lpad(i::text, 4, '0'),
       case when i % 3 = 0 then 'instagram' when i % 3 = 1 then 'whatsapp' else 'indicacao' end,

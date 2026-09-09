@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, isOwnScope, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
 import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
@@ -97,8 +97,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const canClients    = perm.clients    !== 'NONE'
   const canCheckout   = canProcedures
   // Profissional que atende e não gerencia a agenda: dashboard escopado a ele.
-  const professionalOnly = ctx.providesServices && perm.agenda !== 'MANAGE'
-  const proId = professionalOnly ? ctx.internalUserId : null
+  // Escopo do cargo, não mais heurística sobre o nível de agenda.
+  const professionalOnly = isOwnScope(ctx, 'agenda')
+  const proId = ownerFilter(ctx, 'agenda')
 
   const hasAnyWidget = canFinancial || canAgenda || canProcedures || canClients
 

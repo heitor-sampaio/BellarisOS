@@ -48,7 +48,8 @@ interface Props {
   slug:             string
   branches:         { id: string; name: string }[]
   currentBranchId:  string
-  role:             string
+  canManageProcedures: boolean
+  isNetworkWide:       boolean
   onClose:          () => void
 }
 
@@ -231,7 +232,7 @@ export function TreatmentSessionsModal({
   clientPackageId, planId, planStatus,
   packageName, totalSessions, usedSessions,
   clientId, procedureId, procedureName, price, durationMin,
-  slug, branches, currentBranchId, role, onClose,
+  slug, branches, currentBranchId, canManageProcedures, isNetworkWide, onClose,
 }: Props) {
   const router = useRouter()
   const [sessions,      setSessions]      = useState<Session[]>([])
@@ -244,11 +245,11 @@ export function TreatmentSessionsModal({
 
   const isPlanMode = !!planId && !clientPackageId
 
-  // Regra de cancelamento: plan ACCEPTED, multi-sessão → só NETWORK_ADMIN; sessão única → BRANCH_ADMIN+
+  // Espelho da regra de cancelTreatmentPlan: gestão de procedimentos sempre; e
+  // abrangência de rede a mais quando o tratamento tem várias sessões.
   const isAccepted = planStatus === 'ACCEPTED'
-  const canCancelTreatment = isPlanMode && isAccepted && (
-    (totalSessions > 1 && role === 'NETWORK_ADMIN') ||
-    (totalSessions === 1 && (role === 'NETWORK_ADMIN' || role === 'BRANCH_ADMIN'))
+  const canCancelTreatment = isPlanMode && isAccepted && canManageProcedures && (
+    totalSessions === 1 || isNetworkWide
   )
 
   async function handleCancelTreatment() {

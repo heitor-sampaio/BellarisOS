@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { differenceInYears, format } from 'date-fns'
@@ -71,7 +71,7 @@ export default async function AdminClientProfilePage({
   ] = await Promise.all([
     admin
       .from('appointments')
-      .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, is_evaluation, procedures(name), professional:users!professional_id(name)')
+      .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, is_evaluation, professional_id, procedures(name), professional:users!professional_id(name)')
       .eq('client_id', id)
       .order('scheduled_at', { ascending: false })
       .limit(60),
@@ -249,8 +249,12 @@ export default async function AdminClientProfilePage({
   const sessionNotes = latestEntry?.notes ?? ''
 
   const apptNameById = new Map(allAppointments.map(a => [a.id, a.procedureName]))
-  // Prontuário é dado sensível de saúde: sem o módulo, nem carrega.
-  const canViewRecords = can(ctx, 'medical_records', 'VIEW')
+  // Prontuário é dado sensível de saúde: sem o módulo, nem carrega. E com
+  // alcance "só os próprios pacientes", só de quem este profissional atendeu.
+  const canViewRecords = can(ctx, 'medical_records', 'VIEW') && (
+    !isOwnScope(ctx, 'medical_records') ||
+    (appts ?? []).some((a: { professional_id?: string | null }) => a.professional_id === ctx.internalUserId)
+  )
   const recordForms  = canViewRecords ? buildRecordForms(mreEntries, apptNameById) : []
   const generalAnamnesis = canViewRecords ? ((medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null) : null
 
@@ -394,7 +398,8 @@ export default async function AdminClientProfilePage({
         branches={(branchesRaw ?? []) as { id: string; name: string }[]}
         currentBranchId={branchId}
         slug={slug}
-        role={ctx.role}
+        canManageProcedures={can(ctx, 'procedures', 'MANAGE')}
+        isNetworkWide={ctx.branchId === null}
         clientHistory={clientHistory}
       />
     </>

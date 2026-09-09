@@ -19,11 +19,13 @@ export const APP_MODULES = [
   'procedures',
   'stock',
   'financial',
+  'cashier',
   'crm',
   'marketing',
   'reports',
-  'loyalty',
   'team',
+  'forms',
+  'roles',
   'settings',
 ] as const
 
@@ -31,7 +33,22 @@ export type AppModule = typeof APP_MODULES[number]
 
 export type PermissionLevel = 'NONE' | 'VIEW' | 'MANAGE'
 
+/**
+ * Alcance do que o cargo enxerga dentro do módulo.
+ * OWN = só os registros ligados ao próprio usuário; ALL = todos, dentro da
+ * abrangência do membro (que continua vindo de `users.branch_id`).
+ */
+export type PermissionScope = 'OWN' | 'ALL'
+
+/**
+ * Módulos em que o escopo faz diferença. Nos demais o alcance é sempre ALL e a
+ * tela de cargos nem mostra o seletor.
+ */
+export const SCOPED_MODULES = ['agenda', 'medical_records', 'financial', 'crm'] as const
+export type ScopedModule = typeof SCOPED_MODULES[number]
+
 export type ResolvedPermissions = Record<AppModule, PermissionLevel>
+export type ResolvedScopes      = Record<AppModule, PermissionScope>
 
 export interface JwtClaims {
   tenant_id: string | null
@@ -52,6 +69,7 @@ export interface TenantContext {
   roleId: string | null          // tenant_roles.id do cargo do usuário
   clientId: string | null
   permissions: ResolvedPermissions  // nível resolvido por módulo
+  scopes: ResolvedScopes            // alcance por módulo (OWN = só os próprios)
   providesServices: boolean         // atende clientes (profissional)
   isNetworkAdmin: boolean
   isClient: boolean

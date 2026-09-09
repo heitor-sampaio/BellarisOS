@@ -15,7 +15,7 @@ function revalidate() {
 export async function createAttendanceForm(input: { name: string; schema: unknown }): Promise<Result> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'forms', 'MANAGE')
 
     const name = (input.name ?? '').trim()
     if (!name) return { error: 'Informe um nome para a ficha.' }
@@ -44,7 +44,7 @@ export async function updateAttendanceForm(input: {
 }): Promise<Result> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'forms', 'MANAGE')
 
     const name = (input.name ?? '').trim()
     if (!name) return { error: 'Informe um nome para a ficha.' }
@@ -74,7 +74,7 @@ export async function updateAttendanceForm(input: {
 export async function setAttendanceFormActive(id: string, isActive: boolean): Promise<Result> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'forms', 'MANAGE')
     const admin = createAdminClient()
     const { error } = await admin
       .from('attendance_forms')
@@ -92,7 +92,7 @@ export async function setAttendanceFormActive(id: string, isActive: boolean): Pr
 export async function deleteAttendanceForm(id: string): Promise<Result> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'settings', 'MANAGE')
+    assertPermission(ctx, 'forms', 'MANAGE')
     const admin = createAdminClient()
     // FK procedures.attendance_form_id é ON DELETE SET NULL — remoção é segura.
     const { error } = await admin

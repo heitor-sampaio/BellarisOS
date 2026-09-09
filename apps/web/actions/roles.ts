@@ -19,7 +19,7 @@ export async function createRole(
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'settings', 'MANAGE')
+  assertPermission(ctx, 'roles', 'MANAGE')
 
   const label = (formData.get('label') as string)?.trim()
   if (!label || label.length < 2) return { error: 'Nome do cargo deve ter pelo menos 2 caracteres.' }
@@ -50,7 +50,7 @@ export async function updateRole(
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'settings', 'MANAGE')
+  assertPermission(ctx, 'roles', 'MANAGE')
 
   const roleId = formData.get('roleId') as string
   const label  = (formData.get('label') as string)?.trim()
@@ -82,7 +82,7 @@ export async function updateRole(
 
 export async function deleteRole(roleId: string): Promise<{ error: string } | { success: true }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'settings', 'MANAGE')
+  assertPermission(ctx, 'roles', 'MANAGE')
 
   const supabase = await createClient()
 

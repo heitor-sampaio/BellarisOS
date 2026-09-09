@@ -1,5 +1,5 @@
 ﻿import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-queries'
@@ -170,8 +170,12 @@ export default async function ClientProfilePage({
 
   // Fichas preenchidas (anamnese + atendimento) por atendimento, read-only
   const apptNameById = new Map(allAppointments.map(a => [a.id, a.procedureName]))
-  // Prontuário é dado sensível de saúde: sem o módulo, nem carrega.
-  const canViewRecords = can(ctx, 'medical_records', 'VIEW')
+  // Prontuário é dado sensível de saúde: sem o módulo, nem carrega. E com
+  // alcance "só os próprios pacientes", só de quem este profissional atendeu.
+  const canViewRecords = can(ctx, 'medical_records', 'VIEW') && (
+    !isOwnScope(ctx, 'medical_records') ||
+    (appts ?? []).some((a: { professional_id?: string | null }) => a.professional_id === ctx.internalUserId)
+  )
   const recordForms = canViewRecords ? buildRecordForms(mreEntries, apptNameById) : []
   const generalAnamnesis = canViewRecords ? ((medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null) : null
 
@@ -428,7 +432,8 @@ export default async function ClientProfilePage({
       branches={(branchesRaw ?? []) as { id: string; name: string }[]}
       currentBranchId={branch.id}
       slug={slug}
-      role={ctx.role}
+      canManageProcedures={can(ctx, 'procedures', 'MANAGE')}
+      isNetworkWide={ctx.branchId === null}
       clientHistory={clientHistory}
     />
     </>

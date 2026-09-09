@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, isOwnScope } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { AgendaCalendar } from '@/components/branch/agenda-calendar'
 import { ProfessionalAgendaView } from '@/components/branch/professional-agenda'
@@ -15,9 +15,10 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
   const ctx      = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
 
-  // Profissional que atende clientes e não gerencia a agenda inteira: vê só a própria.
+  // Escopo do cargo decide o alcance; antes era inferido de "atende clientes e
+  // não gerencia a agenda", o que impedia dar gestão da própria agenda a alguém.
   const canManageAgenda  = ctx.permissions.agenda === 'MANAGE'
-  const professionalOnly = ctx.providesServices && !canManageAgenda
+  const professionalOnly = isOwnScope(ctx, 'agenda')
 
   const supabase = await createSupabase()
 

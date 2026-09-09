@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   LayoutGrid, Calendar, Users, Sparkles,
-  Package, CreditCard, LogOut, UserCircle,
+  Package, CreditCard, LogOut, UserCircle, Layers,
   ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
@@ -155,6 +155,7 @@ export function BranchSidebar({
           <NavItem icon={<LayoutGrid size={18} />} label="Dashboard"      href={`${base}/dashboard`} />
           {permissions.agenda     !== 'NONE' && <NavItem icon={<Calendar    size={18} />} label="Agenda"        href={`${base}/agenda`} />}
           {permissions.clients    !== 'NONE' && <NavItem icon={<Users       size={18} />} label="Clientes"      href={`${base}/clients`} />}
+          {permissions.crm        !== 'NONE' && <NavItem icon={<Layers      size={18} />} label="CRM"           href={`${base}/crm`} />}
           {permissions.financial  !== 'NONE' && <NavItem icon={<CreditCard  size={18} />} label="Financeiro"    href={`${base}/financial`} />}
           {permissions.procedures !== 'NONE' && <NavItem icon={<Sparkles    size={18} />} label="Procedimentos" href={`${base}/procedures`} />}
           {permissions.stock      !== 'NONE' && <NavItem icon={<Package     size={18} />} label="Estoque"       href={`${base}/stock`} />}

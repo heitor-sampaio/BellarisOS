@@ -154,7 +154,8 @@ interface Props {
   branches:              { id: string; name: string }[]
   currentBranchId:       string
   slug:                  string
-  role:                  string
+  canManageProcedures:   boolean
+  isNetworkWide:         boolean
   clientHistory:         ClientHistoryEvent[]
 }
 
@@ -874,7 +875,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments,
   loyaltyBalance, activePackage, sessionNotes,
-  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, role, clientHistory,
+  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clientHistory,
 }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>('visao')
@@ -895,7 +896,8 @@ export function ClientProfile({
           branches={branches}
           currentBranchId={currentBranchId}
           slug={slug}
-          role={role}
+          canManageProcedures={canManageProcedures}
+          isNetworkWide={isNetworkWide}
           onClose={() => setTreatmentModalOpen(false)}
         />
       )}

@@ -1,6 +1,7 @@
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { TeamForm } from '@/components/branch/team-form'
+import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
 import { UserMinus, UserCheck } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -37,7 +38,7 @@ export default async function TeamPage({
 
   const { data: branch } = await supabase
     .from('branches')
-    .select('id')
+    .select('id, name')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
     .single()
@@ -150,10 +151,27 @@ export default async function TeamPage({
 
                   {/* Ações */}
                   <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                    {canManage && (
+                      <TeamMemberEdit
+                        member={{
+                          id:               m.id,
+                          name:             m.name,
+                          email:            m.email ?? '',
+                          roleId:           m.role_id ?? null,
+                          branchId:         branchId,
+                          providesServices: !!m.provides_services,
+                        }}
+                        branches={[{ id: branchId, name: branch?.name ?? 'Esta unidade' }]}
+                        roles={assignableRoles}
+                        canChooseScope={false}
+                        redirectPath={`/${slug}/settings/team`}
+                      />
+                    )}
                     {canManage && (m.is_active ? (
                       <form action={async () => {
                         'use server'
-                        await deactivateTeamMember(m.id, slug)
+                        await deactivateTeamMember(m.id, `/${slug}/settings/team`)
                       }}>
                         <button
                           type="submit"
@@ -167,7 +185,7 @@ export default async function TeamPage({
                     ) : (
                       <form action={async () => {
                         'use server'
-                        await reactivateTeamMember(m.id, slug)
+                        await reactivateTeamMember(m.id, `/${slug}/settings/team`)
                       }}>
                         <button
                           type="submit"
@@ -179,6 +197,7 @@ export default async function TeamPage({
                         </button>
                       </form>
                     ))}
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -28,6 +28,7 @@ interface Props {
   branchId:     string
   slug:         string
   canReverse:   boolean
+  canPay:       boolean
 }
 
 const PM_LABELS: Record<string, string> = {
@@ -59,7 +60,7 @@ function fmtDatetime(iso: string) {
 type FilterType = 'all' | 'INCOME' | 'EXPENSE'
 type SortDir    = 'asc' | 'desc'
 
-export function FinancialTable({ transactions, branchId, slug, canReverse }: Props) {
+export function FinancialTable({ transactions, branchId, slug, canReverse, canPay }: Props) {
   const [search,     setSearch]     = useState('')
   const [filterType, setFilterType] = useState<FilterType>('all')
   const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'pending'>('all')
@@ -313,7 +314,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse }: Pro
                       {/* Ações */}
                       <td data-label="" style={{ padding: '13px 16px' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                          {!tx.is_paid && !isReversed && (
+                          {!tx.is_paid && !isReversed && canPay && (
                             <button type="button" onClick={() => handleMarkPaid(tx.id)} title="Marcar como pago" style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,
                               fontSize: 11.5, fontWeight: 700, padding: '5px 10px', borderRadius: 7,

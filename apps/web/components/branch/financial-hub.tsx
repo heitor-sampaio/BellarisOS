@@ -39,6 +39,9 @@ interface Props {
   commissions:      CommissionEntry[]
   canReverse:       boolean
   canWrite:         boolean
+  canPay:           boolean
+  /** Cargo com alcance "só as próprias comissões": some tudo que é da filial. */
+  ownScope:         boolean
   clients:          { id: string; name: string }[]
 }
 
@@ -516,6 +519,8 @@ export function FinancialHub({
   commissions,
   canReverse,
   canWrite,
+  canPay,
+  ownScope,
   clients,
 }: Props) {
   const router              = useRouter()
@@ -664,7 +669,7 @@ export function FinancialHub({
 
 
       {/* KPI grid — 6 cards em linha */}
-      <div className="kpi-grid-auto">
+      {!ownScope && <div className="kpi-grid-auto">
         <KpiCardFull
           label="Lucro Líquido"
           curr={saldo} prev={prevSaldo}
@@ -712,12 +717,12 @@ export function FinancialHub({
           valueColor={pendingExpense > 0 ? '#d97706' : 'var(--text)'}
           invertDelta
         />
-      </div>
+      </div>}
 
       {/* Charts row — evolução | comissões | formas de pagamento */}
-      <div className="rg-3">
+      <div className={ownScope ? undefined : 'rg-3'}>
         {/* Evolution */}
-        <div className="card" style={{ padding: '20px 20px 12px' }}>
+        {!ownScope && <div className="card" style={{ padding: '20px 20px 12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
               <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
@@ -739,13 +744,13 @@ export function FinancialHub({
             </div>
           </div>
           <EvolutionChart data={barData} />
-        </div>
+        </div>}
 
         {/* Comissões */}
         <CommissionsCard entries={commissions} />
 
         {/* Formas de pagamento */}
-        <div className="card" style={{ padding: '20px' }}>
+        {!ownScope && <div className="card" style={{ padding: '20px' }}>
           <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 4 }}>
             Formas de pagamento
           </p>
@@ -776,11 +781,11 @@ export function FinancialHub({
               <p style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'center' }}>Sem receitas pagas</p>
             )}
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Category breakdown */}
-      <div className="rg-2">
+      {!ownScope && <div className="rg-2">
         <div className="card" style={{ padding: '20px' }}>
           <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
             Categorias de receita
@@ -795,10 +800,10 @@ export function FinancialHub({
           <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 16 }}>Top 6 categorias</p>
           <CategoryBars items={expenseCategories} color="#dc2626" />
         </div>
-      </div>
+      </div>}
 
       {/* Transactions */}
-      <div>
+      {!ownScope && <div>
         <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 12 }}>
           Lançamentos
         </p>
@@ -807,8 +812,9 @@ export function FinancialHub({
           branchId={branchId}
           slug={slug}
           canReverse={canReverse}
+          canPay={canPay}
         />
-      </div>
+      </div>}
     </div>
   )
 }

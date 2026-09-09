@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, isOwnScope } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
@@ -226,7 +226,9 @@ export async function updateAppointmentStatus(
   assertPermission(ctx, 'agenda', 'VIEW')
 
   // Profissional só pode iniciar (IN_PROGRESS) ou concluir (COMPLETED)
-  if (ctx.providesServices && ctx.permissions.agenda !== 'MANAGE' && !(['IN_PROGRESS', 'COMPLETED'] as string[]).includes(status)) {
+  // Quem só gerencia a própria agenda mexe no andamento do atendimento
+  // (iniciar/concluir), não no ciclo de vida do agendamento.
+  if (isOwnScope(ctx, 'agenda') && !(['IN_PROGRESS', 'COMPLETED'] as string[]).includes(status)) {
     throw new Error('Forbidden')
   }
 
@@ -416,7 +418,7 @@ export async function startAppointment(
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'CONFIRMED') return { error: 'O cliente precisa fazer check-in antes de iniciar.' }
 
-    if (ctx.providesServices && ctx.permissions.agenda !== 'MANAGE' && appt.professional_id !== ctx.internalUserId) {
+    if (isOwnScope(ctx, 'agenda') && appt.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode iniciar este atendimento.' }
     }
 
@@ -573,7 +575,7 @@ export async function finishSession(
     if (appt.status === 'COMPLETED')                      return { error: 'Atendimento já concluído.' }
     if (['CANCELLED', 'NO_SHOW'].includes(appt.status as string)) return { error: 'Agendamento já finalizado.' }
 
-    if (ctx.providesServices && ctx.permissions.agenda !== 'MANAGE' && appt.professional_id !== ctx.internalUserId) {
+    if (isOwnScope(ctx, 'agenda') && appt.professional_id !== ctx.internalUserId) {
       return { error: 'Apenas o profissional responsável pode concluir este atendimento.' }
     }
 
@@ -803,7 +805,7 @@ export async function confirmPayment(
 ): Promise<{ error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'financial', 'MANAGE')
+    assertPermission(ctx, 'cashier', 'MANAGE')
 
     const appointmentId = (formData.get('appointment_id') as string)?.trim()
     const paymentMethod = (formData.get('payment_method') as string)?.trim()

@@ -7,21 +7,27 @@ import { createAdminClient } from '@/lib/supabase/admin'
 // Resolve a abrangência (branch_id) de um membro a partir do form.
 // Apenas NETWORK_ADMIN pode criar membros de rede (branch_id null); gerentes de
 // filial ficam restritos à própria filial.
+// Abrangência é atributo do MEMBRO (`users.branch_id`), não do nome do cargo:
+// quem tem `branchId === null` opera a rede toda. Antes isto olhava para
+// `isNetworkAdmin`, e um cargo de rede que não fosse NETWORK_ADMIN caía na
+// última linha e jogava o membro editado para `branch_id = null` em silêncio.
 function resolveScope(
-  ctx: { isNetworkAdmin: boolean; branchId: string | null },
+  ctx: { branchId: string | null },
   scope: string | null,
   branchId: string | null,
 ): { branchId: string | null } | { error: string } {
+  const isNetworkWide = ctx.branchId === null
+
   if (scope === 'network') {
-    if (!ctx.isNetworkAdmin) return { error: 'Apenas o admin da rede pode criar membros de rede.' }
+    if (!isNetworkWide) return { error: 'Só quem tem abrangência de rede pode criar membros de rede.' }
     return { branchId: null }
   }
   // Filial
-  if (ctx.isNetworkAdmin) {
+  if (isNetworkWide) {
     if (!branchId) return { error: 'Selecione a filial.' }
     return { branchId }
   }
-  // Gerente de filial só cria na própria filial
+  // Quem é de uma filial só mexe na própria
   return { branchId: ctx.branchId }
 }
 

@@ -4,8 +4,8 @@ import React, { useActionState, useEffect, useState, useTransition } from 'react
 import { Plus, Lock, Trash2, Pencil, Check, X, CheckCircle2 } from 'lucide-react'
 import { createRole, updateRole, deleteRole } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
-import { ALL_MODULES, MODULE_LABELS, MODULE_HINTS, LEVEL_LABELS } from '@/lib/permissions'
-import type { AppModule, PermissionLevel } from '@estetica-os/types'
+import { ALL_MODULES, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS, SCOPE_LABELS, isScoped } from '@/lib/permissions'
+import type { AppModule, PermissionLevel, PermissionScope, ScopedModule } from '@estetica-os/types'
 
 export interface EditorRole {
   id:        string
@@ -14,12 +14,17 @@ export interface EditorRole {
   is_system: boolean
 }
 
-interface RolesEditorProps {
-  roles:       EditorRole[]
-  permsByRole: Record<string, Partial<Record<AppModule, PermissionLevel>>>
+/** O que um cargo tem em um módulo: até onde mexe (nível) e em quais registros (escopo). */
+export interface RoleModulePermission {
+  level: PermissionLevel
+  scope: PermissionScope
 }
 
-const LEVELS: PermissionLevel[] = ['NONE', 'VIEW', 'MANAGE']
+interface RolesEditorProps {
+  roles:       EditorRole[]
+  permsByRole: Record<string, Partial<Record<AppModule, RoleModulePermission>>>
+}
+
 
 export function RolesEditor({ roles, permsByRole }: RolesEditorProps) {
   const editable = roles.filter(r => !r.is_system)
@@ -227,18 +232,24 @@ function PermissionMatrix({
   role, perms,
 }: {
   role: EditorRole
-  perms: Partial<Record<AppModule, PermissionLevel>>
+  perms: Partial<Record<AppModule, RoleModulePermission>>
 }) {
   const [state, action, pending] = useActionState(saveRolePermissions, undefined)
   const [levels, setLevels] = useState<Record<AppModule, PermissionLevel>>(
-    () => Object.fromEntries(ALL_MODULES.map(m => [m, perms[m] ?? 'NONE'])) as Record<AppModule, PermissionLevel>,
+    () => Object.fromEntries(ALL_MODULES.map(m => [m, perms[m]?.level ?? 'NONE'])) as Record<AppModule, PermissionLevel>,
+  )
+  const [scopes, setScopes] = useState<Record<AppModule, PermissionScope>>(
+    () => Object.fromEntries(ALL_MODULES.map(m => [m, perms[m]?.scope ?? 'ALL'])) as Record<AppModule, PermissionScope>,
   )
 
   return (
     <form action={action} className="card">
       <input type="hidden" name="roleId" value={role.id} />
       {ALL_MODULES.map(m => (
-        <input key={m} type="hidden" name={`level:${m}`} value={levels[m]} />
+        <React.Fragment key={m}>
+          <input type="hidden" name={`level:${m}`} value={levels[m]} />
+          {isScoped(m) && <input type="hidden" name={`scope:${m}`} value={scopes[m]} />}
+        </React.Fragment>
       ))}
 
       <div style={{ marginBottom: 18 }}>
@@ -246,7 +257,7 @@ function PermissionMatrix({
           Acessos de <span style={{ color: 'var(--brand)' }}>{role.label}</span>
         </h3>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', marginTop: 3 }}>
-          Defina o nível de cada módulo. <strong>Sem acesso</strong> esconde o módulo do menu.
+          Defina o nível de cada módulo. <strong>Sem acesso</strong> esconde o módulo do menu. Onde aparece <strong>Alcance</strong>, escolha se o cargo enxerga só os próprios registros ou os de toda a equipe.
         </p>
       </div>
 
@@ -255,25 +266,48 @@ function PermissionMatrix({
           <div
             key={module}
             style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
               padding: '10px 4px',
               borderBottom: i < ALL_MODULES.length - 1 ? '1px solid var(--hairline)' : undefined,
             }}
           >
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
-                {MODULE_LABELS[module]}
-              </div>
-              {MODULE_HINTS[module] && (
-                <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
-                  {MODULE_HINTS[module]}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>
+                  {MODULE_LABELS[module]}
                 </div>
-              )}
+                {MODULE_HINTS[module] && (
+                  <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
+                    {MODULE_HINTS[module]}
+                  </div>
+                )}
+              </div>
+              <SegmentedLevel
+                options={MODULE_LEVELS[module]}
+                value={levels[module]}
+                onChange={v => setLevels(prev => ({ ...prev, [module]: v }))}
+              />
             </div>
-            <SegmentedLevel
-              value={levels[module]}
-              onChange={v => setLevels(prev => ({ ...prev, [module]: v }))}
-            />
+
+            {/* Alcance só aparece onde muda alguma coisa, e só depois que há
+                acesso: escolher "de quem" sem ter acesso não significa nada. */}
+            {isScoped(module) && levels[module] !== 'NONE' && (
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+                gap: 10, marginTop: 8,
+              }}>
+                <span style={{
+                  fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)',
+                  textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)',
+                }}>
+                  Alcance
+                </span>
+                <SegmentedScope
+                  module={module}
+                  value={scopes[module]}
+                  onChange={v => setScopes(prev => ({ ...prev, [module]: v }))}
+                />
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -302,14 +336,18 @@ function PermissionMatrix({
   )
 }
 
-function SegmentedLevel({ value, onChange }: { value: PermissionLevel; onChange: (v: PermissionLevel) => void }) {
+function SegmentedLevel({ options, value, onChange }: {
+  options: readonly PermissionLevel[]
+  value: PermissionLevel
+  onChange: (v: PermissionLevel) => void
+}) {
   return (
     <div style={{
       display: 'inline-flex', flexShrink: 0, padding: 2, gap: 2,
       background: 'var(--bg-app)', border: '1.5px solid var(--border)',
       borderRadius: 'var(--radius-field-token)',
     }}>
-      {LEVELS.map(lvl => {
+      {options.map(lvl => {
         const active = value === lvl
         return (
           <button
@@ -327,6 +365,45 @@ function SegmentedLevel({ value, onChange }: { value: PermissionLevel; onChange:
             }}
           >
             {LEVEL_LABELS[lvl]}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function SegmentedScope({
+  module, value, onChange,
+}: {
+  module: ScopedModule
+  value: PermissionScope
+  onChange: (v: PermissionScope) => void
+}) {
+  const labels = SCOPE_LABELS[module]
+  return (
+    <div style={{
+      display: 'inline-flex', flexShrink: 0, padding: 2, gap: 2,
+      background: 'var(--bg-app)', border: '1.5px solid var(--border)',
+      borderRadius: 'var(--radius-field-token)',
+    }}>
+      {(['OWN', 'ALL'] as const).map(scope => {
+        const active = value === scope
+        return (
+          <button
+            key={scope}
+            type="button"
+            onClick={() => onChange(scope)}
+            style={{
+              padding: '4px 10px', border: 'none', cursor: 'pointer',
+              borderRadius: 'calc(var(--radius-field-token) - 2px)',
+              fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)',
+              background: active ? 'var(--brand)' : 'transparent',
+              color: active ? '#fff' : 'var(--text-muted)',
+              transition: 'background 120ms, color 120ms',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {scope === 'OWN' ? labels.own : labels.all}
           </button>
         )
       })}

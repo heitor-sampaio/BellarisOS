@@ -3,20 +3,21 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { ALL_MODULES } from '@/lib/permissions'
-import type { PermissionLevel } from '@estetica-os/types'
+import { ALL_MODULES, MODULE_LEVELS, isScoped } from '@/lib/permissions'
+import type { PermissionLevel, PermissionScope } from '@estetica-os/types'
 
-const VALID_LEVELS: PermissionLevel[] = ['NONE', 'VIEW', 'MANAGE']
+const VALID_SCOPES: PermissionScope[] = ['OWN', 'ALL']
 
 /**
- * Salva a matriz de um único cargo: um nível (NONE/VIEW/MANAGE) por módulo.
+ * Salva a matriz de um único cargo: por módulo, um nível (NONE/VIEW/MANAGE) e,
+ * nos módulos escopáveis, o alcance (OWN/ALL).
  */
 export async function saveRolePermissions(
   _prev: { error: string } | { success: boolean } | undefined,
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'settings', 'MANAGE')
+  assertPermission(ctx, 'roles', 'MANAGE')
 
   const roleId = formData.get('roleId') as string
   if (!roleId) return { error: 'Cargo não informado.' }
@@ -34,9 +35,21 @@ export async function saveRolePermissions(
   if (role.is_system) return { error: 'Cargos do sistema têm acesso total e não são editáveis.' }
 
   const rows = ALL_MODULES.map(module => {
+    // Cada módulo declara os níveis que distingue: gravar "Ver" num módulo só
+    // de MANAGE deixaria o cargo com um acesso que nenhum gate reconhece.
     const raw = (formData.get(`level:${module}`) as string) ?? 'NONE'
-    const level = (VALID_LEVELS.includes(raw as PermissionLevel) ? raw : 'NONE') as PermissionLevel
-    return { tenant_id: ctx.tenantId!, role_id: roleId, module, level }
+    const allowed = MODULE_LEVELS[module]
+    const level = (allowed.includes(raw as PermissionLevel) ? raw : 'NONE') as PermissionLevel
+
+    // Módulo não escopável grava sempre ALL: guardar OWN ali seria um valor sem
+    // leitor, esperando alguém interpretá-lo como restrição de verdade.
+    const rawScope = (formData.get(`scope:${module}`) as string) ?? 'ALL'
+    const scope: PermissionScope =
+      isScoped(module) && VALID_SCOPES.includes(rawScope as PermissionScope)
+        ? (rawScope as PermissionScope)
+        : 'ALL'
+
+    return { tenant_id: ctx.tenantId!, role_id: roleId, module, level, scope }
   })
 
   const { error } = await supabase

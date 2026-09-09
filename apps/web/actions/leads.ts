@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLeadSource, mergeTags } from '@estetica-os/utils'
 
@@ -139,12 +139,17 @@ export async function updateLead(
     // Só atualiza tags se o form as enviou (evita apagar tags de callers que não editam tags)
     if (formData.has('tags')) patch.tags = parseStringArray(formData, 'tags')
 
+    // Alcance "só os próprios leads" entra como filtro da própria query: sem
+    // isso, o cargo não veria o lead na lista mas ainda o editaria pelo id.
     const admin = createAdminClient()
-    const { error } = await admin
+    let q = admin
       .from('leads')
       .update(patch)
       .eq('id', leadId)
       .eq('tenant_id', ctx.tenantId!)
+    const owner = ownerFilter(ctx, 'crm')
+    if (owner) q = q.eq('owner_id', owner)
+    const { error } = await q
 
     if (error) {
       console.error('[updateLead]', error.message)
@@ -168,11 +173,14 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
-    await admin
+    let q = admin
       .from('leads')
       .update({ crm_stage_id })
       .eq('id', leadId)
       .eq('tenant_id', ctx.tenantId!)
+    const owner = ownerFilter(ctx, 'crm')
+    if (owner) q = q.eq('owner_id', owner)
+    await q
 
     revalidatePath(`/${slug}/crm`)
     revalidatePath('/admin/crm')
@@ -191,11 +199,14 @@ export async function deleteLead(leadId: string, slug: string) {
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
-    await admin
+    let q = admin
       .from('leads')
       .delete()
       .eq('id', leadId)
       .eq('tenant_id', ctx.tenantId!)
+    const owner = ownerFilter(ctx, 'crm')
+    if (owner) q = q.eq('owner_id', owner)
+    await q
 
     revalidatePath(`/${slug}/crm`)
     revalidatePath('/admin/crm')

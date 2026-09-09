@@ -82,7 +82,8 @@ export function AdminSidebar({ permissions }: { permissions: ResolvedPermissions
           {can('marketing')  && <NavItem icon={<Bell       size={18} />} label="Notificações"  href="/admin/notificacoes" />}
           {can('marketing')  && <NavItem icon={<Megaphone  size={18} />} label="Marketing"     href="/admin/marketing" />}
           {can('team')       && <NavItem icon={<UsersRound size={18} />} label="Equipes"       href="/admin/team" />}
-          {can('settings')   && <NavItem icon={<Settings   size={18} />} label="Configurações" href="/admin/settings" />}
+          {/* Uma tela, três módulos: quem só tem cargos ou fichas continua chegando lá. */}
+          {(can('settings') || can('roles') || can('forms')) && <NavItem icon={<Settings size={18} />} label="Configurações" href="/admin/settings" />}
         </nav>
 
         {/* Rodapé: recolher (desktop) + logout */}

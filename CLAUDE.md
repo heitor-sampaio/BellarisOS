@@ -448,26 +448,41 @@ await prisma.$transaction(async (tx) => {
 
 ## 11. Permissões por módulo
 
-| Módulo | NETWORK_ADMIN | BRANCH_ADMIN | RECEPTIONIST | PROFESSIONAL | FINANCIAL | CLIENT |
-|---|---|---|---|---|---|---|
-| Dashboard rede | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Gerenciar filiais | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Agenda (todos) | ✅ | ✅ | ✅ | Própria | ❌ | ❌ |
-| Agenda (própria) | — | — | — | ✅ | ❌ | Ver/Criar |
-| Clientes | ✅ | ✅ | ✅ | Ver | ❌ | Próprio |
-| Prontuário | ✅ | ✅ | ❌ | Próprios | ❌ | ❌ |
-| Procedimentos | ✅ | ✅ | Ver | Ver | ❌ | Ver (app) |
-| Estoque | ✅ | ✅ | Ver | ❌ | Ver | ❌ |
-| Financeiro | ✅ | ✅ | Caixa | Comissões | ✅ | ❌ |
-| Pontos / Pacotes | ✅ | ✅ | Ver | ❌ | ❌ | Próprios |
-| Configurações | ✅ | Filial | ❌ | ❌ | ❌ | ❌ |
+Não existem mais cargos fixos. Cada rede cria seus próprios cargos (`tenant_roles`)
+e monta a matriz em Configurações → Cargos. A autorização tem **três eixos**:
+
+| Eixo | Onde mora | O que decide |
+|---|---|---|
+| **Módulo × nível** | `role_permissions.level` (`NONE`/`VIEW`/`MANAGE`) | até onde o cargo mexe |
+| **Escopo** | `role_permissions.scope` (`OWN`/`ALL`) | em quais registros |
+| **Abrangência** | `users.branch_id` (`null` = rede) | em quais unidades |
+
+Escopo e abrangência são coisas diferentes: o escopo é do **cargo**, a abrangência
+é do **membro**. Um mesmo cargo "Profissional" serve para alguém de uma filial e
+para alguém da rede.
+
+Os 14 módulos: `agenda`, `clients`, `medical_records`, `procedures`, `stock`,
+`financial`, `cashier`, `crm`, `marketing`, `reports`, `team`, `forms`, `roles`,
+`settings`. Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
+(`lib/permissions.ts`) declara o que cada um aceita, e a tela de cargos só
+oferece esses. O escopo aparece apenas em `SCOPED_MODULES`: `agenda`,
+`medical_records`, `financial`, `crm`.
 
 ```typescript
-// lib/auth.ts
-export function assertRole(ctx: TenantContext, allowed: UserRole[]) {
-  if (!allowed.includes(ctx.role)) throw new Error('Forbidden')
-}
+// lib/auth.ts — os quatro helpers de autorização
+assertPermission(ctx, 'agenda', 'MANAGE')                    // barra (throw)
+assertAnyPermission(ctx, ['settings', 'roles', 'forms'], 'MANAGE')  // tela multi-módulo
+can(ctx, 'medical_records', 'VIEW')                          // esconde UI
+ownerFilter(ctx, 'agenda')                                   // internalUserId | null → filtro da query
 ```
+
+Regras:
+- **Nunca** decida acesso por nome de cargo (`ctx.role === 'NETWORK_ADMIN'`).
+  Para "só quem é da rede", use a abrangência: `ctx.branchId === null`.
+- Toda leitura de módulo escopável passa `ownerFilter` para dentro da query.
+  Filtrar só na renderização deixa o registro acessível pelo id.
+- `provides_services` significa apenas: aparece como profissional na agenda e
+  recebe comissão. Não é permissão e não deriva escopo.
 
 ---
 

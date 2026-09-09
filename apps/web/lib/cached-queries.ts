@@ -151,16 +151,24 @@ export function getCachedBranchBySlug(slug: string, tenantId: string) {
 }
 
 // ─── Permissões por cargo (resolvidas no getTenantContext → toda navegação) ────
+// `scope` faz parte da linha: sem ele no tipo, um `.map` futuro o descarta sem
+// erro de compilação e todo cargo volta a ser "vê tudo" em silêncio.
+export type CachedRolePermission = {
+  module: string
+  level:  'NONE' | 'VIEW' | 'MANAGE'
+  scope:  'OWN' | 'ALL' | null
+}
+
 export function getCachedRolePermissions(tenantId: string, roleId: string) {
   return unstable_cache(
-    async (): Promise<{ module: string; level: 'NONE' | 'VIEW' | 'MANAGE' }[]> => {
+    async (): Promise<CachedRolePermission[]> => {
       const admin = createAdminClient()
       const { data } = await admin
         .from('role_permissions')
-        .select('module, level')
+        .select('module, level, scope')
         .eq('tenant_id', tenantId)
         .eq('role_id', roleId)
-      return (data ?? []) as { module: string; level: 'NONE' | 'VIEW' | 'MANAGE' }[]
+      return (data ?? []) as CachedRolePermission[]
     },
     [`role-permissions-${tenantId}-${roleId}`],
     { revalidate: 600, tags: [`permissions:${tenantId}`] },
@@ -272,7 +280,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
       ] = await Promise.all([
         admin
           .from('appointments')
-          .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, is_evaluation, procedures(name), professional:users!professional_id(name)')
+          .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, is_evaluation, professional_id, procedures(name), professional:users!professional_id(name)')
           .eq('client_id', clientId)
           .order('scheduled_at', { ascending: false })
           .limit(60),
