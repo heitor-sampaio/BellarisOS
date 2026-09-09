@@ -615,6 +615,33 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 
 ---
 
+## 14.1 Jobs agendados (cron)
+
+O serviço **"Notification Cron"** no Railway roda `node /app/cron.mjs` de hora
+em hora. O script (`scripts/cron.mjs`) chama as rotas `/api/cron/*` do app com
+o `CRON_SECRET` e sai com código 1 se alguma falhar — assim a execução aparece
+vermelha no painel em vez de falhar em silêncio.
+
+**Para adicionar um job:** criar `apps/web/app/api/cron/<nome>/route.ts`
+(protegida por `CRON_SECRET`) e acrescentar o nome ao array `JOBS` do script.
+
+Três detalhes de infraestrutura que não são óbvios e já custaram tempo:
+
+- O serviço usa o **Dockerfile principal**, e `scripts/cron.mjs` é copiado para
+  `/app/cron.mjs` no estágio runner. Não adianta criar um Dockerfile próprio: o
+  `railway.toml` da raiz fixa `dockerfilePath = "Dockerfile"` e sobrescreve o
+  que for configurado no serviço.
+- Config-as-code **por serviço** foi depreciada pelo Railway — `railwayConfigFile`
+  é recusado. Não há como dar um `railway.<algo>.toml` só para o cron.
+- Start command **não é aplicado** a serviço cuja fonte é imagem pública. Com
+  uma imagem como `alpine:3`, o container sobe o shell padrão, sai na hora e
+  não executa nada, sem log e sem erro. A fonte precisa ser o repositório.
+
+Para validar sem esperar uma hora: trocar o schedule para `*/5 * * * *`, criar
+uma pendência real, conferir os logs do deployment e **restaurar `0 * * * *`**.
+
+---
+
 ## 15. Comandos úteis
 
 ```bash
