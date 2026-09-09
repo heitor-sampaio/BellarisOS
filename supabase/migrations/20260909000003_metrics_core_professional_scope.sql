@@ -92,3 +92,10 @@ revoke all on function public.metrics_core(uuid, uuid[], timestamptz, timestampt
 grant execute on function public.metrics_core(uuid, uuid[], timestamptz, timestamptz, uuid) to service_role;
 
 notify pgrst, 'reload schema';
+
+-- `create or replace` com um parâmetro novo (mesmo com default) cria uma
+-- SEGUNDA função em vez de substituir a de 4 argumentos. Duas sobrecargas do
+-- mesmo nome deixam a resolução ambígua para quem chamar sem o parâmetro novo.
+drop function if exists public.metrics_core(uuid, uuid[], timestamptz, timestamptz);
+
+notify pgrst, 'reload schema';
