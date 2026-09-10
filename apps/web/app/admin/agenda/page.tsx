@@ -2,6 +2,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminAgendaView } from '@/components/admin/admin-agenda-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { dayKeyTZ, weekdayTZ, addDaysTZ, startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
 
 type AgendaView = 'day' | 'week'
 
@@ -17,9 +18,14 @@ export default async function AdminAgendaPage({
 
   const admin       = createAdminClient()
   const view        = ((rawView ?? 'day') as AgendaView)
-  const now         = new Date()
-  const todayStr    = now.toISOString().slice(0, 10)
+  // "Hoje" no fuso do negócio. Com `toISOString()` o dia virava às 21h em
+  // Brasília e a agenda passava a abrir no dia seguinte.
+  const todayStr    = dayKeyTZ(new Date())
   const selectedStr = rawDate ?? todayStr
+
+  // Meio-dia UTC como âncora do dia escolhido: longe das bordas, o parse não
+  // escorrega para o dia anterior nem para o seguinte por causa do offset.
+  const selected = new Date(selectedStr + 'T12:00:00Z')
 
   // -- Intervalo de datas a buscar -----------------------------------
   let startDate: Date
@@ -27,15 +33,14 @@ export default async function AdminAgendaPage({
 
   if (view === 'week') {
     // Segunda-feira da semana do dia selecionado
-    const sel  = new Date(selectedStr + 'T00:00:00')
-    const dow  = sel.getDay()               // 0=dom, 1=seg, ...
-    const diff = (dow === 0 ? -6 : 1 - dow) // shift para segunda
-    startDate  = new Date(sel); startDate.setDate(sel.getDate() + diff)
-    endDate    = new Date(startDate);        endDate.setDate(startDate.getDate() + 6)
-    endDate.setHours(23, 59, 59, 999)
+    const dow    = weekdayTZ(selected)         // 0=dom, 1=seg, ...
+    const diff   = (dow === 0 ? -6 : 1 - dow)  // shift para segunda
+    const monday = addDaysTZ(selected, diff)
+    startDate    = startOfDayTZ(monday)
+    endDate      = endOfDayTZ(addDaysTZ(monday, 6))
   } else {
-    startDate = new Date(selectedStr + 'T00:00:00')
-    endDate   = new Date(selectedStr + 'T23:59:59.999')
+    startDate = startOfDayTZ(selected)
+    endDate   = endOfDayTZ(selected)
   }
 
   // -- Filiais -------------------------------------------------------
@@ -58,14 +63,19 @@ export default async function AdminAgendaPage({
   }
 
   // -- Agendamentos do intervalo -------------------------------------
-  const { data: apptsRaw } = await admin
+  // O embed de `users` precisa nomear a FK: `appointments` referencia `users`
+  // duas vezes (professional_id e created_by_id) e o PostgREST recusa o embed
+  // ambíguo com PGRST201. Sem checar o `error`, isso virava uma agenda vazia.
+  const { data: apptsRaw, error: apptsError } = await admin
     .from('appointments')
-    .select('id, scheduled_at, started_at, completed_at, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name), users(name)')
+    .select('id, scheduled_at, started_at, completed_at, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name), users!appointments_professional_id_fkey(name)')
     .in('branch_id', branchIds)
     .gte('scheduled_at', startDate.toISOString())
     .lte('scheduled_at', endDate.toISOString())
     .order('scheduled_at', { ascending: true })
     .limit(1000)
+
+  if (apptsError) console.error('[admin/agenda] appointments:', apptsError.message)
 
   const appointments = (apptsRaw ?? []) as any[]
 

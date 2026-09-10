@@ -104,7 +104,7 @@ export default async function AdminReportsPage({
 
     // 2 — Atendimentos COMPLETED do período
     admin.from('appointments')
-      .select('id, branch_id, procedure_id, professional_id, client_id, price, scheduled_at, source, procedures(name, category), users(name), clients(birth_date)')
+      .select('id, branch_id, procedure_id, professional_id, client_id, price, scheduled_at, source, procedures(name, category), users!appointments_professional_id_fkey(name), clients(birth_date)')
       .in('branch_id', branchIds)
       .eq('status', 'COMPLETED')
       .gte('scheduled_at', startDate.toISOString())

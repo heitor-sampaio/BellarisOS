@@ -155,7 +155,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     canAgenda
       ? (() => {
           let q = admin.from('appointments')
-            .select('id, client_id, scheduled_at, duration_min, status, price, clients(name), procedures(name), users(name)')
+            .select('id, client_id, scheduled_at, duration_min, status, price, clients(name), procedures(name), users!appointments_professional_id_fkey(name)')
             .eq('branch_id', branchId)
             .gte('scheduled_at', todayStart.toISOString())
             .lte('scheduled_at', todayEnd.toISOString())
