@@ -55,15 +55,18 @@ export default async function AdminSettingsPage({
   const wantsRoles = activeTab === 'permissions'
   const wantsForms = activeModule === 'forms'
 
-  const [{ data: allRoles }, { data: overrides }, { data: integrationRows }, { data: anamnesisRows }, { data: attendanceRows }] = await Promise.all([
+  const [{ data: allRoles, error: rolesError }, { data: overrides }, { data: integrationRows }, { data: anamnesisRows }, { data: attendanceRows }] = await Promise.all([
+    // Admin client de propósito: a policy de SELECT em `users` limita quem não
+    // é da rede à própria unidade, e a contagem sairia menor do que a real —
+    // "0 pessoas" num cargo que tem gente em outra unidade é pior que nada.
     wantsRoles
-      ? supabase
+      ? admin
           .from('tenant_roles')
-          .select('id, key, label, is_system')
+          .select('id, key, label, is_system, users(count)')
           .eq('tenant_id', ctx.tenantId!)
           .order('is_system', { ascending: false })
           .order('created_at')
-      : { data: [] },
+      : { data: [], error: null },
     wantsRoles
       ? supabase
           .from('role_permissions')
@@ -107,6 +110,22 @@ export default async function AdminSettingsPage({
     name:     r.name as string,
     rows:     normalizeFormSchema(r.schema).rows,
     isActive: !!r.is_active,
+  }))
+
+  // Falha na consulta de cargos não é "a rede não tem cargo": sem checar, a
+  // tela mostraria a lista vazia e convidaria a recriar o que já existe.
+  if (rolesError) console.error('[admin/settings] tenant_roles:', rolesError.message)
+
+  type RawRole = {
+    id: string; key: string; label: string; is_system: boolean
+    users?: { count: number }[] | null
+  }
+  const editorRoles = ((allRoles ?? []) as RawRole[]).map(r => ({
+    id:          r.id,
+    key:         r.key,
+    label:       r.label,
+    is_system:   r.is_system,
+    memberCount: r.users?.[0]?.count ?? 0,
   }))
 
   // Mapa cargo → { módulo: { nível, escopo } } para o editor
@@ -169,7 +188,7 @@ export default async function AdminSettingsPage({
               Crie um cargo com qualquer nome e defina, por módulo, o nível de acesso. O cargo <strong>Admin da rede</strong> tem acesso total e não pode ser editado.
             </p>
           </div>
-          <RolesEditor roles={allRoles ?? []} permsByRole={permsByRole} />
+          <RolesEditor roles={editorRoles} permsByRole={permsByRole} canSeeTeam={can(ctx, 'team', 'MANAGE')} />
         </div>
       )}
 

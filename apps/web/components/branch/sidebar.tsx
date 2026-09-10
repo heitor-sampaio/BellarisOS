@@ -10,7 +10,21 @@ import {
 import { NavItem }    from '@/components/shared/nav-item'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
+import { BRANCH_MENU, menuEntriesFor } from '@/lib/menu'
 import type { ResolvedPermissions } from '@/lib/permissions'
+
+// Ver o comentário em lib/menu.ts: a lista e os gates são compartilhados com a
+// pré-visualização da tela de cargos.
+const ICONS: Record<string, React.ReactNode> = {
+  dashboard:  <LayoutGrid size={18} />,
+  agenda:     <Calendar   size={18} />,
+  clients:    <Users      size={18} />,
+  crm:        <Layers     size={18} />,
+  financial:  <CreditCard size={18} />,
+  procedures: <Sparkles   size={18} />,
+  stock:      <Package    size={18} />,
+  team:       <UserCircle size={18} />,
+}
 
 interface BranchSidebarProps {
   slug:            string
@@ -152,22 +166,9 @@ export function BranchSidebar({
 
         {/* Navegação */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }} onClick={close}>
-          <NavItem icon={<LayoutGrid size={18} />} label="Dashboard"      href={`${base}/dashboard`} />
-          {permissions.agenda     !== 'NONE' && <NavItem icon={<Calendar    size={18} />} label="Agenda"        href={`${base}/agenda`} />}
-          {permissions.clients    !== 'NONE' && <NavItem icon={<Users       size={18} />} label="Clientes"      href={`${base}/clients`} />}
-          {permissions.crm        !== 'NONE' && <NavItem icon={<Layers      size={18} />} label="CRM"           href={`${base}/crm`} />}
-          {/* Mesma tela para os dois módulos: quem só tem caixa entra e vê só o
-              widget de abrir/fechar, por isso o rótulo acompanha o acesso. */}
-          {(permissions.financial !== 'NONE' || permissions.cashier !== 'NONE') && (
-            <NavItem
-              icon={<CreditCard size={18} />}
-              label={permissions.financial !== 'NONE' ? 'Financeiro' : 'Caixa'}
-              href={`${base}/financial`}
-            />
-          )}
-          {permissions.procedures !== 'NONE' && <NavItem icon={<Sparkles    size={18} />} label="Procedimentos" href={`${base}/procedures`} />}
-          {permissions.stock      !== 'NONE' && <NavItem icon={<Package     size={18} />} label="Estoque"       href={`${base}/stock`} />}
-          {permissions.team       !== 'NONE' && <NavItem icon={<UserCircle  size={18} />} label="Equipe"        href={`${base}/settings/team`} />}
+          {menuEntriesFor(BRANCH_MENU, permissions).map(e => (
+            <NavItem key={e.key} icon={ICONS[e.key]} label={e.label} href={`${base}${e.href}`} />
+          ))}
         </nav>
 
         {/* Rodapé: recolher (desktop) + logout */}
