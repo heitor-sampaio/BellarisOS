@@ -37,12 +37,24 @@ export default async function AdminReportsPage({
   const periodLabel = periodInfo.label
 
   // -- Filiais -------------------------------------------------------
-  const { data: branchesRaw } = await admin
+  const { data: branchesRaw, error: branchesError } = await admin
     .from('branches')
     .select('id, name, slug')
     .eq('tenant_id', ctx.tenantId!)
     .eq('is_active', true)
     .order('name')
+
+  // Consulta que falha é diferente de rede sem filial. Tratar as duas como a
+  // mesma coisa dizia "nenhuma filial cadastrada" quando o banco estava fora —
+  // mentira que convida a recadastrar o que já existe.
+  if (branchesError) {
+    console.error('[admin/reports] branches:', branchesError.message)
+    return (
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+        Não foi possível carregar as unidades agora. Tente recarregar em instantes.
+      </div>
+    )
+  }
 
   const branches  = branchesRaw ?? []
   const branchIds = branches.map(b => b.id)

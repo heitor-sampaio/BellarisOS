@@ -44,12 +44,23 @@ export default async function AdminAgendaPage({
   }
 
   // -- Filiais -------------------------------------------------------
-  const { data: branchesRaw } = await admin
+  const { data: branchesRaw, error: branchesError } = await admin
     .from('branches')
     .select('id, name, slug')
     .eq('tenant_id', ctx.tenantId!)
     .eq('is_active', true)
     .order('name')
+
+  // Falha de consulta não é ausência de filial — ver o mesmo tratamento em
+  // /admin/reports.
+  if (branchesError) {
+    console.error('[admin/agenda] branches:', branchesError.message)
+    return (
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+        Não foi possível carregar as unidades agora. Tente recarregar em instantes.
+      </div>
+    )
+  }
 
   const branches  = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
   const branchIds = branches.map(b => b.id)
