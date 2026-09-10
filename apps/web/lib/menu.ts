@@ -58,6 +58,9 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   { key: 'procedures', label: 'Procedimentos', href: '/procedures',    visible: p => has(p, 'procedures') },
   { key: 'stock',      label: 'Estoque',       href: '/stock',         visible: p => has(p, 'stock') },
   { key: 'team',       label: 'Equipe',        href: '/settings/team', visible: p => has(p, 'team') },
+  // Os construtores de ficha viviam só no portal da rede, onde quem tem
+  // unidade fixa nem entra — `forms: MANAGE` numa gerente não fazia nada.
+  { key: 'forms',      label: 'Modelos de ficha', href: '/settings/fichas', visible: p => has(p, 'forms') },
 ]
 
 export function menuEntriesFor(

@@ -10,6 +10,7 @@ type Result = { error?: string; id?: string; ok?: true }
 function revalidate() {
   revalidatePath('/admin/settings')
   revalidatePath('/admin/procedures')
+  revalidatePath('/[slug]/settings/fichas', 'page')
 }
 
 export async function createAnamnesisForm(input: { name: string; schema: unknown }): Promise<Result> {

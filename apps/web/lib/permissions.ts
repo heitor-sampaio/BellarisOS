@@ -25,9 +25,12 @@ export const MODULE_LABELS: Record<AppModule, string> = {
   cashier:         'Caixa',
   crm:             'CRM',
   marketing:       'Marketing',
-  reports:         'Relatórios e dashboard',
+  // "Relatórios e dashboard" prometia governar o Dashboard, que nunca é
+  // escondido de ninguém. "Fichas e anamnese" soava como a ficha do cliente,
+  // que é Prontuário — aqui é só o molde.
+  reports:         'Relatórios',
   team:            'Equipe',
-  forms:           'Fichas e anamnese',
+  forms:           'Modelos de ficha',
   roles:           'Cargos e permissões',
   settings:        'Configurações da rede',
 }
@@ -45,7 +48,7 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   marketing:       'Campanhas e notificações',
   reports:         'Indicadores e relatórios da rede',
   team:            'Membros da equipe',
-  forms:           'Construtores de ficha de anamnese e atendimento',
+  forms:           'Molde da anamnese e da ficha de atendimento',
   roles:           'Criar cargos e definir o que cada um acessa',
   settings:        'Dados da rede, unidades e integrações',
 }

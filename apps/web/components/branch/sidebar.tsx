@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   LayoutGrid, Calendar, Users, Sparkles,
-  Package, CreditCard, LogOut, UserCircle, Layers,
+  Package, CreditCard, LogOut, UserCircle, Layers, ClipboardList,
   ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
@@ -23,7 +23,8 @@ const ICONS: Record<string, React.ReactNode> = {
   financial:  <CreditCard size={18} />,
   procedures: <Sparkles   size={18} />,
   stock:      <Package    size={18} />,
-  team:       <UserCircle size={18} />,
+  team:       <UserCircle    size={18} />,
+  forms:      <ClipboardList size={18} />,
 }
 
 interface BranchSidebarProps {
