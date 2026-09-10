@@ -8,6 +8,7 @@ import { getTenantContext, assertClient, assertPermission, isOwnScope } from '@/
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
+import { getOpenCashRegisterId } from '@/lib/cash-register'
 import { notifyClient, notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots } from '@/lib/appointments/core'
 import { periodRef } from '@/lib/datetime'
@@ -836,6 +837,9 @@ export async function confirmPayment(
     if (existing?.is_paid) return { error: 'Pagamento já registrado para este atendimento.' }
 
     const now = new Date().toISOString()
+    // Recebimento no balcão entra no fechamento do caixa aberto (null se não
+    // houver nenhum — o pagamento não fica bloqueado por causa disso).
+    const cashRegisterId = await getOpenCashRegisterId(appt.branch_id as string)
 
     if (existing) {
       const { error: updErr } = await admin.from('financial_transactions').update({
@@ -843,6 +847,7 @@ export async function confirmPayment(
         is_paid:        true,
         paid_at:        now,
         updated_at:     now,
+        cash_register_id: cashRegisterId,
       }).eq('id', existing.id)
       if (updErr) return { error: `Erro ao registrar o pagamento: ${updErr.message}` }
     } else {
@@ -857,6 +862,7 @@ export async function confirmPayment(
         payment_method: paymentMethod,
         is_paid:        true,
         paid_at:        now,
+        cash_register_id: cashRegisterId,
         created_by:     ctx.internalUserId ?? ctx.userId,
       })
       if (insErr) return { error: `Erro ao registrar o pagamento: ${insErr.message}` }

@@ -390,7 +390,15 @@ const procedures = await prisma.procedure.findMany({
 - `ProductBatch`: rastreia lote e validade por produto; produtos com validade vencida devem ser sinalizados antes do uso
 
 ### 9.6 Financeiro
-- `CashRegister` deve estar aberto para receber lançamentos (validar no action)
+- **Caixa** (`cash_registers`) é o módulo de permissão `cashier`, separado de
+  `financial`: recebe e abre/fecha, mas não lança nem estorna. "Aberto" é
+  `closed_at is null` — **não existe coluna `status`**. Um caixa aberto por
+  filial, garantido na action (`lib/cash-register.ts`).
+- Todo recebimento carimba `financial_transactions.cash_register_id` com o caixa
+  aberto da filial (`getOpenCashRegisterId`). Sem caixa aberto o valor fica
+  `null` e o pagamento acontece do mesmo jeito — receber **não** é bloqueado por
+  falta de caixa aberto, só deixa de entrar em um fechamento. O fechamento soma
+  por `cash_register_id`, nunca por janela de período.
 - `FinancialTransaction` criada automaticamente ao concluir `Appointment`
 - `Installment`: parcelas de uma transação (ex: parcelamento no cartão) — rastrear `isPaid` + `paidAt` por parcela
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`

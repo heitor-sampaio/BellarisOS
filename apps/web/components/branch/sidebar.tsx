@@ -156,7 +156,15 @@ export function BranchSidebar({
           {permissions.agenda     !== 'NONE' && <NavItem icon={<Calendar    size={18} />} label="Agenda"        href={`${base}/agenda`} />}
           {permissions.clients    !== 'NONE' && <NavItem icon={<Users       size={18} />} label="Clientes"      href={`${base}/clients`} />}
           {permissions.crm        !== 'NONE' && <NavItem icon={<Layers      size={18} />} label="CRM"           href={`${base}/crm`} />}
-          {permissions.financial  !== 'NONE' && <NavItem icon={<CreditCard  size={18} />} label="Financeiro"    href={`${base}/financial`} />}
+          {/* Mesma tela para os dois módulos: quem só tem caixa entra e vê só o
+              widget de abrir/fechar, por isso o rótulo acompanha o acesso. */}
+          {(permissions.financial !== 'NONE' || permissions.cashier !== 'NONE') && (
+            <NavItem
+              icon={<CreditCard size={18} />}
+              label={permissions.financial !== 'NONE' ? 'Financeiro' : 'Caixa'}
+              href={`${base}/financial`}
+            />
+          )}
           {permissions.procedures !== 'NONE' && <NavItem icon={<Sparkles    size={18} />} label="Procedimentos" href={`${base}/procedures`} />}
           {permissions.stock      !== 'NONE' && <NavItem icon={<Package     size={18} />} label="Estoque"       href={`${base}/stock`} />}
           {permissions.team       !== 'NONE' && <NavItem icon={<UserCircle  size={18} />} label="Equipe"        href={`${base}/settings/team`} />}

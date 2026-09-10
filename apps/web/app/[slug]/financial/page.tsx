@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertAnyPermission, can, ownerFilter } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 
 import { FinancialHub } from '@/components/branch/financial-hub'
+import { CashRegisterWidget } from '@/components/branch/cash-register-widget'
+import { getOpenCashRegister, getCashRegisterTotals } from '@/lib/cash-register'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCommissionsDetail } from '@/lib/metrics'
 
@@ -21,7 +23,11 @@ export default async function FinancialPage({
     resolvePeriod(period, sp.from, sp.to)
 
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'financial', 'VIEW')
+  // Quem só opera o caixa entra aqui para abrir e fechar, sem ver o financeiro
+  // da unidade — antes o gate era só `financial`, e um cargo de recepção com
+  // `cashier: MANAGE` não tinha nenhuma tela onde abrir o caixa.
+  assertAnyPermission(ctx, ['financial', 'cashier'], 'VIEW')
+  const canSeeFinancials = can(ctx, 'financial', 'VIEW')
 
   const supabase = await createSupabase()
 
@@ -30,21 +36,21 @@ export default async function FinancialPage({
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single()
   if (!branch) notFound()
 
-  const { data: transactions } = await supabase
+  const { data: transactions } = canSeeFinancials ? await supabase
     .from('financial_transactions')
     .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, notes, created_at, appointment_id')
     .eq('branch_id', branch.id)
     .gte('created_at', start.toISOString())
     .lte('created_at', end.toISOString())
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }) : { data: [] }
 
 
-  const { data: prevTxs } = await supabase
+  const { data: prevTxs } = canSeeFinancials ? await supabase
     .from('financial_transactions')
     .select('type, amount, is_paid, notes, category')
     .eq('branch_id', branch.id)
     .gte('created_at', prevStart.toISOString())
-    .lte('created_at', prevEnd.toISOString())
+    .lte('created_at', prevEnd.toISOString()) : { data: [] }
 
   // Comissões do período (registros individuais).
   // `commissions` não tem `created_at` nem `is_paid` — a consulta anterior
@@ -55,9 +61,9 @@ export default async function FinancialPage({
   // filial) não é renderizado — ver `ownScope` no hub.
   const ownFinancial = ownerFilter(ctx, 'financial')
 
-  const commissions = (await getCommissionsDetail({
+  const commissions = (canSeeFinancials ? await getCommissionsDetail({
     tenantId: ctx.tenantId!, branchIds: [branch.id], from: start, to: end,
-  })).filter(c => !ownFinancial || c.professionalId === ownFinancial).map(c => ({
+  }) : []).filter(c => !ownFinancial || c.professionalId === ownFinancial).map(c => ({
     id:               c.id,
     professionalId:   c.professionalId,
     professionalName: c.professionalName,
@@ -84,10 +90,31 @@ export default async function FinancialPage({
 
   const clients = (clientsRaw ?? []).map((c: any) => ({ id: c.id as string, name: c.name as string }))
 
+  // Caixa da unidade. Os totais são do MOVIMENTO DESTE CAIXA (via
+  // `cash_register_id`), não do período escolhido no filtro acima: um caixa
+  // fecha com o que passou por ele, não com o que aconteceu no mês.
+  const cashRegister = canPay ? await getOpenCashRegister(branch.id) : null
+  const cashTotals   = cashRegister
+    ? await getCashRegisterTotals(cashRegister.id)
+    : { income: 0, expense: 0 }
+
   return (
     <>
       <RealtimeRefresher tables={['financial_transactions', 'cash_registers', 'commissions']} />
-      <FinancialHub
+
+      {canPay && (
+        <div style={{ marginBottom: 20 }}>
+          <CashRegisterWidget
+            branchId={branch.id}
+            slug={slug}
+            register={cashRegister}
+            totalIncome={cashTotals.income}
+            totalExpense={cashTotals.expense}
+          />
+        </div>
+      )}
+
+      {canSeeFinancials && <FinancialHub
         branchId={branch.id}
         branchName={branch.name}
         slug={slug}
@@ -104,7 +131,7 @@ export default async function FinancialPage({
         canPay={canPay}
         ownScope={!!ownFinancial}
         clients={clients}
-      />
+      />}
     </>
   )
 }

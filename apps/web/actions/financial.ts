@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
+import { getOpenCashRegister, getOpenCashRegisterId } from '@/lib/cash-register'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -52,6 +53,8 @@ export async function createTransaction(
       due_date:       dueDate,
       is_paid:        isPaid,
       paid_at:        isPaid ? new Date().toISOString() : null,
+      // Só o que já nasce pago entra no fechamento do caixa.
+      cash_register_id: isPaid ? await getOpenCashRegisterId(branchId) : null,
       notes,
       created_by:     ctx.internalUserId,
     })
@@ -192,6 +195,7 @@ export async function createTransactionAdvanced(
         due_date:       dueDate,
         is_paid:        isPaid,
         paid_at:        isPaid ? new Date().toISOString() : null,
+        cash_register_id: isPaid ? await getOpenCashRegisterId(branchId) : null,
         notes,
         created_by:     ctx.internalUserId,
       })
@@ -211,11 +215,27 @@ export async function markTransactionPaid(transactionId: string, slug: string) {
     assertPermission(ctx, 'cashier', 'MANAGE')
 
     const admin = createAdminClient()
-    await admin.from('financial_transactions').update({
+
+    // Confere a filial antes de escrever: sem isso o id sozinho bastava para
+    // marcar como paga a transação de outra rede.
+    const { data: tx } = await admin
+      .from('financial_transactions')
+      .select('branch_id, branches!inner(tenant_id)')
+      .eq('id', transactionId)
+      .maybeSingle()
+    const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+    if (!tx || txTenant !== ctx.tenantId) return { error: 'Lançamento não encontrado.' }
+
+    const { error } = await admin.from('financial_transactions').update({
       is_paid:    true,
       paid_at:    new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      // Atribui o recebimento ao caixa aberto. Sem caixa aberto fica null: o
+      // pagamento acontece igual, só não entra em nenhum fechamento.
+      cash_register_id: await getOpenCashRegisterId(tx.branch_id as string),
     }).eq('id', transactionId)
+
+    if (error) return { error: error.message }
 
     revalidatePath(`/${slug}/financial`)
     return { success: true }
@@ -277,15 +297,22 @@ export async function openCashRegister(
     const notes          = str(formData, 'notes')
 
     if (!branchId) return { error: 'Filial não identificada.' }
+    if (!ctx.internalUserId) return { error: 'Usuário sem cadastro na equipe.' }
+
+    // Um caixa aberto por filial. Sem esta checagem, dois cliques abrem dois
+    // caixas e o fechamento passa a escolher um deles arbitrariamente.
+    if (await getOpenCashRegister(branchId)) {
+      return { error: 'Já existe um caixa aberto nesta unidade.' }
+    }
 
     const admin = createAdminClient()
+    // Sem `status`: a tabela não tem essa coluna — aberto é `closed_at is null`.
     const { error } = await admin.from('cash_registers').insert({
       branch_id:       branchId,
       opening_balance: openingBalance,
       notes,
       opened_by:       ctx.internalUserId,
       opened_at:       new Date().toISOString(),
-      status:          'open',
     })
 
     if (error) return { error: error.message }
@@ -311,15 +338,31 @@ export async function closeCashRegister(
     const notes          = str(formData, 'notes')
 
     if (!registerId) return { error: 'Caixa não identificado.' }
+    if (!ctx.internalUserId) return { error: 'Usuário sem cadastro na equipe.' }
 
     const admin = createAdminClient()
+
+    // A observação da abertura não se perde: o fechamento acrescenta a dele.
+    const { data: current } = await admin
+      .from('cash_registers')
+      .select('notes')
+      .eq('id', registerId)
+      .is('closed_at', null)
+      .maybeSingle()
+    if (!current) return { error: 'Este caixa já foi fechado.' }
+
+    const openingNotes = (current.notes as string | null)?.trim()
+    const mergedNotes = [openingNotes, notes?.trim() ? `Fechamento: ${notes.trim()}` : null]
+      .filter(Boolean).join('\n') || null
+
+    // `.is('closed_at', null)` também no update: se dois fechamentos chegarem
+    // juntos, o segundo não sobrescreve a contagem do primeiro.
     const { error } = await admin.from('cash_registers').update({
       closing_balance: closingBalance,
-      notes,
+      notes:      mergedNotes,
       closed_by:  ctx.internalUserId,
       closed_at:  new Date().toISOString(),
-      status:     'closed',
-    }).eq('id', registerId)
+    }).eq('id', registerId).is('closed_at', null)
 
     if (error) return { error: error.message }
 
