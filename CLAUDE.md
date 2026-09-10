@@ -697,4 +697,4 @@ pnpm test                           # Vitest
 
 ---
 
-*EstéticaOS — CLAUDE.md v1.2 | Junho 2026*
+*BellarisOS — CLAUDE.md v1.3 | Setembro 2026*
