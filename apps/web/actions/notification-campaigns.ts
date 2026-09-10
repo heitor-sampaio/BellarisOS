@@ -77,7 +77,7 @@ export async function listCampaigns(): Promise<{
   activeCount: number
 }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'marketing', 'MANAGE')
+  assertPermission(ctx, 'marketing', 'VIEW')
 
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -102,7 +102,7 @@ export async function getCampaign(id: string): Promise<{
   dispatches: { client_name: string; sent_at: string; status: string }[]
 }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'marketing', 'MANAGE')
+  assertPermission(ctx, 'marketing', 'VIEW')
 
   const admin = createAdminClient()
   const [{ data: camp, error }, { data: dispatches }] = await Promise.all([

@@ -394,7 +394,7 @@ export default async function AdminClientProfilePage({
         transactions={transactions}
         internalCredits={internalCredits}
         documents={documents}
-        canGrantCredit={true}
+        canGrantCredit={ctx.permissions.financial === 'MANAGE'}
         branches={(branchesRaw ?? []) as { id: string; name: string }[]}
         currentBranchId={branchId}
         slug={slug}

@@ -331,6 +331,10 @@ export default async function AppointmentSessionPage({
   const canManage    = isResponsibleProfessional || isAdmin
   const canReassign  = isAdmin
   const canPayment   = ctx.permissions.cashier === 'MANAGE'
+  // Editar o clínico depende do módulo, não só de ser o responsável: com
+  // `medical_records: Ver` a ficha aparecia preenchível e o salvamento era
+  // recusado depois de a pessoa digitar tudo.
+  const canEditRecords = canManage && can(ctx, 'medical_records', 'MANAGE')
 
   type RawPayment = { id: string; payment_method: string; amount: number } | null
   const paymentRawTyped = paymentRaw as RawPayment
@@ -382,6 +386,7 @@ export default async function AppointmentSessionPage({
         appointment={appointment}
         client={client}
         anamnesis={anamnesis}
+        canEditRecords={canEditRecords}
         anamnesisForm={anamnesisForm}
         anamnesisAnswers={anamnesisAnswers}
         attendanceForm={attendanceForm}

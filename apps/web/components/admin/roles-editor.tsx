@@ -9,7 +9,10 @@ import {
   ALL_MODULES, MODULE_LABELS, MODULE_LEVELS, LEVEL_LABELS,
   SCOPE_LABELS, isScoped,
 } from '@/lib/permissions'
-import { MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE } from '@/lib/permissions-copy'
+import {
+  MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
+  NETWORK_ONLY, NETWORK_ONLY_NOTE,
+} from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import type {
   AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions,
@@ -539,9 +542,10 @@ function ModuleRow({
   onLevel: (v: PermissionLevel) => void
   onScope: (v: PermissionScope) => void
 }) {
-  const scoped    = isScoped(module)
-  const enabled   = level !== 'NONE'
-  const sensitive = SENSITIVE_NOTE[module]
+  const scoped      = isScoped(module)
+  const enabled     = level !== 'NONE'
+  const sensitive   = SENSITIVE_NOTE[module]
+  const networkOnly = NETWORK_ONLY.includes(module)
 
   return (
     <div style={{
@@ -563,6 +567,14 @@ function ModuleRow({
           }}>
             {LEVEL_COPY[module][level] ?? ''}
           </div>
+          {networkOnly && enabled && (
+            <div style={{
+              fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 4,
+              fontStyle: 'italic',
+            }}>
+              {NETWORK_ONLY_NOTE}
+            </div>
+          )}
           {sensitive && enabled && (
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 5,

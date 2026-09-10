@@ -20,7 +20,7 @@ export async function getCampaignDetail(
   preset: string,
 ): Promise<{ ok: true; data: CampaignDetail } | { ok: false; error: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'marketing', 'MANAGE')
+  assertPermission(ctx, 'marketing', 'VIEW')
 
   const config = await getAdsConfig(ctx.tenantId!, 'meta_ads')
   if (!config || config.provider !== 'meta_ads') {

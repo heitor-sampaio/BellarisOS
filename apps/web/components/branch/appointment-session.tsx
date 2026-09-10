@@ -110,6 +110,8 @@ interface Props {
   slug:               string
   canCheckin:         boolean
   canManage:          boolean
+  /** Escrever no prontuário exige o módulo, não só ser o responsável. */
+  canEditRecords:     boolean
   canReassign:        boolean
   canPayment:         boolean
   isProfessional:     boolean
@@ -573,7 +575,7 @@ function EvaluationAnamnesisFields({
 export function AppointmentSession({
   appointment, client, anamnesis, anamnesisForm, anamnesisAnswers, attendanceForm, attendanceAnswers, products, availableProducts,
   professionals, history, branchId, slug,
-  canCheckin, canManage, canReassign, canPayment, isProfessional, paymentTransaction,
+  canCheckin, canManage, canEditRecords, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false,
 }: Props) {
@@ -786,7 +788,7 @@ export function AppointmentSession({
     <AttendanceRecordCard
       client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
       generalAnamnesis={
-        <AnamnesisTab embedded anamnesis={anamnesis} clientId={client.id} branchId={branchId} slug={slug} canEdit={canManage} />
+        <AnamnesisTab embedded anamnesis={anamnesis} clientId={client.id} branchId={branchId} slug={slug} canEdit={canEditRecords} />
       }
       procedureNode={procedureNode}
       insumos={insumosNode ?? null}
@@ -797,7 +799,7 @@ export function AppointmentSession({
             ref={unified ? anamnesisFormRef : null}
             appointmentId={appointment.id} slug={slug}
             formName={anamnesisForm.name} rows={anamnesisForm.rows}
-            initial={anamnesisAnswers as AnamnesisAnswers} canEdit={canManage}
+            initial={anamnesisAnswers as AnamnesisAnswers} canEdit={canEditRecords}
             hideSaveButton={unified}
           />
         ),
@@ -809,7 +811,7 @@ export function AppointmentSession({
             ref={unified ? attendanceFormRef : null}
             appointmentId={appointment.id} slug={slug}
             formName={attendanceForm.name} rows={attendanceForm.rows}
-            initial={attendanceAnswers as AnamnesisAnswers} canEdit={canManage}
+            initial={attendanceAnswers as AnamnesisAnswers} canEdit={canEditRecords}
             saveAction={saveProcedureAttendance}
             hideSaveButton={unified}
           />

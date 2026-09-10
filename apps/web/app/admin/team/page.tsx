@@ -31,7 +31,10 @@ export default async function AdminTeamPage({
   searchParams: Promise<{ q?: string; branch?: string; role?: string; status?: string }>
 }) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'team', 'MANAGE')
+  // "Ver" abre a lista sem as ações, como já acontece no portal da unidade.
+  // Antes o menu aparecia com Ver e o clique caía em Forbidden.
+  assertPermission(ctx, 'team', 'VIEW')
+  const canManage = ctx.permissions.team === 'MANAGE'
 
   const { q = '', branch = '', role = '', status = '' } = await searchParams
 
@@ -102,7 +105,9 @@ export default async function AdminTeamPage({
             {!hasFilters && ' em toda a rede'}
           </p>
         </div>
-        <AdminTeamForm branches={branches ?? []} roles={assignableRoles} isNetworkAdmin={ctx.branchId === null} />
+        {canManage && (
+          <AdminTeamForm branches={branches ?? []} roles={assignableRoles} isNetworkAdmin={ctx.branchId === null} />
+        )}
       </div>
 
       {/* Filtros */}
@@ -190,7 +195,7 @@ export default async function AdminTeamPage({
 
                     <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                      <TeamMemberEdit
+                      {canManage && <TeamMemberEdit
                         member={{
                           id:               m.id,
                           name:             m.name,
@@ -203,8 +208,8 @@ export default async function AdminTeamPage({
                         roles={assignableRoles}
                         canChooseScope={ctx.branchId === null}
                         redirectPath="/admin/team"
-                      />
-                      {m.is_active ? (
+                      />}
+                      {canManage && (m.is_active ? (
                         <form action={async () => {
                           'use server'
                           await deactivateTeamMember(m.id, '/admin/team')
@@ -232,7 +237,7 @@ export default async function AdminTeamPage({
                             <UserCheck size={15} />
                           </button>
                         </form>
-                      )}
+                      ))}
                       </div>
                     </td>
                   </tr>

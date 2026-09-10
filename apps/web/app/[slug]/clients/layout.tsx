@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { subDays } from 'date-fns'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { getCachedBranchClients, getCachedBranchCompletedAppointments } from '@/lib/cached-queries'
@@ -52,6 +52,9 @@ export default async function ClientsLayout({
   return (
     <div className="master-detail">
       <ClientsSidebar
+        // Com só "Ver", o botão "+ novo cliente" aparecia e a rota
+        // /clients/new recusava. `null` esconde; `undefined` usa o padrão.
+        newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
         clients={clients}
         basePath={`/${slug}/clients`}
         totalActive={totalActive}

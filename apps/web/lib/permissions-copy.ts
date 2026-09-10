@@ -135,6 +135,15 @@ export const SCOPE_NOTE: Partial<Record<ScopedModule, string>> = {
   agenda:    'Com alcance próprio a pessoa consegue iniciar e concluir os atendimentos dela, mas não cancela nem marca falta.',
 }
 
+// ─── Módulos que só existem no portal da rede ────────────────────────────────
+// Quem tem unidade fixa é redirecionado de /admin (app/admin/layout.tsx), então
+// esses acessos não valem nada para essa pessoa. Já aconteceu com `forms` e
+// `reports`, que ganharam tela na unidade; estes três são de rede por natureza.
+
+export const NETWORK_ONLY_NOTE = 'Só funciona para quem tem abrangência de rede.'
+
+export const NETWORK_ONLY: readonly AppModule[] = ['marketing', 'roles', 'settings']
+
 // ─── Cargos sensíveis ────────────────────────────────────────────────────────
 // Dois caminhos de auto-elevação. O aviso é uma linha na própria opção, não um
 // banner: quem está montando o cargo precisa saber, não levar susto.
