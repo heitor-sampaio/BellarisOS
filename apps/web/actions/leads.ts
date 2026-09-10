@@ -148,7 +148,7 @@ export async function updateLead(
       .eq('id', leadId)
       .eq('tenant_id', ctx.tenantId!)
     const owner = ownerFilter(ctx, 'crm')
-    if (owner) q = q.eq('owner_id', owner)
+    if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
     const { error } = await q
 
     if (error) {
@@ -179,7 +179,7 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
       .eq('id', leadId)
       .eq('tenant_id', ctx.tenantId!)
     const owner = ownerFilter(ctx, 'crm')
-    if (owner) q = q.eq('owner_id', owner)
+    if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
     await q
 
     revalidatePath(`/${slug}/crm`)
@@ -205,7 +205,7 @@ export async function deleteLead(leadId: string, slug: string) {
       .eq('id', leadId)
       .eq('tenant_id', ctx.tenantId!)
     const owner = ownerFilter(ctx, 'crm')
-    if (owner) q = q.eq('owner_id', owner)
+    if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
     await q
 
     revalidatePath(`/${slug}/crm`)

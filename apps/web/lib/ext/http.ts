@@ -4,7 +4,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import type { TenantContext, AppModule } from '@estetica-os/types'
 import { getTenantContextFromToken } from '@/lib/auth'
-import { hasLevel } from '@/lib/permissions'
+import { hasLevel, isScoped } from '@/lib/permissions'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // Acesso da extensao: usuario operacional (nao-cliente) COM a permissao do modulo
@@ -69,6 +69,18 @@ export async function requireExtAccess(
   }
   if (!hasLevel(ctx.permissions[required.module], required.level)) {
     return { res: jsonCors(req, { error: 'Forbidden' }, 403) }
+  }
+  // A extensão é ferramenta de agenda da unidade inteira: mostra a ocupação do
+  // dia para achar encaixe. Filtrar por "só os meus" devolveria uma ocupação
+  // falsa — horários ocupados apareceriam livres. E não filtrar vazaria a
+  // agenda dos colegas. Como nenhuma das duas serve, o cargo com alcance
+  // próprio simplesmente não usa a extensão.
+  if (isScoped(required.module) && ctx.scopes[required.module] === 'OWN') {
+    return {
+      res: jsonCors(req, {
+        error: 'Este cargo enxerga apenas os próprios registros e não usa a extensão.',
+      }, 403),
+    }
   }
   return { ctx: ctx as TenantContext & { tenantId: string } }
 }

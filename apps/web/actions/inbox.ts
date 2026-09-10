@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultStages } from '@/actions/crm-stages'
 import { revalidatePath } from 'next/cache'
@@ -46,12 +46,44 @@ export async function getConversations(): Promise<Conversation[]> {
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
 
-  const { data } = await admin
+  // O alcance do CRM filtrava o funil e não filtrava aqui: com "só os próprios
+  // leads", a pessoa ainda lia o WhatsApp da clínica inteira.
+  const owner = ownerFilter(ctx, 'crm')
+  let ownLeadIds: string[] | null = null
+  if (owner) {
+    const { data: mine, error } = await admin
+      .from('leads')
+      .select('id')
+      .eq('tenant_id', ctx.tenantId!)
+      .eq('owner_id', owner)
+    if (error) {
+      console.error('[getConversations] leads do dono:', error.message)
+      return []
+    }
+    ownLeadIds = (mine ?? []).map(l => l.id as string)
+  }
+
+  let query = admin
     .from('conversations')
     .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, branches(name)')
     .eq('tenant_id', ctx.tenantId!)
+
+  if (ownLeadIds) {
+    // Conversa sem lead é contato que ainda não virou card: fica no bolo comum,
+    // visível para todo mundo, senão ninguém atende.
+    query = ownLeadIds.length > 0
+      ? query.or(`lead_id.is.null,lead_id.in.(${ownLeadIds.join(',')})`)
+      : query.is('lead_id', null)
+  }
+
+  const { data, error } = await query
     .order('last_message_at', { ascending: false, nullsFirst: false })
     .limit(200)
+
+  if (error) {
+    console.error('[getConversations]', error.message)
+    return []
+  }
 
   return (data ?? []).map((c: any) => ({
     ...c,

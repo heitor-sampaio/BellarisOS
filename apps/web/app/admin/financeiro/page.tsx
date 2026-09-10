@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -20,6 +20,18 @@ export default async function AdminFinanceiroPage({
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'financial', 'VIEW')
+
+  // Alcance "só as próprias comissões" não tem como virar um consolidado da
+  // rede meio filtrado — sairiam números com cara de total que não são total.
+  // A tela da unidade já trata esse alcance direito: lá só as comissões dela.
+  if (isOwnScope(ctx, 'financial')) {
+    return (
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+        Seu cargo vê apenas as próprias comissões. Abra o <strong>Financeiro</strong> pelo
+        portal da unidade.
+      </div>
+    )
+  }
 
   const admin = createAdminClient()
 

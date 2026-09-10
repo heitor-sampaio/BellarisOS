@@ -1,4 +1,4 @@
-﻿import { getTenantContext, assertPermission } from '@/lib/auth'
+﻿import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminAgendaView } from '@/components/admin/admin-agenda-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -77,7 +77,11 @@ export default async function AdminAgendaPage({
   // O embed de `users` precisa nomear a FK: `appointments` referencia `users`
   // duas vezes (professional_id e created_by_id) e o PostgREST recusa o embed
   // ambíguo com PGRST201. Sem checar o `error`, isso virava uma agenda vazia.
-  const { data: apptsRaw, error: apptsError } = await admin
+  // Alcance do cargo vale aqui também: sem isto, um membro de rede com agenda
+  // "só a própria" via a agenda de todo mundo nesta tela.
+  const agendaOwner = ownerFilter(ctx, 'agenda')
+
+  let apptsQuery = admin
     .from('appointments')
     .select('id, scheduled_at, started_at, completed_at, status, source, branch_id, procedure_id, client_id, professional_id, price, procedures(name), clients(name), users!appointments_professional_id_fkey(name)')
     .in('branch_id', branchIds)
@@ -85,6 +89,8 @@ export default async function AdminAgendaPage({
     .lte('scheduled_at', endDate.toISOString())
     .order('scheduled_at', { ascending: true })
     .limit(1000)
+  if (agendaOwner) apptsQuery = apptsQuery.eq('professional_id', agendaOwner)
+  const { data: apptsRaw, error: apptsError } = await apptsQuery
 
   if (apptsError) console.error('[admin/agenda] appointments:', apptsError.message)
 

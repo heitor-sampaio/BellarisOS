@@ -56,7 +56,10 @@ export default async function BranchCRMPage({
     `)
     .eq('branch_id', branch.id)
     .eq('tenant_id', ctx.tenantId!)
-  if (leadOwner) leadsQuery = leadsQuery.eq('owner_id', leadOwner)
+  // Lead que chega sozinho pelo WhatsApp nasce sem dono: some para todo cargo
+  // com alcance próprio se o filtro for só `owner_id = eu`. Sem dono é bolo
+  // comum — aparece para todos até alguém assumir.
+  if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
   const { data: leads } = await leadsQuery.order('created_at', { ascending: false })
 
   const total       = leads?.length ?? 0

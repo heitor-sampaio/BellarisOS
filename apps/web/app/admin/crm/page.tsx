@@ -61,7 +61,8 @@ export default async function AdminCRMPage({
       lead_procedures(procedure_id, procedures(name, price))
     `)
     .eq('tenant_id', ctx.tenantId!)
-  if (leadOwner) leadsQuery = leadsQuery.eq('owner_id', leadOwner)
+  // Ver o comentário em app/[slug]/crm/page.tsx: lead sem dono fica no bolo comum.
+  if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
   const { data: leadsRaw } = await leadsQuery.order('created_at', { ascending: false })
 
   const leads = (leadsRaw ?? []).map((l: any) => {
