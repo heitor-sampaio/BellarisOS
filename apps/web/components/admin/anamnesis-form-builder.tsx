@@ -7,10 +7,10 @@ import {
   Type, AlignLeft, Hash, Calendar, List, CircleDot, CheckSquare, Heading, Image as ImageIcon,
   Syringe,
 } from 'lucide-react'
-import { FaceOutline, FACE_VIEWBOX } from '@/components/shared/face-outline'
+import { InjectableMapField } from '@/components/branch/injectable-map-field'
 import {
-  FIELD_TYPES, FIELD_TYPE_LABEL, OPTION_TYPES, MAX_COLS, newId,
-  type AnamnesisField, type AnamnesisFieldType, type AnamnesisRow,
+  FIELD_TYPES, FIELD_TYPE_LABEL, OPTION_TYPES, MAX_COLS, newId, emptyInjectableMap,
+  type AnamnesisField, type AnamnesisFieldType, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
 import { createAnamnesisForm, updateAnamnesisForm } from '@/actions/anamnesis-forms'
 
@@ -536,12 +536,27 @@ function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAd
 }
 
 // Pré-visualização da ficha (somente leitura) — modal.
+/** Planejador de verdade dentro da pré-visualização, com estado descartável. */
+function PreviewInjectableMap({ options }: { options: string[] }) {
+  const [value, setValue] = useState<InjectableMapValue>(() => emptyInjectableMap())
+  return (
+    <InjectableMapField
+      value={value}
+      products={options.filter(Boolean)}
+      canEdit
+      onChange={setValue}
+    />
+  )
+}
+
 function FormPreviewModal({ name, rows, onClose }: { name: string; rows: AnamnesisRow[]; onClose: () => void }) {
+  // Ficha com planejador precisa de largura: o rosto em 560px fica apertado.
+  const wide = rows.some(r => r.fields.some(f => f.type === 'injectable_map'))
   return (
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(2px)', zIndex: 500 }} />
       <div role="dialog" aria-modal="true"
-        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(560px, calc(100vw - 24px))', maxHeight: '90dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 24px 64px rgba(34,22,25,0.22)' }}
+        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: `min(${wide ? 940 : 560}px, calc(100vw - 24px))`, maxHeight: '90dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 24px 64px rgba(34,22,25,0.22)' }}
       >
         <div style={{ position: 'sticky', top: 0, background: 'var(--surface)', borderBottom: '1px solid var(--hairline)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Pré-visualização</span>
@@ -615,26 +630,9 @@ function PreviewField({ field: f }: { field: AnamnesisField }) {
           <Upload size={16} /> Enviar foto
         </div>
       )}
-      {f.type === 'injectable_map' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 12, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-app)' }}>
-          <svg
-            viewBox={`0 0 ${FACE_VIEWBOX.width} ${FACE_VIEWBOX.height}`}
-            style={{ width: 62, height: 'auto', flexShrink: 0, color: 'var(--text-faint)' }}
-          >
-            <FaceOutline />
-            <circle cx={76} cy={96} r={7} fill="var(--brand)" />
-            <circle cx={124} cy={96} r={7} fill="none" stroke="var(--brand)" strokeWidth={2} />
-          </svg>
-          <div>
-            <p style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
-              O profissional clica no rosto para marcar onde e quanto aplicar.
-            </p>
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 3 }}>
-              {opts.length > 0 ? `Produtos: ${opts.join(' · ')}` : 'Liste os produtos nas opções deste campo.'}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Interativo de propósito: é aqui que dá para experimentar o planejador
+          sem abrir um atendimento. Os pontos ficam só no estado local. */}
+      {f.type === 'injectable_map' && <PreviewInjectableMap options={opts} />}
     </div>
   )
 }
