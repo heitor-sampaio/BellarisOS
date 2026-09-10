@@ -5,7 +5,9 @@ import {
   Plus, Trash2, X, CheckCircle2, ChevronLeft, ArrowUp, ArrowDown,
   ArrowUpToLine, SeparatorHorizontal, Eye, Upload,
   Type, AlignLeft, Hash, Calendar, List, CircleDot, CheckSquare, Heading, Image as ImageIcon,
+  Syringe,
 } from 'lucide-react'
+import { FaceOutline, FACE_VIEWBOX } from '@/components/shared/face-outline'
 import {
   FIELD_TYPES, FIELD_TYPE_LABEL, OPTION_TYPES, MAX_COLS, newId,
   type AnamnesisField, type AnamnesisFieldType, type AnamnesisRow,
@@ -31,6 +33,7 @@ interface Props {
 const TYPE_ICON: Record<AnamnesisFieldType, ComponentType<{ size?: number }>> = {
   text: Type, textarea: AlignLeft, number: Hash, date: Calendar,
   select: List, radio: CircleDot, checkbox: CheckSquare, section: Heading, photo: ImageIcon,
+  injectable_map: Syringe,
 }
 
 type Drag = { kind: 'new'; type: AnamnesisFieldType } | { kind: 'move'; fieldId: string } | null
@@ -610,6 +613,26 @@ function PreviewField({ field: f }: { field: AnamnesisField }) {
       {f.type === 'photo' && (
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>
           <Upload size={16} /> Enviar foto
+        </div>
+      )}
+      {f.type === 'injectable_map' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 12, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-app)' }}>
+          <svg
+            viewBox={`0 0 ${FACE_VIEWBOX.width} ${FACE_VIEWBOX.height}`}
+            style={{ width: 62, height: 'auto', flexShrink: 0, color: 'var(--text-faint)' }}
+          >
+            <FaceOutline />
+            <circle cx={76} cy={96} r={7} fill="var(--brand)" />
+            <circle cx={124} cy={96} r={7} fill="none" stroke="var(--brand)" strokeWidth={2} />
+          </svg>
+          <div>
+            <p style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+              O profissional clica no rosto para marcar onde e quanto aplicar.
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 3 }}>
+              {opts.length > 0 ? `Produtos: ${opts.join(' · ')}` : 'Liste os produtos nas opções deste campo.'}
+            </p>
+          </div>
         </div>
       )}
     </div>

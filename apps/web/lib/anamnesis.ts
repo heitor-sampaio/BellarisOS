@@ -4,6 +4,61 @@
 export type AnamnesisFieldType =
   | 'text' | 'textarea' | 'number' | 'date'
   | 'select' | 'radio' | 'checkbox' | 'section' | 'photo'
+  | 'injectable_map'
+
+// ─── Planejador de injetáveis ────────────────────────────────────────────────
+// Primeiro campo com valor ESTRUTURADO: todos os outros são string ou string[].
+// O que foi aplicado, onde e quanto, não cabia em texto livre — e era assim que
+// dose de toxina era registrada até aqui.
+
+/** Unidades de dose. Mesmo vocabulário do estoque (`consumption_unit`). */
+export const INJECTABLE_UNITS = ['UI', 'ml', 'mg'] as const
+export type InjectableUnit = typeof INJECTABLE_UNITS[number]
+
+export interface InjectablePoint {
+  id:      string
+  /** 0..1 relativo à imagem — ponto em pixel sairia do lugar ao redimensionar. */
+  x:       number
+  y:       number
+  product: string
+  /** Dose planejada. */
+  dose:    number
+  unit:    InjectableUnit
+  /** Dose confirmada na aplicação; `null` enquanto for só plano. */
+  applied: number | null
+  note?:   string
+}
+
+export interface InjectableMapValue {
+  /** Só existe o rosto de frente hoje; o campo evita migração ao crescer. */
+  view:         'front'
+  points:       InjectablePoint[]
+  confirmedAt?: string | null
+}
+
+export function emptyInjectableMap(): InjectableMapValue {
+  return { view: 'front', points: [], confirmedAt: null }
+}
+
+export function isInjectableMap(v: unknown): v is InjectableMapValue {
+  return !!v && typeof v === 'object' && Array.isArray((v as InjectableMapValue).points)
+}
+
+/** Soma as doses por produto + unidade — o número que se confere antes de aplicar. */
+export function injectableTotals(
+  value: InjectableMapValue,
+): { product: string; unit: InjectableUnit; planned: number; applied: number }[] {
+  const acc = new Map<string, { product: string; unit: InjectableUnit; planned: number; applied: number }>()
+  for (const p of value.points) {
+    const product = p.product.trim() || 'Sem produto'
+    const key = `${product}|${p.unit}`
+    const cur = acc.get(key) ?? { product, unit: p.unit, planned: 0, applied: 0 }
+    cur.planned += Number(p.dose) || 0
+    cur.applied += Number(p.applied) || 0
+    acc.set(key, cur)
+  }
+  return [...acc.values()]
+}
 
 export interface AnamnesisField {
   id:           string
@@ -37,13 +92,28 @@ export const FIELD_TYPES: { value: AnamnesisFieldType; label: string; hasOptions
   { value: 'radio',    label: 'Escolha única',    isInput: true, hasOptions: true },
   { value: 'checkbox', label: 'Múltipla escolha', isInput: true, hasOptions: true },
   { value: 'photo',    label: 'Foto',             isInput: true },
+  // `hasOptions` de propósito: as opções são a lista de produtos que essa ficha
+  // oferece no planejador ("Botox 100UI", "Dysport"). Reaproveita o editor de
+  // opções do builder, a validação e a cópia em normField, sem config nova —
+  // e config nova seria descartada, porque normField só copia `options`.
+  { value: 'injectable_map', label: 'Planejador de injetáveis', isInput: true, hasOptions: true },
   { value: 'section',  label: 'Título / seção',   isInput: false },
 ]
+
+/** Campos que ocupam a linha inteira: espremidos em coluna ficam inutilizáveis. */
+const FULL_WIDTH_TYPES: AnamnesisFieldType[] = ['section', 'injectable_map']
 
 export const FIELD_TYPE_LABEL: Record<AnamnesisFieldType, string> =
   Object.fromEntries(FIELD_TYPES.map(t => [t.value, t.label])) as Record<AnamnesisFieldType, string>
 
-export const OPTION_TYPES: AnamnesisFieldType[] = ['select', 'radio', 'checkbox']
+/**
+ * Tipos que têm lista de opções. DERIVADO de `FIELD_TYPES.hasOptions` — antes
+ * era uma lista paralela escrita à mão, e `hasOptions` não era lido por
+ * ninguém. Quem marcasse `hasOptions` num tipo novo e não editasse esta linha
+ * veria as opções serem descartadas por `normField` sem nenhum erro.
+ */
+export const OPTION_TYPES: AnamnesisFieldType[] =
+  FIELD_TYPES.filter(t => t.hasOptions).map(t => t.value)
 const VALID_TYPES = new Set<AnamnesisFieldType>(FIELD_TYPES.map(t => t.value))
 
 export function newId(): string {
@@ -77,7 +147,7 @@ function sanitizeRows(rows: AnamnesisRow[]): AnamnesisRow[] {
     let bucket: AnamnesisField[] = []
     const flush = () => { if (bucket.length) { out.push({ id: newId(), fields: bucket }); bucket = [] } }
     for (const f of row.fields) {
-      if (f.type === 'section') { flush(); out.push({ id: newId(), fields: [f] }); continue }
+      if (FULL_WIDTH_TYPES.includes(f.type)) { flush(); out.push({ id: newId(), fields: [f] }); continue }
       bucket.push(f)
       if (bucket.length === MAX_COLS) flush()
     }

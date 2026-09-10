@@ -2,10 +2,16 @@
 
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Save, Upload, X, ImageIcon, CheckCircle2 } from 'lucide-react'
-import { flattenFields, type AnamnesisField, type AnamnesisRow } from '@/lib/anamnesis'
+import {
+  flattenFields, isInjectableMap, emptyInjectableMap,
+  type AnamnesisField, type AnamnesisRow, type InjectableMapValue,
+} from '@/lib/anamnesis'
 import { saveProcedureAnamnesis, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
+import { InjectableMapField } from '@/components/branch/injectable-map-field'
 
-type AnswerValue = string | string[]
+// O planejador de injetáveis é o primeiro campo com valor estruturado — até
+// aqui tudo era escalar.
+type AnswerValue = string | string[] | InjectableMapValue
 export type AnamnesisAnswers = Record<string, AnswerValue>
 
 type SaveArgs = { appointmentId: string; slug: string; answers: Record<string, unknown> }
@@ -118,6 +124,9 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
 function isEmpty(v: AnswerValue | undefined): boolean {
   if (v == null) return true
   if (Array.isArray(v)) return v.length === 0
+  // Sem este caso, um planejador obrigatório passava vazio: `String(objeto)`
+  // vira "[object Object]", que não é string em branco.
+  if (isInjectableMap(v)) return v.points.length === 0
   return String(v).trim() === ''
 }
 
@@ -132,7 +141,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
   appointmentId: string
   photoUrl?: string
   onPhotoUploaded: (path: string, url: string) => void
-  onChange: (v: string) => void
+  onChange: (v: AnswerValue) => void
   onToggle: (opt: string) => void
 }) {
   // Seção (título)
@@ -204,6 +213,14 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
           })}
         </div>
       )}
+      {f.type === 'injectable_map' && (
+        <InjectableMapField
+          value={isInjectableMap(value) ? value : emptyInjectableMap()}
+          products={f.options ?? []}
+          canEdit
+          onChange={onChange}
+        />
+      )}
       {f.type === 'photo' && (
         <PhotoField path={str} displayUrl={photoUrl} appointmentId={appointmentId} onChange={onChange} onUploaded={onPhotoUploaded} />
       )}
@@ -218,7 +235,21 @@ function ReadOnlyValue({ field: f, value, photoUrl }: { field: AnamnesisField; v
     }
     return <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>{value ? 'Carregando foto…' : 'Não informado'}</p>
   }
-  const text = Array.isArray(value) ? value.join(', ') : (value ?? '')
+  // Antes do fallback: sem este caso o mapa virava "[object Object]" na aba
+  // Fichas do perfil do cliente e no pacote de LGPD.
+  if (f.type === 'injectable_map') {
+    if (!isInjectableMap(value) || value.points.length === 0) {
+      return <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Nenhum ponto marcado</p>
+    }
+    return <InjectableMapField value={value} products={f.options ?? []} canEdit={false} onChange={() => {}} />
+  }
+
+  // `isInjectableMap` aqui não é redundante: trocar o tipo de um campo no
+  // construtor deixa a resposta antiga órfã, e um mapa caindo no ramo de texto
+  // imprimiria "[object Object]".
+  const text = Array.isArray(value) ? value.join(', ')
+    : isInjectableMap(value) ? ''
+    : (value ?? '')
   return (
     <p style={{ fontSize: 13, color: text ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
       {text || 'Não informado'}
