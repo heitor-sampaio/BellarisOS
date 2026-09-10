@@ -1,8 +1,10 @@
 /**
  * Disparador dos jobs agendados.
  *
- * Roda no serviço de cron do Railway (imagem própria, ver Dockerfile.cron) e
- * chama as rotas `/api/cron/*` do app com o CRON_SECRET. É um script, e não um
+ * Roda no serviço de cron do Railway, que compartilha a imagem principal (o
+ * `railway.toml` da raiz fixa o dockerfilePath e o serviço só sobrescreve o
+ * CMD). O antigo `Dockerfile.cron` não existe mais — ver CLAUDE.md §14.1.
+ * Chama as rotas `/api/cron/*` do app com o CRON_SECRET. É um script, e não um
  * start command com curl, porque o Railway não aplica start command a serviços
  * baseados em imagem pública: o container subia o shell padrão e saía sem
  * executar nada — o cron parecia rodar e não fazia coisa alguma.
