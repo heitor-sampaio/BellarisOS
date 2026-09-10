@@ -27,6 +27,8 @@ const TABS: { key: Tab; label: string }[] = [
 ]
 
 export interface ReportsBiProps {
+  /** 'Rede' no portal da rede, nome da unidade no portal dela. */
+  scopeLabel: string
   tab: Tab
   period: Period
   periodLabel: string
@@ -1077,7 +1079,7 @@ export function ReportsBiView(props: ReportsBiProps) {
           fontSize: 10, fontWeight: 700, color: 'var(--brand)',
           textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px',
         }}>
-          ✦ Rede
+          ✦ {props.scopeLabel}
         </p>
         <h1 style={{
           fontSize: 22, fontWeight: 800, color: 'var(--text)',

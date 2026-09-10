@@ -47,6 +47,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   { key: 'agenda',     label: 'Agenda',        href: '/agenda',        visible: p => has(p, 'agenda') },
   { key: 'clients',    label: 'Clientes',      href: '/clients',       visible: p => has(p, 'clients') },
   { key: 'crm',        label: 'CRM',           href: '/crm',           visible: p => has(p, 'crm') },
+  { key: 'reports',    label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },
   // Mesma tela para financeiro e caixa: o rótulo acompanha o acesso, porque
   // quem só opera o caixa entra e vê só o widget de abrir/fechar.
   {

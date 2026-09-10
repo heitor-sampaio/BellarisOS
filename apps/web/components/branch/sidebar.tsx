@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   LayoutGrid, Calendar, Users, Sparkles,
-  Package, CreditCard, LogOut, UserCircle, Layers, ClipboardList,
+  Package, CreditCard, LogOut, UserCircle, Layers, ClipboardList, BarChart3,
   ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
@@ -20,6 +20,7 @@ const ICONS: Record<string, React.ReactNode> = {
   agenda:     <Calendar   size={18} />,
   clients:    <Users      size={18} />,
   crm:        <Layers     size={18} />,
+  reports:    <BarChart3  size={18} />,
   financial:  <CreditCard size={18} />,
   procedures: <Sparkles   size={18} />,
   stock:      <Package    size={18} />,

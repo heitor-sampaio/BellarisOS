@@ -103,7 +103,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   reports: {
     NONE:   SEM_ACESSO,
-    VIEW:   'Abre os relatórios da rede inteira: financeiro, agenda, clientes, procedimentos, profissionais e estoque.',
+    VIEW:   'Abre os relatórios: financeiro, agenda, clientes, procedimentos, profissionais e estoque. O alcance decide se é a rede toda ou só a unidade.',
   },
   team: {
     NONE:   SEM_ACESSO,
@@ -130,6 +130,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
 // se reduz à lista de comissões.
 
 export const SCOPE_NOTE: Partial<Record<ScopedModule, string>> = {
+  reports:   'Com alcance próprio a pessoa vê os relatórios da unidade dela; o consolidado da rede fica indisponível.',
   financial: 'Com alcance próprio a tela vira só "minhas comissões": some faturamento, despesas e extrato — e não dá para lançar, mesmo com Gerenciar.',
   agenda:    'Com alcance próprio a pessoa consegue iniciar e concluir os atendimentos dela, mas não cancela nem marca falta.',
 }

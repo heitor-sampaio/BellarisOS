@@ -44,7 +44,9 @@ export type PermissionScope = 'OWN' | 'ALL'
  * Módulos em que o escopo faz diferença. Nos demais o alcance é sempre ALL e a
  * tela de cargos nem mostra o seletor.
  */
-export const SCOPED_MODULES = ['agenda', 'medical_records', 'financial', 'crm'] as const
+// Em `reports` o escopo não é "os meus registros" e sim "a minha unidade": é o
+// que separa quem acompanha o consolidado da rede de quem só olha a própria.
+export const SCOPED_MODULES = ['agenda', 'medical_records', 'financial', 'crm', 'reports'] as const
 export type ScopedModule = typeof SCOPED_MODULES[number]
 
 export type ResolvedPermissions = Record<AppModule, PermissionLevel>

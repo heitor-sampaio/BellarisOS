@@ -59,6 +59,7 @@ export const SCOPE_LABELS: Record<ScopedModule, { own: string; all: string }> = 
   medical_records: { own: 'Só os próprios pacientes', all: 'Todos os pacientes' },
   financial:       { own: 'Só as próprias comissões', all: 'Financeiro completo' },
   crm:             { own: 'Só os próprios leads',     all: 'Todos os leads' },
+  reports:         { own: 'Só a própria unidade',     all: 'A rede inteira' },
 }
 
 /**
