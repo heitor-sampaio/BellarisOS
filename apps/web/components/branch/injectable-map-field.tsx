@@ -8,11 +8,16 @@ import {
   type InjectableMapValue, type InjectablePoint, type InjectableUnit,
 } from '@/lib/anamnesis'
 
-// O alvo de toque é bem maior que o ponto desenhado: a tela de atendimento é
-// usada em tablet e celular, e ponto de injetável é marcação precisa — o
-// marcador não pode cobrir a região que se está mirando.
-const HIT_R = 13
-const DOT_R = 5.8
+/**
+ * Aplicação de toxina tem pontos a poucos milímetros um do outro, então o
+ * marcador precisa ser pequeno: bolinha grande cobre a região que se está
+ * mirando e vira uma mancha só quando há vários pontos juntos.
+ *
+ * O alvo de clique também é modesto — antes ele tinha mais que o dobro do raio
+ * do ponto, e pontos vizinhos roubavam o clique um do outro.
+ */
+const DOT_R = 3.2
+const HIT_R = 6.5
 
 interface Props {
   value:    InjectableMapValue | undefined
@@ -114,25 +119,45 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
                   onClick={e => { e.stopPropagation(); setSelectedId(p.id) }}
                   onPointerDown={e => { if (canEdit) { e.stopPropagation(); setDragId(p.id) } }}
                 >
-                  {/* Alvo invisível, maior que o ponto, para o toque acertar. */}
+                  {/* Alvo invisível, um pouco maior que o ponto. */}
                   <circle cx={cx} cy={cy} r={HIT_R} fill="transparent" />
+
+                  {/* Halo do selecionado: identifica sem engordar o ponto. */}
+                  {isSelected && (
+                    <circle
+                      cx={cx} cy={cy} r={DOT_R + 3}
+                      fill="none" stroke="var(--brand)" strokeWidth={1} opacity={0.55}
+                    />
+                  )}
+
                   <circle
                     cx={cx} cy={cy} r={DOT_R}
                     // Vazado = planejado, preenchido = aplicado. É a leitura
                     // instantânea do que ainda falta.
                     fill={isApplied ? 'var(--brand)' : 'var(--surface)'}
                     stroke="var(--brand)"
-                    strokeWidth={isSelected ? 3 : 1.8}
+                    strokeWidth={1.4}
                   />
-                  <text
-                    x={cx} y={cy + 2.6} textAnchor="middle"
-                    style={{
-                      fontSize: 7, fontWeight: 800, pointerEvents: 'none',
-                      fill: isApplied ? 'var(--on-brand)' : 'var(--brand)',
-                    }}
-                  >
-                    {i + 1}
-                  </text>
+
+                  {/* O número sai de dentro do ponto e vira etiqueta ao lado, só
+                      no selecionado: numerar todos, num mapa denso, empilha
+                      rótulo sobre rótulo e esconde o próprio desenho. */}
+                  {isSelected && (
+                    <g pointerEvents="none">
+                      <rect
+                        x={cx + 4} y={cy - 11}
+                        width={7 + (String(i + 1).length - 1) * 4} height={9} rx={2.5}
+                        fill="var(--brand)"
+                      />
+                      <text
+                        x={cx + 4 + (7 + (String(i + 1).length - 1) * 4) / 2} y={cy - 4.2}
+                        textAnchor="middle"
+                        style={{ fontSize: 6.5, fontWeight: 800, fill: 'var(--on-brand)' }}
+                      >
+                        {i + 1}
+                      </text>
+                    </g>
+                  )}
                 </g>
               )
             })}
@@ -140,8 +165,8 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
 
           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 6 }}>
             {canEdit
-              ? 'Clique no rosto para marcar um ponto. Arraste para reposicionar.'
-              : `${map.points.length} ${map.points.length === 1 ? 'ponto marcado' : 'pontos marcados'}`}
+              ? 'Clique para marcar. Arraste para reposicionar. Toque num ponto para ver o número.'
+              : `${map.points.length} ${map.points.length === 1 ? 'ponto marcado' : 'pontos marcados'} · toque para identificar`}
           </p>
         </div>
 
