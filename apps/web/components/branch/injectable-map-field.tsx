@@ -8,9 +8,11 @@ import {
   type InjectableMapValue, type InjectablePoint, type InjectableUnit,
 } from '@/lib/anamnesis'
 
-/** Alvo de toque: a tela de atendimento é usada em tablet e celular. */
-const HIT_R  = 13
-const DOT_R  = 7
+// O alvo de toque é bem maior que o ponto desenhado: a tela de atendimento é
+// usada em tablet e celular, e ponto de injetável é marcação precisa — o
+// marcador não pode cobrir a região que se está mirando.
+const HIT_R = 13
+const DOT_R = 5.8
 
 interface Props {
   value:    InjectableMapValue | undefined
@@ -27,7 +29,6 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
   const [dragId, setDragId] = useState<string | null>(null)
 
   const confirmed = !!map.confirmedAt
-  const selected  = map.points.find(p => p.id === selectedId) ?? null
   const totals    = injectableTotals(map)
 
   function update(next: Partial<InjectableMapValue>) {
@@ -124,9 +125,9 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
                     strokeWidth={isSelected ? 3 : 1.8}
                   />
                   <text
-                    x={cx} y={cy + 3.4} textAnchor="middle"
+                    x={cx} y={cy + 2.6} textAnchor="middle"
                     style={{
-                      fontSize: 8, fontWeight: 800, pointerEvents: 'none',
+                      fontSize: 7, fontWeight: 800, pointerEvents: 'none',
                       fill: isApplied ? 'var(--on-brand)' : 'var(--brand)',
                     }}
                   >
