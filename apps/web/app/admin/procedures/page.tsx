@@ -11,6 +11,17 @@ function formatBRL(v: string | number) {
   return parseFloat(String(v)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+/** Largura fixa por coluna, compartilhada por todas as tabelas de categoria. */
+const COLUNAS = [
+  { titulo: 'Procedimento', largura: undefined },
+  { titulo: 'Duração',      largura: 98 },
+  { titulo: 'Preço',        largura: 116 },
+  { titulo: 'Unidades',     largura: 132 },
+  { titulo: 'App',          largura: 64 },
+  { titulo: 'Situação',     largura: 108 },
+  { titulo: '',             largura: 172 },
+] as const
+
 export default async function AdminProceduresPage() {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'procedures', 'VIEW')
@@ -121,18 +132,25 @@ export default async function AdminProceduresPage() {
             {cat}
           </p>
 
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="card table-wrap" style={{ padding: 0, overflow: 'hidden' }}>
+            {/* `table-layout: fixed` + colgroup: cada categoria é uma tabela
+                separada e, no modo automático, cada uma media as colunas pelo
+                próprio conteúdo — um nome comprido numa categoria desalinhava
+                ela inteira em relação às outras. */}
+            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 860 }}>
+              <colgroup>
+                {COLUNAS.map(c => <col key={c.titulo} style={c.largura ? { width: c.largura } : undefined} />)}
+              </colgroup>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Procedimento', 'Duração', 'Preço', 'Filiais', 'App', 'Situação', ''].map(h => (
-                    <th key={h} style={{
+                  {COLUNAS.map(c => (
+                    <th key={c.titulo} style={{
                       padding: '10px 16px', textAlign: 'left',
                       fontSize: 'var(--text-overline)', fontWeight: 700,
                       letterSpacing: '0.1em', textTransform: 'uppercase',
                       color: 'var(--text-muted)',
                     }}>
-                      {h}
+                      {c.titulo}
                     </th>
                   ))}
                 </tr>
@@ -143,7 +161,7 @@ export default async function AdminProceduresPage() {
                   const branchCount  = availability?.length ?? 0
                   const branchLabel  = branchCount === 0
                     ? 'Toda a rede'
-                    : `${branchCount} ${branchCount === 1 ? 'filial' : 'filiais'}`
+                    : `${branchCount} ${branchCount === 1 ? 'unidade' : 'unidades'}`
 
                   const existingForEdit = {
                     id:                   p.id,
@@ -165,21 +183,24 @@ export default async function AdminProceduresPage() {
 
                   return (
                     <tr key={p.id} style={{ borderBottom: i < procs.length - 1 ? '1px solid var(--hairline)' : undefined, opacity: p.is_active ? 1 : 0.55 }}>
-                      <td style={{ padding: '13px 16px' }}>
-                        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
+                      <td data-label="" style={{ padding: '13px 16px' }}>
+                        {/* Nome quebra em vez de esticar a coluna: com largura
+                            fixa, esticar não é mais possível, mas o texto
+                            precisa poder ocupar duas linhas sem estourar. */}
+                        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflowWrap: 'anywhere' }}>{p.name}</p>
                         {p.description && (
-                          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {p.description}
                           </p>
                         )}
                       </td>
-                      <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                      <td data-label="Duração" style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>{p.duration_min} min</span>
                       </td>
-                      <td style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                      <td data-label="Preço" style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>{formatBRL(p.price)}</span>
                       </td>
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="Unidades" style={{ padding: '13px 16px' }}>
                         <span style={{
                           fontSize: 11, fontWeight: 700,
                           color: branchCount === 0 ? 'var(--brand)' : 'var(--text-soft)',
@@ -190,17 +211,17 @@ export default async function AdminProceduresPage() {
                           {branchLabel}
                         </span>
                       </td>
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="App" style={{ padding: '13px 16px' }}>
                         {p.visible_on_client_app
                           ? <Smartphone size={14} color="var(--brand)" aria-label="Visível no app" />
                           : <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>—</span>}
                       </td>
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="Situação" style={{ padding: '13px 16px' }}>
                         <span className={p.is_active ? 'chip chip-success' : 'chip chip-muted'}>
                           {p.is_active ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
-                      <td style={{ padding: '13px 16px' }}>
+                      <td data-label="" style={{ padding: '13px 16px' }}>
                         {canEdit && (
                           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
                             <ProcedureModal
