@@ -41,8 +41,9 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
 
   // Zoom só na ilustração: aproximar é o que permite marcar ponto a poucos
   // milímetros do vizinho sem depender de um marcador minúsculo.
-  const [zoom, setZoom] = useState(1)
-  const [pan, setPan]   = useState({ x: 0, y: 0 })
+  const [zoom, setZoom]       = useState(1)
+  const [pan, setPan]         = useState({ x: 0, y: 0 })
+  const [panning, setPanning] = useState(false)
   const panRef = useRef<{ x: number; y: number; panX: number; panY: number; moveu: boolean } | null>(null)
 
   const { width: W, height: H } = FACE_VIEWBOX
@@ -130,12 +131,16 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
     if (!rect || rect.width === 0) return
     const dx = ((e.clientX - p.x) / rect.width) * janelaW
     const dy = ((e.clientY - p.y) / rect.height) * janelaH
-    if (Math.abs(dx) > PAN_LIMIAR || Math.abs(dy) > PAN_LIMIAR) p.moveu = true
+    if (Math.abs(dx) > PAN_LIMIAR || Math.abs(dy) > PAN_LIMIAR) {
+      p.moveu = true
+      setPanning(true)
+    }
     setPan(limitarPan({ x: p.panX - dx, y: p.panY - dy }))
   }
 
   function encerrarArrasto() {
     setDragId(null)
+    setPanning(false)
     // O clique dispara depois do pointerup; a flag precisa sobreviver até lá.
     if (panRef.current) setTimeout(() => { panRef.current = null }, 0)
   }
@@ -200,7 +205,12 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
             viewBox={`${pan.x} ${pan.y} ${janelaW} ${janelaH}`}
             style={{
               width: '100%', height: 'auto', display: 'block', touchAction: 'none',
-              cursor: zoom > ZOOM_MIN ? 'grab' : canEdit ? 'crosshair' : 'default',
+              // Cruz sempre que dá para marcar: a mão aparecia justamente com
+              // zoom, que é quando se está mirando um ponto preciso. Ela só
+              // volta enquanto o fundo está sendo arrastado de fato.
+              cursor: panning ? 'grabbing'
+                : canEdit ? 'crosshair'
+                : zoom > ZOOM_MIN ? 'grab' : 'default',
               color: 'var(--text-faint)',
             }}
             onClick={handleSurfaceClick}
@@ -219,7 +229,9 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
               return (
                 <g
                   key={p.id}
-                  style={{ cursor: canEdit ? 'grab' : 'pointer' }}
+                  // Sobre um ponto não se marca, se move ou seleciona — a mão
+                  // aqui é o que diferencia ponto de área livre.
+                  style={{ cursor: dragId === p.id ? 'grabbing' : canEdit ? 'grab' : 'pointer' }}
                   onClick={e => { e.stopPropagation(); setSelectedId(p.id) }}
                   onPointerDown={e => { if (canEdit) { e.stopPropagation(); setDragId(p.id) } }}
                 >
