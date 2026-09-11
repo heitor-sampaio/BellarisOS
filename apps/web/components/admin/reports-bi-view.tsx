@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import { useState, useEffect, useRef, type ReactNode, type CSSProperties } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { mesclarParams } from '@/lib/query-params'
 import { EvolutionChart, type ChartPoint } from './evolution-chart'
 import { PeriodSelector, type Period } from './period-selector'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -29,6 +30,18 @@ const TABS: { key: Tab; label: string }[] = [
 export interface ReportsBiProps {
   /** 'Rede' no portal da rede, nome da unidade no portal dela. */
   scopeLabel: string
+  /** Unidade escolhida no filtro; `null` = rede inteira. Só no portal da rede. */
+  selectedBranchId?: string | null
+  /** `false` quando o cargo não pode ver o consolidado — aí escolher é obrigatório. */
+  allowNetwork?: boolean
+  /** Mostra o filtro de unidade. No portal da unidade não faz sentido. */
+  showBranchFilter?: boolean
+  /**
+   * Opções do seletor. Precisa ser separado de `branches`, que é o conjunto que
+   * ENTRA NO CÁLCULO: com uma unidade recortada, `branches` tem um item só e o
+   * seletor ficaria sem para onde voltar.
+   */
+  allBranches?: { id: string; name: string; slug: string }[]
   tab: Tab
   period: Period
   periodLabel: string
@@ -1057,9 +1070,14 @@ function TabEstoque(p: ReportsBiProps) {
 // -----------------------------------------------------------------------------
 export function ReportsBiView(props: ReportsBiProps) {
   const router = useRouter()
-  const { tab, period } = props
+  const searchParams = useSearchParams()
+  const { tab } = props
 
-  const switchTab = (t: Tab) => router.push(`?tab=${t}&period=${period}`)
+  // Mescla em vez de montar do zero: antes, trocar de aba descartava o período
+  // personalizado e vice-versa.
+  const switchTab = (t: Tab) => router.push(mesclarParams(searchParams, { tab: t }))
+  const switchBranch = (id: string) =>
+    router.push(mesclarParams(searchParams, { branch: id || null }))
 
   const activeSection = {
     overview:       <TabOverview      {...props} />,
@@ -1074,22 +1092,43 @@ export function ReportsBiView(props: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Page header */}
-      <div>
-        <p style={{
-          fontSize: 10, fontWeight: 700, color: 'var(--brand)',
-          textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px',
-        }}>
-          ✦ {props.scopeLabel}
-        </p>
-        <h1 style={{
-          fontSize: 22, fontWeight: 800, color: 'var(--text)',
-          margin: 0, letterSpacing: '-0.02em',
-        }}>
-          BI — Relatórios
-        </h1>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-          {props.periodLabel}
-        </p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div>
+          <p style={{
+            fontSize: 10, fontWeight: 700, color: 'var(--brand)',
+            textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px',
+          }}>
+            ✦ {props.scopeLabel}
+          </p>
+          <h1 style={{
+            fontSize: 22, fontWeight: 800, color: 'var(--text)',
+            margin: 0, letterSpacing: '-0.02em',
+          }}>
+            BI — Relatórios
+          </h1>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+            {props.periodLabel}
+          </p>
+        </div>
+
+        {/* Recorte: a rede inteira ou uma unidade. Fica ao lado do título
+            porque muda o significado de todos os números abaixo. */}
+        {props.showBranchFilter && (props.allBranches ?? props.branches).length > 1 && (
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span className="overline">Recorte</span>
+            <select
+              className="field"
+              style={{ width: 'auto', minWidth: 160, padding: '7px 10px' }}
+              value={props.selectedBranchId ?? ''}
+              onChange={e => switchBranch(e.target.value)}
+            >
+              {props.allowNetwork !== false && <option value="">Rede inteira</option>}
+              {(props.allBranches ?? props.branches).map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       {/* Tab nav + seletor de período na mesma linha */}
@@ -1101,7 +1140,7 @@ export function ReportsBiView(props: ReportsBiProps) {
           ariaLabel="Seção do relatório"
         />
         <PeriodSelector
-          current={period}
+          current={props.period}
           fromDate={props.customFrom}
           toDate={props.customTo}
         />

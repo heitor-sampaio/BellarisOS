@@ -7,23 +7,17 @@ import {
 export default async function AdminReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; period?: string; from?: string; to?: string }>
+  searchParams: Promise<{ tab?: string; period?: string; from?: string; to?: string; branch?: string }>
 }) {
-  const { tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo } = await searchParams
+  const { tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo, branch: rawBranch } = await searchParams
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'reports', 'VIEW')
 
-  // Alcance próprio em relatórios significa "só a minha unidade" — e o
-  // consolidado da rede não é a unidade de ninguém.
-  if (isOwnScope(ctx, 'reports')) {
-    return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
-        Seu cargo vê os relatórios de uma unidade por vez, não o consolidado da
-        rede. Abra pelo item <strong>Relatórios</strong> no portal da unidade.
-      </div>
-    )
-  }
+  // Alcance próprio em relatórios significa "uma unidade por vez". Antes isso
+  // era uma porta fechada; com o filtro, o cargo simplesmente não recebe a
+  // opção "Rede inteira".
+  const podeVerRede = !isOwnScope(ctx, 'reports')
 
   const admin = createAdminClient()
 
@@ -55,15 +49,24 @@ export default async function AdminReportsPage({
     )
   }
 
+  // Recorte: a rede inteira, ou uma unidade. Quem não pode ver o consolidado
+  // cai na primeira unidade em vez de numa tela vazia.
+  const selecionada = branches.find(b => b.id === rawBranch)
+    ?? (podeVerRede ? undefined : branches[0])
+
   return (
     <ReportsBiSection
       tenantId={ctx.tenantId!}
-      branches={branches}
+      branches={selecionada ? [selecionada] : branches}
+      todasAsUnidades={branches}
+      selectedBranchId={selecionada?.id ?? null}
+      allowNetwork={podeVerRede}
+      showBranchFilter
       tab={(rawTab ?? 'overview') as ReportsTab}
       period={(rawPeriod ?? 'month') as ReportsPeriod}
       rawFrom={rawFrom}
       rawTo={rawTo}
-      scopeLabel="Rede"
+      scopeLabel={selecionada?.name ?? 'Rede'}
     />
   )
 }

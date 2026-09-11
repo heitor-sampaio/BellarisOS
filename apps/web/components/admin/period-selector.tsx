@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { SegSelect } from '@/components/shared/seg-select'
+import { mesclarParams } from '@/lib/query-params'
 
 export type Period = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
 
@@ -23,6 +24,9 @@ interface Props {
 
 export function PeriodSelector({ current, fromDate, toDate }: Props) {
   const router = useRouter()
+  // Preserva o resto da query: montar a URL do zero apagava a aba aberta e,
+  // agora, também o filtro de unidade.
+  const searchParams = useSearchParams()
   const [showCustom, setShowCustom] = useState(current === 'custom')
   const [from, setFrom] = useState(fromDate ?? '')
   const [to,   setTo  ] = useState(toDate   ?? '')
@@ -30,13 +34,13 @@ export function PeriodSelector({ current, fromDate, toDate }: Props) {
   const select = (p: Period) => {
     if (p === 'custom') { setShowCustom(true); return }
     setShowCustom(false)
-    router.push(`?period=${p}`)
+    router.push(mesclarParams(searchParams, { period: p, from: null, to: null }))
   }
 
   const canApply = !!from && !!to && from <= to
   const applyCustom = () => {
     if (!canApply) return
-    router.push(`?period=custom&from=${from}&to=${to}`)
+    router.push(mesclarParams(searchParams, { period: 'custom', from, to }))
   }
 
   return (

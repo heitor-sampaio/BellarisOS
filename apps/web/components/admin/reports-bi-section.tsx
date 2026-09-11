@@ -20,10 +20,17 @@ type Period = ReportsPeriod
  * todas, a unidade manda só a dela.
  */
 export async function ReportsBiSection({
-  tenantId, branches, tab, period, rawFrom, rawTo, scopeLabel,
+  tenantId, branches, todasAsUnidades, selectedBranchId, allowNetwork, showBranchFilter,
+  tab, period, rawFrom, rawTo, scopeLabel,
 }: {
   tenantId:   string
+  /** Unidades que entram no cálculo. Uma só quando há recorte. */
   branches:   { id: string; name: string; slug: string }[]
+  /** Todas as unidades da rede — alimenta o seletor, não o cálculo. */
+  todasAsUnidades?: { id: string; name: string; slug: string }[]
+  selectedBranchId?: string | null
+  allowNetwork?:     boolean
+  showBranchFilter?: boolean
   tab:        Tab
   period:     Period
   rawFrom?:   string
@@ -286,6 +293,10 @@ export async function ReportsBiSection({
       ]} />
       <ReportsBiView
         scopeLabel={scopeLabel}
+        selectedBranchId={selectedBranchId ?? null}
+        allBranches={todasAsUnidades ?? branches}
+        allowNetwork={allowNetwork}
+        showBranchFilter={showBranchFilter}
         tab={tab}
         period={period}
         periodLabel={periodLabel}
