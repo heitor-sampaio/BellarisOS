@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Trash2, Check, Syringe, Plus, Minus, Maximize2 } from 'lucide-react'
 import { FaceOutline, FACE_VIEWBOX } from '@/components/shared/face-outline'
 import {
@@ -64,13 +64,17 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
     }
   }
 
-  /** Aproxima/afasta mantendo fixo o centro do que está visível. */
-  function aplicarZoom(novo: number) {
+  /**
+   * Aproxima/afasta mantendo fixo o que está sob (fx, fy) — 0..1 dentro da área
+   * visível. Pelos botões o ponto fixo é o centro; na roda do mouse é o cursor,
+   * que é o que faz o gesto parecer natural.
+   */
+  function aplicarZoomEm(novo: number, fx = 0.5, fy = 0.5) {
     const z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, novo))
-    const cx = pan.x + janelaW / 2
-    const cy = pan.y + janelaH / 2
+    const ux = pan.x + fx * janelaW
+    const uy = pan.y + fy * janelaH
     setZoom(z)
-    setPan(limitarPan({ x: cx - W / z / 2, y: cy - H / z / 2 }, z))
+    setPan(limitarPan({ x: ux - fx * (W / z), y: uy - fy * (H / z) }, z))
   }
 
   function update(next: Partial<InjectableMapValue>) {
@@ -112,6 +116,42 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
     update({ points: [...map.points, point] })
     setSelectedId(point.id)
   }
+
+  /**
+   * Zoom pela roda do mouse.
+   *
+   * Listener nativo com `passive: false` de propósito: o React registra `wheel`
+   * como passivo, e num handler passivo o `preventDefault` é ignorado — o zoom
+   * aconteceria e a página rolaria junto.
+   *
+   * Quando o gesto não tem para onde ir (já está no máximo aproximando, ou no
+   * mínimo afastando), o evento passa adiante e a página rola normalmente. Sem
+   * isso o componente viraria uma armadilha no meio de um formulário longo.
+   */
+  useEffect(() => {
+    const el = svgRef.current
+    if (!el) return
+
+    function aoRolar(e: WheelEvent) {
+      const aproximando = e.deltaY < 0
+      if ((aproximando && zoom >= ZOOM_MAX) || (!aproximando && zoom <= ZOOM_MIN)) return
+      e.preventDefault()
+
+      const rect = el!.getBoundingClientRect()
+      if (!rect.width) return
+      const fx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+      const fy = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+
+      // Passo proporcional ao delta: trackpad manda eventos pequenos e
+      // contínuos, mouse manda saltos de ~100.
+      const fator = Math.exp(-e.deltaY * 0.0015)
+      aplicarZoomEm(zoom * Math.min(2, Math.max(0.5, fator)), fx, fy)
+    }
+
+    el.addEventListener('wheel', aoRolar, { passive: false })
+    return () => el.removeEventListener('wheel', aoRolar)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom, pan.x, pan.y])
 
   function handlePointerDown(e: React.PointerEvent) {
     // Só o fundo chega aqui: os pontos param a propagação.
@@ -173,7 +213,7 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
             <BotaoZoom
               titulo="Afastar"
               desabilitado={zoom <= ZOOM_MIN}
-              onClick={() => aplicarZoom(zoom / ZOOM_STEP)}
+              onClick={() => aplicarZoomEm(zoom / ZOOM_STEP)}
             >
               <Minus size={13} />
             </BotaoZoom>
@@ -186,7 +226,7 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
             <BotaoZoom
               titulo="Aproximar"
               desabilitado={zoom >= ZOOM_MAX}
-              onClick={() => aplicarZoom(zoom * ZOOM_STEP)}
+              onClick={() => aplicarZoomEm(zoom * ZOOM_STEP)}
             >
               <Plus size={13} />
             </BotaoZoom>
@@ -282,8 +322,8 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 6 }}>
             {canEdit
               ? zoom > ZOOM_MIN
-                ? 'Clique para marcar. Arraste o fundo para deslocar a imagem.'
-                : 'Clique para marcar. Aproxime para marcar pontos muito próximos.'
+                ? 'Clique para marcar. Arraste o fundo para deslocar. Role para aproximar.'
+                : 'Clique para marcar. Role o mouse sobre o rosto para aproximar.'
               : `${map.points.length} ${map.points.length === 1 ? 'ponto marcado' : 'pontos marcados'} · toque para identificar`}
           </p>
         </div>
