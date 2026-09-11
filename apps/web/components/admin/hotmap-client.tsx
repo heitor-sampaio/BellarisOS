@@ -110,10 +110,19 @@ export function HotmapClient({ branches, layers }: Props) {
       scrollWheelZoom={true}
       zoomControl
     >
+      {/*
+        Basemap cinza-claro da Esri. A CARTO passou a carimbar "API KEY REQUIRED"
+        dentro do próprio PNG do tile, com HTTP 200 — nada quebrava, nada logava,
+        o aviso só aparecia na tela. Esta camada é aberta e não pede chave.
+
+        ⚠️ A ordem dos placeholders é {z}/{y}/{x}, invertida em relação ao padrão
+        XYZ. E ela não serve tile acima de 16: deixar maxZoom maior daria área
+        cinza vazia no zoom, e não erro.
+      */}
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-        maxZoom={19}
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+        attribution='Tiles &copy; <a href="https://www.esri.com">Esri</a> &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors'
+        maxZoom={16}
       />
 
       <FitBounds points={allPoints} />
