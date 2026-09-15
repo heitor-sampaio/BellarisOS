@@ -5,8 +5,9 @@ import {
   useState, forwardRef, useImperativeHandle,
 } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, UserPlus, CheckCircle2, Check, Plus } from 'lucide-react'
+import { X, UserPlus, CheckCircle2, Check, Plus, MessageSquare } from 'lucide-react'
 import { createLead, updateLead } from '@/actions/leads'
+import { openLeadConversation } from '@/actions/inbox'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { StageOptions } from './stage-options'
 import { LeadTimeline } from './lead-timeline'
@@ -133,7 +134,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
     const networkMode = !!branches && branches.length > 0
     // Sem filial no lead, o portal da rede não tem slug de unidade para
-    // revalidar; a action revalida /admin/crm de qualquer jeito.
+    // revalidar; a action revalida /admin/oportunidades de qualquer jeito.
     const activeBranchSlug = networkMode ? '' : (slug ?? '')
 
     const open = useCallback(() => {
@@ -146,11 +147,33 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
         ?? (branchName ? [unitTag(branchName)] : [])
       setTags(tagsIniciais)
       setTagDraft('')
+      setErroConversa(null)
       setAberto(true)
       dialogRef.current?.showModal()
     }, [existing, initialStageId, stages, branchName])
 
     const close = useCallback(() => dialogRef.current?.close(), [])
+
+    // --- Ir para a conversa ---------------------------------------
+    const [abrindoConversa, setAbrindoConversa] = useState(false)
+    const [erroConversa,    setErroConversa]    = useState<string | null>(null)
+
+    /** Inbox do portal em que o modal está. */
+    const rotaInbox = !slug || slug === '__admin__' ? '/admin/inbox' : `/${slug}/inbox`
+
+    async function irParaConversa() {
+      if (!existing) return
+      setErroConversa(null)
+      setAbrindoConversa(true)
+      const res = await openLeadConversation(existing.id)
+      setAbrindoConversa(false)
+      if (!res.conversationId) {
+        setErroConversa(res.error ?? 'Não foi possível abrir a conversa deste lead.')
+        return
+      }
+      close()
+      router.push(`${rotaInbox}?c=${res.conversationId}`)
+    }
 
     useImperativeHandle(ref, () => ({ open }), [open])
 
@@ -232,16 +255,50 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 {isEdit ? existing!.name : 'Adicionar contato ao funil de CRM'}
               </p>
             </div>
-            <button type="button" onClick={close} style={{
-              width: 32, height: 32, borderRadius: 10,
-              border: '1px solid var(--border)', background: 'var(--bg-app)',
-              color: 'var(--text-muted)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', flexShrink: 0,
-            }}>
-              <X size={15} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              {/* Simétrico ao painel do inbox, que linka de volta para
+                  Oportunidades. A conversa é criada na hora se ainda não
+                  existir — é o mesmo caminho que o card usava antes. */}
+              {isEdit && (
+                <button
+                  type="button"
+                  onClick={irParaConversa}
+                  disabled={abrindoConversa}
+                  title="Abrir a conversa deste lead no Inbox"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '7px 12px', borderRadius: 10, cursor: 'pointer',
+                    border: '1px solid var(--border)', background: 'var(--bg-app)',
+                    color: 'var(--brand)', fontSize: 12, fontWeight: 700,
+                    fontFamily: 'inherit', whiteSpace: 'nowrap',
+                    opacity: abrindoConversa ? 0.6 : 1,
+                  }}
+                >
+                  <MessageSquare size={13} />
+                  {abrindoConversa ? 'Abrindo…' : 'Ir para a conversa'}
+                </button>
+              )}
+
+              <button type="button" onClick={close} style={{
+                width: 32, height: 32, borderRadius: 10,
+                border: '1px solid var(--border)', background: 'var(--bg-app)',
+                color: 'var(--text-muted)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', flexShrink: 0,
+              }}>
+                <X size={15} />
+              </button>
+            </div>
           </div>
+
+          {erroConversa && (
+            <p style={{
+              padding: '10px 24px 0', fontSize: 12,
+              color: 'var(--warning)', fontWeight: 700,
+            }}>
+              {erroConversa}
+            </p>
+          )}
 
           {/* Body */}
           <div style={{ padding: '24px 24px 28px' }}>

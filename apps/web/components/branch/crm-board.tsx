@@ -8,7 +8,6 @@ import {
 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 import { updateLeadStage, deleteLead } from '@/actions/leads'
-import { openLeadConversation } from '@/actions/inbox'
 import { ClientForm } from './client-form'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
@@ -408,7 +407,6 @@ function LeadCard({
 }) {
   const [convertOpen, setConvertOpen] = useState(false)
   const [deleting,   startDelete]  = useTransition()
-  const [opening,    startOpening] = useTransition()
   const [moving,     startMoving]  = useTransition()
   const router     = useRouter()
   const editRef    = useRef<CRMLeadModalHandle>(null)
@@ -500,20 +498,10 @@ function LeadCard({
 
   function handleCardClick() {
     if (wasDragging.current) return
-    // No CRM da rede (/admin), o card abre a visão de inbox do lead (conversa + card).
-    if (networkMode) {
-      startOpening(async () => {
-        const res = await openLeadConversation(lead.id)
-        if (res.conversationId) {
-          router.push(`/admin/inbox?c=${res.conversationId}`)
-          return
-        }
-        // O clique não pode morrer em silêncio: sem conversa, abre o card para
-        // edição, que é a outra coisa útil a fazer com um lead.
-        editRef.current?.open()
-      })
-      return
-    }
+    // Os dois portais fazem a mesma coisa: abrem o card. No portal da rede isto
+    // pulava direto para a conversa no inbox, o que era um destino diferente
+    // para o mesmo gesto — e escondia o card, que é onde estão os dados, a
+    // etapa e o histórico. Ir para a conversa virou um botão dentro do modal.
     editRef.current?.open()
   }
 
@@ -692,8 +680,8 @@ function LeadCard({
           background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: 12, padding: '12px 14px',
-          cursor: opening ? 'wait' : isDragging ? 'grabbing' : 'pointer',
-          opacity: isDragging ? 0.35 : opening ? 0.6 : 1,
+          cursor: isDragging ? 'grabbing' : 'pointer',
+          opacity: isDragging ? 0.35 : 1,
           transition: 'opacity 150ms, box-shadow 150ms',
           userSelect: 'none',
         }}
