@@ -11,14 +11,19 @@ import { interpolar } from '@/lib/templates/core'
 /**
  * Escolher e disparar um template numa conversa.
  *
- * Aparece quando a janela de 24h fechou — é a única forma de a Meta entregar a
- * mensagem a partir daí. Mostra o texto JÁ preenchido antes de enviar: template
- * errado vai para o cliente do mesmo jeito, e não dá para apagar depois.
+ * Fora da janela de 24h é a única forma de a Meta entregar a mensagem; dentro
+ * dela é atalho para o que a recepção já manda o dia inteiro (lembrete, retorno).
+ * Por isso o botão vive no compositor, e não só no aviso de janela fechada.
+ *
+ * Mostra o texto JÁ preenchido antes de enviar: template errado vai para o
+ * cliente do mesmo jeito, e não dá para apagar depois.
  */
 export function InboxTemplatePicker({
-  conversationId, onClose, onSent,
+  conversationId, janelaFechada, onClose, onSent,
 }: {
   conversationId: string
+  /** Muda o texto: fora da janela o template é a única saída; dentro, é atalho. */
+  janelaFechada: boolean
   onClose: () => void
   onSent:  (msg: Message) => void
 }) {
@@ -82,7 +87,9 @@ export function InboxTemplatePicker({
               Enviar template
             </p>
             <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--text-faint)' }}>
-              A janela de 24 horas fechou; só um template aprovado chega agora.
+              {janelaFechada
+                ? 'A janela de 24 horas fechou; só um template aprovado chega agora.'
+                : 'Mensagem pronta, aprovada pela Meta.'}
             </p>
           </div>
           <button type="button" onClick={onClose} className="btn-ghost" style={{ height: 30, padding: '0 8px' }}>

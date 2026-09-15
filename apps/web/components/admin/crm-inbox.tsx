@@ -5,7 +5,7 @@ import {
 } from 'react'
 import {
   Search, MessageSquare, Phone, Mail, AtSign,
-  Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip,
+  Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip, FileText,
 } from 'lucide-react'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -590,6 +590,11 @@ export function CRMInbox({
   // Escrever sem poder enviar só gera a frustração de ver o erro depois.
   const bloqueado = integrationRequired || !janela.aberta
 
+  // Template só existe no WhatsApp pela API oficial.
+  const podeTemplate = canEdit
+    && selectedConv?.channel === 'whatsapp'
+    && provedorWhatsApp === 'official'
+
   // Awaiting-response counter (aging over the visible/filtered conversations)
   const awaitingConvs = filtered.filter(c => c.awaiting_since != null)
   const awaitingCount = awaitingConvs.length
@@ -610,6 +615,7 @@ export function CRMInbox({
       {showTemplates && selectedConv && (
         <InboxTemplatePicker
           conversationId={selectedConv.id}
+          janelaFechada={!janela.aberta}
           onClose={() => setShowTemplates(false)}
           onSent={msg => {
             setMessages(prev => [...prev, msg])
@@ -931,6 +937,25 @@ export function CRMInbox({
                   display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0,
                   background: 'var(--surface)',
                 }}>
+                  {/* Template a qualquer momento, não só quando a janela fecha:
+                      lembrete e retorno são mensagem padronizada que a recepção
+                      manda o dia inteiro, dentro do prazo ou fora dele. */}
+                  {podeTemplate && (
+                    <button
+                      type="button"
+                      onClick={() => setShowTemplates(true)}
+                      title="Enviar um template aprovado"
+                      style={{
+                        flexShrink: 0, alignSelf: 'flex-end',
+                        height: 36, width: 36, borderRadius: 9,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: '1.5px solid var(--border)', background: 'var(--bg-app)',
+                        color: 'var(--text-muted)', cursor: 'pointer',
+                      }}
+                    >
+                      <FileText size={15} />
+                    </button>
+                  )}
                   <textarea
                     ref={textareaRef}
                     value={draft}
