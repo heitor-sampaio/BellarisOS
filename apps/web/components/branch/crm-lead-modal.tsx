@@ -102,6 +102,15 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     // a unidade é informada na conversão em cliente.
     const suggestedTags = LEAD_SOURCES.map(s => s.key)
 
+    /**
+     * O `<dialog>` fica no DOM mesmo fechado, e o quadro monta um por card.
+     * Sem este controle, tudo que vive dentro dele roda 20 vezes ao abrir o
+     * CRM — o histórico disparava uma consulta por lead da tela. Além do custo,
+     * carregar na montagem deixava a linha do tempo velha: arrastar o card e
+     * abrir em seguida mostrava o estado anterior ao arraste.
+     */
+    const [aberto, setAberto] = useState(false)
+
     const networkMode    = !!branches && branches.length > 0
     const activeBranchId = networkMode ? selectedBranchId : (branchId ?? '')
     const activeBranchSlug = networkMode
@@ -114,6 +123,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       setStageId(existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '')
       setTags(existing?.tags ?? [])
       setTagDraft('')
+      setAberto(true)
       dialogRef.current?.showModal()
     }, [existing, initialStageId, stages])
 
@@ -177,7 +187,13 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           </span>
         )}
 
-        <dialog ref={dialogRef} className="modal" onClick={e => { if (e.target === dialogRef.current) close() }}>
+        <dialog
+          ref={dialogRef}
+          className="modal"
+          // Um lugar só para Esc, clique no fundo e botão de fechar.
+          onClose={() => setAberto(false)}
+          onClick={e => { if (e.target === dialogRef.current) close() }}
+        >
           {/* Header */}
           <div style={{
             position: 'sticky', top: 0, zIndex: 1,
@@ -397,7 +413,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
               {/* Histórico — só na edição: card que ainda não existe não tem
                   passado, e a consulta seria por um id inexistente. */}
-              {isEdit && (
+              {isEdit && aberto && (
                 <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 16 }}>
                   <LeadTimeline leadId={existing!.id} />
                 </div>
