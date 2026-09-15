@@ -65,7 +65,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 `.trim()
 
   return (
-    <html lang="pt-BR">
+    // O `suppressHydrationWarning` aqui é obrigatório, não conveniência: dois
+    // scripts abaixo mexem em `document.documentElement` ANTES da hidratação —
+    // a classe `sidebar-collapsed` (para a barra não piscar aberta) e a
+    // `.capacitor` do shell nativo. O servidor renderiza `<html>` sem elas, e
+    // o React acusava "tree hydrated but some attributes ... didn't match" a
+    // cada carga com a barra recolhida. O aviso era permanente no overlay do
+    // Next, o que ensina a ignorá-lo — e aí o próximo erro de hidratação, esse
+    // de verdade, passa batido.
+    //
+    // A supressão vale só para os atributos deste elemento, não desce para os
+    // filhos: mismatch de verdade lá dentro continua sendo acusado.
+    <html lang="pt-BR" suppressHydrationWarning>
       <body suppressHydrationWarning>
         {/* MessageChannel polyfill must be first — before any deferred script (React) runs */}
         <script dangerouslySetInnerHTML={{ __html: mcPolyfill }} />
