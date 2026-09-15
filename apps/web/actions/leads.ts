@@ -4,9 +4,35 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLeadSource, mergeTags } from '@estetica-os/utils'
+import { seedDefaultFunnel, listStages } from '@/actions/crm-funnels'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
+}
+
+/**
+ * Lead sempre nasce com etapa.
+ *
+ * O fallback antigo era `crm_stage_id ?? null`, e o quadro tratava nulo como
+ * "primeira coluna". Com mais de um funil esse lead apareceria na primeira
+ * coluna de todos eles ao mesmo tempo — então a etapa passou a ser resolvida
+ * aqui: a informada, ou a primeira do funil indicado, ou a primeira do padrão.
+ */
+async function resolverEtapa(
+  tenantId: string,
+  crmStageId: string | null,
+  funnelId: string | null,
+): Promise<string | null> {
+  if (crmStageId) return crmStageId
+
+  const funis  = await seedDefaultFunnel(tenantId)
+  const alvo   = funis.find(f => f.id === funnelId)
+    ?? funis.find(f => f.is_default)
+    ?? funis[0]
+  if (!alvo) return null
+
+  const etapas = await listStages(tenantId, alvo.id)
+  return etapas[0]?.id ?? null
 }
 
 function parseStringArray(fd: FormData, key: string): string[] {
@@ -50,6 +76,7 @@ export async function createLead(
     const branchId   = str(formData, '_branchId')
     const slug       = str(formData, '_slug') ?? ''
     const crmStageId = str(formData, 'crm_stage_id')
+    const funnelId   = str(formData, '_funnelId')
 
     const name   = str(formData, 'name')
     const phone  = str(formData, 'phone')
@@ -81,7 +108,8 @@ export async function createLead(
       .insert({
         tenant_id: ctx.tenantId!, branch_id: branchId,
         name, phone, email, social_media: social,
-        source: derived.source, notes, crm_stage_id: crmStageId ?? null,
+        source: derived.source, notes,
+        crm_stage_id: await resolverEtapa(ctx.tenantId!, crmStageId, funnelId),
         fbclid, gclid,
         utm_source: utmSource, utm_medium: utmMedium, utm_campaign: utmCampaign,
         ctwa_clid: derived.ctwa_clid ?? null,
@@ -134,8 +162,11 @@ export async function updateLead(
     if (!phone && !email && !social) return { error: 'Informe pelo menos um contato: telefone, e-mail ou rede social.' }
 
     const patch: Record<string, unknown> = {
-      name, phone, email, social_media: social, source, notes, crm_stage_id: crmStageId ?? null,
+      name, phone, email, social_media: social, source, notes,
     }
+    // Etapa só entra no patch quando o form mandou uma: gravar null aqui tirava
+    // o lead de todos os quadros.
+    if (crmStageId) patch.crm_stage_id = crmStageId
     // Só atualiza tags se o form as enviou (evita apagar tags de callers que não editam tags)
     if (formData.has('tags')) patch.tags = parseStringArray(formData, 'tags')
 

@@ -1,162 +1,192 @@
-﻿'use server'
+'use server'
 
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isStageOutcome, type StageOutcome } from '@/lib/crm'
 
-export interface CRMStage {
-  id:       string
-  name:     string
-  color:    string
-  position: number
+// Os tipos e o seed dos funis vivem em `lib/crm.ts` e `actions/crm-funnels.ts`:
+// arquivo `'use server'` só exporta função assíncrona.
+
+/** O portal da rede passa este sentinela no lugar do slug de uma unidade. */
+const ADMIN_SLUG = '__admin__'
+
+function revalidarCRM(slug?: string | null) {
+  if (slug && slug !== ADMIN_SLUG) revalidatePath(`/${slug}/crm`)
+  revalidatePath('/admin/crm')
 }
 
-const DEFAULT_STAGES = [
-  { name: 'Novo',        color: '#c34d6b', position: 0 },
-  { name: 'Em contato',  color: '#7c4ddb', position: 1 },
-  { name: 'Avaliação',   color: '#c98a1e', position: 2 },
-  { name: 'Agendado',    color: '#2563b0', position: 3 },
-  { name: 'Fechado',     color: '#3f9b6f', position: 4 },
-  { name: 'Perdido',     color: '#9e9e9e', position: 5 },
-]
+type Resultado = { error?: string; success?: boolean }
 
-// Seed etapas padrão se a rede ainda não tiver nenhuma
-export async function seedDefaultStages(tenantId: string): Promise<CRMStage[]> {
-  const admin = createAdminClient()
-
-  const { data: existing } = await admin
-    .from('crm_stages')
-    .select('id, name, color, position')
-    .eq('tenant_id', tenantId)
-    .order('position')
-
-  if (existing && existing.length > 0) return existing as CRMStage[]
-
-  const { data: seeded } = await admin
-    .from('crm_stages')
-    .insert(DEFAULT_STAGES.map(s => ({ ...s, tenant_id: tenantId })))
-    .select('id, name, color, position')
-    .order('position')
-
-  return (seeded ?? []) as CRMStage[]
-}
-
-// --- Criar etapa (NETWORK_ADMIN only) ----------------------------
+// --- Criar etapa -------------------------------------------------
 export async function createStage(
-  _prev: { error?: string; success?: boolean } | undefined,
+  _prev: Resultado | undefined,
   formData: FormData,
-) {
+): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'crm', 'MANAGE')
 
-    const name  = (formData.get('name')  as string)?.trim()
-    const color = (formData.get('color') as string)?.trim() || '#c34d6b'
-    const slug  = (formData.get('_slug') as string)?.trim() ?? ''
+    const name     = (formData.get('name')       as string)?.trim()
+    const color    = (formData.get('color')      as string)?.trim() || '#c34d6b'
+    const funnelId = (formData.get('_funnelId')  as string)?.trim()
+    const slug     = (formData.get('_slug')      as string)?.trim() ?? ''
+    const outcome  = (formData.get('outcome')    as string)?.trim() ?? 'OPEN'
 
-    if (!name) return { error: 'Nome da etapa é obrigatório.' }
+    if (!name)     return { error: 'Nome da etapa é obrigatório.' }
+    if (!funnelId) return { error: 'Funil não identificado.' }
 
     const admin = createAdminClient()
 
-    const { data: last } = await admin
+    // Posição é por funil: contar no tenant inteiro jogaria a etapa nova para o
+    // fim de uma numeração que não é a deste quadro.
+    const { data: ultima } = await admin
       .from('crm_stages')
       .select('position')
       .eq('tenant_id', ctx.tenantId!)
+      .eq('funnel_id', funnelId)
       .order('position', { ascending: false })
       .limit(1)
-      .single()
-
-    const position = last ? (last.position as number) + 1 : 0
+      .maybeSingle()
 
     const { error } = await admin.from('crm_stages').insert({
       tenant_id: ctx.tenantId!,
-      name, color, position,
+      funnel_id: funnelId,
+      name, color,
+      position:  ultima ? (ultima.position as number) + 1 : 0,
+      outcome:   isStageOutcome(outcome) ? outcome : 'OPEN',
     })
 
     if (error) return { error: `Erro ao criar etapa: ${error.message}` }
 
-    revalidatePath(`/${slug}/crm`)
-    revalidatePath('/admin/crm')
+    revalidarCRM(slug)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }
 }
 
-// --- Renomear (NETWORK_ADMIN only) -------------------------------
+// --- Renomear ----------------------------------------------------
 export async function renameStage(stageId: string, name: string, slug: string) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'crm', 'MANAGE')
     if (!name.trim()) return
 
-    const admin = createAdminClient()
-    await admin
+    const { error } = await createAdminClient()
       .from('crm_stages')
       .update({ name: name.trim() })
       .eq('id', stageId)
       .eq('tenant_id', ctx.tenantId!)
 
-    revalidatePath(`/${slug}/crm`)
-    revalidatePath('/admin/crm')
+    if (error) { console.error('[renameStage]', error.message); return }
+    revalidarCRM(slug)
   } catch (e) {
     console.error('[renameStage]', e)
   }
 }
 
-// --- Mudar cor (NETWORK_ADMIN only) ------------------------------
+// --- Mudar cor ---------------------------------------------------
 export async function updateStageColor(stageId: string, color: string, slug: string) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'crm', 'MANAGE')
 
-    const admin = createAdminClient()
-    await admin
+    const { error } = await createAdminClient()
       .from('crm_stages')
       .update({ color })
       .eq('id', stageId)
       .eq('tenant_id', ctx.tenantId!)
 
-    revalidatePath(`/${slug}/crm`)
-    revalidatePath('/admin/crm')
+    if (error) { console.error('[updateStageColor]', error.message); return }
+    revalidarCRM(slug)
   } catch (e) {
     console.error('[updateStageColor]', e)
   }
 }
 
-// --- Excluir (NETWORK_ADMIN only) --------------------------------
-export async function deleteStage(stageId: string, slug: string) {
+// --- Resultado da etapa (aberta / ganho / perdido) ----------------
+/**
+ * É o que dá conversão própria a cada funil. Sem isso a taxa do topo do quadro
+ * saía de "o lead virou cliente", que num funil de pós-venda nasce 100%.
+ */
+export async function updateStageOutcome(
+  stageId: string, outcome: StageOutcome, slug: string,
+): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'crm', 'MANAGE')
+    if (!isStageOutcome(outcome)) return { error: 'Resultado inválido.' }
 
-    const admin = createAdminClient()
-
-    const { count } = await admin
-      .from('leads')
-      .select('id', { count: 'exact', head: true })
-      .eq('crm_stage_id', stageId)
-      .eq('tenant_id', ctx.tenantId!)
-
-    if ((count ?? 0) > 0) {
-      return { error: `Esta etapa possui ${count} lead(s). Mova-os antes de excluir.` }
-    }
-
-    await admin
+    const { error } = await createAdminClient()
       .from('crm_stages')
-      .delete()
+      .update({ outcome })
       .eq('id', stageId)
       .eq('tenant_id', ctx.tenantId!)
 
-    revalidatePath(`/${slug}/crm`)
-    revalidatePath('/admin/crm')
+    if (error) return { error: `Erro ao mudar o resultado: ${error.message}` }
+
+    revalidarCRM(slug)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }
 }
 
-// --- Reordenar (NETWORK_ADMIN only) ------------------------------
+// --- Excluir -----------------------------------------------------
+export async function deleteStage(stageId: string, slug: string): Promise<Resultado> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'crm', 'MANAGE')
+
+    const admin = createAdminClient()
+
+    const { data: etapa, error: erroLeitura } = await admin
+      .from('crm_stages')
+      .select('funnel_id')
+      .eq('id', stageId)
+      .eq('tenant_id', ctx.tenantId!)
+      .single()
+    if (erroLeitura) return { error: `Erro ao excluir: ${erroLeitura.message}` }
+
+    // Quadro sem coluna nenhuma não recebe lead e não tem como voltar atrás
+    // pela tela do CRM.
+    const { count: irmas, error: erroIrmas } = await admin
+      .from('crm_stages')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId!)
+      .eq('funnel_id', etapa!.funnel_id)
+    if (erroIrmas) return { error: `Erro ao excluir: ${erroIrmas.message}` }
+    if ((irmas ?? 0) <= 1) return { error: 'O funil precisa de pelo menos uma etapa.' }
+
+    // `leads.crm_stage_id` é ON DELETE SET NULL: sem esta guarda, apagar a etapa
+    // tiraria os leads de todos os quadros sem aviso nenhum.
+    const { count, error: erroLeads } = await admin
+      .from('leads')
+      .select('id', { count: 'exact', head: true })
+      .eq('crm_stage_id', stageId)
+      .eq('tenant_id', ctx.tenantId!)
+    if (erroLeads) return { error: `Erro ao excluir: ${erroLeads.message}` }
+
+    if ((count ?? 0) > 0) {
+      return { error: `Esta etapa possui ${count} lead(s). Mova-os antes de excluir.` }
+    }
+
+    const { error } = await admin
+      .from('crm_stages')
+      .delete()
+      .eq('id', stageId)
+      .eq('tenant_id', ctx.tenantId!)
+    if (error) return { error: `Erro ao excluir: ${error.message}` }
+
+    revalidarCRM(slug)
+    return { success: true }
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+  }
+}
+
+// --- Reordenar ---------------------------------------------------
 export async function reorderStages(orderedIds: string[], slug: string) {
   try {
     const ctx = await getTenantContext()
@@ -173,8 +203,7 @@ export async function reorderStages(orderedIds: string[], slug: string) {
       ),
     )
 
-    revalidatePath(`/${slug}/crm`)
-    revalidatePath('/admin/crm')
+    revalidarCRM(slug)
   } catch (e) {
     console.error('[reorderStages]', e)
   }

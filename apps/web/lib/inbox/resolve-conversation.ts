@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { InboundMsg } from '@/lib/whatsapp/types'
 import type { InboxChannel } from '@/actions/inbox'
-import { seedDefaultStages } from '@/actions/crm-stages'
+import { seedDefaultFunnel, listStages } from '@/actions/crm-funnels'
 import { resolveLeadSource } from '@estetica-os/utils'
 
 interface ResolveResult {
@@ -79,7 +79,12 @@ export async function resolveConversation(
   const conversationId = insertedRows[0]!.id
   if (!leadId) {
     const derived = resolveLeadSource({ referral: msg.referral })
-    const stages  = await seedDefaultStages(tenantId)
+    // Lead que chega sozinho entra no funil PADRÃO da rede — o mesmo que
+    // alimenta o gráfico do dashboard. Sem etapa ele não apareceria em quadro
+    // nenhum, já que a coluna deixou de aceitar nulo.
+    const funis   = await seedDefaultFunnel(tenantId)
+    const padrao  = funis.find(f => f.is_default) ?? funis[0]
+    const stages  = padrao ? await listStages(tenantId, padrao.id) : []
     const firstStageId = stages[0]?.id ?? null
 
     const leadInsert: Record<string, unknown> = {

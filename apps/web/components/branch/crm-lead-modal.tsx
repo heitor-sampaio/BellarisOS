@@ -7,7 +7,8 @@ import {
 import { useRouter } from 'next/navigation'
 import { X, UserPlus, CheckCircle2, Check, Plus } from 'lucide-react'
 import { createLead, updateLead } from '@/actions/leads'
-import type { CRMStage } from '@/actions/crm-stages'
+import type { CRMFunnel, CRMStage } from '@/lib/crm'
+import { StageOptions } from './stage-options'
 import type { Lead } from './crm-board'
 import { LEAD_SOURCES } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
@@ -39,7 +40,12 @@ interface CRMLeadModalProps {
   slug?:           string
   /** Modo rede: passar lista de filiais; exibe seletor */
   branches?:       CRMBranch[]
+  /** Todas as etapas da rede: é o que permite mover o lead para outro funil. */
   stages:          CRMStage[]
+  /** Funis ativos, para agrupar as etapas do seletor. */
+  funnels?:        Pick<CRMFunnel, 'id' | 'name'>[]
+  /** Funil aberto no quadro — define onde o lead novo cai. */
+  funnelId?:       string
   procedures:      Procedure[]
   initialStageId?: string
   existing?:       ExistingLead
@@ -66,7 +72,10 @@ function Label({ children }: { children: React.ReactNode }) {
 
 export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
   function CRMLeadModal(
-    { branchId, slug, branches, stages, procedures, initialStageId, existing, trigger, onLeadCreated },
+    {
+      branchId, slug, branches, stages, funnels, funnelId, procedures,
+      initialStageId, existing, trigger, onLeadCreated,
+    },
     ref,
   ) {
     const isEdit    = !!existing
@@ -198,6 +207,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           <div style={{ padding: '24px 24px 28px' }}>
             <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <input type="hidden" name="_branchId"     value={activeBranchId} />
+              <input type="hidden" name="_funnelId"     value={funnelId ?? ''} />
               <input type="hidden" name="_slug"         value={activeBranchSlug} />
               <input type="hidden" name="procedure_ids" value={JSON.stringify(selectedProcs)} />
               <input type="hidden" name="tags" value={JSON.stringify(tags)} />
@@ -305,7 +315,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   <Label>Etapa</Label>
                   <select name="crm_stage_id" className="field"
                     value={stageId} onChange={e => setStageId(e.target.value)}>
-                    {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    <StageOptions funnels={funnels ?? []} stages={stages} />
                   </select>
                 </div>
               </div>

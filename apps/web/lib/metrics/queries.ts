@@ -56,7 +56,7 @@ export type SeriesPoint       = { bucket: string; revenue: number; expenses: num
 export type ProcedureMetrics  = { procedureId: string; name: string; appointments: number; revenue: number; repeatVisits: number; avgRating: number | null; ratingCount: number }
 export type ProfessionalMetrics = { professionalId: string; name: string; appointments: number; revenue: number; commission: number; avgRating: number | null; ratingCount: number }
 export type ClientMetrics     = { clientId: string; name: string; totalSpent: number; appointments: number }
-export type FunnelStage       = { stageId: string; name: string; position: number; leads: number; converted: number }
+export type FunnelStage       = { stageId: string; name: string; position: number; outcome: 'OPEN' | 'WON' | 'LOST'; leads: number; converted: number }
 
 const n = (v: unknown): number => (v == null ? 0 : Number(v))
 const nullableN = (v: unknown): number | null => (v == null ? null : Number(v))
@@ -256,13 +256,25 @@ export async function getNewClientsSeries(
   }))
 }
 
-export async function getLeadFunnel(args: Args): Promise<FunnelStage[]> {
-  const { data, error } = await createAdminClient().rpc('metrics_lead_funnel', baseArgs(args))
+/**
+ * Etapas de UM funil.
+ *
+ * Sem `funnelId` a função do banco usa o funil padrão da rede. Desde que existe
+ * mais de um funil, empilhar todos no mesmo gráfico misturaria etapas que não
+ * se sucedem — "Novo" de vendas somado com "Novo" de recuperação.
+ */
+export async function getLeadFunnel(
+  args: Args & { funnelId?: string | null },
+): Promise<FunnelStage[]> {
+  const { data, error } = await createAdminClient().rpc('metrics_lead_funnel', {
+    ...baseArgs(args), p_funnel: args.funnelId ?? null,
+  })
   logRpcError('metrics_lead_funnel', error)
   return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
     stageId:   String(r.stage_id),
     name:      String(r.stage_name),
     position:  n(r.stage_position),
+    outcome:   (r.stage_outcome as FunnelStage['outcome']) ?? 'OPEN',
     leads:     n(r.leads),
     converted: n(r.converted),
   }))

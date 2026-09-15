@@ -7,7 +7,7 @@ import { differenceInDays } from 'date-fns'
 import { updateLeadStage, deleteLead } from '@/actions/leads'
 import { openLeadConversation } from '@/actions/inbox'
 import { ClientForm } from './client-form'
-import type { CRMStage } from '@/actions/crm-stages'
+import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
 import {
   sourceStyle,
@@ -274,7 +274,12 @@ export interface Lead {
 
 interface CRMBoardProps {
   initialLeads: Lead[]
+  /** Etapas do funil aberto — são as colunas do quadro. */
   stages:       CRMStage[]
+  /** Etapas de todos os funis: o modal do lead usa para mover entre funis. */
+  allStages:    CRMStage[]
+  funnels:      Pick<CRMFunnel, 'id' | 'name'>[]
+  funnelId:     string
   procedures:   Procedure[]
   branchId:     string
   slug:         string
@@ -289,13 +294,15 @@ function softBorder(hex: string) { return hex + '50' }
 
 // --- Cartão do lead ----------------------------------------------
 function LeadCard({
-  lead, slug, branchId, stages, procedures, branches, networkMode, nowMs,
+  lead, slug, branchId, allStages, funnels, funnelId, procedures, branches, networkMode, nowMs,
   isDragging, onDragStart, onDragEnd, onLeadDeleted,
 }: {
   lead:           Lead
   slug:           string
   branchId:       string
-  stages:         CRMStage[]
+  allStages:      CRMStage[]
+  funnels:        Pick<CRMFunnel, 'id' | 'name'>[]
+  funnelId:       string
   procedures:     Procedure[]
   branches?:      { id: string; name: string; slug: string }[]
   networkMode?:   boolean
@@ -387,7 +394,9 @@ function LeadCard({
       {/* Modal de edição via ref (sem trigger visível) */}
       <CRMLeadModal
         ref={editRef}
-        branchId={branchId} slug={slug} stages={stages} procedures={procedures}
+        branchId={branchId} slug={slug}
+        stages={allStages} funnels={funnels} funnelId={funnelId}
+        procedures={procedures}
         branches={branches}
         existing={{
           id: lead.id, name: lead.name,
@@ -682,7 +691,10 @@ function LeadCard({
 }
 
 // --- Board principal ---------------------------------------------
-export function CRMBoard({ initialLeads, stages, procedures, branchId, slug, networkMode, branches }: CRMBoardProps) {
+export function CRMBoard({
+  initialLeads, stages, allStages, funnels, funnelId,
+  procedures, branchId, slug, networkMode, branches,
+}: CRMBoardProps) {
   const [leads, setLeads]     = useState<Lead[]>(initialLeads)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [overStage,  setOverStage]  = useState<string | null>(null)
@@ -806,11 +818,10 @@ export function CRMBoard({ initialLeads, stages, procedures, branchId, slug, net
       marginTop: 12,
     }}>
       {stages.map(stage => {
-        const isFirstStage = stage.id === stages[0]?.id
-        const stageLeads   = visibleLeads.filter(l =>
-          l.crm_stage_id === stage.id ||
-          (isFirstStage && l.crm_stage_id === null),
-        )
+        // Etapa nula não cai mais na primeira coluna: com vários funis o mesmo
+        // lead apareceria no começo de todos eles. Todo caminho de escrita
+        // resolve uma etapa (actions/leads.ts).
+        const stageLeads = visibleLeads.filter(l => l.crm_stage_id === stage.id)
         const isOver           = overStage === stage.id
         const isDraggingToThis = isOver && draggingId !== null
         const bg     = softBg(stage.color)
@@ -856,7 +867,8 @@ export function CRMBoard({ initialLeads, stages, procedures, branchId, slug, net
               {!networkMode && (
               <CRMLeadModal
                 branchId={branchId} slug={slug}
-                stages={stages} procedures={procedures}
+                stages={allStages} funnels={funnels} funnelId={funnelId}
+                procedures={procedures}
                 initialStageId={stage.id}
                 onLeadCreated={handleLeadCreated}
                 trigger={
@@ -882,7 +894,8 @@ export function CRMBoard({ initialLeads, stages, procedures, branchId, slug, net
                 <LeadCard
                   key={lead.id}
                   lead={lead} slug={slug} branchId={branchId}
-                  stages={stages} procedures={procedures} branches={branches}
+                  allStages={allStages} funnels={funnels} funnelId={funnelId}
+                  procedures={procedures} branches={branches}
                   networkMode={networkMode}
                   nowMs={nowMs}
                   isDragging={draggingId === lead.id}

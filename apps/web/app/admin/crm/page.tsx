@@ -1,12 +1,15 @@
-﻿import Link from 'next/link'
-import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+import Link from 'next/link'
+import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { seedDefaultStages } from '@/actions/crm-stages'
+import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
+import { funnelStats } from '@/lib/crm'
+import { mesclarParams } from '@/lib/query-params'
 import { getConversations } from '@/actions/inbox'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
+import { CRMFunnelTabs } from '@/components/branch/crm-funnel-tabs'
 import { CRMInbox } from '@/components/admin/crm-inbox'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { UserPlus } from 'lucide-react'
@@ -16,14 +19,19 @@ type View = 'funil' | 'inbox'
 export default async function AdminCRMPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; c?: string }>
+  searchParams: Promise<{ view?: string; c?: string; funil?: string }>
 }) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
 
-  const { view: viewParam, c: convParam } = await searchParams
+  const { view: viewParam, c: convParam, funil: rawFunil } = await searchParams
   // Uma conversa selecionada (?c=) força a aba inbox (deep-link vindo do card do funil).
   const view: View = (viewParam === 'inbox' || convParam) ? 'inbox' : 'funil'
+
+  const paramsAtuais = new URLSearchParams(
+    Object.entries({ view: viewParam, c: convParam, funil: rawFunil })
+      .filter((e): e is [string, string] => typeof e[1] === 'string' && e[1] !== ''),
+  )
 
   const admin = createAdminClient()
 
@@ -36,36 +44,51 @@ export default async function AdminCRMPage({
     .order('name')
 
   const branches = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
-  const branchIds = branches.map(b => b.id)
 
-  // COMERCIAL opera o funil; GERENTE_COMERCIAL e FINANCIAL só leem.
-  const canEdit = ctx.permissions.crm === 'MANAGE'
+  const canEdit = can(ctx, 'crm', 'MANAGE')
 
-  // -- Funil data (always needed for stats) --
-  const stages = await seedDefaultStages(ctx.tenantId!)
+  // -- Funis e etapas --
+  const funnels     = await seedDefaultFunnel(ctx.tenantId!)
+  const ativos      = funnels.filter(f => f.archived_at === null)
+  const selecionado = ativos.find(f => f.id === rawFunil)
+    ?? ativos.find(f => f.is_default)
+    ?? ativos[0]
+    ?? funnels[0]
+
+  const allStages = await listAllStages(ctx.tenantId!)
+  const stages    = allStages.filter(s => s.funnel_id === selecionado?.id)
+  const stageIds  = stages.map(s => s.id)
 
   const allProcs = await getCachedNetworkProcedures(ctx.tenantId!)
 
   const procedures = allProcs.map(p => ({ id: p.id as string, name: p.name as string }))
 
   // Funil da REDE: inclui leads de rede (branch_id null) + leads de filiais do tenant.
+  // Filtra pelas etapas do funil aberto — funil sem etapa não tem o que buscar,
+  // e `.in()` com lista vazia vira condição inválida no PostgREST.
   const leadOwner = ownerFilter(ctx, 'crm')
-  let leadsQuery = admin
-    .from('leads')
-    .select(`
-      id, name, phone, email, social_media, source,
-      crm_stage_id, notes, client_id, created_at, tags,
-      branch_id,
-      branches(name, slug),
-      conversations(last_message_at, awaiting_since),
-      lead_procedures(procedure_id, procedures(name, price))
-    `)
-    .eq('tenant_id', ctx.tenantId!)
-  // Ver o comentário em app/[slug]/crm/page.tsx: lead sem dono fica no bolo comum.
-  if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
-  const { data: leadsRaw } = await leadsQuery.order('created_at', { ascending: false })
+  let leadsRaw: Record<string, unknown>[] = []
+  if (stageIds.length > 0) {
+    let leadsQuery = admin
+      .from('leads')
+      .select(`
+        id, name, phone, email, social_media, source,
+        crm_stage_id, notes, client_id, created_at, tags,
+        branch_id,
+        branches(name, slug),
+        conversations(last_message_at, awaiting_since),
+        lead_procedures(procedure_id, procedures(name, price))
+      `)
+      .eq('tenant_id', ctx.tenantId!)
+      .in('crm_stage_id', stageIds)
+    // Ver o comentário em app/[slug]/crm/page.tsx: lead sem dono fica no bolo comum.
+    if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
+    const { data, error } = await leadsQuery.order('created_at', { ascending: false })
+    if (error) throw new Error(`Falha ao carregar os leads: ${error.message}`)
+    leadsRaw = data ?? []
+  }
 
-  const leads = (leadsRaw ?? []).map((l: any) => {
+  const leads = leadsRaw.map((l: any) => {
     const { conversations, ...rest } = l
     const convs = (conversations ?? []) as { last_message_at: string | null; awaiting_since: string | null }[]
     const lastInteractionAt = convs
@@ -88,9 +111,10 @@ export default async function AdminCRMPage({
     }
   })
 
-  const total       = leads.length
-  const convertidos = leads.filter((l: any) => l.client_id).length
-  const conversion  = total > 0 ? Math.round((convertidos / total) * 100) : 0
+  const stats = funnelStats(
+    leads as unknown as { crm_stage_id: string | null; client_id: string | null }[],
+    stages,
+  )
 
   // -- Inbox data (only when on inbox view) --
   const conversations = view === 'inbox' ? await getConversations() : []
@@ -106,7 +130,7 @@ export default async function AdminCRMPage({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <RealtimeRefresher tables={['leads', 'crm_stages']} />
+      <RealtimeRefresher tables={['leads', 'crm_stages', 'crm_funnels']} />
 
       {/* -- Header -- */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
@@ -115,17 +139,29 @@ export default async function AdminCRMPage({
             CRM
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {total} leads · {convertidos} convertidos · {conversion}% de conversão · {branches.length} filial{branches.length !== 1 ? 'is' : ''}
+            {stats.total} leads · {stats.ganhos} ganhos
+            {stats.porResultado && ` · ${stats.perdidos} perdidos`}
+            {' · '}{stats.conversao}% de conversão
+            {stats.porResultado && ` · ${stats.clientes} viraram clientes`}
+            {' · '}{branches.length} filial{branches.length !== 1 ? 'is' : ''}
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {view === 'funil' && canEdit && branches.length > 0 && (
             <>
-              <CRMStageSettings slug="__admin__" stages={stages} />
+              <CRMStageSettings
+                slug="__admin__"
+                funnels={funnels}
+                stages={allStages}
+                activeFunnelId={selecionado?.id ?? ''}
+              />
               <CRMLeadModal
                 branches={branches}
-                stages={stages}
+                stages={allStages}
+                funnels={ativos}
+                funnelId={selecionado?.id ?? ''}
+                initialStageId={stages[0]?.id}
                 procedures={procedures}
                 trigger={
                   <button type="button" className="btn-primary">
@@ -139,12 +175,20 @@ export default async function AdminCRMPage({
         </div>
       </div>
 
-      {/* -- Tabs -- */}
+      {/* -- Tabs --
+          As duas abas preservam o funil aberto: montar a URL do zero aqui
+          apagaria o ?funil= e jogaria de volta para o padrão ao voltar. */}
       <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--hairline)', marginBottom: -8 }}>
-        <TabLink href="/admin/crm?view=funil" active={view === 'funil'}>
+        <TabLink
+          href={`/admin/crm${mesclarParams(paramsAtuais, { view: 'funil', c: null })}`}
+          active={view === 'funil'}
+        >
           Funil
         </TabLink>
-        <TabLink href="/admin/crm?view=inbox" active={view === 'inbox'}>
+        <TabLink
+          href={`/admin/crm${mesclarParams(paramsAtuais, { view: 'inbox' })}`}
+          active={view === 'inbox'}
+        >
           Inbox
           {totalUnread > 0 && (
             <span style={{
@@ -174,15 +218,21 @@ export default async function AdminCRMPage({
           initialSelectedId={convParam ?? null}
         />
       ) : (
-        <CRMBoard
-          initialLeads={leads}
-          stages={stages}
-          procedures={procedures}
-          branchId=""
-          slug="__admin__"
-          networkMode
-          branches={branches}
-        />
+        <>
+          <CRMFunnelTabs funnels={ativos} activeId={selecionado?.id ?? ''} />
+          <CRMBoard
+            initialLeads={leads}
+            stages={stages}
+            allStages={allStages}
+            funnels={ativos}
+            funnelId={selecionado?.id ?? ''}
+            procedures={procedures}
+            branchId=""
+            slug="__admin__"
+            networkMode
+            branches={branches}
+          />
+        </>
       )}
     </div>
   )

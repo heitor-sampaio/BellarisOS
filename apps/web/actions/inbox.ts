@@ -2,7 +2,7 @@
 
 import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { seedDefaultStages } from '@/actions/crm-stages'
+import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { revalidatePath } from 'next/cache'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
@@ -123,11 +123,15 @@ export interface InboxLead {
   procedure_ids: string[]
 }
 
-export interface InboxStage { id: string; name: string; color: string; position: number }
+export interface InboxStage {
+  id: string; funnel_id: string; name: string; color: string; position: number
+}
 
 export interface ConversationCard {
   lead:   InboxLead | null
-  stages: InboxStage[]
+  /** Etapas de TODOS os funis: é daqui que sai o menu que move o lead de funil. */
+  stages:  InboxStage[]
+  funnels: { id: string; name: string }[]
 }
 
 export async function getLeadForConversation(conversationId: string): Promise<ConversationCard> {
@@ -135,7 +139,11 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
 
-  const stages = (await seedDefaultStages(ctx.tenantId!)) as InboxStage[]
+  const funis  = await seedDefaultFunnel(ctx.tenantId!)
+  const stages = (await listAllStages(ctx.tenantId!)) as InboxStage[]
+  const funnels = funis
+    .filter(f => f.archived_at === null)
+    .map(f => ({ id: f.id, name: f.name }))
 
   const { data: conv } = await admin
     .from('conversations')
@@ -145,7 +153,7 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
     .maybeSingle()
 
   const leadId = (conv as { lead_id: string | null } | null)?.lead_id ?? null
-  if (!leadId) return { lead: null, stages }
+  if (!leadId) return { lead: null, stages, funnels }
 
   const { data: leadRow } = await admin
     .from('leads')
@@ -154,7 +162,7 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
 
-  if (!leadRow) return { lead: null, stages }
+  if (!leadRow) return { lead: null, stages, funnels }
 
   const l = leadRow as any
   const lead: InboxLead = {
@@ -171,7 +179,7 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
     client_id:    l.client_id,
     procedure_ids: ((l.lead_procedures ?? []) as { procedure_id: string }[]).map(p => p.procedure_id),
   }
-  return { lead, stages }
+  return { lead, stages, funnels }
 }
 
 /** Acha (ou cria) a conversa de um lead — usado pelo deep-link "card do funil -> inbox". */

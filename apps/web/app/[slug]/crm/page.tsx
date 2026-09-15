@@ -1,20 +1,24 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
-import { seedDefaultStages } from '@/actions/crm-stages'
+import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
+import { funnelStats } from '@/lib/crm'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
+import { CRMFunnelTabs } from '@/components/branch/crm-funnel-tabs'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { UserPlus } from 'lucide-react'
 
 export default async function BranchCRMPage({
-  params,
+  params, searchParams,
 }: {
-  params: Promise<{ slug: string }>
+  params:       Promise<{ slug: string }>
+  searchParams: Promise<{ funil?: string }>
 }) {
-  const { slug } = await params
-  const ctx      = await getTenantContext()
+  const { slug }        = await params
+  const { funil: rawFunil } = await searchParams
+  const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
 
   const supabase = await createSupabase()
@@ -24,8 +28,19 @@ export default async function BranchCRMPage({
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single()
   if (!branch) notFound()
 
-  // Etapas da rede (seed automático no primeiro acesso)
-  const stages = await seedDefaultStages(ctx.tenantId!)
+  // Funis da rede (seed automático no primeiro acesso) e o funil aberto.
+  const funnels      = await seedDefaultFunnel(ctx.tenantId!)
+  const ativos       = funnels.filter(f => f.archived_at === null)
+  const selecionado  = ativos.find(f => f.id === rawFunil)
+    ?? ativos.find(f => f.is_default)
+    ?? ativos[0]
+    ?? funnels[0]
+
+  // Todas as etapas: as do funil aberto viram colunas, o resto alimenta o
+  // seletor que move o lead para outro funil.
+  const allStages = await listAllStages(ctx.tenantId!)
+  const stages    = allStages.filter(s => s.funnel_id === selecionado?.id)
+  const stageIds  = stages.map(s => s.id)
 
   // Procedimentos disponíveis nesta filial
   const { data: allProcs } = await supabase
@@ -43,31 +58,41 @@ export default async function BranchCRMPage({
     })
     .map(p => ({ id: p.id, name: p.name }))
 
-  // Leads com procedimentos de interesse. `ownerFilter` aplica o alcance do
-  // cargo: "só os próprios leads" vira filtro por `owner_id`.
+  // Leads do funil aberto. `ownerFilter` aplica o alcance do cargo: "só os
+  // próprios leads" vira filtro por `owner_id`.
+  //
+  // Funil sem etapa nenhuma não tem o que buscar — e `.in()` com lista vazia
+  // vira uma condição inválida no PostgREST.
   const leadOwner = ownerFilter(ctx, 'crm')
-  let leadsQuery = supabase
-    .from('leads')
-    .select(`
-      id, name, phone, email, social_media, source,
-      crm_stage_id, notes, client_id, created_at, tags,
-      conversations(last_message_at, awaiting_since),
-      lead_procedures(procedure_id, procedures(name, price))
-    `)
-    .eq('branch_id', branch.id)
-    .eq('tenant_id', ctx.tenantId!)
-  // Lead que chega sozinho pelo WhatsApp nasce sem dono: some para todo cargo
-  // com alcance próprio se o filtro for só `owner_id = eu`. Sem dono é bolo
-  // comum — aparece para todos até alguém assumir.
-  if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
-  const { data: leads } = await leadsQuery.order('created_at', { ascending: false })
+  let leads: Record<string, unknown>[] = []
+  if (stageIds.length > 0) {
+    let leadsQuery = supabase
+      .from('leads')
+      .select(`
+        id, name, phone, email, social_media, source,
+        crm_stage_id, notes, client_id, created_at, tags,
+        conversations(last_message_at, awaiting_since),
+        lead_procedures(procedure_id, procedures(name, price))
+      `)
+      .eq('branch_id', branch.id)
+      .eq('tenant_id', ctx.tenantId!)
+      .in('crm_stage_id', stageIds)
+    // Lead que chega sozinho pelo WhatsApp nasce sem dono: some para todo cargo
+    // com alcance próprio se o filtro for só `owner_id = eu`. Sem dono é bolo
+    // comum — aparece para todos até alguém assumir.
+    if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
+    const { data, error } = await leadsQuery.order('created_at', { ascending: false })
+    if (error) throw new Error(`Falha ao carregar os leads: ${error.message}`)
+    leads = data ?? []
+  }
 
-  const total       = leads?.length ?? 0
-  const convertidos = leads?.filter(l => l.client_id).length ?? 0
-  const conversion  = total > 0 ? Math.round((convertidos / total) * 100) : 0
+  const stats = funnelStats(
+    leads as unknown as { crm_stage_id: string | null; client_id: string | null }[],
+    stages,
+  )
 
   // Métricas de atendimento derivadas das conversas de cada lead.
-  const leadsData = (leads ?? []).map((l: any) => {
+  const leadsData = leads.map((l: any) => {
     const { conversations, ...rest } = l
     const convs = (conversations ?? []) as { last_message_at: string | null; awaiting_since: string | null }[]
     const lastInteractionAt = convs
@@ -88,9 +113,13 @@ export default async function BranchCRMPage({
     }
   })
 
+  // Configurar funis é permissão de CRM, não cargo de rede: uma gerente com
+  // `crm: MANAGE` monta o funil da unidade dela.
+  const podeConfigurar = can(ctx, 'crm', 'MANAGE')
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <RealtimeRefresher tables={['leads', 'crm_stages']} />
+      <RealtimeRefresher tables={['leads', 'crm_stages', 'crm_funnels']} />
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
@@ -98,18 +127,29 @@ export default async function BranchCRMPage({
             CRM
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {total} leads · {convertidos} convertidos · {conversion}% de conversão
+            {stats.total} leads · {stats.ganhos} ganhos
+            {stats.porResultado && ` · ${stats.perdidos} perdidos`}
+            {' · '}{stats.conversao}% de conversão
+            {stats.porResultado && ` · ${stats.clientes} viraram clientes`}
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {ctx.isNetworkAdmin && (
-            <CRMStageSettings slug={slug} stages={stages} />
+          {podeConfigurar && (
+            <CRMStageSettings
+              slug={slug}
+              funnels={funnels}
+              stages={allStages}
+              activeFunnelId={selecionado?.id ?? ''}
+            />
           )}
           <CRMLeadModal
             branchId={branch.id}
             slug={slug}
-            stages={stages}
+            stages={allStages}
+            funnels={ativos}
+            funnelId={selecionado?.id ?? ''}
+            initialStageId={stages[0]?.id}
             procedures={procedures}
             trigger={
               <button type="button" className="btn-primary">
@@ -121,10 +161,15 @@ export default async function BranchCRMPage({
         </div>
       </div>
 
+      <CRMFunnelTabs funnels={ativos} activeId={selecionado?.id ?? ''} />
+
       {/* Board */}
       <CRMBoard
         initialLeads={leadsData as unknown as import('@/components/branch/crm-board').Lead[]}
         stages={stages}
+        allStages={allStages}
+        funnels={ativos}
+        funnelId={selecionado?.id ?? ''}
         procedures={procedures}
         branchId={branch.id}
         slug={slug}

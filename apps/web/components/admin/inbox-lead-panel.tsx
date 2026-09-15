@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { Plus, UserCheck, ExternalLink, CalendarPlus, X, Check } from 'lucide-react'
 import { LEAD_SOURCES, sourceStyle } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
+import { StageOptions } from '@/components/branch/stage-options'
 import {
   getLeadForConversation,
   type Conversation,
@@ -46,6 +47,7 @@ export function InboxLeadPanel({
 }) {
   const [lead,    setLead]    = useState<InboxLead | null>(null)
   const [stages,  setStages]  = useState<InboxStage[]>([])
+  const [funnels, setFunnels] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [saving,  startSave]  = useTransition()
   const [scheduling, setScheduling] = useState(false)
@@ -70,6 +72,7 @@ export function InboxLeadPanel({
     getLeadForConversation(conversation.id).then(res => {
       if (!active) return
       setStages(res.stages)
+      setFunnels(res.funnels)
       setLead(res.lead)
       if (res.lead) {
         setName(res.lead.name ?? '')
@@ -262,7 +265,7 @@ export function InboxLeadPanel({
         <span style={labelStyle}>Etapa</span>
         <select className="field" value={stageId} disabled={disabled} onChange={e => handleStageChange(e.target.value)} style={fieldStyle}>
           <option value="">—</option>
-          {stages.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          <StageOptions funnels={funnels} stages={stages} />
         </select>
       </div>
 
