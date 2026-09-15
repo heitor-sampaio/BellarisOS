@@ -4,6 +4,7 @@ import { useState, useTransition, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, ArrowRight, ArrowRightLeft, Trash2, Phone, Mail, X, AlertTriangle,
+  MoreHorizontal,
 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 import { updateLeadStage, deleteLead } from '@/actions/leads'
@@ -349,6 +350,41 @@ interface CRMBoardProps {
 function softBg(hex: string)     { return hex + '18' }
 function softBorder(hex: string) { return hex + '50' }
 
+/** Item do menu do card. `danger` marca a ação destrutiva. */
+function MenuItem({
+  icon, children, onClick, danger,
+}: {
+  icon:     React.ReactNode
+  children: React.ReactNode
+  onClick:  () => void
+  danger?:  boolean
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+        padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
+        border: 'none', background: 'transparent', textAlign: 'left',
+        fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
+        color: danger ? '#e53935' : 'var(--text)',
+        whiteSpace: 'nowrap',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.background = danger ? '#fde8e8' : 'var(--bg-app)'
+      }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+    >
+      <span style={{ display: 'flex', flexShrink: 0, color: danger ? '#e53935' : 'var(--text-faint)' }}>
+        {icon}
+      </span>
+      {children}
+    </button>
+  )
+}
+
 // --- Cartão do lead ----------------------------------------------
 function LeadCard({
   lead, slug, branchId, allStages, funnels, funnelId, unidades, procedures, branches, networkMode, nowMs,
@@ -378,6 +414,20 @@ function LeadCard({
   const editRef    = useRef<CRMLeadModalHandle>(null)
   const confirmRef = useRef<HTMLDialogElement>(null)
   const moveRef    = useRef<HTMLDialogElement>(null)
+  const menuRef    = useRef<HTMLDivElement>(null)
+
+  const [menuAberto, setMenuAberto] = useState(false)
+
+  // Fecha ao clicar fora. Sem isso fica um menu aberto por card assim que a
+  // pessoa passa por vários.
+  useEffect(() => {
+    if (!menuAberto) return
+    function fora(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuAberto(false)
+    }
+    document.addEventListener('mousedown', fora)
+    return () => document.removeEventListener('mousedown', fora)
+  }, [menuAberto])
 
   // Mover de funil só existe se houver para onde mover.
   const outrosFunis = funnels.filter(f => f.id !== funnelId)
@@ -661,40 +711,61 @@ function LeadCard({
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            {/* Mover de funil — some quando a rede só tem um. */}
-            {outrosFunis.length > 0 && (
-              <button
-                type="button"
-                title="Mover para outro funil"
-                onClick={e => { e.stopPropagation(); moveRef.current?.showModal() }}
-                disabled={moving}
-                style={{
-                  width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-                  border: '1px solid var(--border)', background: 'var(--bg-app)',
-                  color: 'var(--text-faint)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                  opacity: moving ? 0.5 : 1,
-                }}
-              >
-                <ArrowRightLeft size={11} />
-              </button>
-            )}
-
+          {/*
+            Menu do card. Mover de funil é ação rara e não merece um botão fixo
+            ocupando o topo do card; excluir também não precisa ficar à mão.
+          */}
+          <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
               type="button"
-              onClick={e => { e.stopPropagation(); confirmRef.current?.showModal() }}
-              disabled={deleting}
+              title="Ações do lead"
+              aria-haspopup="menu"
+              aria-expanded={menuAberto}
+              onClick={e => { e.stopPropagation(); setMenuAberto(v => !v) }}
+              disabled={deleting || moving}
               style={{
-                width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-                border: '1px solid var(--border)', background: 'var(--bg-app)',
-                color: 'var(--text-faint)',
+                width: 24, height: 24, borderRadius: 6,
+                border: '1px solid var(--border)',
+                background: menuAberto ? 'var(--brand-soft)' : 'var(--bg-app)',
+                color: menuAberto ? 'var(--brand)' : 'var(--text-faint)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                opacity: deleting ? 0.5 : 1,
+                opacity: deleting || moving ? 0.5 : 1,
               }}
             >
-              <Trash2 size={11} />
+              <MoreHorizontal size={12} />
             </button>
+
+            {menuAberto && (
+              <div
+                role="menu"
+                onClick={e => e.stopPropagation()}
+                style={{
+                  position: 'absolute', top: 28, right: 0, zIndex: 20,
+                  minWidth: 190, padding: 5,
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 12,
+                  boxShadow: '0 10px 28px -10px rgba(34,22,25,.28)',
+                  display: 'flex', flexDirection: 'column', gap: 2,
+                }}
+              >
+                {outrosFunis.length > 0 && (
+                  <MenuItem
+                    icon={<ArrowRightLeft size={13} />}
+                    onClick={() => { setMenuAberto(false); moveRef.current?.showModal() }}
+                  >
+                    Mover para outro funil
+                  </MenuItem>
+                )}
+                <MenuItem
+                  icon={<Trash2 size={13} />}
+                  danger
+                  onClick={() => { setMenuAberto(false); confirmRef.current?.showModal() }}
+                >
+                  Excluir lead
+                </MenuItem>
+              </div>
+            )}
           </div>
         </div>
 
