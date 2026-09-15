@@ -505,7 +505,7 @@ function LeadCard({
       startOpening(async () => {
         const res = await openLeadConversation(lead.id)
         if (res.conversationId) {
-          router.push(`/admin/crm?view=inbox&c=${res.conversationId}`)
+          router.push(`/admin/inbox?c=${res.conversationId}`)
           return
         }
         // O clique não pode morrer em silêncio: sem conversa, abre o card para

@@ -3,12 +3,12 @@
 import {
   LayoutGrid, Calendar, BarChart3,
   Settings, LogOut, Sparkles, Boxes, Contact, CreditCard, Layers, Megaphone,
-  UsersRound, Bell, ChevronLeft, ChevronRight,
+  UsersRound, Bell, ChevronLeft, ChevronRight, Inbox,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
-import { ADMIN_MENU, menuEntriesFor } from '@/lib/menu'
+import { ADMIN_MENU, menuSectionsFor } from '@/lib/menu'
 import type { ResolvedPermissions } from '@estetica-os/types'
 
 const SIDEBAR_GRADIENT = 'linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%)'
@@ -23,7 +23,8 @@ const ICONS: Record<string, React.ReactNode> = {
   financial:    <CreditCard size={18} />,
   stock:        <Boxes      size={18} />,
   procedures:   <Sparkles   size={18} />,
-  crm:          <Layers     size={18} />,
+  inbox:        <Inbox      size={18} />,
+  oportunidades:<Layers     size={18} />,
   notificacoes: <Bell       size={18} />,
   marketing:    <Megaphone  size={18} />,
   team:         <UsersRound size={18} />,
@@ -40,6 +41,7 @@ export function AdminSidebar({ permissions }: { permissions: ResolvedPermissions
   const wordColor   = collapsed ? 'var(--on-brand)' : 'var(--brand)'
   const footerColor = collapsed ? 'var(--on-brand)' : 'var(--text-muted)'
   const footerHover = collapsed ? 'rgba(255,255,255,0.14)' : 'var(--bg-app)'
+  const separatorBg = collapsed ? 'rgba(255,255,255,0.18)' : 'var(--hairline)'
 
   return (
     <>
@@ -88,8 +90,18 @@ export function AdminSidebar({ permissions }: { permissions: ResolvedPermissions
         )}
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }} onClick={close}>
-          {menuEntriesFor(ADMIN_MENU, permissions).map(e => (
-            <NavItem key={e.key} icon={ICONS[e.key]} label={e.label} href={e.href} />
+          {menuSectionsFor(ADMIN_MENU, permissions).map(secao => (
+            <div key={secao.key ?? '_topo'} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {/* Recolhida, a barra é só ícone: o título da área não cabe e vira
+                  um filete, que ainda separa os blocos. */}
+              {secao.label && (collapsed
+                ? <div aria-hidden style={{ height: 1, background: separatorBg, margin: '10px 10px 9px' }} />
+                : <span className="overline" style={{ display: 'block', padding: '14px 12px 5px' }}>{secao.label}</span>
+              )}
+              {secao.entries.map(e => (
+                <NavItem key={e.key} icon={ICONS[e.key]} label={e.label} href={e.href} />
+              ))}
+            </div>
           ))}
         </nav>
 

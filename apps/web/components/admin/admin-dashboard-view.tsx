@@ -402,7 +402,7 @@ export function AdminDashboardView({
   const maxFunnel = Math.max(1, ...leadFunnel.map(f => f.count))
   const ADMIN_ROUTES: Partial<Record<AppModule, string>> = {
     agenda: '/admin/agenda', clients: '/admin/clients', financial: '/admin/financeiro',
-    stock: '/admin/estoque', procedures: '/admin/procedures', crm: '/admin/crm',
+    stock: '/admin/estoque', procedures: '/admin/procedures', crm: '/admin/oportunidades',
     marketing: '/admin/marketing', reports: '/admin/reports', team: '/admin/team', settings: '/admin/settings',
   }
   const shortcuts = ALL_MODULES.filter(m => ADMIN_ROUTES[m] && can(m)).map(m => ({ label: MODULE_LABELS[m], href: ADMIN_ROUTES[m]! }))

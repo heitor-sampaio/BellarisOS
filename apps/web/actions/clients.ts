@@ -77,8 +77,8 @@ export async function addClient(
         actorUserId: ctx.internalUserId,
         actorName:   ctx.userName || null,
       })
-      revalidatePath('/admin/crm')
-      revalidatePath(`/${slug}/crm`)
+      revalidatePath('/admin/oportunidades')
+      revalidatePath(`/${slug}/oportunidades`)
       revalidateTag(`clients:${ctx.tenantId!}`, 'max')
       return { success: true, clientId: existing.id as string }
     }
@@ -137,8 +137,8 @@ export async function addClient(
         'CompleteRegistration',
       ).catch(() => null)
     }).catch(() => null)
-    revalidatePath('/admin/crm')
-    revalidatePath(`/${slug}/crm`)
+    revalidatePath('/admin/oportunidades')
+    revalidatePath(`/${slug}/oportunidades`)
   }
 
   revalidatePath(`/${slug}/clients`)

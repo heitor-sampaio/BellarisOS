@@ -160,8 +160,8 @@ export async function createLead(
       actorName:   ctx.userName || null,
     })
 
-    revalidatePath(`/${slug}/crm`)
-    revalidatePath('/admin/crm')
+    revalidatePath(`/${slug}/oportunidades`)
+    revalidatePath('/admin/oportunidades')
     return { success: true, leadId: lead.id as string, createdAt: lead.created_at as string }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -282,8 +282,8 @@ export async function updateLead(
       }
     }
 
-    revalidatePath(`/${slug}/crm`)
-    revalidatePath('/admin/crm')
+    revalidatePath(`/${slug}/oportunidades`)
+    revalidatePath('/admin/oportunidades')
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -325,8 +325,8 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
       })
     }
 
-    revalidatePath(`/${slug}/crm`)
-    revalidatePath('/admin/crm')
+    revalidatePath(`/${slug}/oportunidades`)
+    revalidatePath('/admin/oportunidades')
   } catch (e) {
     console.error('[updateLeadStage]', e)
   }
@@ -351,8 +351,8 @@ export async function deleteLead(leadId: string, slug: string) {
     if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
     await q
 
-    revalidatePath(`/${slug}/crm`)
-    revalidatePath('/admin/crm')
+    revalidatePath(`/${slug}/oportunidades`)
+    revalidatePath('/admin/oportunidades')
   } catch (e) {
     console.error('[deleteLead]', e)
   }

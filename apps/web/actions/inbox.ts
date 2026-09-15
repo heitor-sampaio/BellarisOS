@@ -338,7 +338,7 @@ export async function sendMessage(
     msgTyped.status = 'sent'
   }
 
-  revalidatePath('/admin/crm')
+  revalidatePath('/admin/inbox')
   return { ok: true, message: msg as unknown as Message }
 }
 
@@ -369,7 +369,7 @@ export async function setConversationStatus(conversationId: string, status: Conv
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
 
-  revalidatePath('/admin/crm')
+  revalidatePath('/admin/inbox')
 }
 
 export async function createConversationForLead(
@@ -416,6 +416,6 @@ export async function createConversationForLead(
 
   if (error) return { error: error.message }
 
-  revalidatePath('/admin/crm')
+  revalidatePath('/admin/inbox')
   return { conversationId: (conv as unknown as { id: string }).id }
 }

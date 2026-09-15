@@ -21,8 +21,6 @@ import {
   type CrmSchedulingData,
 } from '@/actions/crm-scheduling'
 
-const SLUG = '__admin__' // o inbox vive em /admin/crm
-
 export interface PanelBranch { id: string; name: string; slug: string }
 
 const labelStyle: React.CSSProperties = {
@@ -39,11 +37,14 @@ export function InboxLeadPanel({
   conversation,
   canEdit,
   branches,
+  slug,
   onLeadChanged,
 }: {
   conversation:   Conversation
   canEdit:        boolean
   branches:       PanelBranch[]
+  /** Portal em que o painel está — revalidação e link de volta seguem daqui. */
+  slug:           string
   onLeadChanged?: () => void
 }) {
   const [lead,    setLead]    = useState<InboxLead | null>(null)
@@ -107,7 +108,7 @@ export function InboxLeadPanel({
     if (!lead) return
     const fd = new FormData()
     fd.set('_leadId', lead.id)
-    fd.set('_slug', SLUG)
+    fd.set('_slug', slug)
     fd.set('name', name)
     fd.set('phone', phone)
     fd.set('email', email)
@@ -128,7 +129,7 @@ export function InboxLeadPanel({
     if (!lead) return
     setStageId(next)
     startSave(async () => {
-      await updateLeadStage(lead.id, next, SLUG)
+      await updateLeadStage(lead.id, next, slug)
       setHistoricoKey(k => k + 1)
       onLeadChanged?.()
     })
@@ -193,9 +194,13 @@ export function InboxLeadPanel({
       {/* Cabeçalho */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <span style={labelStyle}>Card do lead</span>
-        <a href="/admin/crm" title="Ver no funil"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--brand)' }}>
-          Funil <ExternalLink size={12} />
+        {/* Volta para o quadro do portal em que a pessoa está. */}
+        <a
+          href={slug === '__admin__' ? '/admin/oportunidades' : `/${slug}/oportunidades`}
+          title="Ver nas oportunidades"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--brand)' }}
+        >
+          Oportunidades <ExternalLink size={12} />
         </a>
       </div>
 
@@ -339,7 +344,7 @@ export function InboxLeadPanel({
             <div style={{ padding: 20 }}>
               <ClientForm
                 branchId=""
-                slug={SLUG}
+                slug={slug}
                 branches={branches}
                 leadId={lead.id}
                 prefill={{ name: lead.name, phone: lead.phone ?? undefined, email: lead.email ?? undefined }}

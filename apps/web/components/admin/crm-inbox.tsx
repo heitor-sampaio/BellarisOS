@@ -324,11 +324,16 @@ interface CRMInboxProps {
   leads:                { id: string; name: string; phone?: string | null; branch_name?: string | null }[]
   canEdit:              boolean
   branches:             PanelBranch[]
+  /** Portal que renderiza: '__admin__' na rede, o slug na unidade. */
+  slug?:                string
   /** conversa pré-selecionada (deep-link ?c= vindo do card do funil) */
   initialSelectedId?:   string | null
 }
 
-export function CRMInbox({ initialConversations, leads, canEdit, branches, initialSelectedId = null }: CRMInboxProps) {
+export function CRMInbox({
+  initialConversations, leads, canEdit, branches,
+  slug = '__admin__', initialSelectedId = null,
+}: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)
   const [selectedId,    setSelectedId]    = useState<string | null>(initialSelectedId)
   const [messages,      setMessages]      = useState<Message[]>([])
@@ -809,6 +814,7 @@ export function CRMInbox({ initialConversations, leads, canEdit, branches, initi
               conversation={selectedConv}
               canEdit={canEdit}
               branches={branches}
+              slug={slug}
               onLeadChanged={() => { getConversations_client().then(setConversations) }}
             />
           </div>

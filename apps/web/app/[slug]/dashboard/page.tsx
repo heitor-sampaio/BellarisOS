@@ -283,7 +283,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     financial:  `/${slug}/financial`,
     procedures: `/${slug}/procedures`,
     stock:      `/${slug}/stock`,
-    crm:        `/${slug}/crm`,
+    crm:        `/${slug}/oportunidades`,
     team:       `/${slug}/settings/team`,
   }
   const shortcuts = ALL_MODULES

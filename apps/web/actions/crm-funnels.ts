@@ -15,8 +15,8 @@ const STAGE_COLS  = 'id, funnel_id, name, color, position, outcome'
 const ADMIN_SLUG = '__admin__'
 
 function revalidarCRM(slug?: string | null) {
-  if (slug && slug !== ADMIN_SLUG) revalidatePath(`/${slug}/crm`)
-  revalidatePath('/admin/crm')
+  if (slug && slug !== ADMIN_SLUG) revalidatePath(`/${slug}/oportunidades`)
+  revalidatePath('/admin/oportunidades')
 }
 
 type Resultado = { error?: string; success?: boolean }

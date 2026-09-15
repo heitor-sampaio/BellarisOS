@@ -150,6 +150,6 @@ export async function createCrmAppointment(
   })
 
   notifyAppointmentCreated(res.id)
-  revalidatePath('/admin/crm')
+  revalidatePath('/admin/oportunidades')
   return { id: res.id }
 }
