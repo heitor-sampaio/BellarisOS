@@ -5,6 +5,7 @@ import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLeadSource, mergeTags } from '@estetica-os/utils'
 import { seedDefaultFunnel, listStages } from '@/actions/crm-funnels'
+import { registrarEventoLead, etapaAtualDoLead } from '@/lib/lead-events'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -102,6 +103,8 @@ export async function createLead(
     )
     const tags = mergeTags(derived.tags, manualTags)
 
+    const etapaInicial = await resolverEtapa(ctx.tenantId!, crmStageId, funnelId)
+
     const admin = createAdminClient()
     const { data: lead, error } = await admin
       .from('leads')
@@ -109,7 +112,7 @@ export async function createLead(
         tenant_id: ctx.tenantId!, branch_id: branchId,
         name, phone, email, social_media: social,
         source: derived.source, notes,
-        crm_stage_id: await resolverEtapa(ctx.tenantId!, crmStageId, funnelId),
+        crm_stage_id: etapaInicial,
         fbclid, gclid,
         utm_source: utmSource, utm_medium: utmMedium, utm_campaign: utmCampaign,
         ctwa_clid: derived.ctwa_clid ?? null,
@@ -126,6 +129,15 @@ export async function createLead(
     }
 
     await saveProcedures(admin, lead.id, procedureIds)
+
+    await registrarEventoLead({
+      tenantId:    ctx.tenantId!,
+      leadId:      lead.id,
+      type:        'CREATED',
+      toStageId:   etapaInicial,
+      actorUserId: ctx.internalUserId,
+      actorName:   ctx.userName || null,
+    })
 
     revalidatePath(`/${slug}/crm`)
     revalidatePath('/admin/crm')
@@ -167,6 +179,12 @@ export async function updateLead(
     // Etapa só entra no patch quando o form mandou uma: gravar null aqui tirava
     // o lead de todos os quadros.
     if (crmStageId) patch.crm_stage_id = crmStageId
+
+    // Lida ANTES do update: depois já é a nova, e o histórico perderia a origem
+    // do movimento.
+    const etapaAnterior = crmStageId
+      ? await etapaAtualDoLead(ctx.tenantId!, leadId)
+      : null
     // Só atualiza tags se o form as enviou (evita apagar tags de callers que não editam tags)
     if (formData.has('tags')) patch.tags = parseStringArray(formData, 'tags')
 
@@ -189,6 +207,18 @@ export async function updateLead(
 
     await saveProcedures(admin, leadId, procedureIds)
 
+    if (crmStageId && etapaAnterior !== crmStageId) {
+      await registrarEventoLead({
+        tenantId:    ctx.tenantId!,
+        leadId,
+        type:        'STAGE_CHANGED',
+        fromStageId: etapaAnterior,
+        toStageId:   crmStageId,
+        actorUserId: ctx.internalUserId,
+        actorName:   ctx.userName || null,
+      })
+    }
+
     revalidatePath(`/${slug}/crm`)
     revalidatePath('/admin/crm')
     return { success: true }
@@ -203,6 +233,9 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
     const ctx = await getTenantContext()
     assertPermission(ctx, 'crm', 'MANAGE')
 
+    // Antes do update: é a única chance de saber de onde o card saiu.
+    const etapaAnterior = await etapaAtualDoLead(ctx.tenantId!, leadId)
+
     const admin = createAdminClient()
     let q = admin
       .from('leads')
@@ -211,7 +244,23 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
       .eq('tenant_id', ctx.tenantId!)
     const owner = ownerFilter(ctx, 'crm')
     if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
-    await q
+    const { error } = await q
+
+    // Erro aqui era descartado: o card voltava sozinho para a coluna antiga no
+    // próximo refresh, sem nada dizer que o movimento não foi gravado.
+    if (error) { console.error('[updateLeadStage]', error.message); return }
+
+    if (etapaAnterior !== crm_stage_id) {
+      await registrarEventoLead({
+        tenantId:    ctx.tenantId!,
+        leadId,
+        type:        'STAGE_CHANGED',
+        fromStageId: etapaAnterior,
+        toStageId:   crm_stage_id,
+        actorUserId: ctx.internalUserId,
+        actorName:   ctx.userName || null,
+      })
+    }
 
     revalidatePath(`/${slug}/crm`)
     revalidatePath('/admin/crm')

@@ -9,6 +9,7 @@ import { X, UserPlus, CheckCircle2, Check, Plus } from 'lucide-react'
 import { createLead, updateLead } from '@/actions/leads'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { StageOptions } from './stage-options'
+import { LeadTimeline } from './lead-timeline'
 import type { Lead } from './crm-board'
 import { LEAD_SOURCES } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
@@ -393,6 +394,14 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   placeholder="Interesse, contexto, próximos passos…"
                   style={{ resize: 'vertical' }} />
               </div>
+
+              {/* Histórico — só na edição: card que ainda não existe não tem
+                  passado, e a consulta seria por um id inexistente. */}
+              {isEdit && (
+                <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 16 }}>
+                  <LeadTimeline leadId={existing!.id} />
+                </div>
+              )}
 
               {/* Feedback */}
               {state?.error && (

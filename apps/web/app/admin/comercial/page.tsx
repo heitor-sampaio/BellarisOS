@@ -3,6 +3,9 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolvePeriod, percent, getLeadFunnel } from '@/lib/metrics'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { FunnelSelect } from '@/components/shared/funnel-select'
+import { seedDefaultFunnel } from '@/actions/crm-funnels'
+import { mesclarParams } from '@/lib/query-params'
 
 type Period = '7d' | '30d' | 'month' | 'all'
 
@@ -23,12 +26,17 @@ function fmtPct(n: number): string {
 export default async function AdminComercialPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string }>
+  searchParams: Promise<{ period?: string; funil?: string }>
 }) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'reports', 'VIEW')
 
-  const { period: rawPeriod } = await searchParams
+  const { period: rawPeriod, funil: rawFunil } = await searchParams
+
+  const paramsAtuais = new URLSearchParams(
+    Object.entries({ period: rawPeriod, funil: rawFunil })
+      .filter((e): e is [string, string] => typeof e[1] === 'string' && e[1] !== ''),
+  )
   const period = (PERIODS.some(p => p.key === rawPeriod) ? rawPeriod : 'month') as Period
   // Janela no fuso do negócio; o fim é o fim do período, não "agora" — antes
   // uma avaliação marcada para amanhã não era contada e o KPI de "avaliações
@@ -52,11 +60,23 @@ export default async function AdminComercialPage({
     )
   }
 
+  // A rede pode ter vários funis; o painel mostra um. Empilhar todos somaria
+  // etapas que não se sucedem.
+  const funis       = await seedDefaultFunnel(ctx.tenantId!)
+  const funisAtivos = funis.filter(f => f.archived_at === null)
+  const funilAtivo  = funisAtivos.find(f => f.id === rawFunil)
+    ?? funisAtivos.find(f => f.is_default)
+    ?? funisAtivos[0]
+
   const [funnelStages, { data: leadsRaw }, { data: apptsRaw }, { data: usersRaw }] = await Promise.all([
-    // Funil vindo do banco: inclui leads da REDE (branch_id null) e os sem
-    // etapa. Antes o filtro `.in('branch_id', ...)` nunca casava com NULL, e
-    // como o inbox cria todo lead na rede, o painel inteiro ficava vazio.
-    getLeadFunnel({ tenantId: ctx.tenantId!, branchIds: null, from: startDate, to: endDate }),
+    // Funil vindo do banco: inclui leads da REDE (branch_id null). Antes o
+    // filtro `.in('branch_id', ...)` nunca casava com NULL, e como o inbox cria
+    // todo lead na rede, o painel inteiro ficava vazio.
+    getLeadFunnel({
+      tenantId: ctx.tenantId!, branchIds: null,
+      from: startDate, to: endDate,
+      funnelId: funilAtivo?.id ?? null,
+    }),
 
     admin.from('leads')
       .select('id, crm_stage_id, client_id, owner_id, created_at')
@@ -138,9 +158,16 @@ export default async function AdminComercialPage({
             Desempenho de vendas e conversão de leads
           </p>
         </div>
+        {/* Os chips preservam o resto da query: montar a URL do zero aqui
+            apagava o funil escolhido a cada troca de período. */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {PERIODS.map(p => (
-            <Link key={p.key} href={`/admin/comercial?period=${p.key}`} className="chip" data-selected={p.key === period}>
+            <Link
+              key={p.key}
+              href={`/admin/comercial${mesclarParams(paramsAtuais, { period: p.key })}`}
+              className="chip"
+              data-selected={p.key === period}
+            >
               {p.label}
             </Link>
           ))}
@@ -158,7 +185,16 @@ export default async function AdminComercialPage({
 
       {/* Funil */}
       <div className="card" style={{ padding: 20 }}>
-        <div className="overline" style={{ marginBottom: 14 }}>Funil de leads</div>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 12, flexWrap: 'wrap', marginBottom: 14,
+        }}>
+          <div className="overline">Funil de leads</div>
+          <FunnelSelect
+            funnels={funisAtivos.map(f => ({ id: f.id, name: f.name }))}
+            activeId={funilAtivo?.id ?? ''}
+          />
+        </div>
         {funil.length === 0 ? (
           <p style={{ color: 'var(--text-faint)', fontSize: 13 }}>Nenhuma etapa configurada.</p>
         ) : (

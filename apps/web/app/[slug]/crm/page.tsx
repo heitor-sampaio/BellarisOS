@@ -5,7 +5,7 @@ import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { funnelStats } from '@/lib/crm'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
-import { CRMFunnelTabs } from '@/components/branch/crm-funnel-tabs'
+import { FunnelSelect } from '@/components/shared/funnel-select'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { UserPlus } from 'lucide-react'
@@ -161,7 +161,7 @@ export default async function BranchCRMPage({
         </div>
       </div>
 
-      <CRMFunnelTabs funnels={ativos} activeId={selecionado?.id ?? ''} />
+      <FunnelSelect funnels={ativos} activeId={selecionado?.id ?? ''} />
 
       {/* Board */}
       <CRMBoard

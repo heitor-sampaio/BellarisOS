@@ -16,13 +16,14 @@ import {
   getCore, getByBranch, getSeries, getTopProcedures, getTopProfessionals,
   getTopClients, getLeadFunnel,
 } from '@/lib/metrics'
+import { seedDefaultFunnel } from '@/actions/crm-funnels'
 
 export default async function AdminDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; from?: string; to?: string }>
+  searchParams: Promise<{ period?: string; from?: string; to?: string; funil?: string }>
 }) {
-  const { period: rawPeriod, from: rawFrom, to: rawTo } = await searchParams
+  const { period: rawPeriod, from: rawFrom, to: rawTo, funil: rawFunil } = await searchParams
 
   const ctx   = await getTenantContext()
 
@@ -462,11 +463,22 @@ export default async function AdminDashboardPage({
   }
 
   // -- Comercial: funil de leads por estágio + conversão (gate crm) --------
-  // O funil vem do banco e inclui os leads da REDE (branch_id null) e os que
-  // ainda não têm etapa — que caem na primeira, como no board do CRM. Antes
-  // esses leads sumiam do funil e a soma das barras não fechava com o total.
+  // O funil vem do banco e inclui os leads da REDE (branch_id null). A rede
+  // pode ter mais de um funil, então o gráfico mostra UM: o escolhido em
+  // `?funil=`, ou o padrão. Empilhar todos misturaria etapas que não se
+  // sucedem — "Novo" de vendas somado com "Novo" de recuperação.
+  const funnels = canCrm ? await seedDefaultFunnel(ctx.tenantId!) : []
+  const funisAtivos = funnels.filter(f => f.archived_at === null)
+  const funilAtivo  = funisAtivos.find(f => f.id === rawFunil)
+    ?? funisAtivos.find(f => f.is_default)
+    ?? funisAtivos[0]
+
   const funnelStages = canCrm
-    ? await getLeadFunnel({ tenantId: ctx.tenantId!, branchIds: null, from: startDate, to: endDate })
+    ? await getLeadFunnel({
+        tenantId: ctx.tenantId!, branchIds: null,
+        from: startDate, to: endDate,
+        funnelId: funilAtivo?.id ?? null,
+      })
     : []
 
   const leadFunnel     = funnelStages.map(s => ({ name: s.name, count: s.leads }))
@@ -509,6 +521,8 @@ export default async function AdminDashboardPage({
         permissions={ctx.permissions}
         userName={ctx.userName}
         leadFunnel={leadFunnel}
+        funnels={funisAtivos.map(f => ({ id: f.id, name: f.name }))}
+        activeFunnelId={funilAtivo?.id ?? ''}
         leadsTotal={leadsTotal}
         leadsConverted={leadsConverted}
         conversionRate={conversionRate}

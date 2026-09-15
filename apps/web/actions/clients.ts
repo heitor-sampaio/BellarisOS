@@ -8,6 +8,7 @@ import { unitTag } from '@estetica-os/utils'
 import { getAdsConfig } from '@/lib/ads/factory'
 import { MetaAdsProvider } from '@/lib/ads/meta'
 import type { MetaAdsConfig } from '@/lib/ads/types'
+import { registrarEventoLead } from '@/lib/lead-events'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
@@ -69,6 +70,13 @@ export async function addClient(
   if (existing) {
     if (leadId) {
       await admin.from('leads').update({ client_id: existing.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
+      await registrarEventoLead({
+        tenantId:    ctx.tenantId!,
+        leadId,
+        type:        'CONVERTED',
+        actorUserId: ctx.internalUserId,
+        actorName:   ctx.userName || null,
+      })
       revalidatePath('/admin/crm')
       revalidatePath(`/${slug}/crm`)
       revalidateTag(`clients:${ctx.tenantId!}`, 'max')
@@ -115,6 +123,13 @@ export async function addClient(
     const { data: leadRow } = await admin
       .from('leads').select('fbclid').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle()
     await admin.from('leads').update({ client_id: client.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
+    await registrarEventoLead({
+      tenantId:    ctx.tenantId!,
+      leadId,
+      type:        'CONVERTED',
+      actorUserId: ctx.internalUserId,
+      actorName:   ctx.userName || null,
+    })
     getAdsConfig(ctx.tenantId!, 'meta_ads').then(metaConfig => {
       if (!metaConfig) return
       new MetaAdsProvider(metaConfig as MetaAdsConfig).sendCAPIEvent(

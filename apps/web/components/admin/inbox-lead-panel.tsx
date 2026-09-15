@@ -5,6 +5,7 @@ import { Plus, UserCheck, ExternalLink, CalendarPlus, X, Check } from 'lucide-re
 import { LEAD_SOURCES, sourceStyle } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { StageOptions } from '@/components/branch/stage-options'
+import { LeadTimeline } from '@/components/branch/lead-timeline'
 import {
   getLeadForConversation,
   type Conversation,
@@ -48,6 +49,8 @@ export function InboxLeadPanel({
   const [lead,    setLead]    = useState<InboxLead | null>(null)
   const [stages,  setStages]  = useState<InboxStage[]>([])
   const [funnels, setFunnels] = useState<{ id: string; name: string }[]>([])
+  // Sobe a cada alteração no lead, para o histórico recarregar.
+  const [historicoKey, setHistoricoKey] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving,  startSave]  = useTransition()
   const [scheduling, setScheduling] = useState(false)
@@ -116,6 +119,7 @@ export function InboxLeadPanel({
     fd.set('procedure_ids', JSON.stringify(lead.procedure_ids))
     startSave(async () => {
       await updateLead(undefined, fd)
+      setHistoricoKey(k => k + 1)
       onLeadChanged?.()
     })
   }
@@ -125,6 +129,7 @@ export function InboxLeadPanel({
     setStageId(next)
     startSave(async () => {
       await updateLeadStage(lead.id, next, SLUG)
+      setHistoricoKey(k => k + 1)
       onLeadChanged?.()
     })
   }
@@ -143,6 +148,7 @@ export function InboxLeadPanel({
   function handleConverted() {
     setConvertOpen(false)
     getLeadForConversation(conversation.id).then(res => setLead(res.lead))
+    setHistoricoKey(k => k + 1)
     onLeadChanged?.()
     if (chainToSchedule) {
       setChainToSchedule(false)
@@ -292,6 +298,12 @@ export function InboxLeadPanel({
           {saving ? 'Salvando…' : 'Salvar'}
         </button>
       )}
+
+      {/* Histórico — quem atende pelo inbox precisa ver por onde o card passou
+          sem ter que abrir o quadro. */}
+      <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
+        <LeadTimeline leadId={lead.id} refreshKey={historicoKey} />
+      </div>
 
       {scheduling && lead && (
         <ScheduleModal

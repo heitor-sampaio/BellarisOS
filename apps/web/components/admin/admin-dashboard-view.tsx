@@ -14,6 +14,7 @@ import { PeriodSelector, type Period } from './period-selector'
 import type { ResolvedPermissions, AppModule } from '@estetica-os/types'
 import { ALL_MODULES, MODULE_LABELS } from '@/lib/permissions'
 import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
+import { FunnelSelect } from '@/components/shared/funnel-select'
 
 // --- Types -------------------------------------------------------------------
 
@@ -58,6 +59,8 @@ export interface AdminDashboardProps {
   permissions:      ResolvedPermissions
   userName:         string
   leadFunnel:       { name: string; count: number }[]
+  funnels:          { id: string; name: string }[]
+  activeFunnelId:   string
   leadsTotal:       number
   leadsConverted:   number
   conversionRate:   number
@@ -368,7 +371,8 @@ function StatusPill({ label, count, colorKey }: { label: string; count: number; 
 // --- Main component -----------------------------------------------------------
 
 export function AdminDashboardView({
-  permissions, userName, leadFunnel, leadsTotal, leadsConverted, conversionRate, marketing,
+  permissions, userName, leadFunnel, funnels, activeFunnelId,
+  leadsTotal, leadsConverted, conversionRate, marketing,
   monthLabel,
   totalRevenue, totalCost, totalAppointments, newClients, ticketMedio,
   totalClientsEver, branchCount,
@@ -1345,9 +1349,16 @@ export function AdminDashboardView({
       <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, alignItems: 'start' }}>
         {/* Funil de leads por estágio */}
         <div className="card" style={{ padding: '18px 20px' }}>
-          <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Funil de leads por estágio</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 10 }}>{monthLabel}</span>
+          <div style={{
+            marginBottom: 16, display: 'flex', alignItems: 'center',
+            justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+          }}>
+            <div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Funil de leads por estágio</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 10 }}>{monthLabel}</span>
+            </div>
+            {/* Um funil por vez: as etapas de funis diferentes não se sucedem. */}
+            <FunnelSelect funnels={funnels} activeId={activeFunnelId} />
           </div>
           {leadFunnel.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Nenhum estágio de CRM configurado.</p>

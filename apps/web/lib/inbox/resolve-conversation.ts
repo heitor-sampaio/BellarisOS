@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { InboundMsg } from '@/lib/whatsapp/types'
 import type { InboxChannel } from '@/actions/inbox'
 import { seedDefaultFunnel, listStages } from '@/actions/crm-funnels'
+import { registrarEventoLead } from '@/lib/lead-events'
 import { resolveLeadSource } from '@estetica-os/utils'
 
 interface ResolveResult {
@@ -108,6 +109,16 @@ export async function resolveConversation(
     if (newLead) {
       leadId      = newLead.id
       contactName = newLead.name
+
+      // Sem ator: o card nasceu sozinho, de uma mensagem recebida. A linha do
+      // tempo mostra isso como entrada automática.
+      await registrarEventoLead({
+        tenantId:  tenantId,
+        leadId:    newLead.id,
+        type:      'CREATED',
+        toStageId: firstStageId,
+      })
+
       // Liga o card à conversa recém-criada (guard lead_id IS NULL)
       await admin
         .from('conversations')
