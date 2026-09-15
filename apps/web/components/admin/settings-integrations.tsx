@@ -4,11 +4,13 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone, CheckCircle2, AlertCircle, Loader2, ChevronDown, ExternalLink, Megaphone,
+  Instagram, Mail,
 } from 'lucide-react'
 import {
   saveWhatsAppConfig, testWhatsAppConnection,
   saveAdsConfig, testAdsConnection,
   confirmMetaAdsSelection, disconnectMetaAds, fetchMetaAdAccounts,
+  confirmMetaPageSelection, disconnectMetaMessaging,
 } from '@/actions/integrations'
 import type { IntegrationConfig } from '@/actions/integrations'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
@@ -807,6 +809,192 @@ function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
   )
 }
 
+// --- Meta Messaging (Instagram Direct + Messenger) ---------------------------
+
+function MetaMessagingConnect({
+  initial, metaStep, metaError, metaErrorReason,
+}: {
+  initial?:         IntegrationConfig
+  metaStep?:        string
+  metaError?:       boolean
+  metaErrorReason?: string
+}) {
+  const router = useRouter()
+  const config = (initial?.config ?? {}) as Record<string, unknown>
+
+  const pages = (config.pages ?? []) as Array<{
+    pageId: string; pageName: string; igUserId?: string | null; igUsername?: string | null
+  }>
+  const hasToken     = !!config.access_token
+  const activePageId = (config.activePageId as string) || ''
+  const isActive     = !!initial?.is_active && !!activePageId
+  const activePage   = pages.find(p => p.pageId === activePageId)
+
+  const [selected,   setSelected]   = useState(activePageId || pages[0]?.pageId || '')
+  const [erro,       setErro]       = useState<string | null>(null)
+  const [isPending,  startTransition] = useTransition()
+  const [isDisconnecting, startDisconnect] = useTransition()
+  const [trocando,   setTrocando]   = useState(false)
+
+  function handleConnect() {
+    window.location.href = '/api/oauth/meta?produto=mensagens'
+  }
+
+  function handleConfirm() {
+    if (!selected) return
+    setErro(null)
+    startTransition(async () => {
+      const res = await confirmMetaPageSelection(selected)
+      if (res.ok) { setTrocando(false); router.refresh() }
+      else setErro(res.error ?? 'Erro ao salvar')
+    })
+  }
+
+  function handleDisconnect() {
+    startDisconnect(async () => {
+      await disconnectMetaMessaging()
+      router.refresh()
+    })
+  }
+
+  const erroOAuth = metaError && (metaStep === 'select_page' || !isActive) ? metaErrorReason : null
+
+  // Estado 1 — nunca conectou
+  if (!hasToken) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+          Conecte a página do Facebook da clínica para receber e responder Messenger e
+          Instagram Direct dentro do Inbox. O Instagram precisa ser uma conta profissional
+          ligada a essa página.
+        </p>
+        {erroOAuth && <ErroBox texto={erroOAuth} />}
+        <button type="button" onClick={handleConnect} className="btn-primary" style={{ alignSelf: 'flex-start' }}>
+          Conectar com o Facebook
+        </button>
+      </div>
+    )
+  }
+
+  // Estado 2 — conectado, falta escolher a página (ou trocando)
+  if (!isActive || trocando) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 7,
+          padding: '10px 14px', borderRadius: 8,
+          background: '#1877F210', border: '1px solid #1877F230',
+          fontSize: 13, fontWeight: 600, color: '#1877F2',
+        }}>
+          <CheckCircle2 size={15} />
+          Conectado como <strong>{(config.meta_user_name as string) || 'Usuário Facebook'}</strong>
+        </div>
+
+        {erroOAuth && <ErroBox texto={erroOAuth} />}
+
+        {pages.length === 0 ? (
+          <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
+            Nenhuma página encontrada nesta conta. Você precisa ser administrador de ao menos
+            uma página do Facebook.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              PÁGINA
+            </label>
+            <select
+              value={selected}
+              onChange={e => setSelected(e.target.value)}
+              className="field"
+              style={{ fontSize: 13 }}
+            >
+              {pages.map(p => (
+                <option key={p.pageId} value={p.pageId}>
+                  {p.pageName}{p.igUsername ? ` · @${p.igUsername}` : ''}
+                </option>
+              ))}
+            </select>
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>
+              {pages.find(p => p.pageId === selected)?.igUserId
+                ? 'Messenger e Instagram Direct serão recebidos no Inbox.'
+                : 'Sem conta profissional do Instagram ligada — só o Messenger será recebido.'}
+            </p>
+          </div>
+        )}
+
+        {erro && <ErroBox texto={erro} />}
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!selected || isPending}
+            className="btn-primary"
+          >
+            {isPending ? 'Salvando…' : 'Usar esta página'}
+          </button>
+          {trocando && (
+            <button type="button" onClick={() => setTrocando(false)} className="btn-ghost">
+              Cancelar
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Estado 3 — ativo
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 7,
+        padding: '10px 14px', borderRadius: 8,
+        background: '#f0fdf4', border: '1px solid #3f9b6f33',
+        fontSize: 13, fontWeight: 600, color: '#3f9b6f',
+      }}>
+        <CheckCircle2 size={15} />
+        <span>
+          <strong>{activePage?.pageName}</strong>
+          {activePage?.igUsername ? ` · @${activePage.igUsername}` : ' · só Messenger'}
+        </span>
+      </div>
+
+      <p style={{ fontSize: 11.5, color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
+        Nestes canais só é possível responder até 24 horas depois da última mensagem do
+        contato — regra da Meta. Passado esse prazo o Inbox bloqueia o envio.
+      </p>
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button type="button" onClick={() => setTrocando(true)} className="btn-ghost">
+          Trocar página
+        </button>
+        <button
+          type="button"
+          onClick={handleDisconnect}
+          disabled={isDisconnecting}
+          className="btn-ghost"
+          style={{ color: '#dc2626' }}
+        >
+          {isDisconnecting ? 'Desconectando…' : 'Desconectar'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ErroBox({ texto }: { texto: string }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 7,
+      padding: '8px 12px', borderRadius: 8,
+      background: '#fef2f2', border: '1px solid #dc262633',
+      fontSize: 12.5, fontWeight: 600, color: '#dc2626',
+    }}>
+      <AlertCircle size={14} /> {texto}
+    </div>
+  )
+}
+
 // --- Main export -------------------------------------------------------------
 
 interface SettingsIntegrationsProps {
@@ -816,10 +1004,12 @@ interface SettingsIntegrationsProps {
   metaErrorReason?: string
 }
 
-type Section = 'whatsapp' | 'meta_ads' | 'google_ads' | null
+type Section = 'whatsapp' | 'meta_messaging' | 'meta_ads' | 'google_ads' | null
 
 export function SettingsIntegrations({ initialConfigs, metaStep, metaError, metaErrorReason }: SettingsIntegrationsProps) {
-  const [section,    setSection]    = useState<Section>('whatsapp')
+  const [section,    setSection]    = useState<Section>(
+    metaStep === 'select_page' ? 'meta_messaging' : 'whatsapp',
+  )
   const [wpProvider, setWpProvider] = useState<ProviderType>(() => {
     const existing = initialConfigs.find(c => c.provider === 'zapi' || c.provider === 'official')
     return (existing?.provider as ProviderType) ?? 'zapi'
@@ -828,10 +1018,12 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
   const zapiConfig     = initialConfigs.find(c => c.provider === 'zapi')
   const officialConfig = initialConfigs.find(c => c.provider === 'official')
   const metaAdsConfig  = initialConfigs.find(c => c.provider === 'meta_ads')
+  const metaMsgConfig  = initialConfigs.find(c => c.provider === 'meta_messaging')
   const googleAdsConfig = initialConfigs.find(c => c.provider === 'google_ads')
 
   const hasWhatsApp  = zapiConfig?.is_active || officialConfig?.is_active
   const hasMetaAds   = metaAdsConfig?.is_active
+  const hasMetaMsg   = metaMsgConfig?.is_active
   const hasGoogleAds = googleAdsConfig?.is_active
 
   function SectionCard({
@@ -938,32 +1130,51 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
         }
       </SectionCard>
 
-      {/* Placeholder: Instagram DM, Email */}
-      {(['Instagram DM', 'E-mail (Resend)'] as const).map(name => (
-        <div key={name} className="card" style={{ padding: '14px 20px', opacity: 0.55 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: 'var(--bg-app)', border: '1.5px solid var(--border)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <Phone size={18} color="var(--text-faint)" />
-              </div>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>{name}</p>
-                <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: 0, marginTop: 1 }}>Em breve</p>
-              </div>
-            </div>
-            <span style={{
-              fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-              background: 'var(--bg-app)', color: 'var(--text-faint)', border: '1px solid var(--border)',
+      <SectionCard
+        id="meta_messaging"
+        icon={<Instagram size={18} color="#E1306C" />}
+        iconBg="#E1306C15" iconColor="#E1306C"
+        title="Instagram e Messenger"
+        subtitle={
+          hasMetaMsg
+            ? `Conectado · ${String((metaMsgConfig?.config?.pages as Array<{ pageId: string; pageName: string }> | undefined)
+                ?.find(p => p.pageId === metaMsgConfig?.config?.activePageId)?.pageName ?? 'Página')}`
+            : 'Instagram Direct · Facebook Messenger'
+        }
+        isActive={!!hasMetaMsg}
+      >
+        <MetaMessagingConnect
+          initial={metaMsgConfig}
+          metaStep={metaStep}
+          metaError={metaError}
+          metaErrorReason={metaErrorReason}
+        />
+      </SectionCard>
+
+      {/* E-mail ainda não tem provedor: fica como placeholder honesto. */}
+      <div className="card" style={{ padding: '14px 20px', opacity: 0.55 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 10,
+              background: 'var(--bg-app)', border: '1.5px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              Em breve
-            </span>
+              <Mail size={18} color="var(--text-faint)" />
+            </div>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>E-mail (Resend)</p>
+              <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: 0, marginTop: 1 }}>Em breve</p>
+            </div>
           </div>
+          <span style={{
+            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+            background: 'var(--bg-app)', color: 'var(--text-faint)', border: '1px solid var(--border)',
+          }}>
+            Em breve
+          </span>
         </div>
-      ))}
+      </div>
 
       {/* -- Seção: Marketing ------------------------------------------------ */}
       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 8 }}>

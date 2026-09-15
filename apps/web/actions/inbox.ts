@@ -4,6 +4,10 @@ import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { revalidatePath } from 'next/cache'
+import { resolverCanal } from '@/lib/channels/factory'
+import { estadoDaJanela } from '@/lib/channels/window'
+import { urlDaMidia } from '@/lib/inbox/media'
+import type { ChannelKind } from '@/lib/channels/types'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
@@ -19,6 +23,8 @@ export interface Conversation {
   last_message:    string | null
   contact_name:    string | null
   contact_phone:   string | null
+  /** Provedor que atende a conversa — decide se a janela de 24h vale. */
+  provider:        string | null
   branch_id:       string | null
   branch_name:     string | null
   created_at:      string
@@ -39,6 +45,9 @@ export interface Message {
   sent_by_name:    string | null
   is_read:         boolean
   created_at:      string
+  media_type:      'image' | 'audio' | 'video' | 'document' | null
+  /** Link assinado, válido por uma hora. O bucket é privado. */
+  media_url:       string | null
 }
 
 export async function getConversations(): Promise<Conversation[]> {
@@ -65,7 +74,7 @@ export async function getConversations(): Promise<Conversation[]> {
 
   let query = admin
     .from('conversations')
-    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, branches(name)')
+    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, branches(name)')
     .eq('tenant_id', ctx.tenantId!)
 
   if (ownLeadIds) {
@@ -97,13 +106,18 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 
   const { data } = await admin
     .from('messages')
-    .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at')
+    .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at, media_type, media_path')
     .eq('conversation_id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: true })
     .limit(500)
 
-  return (data ?? []) as Message[]
+  // O bucket é privado: a foto de uma cliente não pode ficar acessível por
+  // URL adivinhável. Cada mídia vira um link assinado na leitura.
+  return Promise.all((data ?? []).map(async (m: any) => ({
+    ...m,
+    media_url: m.media_path ? await urlDaMidia(m.media_path) : null,
+  }))) as Promise<Message[]>
 }
 
 // --- Card do lead ligado à conversa (3a coluna do inbox) ---------------------
@@ -242,6 +256,9 @@ export async function openLeadConversation(
       status:        'open',
       contact_name:  l.name,
       contact_phone: contactPhone,
+      // Identidade da conversa no canal. Sem isto a conversa nasce fora do
+      // índice único e o webhook criaria uma segunda para o mesmo contato.
+      contact_external_id: contactPhone ?? `lead:${leadId}`,
     })
     .select('id')
     .single()
@@ -275,7 +292,7 @@ export async function sendMessage(
 
   const { data: conv } = await admin
     .from('conversations')
-    .select('id, channel, tenant_id, status, contact_phone')
+    .select('id, channel, tenant_id, status, contact_phone, contact_external_id, last_inbound_at')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .single()
@@ -283,14 +300,41 @@ export async function sendMessage(
   if (!conv) return { ok: false, error: 'Conversa não encontrada' }
   if (conv.status === 'closed') return { ok: false, error: 'Conversa encerrada' }
 
-  // Resolve sender display name
-  let senderName: string | null = null
-  const { data: profile } = await admin
+  const channel = conv.channel as ChannelKind
+
+  // Como se envia neste canal? Um lugar só decide — antes havia um `if` com
+  // forma de WhatsApp e um `else` que marcava a mensagem como "enviada" sem
+  // enviar nada: responder um Instagram dava "enviado" e o cliente nunca
+  // recebia.
+  const canal = await resolverCanal(ctx.tenantId!, channel)
+
+  if (!canal && channel !== 'manual') {
+    return {
+      ok: false,
+      error: `Canal ${channel} não está conectado. Configure em Configurações → Integrações.`,
+    }
+  }
+
+  // Janela de 24h da Meta. Fora dela a API recusa, então barrar aqui evita a
+  // pessoa escrever e a mensagem sumir.
+  const janela = estadoDaJanela(channel, conv.last_inbound_at as string | null, canal?.nome)
+  if (!janela.aberta) return { ok: false, error: janela.motivo ?? 'Janela de resposta fechada.' }
+
+  // Quem está respondendo.
+  //
+  // ⚠️ `ctx.userId` é o id do AUTH, e `messages.sent_by_id` referencia
+  // `users(id)` — o id do membro. Usar um no lugar do outro fazia o insert
+  // quebrar na foreign key e NENHUMA resposta era gravada: a bolha aparecia na
+  // tela, o erro era descartado e a mensagem não existia.
+  const { data: profile, error: erroPerfil } = await admin
     .from('users')
-    .select('name')
-    .eq('id', ctx.userId)
-    .single()
-  senderName = profile?.name ?? null
+    .select('id, name')
+    .eq('auth_id', ctx.userId)
+    .maybeSingle()
+  if (erroPerfil) console.error('[sendMessage] perfil:', erroPerfil.message)
+
+  const senderId   = profile?.id   ?? ctx.internalUserId ?? null
+  const senderName = profile?.name ?? null
 
   const { data: msg, error } = await admin
     .from('messages')
@@ -301,7 +345,7 @@ export async function sendMessage(
       content:         content.trim(),
       channel:         conv.channel,
       status:          'sending',
-      sent_by_id:      ctx.userId,
+      sent_by_id:      senderId,
       sent_by_name:    senderName,
     })
     .select()
@@ -311,34 +355,38 @@ export async function sendMessage(
 
   const msgTyped = msg as unknown as { id: string; status: string }
 
-  // Dispatch to WhatsApp channel if configured
-  if ((conv.channel === 'whatsapp') && conv.contact_phone) {
-    try {
-      const { getWhatsAppConfig, resolveProvider } = await import('@/lib/whatsapp/factory')
-      const wpConfig = await getWhatsAppConfig(ctx.tenantId!)
-      if (wpConfig) {
-        const provider = resolveProvider(wpConfig)
-        const { externalId } = await provider.send(conv.contact_phone, content.trim())
-        await admin
-          .from('messages')
-          .update({ status: 'sent', external_id: externalId })
-          .eq('id', msgTyped.id)
-        msgTyped.status = 'sent'
-      } else {
-        await admin.from('messages').update({ status: 'sent' }).eq('id', msgTyped.id)
-        msgTyped.status = 'sent'
-      }
-    } catch (sendErr: any) {
-      await admin.from('messages').update({ status: 'failed' }).eq('id', msgTyped.id)
-      msgTyped.status = 'failed'
-    }
-  } else {
-    // manual channel — mark as sent immediately
+  if (!canal) {
+    // `manual`: nota interna, não tem para onde enviar. Fica registrada.
     await admin.from('messages').update({ status: 'sent' }).eq('id', msgTyped.id)
     msgTyped.status = 'sent'
+    revalidarInbox()
+    return { ok: true, message: msg as unknown as Message }
   }
 
-  revalidatePath('/admin/inbox')
+  // O destinatário é o id do contato NO CANAL: telefone no WhatsApp, PSID ou
+  // IGSID nos canais da Meta.
+  const destino = (conv.contact_external_id as string | null) ?? (conv.contact_phone as string | null)
+  if (!destino) {
+    await admin.from('messages').update({ status: 'failed' }).eq('id', msgTyped.id)
+    return { ok: false, error: 'Esta conversa não tem um destinatário identificado.' }
+  }
+
+  try {
+    const { externalId } = await canal.provider.send(destino, content.trim())
+    await admin
+      .from('messages')
+      .update({ status: 'sent', external_id: externalId, provider: canal.nome })
+      .eq('id', msgTyped.id)
+    msgTyped.status = 'sent'
+  } catch (sendErr) {
+    // A falha fica visível na conversa em vez de virar um "enviado" mentiroso.
+    console.error('[sendMessage]', sendErr)
+    await admin.from('messages').update({ status: 'failed' }).eq('id', msgTyped.id)
+    msgTyped.status = 'failed'
+    return { ok: false, error: mensagemDeFalha(sendErr) }
+  }
+
+  revalidarInbox()
   return { ok: true, message: msg as unknown as Message }
 }
 
@@ -369,7 +417,7 @@ export async function setConversationStatus(conversationId: string, status: Conv
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
 
-  revalidatePath('/admin/inbox')
+  revalidarInbox()
 }
 
 export async function createConversationForLead(
@@ -416,6 +464,36 @@ export async function createConversationForLead(
 
   if (error) return { error: error.message }
 
-  revalidatePath('/admin/inbox')
+  revalidarInbox()
   return { conversationId: (conv as unknown as { id: string }).id }
+}
+
+/**
+ * Erro do provedor traduzido para quem atende.
+ *
+ * O texto cru da Graph API ('OAuthException', 'fbtrace_id'…) não diz nada para
+ * a recepção e ainda expõe interno. O detalhe fica no log do servidor.
+ */
+function mensagemDeFalha(err: unknown): string {
+  const texto = err instanceof Error ? err.message : String(err)
+
+  if (/OAuth|access token|190/i.test(texto)) {
+    return 'A conexão com o canal expirou. Reconecte em Configurações → Integrações.'
+  }
+  if (/outside.*window|24|messaging_type|10/i.test(texto)) {
+    return 'A janela de resposta fechou. O contato precisa escrever de novo.'
+  }
+  if (/rate limit|too many/i.test(texto)) {
+    return 'Muitas mensagens em pouco tempo. Tente de novo em instantes.'
+  }
+  return 'Não foi possível enviar a mensagem. Tente de novo; se persistir, confira a integração do canal.'
+}
+
+/**
+ * O inbox existe nos dois portais. Revalidar só '/admin/inbox' deixava a
+ * unidade com a lista de conversas velha depois de responder.
+ */
+function revalidarInbox() {
+  revalidatePath('/admin/inbox')
+  revalidatePath('/[slug]/inbox', 'page')
 }

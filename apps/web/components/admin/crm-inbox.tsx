@@ -5,7 +5,7 @@ import {
 } from 'react'
 import {
   Search, MessageSquare, Phone, Mail, AtSign,
-  Send, ChevronDown, CheckCheck, AlertCircle, Plus, X,
+  Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip,
 } from 'lucide-react'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -17,6 +17,7 @@ import {
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
 import { TagBadge } from '@/components/shared/tag-badge'
+import { estadoDaJanela } from '@/lib/channels/window'
 import {
   secondsSince, agingLevel, AGING_STYLE, AWAITING_THRESHOLDS,
   formatDurationShort, formatDurationLong,
@@ -81,8 +82,10 @@ const STATUS_META: Record<ConvStatus, { label: string; color: string; bg: string
 
 // --- Left: conversation list item --------------------------------------------
 
-function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; selected: boolean; onClick: () => void; nowMs: number }) {
-  const awaitingSecs = secondsSince(conv.awaiting_since, nowMs)
+function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; selected: boolean; onClick: () => void; nowMs: number | null }) {
+  // `nowMs` só existe depois de montar: 'há 4min' no servidor e 'há 5min' no
+  // cliente é o bastante para o React descartar a árvore inteira na hidratação.
+  const awaitingSecs = nowMs == null ? null : secondsSince(conv.awaiting_since, nowMs)
   return (
     <button
       type="button"
@@ -167,34 +170,86 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
 // --- Right: message bubble ---------------------------------------------------
 
 function Bubble({ msg }: { msg: Message }) {
-  const out = msg.direction === 'outbound'
+  const out    = msg.direction === 'outbound'
+  // Mensagem que o provedor recusou. Sem marcar, ela fica idêntica a uma
+  // entregue e a pessoa segue a conversa achando que o cliente recebeu.
+  const falhou = msg.status === 'failed'
+  // Anexo sem legenda chega com o conteúdo '[image]' — só um rótulo do parser.
+  // Com o arquivo na tela, repetir isso embaixo dele é ruído.
+  const soRotulo = !!msg.media_url && msg.content === `[${msg.media_type}]`
   return (
     <div style={{ display: 'flex', justifyContent: out ? 'flex-end' : 'flex-start', padding: '2px 18px' }}>
       <div style={{
         maxWidth: '70%',
-        background: out ? 'var(--brand)' : 'var(--surface)',
-        color:      out ? '#fff' : 'var(--text)',
-        border:     out ? 'none' : '1px solid var(--border)',
+        background: falhou ? '#fef2f2' : out ? 'var(--brand)' : 'var(--surface)',
+        color:      falhou ? '#991b1b' : out ? '#fff' : 'var(--text)',
+        border:     falhou ? '1px solid #dc262633' : out ? 'none' : '1px solid var(--border)',
         borderRadius: out ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
         padding:   '8px 12px',
         fontSize:   13.5, lineHeight: 1.45,
-        boxShadow:  out ? '0 2px 8px -3px rgba(195,77,107,.3)' : 'none',
+        boxShadow:  out && !falhou ? '0 2px 8px -3px rgba(195,77,107,.3)' : 'none',
         opacity: msg.status === 'sending' ? 0.6 : 1,
         transition: 'opacity 0.2s',
       }}>
-        <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</p>
+        {/* Mídia recebida. O arquivo vive no bucket privado e chega aqui como
+            link assinado — a URL do provedor expiraria em horas. */}
+        {msg.media_url && msg.media_type === 'image' && (
+          <a href={msg.media_url} target="_blank" rel="noreferrer">
+            <img
+              src={msg.media_url}
+              alt={msg.content}
+              style={{ maxWidth: '100%', minWidth: 120, borderRadius: 10, marginBottom: 6, display: 'block' }}
+            />
+          </a>
+        )}
+        {msg.media_url && msg.media_type === 'audio' && (
+          <audio controls src={msg.media_url} style={{ width: 220, marginBottom: 6 }} />
+        )}
+        {msg.media_url && msg.media_type === 'video' && (
+          <video controls src={msg.media_url} style={{ maxWidth: '100%', borderRadius: 10, marginBottom: 6 }} />
+        )}
+        {msg.media_url && msg.media_type === 'document' && (
+          <a
+            href={msg.media_url} target="_blank" rel="noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 6,
+              fontSize: 12.5, fontWeight: 700,
+              color: out ? '#fff' : 'var(--brand)', textDecoration: 'underline',
+            }}
+          >
+            <Paperclip size={13} /> Abrir arquivo
+          </a>
+        )}
+        {/* Mídia que não desceu: o texto vira "[imagem]" e o link não existe. */}
+        {msg.media_type && !msg.media_url && (
+          <p style={{
+            margin: '0 0 4px', fontSize: 11.5,
+            color: out ? 'rgba(255,255,255,0.7)' : 'var(--text-faint)',
+          }}>
+            Anexo indisponível
+          </p>
+        )}
+
+        {!soRotulo && (
+          <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</p>
+        )}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end', marginTop: 4,
         }}>
           {out && msg.sent_by_name && (
-            <span style={{ fontSize: 10, color: out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)' }}>
+            <span style={{ fontSize: 10, color: falhou ? '#99181899' : out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)' }}>
               {msg.sent_by_name}
             </span>
           )}
-          <span style={{ fontSize: 10, color: out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)' }}>
+          {falhou && (
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626' }}>
+              Não enviada
+            </span>
+          )}
+          <span style={{ fontSize: 10, color: falhou ? '#99181899' : out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)' }}>
             {msg.status === 'sending' ? '…' : format(parseISO(msg.created_at), 'HH:mm')}
           </span>
-          {out && msg.status !== 'sending' && (
+          {out && !falhou && msg.status !== 'sending' && (
             <CheckCheck size={11} color={msg.status === 'read' ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)'} />
           )}
         </div>
@@ -326,13 +381,15 @@ interface CRMInboxProps {
   branches:             PanelBranch[]
   /** Portal que renderiza: '__admin__' na rede, o slug na unidade. */
   slug?:                string
+  /** Canais que a rede realmente conectou — decide o aviso de integração. */
+  canaisConectados?:    InboxChannel[]
   /** conversa pré-selecionada (deep-link ?c= vindo do card do funil) */
   initialSelectedId?:   string | null
 }
 
 export function CRMInbox({
   initialConversations, leads, canEdit, branches,
-  slug = '__admin__', initialSelectedId = null,
+  slug = '__admin__', initialSelectedId = null, canaisConectados = [],
 }: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)
   const [selectedId,    setSelectedId]    = useState<string | null>(initialSelectedId)
@@ -343,14 +400,24 @@ export function CRMInbox({
   const [draft,         setDraft]         = useState('')
   const [isPending,     startTransition]  = useTransition()
   const [showNewConv,   setShowNewConv]   = useState(false)
-  const [nowMs,         setNowMs]         = useState(() => Date.now())
+  // Nulo no servidor de propósito — ver ConvItem.
+  const [nowMs,         setNowMs]         = useState<number | null>(null)
+  const [sendError,     setSendError]     = useState<string | null>(null)
   const bottomRef  = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const selectedConv = conversations.find(c => c.id === selectedId) ?? null
 
+  // Regra da Meta: só dá para responder livremente até 24h da última mensagem
+  // do contato. Vale para Instagram, Messenger e WhatsApp pela API oficial —
+  // não para a Z-API, que não passa pela API oficial.
+  const janela = selectedConv
+    ? estadoDaJanela(selectedConv.channel, selectedConv.last_inbound_at, selectedConv.provider)
+    : { aberta: true, fechaEm: null, motivo: null }
+
   // Load messages + subscribe to realtime when conversation changes
   useEffect(() => {
+    setSendError(null)   // erro é da conversa anterior
     if (!selectedId) { setMessages([]); return }
     setLoadingMsgs(true)
     getMessages(selectedId).then(msgs => {
@@ -421,6 +488,7 @@ export function CRMInbox({
 
   // Reactive "now" for aging metrics — refresh every minute
   useEffect(() => {
+    setNowMs(Date.now())
     const id = setInterval(() => setNowMs(Date.now()), 60000)
     return () => clearInterval(id)
   }, [])
@@ -446,6 +514,9 @@ export function CRMInbox({
       sent_by_name:    null,
       is_read:         true,
       created_at:      new Date().toISOString(),
+      // Envio pela tela é só texto; anexo ainda não sai daqui.
+      media_type:      null,
+      media_url:       null,
     }
     setMessages(prev => [...prev, optimistic])
     setDraft('')
@@ -455,11 +526,19 @@ export function CRMInbox({
         : c
     ))
 
+    setSendError(null)
     startTransition(async () => {
       const res = await sendMessage(selectedId, text)
       if (res.ok && res.message) {
         setMessages(prev => prev.map(m => m.id === optimistic.id ? res.message! : m))
+        return
       }
+      // Sem isto a bolha ficava eternamente em 'sending' e parecia enviada —
+      // o mesmo engano que a rodada veio corrigir, só que na tela.
+      setSendError(res.error ?? 'Falha ao enviar a mensagem.')
+      setMessages(prev => prev.map(m =>
+        m.id === optimistic.id ? { ...m, status: 'failed' } : m,
+      ))
     })
   }
 
@@ -491,13 +570,20 @@ export function CRMInbox({
     else dayGroups.push({ date: day, msgs: [m] })
   }
 
-  const integrationRequired = selectedConv && selectedConv.channel !== 'manual'
+  // Só avisa quando o canal DA CONVERSA não está conectado. Antes o aviso
+  // aparecia em toda conversa que não fosse nota, mesmo com o canal ativo.
+  const integrationRequired = !!selectedConv
+    && selectedConv.channel !== 'manual'
+    && !canaisConectados.includes(selectedConv.channel)
+
+  // Escrever sem poder enviar só gera a frustração de ver o erro depois.
+  const bloqueado = integrationRequired || !janela.aberta
 
   // Awaiting-response counter (aging over the visible/filtered conversations)
   const awaitingConvs = filtered.filter(c => c.awaiting_since != null)
   const awaitingCount = awaitingConvs.length
   const hasAwaitingAlert = awaitingConvs.some(
-    c => agingLevel(secondsSince(c.awaiting_since, nowMs), AWAITING_THRESHOLDS) === 'alert'
+    c => nowMs != null && agingLevel(secondsSince(c.awaiting_since, nowMs), AWAITING_THRESHOLDS) === 'alert'
   )
 
   return (
@@ -679,12 +765,12 @@ export function CRMInbox({
                   {/* Service metrics */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-                      Última interação há {formatDurationShort(secondsSince(selectedConv.last_message_at, nowMs))}
+                      {nowMs != null && <>Última interação há {formatDurationShort(secondsSince(selectedConv.last_message_at, nowMs))}</>}
                       {selectedConv.first_response_seconds != null && (
-                        <> · 1ª resposta em {formatDurationLong(selectedConv.first_response_seconds)}</>
+                        <>{nowMs != null && ' · '}1ª resposta em {formatDurationLong(selectedConv.first_response_seconds)}</>
                       )}
                     </span>
-                    {selectedConv.awaiting_since && (() => {
+                    {selectedConv.awaiting_since && nowMs != null && (() => {
                       const s = secondsSince(selectedConv.awaiting_since, nowMs)
                       const st = AGING_STYLE[agingLevel(s, AWAITING_THRESHOLDS)]
                       return (
@@ -756,11 +842,39 @@ export function CRMInbox({
                 }}>
                   <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   <span>
-                    Canal {CH[selectedConv.channel].label} não configurado — a mensagem será salva internamente.{' '}
+                    Canal {CH[selectedConv.channel].label} não está conectado — não é possível responder por aqui.{' '}
                     <a href="/admin/settings?tab=integrations" style={{ color: '#92400e', fontWeight: 700, textDecoration: 'underline' }}>
                       Configurar integração →
                     </a>
                   </span>
+                </div>
+              )}
+
+              {/* Janela de 24h da Meta. Sem isto a pessoa escreve, vê "enviado"
+                  e a mensagem nunca chega — a API recusa fora da janela. */}
+              {!janela.aberta && (
+                <div style={{
+                  margin: '0 16px 8px',
+                  padding: '8px 12px', borderRadius: 8,
+                  background: '#fffbeb', border: '1px solid #fde68a',
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                  fontSize: 12, color: '#92400e',
+                }}>
+                  <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span>{janela.motivo}</span>
+                </div>
+              )}
+
+              {sendError && (
+                <div style={{
+                  margin: '0 16px 8px',
+                  padding: '8px 12px', borderRadius: 8,
+                  background: '#fef2f2', border: '1px solid #dc262633',
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                  fontSize: 12, color: '#dc2626', fontWeight: 600,
+                }}>
+                  <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span>{sendError}</span>
                 </div>
               )}
 
@@ -777,14 +891,17 @@ export function CRMInbox({
                     onChange={e => setDraft(e.target.value)}
                     onKeyDown={handleKeyDown}
                     rows={1}
-                    placeholder="Digite uma mensagem… (Enter para enviar)"
+                    placeholder={bloqueado
+                      ? 'Não é possível responder agora'
+                      : 'Digite uma mensagem… (Enter para enviar)'}
+                    disabled={bloqueado}
                     className="field"
                     style={{ flex: 1, resize: 'none', fontSize: 13.5, lineHeight: 1.5, maxHeight: 100, overflowY: 'auto' }}
                   />
                   <button
                     type="button"
                     onClick={handleSend}
-                    disabled={!draft.trim() || isPending}
+                    disabled={!draft.trim() || isPending || bloqueado}
                     className="btn-primary"
                     style={{ flexShrink: 0, alignSelf: 'flex-end', height: 36, padding: '0 14px' }}
                   >

@@ -1,34 +1,21 @@
-﻿export type WhatsAppProviderType = 'zapi' | 'official'
+/**
+ * Tipos do WhatsApp.
+ *
+ * Os tipos de ENTRADA (mensagem recebida, status, referral) mudaram de casa
+ * para `lib/channels/types.ts` quando Instagram e Messenger entraram: são os
+ * mesmos para todo canal, e `lib/meta/` importar daqui seria dependência na
+ * direção errada. Ficam reexportados para quem já importava deste arquivo.
+ */
+export type {
+  InboundMsg, InboundMedia, InboundReferral, StatusUpdate, MessageType, MediaKind,
+} from '@/lib/channels/types'
 
-export type MessageType = 'text' | 'image' | 'audio' | 'video' | 'document' | 'other'
+import type { InboundMsg, StatusUpdate, SendProvider } from '@/lib/channels/types'
 
-// Dados de atribuição de anúncio click-to-WhatsApp (Meta) ou equivalente do provedor.
-export interface InboundReferral {
-  sourceType?: string   // 'ad' | 'post' (Meta CTWA)
-  sourceId?:   string   // ad id
-  sourceUrl?:  string   // usado para inferir plataforma (facebook|instagram)
-  ctwaClid?:   string   // click id do click-to-WhatsApp
-  headline?:   string   // título do anúncio
-}
+export type WhatsAppProviderType = 'zapi' | 'official'
 
-export interface InboundMsg {
-  from:       string      // phone number, only digits (E.164 sem +)
-  content:    string      // text content (or caption for media)
-  externalId: string      // messageId from the provider
-  timestamp:  string      // ISO 8601
-  type:       MessageType
-  mediaUrl?:  string
-  pushName?:  string      // nome público do contato (vira o nome do card)
-  referral?:  InboundReferral   // presente quando o lead veio de anúncio
-}
-
-export interface StatusUpdate {
-  externalId: string
-  status:     'sent' | 'delivered' | 'read' | 'failed'
-}
-
-export interface WhatsAppProvider {
-  send(to: string, content: string): Promise<{ externalId: string }>
+/** Um provedor de WhatsApp é um canal que também sabe ler webhook. */
+export interface WhatsAppProvider extends SendProvider {
   parseInbound(payload: unknown): InboundMsg | null
   parseStatus(payload: unknown): StatusUpdate | null
   testConnection(): Promise<{ ok: boolean; detail?: string }>

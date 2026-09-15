@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto'
-import type { WhatsAppProvider, InboundMsg, StatusUpdate, OfficialConfig } from './types'
+import type { WhatsAppProvider, OfficialConfig } from './types'
+import type { InboundMsg, InboundMedia, MediaKind, StatusUpdate } from '@/lib/channels/types'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
 
@@ -51,22 +52,37 @@ export class OfficialAPIProvider implements WhatsAppProvider {
       ? (msg.text?.body ?? '')
       : (msg.image?.caption ?? msg.document?.caption ?? msg.video?.caption ?? `[${type}]`)
 
+    const kind: MediaKind | null =
+        type === 'image' ? 'image'
+      : type === 'audio' || type === 'voice' ? 'audio'
+      : type === 'video' ? 'video'
+      : type === 'document' ? 'document'
+      : null
+
+    // A Cloud API não manda a URL: manda um id que exige uma segunda chamada
+    // autenticada (`fetchMedia`). O id fica guardado aqui e resolvido depois.
+    const media: InboundMedia | undefined = kind
+      ? {
+          kind,
+          mediaId:  msg[type]?.id as string | undefined,
+          mimeType: msg[type]?.mime_type as string | undefined,
+        }
+      : undefined
+
+    const phone = msg.from as string
     const out: InboundMsg = {
-      from:       msg.from as string,
+      externalUserId: phone,
+      phone,
       content,
       externalId: msg.id as string,
       timestamp:  new Date(parseInt(msg.timestamp as string) * 1000).toISOString(),
-      type:       type === 'text' ? 'text'
-               : type === 'image' ? 'image'
-               : type === 'audio' || type === 'voice' ? 'audio'
-               : type === 'video' ? 'video'
-               : type === 'document' ? 'document'
-               : 'other',
+      type:       kind ?? (type === 'text' ? 'text' : 'other'),
+      media,
     }
 
-    // pushName: value.contacts[0].profile.name
-    const pushName = value?.contacts?.[0]?.profile?.name
-    if (pushName) out.pushName = pushName as string
+    // nome público do contato: value.contacts[0].profile.name
+    const nome = value?.contacts?.[0]?.profile?.name
+    if (nome) out.displayName = nome as string
 
     // referral: anúncio click-to-WhatsApp (só na primeira mensagem da conversa)
     const ref = msg.referral
@@ -110,6 +126,31 @@ export class OfficialAPIProvider implements WhatsAppProvider {
       return timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
     } catch {
       return false
+    }
+  }
+
+  /**
+   * Mídia da Cloud API: dois passos.
+   *
+   * O webhook manda só o id; `GET /{media-id}` devolve uma URL que expira em
+   * minutos e ainda exige o Bearer para baixar. Por isso o download acontece
+   * aqui e o arquivo vai para o bucket — guardar a URL não serviria.
+   */
+  async fetchMedia(media: InboundMedia): Promise<{ bytes: ArrayBuffer; mimeType: string } | null> {
+    if (!media.mediaId) return null
+    const auth = { 'Authorization': `Bearer ${this.config.accessToken}` }
+
+    const metaRes = await fetch(`${GRAPH}/${media.mediaId}`, { headers: auth })
+    if (!metaRes.ok) return null
+    const { url, mime_type } = await metaRes.json()
+    if (!url) return null
+
+    const arquivo = await fetch(url as string, { headers: auth })
+    if (!arquivo.ok) return null
+
+    return {
+      bytes:    await arquivo.arrayBuffer(),
+      mimeType: (mime_type as string) ?? media.mimeType ?? 'application/octet-stream',
     }
   }
 

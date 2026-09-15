@@ -1,6 +1,7 @@
 import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getConversations } from '@/actions/inbox'
+import { canaisConectados } from '@/lib/channels/factory'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { CRMInbox } from '@/components/admin/crm-inbox'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -36,6 +37,7 @@ export default async function AdminInboxPage({
   const branches = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
 
   const conversations = await getConversations()
+  const canais = await canaisConectados(ctx.tenantId!)
 
   // Lista para o seletor de "nova conversa". Não passa por etapa nem funil: a
   // caixa de entrada é de contatos, não do funil.
@@ -77,6 +79,7 @@ export default async function AdminInboxPage({
         canEdit={can(ctx, 'crm', 'MANAGE')}
         branches={branches}
         initialSelectedId={convParam ?? null}
+        canaisConectados={canais}
       />
     </div>
   )

@@ -3,6 +3,7 @@ import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getConversations } from '@/actions/inbox'
+import { canaisConectados } from '@/lib/channels/factory'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { CRMInbox } from '@/components/admin/crm-inbox'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -39,6 +40,7 @@ export default async function BranchInboxPage({
   // quem responde na rede — o que separa é o alcance do cargo (`ownerFilter`,
   // aplicado dentro de `getConversations`), não a unidade.
   const conversations = await getConversations()
+  const canais = await canaisConectados(ctx.tenantId!)
 
   const admin = createAdminClient()
 
@@ -89,6 +91,7 @@ export default async function BranchInboxPage({
         branches={branches}
         slug={slug}
         initialSelectedId={convParam ?? null}
+        canaisConectados={canais}
       />
     </div>
   )

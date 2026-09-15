@@ -399,7 +399,8 @@ function LeadCard({
   procedures:     Procedure[]
   branches?:      { id: string; name: string; slug: string }[]
   networkMode?:   boolean
-  nowMs:          number
+  /** Nulo antes de montar — ver o useState lá embaixo. */
+  nowMs:          number | null
   isDragging:     boolean
   onDragStart:    (e: React.DragEvent, id: string) => void
   onDragEnd:      () => void
@@ -461,13 +462,13 @@ function LeadCard({
 
   // --- Métricas de atendimento -----------------------------------
   // Cliente aguardando resposta (prioridade máxima de sinal).
-  const awaitingSecs = lead.awaiting_since != null
+  const awaitingSecs = nowMs != null && lead.awaiting_since != null
     ? secondsSince(lead.awaiting_since, nowMs)
     : null
   // Tempo desde a última interação (para "esfriando").
-  const lastSecs = secondsSince(lead.last_interaction_at, nowMs)
+  const lastSecs = nowMs == null ? null : secondsSince(lead.last_interaction_at, nowMs)
   // Frieza: baseada na última interação, ou na idade do lead se nunca houve interação.
-  const staleSecs  = secondsSince(lead.last_interaction_at ?? lead.created_at, nowMs)
+  const staleSecs  = nowMs == null ? null : secondsSince(lead.last_interaction_at ?? lead.created_at, nowMs)
   const staleLevel = agingLevel(staleSecs, STALE_THRESHOLDS)
   const staleColor = staleLevel === 'alert'
     ? AGING_STYLE.alert.color
@@ -845,7 +846,7 @@ function LeadCard({
         )}
 
         {/* Métricas de atendimento: aguardando resposta / lead esfriando */}
-        {(awaitingSecs != null || lead.last_interaction_at || staleLevel === 'alert') && (
+        {nowMs != null && (awaitingSecs != null || lead.last_interaction_at || staleLevel === 'alert') && (
           <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             {awaitingSecs != null ? (
               <TagBadge
@@ -938,8 +939,12 @@ export function CRMBoard({
   const [sort,    setSort]    = useState<SortOrder>('newest')
 
   // "Agora" compartilhado para as métricas de aging; atualiza a cada minuto.
-  const [nowMs, setNowMs] = useState(() => Date.now())
+  //
+  // Começa NULO de propósito: calcular no servidor dá 'há 4min' e na hidratação
+  // 'há 5min', e o React descarta a árvore inteira por causa disso.
+  const [nowMs, setNowMs] = useState<number | null>(null)
   useEffect(() => {
+    setNowMs(Date.now())
     const id = setInterval(() => setNowMs(Date.now()), 60000)
     return () => clearInterval(id)
   }, [])

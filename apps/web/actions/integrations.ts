@@ -18,11 +18,14 @@ export async function getIntegrations(): Promise<IntegrationConfig[]> {
   assertPermission(ctx, 'settings', 'MANAGE')
   const admin = createAdminClient()
 
-  const { data } = await admin
+  const { data, error } = await admin
     .from('integration_configs')
     .select('id, provider, config, is_active, updated_at')
     .eq('tenant_id', ctx.tenantId!)
     .order('provider')
+
+  // Erro descartado aqui faria a tela dizer "Não configurado" com tudo conectado.
+  if (error) throw new Error(`Falha ao carregar as integrações: ${error.message}`)
 
   return (data ?? []) as IntegrationConfig[]
 }
@@ -230,5 +233,114 @@ export async function disconnectMetaAds(): Promise<{ ok: boolean; error?: string
 
   revalidatePath('/admin/settings')
   revalidatePath('/admin/marketing')
+  return { ok: true }
+}
+
+// --- Meta Messaging (Instagram Direct + Messenger) ----------------------------
+
+export interface MetaPageOption {
+  pageId:     string
+  pageName:   string
+  igUserId:   string | null
+  igUsername: string | null
+}
+
+/** Páginas já trazidas pelo OAuth, sem o token — token de página não vai ao client. */
+export async function getMetaPages(): Promise<{
+  ok: boolean
+  pages?: MetaPageOption[]
+  activePageId?: string
+  userName?: string
+  error?: string
+}> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'settings', 'MANAGE')
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('integration_configs')
+    .select('config')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('provider', 'meta_messaging')
+    .maybeSingle()
+
+  if (error) return { ok: false, error: error.message }
+  if (!data?.config) return { ok: false, error: 'Conecte com o Facebook primeiro' }
+
+  const cfg   = data.config as Record<string, unknown>
+  const pages = (cfg.pages ?? []) as Array<Record<string, unknown>>
+
+  return {
+    ok: true,
+    pages: pages.map(p => ({
+      pageId:     p.pageId     as string,
+      pageName:   p.pageName   as string,
+      igUserId:   (p.igUserId   as string | null) ?? null,
+      igUsername: (p.igUsername as string | null) ?? null,
+    })),
+    activePageId: (cfg.activePageId as string) ?? '',
+    userName:     (cfg.meta_user_name as string) ?? '',
+  }
+}
+
+/** Escolhe a página que vai operar o inbox e ATIVA a integração. */
+export async function confirmMetaPageSelection(
+  pageId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'settings', 'MANAGE')
+
+  const admin = createAdminClient()
+  const { data: existing } = await admin
+    .from('integration_configs')
+    .select('config')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('provider', 'meta_messaging')
+    .maybeSingle()
+
+  if (!existing?.config) return { ok: false, error: 'Reconecte com o Facebook primeiro' }
+
+  const prev  = existing.config as Record<string, unknown>
+  const pages = (prev.pages ?? []) as Array<{ pageId: string }>
+  if (!pages.some(p => p.pageId === pageId)) {
+    return { ok: false, error: 'Página não encontrada na conexão atual' }
+  }
+
+  const { error } = await admin
+    .from('integration_configs')
+    .update({
+      config:     { ...prev, activePageId: pageId },
+      is_active:  true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('provider', 'meta_messaging')
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/admin/settings')
+  revalidatePath('/admin/inbox')
+  return { ok: true }
+}
+
+export async function disconnectMetaMessaging(): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'settings', 'MANAGE')
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('integration_configs')
+    .update({
+      config:     {},
+      is_active:  false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('provider', 'meta_messaging')
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath('/admin/settings')
+  revalidatePath('/admin/inbox')
   return { ok: true }
 }

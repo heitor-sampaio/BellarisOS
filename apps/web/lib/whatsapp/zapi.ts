@@ -1,4 +1,5 @@
-import type { WhatsAppProvider, InboundMsg, StatusUpdate, ZAPIConfig } from './types'
+import type { WhatsAppProvider, ZAPIConfig } from './types'
+import type { InboundMsg, InboundMedia, MediaKind, StatusUpdate } from '@/lib/channels/types'
 
 const DEFAULT_BASE = 'https://api.z-api.io'
 
@@ -43,20 +44,43 @@ export class ZAPIProvider implements WhatsAppProvider {
   parseInbound(payload: unknown): InboundMsg | null {
     const p = payload as any
     // Z-API inbound webhook: { phone, text.message, messageId, momment, isStatusReply, senderName }
-    if (!p?.phone || !p?.text?.message) return null
+    if (!p?.phone) return null
 
+    // Mídia: a Z-API manda o anexo num objeto por tipo, com URL já pública.
+    // Antes só texto entrava — foto do cliente era descartada no webhook.
+    const ANEXOS: [string, MediaKind][] = [
+      ['image', 'image'], ['audio', 'audio'], ['video', 'video'], ['document', 'document'],
+    ]
+    let media: InboundMedia | undefined
+    for (const [campo, kind] of ANEXOS) {
+      const a = p[campo]
+      const url = a?.imageUrl ?? a?.audioUrl ?? a?.videoUrl ?? a?.documentUrl ?? a?.url
+      if (url) {
+        media = { kind, url: url as string, mimeType: a.mimeType as string | undefined }
+        break
+      }
+    }
+
+    const texto = (p.text?.message as string | undefined)
+      ?? (p.image?.caption ?? p.video?.caption ?? p.document?.caption) as string | undefined
+      ?? (media ? `[${media.kind}]` : undefined)
+    if (!texto) return null
+
+    const phone = p.phone.replace(/\D/g, '')
     const out: InboundMsg = {
-      from:       p.phone.replace(/\D/g, ''),
-      content:    p.text.message as string,
+      externalUserId: phone,
+      phone,
+      content:    texto,
       externalId: (p.messageId ?? p.zaapId ?? '') as string,
       timestamp:  p.momment
         ? new Date((p.momment as number) * 1000).toISOString()
         : new Date().toISOString(),
-      type: 'text',
+      type: media ? (media.kind === 'document' ? 'document' : media.kind) : 'text',
+      media,
     }
 
-    const pushName = p.senderName ?? p.chatName ?? p.notifyName
-    if (pushName) out.pushName = pushName as string
+    const nome = p.senderName ?? p.chatName ?? p.notifyName
+    if (nome) out.displayName = nome as string
 
     // Referral de anúncio click-to-WhatsApp (Z-API expõe de forma inconsistente; parsing defensivo)
     const ref = p.referral ?? p.adReferral ?? p.ctwaContext
