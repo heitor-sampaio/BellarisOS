@@ -36,7 +36,7 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
     key:     'vendas',
     label:   'Vendas e marketing',
     hint:    'Captação, negociação e fechamento',
-    modules: ['crm', 'procedures', 'marketing'],
+    modules: ['crm', 'marketing'],
   },
   {
     key:     'dinheiro',
@@ -47,8 +47,10 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
   {
     key:     'gestao',
     label:   'Gestão e configuração',
-    hint:    'Números da rede e quem pode o quê',
-    modules: ['reports', 'team', 'forms', 'roles', 'settings'],
+    hint:    'Números da rede, catálogo e quem pode o quê',
+    // Procedimentos é catálogo: monta-se uma vez e revisa-se de vez em quando,
+    // não é trabalho de venda do dia a dia.
+    modules: ['reports', 'team', 'procedures', 'forms', 'roles', 'settings'],
   },
 ]
 

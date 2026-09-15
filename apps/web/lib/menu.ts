@@ -54,7 +54,6 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
 
   { key: 'inbox',        group: 'vendas',       label: 'Inbox',         href: '/admin/inbox',          visible: p => has(p, 'crm') },
   { key: 'oportunidades',group: 'vendas',       label: 'Oportunidades', href: '/admin/oportunidades',  visible: p => has(p, 'crm') },
-  { key: 'procedures',   group: 'vendas',       label: 'Procedimentos', href: '/admin/procedures',     visible: p => has(p, 'procedures') },
   { key: 'notificacoes', group: 'vendas',       label: 'Notificações',  href: '/admin/notificacoes',   visible: p => has(p, 'marketing') },
   { key: 'marketing',    group: 'vendas',       label: 'Marketing',     href: '/admin/marketing',      visible: p => has(p, 'marketing') },
 
@@ -63,6 +62,7 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
 
   { key: 'reports',      group: 'gestao',       label: 'Relatórios',    href: '/admin/reports',        visible: p => has(p, 'reports') },
   { key: 'team',         group: 'gestao',       label: 'Equipe',        href: '/admin/team',           visible: p => has(p, 'team') },
+  { key: 'procedures',   group: 'gestao',       label: 'Procedimentos', href: '/admin/procedures',     visible: p => has(p, 'procedures') },
   // Uma tela, três módulos: quem só tem cargos ou fichas continua chegando lá.
   {
     key: 'settings', group: 'gestao', label: 'Configurações', href: '/admin/settings',
@@ -78,7 +78,6 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 
   { key: 'inbox',         group: 'vendas',      label: 'Inbox',         href: '/inbox',         visible: p => has(p, 'crm') },
   { key: 'oportunidades', group: 'vendas',      label: 'Oportunidades', href: '/oportunidades', visible: p => has(p, 'crm') },
-  { key: 'procedures',    group: 'vendas',      label: 'Procedimentos', href: '/procedures',    visible: p => has(p, 'procedures') },
 
   // Mesma tela para financeiro e caixa: o rótulo acompanha o acesso, porque
   // quem só opera o caixa entra e vê só o widget de abrir/fechar.
@@ -92,6 +91,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 
   { key: 'reports',       group: 'gestao',      label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },
   { key: 'team',          group: 'gestao',      label: 'Equipe',        href: '/settings/team', visible: p => has(p, 'team') },
+  { key: 'procedures',    group: 'gestao',      label: 'Procedimentos', href: '/procedures',    visible: p => has(p, 'procedures') },
   // Os construtores de ficha viviam só no portal da rede, onde quem tem
   // unidade fixa nem entra — `forms: MANAGE` numa gerente não fazia nada.
   { key: 'forms',         group: 'gestao',      label: 'Modelos de ficha', href: '/settings/fichas', visible: p => has(p, 'forms') },
