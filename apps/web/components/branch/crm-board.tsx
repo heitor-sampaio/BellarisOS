@@ -280,6 +280,8 @@ interface CRMBoardProps {
   allStages:    CRMStage[]
   funnels:      Pick<CRMFunnel, 'id' | 'name'>[]
   funnelId:     string
+  /** Unidades da rede, para o seletor de unidade do card. */
+  unidades:     { id: string; name: string }[]
   procedures:   Procedure[]
   branchId:     string
   slug:         string
@@ -294,7 +296,7 @@ function softBorder(hex: string) { return hex + '50' }
 
 // --- Cartão do lead ----------------------------------------------
 function LeadCard({
-  lead, slug, branchId, allStages, funnels, funnelId, procedures, branches, networkMode, nowMs,
+  lead, slug, branchId, allStages, funnels, funnelId, unidades, procedures, branches, networkMode, nowMs,
   isDragging, onDragStart, onDragEnd, onLeadDeleted,
 }: {
   lead:           Lead
@@ -303,6 +305,7 @@ function LeadCard({
   allStages:      CRMStage[]
   funnels:        Pick<CRMFunnel, 'id' | 'name'>[]
   funnelId:       string
+  unidades:       { id: string; name: string }[]
   procedures:     Procedure[]
   branches?:      { id: string; name: string; slug: string }[]
   networkMode?:   boolean
@@ -396,6 +399,7 @@ function LeadCard({
         ref={editRef}
         branchId={branchId} slug={slug}
         stages={allStages} funnels={funnels} funnelId={funnelId}
+        unidades={unidades}
         procedures={procedures}
         branches={branches}
         existing={{
@@ -692,7 +696,7 @@ function LeadCard({
 
 // --- Board principal ---------------------------------------------
 export function CRMBoard({
-  initialLeads, stages, allStages, funnels, funnelId,
+  initialLeads, stages, allStages, funnels, funnelId, unidades,
   procedures, branchId, slug, networkMode, branches,
 }: CRMBoardProps) {
   const [leads, setLeads]     = useState<Lead[]>(initialLeads)
@@ -868,6 +872,7 @@ export function CRMBoard({
               <CRMLeadModal
                 branchId={branchId} slug={slug}
                 stages={allStages} funnels={funnels} funnelId={funnelId}
+                unidades={unidades}
                 procedures={procedures}
                 initialStageId={stage.id}
                 onLeadCreated={handleLeadCreated}
@@ -895,6 +900,7 @@ export function CRMBoard({
                   key={lead.id}
                   lead={lead} slug={slug} branchId={branchId}
                   allStages={allStages} funnels={funnels} funnelId={funnelId}
+                  unidades={unidades}
                   procedures={procedures} branches={branches}
                   networkMode={networkMode}
                   nowMs={nowMs}

@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  useRef, useCallback, useActionState, useEffect,
+  useRef, useCallback, useActionState, useEffect, useMemo,
   useState, forwardRef, useImperativeHandle,
 } from 'react'
 import { useRouter } from 'next/navigation'
@@ -11,7 +11,7 @@ import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { StageOptions } from './stage-options'
 import { LeadTimeline } from './lead-timeline'
 import type { Lead } from './crm-board'
-import { LEAD_SOURCES } from '@estetica-os/utils'
+import { LEAD_SOURCES, isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 
 export interface Procedure { id: string; name: string }
@@ -39,8 +39,16 @@ interface CRMLeadModalProps {
   /** Modo filial: passar branchId + slug diretamente */
   branchId?:       string
   slug?:           string
-  /** Modo rede: passar lista de filiais; exibe seletor */
+  /** Portal da unidade: lead novo já nasce com a tag desta unidade. */
+  branchName?:     string
+  /** Modo rede: a presença desta lista é o que liga o modo rede do card. */
   branches?:       CRMBranch[]
+  /**
+   * Unidades da rede para o seletor de unidade do lead. Separado de `branches`
+   * de propósito: o portal da unidade precisa do seletor (para passar o lead
+   * adiante) sem virar modo rede.
+   */
+  unidades?:       { id: string; name: string }[]
   /** Todas as etapas da rede: é o que permite mover o lead para outro funil. */
   stages:          CRMStage[]
   /** Funis ativos, para agrupar as etapas do seletor. */
@@ -74,7 +82,7 @@ function Label({ children }: { children: React.ReactNode }) {
 export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
   function CRMLeadModal(
     {
-      branchId, slug, branches, stages, funnels, funnelId, procedures,
+      branchId, slug, branchName, branches, unidades, stages, funnels, funnelId, procedures,
       initialStageId, existing, trigger, onLeadCreated,
     },
     ref,
@@ -92,15 +100,21 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [stageId, setStageId] = useState(
       existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '',
     )
-    const [selectedBranchId, setSelectedBranchId] = useState(
-      branchId ?? branches?.[0]?.id ?? '',
-    )
     const [tags,      setTags]      = useState<string[]>(existing?.tags ?? [])
     const [tagDraft,  setTagDraft]  = useState('')
 
-    // Sugestões rápidas: só origens canônicas. Lead não tem unidade (é de rede);
-    // a unidade é informada na conversão em cliente.
+    // Sugestões rápidas: só origens canônicas. A unidade também é tag, mas tem
+    // seletor próprio acima — sugerir aqui daria dois lugares para a mesma coisa.
     const suggestedTags = LEAD_SOURCES.map(s => s.key)
+
+    /** As tags livres. A de unidade é editada pelo seletor, não por badge. */
+    const tagsLivres = tags.filter(t => !isUnitTag(t))
+
+    /** Origem gravada que não existe na lista canônica (base legada). */
+    const origemForaDaLista =
+      existing?.source && !LEAD_SOURCES.some(s => s.key === existing.source)
+        ? existing.source
+        : null
 
     /**
      * O `<dialog>` fica no DOM mesmo fechado, e o quadro monta um por card.
@@ -111,21 +125,37 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
      */
     const [aberto, setAberto] = useState(false)
 
-    const networkMode    = !!branches && branches.length > 0
-    const activeBranchId = networkMode ? selectedBranchId : (branchId ?? '')
-    const activeBranchSlug = networkMode
-      ? (branches!.find(b => b.id === selectedBranchId)?.slug ?? '')
-      : (slug ?? '')
+    const networkMode = !!branches && branches.length > 0
+    // Sem filial no lead, o portal da rede não tem slug de unidade para
+    // revalidar; a action revalida /admin/crm de qualquer jeito.
+    const activeBranchSlug = networkMode ? '' : (slug ?? '')
+
+    /** A unidade do lead vive na tag; o seletor só lê e escreve nela. */
+    const unidadeAtual = useMemo(() => {
+      const t = tags.find(isUnitTag)
+      return t ? unitTagName(t) : ''
+    }, [tags])
+
+    function definirUnidade(nome: string) {
+      setTags(prev => {
+        const semUnidade = prev.filter(t => !isUnitTag(t))
+        return nome ? [...semUnidade, unitTag(nome)] : semUnidade
+      })
+    }
 
     const open = useCallback(() => {
       setPhone(existing?.phone ?? '')
       setSelectedProcs(existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [])
       setStageId(existing?.crm_stage_id ?? initialStageId ?? stages[0]?.id ?? '')
-      setTags(existing?.tags ?? [])
+      // Lead novo no portal da unidade já nasce marcado com ela — quem cria
+      // ali está trabalhando aquela unidade.
+      const tagsIniciais = existing?.tags
+        ?? (branchName ? [unitTag(branchName)] : [])
+      setTags(tagsIniciais)
       setTagDraft('')
       setAberto(true)
       dialogRef.current?.showModal()
-    }, [existing, initialStageId, stages])
+    }, [existing, initialStageId, stages, branchName])
 
     const close = useCallback(() => dialogRef.current?.close(), [])
 
@@ -223,24 +253,31 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           {/* Body */}
           <div style={{ padding: '24px 24px 28px' }}>
             <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <input type="hidden" name="_branchId"     value={activeBranchId} />
               <input type="hidden" name="_funnelId"     value={funnelId ?? ''} />
               <input type="hidden" name="_slug"         value={activeBranchSlug} />
               <input type="hidden" name="procedure_ids" value={JSON.stringify(selectedProcs)} />
               <input type="hidden" name="tags" value={JSON.stringify(tags)} />
               {isEdit && <input type="hidden" name="_leadId" value={existing!.id} />}
 
-              {/* Filial — seletor visível apenas no modo rede */}
-              {networkMode && !isEdit && (
+              {/*
+                Unidade — o lead é da REDE; a unidade é uma tag, não fronteira.
+                Era um seletor de Filial que gravava `leads.branch_id`, o único
+                lugar do sistema que produzia lead preso a uma filial. Agora
+                mexe na tag `Unidade: <nome>`, que é o que o quadro da unidade
+                filtra — e a troca fica registrada no histórico do card.
+              */}
+              {unidades && unidades.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Filial</Label>
+                  <Label>Unidade</Label>
                   <select
                     className="field"
-                    value={selectedBranchId}
-                    onChange={e => setSelectedBranchId(e.target.value)}
+                    value={unidadeAtual}
+                    onChange={e => definirUnidade(e.target.value)}
                   >
-                    {branches!.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
+                    {/* Sem unidade é o bolo comum: aparece para todas. */}
+                    <option value="">Sem unidade — aberto a todas</option>
+                    {unidades.map(u => (
+                      <option key={u.id} value={u.name}>{u.name}</option>
                     ))}
                   </select>
                 </div>
@@ -325,6 +362,16 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   <Label>Origem</Label>
                   <select name="source" className="field" defaultValue={existing?.source ?? ''}>
                     <option value="">Não informado</option>
+                    {/*
+                      Origem fora da lista canônica vira opção própria. As chaves
+                      são "Instagram"/"WhatsApp", mas existe base com
+                      "instagram"/"whatsapp" minúsculo: sem esta opção o select
+                      não casava, caía em "Não informado" e **salvar apagava a
+                      origem do lead em silêncio**.
+                    */}
+                    {origemForaDaLista && (
+                      <option value={origemForaDaLista}>{origemForaDaLista}</option>
+                    )}
                     {LEAD_SOURCES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
                   </select>
                 </div>
@@ -347,9 +394,9 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 </p>
 
                 {/* Tags selecionadas */}
-                {tags.length > 0 && (
+                {tagsLivres.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                    {tags.map(t => (
+                    {tagsLivres.map(t => (
                       <TagBadge key={t} label={t} size="sm" onRemove={() => removeTag(t)} />
                     ))}
                   </div>

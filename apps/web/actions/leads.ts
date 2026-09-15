@@ -5,7 +5,11 @@ import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLeadSource, mergeTags } from '@estetica-os/utils'
 import { seedDefaultFunnel, listStages } from '@/actions/crm-funnels'
-import { registrarEventoLead, etapaAtualDoLead } from '@/lib/lead-events'
+import {
+  registrarEventoLead, etapaAtualDoLead, estadoAtualDoLead,
+  diferencas, listaLegivel,
+} from '@/lib/lead-events'
+import { isUnitTag, unitTagName } from '@estetica-os/utils'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -51,6 +55,22 @@ function parseProcedureIds(fd: FormData): string[] {
   return parseStringArray(fd, 'procedure_ids')
 }
 
+/** Nomes dos procedimentos de interesse — o histórico não exibe UUID. */
+async function nomesDeProcedimentos(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  ids: string[],
+): Promise<string[]> {
+  if (ids.length === 0) return []
+  const { data, error } = await admin
+    .from('procedures')
+    .select('id, name')
+    .eq('tenant_id', tenantId)
+    .in('id', ids)
+  if (error) { console.error('[nomesDeProcedimentos]', error.message); return ids }
+  return (data ?? []).map(p => p.name as string)
+}
+
 async function saveProcedures(
   admin: ReturnType<typeof createAdminClient>,
   leadId: string,
@@ -73,8 +93,6 @@ export async function createLead(
     const ctx = await getTenantContext()
     assertPermission(ctx, 'crm', 'MANAGE')
 
-    // branch_id opcional: lead sem filial = lead de REDE (designação de filial via tag depois)
-    const branchId   = str(formData, '_branchId')
     const slug       = str(formData, '_slug') ?? ''
     const crmStageId = str(formData, 'crm_stage_id')
     const funnelId   = str(formData, '_funnelId')
@@ -109,7 +127,10 @@ export async function createLead(
     const { data: lead, error } = await admin
       .from('leads')
       .insert({
-        tenant_id: ctx.tenantId!, branch_id: branchId,
+        tenant_id: ctx.tenantId!,
+        // Lead é SEMPRE da rede. A unidade é a tag `Unidade: <nome>`, dimensão
+        // de métrica e recorte de tela — não fronteira de dado.
+        branch_id: null,
         name, phone, email, social_media: social,
         source: derived.source, notes,
         crm_stage_id: etapaInicial,
@@ -180,13 +201,14 @@ export async function updateLead(
     // o lead de todos os quadros.
     if (crmStageId) patch.crm_stage_id = crmStageId
 
-    // Lida ANTES do update: depois já é a nova, e o histórico perderia a origem
-    // do movimento.
-    const etapaAnterior = crmStageId
-      ? await etapaAtualDoLead(ctx.tenantId!, leadId)
-      : null
     // Só atualiza tags se o form as enviou (evita apagar tags de callers que não editam tags)
-    if (formData.has('tags')) patch.tags = parseStringArray(formData, 'tags')
+    const novasTags = formData.has('tags') ? parseStringArray(formData, 'tags') : null
+    if (novasTags) patch.tags = novasTags
+
+    // Retrato ANTES do update: depois já é o valor novo, e o histórico
+    // registraria "de Y para Y".
+    const antes = await estadoAtualDoLead(ctx.tenantId!, leadId)
+    const etapaAnterior = antes?.crm_stage_id ?? null
 
     // Alcance "só os próprios leads" entra como filtro da própria query: sem
     // isso, o cargo não veria o lead na lista mas ainda o editaria pelo id.
@@ -207,6 +229,12 @@ export async function updateLead(
 
     await saveProcedures(admin, leadId, procedureIds)
 
+    // --- Histórico ------------------------------------------------
+    // Toda ação sobre o lead deixa rastro. A unidade tem evento próprio porque
+    // é ela que decide em qual quadro o card aparece: como qualquer um pode
+    // remarcar, o registro é o que substitui a trava.
+    const autor = { actorUserId: ctx.internalUserId, actorName: ctx.userName || null }
+
     if (crmStageId && etapaAnterior !== crmStageId) {
       await registrarEventoLead({
         tenantId:    ctx.tenantId!,
@@ -214,9 +242,38 @@ export async function updateLead(
         type:        'STAGE_CHANGED',
         fromStageId: etapaAnterior,
         toStageId:   crmStageId,
-        actorUserId: ctx.internalUserId,
-        actorName:   ctx.userName || null,
+        ...autor,
       })
+    }
+
+    if (antes) {
+      const unidadeDepois = novasTags ? (novasTags.find(isUnitTag) ?? null) : antes.unidade
+      if (unidadeDepois !== antes.unidade) {
+        await registrarEventoLead({
+          tenantId: ctx.tenantId!,
+          leadId,
+          type:     'UNIT_CHANGED',
+          changes: [{
+            campo: 'Unidade',
+            de:    antes.unidade      ? unitTagName(antes.unidade)      : null,
+            para:  unidadeDepois      ? unitTagName(unidadeDepois)      : null,
+          }],
+          ...autor,
+        })
+      }
+
+      const depois: Record<string, string | null> = {
+        name, phone, email, social_media: social, source, notes,
+        procedures: listaLegivel(await nomesDeProcedimentos(admin, ctx.tenantId!, procedureIds)),
+      }
+      if (novasTags) depois.tags = listaLegivel(novasTags.filter(t => !isUnitTag(t)))
+
+      const mudou = diferencas(antes.campos, depois)
+      if (mudou.length > 0) {
+        await registrarEventoLead({
+          tenantId: ctx.tenantId!, leadId, type: 'UPDATED', changes: mudou, ...autor,
+        })
+      }
     }
 
     revalidatePath(`/${slug}/crm`)

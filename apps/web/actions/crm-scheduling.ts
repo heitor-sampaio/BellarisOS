@@ -7,6 +7,7 @@
 
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { registrarEventoLead } from '@/lib/lead-events'
 import {
   createAppointmentCore,
   computeAvailableSlots,
@@ -122,6 +123,31 @@ export async function createCrmAppointment(
   })
 
   if ('error' in res) return { error: res.error }
+
+  // Agendar é uma ação sobre o lead e entra na linha do tempo dele — senão o
+  // card salta de "Em contato" para "Agendado" sem dizer o que aconteceu.
+  const { data: proc } = await admin
+    .from('procedures').select('name').eq('id', input.procedureId).maybeSingle()
+
+  await registrarEventoLead({
+    tenantId:    ctx.tenantId!,
+    leadId:      input.leadId,
+    type:        'APPOINTMENT_CREATED',
+    actorUserId: ctx.internalUserId,
+    actorName:   ctx.userName || null,
+    changes: [{
+      campo: 'Agendamento',
+      de:    null,
+      para:  [
+        (proc as { name: string } | null)?.name,
+        new Date(input.scheduledAt).toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        }),
+      ].filter(Boolean).join(' · '),
+    }],
+  })
 
   notifyAppointmentCreated(res.id)
   revalidatePath('/admin/crm')

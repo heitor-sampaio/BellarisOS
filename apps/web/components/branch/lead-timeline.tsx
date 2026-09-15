@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowRight, Sparkles, UserCheck, UserCog, Clock } from 'lucide-react'
+import {
+  ArrowRight, Sparkles, UserCheck, UserCog, Clock, Building2, Pencil, CalendarPlus,
+} from 'lucide-react'
 import { formatDurationLong, secondsSince } from '@estetica-os/utils'
 import { getLeadEvents } from '@/actions/lead-events'
 import type { LeadEvent } from '@/lib/lead-events'
@@ -13,10 +15,30 @@ const DATA_HORA = new Intl.DateTimeFormat('pt-BR', {
 
 function Icone({ type }: { type: LeadEvent['type'] }) {
   const props = { size: 12 }
-  if (type === 'CONVERTED')     return <UserCheck {...props} />
-  if (type === 'STAGE_CHANGED') return <ArrowRight {...props} />
-  if (type === 'OWNER_CHANGED') return <UserCog {...props} />
+  if (type === 'CONVERTED')           return <UserCheck {...props} />
+  if (type === 'STAGE_CHANGED')       return <ArrowRight {...props} />
+  if (type === 'UNIT_CHANGED')        return <Building2 {...props} />
+  if (type === 'UPDATED')             return <Pencil {...props} />
+  if (type === 'APPOINTMENT_CREATED') return <CalendarPlus {...props} />
+  if (type === 'OWNER_CHANGED')       return <UserCog {...props} />
   return <Sparkles {...props} />
+}
+
+/** "Telefone: (11) 9... → (11) 8..." — uma linha por campo alterado. */
+function Alteracoes({ changes }: { changes: NonNullable<LeadEvent['changes']> }) {
+  return (
+    <>
+      {changes.map((c, i) => (
+        <span key={i} style={{ display: 'block' }}>
+          <span style={{ fontWeight: 700, color: 'var(--text)' }}>{c.campo}</span>
+          {': '}
+          {/* Campo que estava vazio não vira "— → valor": só mostra o novo. */}
+          {c.de && <><span style={{ textDecoration: 'line-through' }}>{c.de}</span>{' → '}</>}
+          {c.para ?? <em>vazio</em>}
+        </span>
+      ))}
+    </>
+  )
 }
 
 /** "Comercial · Em contato" — o funil só aparece quando ajuda a distinguir. */
@@ -43,6 +65,33 @@ function Descricao({ e }: { e: LeadEvent }) {
 
   if (e.type === 'CONVERTED')     return <span style={forte}>Virou cliente</span>
   if (e.type === 'OWNER_CHANGED') return <span style={forte}>Responsável alterado</span>
+
+  if (e.type === 'UNIT_CHANGED') {
+    const c = e.changes?.[0]
+    return (
+      <span>
+        <span style={forte}>{c?.para ?? 'Sem unidade'}</span>
+        {c?.de
+          ? <span style={{ color: 'var(--text-muted)' }}> — antes {c.de}</span>
+          : <span style={{ color: 'var(--text-muted)' }}> assumiu o lead</span>}
+      </span>
+    )
+  }
+
+  if (e.type === 'APPOINTMENT_CREATED') {
+    return (
+      <span>
+        <span style={forte}>Agendamento criado</span>
+        {e.changes?.[0]?.para && (
+          <span style={{ color: 'var(--text-muted)' }}> — {e.changes[0].para}</span>
+        )}
+      </span>
+    )
+  }
+
+  if (e.type === 'UPDATED' && e.changes && e.changes.length > 0) {
+    return <Alteracoes changes={e.changes} />
+  }
 
   const entrada = local(e.to_stage_name, e.to_funnel_name, true)
   return (

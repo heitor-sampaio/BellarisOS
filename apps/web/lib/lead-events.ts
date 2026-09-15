@@ -1,6 +1,21 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isUnitTag } from '@estetica-os/utils'
 
-export type LeadEventType = 'CREATED' | 'STAGE_CHANGED' | 'CONVERTED' | 'OWNER_CHANGED'
+export type LeadEventType =
+  | 'CREATED'
+  | 'STAGE_CHANGED'
+  | 'UNIT_CHANGED'
+  | 'UPDATED'
+  | 'APPOINTMENT_CREATED'
+  | 'CONVERTED'
+  | 'OWNER_CHANGED'
+
+/** Uma alteração de campo, do jeito que a linha do tempo exibe. */
+export interface LeadChange {
+  campo: string
+  de:    string | null
+  para:  string | null
+}
 
 export interface LeadEvent {
   id:               string
@@ -10,11 +25,12 @@ export interface LeadEvent {
   from_funnel_name: string | null
   to_funnel_name:   string | null
   actor_name:       string | null
+  changes:          LeadChange[] | null
   created_at:       string
 }
 
 export const LEAD_EVENT_COLS =
-  'id, type, from_stage_name, to_stage_name, from_funnel_name, to_funnel_name, actor_name, created_at'
+  'id, type, from_stage_name, to_stage_name, from_funnel_name, to_funnel_name, actor_name, changes, created_at'
 
 interface Entrada {
   tenantId:     string
@@ -24,6 +40,7 @@ interface Entrada {
   toStageId?:   string | null
   actorUserId?: string | null
   actorName?:   string | null
+  changes?:     LeadChange[] | null
 }
 
 /**
@@ -82,11 +99,56 @@ export async function registrarEventoLead(e: Entrada): Promise<void> {
       to_funnel_name:   para?.funil ?? null,
       actor_user_id:    e.actorUserId ?? null,
       actor_name:       e.actorName   ?? null,
+      changes:          e.changes && e.changes.length > 0 ? e.changes : null,
     })
     if (error) console.error('[registrarEventoLead]', error.message)
   } catch (err) {
     console.error('[registrarEventoLead]', err)
   }
+}
+
+/** Rótulo de cada campo do lead na linha do tempo. */
+export const CAMPOS_LEAD: Record<string, string> = {
+  name:         'Nome',
+  phone:        'Telefone',
+  email:        'E-mail',
+  social_media: 'Rede social',
+  source:       'Origem',
+  notes:        'Observações',
+  tags:         'Tags',
+  procedures:   'Procedimentos de interesse',
+}
+
+/** Estado do lead antes de uma edição, para comparar depois. */
+export interface EstadoLead {
+  crm_stage_id: string | null
+  unidade:      string | null
+  campos:       Record<string, string | null>
+}
+
+/**
+ * Compara dois retratos do lead e devolve só o que mudou.
+ *
+ * Campo vazio e campo nulo são a mesma coisa aqui: limpar um telefone em branco
+ * não é uma alteração e não merece linha no histórico.
+ */
+export function diferencas(
+  antes:  Record<string, string | null>,
+  depois: Record<string, string | null>,
+): LeadChange[] {
+  const mudou: LeadChange[] = []
+  for (const campo of Object.keys(CAMPOS_LEAD)) {
+    if (!(campo in depois)) continue
+    const de   = (antes[campo]  ?? '').trim()
+    const para = (depois[campo] ?? '').trim()
+    if (de === para) continue
+    mudou.push({
+      campo: CAMPOS_LEAD[campo] ?? campo,
+      de:    de   || null,
+      para:  para || null,
+    })
+  }
+  return mudou
 }
 
 /** Etapa atual do lead — base para saber se o movimento mudou alguma coisa. */
@@ -102,4 +164,63 @@ export async function etapaAtualDoLead(
 
   if (error) { console.error('[etapaAtualDoLead]', error.message); return null }
   return (data?.crm_stage_id as string | null) ?? null
+}
+
+/**
+ * Retrato do lead antes da edição — é o que permite dizer "de X para Y".
+ *
+ * Lido sempre ANTES do update: depois já é o valor novo, e o histórico
+ * registraria "de Y para Y".
+ */
+export async function estadoAtualDoLead(
+  tenantId: string, leadId: string,
+): Promise<EstadoLead | null> {
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from('leads')
+    .select('crm_stage_id, name, phone, email, social_media, source, notes, tags, lead_procedures(procedure_id, procedures(name))')
+    .eq('id', leadId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle()
+
+  if (error) { console.error('[estadoAtualDoLead]', error.message); return null }
+  if (!data) return null
+
+  const l = data as unknown as {
+    crm_stage_id: string | null
+    name: string | null; phone: string | null; email: string | null
+    social_media: string | null; source: string | null; notes: string | null
+    tags: string[] | null
+    // O embed aninhado vem como objeto no runtime e como lista no tipo gerado.
+    lead_procedures: { procedure_id: string; procedures: { name: string } | { name: string }[] | null }[] | null
+  }
+
+  const tags = l.tags ?? []
+
+  return {
+    crm_stage_id: l.crm_stage_id,
+    unidade:      tags.find(isUnitTag) ?? null,
+    campos: {
+      name:         l.name,
+      phone:        l.phone,
+      email:        l.email,
+      social_media: l.social_media,
+      source:       l.source,
+      notes:        l.notes,
+      // A unidade sai das tags: ela tem evento próprio, senão apareceria duas
+      // vezes na linha do tempo.
+      tags:         listaLegivel(tags.filter(t => !isUnitTag(t))),
+      // Nome, não id: "Botox → Botox, Preenchimento" se lê; uma lista de UUID não.
+      procedures:   listaLegivel((l.lead_procedures ?? []).map(p => {
+        const proc = Array.isArray(p.procedures) ? p.procedures[0] : p.procedures
+        return proc?.name ?? p.procedure_id
+      })),
+    },
+  }
+}
+
+/** Lista estável e comparável: ordenada e separada por vírgula. */
+export function listaLegivel(valores: string[]): string {
+  return [...valores].sort().join(', ')
 }

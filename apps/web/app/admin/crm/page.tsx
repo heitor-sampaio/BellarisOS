@@ -3,6 +3,7 @@ import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { funnelStats } from '@/lib/crm'
+import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { mesclarParams } from '@/lib/query-params'
 import { getConversations } from '@/actions/inbox'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
@@ -13,6 +14,14 @@ import { FunnelSelect } from '@/components/shared/funnel-select'
 import { CRMInbox } from '@/components/admin/crm-inbox'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { UserPlus } from 'lucide-react'
+
+/** Nome da unidade marcada no lead, se houver. */
+function unidadeDoLead(tags: unknown): string | null {
+  const t = (Array.isArray(tags) ? tags : []).find(
+    (x): x is string => typeof x === 'string' && isUnitTag(x),
+  )
+  return t ? unitTagName(t) : null
+}
 
 type View = 'funil' | 'inbox'
 
@@ -74,8 +83,6 @@ export default async function AdminCRMPage({
       .select(`
         id, name, phone, email, social_media, source,
         crm_stage_id, notes, client_id, created_at, tags,
-        branch_id,
-        branches(name, slug),
         conversations(last_message_at, awaiting_since),
         lead_procedures(procedure_id, procedures(name, price))
       `)
@@ -106,8 +113,10 @@ export default async function AdminCRMPage({
       tags:                l.tags ?? [],
       last_interaction_at: lastInteractionAt,
       awaiting_since:      awaitingSince,
-      branch_name:         l.branches?.name ?? null,
-      branch_slug:         l.branches?.slug ?? null,
+      // O badge da unidade sai da TAG, não de branch_id: o lead é da rede e a
+      // coluna é sempre nula, então o badge nunca aparecia.
+      branch_name:         unidadeDoLead(l.tags),
+      branch_slug:         null,
     }
   })
 
@@ -158,6 +167,7 @@ export default async function AdminCRMPage({
               />
               <CRMLeadModal
                 branches={branches}
+                unidades={branches}
                 stages={allStages}
                 funnels={ativos}
                 funnelId={selecionado?.id ?? ''}
@@ -226,6 +236,7 @@ export default async function AdminCRMPage({
             allStages={allStages}
             funnels={ativos}
             funnelId={selecionado?.id ?? ''}
+            unidades={branches}
             procedures={procedures}
             branchId=""
             slug="__admin__"

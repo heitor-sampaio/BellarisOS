@@ -3,6 +3,7 @@ import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { funnelStats } from '@/lib/crm'
+import { unitTag } from '@estetica-os/utils'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { FunnelSelect } from '@/components/shared/funnel-select'
@@ -58,11 +59,37 @@ export default async function BranchCRMPage({
     })
     .map(p => ({ id: p.id, name: p.name }))
 
-  // Leads do funil aberto. `ownerFilter` aplica o alcance do cargo: "só os
-  // próprios leads" vira filtro por `owner_id`.
+  // Recorte da unidade.
   //
-  // Funil sem etapa nenhuma não tem o que buscar — e `.in()` com lista vazia
-  // vira uma condição inválida no PostgREST.
+  // ⚠️ O lead é SEMPRE da rede (`branch_id` nulo). Isto aqui filtrava
+  // `.eq('branch_id', branch.id)`, então o quadro da unidade nunca mostrou um
+  // lead sequer — nenhum tem filial. A unidade é a tag `Unidade: <nome>`.
+  //
+  // A regra é "o que é meu + o que ainda não é de ninguém", e ela cabe numa
+  // condição só: **não pertence a outra unidade**. Lead marcado para cá passa,
+  // lead sem marca passa, lead de outra unidade não. Dá para escrever como um
+  // `or` de duas condições, mas aí a lista de tags entra com vírgulas dentro do
+  // `or=()` e quebra o parser do PostgREST.
+  //
+  // Pressupõe uma unidade por lead, que é o que o seletor do modal produz.
+  const { data: todasAsUnidades, error: erroUnidades } = await supabase
+    .from('branches')
+    .select('id, name')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('is_active', true)
+    .order('name')
+  if (erroUnidades) throw new Error(`Falha ao carregar as unidades: ${erroUnidades.message}`)
+
+  const unidades = (todasAsUnidades ?? []).map(b => ({ id: b.id as string, name: b.name as string }))
+
+  const tagsDeOutras = (todasAsUnidades ?? [])
+    .map(b => b.name as string)
+    .filter(nome => nome !== branch.name)
+    .map(nome => `"${unitTag(nome)}"`)
+
+  // Leads do funil aberto. `ownerFilter` aplica o alcance do cargo: "só os
+  // próprios leads" vira filtro por `owner_id`. Funil sem etapa nenhuma não tem
+  // o que buscar — e `.in()` com lista vazia é condição inválida no PostgREST.
   const leadOwner = ownerFilter(ctx, 'crm')
   let leads: Record<string, unknown>[] = []
   if (stageIds.length > 0) {
@@ -74,9 +101,12 @@ export default async function BranchCRMPage({
         conversations(last_message_at, awaiting_since),
         lead_procedures(procedure_id, procedures(name, price))
       `)
-      .eq('branch_id', branch.id)
       .eq('tenant_id', ctx.tenantId!)
       .in('crm_stage_id', stageIds)
+    // Rede de uma unidade só: não há "outra unidade" para excluir.
+    if (tagsDeOutras.length > 0) {
+      leadsQuery = leadsQuery.not('tags', 'ov', `{${tagsDeOutras.join(',')}}`)
+    }
     // Lead que chega sozinho pelo WhatsApp nasce sem dono: some para todo cargo
     // com alcance próprio se o filtro for só `owner_id = eu`. Sem dono é bolo
     // comum — aparece para todos até alguém assumir.
@@ -146,6 +176,8 @@ export default async function BranchCRMPage({
           <CRMLeadModal
             branchId={branch.id}
             slug={slug}
+            branchName={branch.name}
+            unidades={unidades}
             stages={allStages}
             funnels={ativos}
             funnelId={selecionado?.id ?? ''}
@@ -170,6 +202,7 @@ export default async function BranchCRMPage({
         allStages={allStages}
         funnels={ativos}
         funnelId={selecionado?.id ?? ''}
+        unidades={unidades}
         procedures={procedures}
         branchId={branch.id}
         slug={slug}
