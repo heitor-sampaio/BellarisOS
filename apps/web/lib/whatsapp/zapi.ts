@@ -1,5 +1,7 @@
 import type { WhatsAppProvider, ZAPIConfig } from './types'
-import type { InboundMsg, InboundMedia, MediaKind, StatusUpdate } from '@/lib/channels/types'
+import type {
+  InboundMsg, InboundMedia, MediaKind, StatusUpdate, OutboundMedia,
+} from '@/lib/channels/types'
 import {
   montarIdentidade, classificarIdentificador, ehConversaDeGrupo,
 } from '@/lib/channels/identity'
@@ -46,6 +48,42 @@ export class ZAPIProvider implements WhatsAppProvider {
     if (!res.ok) {
       const body = await res.text()
       throw new Error(`Z-API send error ${res.status}: ${body}`)
+    }
+    const data = await res.json()
+    return { externalId: data.zaapId ?? data.messageId ?? '' }
+  }
+
+  /**
+   * Envia um arquivo.
+   *
+   * A Z-API baixa da URL que a gente passa — daí o link assinado do bucket, que
+   * vale por uma hora. Mandar base64 também funcionaria, mas um vídeo de 16MB
+   * vira 21MB de JSON e estoura o corpo da requisição.
+   */
+  async sendMedia(to: string, media: OutboundMedia): Promise<{ externalId: string }> {
+    const phone = classificarIdentificador(to) === 'phone' ? to.replace(/\D/g, '') : to
+
+    // Cada tipo tem seu endpoint e o nome do campo muda junto. Documento ainda
+    // leva a extensão na própria rota.
+    const ext = media.filename.split('.').pop()?.toLowerCase() || 'bin'
+    const [rota, campo] =
+        media.kind === 'image'    ? ['/send-image',            'image']
+      : media.kind === 'audio'    ? ['/send-audio',            'audio']
+      : media.kind === 'video'    ? ['/send-video',            'video']
+      : [`/send-document/${ext}`, 'document']
+
+    const body: Record<string, unknown> = { phone, [campo]: media.url }
+    if (media.kind === 'document') body.fileName = media.filename
+    // Áudio não tem legenda em lugar nenhum do WhatsApp.
+    if (media.caption && media.kind !== 'audio') body.caption = media.caption
+
+    const res = await fetch(this.url(rota), {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    })
+    if (!res.ok) {
+      throw new Error(`Z-API send ${media.kind} ${res.status}: ${await res.text()}`)
     }
     const data = await res.json()
     return { externalId: data.zaapId ?? data.messageId ?? '' }

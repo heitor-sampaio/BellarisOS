@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import type {
-  SendProvider, InboundMsg, InboundMedia, MediaKind, ChannelKind,
+  SendProvider, InboundMsg, InboundMedia, MediaKind, ChannelKind, OutboundMedia,
 } from '@/lib/channels/types'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
@@ -64,6 +64,44 @@ export class MetaMessagingProvider implements SendProvider {
       )
     }
 
+    const data = await res.json()
+    return { externalId: (data?.message_id as string) ?? '' }
+  }
+
+  /**
+   * Envia um arquivo pelo Messenger ou Instagram Direct.
+   *
+   * Aqui a Meta baixa da URL que passamos (ao contrário da Cloud API do
+   * WhatsApp, que exige upload antes). `is_reusable: false` porque o arquivo já
+   * vive no nosso bucket: guardar uma segunda cópia na Meta só cria um id que
+   * ninguém vai usar de novo.
+   */
+  async sendMedia(to: string, media: OutboundMedia): Promise<{ externalId: string }> {
+    // O Messenger chama documento de `file`; os outros três têm o mesmo nome.
+    const tipo = media.kind === 'document' ? 'file' : media.kind
+
+    const res = await fetch(`${GRAPH}/${this.page.pageId}/messages`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: { id: to },
+        message: {
+          attachment: {
+            type:    tipo,
+            payload: { url: media.url, is_reusable: false },
+          },
+        },
+        messaging_type: 'RESPONSE',
+        access_token:   this.page.pageToken,
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => null)
+      throw new Error(
+        `Meta Messaging ${res.status}: ${JSON.stringify(err?.error ?? {})}`,
+      )
+    }
     const data = await res.json()
     return { externalId: (data?.message_id as string) ?? '' }
   }

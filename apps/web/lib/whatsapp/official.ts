@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import type { WhatsAppProvider, OfficialConfig } from './types'
-import type { InboundMsg, InboundMedia, MediaKind, StatusUpdate } from '@/lib/channels/types'
+import type {
+  InboundMsg, InboundMedia, MediaKind, StatusUpdate, OutboundMedia,
+} from '@/lib/channels/types'
 import { montarIdentidade, classificarIdentificador } from '@/lib/channels/identity'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
@@ -40,6 +42,61 @@ export class OfficialAPIProvider implements WhatsAppProvider {
     if (!res.ok) {
       const err = await res.json()
       throw new Error(`WhatsApp API ${res.status}: ${JSON.stringify(err?.error)}`)
+    }
+    const data = await res.json()
+    return { externalId: data.messages?.[0]?.id ?? '' }
+  }
+
+  /**
+   * Envia um arquivo.
+   *
+   * Dois passos, e o primeiro não é opcional: a Cloud API até aceita um `link`,
+   * mas então ela precisa alcançar a nossa URL de fora, e o bucket é privado.
+   * Subir os bytes e usar o id devolvido tira a rede do caminho.
+   */
+  async sendMedia(to: string, media: OutboundMedia): Promise<{ externalId: string }> {
+    const form = new FormData()
+    form.append('messaging_product', 'whatsapp')
+    form.append('type', media.mimeType)
+    form.append('file', new Blob([media.bytes], { type: media.mimeType }), media.filename)
+
+    const upload = await fetch(`${GRAPH}/${this.config.phoneNumberId}/media`, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${this.config.accessToken}` },
+      body:    form,
+    })
+    if (!upload.ok) {
+      const err = await upload.json().catch(() => null)
+      throw new Error(`WhatsApp media ${upload.status}: ${JSON.stringify(err?.error ?? {})}`)
+    }
+    const { id } = await upload.json() as { id?: string }
+    if (!id) throw new Error('WhatsApp media: upload sem id')
+
+    // Cada tipo tem seu objeto, e o que ele aceita muda: áudio não tem legenda,
+    // documento é o único com nome de arquivo.
+    const corpo: Record<string, unknown> =
+        media.kind === 'audio'    ? { id }
+      : media.kind === 'document' ? { id, filename: media.filename, ...(media.caption && { caption: media.caption }) }
+      : { id, ...(media.caption && { caption: media.caption }) }
+
+    const res = await fetch(`${GRAPH}/${this.config.phoneNumberId}/messages`, {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${this.config.accessToken}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        ...(classificarIdentificador(to) === 'phone'
+          ? { to: to.replace(/\D/g, '') }
+          : { recipient_type: 'individual', recipient: to }),
+        type: media.kind,
+        [media.kind]: corpo,
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => null)
+      throw new Error(`WhatsApp API ${res.status}: ${JSON.stringify(err?.error ?? {})}`)
     }
     const data = await res.json()
     return { externalId: data.messages?.[0]?.id ?? '' }

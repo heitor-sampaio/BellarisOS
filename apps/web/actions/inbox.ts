@@ -6,7 +6,9 @@ import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { revalidatePath } from 'next/cache'
 import { resolverCanal } from '@/lib/channels/factory'
 import { estadoDaJanela } from '@/lib/channels/window'
-import { urlDaMidia } from '@/lib/inbox/media'
+import {
+  urlDaMidia, guardarUpload, classificarArquivo, validarArquivo,
+} from '@/lib/inbox/media'
 import type { ChannelKind } from '@/lib/channels/types'
 import {
   extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
@@ -703,4 +705,164 @@ export async function sendTemplateMessage(
 
   revalidarInbox()
   return { ok: true, message: msgRow as unknown as Message }
+}
+
+// --- Envio de arquivo --------------------------------------------------------
+
+/**
+ * Manda um arquivo na conversa.
+ *
+ * Recebe `FormData` porque é a única forma de um arquivo atravessar uma Server
+ * Action sem virar base64 — o que inflaria um vídeo de 16MB em um terço.
+ *
+ * A ordem é deliberada: o arquivo sobe para o NOSSO bucket antes de ir para o
+ * provedor. Assim o histórico tem o anexo mesmo quando o envio falha, e a
+ * pessoa pode tentar de novo sem reanexar.
+ */
+export async function sendMediaMessage(
+  form: FormData,
+): Promise<{ ok: boolean; message?: Message; error?: string }> {
+  const ctx   = await getTenantContext()
+  assertPermission(ctx, 'crm', 'MANAGE')
+  const admin = createAdminClient()
+
+  const conversationId = form.get('conversationId')
+  const arquivo        = form.get('file')
+  const caption        = (form.get('caption') as string | null)?.trim() || ''
+
+  if (typeof conversationId !== 'string' || !(arquivo instanceof File)) {
+    return { ok: false, error: 'Requisição inválida.' }
+  }
+
+  const { data: conv, error: erroConv } = await admin
+    .from('conversations')
+    .select('id, channel, status, contact_phone, contact_external_id, last_inbound_at')
+    .eq('id', conversationId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+
+  if (erroConv) return { ok: false, error: erroConv.message }
+  if (!conv)    return { ok: false, error: 'Conversa não encontrada' }
+  if ((conv as { status: string }).status === 'closed') {
+    return { ok: false, error: 'Conversa encerrada' }
+  }
+
+  const channel  = (conv as { channel: string }).channel as ChannelKind
+  const mimeType = arquivo.type || 'application/octet-stream'
+  const kind     = classificarArquivo(mimeType)
+
+  const problema = validarArquivo(kind, mimeType, arquivo.size)
+  if (problema) return { ok: false, error: problema }
+
+  const canal = await resolverCanal(ctx.tenantId!, channel)
+  if (!canal && channel !== 'manual') {
+    return { ok: false, error: `Canal ${channel} não está conectado. Configure em Configurações → Integrações.` }
+  }
+  if (canal && !canal.provider.sendMedia) {
+    return { ok: false, error: 'Este canal não aceita anexo pela integração atual.' }
+  }
+
+  // Anexo obedece à janela de 24h igual a texto — a Meta não abre exceção.
+  const janela = estadoDaJanela(channel, (conv as { last_inbound_at: string | null }).last_inbound_at, canal?.nome)
+  if (!janela.aberta) return { ok: false, error: janela.motivo ?? 'Janela de resposta fechada.' }
+
+  const perfil = await admin
+    .from('users').select('id, name').eq('auth_id', ctx.userId).maybeSingle()
+  const membro = perfil.data as { id: string; name: string } | null
+
+  let guardado: { path: string; url: string }
+  try {
+    guardado = await guardarUpload(
+      ctx.tenantId!,
+      conversationId,
+      await arquivo.arrayBuffer(),
+      mimeType,
+      arquivo.name || `arquivo.${kind}`,
+    )
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Falha ao guardar o arquivo.' }
+  }
+
+  const { data: msgRow, error: erroInsert } = await admin
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      tenant_id:       ctx.tenantId!,
+      direction:       'outbound',
+      // Sem legenda, o nome do arquivo é o que a lista de conversas mostra —
+      // melhor que uma prévia em branco.
+      content:         caption || arquivo.name || `[${kind}]`,
+      channel,
+      status:          'sending',
+      sent_by_id:      membro?.id ?? null,
+      sent_by_name:    membro?.name ?? null,
+      media_type:      kind,
+      media_path:      guardado.path,
+    })
+    .select()
+    .single()
+
+  if (erroInsert) return { ok: false, error: erroInsert.message }
+  const criada = msgRow as unknown as { id: string; status: string }
+
+  if (!canal) {
+    // `manual`: nota interna com anexo. Fica registrada e pronto.
+    await admin.from('messages').update({ status: 'sent' }).eq('id', criada.id)
+    criada.status = 'sent'
+    revalidarInbox()
+    return { ok: true, message: await comUrl(msgRow as unknown as Message, guardado.path) }
+  }
+
+  const destino = (conv as { contact_phone: string | null }).contact_phone
+    ?? (conv as { contact_external_id: string | null }).contact_external_id
+  if (!destino) {
+    return falhaComAnexo(admin, criada.id, msgRow as unknown as Message, guardado.path,
+      'Esta conversa não tem um destinatário identificado.')
+  }
+
+  try {
+    const { externalId } = await canal.provider.sendMedia!(destino, {
+      kind,
+      bytes:    await arquivo.arrayBuffer(),
+      url:      guardado.url,
+      mimeType,
+      filename: arquivo.name || `arquivo.${kind}`,
+      caption:  caption || undefined,
+    })
+    await admin
+      .from('messages')
+      .update({ status: 'sent', external_id: externalId, provider: canal.nome })
+      .eq('id', criada.id)
+    criada.status = 'sent'
+  } catch (sendErr) {
+    console.error('[sendMediaMessage]', sendErr)
+    return falhaComAnexo(admin, criada.id, msgRow as unknown as Message, guardado.path,
+      mensagemDeFalha(sendErr))
+  }
+
+  revalidarInbox()
+  return { ok: true, message: await comUrl(msgRow as unknown as Message, guardado.path) }
+}
+
+/**
+ * Falha depois do arquivo já estar guardado.
+ *
+ * Devolve a mensagem junto do erro para a bolha aparecer marcada como "Não
+ * enviada". Devolver só o erro fazia o anexo sumir da tela enquanto seguia
+ * existindo no banco — a pessoa via a falha e achava que nada tinha acontecido.
+ */
+async function falhaComAnexo(
+  admin: ReturnType<typeof createAdminClient>,
+  messageId: string,
+  msg: Message,
+  path: string,
+  error: string,
+): Promise<{ ok: false; message: Message; error: string }> {
+  await admin.from('messages').update({ status: 'failed' }).eq('id', messageId)
+  return { ok: false, error, message: { ...(await comUrl(msg, path)), status: 'failed' } }
+}
+
+/** A bolha precisa do link assinado; o banco só guarda o caminho. */
+async function comUrl(msg: Message, path: string): Promise<Message> {
+  return { ...msg, media_url: await urlDaMidia(path) }
 }

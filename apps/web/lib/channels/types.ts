@@ -78,9 +78,29 @@ export interface StatusUpdate {
  * mando neste canal". Webhook e teste de conexão são assunto de quem
  * implementa, não do envio.
  */
+/**
+ * Arquivo saindo daqui para o contato.
+ *
+ * Carrega os bytes E a URL assinada porque os provedores pedem coisas
+ * diferentes: a Cloud API quer o arquivo enviado antes (para devolver um id),
+ * enquanto Z-API e Messenger baixam de uma URL que a gente passa.
+ */
+export interface OutboundMedia {
+  kind:      MediaKind
+  bytes:     ArrayBuffer
+  /** Link temporário do nosso bucket, para quem busca por URL. */
+  url:       string
+  mimeType:  string
+  filename:  string
+  /** Legenda. Imagem, vídeo e documento aceitam; áudio, não. */
+  caption?:  string
+}
+
 export interface SendProvider {
   /** `to` é o `contact_external_id` da conversa. */
   send(to: string, content: string): Promise<{ externalId: string }>
+  /** Envia arquivo. Ausente = o canal não suporta anexo pela nossa integração. */
+  sendMedia?(to: string, media: OutboundMedia): Promise<{ externalId: string }>
   /** Baixa a mídia recebida; nem todo provedor precisa de autenticação. */
   fetchMedia?(media: InboundMedia): Promise<{ bytes: ArrayBuffer; mimeType: string } | null>
   /**

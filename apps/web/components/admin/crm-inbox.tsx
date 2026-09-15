@@ -5,13 +5,13 @@ import {
 } from 'react'
 import {
   Search, MessageSquare, Phone, Mail, AtSign,
-  Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip, FileText,
+  Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip, FileText, Zap,
 } from 'lucide-react'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import {
-  getMessages, sendMessage, markConversationRead,
+  getMessages, sendMessage, sendMediaMessage, markConversationRead,
   setConversationStatus, createConversationForLead,
   type Conversation, type Message, type InboxChannel, type ConvStatus,
 } from '@/actions/inbox'
@@ -19,6 +19,8 @@ import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-
 import { TagBadge } from '@/components/shared/tag-badge'
 import { estadoDaJanela } from '@/lib/channels/window'
 import { InboxTemplatePicker } from '@/components/admin/inbox-template-picker'
+import { InboxQuickReplies } from '@/components/admin/inbox-quick-replies'
+import { useAnexos, PainelDeAnexo, BotoesDeAnexo } from '@/components/admin/inbox-anexos'
 import {
   secondsSince, agingLevel, AGING_STYLE, AWAITING_THRESHOLDS,
   formatDurationShort, formatDurationLong,
@@ -408,6 +410,9 @@ export function CRMInbox({
   const [nowMs,         setNowMs]         = useState<number | null>(null)
   const [sendError,     setSendError]     = useState<string | null>(null)
   const [showTemplates, setShowTemplates] = useState(false)
+  const [showAtalhos,   setShowAtalhos]   = useState(false)
+  const [buscaAtalho,   setBuscaAtalho]   = useState('')
+  const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   const bottomRef  = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -553,9 +558,52 @@ export function CRMInbox({
     })
   }
 
+  function handleEnviarAnexo(file: File, caption: string) {
+    if (!selectedId) return
+    setSendError(null)
+    setEnviandoAnexo(true)
+    startTransition(async () => {
+      const form = new FormData()
+      form.append('conversationId', selectedId)
+      form.append('file', file)
+      form.append('caption', caption)
+
+      const res = await sendMediaMessage(form)
+      setEnviandoAnexo(false)
+
+      // A mensagem vem tanto no sucesso quanto na falha: o arquivo já está
+      // guardado, e escondê-lo da conversa faria a pessoa achar que nem chegou
+      // a ser anexado.
+      if (res.message) {
+        setMessages(prev => [...prev, res.message!])
+        setConversations(prev => prev.map(c =>
+          c.id === selectedId
+            ? { ...c, last_message: res.message!.content, last_message_at: res.message!.created_at }
+            : c,
+        ))
+      }
+      if (!res.ok) setSendError(res.error ?? 'Não foi possível enviar o arquivo.')
+    })
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
+
+  /**
+   * Barra no começo do campo abre as respostas rápidas, filtrando pelo que vier
+   * depois. É como a recepção espera que funcione, e evita tirar a mão do
+   * teclado no meio do atendimento.
+   */
+  function handleDraftChange(valor: string) {
+    setDraft(valor)
+    if (valor.startsWith('/')) {
+      setBuscaAtalho(valor.slice(1))
+      setShowAtalhos(true)
+    }
+  }
+
+  const anexos = useAnexos(handleEnviarAnexo)
 
   function handleConvCreated(convId: string) {
     setShowNewConv(false)
@@ -609,6 +657,20 @@ export function CRMInbox({
           leads={leads}
           onCreated={handleConvCreated}
           onClose={() => setShowNewConv(false)}
+        />
+      )}
+
+      {showAtalhos && (
+        <InboxQuickReplies
+          canEdit={canEdit}
+          busca={buscaAtalho}
+          onEscolher={texto => {
+            // Substitui a barra digitada; sem isso o '/limpeza' ficaria na
+            // frente do texto escolhido.
+            setDraft(d => (d.startsWith('/') ? '' : d) + texto)
+            textareaRef.current?.focus()
+          }}
+          onClose={() => setShowAtalhos(false)}
         />
       )}
 
@@ -930,6 +992,10 @@ export function CRMInbox({
                 </div>
               )}
 
+              {selectedConv.status !== 'closed' && (
+                <PainelDeAnexo a={anexos} enviando={enviandoAnexo} />
+              )}
+
               {/* Input */}
               {selectedConv.status !== 'closed' ? (
                 <div style={{
@@ -956,10 +1022,27 @@ export function CRMInbox({
                       <FileText size={15} />
                     </button>
                   )}
+                  <BotoesDeAnexo a={anexos} disabled={bloqueado} />
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() => { setBuscaAtalho(''); setShowAtalhos(true) }}
+                      title="Respostas rápidas (ou digite / no campo)"
+                      style={{
+                        flexShrink: 0, alignSelf: 'flex-end',
+                        height: 36, width: 36, borderRadius: 9,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        border: '1.5px solid var(--border)', background: 'var(--bg-app)',
+                        color: 'var(--text-muted)', cursor: 'pointer',
+                      }}
+                    >
+                      <Zap size={15} />
+                    </button>
+                  )}
                   <textarea
                     ref={textareaRef}
                     value={draft}
-                    onChange={e => setDraft(e.target.value)}
+                    onChange={e => handleDraftChange(e.target.value)}
                     onKeyDown={handleKeyDown}
                     rows={1}
                     placeholder={bloqueado
