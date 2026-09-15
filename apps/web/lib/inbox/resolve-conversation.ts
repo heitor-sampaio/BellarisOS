@@ -46,38 +46,53 @@ export async function resolveConversation(
   let leadId:      string | null = leadRows?.[0]?.id ?? null
   let contactName: string        = leadRows?.[0]?.name ?? msg.pushName?.trim() ?? phone
 
-  // 2. Cria a conversa ON CONFLICT DO NOTHING — trava de concorrência
-  const { data: insertedRows } = await admin
+  // 2. Cria a conversa. Insert direto e o 23505 como trava de concorrência.
+  //
+  // ⚠️ Aqui havia um `upsert` com `onConflict: 'tenant_id,channel,contact_phone'`.
+  // O índice que garante essa unicidade é PARCIAL
+  // (`uniq_conversations_tenant_channel_phone ... WHERE contact_phone IS NOT NULL`),
+  // e o Postgres não infere ON CONFLICT a partir de índice parcial sem o mesmo
+  // predicado — que o PostgREST não tem como mandar. A instrução falhava com
+  // `42P10`, o erro era descartado, e o código caía no ramo "já existia". Quando
+  // de fato não existia — ou seja, na PRIMEIRA mensagem de um número novo — a
+  // função devolvia null e a mensagem era descartada sem conversa e sem card.
+  const { data: inserted, error: erroInsert } = await admin
     .from('conversations')
-    .upsert(
-      {
-        tenant_id:     tenantId,
-        branch_id:     null,          // network — designação de filial via tag depois
-        lead_id:       leadId,
-        channel,
-        status:        'open',
-        contact_name:  contactName,
-        contact_phone: phone,
-      },
-      { onConflict: 'tenant_id,channel,contact_phone', ignoreDuplicates: true },
-    )
+    .insert({
+      tenant_id:     tenantId,
+      branch_id:     null,          // network — designação de filial via tag depois
+      lead_id:       leadId,
+      channel,
+      status:        'open',
+      contact_name:  contactName,
+      contact_phone: phone,
+    })
     .select('id')
+    .single()
 
-  // Conflito: a conversa já existia — buscar e retornar
-  if (!insertedRows || insertedRows.length === 0) {
-    const { data: convRows } = await admin
+  if (erroInsert) {
+    // 23505 é o caso esperado: outra entrega criou a conversa primeiro.
+    if (erroInsert.code !== '23505') {
+      console.error('[resolveConversation] criar conversa:', erroInsert.message)
+      return null
+    }
+    const { data: convRows, error: erroBusca } = await admin
       .from('conversations')
       .select('id, branch_id')
       .eq('tenant_id', tenantId)
       .eq('channel', channel)
       .eq('contact_phone', phone)
       .limit(1)
+    if (erroBusca) {
+      console.error('[resolveConversation] conversa existente:', erroBusca.message)
+      return null
+    }
     if (!convRows || convRows.length === 0) return null
     return { conversationId: convRows[0]!.id, branchId: convRows[0]!.branch_id }
   }
 
   // 3. Vencemos o insert — se não havia lead, criamos o card agora (network, sem filial)
-  const conversationId = insertedRows[0]!.id
+  const conversationId = inserted!.id
   if (!leadId) {
     const derived = resolveLeadSource({ referral: msg.referral })
     // Lead que chega sozinho entra no funil PADRÃO da rede — o mesmo que

@@ -183,52 +183,86 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
 }
 
 /** Acha (ou cria) a conversa de um lead — usado pelo deep-link "card do funil -> inbox". */
-export async function openLeadConversation(leadId: string): Promise<{ conversationId: string | null }> {
+export async function openLeadConversation(
+  leadId: string,
+): Promise<{ conversationId: string | null; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
 
   // Conversa existente para este lead (qualquer canal), mais recente primeiro
-  const { data: existing } = await admin
+  const { data: existing, error: erroExisting } = await admin
     .from('conversations')
     .select('id')
     .eq('tenant_id', ctx.tenantId!)
     .eq('lead_id', leadId)
     .order('last_message_at', { ascending: false, nullsFirst: false })
     .limit(1)
+  if (erroExisting) {
+    console.error('[openLeadConversation] conversa existente:', erroExisting.message)
+    return { conversationId: null, error: 'Não foi possível abrir a conversa deste lead.' }
+  }
   if (existing && existing.length > 0) return { conversationId: existing[0]!.id }
 
   // Cria uma conversa a partir do lead (whatsapp se tem telefone; senão manual)
-  const { data: leadRow } = await admin
+  const { data: leadRow, error: erroLead } = await admin
     .from('leads')
     .select('name, phone, branch_id')
     .eq('id', leadId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
-  if (!leadRow) return { conversationId: null }
+  if (erroLead) {
+    console.error('[openLeadConversation] lead:', erroLead.message)
+    return { conversationId: null, error: 'Não foi possível abrir a conversa deste lead.' }
+  }
+  if (!leadRow) return { conversationId: null, error: 'Lead não encontrado.' }
 
   const l = leadRow as { name: string; phone: string | null; branch_id: string | null }
   const contactPhone = l.phone ? l.phone.replace(/\D/g, '') : null
   const channel: InboxChannel = contactPhone ? 'whatsapp' : 'manual'
 
-  const { data: created } = await admin
+  // ⚠️ Aqui havia um `upsert` com `onConflict: 'tenant_id,channel,contact_phone'`.
+  // O índice que garante essa unicidade é PARCIAL
+  // (`uniq_conversations_tenant_channel_phone ... WHERE contact_phone IS NOT NULL`),
+  // e o Postgres não usa índice parcial para inferir ON CONFLICT sem o mesmo
+  // predicado — coisa que o PostgREST não tem como mandar. Resultado: todo lead
+  // COM telefone caía em `42P10 — there is no unique or exclusion constraint
+  // matching the ON CONFLICT specification`. Como o erro era descartado, a
+  // action devolvia null e **o clique no card do funil da rede não fazia nada**.
+  //
+  // Insert direto + tratamento do 23505 faz o mesmo trabalho e é o padrão que
+  // `lib/inbox/resolve-conversation.ts` já usa.
+  const { data: created, error: erroInsert } = await admin
     .from('conversations')
-    .upsert(
-      {
-        tenant_id:     ctx.tenantId!,
-        branch_id:     l.branch_id,
-        lead_id:       leadId,
-        channel,
-        status:        'open',
-        contact_name:  l.name,
-        contact_phone: contactPhone,
-      },
-      contactPhone ? { onConflict: 'tenant_id,channel,contact_phone', ignoreDuplicates: false } : undefined,
-    )
+    .insert({
+      tenant_id:     ctx.tenantId!,
+      branch_id:     l.branch_id,
+      lead_id:       leadId,
+      channel,
+      status:        'open',
+      contact_name:  l.name,
+      contact_phone: contactPhone,
+    })
     .select('id')
     .single()
 
-  return { conversationId: (created as { id: string } | null)?.id ?? null }
+  if (!erroInsert && created) return { conversationId: (created as { id: string }).id }
+
+  // Já existe conversa para este telefone/canal, ligada a outro lead ou a
+  // nenhum: é dela que a pessoa precisa.
+  if (erroInsert?.code === '23505' && contactPhone) {
+    const { data: doTelefone } = await admin
+      .from('conversations')
+      .select('id')
+      .eq('tenant_id', ctx.tenantId!)
+      .eq('channel', channel)
+      .eq('contact_phone', contactPhone)
+      .maybeSingle()
+    if (doTelefone) return { conversationId: (doTelefone as { id: string }).id }
+  }
+
+  console.error('[openLeadConversation] criar conversa:', erroInsert?.message)
+  return { conversationId: null, error: 'Não foi possível abrir a conversa deste lead.' }
 }
 
 export async function sendMessage(

@@ -425,7 +425,13 @@ function LeadCard({
     if (networkMode) {
       startOpening(async () => {
         const res = await openLeadConversation(lead.id)
-        if (res.conversationId) router.push(`/admin/crm?view=inbox&c=${res.conversationId}`)
+        if (res.conversationId) {
+          router.push(`/admin/crm?view=inbox&c=${res.conversationId}`)
+          return
+        }
+        // O clique não pode morrer em silêncio: sem conversa, abre o card para
+        // edição, que é a outra coisa útil a fazer com um lead.
+        editRef.current?.open()
       })
       return
     }
