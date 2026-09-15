@@ -2,7 +2,9 @@
 
 import { useState, useTransition, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, ArrowRight, Trash2, Phone, Mail, X, AlertTriangle } from 'lucide-react'
+import {
+  Plus, ArrowRight, ArrowRightLeft, Trash2, Phone, Mail, X, AlertTriangle,
+} from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 import { updateLeadStage, deleteLead } from '@/actions/leads'
 import { openLeadConversation } from '@/actions/inbox'
@@ -371,9 +373,36 @@ function LeadCard({
   const [convertOpen, setConvertOpen] = useState(false)
   const [deleting,   startDelete]  = useTransition()
   const [opening,    startOpening] = useTransition()
+  const [moving,     startMoving]  = useTransition()
   const router     = useRouter()
   const editRef    = useRef<CRMLeadModalHandle>(null)
   const confirmRef = useRef<HTMLDialogElement>(null)
+  const moveRef    = useRef<HTMLDialogElement>(null)
+
+  // Mover de funil só existe se houver para onde mover.
+  const outrosFunis = funnels.filter(f => f.id !== funnelId)
+
+  /**
+   * Leva o card para a PRIMEIRA etapa do funil de destino.
+   *
+   * Etapas não se correspondem entre funis — "Avaliação" de vendas não é
+   * "Avaliação" de pós-venda —, então não há mapeamento a adivinhar: o lead
+   * recomeça o novo funil. Reusa `updateLeadStage`, e por isso a mudança já cai
+   * no histórico com os dois nomes de funil.
+   */
+  function moverParaFunil(destinoId: string) {
+    const primeira = allStages
+      .filter(st => st.funnel_id === destinoId)
+      .sort((a, b) => a.position - b.position)[0]
+    if (!primeira) return
+    moveRef.current?.close()
+    startMoving(async () => {
+      await updateLeadStage(lead.id, primeira.id, slug)
+      // Sai deste quadro: o card agora pertence a outro funil.
+      onLeadDeleted(lead.id)
+      router.refresh()
+    })
+  }
   // Evita abrir o modal de edição ao finalizar um drag
   const wasDragging = useRef(false)
 
@@ -542,6 +571,67 @@ function LeadCard({
         </div>
       </dialog>
 
+      {/* Mover para outro funil */}
+      <dialog
+        ref={moveRef}
+        className="modal"
+        style={{ maxWidth: 380 } as React.CSSProperties}
+        onClick={e => { if (e.target === moveRef.current) moveRef.current?.close() }}
+      >
+        <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Mover para outro funil</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{lead.name}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => moveRef.current?.close()}
+              style={{
+                width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                border: '1px solid var(--border)', background: 'var(--bg-app)',
+                color: 'var(--text-faint)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              }}
+            >
+              <X size={13} />
+            </button>
+          </div>
+
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            O lead entra na primeira etapa do funil escolhido e sai deste quadro.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {outrosFunis.map(f => {
+              const etapas = allStages
+                .filter(st => st.funnel_id === f.id)
+                .sort((a, b) => a.position - b.position)
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => moverParaFunil(f.id)}
+                  disabled={moving || etapas.length === 0}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: 10, width: '100%', textAlign: 'left',
+                    padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
+                    border: '1px solid var(--border)', background: 'var(--surface)',
+                    opacity: moving || etapas.length === 0 ? 0.5 : 1,
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{f.name}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 600 }}>
+                    {etapas.length > 0 ? `→ ${etapas[0]!.name}` : 'sem etapas'}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </dialog>
+
       {/* Card */}
       <div
         draggable
@@ -571,20 +661,41 @@ function LeadCard({
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={e => { e.stopPropagation(); confirmRef.current?.showModal() }}
-            disabled={deleting}
-            style={{
-              width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-              border: '1px solid var(--border)', background: 'var(--bg-app)',
-              color: 'var(--text-faint)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              opacity: deleting ? 0.5 : 1,
-            }}
-          >
-            <Trash2 size={11} />
-          </button>
+          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            {/* Mover de funil — some quando a rede só tem um. */}
+            {outrosFunis.length > 0 && (
+              <button
+                type="button"
+                title="Mover para outro funil"
+                onClick={e => { e.stopPropagation(); moveRef.current?.showModal() }}
+                disabled={moving}
+                style={{
+                  width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                  border: '1px solid var(--border)', background: 'var(--bg-app)',
+                  color: 'var(--text-faint)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                  opacity: moving ? 0.5 : 1,
+                }}
+              >
+                <ArrowRightLeft size={11} />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); confirmRef.current?.showModal() }}
+              disabled={deleting}
+              style={{
+                width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                border: '1px solid var(--border)', background: 'var(--bg-app)',
+                color: 'var(--text-faint)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                opacity: deleting ? 0.5 : 1,
+              }}
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
         </div>
 
         {/* Nome */}
