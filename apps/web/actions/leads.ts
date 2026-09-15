@@ -247,16 +247,22 @@ export async function updateLead(
     }
 
     if (antes) {
-      const unidadeDepois = novasTags ? (novasTags.find(isUnitTag) ?? null) : antes.unidade
-      if (unidadeDepois !== antes.unidade) {
+      // A unidade é tag, e tag é conjunto: o lead pode ter mais de uma, ou
+      // nenhuma. Ainda assim tem evento próprio, porque é a marca que diz para
+      // quem o lead está endereçado — e trocá-la é o que alguém faria para
+      // puxar um lead para si.
+      const unidadesDepois = novasTags
+        ? listaLegivel(novasTags.filter(isUnitTag).map(unitTagName))
+        : antes.unidades
+      if (unidadesDepois !== antes.unidades) {
         await registrarEventoLead({
           tenantId: ctx.tenantId!,
           leadId,
           type:     'UNIT_CHANGED',
           changes: [{
             campo: 'Unidade',
-            de:    antes.unidade      ? unitTagName(antes.unidade)      : null,
-            para:  unidadeDepois      ? unitTagName(unidadeDepois)      : null,
+            de:    antes.unidades   || null,
+            para:  unidadesDepois   || null,
           }],
           ...autor,
         })

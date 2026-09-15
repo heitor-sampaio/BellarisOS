@@ -3,7 +3,6 @@ import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { funnelStats } from '@/lib/crm'
-import { unitTag } from '@estetica-os/utils'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { FunnelSelect } from '@/components/shared/funnel-select'
@@ -59,19 +58,7 @@ export default async function BranchCRMPage({
     })
     .map(p => ({ id: p.id, name: p.name }))
 
-  // Recorte da unidade.
-  //
-  // ⚠️ O lead é SEMPRE da rede (`branch_id` nulo). Isto aqui filtrava
-  // `.eq('branch_id', branch.id)`, então o quadro da unidade nunca mostrou um
-  // lead sequer — nenhum tem filial. A unidade é a tag `Unidade: <nome>`.
-  //
-  // A regra é "o que é meu + o que ainda não é de ninguém", e ela cabe numa
-  // condição só: **não pertence a outra unidade**. Lead marcado para cá passa,
-  // lead sem marca passa, lead de outra unidade não. Dá para escrever como um
-  // `or` de duas condições, mas aí a lista de tags entra com vírgulas dentro do
-  // `or=()` e quebra o parser do PostgREST.
-  //
-  // Pressupõe uma unidade por lead, que é o que o seletor do modal produz.
+  // Unidades da rede — alimentam as sugestões de tag do modal.
   const { data: todasAsUnidades, error: erroUnidades } = await supabase
     .from('branches')
     .select('id, name')
@@ -82,14 +69,18 @@ export default async function BranchCRMPage({
 
   const unidades = (todasAsUnidades ?? []).map(b => ({ id: b.id as string, name: b.name as string }))
 
-  const tagsDeOutras = (todasAsUnidades ?? [])
-    .map(b => b.name as string)
-    .filter(nome => nome !== branch.name)
-    .map(nome => `"${unitTag(nome)}"`)
-
-  // Leads do funil aberto. `ownerFilter` aplica o alcance do cargo: "só os
-  // próprios leads" vira filtro por `owner_id`. Funil sem etapa nenhuma não tem
-  // o que buscar — e `.in()` com lista vazia é condição inválida no PostgREST.
+  // Leads do funil aberto.
+  //
+  // ⚠️ Sem recorte por unidade — o lead é da REDE. Isto aqui já filtrou por
+  // `.eq('branch_id', branch.id)`, e como nenhum lead tem filial o quadro da
+  // unidade nunca mostrou um lead sequer. Depois filtrou por tag de unidade,
+  // escondendo o que estava marcado para outra — o que é decidir distribuição
+  // no código. Quem decide de quem é o lead são as pessoas (tag e dono) e, no
+  // futuro, as automações; a tela só oferece os filtros.
+  //
+  // `ownerFilter` continua valendo: é o alcance do CARGO ("só os próprios
+  // leads"), coisa diferente de recorte por unidade. Funil sem etapa nenhuma
+  // não tem o que buscar — `.in()` com lista vazia é inválido no PostgREST.
   const leadOwner = ownerFilter(ctx, 'crm')
   let leads: Record<string, unknown>[] = []
   if (stageIds.length > 0) {
@@ -98,15 +89,12 @@ export default async function BranchCRMPage({
       .select(`
         id, name, phone, email, social_media, source,
         crm_stage_id, notes, client_id, created_at, tags,
+        owner_id, users(name),
         conversations(last_message_at, awaiting_since),
         lead_procedures(procedure_id, procedures(name, price))
       `)
       .eq('tenant_id', ctx.tenantId!)
       .in('crm_stage_id', stageIds)
-    // Rede de uma unidade só: não há "outra unidade" para excluir.
-    if (tagsDeOutras.length > 0) {
-      leadsQuery = leadsQuery.not('tags', 'ov', `{${tagsDeOutras.join(',')}}`)
-    }
     // Lead que chega sozinho pelo WhatsApp nasce sem dono: some para todo cargo
     // com alcance próprio se o filtro for só `owner_id = eu`. Sem dono é bolo
     // comum — aparece para todos até alguém assumir.
@@ -123,7 +111,7 @@ export default async function BranchCRMPage({
 
   // Métricas de atendimento derivadas das conversas de cada lead.
   const leadsData = leads.map((l: any) => {
-    const { conversations, ...rest } = l
+    const { conversations, users: _dono, ...rest } = l
     const convs = (conversations ?? []) as { last_message_at: string | null; awaiting_since: string | null }[]
     const lastInteractionAt = convs
       .map(c => c.last_message_at)
@@ -138,6 +126,7 @@ export default async function BranchCRMPage({
     return {
       ...rest,
       tags:                l.tags ?? [],
+      owner_name:          l.users?.name ?? null,
       last_interaction_at: lastInteractionAt,
       awaiting_since:      awaitingSince,
     }

@@ -17,16 +17,20 @@ import {
 import { TagBadge } from '@/components/shared/tag-badge'
 
 // --- Filtros e ordenação -----------------------------------------
+const SEM_DONO = '__sem_dono__'
+
 interface FiltersState {
   sources:      string[]
   tags:         string[]
+  /** Nome do dono, ou SEM_DONO para o bolo comum. */
+  owners:       string[]
   procedureIds: string[]
   situation:    'all' | 'converted' | 'not_converted'
   period:       'all' | '7d' | '30d' | '90d'
 }
 type SortOrder = 'newest' | 'oldest' | 'name_asc' | 'name_desc'
 
-const DEFAULT_FILTERS: FiltersState = { sources: [], tags: [], procedureIds: [], situation: 'all', period: 'all' }
+const DEFAULT_FILTERS: FiltersState = { sources: [], tags: [], owners: [], procedureIds: [], situation: 'all', period: 'all' }
 
 function FiltersBar({
   leads, filters, sort,
@@ -50,6 +54,15 @@ function FiltersBar({
     [leads],
   )
 
+  // Donos presentes na tela. "Sem dono" é uma opção de verdade: é o bolo comum,
+  // onde cai todo lead que chega sozinho pelo WhatsApp.
+  const availableOwners = useMemo(() => {
+    const nomes = [...new Set(
+      leads.map(l => l.owner_name).filter((v): v is string => !!v),
+    )].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    return leads.some(l => !l.owner_name) ? [SEM_DONO, ...nomes] : nomes
+  }, [leads])
+
   // Procedimentos que aparecem em pelo menos um lead
   const availableProcs = useMemo(() => {
     const map = new Map<string, string>()
@@ -66,6 +79,7 @@ function FiltersBar({
   const activeCount =
     (filters.sources.length > 0 ? 1 : 0) +
     (filters.tags.length > 0 ? 1 : 0) +
+    (filters.owners.length > 0 ? 1 : 0) +
     (filters.procedureIds.length > 0 ? 1 : 0) +
     (filters.situation !== 'all' ? 1 : 0) +
     (filters.period !== 'all' ? 1 : 0)
@@ -82,6 +96,13 @@ function FiltersBar({
       ? filters.tags.filter(t => t !== tag)
       : [...filters.tags, tag]
     onFiltersChange({ ...filters, tags: next })
+  }
+
+  function toggleOwner(nome: string) {
+    const next = filters.owners.includes(nome)
+      ? filters.owners.filter(o => o !== nome)
+      : [...filters.owners, nome]
+    onFiltersChange({ ...filters, owners: next })
   }
 
   function toggleProcedure(id: string) {
@@ -150,6 +171,36 @@ function FiltersBar({
                   }}
                 >
                   {tag}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Dono do negócio */}
+      {availableOwners.length > 0 && (
+        <>
+          {(availableSources.length > 0 || availableTags.length > 0) && (
+            <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)' }}>Dono</span>
+            {availableOwners.map(nome => {
+              const active = filters.owners.includes(nome)
+              return (
+                <button
+                  key={nome} type="button"
+                  onClick={() => toggleOwner(nome)}
+                  style={{
+                    fontSize: 11.5, fontWeight: 600, padding: '4px 10px', borderRadius: 99,
+                    cursor: 'pointer', transition: 'all 120ms',
+                    border: active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
+                    background: active ? 'var(--brand-soft)' : 'var(--surface)',
+                    color: active ? 'var(--brand)' : 'var(--text-muted)',
+                  }}
+                >
+                  {nome === SEM_DONO ? 'Sem dono' : nome}
                 </button>
               )
             })}
@@ -265,6 +316,8 @@ export interface Lead {
   client_id:    string | null
   created_at:   string
   tags:         string[]
+  /** Dono do negócio: quem está trabalhando o lead. Nulo = bolo comum. */
+  owner_name?:  string | null
   last_interaction_at?: string | null
   awaiting_since?:      string | null
   branch_name?: string | null
@@ -729,6 +782,11 @@ export function CRMBoard({
 
     if (filters.tags.length > 0)
       result = result.filter(l => (l.tags ?? []).some(t => filters.tags.includes(t)))
+
+    if (filters.owners.length > 0)
+      result = result.filter(l =>
+        filters.owners.includes(l.owner_name ?? SEM_DONO),
+      )
 
     if (filters.procedureIds.length > 0)
       result = result.filter(l =>

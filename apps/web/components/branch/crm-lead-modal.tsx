@@ -11,7 +11,7 @@ import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { StageOptions } from './stage-options'
 import { LeadTimeline } from './lead-timeline'
 import type { Lead } from './crm-board'
-import { LEAD_SOURCES, isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
+import { LEAD_SOURCES, unitTag } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 
 export interface Procedure { id: string; name: string }
@@ -44,9 +44,8 @@ interface CRMLeadModalProps {
   /** Modo rede: a presença desta lista é o que liga o modo rede do card. */
   branches?:       CRMBranch[]
   /**
-   * Unidades da rede para o seletor de unidade do lead. Separado de `branches`
-   * de propósito: o portal da unidade precisa do seletor (para passar o lead
-   * adiante) sem virar modo rede.
+   * Unidades da rede, oferecidas como sugestão de tag. Separado de `branches`
+   * de propósito: o portal da unidade precisa das sugestões sem virar modo rede.
    */
   unidades?:       { id: string; name: string }[]
   /** Todas as etapas da rede: é o que permite mover o lead para outro funil. */
@@ -103,12 +102,19 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [tags,      setTags]      = useState<string[]>(existing?.tags ?? [])
     const [tagDraft,  setTagDraft]  = useState('')
 
-    // Sugestões rápidas: só origens canônicas. A unidade também é tag, mas tem
-    // seletor próprio acima — sugerir aqui daria dois lugares para a mesma coisa.
-    const suggestedTags = LEAD_SOURCES.map(s => s.key)
-
-    /** As tags livres. A de unidade é editada pelo seletor, não por badge. */
-    const tagsLivres = tags.filter(t => !isUnitTag(t))
+    /**
+     * Sugestões de tag: origens canônicas + unidades da rede.
+     *
+     * A unidade é uma tag como outra qualquer — não é dona do lead e não decide
+     * quem o enxerga. Ela existe como sugestão só para não virar texto digitado
+     * à mão ("Unidade: centro" minúsculo não casa com a métrica por unidade).
+     * Quem decide de quem é o lead são as pessoas, pela tag e pelo dono; a
+     * distribuição automática fica para as automações.
+     */
+    const suggestedTags = useMemo(() => [
+      ...LEAD_SOURCES.map(s => s.key),
+      ...(unidades ?? []).map(u => unitTag(u.name)),
+    ], [unidades])
 
     /** Origem gravada que não existe na lista canônica (base legada). */
     const origemForaDaLista =
@@ -129,19 +135,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     // Sem filial no lead, o portal da rede não tem slug de unidade para
     // revalidar; a action revalida /admin/crm de qualquer jeito.
     const activeBranchSlug = networkMode ? '' : (slug ?? '')
-
-    /** A unidade do lead vive na tag; o seletor só lê e escreve nela. */
-    const unidadeAtual = useMemo(() => {
-      const t = tags.find(isUnitTag)
-      return t ? unitTagName(t) : ''
-    }, [tags])
-
-    function definirUnidade(nome: string) {
-      setTags(prev => {
-        const semUnidade = prev.filter(t => !isUnitTag(t))
-        return nome ? [...semUnidade, unitTag(nome)] : semUnidade
-      })
-    }
 
     const open = useCallback(() => {
       setPhone(existing?.phone ?? '')
@@ -259,29 +252,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               <input type="hidden" name="tags" value={JSON.stringify(tags)} />
               {isEdit && <input type="hidden" name="_leadId" value={existing!.id} />}
 
-              {/*
-                Unidade — o lead é da REDE; a unidade é uma tag, não fronteira.
-                Era um seletor de Filial que gravava `leads.branch_id`, o único
-                lugar do sistema que produzia lead preso a uma filial. Agora
-                mexe na tag `Unidade: <nome>`, que é o que o quadro da unidade
-                filtra — e a troca fica registrada no histórico do card.
-              */}
-              {unidades && unidades.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <Label>Unidade</Label>
-                  <select
-                    className="field"
-                    value={unidadeAtual}
-                    onChange={e => definirUnidade(e.target.value)}
-                  >
-                    {/* Sem unidade é o bolo comum: aparece para todas. */}
-                    <option value="">Sem unidade — aberto a todas</option>
-                    {unidades.map(u => (
-                      <option key={u.id} value={u.name}>{u.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
 
               {/* Nome */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -394,9 +364,9 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 </p>
 
                 {/* Tags selecionadas */}
-                {tagsLivres.length > 0 && (
+                {tags.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-                    {tagsLivres.map(t => (
+                    {tags.map(t => (
                       <TagBadge key={t} label={t} size="sm" onRemove={() => removeTag(t)} />
                     ))}
                   </div>

@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { isUnitTag } from '@estetica-os/utils'
+import { isUnitTag, unitTagName } from '@estetica-os/utils'
 
 export type LeadEventType =
   | 'CREATED'
@@ -122,7 +122,8 @@ export const CAMPOS_LEAD: Record<string, string> = {
 /** Estado do lead antes de uma edição, para comparar depois. */
 export interface EstadoLead {
   crm_stage_id: string | null
-  unidade:      string | null
+  /** Unidades marcadas, como lista legível. Podem ser mais de uma: é tag. */
+  unidades:     string
   campos:       Record<string, string | null>
 }
 
@@ -200,7 +201,7 @@ export async function estadoAtualDoLead(
 
   return {
     crm_stage_id: l.crm_stage_id,
-    unidade:      tags.find(isUnitTag) ?? null,
+    unidades:     listaLegivel(tags.filter(isUnitTag).map(unitTagName)),
     campos: {
       name:         l.name,
       phone:        l.phone,

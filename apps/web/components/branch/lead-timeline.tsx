@@ -66,16 +66,10 @@ function Descricao({ e }: { e: LeadEvent }) {
   if (e.type === 'CONVERTED')     return <span style={forte}>Virou cliente</span>
   if (e.type === 'OWNER_CHANGED') return <span style={forte}>Responsável alterado</span>
 
-  if (e.type === 'UNIT_CHANGED') {
-    const c = e.changes?.[0]
-    return (
-      <span>
-        <span style={forte}>{c?.para ?? 'Sem unidade'}</span>
-        {c?.de
-          ? <span style={{ color: 'var(--text-muted)' }}> — antes {c.de}</span>
-          : <span style={{ color: 'var(--text-muted)' }}> assumiu o lead</span>}
-      </span>
-    )
+  // A unidade é tag e pode ser mais de uma, então lê melhor como qualquer
+  // outra alteração: "Unidade: Centro → Centro, Jardins".
+  if (e.type === 'UNIT_CHANGED' && e.changes && e.changes.length > 0) {
+    return <Alteracoes changes={e.changes} />
   }
 
   if (e.type === 'APPOINTMENT_CREATED') {

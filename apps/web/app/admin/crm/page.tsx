@@ -83,6 +83,7 @@ export default async function AdminCRMPage({
       .select(`
         id, name, phone, email, social_media, source,
         crm_stage_id, notes, client_id, created_at, tags,
+        owner_id, users(name),
         conversations(last_message_at, awaiting_since),
         lead_procedures(procedure_id, procedures(name, price))
       `)
@@ -96,7 +97,7 @@ export default async function AdminCRMPage({
   }
 
   const leads = leadsRaw.map((l: any) => {
-    const { conversations, ...rest } = l
+    const { conversations, users: _dono, ...rest } = l
     const convs = (conversations ?? []) as { last_message_at: string | null; awaiting_since: string | null }[]
     const lastInteractionAt = convs
       .map(c => c.last_message_at)
@@ -111,6 +112,7 @@ export default async function AdminCRMPage({
     return {
       ...rest,
       tags:                l.tags ?? [],
+      owner_name:          l.users?.name ?? null,
       last_interaction_at: lastInteractionAt,
       awaiting_since:      awaitingSince,
       // O badge da unidade sai da TAG, não de branch_id: o lead é da rede e a
