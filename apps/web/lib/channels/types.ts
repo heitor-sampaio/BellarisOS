@@ -83,6 +83,18 @@ export interface SendProvider {
   send(to: string, content: string): Promise<{ externalId: string }>
   /** Baixa a mídia recebida; nem todo provedor precisa de autenticação. */
   fetchMedia?(media: InboundMedia): Promise<{ bytes: ArrayBuffer; mimeType: string } | null>
+  /**
+   * Envia um template aprovado — o único caminho para falar com alguém fora da
+   * janela de 24h.
+   *
+   * Opcional porque só a API oficial tem template: a Z-API fala pelo WhatsApp
+   * Web, onde não existe janela nem aprovação, e Instagram/Messenger não têm
+   * nada equivalente.
+   */
+  sendTemplate?(
+    to: string,
+    template: { name: string; language: string; components: Array<Record<string, unknown>> },
+  ): Promise<{ externalId: string }>
 }
 
 /**

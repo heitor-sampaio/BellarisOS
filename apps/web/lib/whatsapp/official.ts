@@ -45,6 +45,48 @@ export class OfficialAPIProvider implements WhatsAppProvider {
     return { externalId: data.messages?.[0]?.id ?? '' }
   }
 
+  /**
+   * Envia um template aprovado.
+   *
+   * É o único jeito de falar com alguém fora da janela de 24h: a API recusa
+   * `type: text` passado o prazo, mas aceita `type: template` sempre.
+   */
+  async sendTemplate(
+    to: string,
+    template: { name: string; language: string; components: Array<Record<string, unknown>> },
+  ): Promise<{ externalId: string }> {
+    const res = await fetch(`${GRAPH}/${this.config.phoneNumberId}/messages`, {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${this.config.accessToken}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        ...(classificarIdentificador(to) === 'phone'
+          ? { to: to.replace(/\D/g, '') }
+          : { recipient_type: 'individual', recipient: to }),
+        type: 'template',
+        template: {
+          name:     template.name,
+          language: { code: template.language },
+          // Só vão os componentes COM variável. Mandar um `body` de parâmetros
+          // vazio num template sem variável é recusado com `132000`.
+          ...(template.components.length > 0 && { components: template.components }),
+        },
+      }),
+    })
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => null)
+      throw new Error(
+        `WhatsApp API ${res.status}: ${JSON.stringify(err?.error ?? {})}`,
+      )
+    }
+    const data = await res.json()
+    return { externalId: data.messages?.[0]?.id ?? '' }
+  }
+
   parseInbound(payload: unknown): InboundMsg | null {
     // Meta Cloud API payload: entry[0].changes[0].value.messages[0]
     const p     = payload as any

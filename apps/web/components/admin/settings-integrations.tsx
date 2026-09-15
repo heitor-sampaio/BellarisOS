@@ -192,6 +192,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   const [accessToken,   setAccessToken]   = useState(existing.accessToken ?? '')
   const [verifyToken,   setVerifyToken]   = useState(existing.verifyToken ?? '')
   const [appSecret,     setAppSecret]     = useState(existing.appSecret ?? '')
+  const [wabaId,        setWabaId]        = useState(existing.wabaId ?? '')
   const [isActive,      setIsActive]      = useState(initial?.is_active ?? false)
   const [testResult,    setTestResult]    = useState<{ ok: boolean; detail?: string } | null>(null)
   const [isPending,     startTransition]  = useTransition()
@@ -201,7 +202,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   function handleSave() {
     setSaved(false)
     startTransition(async () => {
-      const res = await saveWhatsAppConfig('official', { phoneNumberId, accessToken, verifyToken, appSecret }, isActive)
+      const res = await saveWhatsAppConfig('official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId }, isActive)
       if (res.ok) setSaved(true)
     })
   }
@@ -209,7 +210,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   function handleTest() {
     setTestResult(null)
     startTest(async () => {
-      await saveWhatsAppConfig('official', { phoneNumberId, accessToken, verifyToken, appSecret }, true)
+      await saveWhatsAppConfig('official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId }, true)
       const res = await testWhatsAppConnection('official')
       setTestResult(res)
     })
@@ -217,6 +218,14 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <Field
+        label="WhatsApp Business Account ID (WABA)"
+        name="wabaId"
+        value={wabaId}
+        onChange={setWabaId}
+        placeholder="Ex: 987654321098765"
+        hint="Diferente do Phone Number ID. É por ele que os templates são criados e aprovados — sem ele a tela de Templates não envia nada à Meta."
+      />
       <Field
         label="Phone Number ID"
         name="phoneNumberId"

@@ -56,6 +56,9 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'oportunidades',group: 'vendas',       label: 'Oportunidades', href: '/admin/oportunidades',  visible: p => has(p, 'crm') },
   { key: 'notificacoes', group: 'vendas',       label: 'Notificações',  href: '/admin/notificacoes',   visible: p => has(p, 'marketing') },
   { key: 'marketing',    group: 'vendas',       label: 'Marketing',     href: '/admin/marketing',      visible: p => has(p, 'marketing') },
+  // Templates do WhatsApp oficial. Ficam aqui, e não em Configurações, porque
+  // quem escreve a mensagem é o time comercial — não quem conecta a API.
+  { key: 'templates',    group: 'vendas',       label: 'Templates',     href: '/admin/templates',      visible: p => has(p, 'marketing') },
 
   { key: 'financial',    group: 'dinheiro',     label: 'Financeiro',    href: '/admin/financeiro',     visible: p => has(p, 'financial') },
   { key: 'stock',        group: 'dinheiro',     label: 'Estoque',       href: '/admin/estoque',        visible: p => has(p, 'stock') },

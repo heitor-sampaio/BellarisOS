@@ -18,6 +18,7 @@ import {
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { estadoDaJanela } from '@/lib/channels/window'
+import { InboxTemplatePicker } from '@/components/admin/inbox-template-picker'
 import {
   secondsSince, agingLevel, AGING_STYLE, AWAITING_THRESHOLDS,
   formatDurationShort, formatDurationLong,
@@ -383,6 +384,8 @@ interface CRMInboxProps {
   slug?:                string
   /** Canais que a rede realmente conectou — decide o aviso de integração. */
   canaisConectados?:    InboxChannel[]
+  /** Provedor de WhatsApp ativo agora — decide se a janela de 24h vale. */
+  provedorWhatsApp?:    string | null
   /** conversa pré-selecionada (deep-link ?c= vindo do card do funil) */
   initialSelectedId?:   string | null
 }
@@ -390,6 +393,7 @@ interface CRMInboxProps {
 export function CRMInbox({
   initialConversations, leads, canEdit, branches,
   slug = '__admin__', initialSelectedId = null, canaisConectados = [],
+  provedorWhatsApp = null,
 }: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)
   const [selectedId,    setSelectedId]    = useState<string | null>(initialSelectedId)
@@ -403,6 +407,7 @@ export function CRMInbox({
   // Nulo no servidor de propósito — ver ConvItem.
   const [nowMs,         setNowMs]         = useState<number | null>(null)
   const [sendError,     setSendError]     = useState<string | null>(null)
+  const [showTemplates, setShowTemplates] = useState(false)
   const bottomRef  = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -412,7 +417,13 @@ export function CRMInbox({
   // do contato. Vale para Instagram, Messenger e WhatsApp pela API oficial —
   // não para a Z-API, que não passa pela API oficial.
   const janela = selectedConv
-    ? estadoDaJanela(selectedConv.channel, selectedConv.last_inbound_at, selectedConv.provider)
+    ? estadoDaJanela(
+        selectedConv.channel,
+        selectedConv.last_inbound_at,
+        // O provedor ATIVO manda: se a rede migrou de Z-API para a API oficial,
+        // a janela passa a valer mesmo nas conversas antigas.
+        provedorWhatsApp ?? selectedConv.provider,
+      )
     : { aberta: true, fechaEm: null, motivo: null }
 
   // Load messages + subscribe to realtime when conversation changes
@@ -593,6 +604,23 @@ export function CRMInbox({
           leads={leads}
           onCreated={handleConvCreated}
           onClose={() => setShowNewConv(false)}
+        />
+      )}
+
+      {showTemplates && selectedConv && (
+        <InboxTemplatePicker
+          conversationId={selectedConv.id}
+          onClose={() => setShowTemplates(false)}
+          onSent={msg => {
+            setMessages(prev => [...prev, msg])
+            setSendError(null)
+            // A conversa some do topo da lista se a prévia não acompanhar.
+            setConversations(prev => prev.map(c =>
+              c.id === msg.conversation_id
+                ? { ...c, last_message: msg.content, last_message_at: msg.created_at }
+                : c,
+            ))
+          }}
         />
       )}
 
@@ -861,7 +889,25 @@ export function CRMInbox({
                   fontSize: 12, color: '#92400e',
                 }}>
                   <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-                  <span>{janela.motivo}</span>
+                  <div style={{ flex: 1 }}>
+                    <span>{janela.motivo}</span>
+                    {/* Template é a única saída daqui: a Meta recusa texto livre
+                        fora da janela, mas entrega template aprovado sempre. */}
+                    {selectedConv.channel === 'whatsapp' && provedorWhatsApp === 'official' && (
+                      <button
+                        type="button"
+                        onClick={() => setShowTemplates(true)}
+                        style={{
+                          display: 'block', marginTop: 6, padding: 0, border: 'none',
+                          background: 'none', cursor: 'pointer',
+                          fontSize: 12, fontWeight: 800, color: '#92400e',
+                          textDecoration: 'underline',
+                        }}
+                      >
+                        Enviar um template →
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -8,6 +8,9 @@ import { resolverCanal } from '@/lib/channels/factory'
 import { estadoDaJanela } from '@/lib/channels/window'
 import { urlDaMidia } from '@/lib/inbox/media'
 import type { ChannelKind } from '@/lib/channels/types'
+import {
+  extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
+} from '@/lib/templates/core'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
@@ -512,4 +515,192 @@ function mensagemDeFalha(err: unknown): string {
 function revalidarInbox() {
   revalidatePath('/admin/inbox')
   revalidatePath('/[slug]/inbox', 'page')
+}
+
+// --- Templates na conversa ---------------------------------------------------
+
+export interface TemplateDaConversa {
+  id:          string
+  name:        string
+  category:    string
+  language:    string
+  header_text: string | null
+  body_text:   string
+  footer_text: string | null
+  /** Nomes das variáveis, na ordem em que aparecem. */
+  variaveis:   string[]
+  /** Valores que dá para adivinhar do card — o resto é digitado na hora. */
+  sugestoes:   Record<string, string>
+}
+
+/**
+ * Templates que dá para usar NESTA conversa.
+ *
+ * Só os aprovados: a Meta recusa qualquer outro status, e oferecer um template
+ * em análise na tela só produziria erro na hora de enviar.
+ */
+export async function getTemplatesParaConversa(
+  conversationId: string,
+): Promise<TemplateDaConversa[]> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'crm', 'MANAGE')
+  const admin = createAdminClient()
+
+  const { data: conv, error: erroConv } = await admin
+    .from('conversations')
+    .select('channel, contact_name, leads(name)')
+    .eq('id', conversationId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+
+  if (erroConv) { console.error('[getTemplatesParaConversa]', erroConv.message); return [] }
+  if (!conv || (conv as { channel: string }).channel !== 'whatsapp') return []
+
+  // Template é da API oficial. Com Z-API não há janela para contornar.
+  const canal = await resolverCanal(ctx.tenantId!, 'whatsapp')
+  if (!canal || canal.nome !== 'official') return []
+
+  const { data, error } = await admin
+    .from('message_templates')
+    .select('id, name, category, language, header_text, body_text, footer_text')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('status', 'APPROVED')
+    .order('name')
+
+  if (error) { console.error('[getTemplatesParaConversa]', error.message); return [] }
+
+  const convRow = conv as {
+    contact_name: string | null
+    leads: { name: string } | { name: string }[] | null
+  }
+  const lead = Array.isArray(convRow.leads) ? convRow.leads[0] : convRow.leads
+  const nome = lead?.name ?? convRow.contact_name ?? ''
+  // Só o primeiro nome: "Olá, Ana Paula Ribeiro da Silva" soa a mala direta.
+  const primeiroNome = nome.trim().split(/\s+/)[0] ?? ''
+
+  return (data ?? []).map(t => {
+    const row = t as unknown as {
+      id: string; name: string; category: string; language: string
+      header_text: string | null; body_text: string; footer_text: string | null
+    }
+    const variaveis = extrairVariaveis(row.header_text, row.body_text)
+    const sugestoes: Record<string, string> = {}
+    for (const v of variaveis) {
+      if (primeiroNome && (v === 'nome' || v === 'nome_cliente' || v === 'cliente')) {
+        sugestoes[v] = primeiroNome
+      }
+    }
+    return { ...row, variaveis, sugestoes }
+  })
+}
+
+/**
+ * Envia um template — o caminho para retomar conversa fora da janela de 24h.
+ *
+ * Não passa pela checagem de janela de propósito: é exatamente ela que este
+ * envio existe para contornar. O que continua valendo é o template estar
+ * APROVADO, porque isso quem decide é a Meta.
+ */
+export async function sendTemplateMessage(
+  conversationId: string,
+  templateId:     string,
+  valores:        Record<string, string>,
+): Promise<{ ok: boolean; message?: Message; error?: string }> {
+  const ctx   = await getTenantContext()
+  assertPermission(ctx, 'crm', 'MANAGE')
+  const admin = createAdminClient()
+
+  const { data: conv, error: erroConv } = await admin
+    .from('conversations')
+    .select('id, channel, status, contact_phone, contact_external_id')
+    .eq('id', conversationId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+
+  if (erroConv) return { ok: false, error: erroConv.message }
+  if (!conv)    return { ok: false, error: 'Conversa não encontrada' }
+  if ((conv as { status: string }).status === 'closed') {
+    return { ok: false, error: 'Conversa encerrada' }
+  }
+
+  const { data: tpl, error: erroTpl } = await admin
+    .from('message_templates')
+    .select('id, name, language, status, header_text, body_text, footer_text')
+    .eq('id', templateId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+
+  if (erroTpl) return { ok: false, error: erroTpl.message }
+  if (!tpl)    return { ok: false, error: 'Template não encontrado.' }
+
+  const t = tpl as unknown as {
+    id: string; name: string; language: string; status: string
+    header_text: string | null; body_text: string; footer_text: string | null
+  }
+  if (t.status !== 'APPROVED') {
+    return { ok: false, error: 'Este template ainda não foi aprovado pela Meta.' }
+  }
+
+  // Variável em branco vira um buraco visível na mensagem do cliente
+  // ("Olá, , seu horário"). Melhor barrar aqui.
+  const faltando = extrairVariaveis(t.header_text, t.body_text)
+    .filter(v => !valores[v]?.trim())
+  if (faltando.length > 0) {
+    return { ok: false, error: `Preencha: ${faltando.map(v => `{{${v}}}`).join(', ')}` }
+  }
+
+  const canal = await resolverCanal(ctx.tenantId!, 'whatsapp')
+  if (!canal?.provider.sendTemplate) {
+    return { ok: false, error: 'Templates exigem o WhatsApp Oficial conectado.' }
+  }
+
+  const destino = (conv as { contact_phone: string | null }).contact_phone
+    ?? (conv as { contact_external_id: string | null }).contact_external_id
+  if (!destino) return { ok: false, error: 'Esta conversa não tem um destinatário identificado.' }
+
+  const perfil = await admin
+    .from('users').select('id, name').eq('auth_id', ctx.userId).maybeSingle()
+  const membro = perfil.data as { id: string; name: string } | null
+
+  // O histórico guarda o texto JÁ preenchido: é o que o cliente leu. O vínculo
+  // com o template fica em `template_id`, para auditar o que foi disparado.
+  const { data: msgRow, error: erroInsert } = await admin
+    .from('messages')
+    .insert({
+      conversation_id: conversationId,
+      tenant_id:       ctx.tenantId!,
+      direction:       'outbound',
+      content:         textoDoEnvio(t, valores),
+      channel:         'whatsapp',
+      status:          'sending',
+      sent_by_id:      membro?.id ?? null,
+      sent_by_name:    membro?.name ?? null,
+      template_id:     t.id,
+    })
+    .select()
+    .single()
+
+  if (erroInsert) return { ok: false, error: erroInsert.message }
+  const criada = msgRow as unknown as { id: string; status: string }
+
+  try {
+    const { externalId } = await canal.provider.sendTemplate(destino, {
+      name:       t.name,
+      language:   t.language,
+      components: montarParametrosEnvio(t, valores),
+    })
+    await admin
+      .from('messages')
+      .update({ status: 'sent', external_id: externalId, provider: canal.nome })
+      .eq('id', criada.id)
+    criada.status = 'sent'
+  } catch (sendErr) {
+    console.error('[sendTemplateMessage]', sendErr)
+    await admin.from('messages').update({ status: 'failed' }).eq('id', criada.id)
+    criada.status = 'failed'
+    return { ok: false, error: mensagemDeFalha(sendErr) }
+  }
+
+  revalidarInbox()
+  return { ok: true, message: msgRow as unknown as Message }
 }

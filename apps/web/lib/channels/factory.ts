@@ -95,7 +95,20 @@ export async function getTenantPorPagina(
  * com o WhatsApp funcionando, e dizia que a mensagem seria "salva
  * internamente" — o que deixou de ser verdade: hoje o envio falha com erro.
  */
-export async function canaisConectados(tenantId: string): Promise<ChannelKind[]> {
+export interface CanaisDaRede {
+  canais: ChannelKind[]
+  /**
+   * Provedor de WhatsApp ATIVO agora — `official` ou `zapi`.
+   *
+   * A tela precisa dele para decidir a janela de 24h. Usar
+   * `conversations.provider` não serve: essa coluna só é preenchida depois de
+   * um envio bem-sucedido, então conversa que nunca foi respondida parecia
+   * estar sempre dentro da janela — e o aviso nunca aparecia.
+   */
+  provedorWhatsApp: string | null
+}
+
+export async function canaisConectados(tenantId: string): Promise<CanaisDaRede> {
   const [whatsapp, meta] = await Promise.all([
     import('@/lib/whatsapp/factory').then(m => m.getWhatsAppConfig(tenantId)),
     getMetaMessagingConfig(tenantId),
@@ -109,5 +122,5 @@ export async function canaisConectados(tenantId: string): Promise<ChannelKind[]>
     canais.push('messenger')
     if (page.igUserId) canais.push('instagram')
   }
-  return canais
+  return { canais, provedorWhatsApp: whatsapp?.provider ?? null }
 }

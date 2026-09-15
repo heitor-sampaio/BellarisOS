@@ -79,7 +79,8 @@ export default async function AdminInboxPage({
         canEdit={can(ctx, 'crm', 'MANAGE')}
         branches={branches}
         initialSelectedId={convParam ?? null}
-        canaisConectados={canais}
+        canaisConectados={canais.canais}
+        provedorWhatsApp={canais.provedorWhatsApp}
       />
     </div>
   )

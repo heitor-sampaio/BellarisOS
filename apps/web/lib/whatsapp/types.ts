@@ -37,6 +37,14 @@ export interface OfficialConfig {
   accessToken:   string
   verifyToken:   string
   appSecret:     string   // for HMAC webhook signature validation
+  /**
+   * Id da WhatsApp Business Account.
+   *
+   * Diferente do `phoneNumberId`: mensagem sai pelo número, template é
+   * gerenciado pela conta. Sem ele não há gestão de template — e trocar um
+   * pelo outro dá 404 sem explicação.
+   */
+  wabaId?:       string
 }
 
 export type WhatsAppConfig = ZAPIConfig | OfficialConfig

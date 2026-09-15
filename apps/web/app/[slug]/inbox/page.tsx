@@ -91,7 +91,8 @@ export default async function BranchInboxPage({
         branches={branches}
         slug={slug}
         initialSelectedId={convParam ?? null}
-        canaisConectados={canais}
+        canaisConectados={canais.canais}
+        provedorWhatsApp={canais.provedorWhatsApp}
       />
     </div>
   )
