@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import type { WhatsAppProvider, OfficialConfig } from './types'
 import type { InboundMsg, InboundMedia, MediaKind, StatusUpdate } from '@/lib/channels/types'
+import { montarIdentidade, classificarIdentificador } from '@/lib/channels/identity'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
 
@@ -27,7 +28,11 @@ export class OfficialAPIProvider implements WhatsAppProvider {
       },
       body: JSON.stringify({
         messaging_product: 'whatsapp',
-        to:   to.replace(/\D/g, ''),
+        // Telefone vai em `to`; BSUID vai em `recipient` e o `to` some.
+        // Mandar um BSUID em `to` (ou pior, só os dígitos dele) é recusado.
+        ...(classificarIdentificador(to) === 'phone'
+          ? { to: to.replace(/\D/g, '') }
+          : { recipient_type: 'individual', recipient: to }),
         type: 'text',
         text: { body: content },
       }),
@@ -69,10 +74,25 @@ export class OfficialAPIProvider implements WhatsAppProvider {
         }
       : undefined
 
-    const phone = msg.from as string
+    // Identidade na Cloud API deixou de ser só o telefone.
+    //
+    // `contacts[].user_id` e `messages[].from_user_id` trazem o BSUID
+    // (`BR.1A2B…`) em todo webhook de mensagem; `wa_id` e `from` são omitidos
+    // quando o contato usa username e não houve contato nos últimos 30 dias.
+    // Ler só `from` fazia a conversa nascer com `undefined` como identidade.
+    const contato = value?.contacts?.[0]
+    const identidade = montarIdentidade([
+      msg.from,
+      contato?.wa_id,
+      msg.from_user_id,
+      contato?.user_id,
+    ])
+    if (!identidade) return null
+
     const out: InboundMsg = {
-      externalUserId: phone,
-      phone,
+      externalUserId: identidade.externalUserId,
+      phone:          identidade.phone,
+      aliases:        identidade.aliases,
       content,
       externalId: msg.id as string,
       timestamp:  new Date(parseInt(msg.timestamp as string) * 1000).toISOString(),

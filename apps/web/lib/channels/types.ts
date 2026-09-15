@@ -39,12 +39,24 @@ export interface InboundMedia {
 
 export interface InboundMsg {
   /**
-   * Identidade do contato NO CANAL: telefone no WhatsApp, PSID no Messenger,
-   * IGSID no Instagram. É o que identifica a conversa.
+   * Identidade do contato NO CANAL: telefone ou @lid/BSUID no WhatsApp, PSID no
+   * Messenger, IGSID no Instagram. É o que identifica a conversa.
    */
   externalUserId: string
-  /** Telefone, quando o canal tem um. Instagram e Messenger não têm. */
+  /**
+   * Telefone, quando o canal tem um E ele veio de verdade.
+   *
+   * Nunca receba aqui um @lid com os dígitos extraídos: ele tem o mesmo
+   * tamanho de um E.164, entra sem reclamar e vira um número para o qual a
+   * clínica liga e não existe. Ver `lib/channels/identity.ts`.
+   */
   phone?:      string | null
+  /**
+   * Outros identificadores da MESMA pessoa vistos nesta mensagem (@lid, BSUID,
+   * telefone). O WhatsApp alterna entre eles; é por aqui que a conversa antiga
+   * é reencontrada em vez de nascer uma segunda.
+   */
+  aliases?:    string[]
   content:     string
   externalId:  string      // id da mensagem no provedor
   timestamp:   string      // ISO 8601

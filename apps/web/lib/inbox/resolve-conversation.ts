@@ -39,35 +39,61 @@ export async function resolveConversation(
   const admin = createAdminClient()
   const phone = msg.phone ? normalizePhone(msg.phone) : null
 
-  // 1. Lead que já existe.
+  // Todos os identificadores desta pessoa nesta mensagem. O WhatsApp alterna
+  // entre telefone e @lid (e a Cloud API entre telefone e BSUID) na mesma
+  // conversa: é por este conjunto que a pessoa é reencontrada.
+  const aliases = Array.from(new Set([
+    ...(msg.aliases ?? []),
+    msg.externalUserId,
+    ...(phone ? [phone] : []),
+  ].filter(Boolean)))
+
+  // 1. Conversa que já existe, por QUALQUER identificador conhecido.
   //
-  // Por telefone quando o canal tem um (WhatsApp) — cobre o card cadastrado à
-  // mão antes da primeira mensagem. Sem telefone, a única pista é a conversa
-  // anterior no mesmo canal.
+  // Casar só por `contact_external_id` fazia a mesma pessoa virar uma segunda
+  // conversa assim que o WhatsApp trocava o identificador dela.
+  const { data: existentes, error: erroExistente } = await admin
+    .from('conversations')
+    .select('id, branch_id, lead_id, contact_phone, contact_aliases, leads(name)')
+    .eq('tenant_id', tenantId)
+    .eq('channel', channel)
+    .overlaps('contact_aliases', aliases)
+    .limit(1)
+
+  if (erroExistente) {
+    console.error('[resolveConversation] buscar por alias:', erroExistente.message)
+    return null
+  }
+
+  const jaExiste = existentes?.[0] as {
+    id: string; branch_id: string | null; lead_id: string | null
+    contact_phone: string | null; contact_aliases: string[] | null
+    leads: { name: string } | null
+  } | undefined
+
+  if (jaExiste) {
+    await completarIdentidade(admin, jaExiste, aliases, phone, msg.displayName ?? null)
+    return { conversationId: jaExiste.id, branchId: jaExiste.branch_id }
+  }
+
+  // 2. Lead que já existe, mesmo sem conversa.
+  //
+  // Por telefone quando ele veio de verdade — cobre o card cadastrado à mão
+  // antes da primeira mensagem. Com @lid puro não há o que cruzar: a conversa
+  // anterior já foi procurada acima.
   let leadId: string | null = null
   let nomeDoLead: string | null = null
 
   if (phone) {
-    const { data } = await admin
+    const { data, error } = await admin
       .from('leads')
       .select('id, name')
       .eq('tenant_id', tenantId)
       .or(`phone.eq.${phone},phone.eq.+${phone}`)
       .limit(1)
+    if (error) console.error('[resolveConversation] buscar lead:', error.message)
     leadId     = data?.[0]?.id   ?? null
     nomeDoLead = data?.[0]?.name ?? null
-  } else {
-    const { data } = await admin
-      .from('conversations')
-      .select('lead_id, leads(name)')
-      .eq('tenant_id', tenantId)
-      .eq('channel', channel)
-      .eq('contact_external_id', msg.externalUserId)
-      .not('lead_id', 'is', null)
-      .limit(1)
-    const row = data?.[0] as { lead_id: string; leads: { name: string } | null } | undefined
-    leadId     = row?.lead_id ?? null
-    nomeDoLead = row?.leads?.name ?? null
   }
 
   const contactName = nomeDoLead
@@ -75,7 +101,7 @@ export async function resolveConversation(
     ?? phone
     ?? msg.externalUserId
 
-  // 2. Cria a conversa. Insert direto e o 23505 como trava de concorrência.
+  // 3. Cria a conversa. Insert direto e o 23505 como trava de concorrência.
   //
   // O `upsert` com `onConflict` que existia aqui falhava com `42P10`: o índice
   // único era PARCIAL e o Postgres não o infere sem repetir o predicado, coisa
@@ -92,6 +118,7 @@ export async function resolveConversation(
       contact_name:        contactName,
       contact_phone:       phone,
       contact_external_id: msg.externalUserId,
+      contact_aliases:     aliases,
     })
     .select('id')
     .single()
@@ -104,7 +131,7 @@ export async function resolveConversation(
     // Outra entrega criou primeiro — é dela que precisamos.
     const { data: convRows, error: erroBusca } = await admin
       .from('conversations')
-      .select('id, branch_id')
+      .select('id, branch_id, lead_id, contact_phone, contact_aliases')
       .eq('tenant_id', tenantId)
       .eq('channel', channel)
       .eq('contact_external_id', msg.externalUserId)
@@ -114,10 +141,11 @@ export async function resolveConversation(
       return null
     }
     if (!convRows || convRows.length === 0) return null
+    await completarIdentidade(admin, convRows[0]!, aliases, phone, msg.displayName ?? null)
     return { conversationId: convRows[0]!.id, branchId: convRows[0]!.branch_id }
   }
 
-  // 3. Vencemos o insert — sem lead, cria o card agora (rede, sem filial).
+  // 4. Vencemos o insert — sem lead, cria o card agora (rede, sem filial).
   const conversationId = inserted!.id
   if (!leadId) {
     const derived = resolveLeadSource({ referral: msg.referral })
@@ -179,6 +207,53 @@ export async function resolveConversation(
   }
 
   return { conversationId, branchId: null }
+}
+
+/**
+ * A conversa já existia — aprende o que esta mensagem trouxe de novo.
+ *
+ * É aqui que o ganho da reconciliação se materializa: o contato que sempre
+ * chegou como @lid finalmente manda o telefone, e o card passa a ter um número
+ * para o qual a clínica consegue ligar. Sem isto o alias serviria só para não
+ * duplicar, e o dado novo seria jogado fora.
+ *
+ * Nunca SOBRESCREVE: telefone e nome que já existem foram possivelmente
+ * corrigidos à mão por quem atende.
+ */
+async function completarIdentidade(
+  admin:    ReturnType<typeof createAdminClient>,
+  conversa: {
+    id: string; lead_id: string | null
+    contact_phone: string | null; contact_aliases: string[] | null
+  },
+  aliases:  string[],
+  phone:    string | null,
+  displayName: string | null,
+) {
+  const conhecidos = new Set(conversa.contact_aliases ?? [])
+  const novos      = aliases.filter(a => !conhecidos.has(a))
+  const ganhaFone  = !conversa.contact_phone && !!phone
+
+  if (novos.length === 0 && !ganhaFone) return
+
+  const patch: Record<string, unknown> = {}
+  if (novos.length > 0) patch.contact_aliases = [...conhecidos, ...novos]
+  if (ganhaFone)        patch.contact_phone   = phone
+
+  const { error } = await admin.from('conversations').update(patch).eq('id', conversa.id)
+  if (error) console.error('[completarIdentidade] conversa:', error.message)
+
+  // O card também estava sem telefone: é o mesmo dado, do outro lado.
+  if (ganhaFone && conversa.lead_id) {
+    const { error: erroLead } = await admin
+      .from('leads')
+      .update({ phone })
+      .eq('id', conversa.lead_id)
+      .is('phone', null)
+    if (erroLead) console.error('[completarIdentidade] lead:', erroLead.message)
+  }
+
+  void displayName   // nome do card é decisão de quem atende; não sobrescrevemos
 }
 
 export async function insertInboundMessage(

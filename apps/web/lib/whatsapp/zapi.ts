@@ -1,5 +1,8 @@
 import type { WhatsAppProvider, ZAPIConfig } from './types'
 import type { InboundMsg, InboundMedia, MediaKind, StatusUpdate } from '@/lib/channels/types'
+import {
+  montarIdentidade, classificarIdentificador, ehConversaDeGrupo,
+} from '@/lib/channels/identity'
 
 const DEFAULT_BASE = 'https://api.z-api.io'
 
@@ -27,7 +30,14 @@ export class ZAPIProvider implements WhatsAppProvider {
   }
 
   async send(to: string, content: string): Promise<{ externalId: string }> {
-    const phone = to.replace(/\D/g, '')
+    // ⚠️ `to` pode ser um @lid. O `replace(/\D/g,'')` que havia aqui arrancava
+    // o sufixo e mandava 15 dígitos soltos, que a Z-API não resolve para
+    // ninguém. Ela aceita o @lid inteiro no mesmo campo `phone`; só telefone
+    // é que precisa virar dígitos.
+    const phone = classificarIdentificador(to) === 'phone'
+      ? to.replace(/\D/g, '')
+      : to
+
     const res = await fetch(this.url('/send-text'), {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -43,8 +53,29 @@ export class ZAPIProvider implements WhatsAppProvider {
 
   parseInbound(payload: unknown): InboundMsg | null {
     const p = payload as any
-    // Z-API inbound webhook: { phone, text.message, messageId, momment, isStatusReply, senderName }
-    if (!p?.phone) return null
+    // Z-API inbound: { phone, chatLid, senderLid, participantPhone, participantLid,
+    //                  isGroup, fromMe, text.message, messageId, momment, senderName }
+
+    // Eco da mensagem que a própria clínica mandou (pelo celular, por exemplo).
+    // Sem este corte ela entra como se fosse do cliente e ainda zera o
+    // "aguardando resposta".
+    if (p?.fromMe === true) return null
+
+    // Grupos, listas e canais não são atendimento um-a-um: cada um viraria um
+    // lead no funil com o nome do grupo no lugar do cliente.
+    if (p?.isGroup === true || ehConversaDeGrupo(p?.phone, p?.chatLid)) return null
+
+    // A identidade pode vir em qualquer um destes campos, e o `phone` às vezes
+    // traz o próprio @lid. A ordem importa: o primeiro telefone de verdade vira
+    // a chave, e todo o resto fica como alias para reconciliar.
+    const identidade = montarIdentidade([
+      p?.phone,
+      p?.participantPhone,
+      p?.chatLid,
+      p?.senderLid,
+      p?.participantLid,
+    ])
+    if (!identidade) return null
 
     // Mídia: a Z-API manda o anexo num objeto por tipo, com URL já pública.
     // Antes só texto entrava — foto do cliente era descartada no webhook.
@@ -66,10 +97,10 @@ export class ZAPIProvider implements WhatsAppProvider {
       ?? (media ? `[${media.kind}]` : undefined)
     if (!texto) return null
 
-    const phone = p.phone.replace(/\D/g, '')
     const out: InboundMsg = {
-      externalUserId: phone,
-      phone,
+      externalUserId: identidade.externalUserId,
+      phone:          identidade.phone,
+      aliases:        identidade.aliases,
       content:    texto,
       externalId: (p.messageId ?? p.zaapId ?? '') as string,
       timestamp:  p.momment

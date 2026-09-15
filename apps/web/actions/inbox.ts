@@ -259,6 +259,10 @@ export async function openLeadConversation(
       // Identidade da conversa no canal. Sem isto a conversa nasce fora do
       // índice único e o webhook criaria uma segunda para o mesmo contato.
       contact_external_id: contactPhone ?? `lead:${leadId}`,
+      // O webhook reconcilia por aqui. Quando esta pessoa escrever pelo
+      // WhatsApp — possivelmente identificada por @lid —, é o telefone nesta
+      // lista que liga a mensagem a esta conversa em vez de abrir outra.
+      contact_aliases: contactPhone ? [contactPhone] : [`lead:${leadId}`],
     })
     .select('id')
     .single()
@@ -365,7 +369,10 @@ export async function sendMessage(
 
   // O destinatário é o id do contato NO CANAL: telefone no WhatsApp, PSID ou
   // IGSID nos canais da Meta.
-  const destino = (conv.contact_external_id as string | null) ?? (conv.contact_phone as string | null)
+  // Telefone primeiro quando existe: a chave da conversa pode ser um @lid, que
+  // funciona, mas o número é o identificador estável dos dois lados. Em
+  // Instagram e Messenger não há telefone e cai no id do canal, como sempre.
+  const destino = (conv.contact_phone as string | null) ?? (conv.contact_external_id as string | null)
   if (!destino) {
     await admin.from('messages').update({ status: 'failed' }).eq('id', msgTyped.id)
     return { ok: false, error: 'Esta conversa não tem um destinatário identificado.' }
@@ -448,6 +455,13 @@ export async function createConversationForLead(
 
   if (!lead) return { error: 'Lead não encontrado' }
 
+  // Mesmo cuidado de `openLeadConversation`: sem `contact_external_id` a
+  // conversa nasce com a chave nula, fora do índice único, e a primeira
+  // mensagem que chegar pelo webhook abre uma segunda conversa do mesmo
+  // contato. Os aliases são o que faz o webhook reencontrar esta aqui.
+  const telefone = lead.phone ? String(lead.phone).replace(/\D/g, '') : null
+  const externalId = telefone ?? `lead:${leadId}`
+
   const { data: conv, error } = await admin
     .from('conversations')
     .insert({
@@ -457,7 +471,9 @@ export async function createConversationForLead(
       channel,
       status:        'open',
       contact_name:  lead.name,
-      contact_phone: lead.phone ?? null,
+      contact_phone: telefone,
+      contact_external_id: externalId,
+      contact_aliases:     [externalId],
     })
     .select('id')
     .single()
