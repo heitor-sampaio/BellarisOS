@@ -38,6 +38,15 @@ export interface Conversation {
   last_inbound_at:        string | null
   awaiting_since:         string | null
   first_response_seconds: number | null
+  // -- Do card ligado à conversa. Servem aos filtros da caixa de entrada, que
+  //    são sobre a OPORTUNIDADE (tags, dono, etapa) e não sobre a conversa.
+  lead_tags:    string[]
+  owner_id:     string | null
+  owner_name:   string | null
+  stage_id:     string | null
+  stage_name:   string | null
+  funnel_id:    string | null
+  funnel_name:  string | null
 }
 
 export interface Message {
@@ -121,10 +130,89 @@ export async function getConversations(): Promise<Conversation[]> {
     return []
   }
 
-  return (data ?? []).map((c: any) => ({
+  return anexarDadosDoCard((data ?? []) as any[], ctx.tenantId!)
+}
+
+/**
+ * Junta às conversas o que vem do card: tags, dono, etapa e funil.
+ *
+ * Em consultas separadas, e não em embed aninhado do PostgREST
+ * (`leads(...crm_stages(...crm_funnels))`): a cada nível o embed exige que o
+ * relacionamento seja inferido sem ambiguidade, e quando ele falha o retorno
+ * vem sem o campo em vez de estourar — o filtro simplesmente não acharia nada,
+ * em silêncio. São quatro consultas pequenas: no máximo 200 leads, e etapas,
+ * funis e donos são dezenas por rede.
+ */
+async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Conversation[]> {
+  const vazio = (c: any): Conversation => ({
     ...c,
     branch_name: c.branches?.name ?? null,
-  }))
+    lead_tags: [], owner_id: null, owner_name: null,
+    stage_id: null, stage_name: null, funnel_id: null, funnel_name: null,
+  })
+
+  const leadIds = [...new Set(conversas.map(c => c.lead_id).filter(Boolean))] as string[]
+  if (leadIds.length === 0) return conversas.map(vazio)
+
+  const admin = createAdminClient()
+
+  const { data: leads, error: erroLeads } = await admin
+    .from('leads')
+    .select('id, tags, owner_id, crm_stage_id')
+    .eq('tenant_id', tenantId)
+    .in('id', leadIds)
+
+  if (erroLeads) {
+    // Sem os dados do card os filtros ficam vazios, mas a caixa de entrada
+    // continua funcionando — o que ela precisa mesmo é da lista de conversas.
+    console.error('[getConversations] cards:', erroLeads.message)
+    return conversas.map(vazio)
+  }
+
+  const porLead = new Map((leads ?? []).map((l: any) => [l.id as string, l]))
+  const stageIds = [...new Set((leads ?? []).map((l: any) => l.crm_stage_id).filter(Boolean))] as string[]
+  const ownerIds = [...new Set((leads ?? []).map((l: any) => l.owner_id).filter(Boolean))] as string[]
+
+  const [stagesRes, ownersRes] = await Promise.all([
+    stageIds.length > 0
+      ? admin.from('crm_stages').select('id, name, funnel_id').in('id', stageIds)
+      : Promise.resolve({ data: [], error: null }),
+    ownerIds.length > 0
+      ? admin.from('users').select('id, name').in('id', ownerIds)
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  if (stagesRes.error) console.error('[getConversations] etapas:', stagesRes.error.message)
+  if (ownersRes.error) console.error('[getConversations] donos:', ownersRes.error.message)
+
+  const porStage = new Map((stagesRes.data ?? []).map((s: any) => [s.id as string, s]))
+  const porOwner = new Map((ownersRes.data ?? []).map((u: any) => [u.id as string, u]))
+
+  const funnelIds = [...new Set((stagesRes.data ?? []).map((s: any) => s.funnel_id).filter(Boolean))] as string[]
+  const { data: funis, error: erroFunis } = funnelIds.length > 0
+    ? await admin.from('crm_funnels').select('id, name').in('id', funnelIds)
+    : { data: [], error: null }
+  if (erroFunis) console.error('[getConversations] funis:', erroFunis.message)
+  const porFunil = new Map((funis ?? []).map((f: any) => [f.id as string, f]))
+
+  return conversas.map(c => {
+    const lead  = c.lead_id ? porLead.get(c.lead_id) : null
+    const stage = lead?.crm_stage_id ? porStage.get(lead.crm_stage_id) : null
+    const funil = stage?.funnel_id ? porFunil.get(stage.funnel_id) : null
+    const dono  = lead?.owner_id ? porOwner.get(lead.owner_id) : null
+
+    return {
+      ...c,
+      branch_name: c.branches?.name ?? null,
+      lead_tags:   (lead?.tags as string[]) ?? [],
+      owner_id:    lead?.owner_id ?? null,
+      owner_name:  dono?.name ?? null,
+      stage_id:    stage?.id ?? null,
+      stage_name:  stage?.name ?? null,
+      funnel_id:   funil?.id ?? null,
+      funnel_name: funil?.name ?? null,
+    } as Conversation
+  })
 }
 
 /**

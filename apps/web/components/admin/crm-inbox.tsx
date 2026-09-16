@@ -18,6 +18,10 @@ import {
   type ReplyPreview,
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
+import {
+  InboxFiltros, ChipsDeFiltro, passaNosFiltros, contarFiltros,
+  FILTROS_VAZIOS, type FiltrosInbox,
+} from '@/components/admin/inbox-filtros'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { estadoDaJanela } from '@/lib/channels/window'
 import { InboxTemplatePicker } from '@/components/admin/inbox-template-picker'
@@ -615,7 +619,7 @@ export function CRMInbox({
   const [messages,      setMessages]      = useState<Message[]>([])
   const [loadingMsgs,   setLoadingMsgs]   = useState(false)
   const [search,        setSearch]        = useState('')
-  const [chFilter,      setChFilter]      = useState<InboxChannel | 'all'>('all')
+  const [filtros,       setFiltros]       = useState<FiltrosInbox>(FILTROS_VAZIOS)
   const [draft,         setDraft]         = useState('')
   const [isPending,     startTransition]  = useTransition()
   const [showNewConv,   setShowNewConv]   = useState(false)
@@ -762,9 +766,19 @@ export function CRMInbox({
         table: 'conversations',
       }, (payload) => {
         const newConv = payload.new as Conversation
+        // Tags, dono, etapa e funil vêm de outra tabela e não estão na linha do
+        // realtime. Entram vazios para a conversa aparecer NA HORA, e a leitura
+        // seguinte traz o que falta — conversa nova é evento raro, então a
+        // consulta extra não pesa, e sem ela a conversa recém-criada ficaria
+        // fora de qualquer filtro por card.
         setConversations(prev =>
-          prev.some(c => c.id === newConv.id) ? prev : [newConv, ...prev],
+          prev.some(c => c.id === newConv.id)
+            ? prev
+            : [{ ...newConv, lead_tags: newConv.lead_tags ?? [] }, ...prev],
         )
+        getConversations_client()
+          .then(convs => setConversations(convs))
+          .catch(err => console.error('[inbox] recarregar conversas', err))
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -961,13 +975,20 @@ export function CRMInbox({
   }
 
   const filtered = conversations.filter(c => {
-    const matchCh = chFilter === 'all' || c.channel === chFilter
+    if (!passaNosFiltros(c, filtros)) return false
+
+    // A busca é independente dos filtros e continua como era: nome do contato e
+    // texto da última mensagem. Agora também telefone e tag, porque quem procura
+    // "botox" ou o número que acabou de ligar espera achar por aí.
     const q = search.trim().toLowerCase()
-    const matchQ = !q
-      || (c.contact_name ?? '').toLowerCase().includes(q)
+    if (!q) return true
+    return (c.contact_name ?? '').toLowerCase().includes(q)
       || (c.last_message ?? '').toLowerCase().includes(q)
-    return matchCh && matchQ
+      || (c.contact_phone ?? '').toLowerCase().includes(q)
+      || (c.lead_tags ?? []).some(t => t.toLowerCase().includes(q))
   })
+
+  const filtrosAtivos = contarFiltros(filtros) > 0 || filtros.canal !== 'all'
 
   // Group messages by calendar day
   const dayGroups: { date: string; msgs: Message[] }[] = []
@@ -1066,6 +1087,11 @@ export function CRMInbox({
                   className="field" style={{ paddingLeft: 28, fontSize: 12.5 }}
                 />
               </div>
+              <InboxFiltros
+                conversas={conversations}
+                filtros={filtros}
+                onChange={setFiltros}
+              />
               {canEdit && (
                 <button
                   type="button"
@@ -1083,27 +1109,32 @@ export function CRMInbox({
               )}
             </div>
 
-            {/* Channel filter pills */}
-            <div style={{
-              display: 'flex', gap: 4, flexWrap: 'wrap',
-              paddingBottom: 10, borderBottom: '1px solid var(--hairline)',
-            }}>
+            {/* Canal nas pastilhas + o que estiver filtrado logo abaixo */}
+            <div style={{ paddingBottom: 10, borderBottom: '1px solid var(--hairline)' }}>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               {FILTERS.map(f => (
                 <button
                   key={f.key}
                   type="button"
-                  onClick={() => setChFilter(f.key)}
+                  onClick={() => setFiltros({ ...filtros, canal: f.key })}
                   style={{
                     fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 99, cursor: 'pointer',
-                    border: chFilter === f.key ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
-                    background: chFilter === f.key ? 'var(--brand-soft)' : 'var(--bg-app)',
-                    color: chFilter === f.key ? 'var(--brand)' : 'var(--text-muted)',
+                    border: filtros.canal === f.key ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
+                    background: filtros.canal === f.key ? 'var(--brand-soft)' : 'var(--bg-app)',
+                    color: filtros.canal === f.key ? 'var(--brand)' : 'var(--text-muted)',
                     transition: 'all 100ms',
                   }}
                 >
                   {f.label}
                 </button>
               ))}
+              </div>
+
+              <ChipsDeFiltro
+                conversas={conversations}
+                filtros={filtros}
+                onChange={setFiltros}
+              />
             </div>
           </div>
 
@@ -1131,9 +1162,21 @@ export function CRMInbox({
               <div style={{ padding: '40px 16px', textAlign: 'center' }}>
                 <MessageSquare size={26} color="var(--border)" />
                 <p style={{ fontSize: 12.5, color: 'var(--text-faint)', marginTop: 10 }}>
-                  {search || chFilter !== 'all' ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
+                  {search || filtrosAtivos ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
                 </p>
-                {canEdit && !search && chFilter === 'all' && (
+                {/* Lista vazia por causa de filtro tem saída à mão: sem isto a
+                    pessoa fica olhando um vazio que ela mesma causou. */}
+                {filtrosAtivos && (
+                  <button
+                    type="button"
+                    onClick={() => setFiltros(FILTROS_VAZIOS)}
+                    className="btn-ghost"
+                    style={{ fontSize: 12, marginTop: 8 }}
+                  >
+                    Limpar filtros
+                  </button>
+                )}
+                {canEdit && !search && !filtrosAtivos && (
                   <button
                     type="button"
                     onClick={() => setShowNewConv(true)}
