@@ -342,6 +342,14 @@ export interface ConversationCard {
   /** Etapas de TODOS os funis: é daqui que sai o menu que move o lead de funil. */
   stages:  InboxStage[]
   funnels: { id: string; name: string }[]
+  /**
+   * Tags já em uso na rede — o que o card oferece para escolher.
+   *
+   * O card não cria tag: quem atende escolhe entre as que existem. Sem isso, a
+   * mesma ideia vira "botox", "Botox" e "botox " em três atendimentos, e o
+   * filtro por tag deixa de servir para qualquer coisa.
+   */
+  tagsDaRede: string[]
 }
 
 export async function getLeadForConversation(conversationId: string): Promise<ConversationCard> {
@@ -355,6 +363,11 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
     .filter(f => f.archived_at === null)
     .map(f => ({ id: f.id, name: f.name }))
 
+  const { data: tagRows, error: erroTags } = await admin
+    .rpc('lead_tags_da_rede', { p_tenant: ctx.tenantId! })
+  if (erroTags) console.error('[getLeadForConversation] tags:', erroTags.message)
+  const tagsDaRede = ((tagRows ?? []) as { tag: string }[]).map(r => r.tag)
+
   const { data: conv } = await admin
     .from('conversations')
     .select('lead_id')
@@ -363,7 +376,7 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
     .maybeSingle()
 
   const leadId = (conv as { lead_id: string | null } | null)?.lead_id ?? null
-  if (!leadId) return { lead: null, stages, funnels }
+  if (!leadId) return { lead: null, stages, funnels, tagsDaRede }
 
   const { data: leadRow } = await admin
     .from('leads')
@@ -372,7 +385,7 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
 
-  if (!leadRow) return { lead: null, stages, funnels }
+  if (!leadRow) return { lead: null, stages, funnels, tagsDaRede }
 
   const l = leadRow as any
   const lead: InboxLead = {
@@ -389,7 +402,7 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
     client_id:    l.client_id,
     procedure_ids: ((l.lead_procedures ?? []) as { procedure_id: string }[]).map(p => p.procedure_id),
   }
-  return { lead, stages, funnels }
+  return { lead, stages, funnels, tagsDaRede }
 }
 
 /** Acha (ou cria) a conversa de um lead — usado pelo deep-link "card do funil -> inbox". */

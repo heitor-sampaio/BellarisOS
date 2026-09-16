@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { Plus, UserCheck, ExternalLink, CalendarPlus, X, Check } from 'lucide-react'
+import { UserCheck, ExternalLink, CalendarPlus, X, Check } from 'lucide-react'
 import { LEAD_SOURCES, sourceStyle } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
+import { TagPicker } from '@/components/shared/tag-picker'
 import { StageOptions } from '@/components/branch/stage-options'
 import { LeadTimeline } from '@/components/branch/lead-timeline'
 import {
@@ -67,7 +68,8 @@ export function InboxLeadPanel({
   const [notes,  setNotes]  = useState('')
   const [stageId, setStageId] = useState('')
   const [tags,   setTags]   = useState<string[]>([])
-  const [tagDraft, setTagDraft] = useState('')
+  /** Catálogo da rede: o card escolhe entre estas, e não cria tag nova. */
+  const [tagsDaRede, setTagsDaRede] = useState<string[]>([])
 
   useEffect(() => {
     let active = true
@@ -77,6 +79,7 @@ export function InboxLeadPanel({
       if (!active) return
       setStages(res.stages)
       setFunnels(res.funnels)
+      setTagsDaRede(res.tagsDaRede ?? [])
       setLead(res.lead)
       if (res.lead) {
         setName(res.lead.name ?? '')
@@ -94,12 +97,6 @@ export function InboxLeadPanel({
     return () => { active = false }
   }, [conversation.id])
 
-  function addTag(raw: string) {
-    const t = raw.trim()
-    if (!t || tags.includes(t)) return
-    setTags(prev => [...prev, t])
-    setTagDraft('')
-  }
   function removeTag(t: string) {
     setTags(prev => prev.filter(x => x !== t))
   }
@@ -162,7 +159,6 @@ export function InboxLeadPanel({
     setChainToSchedule(false)
   }
 
-  const tagSuggestions = LEAD_SOURCES.map(s => s.key).filter(k => !tags.includes(k))
 
   if (loading) {
     return <div style={{ padding: 20, fontSize: 12.5, color: 'var(--text-faint)' }}>Carregando card…</div>
@@ -234,41 +230,25 @@ export function InboxLeadPanel({
         </select>
       </div>
 
-      {/* Tags */}
+      {/* Tags
+          Só as do lead ficam à vista; as disponíveis moram dentro do seletor.
+          Antes o card despejava o catálogo inteiro aberto, e numa rede com
+          dezenas de tags isso empurrava telefone, etapa e histórico para fora
+          da tela — justamente o que se consulta durante um atendimento. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span style={labelStyle}>Tags</span>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
           {tags.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Nenhuma tag</span>}
           {tags.map(t => (
             <TagBadge key={t} label={t} size="xs" onRemove={disabled ? undefined : () => removeTag(t)} />
           ))}
         </div>
-        {!disabled && (
-          <>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <input className="field" value={tagDraft} placeholder="Nova tag (ex.: Unidade: Centro)"
-                onChange={e => setTagDraft(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(tagDraft) } }}
-                style={{ ...fieldStyle, flex: 1 }} />
-              <button type="button" className="btn-secondary" onClick={() => addTag(tagDraft)} style={{ flexShrink: 0, padding: '0 10px' }}>
-                <Plus size={14} />
-              </button>
-            </div>
-            {tagSuggestions.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {tagSuggestions.map(s => (
-                  <button key={s} type="button" onClick={() => addTag(s)}
-                    style={{
-                      fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-                      border: '1px dashed var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', cursor: 'pointer',
-                    }}>
-                    + {s}
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+        <TagPicker
+          selecionadas={tags}
+          disponiveis={tagsDaRede}
+          disabled={disabled}
+          onChange={setTags}
+        />
       </div>
 
       {/* Etapa */}
