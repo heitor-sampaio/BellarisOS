@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import type {
   SendProvider, InboundMsg, InboundMedia, MediaKind, ChannelKind, OutboundMedia,
-  SendOptions,
+  SendOptions, StatusRecibo,
 } from '@/lib/channels/types'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
@@ -133,6 +133,42 @@ export class MetaMessagingProvider implements SendProvider {
    * Messenger e Instagram usam o mesmo formato: `entry[].messaging[]`. O que
    * difere é o `object` do envelope, resolvido por quem chama.
    */
+  /**
+   * Recibo de entrega ou leitura.
+   *
+   * O Messenger manda `delivery` com a lista de mids e uma marca d'água, e
+   * `read` só com a marca. O Instagram manda `read` nomeando uma mensagem
+   * (`mid`) e não manda entrega nenhuma — lá a conversa vai de enviada direto
+   * para lida. Os dois formatos convivem aqui porque é a mesma assinatura de
+   * webhook, e tratar só um deixaria metade das mensagens paradas em um tique.
+   */
+  parseStatus(entrada: unknown): StatusRecibo | null {
+    const e = entrada as any
+    const m = e?.messaging?.[0]
+    if (!m) return null
+
+    // No recibo, quem "envia" o evento é o contato; a página é o destinatário.
+    const externalUserId = m.sender?.id as string | undefined
+    if (!externalUserId) return null
+
+    const bruto = m.delivery ?? m.read
+    if (!bruto) return null
+
+    const ids: string[] = [
+      ...(Array.isArray(bruto.mids) ? bruto.mids : []),
+      ...(bruto.mid ? [bruto.mid] : []),
+    ].map(String).filter(Boolean)
+
+    return {
+      status:         m.delivery ? 'delivered' : 'read',
+      externalUserId,
+      ...(ids.length > 0 ? { externalIds: ids } : {}),
+      ...(bruto.watermark
+        ? { watermark: new Date(Number(bruto.watermark)).toISOString() }
+        : {}),
+    }
+  }
+
   parseInbound(entrada: unknown): InboundMsg | null {
     const e = entrada as any
     const m = e?.messaging?.[0]

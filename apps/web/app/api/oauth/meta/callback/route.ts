@@ -165,7 +165,12 @@ async function inscreverPagina(page: MetaMessagingPage) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        subscribed_fields: 'messages,messaging_postbacks',
+        // ⚠️ `message_deliveries` e `message_reads` são o que faz os tiques
+        // andarem. Sem eles a Meta entrega a mensagem e nunca conta que
+        // entregou: a conversa fica inteira em um tique, como se nada tivesse
+        // chegado. No painel do app, os campos equivalentes do produto
+        // Instagram precisam estar marcados pelo mesmo motivo.
+        subscribed_fields: 'messages,messaging_postbacks,message_deliveries,message_reads',
         access_token:      page.pageToken,
       }),
     })

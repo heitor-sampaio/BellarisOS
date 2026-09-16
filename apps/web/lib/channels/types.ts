@@ -74,6 +74,24 @@ export interface StatusUpdate {
 }
 
 /**
+ * Recibo de entrega/leitura do Messenger e do Instagram.
+ *
+ * Diferente do WhatsApp, que nomeia a mensagem, aqui o normal é uma MARCA
+ * D'ÁGUA: "tudo que você mandou até este instante foi entregue" — um recibo só
+ * cobre várias mensagens, e o id específico às vezes nem vem. Por isso não dá
+ * para reaproveitar `StatusUpdate`, que é por mensagem.
+ */
+export interface StatusRecibo {
+  status:         'delivered' | 'read'
+  /** Contato da conversa (PSID no Messenger, IGSID no Instagram). */
+  externalUserId: string
+  /** Mensagens nomeadas, quando o provedor as manda. */
+  externalIds?:   string[]
+  /** ISO. Tudo enviado até aqui recebeu o status. */
+  watermark?:     string
+}
+
+/**
  * O que o inbox precisa de um canal para enviar.
  *
  * Deliberadamente menor que os provedores: `sendMessage` só pergunta "como eu

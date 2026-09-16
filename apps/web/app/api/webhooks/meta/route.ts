@@ -3,6 +3,7 @@ import { getTenantPorPagina } from '@/lib/channels/factory'
 import { MetaMessagingProvider, verificarAssinaturaMeta } from '@/lib/meta/messaging'
 import {
   resolveConversation, insertInboundMessage,
+  applyStatusRecibo, acharConversaDoContato,
 } from '@/lib/inbox/resolve-conversation'
 import type { ChannelKind } from '@/lib/channels/types'
 
@@ -90,8 +91,19 @@ async function processarEntrada(entrada: any, channel: ChannelKind) {
   if (!page) return
 
   const provider = new MetaMessagingProvider(page, channel)
-  const inbound  = provider.parseInbound(entrada)
-  if (!inbound) return   // eco da nossa própria mensagem, leitura, entrega…
+
+  // Recibo de entrega/leitura. Vem na mesma assinatura das mensagens e sem isto
+  // era simplesmente descartado: tudo que saía daqui ficava em um tique para
+  // sempre, sem nunca virar "entregue" ou "lido".
+  const recibo = provider.parseStatus(entrada)
+  if (recibo) {
+    const convId = await acharConversaDoContato(tenantId, channel, recibo.externalUserId)
+    if (convId) await applyStatusRecibo(tenantId, convId, recibo)
+    return
+  }
+
+  const inbound = provider.parseInbound(entrada)
+  if (!inbound) return   // eco da nossa própria mensagem, ou evento que não tratamos
 
   // Nome do perfil: sem isso o card nasce com o PSID (16 dígitos) como nome.
   // Falha aqui não pode barrar a mensagem.

@@ -383,6 +383,73 @@ export async function applyMessageEdit(
   if (error) console.error('[applyMessageEdit]', error.message)
 }
 
+/**
+ * Status só avança: sending → sent → delivered → read.
+ *
+ * Os recibos chegam fora de ordem — um "entregue" atrasado depois do "lido"
+ * acontece o tempo todo — e sem esta trava a mensagem lida voltaria para um
+ * tique sozinha, na frente de quem está atendendo.
+ */
+const ANTERIORES: Record<'delivered' | 'read', string[]> = {
+  delivered: ['sending', 'sent'],
+  read:      ['sending', 'sent', 'delivered'],
+}
+
+/**
+ * Aplica um recibo por marca d'água (Messenger e Instagram).
+ *
+ * Lá o recibo normalmente não nomeia a mensagem: diz "tudo até este instante
+ * foi entregue". Quando vem com id, o id manda; quando não, vale o corte por
+ * horário — mas sempre só para o que saiu DESTA conversa, e nunca para trás.
+ */
+export async function applyStatusRecibo(
+  tenantId:       string,
+  conversationId: string,
+  recibo:         { status: 'delivered' | 'read'; externalIds?: string[]; watermark?: string },
+) {
+  const admin = createAdminClient()
+
+  let query = admin
+    .from('messages')
+    .update({ status: recibo.status })
+    .eq('tenant_id', tenantId)
+    .eq('conversation_id', conversationId)
+    .eq('direction', 'outbound')
+    .in('status', ANTERIORES[recibo.status])
+
+  if (recibo.externalIds?.length) {
+    query = query.in('external_id', recibo.externalIds)
+  } else if (recibo.watermark) {
+    query = query.lte('created_at', recibo.watermark)
+  } else {
+    return   // sem id e sem marca não há como saber a quais mensagens se aplica
+  }
+
+  const { error } = await query
+  if (error) console.error('[applyStatusRecibo]', error.message)
+}
+
+/**
+ * Conversa deste contato, sem criar nada.
+ *
+ * Um recibo de leitura não pode abrir conversa: seria um card no funil nascido
+ * de uma confirmação de entrega, sem ninguém ter falado.
+ */
+export async function acharConversaDoContato(
+  tenantId: string, channel: ChannelKind, externalUserId: string,
+): Promise<string | null> {
+  const { data, error } = await createAdminClient()
+    .from('conversations')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('channel', channel)
+    .overlaps('contact_aliases', [externalUserId])
+    .limit(1)
+
+  if (error) { console.error('[acharConversaDoContato]', error.message); return null }
+  return (data?.[0]?.id as string) ?? null
+}
+
 export async function updateMessageStatus(
   tenantId:   string,
   externalId: string,
