@@ -405,6 +405,45 @@ interface CRMInboxProps {
   initialSelectedId?:   string | null
 }
 
+/** Id da bolha que existe só na tela, enquanto o envio não voltou do servidor. */
+const PREFIXO_OTIMISTA = 'opt-'
+
+/**
+ * Põe uma mensagem na lista sem duplicar.
+ *
+ * Três caminhos entregam mensagem à tela — a bolha otimista, o retorno da action
+ * e o INSERT do realtime — e os três podem carregar a MESMA mensagem. Enquanto o
+ * realtime não funcionava dava para somar sem pensar; assim que ele passou a
+ * funcionar, toda mensagem enviada aparecia duas vezes: o evento chega antes da
+ * resposta da action, e o id otimista (`opt-…`) não casa com o id real, então o
+ * guarda por id não reconhecia nada.
+ *
+ * A ordem das checagens é a regra. O id real vem primeiro; a otimista só é
+ * consumida se ainda estiver pendente, senão mandar "oi" duas vezes seguidas —
+ * coisa comum no atendimento — faria a segunda engolir a primeira.
+ */
+function mesclarMensagem(lista: Message[], nova: Message): Message[] {
+  if (lista.some(m => m.id === nova.id)) {
+    return lista.map(m => (m.id === nova.id ? nova : m))
+  }
+
+  if (nova.direction === 'outbound') {
+    const i = lista.findIndex(m =>
+      m.id.startsWith(PREFIXO_OTIMISTA)
+      && m.status === 'sending'
+      && m.content === nova.content
+      && m.media_type === nova.media_type,
+    )
+    if (i >= 0) {
+      const copia = [...lista]
+      copia[i] = nova
+      return copia
+    }
+  }
+
+  return [...lista, nova]
+}
+
 export function CRMInbox({
   initialConversations, leads, canEdit, branches,
   slug = '__admin__', initialSelectedId = null, canaisConectados = [],
@@ -465,11 +504,7 @@ export function CRMInbox({
         filter: `conversation_id=eq.${selectedId}`,
       }, (payload) => {
         const newMsg = payload.new as Message
-        setMessages(prev => {
-          // Skip if we already have it (e.g. our own optimistic message was confirmed)
-          if (prev.some(m => m.id === newMsg.id)) return prev
-          return [...prev, newMsg]
-        })
+        setMessages(prev => mesclarMensagem(prev, newMsg))
         // Quem está com a conversa ABERTA já leu. Sem isto o trigger incrementa
         // `unread_count` e a conversa fica com badge de não lida na cara de
         // quem acabou de ler a mensagem.
@@ -550,7 +585,7 @@ export function CRMInbox({
     if (!text || !selectedId || !selectedConv) return
 
     const optimistic: Message = {
-      id:              `opt-${Date.now()}`,
+      id:              `${PREFIXO_OTIMISTA}${Date.now()}`,
       conversation_id: selectedId,
       direction:       'outbound',
       content:         text,
@@ -575,7 +610,9 @@ export function CRMInbox({
     startTransition(async () => {
       const res = await sendMessage(selectedId, text)
       if (res.ok && res.message) {
-        setMessages(prev => prev.map(m => m.id === optimistic.id ? res.message! : m))
+        // Mesclar, não substituir por id: o realtime pode ter chegado primeiro e
+        // já consumido a bolha otimista.
+        setMessages(prev => mesclarMensagem(prev, res.message!))
         return
       }
       // Sem isto a bolha ficava eternamente em 'sending' e parecia enviada —
@@ -604,7 +641,7 @@ export function CRMInbox({
       // guardado, e escondê-lo da conversa faria a pessoa achar que nem chegou
       // a ser anexado.
       if (res.message) {
-        setMessages(prev => [...prev, res.message!])
+        setMessages(prev => mesclarMensagem(prev, res.message!))
         setConversations(prev => prev.map(c =>
           c.id === selectedId
             ? { ...c, last_message: res.message!.content, last_message_at: res.message!.created_at }
@@ -709,7 +746,7 @@ export function CRMInbox({
           janelaFechada={!janela.aberta}
           onClose={() => setShowTemplates(false)}
           onSent={msg => {
-            setMessages(prev => [...prev, msg])
+            setMessages(prev => mesclarMensagem(prev, msg))
             setSendError(null)
             // A conversa some do topo da lista se a prévia não acompanhar.
             setConversations(prev => prev.map(c =>
