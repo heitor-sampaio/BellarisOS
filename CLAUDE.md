@@ -32,7 +32,7 @@ EstéticaOS é um SaaS B2B para redes de clínicas de estética (2–5 filiais).
 | Storage | Supabase Storage (fotos de prontuário) |
 | Cache / Filas | Upstash Redis + BullMQ |
 | Pagamentos | Pagar.me (assinaturas da rede) |
-| WhatsApp | Z-API ou Evolution API |
+| WhatsApp | uazapi (não oficial) + Cloud API da Meta (oficial) |
 | Push Notifications | Expo Push Notifications |
 | Deploy Web | Vercel |
 | Deploy Mobile | EAS Build (Expo Application Services) |
@@ -414,7 +414,7 @@ const procedures = await prisma.procedure.findMany({
 - Pode estar vinculado a `userId` (usuário operacional) ou `clientId` (cliente final) — nunca aos dois ao mesmo tempo
 - Notificações operacionais: novo agendamento, cancelamento, estoque mínimo
 - Notificações para cliente: confirmação, lembrete 24h antes, promoções
-- Fallback de notificação WhatsApp para quando push falhar (Z-API / Evolution API)
+- Fallback de notificação WhatsApp para quando push falhar (uazapi ou API oficial, conforme o que a rede tiver conectado)
 
 ---
 
@@ -513,9 +513,12 @@ UPSTASH_REDIS_REST_REST_TOKEN=
 # Pagamentos
 PAGARME_API_KEY=
 
-# WhatsApp
-ZAPI_INSTANCE_ID=
-ZAPI_TOKEN=
+# WhatsApp não oficial (uazapi). A API oficial não usa env: as credenciais de
+# cada rede ficam em integration_configs.
+UAZAPI_BASE_URL=https://bellarisos.uazapi.com
+UAZAPI_ADMIN_TOKEN=
+UAZAPI_MAX_INSTANCIAS=0            # 0 = sem teto
+UAZAPI_PROXY_TEMPLATE=             # vazio = proxy gerenciado pela própria uazapi
 
 # App
 NEXT_PUBLIC_APP_URL=https://app.esteticaos.com.br

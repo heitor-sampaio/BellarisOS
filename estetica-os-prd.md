@@ -340,7 +340,7 @@ O `Client` possui `authId` opcional — preenchido quando o cliente cria conta n
 | ORM | Prisma |
 | Packages compartilhados | Turborepo (`types`, `validators`, `utils`) |
 | Pagamentos (billing) | Pagar.me (assinatura da rede) |
-| Notificações WhatsApp | Z-API ou Evolution API |
+| Notificações WhatsApp | uazapi (não oficial) ou Cloud API da Meta (oficial) |
 | Push Notifications | Expo Push Notifications |
 | Jobs / Filas | BullMQ + Upstash Redis |
 | Deploy Web | Vercel |
@@ -439,7 +439,7 @@ O `Client` possui `authId` opcional — preenchido quando o cliente cria conta n
 - Cliente contrata um plano por rede; filiais não pagam individualmente
 - O app mobile usa os mesmos dados e backend do web (Supabase)
 - Clientes que já existem na base são vinculados por CPF ao criar conta no app
-- Integrações de WhatsApp usam APIs não-oficiais (Z-API / Evolution) — risco aceito
+- A rede escolhe entre a API oficial da Meta e a uazapi (não oficial) — no caminho não oficial o risco de bloqueio do número é aceito, mitigado por IP separado por instância
 
 ### Riscos
 
