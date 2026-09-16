@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useState, useTransition, useRef } from 'react'
 import { UserCheck, ExternalLink, CalendarPlus, X, Check, Compass } from 'lucide-react'
 import { LEAD_SOURCES, sourceStyle } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
@@ -71,6 +71,10 @@ export function InboxLeadPanel({
   const [tags,   setTags]   = useState<string[]>([])
   /** Catálogo da rede: o card escolhe entre estas, e não cria tag nova. */
   const [tagsDaRede, setTagsDaRede] = useState<string[]>([])
+  // Estado do salvamento automático.
+  const [salvando,   setSalvando]   = useState(false)
+  const [salvoEm,    setSalvoEm]    = useState<number | null>(null)
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -91,7 +95,24 @@ export function InboxLeadPanel({
         setNotes(res.lead.notes ?? '')
         setStageId(res.lead.crm_stage_id ?? '')
         setTags(res.lead.tags ?? [])
+
+        // Marca o que o servidor JÁ tem, senão o salvamento automático dispara
+        // no instante em que o card abre e grava de volta o que acabou de ler.
+        // Os campos e a ordem têm que bater com `estadoAtual`.
+        salvoRef.current = JSON.stringify({
+          name:   res.lead.name ?? '',
+          phone:  res.lead.phone ?? '',
+          email:  res.lead.email ?? '',
+          social: res.lead.social_media ?? '',
+          source: res.lead.source ?? '',
+          notes:  res.lead.notes ?? '',
+          stageId: res.lead.crm_stage_id ?? '',
+          tags:   res.lead.tags ?? [],
+        })
       }
+      setSalvando(false)
+      setSalvoEm(null)
+      setErroSalvar(null)
       setConvertOpen(false)
       setLoading(false)
     })
@@ -102,10 +123,91 @@ export function InboxLeadPanel({
     setTags(prev => prev.filter(x => x !== t))
   }
 
-  function handleSave() {
-    if (!lead) return
+  // -- Salvamento automático --------------------------------------------------
+  //
+  // Não há botão: o card salva sozinho, como o resto do produto já faz com a
+  // etapa. O que ele precisa garantir é que ninguém perca alteração — nem quem
+  // digita e troca de conversa, nem quem fecha a aba.
+
+  /** Assinatura do que está na tela. Muda = há o que salvar. */
+  const estadoAtual = JSON.stringify({ name, phone, email, social, source, notes, stageId, tags })
+  /** Assinatura do que o servidor já tem. */
+  const salvoRef   = useRef('')
+  /** Dados prontos para salvar, para o caso de precisar salvar na saída. */
+  const pendenteRef = useRef<{ lead: InboxLead; fd: FormData } | null>(null)
+
+  async function gravar(leadAtual: InboxLead, fd: FormData, assinatura: string) {
+    const res = await updateLead(undefined, fd)
+    pendenteRef.current = null
+    if (res?.error) { setErroSalvar(res.error); setSalvando(false); return }
+    salvoRef.current = assinatura
+    setErroSalvar(null)
+    setSalvando(false)
+    setSalvoEm(Date.now())
+    setHistoricoKey(k => k + 1)
+    onLeadChanged?.()
+  }
+
+  useEffect(() => {
+    if (loading || !lead || !canEdit) return
+    if (estadoAtual === salvoRef.current) return
+
+    const motivo = motivoParaNaoSalvar()
+    if (motivo) { setErroSalvar(motivo); return }
+
+    setErroSalvar(null)
+    // Enquanto há alteração pendente, "Alterações salvas" seria mentira: volta
+    // ao aviso neutro até a gravação acontecer de fato.
+    setSalvoEm(null)
+    const fd = montarFormData(lead)
+    pendenteRef.current = { lead, fd }
+
+    // Meio segundo depois da última tecla. Salvar a cada tecla inundaria o
+    // servidor de escritas e de revalidações da rota.
+    const t = setTimeout(() => {
+      setSalvando(true)
+      void gravar(lead, fd, estadoAtual)
+    }, 500)
+
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estadoAtual, lead, loading, canEdit])
+
+  // Trocar de conversa ou fechar a aba no meio do intervalo não pode engolir a
+  // alteração: o que estiver pendente vai embora agora.
+  useEffect(() => {
+    function salvarPendente() {
+      const p = pendenteRef.current
+      if (!p) return
+      pendenteRef.current = null
+      void updateLead(undefined, p.fd)
+    }
+    window.addEventListener('beforeunload', salvarPendente)
+    return () => {
+      window.removeEventListener('beforeunload', salvarPendente)
+      salvarPendente()
+    }
+  }, [conversation.id])
+
+  /**
+   * O que o servidor exige, verificado aqui antes de incomodá-lo.
+   *
+   * No salvamento automático isso não é redundância: apagar o nome para
+   * reescrever passa por "nome vazio" a cada digitação, e sem a checagem local
+   * cada letra viraria uma ida ao servidor que volta com erro. O estado
+   * inválido é normal enquanto se edita — só não pode ser gravado.
+   */
+  function motivoParaNaoSalvar(): string | null {
+    if (!name.trim()) return 'Informe o nome para salvar.'
+    if (!phone.trim() && !email.trim() && !social.trim()) {
+      return 'Informe telefone, e-mail ou rede social para salvar.'
+    }
+    return null
+  }
+
+  function montarFormData(leadAtual: InboxLead): FormData {
     const fd = new FormData()
-    fd.set('_leadId', lead.id)
+    fd.set('_leadId', leadAtual.id)
     fd.set('_slug', slug)
     fd.set('name', name)
     fd.set('phone', phone)
@@ -115,12 +217,8 @@ export function InboxLeadPanel({
     fd.set('notes', notes)
     fd.set('crm_stage_id', stageId)
     fd.set('tags', JSON.stringify(tags))
-    fd.set('procedure_ids', JSON.stringify(lead.procedure_ids))
-    startSave(async () => {
-      await updateLead(undefined, fd)
-      setHistoricoKey(k => k + 1)
-      onLeadChanged?.()
-    })
+    fd.set('procedure_ids', JSON.stringify(leadAtual.procedure_ids))
+    return fd
   }
 
   function handleStageChange(next: string) {
@@ -294,11 +392,31 @@ export function InboxLeadPanel({
           style={{ ...fieldStyle, resize: 'vertical' }} />
       </div>
 
-      {/* Salvar */}
+      {/* Estado do salvamento automático.
+          Salvar sem dizer nada deixa a dúvida de se salvou — e o erro de
+          validação PRECISA aparecer, porque sem botão não há nada que a pessoa
+          possa clicar para descobrir que o card não está sendo gravado. */}
       {!disabled && (
-        <button type="button" className="btn-primary" onClick={handleSave} disabled={saving}>
-          {saving ? 'Salvando…' : 'Salvar'}
-        </button>
+        <div style={{ minHeight: 18, display: 'flex', alignItems: 'center', gap: 5 }}>
+          {erroSalvar ? (
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: '#dc2626', lineHeight: 1.4 }}>
+              {erroSalvar}
+            </span>
+          ) : salvando ? (
+            <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>Salvando…</span>
+          ) : salvoEm ? (
+            <span style={{
+              fontSize: 11.5, color: 'var(--success)', fontWeight: 700,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+            }}>
+              <Check size={12} /> Alterações salvas
+            </span>
+          ) : (
+            <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>
+              As alterações salvam sozinhas
+            </span>
+          )}
+        </div>
       )}
 
       {/* Histórico — quem atende pelo inbox precisa ver por onde o card passou
