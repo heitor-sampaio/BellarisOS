@@ -478,10 +478,13 @@ export function CRMInbox({
    * o UPDATE de `is_read` chega logo depois da mensagem e é a única notícia que
    * a tela tem daquela linha em vários casos.
    */
-  const assinarMidiaSeFaltar = useCallback((linha: Message) => {
+  // Tipo explícito porque a função se rechama no retry, e sem a anotação o TS
+  // não consegue inferir algo que se referencia dentro do próprio inicializador.
+  const assinarMidiaSeFaltar: (linha: Message, tentativa?: number) => void
+  = useCallback((linha: Message, tentativa = 0) => {
     const path = (linha as unknown as { media_path?: string | null }).media_path
     if (!path || linha.media_url) return
-    if (midiaPedida.current.has(linha.id)) return
+    if (tentativa === 0 && midiaPedida.current.has(linha.id)) return
 
     midiaPedida.current.add(linha.id)
     getMessageMediaUrl(linha.id)
@@ -491,7 +494,16 @@ export function CRMInbox({
           m.id === linha.id ? { ...m, media_url: url } : m,
         ))
       })
-      .catch(() => { midiaPedida.current.delete(linha.id) })
+      .catch(err => {
+        // Engolir esta falha em silêncio custou caro: a bolha ficava em "Anexo
+        // indisponível" para sempre, idêntica a um download que nunca aconteceu,
+        // e não havia como saber que bastava recarregar. Acontece de verdade
+        // quando a aba atravessa um deploy — o id da Server Action muda a cada
+        // build, e o servidor novo responde 404 para o bundle antigo.
+        console.error('[inbox] falha ao assinar a mídia', linha.id, err)
+        midiaPedida.current.delete(linha.id)
+        if (tentativa === 0) setTimeout(() => assinarMidiaSeFaltar(linha, 1), 2_000)
+      })
   }, [])
 
   const selectedConv = conversations.find(c => c.id === selectedId) ?? null
