@@ -190,86 +190,76 @@ export function InboxLeadPanel({
 
   return (
     <div style={{ padding: '18px 18px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* ---------------- Contato ---------------- */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* ---------------- Contato ----------------
+          Compacto de propósito: é o cabeçalho da pessoa, não o assunto do
+          painel. O que se olha aqui é quem é e como falar com ela — o trabalho
+          em si acontece nas oportunidades, logo abaixo. */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={labelStyle}>Contato</span>
-          {cliente && (
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: 10.5, fontWeight: 800, color: 'var(--success)',
-            }}>
-              <UserCheck size={12} /> Cliente
-            </span>
+          {/* Estado do salvamento vive aqui, na mesma linha do rótulo: ocupava
+              uma linha inteira para dizer, quase sempre, que está tudo salvo. */}
+          {!disabled && (
+            salvando ? (
+              <span style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>salvando…</span>
+            ) : salvoEm ? (
+              <span style={{ fontSize: 10.5, color: 'var(--success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                <Check size={11} /> salvo
+              </span>
+            ) : null
           )}
         </div>
 
         <input className="field" value={nome} disabled={disabled} placeholder="Nome"
-          onChange={e => setNome(e.target.value)} style={{ fontSize: 13 }} />
+          onChange={e => setNome(e.target.value)}
+          style={{ fontSize: 13.5, fontWeight: 700, padding: '7px 10px' }} />
         <input className="field" value={telefone} disabled={disabled} placeholder="Telefone"
-          onChange={e => setTelefone(e.target.value)} style={{ fontSize: 13 }} />
+          onChange={e => setTelefone(e.target.value)}
+          style={{ fontSize: 12.5, padding: '6px 10px' }} />
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
-          {tags.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Nenhuma tag</span>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
           {tags.map(t => (
             <TagBadge key={t} label={t} size="xs"
               onRemove={disabled ? undefined : () => setTags(prev => prev.filter(x => x !== t))} />
           ))}
+          <TagPicker
+            selecionadas={tags}
+            disponiveis={card.tagsDaRede}
+            disabled={disabled}
+            onChange={setTags}
+          />
         </div>
-        <TagPicker
-          selecionadas={tags}
-          disponiveis={card.tagsDaRede}
-          disabled={disabled}
-          onChange={setTags}
-        />
 
+        {/* Ações da PESSOA, discretas e lado a lado. Ficha de cliente é
+            independente de ganhar negócio: fechar venda de quem não quer dar CPF
+            é rotina, e a ficha exige CPF e e-mail (cria login). */}
         {!disabled && (
-          <div style={{ minHeight: 16, display: 'flex', alignItems: 'center', gap: 5 }}>
-            {salvando ? (
-              <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>Salvando…</span>
-            ) : salvoEm ? (
-              <span style={{
-                fontSize: 11.5, color: 'var(--success)', fontWeight: 700,
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-              }}>
-                <Check size={12} /> Alterações salvas
-              </span>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+            {cliente ? (
+              <a
+                href={slug === '__admin__' ? '/admin/clientes' : `/${slug}/clients`}
+                className="btn-ghost"
+                style={{ fontSize: 11, padding: '4px 7px', textDecoration: 'none' }}
+                title={`Ficha de ${cliente.name}`}
+              >
+                <UserCheck size={12} color="var(--success)" /> Cliente
+              </a>
             ) : (
-              <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>
-                As alterações salvam sozinhas
-              </span>
+              <button type="button" className="btn-ghost"
+                style={{ fontSize: 11, padding: '4px 7px' }}
+                onClick={() => { setChainToSchedule(false); setConvertOpen(true) }}>
+                <UserCheck size={12} /> Cadastrar cliente
+              </button>
             )}
-          </div>
-        )}
-
-        {/* Ficha de cliente. Independente de ganhar: fechar venda de quem não
-            quer dar CPF é rotina, e a ficha exige CPF e e-mail (cria login). */}
-        {!disabled && (
-          cliente ? (
-            <a
-              href={slug === '__admin__' ? `/admin/clientes` : `/${slug}/clients`}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5,
-                fontSize: 11.5, fontWeight: 700, color: 'var(--brand)',
-              }}
-            >
-              Ver ficha de {cliente.name} <ExternalLink size={11} />
-            </a>
-          ) : (
-            <button type="button" className="btn-secondary"
-              onClick={() => { setChainToSchedule(false); setConvertOpen(true) }}>
-              <UserCheck size={14} /> Cadastrar como cliente
+            <button type="button" className="btn-ghost"
+              style={{ fontSize: 11, padding: '4px 7px' }}
+              onClick={() => {
+                if (cliente) setScheduling('')
+                else { setChainToSchedule(true); setConvertOpen(true) }
+              }}>
+              <CalendarPlus size={12} /> Agendar
             </button>
-          )
-        )}
-
-        {!disabled && (
-          <button type="button" className="btn-primary" onClick={() => {
-            if (cliente) setScheduling('')
-            else { setChainToSchedule(true); setConvertOpen(true) }
-          }}>
-            <CalendarPlus size={14} /> Novo agendamento
-          </button>
+          </div>
         )}
       </section>
 
@@ -285,7 +275,9 @@ export function InboxLeadPanel({
       {/* ---------------- Oportunidades ---------------- */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={labelStyle}>Oportunidades</span>
+          <span style={{ ...labelStyle, fontSize: 11.5, color: 'var(--text)' }}>
+            Oportunidades{card.abertas.length > 0 ? ` (${card.abertas.length})` : ''}
+          </span>
           <a
             href={slug === '__admin__' ? '/admin/oportunidades' : `/${slug}/oportunidades`}
             title="Ver no quadro"
@@ -308,6 +300,7 @@ export function InboxLeadPanel({
             oportunidade={o}
             stages={card.stages}
             funnels={card.funnels}
+            corDaEtapa={card.stages.find(s => s.id === o.crm_stage_id)?.color ?? null}
             slug={slug}
             disabled={disabled}
             aberta={expandida === o.id}
@@ -322,6 +315,9 @@ export function InboxLeadPanel({
           <NovaOportunidade
             funnels={card.funnels}
             pendente={saving}
+            /* Sem nenhuma aberta, criar é a ação principal do painel e ganha
+               preenchimento; com negócio em andamento, o destaque é dele. */
+            destaque={card.abertas.length === 0}
             onCriar={novaOportunidade}
           />
         )}
@@ -465,12 +461,14 @@ export function InboxLeadPanel({
 
 /** Uma oportunidade aberta: resumo sempre visível, detalhes ao expandir. */
 function OportunidadeItem({
-  oportunidade: o, stages, funnels, slug, disabled, aberta,
+  oportunidade: o, stages, funnels, corDaEtapa, slug, disabled, aberta,
   onToggle, onConcluir, onMudou, onAgendar,
 }: {
   oportunidade: Oportunidade
   stages:   InboxStage[]
   funnels:  { id: string; name: string }[]
+  /** Cor da etapa, que o quadro já usa e aqui era desperdiçada. */
+  corDaEtapa: string | null
   slug:     string
   disabled: boolean
   aberta:   boolean
@@ -517,17 +515,32 @@ function OportunidadeItem({
         type="button"
         onClick={onToggle}
         style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-          padding: '9px 10px', border: 'none', background: 'var(--surface)',
+          width: '100%', display: 'flex', alignItems: 'center', gap: 9,
+          padding: '10px 11px', border: 'none', background: 'var(--surface)',
           cursor: 'pointer', textAlign: 'left',
         }}
       >
+        {/* Faixa na cor da etapa: é como o quadro identifica em que ponto o
+            negócio está, e repetir o código de cor aqui poupa a leitura. */}
+        <span style={{
+          width: 3, alignSelf: 'stretch', borderRadius: 99, flexShrink: 0,
+          background: corDaEtapa ?? 'var(--border)',
+        }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {o.funnel_name ?? 'Sem funil'}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-            {o.stage_name ?? 'Sem etapa'}{o.owner_name ? ` · ${o.owner_name}` : ''}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99,
+              color: corDaEtapa ?? 'var(--text-muted)',
+              background: corDaEtapa ? `${corDaEtapa}1a` : 'var(--bg-app)',
+            }}>
+              {o.stage_name ?? 'Sem etapa'}
+            </span>
+            {o.owner_name && (
+              <span style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>{o.owner_name}</span>
+            )}
           </div>
         </div>
         <ChevronDown
@@ -628,13 +641,15 @@ function OportunidadeItem({
 
 /** Botão que vira seletor de funil. Fechado por padrão, como o resto do painel. */
 function NovaOportunidade({
-  funnels, pendente, onCriar,
+  funnels, pendente, destaque, onCriar,
 }: {
   funnels:  { id: string; name: string }[]
   pendente: boolean
+  destaque: boolean
   onCriar:  (funnelId: string) => void
 }) {
   const [aberto, setAberto] = useState(false)
+  const classe = destaque ? 'btn-secondary' : 'btn-ghost'
 
   if (funnels.length === 0) {
     return (
@@ -647,7 +662,7 @@ function NovaOportunidade({
   // Um funil só não é escolha: cria direto.
   if (funnels.length === 1) {
     return (
-      <button type="button" className="btn-ghost" disabled={pendente}
+      <button type="button" className={classe} disabled={pendente}
         onClick={() => onCriar(funnels[0]!.id)}
         style={{ alignSelf: 'flex-start', fontSize: 11.5 }}>
         <Plus size={12} /> {pendente ? 'Criando…' : 'Nova oportunidade'}
@@ -657,7 +672,7 @@ function NovaOportunidade({
 
   return (
     <div style={{ position: 'relative' }}>
-      <button type="button" className="btn-ghost" disabled={pendente}
+      <button type="button" className={classe} disabled={pendente}
         onClick={() => setAberto(a => !a)}
         style={{ fontSize: 11.5 }}>
         <Plus size={12} /> {pendente ? 'Criando…' : 'Nova oportunidade'}
