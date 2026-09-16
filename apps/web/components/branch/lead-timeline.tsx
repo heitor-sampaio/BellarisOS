@@ -5,7 +5,7 @@ import {
   ArrowRight, Sparkles, UserCheck, UserCog, Clock, Building2, Pencil, CalendarPlus,
 } from 'lucide-react'
 import { formatDurationLong, secondsSince } from '@estetica-os/utils'
-import { getLeadEvents } from '@/actions/lead-events'
+import { getLeadEvents, getContactEvents } from '@/actions/lead-events'
 import type { LeadEvent } from '@/lib/lead-events'
 
 const DATA_HORA = new Intl.DateTimeFormat('pt-BR', {
@@ -63,7 +63,10 @@ function Descricao({ e }: { e: LeadEvent }) {
     )
   }
 
-  if (e.type === 'CONVERTED')     return <span style={forte}>Virou cliente</span>
+  // O tipo continua `CONVERTED` no banco (renomear exigiria migrar dados), mas
+  // o que ele registra é o cadastro da ficha — que agora não conclui negócio
+  // nenhum. Chamar de "convertido" aqui faria parecer venda ganha.
+  if (e.type === 'CONVERTED')     return <span style={forte}>Cadastrado como cliente</span>
   if (e.type === 'OWNER_CHANGED') return <span style={forte}>Responsável alterado</span>
 
   // A unidade é tag e pode ser mais de uma, então lê melhor como qualquer
@@ -90,7 +93,7 @@ function Descricao({ e }: { e: LeadEvent }) {
   const entrada = local(e.to_stage_name, e.to_funnel_name, true)
   return (
     <span>
-      <span style={forte}>Lead criado</span>
+      <span style={forte}>Oportunidade criada</span>
       {entrada && <span style={{ color: 'var(--text-muted)' }}> em {entrada}</span>}
     </span>
   )
@@ -102,9 +105,17 @@ function Descricao({ e }: { e: LeadEvent }) {
  *   deixava o histórico exibindo o estado anterior até recarregar a página.
  */
 export function LeadTimeline({
-  leadId, refreshKey = 0,
+  leadId, conversationId, refreshKey = 0,
 }: {
-  leadId: string
+  /** Histórico de UMA oportunidade. Ignorado quando `conversationId` vem. */
+  leadId?: string
+  /**
+   * Histórico do CONTATO: junta as oportunidades dele.
+   *
+   * No inbox é isto que se quer ver — a pessoa pode ter dois negócios, e o que
+   * aconteceu em qualquer um deles faz parte da mesma história de atendimento.
+   */
+  conversationId?: string
   refreshKey?: number
 }) {
   const [eventos, setEventos] = useState<LeadEvent[] | null>(null)
@@ -116,11 +127,14 @@ export function LeadTimeline({
   useEffect(() => {
     let ativo = true
     setEventos(null); setErro(null)
-    getLeadEvents(leadId)
+    const busca = conversationId
+      ? getContactEvents(conversationId)
+      : leadId ? getLeadEvents(leadId) : Promise.resolve([])
+    busca
       .then(r => { if (!ativo) return; setEventos(r); setNowMs(Date.now()) })
       .catch(() => { if (ativo) setErro('Não foi possível carregar o histórico.') })
     return () => { ativo = false }
-  }, [leadId, refreshKey])
+  }, [leadId, conversationId, refreshKey])
 
   // O evento mais recente é o começo do tempo parado — é o número que diz se o
   // card está esquecido, e é a pergunta que a lista inteira responde.

@@ -161,6 +161,9 @@ export function InboxLeadPanel({
       if (!res.ok) { setErro(res.error ?? 'Não foi possível criar a oportunidade.'); return }
       await recarregar()
       setExpandida(res.leadId ?? null)
+      // O histórico é do contato e não recarrega sozinho: sem isto a
+      // oportunidade recém-criada só apareceria nele ao trocar de conversa.
+      setHistoricoKey(k => k + 1)
       onLeadChanged?.()
     })
   }
@@ -399,15 +402,15 @@ export function InboxLeadPanel({
         )}
       </section>
 
-      {/* ---------------- Histórico ---------------- */}
-      {(card.abertas[0] ?? card.concluidas[0]) && (
-        <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
-          <LeadTimeline
-            leadId={(expandida ?? card.abertas[0]?.id ?? card.concluidas[0]!.id)}
-            refreshKey={historicoKey}
-          />
-        </div>
-      )}
+      {/* ---------------- Histórico ----------------
+          Do CONTATO, não de uma oportunidade: a pessoa pode ter dois negócios, e
+          o que aconteceu em qualquer um deles faz parte da mesma história de
+          atendimento. Enquanto era por oportunidade, criar a segunda parecia não
+          ter acontecido — o evento existia, na linha do tempo que não estava à
+          vista. */}
+      <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
+        <LeadTimeline conversationId={conversation.id} refreshKey={historicoKey} />
+      </div>
 
       {scheduling !== null && cliente && (
         <ScheduleModal
