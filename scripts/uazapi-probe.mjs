@@ -181,7 +181,9 @@ async function principal() {
     body: { url: HOOK, events: ['messages', 'connection'], enabled: true, excludeMessages: [] },
   })
   const hookLido = await chamar('ler webhook', '/webhook', { headers: comToken() })
-  const excl = hookLido.json?.excludeMessages ?? hookLido.json?.webhook?.excludeMessages
+  // /webhook devolve um ARRAY de webhooks, não um objeto.
+  const hook0 = Array.isArray(hookLido.json) ? hookLido.json[0] : hookLido.json?.webhook ?? hookLido.json
+  const excl = hook0?.excludeMessages
   console.log(`   → excludeMessages voltou: ${JSON.stringify(excl ?? null)}`)
 
   // 5. A prova que motiva a troca de provedor — e não precisa de telefone.
@@ -194,8 +196,12 @@ async function principal() {
     console.log(`   → proxy ativo? ${ativo ? 'SIM' : 'NÃO — o isolamento de IP não pegou'}`)
     if (!ativo) falhas++
   } else {
-    console.log('   → proxy não testado (defina UAZAPI_PROBE_PROXY para provar o isolamento)')
+    console.log('   → proxy próprio não testado (defina UAZAPI_PROBE_PROXY)')
   }
+
+  // A instância nasce com `proxy_managed_country`, o que sugere proxy gerenciado
+  // pela própria uazapi. Se existir, pode dispensar contratar IP à parte.
+  await chamar('ler proxy (estado atual)', '/instance/proxy', { headers: comToken() })
 
   // 6. O QR sai sem telefone nenhum: prova o caminho até o momento do scan.
   const conexao = await chamar('conectar (QR)', '/instance/connect', {
