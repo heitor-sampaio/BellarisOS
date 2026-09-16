@@ -54,7 +54,9 @@ export async function POST(req: NextRequest) {
     const inbound = provider.parseInbound(corpo)
     if (!inbound) return NextResponse.json({ ok: true })
 
-    const resultado = await resolveConversation(tenantId, inbound, 'whatsapp')
+    // O provider vai junto para o caso de o webhook não trazer o nome do
+    // contato — aí a conversa pergunta, em vez de fixar o telefone como nome.
+    const resultado = await resolveConversation(tenantId, inbound, 'whatsapp', provider)
     if (!resultado) return NextResponse.json({ ok: true })
 
     // O provider vai junto: é ele que sabe baixar a mídia.

@@ -147,6 +147,25 @@ export class UazapiProvider implements WhatsAppProvider {
    * não é capricho: nota de voz crua vem em ogg/opus, que o Safari não toca — a
    * bolha mostraria um player travado em 0:00.
    */
+  /**
+   * Nome do contato pelo `/chat/details`.
+   *
+   * `name` é o nome consolidado pela uazapi; `wa_name` é o que a pessoa põe no
+   * perfil (o pushName) e `wa_contactName` é o da agenda do celular conectado —
+   * os dois voltam string vazia quando não existem, e vazio não é nome.
+   */
+  async fetchDisplayName(externalUserId: string): Promise<string | null> {
+    try {
+      const data = await this.chamar('/chat/details', { number: this.destino(externalUserId) })
+      for (const campo of [data?.name, data?.wa_name, data?.wa_contactName]) {
+        if (typeof campo === 'string' && campo.trim()) return campo.trim()
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
   async fetchMedia(media: InboundMedia): Promise<{ bytes: ArrayBuffer; mimeType: string } | null> {
     if (media.url) {
       try {

@@ -35,6 +35,8 @@ export async function resolveConversation(
   tenantId: string,
   msg:      InboundMsg,
   channel:  ChannelKind,
+  /** Só para perguntar o nome do contato quando o webhook não o trouxer. */
+  provider?: SendProvider,
 ): Promise<ResolveResult | null> {
   const admin = createAdminClient()
   const phone = msg.phone ? normalizePhone(msg.phone) : null
@@ -54,7 +56,7 @@ export async function resolveConversation(
   // conversa assim que o WhatsApp trocava o identificador dela.
   const { data: existentes, error: erroExistente } = await admin
     .from('conversations')
-    .select('id, branch_id, lead_id, contact_phone, contact_aliases, leads(name)')
+    .select('id, branch_id, lead_id, contact_name, contact_phone, contact_aliases, leads(name)')
     .eq('tenant_id', tenantId)
     .eq('channel', channel)
     .overlaps('contact_aliases', aliases)
@@ -67,12 +69,13 @@ export async function resolveConversation(
 
   const jaExiste = existentes?.[0] as {
     id: string; branch_id: string | null; lead_id: string | null
+    contact_name: string | null
     contact_phone: string | null; contact_aliases: string[] | null
     leads: { name: string } | null
   } | undefined
 
   if (jaExiste) {
-    await completarIdentidade(admin, jaExiste, aliases, phone, msg.displayName ?? null)
+    await completarIdentidade(admin, jaExiste, aliases, phone, msg.displayName ?? null, provider)
     return { conversationId: jaExiste.id, branchId: jaExiste.branch_id }
   }
 
@@ -96,8 +99,17 @@ export async function resolveConversation(
     nomeDoLead = data?.[0]?.name ?? null
   }
 
+  // O nome do contato é fixado AQUI, e é a primeira mensagem que decide. Como
+  // nela o chat muitas vezes ainda está nascendo do lado do provedor, o campo
+  // chega vazio e a conversa ficaria com o telefone como nome para sempre —
+  // então, faltando nome, perguntamos. Uma chamada por contato novo.
+  let nomeDoCanal = msg.displayName?.trim() || null
+  if (!nomeDoCanal && !nomeDoLead && provider?.fetchDisplayName) {
+    nomeDoCanal = await provider.fetchDisplayName(msg.externalUserId)
+  }
+
   const contactName = nomeDoLead
-    ?? msg.displayName?.trim()
+    ?? nomeDoCanal
     ?? phone
     ?? msg.externalUserId
 
@@ -160,7 +172,7 @@ export async function resolveConversation(
     const leadInsert: Record<string, unknown> = {
       tenant_id:    tenantId,
       branch_id:    null,
-      name:         msg.displayName?.trim() || phone || msg.externalUserId,
+      name:         nomeDoCanal || phone || msg.externalUserId,
       phone,
       source:       derived.source,
       tags:         derived.tags,
@@ -169,8 +181,8 @@ export async function resolveConversation(
     // Sem telefone o lead precisa de outro contato para ser válido: o @ do
     // Instagram, ou o id do canal como último recurso.
     if (!phone) {
-      leadInsert.social_media = msg.displayName
-        ? `${channel}: ${msg.displayName}`
+      leadInsert.social_media = nomeDoCanal
+        ? `${channel}: ${nomeDoCanal}`
         : `${channel}: ${msg.externalUserId}`
     }
     if (derived.utm_source) leadInsert.utm_source = derived.utm_source
@@ -224,36 +236,79 @@ async function completarIdentidade(
   admin:    ReturnType<typeof createAdminClient>,
   conversa: {
     id: string; lead_id: string | null
+    contact_name?: string | null
     contact_phone: string | null; contact_aliases: string[] | null
   },
   aliases:  string[],
   phone:    string | null,
   displayName: string | null,
+  provider?: SendProvider,
 ) {
   const conhecidos = new Set(conversa.contact_aliases ?? [])
   const novos      = aliases.filter(a => !conhecidos.has(a))
   const ganhaFone  = !conversa.contact_phone && !!phone
 
-  if (novos.length === 0 && !ganhaFone) return
+  // Nome ainda provisório: ninguém batizou este contato, ele só herdou o
+  // próprio identificador quando a conversa nasceu. Trocar por um nome de
+  // verdade é ganho puro; trocar um nome escrito por quem atende, não.
+  const nomeProvisorio = ehIdentificador(conversa.contact_name, aliases)
+  let nomeNovo: string | null = null
+  if (nomeProvisorio) {
+    nomeNovo = displayName?.trim() || null
+    // O webhook não trouxe nome — pergunta ao provedor. Só acontece enquanto o
+    // contato não tem nome, então não vira uma chamada por mensagem.
+    if (!nomeNovo && provider?.fetchDisplayName) {
+      // Telefone na frente: é o que o provedor resolve melhor. O @lid serve de
+      // último recurso, e é o provider que sabe o que fazer com ele.
+      const alvo = conversa.contact_phone ?? phone ?? aliases[0] ?? ''
+      if (alvo) nomeNovo = await provider.fetchDisplayName(alvo)
+    }
+    if (nomeNovo === conversa.contact_name) nomeNovo = null
+  }
+
+  if (novos.length === 0 && !ganhaFone && !nomeNovo) return
 
   const patch: Record<string, unknown> = {}
   if (novos.length > 0) patch.contact_aliases = [...conhecidos, ...novos]
   if (ganhaFone)        patch.contact_phone   = phone
+  if (nomeNovo)         patch.contact_name    = nomeNovo
 
   const { error } = await admin.from('conversations').update(patch).eq('id', conversa.id)
   if (error) console.error('[completarIdentidade] conversa:', error.message)
 
-  // O card também estava sem telefone: é o mesmo dado, do outro lado.
-  if (ganhaFone && conversa.lead_id) {
-    const { error: erroLead } = await admin
-      .from('leads')
-      .update({ phone })
-      .eq('id', conversa.lead_id)
-      .is('phone', null)
-    if (erroLead) console.error('[completarIdentidade] lead:', erroLead.message)
-  }
+  if (!conversa.lead_id) return
 
-  void displayName   // nome do card é decisão de quem atende; não sobrescrevemos
+  // O card é o mesmo contato visto do outro lado: recebe o telefone que faltava
+  // e o nome, este último só enquanto ele também for provisório.
+  const patchLead: Record<string, unknown> = {}
+  if (ganhaFone) patchLead.phone = phone
+  if (nomeNovo) {
+    const { data: lead } = await admin
+      .from('leads').select('name').eq('id', conversa.lead_id).maybeSingle()
+    if (ehIdentificador(lead?.name as string | null, aliases)) patchLead.name = nomeNovo
+  }
+  if (Object.keys(patchLead).length === 0) return
+
+  const { error: erroLead } = await admin
+    .from('leads').update(patchLead).eq('id', conversa.lead_id)
+  if (erroLead) console.error('[completarIdentidade] lead:', erroLead.message)
+}
+
+/**
+ * Este "nome" é só o identificador do contato repetido?
+ *
+ * Conversa que nasce sem nome guarda o telefone (ou o @lid, ou o PSID) no campo
+ * de nome, porque a lista precisa mostrar alguma coisa. Isso não é um nome: é um
+ * lugar vago esperando ser preenchido, e distinguir os dois é o que permite
+ * aceitar o nome do WhatsApp sem passar por cima do que a clínica escreveu.
+ */
+function ehIdentificador(nome: string | null | undefined, aliases: string[]): boolean {
+  const n = (nome ?? '').trim()
+  if (!n) return true
+  if (aliases.includes(n)) return true
+  // Compara também sem máscara: o telefone pode ter sido gravado formatado.
+  const digitos = n.replace(/\D/g, '')
+  return digitos.length > 0 && digitos === n.replace(/[\s+()-]/g, '')
 }
 
 export async function insertInboundMessage(

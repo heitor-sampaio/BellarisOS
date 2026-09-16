@@ -104,6 +104,15 @@ export interface SendProvider {
   /** Baixa a mídia recebida; nem todo provedor precisa de autenticação. */
   fetchMedia?(media: InboundMedia): Promise<{ bytes: ArrayBuffer; mimeType: string } | null>
   /**
+   * Nome público do contato, perguntado ao provedor.
+   *
+   * Existe porque o webhook nem sempre traz o nome: na PRIMEIRA mensagem de um
+   * contato novo o chat ainda está sendo criado do lado de lá, e o campo chega
+   * vazio — que é justamente quando a conversa nasce e fixa o telefone como
+   * nome. Só é chamado quando falta nome, nunca a cada mensagem.
+   */
+  fetchDisplayName?(externalUserId: string): Promise<string | null>
+  /**
    * Envia um template aprovado — o único caminho para falar com alguém fora da
    * janela de 24h.
    *
