@@ -5,7 +5,7 @@
  * a mesma coisa. Não dá mais:
  *
  * - **@lid** — o WhatsApp passou a mandar um identificador privado
- *   (`999999999999999@lid`) no lugar do número. Na Z-API ele aparece em
+ *   (`999999999999999@lid`) no lugar do número. Nos provedores não oficiais ele aparece em
  *   `chatLid`/`senderLid`/`participantLid` e, dependendo do caso, DENTRO do
  *   próprio campo `phone`.
  * - **BSUID** — a Cloud API oficial manda um id com escopo de negócio

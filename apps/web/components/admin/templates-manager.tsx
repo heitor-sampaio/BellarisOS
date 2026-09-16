@@ -264,7 +264,7 @@ export function TemplatesManager({
       {!oficialAtivo && (
         <Aviso tom="erro">
           Templates são um recurso da <strong>API oficial do WhatsApp</strong>. A rede está
-          sem ela conectada — com a Z-API não existe janela de 24 horas para contornar,
+          sem ela conectada — com a uazapi não existe janela de 24 horas para contornar,
           então o envio normal já resolve.{' '}
           <a href="/admin/settings?tab=integrations" style={{ color: 'inherit', fontWeight: 800 }}>
             Ver integrações →

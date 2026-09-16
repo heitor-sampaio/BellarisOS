@@ -558,7 +558,7 @@ export async function getTemplatesParaConversa(
   if (erroConv) { console.error('[getTemplatesParaConversa]', erroConv.message); return [] }
   if (!conv || (conv as { channel: string }).channel !== 'whatsapp') return []
 
-  // Template é da API oficial. Com Z-API não há janela para contornar.
+  // Template é da API oficial. Com a uazapi não há janela para contornar.
   const canal = await resolverCanal(ctx.tenantId!, 'whatsapp')
   if (!canal || canal.nome !== 'official') return []
 

@@ -433,12 +433,12 @@ export function CRMInbox({
 
   // Regra da Meta: só dá para responder livremente até 24h da última mensagem
   // do contato. Vale para Instagram, Messenger e WhatsApp pela API oficial —
-  // não para a Z-API, que não passa pela API oficial.
+  // não para a uazapi, que não passa pela API oficial.
   const janela = selectedConv
     ? estadoDaJanela(
         selectedConv.channel,
         selectedConv.last_inbound_at,
-        // O provedor ATIVO manda: se a rede migrou de Z-API para a API oficial,
+        // O provedor ATIVO manda: se a rede migrou da uazapi para a API oficial,
         // a janela passa a valer mesmo nas conversas antigas.
         provedorWhatsApp ?? selectedConv.provider,
       )

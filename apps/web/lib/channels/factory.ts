@@ -98,7 +98,7 @@ export async function getTenantPorPagina(
 export interface CanaisDaRede {
   canais: ChannelKind[]
   /**
-   * Provedor de WhatsApp ATIVO agora — `official` ou `zapi`.
+   * Provedor de WhatsApp ATIVO agora — `official` ou `uazapi`.
    *
    * A tela precisa dele para decidir a janela de 24h. Usar
    * `conversations.provider` não serve: essa coluna só é preenchida depois de

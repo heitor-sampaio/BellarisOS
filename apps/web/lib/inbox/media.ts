@@ -57,7 +57,7 @@ export async function guardarMidia(
   }
 }
 
-/** Provedor que entrega URL pública e sem autenticação (Z-API). */
+/** Provedor que entrega URL pública e sem autenticação (uazapi). */
 async function baixarDireto(
   media: InboundMedia,
 ): Promise<{ bytes: ArrayBuffer; mimeType: string } | null> {

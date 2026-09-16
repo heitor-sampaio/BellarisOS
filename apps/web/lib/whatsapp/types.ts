@@ -12,7 +12,7 @@ export type {
 
 import type { InboundMsg, StatusUpdate, SendProvider } from '@/lib/channels/types'
 
-export type WhatsAppProviderType = 'zapi' | 'official'
+export type WhatsAppProviderType = 'uazapi' | 'official'
 
 /** Um provedor de WhatsApp é um canal que também sabe ler webhook. */
 export interface WhatsAppProvider extends SendProvider {
@@ -23,26 +23,40 @@ export interface WhatsAppProvider extends SendProvider {
 
 // -- Config shapes stored in integration_configs.config (jsonb) --
 
-export interface ZAPIConfig {
-  provider:      'zapi'
-  instanceId:    string
-  token:         string
-  baseUrl?:      string   // default: https://api.z-api.io
-  webhookToken?: string   // Security Token configurado no painel Z-API (client-token header)
+export interface UazapiConfig {
+  provider:   'uazapi'
   /**
-   * Instância criada pelo BellarisOS na nossa conta de integrador, em vez de
-   * digitada pela rede.
+   * Token DA INSTÂNCIA (header `token`).
    *
-   * Muda o que a tela oferece (QR em vez de formulário) e, principalmente,
-   * quem paga: instância gerenciada gera custo para nós e precisa ser
-   * CANCELADA na Z-API quando a rede desconecta.
+   * É também o segredo do webhook: a uazapi ecoa este valor no corpo de cada
+   * entrega, o que faz roteamento e autenticação virarem a mesma operação.
    */
-  managed?:      boolean
-  /** Fim do período de avaliação (epoch ms). Some se ninguém parear até lá. */
-  trialDue?:     number
+  token:      string
+  instanceId?:   string
+  instanceName?: string
+  /**
+   * Servidor uazapi desta instância, fixado na criação.
+   *
+   * Cada conta tem seu subdomínio (`bellarisos.uazapi.com`) — guardar aqui, e
+   * não numa constante global, evita que trocar o env quebre as instâncias
+   * criadas antes da troca.
+   */
+  baseUrl?:   string
+  /** Instância criada pelo BellarisOS, em vez de digitada pela rede. */
+  managed?:   boolean
   /** Número que pareou — só para mostrar na tela. */
   connectedPhone?: string | null
   connectedName?:  string | null
+  /**
+   * Proxy PRÓPRIO, quando configurado.
+   *
+   * A uazapi já sai por um proxy gerenciado por ela (`mode: internal`, IP no
+   * Brasil). Este campo só é preenchido quando a instalação opta por um IP
+   * contratado à parte. Nunca vai para o cliente.
+   */
+  proxyUrl?:        string
+  proxyAppliedAt?:  string
+  webhookAppliedAt?: string
 }
 
 export interface OfficialConfig {
@@ -61,4 +75,4 @@ export interface OfficialConfig {
   wabaId?:       string
 }
 
-export type WhatsAppConfig = ZAPIConfig | OfficialConfig
+export type WhatsAppConfig = UazapiConfig | OfficialConfig

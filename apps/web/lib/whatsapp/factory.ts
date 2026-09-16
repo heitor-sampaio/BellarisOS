@@ -1,9 +1,10 @@
-import type { WhatsAppProvider, WhatsAppConfig } from './types'
-import { ZAPIProvider } from './zapi'
+import { timingSafeEqual } from 'crypto'
+import type { WhatsAppProvider, WhatsAppConfig, UazapiConfig } from './types'
+import { UazapiProvider } from './uazapi'
 import { OfficialAPIProvider } from './official'
 
 export function resolveProvider(config: WhatsAppConfig): WhatsAppProvider {
-  if (config.provider === 'zapi')     return new ZAPIProvider(config)
+  if (config.provider === 'uazapi')   return new UazapiProvider(config)
   if (config.provider === 'official') return new OfficialAPIProvider(config)
   throw new Error(`Unknown WhatsApp provider: ${(config as any).provider}`)
 }
@@ -14,14 +15,13 @@ export async function getWhatsAppConfig(tenantId: string): Promise<WhatsAppConfi
 
   // ⚠️ Aqui havia um `.maybeSingle()`, que LANÇA quando vem mais de uma linha.
   // Duas configs de WhatsApp ativas no mesmo tenant é estado inválido, mas
-  // acontece: nada no banco impede, e `saveWhatsAppConfig` não desativa a irmã.
-  // O resultado era o inbox inteiro cair com erro de PostgREST em vez de
-  // simplesmente atender por um dos provedores.
+  // acontece: nada no banco impede. O resultado era o inbox inteiro cair com
+  // erro de PostgREST em vez de simplesmente atender por um dos provedores.
   const { data, error } = await admin
     .from('integration_configs')
     .select('provider, config')
     .eq('tenant_id', tenantId)
-    .in('provider', ['zapi', 'official'])
+    .in('provider', ['uazapi', 'official'])
     .eq('is_active', true)
 
   if (error) { console.error('[getWhatsAppConfig]', error.message); return null }
@@ -29,26 +29,55 @@ export async function getWhatsAppConfig(tenantId: string): Promise<WhatsAppConfi
 
   // Desempate explícito, não alfabético: a API oficial ganha da não oficial. Se a
   // rede configurou as duas, é ela que deve atender — e um `.order()` por nome
-  // de provedor entregaria a errada (`zapi` > `official` no alfabeto).
+  // de provedor entregaria a errada.
   const linha = data.find(l => l.provider === 'official') ?? data[0]!
 
   return { provider: linha.provider as WhatsAppConfig['provider'], ...(linha.config as object) } as WhatsAppConfig
 }
 
-// Lookup tenant by Z-API instanceId (for webhook routing)
-export async function getTenantByZAPIInstance(instanceId: string): Promise<string | null> {
+/**
+ * De qual rede é este webhook da uazapi?
+ *
+ * A uazapi ecoa o TOKEN da própria instância no corpo de cada entrega. Como o
+ * token é secreto, roteamento e autenticação viram a mesma operação — bem
+ * melhor que a Z-API, que mandava um `instanceId` público e exigia um header
+ * separado para autenticar (header que, se não configurado, deixava o webhook
+ * aberto).
+ *
+ * ⚠️ Sem filtro `is_active` de propósito: é o evento `connection` que ativa a
+ * config, e filtrar aqui descartaria justamente a mensagem que deveria ativá-la.
+ */
+export async function getTenantByUazapiToken(
+  token: string,
+): Promise<{ tenantId: string; config: UazapiConfig } | null> {
+  if (!token) return null
+
   const { createAdminClient } = await import('@/lib/supabase/admin')
   const admin = createAdminClient()
 
-  const { data } = await admin
+  const { data, error } = await admin
     .from('integration_configs')
     .select('tenant_id, config')
-    .eq('provider', 'zapi')
-    .eq('is_active', true)
+    .eq('provider', 'uazapi')
 
-  type ConfigRow = { tenant_id: string; config: Record<string, unknown> | null }
-  const match = (data ?? []).find((r: ConfigRow) => (r.config as any)?.instanceId === instanceId) as ConfigRow | undefined
-  return match?.tenant_id ?? null
+  if (error) { console.error('[getTenantByUazapiToken]', error.message); return null }
+
+  const recebido = Buffer.from(token)
+  for (const linha of (data ?? []) as { tenant_id: string; config: Record<string, unknown> | null }[]) {
+    const guardado = linha.config?.token
+    if (typeof guardado !== 'string' || !guardado) continue
+
+    // Comparação em tempo constante: o token é credencial, não identificador.
+    const esperado = Buffer.from(guardado)
+    if (esperado.length !== recebido.length) continue
+    if (!timingSafeEqual(esperado, recebido)) continue
+
+    return {
+      tenantId: linha.tenant_id,
+      config:   { provider: 'uazapi', ...(linha.config as object) } as UazapiConfig,
+    }
+  }
+  return null
 }
 
 // Lookup tenant by Official WhatsApp phoneNumberId

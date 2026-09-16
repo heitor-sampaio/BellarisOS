@@ -128,8 +128,9 @@ export function useAnexos(onEnviar: (file: File, caption: string) => void): Anex
         stream.getTracks().forEach(t => t.stop())
         const tipo = formato.mime.split(';')[0]!
         const blob = new Blob(chunksRef.current, { type: tipo })
-        // A extensão do nome importa: a Z-API monta a rota de documento a
-        // partir dela, e o servidor usa o `type` para decidir `media_type`.
+        // A extensão do nome importa em três lugares: vira o `docName` da
+        // uazapi, define o caminho do arquivo no bucket, e o `type` decide o
+        // `media_type` gravado na mensagem.
         setPendente(new File([blob], `audio-${Date.now()}.${formato.ext}`, { type: tipo }))
         setCaption('')
       }

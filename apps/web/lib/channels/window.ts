@@ -17,7 +17,7 @@ export interface EstadoJanela {
  * até 24h depois da última mensagem do contato. Passado isso, a API recusa — e
  * sem esta checagem a pessoa escreve, vê "enviado" e a mensagem nunca chega.
  *
- * Z-API fica de fora: não passa pela API oficial e não tem a trava. Por isso a
+ * A uazapi fica de fora: não passa pela API oficial e não tem a trava. Por isso a
  * decisão olha o PROVEDOR configurado, não só o canal — a mesma conversa de
  * WhatsApp tem ou não janela dependendo de como a rede conectou.
  *

@@ -26,7 +26,7 @@ export interface InboundReferral {
 /**
  * Mídia recebida, do jeito que o provedor entrega.
  *
- * Z-API manda a URL pronta; a Graph API manda só um id, que exige uma segunda
+ * A uazapi manda a URL pronta; a Graph API manda só um id, que exige uma segunda
  * chamada autenticada para virar URL — e essa URL ainda expira. Por isso as
  * duas formas convivem aqui, e quem resolve é `lib/inbox/media.ts`.
  */
@@ -83,7 +83,7 @@ export interface StatusUpdate {
  *
  * Carrega os bytes E a URL assinada porque os provedores pedem coisas
  * diferentes: a Cloud API quer o arquivo enviado antes (para devolver um id),
- * enquanto Z-API e Messenger baixam de uma URL que a gente passa.
+ * enquanto uazapi e Messenger baixam de uma URL que a gente passa.
  */
 export interface OutboundMedia {
   kind:      MediaKind
@@ -107,7 +107,7 @@ export interface SendProvider {
    * Envia um template aprovado — o único caminho para falar com alguém fora da
    * janela de 24h.
    *
-   * Opcional porque só a API oficial tem template: a Z-API fala pelo WhatsApp
+   * Opcional porque só a API oficial tem template: a uazapi fala pelo WhatsApp
    * Web, onde não existe janela nem aprovação, e Instagram/Messenger não têm
    * nada equivalente.
    */
@@ -121,7 +121,7 @@ export interface SendProvider {
  * Canais regidos pela janela de 24h da Meta: só dá para responder livremente
  * até 24h da última mensagem do contato.
  *
- * Z-API fica de fora porque não passa pela API oficial e não tem essa trava.
+ * A uazapi fica de fora porque não passa pela API oficial e não tem essa trava.
  * É o mesmo motivo de a janela ser decidida pelo PROVEDOR configurado, e não
  * só pelo canal — ver `lib/channels/window.ts`.
  */

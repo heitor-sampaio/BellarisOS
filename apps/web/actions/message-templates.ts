@@ -49,7 +49,7 @@ const CAMPOS = `id, name, category, language, header_text, body_text, footer_tex
 /**
  * A configuração do WhatsApp oficial desta rede.
  *
- * Template é coisa da API oficial: a Z-API manda pelo WhatsApp Web, que não tem
+ * Template é coisa da API oficial: a uazapi manda pelo WhatsApp Web, que não tem
  * janela de 24h nem aprovação da Meta. Dizer isso explicitamente evita a tela
  * oferecer um recurso que não vai funcionar.
  */

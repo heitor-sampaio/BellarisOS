@@ -3,27 +3,28 @@
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  QrCode, CheckCircle2, AlertCircle, Loader2, RefreshCw, Smartphone, Unplug,
+  QrCode, CheckCircle2, AlertCircle, Loader2, RefreshCw, Smartphone, Unplug, ShieldCheck,
 } from 'lucide-react'
 import {
-  getEstadoConexaoZapi, criarConexaoZapi, getQrCodeZapi, getCodigoPareamentoZapi,
-  desconectarZapi, removerConexaoZapi, type EstadoConexaoZapi,
-} from '@/actions/zapi-connection'
+  getEstadoConexaoUazapi, criarConexaoUazapi, getQrCodeUazapi, getCodigoPareamentoUazapi,
+  desconectarUazapi, removerConexaoUazapi, repararConexaoUazapi,
+  type EstadoConexaoUazapi,
+} from '@/actions/uazapi-connection'
 
 /**
  * Conectar o WhatsApp sem sair do BellarisOS.
  *
- * A instância é criada na nossa conta de integrador da Z-API; a clínica só
- * escaneia o QR. Quem já tem conta própria continua com o formulário manual,
- * na outra aba.
+ * A instância nasce na nossa conta da uazapi; a clínica só escaneia o QR.
  */
 
 /**
- * O WhatsApp invalida o QR a cada 20 segundos, então a tela precisa buscar de
- * novo. 15s dá margem; a própria Z-API recomenda parar depois de algumas
- * tentativas em vez de girar para sempre, porque cada chamada custa.
+ * O WhatsApp invalida o QR a cada ~20 segundos.
+ *
+ * O polling consulta `/instance/status`, que é barato — só quando não há código
+ * lá é que a action chama `/instance/connect`, que é escrita e leva de 5 a 9
+ * segundos. Parar depois de alguns minutos evita girar para sempre.
  */
-const INTERVALO_QR = 15_000
+const INTERVALO_QR  = 15_000
 const MAX_TENTATIVAS = 12   // ~3 minutos
 
 function Aviso({ tom, children }: { tom: 'erro' | 'ok' | 'espera'; children: React.ReactNode }) {
@@ -47,41 +48,37 @@ function Aviso({ tom, children }: { tom: 'erro' | 'ok' | 'espera'; children: Rea
   )
 }
 
-export function ZapiConnect() {
+export function UazapiConnect() {
   const router = useRouter()
-  const [estado,   setEstado]   = useState<EstadoConexaoZapi | null>(null)
-  const [qr,       setQr]       = useState<string | null>(null)
-  const [erro,     setErro]     = useState<string | null>(null)
+  const [estado,     setEstado]     = useState<EstadoConexaoUazapi | null>(null)
+  const [qr,         setQr]         = useState<string | null>(null)
+  const [erro,       setErro]       = useState<string | null>(null)
   const [tentativas, setTentativas] = useState(0)
-  const [pausado,  setPausado]  = useState(false)
-  const [codigo,   setCodigo]   = useState<string | null>(null)
-  const [telefone, setTelefone] = useState('')
+  const [pausado,    setPausado]    = useState(false)
+  const [codigo,     setCodigo]     = useState<string | null>(null)
+  const [telefone,   setTelefone]   = useState('')
   const [modoCodigo, setModoCodigo] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const [isPending,  startTransition] = useTransition()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const carregarEstado = useCallback(async () => {
-    try {
-      setEstado(await getEstadoConexaoZapi())
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Falha ao consultar a conexão')
-    }
+    try { setEstado(await getEstadoConexaoUazapi()) }
+    catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao consultar a conexão') }
   }, [])
 
   useEffect(() => { carregarEstado() }, [carregarEstado])
 
-  // Polling do QR enquanto ninguém pareou.
   useEffect(() => {
     if (!estado?.gerenciada || estado.conectada || pausado || modoCodigo) return
     if (tentativas >= MAX_TENTATIVAS) { setPausado(true); return }
 
     let vivo = true
     async function buscar() {
-      const res = await getQrCodeZapi()
+      const res = await getQrCodeUazapi()
       if (!vivo) return
       if (!res.ok) { setErro(res.error ?? 'Falha ao obter o QR code'); setPausado(true); return }
       if (res.conectada) { setQr(null); await carregarEstado(); router.refresh(); return }
-      setQr(res.qr ?? null)
+      if (res.qr) setQr(res.qr)
       setTentativas(t => t + 1)
       timerRef.current = setTimeout(buscar, INTERVALO_QR)
     }
@@ -93,16 +90,16 @@ export function ZapiConnect() {
     }
   }, [estado?.gerenciada, estado?.conectada, pausado, modoCodigo, tentativas, carregarEstado, router])
 
-  function recomeçarQr() {
+  function recomecarQr() {
     setErro(null); setQr(null); setTentativas(0); setPausado(false); setModoCodigo(false)
   }
 
-  function conectar() {
+  function comAcao(fn: () => Promise<{ ok: boolean; error?: string }>, depois?: () => void) {
     setErro(null)
     startTransition(async () => {
-      const res = await criarConexaoZapi()
-      if (!res.ok) { setErro(res.error ?? 'Falha ao criar a conexão'); return }
-      recomeçarQr()
+      const res = await fn()
+      if (!res.ok) { setErro(res.error ?? 'Não foi possível concluir'); return }
+      depois?.()
       await carregarEstado()
       router.refresh()
     })
@@ -111,36 +108,18 @@ export function ZapiConnect() {
   function pedirCodigo() {
     setErro(null); setCodigo(null)
     startTransition(async () => {
-      const res = await getCodigoPareamentoZapi(telefone)
+      const res = await getCodigoPareamentoUazapi(telefone)
       if (!res.ok) { setErro(res.error ?? 'Falha ao gerar o código'); return }
       setCodigo(res.code ?? null)
     })
   }
 
-  function desconectar() {
-    setErro(null)
-    startTransition(async () => {
-      const res = await desconectarZapi()
-      if (!res.ok) { setErro(res.error ?? 'Falha ao desconectar'); return }
-      recomeçarQr()
-      await carregarEstado()
-      router.refresh()
-    })
-  }
-
   function remover() {
     if (!confirm(
-      'Remover a conexão? O número é desligado e a instância é cancelada na Z-API. '
-      + 'Para voltar, será preciso parear de novo.',
+      'Remover a conexão? A instância é apagada na uazapi de forma permanente e '
+      + 'imediata. Para voltar, será preciso parear de novo.',
     )) return
-    setErro(null)
-    startTransition(async () => {
-      const res = await removerConexaoZapi()
-      if (!res.ok) { setErro(res.error ?? 'Falha ao remover'); return }
-      setQr(null)
-      await carregarEstado()
-      router.refresh()
-    })
+    comAcao(removerConexaoUazapi, () => setQr(null))
   }
 
   if (!estado) {
@@ -154,16 +133,15 @@ export function ZapiConnect() {
   if (!estado.disponivel) {
     return (
       <Aviso tom="espera">
-        A conexão automática não está habilitada nesta instalação. Falta o token de
-        integrador da Z-API no ambiente (<code>ZAPI_PARTNER_TOKEN</code>). Use a aba
-        “Já tenho conta Z-API”.
+        A conexão automática não está habilitada nesta instalação. Faltam
+        <code> UAZAPI_BASE_URL </code> e <code>UAZAPI_ADMIN_TOKEN</code> no ambiente.
       </Aviso>
     )
   }
 
-  // -- Estado 1: ainda não existe instância para esta rede ---------------------
+  // -- Ainda não existe instância para esta rede ------------------------------
   if (!estado.gerenciada) {
-    const perto = estado.usadas >= 20
+    const perto = estado.teto > 0 && estado.usadas >= estado.teto - 5
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, margin: 0 }}>
@@ -177,13 +155,13 @@ export function ZapiConnect() {
 
         {perto && (
           <Aviso tom="espera">
-            {estado.usadas} de {estado.teto} conexões deste token já em uso.
-            Solicite um novo token de integrador à Z-API antes de chegar ao limite.
+            {estado.usadas} de {estado.teto} conexões em uso nesta instalação.
           </Aviso>
         )}
         {erro && <Aviso tom="erro">{erro}</Aviso>}
 
-        <button type="button" onClick={conectar} disabled={isPending} className="btn-primary"
+        <button type="button" onClick={() => comAcao(criarConexaoUazapi, recomecarQr)}
+          disabled={isPending} className="btn-primary"
           style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7 }}>
           <QrCode size={15} /> {isPending ? 'Criando…' : 'Conectar WhatsApp'}
         </button>
@@ -191,7 +169,7 @@ export function ZapiConnect() {
     )
   }
 
-  // -- Estado 3: conectado ----------------------------------------------------
+  // -- Conectado --------------------------------------------------------------
   if (estado.conectada) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -200,20 +178,33 @@ export function ZapiConnect() {
           {estado.name ? ` (${estado.name})` : ''}
         </Aviso>
 
-        {estado.celularOffline && (
-          <Aviso tom="espera">
-            O celular está fora de alcance. A conexão existe, mas nada é enviado nem
-            recebido até o aparelho voltar à internet.
-          </Aviso>
+        {/* O IP de saída é o que separa uma clínica da outra quando uma é
+            banida — melhor dizer qual está valendo do que presumir. */}
+        {estado.proxyModo && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            fontSize: 11.5, color: 'var(--text-faint)',
+          }}>
+            <ShieldCheck size={13} />
+            {estado.proxyModo === 'internal'
+              ? <>Saída por IP gerenciado pela uazapi{estado.proxyPais ? ` (${estado.proxyPais.toUpperCase()})` : ''}</>
+              : <>Saída por IP próprio ({estado.proxyModo})</>}
+          </div>
         )}
         {erro && <Aviso tom="erro">{erro}</Aviso>}
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" onClick={carregarEstado} className="btn-ghost"
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={14} /> Atualizar
           </button>
-          <button type="button" onClick={desconectar} disabled={isPending} className="btn-ghost"
+          <button type="button" onClick={() => comAcao(repararConexaoUazapi)}
+            disabled={isPending} className="btn-ghost"
+            title="Reaplica webhook, ritmo e proxy — use se as mensagens pararem de chegar">
+            Reparar conexão
+          </button>
+          <button type="button" onClick={() => comAcao(desconectarUazapi, recomecarQr)}
+            disabled={isPending} className="btn-ghost"
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Unplug size={14} /> Desconectar número
           </button>
@@ -226,24 +217,9 @@ export function ZapiConnect() {
     )
   }
 
-  // -- Estado 2: instância criada, aguardando pareamento ----------------------
-  const venceEm = estado.trialDue ? new Date(estado.trialDue) : null
-  const expirou = venceEm ? venceEm.getTime() < Date.now() : false
-
+  // -- Aguardando pareamento --------------------------------------------------
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {expirou ? (
-        <Aviso tom="erro">
-          O prazo para parear expirou e a Z-API removeu esta instância. Remova a
-          conexão e crie outra.
-        </Aviso>
-      ) : venceEm && (
-        <Aviso tom="espera">
-          Pareie até {venceEm.toLocaleDateString('pt-BR')} às{' '}
-          {venceEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} —
-          depois disso a conexão é descartada e é preciso criar outra.
-        </Aviso>
-      )}
       {estado.erro && <Aviso tom="erro">{estado.erro}</Aviso>}
       {erro && <Aviso tom="erro">{erro}</Aviso>}
 
@@ -262,7 +238,7 @@ export function ZapiConnect() {
               style={{ fontSize: 13, flex: 1 }}
             />
             <button type="button" onClick={pedirCodigo} disabled={isPending} className="btn-primary">
-              Gerar código
+              {isPending ? 'Gerando…' : 'Gerar código'}
             </button>
           </div>
           {codigo && (
@@ -281,7 +257,7 @@ export function ZapiConnect() {
               </p>
             </div>
           )}
-          <button type="button" onClick={() => { setModoCodigo(false); recomeçarQr() }}
+          <button type="button" onClick={() => { setModoCodigo(false); recomecarQr() }}
             className="btn-ghost" style={{ alignSelf: 'flex-start' }}>
             Usar QR code
           </button>
@@ -298,7 +274,7 @@ export function ZapiConnect() {
                 <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
                   O código expirou.
                 </p>
-                <button type="button" onClick={recomeçarQr} className="btn-primary"
+                <button type="button" onClick={recomecarQr} className="btn-primary"
                   style={{ marginTop: 10, height: 32, fontSize: 12.5 }}>
                   Gerar novo
                 </button>
@@ -307,7 +283,12 @@ export function ZapiConnect() {
               <img src={qr} alt="QR code para conectar o WhatsApp"
                 style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 8 }} />
             ) : (
-              <Loader2 size={20} className="animate-spin" color="var(--text-faint)" />
+              <div style={{ textAlign: 'center' }}>
+                <Loader2 size={20} className="animate-spin" color="var(--text-faint)" />
+                <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '8px 0 0' }}>
+                  Preparando o código…
+                </p>
+              </div>
             )}
           </div>
 

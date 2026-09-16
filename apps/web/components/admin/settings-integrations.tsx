@@ -14,7 +14,7 @@ import {
 } from '@/actions/integrations'
 import type { IntegrationConfig } from '@/actions/integrations'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
-import { ZapiConnect } from '@/components/admin/zapi-connect'
+import { UazapiConnect } from '@/components/admin/uazapi-connect'
 
 /**
  * Origem do site, resolvida só depois de montar.
@@ -78,12 +78,11 @@ function ConnectionStatus({ ok, detail }: { ok: boolean; detail?: string }) {
   )
 }
 
-// --- Z-API config form --------------------------------------------------------
+// --- uazapi: conta própria (formulário manual) --------------------------------------------------------
 
-function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
+function UazapiForm({ initial }: { initial?: IntegrationConfig }) {
   const origem = useOrigem()
   const existing = (initial?.config ?? {}) as Record<string, string>
-  const [instanceId, setInstanceId] = useState(existing.instanceId ?? '')
   const [token,      setToken]      = useState(existing.token ?? '')
   const [baseUrl,    setBaseUrl]    = useState(existing.baseUrl ?? '')
   const [isActive,   setIsActive]   = useState(initial?.is_active ?? false)
@@ -95,7 +94,7 @@ function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
   function handleSave() {
     setSaved(false)
     startTransition(async () => {
-      const res = await saveWhatsAppConfig('zapi', { instanceId, token, baseUrl }, isActive)
+      const res = await saveWhatsAppConfig('uazapi', { token, baseUrl }, isActive)
       if (res.ok) setSaved(true)
     })
   }
@@ -104,49 +103,42 @@ function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
     setTestResult(null)
     startTest(async () => {
       // Save first, then test
-      await saveWhatsAppConfig('zapi', { instanceId, token, baseUrl }, true)
-      const res = await testWhatsAppConnection('zapi')
+      await saveWhatsAppConfig('uazapi', { token, baseUrl }, true)
+      const res = await testWhatsAppConnection('uazapi')
       setTestResult(res)
     })
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <Field
-        label="Instance ID"
-        name="instanceId"
-        value={instanceId}
-        onChange={setInstanceId}
-        placeholder="Seu Instance ID do Z-API"
-        hint="Encontrado no painel Z-API em Instâncias"
-      />
+
       <Field
         label="Token"
         name="token"
         value={token}
         onChange={setToken}
         type="password"
-        placeholder="Token da instância"
+        placeholder="Token da instância na uazapi"
       />
       <Field
-        label="URL base (opcional)"
+        label="Servidor (URL base)"
         name="baseUrl"
         value={baseUrl}
         onChange={setBaseUrl}
-        placeholder="https://api.z-api.io (deixe em branco para usar o padrão)"
-        hint="Preencha apenas se usar instância self-hosted"
+        placeholder="https://suaconta.uazapi.com"
+        hint="O subdomínio da sua conta na uazapi. Sem ele, usa o servidor padrão da instalação."
       />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
         <input
-          id="zapi-active"
+          id="uazapi-active"
           type="checkbox"
           checked={isActive}
           onChange={e => setIsActive(e.target.checked)}
           style={{ width: 16, height: 16, cursor: 'pointer' }}
         />
-        <label htmlFor="zapi-active" style={{ fontSize: 13, cursor: 'pointer', color: 'var(--text)' }}>
-          Ativar integração Z-API
+        <label htmlFor="uazapi-active" style={{ fontSize: 13, cursor: 'pointer', color: 'var(--text)' }}>
+          Ativar integração uazapi
         </label>
       </div>
 
@@ -162,7 +154,7 @@ function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
         <button
           type="button"
           onClick={handleTest}
-          disabled={!instanceId || !token || isTesting}
+          disabled={!token || isTesting}
           className="btn-secondary"
         >
           {isTesting ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
@@ -171,7 +163,7 @@ function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
         <button
           type="button"
           onClick={handleSave}
-          disabled={!instanceId || !token || isPending}
+          disabled={!token || isPending}
           className="btn-primary"
         >
           {isPending ? <Loader2 size={14} className="animate-spin" /> : null}
@@ -180,18 +172,18 @@ function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
       </div>
 
       <a
-        href="https://developer.z-api.io/webhooks/on-message-received"
+        href="https://docs.uazapi.com/"
         target="_blank"
         rel="noopener noreferrer"
         style={{ fontSize: 12, color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
       >
         <ExternalLink size={12} />
-        Configure o webhook no Z-API para receber mensagens →
+        Documentação da uazapi →
       </a>
       <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: -8 }}>
         URL do webhook:{' '}
         <code style={{ background: 'var(--bg-app)', padding: '2px 6px', borderRadius: 4, fontSize: 11 }}>
-          {origem}/api/webhooks/zapi
+          {origem}/api/webhooks/uazapi
         </code>
       </p>
     </div>
@@ -1036,23 +1028,23 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
   )
   // Quem já configurou à mão cai direto na aba do formulário; quem não tem
   // nada vê primeiro o caminho fácil.
-  const [zapiModo, setZapiModo] = useState<'gerenciada' | 'propria'>(() => {
-    const zapi = initialConfigs.find(c => c.provider === 'zapi')
-    if (!zapi?.config) return 'gerenciada'
-    return (zapi.config as Record<string, unknown>).managed === true ? 'gerenciada' : 'propria'
+  const [uazapiModo, setUazapiModo] = useState<'gerenciada' | 'propria'>(() => {
+    const uazapi = initialConfigs.find(c => c.provider === 'uazapi')
+    if (!uazapi?.config) return 'gerenciada'
+    return (uazapi.config as Record<string, unknown>).managed === true ? 'gerenciada' : 'propria'
   })
   const [wpProvider, setWpProvider] = useState<ProviderType>(() => {
-    const existing = initialConfigs.find(c => c.provider === 'zapi' || c.provider === 'official')
-    return (existing?.provider as ProviderType) ?? 'zapi'
+    const existing = initialConfigs.find(c => c.provider === 'uazapi' || c.provider === 'official')
+    return (existing?.provider as ProviderType) ?? 'uazapi'
   })
 
-  const zapiConfig     = initialConfigs.find(c => c.provider === 'zapi')
+  const uazapiConfig     = initialConfigs.find(c => c.provider === 'uazapi')
   const officialConfig = initialConfigs.find(c => c.provider === 'official')
   const metaAdsConfig  = initialConfigs.find(c => c.provider === 'meta_ads')
   const metaMsgConfig  = initialConfigs.find(c => c.provider === 'meta_messaging')
   const googleAdsConfig = initialConfigs.find(c => c.provider === 'google_ads')
 
-  const hasWhatsApp  = zapiConfig?.is_active || officialConfig?.is_active
+  const hasWhatsApp  = uazapiConfig?.is_active || officialConfig?.is_active
   const hasMetaAds   = metaAdsConfig?.is_active
   const hasMetaMsg   = metaMsgConfig?.is_active
   const hasGoogleAds = googleAdsConfig?.is_active
@@ -1124,7 +1116,7 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
         icon={<Phone size={18} color="#25D366" />}
         iconBg="#25D36615" iconColor="#25D366"
         title="WhatsApp"
-        subtitle={hasWhatsApp ? `Conectado via ${zapiConfig?.is_active ? 'Z-API' : 'WhatsApp Oficial'}` : 'Não configurado'}
+        subtitle={hasWhatsApp ? `Conectado via ${uazapiConfig?.is_active ? 'uazapi' : 'WhatsApp Oficial'}` : 'Não configurado'}
         isActive={!!hasWhatsApp}
       >
         {/* Provider selector */}
@@ -1133,7 +1125,7 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
             PROVEDOR
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
-            {(['zapi', 'official'] as ProviderType[]).map(p => (
+            {(['uazapi', 'official'] as ProviderType[]).map(p => (
               <button
                 key={p}
                 type="button"
@@ -1147,42 +1139,42 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
                   transition: 'all 120ms',
                 }}
               >
-                {p === 'zapi' ? 'Z-API' : 'WhatsApp Oficial'}
+                {p === 'uazapi' ? 'uazapi' : 'WhatsApp Oficial'}
                 <p style={{ fontSize: 10.5, fontWeight: 500, marginTop: 3, color: 'inherit', opacity: 0.75 }}>
-                  {p === 'zapi' ? 'Via WhatsApp Web — mais fácil de configurar' : 'Meta Cloud API — requer aprovação da Meta'}
+                  {p === 'uazapi' ? 'Via WhatsApp Web — mais fácil de configurar' : 'Meta Cloud API — requer aprovação da Meta'}
                 </p>
               </button>
             ))}
           </div>
         </div>
-        {wpProvider === 'zapi' ? (
+        {wpProvider === 'uazapi' ? (
           <>
             {/* Dois caminhos para o mesmo provedor: conectar por aqui (instância
                 na nossa conta de integrador) ou usar uma conta própria. */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
               {([
                 ['gerenciada', 'Conectar por aqui'],
-                ['propria',    'Já tenho conta Z-API'],
+                ['propria',    'Já tenho conta uazapi'],
               ] as const).map(([modo, rotulo]) => (
                 <button
                   key={modo}
                   type="button"
-                  onClick={() => setZapiModo(modo)}
+                  onClick={() => setUazapiModo(modo)}
                   style={{
                     padding: '7px 12px', borderRadius: 99, cursor: 'pointer',
                     fontSize: 12.5, fontWeight: 700,
-                    border: zapiModo === modo ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
-                    background: zapiModo === modo ? 'var(--brand-soft)' : 'var(--bg-app)',
-                    color: zapiModo === modo ? 'var(--brand)' : 'var(--text-muted)',
+                    border: uazapiModo === modo ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
+                    background: uazapiModo === modo ? 'var(--brand-soft)' : 'var(--bg-app)',
+                    color: uazapiModo === modo ? 'var(--brand)' : 'var(--text-muted)',
                   }}
                 >
                   {rotulo}
                 </button>
               ))}
             </div>
-            {zapiModo === 'gerenciada'
-              ? <ZapiConnect />
-              : <ZAPIForm initial={zapiConfig} />}
+            {uazapiModo === 'gerenciada'
+              ? <UazapiConnect />
+              : <UazapiForm initial={uazapiConfig} />}
           </>
         ) : (
           <OfficialForm initial={officialConfig} />
