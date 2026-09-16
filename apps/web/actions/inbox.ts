@@ -734,16 +734,21 @@ async function propagarParaOportunidades(
 }
 
 /**
- * Ganha ou perdida: move para a etapa de desfecho do funil da oportunidade.
+ * Situação da oportunidade: em aberto, ganha ou perdida.
+ *
+ * É sempre um movimento de etapa — a situação não é campo, é o `outcome` da
+ * etapa em que a oportunidade está. Por isso `OPEN` também entra aqui: marcar
+ * ganha por engano tem que poder ser desfeito, e sem reabrir a única saída
+ * seria arrastar o card no quadro.
  *
  * Ganhar **não** cria cliente. São gestos separados de propósito: fechar venda de
  * quem não quer dar CPF é rotina, e exigir a ficha para registrar o ganho
  * deixaria o funil mentindo sobre o que aconteceu. Ligar as duas pontas é
  * trabalho do módulo de automações.
  */
-export async function concluirOportunidade(
+export async function definirSituacaoOportunidade(
   leadId: string,
-  desfecho: 'WON' | 'LOST',
+  desfecho: 'OPEN' | 'WON' | 'LOST',
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
@@ -763,17 +768,22 @@ export async function concluirOportunidade(
   const atual  = stages.find(s => s.id === (lead as any).crm_stage_id)
   if (!atual) return { ok: false, error: 'Oportunidade sem etapa. Escolha um funil antes de concluir.' }
 
+  // Reabrir volta para a PRIMEIRA etapa em aberto do funil, não para onde a
+  // oportunidade estava: a etapa anterior não é guardada em lugar nenhum, e
+  // adivinhar pelo histórico seria menos previsível do que recomeçar do começo
+  // — de onde quem reabriu pode mover para a etapa certa em um clique.
   const destino = stages
     .filter(s => s.funnel_id === atual.funnel_id && s.outcome === desfecho)
     .sort((a, b) => a.position - b.position)[0]
 
   if (!destino) {
-    const rotulo = desfecho === 'WON' ? 'ganho' : 'perda'
+    const rotulo = desfecho === 'WON' ? 'ganho' : desfecho === 'LOST' ? 'perda' : 'andamento'
     return {
       ok: false,
-      error: `Este funil não tem etapa de ${rotulo}. Marque uma etapa como ${rotulo} em Configurações → Funis.`,
+      error: `Este funil não tem etapa de ${rotulo}. Ajuste as etapas em Oportunidades → Funis.`,
     }
   }
+  if (destino.id === atual.id) return { ok: true }
 
   const { error } = await admin
     .from('leads').update({ crm_stage_id: destino.id }).eq('id', leadId)

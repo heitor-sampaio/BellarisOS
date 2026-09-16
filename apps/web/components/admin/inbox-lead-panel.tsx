@@ -11,7 +11,7 @@ import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { StageOptions } from '@/components/branch/stage-options'
 import { LeadTimeline } from '@/components/branch/lead-timeline'
 import {
-  getConversationCard, criarOportunidade, atualizarContato, concluirOportunidade,
+  getConversationCard, criarOportunidade, atualizarContato, definirSituacaoOportunidade,
   type Conversation,
   type ConversationCard,
   type Oportunidade,
@@ -309,7 +309,7 @@ export function InboxLeadPanel({
             disabled={disabled}
             aberta={expandida === o.id}
             onToggle={() => setExpandida(e => (e === o.id ? null : o.id))}
-            onConcluir={d => comAcao(() => concluirOportunidade(o.id, d))}
+            onConcluir={d => comAcao(() => definirSituacaoOportunidade(o.id, d))}
             onMudou={() => { void recarregar(); setHistoricoKey(k => k + 1); onLeadChanged?.() }}
             onAgendar={() => setScheduling(o.id)}
           />
@@ -367,7 +367,7 @@ export function InboxLeadPanel({
                     fontSize: 11.5, color: 'var(--text-muted)',
                     padding: '6px 8px', borderRadius: 8, background: 'var(--bg-app)',
                   }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                       {o.funnel_name ?? 'Sem funil'} · {o.stage_name ?? '—'}
                     </span>
                     <span style={{
@@ -376,6 +376,21 @@ export function InboxLeadPanel({
                     }}>
                       {o.outcome === 'WON' ? 'Ganha' : 'Perdida'}
                     </span>
+                    {/* Desfazer sem sair do inbox: fechar por engano é comum, e
+                        a alternativa seria abrir o quadro e arrastar o card. */}
+                    {!disabled && (
+                      <button
+                        type="button"
+                        title="Voltar para em aberto"
+                        onClick={() => comAcao(() => definirSituacaoOportunidade(o.id, 'OPEN'))}
+                        style={{
+                          flexShrink: 0, border: 'none', background: 'none', padding: 0,
+                          cursor: 'pointer', fontSize: 10.5, fontWeight: 700, color: 'var(--brand)',
+                        }}
+                      >
+                        Reabrir
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -457,7 +472,7 @@ function OportunidadeItem({
   disabled: boolean
   aberta:   boolean
   onToggle:   () => void
-  onConcluir: (desfecho: 'WON' | 'LOST') => void
+  onConcluir: (situacao: 'OPEN' | 'WON' | 'LOST') => void
   onMudou:    () => void
   onAgendar:  () => void
 }) {
@@ -557,23 +572,49 @@ function OportunidadeItem({
                 {salvando ? 'Salvando…' : 'Salvar detalhes'}
               </button>
 
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {/* Ganhar é a conclusão do NEGÓCIO. Não cria cliente: são gestos
-                    separados, e amarrá-los faria o funil mentir sobre vendas de
-                    quem não quis deixar CPF. */}
-                <button type="button" className="btn-secondary" onClick={() => onConcluir('WON')}
-                  style={{ fontSize: 11.5, padding: '6px 10px' }}>
-                  <Check size={12} /> Ganha
-                </button>
-                <button type="button" className="btn-ghost" onClick={() => onConcluir('LOST')}
-                  style={{ fontSize: 11.5 }}>
-                  Perdida
-                </button>
-                <button type="button" className="btn-ghost" onClick={onAgendar}
-                  style={{ fontSize: 11.5 }}>
-                  <CalendarPlus size={12} /> Agendar
-                </button>
+              {/* Situação: três estados, não dois botões de saída.
+                  Ganhar é a conclusão do NEGÓCIO e não cria cliente — são gestos
+                  separados, e amarrá-los faria o funil mentir sobre vendas de
+                  quem não quis deixar CPF. Reabrir existe porque marcar errado
+                  acontece, e sem ele a única saída seria arrastar o card no
+                  quadro. */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Situação
+                </span>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  {([
+                    { key: 'OPEN', label: 'Em aberto' },
+                    { key: 'WON',  label: 'Ganha' },
+                    { key: 'LOST', label: 'Perdida' },
+                  ] as const).map(s => {
+                    const ativa = o.outcome === s.key
+                    return (
+                      <button
+                        key={s.key}
+                        type="button"
+                        onClick={() => { if (!ativa) onConcluir(s.key) }}
+                        style={{
+                          fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                          cursor: ativa ? 'default' : 'pointer', transition: 'all 100ms',
+                          border:     ativa ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
+                          background: ativa ? 'var(--brand-soft)' : 'var(--bg-app)',
+                          color:      ativa ? 'var(--brand)' : 'var(--text-muted)',
+                        }}
+                      >
+                        {s.label}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
+
+              {/* Agenda, não desfecho: marca um atendimento e o registra na
+                  linha do tempo desta oportunidade. */}
+              <button type="button" className="btn-ghost" onClick={onAgendar}
+                style={{ alignSelf: 'flex-start', fontSize: 11.5 }}>
+                <CalendarPlus size={12} /> Agendar atendimento
+              </button>
             </>
           )}
         </div>
