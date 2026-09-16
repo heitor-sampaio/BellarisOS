@@ -39,9 +39,19 @@ export const FILTROS_VAZIOS: FiltrosInbox = {
 const SEM_DONO    = '__sem_dono__'
 const SEM_UNIDADE = '__rede__'
 
+/** Rótulo de cada canal. Mesmo texto das etiquetas da lista. */
+const ROTULO_CANAL: Record<InboxChannel, string> = {
+  whatsapp:  'WhatsApp',
+  instagram: 'Instagram',
+  messenger: 'Messenger',
+  email:     'E-mail',
+  manual:    'Nota',
+}
+
 export function contarFiltros(f: FiltrosInbox): number {
   return (
-    (f.status !== 'todos' ? 1 : 0)
+    (f.canal !== 'all' ? 1 : 0)
+    + (f.status !== 'todos' ? 1 : 0)
     + (f.naoLidas ? 1 : 0)
     + (f.aguardando ? 1 : 0)
     + f.tags.length
@@ -87,6 +97,7 @@ export function passaNosFiltros(c: Conversation, f: FiltrosInbox): boolean {
 }
 
 interface Opcoes {
+  canais:   InboxChannel[]
   tags:     string[]
   donos:    { id: string; nome: string }[]
   funis:    { id: string; nome: string }[]
@@ -96,6 +107,7 @@ interface Opcoes {
 
 /** O que existe de fato nas conversas carregadas. */
 function derivarOpcoes(conversas: Conversation[]): Opcoes {
+  const canais   = new Set<InboxChannel>()
   const tags     = new Set<string>()
   const donos    = new Map<string, string>()
   const funis    = new Map<string, string>()
@@ -103,6 +115,7 @@ function derivarOpcoes(conversas: Conversation[]): Opcoes {
   const unidades = new Map<string, string>()
 
   for (const c of conversas) {
+    canais.add(c.channel)
     for (const t of c.lead_tags ?? []) tags.add(t)
     if (c.owner_id) donos.set(c.owner_id, c.owner_name ?? 'Sem nome')
     else            donos.set(SEM_DONO, 'Sem dono')
@@ -117,6 +130,7 @@ function derivarOpcoes(conversas: Conversation[]): Opcoes {
   const ordenar = (a: { nome: string }, b: { nome: string }) => a.nome.localeCompare(b.nome, 'pt-BR')
 
   return {
+    canais:   [...canais].sort((a, b) => ROTULO_CANAL[a].localeCompare(ROTULO_CANAL[b], 'pt-BR')),
     tags:     [...tags].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     donos:    [...donos].map(([id, nome]) => ({ id, nome })).sort(ordenar),
     funis:    [...funis].map(([id, nome]) => ({ id, nome })).sort(ordenar),
@@ -239,7 +253,7 @@ export function InboxFiltros({
                 {ativos > 0 && (
                   <button
                     type="button"
-                    onClick={() => onChange({ ...FILTROS_VAZIOS, canal: filtros.canal })}
+                    onClick={() => onChange(FILTROS_VAZIOS)}
                     style={{
                       border: 'none', background: 'none', cursor: 'pointer',
                       fontSize: 11, fontWeight: 700, color: 'var(--brand)', padding: 0,
@@ -259,6 +273,30 @@ export function InboxFiltros({
                 </button>
               </div>
             </div>
+
+            {/* Origem primeiro: é o corte mais frequente, e quem abre o painel
+                espera achá-lo no topo, onde as pastilhas ficavam. */}
+            {opcoes.canais.length > 1 && (
+              <Secao titulo="Origem">
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  <Pastilha
+                    ativa={filtros.canal === 'all'}
+                    onClick={() => onChange({ ...filtros, canal: 'all' })}
+                  >
+                    Todas
+                  </Pastilha>
+                  {opcoes.canais.map(ch => (
+                    <Pastilha
+                      key={ch}
+                      ativa={filtros.canal === ch}
+                      onClick={() => onChange({ ...filtros, canal: ch })}
+                    >
+                      {ROTULO_CANAL[ch]}
+                    </Pastilha>
+                  ))}
+                </div>
+              </Secao>
+            )}
 
             <Secao titulo="Situação">
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -392,6 +430,12 @@ export function ChipsDeFiltro({
 
   const chips: { rotulo: string; limpar: () => void }[] = []
 
+  if (filtros.canal !== 'all') {
+    chips.push({
+      rotulo: ROTULO_CANAL[filtros.canal],
+      limpar: () => onChange({ ...filtros, canal: 'all' }),
+    })
+  }
   if (filtros.status !== 'todos') {
     chips.push({
       rotulo: SITUACOES.find(s => s.key === filtros.status)?.label ?? 'Situação',

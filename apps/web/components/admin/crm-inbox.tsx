@@ -519,13 +519,6 @@ function NewConvModal({
   )
 }
 
-// --- Channel filter ----------------------------------------------------------
-
-const FILTERS: { key: InboxChannel | 'all'; label: string }[] = [
-  { key: 'all', label: 'Todos' },
-  ...(Object.keys(CH) as InboxChannel[]).map(c => ({ key: c, label: CH[c].label })),
-]
-
 // --- Main export -------------------------------------------------------------
 
 interface CRMInboxProps {
@@ -988,7 +981,8 @@ export function CRMInbox({
       || (c.lead_tags ?? []).some(t => t.toLowerCase().includes(q))
   })
 
-  const filtrosAtivos = contarFiltros(filtros) > 0 || filtros.canal !== 'all'
+  // `contarFiltros` já inclui a origem desde que ela virou uma seção do painel.
+  const filtrosAtivos = contarFiltros(filtros) > 0
 
   // Group messages by calendar day
   const dayGroups: { date: string; msgs: Message[] }[] = []
@@ -1109,27 +1103,13 @@ export function CRMInbox({
               )}
             </div>
 
-            {/* Canal nas pastilhas + o que estiver filtrado logo abaixo */}
-            <div style={{ paddingBottom: 10, borderBottom: '1px solid var(--hairline)' }}>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-              {FILTERS.map(f => (
-                <button
-                  key={f.key}
-                  type="button"
-                  onClick={() => setFiltros({ ...filtros, canal: f.key })}
-                  style={{
-                    fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 99, cursor: 'pointer',
-                    border: filtros.canal === f.key ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
-                    background: filtros.canal === f.key ? 'var(--brand-soft)' : 'var(--bg-app)',
-                    color: filtros.canal === f.key ? 'var(--brand)' : 'var(--text-muted)',
-                    transition: 'all 100ms',
-                  }}
-                >
-                  {f.label}
-                </button>
-              ))}
-              </div>
-
+            {/* A origem mudou para dentro do painel, junto dos outros cortes.
+                O que sobra aqui é o resumo do que está filtrando — e ele só
+                ocupa espaço quando há filtro, incluindo a linha de separação. */}
+            <div style={filtrosAtivos
+              ? { paddingBottom: 10, borderBottom: '1px solid var(--hairline)' }
+              : undefined}
+            >
               <ChipsDeFiltro
                 conversas={conversations}
                 filtros={filtros}
