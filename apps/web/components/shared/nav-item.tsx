@@ -52,7 +52,10 @@ export function NavItem({ icon, label, href }: NavItemProps) {
         alignItems:     'center',
         justifyContent: 'flex-start',
         gap:            collapsed ? 0 : 10,
-        padding:        collapsed ? '9px 17px' : '9px 12px',
+        // 6px em vez de 9px: com 14 entradas e 4 áreas, a barra passava da tela
+        // e o rodapé (recolher/sair) ficava atrás de scroll. O alvo de clique
+        // continua em 30px de altura, acima do mínimo confortável.
+        padding:        collapsed ? '6px 17px' : '6px 12px',
         borderRadius:   'var(--radius-field-token)',
         fontSize:       'var(--text-sm-sz)',
         fontWeight:     'var(--weight-bold)',

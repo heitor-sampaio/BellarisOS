@@ -70,8 +70,10 @@ export function BranchSidebar({
           flexDirection: 'column',
           padding:       'env(safe-area-inset-top, 0px) 12px env(safe-area-inset-bottom, 0px)',
           zIndex:        50,
-          overflowY:     'auto',
-          overflowX:     'hidden',
+          // Quem rola é a lista, não a barra: com o aside rolando inteiro, o
+          // rodapé (Recolher/Sair) sumia junto em tela baixa e a pessoa tinha
+          // que descobrir que precisava rolar para sair do sistema.
+          overflow:      'hidden',
         }}
       >
         {/* Wordmark */}
@@ -82,7 +84,7 @@ export function BranchSidebar({
           justifyContent: collapsed ? 'center' : 'flex-start',
           paddingLeft:    collapsed ? 0 : 4,
           borderBottom:   hairline,
-          marginBottom:   8,
+          marginBottom:   6,
           flexShrink:     0,
         }}>
           <span style={{
@@ -163,19 +165,26 @@ export function BranchSidebar({
             </div>
           </div>
         ) : (
-          <div style={{ padding: '4px 12px', marginBottom: 16 }}>
+          <div style={{ padding: '0 12px', marginBottom: 6 }}>
             <span className="overline">{branchName}</span>
           </div>
         ))}
 
         {/* Navegação */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }} onClick={close}>
+        <nav
+          onClick={close}
+          style={{
+            display: 'flex', flexDirection: 'column', gap: 1,
+            flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden',
+            scrollbarWidth: 'thin',
+          }}
+        >
           {menuSectionsFor(BRANCH_MENU, permissions).map(secao => (
-            <div key={secao.key ?? '_topo'} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div key={secao.key ?? '_topo'} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {/* Recolhida, a barra é só ícone: o título vira um filete. */}
               {secao.label && (collapsed
-                ? <div aria-hidden style={{ height: 1, background: separatorBg, margin: '10px 10px 9px' }} />
-                : <span className="overline" style={{ display: 'block', padding: '14px 12px 5px' }}>{secao.label}</span>
+                ? <div aria-hidden style={{ height: 1, background: separatorBg, margin: '6px 10px 5px' }} />
+                : <span className="overline" style={{ display: 'block', padding: '9px 12px 3px' }}>{secao.label}</span>
               )}
               {secao.entries.map(e => (
                 <NavItem key={e.key} icon={ICONS[e.key]} label={e.label} href={`${base}${e.href}`} />
@@ -185,7 +194,7 @@ export function BranchSidebar({
         </nav>
 
         {/* Rodapé: recolher (desktop) + logout */}
-        <div style={{ paddingBottom: 16, borderTop: hairline, paddingTop: 12, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div style={{ paddingBottom: 10, borderTop: hairline, paddingTop: 8, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
           <button
             type="button"
             onClick={toggleCollapsed}
@@ -194,7 +203,7 @@ export function BranchSidebar({
             aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
-              gap: collapsed ? 0 : 10, padding: collapsed ? '9px 17px' : '9px 12px',
+              gap: collapsed ? 0 : 10, padding: collapsed ? '6px 17px' : '6px 12px',
               borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
               background: 'transparent', color: footerColor,
               fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
@@ -215,7 +224,7 @@ export function BranchSidebar({
               title={collapsed ? 'Sair' : undefined}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
-                gap: collapsed ? 0 : 10, padding: collapsed ? '9px 17px' : '9px 12px',
+                gap: collapsed ? 0 : 10, padding: collapsed ? '6px 17px' : '6px 12px',
                 borderRadius: 'var(--radius-field-token)', border: 'none', cursor: 'pointer',
                 background: 'transparent', color: footerColor,
                 fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', width: '100%',
