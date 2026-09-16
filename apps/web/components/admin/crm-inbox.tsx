@@ -75,6 +75,19 @@ function relTime(iso: string | null) {
   return format(d, 'dd/MM', { locale: ptBR })
 }
 
+/**
+ * Mesma ordem que `getConversations` devolve: mais recente primeiro, quem nunca
+ * falou por último. Precisa existir no cliente porque o realtime entrega o
+ * evento solto, sem reordenar a lista.
+ */
+function ordenarPorUltimaMensagem(convs: Conversation[]): Conversation[] {
+  return [...convs].sort((a, b) => {
+    if (!a.last_message_at) return 1
+    if (!b.last_message_at) return -1
+    return b.last_message_at.localeCompare(a.last_message_at)
+  })
+}
+
 // --- Status chip -------------------------------------------------------------
 
 const STATUS_META: Record<ConvStatus, { label: string; color: string; bg: string; border: string }> = {
@@ -457,6 +470,15 @@ export function CRMInbox({
           if (prev.some(m => m.id === newMsg.id)) return prev
           return [...prev, newMsg]
         })
+        // Quem está com a conversa ABERTA já leu. Sem isto o trigger incrementa
+        // `unread_count` e a conversa fica com badge de não lida na cara de
+        // quem acabou de ler a mensagem.
+        if (newMsg.direction === 'inbound') {
+          markConversationRead(selectedId)
+          setConversations(prev => prev.map(c =>
+            c.id === selectedId ? { ...c, unread_count: 0 } : c,
+          ))
+        }
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -483,7 +505,9 @@ export function CRMInbox({
         table: 'conversations',
       }, (payload) => {
         const newConv = payload.new as Conversation
-        setConversations(prev => [newConv, ...prev])
+        setConversations(prev =>
+          prev.some(c => c.id === newConv.id) ? prev : [newConv, ...prev],
+        )
       })
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -491,7 +515,12 @@ export function CRMInbox({
         table: 'conversations',
       }, (payload) => {
         const updated = payload.new as Conversation
-        setConversations(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c))
+        // Reordenar aqui, e não só no servidor: a lista vem ordenada por
+        // `last_message_at`, e sem refazer a ordem a conversa que acabou de
+        // receber mensagem continuava no mesmo lugar do meio da lista.
+        setConversations(prev => ordenarPorUltimaMensagem(
+          prev.map(c => c.id === updated.id ? { ...c, ...updated } : c),
+        ))
       })
       .subscribe()
 
