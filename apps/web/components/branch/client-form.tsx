@@ -24,6 +24,8 @@ interface ClientFormProps {
   prefill?:   { name?: string; phone?: string; email?: string }
   /** liga o cliente criado a este lead (conversão) */
   leadId?:    string
+  /** Contato de onde veio o cadastro: e nele que o vinculo com o cliente fica. */
+  conversationId?: string
   existingClient?: {
     id:         string
     name:       string
@@ -65,7 +67,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export function ClientForm({ branchId, slug, branchName, branches, prefill, leadId, existingClient, onSuccess, showCancelButton, onCancel }: ClientFormProps) {
+export function ClientForm({ branchId, slug, branchName, branches, prefill, leadId, conversationId, existingClient, onSuccess, showCancelButton, onCancel }: ClientFormProps) {
   const isEdit = !!existingClient
   const action = isEdit ? updateClient : addClient
 
@@ -97,6 +99,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
       <input type="hidden" name="_slug" value={slug} />
       {isEdit && <input type="hidden" name="_clientId" value={existingClient!.id} />}
       {leadId && <input type="hidden" name="_leadId" value={leadId} />}
+      {conversationId && <input type="hidden" name="_conversationId" value={conversationId} />}
       <input type="hidden" name="tags" value={JSON.stringify(selectedTags)} />
 
       {!isEdit && branches && branches.length > 0 ? (

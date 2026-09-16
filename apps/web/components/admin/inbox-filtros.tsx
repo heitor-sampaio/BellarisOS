@@ -23,6 +23,10 @@ export interface FiltrosInbox {
   status:     ConvStatus | 'todos'
   naoLidas:   boolean
   aguardando: boolean
+  /** Tem ficha de cliente? */
+  cliente:    'todos' | 'sim' | 'nao'
+  /** Só quem tem negócio em andamento — conversa sem oportunidade é o normal. */
+  comOportunidade: boolean
   tags:       string[]
   donos:      string[]
   funil:      string
@@ -32,6 +36,7 @@ export interface FiltrosInbox {
 
 export const FILTROS_VAZIOS: FiltrosInbox = {
   canal: 'all', status: 'todos', naoLidas: false, aguardando: false,
+  cliente: 'todos', comOportunidade: false,
   tags: [], donos: [], funil: 'todos', etapa: 'todas', unidade: 'todas',
 }
 
@@ -54,6 +59,8 @@ export function contarFiltros(f: FiltrosInbox): number {
     + (f.status !== 'todos' ? 1 : 0)
     + (f.naoLidas ? 1 : 0)
     + (f.aguardando ? 1 : 0)
+    + (f.cliente !== 'todos' ? 1 : 0)
+    + (f.comOportunidade ? 1 : 0)
     + f.tags.length
     + f.donos.length
     + (f.funil !== 'todos' ? 1 : 0)
@@ -80,13 +87,22 @@ export function passaNosFiltros(c: Conversation, f: FiltrosInbox): boolean {
   // dados do card, e um filtro não pode quebrar a lista inteira por isso.
   if (f.tags.length > 0 && !f.tags.every(t => (c.lead_tags ?? []).includes(t))) return false
 
+  if (f.cliente !== 'todos') {
+    if (f.cliente === 'sim' && !c.eh_cliente) return false
+    if (f.cliente === 'nao' &&  c.eh_cliente) return false
+  }
+  if (f.comOportunidade && c.abertas === 0) return false
+
+  // Dono, funil e etapa vêm das oportunidades do contato, que podem ser várias:
+  // basta UMA casar. Exigir que todas casassem esconderia a pessoa justamente
+  // quando ela está negociando em mais de uma frente.
   if (f.donos.length > 0) {
-    const dono = c.owner_id ?? SEM_DONO
-    if (!f.donos.includes(dono)) return false
+    const donos = c.owner_ids.length > 0 ? c.owner_ids : [SEM_DONO]
+    if (!donos.some(d => f.donos.includes(d))) return false
   }
 
-  if (f.funil !== 'todos' && c.funnel_id !== f.funil) return false
-  if (f.etapa !== 'todas'  && c.stage_id  !== f.etapa) return false
+  if (f.funil !== 'todos' && !c.funnel_ids.includes(f.funil)) return false
+  if (f.etapa !== 'todas'  && !c.stage_ids.includes(f.etapa)) return false
 
   if (f.unidade !== 'todas') {
     const unidade = c.branch_id ?? SEM_UNIDADE
@@ -117,12 +133,12 @@ function derivarOpcoes(conversas: Conversation[]): Opcoes {
   for (const c of conversas) {
     canais.add(c.channel)
     for (const t of c.lead_tags ?? []) tags.add(t)
-    if (c.owner_id) donos.set(c.owner_id, c.owner_name ?? 'Sem nome')
-    else            donos.set(SEM_DONO, 'Sem dono')
-    if (c.funnel_id && c.funnel_name) funis.set(c.funnel_id, c.funnel_name)
-    if (c.stage_id && c.stage_name) {
-      etapas.set(c.stage_id, { nome: c.stage_name, funil: c.funnel_id ?? '' })
-    }
+    if (c.owner_ids.length === 0) donos.set(SEM_DONO, 'Sem dono')
+    c.owner_ids.forEach((id, i) => donos.set(id, c.owner_names[i] ?? 'Sem nome'))
+    c.funnel_ids.forEach((id, i) => funis.set(id, c.funnel_names[i] ?? 'Funil'))
+    c.stage_ids.forEach((id, i) => {
+      etapas.set(id, { nome: c.stage_names[i] ?? 'Etapa', funil: c.funnel_ids[0] ?? '' })
+    })
     if (c.branch_id) unidades.set(c.branch_id, c.branch_name ?? 'Unidade')
     else             unidades.set(SEM_UNIDADE, 'Rede (sem unidade)')
   }
@@ -323,6 +339,32 @@ export function InboxFiltros({
                 >
                   Aguardando resposta
                 </Pastilha>
+                <Pastilha
+                  ativa={filtros.comOportunidade}
+                  onClick={() => onChange({ ...filtros, comOportunidade: !filtros.comOportunidade })}
+                >
+                  Com oportunidade aberta
+                </Pastilha>
+              </div>
+            </Secao>
+
+            {/* Cliente é da PESSOA, não do negócio: quem já é cliente costuma
+                receber outro tratamento no atendimento. */}
+            <Secao titulo="Cliente">
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {([
+                  { key: 'todos', label: 'Todos' },
+                  { key: 'sim',   label: 'É cliente' },
+                  { key: 'nao',   label: 'Ainda não' },
+                ] as const).map(o => (
+                  <Pastilha
+                    key={o.key}
+                    ativa={filtros.cliente === o.key}
+                    onClick={() => onChange({ ...filtros, cliente: o.key })}
+                  >
+                    {o.label}
+                  </Pastilha>
+                ))}
               </div>
             </Secao>
 
@@ -444,6 +486,15 @@ export function ChipsDeFiltro({
   }
   if (filtros.naoLidas)   chips.push({ rotulo: 'Não lidas',   limpar: () => onChange({ ...filtros, naoLidas: false }) })
   if (filtros.aguardando) chips.push({ rotulo: 'Aguardando',  limpar: () => onChange({ ...filtros, aguardando: false }) })
+  if (filtros.comOportunidade) {
+    chips.push({ rotulo: 'Com oportunidade', limpar: () => onChange({ ...filtros, comOportunidade: false }) })
+  }
+  if (filtros.cliente !== 'todos') {
+    chips.push({
+      rotulo: filtros.cliente === 'sim' ? 'É cliente' : 'Ainda não é cliente',
+      limpar: () => onChange({ ...filtros, cliente: 'todos' }),
+    })
+  }
 
   for (const id of filtros.donos) {
     chips.push({

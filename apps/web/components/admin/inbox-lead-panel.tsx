@@ -1,7 +1,9 @@
 'use client'
 
-import { useEffect, useState, useTransition, useRef } from 'react'
-import { UserCheck, ExternalLink, CalendarPlus, X, Check, Compass } from 'lucide-react'
+import { useEffect, useState, useTransition, useRef, useCallback } from 'react'
+import {
+  UserCheck, ExternalLink, CalendarPlus, X, Check, Compass, Plus, ChevronDown,
+} from 'lucide-react'
 import { LEAD_SOURCES, sourceStyle } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagPicker } from '@/components/shared/tag-picker'
@@ -9,9 +11,10 @@ import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { StageOptions } from '@/components/branch/stage-options'
 import { LeadTimeline } from '@/components/branch/lead-timeline'
 import {
-  getLeadForConversation,
+  getConversationCard, criarOportunidade, atualizarContato, concluirOportunidade,
   type Conversation,
-  type InboxLead,
+  type ConversationCard,
+  type Oportunidade,
   type InboxStage,
 } from '@/actions/inbox'
 import { updateLead, updateLeadStage } from '@/actions/leads'
@@ -35,6 +38,15 @@ function todayInSP(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
 }
 
+/**
+ * Painel lateral do inbox: contato, oportunidades e cliente.
+ *
+ * Antes era um bloco só, "Card do lead", porque `leads` era a pessoa, o negócio
+ * e o vínculo com o cliente ao mesmo tempo. Agora são coisas distintas na tela
+ * porque são distintas no modelo: a pessoa é a conversa, o negócio é a
+ * oportunidade (podem ser várias, uma por funil) e a ficha de cliente é um
+ * estado da pessoa — não um estágio do negócio.
+ */
 export function InboxLeadPanel({
   conversation,
   canEdit,
@@ -49,407 +61,364 @@ export function InboxLeadPanel({
   slug:           string
   onLeadChanged?: () => void
 }) {
-  const [lead,    setLead]    = useState<InboxLead | null>(null)
-  const [stages,  setStages]  = useState<InboxStage[]>([])
-  const [funnels, setFunnels] = useState<{ id: string; name: string }[]>([])
-  // Sobe a cada alteração no lead, para o histórico recarregar.
-  const [historicoKey, setHistoricoKey] = useState(0)
+  const [card,    setCard]    = useState<ConversationCard | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving,  startSave]  = useTransition()
-  const [scheduling, setScheduling] = useState(false)
+  const [scheduling,  setScheduling]  = useState<string | null>(null)   // leadId ou '' para contato
   const [convertOpen, setConvertOpen] = useState(false)
-  const [chainToSchedule, setChainToSchedule] = useState(false)  // converter e emendar no agendamento
+  const [chainToSchedule, setChainToSchedule] = useState(false)
+  const [historicoKey, setHistoricoKey] = useState(0)
+  const [expandida, setExpandida] = useState<string | null>(null)
+  const [mostrarConcluidas, setMostrarConcluidas] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<{ funnelId: string; leadId: string } | null>(null)
 
-  // Campos editáveis
-  const [name,   setName]   = useState('')
-  const [phone,  setPhone]  = useState('')
-  const [email,  setEmail]  = useState('')
-  const [social, setSocial] = useState('')
-  const [source, setSource] = useState('')
-  const [notes,  setNotes]  = useState('')
-  const [stageId, setStageId] = useState('')
-  const [tags,   setTags]   = useState<string[]>([])
-  /** Catálogo da rede: o card escolhe entre estas, e não cria tag nova. */
-  const [tagsDaRede, setTagsDaRede] = useState<string[]>([])
-  // Estado do salvamento automático.
+  // Contato (editável, com salvamento automático)
+  const [nome,     setNome]     = useState('')
+  const [telefone, setTelefone] = useState('')
+  const [tags,     setTags]     = useState<string[]>([])
+
+  const salvoRef    = useRef('')
+  const pendenteRef = useRef<{ nome: string; telefone: string; tags: string[] } | null>(null)
   const [salvando,   setSalvando]   = useState(false)
   const [salvoEm,    setSalvoEm]    = useState<number | null>(null)
-  const [erroSalvar, setErroSalvar] = useState<string | null>(null)
 
-  useEffect(() => {
-    let active = true
-    setLoading(true)
-    setScheduling(false)
-    getLeadForConversation(conversation.id).then(res => {
-      if (!active) return
-      setStages(res.stages)
-      setFunnels(res.funnels)
-      setTagsDaRede(res.tagsDaRede ?? [])
-      setLead(res.lead)
-      if (res.lead) {
-        setName(res.lead.name ?? '')
-        setPhone(res.lead.phone ?? '')
-        setEmail(res.lead.email ?? '')
-        setSocial(res.lead.social_media ?? '')
-        setSource(res.lead.source ?? '')
-        setNotes(res.lead.notes ?? '')
-        setStageId(res.lead.crm_stage_id ?? '')
-        setTags(res.lead.tags ?? [])
-
-        // Marca o que o servidor JÁ tem, senão o salvamento automático dispara
-        // no instante em que o card abre e grava de volta o que acabou de ler.
-        // Os campos e a ordem têm que bater com `estadoAtual`.
-        salvoRef.current = JSON.stringify({
-          name:   res.lead.name ?? '',
-          phone:  res.lead.phone ?? '',
-          email:  res.lead.email ?? '',
-          social: res.lead.social_media ?? '',
-          source: res.lead.source ?? '',
-          notes:  res.lead.notes ?? '',
-          stageId: res.lead.crm_stage_id ?? '',
-          tags:   res.lead.tags ?? [],
-        })
-      }
-      setSalvando(false)
-      setSalvoEm(null)
-      setErroSalvar(null)
-      setConvertOpen(false)
-      setLoading(false)
-    })
-    return () => { active = false }
+  const recarregar = useCallback(async () => {
+    const res = await getConversationCard(conversation.id)
+    setCard(res)
+    if (res) {
+      setNome(res.contato.nome ?? '')
+      setTelefone(res.contato.telefone ?? '')
+      setTags(res.contato.tags)
+      salvoRef.current = JSON.stringify({
+        nome: res.contato.nome ?? '', telefone: res.contato.telefone ?? '', tags: res.contato.tags,
+      })
+    }
+    return res
   }, [conversation.id])
 
-  function removeTag(t: string) {
-    setTags(prev => prev.filter(x => x !== t))
-  }
+  useEffect(() => {
+    let vivo = true
+    setLoading(true)
+    setErro(null)
+    setAviso(null)
+    recarregar().then(() => { if (vivo) setLoading(false) })
+    return () => { vivo = false }
+  }, [recarregar])
 
-  // -- Salvamento automático --------------------------------------------------
-  //
-  // Não há botão: o card salva sozinho, como o resto do produto já faz com a
-  // etapa. O que ele precisa garantir é que ninguém perca alteração — nem quem
-  // digita e troca de conversa, nem quem fecha a aba.
-
-  /** Assinatura do que está na tela. Muda = há o que salvar. */
-  const estadoAtual = JSON.stringify({ name, phone, email, social, source, notes, stageId, tags })
-  /** Assinatura do que o servidor já tem. */
-  const salvoRef   = useRef('')
-  /** Dados prontos para salvar, para o caso de precisar salvar na saída. */
-  const pendenteRef = useRef<{ lead: InboxLead; fd: FormData } | null>(null)
-
-  async function gravar(leadAtual: InboxLead, fd: FormData, assinatura: string) {
-    const res = await updateLead(undefined, fd)
-    pendenteRef.current = null
-    if (res?.error) { setErroSalvar(res.error); setSalvando(false); return }
-    salvoRef.current = assinatura
-    setErroSalvar(null)
-    setSalvando(false)
-    setSalvoEm(Date.now())
-    setHistoricoKey(k => k + 1)
-    onLeadChanged?.()
-  }
+  // -- Salvamento automático do contato --------------------------------------
+  const estadoAtual = JSON.stringify({ nome, telefone, tags })
 
   useEffect(() => {
-    if (loading || !lead || !canEdit) return
+    if (loading || !card || !canEdit) return
     if (estadoAtual === salvoRef.current) return
 
-    const motivo = motivoParaNaoSalvar()
-    if (motivo) { setErroSalvar(motivo); return }
-
-    setErroSalvar(null)
-    // Enquanto há alteração pendente, "Alterações salvas" seria mentira: volta
-    // ao aviso neutro até a gravação acontecer de fato.
     setSalvoEm(null)
-    const fd = montarFormData(lead)
-    pendenteRef.current = { lead, fd }
+    pendenteRef.current = { nome, telefone, tags }
 
-    // Meio segundo depois da última tecla. Salvar a cada tecla inundaria o
-    // servidor de escritas e de revalidações da rota.
-    const t = setTimeout(() => {
+    const t = setTimeout(async () => {
       setSalvando(true)
-      void gravar(lead, fd, estadoAtual)
+      const res = await atualizarContato(conversation.id, { nome, telefone, tags })
+      pendenteRef.current = null
+      setSalvando(false)
+      if (!res.ok) { setErro(res.error ?? 'Não foi possível salvar o contato.'); return }
+      salvoRef.current = estadoAtual
+      setSalvoEm(Date.now())
+      setHistoricoKey(k => k + 1)
+      onLeadChanged?.()
     }, 500)
 
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [estadoAtual, lead, loading, canEdit])
+  }, [estadoAtual, loading, card, canEdit])
 
-  // Trocar de conversa ou fechar a aba no meio do intervalo não pode engolir a
-  // alteração: o que estiver pendente vai embora agora.
+  // Trocar de conversa no meio do intervalo não pode engolir a alteração.
   useEffect(() => {
-    function salvarPendente() {
+    const id = conversation.id
+    return () => {
       const p = pendenteRef.current
       if (!p) return
       pendenteRef.current = null
-      void updateLead(undefined, p.fd)
-    }
-    window.addEventListener('beforeunload', salvarPendente)
-    return () => {
-      window.removeEventListener('beforeunload', salvarPendente)
-      salvarPendente()
+      void atualizarContato(id, p)
     }
   }, [conversation.id])
 
-  /**
-   * O que o servidor exige, verificado aqui antes de incomodá-lo.
-   *
-   * No salvamento automático isso não é redundância: apagar o nome para
-   * reescrever passa por "nome vazio" a cada digitação, e sem a checagem local
-   * cada letra viraria uma ida ao servidor que volta com erro. O estado
-   * inválido é normal enquanto se edita — só não pode ser gravado.
-   */
-  function motivoParaNaoSalvar(): string | null {
-    if (!name.trim()) return 'Informe o nome para salvar.'
-    if (!phone.trim() && !email.trim() && !social.trim()) {
-      return 'Informe telefone, e-mail ou rede social para salvar.'
-    }
-    return null
+  async function comAcao(fn: () => Promise<{ ok: boolean; error?: string }>) {
+    setErro(null)
+    const res = await fn()
+    if (!res.ok) { setErro(res.error ?? 'Não foi possível concluir.'); return false }
+    await recarregar()
+    setHistoricoKey(k => k + 1)
+    onLeadChanged?.()
+    return true
   }
 
-  function montarFormData(leadAtual: InboxLead): FormData {
-    const fd = new FormData()
-    fd.set('_leadId', leadAtual.id)
-    fd.set('_slug', slug)
-    fd.set('name', name)
-    fd.set('phone', phone)
-    fd.set('email', email)
-    fd.set('social_media', social)
-    fd.set('source', source)
-    fd.set('notes', notes)
-    fd.set('crm_stage_id', stageId)
-    fd.set('tags', JSON.stringify(tags))
-    fd.set('procedure_ids', JSON.stringify(leadAtual.procedure_ids))
-    return fd
-  }
-
-  function handleStageChange(next: string) {
-    if (!lead) return
-    setStageId(next)
+  function novaOportunidade(funnelId: string, confirmar = false) {
+    setAviso(null)
     startSave(async () => {
-      await updateLeadStage(lead.id, next, slug)
-      setHistoricoKey(k => k + 1)
+      const res = await criarOportunidade(conversation.id, funnelId, confirmar)
+      if (res.jaExisteAberta) { setAviso({ funnelId, leadId: res.jaExisteAberta }); return }
+      if (!res.ok) { setErro(res.error ?? 'Não foi possível criar a oportunidade.'); return }
+      await recarregar()
+      setExpandida(res.leadId ?? null)
       onLeadChanged?.()
     })
   }
 
-  // "Novo agendamento": se já é cliente, agenda direto; senão converte primeiro e emenda no agendamento.
-  function handleScheduleClick() {
-    if (!lead) return
-    if (lead.client_id) {
-      setScheduling(true)
-    } else {
-      setChainToSchedule(true)
-      setConvertOpen(true)
-    }
-  }
-
   function handleConverted() {
     setConvertOpen(false)
-    getLeadForConversation(conversation.id).then(res => setLead(res.lead))
-    setHistoricoKey(k => k + 1)
-    onLeadChanged?.()
-    if (chainToSchedule) {
-      setChainToSchedule(false)
-      setScheduling(true)   // emenda no agendamento (o cliente já foi criado)
-    }
+    recarregar().then(() => {
+      setHistoricoKey(k => k + 1)
+      onLeadChanged?.()
+      // Emenda no agendamento: o cliente acabou de ser criado.
+      if (chainToSchedule) { setChainToSchedule(false); setScheduling('') }
+    })
   }
-
-  function closeConvert() {
-    setConvertOpen(false)
-    setChainToSchedule(false)
-  }
-
 
   if (loading) {
-    return <div style={{ padding: 20, fontSize: 12.5, color: 'var(--text-faint)' }}>Carregando card…</div>
+    return <div style={{ padding: 20, fontSize: 12.5, color: 'var(--text-faint)' }}>Carregando…</div>
   }
-
-  // Conversa sem card (fallback — normalmente a auto-criação já gera o lead)
-  if (!lead) {
-    return (
-      <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <span style={labelStyle}>Card do lead</span>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-          {conversation.contact_name ?? 'Sem nome'}
-        </p>
-        {conversation.contact_phone && (
-          <p style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{conversation.contact_phone}</p>
-        )}
-        <p style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.5, marginTop: 6 }}>
-          Esta conversa ainda não tem um card no funil.
-        </p>
-      </div>
-    )
+  if (!card) {
+    return <div style={{ padding: 20, fontSize: 12.5, color: 'var(--text-faint)' }}>Contato não encontrado.</div>
   }
 
   const disabled = !canEdit
-  const fieldStyle: React.CSSProperties = { fontSize: 13 }
+  const cliente  = card.cliente
 
   return (
-    <div style={{ padding: '18px 18px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Cabeçalho */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span style={labelStyle}>Card do lead</span>
-        {/* Volta para o quadro do portal em que a pessoa está. */}
-        <a
-          href={slug === '__admin__' ? '/admin/oportunidades' : `/${slug}/oportunidades`}
-          title="Ver nas oportunidades"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--brand)' }}
-        >
-          Oportunidades <ExternalLink size={12} />
-        </a>
-      </div>
-
-      {/* Ações rápidas */}
-      {!disabled && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button type="button" className="btn-primary" onClick={handleScheduleClick}>
-            <CalendarPlus size={14} /> Novo agendamento
-          </button>
-          {lead.client_id ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center', fontSize: 12.5, fontWeight: 700, color: 'var(--success)' }}>
-              <UserCheck size={14} /> Já é cliente
+    <div style={{ padding: '18px 18px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* ---------------- Contato ---------------- */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={labelStyle}>Contato</span>
+          {cliente && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              fontSize: 10.5, fontWeight: 800, color: 'var(--success)',
+            }}>
+              <UserCheck size={12} /> Cliente
             </span>
-          ) : (
-            <button type="button" className="btn-secondary" onClick={() => { setChainToSchedule(false); setConvertOpen(true) }}>
-              <UserCheck size={14} /> Converter em cliente
-            </button>
           )}
         </div>
-      )}
 
-      {/* Origem
-          Mesma forma das tags: o valor atual à vista, as opções dentro do
-          seletor. O select nativo mostrava a origem duas vezes — na etiqueta e
-          repetida no campo — e ocupava uma linha inteira para um dado que quase
-          nunca muda depois que o lead entra. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span style={labelStyle}>Origem</span>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
-          {source
-            ? <TagBadge
-                label={LEAD_SOURCES.find(s => s.key === source)?.label ?? source}
-                style={sourceStyle(source)}
-                size="sm"
-                onRemove={disabled ? undefined : () => setSource('')}
-              />
-            : <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Não informado</span>}
-        </div>
-        <PickerCompacto
-          icone={<Compass size={12} />}
-          rotuloBotao={source ? 'Alterar origem' : 'Definir origem'}
-          opcoes={LEAD_SOURCES.map(s => ({ valor: s.key, rotulo: s.label }))}
-          selecionadas={source ? [source] : []}
-          disabled={disabled}
-          textoListaVazia="Nenhuma origem cadastrada."
-          onEscolher={setSource}
-        />
-      </div>
+        <input className="field" value={nome} disabled={disabled} placeholder="Nome"
+          onChange={e => setNome(e.target.value)} style={{ fontSize: 13 }} />
+        <input className="field" value={telefone} disabled={disabled} placeholder="Telefone"
+          onChange={e => setTelefone(e.target.value)} style={{ fontSize: 13 }} />
 
-      {/* Tags
-          Só as do lead ficam à vista; as disponíveis moram dentro do seletor.
-          Antes o card despejava o catálogo inteiro aberto, e numa rede com
-          dezenas de tags isso empurrava telefone, etapa e histórico para fora
-          da tela — justamente o que se consulta durante um atendimento. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span style={labelStyle}>Tags</span>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
           {tags.length === 0 && <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Nenhuma tag</span>}
           {tags.map(t => (
-            <TagBadge key={t} label={t} size="xs" onRemove={disabled ? undefined : () => removeTag(t)} />
+            <TagBadge key={t} label={t} size="xs"
+              onRemove={disabled ? undefined : () => setTags(prev => prev.filter(x => x !== t))} />
           ))}
         </div>
         <TagPicker
           selecionadas={tags}
-          disponiveis={tagsDaRede}
+          disponiveis={card.tagsDaRede}
           disabled={disabled}
           onChange={setTags}
         />
-      </div>
 
-      {/* Etapa */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span style={labelStyle}>Etapa</span>
-        <select className="field" value={stageId} disabled={disabled} onChange={e => handleStageChange(e.target.value)} style={fieldStyle}>
-          <option value="">—</option>
-          <StageOptions funnels={funnels} stages={stages} />
-        </select>
-      </div>
+        {!disabled && (
+          <div style={{ minHeight: 16, display: 'flex', alignItems: 'center', gap: 5 }}>
+            {salvando ? (
+              <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>Salvando…</span>
+            ) : salvoEm ? (
+              <span style={{
+                fontSize: 11.5, color: 'var(--success)', fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+              }}>
+                <Check size={12} /> Alterações salvas
+              </span>
+            ) : (
+              <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>
+                As alterações salvam sozinhas
+              </span>
+            )}
+          </div>
+        )}
 
-      {/* Contato */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <span style={labelStyle}>Contato</span>
-        <input className="field" value={name}   disabled={disabled} placeholder="Nome"        onChange={e => setName(e.target.value)}   style={fieldStyle} />
-        <input className="field" value={phone}  disabled={disabled} placeholder="Telefone"    onChange={e => setPhone(e.target.value)}  style={fieldStyle} />
-        <input className="field" value={email}  disabled={disabled} placeholder="E-mail"      onChange={e => setEmail(e.target.value)}  style={fieldStyle} />
-        <input className="field" value={social} disabled={disabled} placeholder="Rede social" onChange={e => setSocial(e.target.value)} style={fieldStyle} />
-      </div>
-
-      {/* Observações */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span style={labelStyle}>Observações</span>
-        <textarea className="field" value={notes} disabled={disabled} rows={3}
-          placeholder="Anotações sobre o lead…" onChange={e => setNotes(e.target.value)}
-          style={{ ...fieldStyle, resize: 'vertical' }} />
-      </div>
-
-      {/* Estado do salvamento automático.
-          Salvar sem dizer nada deixa a dúvida de se salvou — e o erro de
-          validação PRECISA aparecer, porque sem botão não há nada que a pessoa
-          possa clicar para descobrir que o card não está sendo gravado. */}
-      {!disabled && (
-        <div style={{ minHeight: 18, display: 'flex', alignItems: 'center', gap: 5 }}>
-          {erroSalvar ? (
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: '#dc2626', lineHeight: 1.4 }}>
-              {erroSalvar}
-            </span>
-          ) : salvando ? (
-            <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>Salvando…</span>
-          ) : salvoEm ? (
-            <span style={{
-              fontSize: 11.5, color: 'var(--success)', fontWeight: 700,
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-            }}>
-              <Check size={12} /> Alterações salvas
-            </span>
+        {/* Ficha de cliente. Independente de ganhar: fechar venda de quem não
+            quer dar CPF é rotina, e a ficha exige CPF e e-mail (cria login). */}
+        {!disabled && (
+          cliente ? (
+            <a
+              href={slug === '__admin__' ? `/admin/clientes` : `/${slug}/clients`}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                fontSize: 11.5, fontWeight: 700, color: 'var(--brand)',
+              }}
+            >
+              Ver ficha de {cliente.name} <ExternalLink size={11} />
+            </a>
           ) : (
-            <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>
-              As alterações salvam sozinhas
-            </span>
-          )}
+            <button type="button" className="btn-secondary"
+              onClick={() => { setChainToSchedule(false); setConvertOpen(true) }}>
+              <UserCheck size={14} /> Cadastrar como cliente
+            </button>
+          )
+        )}
+
+        {!disabled && (
+          <button type="button" className="btn-primary" onClick={() => {
+            if (cliente) setScheduling('')
+            else { setChainToSchedule(true); setConvertOpen(true) }
+          }}>
+            <CalendarPlus size={14} /> Novo agendamento
+          </button>
+        )}
+      </section>
+
+      {erro && (
+        <p style={{
+          fontSize: 11.5, fontWeight: 700, color: '#dc2626', lineHeight: 1.45,
+          background: '#fef2f2', border: '1px solid #dc262633', borderRadius: 8, padding: '7px 10px',
+        }}>
+          {erro}
+        </p>
+      )}
+
+      {/* ---------------- Oportunidades ---------------- */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span style={labelStyle}>Oportunidades</span>
+          <a
+            href={slug === '__admin__' ? '/admin/oportunidades' : `/${slug}/oportunidades`}
+            title="Ver no quadro"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--brand)' }}
+          >
+            Quadro <ExternalLink size={12} />
+          </a>
+        </div>
+
+        {card.abertas.length === 0 && (
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.5, margin: 0 }}>
+            Nenhuma oportunidade aberta. Nem toda conversa é um negócio — crie uma
+            quando houver interesse de verdade.
+          </p>
+        )}
+
+        {card.abertas.map(o => (
+          <OportunidadeItem
+            key={o.id}
+            oportunidade={o}
+            stages={card.stages}
+            funnels={card.funnels}
+            slug={slug}
+            disabled={disabled}
+            aberta={expandida === o.id}
+            onToggle={() => setExpandida(e => (e === o.id ? null : o.id))}
+            onConcluir={d => comAcao(() => concluirOportunidade(o.id, d))}
+            onMudou={() => { void recarregar(); setHistoricoKey(k => k + 1); onLeadChanged?.() }}
+            onAgendar={() => setScheduling(o.id)}
+          />
+        ))}
+
+        {!disabled && (
+          <NovaOportunidade
+            funnels={card.funnels}
+            pendente={saving}
+            onCriar={novaOportunidade}
+          />
+        )}
+
+        {aviso && (
+          <div style={{
+            fontSize: 11.5, lineHeight: 1.5, color: '#92400e',
+            background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 10px',
+          }}>
+            Já existe uma oportunidade aberta neste funil.{' '}
+            <button type="button" onClick={() => { setExpandida(aviso.leadId); setAviso(null) }}
+              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontWeight: 800, color: '#92400e', textDecoration: 'underline' }}>
+              Ver a que existe
+            </button>
+            {' · '}
+            <button type="button" onClick={() => novaOportunidade(aviso.funnelId, true)}
+              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontWeight: 800, color: '#92400e', textDecoration: 'underline' }}>
+              Criar mesmo assim
+            </button>
+          </div>
+        )}
+
+        {card.concluidas.length > 0 && (
+          <div style={{ marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={() => setMostrarConcluidas(v => !v)}
+              style={{
+                border: 'none', background: 'none', padding: 0, cursor: 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+              }}
+            >
+              <ChevronDown
+                size={12}
+                style={{ transform: mostrarConcluidas ? 'rotate(180deg)' : 'none', transition: 'transform 120ms' }}
+              />
+              Concluídas ({card.concluidas.length})
+            </button>
+
+            {mostrarConcluidas && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 6 }}>
+                {card.concluidas.map(o => (
+                  <div key={o.id} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                    fontSize: 11.5, color: 'var(--text-muted)',
+                    padding: '6px 8px', borderRadius: 8, background: 'var(--bg-app)',
+                  }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {o.funnel_name ?? 'Sem funil'} · {o.stage_name ?? '—'}
+                    </span>
+                    <span style={{
+                      flexShrink: 0, fontWeight: 800,
+                      color: o.outcome === 'WON' ? 'var(--success)' : 'var(--text-faint)',
+                    }}>
+                      {o.outcome === 'WON' ? 'Ganha' : 'Perdida'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* ---------------- Histórico ---------------- */}
+      {(card.abertas[0] ?? card.concluidas[0]) && (
+        <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
+          <LeadTimeline
+            leadId={(expandida ?? card.abertas[0]?.id ?? card.concluidas[0]!.id)}
+            refreshKey={historicoKey}
+          />
         </div>
       )}
 
-      {/* Histórico — quem atende pelo inbox precisa ver por onde o card passou
-          sem ter que abrir o quadro. */}
-      <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
-        <LeadTimeline leadId={lead.id} refreshKey={historicoKey} />
-      </div>
-
-      {scheduling && lead && (
+      {scheduling !== null && cliente && (
         <ScheduleModal
-          leadId={lead.id}
+          leadId={scheduling || (card.abertas[0]?.id ?? '')}
           branches={branches}
-          onClose={() => setScheduling(false)}
-          onScheduled={() => { setScheduling(false); onLeadChanged?.() }}
+          onClose={() => setScheduling(null)}
+          onScheduled={() => { setScheduling(null); void recarregar(); onLeadChanged?.() }}
         />
       )}
 
-      {convertOpen && lead && (
+      {convertOpen && (
         <div
           style={{
             position: 'fixed', inset: 0, zIndex: 200,
             background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
           }}
-          onClick={closeConvert}
+          onClick={() => { setConvertOpen(false); setChainToSchedule(false) }}
         >
           <div className="card" style={{ width: 480, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}
             onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
-                {chainToSchedule ? 'Converter em cliente para agendar' : 'Converter em cliente'}
+                {chainToSchedule ? 'Cadastrar cliente para agendar' : 'Cadastrar como cliente'}
               </h3>
-              <button type="button" onClick={closeConvert} style={{
+              <button type="button" onClick={() => { setConvertOpen(false); setChainToSchedule(false) }} style={{
                 width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)',
                 background: 'var(--bg-app)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
               }}>
@@ -461,15 +430,222 @@ export function InboxLeadPanel({
                 branchId=""
                 slug={slug}
                 branches={branches}
-                leadId={lead.id}
-                prefill={{ name: lead.name, phone: lead.phone ?? undefined, email: lead.email ?? undefined }}
+                conversationId={conversation.id}
+                leadId={card.abertas[0]?.id}
+                prefill={{ name: nome, phone: telefone || undefined }}
                 onSuccess={handleConverted}
                 showCancelButton
-                onCancel={closeConvert}
+                onCancel={() => { setConvertOpen(false); setChainToSchedule(false) }}
               />
             </div>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+/** Uma oportunidade aberta: resumo sempre visível, detalhes ao expandir. */
+function OportunidadeItem({
+  oportunidade: o, stages, funnels, slug, disabled, aberta,
+  onToggle, onConcluir, onMudou, onAgendar,
+}: {
+  oportunidade: Oportunidade
+  stages:   InboxStage[]
+  funnels:  { id: string; name: string }[]
+  slug:     string
+  disabled: boolean
+  aberta:   boolean
+  onToggle:   () => void
+  onConcluir: (desfecho: 'WON' | 'LOST') => void
+  onMudou:    () => void
+  onAgendar:  () => void
+}) {
+  const [stageId, setStageId] = useState(o.crm_stage_id ?? '')
+  const [notes,   setNotes]   = useState(o.notes ?? '')
+  const [source,  setSource]  = useState(o.source ?? '')
+  const [salvando, startSave] = useTransition()
+
+  function mudarEtapa(next: string) {
+    setStageId(next)
+    startSave(async () => {
+      await updateLeadStage(o.id, next, slug)
+      onMudou()
+    })
+  }
+
+  function salvarDetalhes() {
+    const fd = new FormData()
+    fd.set('_leadId', o.id)
+    fd.set('_slug', slug)
+    fd.set('name', o.name)
+    fd.set('phone', o.phone ?? '')
+    fd.set('email', o.email ?? '')
+    fd.set('social_media', o.social_media ?? '')
+    fd.set('source', source)
+    fd.set('notes', notes)
+    fd.set('crm_stage_id', stageId)
+    fd.set('tags', JSON.stringify(o.tags))
+    fd.set('procedure_ids', JSON.stringify(o.procedure_ids))
+    startSave(async () => {
+      await updateLead(undefined, fd)
+      onMudou()
+    })
+  }
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+          padding: '9px 10px', border: 'none', background: 'var(--surface)',
+          cursor: 'pointer', textAlign: 'left',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {o.funnel_name ?? 'Sem funil'}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+            {o.stage_name ?? 'Sem etapa'}{o.owner_name ? ` · ${o.owner_name}` : ''}
+          </div>
+        </div>
+        <ChevronDown
+          size={13}
+          style={{ flexShrink: 0, color: 'var(--text-faint)', transform: aberta ? 'rotate(180deg)' : 'none', transition: 'transform 120ms' }}
+        />
+      </button>
+
+      {aberta && (
+        <div style={{ padding: '10px', borderTop: '1px solid var(--hairline)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <select className="field" value={stageId} disabled={disabled}
+            onChange={e => mudarEtapa(e.target.value)} style={{ fontSize: 12.5 }}>
+            <option value="">—</option>
+            <StageOptions funnels={funnels} stages={stages} />
+          </select>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+            {source
+              ? <TagBadge
+                  label={LEAD_SOURCES.find(s => s.key === source)?.label ?? source}
+                  style={sourceStyle(source)} size="xs"
+                  onRemove={disabled ? undefined : () => { setSource(''); }}
+                />
+              : <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>Origem não informada</span>}
+          </div>
+          <PickerCompacto
+            icone={<Compass size={12} />}
+            rotuloBotao={source ? 'Alterar origem' : 'Definir origem'}
+            opcoes={LEAD_SOURCES.map(s => ({ valor: s.key, rotulo: s.label }))}
+            selecionadas={source ? [source] : []}
+            disabled={disabled}
+            textoListaVazia="Nenhuma origem cadastrada."
+            onEscolher={setSource}
+          />
+
+          <textarea className="field" value={notes} disabled={disabled} rows={2}
+            placeholder="Anotações sobre esta oportunidade…"
+            onChange={e => setNotes(e.target.value)}
+            style={{ fontSize: 12.5, resize: 'vertical' }} />
+
+          {!disabled && (
+            <>
+              <button type="button" className="btn-ghost" onClick={salvarDetalhes}
+                disabled={salvando} style={{ alignSelf: 'flex-start', fontSize: 11.5 }}>
+                {salvando ? 'Salvando…' : 'Salvar detalhes'}
+              </button>
+
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {/* Ganhar é a conclusão do NEGÓCIO. Não cria cliente: são gestos
+                    separados, e amarrá-los faria o funil mentir sobre vendas de
+                    quem não quis deixar CPF. */}
+                <button type="button" className="btn-secondary" onClick={() => onConcluir('WON')}
+                  style={{ fontSize: 11.5, padding: '6px 10px' }}>
+                  <Check size={12} /> Ganha
+                </button>
+                <button type="button" className="btn-ghost" onClick={() => onConcluir('LOST')}
+                  style={{ fontSize: 11.5 }}>
+                  Perdida
+                </button>
+                <button type="button" className="btn-ghost" onClick={onAgendar}
+                  style={{ fontSize: 11.5 }}>
+                  <CalendarPlus size={12} /> Agendar
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Botão que vira seletor de funil. Fechado por padrão, como o resto do painel. */
+function NovaOportunidade({
+  funnels, pendente, onCriar,
+}: {
+  funnels:  { id: string; name: string }[]
+  pendente: boolean
+  onCriar:  (funnelId: string) => void
+}) {
+  const [aberto, setAberto] = useState(false)
+
+  if (funnels.length === 0) {
+    return (
+      <p style={{ fontSize: 11.5, color: 'var(--text-faint)', margin: 0 }}>
+        Crie um funil em Oportunidades para poder abrir negócios.
+      </p>
+    )
+  }
+
+  // Um funil só não é escolha: cria direto.
+  if (funnels.length === 1) {
+    return (
+      <button type="button" className="btn-ghost" disabled={pendente}
+        onClick={() => onCriar(funnels[0]!.id)}
+        style={{ alignSelf: 'flex-start', fontSize: 11.5 }}>
+        <Plus size={12} /> {pendente ? 'Criando…' : 'Nova oportunidade'}
+      </button>
+    )
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button type="button" className="btn-ghost" disabled={pendente}
+        onClick={() => setAberto(a => !a)}
+        style={{ fontSize: 11.5 }}>
+        <Plus size={12} /> {pendente ? 'Criando…' : 'Nova oportunidade'}
+      </button>
+
+      {aberto && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 30 }} onClick={() => setAberto(false)} />
+          <div style={{
+            position: 'absolute', top: 30, left: 0, zIndex: 31, width: 200,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 10, padding: 6,
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', padding: '2px 6px 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Em qual funil?
+            </div>
+            {funnels.map(f => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => { setAberto(false); onCriar(f.id) }}
+                style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '6px', borderRadius: 6, border: 'none', background: 'transparent',
+                  cursor: 'pointer', fontSize: 12, color: 'var(--text)',
+                }}
+              >
+                {f.name}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

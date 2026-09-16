@@ -22,6 +22,29 @@ async function resolveBranch(tenantId: string, branchId: string) {
   return data
 }
 
+/**
+ * Marca o contato como cliente.
+ *
+ * Fora de `addClient` porque a ligação acontece em dois caminhos — CPF novo e
+ * CPF que já era de um cliente — e esquecer um deles deixaria a conversa sem o
+ * selo, que é justamente o que o comercial precisa ver antes de responder.
+ *
+ * ⚠️ Não é export do arquivo `'use server'`: todo export daqui vira endpoint
+ * público, e este grava vínculo sem autorizar nada por conta própria.
+ */
+async function ligarContatoAoCliente(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string, conversationId: string, clientId: string,
+): Promise<void> {
+  const { error } = await admin
+    .from('conversations')
+    .update({ client_id: clientId, updated_at: new Date().toISOString() })
+    .eq('id', conversationId)
+    .eq('tenant_id', tenantId)
+
+  if (error) console.error('[ligarContatoAoCliente]', error.message)
+}
+
 // --- Criar cliente ------------------------------------------------
 export async function addClient(
   _prev: { error?: string; success?: boolean; clientId?: string } | undefined,
@@ -34,6 +57,11 @@ export async function addClient(
   const slug     = formData.get('_slug') as string
   // _leadId presente = criação a partir da conversão de um lead (mesma regra do cadastro manual).
   const leadId   = (formData.get('_leadId') as string | null)?.trim() || null
+  // _conversationId = o CONTATO de onde veio o cadastro. É nele que o vínculo
+  // com o cliente mora agora: ser cliente é estado da pessoa, não do card, e
+  // amarrar isso à oportunidade fazia a mesma pessoa converter duas vezes
+  // quando negociava em dois funis.
+  const conversationId = (formData.get('_conversationId') as string | null)?.trim() || null
   const branch   = await resolveBranch(ctx.tenantId!, branchId)
   if (!branch) return { error: 'Filial inválida.' }
 
@@ -68,6 +96,7 @@ export async function addClient(
     .eq('document', document)
     .maybeSingle()
   if (existing) {
+    if (conversationId) await ligarContatoAoCliente(admin, ctx.tenantId!, conversationId, existing.id as string)
     if (leadId) {
       await admin.from('leads').update({ client_id: existing.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
       await registrarEventoLead({
@@ -79,6 +108,14 @@ export async function addClient(
       })
       revalidatePath('/admin/oportunidades')
       revalidatePath(`/${slug}/oportunidades`)
+      revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+      return { success: true, clientId: existing.id as string }
+    }
+    // Veio do inbox e o CPF já é de um cliente: liga o contato e pronto. Antes
+    // isso só valia com lead, e cadastrar pelo contato dava "CPF já existe" sem
+    // vincular nada — a pessoa ficava sem o selo de cliente na conversa.
+    if (conversationId) {
+      revalidatePath('/admin/inbox')
       revalidateTag(`clients:${ctx.tenantId!}`, 'max')
       return { success: true, clientId: existing.id as string }
     }
@@ -118,7 +155,14 @@ export async function addClient(
   await admin.rpc('set_client_claims', { p_auth_id: authId, p_client_id: client.id })
   await admin.from('loyalty_accounts').insert({ client_id: client.id })
 
-  // 4) Conversão de lead: liga o lead e dispara Meta CAPI (CompleteRegistration)
+  // 4) O contato passa a ser cliente. É aqui que o selo aparece na conversa, e
+  //    nenhuma oportunidade é tocada: cadastrar cliente não fecha negócio.
+  if (conversationId) {
+    await ligarContatoAoCliente(admin, ctx.tenantId!, conversationId, client.id as string)
+    revalidatePath('/admin/inbox')
+  }
+
+  // 5) Conversão de lead: liga o lead e dispara Meta CAPI (CompleteRegistration)
   if (leadId) {
     const { data: leadRow } = await admin
       .from('leads').select('fbclid').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle()

@@ -5,7 +5,7 @@ import {
 } from 'react'
 import {
   Search, MessageSquare, Phone, Mail, AtSign,
-  Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip, FileText, Zap,
+  Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip, FileText, Zap, UserCheck,
   Reply, Pencil, Check,
 } from 'lucide-react'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
@@ -144,6 +144,11 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
             }}>
               {conv.contact_name ?? 'Sem nome'}
             </span>
+            {/* Já é cliente: o comercial atende diferente quem já comprou, e
+                precisa saber disso antes de abrir a conversa. */}
+            {conv.eh_cliente && (
+              <UserCheck size={11} color="var(--success)" style={{ flexShrink: 0 }} />
+            )}
             <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>
               {relTime(conv.last_message_at)}
             </span>

@@ -10,6 +10,7 @@ import {
   urlDaMidia, guardarUpload, classificarArquivo, validarArquivo,
 } from '@/lib/inbox/media'
 import type { ChannelKind } from '@/lib/channels/types'
+import { registrarEventoLead } from '@/lib/lead-events'
 import {
   extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
 } from '@/lib/templates/core'
@@ -38,15 +39,23 @@ export interface Conversation {
   last_inbound_at:        string | null
   awaiting_since:         string | null
   first_response_seconds: number | null
-  // -- Do card ligado à conversa. Servem aos filtros da caixa de entrada, que
-  //    são sobre a OPORTUNIDADE (tags, dono, etapa) e não sobre a conversa.
+  /** Tags do CONTATO. Ficam na conversa: descrevem a pessoa, não o negócio. */
   lead_tags:    string[]
-  owner_id:     string | null
-  owner_name:   string | null
-  stage_id:     string | null
-  stage_name:   string | null
-  funnel_id:    string | null
-  funnel_name:  string | null
+  /** Tem ficha de cliente? O comercial precisa saber antes de responder. */
+  eh_cliente:   boolean
+  // -- Das oportunidades DESTE contato, agregadas.
+  //
+  // Listas, e não valores únicos: a mesma pessoa pode ter negócio aberto em dois
+  // funis, e filtrar por "etapa Proposta" tem que encontrá-la se QUALQUER
+  // oportunidade dela estiver lá.
+  owner_ids:    string[]
+  owner_names:  string[]
+  stage_ids:    string[]
+  stage_names:  string[]
+  funnel_ids:   string[]
+  funnel_names: string[]
+  /** Quantas em andamento. Zero = conversa sem negócio, que é o normal. */
+  abertas:      number
 }
 
 export interface Message {
@@ -138,49 +147,55 @@ export async function getConversations(): Promise<Conversation[]> {
   return anexarDadosDoCard((data ?? []) as any[], ctx.tenantId!)
 }
 
+
 /**
- * Junta às conversas o que vem do card: tags, dono, etapa e funil.
+ * Junta a cada contato o que vem das oportunidades dele: dono, etapa e funil.
+ *
+ * Agrega em LISTAS porque um contato pode ter negócio aberto em dois funis ao
+ * mesmo tempo. Filtrar por "etapa Proposta" tem que encontrar a pessoa se
+ * qualquer oportunidade dela estiver lá — com um valor único, a segunda
+ * oportunidade seria invisível para os filtros.
  *
  * Em consultas separadas, e não em embed aninhado do PostgREST
  * (`leads(...crm_stages(...crm_funnels))`): a cada nível o embed exige que o
- * relacionamento seja inferido sem ambiguidade, e quando ele falha o retorno
- * vem sem o campo em vez de estourar — o filtro simplesmente não acharia nada,
- * em silêncio. São quatro consultas pequenas: no máximo 200 leads, e etapas,
- * funis e donos são dezenas por rede.
+ * relacionamento seja inferido sem ambiguidade, e quando ele falha o retorno vem
+ * sem o campo em vez de estourar — o filtro não acharia nada, em silêncio.
  */
 async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Conversation[]> {
-  const vazio = (c: any): Conversation => ({
+  const base = (c: any): Conversation => ({
     ...c,
     branch_name: c.branches?.name ?? null,
-    lead_tags: [], owner_id: null, owner_name: null,
-    stage_id: null, stage_name: null, funnel_id: null, funnel_name: null,
+    lead_tags:   (c.tags as string[]) ?? [],
+    eh_cliente:  !!c.client_id,
+    owner_ids: [], owner_names: [], stage_ids: [], stage_names: [],
+    funnel_ids: [], funnel_names: [], abertas: 0,
   })
 
-  const leadIds = [...new Set(conversas.map(c => c.lead_id).filter(Boolean))] as string[]
-  if (leadIds.length === 0) return conversas.map(vazio)
+  if (conversas.length === 0) return []
 
   const admin = createAdminClient()
+  const convIds = conversas.map(c => c.id as string)
 
   const { data: leads, error: erroLeads } = await admin
     .from('leads')
-    .select('id, tags, owner_id, crm_stage_id')
+    .select('conversation_id, owner_id, crm_stage_id')
     .eq('tenant_id', tenantId)
-    .in('id', leadIds)
+    .in('conversation_id', convIds)
 
   if (erroLeads) {
-    // Sem os dados do card os filtros ficam vazios, mas a caixa de entrada
-    // continua funcionando — o que ela precisa mesmo é da lista de conversas.
-    console.error('[getConversations] cards:', erroLeads.message)
-    return conversas.map(vazio)
+    // Sem as oportunidades os filtros de funil ficam vazios, mas a caixa de
+    // entrada continua: o que ela precisa mesmo é da lista de conversas.
+    console.error('[getConversations] oportunidades:', erroLeads.message)
+    return conversas.map(base)
   }
 
-  const porLead = new Map((leads ?? []).map((l: any) => [l.id as string, l]))
-  const stageIds = [...new Set((leads ?? []).map((l: any) => l.crm_stage_id).filter(Boolean))] as string[]
-  const ownerIds = [...new Set((leads ?? []).map((l: any) => l.owner_id).filter(Boolean))] as string[]
+  const linhas = (leads ?? []) as any[]
+  const stageIds = [...new Set(linhas.map(l => l.crm_stage_id).filter(Boolean))] as string[]
+  const ownerIds = [...new Set(linhas.map(l => l.owner_id).filter(Boolean))] as string[]
 
   const [stagesRes, ownersRes] = await Promise.all([
     stageIds.length > 0
-      ? admin.from('crm_stages').select('id, name, funnel_id').in('id', stageIds)
+      ? admin.from('crm_stages').select('id, name, funnel_id, outcome').in('id', stageIds)
       : Promise.resolve({ data: [], error: null }),
     ownerIds.length > 0
       ? admin.from('users').select('id, name').in('id', ownerIds)
@@ -191,32 +206,49 @@ async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Co
   if (ownersRes.error) console.error('[getConversations] donos:', ownersRes.error.message)
 
   const porStage = new Map((stagesRes.data ?? []).map((s: any) => [s.id as string, s]))
-  const porOwner = new Map((ownersRes.data ?? []).map((u: any) => [u.id as string, u]))
+  const porOwner = new Map((ownersRes.data ?? []).map((u: any) => [u.id as string, u.name as string]))
 
   const funnelIds = [...new Set((stagesRes.data ?? []).map((s: any) => s.funnel_id).filter(Boolean))] as string[]
   const { data: funis, error: erroFunis } = funnelIds.length > 0
     ? await admin.from('crm_funnels').select('id, name').in('id', funnelIds)
     : { data: [], error: null }
   if (erroFunis) console.error('[getConversations] funis:', erroFunis.message)
-  const porFunil = new Map((funis ?? []).map((f: any) => [f.id as string, f]))
+  const porFunil = new Map((funis ?? []).map((f: any) => [f.id as string, f.name as string]))
+
+  const porConversa = new Map<string, any[]>()
+  for (const l of linhas) {
+    const id = l.conversation_id as string
+    if (!porConversa.has(id)) porConversa.set(id, [])
+    porConversa.get(id)!.push(l)
+  }
 
   return conversas.map(c => {
-    const lead  = c.lead_id ? porLead.get(c.lead_id) : null
-    const stage = lead?.crm_stage_id ? porStage.get(lead.crm_stage_id) : null
-    const funil = stage?.funnel_id ? porFunil.get(stage.funnel_id) : null
-    const dono  = lead?.owner_id ? porOwner.get(lead.owner_id) : null
+    const minhas = porConversa.get(c.id as string) ?? []
+    const agregado = base(c)
 
-    return {
-      ...c,
-      branch_name: c.branches?.name ?? null,
-      lead_tags:   (lead?.tags as string[]) ?? [],
-      owner_id:    lead?.owner_id ?? null,
-      owner_name:  dono?.name ?? null,
-      stage_id:    stage?.id ?? null,
-      stage_name:  stage?.name ?? null,
-      funnel_id:   funil?.id ?? null,
-      funnel_name: funil?.name ?? null,
-    } as Conversation
+    for (const l of minhas) {
+      const etapa = l.crm_stage_id ? porStage.get(l.crm_stage_id) : null
+      if (l.owner_id) {
+        if (!agregado.owner_ids.includes(l.owner_id)) agregado.owner_ids.push(l.owner_id)
+        const nome = porOwner.get(l.owner_id)
+        if (nome && !agregado.owner_names.includes(nome)) agregado.owner_names.push(nome)
+      }
+      if (etapa) {
+        if (!agregado.stage_ids.includes(etapa.id)) agregado.stage_ids.push(etapa.id)
+        if (etapa.name && !agregado.stage_names.includes(etapa.name)) agregado.stage_names.push(etapa.name)
+        if (etapa.funnel_id && !agregado.funnel_ids.includes(etapa.funnel_id)) {
+          agregado.funnel_ids.push(etapa.funnel_id)
+          const nomeFunil = porFunil.get(etapa.funnel_id)
+          if (nomeFunil) agregado.funnel_names.push(nomeFunil)
+        }
+        if (etapa.outcome === 'OPEN') agregado.abertas += 1
+      } else {
+        // Sem etapa conta como aberta: some da contagem seria pior que aparecer.
+        agregado.abertas += 1
+      }
+    }
+
+    return agregado
   })
 }
 
@@ -340,11 +372,46 @@ export interface InboxLead {
 
 export interface InboxStage {
   id: string; funnel_id: string; name: string; color: string; position: number
+  /** `WON`/`LOST` = etapa de desfecho. É o que define oportunidade concluída. */
+  outcome: 'OPEN' | 'WON' | 'LOST'
+}
+
+/** A pessoa, do jeito que a conversa a conhece. */
+export interface ContatoDaConversa {
+  conversationId: string
+  nome:     string | null
+  telefone: string | null
+  tags:     string[]
+  canal:    InboxChannel
+}
+
+/** Ficha de cliente, quando existe. Não é pré-requisito para nada. */
+export interface ClienteDoContato {
+  id:    string
+  name:  string
+  phone: string | null
+  email: string | null
+}
+
+/** Oportunidade: o lead, agora só com o que é do negócio. */
+export interface Oportunidade extends InboxLead {
+  stage_name:  string | null
+  funnel_id:   string | null
+  funnel_name: string | null
+  outcome:     'OPEN' | 'WON' | 'LOST'
+  owner_id:    string | null
+  owner_name:  string | null
+  created_at:  string
 }
 
 export interface ConversationCard {
-  lead:   InboxLead | null
-  /** Etapas de TODOS os funis: é daqui que sai o menu que move o lead de funil. */
+  contato:    ContatoDaConversa
+  cliente:    ClienteDoContato | null
+  /** Em andamento: etapa com outcome `OPEN`. */
+  abertas:    Oportunidade[]
+  /** Ganhas e perdidas, para consulta. */
+  concluidas: Oportunidade[]
+  /** Etapas de TODOS os funis: é daqui que sai o menu que move de funil. */
   stages:  InboxStage[]
   funnels: { id: string; name: string }[]
   /**
@@ -357,10 +424,33 @@ export interface ConversationCard {
   tagsDaRede: string[]
 }
 
-export async function getLeadForConversation(conversationId: string): Promise<ConversationCard> {
+
+/**
+ * Tudo que o painel lateral precisa: o contato, a ficha de cliente e as
+ * oportunidades dele.
+ *
+ * As oportunidades vêm por DOIS caminhos, e o segundo importa: as ligadas a esta
+ * conversa, e as do mesmo cliente. Quem já é cliente pode ter card criado direto
+ * no quadro (uma campanha de reativação, por exemplo) — sem a segunda condição,
+ * esse card não apareceria para quem está atendendo a pessoa.
+ */
+export async function getConversationCard(conversationId: string): Promise<ConversationCard | null> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
+
+  const { data: conv, error: erroConv } = await admin
+    .from('conversations')
+    .select('id, contact_name, contact_phone, tags, client_id, channel')
+    .eq('id', conversationId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+
+  if (erroConv) { console.error('[getConversationCard]', erroConv.message); return null }
+  if (!conv) return null
+
+  const c = conv as any
+  const clientId = c.client_id as string | null
 
   const funis  = await seedDefaultFunnel(ctx.tenantId!)
   const stages = (await listAllStages(ctx.tenantId!)) as InboxStage[]
@@ -370,44 +460,338 @@ export async function getLeadForConversation(conversationId: string): Promise<Co
 
   const { data: tagRows, error: erroTags } = await admin
     .rpc('lead_tags_da_rede', { p_tenant: ctx.tenantId! })
-  if (erroTags) console.error('[getLeadForConversation] tags:', erroTags.message)
+  if (erroTags) console.error('[getConversationCard] tags:', erroTags.message)
   const tagsDaRede = ((tagRows ?? []) as { tag: string }[]).map(r => r.tag)
 
-  const { data: conv } = await admin
+  const [cliente, oportunidades] = await Promise.all([
+    clientId ? buscarCliente(admin, ctx.tenantId!, clientId) : Promise.resolve(null),
+    buscarOportunidades(admin, ctx.tenantId!, conversationId, clientId, stages),
+  ])
+
+  const abertas    = oportunidades.filter(o => o.outcome === 'OPEN')
+  const concluidas = oportunidades.filter(o => o.outcome !== 'OPEN')
+
+  return {
+    contato: {
+      conversationId,
+      nome:     c.contact_name ?? null,
+      telefone: c.contact_phone ?? null,
+      tags:     (c.tags ?? []) as string[],
+      canal:    c.channel as InboxChannel,
+    },
+    cliente, abertas, concluidas, stages, funnels, tagsDaRede,
+  }
+}
+
+async function buscarCliente(
+  admin: ReturnType<typeof createAdminClient>, tenantId: string, clientId: string,
+): Promise<ClienteDoContato | null> {
+  const { data, error } = await admin
+    .from('clients')
+    .select('id, name, phone, email')
+    .eq('id', clientId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle()
+
+  if (error) { console.error('[getConversationCard] cliente:', error.message); return null }
+  return (data as ClienteDoContato) ?? null
+}
+
+async function buscarOportunidades(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string, conversationId: string, clientId: string | null,
+  stages: InboxStage[],
+): Promise<Oportunidade[]> {
+  const filtro = clientId
+    ? `conversation_id.eq.${conversationId},client_id.eq.${clientId}`
+    : `conversation_id.eq.${conversationId}`
+
+  const { data, error } = await admin
+    .from('leads')
+    .select('id, name, phone, email, social_media, source, notes, crm_stage_id, tags, branch_id, client_id, owner_id, created_at, lead_procedures(procedure_id)')
+    .eq('tenant_id', tenantId)
+    .or(filtro)
+    .order('created_at', { ascending: false })
+
+  if (error) { console.error('[getConversationCard] oportunidades:', error.message); return [] }
+  const linhas = (data ?? []) as any[]
+  if (linhas.length === 0) return []
+
+  const porEtapa = new Map(stages.map(s => [s.id, s]))
+  const funis = new Map(
+    (await admin.from('crm_funnels').select('id, name').eq('tenant_id', tenantId)).data
+      ?.map((f: any) => [f.id as string, f.name as string]) ?? [],
+  )
+
+  const ownerIds = [...new Set(linhas.map(l => l.owner_id).filter(Boolean))] as string[]
+  const donos = new Map<string, string>()
+  if (ownerIds.length > 0) {
+    const { data: users } = await admin.from('users').select('id, name').in('id', ownerIds)
+    for (const u of (users ?? []) as any[]) donos.set(u.id, u.name)
+  }
+
+  return linhas.map(l => {
+    const etapa = l.crm_stage_id ? porEtapa.get(l.crm_stage_id) : undefined
+    return {
+      id: l.id, name: l.name, phone: l.phone, email: l.email,
+      social_media: l.social_media, source: l.source, notes: l.notes,
+      crm_stage_id: l.crm_stage_id, tags: (l.tags ?? []) as string[],
+      branch_id: l.branch_id, client_id: l.client_id,
+      procedure_ids: ((l.lead_procedures ?? []) as { procedure_id: string }[]).map(p => p.procedure_id),
+      stage_name:  etapa?.name ?? null,
+      funnel_id:   etapa?.funnel_id ?? null,
+      funnel_name: etapa ? funis.get(etapa.funnel_id) ?? null : null,
+      // Sem etapa a oportunidade é tratada como aberta: sumir da tela por falta
+      // de etapa seria pior que aparecer sem ela.
+      outcome:     etapa?.outcome ?? 'OPEN',
+      owner_id:    l.owner_id ?? null,
+      owner_name:  l.owner_id ? donos.get(l.owner_id) ?? null : null,
+      created_at:  l.created_at,
+    }
+  })
+}
+
+/**
+ * Cria uma oportunidade para este contato.
+ *
+ * Herda nome, telefone, cliente e atribuição do contato. A atribuição é o ponto
+ * silencioso: ela foi guardada quando a pessoa mandou a primeira mensagem, e é
+ * aqui que reencontra o funil — sem isso, toda oportunidade nascida de anúncio
+ * apareceria como orgânica no relatório de campanha.
+ *
+ * Não impede duplicata no mesmo funil: dois procedimentos diferentes negociados
+ * ao mesmo tempo é caso real. Só avisa, e quem atende decide.
+ */
+export async function criarOportunidade(
+  conversationId: string,
+  funnelId: string,
+  confirmarDuplicata = false,
+): Promise<{ ok: boolean; leadId?: string; jaExisteAberta?: string; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'crm', 'MANAGE')
+  const admin = createAdminClient()
+
+  const { data: conv, error: erroConv } = await admin
     .from('conversations')
-    .select('lead_id')
+    .select('id, contact_name, contact_phone, contact_external_id, client_id, branch_id, channel, attribution, lead_id')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
 
-  const leadId = (conv as { lead_id: string | null } | null)?.lead_id ?? null
-  if (!leadId) return { lead: null, stages, funnels, tagsDaRede }
+  if (erroConv) return { ok: false, error: erroConv.message }
+  if (!conv)    return { ok: false, error: 'Conversa não encontrada.' }
+  const c = conv as any
 
-  const { data: leadRow } = await admin
+  const stages = (await listAllStages(ctx.tenantId!)) as InboxStage[]
+  const doFunil = stages.filter(s => s.funnel_id === funnelId).sort((a, b) => a.position - b.position)
+  const primeira = doFunil[0]
+  if (!primeira) return { ok: false, error: 'Este funil não tem etapas.' }
+
+  if (!confirmarDuplicata) {
+    const abertasNoFunil = doFunil.filter(s => s.outcome === 'OPEN').map(s => s.id)
+    if (abertasNoFunil.length > 0) {
+      const { data: existente } = await admin
+        .from('leads')
+        .select('id')
+        .eq('tenant_id', ctx.tenantId!)
+        .eq('conversation_id', conversationId)
+        .in('crm_stage_id', abertasNoFunil)
+        .limit(1)
+      if (existente && existente.length > 0) {
+        return { ok: false, jaExisteAberta: existente[0]!.id as string }
+      }
+    }
+  }
+
+  const atribuicao = (c.attribution ?? {}) as Record<string, string | undefined>
+  const insert: Record<string, unknown> = {
+    tenant_id:       ctx.tenantId!,
+    branch_id:       c.branch_id ?? null,
+    conversation_id: conversationId,
+    client_id:       c.client_id ?? null,
+    name:            c.contact_name || c.contact_phone || 'Sem nome',
+    phone:           c.contact_phone ?? null,
+    crm_stage_id:    primeira.id,
+    owner_id:        ctx.internalUserId ?? null,
+    source:          atribuicao.source ?? null,
+  }
+  if (!c.contact_phone) {
+    insert.social_media = `${c.channel}: ${c.contact_name ?? c.contact_external_id ?? ''}`.trim()
+  }
+  if (atribuicao.utm_source) insert.utm_source = atribuicao.utm_source
+  if (atribuicao.ctwa_clid)  insert.ctwa_clid  = atribuicao.ctwa_clid
+
+  const { data: novo, error } = await admin
+    .from('leads').insert(insert).select('id').single()
+
+  if (error) return { ok: false, error: error.message }
+  const leadId = (novo as { id: string }).id
+
+  await registrarEventoLead({
+    tenantId:    ctx.tenantId!,
+    leadId,
+    type:        'CREATED',
+    toStageId:   primeira.id,
+    actorUserId: ctx.internalUserId,
+    actorName:   ctx.userName || null,
+  })
+
+  // `conversations.lead_id` é a oportunidade PRINCIPAL: é por ela que o card do
+  // quadro volta para a conversa certa. A primeira criada assume o posto.
+  if (!c.lead_id) {
+    await admin.from('conversations').update({ lead_id: leadId }).eq('id', conversationId)
+  }
+
+  revalidarInbox()
+  revalidatePath('/admin/oportunidades')
+  return { ok: true, leadId }
+}
+
+/**
+ * Atualiza a pessoa e propaga para as oportunidades dela.
+ *
+ * A oportunidade guarda uma cópia de nome e telefone porque o card do quadro
+ * precisa se identificar sozinho. Cópia que não acompanha o original vira mentira
+ * — então a alteração desce para todas, e cada uma registra na sua linha do tempo
+ * o que mudou, com valor anterior e autor. Só as que realmente mudaram: senão
+ * salvar o contato carimbaria o histórico de oportunidades intocadas.
+ */
+export async function atualizarContato(
+  conversationId: string,
+  dados: { nome?: string; telefone?: string; tags?: string[] },
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'crm', 'MANAGE')
+  const admin = createAdminClient()
+
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (dados.nome     !== undefined) patch.contact_name  = dados.nome.trim() || null
+  if (dados.telefone !== undefined) patch.contact_phone = dados.telefone.replace(/\D/g, '') || null
+  if (dados.tags     !== undefined) patch.tags          = dados.tags
+
+  const { error } = await admin
+    .from('conversations')
+    .update(patch)
+    .eq('id', conversationId)
+    .eq('tenant_id', ctx.tenantId!)
+
+  if (error) return { ok: false, error: error.message }
+
+  const mudouNome = patch.contact_name !== undefined
+  const mudouFone = patch.contact_phone !== undefined
+  if (mudouNome || mudouFone) {
+    await propagarParaOportunidades(admin, ctx, conversationId, {
+      name:  mudouNome ? (patch.contact_name as string | null) : undefined,
+      phone: mudouFone ? (patch.contact_phone as string | null) : undefined,
+    })
+  }
+
+  revalidarInbox()
+  return { ok: true }
+}
+
+async function propagarParaOportunidades(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+  conversationId: string,
+  novos: { name?: string | null; phone?: string | null },
+): Promise<void> {
+  const { data, error } = await admin
     .from('leads')
-    .select('id, name, phone, email, social_media, source, notes, crm_stage_id, tags, branch_id, client_id, lead_procedures(procedure_id)')
+    .select('id, name, phone')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('conversation_id', conversationId)
+
+  if (error) { console.error('[atualizarContato] oportunidades:', error.message); return }
+
+  for (const lead of (data ?? []) as any[]) {
+    const patch: Record<string, unknown> = {}
+    const changes: { campo: string; de: string | null; para: string | null }[] = []
+
+    // Nome é NOT NULL no lead: contato sem nome não pode apagar o do card.
+    if (novos.name !== undefined && novos.name && novos.name !== lead.name) {
+      patch.name = novos.name
+      changes.push({ campo: 'Nome', de: lead.name ?? null, para: novos.name })
+    }
+    if (novos.phone !== undefined && (novos.phone ?? null) !== (lead.phone ?? null)) {
+      patch.phone = novos.phone
+      changes.push({ campo: 'Telefone', de: lead.phone ?? null, para: novos.phone })
+    }
+    if (changes.length === 0) continue
+
+    const { error: erroUpdate } = await admin.from('leads').update(patch).eq('id', lead.id)
+    if (erroUpdate) { console.error('[atualizarContato] propagar:', erroUpdate.message); continue }
+
+    await registrarEventoLead({
+      tenantId:    ctx.tenantId!,
+      leadId:      lead.id,
+      type:        'UPDATED',
+      actorUserId: ctx.internalUserId,
+      actorName:   ctx.userName || null,
+      changes,
+    })
+  }
+}
+
+/**
+ * Ganha ou perdida: move para a etapa de desfecho do funil da oportunidade.
+ *
+ * Ganhar **não** cria cliente. São gestos separados de propósito: fechar venda de
+ * quem não quer dar CPF é rotina, e exigir a ficha para registrar o ganho
+ * deixaria o funil mentindo sobre o que aconteceu. Ligar as duas pontas é
+ * trabalho do módulo de automações.
+ */
+export async function concluirOportunidade(
+  leadId: string,
+  desfecho: 'WON' | 'LOST',
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'crm', 'MANAGE')
+  const admin = createAdminClient()
+
+  const { data: lead, error: erroLead } = await admin
+    .from('leads')
+    .select('id, crm_stage_id')
     .eq('id', leadId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
 
-  if (!leadRow) return { lead: null, stages, funnels, tagsDaRede }
+  if (erroLead) return { ok: false, error: erroLead.message }
+  if (!lead)    return { ok: false, error: 'Oportunidade não encontrada.' }
 
-  const l = leadRow as any
-  const lead: InboxLead = {
-    id:           l.id,
-    name:         l.name,
-    phone:        l.phone,
-    email:        l.email,
-    social_media: l.social_media,
-    source:       l.source,
-    notes:        l.notes,
-    crm_stage_id: l.crm_stage_id,
-    tags:         (l.tags ?? []) as string[],
-    branch_id:    l.branch_id,
-    client_id:    l.client_id,
-    procedure_ids: ((l.lead_procedures ?? []) as { procedure_id: string }[]).map(p => p.procedure_id),
+  const stages = (await listAllStages(ctx.tenantId!)) as InboxStage[]
+  const atual  = stages.find(s => s.id === (lead as any).crm_stage_id)
+  if (!atual) return { ok: false, error: 'Oportunidade sem etapa. Escolha um funil antes de concluir.' }
+
+  const destino = stages
+    .filter(s => s.funnel_id === atual.funnel_id && s.outcome === desfecho)
+    .sort((a, b) => a.position - b.position)[0]
+
+  if (!destino) {
+    const rotulo = desfecho === 'WON' ? 'ganho' : 'perda'
+    return {
+      ok: false,
+      error: `Este funil não tem etapa de ${rotulo}. Marque uma etapa como ${rotulo} em Configurações → Funis.`,
+    }
   }
-  return { lead, stages, funnels, tagsDaRede }
+
+  const { error } = await admin
+    .from('leads').update({ crm_stage_id: destino.id }).eq('id', leadId)
+  if (error) return { ok: false, error: error.message }
+
+  await registrarEventoLead({
+    tenantId:    ctx.tenantId!,
+    leadId,
+    type:        'STAGE_CHANGED',
+    fromStageId: atual.id,
+    toStageId:   destino.id,
+    actorUserId: ctx.internalUserId,
+    actorName:   ctx.userName || null,
+  })
+
+  revalidarInbox()
+  revalidatePath('/admin/oportunidades')
+  return { ok: true }
 }
 
 /** Acha (ou cria) a conversa de um lead — usado pelo deep-link "card do funil -> inbox". */
