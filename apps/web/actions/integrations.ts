@@ -57,6 +57,22 @@ export async function saveWhatsAppConfig(
 
   if (error) return { ok: false, error: error.message }
 
+  // Ativar um provedor de WhatsApp desativa o outro.
+  //
+  // Só pode haver um atendendo por rede — getWhatsAppConfig escolhe um só —, e
+  // até aqui nada garantia isso: dava para deixar Z-API e API oficial ativas ao
+  // mesmo tempo e ficar na dúvida sobre qual estava entregando as mensagens.
+  if (isActive) {
+    const outros = (['zapi', 'official'] as const).filter(p => p !== provider)
+    const { error: erroDesativar } = await admin
+      .from('integration_configs')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('tenant_id', ctx.tenantId!)
+      .in('provider', outros)
+
+    if (erroDesativar) console.error('[saveWhatsAppConfig] desativar irma:', erroDesativar.message)
+  }
+
   revalidatePath('/admin/settings')
   return { ok: true }
 }

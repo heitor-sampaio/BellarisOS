@@ -12,16 +12,27 @@ export async function getWhatsAppConfig(tenantId: string): Promise<WhatsAppConfi
   const { createAdminClient } = await import('@/lib/supabase/admin')
   const admin = createAdminClient()
 
-  const { data } = await admin
+  // ⚠️ Aqui havia um `.maybeSingle()`, que LANÇA quando vem mais de uma linha.
+  // Duas configs de WhatsApp ativas no mesmo tenant é estado inválido, mas
+  // acontece: nada no banco impede, e `saveWhatsAppConfig` não desativa a irmã.
+  // O resultado era o inbox inteiro cair com erro de PostgREST em vez de
+  // simplesmente atender por um dos provedores.
+  const { data, error } = await admin
     .from('integration_configs')
     .select('provider, config')
     .eq('tenant_id', tenantId)
     .in('provider', ['zapi', 'official'])
     .eq('is_active', true)
-    .maybeSingle()
 
-  if (!data) return null
-  return { provider: data.provider as WhatsAppConfig['provider'], ...(data.config as object) } as WhatsAppConfig
+  if (error) { console.error('[getWhatsAppConfig]', error.message); return null }
+  if (!data || data.length === 0) return null
+
+  // Desempate explícito, não alfabético: a API oficial ganha da não oficial. Se a
+  // rede configurou as duas, é ela que deve atender — e um `.order()` por nome
+  // de provedor entregaria a errada (`zapi` > `official` no alfabeto).
+  const linha = data.find(l => l.provider === 'official') ?? data[0]!
+
+  return { provider: linha.provider as WhatsAppConfig['provider'], ...(linha.config as object) } as WhatsAppConfig
 }
 
 // Lookup tenant by Z-API instanceId (for webhook routing)
