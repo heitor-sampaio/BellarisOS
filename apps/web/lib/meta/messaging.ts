@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import type {
   SendProvider, InboundMsg, InboundMedia, MediaKind, ChannelKind, OutboundMedia,
+  SendOptions,
 } from '@/lib/channels/types'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
@@ -43,13 +44,22 @@ export class MetaMessagingProvider implements SendProvider {
     private channel: ChannelKind,
   ) {}
 
-  async send(to: string, content: string): Promise<{ externalId: string }> {
+  async send(
+    to: string, content: string, options?: SendOptions,
+  ): Promise<{ externalId: string }> {
+    // Citar no Messenger e no Instagram Direct é `reply_to.mid`, dentro da
+    // própria `message`. O mid é o mesmo id que guardamos em `external_id`.
+    const message: Record<string, unknown> = { text: content }
+    if (options?.replyToExternalId) {
+      message.reply_to = { mid: options.replyToExternalId }
+    }
+
     const res = await fetch(`${GRAPH}/${this.page.pageId}/messages`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         recipient:      { id: to },
-        message:        { text: content },
+        message,
         // RESPONSE = resposta dentro da janela de 24h. Fora dela a Meta recusa,
         // e é por isso que `estadoDaJanela` barra antes de chegar aqui.
         messaging_type: 'RESPONSE',
@@ -153,6 +163,13 @@ export class MetaMessagingProvider implements SendProvider {
       timestamp:      new Date(Number(m.timestamp ?? Date.now())).toISOString(),
       type:           media ? (media.kind === 'document' ? 'document' : media.kind) : 'text',
       media,
+      // Resposta a uma mensagem anterior: `reply_to.mid` é o mesmo id que
+      // guardamos em `external_id`. No Instagram, responder a um story vem
+      // neste mesmo campo — a citação some se a story expirar, e a resposta
+      // continua na conversa, que é o comportamento certo.
+      ...(m.message.reply_to?.mid
+        ? { replyToExternalId: String(m.message.reply_to.mid) }
+        : {}),
     }
   }
 

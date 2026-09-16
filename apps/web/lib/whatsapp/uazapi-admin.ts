@@ -116,7 +116,11 @@ export async function configurarWebhook(base: string, token: string, url: string
   await chamar(
     `${base.replace(/\/$/, '')}/webhook`,
     { method: 'POST', headers: cabecalhoToken(token), body: JSON.stringify({
-      url, events: ['messages', 'connection'], enabled: true, excludeMessages: [],
+      // ⚠️ `messages_update` NÃO é opcional. É por ele que chegam os recibos de
+      // entrega e leitura, e a edição feita pelo contato. Sem ele toda mensagem
+      // enviada morre em um tique — parecendo funcionar, sem nunca avançar.
+      url, events: ['messages', 'messages_update', 'connection'],
+      enabled: true, excludeMessages: [],
     }) },
     'Falha ao configurar o webhook na uazapi',
   )

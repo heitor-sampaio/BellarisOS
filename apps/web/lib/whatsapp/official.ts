@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import type { WhatsAppProvider, OfficialConfig } from './types'
 import type {
-  InboundMsg, InboundMedia, MediaKind, StatusUpdate, OutboundMedia,
+  InboundMsg, InboundMedia, MediaKind, StatusUpdate, OutboundMedia, SendOptions,
 } from '@/lib/channels/types'
 import { montarIdentidade, classificarIdentificador } from '@/lib/channels/identity'
 
@@ -21,7 +21,9 @@ export class OfficialAPIProvider implements WhatsAppProvider {
     this.config = config
   }
 
-  async send(to: string, content: string): Promise<{ externalId: string }> {
+  async send(
+    to: string, content: string, options?: SendOptions,
+  ): Promise<{ externalId: string }> {
     const res = await fetch(`${GRAPH}/${this.config.phoneNumberId}/messages`, {
       method:  'POST',
       headers: {
@@ -35,6 +37,10 @@ export class OfficialAPIProvider implements WhatsAppProvider {
         ...(classificarIdentificador(to) === 'phone'
           ? { to: to.replace(/\D/g, '') }
           : { recipient_type: 'individual', recipient: to }),
+        // Citação na Cloud API é `context.message_id`, no nível da mensagem.
+        ...(options?.replyToExternalId
+          ? { context: { message_id: options.replyToExternalId } }
+          : {}),
         type: 'text',
         text: { body: content },
       }),
@@ -202,6 +208,11 @@ export class OfficialAPIProvider implements WhatsAppProvider {
     // nome público do contato: value.contacts[0].profile.name
     const nome = value?.contacts?.[0]?.profile?.name
     if (nome) out.displayName = nome as string
+
+    // Resposta a uma mensagem anterior: a Cloud API põe o id da citada em
+    // `context.id`, o mesmo formato que gravamos em `external_id`.
+    const citada = msg.context?.id
+    if (citada) out.replyToExternalId = String(citada)
 
     // referral: anúncio click-to-WhatsApp (só na primeira mensagem da conversa)
     const ref = msg.referral

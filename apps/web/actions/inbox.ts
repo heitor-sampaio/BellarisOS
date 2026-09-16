@@ -553,6 +553,10 @@ export async function editMessage(
 
   const canal = await resolverCanal(ctx.tenantId!, msg.channel as ChannelKind)
 
+  const patch: Record<string, unknown> = {
+    content: novo, edited_at: new Date().toISOString(),
+  }
+
   // Nota interna nunca saiu daqui: edita direto, sem provedor.
   const soLocal = !canal || !msg.external_id || msg.status === 'failed'
 
@@ -561,7 +565,10 @@ export async function editMessage(
       return { ok: false, error: 'Este canal não permite editar mensagens já enviadas.' }
     }
     try {
-      await canal.provider.editMessage(msg.external_id as string, novo)
+      const r = await canal.provider.editMessage(msg.external_id as string, novo)
+      // O WhatsApp troca o id da mensagem ao editar. Guardar o novo é o que
+      // mantém a próxima edição e os recibos apontando para o lugar certo.
+      if (r?.externalId) patch.external_id = r.externalId
     } catch (err) {
       console.error('[editMessage]', err)
       return { ok: false, error: mensagemDeFalha(err) }
@@ -570,7 +577,7 @@ export async function editMessage(
 
   const { data: atualizada, error: erroUpdate } = await admin
     .from('messages')
-    .update({ content: novo, edited_at: new Date().toISOString() })
+    .update(patch)
     .eq('id', messageId)
     .select()
     .single()

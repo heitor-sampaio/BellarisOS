@@ -129,9 +129,35 @@ export class UazapiProvider implements WhatsAppProvider {
    *
    * O WhatsApp só aceita edição nos primeiros 15 minutos; passando disso a
    * uazapi devolve erro, que sobe como está para quem chamou.
+   *
+   * ⚠️ A edição GERA UM ID NOVO para a mensagem. Devolvê-lo é o que permite
+   * editar de novo e casar os recibos que vierem depois: guardar o id antigo
+   * faria a segunda edição bater numa mensagem que não existe mais.
    */
-  async editMessage(externalId: string, texto: string): Promise<void> {
-    await this.chamar('/message/edit', { id: externalId, text: texto })
+  async editMessage(externalId: string, texto: string): Promise<{ externalId?: string }> {
+    const data = await this.chamar('/message/edit', { id: externalId, text: texto })
+    const novo = data?.messageid ? String(data.messageid) : idCurto(data?.id)
+    return { externalId: novo || undefined }
+  }
+
+  /**
+   * O contato editou uma mensagem dele.
+   *
+   * Chega como uma mensagem comum, com id NOVO e `edited` apontando para a
+   * original — então, sem este corte, o inbox gravaria uma segunda mensagem com
+   * o texto corrigido em vez de atualizar a primeira, e a conversa passaria a
+   * mostrar as duas versões como se fossem duas falas.
+   */
+  parseEdit(payload: unknown): { externalId: string; texto: string } | null {
+    const p = payload as any
+    const raiz = p?.data ?? p
+    const m = raiz?.message
+    if (!m?.edited) return null
+
+    const texto = primeiroTexto(m.text, m.body, m.caption, m.content)
+    if (!texto) return null
+
+    return { externalId: idCurto(m.edited), texto }
   }
 
   /**

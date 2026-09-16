@@ -4,7 +4,7 @@ import { UazapiProvider, telefoneDoJid } from '@/lib/whatsapp/uazapi'
 import { getTenantByUazapiToken } from '@/lib/whatsapp/factory'
 import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
 import {
-  resolveConversation, insertInboundMessage, updateMessageStatus,
+  resolveConversation, insertInboundMessage, updateMessageStatus, applyMessageEdit,
 } from '@/lib/inbox/resolve-conversation'
 
 /**
@@ -44,6 +44,15 @@ export async function POST(req: NextRequest) {
     }
 
     const provider = new UazapiProvider(config)
+
+    // Edição ANTES de tudo: ela chega com a cara de mensagem nova (id novo,
+    // texto novo) e, na ordem errada, viraria uma segunda bolha em vez de
+    // corrigir a primeira.
+    const edicao = provider.parseEdit(corpo)
+    if (edicao) {
+      await applyMessageEdit(tenantId, edicao.externalId, edicao.texto)
+      return NextResponse.json({ ok: true })
+    }
 
     const status = provider.parseStatus(corpo)
     if (status) {

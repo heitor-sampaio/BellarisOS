@@ -131,8 +131,11 @@ export interface SendProvider {
    *
    * Ausente = o canal não permite editar. A API oficial da Meta não permite:
    * lá a mensagem é imutável depois de entregue.
+   *
+   * Devolve o novo `externalId` quando o provedor troca o id ao editar (o
+   * WhatsApp troca). Sem atualizar, a edição seguinte aponta para um id morto.
    */
-  editMessage?(externalId: string, texto: string): Promise<void>
+  editMessage?(externalId: string, texto: string): Promise<{ externalId?: string }>
   /**
    * Envia um template aprovado — o único caminho para falar com alguém fora da
    * janela de 24h.

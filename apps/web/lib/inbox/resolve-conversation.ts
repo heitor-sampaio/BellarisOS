@@ -360,6 +360,29 @@ export async function insertInboundMessage(
   if (error) console.error('[insertInboundMessage]', error.message)
 }
 
+/**
+ * O contato editou o texto de uma mensagem que já está aqui.
+ *
+ * Atualiza em vez de inserir: a edição chega com id novo e, tratada como
+ * mensagem comum, viraria uma segunda bolha repetindo a fala corrigida.
+ * Silencioso quando não encontra nada — a editada pode ser anterior à
+ * integração, e não há o que corrigir.
+ */
+export async function applyMessageEdit(
+  tenantId:   string,
+  externalId: string,
+  texto:      string,
+) {
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('messages')
+    .update({ content: texto, edited_at: new Date().toISOString() })
+    .eq('external_id', externalId)
+    .eq('tenant_id', tenantId)
+
+  if (error) console.error('[applyMessageEdit]', error.message)
+}
+
 export async function updateMessageStatus(
   tenantId:   string,
   externalId: string,
