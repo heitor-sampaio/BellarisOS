@@ -537,6 +537,14 @@ interface CRMInboxProps {
   provedorWhatsApp?:    string | null
   /** conversa pré-selecionada (deep-link ?c= vindo do card do funil) */
   initialSelectedId?:   string | null
+  /**
+   * Ocupa toda a área útil, sem cartão.
+   *
+   * A caixa de entrada não é um bloco de uma página: é a tela inteira, como
+   * qualquer cliente de mensagem. Fora do inbox (se um dia for embutida em
+   * outro lugar) o formato de cartão continua valendo.
+   */
+  telaCheia?:           boolean
 }
 
 /** Id da bolha que existe só na tela, enquanto o envio não voltou do servidor. */
@@ -600,7 +608,7 @@ function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
 export function CRMInbox({
   initialConversations, leads, canEdit, branches,
   slug = '__admin__', initialSelectedId = null, canaisConectados = [],
-  provedorWhatsApp = null,
+  provedorWhatsApp = null, telaCheia = false,
 }: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)
   const [selectedId,    setSelectedId]    = useState<string | null>(initialSelectedId)
@@ -1032,10 +1040,15 @@ export function CRMInbox({
         />
       )}
 
-      <div className="card" style={{
+      <div className={telaCheia ? undefined : 'card'} style={{
         display: 'flex', overflow: 'hidden', padding: 0,
-        height: 'calc(100vh - var(--topbar-h) - 200px)',
-        minHeight: 520,
+        background: 'var(--surface)',
+        ...(telaCheia
+          // `flex: 1` + `minHeight: 0` é o que faz as três colunas rolarem por
+          // dentro em vez de esticar a página: sem o minHeight, um item flex
+          // nunca encolhe abaixo do conteúdo e a rolagem vaza para o body.
+          ? { flex: 1, minHeight: 0, borderTop: '1px solid var(--border)' }
+          : { height: 'calc(100vh - var(--topbar-h) - 200px)', minHeight: 520 }),
       }}>
         {/* -- Left panel: conversation list -- */}
         <div style={{

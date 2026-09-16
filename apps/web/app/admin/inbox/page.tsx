@@ -58,22 +58,22 @@ export default async function AdminInboxPage({
   }))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    // Tela cheia, sem título nem contagem no topo.
+    //
+    // As margens negativas cancelam o padding do <main> do layout: ele vale para
+    // página de conteúdo, e a caixa de entrada não é uma — é uma superfície de
+    // trabalho, como qualquer cliente de mensagem. A contagem de não lidas não
+    // se perde: já está no menu lateral e na própria lista de conversas.
+    <div style={{
+      margin: 'calc(var(--content-pad-y) * -1) calc(var(--content-pad-x) * -1)',
+      marginBottom: 'calc((var(--content-pad-y) + env(safe-area-inset-bottom, 0px)) * -1)',
+      height: 'calc(100vh - var(--topbar-h))',
+      display: 'flex', flexDirection: 'column', minHeight: 0,
+    }}>
       <RealtimeRefresher tables={['leads', 'conversations']} />
 
-      <div>
-        <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
-          Inbox
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          {conversations.length} conversa{conversations.length !== 1 ? 's' : ''}
-          {' · '}
-          {conversations.reduce((s, c) => s + c.unread_count, 0)} não lida
-          {conversations.reduce((s, c) => s + c.unread_count, 0) !== 1 ? 's' : ''}
-        </p>
-      </div>
-
       <CRMInbox
+        telaCheia
         initialConversations={conversations}
         leads={inboxLeads}
         canEdit={can(ctx, 'crm', 'MANAGE')}
