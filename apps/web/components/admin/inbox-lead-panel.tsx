@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { UserCheck, ExternalLink, CalendarPlus, X, Check } from 'lucide-react'
+import { UserCheck, ExternalLink, CalendarPlus, X, Check, Compass } from 'lucide-react'
 import { LEAD_SOURCES, sourceStyle } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagPicker } from '@/components/shared/tag-picker'
+import { PickerCompacto } from '@/components/shared/picker-compacto'
 import { StageOptions } from '@/components/branch/stage-options'
 import { LeadTimeline } from '@/components/branch/lead-timeline'
 import {
@@ -218,16 +219,32 @@ export function InboxLeadPanel({
         </div>
       )}
 
-      {/* Origem */}
+      {/* Origem
+          Mesma forma das tags: o valor atual à vista, as opções dentro do
+          seletor. O select nativo mostrava a origem duas vezes — na etiqueta e
+          repetida no campo — e ocupava uma linha inteira para um dado que quase
+          nunca muda depois que o lead entra. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <span style={labelStyle}>Origem</span>
-        {source
-          ? <TagBadge label={source} style={sourceStyle(source)} size="sm" />
-          : <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Não informado</span>}
-        <select className="field" value={source} disabled={disabled} onChange={e => setSource(e.target.value)} style={fieldStyle}>
-          <option value="">Não informado</option>
-          {LEAD_SOURCES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-        </select>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+          {source
+            ? <TagBadge
+                label={LEAD_SOURCES.find(s => s.key === source)?.label ?? source}
+                style={sourceStyle(source)}
+                size="sm"
+                onRemove={disabled ? undefined : () => setSource('')}
+              />
+            : <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Não informado</span>}
+        </div>
+        <PickerCompacto
+          icone={<Compass size={12} />}
+          rotuloBotao={source ? 'Alterar origem' : 'Definir origem'}
+          opcoes={LEAD_SOURCES.map(s => ({ valor: s.key, rotulo: s.label }))}
+          selecionadas={source ? [source] : []}
+          disabled={disabled}
+          textoListaVazia="Nenhuma origem cadastrada."
+          onEscolher={setSource}
+        />
       </div>
 
       {/* Tags
