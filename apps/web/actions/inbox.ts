@@ -53,6 +53,11 @@ export interface Message {
   media_type:      'image' | 'audio' | 'video' | 'document' | null
   /** Link assinado, válido por uma hora. O bucket é privado. */
   media_url:       string | null
+  /**
+   * Caminho no bucket. É coluna de verdade — `media_url` é que é derivada dela.
+   * Opcional porque a bolha otimista não tem arquivo nenhum ainda.
+   */
+  media_path?:     string | null
 }
 
 export async function getConversations(): Promise<Conversation[]> {

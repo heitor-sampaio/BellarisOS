@@ -192,7 +192,16 @@ function Bubble({ msg }: { msg: Message }) {
   const falhou = msg.status === 'failed'
   // Anexo sem legenda chega com o conteúdo '[image]' — só um rótulo do parser.
   // Com o arquivo na tela, repetir isso embaixo dele é ruído.
-  const soRotulo = !!msg.media_url && msg.content === `[${msg.media_type}]`
+  const soRotulo = !!msg.media_url
+    && (msg.content === `[${msg.media_type}]` || msg.content === '[sticker]')
+
+  // Figurinha não é foto. No tamanho de foto ela domina a conversa, e o
+  // WhatsApp a exibe pequena justamente por isso. A origem diz qual é
+  // (`[sticker]`); o `.webp` cobre o que foi recebido antes de o rótulo existir,
+  // e é seguro porque o WhatsApp entrega foto em jpeg.
+  const arquivo = msg.media_path ?? ''
+  const ehFigurinha = msg.media_type === 'image'
+    && (msg.content === '[sticker]' || arquivo.toLowerCase().endsWith('.webp'))
   return (
     <div style={{ display: 'flex', justifyContent: out ? 'flex-end' : 'flex-start', padding: '2px 18px' }}>
       <div style={{
@@ -214,7 +223,9 @@ function Bubble({ msg }: { msg: Message }) {
             <img
               src={msg.media_url}
               alt={msg.content}
-              style={{ maxWidth: '100%', minWidth: 120, borderRadius: 10, marginBottom: 6, display: 'block' }}
+              style={ehFigurinha
+                ? { width: 128, maxWidth: '100%', marginBottom: 6, display: 'block' }
+                : { maxWidth: '100%', minWidth: 120, borderRadius: 10, marginBottom: 6, display: 'block' }}
             />
           </a>
         )}
@@ -482,7 +493,7 @@ export function CRMInbox({
   // não consegue inferir algo que se referencia dentro do próprio inicializador.
   const assinarMidiaSeFaltar: (linha: Message, tentativa?: number) => void
   = useCallback((linha: Message, tentativa = 0) => {
-    const path = (linha as unknown as { media_path?: string | null }).media_path
+    const path = linha.media_path
     if (!path || linha.media_url) return
     if (tentativa === 0 && midiaPedida.current.has(linha.id)) return
 

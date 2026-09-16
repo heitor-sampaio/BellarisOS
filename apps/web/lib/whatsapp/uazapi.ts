@@ -217,10 +217,16 @@ export class UazapiProvider implements WhatsAppProvider {
         }
       : undefined
 
+    // Figurinha é imagem para efeito de download e de bucket, mas não para a
+    // tela: renderizada do tamanho de uma foto, ocupa a conversa inteira. O
+    // rótulo preserva a distinção que `media_type` perde ao virar 'image' —
+    // não há coluna para isso, e o texto de apoio já viaja junto.
+    const ehSticker = String(m.mediaType ?? '').toLowerCase() === 'sticker'
+
     // ⚠️ `content` é OBJETO em resposta de botão e de lista. Sem filtrar por
     // string, a conversa gravaria "[object Object]".
     const texto = primeiroTexto(m.text, m.body, m.caption, m.content)
-      ?? (media ? `[${media.kind}]` : undefined)
+      ?? (media ? (ehSticker ? '[sticker]' : `[${media.kind}]`) : undefined)
     if (!texto) return null
 
     // Timestamp vem em segundos ou em milissegundos, dependendo do evento.
