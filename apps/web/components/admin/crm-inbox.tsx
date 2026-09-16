@@ -467,6 +467,32 @@ export function CRMInbox({
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
   const bottomRef  = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  /** Mídias já pedidas ao servidor, para não assinar a mesma duas vezes. */
+  const midiaPedida = useRef<Set<string>>(new Set())
+
+  /**
+   * Busca o link assinado de uma mensagem que chegou pelo realtime.
+   *
+   * O evento traz `media_path` e nunca `media_url` — esta última não é coluna,
+   * nasce da assinatura em `getMessages`. Vale tanto no INSERT quanto no UPDATE:
+   * o UPDATE de `is_read` chega logo depois da mensagem e é a única notícia que
+   * a tela tem daquela linha em vários casos.
+   */
+  const assinarMidiaSeFaltar = useCallback((linha: Message) => {
+    const path = (linha as unknown as { media_path?: string | null }).media_path
+    if (!path || linha.media_url) return
+    if (midiaPedida.current.has(linha.id)) return
+
+    midiaPedida.current.add(linha.id)
+    getMessageMediaUrl(linha.id)
+      .then(url => {
+        if (!url) { midiaPedida.current.delete(linha.id); return }
+        setMessages(prev => prev.map(m =>
+          m.id === linha.id ? { ...m, media_url: url } : m,
+        ))
+      })
+      .catch(() => { midiaPedida.current.delete(linha.id) })
+  }, [])
 
   const selectedConv = conversations.find(c => c.id === selectedId) ?? null
 
@@ -505,19 +531,8 @@ export function CRMInbox({
       }, (payload) => {
         const newMsg = payload.new as Message
         setMessages(prev => mesclarMensagem(prev, newMsg))
+        assinarMidiaSeFaltar(newMsg)
 
-        // A linha do realtime vem crua do banco: traz `media_path`, não o link
-        // assinado. Sem isto, foto, áudio e figurinha chegavam como o texto de
-        // apoio (`[image]`) e só viravam mídia depois de recarregar a página.
-        const semLink = (newMsg as unknown as { media_path?: string | null }).media_path
-        if (semLink && !newMsg.media_url) {
-          getMessageMediaUrl(newMsg.id).then(url => {
-            if (!url) return
-            setMessages(prev => prev.map(m =>
-              m.id === newMsg.id ? { ...m, media_url: url } : m,
-            ))
-          })
-        }
         // Quem está com a conversa ABERTA já leu. Sem isto o trigger incrementa
         // `unread_count` e a conversa fica com badge de não lida na cara de
         // quem acabou de ler a mensagem.
@@ -535,12 +550,22 @@ export function CRMInbox({
         filter: `conversation_id=eq.${selectedId}`,
       }, (payload) => {
         const updated = payload.new as Message
-        setMessages(prev => prev.map(m => m.id === updated.id ? updated : m))
+        // ⚠️ Mesclar, nunca substituir.
+        //
+        // A linha do realtime não tem `media_url` (não é coluna) nem
+        // `sent_by_name` com o join, então trocar o objeto inteiro APAGA o que a
+        // tela já sabia. E o UPDATE mais comum é justo o `is_read: true` que o
+        // próprio inbox dispara ao receber mensagem com a conversa aberta: a
+        // mídia aparecia e sumia meio segundo depois, voltando para "[audio]".
+        setMessages(prev => prev.map(m => m.id === updated.id
+          ? { ...m, ...updated, media_url: m.media_url ?? updated.media_url ?? null }
+          : m))
+        assinarMidiaSeFaltar(updated)
       })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [selectedId])
+  }, [selectedId, assinarMidiaSeFaltar])
 
   // Subscribe to conversation list changes (new convs from inbound, unread updates)
   useEffect(() => {
