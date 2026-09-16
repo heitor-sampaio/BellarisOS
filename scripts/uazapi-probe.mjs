@@ -16,14 +16,37 @@
  * Cria uma instância descartável e a APAGA no fim, inclusive se algo falhar no
  * meio — instância órfã numa conta paga é cobrança sem dono.
  *
- * Uso:
- *   UAZAPI_ADMIN_TOKEN=xxx node scripts/uazapi-probe.mjs
- *   UAZAPI_BASE_URL=https://free.uazapi.com ... (default: api.uazapi.com)
- *   UAZAPI_PROBE_PROXY=socks5://user:senha@host:1080  (opcional, testa o proxy)
- *   UAZAPI_PROBE_WEBHOOK=https://exemplo.com/api/webhooks/uazapi (opcional)
+ * Credenciais vêm de `apps/web/.env.local` (que o .gitignore já cobre) — nunca
+ * da linha de comando, que fica no histórico do shell, nem coladas num chat.
+ * Basta acrescentar lá:
+ *
+ *   UAZAPI_ADMIN_TOKEN=...
+ *   UAZAPI_BASE_URL=https://api.uazapi.com      # opcional
+ *   UAZAPI_PROBE_PROXY=socks5://user:senha@host:1080   # opcional
+ *   UAZAPI_PROBE_WEBHOOK=https://.../api/webhooks/uazapi  # opcional
+ *
+ * E rodar: `node scripts/uazapi-probe.mjs`
  */
 
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, readFileSync, existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
+
+// -- .env.local ---------------------------------------------------------------
+// Node não lê o .env.local do Next sozinho, e passar segredo por linha de
+// comando deixa rastro no histórico do shell. Variável de ambiente já definida
+// tem precedência, para CI continuar funcionando.
+const raiz = join(dirname(fileURLToPath(import.meta.url)), '..')
+for (const arquivo of [join(raiz, 'apps', 'web', '.env.local'), join(raiz, '.env.local')]) {
+  if (!existsSync(arquivo)) continue
+  for (const linha of readFileSync(arquivo, 'utf8').split(/\r?\n/)) {
+    const m = linha.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/)
+    if (!m) continue
+    const [, chave, bruto] = m
+    if (process.env[chave] !== undefined) continue
+    process.env[chave] = bruto.trim().replace(/^["']|["']$/g, '')
+  }
+}
 
 const BASE  = (process.env.UAZAPI_BASE_URL ?? 'https://api.uazapi.com').replace(/\/$/, '')
 const ADMIN = process.env.UAZAPI_ADMIN_TOKEN
@@ -31,14 +54,43 @@ const PROXY = process.env.UAZAPI_PROBE_PROXY ?? ''
 const HOOK  = process.env.UAZAPI_PROBE_WEBHOOK ?? 'https://exemplo.invalid/api/webhooks/uazapi'
 
 if (!ADMIN) {
-  console.error('UAZAPI_ADMIN_TOKEN é obrigatório.')
-  console.error('Uso: UAZAPI_ADMIN_TOKEN=xxx node scripts/uazapi-probe.mjs')
+  console.error('UAZAPI_ADMIN_TOKEN não encontrado.')
+  console.error('Acrescente a linha `UAZAPI_ADMIN_TOKEN=...` em apps/web/.env.local e rode de novo.')
   process.exit(1)
+}
+
+/** Preenchido assim que a instância nasce; a máscara depende dele. */
+let instanceToken = null
+
+/**
+ * Máscara para tudo que for segredo.
+ *
+ * O arquivo de saída existe para consulta humana e pode acabar colado num chat
+ * ou anexado num ticket. A resposta do `init` traz o token da instância e o
+ * proxy traz usuário e senha — nada disso pode sair em claro.
+ */
+function mascarar(valor) {
+  if (typeof valor === 'string') {
+    let v = valor
+    if (ADMIN) v = v.split(ADMIN).join('«admintoken»')
+    if (instanceToken) v = v.split(instanceToken).join('«token-da-instancia»')
+    if (PROXY) v = v.split(PROXY).join('«proxy-url»')
+    // Qualquer credencial embutida numa URL, mesmo que não seja a nossa.
+    return v.replace(/(\w+:\/\/)[^:/@\s]+:[^@\s]+@/g, '$1«usuario»:«senha»@')
+  }
+  if (Array.isArray(valor)) return valor.map(mascarar)
+  if (valor && typeof valor === 'object') {
+    return Object.fromEntries(Object.entries(valor).map(([k, v]) =>
+      /token|apikey|secret|senha|password|proxy_url/i.test(k)
+        ? [k, v ? '«oculto»' : v]
+        : [k, mascarar(v)],
+    ))
+  }
+  return valor
 }
 
 const TIMEOUT_MS = 30_000
 const registro = []
-let instanceToken = null
 let falhas = 0
 
 /** Toda chamada passa por aqui para a resposta crua ficar registrada. */
@@ -64,7 +116,11 @@ async function chamar(rotulo, path, { method = 'GET', headers = {}, body } = {})
   const ms = Date.now() - inicio
   const ok = status >= 200 && status < 300
 
-  registro.push({ rotulo, method, path, status, ms, erro, corpoEnviado: body ?? null, resposta: json ?? texto })
+  registro.push({
+    rotulo, method, path, status, ms, erro,
+    corpoEnviado: mascarar(body ?? null),
+    resposta:     mascarar(json ?? texto),
+  })
   console.log(`${ok ? 'ok  ' : 'FALHA'} ${rotulo.padEnd(34)} ${method} ${path} → ${erro ?? status} (${ms}ms)`)
   if (!ok) falhas++
 
@@ -163,7 +219,12 @@ try {
   }
 
   const arquivo = `uazapi-probe-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
-  writeFileSync(arquivo, JSON.stringify({ base: BASE, quando: new Date().toISOString(), registro }, null, 2))
+  writeFileSync(arquivo, JSON.stringify({
+    base: BASE,
+    quando: new Date().toISOString(),
+    aviso: 'Credenciais mascaradas. Ainda assim, confira antes de compartilhar.',
+    registro,
+  }, null, 2))
   console.log(`${'─'.repeat(64)}\nRespostas cruas em ${arquivo}`)
   console.log(falhas === 0 ? 'Tudo passou.' : `${falhas} chamada(s) com problema — confira o arquivo.`)
   process.exit(falhas === 0 ? 0 : 1)

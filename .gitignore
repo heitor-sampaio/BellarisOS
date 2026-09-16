@@ -21,6 +21,11 @@ supabase/.temp
 .env.local
 .env.*.local
 
+# Saída da sonda da uazapi: respostas cruas da API, com identificadores de
+# instância. As credenciais já saem mascaradas do script, mas o arquivo não tem
+# por que ser versionado.
+uazapi-probe-*.json
+
 # OS
 .DS_Store
 Thumbs.db
