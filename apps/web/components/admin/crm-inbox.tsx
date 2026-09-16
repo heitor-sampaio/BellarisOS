@@ -12,7 +12,7 @@ import { ptBR } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import {
   getMessages, sendMessage, sendMediaMessage, markConversationRead,
-  setConversationStatus, createConversationForLead,
+  setConversationStatus, createConversationForLead, getMessageMediaUrl,
   type Conversation, type Message, type InboxChannel, type ConvStatus,
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
@@ -505,6 +505,19 @@ export function CRMInbox({
       }, (payload) => {
         const newMsg = payload.new as Message
         setMessages(prev => mesclarMensagem(prev, newMsg))
+
+        // A linha do realtime vem crua do banco: traz `media_path`, não o link
+        // assinado. Sem isto, foto, áudio e figurinha chegavam como o texto de
+        // apoio (`[image]`) e só viravam mídia depois de recarregar a página.
+        const semLink = (newMsg as unknown as { media_path?: string | null }).media_path
+        if (semLink && !newMsg.media_url) {
+          getMessageMediaUrl(newMsg.id).then(url => {
+            if (!url) return
+            setMessages(prev => prev.map(m =>
+              m.id === newMsg.id ? { ...m, media_url: url } : m,
+            ))
+          })
+        }
         // Quem está com a conversa ABERTA já leu. Sem isto o trigger incrementa
         // `unread_count` e a conversa fica com badge de não lida na cara de
         // quem acabou de ler a mensagem.

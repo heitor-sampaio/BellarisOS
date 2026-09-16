@@ -105,6 +105,33 @@ export async function getConversations(): Promise<Conversation[]> {
   }))
 }
 
+/**
+ * Link assinado de UMA mensagem, para quem chegou pelo realtime.
+ *
+ * `media_url` não existe na tabela: ela nasce em `getMessages`, que assina o
+ * `media_path` na leitura. A mensagem entregue pelo `postgres_changes` é a linha
+ * crua do banco, então vem com o caminho e sem link — e a bolha caía no texto de
+ * apoio (`[image]`) em vez de mostrar a imagem que já estava guardada.
+ *
+ * Filtra por tenant porque todo export de um arquivo `'use server'` é endpoint
+ * público: sem isso, um id de mensagem de outra rede devolveria o arquivo dela.
+ */
+export async function getMessageMediaUrl(messageId: string): Promise<string | null> {
+  const ctx = await getTenantContext()
+
+  const { data, error } = await createAdminClient()
+    .from('messages')
+    .select('media_path')
+    .eq('id', messageId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+
+  if (error) { console.error('[getMessageMediaUrl]', error.message); return null }
+  if (!data?.media_path) return null
+
+  return urlDaMidia(data.media_path as string)
+}
+
 export async function getMessages(conversationId: string): Promise<Message[]> {
   const ctx   = await getTenantContext()
   const admin = createAdminClient()
