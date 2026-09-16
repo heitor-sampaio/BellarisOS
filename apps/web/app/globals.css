@@ -254,6 +254,20 @@
   }
   .btn-ghost:hover { color: var(--brand); background: var(--brand-soft); }
 
+  /* Responder/editar no inbox: sempre no DOM, visíveis só no hover da linha.
+     Montar no hover faria a mensagem pular de lugar sob o cursor. */
+  .bolha-acoes {
+    opacity: 0;
+    transition: opacity 120ms ease;
+    pointer-events: none;
+  }
+  .bolha-linha:hover .bolha-acoes,
+  .bolha-acoes:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .bolha-acoes button:hover { color: var(--brand); border-color: var(--brand); }
+
   .field {
     width: 100%;
     padding: 9px 12px;

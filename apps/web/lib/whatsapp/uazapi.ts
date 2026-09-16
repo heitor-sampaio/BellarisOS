@@ -1,6 +1,6 @@
 import type { WhatsAppProvider, UazapiConfig } from './types'
 import type {
-  InboundMsg, InboundMedia, MediaKind, StatusUpdate, OutboundMedia,
+  InboundMsg, InboundMedia, MediaKind, StatusUpdate, OutboundMedia, SendOptions,
 } from '@/lib/channels/types'
 import {
   montarIdentidade, classificarIdentificador, ehConversaDeGrupo,
@@ -108,13 +108,30 @@ export class UazapiProvider implements WhatsAppProvider {
     return classificarIdentificador(to) === 'phone' ? to.replace(/\D/g, '') : to
   }
 
-  async send(to: string, content: string): Promise<{ externalId: string }> {
-    const data = await this.chamar('/send/text', {
+  async send(
+    to: string, content: string, options?: SendOptions,
+  ): Promise<{ externalId: string }> {
+    const corpo: Record<string, unknown> = {
       number: this.destino(to),
       text:   content,
       linkPreview: false,
-    })
+    }
+    // `replyid` aceita tanto o id curto quanto o composto; mandamos o curto,
+    // que é o que guardamos em `messages.external_id`.
+    if (options?.replyToExternalId) corpo.replyid = options.replyToExternalId
+
+    const data = await this.chamar('/send/text', corpo)
     return { externalId: data?.messageid ? String(data.messageid) : idCurto(data?.id) }
+  }
+
+  /**
+   * Edita uma mensagem já enviada.
+   *
+   * O WhatsApp só aceita edição nos primeiros 15 minutos; passando disso a
+   * uazapi devolve erro, que sobe como está para quem chamou.
+   */
+  async editMessage(externalId: string, texto: string): Promise<void> {
+    await this.chamar('/message/edit', { id: externalId, text: texto })
   }
 
   /**
@@ -265,6 +282,11 @@ export class UazapiProvider implements WhatsAppProvider {
 
     const nome = c?.name ?? m.senderName ?? m.pushName
     if (nome) out.displayName = String(nome)
+
+    // Resposta a uma mensagem anterior. Vem no id curto ou composto; guardamos
+    // sempre o curto, para casar com o que está em `messages.external_id`.
+    const citada = m.quoted ?? m.quotedMsgId ?? m.contextInfo?.stanzaId
+    if (citada) out.replyToExternalId = idCurto(citada)
 
     return out
   }

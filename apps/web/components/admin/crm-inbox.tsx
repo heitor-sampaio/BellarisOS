@@ -6,14 +6,16 @@ import {
 import {
   Search, MessageSquare, Phone, Mail, AtSign,
   Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip, FileText, Zap,
+  Reply, Pencil, Check,
 } from 'lucide-react'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
 import {
   getMessages, sendMessage, sendMediaMessage, markConversationRead,
-  setConversationStatus, createConversationForLead, getMessageMediaUrl,
+  setConversationStatus, createConversationForLead, getMessageMediaUrl, editMessage,
   type Conversation, type Message, type InboxChannel, type ConvStatus,
+  type ReplyPreview,
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
 import { TagBadge } from '@/components/shared/tag-badge'
@@ -185,7 +187,32 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
 
 // --- Right: message bubble ---------------------------------------------------
 
-function Bubble({ msg }: { msg: Message }) {
+/** Rótulo curto da mídia, para a citação não mostrar "[image]" cru. */
+const ROTULO_MIDIA: Record<string, string> = {
+  image: 'Imagem', audio: 'Áudio', video: 'Vídeo', document: 'Documento',
+}
+
+function resumoDaCitada(preview: ReplyPreview): string {
+  const texto = preview.content.trim()
+  const rotulo = preview.media_type ? ROTULO_MIDIA[preview.media_type] : null
+  if (rotulo && (!texto || texto.startsWith('['))) return rotulo
+  return texto || 'Mensagem'
+}
+
+/** A edição só vale nos primeiros 15 minutos — o WhatsApp recusa depois disso. */
+const JANELA_DE_EDICAO_MS = 15 * 60 * 1000
+
+function Bubble({
+  msg, nomeDoContato, onResponder, onEditar, podeAgir, agora,
+}: {
+  msg: Message
+  nomeDoContato: string
+  onResponder: (m: Message) => void
+  onEditar:    (m: Message) => void
+  podeAgir:    boolean
+  /** Null antes de montar: relógio no servidor difere do cliente e hidrata errado. */
+  agora:       number | null
+}) {
   const out    = msg.direction === 'outbound'
   // Mensagem que o provedor recusou. Sem marcar, ela fica idêntica a uma
   // entregue e a pessoa segue a conversa achando que o cliente recebeu.
@@ -202,8 +229,26 @@ function Bubble({ msg }: { msg: Message }) {
   const arquivo = msg.media_path ?? ''
   const ehFigurinha = msg.media_type === 'image'
     && (msg.content === '[sticker]' || arquivo.toLowerCase().endsWith('.webp'))
+
+  // Editar só faz sentido no que saiu daqui, é texto, chegou ao provedor e
+  // ainda está dentro dos 15 minutos. `agora` é null até montar no cliente.
+  const idade = agora === null ? Infinity : agora - parseISO(msg.created_at).getTime()
+  const podeEditar = podeAgir && out && !falhou
+    && msg.status !== 'sending' && !msg.media_type && idade <= JANELA_DE_EDICAO_MS
   return (
-    <div style={{ display: 'flex', justifyContent: out ? 'flex-end' : 'flex-start', padding: '2px 18px' }}>
+    <div
+      className="bolha-linha"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        justifyContent: out ? 'flex-end' : 'flex-start', padding: '2px 18px',
+      }}
+    >
+      {/* Ações à esquerda quando a bolha é nossa, à direita quando é do
+          contato: sempre do lado de fora, para não cobrir o texto. */}
+      {podeAgir && out && (
+        <AcoesDaBolha msg={msg} podeEditar={podeEditar} onResponder={onResponder} onEditar={onEditar} />
+      )}
+
       <div style={{
         maxWidth: '70%',
         background: falhou ? '#fef2f2' : out ? 'var(--brand)' : 'var(--surface)',
@@ -216,6 +261,34 @@ function Bubble({ msg }: { msg: Message }) {
         opacity: msg.status === 'sending' ? 0.6 : 1,
         transition: 'opacity 0.2s',
       }}>
+        {/* Mensagem citada. Sem ela a resposta perde o sentido, que é
+            justamente o de apontar para uma mensagem específica. */}
+        {msg.reply_to_external_id && (
+          <div style={{
+            borderLeft: `3px solid ${out ? 'rgba(255,255,255,0.65)' : 'var(--brand)'}`,
+            background: out ? 'rgba(255,255,255,0.14)' : 'var(--bg)',
+            borderRadius: 6, padding: '5px 8px', marginBottom: 6,
+            fontSize: 12, lineHeight: 1.35,
+          }}>
+            <div style={{
+              fontWeight: 700, fontSize: 10.5, marginBottom: 1,
+              color: out ? 'rgba(255,255,255,0.85)' : 'var(--brand)',
+            }}>
+              {msg.reply_preview
+                ? (msg.reply_preview.direction === 'outbound' ? 'Você' : nomeDoContato)
+                : 'Mensagem'}
+            </div>
+            <div style={{
+              opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+            }}>
+              {msg.reply_preview
+                ? resumoDaCitada(msg.reply_preview)
+                : 'Mensagem não disponível'}
+            </div>
+          </div>
+        )}
+
         {/* Mídia recebida. O arquivo vive no bucket privado e chega aqui como
             link assinado — a URL do provedor expiraria em horas. */}
         {msg.media_url && msg.media_type === 'image' && (
@@ -273,6 +346,14 @@ function Bubble({ msg }: { msg: Message }) {
               Não enviada
             </span>
           )}
+          {msg.edited_at && (
+            <span style={{
+              fontSize: 10, fontStyle: 'italic',
+              color: out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)',
+            }}>
+              editada
+            </span>
+          )}
           <span style={{ fontSize: 10, color: falhou ? '#99181899' : out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)' }}>
             {msg.status === 'sending' ? '…' : format(parseISO(msg.created_at), 'HH:mm')}
           </span>
@@ -281,6 +362,46 @@ function Bubble({ msg }: { msg: Message }) {
           )}
         </div>
       </div>
+
+      {podeAgir && !out && (
+        <AcoesDaBolha msg={msg} podeEditar={false} onResponder={onResponder} onEditar={onEditar} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Responder e editar, escondidos até o mouse passar pela linha.
+ *
+ * Sempre presentes no DOM (só invisíveis) porque aparecer no hover mudando o
+ * layout faria as mensagens pularem sob o cursor.
+ */
+function AcoesDaBolha({
+  msg, podeEditar, onResponder, onEditar,
+}: {
+  msg: Message
+  podeEditar: boolean
+  onResponder: (m: Message) => void
+  onEditar:    (m: Message) => void
+}) {
+  const estilo: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    width: 26, height: 26, borderRadius: 999,
+    border: '1px solid var(--border)', background: 'var(--surface)',
+    color: 'var(--text-muted)', cursor: 'pointer', padding: 0,
+  }
+  return (
+    <div className="bolha-acoes" style={{ display: 'flex', gap: 4 }}>
+      <button type="button" style={estilo} title="Responder"
+        onClick={() => onResponder(msg)}>
+        <Reply size={13} />
+      </button>
+      {podeEditar && (
+        <button type="button" style={estilo} title="Editar"
+          onClick={() => onEditar(msg)}>
+          <Pencil size={13} />
+        </button>
+      )}
     </div>
   )
 }
@@ -419,6 +540,18 @@ interface CRMInboxProps {
 /** Id da bolha que existe só na tela, enquanto o envio não voltou do servidor. */
 const PREFIXO_OTIMISTA = 'opt-'
 
+/** Acha a citada entre as mensagens já carregadas. Null = não está aqui. */
+function previaDaCitada(lista: Message[], externalId: string): ReplyPreview | null {
+  const citada = lista.find(m => m.external_id === externalId)
+  if (!citada) return null
+  return {
+    id:         citada.id,
+    content:    citada.content,
+    direction:  citada.direction,
+    media_type: citada.media_type,
+  }
+}
+
 /**
  * Põe uma mensagem na lista sem duplicar.
  *
@@ -433,7 +566,14 @@ const PREFIXO_OTIMISTA = 'opt-'
  * consumida se ainda estiver pendente, senão mandar "oi" duas vezes seguidas —
  * coisa comum no atendimento — faria a segunda engolir a primeira.
  */
-function mesclarMensagem(lista: Message[], nova: Message): Message[] {
+function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
+  // A linha do realtime traz o id da citada, nunca a prévia dela — ela é
+  // montada na leitura, no servidor. Aqui a citada quase sempre já está na
+  // conversa aberta, então a citação se resolve sem mais uma ida ao servidor.
+  const nova = entrada.reply_to_external_id && !entrada.reply_preview
+    ? { ...entrada, reply_preview: previaDaCitada(lista, entrada.reply_to_external_id) }
+    : entrada
+
   if (lista.some(m => m.id === nova.id)) {
     return lista.map(m => (m.id === nova.id ? nova : m))
   }
@@ -476,6 +616,10 @@ export function CRMInbox({
   const [showAtalhos,   setShowAtalhos]   = useState(false)
   const [buscaAtalho,   setBuscaAtalho]   = useState('')
   const [enviandoAnexo, setEnviandoAnexo] = useState(false)
+  /** Mensagem sendo respondida (citação presa ao compositor). */
+  const [respondendoA, setRespondendoA] = useState<Message | null>(null)
+  /** Mensagem sendo editada. Enquanto existe, o compositor troca de função. */
+  const [editando,     setEditando]     = useState<Message | null>(null)
   const bottomRef  = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   /** Mídias já pedidas ao servidor, para não assinar a mesma duas vezes. */
@@ -641,9 +785,51 @@ export function CRMInbox({
     }
   }, [])
 
+  function iniciarResposta(m: Message) {
+    setEditando(null)
+    setRespondendoA(m)
+    textareaRef.current?.focus()
+  }
+
+  function iniciarEdicao(m: Message) {
+    setRespondendoA(null)
+    setEditando(m)
+    setDraft(m.content)
+    textareaRef.current?.focus()
+  }
+
+  function cancelarEdicao() {
+    setEditando(null)
+    setDraft('')
+  }
+
+  function salvarEdicao() {
+    const texto = draft.trim()
+    const alvo  = editando
+    if (!alvo || !texto) return
+    if (texto === alvo.content) { cancelarEdicao(); return }
+
+    setSendError(null)
+    startTransition(async () => {
+      const res = await editMessage(alvo.id, texto)
+      if (!res.ok || !res.message) {
+        setSendError(res.error ?? 'Não foi possível editar a mensagem.')
+        return
+      }
+      setMessages(prev => mesclarMensagem(prev, res.message!))
+      cancelarEdicao()
+    })
+  }
+
   function handleSend() {
+    if (editando) { salvarEdicao(); return }
+
     const text = draft.trim()
     if (!text || !selectedId || !selectedConv) return
+
+    // Só dá para citar no provedor o que tem id lá. Mensagem que falhou ou
+    // ainda está saindo não tem — aí a resposta vai como mensagem comum.
+    const citada = respondendoA?.external_id ? respondendoA : null
 
     const optimistic: Message = {
       id:              `${PREFIXO_OTIMISTA}${Date.now()}`,
@@ -658,9 +844,21 @@ export function CRMInbox({
       // Envio pela tela é só texto; anexo ainda não sai daqui.
       media_type:      null,
       media_url:       null,
+      reply_to_external_id: citada?.external_id ?? null,
+      // A prévia vai montada: a bolha já mostra a citação antes de o servidor
+      // responder, como o resto do envio otimista.
+      reply_preview: citada
+        ? {
+            id:         citada.id,
+            content:    citada.content,
+            direction:  citada.direction,
+            media_type: citada.media_type,
+          }
+        : null,
     }
     setMessages(prev => [...prev, optimistic])
     setDraft('')
+    setRespondendoA(null)
     setConversations(prev => prev.map(c =>
       c.id === selectedId
         ? { ...c, last_message: text, last_message_at: optimistic.created_at }
@@ -669,7 +867,7 @@ export function CRMInbox({
 
     setSendError(null)
     startTransition(async () => {
-      const res = await sendMessage(selectedId, text)
+      const res = await sendMessage(selectedId, text, citada?.external_id ?? null)
       if (res.ok && res.message) {
         // Mesclar, não substituir por id: o realtime pode ter chegado primeiro e
         // já consumido a bolha otimista.
@@ -715,6 +913,12 @@ export function CRMInbox({
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+    // Esc sai da edição sem salvar — e sem mandar o texto pela conversa, que é
+    // o que aconteceria se a pessoa apagasse o rascunho e desse Enter.
+    if (e.key === 'Escape') {
+      if (editando)          cancelarEdicao()
+      else if (respondendoA) setRespondendoA(null)
+    }
   }
 
   /**
@@ -1047,7 +1251,17 @@ export function CRMInbox({
                         </span>
                         <div style={{ flex: 1, height: 1, background: 'var(--hairline)' }} />
                       </div>
-                      {g.msgs.map(m => <Bubble key={m.id} msg={m} />)}
+                      {g.msgs.map(m => (
+                        <Bubble
+                          key={m.id}
+                          msg={m}
+                          nomeDoContato={selectedConv?.contact_name ?? 'Contato'}
+                          onResponder={iniciarResposta}
+                          onEditar={iniciarEdicao}
+                          podeAgir={canEdit && selectedConv?.status !== 'closed'}
+                          agora={nowMs}
+                        />
+                      ))}
                     </div>
                   ))
                 )}
@@ -1123,6 +1337,44 @@ export function CRMInbox({
                 <PainelDeAnexo a={anexos} enviando={enviandoAnexo} />
               )}
 
+              {/* Contexto preso ao compositor: respondendo a quem, ou editando o
+                  quê. Sem isto, depois de rolar a conversa a pessoa perde de
+                  vista a qual mensagem o que ela está digitando se refere. */}
+              {(respondendoA || editando) && (
+                <div style={{
+                  margin: '0 16px 8px', padding: '7px 10px',
+                  borderRadius: 8, borderLeft: '3px solid var(--brand)',
+                  background: 'var(--brand-soft)',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  {editando ? <Pencil size={13} color="var(--brand)" /> : <Reply size={13} color="var(--brand)" />}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--brand)' }}>
+                      {editando
+                        ? 'Editando mensagem'
+                        : `Respondendo ${respondendoA!.direction === 'outbound' ? 'você mesmo' : selectedConv.contact_name ?? 'o contato'}`}
+                    </div>
+                    <div style={{
+                      fontSize: 12, color: 'var(--text-muted)',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
+                      {(editando ?? respondendoA)!.content}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => (editando ? cancelarEdicao() : setRespondendoA(null))}
+                    title={editando ? 'Cancelar edição' : 'Cancelar resposta'}
+                    style={{
+                      border: 'none', background: 'none', cursor: 'pointer',
+                      color: 'var(--text-muted)', padding: 2, display: 'flex',
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
               {/* Input */}
               {selectedConv.status !== 'closed' ? (
                 <div style={{
@@ -1174,7 +1426,9 @@ export function CRMInbox({
                     rows={1}
                     placeholder={bloqueado
                       ? 'Não é possível responder agora'
-                      : 'Digite uma mensagem… (Enter para enviar)'}
+                      : editando
+                        ? 'Edite a mensagem… (Enter para salvar, Esc para cancelar)'
+                        : 'Digite uma mensagem… (Enter para enviar)'}
                     disabled={bloqueado}
                     className="field"
                     style={{ flex: 1, resize: 'none', fontSize: 13.5, lineHeight: 1.5, maxHeight: 100, overflowY: 'auto' }}
@@ -1182,11 +1436,12 @@ export function CRMInbox({
                   <button
                     type="button"
                     onClick={handleSend}
-                    disabled={!draft.trim() || isPending || bloqueado}
+                    disabled={!draft.trim() || isPending || (bloqueado && !editando)}
                     className="btn-primary"
                     style={{ flexShrink: 0, alignSelf: 'flex-end', height: 36, padding: '0 14px' }}
+                    title={editando ? 'Salvar edição' : 'Enviar'}
                   >
-                    <Send size={14} />
+                    {editando ? <Check size={14} /> : <Send size={14} />}
                   </button>
                 </div>
               ) : (

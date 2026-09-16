@@ -353,6 +353,7 @@ export async function insertInboundMessage(
     created_at:      msg.timestamp,
     media_type:      msg.media?.kind ?? null,
     media_path:      mediaPath,
+    reply_to_external_id: msg.replyToExternalId ?? null,
   })
 
   // Sem isto, mensagem perdida no webhook não deixava rastro nenhum.

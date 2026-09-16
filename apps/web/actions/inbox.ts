@@ -58,6 +58,23 @@ export interface Message {
    * Opcional porque a bolha otimista não tem arquivo nenhum ainda.
    */
   media_path?:     string | null
+  /** Id da mensagem no provedor. É por ele que se cita e se edita. */
+  external_id?:    string | null
+  /** `external_id` da mensagem citada, quando esta é uma resposta. */
+  reply_to_external_id?: string | null
+  /** Preenchido na leitura: o suficiente para desenhar a citação. */
+  reply_preview?:  ReplyPreview | null
+  /** Quando o texto foi editado. Null/ausente = nunca. */
+  edited_at?:      string | null
+}
+
+/** Resumo da mensagem citada — só o que a citação precisa mostrar. */
+export interface ReplyPreview {
+  content:    string
+  direction:  'inbound' | 'outbound'
+  media_type: 'image' | 'audio' | 'video' | 'document' | null
+  /** Null quando a citada não está mais no banco (apagada ou antiga demais). */
+  id:         string | null
 }
 
 export async function getConversations(): Promise<Conversation[]> {
@@ -111,6 +128,56 @@ export async function getConversations(): Promise<Conversation[]> {
 }
 
 /**
+ * Preenche `reply_preview` das mensagens que são resposta.
+ *
+ * A citação guarda só o id no provedor, então a prévia é montada na leitura. A
+ * maioria das citadas já está na própria lista; as que não estão (responder uma
+ * mensagem bem antiga) são buscadas numa segunda consulta, e as que não existem
+ * mais ficam com prévia nula — a citação some, a resposta permanece.
+ */
+async function anexarCitacoes(
+  mensagens: any[], conversationId: string, tenantId: string,
+): Promise<any[]> {
+  const citados = new Set(
+    mensagens.map(m => m.reply_to_external_id).filter(Boolean) as string[],
+  )
+  if (citados.size === 0) return mensagens
+
+  const porExternalId = new Map<string, any>()
+  for (const m of mensagens) {
+    if (m.external_id) porExternalId.set(m.external_id as string, m)
+  }
+
+  const faltantes = [...citados].filter(id => !porExternalId.has(id))
+  if (faltantes.length > 0) {
+    const { data, error } = await createAdminClient()
+      .from('messages')
+      .select('id, external_id, content, direction, media_type')
+      .eq('conversation_id', conversationId)
+      .eq('tenant_id', tenantId)
+      .in('external_id', faltantes)
+    if (error) console.error('[anexarCitacoes]', error.message)
+    for (const m of (data ?? []) as any[]) porExternalId.set(m.external_id as string, m)
+  }
+
+  return mensagens.map(m => {
+    if (!m.reply_to_external_id) return m
+    const citada = porExternalId.get(m.reply_to_external_id as string)
+    return {
+      ...m,
+      reply_preview: citada
+        ? {
+            id:         citada.id ?? null,
+            content:    citada.content ?? '',
+            direction:  citada.direction,
+            media_type: citada.media_type ?? null,
+          }
+        : null,
+    }
+  })
+}
+
+/**
  * Link assinado de UMA mensagem, para quem chegou pelo realtime.
  *
  * `media_url` não existe na tabela: ela nasce em `getMessages`, que assina o
@@ -143,18 +210,22 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 
   const { data } = await admin
     .from('messages')
-    .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at, media_type, media_path')
+    .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at, media_type, media_path, external_id, reply_to_external_id, edited_at')
     .eq('conversation_id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: true })
     .limit(500)
 
+  const linhas = (data ?? []) as any[]
+
   // O bucket é privado: a foto de uma cliente não pode ficar acessível por
   // URL adivinhável. Cada mídia vira um link assinado na leitura.
-  return Promise.all((data ?? []).map(async (m: any) => ({
+  const mensagens = await Promise.all(linhas.map(async (m: any) => ({
     ...m,
     media_url: m.media_path ? await urlDaMidia(m.media_path) : null,
-  }))) as Promise<Message[]>
+  })))
+
+  return anexarCitacoes(mensagens, conversationId, ctx.tenantId!) as Promise<Message[]>
 }
 
 // --- Card do lead ligado à conversa (3a coluna do inbox) ---------------------
@@ -326,6 +397,8 @@ export async function openLeadConversation(
 export async function sendMessage(
   conversationId: string,
   content: string,
+  /** `external_id` da mensagem sendo respondida, quando é uma resposta. */
+  replyToExternalId?: string | null,
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
@@ -388,6 +461,7 @@ export async function sendMessage(
       status:          'sending',
       sent_by_id:      senderId,
       sent_by_name:    senderName,
+      reply_to_external_id: replyToExternalId ?? null,
     })
     .select()
     .single()
@@ -416,7 +490,9 @@ export async function sendMessage(
   }
 
   try {
-    const { externalId } = await canal.provider.send(destino, content.trim())
+    const { externalId } = await canal.provider.send(destino, content.trim(), {
+      replyToExternalId: replyToExternalId ?? undefined,
+    })
     await admin
       .from('messages')
       .update({ status: 'sent', external_id: externalId, provider: canal.nome })
@@ -432,6 +508,77 @@ export async function sendMessage(
 
   revalidarInbox()
   return { ok: true, message: msg as unknown as Message }
+}
+
+/** O WhatsApp recusa edição depois disso, e a recusa vem como erro genérico. */
+const JANELA_DE_EDICAO_MS = 15 * 60 * 1000
+
+/**
+ * Reescreve uma mensagem já enviada.
+ *
+ * Edita no provedor ANTES de gravar: ao contrário do envio — onde a linha nasce
+ * como `sending` para a falha ficar visível —, aqui já existe um texto correto
+ * na tela e no celular do contato. Gravar primeiro e falhar depois deixaria a
+ * conversa mostrando um texto que o contato nunca viu.
+ */
+export async function editMessage(
+  messageId: string,
+  texto: string,
+): Promise<{ ok: boolean; message?: Message; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'crm', 'MANAGE')
+  const admin = createAdminClient()
+
+  const novo = texto.trim()
+  if (!novo) return { ok: false, error: 'A mensagem não pode ficar vazia.' }
+
+  const { data: msg, error } = await admin
+    .from('messages')
+    .select('id, conversation_id, direction, status, channel, external_id, content, created_at, media_type')
+    .eq('id', messageId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+
+  if (error) return { ok: false, error: error.message }
+  if (!msg)  return { ok: false, error: 'Mensagem não encontrada.' }
+
+  if (msg.direction !== 'outbound') return { ok: false, error: 'Só dá para editar mensagem enviada por você.' }
+  if (msg.media_type)               return { ok: false, error: 'Anexo não pode ser editado, só a mensagem de texto.' }
+  if (msg.content === novo)         return { ok: true, message: msg as unknown as Message }
+
+  const idade = Date.now() - new Date(msg.created_at as string).getTime()
+  if (idade > JANELA_DE_EDICAO_MS) {
+    return { ok: false, error: 'O WhatsApp só permite editar nos primeiros 15 minutos.' }
+  }
+
+  const canal = await resolverCanal(ctx.tenantId!, msg.channel as ChannelKind)
+
+  // Nota interna nunca saiu daqui: edita direto, sem provedor.
+  const soLocal = !canal || !msg.external_id || msg.status === 'failed'
+
+  if (!soLocal) {
+    if (!canal.provider.editMessage) {
+      return { ok: false, error: 'Este canal não permite editar mensagens já enviadas.' }
+    }
+    try {
+      await canal.provider.editMessage(msg.external_id as string, novo)
+    } catch (err) {
+      console.error('[editMessage]', err)
+      return { ok: false, error: mensagemDeFalha(err) }
+    }
+  }
+
+  const { data: atualizada, error: erroUpdate } = await admin
+    .from('messages')
+    .update({ content: novo, edited_at: new Date().toISOString() })
+    .eq('id', messageId)
+    .select()
+    .single()
+
+  if (erroUpdate) return { ok: false, error: erroUpdate.message }
+
+  revalidarInbox()
+  return { ok: true, message: atualizada as unknown as Message }
 }
 
 export async function markConversationRead(conversationId: string) {

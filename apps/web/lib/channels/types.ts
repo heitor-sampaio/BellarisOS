@@ -64,6 +64,8 @@ export interface InboundMsg {
   media?:      InboundMedia
   displayName?: string     // nome público do contato (vira o nome do card)
   referral?:   InboundReferral
+  /** `external_id` da mensagem que esta responde, quando é uma resposta. */
+  replyToExternalId?: string
 }
 
 export interface StatusUpdate {
@@ -96,9 +98,21 @@ export interface OutboundMedia {
   caption?:  string
 }
 
+/** Opções de envio que nem todo canal suporta. */
+export interface SendOptions {
+  /**
+   * `external_id` da mensagem sendo respondida.
+   *
+   * Quem não implementa simplesmente ignora: a mensagem sai sem a citação do
+   * lado do contato, mas a conversa continua mostrando a resposta ligada à
+   * original aqui dentro — melhor que recusar o envio.
+   */
+  replyToExternalId?: string
+}
+
 export interface SendProvider {
   /** `to` é o `contact_external_id` da conversa. */
-  send(to: string, content: string): Promise<{ externalId: string }>
+  send(to: string, content: string, options?: SendOptions): Promise<{ externalId: string }>
   /** Envia arquivo. Ausente = o canal não suporta anexo pela nossa integração. */
   sendMedia?(to: string, media: OutboundMedia): Promise<{ externalId: string }>
   /** Baixa a mídia recebida; nem todo provedor precisa de autenticação. */
@@ -112,6 +126,13 @@ export interface SendProvider {
    * nome. Só é chamado quando falta nome, nunca a cada mensagem.
    */
   fetchDisplayName?(externalUserId: string): Promise<string | null>
+  /**
+   * Reescreve uma mensagem já enviada.
+   *
+   * Ausente = o canal não permite editar. A API oficial da Meta não permite:
+   * lá a mensagem é imutável depois de entregue.
+   */
+  editMessage?(externalId: string, texto: string): Promise<void>
   /**
    * Envia um template aprovado — o único caminho para falar com alguém fora da
    * janela de 24h.
