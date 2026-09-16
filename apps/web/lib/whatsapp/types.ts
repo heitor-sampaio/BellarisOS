@@ -29,6 +29,20 @@ export interface ZAPIConfig {
   token:         string
   baseUrl?:      string   // default: https://api.z-api.io
   webhookToken?: string   // Security Token configurado no painel Z-API (client-token header)
+  /**
+   * Instância criada pelo BellarisOS na nossa conta de integrador, em vez de
+   * digitada pela rede.
+   *
+   * Muda o que a tela oferece (QR em vez de formulário) e, principalmente,
+   * quem paga: instância gerenciada gera custo para nós e precisa ser
+   * CANCELADA na Z-API quando a rede desconecta.
+   */
+  managed?:      boolean
+  /** Fim do período de avaliação (epoch ms). Some se ninguém parear até lá. */
+  trialDue?:     number
+  /** Número que pareou — só para mostrar na tela. */
+  connectedPhone?: string | null
+  connectedName?:  string | null
 }
 
 export interface OfficialConfig {

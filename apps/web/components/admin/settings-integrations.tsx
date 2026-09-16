@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone, CheckCircle2, AlertCircle, Loader2, ChevronDown, ExternalLink, Megaphone,
@@ -14,7 +14,20 @@ import {
 } from '@/actions/integrations'
 import type { IntegrationConfig } from '@/actions/integrations'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
+import { ZapiConnect } from '@/components/admin/zapi-connect'
 
+/**
+ * Origem do site, resolvida só depois de montar.
+ *
+ * `window.location.origin` não existe no servidor, e o fallback literal fazia
+ * o texto renderizado divergir do hidratado — o React descartava a árvore da
+ * tela de integrações inteira. Vazio no primeiro render, real logo depois.
+ */
+function useOrigem(): string {
+  const [origem, setOrigem] = useState('')
+  useEffect(() => { setOrigem(window.location.origin) }, [])
+  return origem
+}
 type ProviderType = WhatsAppConfig['provider']
 
 function Field({
@@ -68,6 +81,7 @@ function ConnectionStatus({ ok, detail }: { ok: boolean; detail?: string }) {
 // --- Z-API config form --------------------------------------------------------
 
 function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
+  const origem = useOrigem()
   const existing = (initial?.config ?? {}) as Record<string, string>
   const [instanceId, setInstanceId] = useState(existing.instanceId ?? '')
   const [token,      setToken]      = useState(existing.token ?? '')
@@ -177,7 +191,7 @@ function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
       <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: -8 }}>
         URL do webhook:{' '}
         <code style={{ background: 'var(--bg-app)', padding: '2px 6px', borderRadius: 4, fontSize: 11 }}>
-          {typeof window !== 'undefined' ? window.location.origin : 'https://seu-dominio.com'}/api/webhooks/zapi
+          {origem}/api/webhooks/zapi
         </code>
       </p>
     </div>
@@ -187,6 +201,7 @@ function ZAPIForm({ initial }: { initial?: IntegrationConfig }) {
 // --- WhatsApp Oficial form ----------------------------------------------------
 
 function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
+  const origem = useOrigem()
   const existing = (initial?.config ?? {}) as Record<string, string>
   const [phoneNumberId, setPhoneNumberId] = useState(existing.phoneNumberId ?? '')
   const [accessToken,   setAccessToken]   = useState(existing.accessToken ?? '')
@@ -305,7 +320,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
       <div style={{ fontSize: 11.5, color: 'var(--text-faint)', display: 'flex', flexDirection: 'column', gap: 3 }}>
         <p>URL do webhook para configurar no painel Meta:</p>
         <code style={{ background: 'var(--bg-app)', padding: '4px 8px', borderRadius: 4, fontSize: 11 }}>
-          {typeof window !== 'undefined' ? window.location.origin : 'https://seu-dominio.com'}/api/webhooks/whatsapp
+          {origem}/api/webhooks/whatsapp
         </code>
         <p style={{ marginTop: 4 }}>Campos obrigatórios: <strong>messages</strong>, <strong>message_status_updates</strong></p>
       </div>
@@ -1019,6 +1034,13 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
   const [section,    setSection]    = useState<Section>(
     metaStep === 'select_page' ? 'meta_messaging' : 'whatsapp',
   )
+  // Quem já configurou à mão cai direto na aba do formulário; quem não tem
+  // nada vê primeiro o caminho fácil.
+  const [zapiModo, setZapiModo] = useState<'gerenciada' | 'propria'>(() => {
+    const zapi = initialConfigs.find(c => c.provider === 'zapi')
+    if (!zapi?.config) return 'gerenciada'
+    return (zapi.config as Record<string, unknown>).managed === true ? 'gerenciada' : 'propria'
+  })
   const [wpProvider, setWpProvider] = useState<ProviderType>(() => {
     const existing = initialConfigs.find(c => c.provider === 'zapi' || c.provider === 'official')
     return (existing?.provider as ProviderType) ?? 'zapi'
@@ -1133,10 +1155,38 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
             ))}
           </div>
         </div>
-        {wpProvider === 'zapi'
-          ? <ZAPIForm     initial={zapiConfig} />
-          : <OfficialForm initial={officialConfig} />
-        }
+        {wpProvider === 'zapi' ? (
+          <>
+            {/* Dois caminhos para o mesmo provedor: conectar por aqui (instância
+                na nossa conta de integrador) ou usar uma conta própria. */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+              {([
+                ['gerenciada', 'Conectar por aqui'],
+                ['propria',    'Já tenho conta Z-API'],
+              ] as const).map(([modo, rotulo]) => (
+                <button
+                  key={modo}
+                  type="button"
+                  onClick={() => setZapiModo(modo)}
+                  style={{
+                    padding: '7px 12px', borderRadius: 99, cursor: 'pointer',
+                    fontSize: 12.5, fontWeight: 700,
+                    border: zapiModo === modo ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
+                    background: zapiModo === modo ? 'var(--brand-soft)' : 'var(--bg-app)',
+                    color: zapiModo === modo ? 'var(--brand)' : 'var(--text-muted)',
+                  }}
+                >
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+            {zapiModo === 'gerenciada'
+              ? <ZapiConnect />
+              : <ZAPIForm initial={zapiConfig} />}
+          </>
+        ) : (
+          <OfficialForm initial={officialConfig} />
+        )}
       </SectionCard>
 
       <SectionCard
