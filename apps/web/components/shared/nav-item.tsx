@@ -1,6 +1,6 @@
 'use client'
 import { usePathname, useRouter } from 'next/navigation'
-import { useTransition, type ReactNode } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import { Loader2 } from 'lucide-react'
 import { emitNavStart } from '@/components/shared/navigation-progress'
 import { useSidebar } from '@/components/shared/sidebar-context'
@@ -16,6 +16,10 @@ export function NavItem({ icon, label, href }: NavItemProps) {
   const router               = useRouter()
   const [isPending, startT]  = useTransition()
   const { collapsed }        = useSidebar()
+  // Hover no estado, não no DOM: ele muda fundo E cor, e mexer nos dois via
+  // `style` obrigaria a restaurar a cor exata no mouseleave — que depende de
+  // estar ativo e de a barra estar recolhida.
+  const [hover, setHover]    = useState(false)
 
   const active     = pathname === href || pathname.startsWith(href + '/')
   const showActive = active || isPending
@@ -28,12 +32,23 @@ export function NavItem({ icon, label, href }: NavItemProps) {
 
   // Expandido = sidebar branco (original): ativo = pill rosé + texto branco.
   // Recolhido = sidebar rosé: ativo = pill branco + texto rosé; inativo = branco translúcido.
+  //
+  // O hover do expandido é o mesmo do `.btn-ghost` (brand-soft + brand): funciona
+  // como prévia do ativo, que é a versão preenchida da mesma cor. Antes só o
+  // recolhido tinha realce e no expandido não havia retorno nenhum ao passar o
+  // mouse — em 14 itens, achar a linha certa virava trabalho.
+  const realce = hover && !showActive
+
   const background = showActive
     ? (collapsed ? 'var(--on-brand)' : 'var(--brand)')
-    : 'transparent'
+    : realce
+      ? (collapsed ? 'rgba(255,255,255,0.14)' : 'var(--brand-soft)')
+      : 'transparent'
   const color = showActive
     ? (collapsed ? 'var(--brand)' : 'var(--on-brand)')
-    : (collapsed ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)')
+    : realce
+      ? (collapsed ? 'var(--on-brand)' : 'var(--brand)')
+      : (collapsed ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)')
   const boxShadow = showActive
     ? (collapsed ? '0 6px 16px -6px rgba(90, 20, 40, 0.4)' : 'var(--shadow-nav-active)')
     : 'none'
@@ -43,8 +58,10 @@ export function NavItem({ icon, label, href }: NavItemProps) {
       type="button"
       onClick={handleClick}
       title={collapsed ? label : undefined}
-      onMouseEnter={e => { if (!showActive && collapsed) e.currentTarget.style.background = 'rgba(255,255,255,0.14)' }}
-      onMouseLeave={e => { if (!showActive) e.currentTarget.style.background = 'transparent' }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setHover(true)}
+      onBlur={() => setHover(false)}
       style={{
         // Ícone fica praticamente parado (padding simétrico centraliza no recolhido);
         // o rótulo colapsa (max-width 0 + fade) enquanto a barra encolhe ao redor.
