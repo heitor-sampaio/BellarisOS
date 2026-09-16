@@ -19,18 +19,24 @@ export async function getWhatsAppConfig(tenantId: string): Promise<WhatsAppConfi
   // erro de PostgREST em vez de simplesmente atender por um dos provedores.
   const { data, error } = await admin
     .from('integration_configs')
-    .select('provider, config')
+    .select('provider, config, updated_at')
     .eq('tenant_id', tenantId)
     .in('provider', ['uazapi', 'official'])
     .eq('is_active', true)
+    .order('updated_at', { ascending: false })
 
   if (error) { console.error('[getWhatsAppConfig]', error.message); return null }
   if (!data || data.length === 0) return null
 
-  // Desempate explícito, não alfabético: a API oficial ganha da não oficial. Se a
-  // rede configurou as duas, é ela que deve atender — e um `.order()` por nome
-  // de provedor entregaria a errada.
-  const linha = data.find(l => l.provider === 'official') ?? data[0]!
+  // Desempate: vence a conexão mexida por último.
+  //
+  // Antes era "a oficial sempre ganha", e isso mandava o envio para o provedor
+  // errado exatamente quando mais doía: a rede parear a uazapi hoje não tirava
+  // do ar uma config `official` de meses atrás, e toda mensagem ia tentar sair
+  // por lá. `desativarOutroProvedorWhatsApp` já impede o empate na origem — isto
+  // aqui é a segunda linha de defesa, e ela precisa apontar para a conexão que
+  // a rede acabou de estabelecer.
+  const linha = data[0]!
 
   return { provider: linha.provider as WhatsAppConfig['provider'], ...(linha.config as object) } as WhatsAppConfig
 }

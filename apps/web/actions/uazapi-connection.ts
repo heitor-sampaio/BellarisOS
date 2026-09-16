@@ -9,6 +9,8 @@ import {
   definirRitmo, conectarInstancia, statusDaInstancia, desconectarInstancia,
   lerProxy, definirProxy,
 } from '@/lib/whatsapp/uazapi-admin'
+import { telefoneDoJid } from '@/lib/whatsapp/uazapi'
+import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
 
 /**
  * Conexão de WhatsApp gerenciada pelo BellarisOS.
@@ -50,17 +52,29 @@ export interface EstadoConexaoUazapi {
   teto:         number
 }
 
-async function configDaRede(tenantId: string): Promise<UazapiConfig | null> {
+/**
+ * Config da rede + se ela está ativa.
+ *
+ * `ativa` vem junto porque é o que evita reescrever o banco a cada leitura de
+ * estado: sem saber o valor atual, a única forma de "garantir ativo" é gravar
+ * sempre — e gravar sempre foi o que pôs a tela em loop.
+ */
+async function configDaRede(
+  tenantId: string,
+): Promise<{ config: UazapiConfig; ativa: boolean } | null> {
   const { data, error } = await createAdminClient()
     .from('integration_configs')
-    .select('config')
+    .select('config, is_active')
     .eq('tenant_id', tenantId)
     .eq('provider', 'uazapi')
     .maybeSingle()
 
   if (error) { console.error('[uazapi-connection] config:', error.message); return null }
   if (!data?.config) return null
-  return { provider: 'uazapi', ...(data.config as object) } as UazapiConfig
+  return {
+    config: { provider: 'uazapi', ...(data.config as object) } as UazapiConfig,
+    ativa:  data.is_active === true,
+  }
 }
 
 /** Quantas instâncias gerenciadas existem — conta TODAS as redes. */
@@ -97,7 +111,8 @@ export async function getEstadoConexaoUazapi(): Promise<EstadoConexaoUazapi> {
     teto:         tetoDeInstancias(),
   }
 
-  const config = await configDaRede(ctx.tenantId!)
+  const registro = await configDaRede(ctx.tenantId!)
+  const config   = registro?.config
   if (!config?.managed) return { ...base, usadas: await instanciasEmUso() }
 
   base.gerenciada = true
@@ -110,11 +125,22 @@ export async function getEstadoConexaoUazapi(): Promise<EstadoConexaoUazapi> {
     base.conectada    = status.connected
     base.aguardandoQr = !status.connected
     base.name         = status.nome ?? config.connectedName ?? null
-    base.phone        = status.jid
-      ? status.jid.split('@')[0]!
-      : config.connectedPhone ?? null
+    base.phone        = telefoneDoJid(status.jid) ?? config.connectedPhone ?? null
 
-    if (status.connected) await marcarConectada(ctx.tenantId!, config, base.phone, base.name)
+    // ⚠️ Esta função é LEITURA, chamada em polling. Ela só escreve quando o banco
+    // realmente diverge da uazapi, e nunca revalida rota.
+    //
+    // Antes ela chamava `marcarConectada` a cada passagem, e `marcarConectada`
+    // fazia `revalidatePath('/admin/settings')` — a própria rota que acabara de
+    // pedir o estado. O retorno da Server Action vinha com a árvore invalidada,
+    // o componente remontava, pedia o estado de novo, e a tela ficava piscando
+    // para sempre, com uma escrita no banco e duas chamadas à uazapi por volta.
+    const precisaAtivar   = status.connected && !registro!.ativa
+    const dadosMudaram    = status.connected
+      && (config.connectedPhone !== base.phone || config.connectedName !== base.name)
+    if (precisaAtivar || dadosMudaram) {
+      await marcarConectada(ctx.tenantId!, config, base.phone, base.name)
+    }
 
     const proxy = await lerProxy(baseDa(config), config.token)
     base.proxyModo = proxy?.modo ?? null
@@ -142,7 +168,7 @@ export async function criarConexaoUazapi(): Promise<{ ok: boolean; error?: strin
     return { ok: false, error: 'Conexão gerenciada indisponível nesta instalação.' }
   }
 
-  const atual = await configDaRede(ctx.tenantId!)
+  const atual = (await configDaRede(ctx.tenantId!))?.config
   if (atual?.managed && atual.token) {
     return { ok: false, error: 'Esta rede já tem uma conexão gerenciada.' }
   }
@@ -239,7 +265,7 @@ export async function repararConexaoUazapi(): Promise<{ ok: boolean; error?: str
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
-  const config = await configDaRede(ctx.tenantId!)
+  const config = (await configDaRede(ctx.tenantId!))?.config
   if (!config?.managed) return { ok: false, error: 'Nenhuma conexão gerenciada nesta rede.' }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -264,7 +290,7 @@ export async function getQrCodeUazapi(): Promise<{
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
-  const config = await configDaRede(ctx.tenantId!)
+  const config = (await configDaRede(ctx.tenantId!))?.config
   if (!config?.managed) return { ok: false, error: 'Nenhuma conexão gerenciada nesta rede.' }
 
   try {
@@ -273,11 +299,12 @@ export async function getQrCodeUazapi(): Promise<{
     // cada volta do polling.
     const status = await statusDaInstancia(baseDa(config), config.token)
     if (status.connected) {
-      await marcarConectada(
-        ctx.tenantId!, config,
-        status.jid ? status.jid.split('@')[0]! : null,
-        status.nome,
-      )
+      await marcarConectada(ctx.tenantId!, config, telefoneDoJid(status.jid), status.nome)
+      // Aqui revalidar é correto: é a transição "pareando" → "conectado", que
+      // acontece uma vez e encerra o polling. O que não pode revalidar é a
+      // leitura de estado, que roda em laço.
+      revalidatePath('/admin/settings')
+      revalidatePath('/admin/inbox')
       return { ok: true, conectada: true, qr: null }
     }
     if (status.qrcode) return { ok: true, conectada: false, qr: status.qrcode }
@@ -300,7 +327,7 @@ export async function getCodigoPareamentoUazapi(
   const digitos = telefone.replace(/\D/g, '')
   if (digitos.length < 10) return { ok: false, error: 'Informe o número com DDD.' }
 
-  const config = await configDaRede(ctx.tenantId!)
+  const config = (await configDaRede(ctx.tenantId!))?.config
   if (!config?.managed) return { ok: false, error: 'Nenhuma conexão gerenciada nesta rede.' }
 
   try {
@@ -336,11 +363,15 @@ async function marcarConectada(
     .eq('tenant_id', tenantId)
     .eq('provider', 'uazapi')
 
-  if (error) console.error('[marcarConectada]', error.message)
-  else {
-    revalidatePath('/admin/settings')
-    revalidatePath('/admin/inbox')
-  }
+  if (error) { console.error('[marcarConectada]', error.message); return }
+
+  // Ativar a uazapi sem desativar a `official` deixava as duas ativas, e o envio
+  // saía pela oficial — que a rede tinha configurado mas não usa.
+  await desativarOutroProvedorWhatsApp(tenantId, 'uazapi')
+
+  // Sem `revalidatePath` aqui: quem chama decide. Esta função roda dentro de
+  // leituras em polling, e revalidar a rota que pediu a leitura é o que fazia a
+  // tela piscar sem parar.
 }
 
 /** Desliga o celular, mantendo a instância de pé. */
@@ -348,7 +379,7 @@ export async function desconectarUazapi(): Promise<{ ok: boolean; error?: string
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
-  const config = await configDaRede(ctx.tenantId!)
+  const config = (await configDaRede(ctx.tenantId!))?.config
   if (!config?.managed) return { ok: false, error: 'Nenhuma conexão gerenciada nesta rede.' }
 
   try {
@@ -380,7 +411,7 @@ export async function removerConexaoUazapi(): Promise<{ ok: boolean; error?: str
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
-  const config = await configDaRede(ctx.tenantId!)
+  const config = (await configDaRede(ctx.tenantId!))?.config
   if (!config?.managed) return { ok: false, error: 'Nenhuma conexão gerenciada nesta rede.' }
 
   try {

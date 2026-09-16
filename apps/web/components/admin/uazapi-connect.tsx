@@ -53,13 +53,13 @@ export function UazapiConnect() {
   const [estado,     setEstado]     = useState<EstadoConexaoUazapi | null>(null)
   const [qr,         setQr]         = useState<string | null>(null)
   const [erro,       setErro]       = useState<string | null>(null)
-  const [tentativas, setTentativas] = useState(0)
   const [pausado,    setPausado]    = useState(false)
   const [codigo,     setCodigo]     = useState<string | null>(null)
   const [telefone,   setTelefone]   = useState('')
   const [modoCodigo, setModoCodigo] = useState(false)
   const [isPending,  startTransition] = useTransition()
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const tentativasRef = useRef(0)
 
   const carregarEstado = useCallback(async () => {
     try { setEstado(await getEstadoConexaoUazapi()) }
@@ -68,18 +68,29 @@ export function UazapiConnect() {
 
   useEffect(() => { carregarEstado() }, [carregarEstado])
 
+  // ⚠️ `tentativas` NÃO entra nas dependências.
+  //
+  // Com ela na lista, cada volta do polling remontava o efeito: o incremento
+  // mudava a dependência, o cleanup matava o `setTimeout` recém-agendado e a
+  // busca seguinte saía na hora, sem esperar os 15 segundos. Em vez de um QR a
+  // cada 15s, virava uma rajada de chamadas — algumas delas no `/instance/connect`,
+  // que é escrita e reinicia o pareamento. O contador vive num ref justamente
+  // para poder crescer sem reiniciar o laço.
   useEffect(() => {
     if (!estado?.gerenciada || estado.conectada || pausado || modoCodigo) return
-    if (tentativas >= MAX_TENTATIVAS) { setPausado(true); return }
 
     let vivo = true
     async function buscar() {
+      if (!vivo) return
+      if (tentativasRef.current >= MAX_TENTATIVAS) { setPausado(true); return }
+
       const res = await getQrCodeUazapi()
       if (!vivo) return
       if (!res.ok) { setErro(res.error ?? 'Falha ao obter o QR code'); setPausado(true); return }
       if (res.conectada) { setQr(null); await carregarEstado(); router.refresh(); return }
       if (res.qr) setQr(res.qr)
-      setTentativas(t => t + 1)
+
+      tentativasRef.current += 1
       timerRef.current = setTimeout(buscar, INTERVALO_QR)
     }
     buscar()
@@ -88,10 +99,11 @@ export function UazapiConnect() {
       vivo = false
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [estado?.gerenciada, estado?.conectada, pausado, modoCodigo, tentativas, carregarEstado, router])
+  }, [estado?.gerenciada, estado?.conectada, pausado, modoCodigo, carregarEstado, router])
 
   function recomecarQr() {
-    setErro(null); setQr(null); setTentativas(0); setPausado(false); setModoCodigo(false)
+    tentativasRef.current = 0
+    setErro(null); setQr(null); setPausado(false); setModoCodigo(false)
   }
 
   function comAcao(fn: () => Promise<{ ok: boolean; error?: string }>, depois?: () => void) {

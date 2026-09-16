@@ -30,6 +30,21 @@ function idCurto(valor: unknown): string {
   return String(valor ?? '').split(':').pop() ?? ''
 }
 
+/**
+ * Telefone da conta conectada, a partir do JID.
+ *
+ * O JID do dono vem com o número do aparelho colado
+ * (`554861360066:3@s.whatsapp.net`). Cortar só no `@` deixa o `:3` no telefone
+ * — que é o que a tela mostra e o que vai para `connectedPhone`. Aqui a parte
+ * de antes do `:` é sempre o número, ao contrário de `idCurto`, onde o que
+ * interessa é a parte de depois.
+ */
+export function telefoneDoJid(jid: string | null | undefined): string | null {
+  const antesDoArroba = String(jid ?? '').split('@')[0] ?? ''
+  const numero = antesDoArroba.split(':')[0] ?? ''
+  return numero || null
+}
+
 /** Texto pode vir em quatro campos, e `content` às vezes é objeto. */
 function primeiroTexto(...candidatos: unknown[]): string | undefined {
   for (const c of candidatos) {

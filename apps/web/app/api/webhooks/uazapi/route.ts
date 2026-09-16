@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { UazapiProvider } from '@/lib/whatsapp/uazapi'
+import { UazapiProvider, telefoneDoJid } from '@/lib/whatsapp/uazapi'
 import { getTenantByUazapiToken } from '@/lib/whatsapp/factory'
+import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
 import {
   resolveConversation, insertInboundMessage, updateMessageStatus,
 } from '@/lib/inbox/resolve-conversation'
@@ -98,18 +99,22 @@ async function tratarConexao(
 
   const atual = (data?.config ?? {}) as Record<string, unknown>
   const jid   = raiz?.status?.jid ?? corpo?.instance?.owner ?? null
+  const phone = telefoneDoJid(jid)
 
   const { error } = await admin
     .from('integration_configs')
     .update({
       is_active: conectado,
-      config: conectado && jid
-        ? { ...atual, connectedPhone: String(jid).split('@')[0] }
-        : atual,
+      config: conectado && phone ? { ...atual, connectedPhone: phone } : atual,
       updated_at: new Date().toISOString(),
     })
     .eq('tenant_id', tenantId)
     .eq('provider', 'uazapi')
 
-  if (error) console.error('[webhook/uazapi] conexão:', error.message)
+  if (error) { console.error('[webhook/uazapi] conexão:', error.message); return }
+
+  // Duas configs de WhatsApp ativas é estado inválido, e era assim que a rede
+  // ficava: este evento ativava a uazapi e a `official` continuava de pé, então
+  // o envio saía pela oficial e falhava com a mensagem já gravada.
+  if (conectado) await desativarOutroProvedorWhatsApp(tenantId, 'uazapi')
 }
