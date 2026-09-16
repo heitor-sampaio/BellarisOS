@@ -203,13 +203,15 @@ function resumoDaCitada(preview: ReplyPreview): string {
 const JANELA_DE_EDICAO_MS = 15 * 60 * 1000
 
 function Bubble({
-  msg, nomeDoContato, onResponder, onEditar, podeAgir, agora,
+  msg, nomeDoContato, onResponder, onEditar, podeAgir, canalEdita, agora,
 }: {
   msg: Message
   nomeDoContato: string
   onResponder: (m: Message) => void
   onEditar:    (m: Message) => void
   podeAgir:    boolean
+  /** O canal aceita editar? Só o WhatsApp não oficial aceita. */
+  canalEdita:  boolean
   /** Null antes de montar: relógio no servidor difere do cliente e hidrata errado. */
   agora:       number | null
 }) {
@@ -233,7 +235,7 @@ function Bubble({
   // Editar só faz sentido no que saiu daqui, é texto, chegou ao provedor e
   // ainda está dentro dos 15 minutos. `agora` é null até montar no cliente.
   const idade = agora === null ? Infinity : agora - parseISO(msg.created_at).getTime()
-  const podeEditar = podeAgir && out && !falhou
+  const podeEditar = podeAgir && canalEdita && out && !falhou
     && msg.status !== 'sending' && !msg.media_type && idade <= JANELA_DE_EDICAO_MS
   return (
     <div
@@ -662,6 +664,13 @@ export function CRMInbox({
   }, [])
 
   const selectedConv = conversations.find(c => c.id === selectedId) ?? null
+
+  // Editar mensagem enviada existe no WhatsApp, mas não na API oficial: lá a
+  // mensagem é imutável depois de entregue. Nota interna nunca saiu daqui, então
+  // sempre pode ser corrigida. Sem este corte o botão apareceria em todo canal e
+  // só daria erro ao salvar.
+  const canalEdita = selectedConv?.channel === 'manual'
+    || (selectedConv?.channel === 'whatsapp' && provedorWhatsApp === 'uazapi')
 
   // Regra da Meta: só dá para responder livremente até 24h da última mensagem
   // do contato. Vale para Instagram, Messenger e WhatsApp pela API oficial —
@@ -1259,6 +1268,7 @@ export function CRMInbox({
                           onResponder={iniciarResposta}
                           onEditar={iniciarEdicao}
                           podeAgir={canEdit && selectedConv?.status !== 'closed'}
+                          canalEdita={canalEdita}
                           agora={nowMs}
                         />
                       ))}

@@ -96,12 +96,13 @@ async function processarEntrada(entrada: any, channel: ChannelKind) {
   // Nome do perfil: sem isso o card nasce com o PSID (16 dígitos) como nome.
   // Falha aqui não pode barrar a mensagem.
   if (!inbound.displayName) {
-    const perfil = await provider.fetchPerfil(inbound.externalUserId)
-    const nome = perfil.username ? `@${perfil.username}` : perfil.name
+    const nome = await provider.fetchDisplayName(inbound.externalUserId)
     if (nome) inbound.displayName = nome
   }
 
-  const result = await resolveConversation(tenantId, inbound, channel)
+  // O provider vai junto para a conversa que já existe poder perguntar o nome
+  // quando ainda estiver com o id do canal no lugar dele.
+  const result = await resolveConversation(tenantId, inbound, channel, provider)
   if (!result) return
 
   await insertInboundMessage(result.conversationId, tenantId, inbound, channel, provider)

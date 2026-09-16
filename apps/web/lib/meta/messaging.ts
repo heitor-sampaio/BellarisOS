@@ -180,6 +180,20 @@ export class MetaMessagingProvider implements SendProvider {
    * não diz nada para quem atende. Falha em silêncio de propósito: não ter o
    * nome não pode impedir a mensagem de entrar.
    */
+  /**
+   * Nome do contato para a lista de conversas.
+   *
+   * O webhook do Messenger e do Instagram não manda nome nenhum — só o PSID/
+   * IGSID —, então sem esta consulta a conversa fica com o id como nome para
+   * sempre. No Instagram o @ vale mais que o nome: é assim que a pessoa é
+   * reconhecida.
+   */
+  async fetchDisplayName(externalUserId: string): Promise<string | null> {
+    const perfil = await this.fetchPerfil(externalUserId)
+    if (this.channel === 'instagram' && perfil.username) return `@${perfil.username}`
+    return perfil.name?.trim() || null
+  }
+
   async fetchPerfil(externalUserId: string): Promise<{ name?: string; username?: string }> {
     try {
       const campos = this.channel === 'instagram' ? 'name,username' : 'name'

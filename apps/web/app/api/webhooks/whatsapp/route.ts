@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   const inbound = provider.parseInbound(body)
   if (!inbound) return NextResponse.json({ ok: true })
 
-  const result = await resolveConversation(tenantId, inbound, 'whatsapp')
+  const result = await resolveConversation(tenantId, inbound, 'whatsapp', provider)
   if (!result) return NextResponse.json({ ok: true })
 
   // O provedor vai junto: é ele que sabe autenticar o download da mídia.
