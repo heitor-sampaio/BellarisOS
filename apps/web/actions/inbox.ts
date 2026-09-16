@@ -110,8 +110,13 @@ export async function getConversations(): Promise<Conversation[]> {
 
   let query = admin
     .from('conversations')
-    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, branches(name)')
+    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, tags, branches(name)')
     .eq('tenant_id', ctx.tenantId!)
+    // Contato sem nenhuma mensagem não é conversa. A conversa é também o
+    // registro do contato, e contato criado pelo quadro (ou pelo backfill que
+    // deu dono às oportunidades antigas) nasce sem ninguém ter falado — na lista
+    // do inbox isso seria só ruído entre os atendimentos de verdade.
+    .not('last_message_at', 'is', null)
 
   if (ownLeadIds) {
     // Conversa sem lead é contato que ainda não virou card: fica no bolo comum,

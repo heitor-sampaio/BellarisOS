@@ -1,7 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { InboundMsg, ChannelKind, SendProvider } from '@/lib/channels/types'
-import { seedDefaultFunnel, listStages } from '@/actions/crm-funnels'
-import { registrarEventoLead } from '@/lib/lead-events'
 import { guardarMidia } from '@/lib/inbox/media'
 import { resolveLeadSource } from '@estetica-os/utils'
 
@@ -16,20 +14,23 @@ function normalizePhone(raw: string): string {
 }
 
 /**
- * Resolve (ou cria) a conversa de um inbound e garante que exista um CARD (lead)
- * ligado a ela.
+ * Resolve (ou cria) a conversa de um inbound.
  *
- * Regras do CRM unificado:
- * - card = lead, conversa = operacional; ligados por `conversations.lead_id`
- * - lead/conversa nascem na REDE (`branch_id` null); a unidade é tag, depois
- * - a origem do card vem do referral do anúncio (click-to-WhatsApp) ou Orgânico
+ * A conversa É o contato: guarda nome, telefone, os identificadores do canal,
+ * as tags da pessoa e de onde ela veio. **Não cria oportunidade** — isso é
+ * decisão de quem atende, ou de automação, e um dia foi feito aqui.
+ *
+ * Regras:
+ * - contato nasce na REDE (`branch_id` null); a unidade vira tag depois
+ * - a origem vem do referral do anúncio (click-to-WhatsApp) ou Orgânico, e fica
+ *   em `attribution` esperando a oportunidade que talvez venha
  *
  * ⚠️ A identidade da conversa é `contact_external_id`, não o telefone: no
  * Instagram e no Messenger o contato é um PSID/IGSID e telefone não existe.
  * Antes isto era `contact_phone`, o que travava o inbox em um canal só.
  *
- * Concorrência: o insert é a trava. Só quem vence cria o lead — senão duas
- * mensagens quase simultâneas geram dois cards para a mesma pessoa.
+ * Concorrência: o insert é a trava (23505), senão duas mensagens quase
+ * simultâneas geram dois contatos para a mesma pessoa.
  */
 export async function resolveConversation(
   tenantId: string,
@@ -113,6 +114,15 @@ export async function resolveConversation(
     ?? phone
     ?? msg.externalUserId
 
+  // Origem e identificadores de anúncio, do referral click-to-WhatsApp quando
+  // houver. Só o que veio: campo vazio no jsonb é pior que campo ausente, porque
+  // parece resposta quando é falta de resposta.
+  const derived = resolveLeadSource({ referral: msg.referral })
+  const atribuicao: Record<string, unknown> = { source: derived.source }
+  if (derived.utm_source) atribuicao.utm_source = derived.utm_source
+  if (derived.ctwa_clid)  atribuicao.ctwa_clid  = derived.ctwa_clid
+  if (msg.referral?.sourceId) atribuicao.ad_id = msg.referral.sourceId
+
   // 3. Cria a conversa. Insert direto e o 23505 como trava de concorrência.
   //
   // O `upsert` com `onConflict` que existia aqui falhava com `42P10`: o índice
@@ -131,6 +141,12 @@ export async function resolveConversation(
       contact_phone:       phone,
       contact_external_id: msg.externalUserId,
       contact_aliases:     aliases,
+      // De onde a pessoa veio, guardado no CONTATO. Antes isto ia para o lead
+      // que nascia junto; sem ele, o rastro do anúncio se perderia entre a
+      // mensagem e a oportunidade criada depois — e é esse rastro que liga a
+      // venda à campanha em `lib/metrics`.
+      attribution:         atribuicao,
+      tags:                derived.tags ?? [],
     })
     .select('id')
     .single()
@@ -157,68 +173,14 @@ export async function resolveConversation(
     return { conversationId: convRows[0]!.id, branchId: convRows[0]!.branch_id }
   }
 
-  // 4. Vencemos o insert — sem lead, cria o card agora (rede, sem filial).
-  const conversationId = inserted!.id
-  if (!leadId) {
-    const derived = resolveLeadSource({ referral: msg.referral })
-    // Lead que chega sozinho entra no funil PADRÃO da rede — o mesmo que
-    // alimenta o gráfico do dashboard. Sem etapa ele não apareceria em quadro
-    // nenhum, já que a coluna deixou de aceitar nulo.
-    const funis   = await seedDefaultFunnel(tenantId)
-    const padrao  = funis.find(f => f.is_default) ?? funis[0]
-    const stages  = padrao ? await listStages(tenantId, padrao.id) : []
-    const firstStageId = stages[0]?.id ?? null
-
-    const leadInsert: Record<string, unknown> = {
-      tenant_id:    tenantId,
-      branch_id:    null,
-      name:         nomeDoCanal || phone || msg.externalUserId,
-      phone,
-      source:       derived.source,
-      tags:         derived.tags,
-      crm_stage_id: firstStageId,
-    }
-    // Sem telefone o lead precisa de outro contato para ser válido: o @ do
-    // Instagram, ou o id do canal como último recurso.
-    if (!phone) {
-      leadInsert.social_media = nomeDoCanal
-        ? `${channel}: ${nomeDoCanal}`
-        : `${channel}: ${msg.externalUserId}`
-    }
-    if (derived.utm_source) leadInsert.utm_source = derived.utm_source
-    if (derived.ctwa_clid)  leadInsert.ctwa_clid  = derived.ctwa_clid
-
-    const { data: newLead, error: erroLead } = await admin
-      .from('leads')
-      .insert(leadInsert)
-      .select('id, name')
-      .single()
-
-    if (erroLead) {
-      // A conversa já existe e a mensagem ainda vai entrar; só o card faltou.
-      console.error('[resolveConversation] criar lead:', erroLead.message)
-    } else if (newLead) {
-      leadId = newLead.id
-
-      // Sem ator: o card nasceu sozinho, de uma mensagem recebida. A linha do
-      // tempo mostra isso como entrada automática.
-      await registrarEventoLead({
-        tenantId,
-        leadId:    newLead.id,
-        type:      'CREATED',
-        toStageId: firstStageId,
-      })
-
-      // Liga o card à conversa recém-criada (guard lead_id IS NULL)
-      await admin
-        .from('conversations')
-        .update({ lead_id: leadId, contact_name: newLead.name })
-        .eq('id', conversationId)
-        .is('lead_id', null)
-    }
-  }
-
-  return { conversationId, branchId: null }
+  // 4. Fim. A conversa nasce SEM oportunidade.
+  //
+  // Antes daqui saía um lead no funil padrão, para toda pessoa que mandasse a
+  // primeira mensagem — quem pergunta "abrem sábado?" virava negócio em
+  // andamento e o quadro enchia de card que ninguém abriu. Criar oportunidade é
+  // decisão de quem atende (ou, mais tarde, de uma automação), não efeito
+  // colateral de receber mensagem.
+  return { conversationId: inserted!.id, branchId: null }
 }
 
 /**
