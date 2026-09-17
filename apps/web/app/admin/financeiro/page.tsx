@@ -124,6 +124,7 @@ export default async function AdminFinanceiroPage({
         transactions={transactions}
         branchSlugMap={branchSlugMap}
         branches={branches}
+        unidadeInicial={branches.find(b => b.id === sp.unidade || b.slug === sp.unidade)?.id ?? ""}
         canWrite={ctx.permissions.financial === 'MANAGE'}
       />
     </>

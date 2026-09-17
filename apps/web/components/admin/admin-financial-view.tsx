@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet, Users,
-  ArrowUpRight, ArrowDownRight, ExternalLink,
+  ArrowUpRight, ArrowDownRight,
   ChevronRight, CreditCard, Plus,
 } from 'lucide-react'
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
@@ -53,6 +53,13 @@ interface Props {
   transactions:     AdminTx[]
   branchSlugMap:    Record<string, string>
   branches:         { id: string; name: string; slug: string }[]
+  /**
+   * Unidade já recortada ao abrir (`?unidade=` na URL).
+   *
+   * É o destino do "ver o financeiro desta unidade" — no dashboard da rede e na
+   * própria tabela por filial, que antes saíam para o portal da unidade.
+   */
+  unidadeInicial?:  string
   canWrite?:        boolean
 }
 
@@ -151,30 +158,50 @@ export function AdminFinancialView({
   period, periodLabel, customFrom, customTo,
   totalRevenue, totalExpenses, totalResult, totalCommissions,
   prevRevenue, prevExpenses,
-  branchStats, transactions, branchSlugMap, branches,
+  branchStats, transactions, branchSlugMap, branches, unidadeInicial = '',
 }: Props) {
   const router      = useRouter()
   const [, startT]  = useTransition()
-  const [filterBranch, setFilterBranch] = useState<string>('all')
+  const [filterBranch, setFilterBranch] = useState<string>(unidadeInicial || 'all')
   const [customF, setCustomF] = useState(customFrom ?? '')
   const [customT, setCustomT] = useState(customTo   ?? '')
 
-  function navigate(p: string, f?: string, t?: string) {
+  function navigate(p: string, f?: string, t?: string, unidade: string = filterBranch) {
     startT(() => {
       const q = new URLSearchParams({ period: p })
       if (p === 'custom' && f) q.set('from', f)
       if (p === 'custom' && t) q.set('to',   t)
+      if (unidade && unidade !== 'all') q.set('unidade', unidade)
       router.push(`/admin/financeiro?${q}`)
     })
+  }
+
+  /** Recorta a tela para uma unidade sem sair do portal da rede. */
+  function verUnidade(id: string) {
+    setFilterBranch(id)
+    navigate(period, customF, customT, id)
   }
 
   const visibleTxs = filterBranch === 'all'
     ? transactions
     : transactions.filter(t => t.branch_id === filterBranch)
 
+  // Com uma unidade recortada, os números do topo são os DELA — senão a tela
+  // diria "receita total" mostrando a rede inteira enquanto a lista embaixo já
+  // está filtrada, e os dois blocos se contradiriam.
+  const statDaUnidade = filterBranch === 'all'
+    ? null
+    : branchStats.find(b => b.id === filterBranch) ?? null
+  const revenue     = statDaUnidade ? statDaUnidade.revenue     : totalRevenue
+  const expenses    = statDaUnidade ? statDaUnidade.expenses    : totalExpenses
+  const result      = statDaUnidade ? statDaUnidade.result      : totalResult
+  const commissions = statDaUnidade ? statDaUnidade.commissions : totalCommissions
+
   const iconColor    = (brand: boolean) => brand ? '#fff' : 'var(--brand)'
-  const deltaRevenue  = pctDelta(totalRevenue,  prevRevenue)
-  const deltaExpenses = pctDelta(totalExpenses, prevExpenses)
+  // Sem base de comparação por unidade, não se inventa delta: `prevRevenue` e
+  // `prevExpenses` são da rede.
+  const deltaRevenue  = statDaUnidade ? null : pctDelta(totalRevenue,  prevRevenue)
+  const deltaExpenses = statDaUnidade ? null : pctDelta(totalExpenses, prevExpenses)
 
   // Sort branchStats by revenue desc for the table
   const sortedStats = [...branchStats].sort((a, b) => b.revenue - a.revenue)
@@ -225,26 +252,26 @@ export function AdminFinancialView({
       {/* KPI Cards consolidados */}
       <div className="kpi-grid-auto" style={{ gap: 14 }}>
         <KpiCard
-          label="Receita total"
-          value={fmtBRL(totalRevenue)}
+          label={statDaUnidade ? 'Receita da unidade' : 'Receita total'}
+          value={fmtBRL(revenue)}
           delta={deltaRevenue}
           icon={<TrendingUp size={16} color={iconColor(true)} />}
           brand
         />
         <KpiCard
-          label="Despesas totais"
-          value={fmtBRL(totalExpenses)}
+          label={statDaUnidade ? 'Despesas da unidade' : 'Despesas totais'}
+          value={fmtBRL(expenses)}
           delta={deltaExpenses}
           icon={<TrendingDown size={16} color="var(--brand)" />}
         />
         <KpiCard
           label="Resultado líquido"
-          value={fmtBRL(totalResult)}
+          value={fmtBRL(result)}
           icon={<Wallet size={16} color="var(--brand)" />}
         />
         <KpiCard
           label="Comissões"
-          value={fmtBRL(totalCommissions)}
+          value={fmtBRL(commissions)}
           icon={<Users size={16} color="var(--brand)" />}
         />
       </div>
@@ -302,16 +329,20 @@ export function AdminFinancialView({
                   {b.txCount}
                 </td>
                 <td style={{ padding: '13px 16px', textAlign: 'right' }}>
-                  <a
-                    href={`/${b.slug}/financeiro?period=${period}${customFrom ? `&from=${customFrom}` : ''}${customTo ? `&to=${customTo}` : ''}`}
+                  {/* Recorta a própria tela, em vez de abrir o portal da
+                      unidade: quem está na rede continua na rede. */}
+                  <button
+                    type="button"
+                    onClick={() => verUnidade(b.id === filterBranch ? 'all' : b.id)}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
-                      fontSize: 11, fontWeight: 700, color: 'var(--brand)',
-                      textDecoration: 'none',
+                      fontSize: 11, fontWeight: 700,
+                      color: b.id === filterBranch ? 'var(--text-muted)' : 'var(--brand)',
+                      background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
                     }}
                   >
-                    Ver <ExternalLink size={11} />
-                  </a>
+                    {b.id === filterBranch ? 'Ver a rede' : 'Ver'}
+                  </button>
                 </td>
               </tr>
             ))}

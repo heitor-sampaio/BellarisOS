@@ -9,7 +9,12 @@ import { startOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
-export default async function AdminEstoquePage() {
+export default async function AdminEstoquePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ unidade?: string }>
+}) {
+  const { unidade } = await searchParams
   const ctx = await getTenantContext()
   assertPermission(ctx, 'stock', 'VIEW')
   const canEdit = ctx.permissions.stock === 'MANAGE'
@@ -255,6 +260,7 @@ export default async function AdminEstoquePage() {
         categories={stockCategories}
         productCategories={categories as { id: string; name: string }[]}
         suppliers={suppliers}
+        unidadeInicial={branches.find(b => b.id === unidade || b.slug === unidade)?.id ?? ""}
         readOnly={!canEdit}
       />
     </div>

@@ -9,9 +9,9 @@ type AgendaView = 'day' | 'week'
 export default async function AdminAgendaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; date?: string }>
+  searchParams: Promise<{ view?: string; date?: string; unidade?: string }>
 }) {
-  const { view: rawView, date: rawDate } = await searchParams
+  const { view: rawView, date: rawDate, unidade } = await searchParams
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
@@ -62,7 +62,15 @@ export default async function AdminAgendaPage({
     )
   }
 
-  const branches  = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
+  const todasUnidades = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
+
+  // `?unidade=` recorta a rede a uma filial — é para onde o dashboard aponta ao
+  // se olhar uma unidade, em vez de mandar a pessoa para o portal dela. Aceita
+  // id ou slug: quem linka daqui de dentro tem o id, o dashboard tem o slug, e
+  // `?unidade=centro` ainda é legível para quem olha a URL. Valor desconhecido
+  // (ou unidade desativada) cai na rede inteira, em vez de numa tela vazia.
+  const unidadeId = todasUnidades.find(b => b.id === unidade || b.slug === unidade)?.id ?? ''
+  const branches  = unidadeId ? todasUnidades.filter(b => b.id === unidadeId) : todasUnidades
   const branchIds = branches.map(b => b.id)
 
   if (branchIds.length === 0) {
@@ -104,6 +112,8 @@ export default async function AdminAgendaPage({
         selectedDate={selectedStr}
         todayStr={todayStr}
         branches={branches}
+        todasUnidades={todasUnidades}
+        unidadeId={unidadeId}
         appointments={appointments}
       />
     </>

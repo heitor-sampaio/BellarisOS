@@ -44,6 +44,13 @@ interface Props {
   productCategories?: ProductCategory[]
   suppliers?:        string[]
   defaultBranchId?:  string
+  /**
+   * Unidade já selecionada ao abrir (`?unidade=` na URL).
+   *
+   * É o destino do "ver o estoque desta unidade" no dashboard da rede, que
+   * antes mandava a pessoa para o portal da filial.
+   */
+  unidadeInicial?:   string
   readOnly?:         boolean
 }
 
@@ -122,12 +129,14 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
 }
 
-export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, readOnly = false }: Props) {
+export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', readOnly = false }: Props) {
   const router = useRouter()
-  const [view,       setView]       = useState<ViewMode>('consolidado')
+  // Chegar com uma unidade na URL só faz sentido junto com a visão por unidade:
+  // no consolidado o saldo dela ficaria somado ao das outras.
+  const [view,       setView]       = useState<ViewMode>(unidadeInicial ? 'por-unidade' : 'consolidado')
   const [search,     setSearch]     = useState('')
   const [category,   setCategory]   = useState('')
-  const [branchId,   setBranchId]   = useState('')
+  const [branchId,   setBranchId]   = useState(unidadeInicial)
   const [status,     setStatus]     = useState<StatusFilter>('all')
   const [expanded,   setExpanded]   = useState<Set<string>>(new Set())
   const [sortDir,    setSortDir]    = useState<'asc' | 'desc'>('asc')

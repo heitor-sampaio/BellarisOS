@@ -547,11 +547,17 @@ export function AdminDashboardView({
                       {b.ticketMedio > 0 ? fmtBRL(b.ticketMedio) : '—'}
                     </td>
                     <td style={{ padding: '13px 16px', textAlign: 'right' }}>
+                      {/* A única saída de portal que sobrou, e de propósito: aqui
+                          a intenção É entrar na unidade. Agenda, estoque,
+                          financeiro e checkout resolvem dentro de /admin. O
+                          rótulo diz o que acontece, em vez de um "Ver" que
+                          trocava o portal sem avisar. */}
                       <a
                         href={`/${b.slug}/dashboard`}
+                        title={`Abrir o portal da unidade ${b.name}`}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}
                       >
-                        Ver <ExternalLink size={10} />
+                        Abrir unidade <ExternalLink size={10} />
                       </a>
                     </td>
                   </tr>
@@ -610,7 +616,7 @@ export function AdminDashboardView({
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <a
-                        href={`/${b.slug}/agenda`}
+                        href={`/admin/agenda?unidade=${b.slug}`}
                         style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', textDecoration: 'none' }}
                       >
                         {b.name}
@@ -777,7 +783,7 @@ export function AdminDashboardView({
                       </p>
                     </div>
                     <a
-                      href={`/${item.branchSlug}/estoque`}
+                      href={`/admin/estoque?unidade=${item.branchSlug}`}
                       style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textDecoration: 'none', whiteSpace: 'nowrap' }}
                     >
                       Ver →
@@ -840,7 +846,7 @@ export function AdminDashboardView({
                 >
                   {/* Nome */}
                   <a
-                    href={`/${b.slug}/agenda`}
+                    href={`/admin/agenda?unidade=${b.slug}`}
                     className="occ-name"
                     style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textDecoration: 'none' }}
                   >

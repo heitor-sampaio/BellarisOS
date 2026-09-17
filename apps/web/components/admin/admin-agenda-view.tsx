@@ -26,7 +26,12 @@ interface Props {
   view:         AgendaView
   selectedDate: string       // 'YYYY-MM-DD'
   todayStr:     string       // 'YYYY-MM-DD'
+  /** Unidades exibidas — já recortadas pelo filtro. */
   branches:     Branch[]
+  /** Todas as unidades ativas, para o seletor. */
+  todasUnidades: Branch[]
+  /** Unidade do recorte atual; vazio = rede inteira. */
+  unidadeId:    string
   appointments: Appointment[]
 }
 
@@ -406,13 +411,19 @@ function StatusLegend() {
 }
 
 // -- Componente principal ------------------------------------------------------
-export function AdminAgendaView({ view, selectedDate, todayStr, branches, appointments }: Props) {
+export function AdminAgendaView({
+  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments,
+}: Props) {
   const router = useRouter()
 
   const mondayStr = getMondayOf(selectedDate)
 
-  const navigate = (dateStr: string, v: AgendaView = view) => {
-    router.push(`/admin/agenda?view=${v}&date=${dateStr}`)
+  // O recorte por unidade acompanha a navegação de data e de modo: quem veio do
+  // dashboard olhando uma unidade não deve perdê-la ao virar o dia.
+  const navigate = (dateStr: string, v: AgendaView = view, unidade: string = unidadeId) => {
+    const q = new URLSearchParams({ view: v, date: dateStr })
+    if (unidade) q.set('unidade', unidade)
+    router.push(`/admin/agenda?${q.toString()}`)
   }
 
   const prevDate = view === 'week'
@@ -495,13 +506,31 @@ export function AdminAgendaView({ view, selectedDate, todayStr, branches, appoin
           )}
         </div>
 
-        {/* Toggle de view */}
-        <SegSelect
-          options={[{ key: 'day', label: 'Dia' }, { key: 'week', label: 'Semana' }]}
-          value={view}
-          onSelect={(k) => navigate(selectedDate, k as AgendaView)}
-          ariaLabel="Modo de visualização"
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {/* Recorte por unidade — o destino do "ver esta unidade" no dashboard
+              da rede, que antes saía do portal. */}
+          {todasUnidades.length > 1 && (
+            <SegSelect
+              compacto
+              options={[
+                { key: '', label: 'Toda a rede' },
+                ...todasUnidades.map(b => ({ key: b.id, label: b.name })),
+              ]}
+              value={unidadeId}
+              onSelect={(k) => navigate(selectedDate, view, k)}
+              ariaLabel="Unidade"
+            />
+          )}
+
+          {/* Toggle de view */}
+          <SegSelect
+            compacto
+            options={[{ key: 'day', label: 'Dia' }, { key: 'week', label: 'Semana' }]}
+            value={view}
+            onSelect={(k) => navigate(selectedDate, k as AgendaView)}
+            ariaLabel="Modo de visualização"
+          />
+        </div>
       </div>
 
       {/* KPIs compactos */}
