@@ -280,11 +280,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const BRANCH_ROUTES: Partial<Record<AppModule, string>> = {
     agenda:     `/${slug}/agenda`,
     clients:    `/${slug}/clients`,
-    financial:  `/${slug}/financial`,
+    financial:  `/${slug}/financeiro`,
     procedures: `/${slug}/procedures`,
-    stock:      `/${slug}/stock`,
+    stock:      `/${slug}/estoque`,
     crm:        `/${slug}/oportunidades`,
-    team:       `/${slug}/settings/team`,
+    team:       `/${slug}/team`,
   }
   const shortcuts = ALL_MODULES
     .filter(m => BRANCH_ROUTES[m] && perm[m] !== 'NONE')

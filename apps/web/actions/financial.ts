@@ -61,7 +61,7 @@ export async function createTransaction(
 
     if (error) return { error: error.message }
 
-    revalidatePath(`/${slug}/financial`)
+    revalidatePath(`/${slug}/financeiro`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -202,7 +202,7 @@ export async function createTransactionAdvanced(
       if (error) return { error: error.message }
     }
 
-    revalidatePath(`/${slug}/financial`)
+    revalidatePath(`/${slug}/financeiro`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -237,7 +237,7 @@ export async function markTransactionPaid(transactionId: string, slug: string) {
 
     if (error) return { error: error.message }
 
-    revalidatePath(`/${slug}/financial`)
+    revalidatePath(`/${slug}/financeiro`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -276,7 +276,7 @@ export async function reverseTransaction(transactionId: string, branchId: string
       updated_at: new Date().toISOString(),
     }).eq('id', transactionId)
 
-    revalidatePath(`/${slug}/financial`)
+    revalidatePath(`/${slug}/financeiro`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -317,7 +317,7 @@ export async function openCashRegister(
 
     if (error) return { error: error.message }
 
-    revalidatePath(`/${slug}/financial`)
+    revalidatePath(`/${slug}/financeiro`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -366,7 +366,7 @@ export async function closeCashRegister(
 
     if (error) return { error: error.message }
 
-    revalidatePath(`/${slug}/financial`)
+    revalidatePath(`/${slug}/financeiro`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }

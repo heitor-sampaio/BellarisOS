@@ -87,13 +87,13 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   {
     key: 'financial', group: 'dinheiro',
     label: p => (has(p, 'financial') ? 'Financeiro' : 'Caixa'),
-    href: '/financial',
+    href: '/financeiro',
     visible: p => has(p, 'financial') || has(p, 'cashier'),
   },
-  { key: 'stock',         group: 'dinheiro',    label: 'Estoque',       href: '/stock',         visible: p => has(p, 'stock') },
+  { key: 'stock',         group: 'dinheiro',    label: 'Estoque',       href: '/estoque',       visible: p => has(p, 'stock') },
 
   { key: 'reports',       group: 'gestao',      label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },
-  { key: 'team',          group: 'gestao',      label: 'Equipe',        href: '/settings/team', visible: p => has(p, 'team') },
+  { key: 'team',          group: 'gestao',      label: 'Equipe',        href: '/team',          visible: p => has(p, 'team') },
   { key: 'procedures',    group: 'gestao',      label: 'Procedimentos', href: '/procedures',    visible: p => has(p, 'procedures') },
   // Os construtores de ficha viviam só no portal da rede, onde quem tem
   // unidade fixa nem entra — `forms: MANAGE` numa gerente não fazia nada.

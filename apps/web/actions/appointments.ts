@@ -359,7 +359,7 @@ async function completeAppointment(
 
   revalidatePath(`/${slug}/agenda`)
   revalidatePath(`/${slug}/dashboard`)
-  revalidatePath(`/${slug}/financial`)
+  revalidatePath(`/${slug}/financeiro`)
 }
 
 // --- Check-in do cliente (SCHEDULED → CONFIRMED) -----------------
@@ -790,7 +790,7 @@ export async function finishSession(
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
     revalidatePath(`/${slug}/dashboard`)
-    revalidatePath(`/${slug}/stock`)
+    revalidatePath(`/${slug}/estoque`)
     revalidateTag(`appointments:${apptBranch!.tenant_id}`, 'max')
     notifyCompleted(appointmentId)
     return {}
@@ -874,7 +874,7 @@ export async function confirmPayment(
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
-    revalidatePath(`/${slug}/financial`)
+    revalidatePath(`/${slug}/financeiro`)
     revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
     notifyPayment(appointmentId)
     return {}

@@ -425,8 +425,8 @@ export async function createStockMovement(
       }
     }
 
-    revalidatePath(`/${slug}/stock`)
-    revalidatePath(`/${slug}/financial`)
+    revalidatePath(`/${slug}/estoque`)
+    revalidatePath(`/${slug}/financeiro`)
     return { success: true, balanceAfter }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -469,7 +469,7 @@ export async function updateBranchMinStock(productId: string, branchId: string, 
       updated_at: new Date().toISOString(),
     }, { onConflict: 'product_id,branch_id' })
 
-    revalidatePath(`/${slug}/stock`)
+    revalidatePath(`/${slug}/estoque`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }

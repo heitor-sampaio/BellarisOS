@@ -777,7 +777,7 @@ export function AdminDashboardView({
                       </p>
                     </div>
                     <a
-                      href={`/${item.branchSlug}/stock`}
+                      href={`/${item.branchSlug}/estoque`}
                       style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textDecoration: 'none', whiteSpace: 'nowrap' }}
                     >
                       Ver →

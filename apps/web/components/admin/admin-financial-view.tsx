@@ -303,7 +303,7 @@ export function AdminFinancialView({
                 </td>
                 <td style={{ padding: '13px 16px', textAlign: 'right' }}>
                   <a
-                    href={`/${b.slug}/financial?period=${period}${customFrom ? `&from=${customFrom}` : ''}${customTo ? `&to=${customTo}` : ''}`}
+                    href={`/${b.slug}/financeiro?period=${period}${customFrom ? `&from=${customFrom}` : ''}${customTo ? `&to=${customTo}` : ''}`}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       fontSize: 11, fontWeight: 700, color: 'var(--brand)',
