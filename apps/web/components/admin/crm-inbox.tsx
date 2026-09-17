@@ -6,6 +6,7 @@ import {
 import {
   Search, MessageSquare, Phone, Mail, AtSign,
   Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip, FileText, Zap, UserCheck,
+  Mic, Square,
   ArrowLeft,
   Reply, Pencil, Check,
 } from 'lucide-react'
@@ -521,6 +522,102 @@ function NewConvModal({
           </div>
         </form>
       </div>
+    </div>
+  )
+}
+
+/**
+ * As ações do compositor num botão só — para o celular.
+ *
+ * Quatro ícones de 36px consomem metade da largura de um telefone, e o que
+ * sobra é o campo de escrever, que é o motivo de a tela existir. No desktop a
+ * barra continua com tudo à mostra (`hide-mobile` nos botões originais): lá o
+ * espaço existe, e um clique vale mais que dois.
+ *
+ * Gravar áudio fica FORA do menu enquanto grava: parar é urgente, e urgência
+ * não pode estar a dois toques de distância.
+ */
+function MenuDeAcoes({
+  podeTemplate, podeAtalhos, bloqueado, anexos, onTemplate, onAtalhos,
+}: {
+  podeTemplate: boolean
+  podeAtalhos:  boolean
+  bloqueado:    boolean
+  anexos:       ReturnType<typeof useAnexos>
+  onTemplate:   () => void
+  onAtalhos:    () => void
+}) {
+  const [aberto, setAberto] = useState(false)
+
+  const botao: React.CSSProperties = {
+    flexShrink: 0, alignSelf: 'flex-end',
+    height: 36, width: 36, borderRadius: 9,
+    alignItems: 'center', justifyContent: 'center',
+    border: '1.5px solid var(--border)', background: 'var(--bg-app)',
+    color: 'var(--text-muted)', cursor: 'pointer',
+  }
+
+  if (anexos.gravando) {
+    return (
+      <button
+        type="button"
+        className="show-mobile"
+        onClick={anexos.alternarGravacao}
+        title="Parar gravação"
+        style={{ ...botao, borderColor: '#dc2626', background: '#fef2f2', color: '#dc2626' }}
+      >
+        <Square size={14} />
+      </button>
+    )
+  }
+
+  const itens: { rotulo: string; icone: React.ReactNode; acao: () => void }[] = [
+    { rotulo: 'Anexar arquivo', icone: <Paperclip size={14} />, acao: anexos.abrirSeletor },
+    { rotulo: 'Gravar áudio',   icone: <Mic size={14} />,       acao: anexos.alternarGravacao },
+  ]
+  if (podeAtalhos)  itens.push({ rotulo: 'Resposta rápida', icone: <Zap size={14} />,      acao: onAtalhos })
+  if (podeTemplate) itens.push({ rotulo: 'Template',        icone: <FileText size={14} />, acao: onTemplate })
+
+  return (
+    <div className="show-mobile" style={{ position: 'relative', alignSelf: 'flex-end' }}>
+      <button
+        type="button"
+        onClick={() => setAberto(a => !a)}
+        disabled={bloqueado}
+        title="Mais ações"
+        style={{ ...botao, display: 'flex', opacity: bloqueado ? 0.5 : 1 }}
+      >
+        <Plus size={17} />
+      </button>
+
+      {aberto && !bloqueado && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setAberto(false)} />
+          <div style={{
+            position: 'absolute', bottom: 44, left: 0, zIndex: 41, width: 186,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: 12, padding: 6,
+            boxShadow: '0 8px 28px -10px rgba(34,22,25,.25)',
+          }}>
+            {itens.map(i => (
+              <button
+                key={i.rotulo}
+                type="button"
+                onClick={() => { setAberto(false); i.acao() }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                  padding: '9px 8px', borderRadius: 8, border: 'none',
+                  background: 'transparent', cursor: 'pointer',
+                  fontSize: 13, color: 'var(--text)', textAlign: 'left',
+                }}
+              >
+                <span style={{ color: 'var(--text-muted)', display: 'flex' }}>{i.icone}</span>
+                {i.rotulo}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -1191,7 +1288,7 @@ export function CRMInbox({
         </div>
 
         {/* -- Right panel: thread -- */}
-        <div className="inbox-thread" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <div className="inbox-thread" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, minHeight: 0 }}>
           {!selectedConv ? (
             /* Empty state */
             <div style={{
@@ -1319,8 +1416,8 @@ export function CRMInbox({
               </div>
 
               {/* Messages area */}
-              <div style={{
-                flex: 1, overflowY: 'auto',
+              <div className="inbox-mensagens" style={{
+                flex: 1, minHeight: 0, overflowY: 'auto',
                 display: 'flex', flexDirection: 'column', gap: 2,
                 padding: '16px 0',
                 background: 'var(--bg-app)',
@@ -1477,11 +1574,24 @@ export function CRMInbox({
                   display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0,
                   background: 'var(--surface)',
                 }}>
+                  {/* No celular, tudo isto vira um botão só: quatro ícones de
+                      36px comem metade da largura, e o que resta é o campo de
+                      escrever — que é o que importa ali. No desktop cada ação
+                      continua a um clique de distância. */}
+                  <MenuDeAcoes
+                    podeTemplate={podeTemplate}
+                    podeAtalhos={canEdit}
+                    bloqueado={bloqueado}
+                    anexos={anexos}
+                    onTemplate={() => setShowTemplates(true)}
+                    onAtalhos={() => { setBuscaAtalho(''); setShowAtalhos(true) }}
+                  />
+
                   {/* Template a qualquer momento, não só quando a janela fecha:
                       lembrete e retorno são mensagem padronizada que a recepção
                       manda o dia inteiro, dentro do prazo ou fora dele. */}
                   {podeTemplate && (
-                    <button
+                    <button className="hide-mobile"
                       type="button"
                       onClick={() => setShowTemplates(true)}
                       title="Enviar um template aprovado"
@@ -1496,9 +1606,9 @@ export function CRMInbox({
                       <FileText size={15} />
                     </button>
                   )}
-                  <BotoesDeAnexo a={anexos} disabled={bloqueado} />
+                  <span className="hide-mobile" style={{ display: "contents" }}><BotoesDeAnexo a={anexos} disabled={bloqueado} /></span>
                   {canEdit && (
-                    <button
+                    <button className="hide-mobile"
                       type="button"
                       onClick={() => { setBuscaAtalho(''); setShowAtalhos(true) }}
                       title="Respostas rápidas (ou digite / no campo)"

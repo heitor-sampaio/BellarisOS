@@ -463,9 +463,22 @@
   .inbox-thread { display: none !important; }
   .inbox-painel { display: none !important; }
 
-  /* Conversa aberta: a lista sai de cena e ela assume. */
+  /* Conversa aberta: a lista sai de cena e ela assume a tela.
+     `min-height: 0` na coluna é o que faz cabeçalho e campo de escrever ficarem
+     parados enquanto só as mensagens rolam: sem ele um item flex nunca encolhe
+     abaixo do conteúdo, a área de mensagens cresce até o tamanho do histórico e
+     a rolagem passa a ser da página inteira — levando o cabeçalho junto. */
   .inbox-root[data-aberta='1'] .inbox-lista  { display: none !important; }
-  .inbox-root[data-aberta='1'] .inbox-thread { display: flex !important; }
+  .inbox-root[data-aberta='1'] .inbox-thread {
+    display: flex !important;
+    min-height: 0;
+    height: 100%;
+  }
+  .inbox-root .inbox-mensagens {
+    min-height: 0;
+    overscroll-behavior: contain;   /* rolar a conversa não arrasta a página */
+    -webkit-overflow-scrolling: touch;
+  }
 
   /* Cada pixel de largura é da mensagem: as margens generosas do desktop
      encolhem, senão a bolha fica estreita e o texto quebra a cada três
