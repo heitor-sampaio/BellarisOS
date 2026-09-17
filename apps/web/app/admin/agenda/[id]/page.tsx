@@ -22,16 +22,19 @@ export default async function AdminAppointmentSessionPage({
   const { id } = await params
   const ctx    = await getTenantContext()
 
+  // `appointments` NÃO tem `tenant_id` — o recorte de rede é pela filial. Com um
+  // `.eq('tenant_id', …)` aqui a consulta falhava e o `maybeSingle()` devolvia
+  // nulo: toda a tela virava 404, sem erro à vista.
   const admin = createAdminClient()
-  const { data: appt } = await admin
+  const { data: appt, error } = await admin
     .from('appointments')
-    .select('branch_id, branches!branch_id(slug)')
+    .select('branch_id, branches!branch_id(slug, tenant_id)')
     .eq('id', id)
-    .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
+  if (error) throw new Error(`Falha ao carregar o atendimento: ${error.message}`)
 
-  const branch = appt?.branches as unknown as { slug: string } | null
-  if (!appt?.branch_id || !branch?.slug) notFound()
+  const branch = appt?.branches as unknown as { slug: string; tenant_id: string } | null
+  if (!appt?.branch_id || !branch?.slug || branch.tenant_id !== ctx.tenantId) notFound()
 
   return <SessaoDeAtendimento branchId={appt.branch_id as string} slug={branch.slug} id={id} />
 }

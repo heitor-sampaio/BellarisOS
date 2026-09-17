@@ -216,7 +216,9 @@ export function AdminFinancialView({
             Financeiro da Rede
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 3 }}>
-            {periodLabel} · {branchStats.length} filial{branchStats.length !== 1 ? 'is' : ''}
+            {periodLabel} · {statDaUnidade
+              ? statDaUnidade.name
+              : `${branchStats.length} filial${branchStats.length !== 1 ? 'is' : ''}`}
           </p>
         </div>
 

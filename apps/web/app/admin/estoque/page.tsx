@@ -14,7 +14,7 @@ export default async function AdminEstoquePage({
 }: {
   searchParams: Promise<{ unidade?: string }>
 }) {
-  const { unidade } = await searchParams
+  const { unidade: unidadeParam } = await searchParams
   const ctx = await getTenantContext()
   assertPermission(ctx, 'stock', 'VIEW')
   const canEdit = ctx.permissions.stock === 'MANAGE'
@@ -97,6 +97,18 @@ export default async function AdminEstoquePage({
   const categories = categoriesRaw ?? []
   const productIds = products.map(p => p.id)
 
+  // `?unidade=` (id ou slug) recorta a tela para uma filial. Os KPIs seguem o
+  // recorte: com a tabela filtrada em Centro e o topo somando a rede, os dois
+  // blocos diriam números diferentes sobre a mesma tela.
+  const unidade   = branches.find(b => b.id === unidadeParam || b.slug === unidadeParam) ?? null
+  const unidadeId = unidade?.id ?? ''
+
+  /** Saldo do produto na unidade recortada — ou na rede, quando não há. */
+  const saldoDe = (p: { totalStock: number; branches: { branchId: string; currentStock: number }[] }) =>
+    unidadeId
+      ? p.branches.filter(b => b.branchId === unidadeId).reduce((s, b) => s + b.currentStock, 0)
+      : p.totalStock
+
   // Segunda rodada: movimentos e lotes (dependem dos product IDs)
   const now       = new Date()
   const in30Days  = addDaysTZ(now, 30)
@@ -108,12 +120,20 @@ export default async function AdminEstoquePage({
         // tela da filial. Antes a rede somava QUALQUER saída dos últimos 30
         // dias — incluindo transferência entre unidades da própria rede, que
         // não é consumo — e por isso a soma das filiais nunca fechava com ela.
-        admin
-          .from('stock_movements')
-          .select('product_id, quantity, unit_cost')
-          .in('product_id', productIds)
-          .eq('type', 'PROCEDURE_USAGE')
-          .gte('created_at', monthStart.toISOString()),
+        (unidadeId
+          ? admin
+              .from('stock_movements')
+              .select('product_id, quantity, unit_cost')
+              .in('product_id', productIds)
+              .eq('type', 'PROCEDURE_USAGE')
+              .eq('branch_id', unidadeId)
+              .gte('created_at', monthStart.toISOString())
+          : admin
+              .from('stock_movements')
+              .select('product_id, quantity, unit_cost')
+              .in('product_id', productIds)
+              .eq('type', 'PROCEDURE_USAGE')
+              .gte('created_at', monthStart.toISOString())),
 
         // Lotes com saldo vencendo em até 30 dias (inclui os já vencidos)
         admin
@@ -127,7 +147,7 @@ export default async function AdminEstoquePage({
 
   // -- KPIs ------------------------------------------------------------
   const valorEstoque = products.reduce(
-    (sum, p) => sum + p.costPrice * p.totalStock,
+    (sum, p) => sum + p.costPrice * saldoDe(p),
     0,
   )
 
@@ -138,13 +158,19 @@ export default async function AdminEstoquePage({
     0,
   )
 
+  // Com uma unidade recortada, só o saldo dela conta — um produto zerado no
+  // Centro e cheio no Jardins é problema de quem opera o Centro.
+  const saldosVisiveis = (p: (typeof products)[number]) =>
+    unidadeId ? p.branches.filter(b => b.branchId === unidadeId) : p.branches
+
   const abaixoMinimo = products.filter(p =>
-    p.branches.some(b => b.minStock > 0 && b.currentStock <= b.minStock),
+    saldosVisiveis(p).some(b => b.minStock > 0 && b.currentStock <= b.minStock),
   ).length
 
-  const semEstoque = products.filter(p =>
-    p.branches.length > 0 && p.branches.every(b => b.currentStock === 0),
-  ).length
+  const semEstoque = products.filter(p => {
+    const saldos = saldosVisiveis(p)
+    return saldos.length > 0 && saldos.every(b => b.currentStock === 0)
+  }).length
 
   // Conta lotes, não produtos distintos.
   const validadeProxima = (batchesRaw ?? []).length
@@ -161,7 +187,9 @@ export default async function AdminEstoquePage({
             Estoque
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            Visão consolidada da rede · {branches.length} filial{branches.length !== 1 ? 'is' : ''}
+            {unidade
+              ? unidade.name
+              : `Visão consolidada da rede · ${branches.length} filial${branches.length !== 1 ? 'is' : ''}`}
           </p>
         </div>
 
@@ -260,7 +288,7 @@ export default async function AdminEstoquePage({
         categories={stockCategories}
         productCategories={categories as { id: string; name: string }[]}
         suppliers={suppliers}
-        unidadeInicial={branches.find(b => b.id === unidade || b.slug === unidade)?.id ?? ""}
+        unidadeInicial={unidadeId}
         readOnly={!canEdit}
       />
     </div>
