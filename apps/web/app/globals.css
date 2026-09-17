@@ -471,7 +471,21 @@
      encolhem, senão a bolha fica estreita e o texto quebra a cada três
      palavras. */
   .inbox-root .bolha-linha { padding-left: 10px !important; padding-right: 10px !important; }
-  .inbox-root .inbox-composer { padding-left: 10px !important; padding-right: 10px !important; }
+
+  /* O campo de escrever é a última coisa da tela, então é ele que encosta na
+     barra de gestos do celular. A área segura entra AQUI porque a página do
+     inbox cancela o padding do layout para ocupar a tela inteira — e cancelou
+     junto o respiro que o resto do sistema tem de graça. */
+  .inbox-root .inbox-composer {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Mesmo motivo: encerrada, a conversa mostra um aviso no lugar do campo. */
+  .inbox-root .inbox-encerrada {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
 
   /* O card do contato vira folha sobre a conversa, não terceira coluna. */
   .inbox-root[data-painel='1'] .inbox-painel {
@@ -482,7 +496,13 @@
     width: 100% !important;
     border-left: none !important;
     overflow-y: auto;
+    /* Rolagem que termina na barra de gestos esconde o fim do card. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+
+  /* A lista também termina na borda de baixo: sem isto, a última conversa fica
+     debaixo da barra do sistema e parece que a lista acabou antes. */
+  .inbox-root .inbox-lista { padding-bottom: env(safe-area-inset-bottom, 0px); }
 }
 
 /* -- Visibilidade por breakpoint -------------------------- */

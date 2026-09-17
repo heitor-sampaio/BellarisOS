@@ -1540,7 +1540,7 @@ export function CRMInbox({
                   </button>
                 </div>
               ) : (
-                <div style={{
+                <div className="inbox-encerrada" style={{
                   padding: '12px 16px', borderTop: '1px solid var(--hairline)',
                   textAlign: 'center', fontSize: 12, color: 'var(--text-faint)',
                   background: 'var(--bg-app)',

@@ -67,7 +67,11 @@ export default async function AdminInboxPage({
     <div style={{
       margin: 'calc(var(--content-pad-y) * -1) calc(var(--content-pad-x) * -1)',
       marginBottom: 'calc((var(--content-pad-y) + env(safe-area-inset-bottom, 0px)) * -1)',
+      // `dvh` e não `vh`: no celular a barra de endereço entra e sai, e `100vh`
+      // é sempre a altura MÁXIMA — a diferença vira conteúdo escondido atrás da
+      // barra do sistema. O `vh` fica como reserva para navegador sem `dvh`.
       height: 'calc(100vh - var(--topbar-h))',
+      maxHeight: 'calc(100dvh - var(--topbar-h))',
       display: 'flex', flexDirection: 'column', minHeight: 0,
     }}>
       <RealtimeRefresher tables={['leads', 'conversations']} />
