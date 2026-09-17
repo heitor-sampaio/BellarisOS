@@ -732,7 +732,7 @@ export function AdminDashboardView({
                       </p>
                     </div>
                     <a
-                      href={`/${p.branchSlug}/checkout/${p.id}`}
+                      href={`/admin/checkout/${p.id}`}
                       style={{ fontSize: 11, fontWeight: 700, color: '#d97706', textDecoration: 'none', whiteSpace: 'nowrap' }}
                     >
                       Checkout →

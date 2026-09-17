@@ -1,5 +1,5 @@
 import { subDays } from 'date-fns'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedNetworkClients, getCachedNetworkCompletedAppointments, getCachedNetworkBranches } from '@/lib/cached-queries'
@@ -51,7 +51,9 @@ export default async function AdminClientsLayout({
           clients={clients}
           basePath="/admin/clients"
           totalActive={totalActive}
-          newClientHref={null}
+          // A rede passa a cadastrar pela própria rede: antes o botão era
+          // escondido aqui e só existia dentro do portal de uma unidade.
+          newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
           availableBranches={branches}
         />
       }

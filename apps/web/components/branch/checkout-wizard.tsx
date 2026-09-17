@@ -1,11 +1,12 @@
 ﻿'use client'
 
 import { useState, useTransition, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Check, ChevronRight, ChevronLeft, User, FileText, CreditCard, CalendarCheck, Package, Stethoscope, Printer, MapPin, Clock } from 'lucide-react'
 import { createCheckoutConsentTerms, checkoutTreatmentPlan, cancelCheckout } from '@/actions/treatment-plans'
 import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/treatment-plans'
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
+import { rotaCliente } from '@/lib/rotas'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
@@ -78,6 +79,7 @@ const STEPS = [
 
 export function CheckoutWizard({ plan, slug }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
   const total  = plan.total
 
   const [step, setStep] = useState(0)
@@ -203,7 +205,7 @@ export function CheckoutWizard({ plan, slug }: Props) {
     startSubmit(async () => {
       const result = await checkoutTreatmentPlan(plan.id, paymentMethod, schedules, slug)
       if (result.error) { setError(result.error); return }
-      router.push(`/${slug}/clients/${plan.clientId}`)
+      router.push(rotaCliente(pathname, slug, plan.clientId))
     })
   }
 
@@ -211,7 +213,7 @@ export function CheckoutWizard({ plan, slug }: Props) {
     startCancel(async () => {
       const result = await cancelCheckout(plan.id, cancelReason, slug)
       if (result.error) { setError(result.error); setShowCancel(false); return }
-      router.push(`/${slug}/clients/${plan.clientId}`)
+      router.push(rotaCliente(pathname, slug, plan.clientId))
     })
   }
 
