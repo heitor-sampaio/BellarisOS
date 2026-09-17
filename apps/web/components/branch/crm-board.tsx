@@ -17,6 +17,7 @@ import {
   AWAITING_THRESHOLDS, STALE_THRESHOLDS, formatDurationShort,
 } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
+import { FunnelSelect } from '@/components/shared/funnel-select'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
 
 // --- Filtros e ordenação -----------------------------------------
@@ -36,12 +37,16 @@ type SortOrder = 'newest' | 'oldest' | 'name_asc' | 'name_desc'
 const DEFAULT_FILTERS: FiltersState = { sources: [], tags: [], owners: [], procedureIds: [], situation: 'all', period: 'all' }
 
 function FiltersBar({
-  leads, filters, sort,
+  leads, filters, sort, funnels, funnelId,
   onFiltersChange, onSortChange, onClear,
 }: {
   leads:           Lead[]
   filters:         FiltersState
   sort:            SortOrder
+  /** O funil entra na MESMA barra: escolher o quadro e filtrá-lo são o mesmo
+      gesto para quem usa, e duas linhas soltas faziam parecer dois assuntos. */
+  funnels:         Pick<CRMFunnel, 'id' | 'name'>[]
+  funnelId:        string
   onFiltersChange: (f: FiltersState) => void
   onSortChange:    (s: SortOrder) => void
   onClear:         () => void
@@ -144,6 +149,16 @@ function FiltersBar({
       display: 'flex', alignItems: 'center', gap: 10,
       flexWrap: 'wrap', padding: '10px 0 4px',
     }}>
+      {/* O funil primeiro: ele decide QUAL quadro se está olhando, enquanto o
+          resto filtra o que já está nele. O divisor marca essa diferença — sem
+          ele, "Vendas" pareceria mais um filtro entre outros. */}
+      {funnels.length > 1 && (
+        <>
+          <FunnelSelect funnels={funnels} activeId={funnelId} />
+          <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
+        </>
+      )}
+
       {/* Origem, tags, dono e procedimento como SELETORES, não como chips.
           Cada um despejava todas as opções na barra: numa rede com trinta tags,
           a barra de filtros ficava mais alta que o quadro, e no celular virava
@@ -1018,6 +1033,8 @@ export function CRMBoard({
         leads={leads}
         filters={filters}
         sort={sort}
+        funnels={funnels}
+        funnelId={funnelId}
         onFiltersChange={setFilters}
         onSortChange={setSort}
         onClear={() => { setFilters(DEFAULT_FILTERS); setSort('newest') }}

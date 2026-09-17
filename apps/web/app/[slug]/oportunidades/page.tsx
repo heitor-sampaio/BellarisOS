@@ -5,7 +5,6 @@ import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { funnelStats } from '@/lib/crm'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
-import { FunnelSelect } from '@/components/shared/funnel-select'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { UserPlus } from 'lucide-react'
@@ -136,7 +135,7 @@ export default async function BranchOportunidadesPage({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <RealtimeRefresher tables={['leads', 'crm_stages', 'crm_funnels']} />
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
             Oportunidades
@@ -178,7 +177,6 @@ export default async function BranchOportunidadesPage({
         </div>
       </div>
 
-      <FunnelSelect funnels={ativos} activeId={selecionado?.id ?? ''} />
 
       {/* Board */}
       <CRMBoard

@@ -7,7 +7,6 @@ import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
-import { FunnelSelect } from '@/components/shared/funnel-select'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { UserPlus } from 'lucide-react'
 
@@ -167,7 +166,6 @@ export default async function AdminOportunidadesPage({
         </div>
       ) : (
         <>
-          <FunnelSelect funnels={ativos} activeId={selecionado?.id ?? ''} />
           <CRMBoard
             initialLeads={leads}
             stages={stages}
