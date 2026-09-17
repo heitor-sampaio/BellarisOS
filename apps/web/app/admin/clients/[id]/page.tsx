@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
+import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ProfileTransaction, ProfileInternalCredit, ClientHistoryEvent } from '@/components/branch/client-profile'
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
@@ -377,6 +378,10 @@ export default async function AdminClientProfilePage({
 
   const clientHistory = history.sort((a, b) => b.date.localeCompare(a.date))
 
+  // Procedimentos e insumos do editor de plano — a aba Planejamento monta o
+  // plano do cliente sem depender de nenhum atendimento.
+  const planoProcs = await procedimentosParaPlano(ctx.tenantId!)
+
   // Negociacoes desta pessoa: ser cliente nao encerra o funil -- reativacao e
   // abrir oportunidade nova para quem ja comprou.
   const oportunidades = await oportunidadesDoCliente(ctx.tenantId!, client.id)
@@ -403,7 +408,10 @@ export default async function AdminClientProfilePage({
         branches={(branchesRaw ?? []) as { id: string; name: string }[]}
         currentBranchId={branchId}
         slug={slug}
-        canManageProcedures={can(ctx, 'procedures', 'MANAGE')}
+        canManageProcedures={can(ctx, 'medical_records', 'MANAGE')}
+        planProcedures={planoProcs.procedures}
+        planProducts={planoProcs.products}
+        podeReceber={podeReceber(ctx)}
         isNetworkWide={ctx.branchId === null}
         clientHistory={clientHistory}
         opportunities={oportunidades}

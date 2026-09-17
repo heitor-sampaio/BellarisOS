@@ -97,6 +97,11 @@ interface Props {
   servicePackages?:     TreatmentPackage[]
   procedureProductsMap?: Record<string, unknown[]>
   onPlanChange?:        (items: SerializedPlanItem[], notes: string) => void
+  /**
+   * Modo planejamento do cliente: o plano já existe e não depende de
+   * atendimento, então salvar é por planId — quem hospeda decide como.
+   */
+  onSalvarPorPlano?:    (sessions: PlanSessionInput[], notes: string) => Promise<void>
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -399,7 +404,7 @@ function SessionCard({
 // -- Componente principal ------------------------------------------------------
 
 export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(function TreatmentPlanEditor({
-  appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [],
+  appointmentId, slug, procedures, existingPlan, hideActions, availableProducts = [], onSalvarPorPlano,
 }, ref) {
   const [sessions,  setSessions]  = useState<EditorSession[]>(() => fromExisting(existingPlan))
   const [notes,     setNotes]     = useState(existingPlan?.notes ?? '')
@@ -693,8 +698,23 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
           />
         </div>
 
-        {/* Ações */}
-        {!hideActions && (
+        {/* Ações.
+            `onSalvarPorPlano` é o modo "planejamento do cliente": o plano já
+            existe e não depende de atendimento nenhum, então salvar é por
+            planId. As demais ações ficam com quem hospeda o editor. */}
+        {onSalvarPorPlano ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end' }}>
+            <button type="button" disabled={isPending}
+              onClick={() => startTransition(async () => {
+                setMsg(null)
+                await onSalvarPorPlano(toActionSessions(), notes)
+                setMsg('Plano salvo.')
+              })}
+              className="btn-primary" style={{ justifyContent: 'center' }}>
+              <Save size={13} /> {isPending ? 'Salvando…' : 'Salvar plano'}
+            </button>
+          </div>
+        ) : !hideActions && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end' }}>
             <button type="button" onClick={handleSave} disabled={isPending}
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 13, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>

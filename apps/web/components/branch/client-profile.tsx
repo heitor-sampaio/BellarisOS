@@ -14,6 +14,7 @@ import { AnamnesisTab, type GeneralAnamnesis } from './anamnesis-tab'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { LeadTimeline } from './lead-timeline'
+import { PlanejamentoTratamento } from '@/components/branch/planejamento-tratamento'
 import { rotaAgenda, rotaClientes } from '@/lib/rotas'
 import { CLIENT_TAGS, isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
 import { format, isSameDay, subDays } from 'date-fns'
@@ -159,6 +160,12 @@ interface Props {
   canManageProcedures:   boolean
   isNetworkWide:         boolean
   clientHistory:         ClientHistoryEvent[]
+  /** Procedimentos que podem entrar num plano de tratamento (sem os de avaliação). */
+  planProcedures?:       { id: string; name: string; category: string; price: number; durationMin: number; products?: { productId: string; name: string; unit: string; quantity: number }[] }[]
+  /** Insumos disponíveis, para o editor do plano. */
+  planProducts?:         { id: string; name: string; unit: string }[]
+  /** Pode receber: habilita fechar o plano ali mesmo. */
+  podeReceber?:          boolean
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
 }
@@ -272,7 +279,7 @@ const STATUS_LABEL: Record<string, string> = {
   NO_SHOW:     'Não compareceu',
 }
 
-type TabKey = 'visao' | 'historico' | 'oportunidades' | 'fichas' | 'financeiro' | 'documentos' | 'dados'
+type TabKey = 'visao' | 'historico' | 'oportunidades' | 'planejamento' | 'fichas' | 'financeiro' | 'documentos' | 'dados'
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'visao',      label: 'Visão geral' },
   { key: 'historico',  label: 'Histórico' },
@@ -280,6 +287,9 @@ const TABS: { key: TabKey; label: string }[] = [
   // pagou) e a outra a NEGOCIAÇÃO (o que foi proposto, ganho, perdido). Ser
   // cliente não encerra a segunda — reativação é negociar com quem já comprou.
   { key: 'oportunidades', label: 'Oportunidades' },
+  // O plano de tratamento é do cliente: vários ao longo do tempo, criados
+  // aqui ou durante um atendimento.
+  { key: 'planejamento', label: 'Planejamento' },
   { key: 'fichas',     label: 'Fichas' },
   { key: 'financeiro', label: 'Financeiro' },
   { key: 'documentos', label: 'Documentos' },
@@ -967,6 +977,7 @@ export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments,
   loyaltyBalance, activePackage, sessionNotes,
   transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clientHistory, opportunities = [],
+  planProcedures = [], planProducts = [], podeReceber = false,
 }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -1301,6 +1312,20 @@ export function ClientProfile({
       )}
 
       {/* -- Tab: Oportunidades ---------------------------------------- */}
+      {tab === 'planejamento' && (
+        <div className="card" style={{ padding: '18px 20px' }}>
+          <PlanejamentoTratamento
+            clientId={client.id}
+            branchId={currentBranchId || branchId}
+            slug={slug}
+            procedures={planProcedures}
+            availableProducts={planProducts}
+            podeEditar={canManageProcedures}
+            podeReceber={podeReceber}
+          />
+        </div>
+      )}
+
       {tab === 'oportunidades' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

@@ -72,6 +72,63 @@ export interface AnamnesisData {
   observations:              string
 }
 
+/**
+ * Regrava as sessões de um plano.
+ *
+ * ⚠️ Não é export: todo export de arquivo `'use server'` vira endpoint público,
+ * e esta função não autoriza nada — quem chama já conferiu.
+ */
+async function gravarSessoes(
+  admin: ReturnType<typeof createAdminClient>,
+  planId: string,
+  sessions: PlanSessionInput[],
+): Promise<{ error?: string }> {
+  // Apaga as antigas (cascade leva os procedimentos junto)
+  await admin.from('treatment_plan_sessions').delete().eq('plan_id', planId)
+
+  for (let i = 0; i < sessions.length; i++) {
+    const sess = sessions[i]!
+    const { data: newSess, error: sessErr } = await admin
+      .from('treatment_plan_sessions')
+      .insert({ plan_id: planId, sort_order: i })
+      .select('id')
+      .single()
+    if (sessErr || !newSess) return { error: `Erro ao salvar sessão ${i + 1}: ${sessErr?.message}` }
+
+    if (sess.procedures.length > 0) {
+      const { error } = await admin.from('treatment_plan_session_procedures').insert(
+        sess.procedures.map((p, j) => ({
+          session_id:   newSess.id,
+          procedure_id: p.procedureId,
+          price:        p.price,
+          sort_order:   p.sortOrder ?? j,
+          products:     (p.products ?? []).map(pr => ({
+            product_id: pr.productId, name: pr.name, unit: pr.unit, quantity: pr.quantity,
+          })),
+        })),
+      )
+      if (error) return { error: `Erro ao salvar os procedimentos da sessão ${i + 1}: ${error.message}` }
+    }
+  }
+  return {}
+}
+
+/** Confere que o plano é do tenant de quem chama e devolve o essencial dele. */
+async function planoDoTenant(
+  admin: ReturnType<typeof createAdminClient>,
+  planId: string,
+  tenantId: string,
+) {
+  const { data } = await admin
+    .from('treatment_plans')
+    .select('id, status, client_id, branch_id, evaluation_appointment_id, branches!branch_id(slug, tenant_id)')
+    .eq('id', planId)
+    .maybeSingle()
+  const branch = data?.branches as unknown as { slug: string; tenant_id: string } | null
+  if (!data || branch?.tenant_id !== tenantId) return null
+  return { ...data, slug: branch!.slug }
+}
+
 // -- Salvar rascunho do plano (profissional) -----------------------------------
 
 export async function saveTreatmentPlan(
@@ -79,7 +136,7 @@ export async function saveTreatmentPlan(
   sessions: PlanSessionInput[],
   notes: string,
   slug: string,
-) {
+): Promise<{ planId?: string; error?: string }> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
@@ -106,35 +163,194 @@ export async function saveTreatmentPlan(
     .single()
   if (planErr || !plan) return { error: `Erro ao salvar plano: ${planErr?.message}` }
 
-  // Apaga sessões antigas (cascade deleta os procedimentos)
-  await admin.from('treatment_plan_sessions').delete().eq('plan_id', plan.id)
-
-  for (let i = 0; i < sessions.length; i++) {
-    const sess = sessions[i]!
-    const { data: newSess, error: sessErr } = await admin
-      .from('treatment_plan_sessions')
-      .insert({ plan_id: plan.id, sort_order: i })
-      .select('id')
-      .single()
-    if (sessErr || !newSess) return { error: `Erro ao salvar sessão ${i + 1}: ${sessErr?.message}` }
-
-    if (sess.procedures.length > 0) {
-      await admin.from('treatment_plan_session_procedures').insert(
-        sess.procedures.map((p, j) => ({
-          session_id:   newSess.id,
-          procedure_id: p.procedureId,
-          price:        p.price,
-          sort_order:   p.sortOrder ?? j,
-          products:     (p.products ?? []).map(pr => ({
-            product_id: pr.productId, name: pr.name, unit: pr.unit, quantity: pr.quantity,
-          })),
-        })),
-      )
-    }
-  }
+  const res = await gravarSessoes(admin, plan.id as string, sessions)
+  if (res.error) return res
 
   revalidatePath(`/${slug}/agenda/${appointmentId}`)
-  return { planId: plan.id }
+  return { planId: plan.id as string }
+}
+
+// -- Planejamento do CLIENTE ---------------------------------------------------
+//
+// O plano nascia sempre dentro de uma consulta de avaliação e só existia ali:
+// não dava para planejar antes, revisar depois nem abrir durante outro
+// atendimento. `evaluation_appointment_id` continua, agora como "atendimento de
+// origem" — opcional.
+
+/** Planos de um cliente, do mais recente para o mais antigo. */
+export async function getPlanosDoCliente(clientId: string): Promise<{
+  planos: {
+    id: string; status: string; notes: string | null; criadoEm: string
+    total: number; sessoes: number; origemId: string | null
+  }[]
+}> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'VIEW')
+  const admin = createAdminClient()
+
+  const { data } = await admin
+    .from('treatment_plans')
+    .select(`
+      id, status, professional_notes, created_at, evaluation_appointment_id,
+      clients!inner(tenant_id),
+      treatment_plan_sessions(treatment_plan_session_procedures(price))
+    `)
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+
+  type RawSess = { treatment_plan_session_procedures: { price: number }[] }
+
+  const planos = (data ?? [])
+    .filter(p => (p.clients as unknown as { tenant_id: string } | null)?.tenant_id === ctx.tenantId)
+    .map(p => {
+      const sessoes = (p.treatment_plan_sessions as unknown as RawSess[]) ?? []
+      return {
+        id:       p.id as string,
+        status:   p.status as string,
+        notes:    (p.professional_notes as string | null) ?? null,
+        criadoEm: p.created_at as string,
+        sessoes:  sessoes.length,
+        total:    sessoes.reduce(
+          (s, sess) => s + (sess.treatment_plan_session_procedures ?? []).reduce((t, pr) => t + Number(pr.price), 0),
+          0,
+        ),
+        origemId: (p.evaluation_appointment_id as string | null) ?? null,
+      }
+    })
+
+  return { planos }
+}
+
+/**
+ * Abre um plano novo para o cliente.
+ *
+ * `appointmentId` é só a origem — de qual atendimento a conversa saiu. Sem ele o
+ * plano existe do mesmo jeito, que é o ponto: planejar não depende de ter uma
+ * consulta de avaliação marcada.
+ */
+export async function criarPlanoDoCliente(
+  clientId: string,
+  branchId: string,
+  appointmentId?: string | null,
+): Promise<{ planId?: string; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'medical_records', 'MANAGE')
+  const admin = createAdminClient()
+
+  const { data: cliente } = await admin
+    .from('clients')
+    .select('id, tenant_id, branch_id')
+    .eq('id', clientId)
+    .maybeSingle()
+  if (!cliente || cliente.tenant_id !== ctx.tenantId) return { error: 'Cliente não encontrado.' }
+
+  // A filial do plano é a de onde ele está sendo feito; sem ela, a de cadastro
+  // do cliente. É o que o checkout usa depois para o caixa e os agendamentos.
+  const filial = branchId || (cliente.branch_id as string | null)
+  if (!filial) return { error: 'Selecione a unidade do plano.' }
+
+  const { data, error } = await admin
+    .from('treatment_plans')
+    .insert({
+      client_id:                 clientId,
+      branch_id:                 filial,
+      professional_id:           ctx.internalUserId!,
+      evaluation_appointment_id: appointmentId ?? null,
+      status:                    'DRAFT',
+    })
+    .select('id')
+    .single()
+
+  if (error || !data) return { error: `Erro ao criar o plano: ${error?.message}` }
+  return { planId: data.id as string }
+}
+
+/** Um plano no formato que o editor entende. */
+export async function getPlanoParaEditar(planId: string): Promise<{
+  plano?: {
+    id: string; status: string; notes: string | null
+    sessions: { procedures: { procedureId: string; name: string; price: number; products?: { productId: string; name: string; unit: string; quantity: number }[] }[] }[]
+  }
+  error?: string
+}> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'VIEW')
+  const admin = createAdminClient()
+
+  const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
+  if (!plan) return { error: 'Plano não encontrado.' }
+
+  const { data } = await admin
+    .from('treatment_plans')
+    .select(`
+      id, status, professional_notes,
+      treatment_plan_sessions(sort_order, treatment_plan_session_procedures(procedure_id, price, sort_order, products, procedures(name)))
+    `)
+    .eq('id', planId)
+    .maybeSingle()
+  if (!data) return { error: 'Plano não encontrado.' }
+
+  type RawProd = { product_id: string; name: string; unit: string; quantity: number }
+  type RawProc = { procedure_id: string; price: number; sort_order: number; products: RawProd[]; procedures: { name: string } | null }
+  type RawSess = { sort_order: number; treatment_plan_session_procedures: RawProc[] }
+
+  const sessions = ((data.treatment_plan_sessions as unknown as RawSess[]) ?? [])
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map(s => ({
+      procedures: (s.treatment_plan_session_procedures ?? [])
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map(p => ({
+          procedureId: p.procedure_id,
+          name:        p.procedures?.name ?? '—',
+          price:       Number(p.price),
+          products:    (p.products ?? []).map(pr => ({
+            productId: pr.product_id, name: pr.name, unit: pr.unit, quantity: Number(pr.quantity),
+          })),
+        })),
+    }))
+
+  return {
+    plano: {
+      id:       data.id as string,
+      status:   data.status as string,
+      notes:    (data.professional_notes as string | null) ?? null,
+      sessions,
+    },
+  }
+}
+
+/** Salva sessões e observações de um plano que já existe. */
+export async function salvarPlanoDoCliente(
+  planId: string,
+  sessions: PlanSessionInput[],
+  notes: string,
+): Promise<{ error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'medical_records', 'MANAGE')
+  const admin = createAdminClient()
+
+  const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
+  if (!plan) return { error: 'Plano não encontrado.' }
+  if (plan.status === 'ACCEPTED' || plan.status === 'COMPLETED') {
+    return { error: 'Este plano já foi fechado e não pode mais ser alterado.' }
+  }
+
+  const { error } = await admin
+    .from('treatment_plans')
+    .update({ professional_notes: notes || null, updated_at: new Date().toISOString() })
+    .eq('id', planId)
+  if (error) return { error: error.message }
+
+  const res = await gravarSessoes(admin, planId, sessions)
+  if (res.error) return res
+
+  revalidatePath(`/${plan.slug}/clients/${plan.client_id}`)
+  revalidatePath(`/admin/clients/${plan.client_id}`)
+  if (plan.evaluation_appointment_id) {
+    revalidatePath(`/${plan.slug}/agenda/${plan.evaluation_appointment_id}`)
+    revalidatePath(`/admin/agenda/${plan.evaluation_appointment_id}`)
+  }
+  return {}
 }
 
 // -- Buscar sessões do plano (para checkout wizard) ----------------------------
@@ -530,7 +746,7 @@ export async function generateEvaluationPlan(
   revalidatePath(`/${slug}/agenda`)
   revalidatePath(`/${slug}/agenda/${appointmentId}`)
   revalidatePath(`/${slug}/checkout`)
-  return { planId: plan.id }
+  return { planId: plan.id as string }
 }
 
 // -- Assinar termo de consentimento digitalmente -------------------------------

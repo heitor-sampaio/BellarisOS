@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
-  XCircle, Clock, Lock, LockOpen, Send, Save, CreditCard,
+  XCircle, Clock, Lock, LockOpen, Send, Save, CreditCard, ClipboardList,
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -21,6 +21,7 @@ import {
 } from '@/actions/appointments'
 import { generateEvaluationPlan, getCheckoutPlan } from '@/actions/treatment-plans'
 import { CheckoutWizard } from '@/components/branch/checkout-wizard'
+import { PlanejamentoTratamento } from '@/components/branch/planejamento-tratamento'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import type { AnamnesisData } from '@/actions/treatment-plans'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
@@ -627,6 +628,7 @@ export function AppointmentSession({
 
   // Checkout aberto sobre a tela, quando quem atende também recebe.
   const [checkoutPlan, setCheckoutPlan] = useState<CheckoutPlan | null>(null)
+  const [planejamentoAberto, setPlanejamentoAberto] = useState(false)
 
   /** Total do plano — some os preços das sessões, como o checkout faz. */
   const totalDoPlano = (existingPlan?.sessions ?? []).reduce(
@@ -903,6 +905,44 @@ export function AppointmentSession({
 
   return (
     <>
+      {/* Planejamento do cliente aberto sobre o atendimento.
+          O plano é do CLIENTE, não deste atendimento: aqui ele só é aberto —
+          e o atendimento fica registrado como a origem de um plano novo. */}
+      {planejamentoAberto && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', zIndex: 100,
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            padding: '24px 16px', overflowY: 'auto',
+          }}
+          onClick={() => setPlanejamentoAberto(false)}
+        >
+          <div className="card" style={{ width: 760, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {client.name}
+                </p>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Planejamento de tratamento</h3>
+              </div>
+              <button type="button" onClick={() => setPlanejamentoAberto(false)} className="btn-ghost" style={{ padding: '6px 10px' }}>
+                Fechar
+              </button>
+            </div>
+            <PlanejamentoTratamento
+              clientId={client.id}
+              branchId={branchId}
+              slug={slug}
+              appointmentId={appointment.id}
+              procedures={treatmentProcedures}
+              availableProducts={availableProducts}
+              podeEditar={canEditRecords}
+              podeReceber={podeReceber}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Checkout sobre a tela do atendimento: o mesmo wizard da página, sem
           tirar quem atende de perto do cliente. */}
       {checkoutPlan && (
@@ -980,6 +1020,13 @@ export function AppointmentSession({
             )}
 
             {/* Check-in (SCHEDULED + canCheckin) */}
+            {/* O planejamento é do cliente e abre de qualquer atendimento —
+                não só da consulta de avaliação, como era antes. */}
+            <button type="button" onClick={() => setPlanejamentoAberto(true)} className="btn-ghost"
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', fontSize: 13 }}>
+              <ClipboardList size={14} /> Planejamento
+            </button>
+
             {status === 'SCHEDULED' && canCheckin && (
               <button type="button" onClick={handleCheckin} disabled={checkingIn}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
