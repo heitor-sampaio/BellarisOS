@@ -4,10 +4,11 @@ import {
   useRef, useCallback, useActionState, useEffect, useMemo,
   useState, forwardRef, useImperativeHandle,
 } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { X, UserPlus, CheckCircle2, Check, Plus, MessageSquare } from 'lucide-react'
 import { createLead, updateLead } from '@/actions/leads'
 import { openLeadConversation } from '@/actions/inbox'
+import { rotaInbox } from '@/lib/rotas'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { StageOptions } from './stage-options'
 import { LeadTimeline } from './lead-timeline'
@@ -91,6 +92,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const action    = isEdit ? updateLead : createLead
     const dialogRef = useRef<HTMLDialogElement>(null)
     const router    = useRouter()
+    const pathname  = usePathname()
 
     const [state, formAction, pending] = useActionState(action, undefined)
     const [phone,           setPhone]           = useState(existing?.phone ?? '')
@@ -158,9 +160,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [abrindoConversa, setAbrindoConversa] = useState(false)
     const [erroConversa,    setErroConversa]    = useState<string | null>(null)
 
-    /** Inbox do portal em que o modal está. */
-    const rotaInbox = !slug || slug === '__admin__' ? '/admin/inbox' : `/${slug}/inbox`
-
     async function irParaConversa() {
       if (!existing) return
       setErroConversa(null)
@@ -172,7 +171,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
         return
       }
       close()
-      router.push(`${rotaInbox}?c=${res.conversationId}`)
+      router.push(rotaInbox(pathname, slug, res.conversationId))
     }
 
     useImperativeHandle(ref, () => ({ open }), [open])

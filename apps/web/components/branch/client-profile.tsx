@@ -14,6 +14,7 @@ import { AnamnesisTab, type GeneralAnamnesis } from './anamnesis-tab'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { LeadTimeline } from './lead-timeline'
+import { rotaAgenda, rotaClientes } from '@/lib/rotas'
 import { CLIENT_TAGS, isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
 import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -969,16 +970,12 @@ export function ClientProfile({
 }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
-  /**
-   * Portal em que o perfil está aberto — não é a unidade do cliente.
-   *
-   * `slug` continua sendo a filial DELE, e é por ela que se chega ao
-   * atendimento (o detalhe só existe no portal da unidade). Já a volta para a
-   * lista e o botão de agendar seguem a superfície onde a pessoa está: mandar
-   * quem veio de /admin para /${slug}/… trocava o portal da rede pelo de uma
-   * unidade sem ninguém ter pedido.
+  /*
+   * `slug` é a filial DO CLIENTE, não o portal: serve às actions e ao que só
+   * existe na unidade. Para onde navegar quem decide é `lib/rotas`, pelo
+   * caminho atual — mandar quem veio de /admin para `/<unidade>/…` trocava o
+   * portal da rede pelo de uma unidade sem ninguém ter pedido.
    */
-  const noAdmin  = pathname.startsWith('/admin')
   const [tab, setTab] = useState<TabKey>('visao')
   const visibleTabs = TABS.filter(t => t.key !== 'fichas' || recordForms.length > 0)
   const [treatmentModalOpen, setTreatmentModalOpen] = useState(false)
@@ -993,7 +990,7 @@ export function ClientProfile({
           perfil ocupar a tela — sem isto não há caminho de volta a não ser o
           botão do navegador. */}
       <a
-        href={noAdmin ? '/admin/clients' : `/${slug}/clients`}
+        href={rotaClientes(pathname, slug)}
         className="show-mobile"
         style={{
           alignItems: 'center', gap: 5, alignSelf: 'flex-start',
@@ -1071,7 +1068,7 @@ export function ClientProfile({
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <button
               type="button"
-              onClick={() => router.push(noAdmin ? '/admin/agenda' : `/${slug}/agenda`)}
+              onClick={() => router.push(rotaAgenda(pathname, slug))}
               className="btn-primary"
             >
               + Agendar

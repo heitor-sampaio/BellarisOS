@@ -8,11 +8,15 @@ import { isStageOutcome, type StageOutcome } from '@/lib/crm'
 // Os tipos e o seed dos funis vivem em `lib/crm.ts` e `actions/crm-funnels.ts`:
 // arquivo `'use server'` só exporta função assíncrona.
 
-/** O portal da rede passa este sentinela no lugar do slug de uma unidade. */
-const ADMIN_SLUG = '__admin__'
-
+/**
+ * Revalida o quadro nos dois portais.
+ *
+ * `slug` é a unidade de onde veio a ação — vazio quando veio da rede, que não
+ * tem unidade corrente. Não existe mais sentinela: sem slug, só o caminho da
+ * rede é revalidado.
+ */
 function revalidarCRM(slug?: string | null) {
-  if (slug && slug !== ADMIN_SLUG) revalidatePath(`/${slug}/oportunidades`)
+  if (slug) revalidatePath(`/${slug}/oportunidades`)
   revalidatePath('/admin/oportunidades')
 }
 

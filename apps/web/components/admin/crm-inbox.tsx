@@ -629,7 +629,7 @@ interface CRMInboxProps {
   leads:                { id: string; name: string; phone?: string | null; branch_name?: string | null }[]
   canEdit:              boolean
   branches:             PanelBranch[]
-  /** Portal que renderiza: '__admin__' na rede, o slug na unidade. */
+  /** Unidade em que a caixa está aberta — vazio no portal da rede. */
   slug?:                string
   /** Canais que a rede realmente conectou — decide o aviso de integração. */
   canaisConectados?:    InboxChannel[]
@@ -707,7 +707,7 @@ function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
 
 export function CRMInbox({
   initialConversations, leads, canEdit, branches,
-  slug = '__admin__', initialSelectedId = null, canaisConectados = [],
+  slug = '', initialSelectedId = null, canaisConectados = [],
   provedorWhatsApp = null, telaCheia = false,
 }: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)

@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState, useTransition, useRef, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
+import { rotaCliente, rotaOportunidades } from '@/lib/rotas'
 import {
   UserCheck, ExternalLink, CalendarPlus, X, Check, Compass, Plus, ChevronDown, Package,
 } from 'lucide-react'
@@ -62,10 +64,17 @@ export function InboxLeadPanel({
   conversation:   Conversation
   canEdit:        boolean
   branches:       PanelBranch[]
-  /** Portal em que o painel está — revalidação e link de volta seguem daqui. */
+  /**
+   * Unidade em que o painel está — vazio no portal da rede.
+   *
+   * É a FILIAL, não o portal: serve ao `revalidatePath` das actions e ao padrão
+   * da unidade de cadastro. Para onde navegar, quem decide é `lib/rotas`, pelo
+   * caminho atual.
+   */
   slug:           string
   onLeadChanged?: () => void
 }) {
+  const pathname = usePathname()
   const [card,    setCard]    = useState<ConversationCard | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving,  startSave]  = useTransition()
@@ -244,7 +253,7 @@ export function InboxLeadPanel({
               // Direto na ficha, não na lista: quem clica aqui quer ESTE
               // cliente, e cair na lista obriga a procurá-lo de novo.
               <a
-                href={slug === '__admin__' ? `/admin/clients/${cliente.id}` : `/${slug}/clients/${cliente.id}`}
+                href={rotaCliente(pathname, slug, cliente.id)}
                 className="btn-ghost"
                 style={{ fontSize: 11, padding: '4px 7px', textDecoration: 'none' }}
                 title={`Abrir a ficha de ${cliente.name}`}
@@ -286,7 +295,7 @@ export function InboxLeadPanel({
             Oportunidades{card.abertas.length > 0 ? ` (${card.abertas.length})` : ''}
           </span>
           <a
-            href={slug === '__admin__' ? '/admin/oportunidades' : `/${slug}/oportunidades`}
+            href={rotaOportunidades(pathname, slug)}
             title="Ver no quadro"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--brand)' }}
           >
@@ -454,7 +463,7 @@ export function InboxLeadPanel({
                    o seletor abria na primeira unidade em ordem alfabética: quem
                    cadastrava pelo portal de uma unidade gravava o cliente em
                    outra sem perceber, e ele sumia da própria lista. No portal da
-                   filial a unidade atual é o padrão; no admin (`__admin__`) não
+                   filial a unidade atual é o padrão; no portal da rede não
                    há unidade corrente e o seletor segue como está. */
                 branchId={branches.find(b => b.slug === slug)?.id ?? ''}
                 slug={slug}

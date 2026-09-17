@@ -133,7 +133,7 @@ export default async function AdminOportunidadesPage({
           {canEdit && branches.length > 0 && (
             <>
               <CRMStageSettings
-                slug="__admin__"
+                slug=""
                 funnels={funnels}
                 stages={allStages}
                 activeFunnelId={selecionado?.id ?? ''}
@@ -175,7 +175,7 @@ export default async function AdminOportunidadesPage({
             unidades={branches}
             procedures={procedures}
             branchId=""
-            slug="__admin__"
+            slug=""
             networkMode
             branches={branches}
           />

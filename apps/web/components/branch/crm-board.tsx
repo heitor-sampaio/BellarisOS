@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState, useTransition, useRef, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Plus, ArrowRight, ArrowRightLeft, Trash2, Phone, Mail, X, AlertTriangle,
   MoreHorizontal, Compass, Tag as TagIcon, UserCog, Package,
@@ -10,6 +10,7 @@ import { differenceInDays } from 'date-fns'
 import { updateLeadStage, deleteLead } from '@/actions/leads'
 import { ClientForm } from './client-form'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
+import { rotaCliente } from '@/lib/rotas'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
 import {
   sourceStyle,
@@ -394,6 +395,7 @@ function LeadCard({
   const [deleting,   startDelete]  = useTransition()
   const [moving,     startMoving]  = useTransition()
   const router     = useRouter()
+  const pathname   = usePathname()
   const editRef    = useRef<CRMLeadModalHandle>(null)
   const confirmRef = useRef<HTMLDialogElement>(null)
   const moveRef    = useRef<HTMLDialogElement>(null)
@@ -897,7 +899,7 @@ function LeadCard({
               prefill={{ name: lead.name, phone: lead.phone ?? undefined, email: lead.email ?? undefined }}
               onSuccess={(clientId) => {
                 setConvertOpen(false)
-                if (clientId) router.push(`/${lead.branch_slug ?? slug}/clients/${clientId}`)
+                if (clientId) router.push(rotaCliente(pathname, lead.branch_slug ?? slug, clientId))
               }}
               showCancelButton
               onCancel={() => setConvertOpen(false)}

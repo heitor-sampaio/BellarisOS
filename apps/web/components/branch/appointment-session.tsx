@@ -27,6 +27,7 @@ import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle 
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
 import { saveProcedureAttendance } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
+import { rotaAgenda } from '@/lib/rotas'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 
@@ -583,7 +584,7 @@ export function AppointmentSession({
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
   // FILIAL dele, usado pelas actions; a volta tem de respeitar quem veio de
   // /admin, senão a rede é trocada pela unidade no meio do caminho.
-  const noAdmin  = usePathname().startsWith('/admin')
+  const pathname = usePathname()
 
   const [showCancel,    setShowCancel]    = useState(false)
   const [showFinish,    setShowFinish]    = useState(false)
@@ -860,7 +861,7 @@ export function AppointmentSession({
 
         {/* -- Top bar --------------------------------------------------- */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <Link href={noAdmin ? '/admin/agenda' : `/${slug}/agenda`} style={{ display: 'flex', alignItems: 'center', marginTop: 6, color: 'var(--text-faint)', textDecoration: 'none', flexShrink: 0 }}>
+          <Link href={rotaAgenda(pathname, slug)} style={{ display: 'flex', alignItems: 'center', marginTop: 6, color: 'var(--text-faint)', textDecoration: 'none', flexShrink: 0 }}>
             <ArrowLeft size={18} />
           </Link>
 

@@ -1,8 +1,9 @@
 'use client'
 
 import { useActionState, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { addClient, updateClient } from '@/actions/clients'
+import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { CLIENT_TAGS, isUnitTag, unitTagName } from '@estetica-os/utils'
@@ -77,7 +78,8 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const [document, setDocument] = useState(existingClient?.document ?? '')
   const [unitId, setUnitId] = useState(branchId || branches?.[0]?.id || '')
 
-  const router = useRouter()
+  const router   = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     if (!state?.success) return
@@ -85,7 +87,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
     if (onSuccess) {
       onSuccess(clientId)
     } else if (!isEdit && clientId) {
-      router.push(`/${slug}/clients/${clientId}`)
+      router.push(rotaCliente(pathname, slug, clientId))
     }
   }, [state?.success])
 
