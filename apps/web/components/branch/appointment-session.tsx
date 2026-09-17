@@ -628,6 +628,12 @@ export function AppointmentSession({
   // Checkout aberto sobre a tela, quando quem atende também recebe.
   const [checkoutPlan, setCheckoutPlan] = useState<CheckoutPlan | null>(null)
 
+  /** Total do plano — some os preços das sessões, como o checkout faz. */
+  const totalDoPlano = (existingPlan?.sessions ?? []).reduce(
+    (soma, s) => soma + s.procedures.reduce((t, p) => t + Number(p.price || 0), 0),
+    0,
+  )
+
   /**
    * Salva a avaliação inteira e decide o que fazer com o plano.
    *
@@ -1000,10 +1006,18 @@ export function AppointmentSession({
             )}
 
             {/* Confirmar pagamento (COMPLETED sem pagamento + canPayment) — oculto para sessões de plano */}
-            {status === 'COMPLETED' && !paymentTransaction && canPayment && !isPartOfPlan && (
+            {/* Atendimento sem preço não tem o que receber: o botão aparecia
+                mesmo em avaliação de R$ 0,00. E quando há plano fechado, o
+                rótulo diz de QUE valor se trata — o do plano já foi pago no
+                checkout, este é o do atendimento. */}
+            {status === 'COMPLETED' && !paymentTransaction && canPayment && !isPartOfPlan
+              && appointment.price > 0 && (
               <button type="button" onClick={() => setShowPayment(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 8px rgba(195,77,107,.3)' }}>
-                <CheckCircle2 size={14} /> Confirmar pagamento
+                <CheckCircle2 size={14} />
+                {appointment.isEvaluation
+                  ? `Confirmar pagamento da avaliação (${fmtBRL(appointment.price)})`
+                  : 'Confirmar pagamento'}
               </button>
             )}
 
@@ -1194,6 +1208,22 @@ export function AppointmentSession({
               const planGenerated = ['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')
               if (planGenerated) return (
                 <>
+                  {/* Plano já fechado: o que a tela precisa dizer é que a venda
+                      saiu, não convidar a fechar de novo. */}
+                  {existingPlan?.status === 'ACCEPTED' && (
+                    <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, background: '#f0faf4', borderColor: '#b8e8cc' }}>
+                      <CheckCircle2 size={18} style={{ color: '#2a8a5c', flexShrink: 0 }} />
+                      <div>
+                        <p style={{ fontSize: 13.5, fontWeight: 800, color: '#1f6b47' }}>
+                          Plano fechado · {fmtBRL(totalDoPlano)}
+                        </p>
+                        <p style={{ fontSize: 12, color: '#2a8a5c', marginTop: 2 }}>
+                          O pagamento do plano foi registrado no checkout.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Plano na fila e quem está na tela pode receber: fecha aqui,
                       sem ir até a lista da recepção. */}
                   {podeReceber && existingPlan?.status === 'PROPOSED' && (

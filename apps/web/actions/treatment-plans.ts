@@ -935,6 +935,16 @@ export async function checkoutTreatmentPlan(
   }
   revalidatePath('/admin/checkout')
   revalidatePath('/admin/dashboard')
+
+  // A tela do atendimento de origem também muda: o plano deixa de estar
+  // "aguardando checkout". Sem isto, fechar a venda ali mesmo não atualizava
+  // nada — a pessoa continuava vendo o convite para fechar o que acabara de
+  // fechar.
+  if (plan.evaluation_appointment_id) {
+    if (slug) revalidatePath(`/${slug}/agenda/${plan.evaluation_appointment_id}`)
+    revalidatePath(`/admin/agenda/${plan.evaluation_appointment_id}`)
+  }
+
   return { transactionId, newAppointmentId }
 }
 
