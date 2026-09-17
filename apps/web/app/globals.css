@@ -976,3 +976,34 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   animation: skeleton-pulse 1.6s ease-in-out infinite;
   border-radius: var(--radius-card-token);
 }
+
+/* -- Impressão -------------------------------------------------------------
+   Usado pelos termos do checkout: a folha leva só o que está dentro de
+   `.area-impressao`. Sem isto o "Imprimir" saía com menu lateral, topbar e
+   botões — por isso o passo de documentação nunca chegou a imprimir de
+   verdade e virou um botão que só destravava o seguinte. */
+@media print {
+  body:has(.area-impressao) .main-sidebar,
+  body:has(.area-impressao) header,
+  body:has(.area-impressao) .esconde-impressao {
+    display: none !important;
+  }
+
+  body:has(.area-impressao) main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .area-impressao .card {
+    border: none !important;
+    box-shadow: none !important;
+    /* Um termo por folha: o cliente assina cada um separadamente. */
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .area-impressao .card:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

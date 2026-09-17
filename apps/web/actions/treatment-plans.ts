@@ -555,6 +555,34 @@ export async function signConsentTerm(consentId: string, signatureDataUrl: strin
   return {}
 }
 
+/**
+ * Termo assinado em papel.
+ *
+ * O passo de documentação tinha um botão "Imprimir documentos" que não imprimia
+ * nada — só destravava o passo seguinte — e os termos ficavam PENDENTES para
+ * sempre no prontuário. Quem imprime e colhe a assinatura na folha registra por
+ * aqui; quem assina na tela usa `signConsentTerm`.
+ */
+export async function marcarTermoAssinadoEmPapel(consentId: string, slug: string) {
+  const ctx = await getTenantContext()
+  assertPodeReceber(ctx)
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('consent_terms')
+    .update({
+      status:     'SIGNED',
+      signed_at:  new Date().toISOString(),
+      signed_via: 'paper',
+    })
+    .eq('id', consentId)
+
+  if (error) return { error: error.message }
+
+  if (slug) revalidatePath(`/${slug}/checkout`)
+  return {}
+}
+
 // -- Criar termos de consentimento para o checkout -----------------------------
 
 export async function createCheckoutConsentTerms(

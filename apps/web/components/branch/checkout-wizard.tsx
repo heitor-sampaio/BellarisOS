@@ -3,7 +3,8 @@
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Check, ChevronRight, ChevronLeft, User, FileText, CreditCard, CalendarCheck, Package, Stethoscope, Printer, MapPin, Clock } from 'lucide-react'
-import { createCheckoutConsentTerms, checkoutTreatmentPlan, cancelCheckout } from '@/actions/treatment-plans'
+import { createCheckoutConsentTerms, checkoutTreatmentPlan, cancelCheckout, signConsentTerm, marcarTermoAssinadoEmPapel } from '@/actions/treatment-plans'
+import { SignaturePad } from '@/components/shared/signature-pad'
 import type { PagamentoDoPlano } from '@/actions/treatment-plans'
 import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/treatment-plans'
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
@@ -93,10 +94,37 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, onDone }: Props
 
   const [step, setStep] = useState(0)
 
-  // Documentação
+  // Documentação — por termo: 'web' (assinou na tela) ou 'paper' (imprimiu e
+  // confirmou). Enquanto não houver os dois, o passo não avança.
   const [terms,         setTerms]         = useState<ConsentTerm[] | null>(null)
-  const [printed,       setPrinted]       = useState(false)
+  const [assinaturas,   setAssinaturas]   = useState<Record<string, 'web' | 'paper'>>({})
+  const [assinandoNaTela, setAssinandoNaTela] = useState<string | null>(null)
   const [creatingTerms, startCreateTerms] = useTransition()
+
+  const termosResolvidos = (terms ?? []).length > 0
+    && (terms ?? []).every(t => assinaturas[t.id])
+
+  async function assinarNaTela(termId: string, dataUrl: string) {
+    const res = await signConsentTerm(termId, dataUrl, slug)
+    if (res?.error) { setError(res.error); return }
+    setAssinaturas(prev => ({ ...prev, [termId]: 'web' }))
+    setAssinandoNaTela(null)
+  }
+
+  /**
+   * Abre a impressão do navegador e registra que o termo foi para o papel.
+   *
+   * O `print()` é síncrono nos navegadores de mesa: quando volta, a caixa de
+   * impressão já foi resolvida. Confirmar aqui é assumir que a assinatura será
+   * colhida na folha — que é como a clínica já fazia, só que agora fica
+   * registrado no prontuário com `signed_via: 'paper'`.
+   */
+  async function imprimirEConfirmar(termId: string) {
+    window.print()
+    const res = await marcarTermoAssinadoEmPapel(termId, slug)
+    if (res?.error) { setError(res.error); return }
+    setAssinaturas(prev => ({ ...prev, [termId]: 'paper' }))
+  }
 
   // Pagamento — plano de milhares de reais raramente é à vista, então a forma
   // vem antes do método: à vista, entrada + parcelas, ou tudo a receber.
@@ -426,71 +454,96 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, onDone }: Props
     </div>
   )
 
-  // PASSO 1: Documentação (anamnese + contrato para imprimir e assinar fisicamente)
+  // PASSO 1: Documentação — cada termo sai daqui com um estado real: assinado na
+  // tela ou impresso e assinado em papel. Antes o botão "Imprimir documentos"
+  // não imprimia nada e os termos ficavam PENDENTES para sempre no prontuário.
   if (step === 1) return (
     <div>
       {progressBar}
 
-      {/* Documentos gerados */}
-      {(terms ?? []).map((term, i) => (
-        <div key={term.id} className="card" style={{ padding: '20px 24px', marginBottom: 16 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
-            {term.title}
-          </p>
-          <pre style={{ fontSize: 13, lineHeight: 1.8, color: 'var(--text-muted)', whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-            {term.content}
-          </pre>
-          {/* Espaço para assinatura física */}
-          <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--hairline)' }}>
-            <div style={{ display: 'flex', gap: 40 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ borderBottom: '1px solid var(--text)', marginBottom: 6 }} />
-                <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>Assinatura do cliente</p>
+      {/* `area-impressao` é o que a folha leva: o resto da tela some no @media print */}
+      <div className="area-impressao">
+        {(terms ?? []).map(term => {
+          const assinado = assinaturas[term.id]
+          return (
+            <div key={term.id} className="card" style={{ padding: '20px 24px', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {term.title}
+                </p>
+                {assinado && (
+                  <span className="esconde-impressao" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: '#15803d' }}>
+                    <Check size={13} /> {assinado === 'paper' ? 'Assinado em papel' : 'Assinado na tela'}
+                  </span>
+                )}
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ borderBottom: '1px solid var(--text)', marginBottom: 6 }} />
-                <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>Data</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
 
-      {/* Botão imprimir + avançar */}
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          type="button"
-          onClick={() => setPrinted(true)}
-          style={{
-            flex: 1, padding: '14px', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer',
-            border: printed ? '1.5px solid #22c55e' : '1.5px solid var(--border)',
-            background: printed ? '#f0fdf4' : 'var(--surface)',
-            color: printed ? '#15803d' : 'var(--text)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}
-        >
-          {printed ? <Check size={15} color="#15803d" /> : <Printer size={15} />}
-          {printed ? 'Impresso' : 'Imprimir documentos'}
-        </button>
-        <button
-          type="button"
-          onClick={() => setStep(2)}
-          disabled={!printed}
-          style={{
-            flex: 2, padding: '14px', borderRadius: 12, fontSize: 15, fontWeight: 700,
-            background: printed ? 'var(--brand)' : 'var(--bg-app)',
-            color:      printed ? '#fff'          : 'var(--text-faint)',
-            border:     printed ? 'none'          : '1px solid var(--border)',
-            cursor:     printed ? 'pointer'       : 'not-allowed',
-            boxShadow:  printed ? '0 2px 12px rgba(195,77,107,0.3)' : 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}
-        >
-          Ir para pagamento <ChevronRight size={18} />
-        </button>
+              <pre style={{ fontSize: 13, lineHeight: 1.8, color: 'var(--text-muted)', whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+                {term.content}
+              </pre>
+
+              {/* Linha de assinatura — é o que vale na folha impressa */}
+              <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--hairline)' }}>
+                <div style={{ display: 'flex', gap: 40 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ borderBottom: '1px solid var(--text)', marginBottom: 6 }} />
+                    <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>Assinatura do cliente</p>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ borderBottom: '1px solid var(--text)', marginBottom: 6 }} />
+                    <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>Data</p>
+                  </div>
+                </div>
+              </div>
+
+              {!assinado && (
+                <div className="esconde-impressao" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--hairline)' }}>
+                  {assinandoNaTela === term.id ? (
+                    <>
+                      <SignaturePad onConfirm={dataUrl => assinarNaTela(term.id, dataUrl)} />
+                      <button type="button" onClick={() => setAssinandoNaTela(null)} className="btn-ghost" style={{ marginTop: 8, fontSize: 12 }}>
+                        Cancelar
+                      </button>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => setAssinandoNaTela(term.id)} className="btn-primary" style={{ fontSize: 13, padding: '9px 16px' }}>
+                        Assinar na tela
+                      </button>
+                      <button type="button" onClick={() => imprimirEConfirmar(term.id)} className="btn-ghost" style={{ fontSize: 13, padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Printer size={14} /> Imprimir e confirmar em papel
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
-      {cancelBlock}
+      {error && <p className="esconde-impressao" style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{error}</p>}
+
+      <button
+        type="button"
+        className="esconde-impressao"
+        onClick={() => setStep(2)}
+        disabled={!termosResolvidos}
+        style={{
+          width: '100%', padding: '14px', borderRadius: 12, fontSize: 15, fontWeight: 700,
+          background: termosResolvidos ? 'var(--brand)' : 'var(--bg-app)',
+          color:      termosResolvidos ? '#fff'          : 'var(--text-faint)',
+          border:     termosResolvidos ? 'none'          : '1px solid var(--border)',
+          cursor:     termosResolvidos ? 'pointer'       : 'not-allowed',
+          boxShadow:  termosResolvidos ? '0 2px 12px rgba(195,77,107,0.3)' : 'none',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}
+      >
+        {termosResolvidos ? 'Ir para pagamento' : 'Assine os dois documentos para seguir'}
+        <ChevronRight size={18} />
+      </button>
+
+      <div className="esconde-impressao">{cancelBlock}</div>
     </div>
   )
 
