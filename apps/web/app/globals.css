@@ -703,6 +703,21 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 @media (max-width: 899px) {
   .lista-detalhe[data-detalhe='1'] .ld-lista   { display: none !important; }
   .lista-detalhe[data-detalhe='0'] .ld-detalhe { display: none !important; }
+
+  /* A lista passou a viver DENTRO de `.ld-lista`, então o
+     `.master-detail > *` que a esticava não a alcança mais — ela voltava à
+     largura fixa de coluna e ficava torta no meio da tela. */
+  .lista-detalhe .ld-lista,
+  .lista-detalhe .ld-lista > * {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Sozinha na tela, usa a altura toda. O corte em 60vh existia para o detalhe
+     caber logo abaixo; sem detalhe embaixo, ele só deixava um vão. */
+  .lista-detalhe[data-detalhe='0'] .clients-master-list {
+    max-height: none !important;
+  }
 }
 
 /* Barra de abas: rola na horizontal em vez de quebrar em duas linhas.
@@ -765,10 +780,13 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 @media (max-width: 899px) {
   .master-detail { flex-direction: column; }
   .master-detail > * { width: 100% !important; max-width: 100% !important; }
-  /* Lista mestre não-sticky e mais baixa no mobile (detalhe fica acessível abaixo) */
+  /* Lista mestre não-sticky no mobile: `sticky` calculado a partir da topbar
+     gruda no lugar errado quando ela é a única coisa na tela.
+     O corte de altura vale só onde o detalhe divide a tela com ela — em
+     `.lista-detalhe` a regra acima devolve a altura inteira. */
   .clients-master-list {
     position: static !important;
-    max-height: 60vh !important;
+    max-height: 60vh;
   }
 }
 
