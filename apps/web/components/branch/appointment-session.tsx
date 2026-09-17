@@ -21,7 +21,7 @@ import {
 } from '@/actions/appointments'
 import { generateEvaluationPlan, getCheckoutPlan } from '@/actions/treatment-plans'
 import { CheckoutWizard } from '@/components/branch/checkout-wizard'
-import { PlanejamentoTratamento } from '@/components/branch/planejamento-tratamento'
+import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import type { AnamnesisData } from '@/actions/treatment-plans'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
@@ -929,7 +929,7 @@ export function AppointmentSession({
                 Fechar
               </button>
             </div>
-            <PlanejamentoTratamento
+            <PainelPlanejamento
               clientId={client.id}
               branchId={branchId}
               slug={slug}

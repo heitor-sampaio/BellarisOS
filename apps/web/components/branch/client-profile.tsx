@@ -14,7 +14,7 @@ import { AnamnesisTab, type GeneralAnamnesis } from './anamnesis-tab'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { LeadTimeline } from './lead-timeline'
-import { PlanejamentoTratamento } from '@/components/branch/planejamento-tratamento'
+import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import { rotaAgenda, rotaClientes } from '@/lib/rotas'
 import { CLIENT_TAGS, isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
 import { format, isSameDay, subDays } from 'date-fns'
@@ -1314,7 +1314,7 @@ export function ClientProfile({
       {/* -- Tab: Oportunidades ---------------------------------------- */}
       {tab === 'planejamento' && (
         <div className="card" style={{ padding: '18px 20px' }}>
-          <PlanejamentoTratamento
+          <PainelPlanejamento
             clientId={client.id}
             branchId={currentBranchId || branchId}
             slug={slug}
