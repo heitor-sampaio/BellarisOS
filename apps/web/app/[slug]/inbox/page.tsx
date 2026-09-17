@@ -7,6 +7,7 @@ import { canaisConectados } from '@/lib/channels/factory'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { CRMInbox } from '@/components/admin/crm-inbox'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { TravaRolagem } from '@/components/shared/trava-rolagem'
 
 /** Nome da unidade marcada no lead, se houver. */
 function unidadeDoLead(tags: unknown): string | null {
@@ -39,7 +40,9 @@ export default async function BranchInboxPage({
   // conversa são da REDE. Quem responde na unidade vê as mesmas conversas de
   // quem responde na rede — o que separa é o alcance do cargo (`ownerFilter`,
   // aplicado dentro de `getConversations`), não a unidade.
-  const conversations = await getConversations()
+  // `convParam` é o deep-link do card de Oportunidades: a conversa apontada pelo
+  // card pode não ter mensagem nenhuma e, sem essa exceção, não estaria na lista.
+  const conversations = await getConversations(convParam)
   const canais = await canaisConectados(ctx.tenantId!)
 
   const admin = createAdminClient()
@@ -68,23 +71,18 @@ export default async function BranchInboxPage({
     branch_name: unidadeDoLead(l.tags),
   }))
 
-  const naoLidas = conversations.reduce((s, c) => s + c.unread_count, 0)
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    // Tela cheia, sem título nem contagem no topo — mesmo tratamento de
+    // /admin/inbox: a caixa de entrada é superfície de trabalho, não página de
+    // conteúdo. `.inbox-page` encaixa a tela entre a topbar e o fim real da
+    // viewport (pixels, não `vh`), e `TravaRolagem` impede o documento de rolar
+    // por trás: quem rola aqui é só a conversa.
+    <div className="inbox-page" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <TravaRolagem />
       <RealtimeRefresher tables={['leads', 'conversations']} />
 
-      <div>
-        <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
-          Inbox
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          {conversations.length} conversa{conversations.length !== 1 ? 's' : ''}
-          {' · '}{naoLidas} não lida{naoLidas !== 1 ? 's' : ''}
-        </p>
-      </div>
-
       <CRMInbox
+        telaCheia
         initialConversations={conversations}
         leads={inboxLeads}
         canEdit={can(ctx, 'crm', 'MANAGE')}
