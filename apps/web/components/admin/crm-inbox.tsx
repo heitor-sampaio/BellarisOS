@@ -6,6 +6,7 @@ import {
 import {
   Search, MessageSquare, Phone, Mail, AtSign,
   Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip, FileText, Zap, UserCheck,
+  ArrowLeft,
   Reply, Pencil, Check,
 } from 'lucide-react'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
@@ -632,6 +633,8 @@ export function CRMInbox({
   const [respondendoA, setRespondendoA] = useState<Message | null>(null)
   /** Mensagem sendo editada. Enquanto existe, o compositor troca de função. */
   const [editando,     setEditando]     = useState<Message | null>(null)
+  /** Só no celular: o card do contato vira folha sobre a conversa. */
+  const [painelAberto, setPainelAberto] = useState(false)
   const bottomRef  = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   /** Mídias já pedidas ao servidor, para não assinar a mesma duas vezes. */
@@ -698,6 +701,7 @@ export function CRMInbox({
   // Load messages + subscribe to realtime when conversation changes
   useEffect(() => {
     setSendError(null)   // erro é da conversa anterior
+    setPainelAberto(false)   // no celular, o card da conversa anterior sai junto
     if (!selectedId) { setMessages([]); return }
     setLoadingMsgs(true)
     getMessages(selectedId).then(msgs => {
@@ -1060,7 +1064,13 @@ export function CRMInbox({
         />
       )}
 
-      <div className={telaCheia ? undefined : 'card'} style={{
+      <div
+        className={telaCheia ? 'inbox-root' : 'card inbox-root'}
+        /* No celular o CSS decide qual painel ocupa a tela; estes dois estados
+           são a única coisa que ele precisa saber do React. */
+        data-aberta={selectedId ? '1' : '0'}
+        data-painel={painelAberto ? '1' : '0'}
+        style={{
         display: 'flex', overflow: 'hidden', padding: 0,
         background: 'var(--surface)',
         ...(telaCheia
@@ -1071,7 +1081,7 @@ export function CRMInbox({
           : { height: 'calc(100vh - var(--topbar-h) - 200px)', minHeight: 520 }),
       }}>
         {/* -- Left panel: conversation list -- */}
-        <div style={{
+        <div className="inbox-lista" style={{
           width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column',
           borderRight: '1px solid var(--border)',
         }}>
@@ -1181,7 +1191,7 @@ export function CRMInbox({
         </div>
 
         {/* -- Right panel: thread -- */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        <div className="inbox-thread" style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {!selectedConv ? (
             /* Empty state */
             <div style={{
@@ -1212,6 +1222,23 @@ export function CRMInbox({
                 padding: '13px 20px', borderBottom: '1px solid var(--hairline)',
                 display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
               }}>
+                {/* Voltar para a lista. Só no celular, onde a conversa ocupou a
+                    tela inteira e a lista saiu de cena. */}
+                <button
+                  type="button"
+                  className="show-mobile"
+                  onClick={() => setSelectedId(null)}
+                  title="Voltar para as conversas"
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                    border: 'none', background: 'none', cursor: 'pointer',
+                    alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
+                    marginLeft: -6,
+                  }}
+                >
+                  <ArrowLeft size={18} />
+                </button>
+
                 <div style={{
                   width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
                   background: 'var(--brand-soft)', border: '2px solid var(--brand-soft-border)',
@@ -1262,6 +1289,23 @@ export function CRMInbox({
                     })()}
                   </div>
                 </div>
+
+                {/* Card do contato. No desktop ele é a terceira coluna, sempre
+                    visível; no celular vira folha por cima, aberta por aqui. */}
+                <button
+                  type="button"
+                  className="show-mobile"
+                  onClick={() => setPainelAberto(true)}
+                  title="Contato e oportunidades"
+                  style={{
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                    border: '1px solid var(--border)', background: 'var(--bg-app)',
+                    cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  <UserCheck size={15} />
+                </button>
 
                 {/* Status dropdown */}
                 <StatusDropdown
@@ -1428,7 +1472,7 @@ export function CRMInbox({
 
               {/* Input */}
               {selectedConv.status !== 'closed' ? (
-                <div style={{
+                <div className="inbox-composer" style={{
                   padding: '10px 14px', borderTop: '1px solid var(--hairline)',
                   display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0,
                   background: 'var(--surface)',
@@ -1510,10 +1554,36 @@ export function CRMInbox({
 
         {/* -- 3rd panel: lead card -- */}
         {selectedConv && (
-          <div style={{
+          <div className="inbox-painel" style={{
             width: 320, flexShrink: 0, overflowY: 'auto',
             borderLeft: '1px solid var(--border)', background: 'var(--surface)',
           }}>
+            {/* Fechar existe só no celular: no desktop o painel é coluna fixa e
+                não há o que fechar. */}
+            <div
+              className="show-mobile"
+              style={{
+                position: 'sticky', top: 0, zIndex: 1,
+                padding: '10px 14px', background: 'var(--surface)',
+                borderBottom: '1px solid var(--hairline)',
+                alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              }}
+            >
+              <strong style={{ fontSize: 13, color: 'var(--text)' }}>Contato</strong>
+              <button
+                type="button"
+                onClick={() => setPainelAberto(false)}
+                style={{
+                  width: 28, height: 28, borderRadius: 8,
+                  border: '1px solid var(--border)', background: 'var(--bg-app)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', color: 'var(--text-muted)',
+                }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
             <InboxLeadPanel
               conversation={selectedConv}
               canEdit={canEdit}

@@ -453,6 +453,38 @@
   .sidebar-scrim { display: block; }
 }
 
+/* -- Inbox: três colunas no desktop, UMA TELA POR VEZ no celular ----------
+   Lista (300px) + conversa + card (320px) não cabem em 390px de largura: as
+   duas colunas fixas comiam a tela e a conversa — o que a pessoa foi ler —
+   ficava com o que sobrasse. No celular cada painel ocupa a tela inteira e a
+   navegação é por ida e volta, como em qualquer aplicativo de mensagem. */
+@media (max-width: 1023px) {
+  .inbox-lista  { width: 100% !important; border-right: none !important; }
+  .inbox-thread { display: none !important; }
+  .inbox-painel { display: none !important; }
+
+  /* Conversa aberta: a lista sai de cena e ela assume. */
+  .inbox-root[data-aberta='1'] .inbox-lista  { display: none !important; }
+  .inbox-root[data-aberta='1'] .inbox-thread { display: flex !important; }
+
+  /* Cada pixel de largura é da mensagem: as margens generosas do desktop
+     encolhem, senão a bolha fica estreita e o texto quebra a cada três
+     palavras. */
+  .inbox-root .bolha-linha { padding-left: 10px !important; padding-right: 10px !important; }
+  .inbox-root .inbox-composer { padding-left: 10px !important; padding-right: 10px !important; }
+
+  /* O card do contato vira folha sobre a conversa, não terceira coluna. */
+  .inbox-root[data-painel='1'] .inbox-painel {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    width: 100% !important;
+    border-left: none !important;
+    overflow-y: auto;
+  }
+}
+
 /* -- Visibilidade por breakpoint -------------------------- */
 .show-mobile { display: none !important; }
 @media (max-width: 1023px) {
