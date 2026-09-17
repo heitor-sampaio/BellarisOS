@@ -1254,7 +1254,10 @@ export async function getTemplatesParaConversa(
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
-    .select('channel, contact_name, leads(name)')
+    // `leads!conversations_lead_id_fkey`: com `leads.conversation_id` existindo,
+    // há duas relações entre as tabelas e o embed sem nome é recusado. Esta é a
+    // oportunidade principal — que é de onde sai o nome para o template.
+    .select('channel, contact_name, leads!conversations_lead_id_fkey(name)')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()

@@ -57,7 +57,11 @@ export async function resolveConversation(
   // conversa assim que o WhatsApp trocava o identificador dela.
   const { data: existentes, error: erroExistente } = await admin
     .from('conversations')
-    .select('id, branch_id, lead_id, contact_name, contact_phone, contact_aliases, leads(name)')
+    // ⚠️ Sem embed de `leads` aqui. Desde que `leads.conversation_id` existe, há
+    // DUAS relações entre as tabelas e o PostgREST recusa o embed por
+    // ambiguidade — e este erro é descartado logo abaixo, o que jogaria fora a
+    // mensagem que acabou de chegar. O nome do lead já vem do passo 2.
+    .select('id, branch_id, lead_id, contact_name, contact_phone, contact_aliases')
     .eq('tenant_id', tenantId)
     .eq('channel', channel)
     .overlaps('contact_aliases', aliases)
@@ -72,7 +76,6 @@ export async function resolveConversation(
     id: string; branch_id: string | null; lead_id: string | null
     contact_name: string | null
     contact_phone: string | null; contact_aliases: string[] | null
-    leads: { name: string } | null
   } | undefined
 
   if (jaExiste) {

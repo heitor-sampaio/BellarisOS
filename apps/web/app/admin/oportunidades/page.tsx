@@ -71,7 +71,7 @@ export default async function AdminOportunidadesPage({
         id, name, phone, email, social_media, source,
         crm_stage_id, notes, client_id, created_at, tags,
         owner_id, users(name),
-        conversations(last_message_at, awaiting_since),
+        conversations!leads_conversation_id_fkey(last_message_at, awaiting_since),
         lead_procedures(procedure_id, procedures(name, price))
       `)
       .eq('tenant_id', ctx.tenantId!)
@@ -85,17 +85,15 @@ export default async function AdminOportunidadesPage({
 
   const leads = leadsRaw.map((l: any) => {
     const { conversations, users: _dono, ...rest } = l
-    const convs = (conversations ?? []) as { last_message_at: string | null; awaiting_since: string | null }[]
-    const lastInteractionAt = convs
-      .map(c => c.last_message_at)
-      .filter((v): v is string => v != null)
-      .sort()
-      .at(-1) ?? null
-    const awaitingSince = convs
-      .map(c => c.awaiting_since)
-      .filter((v): v is string => v != null)
-      .sort()
-      .at(0) ?? null
+    // Uma conversa só: é o CONTATO dono da oportunidade (`leads.conversation_id`).
+    // Antes isto era uma lista — as conversas que apontavam para o lead — e
+    // deixou de servir quando a mesma pessoa passou a ter várias oportunidades:
+    // só a principal ficava com `conversations.lead_id`, e as demais apareciam
+    // sem atividade nenhuma no quadro.
+    const conv = (conversations ?? null) as
+      { last_message_at: string | null; awaiting_since: string | null } | null
+    const lastInteractionAt = conv?.last_message_at ?? null
+    const awaitingSince     = conv?.awaiting_since ?? null
     return {
       ...rest,
       tags:                l.tags ?? [],
