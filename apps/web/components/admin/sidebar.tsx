@@ -3,7 +3,7 @@
 import {
   LayoutGrid, Calendar, BarChart3,
   Settings, LogOut, Sparkles, Boxes, Contact, CreditCard, Layers, Megaphone,
-  UsersRound, Bell, ChevronLeft, ChevronRight, Inbox, FileText,
+  UsersRound, Bell, ChevronLeft, ChevronRight, Inbox, FileText, ClipboardCheck,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
 import { logoutAction } from '@/actions/auth'
@@ -19,6 +19,7 @@ const ICONS: Record<string, React.ReactNode> = {
   dashboard:    <LayoutGrid size={18} />,
   agenda:       <Calendar   size={18} />,
   clients:      <Contact    size={18} />,
+  checkout:     <ClipboardCheck size={18} />,
   reports:      <BarChart3  size={18} />,
   financial:    <CreditCard size={18} />,
   stock:        <Boxes      size={18} />,

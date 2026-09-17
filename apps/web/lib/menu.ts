@@ -42,6 +42,9 @@ export type MenuEntry = {
 
 const has = (p: ResolvedPermissions, m: keyof ResolvedPermissions) => p[m] !== 'NONE'
 
+/** Pode receber dinheiro do cliente — caixa ou financeiro. Igual a lib/auth. */
+const recebe = (p: ResolvedPermissions) => p.cashier === 'MANAGE' || p.financial === 'MANAGE'
+
 // O CRM era uma tela só com abas "Funil" e "Inbox". Virou duas entradas: as
 // duas coisas têm ritmo diferente — a caixa de entrada se responde o dia
 // inteiro, o funil se revisa. Ambas continuam atrás do módulo `crm`.
@@ -51,6 +54,9 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
 
   { key: 'agenda',       group: 'atendimento',  label: 'Agenda',        href: '/admin/agenda',         visible: p => has(p, 'agenda') },
   { key: 'clients',      group: 'atendimento',  label: 'Clientes',      href: '/admin/clients',        visible: p => has(p, 'clients') },
+  // A fila de planos esperando para serem fechados. Existia e só se chegava por
+  // um card do dashboard — quem recebe não tinha como achar.
+  { key: 'checkout',     group: 'atendimento',  label: 'Checkout',      href: '/admin/checkout',       visible: recebe },
 
   { key: 'inbox',        group: 'vendas',       label: 'Inbox',         href: '/admin/inbox',          visible: p => has(p, 'crm') },
   { key: 'oportunidades',group: 'vendas',       label: 'Oportunidades', href: '/admin/oportunidades',  visible: p => has(p, 'crm') },
@@ -78,6 +84,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 
   { key: 'agenda',        group: 'atendimento', label: 'Agenda',        href: '/agenda',        visible: p => has(p, 'agenda') },
   { key: 'clients',       group: 'atendimento', label: 'Clientes',      href: '/clients',       visible: p => has(p, 'clients') },
+  { key: 'checkout',      group: 'atendimento', label: 'Checkout',      href: '/checkout',      visible: recebe },
 
   { key: 'inbox',         group: 'vendas',      label: 'Inbox',         href: '/inbox',         visible: p => has(p, 'crm') },
   { key: 'oportunidades', group: 'vendas',      label: 'Oportunidades', href: '/oportunidades', visible: p => has(p, 'crm') },

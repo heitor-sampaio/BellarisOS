@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertPodeReceber, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getOpenCashRegisterId } from '@/lib/cash-register'
+import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
+import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 
 /**
  * Quem pode o quê, neste arquivo.
@@ -553,6 +555,35 @@ export async function signConsentTerm(consentId: string, signatureDataUrl: strin
 
   revalidatePath(`/${slug}/checkout`)
   return {}
+}
+
+/**
+ * Dados do checkout de um plano, para abrir o wizard fora da página dele.
+ *
+ * É o que permite fechar a venda dentro da tela do atendimento: quem acabou de
+ * montar o plano, se puder receber, não precisa mandar o cliente para a
+ * recepção nem trocar de tela.
+ */
+export async function getCheckoutPlan(planId: string): Promise<{ plan?: CheckoutPlan; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPodeReceber(ctx)
+
+  const admin = createAdminClient()
+  const { data: plan } = await admin
+    .from('treatment_plans')
+    .select('branch_id, branches!branch_id(name, tenant_id)')
+    .eq('id', planId)
+    .maybeSingle()
+
+  const branch = plan?.branches as unknown as { name: string; tenant_id: string } | null
+  if (!plan?.branch_id || !branch || branch.tenant_id !== ctx.tenantId) {
+    return { error: 'Plano não encontrado.' }
+  }
+
+  const { plan: checkout, error } = await montarCheckoutPlan(
+    planId, plan.branch_id as string, branch.name, ctx.tenantId!,
+  )
+  return checkout ? { plan: checkout } : { error: error ?? 'Plano não encontrado.' }
 }
 
 /**

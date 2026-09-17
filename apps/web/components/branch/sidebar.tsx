@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   LayoutGrid, Calendar, Users, Sparkles,
   Package, CreditCard, LogOut, UserCircle, Layers, ClipboardList, BarChart3,
-  ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight, Inbox,
+  ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight, Inbox, ClipboardCheck,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
 import { logoutAction } from '@/actions/auth'
@@ -19,6 +19,7 @@ const ICONS: Record<string, React.ReactNode> = {
   dashboard:  <LayoutGrid size={18} />,
   agenda:     <Calendar   size={18} />,
   clients:    <Users      size={18} />,
+  checkout:   <ClipboardCheck size={18} />,
   inbox:        <Inbox    size={18} />,
   oportunidades:<Layers   size={18} />,
   reports:    <BarChart3  size={18} />,

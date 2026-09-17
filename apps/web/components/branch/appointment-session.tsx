@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
-  XCircle, Clock, Lock, LockOpen, Send, Save,
+  XCircle, Clock, Lock, LockOpen, Send, Save, CreditCard,
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
@@ -19,7 +19,9 @@ import {
   saveDraftNotes,
   reassignProfessional,
 } from '@/actions/appointments'
-import { generateEvaluationPlan } from '@/actions/treatment-plans'
+import { generateEvaluationPlan, getCheckoutPlan } from '@/actions/treatment-plans'
+import { CheckoutWizard } from '@/components/branch/checkout-wizard'
+import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 import type { AnamnesisData } from '@/actions/treatment-plans'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { AnamnesisTab } from '@/components/branch/anamnesis-tab'
@@ -122,6 +124,11 @@ interface Props {
   existingPlan:          ExistingPlan | null
   procedureProductsMap:  Record<string, { productId: string; name: string; unit: string; quantity: number }[]>
   isPartOfPlan?:         boolean
+  /**
+   * Pode receber (caixa ou financeiro) — quem fecha a venda da avaliação sem
+   * mandar o cliente para a recepção. O mesmo critério de "Confirmar pagamento".
+   */
+  podeReceber?:          boolean
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -578,7 +585,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, canEditRecords, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false,
+  isPartOfPlan = false, podeReceber = false,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -617,6 +624,55 @@ export function AppointmentSession({
   const [generating,             setGenerating]             = useState(false)
   const [genError,               setGenError]               = useState<string | null>(null)
   const evalEditorRef = useRef<TreatmentPlanEditorRef>(null)
+
+  // Checkout aberto sobre a tela, quando quem atende também recebe.
+  const [checkoutPlan, setCheckoutPlan] = useState<CheckoutPlan | null>(null)
+
+  /**
+   * Salva a avaliação inteira e decide o que fazer com o plano.
+   *
+   * `fecharAgora` abre o checkout aqui mesmo; senão o plano fica `PROPOSED`, que
+   * é a fila da recepção. Desistir no meio do checkout não perde nada: o plano
+   * já está na fila de qualquer jeito.
+   */
+  async function gerarPlano(fecharAgora: boolean) {
+    setGenerating(true); setGenError(null)
+    const currentSessions = evalEditorRef.current?.getSessions() ?? []
+    const currentNotes    = evalEditorRef.current?.getNotes()    ?? evalPlanNotes
+    const res = await generateEvaluationPlan(
+      appointment.id, evalComplaints, evalAnamnesis, currentSessions, currentNotes,
+      evalSessionNotes, evalSessionInterc, slug,
+    )
+    if (res.error || !res.planId) {
+      setGenerating(false)
+      setGenError(res.error ?? 'Não foi possível gerar o plano.')
+      return
+    }
+    if (!fecharAgora) {
+      setGenerating(false)
+      router.refresh()
+      return
+    }
+    const checkout = await getCheckoutPlan(res.planId)
+    setGenerating(false)
+    if (checkout.error || !checkout.plan) {
+      setGenError(checkout.error ?? 'Plano gerado, mas o checkout não abriu. Ele está na fila da recepção.')
+      router.refresh()
+      return
+    }
+    setCheckoutPlan(checkout.plan)
+  }
+
+  /** Abre o checkout de um plano que já está na fila. */
+  async function abrirCheckout(planId: string) {
+    setGenError(null)
+    const checkout = await getCheckoutPlan(planId)
+    if (checkout.error || !checkout.plan) {
+      setGenError(checkout.error ?? 'Não foi possível abrir o checkout.')
+      return
+    }
+    setCheckoutPlan(checkout.plan)
+  }
 
   const selectedProfName = professionals.find(p => p.id === selectedProfId)?.name ?? appointment.professionalName
 
@@ -841,6 +897,39 @@ export function AppointmentSession({
 
   return (
     <>
+      {/* Checkout sobre a tela do atendimento: o mesmo wizard da página, sem
+          tirar quem atende de perto do cliente. */}
+      {checkoutPlan && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', zIndex: 100,
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+            padding: '24px 16px', overflowY: 'auto',
+          }}
+          onClick={() => setCheckoutPlan(null)}
+        >
+          <div className="card" style={{ width: 700, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
+            <div className="esconde-impressao" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Novo paciente
+                </p>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Checkout</h3>
+              </div>
+              <button type="button" onClick={() => setCheckoutPlan(null)} className="btn-ghost" style={{ padding: '6px 10px' }}>
+                Fechar
+              </button>
+            </div>
+            <CheckoutWizard
+              plan={checkoutPlan}
+              slug={slug}
+              podeAgendar={canCheckin}
+              onDone={() => { setCheckoutPlan(null); router.refresh() }}
+            />
+          </div>
+        </div>
+      )}
+
       {showCancel  && <CancelModal appointmentId={appointment.id} slug={slug} onClose={() => setShowCancel(false)} />}
       {showFinish  && (
         <FinishModal
@@ -1105,6 +1194,29 @@ export function AppointmentSession({
               const planGenerated = ['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')
               if (planGenerated) return (
                 <>
+                  {/* Plano na fila e quem está na tela pode receber: fecha aqui,
+                      sem ir até a lista da recepção. */}
+                  {podeReceber && existingPlan?.status === 'PROPOSED' && (
+                    <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                      <div>
+                        <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>Plano aguardando checkout</p>
+                        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                          Está na fila da recepção — você também pode fechar por aqui.
+                        </p>
+                      </div>
+                      <button type="button" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}
+                        onClick={() => abrirCheckout(existingPlan.id)}>
+                        <CreditCard size={14} /> Fechar checkout
+                      </button>
+                    </div>
+                  )}
+
+                  {genError && (
+                    <p style={{ fontSize: 12.5, color: '#dc2626', fontWeight: 600, padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>
+                      {genError}
+                    </p>
+                  )}
+
                   {appointment.complaints && (
                     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--hairline)' }}>
@@ -1183,7 +1295,10 @@ export function AppointmentSession({
                     </div>
                   </div>
 
-                  {/* Botão único de geração */}
+                  {/* Fim da avaliação.
+                      Quem pode receber fecha a venda aqui mesmo, com o cliente
+                      na sala — antes o plano saía da tela e ficava esperando a
+                      recepção, mesmo quando era a mesma pessoa. */}
                   {canManage && (
                     <div className="card" style={{ padding: '20px 24px' }}>
                       {genError && (
@@ -1191,44 +1306,59 @@ export function AppointmentSession({
                           {genError}
                         </p>
                       )}
-                      <button
-                        type="button"
-                        disabled={generating}
-                        onClick={async () => {
-                          setGenerating(true); setGenError(null)
-                          const currentSessions = evalEditorRef.current?.getSessions() ?? []
-                          const currentNotes    = evalEditorRef.current?.getNotes()    ?? evalPlanNotes
-                          const res = await generateEvaluationPlan(
-                            appointment.id,
-                            evalComplaints,
-                            evalAnamnesis,
-                            currentSessions,
-                            currentNotes,
-                            evalSessionNotes,
-                            evalSessionInterc,
-                            slug,
-                          )
-                          setGenerating(false)
-                          if (res.error) setGenError(res.error)
-                          else router.refresh()
-                        }}
-                        style={{
-                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                          padding: '14px 20px', borderRadius: 12, fontSize: 14, fontWeight: 800,
-                          background: generating ? 'var(--bg-app)' : 'var(--brand)',
-                          color:      generating ? 'var(--text-faint)' : '#fff',
-                          border:     generating ? '1px solid var(--border)' : 'none',
-                          cursor:     generating ? 'wait' : 'pointer',
-                          boxShadow:  generating ? 'none' : '0 2px 12px rgba(195,77,107,0.3)',
-                          letterSpacing: '-0.01em',
-                        }}
-                      >
-                        {generating
-                          ? <><Loader2 size={16} className="animate-spin" /> Gerando plano…</>
-                          : <><Send size={16} /> Gerar Plano de Tratamento</>}
-                      </button>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {podeReceber && (
+                          <button
+                            type="button"
+                            disabled={generating}
+                            onClick={() => gerarPlano(true)}
+                            style={{
+                              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                              padding: '14px 20px', borderRadius: 12, fontSize: 14, fontWeight: 800,
+                              background: generating ? 'var(--bg-app)' : 'var(--brand)',
+                              color:      generating ? 'var(--text-faint)' : '#fff',
+                              border:     generating ? '1px solid var(--border)' : 'none',
+                              cursor:     generating ? 'wait' : 'pointer',
+                              boxShadow:  generating ? 'none' : '0 2px 12px rgba(195,77,107,0.3)',
+                              letterSpacing: '-0.01em',
+                            }}
+                          >
+                            {generating
+                              ? <><Loader2 size={16} className="animate-spin" /> Preparando…</>
+                              : <><CreditCard size={16} /> Fechar agora</>}
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          disabled={generating}
+                          onClick={() => gerarPlano(false)}
+                          className={podeReceber ? 'btn-ghost' : undefined}
+                          style={podeReceber ? {
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            padding: '12px 20px', fontSize: 13.5, fontWeight: 700,
+                          } : {
+                            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                            padding: '14px 20px', borderRadius: 12, fontSize: 14, fontWeight: 800,
+                            background: generating ? 'var(--bg-app)' : 'var(--brand)',
+                            color:      generating ? 'var(--text-faint)' : '#fff',
+                            border:     generating ? '1px solid var(--border)' : 'none',
+                            cursor:     generating ? 'wait' : 'pointer',
+                            boxShadow:  generating ? 'none' : '0 2px 12px rgba(195,77,107,0.3)',
+                            letterSpacing: '-0.01em',
+                          }}
+                        >
+                          {generating
+                            ? <><Loader2 size={16} className="animate-spin" /> Gerando plano…</>
+                            : <><Send size={16} /> Enviar para a recepção</>}
+                        </button>
+                      </div>
+
                       <p style={{ fontSize: 11.5, color: 'var(--text-faint)', textAlign: 'center', marginTop: 10 }}>
-                        Salva todas as informações e envia o plano para a recepção realizar o checkout.
+                        {podeReceber
+                          ? 'Salva a avaliação e o plano. "Fechar agora" abre o checkout aqui mesmo; enviar deixa o plano na fila da recepção.'
+                          : 'Salva todas as informações e envia o plano para a recepção realizar o checkout.'}
                       </p>
                     </div>
                   )}

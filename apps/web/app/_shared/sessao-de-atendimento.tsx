@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { AppointmentSession } from '@/components/branch/appointment-session'
@@ -411,6 +411,7 @@ export async function SessaoDeAtendimento({
         existingPlan={existingPlan}
         procedureProductsMap={procedureProductsMap}
         isPartOfPlan={isPartOfPlan}
+        podeReceber={podeReceber(ctx)}
       />
     </>
   )
