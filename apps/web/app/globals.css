@@ -696,6 +696,15 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   .occupancy-row .occ-details { grid-area: details; flex-wrap: wrap; }
 }
 
+/* Lista + detalhe no celular: só um dos dois na tela.
+   `.master-detail` empilha, o que resolve a largura e não resolve a navegação:
+   com a lista inteira acima, tocar num nome abria o detalhe fora da vista e
+   parecia que nada acontecera. Ver `components/shared/lista-detalhe.tsx`. */
+@media (max-width: 899px) {
+  .lista-detalhe[data-detalhe='1'] .ld-lista   { display: none !important; }
+  .lista-detalhe[data-detalhe='0'] .ld-detalhe { display: none !important; }
+}
+
 /* Barra de abas: rola na horizontal em vez de quebrar em duas linhas.
    Sete abas não cabem em 390px, e empilhá-las empurra o conteúdo para baixo da
    dobra — a rolagem lateral mantém a âncora onde a pessoa espera. A barra de

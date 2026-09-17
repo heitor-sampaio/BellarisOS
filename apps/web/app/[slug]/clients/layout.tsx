@@ -3,6 +3,7 @@ import { subDays } from 'date-fns'
 import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
+import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedBranchClients, getCachedBranchCompletedAppointments } from '@/lib/cached-queries'
 
 export default async function ClientsLayout({
@@ -50,18 +51,20 @@ export default async function ClientsLayout({
   const totalActive = clients.filter(c => c.isActive).length
 
   return (
-    <div className="master-detail">
-      <ClientsSidebar
-        // Com só "Ver", o botão "+ novo cliente" aparecia e a rota
-        // /clients/new recusava. `null` esconde; `undefined` usa o padrão.
-        newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
-        clients={clients}
-        basePath={`/${slug}/clients`}
-        totalActive={totalActive}
-      />
-      <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
-        {children}
-      </div>
-    </div>
+    <ListaDetalhe
+      basePath={`/${slug}/clients`}
+      lista={
+        <ClientsSidebar
+          // Com só "Ver", o botão "+ novo cliente" aparecia e a rota
+          // /clients/new recusava. `null` esconde; `undefined` usa o padrão.
+          newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
+          clients={clients}
+          basePath={`/${slug}/clients`}
+          totalActive={totalActive}
+        />
+      }
+    >
+      {children}
+    </ListaDetalhe>
   )
 }

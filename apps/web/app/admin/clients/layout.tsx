@@ -1,6 +1,7 @@
 import { subDays } from 'date-fns'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
+import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedNetworkClients, getCachedNetworkCompletedAppointments, getCachedNetworkBranches } from '@/lib/cached-queries'
 
 export default async function AdminClientsLayout({
@@ -43,17 +44,19 @@ export default async function AdminClientsLayout({
   const branches       = (branchesRaw ?? []) as { id: string; name: string }[]
 
   return (
-    <div className="master-detail">
-      <ClientsSidebar
-        clients={clients}
-        basePath="/admin/clients"
-        totalActive={totalActive}
-        newClientHref={null}
-        availableBranches={branches}
-      />
-      <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
-        {children}
-      </div>
-    </div>
+    <ListaDetalhe
+      basePath="/admin/clients"
+      lista={
+        <ClientsSidebar
+          clients={clients}
+          basePath="/admin/clients"
+          totalActive={totalActive}
+          newClientHref={null}
+          availableBranches={branches}
+        />
+      }
+    >
+      {children}
+    </ListaDetalhe>
   )
 }

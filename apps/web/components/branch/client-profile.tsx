@@ -2,7 +2,7 @@
 
 import React, { useActionState, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Phone, Mail, Calendar, MoreHorizontal, Star, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck } from 'lucide-react'
+import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Star, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf } from '@/actions/clients'
 import { TreatmentSessionsModal } from './treatment-sessions-modal'
 import { TreatmentFileModal } from './treatment-file-modal'
@@ -977,6 +977,21 @@ export function ClientProfile({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+      {/* Volta para a lista. Só no celular, onde a lista saiu de cena para o
+          perfil ocupar a tela — sem isto não há caminho de volta a não ser o
+          botão do navegador. */}
+      <a
+        href={slug === '__admin__' ? '/admin/clients' : `/${slug}/clients`}
+        className="show-mobile"
+        style={{
+          alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+          fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
+          textDecoration: 'none', padding: '2px 0',
+        }}
+      >
+        <ChevronLeft size={14} /> Clientes
+      </a>
 
       {/* Ficha de tratamento */}
       {treatmentModalOpen && activePackage && (
