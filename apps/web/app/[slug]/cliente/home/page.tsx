@@ -36,7 +36,12 @@ type ActivePlan = {
   id:         string
   status:     string
   created_at: string
-  treatment_plan_items: Array<{ procedures: { name: string } | null }>
+  // Os procedimentos vêm das SESSÕES. `treatment_plan_items` é legado: nenhum
+  // código escreve nela desde que o plano passou a ser por sessão, e a lista
+  // aqui aparecia sem nenhum procedimento.
+  treatment_plan_sessions: Array<{
+    treatment_plan_session_procedures: Array<{ procedures: { name: string } | null }>
+  }>
 }
 
 // -- Page -----------------------------------------------------------
@@ -70,7 +75,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .order('purchased_at', { ascending: false })
       .limit(5),
     admin.from('treatment_plans')
-      .select('id, status, created_at, treatment_plan_items(procedures(name))')
+      .select('id, status, created_at, treatment_plan_sessions(treatment_plan_session_procedures(procedures(name)))')
       .eq('client_id', ctx.clientId!)
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
@@ -236,8 +241,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
             })}
 
             {activePlans.map(plan => {
-              const procs = (plan.treatment_plan_items ?? [])
-                .map((i: { procedures: { name: string } | null }) => i.procedures?.name)
+              const procs = (plan.treatment_plan_sessions ?? [])
+                .flatMap(s => s.treatment_plan_session_procedures ?? [])
+                .map(p => p.procedures?.name)
                 .filter(Boolean)
                 .slice(0, 2)
                 .join(', ')

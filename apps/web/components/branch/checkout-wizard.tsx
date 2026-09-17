@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Check, ChevronRight, ChevronLeft, User, FileText, CreditCard, CalendarCheck, Package, Stethoscope, Printer, MapPin, Clock } from 'lucide-react'
 import { createCheckoutConsentTerms, checkoutTreatmentPlan, cancelCheckout } from '@/actions/treatment-plans'
+import type { PagamentoDoPlano } from '@/actions/treatment-plans'
 import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/treatment-plans'
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
 import { rotaCliente } from '@/lib/rotas'
@@ -52,6 +53,14 @@ interface ConsentTerm {
 interface Props {
   plan: CheckoutPlan
   slug: string
+  /**
+   * Quem recebe mas não gerencia agenda fecha a venda sem marcar horário — o
+   * passo de agendamento some e as sessões ficam para marcar depois. A action
+   * confere o mesmo, então esconder aqui não é a única defesa.
+   */
+  podeAgendar?: boolean
+  /** Fechou tudo: usado quando o wizard roda dentro da tela do atendimento. */
+  onDone?: (clientId: string) => void
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -77,7 +86,7 @@ const STEPS = [
 
 // -- Componente principal ------------------------------------------------------
 
-export function CheckoutWizard({ plan, slug }: Props) {
+export function CheckoutWizard({ plan, slug, podeAgendar = true, onDone }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const total  = plan.total
@@ -89,8 +98,19 @@ export function CheckoutWizard({ plan, slug }: Props) {
   const [printed,       setPrinted]       = useState(false)
   const [creatingTerms, startCreateTerms] = useTransition()
 
-  // Pagamento
+  // Pagamento — plano de milhares de reais raramente é à vista, então a forma
+  // vem antes do método: à vista, entrada + parcelas, ou tudo a receber.
   const [paymentMethod, setPaymentMethod] = useState('PIX')
+  const [formaPgto,     setFormaPgto]     = useState<'AVISTA' | 'PARCELADO' | 'A_RECEBER'>('AVISTA')
+  const [entrada,       setEntrada]       = useState('')
+  const [parcelas,      setParcelas]      = useState(3)
+  const [primeiroVenc,  setPrimeiroVenc]  = useState(
+    format(new Date(Date.now() + 30 * 864e5), 'yyyy-MM-dd'),
+  )
+
+  const entradaNum = Math.max(0, Math.min(Number(entrada.replace(',', '.')) || 0, total))
+  const saldo      = Math.round((total - entradaNum) * 100) / 100
+  const valorParcela = parcelas > 0 ? saldo / parcelas : 0
 
   // Agendamento — compartilhado por todas as sessões
   const [schedBranchId, setSchedBranchId] = useState(plan.currentBranchId)
@@ -185,6 +205,27 @@ export function CheckoutWizard({ plan, slug }: Props) {
   }
 
   // -- Finalizar checkout -------------------------------------------------------
+  /** O que a action precisa saber sobre o dinheiro. */
+  function montarPagamento(): PagamentoDoPlano {
+    if (formaPgto === 'PARCELADO') {
+      return {
+        forma:              'PARCELADO',
+        metodo:             paymentMethod,
+        entrada:            entradaNum,
+        parcelas,
+        primeiroVencimento: new Date(`${primeiroVenc}T12:00:00-03:00`).toISOString(),
+      }
+    }
+    if (formaPgto === 'A_RECEBER') {
+      return {
+        forma:      'A_RECEBER',
+        metodo:     paymentMethod,
+        vencimento: new Date(`${primeiroVenc}T12:00:00-03:00`).toISOString(),
+      }
+    }
+    return { forma: 'AVISTA', metodo: paymentMethod }
+  }
+
   function handleFinish() {
     setError(null)
     const schedules: SessionScheduleInput[] = plan.sessions
@@ -203,8 +244,9 @@ export function CheckoutWizard({ plan, slug }: Props) {
       })
 
     startSubmit(async () => {
-      const result = await checkoutTreatmentPlan(plan.id, paymentMethod, schedules, slug)
+      const result = await checkoutTreatmentPlan(plan.id, montarPagamento(), schedules, slug)
       if (result.error) { setError(result.error); return }
+      if (onDone) { onDone(plan.clientId); return }
       router.push(rotaCliente(pathname, slug, plan.clientId))
     })
   }
@@ -265,13 +307,16 @@ export function CheckoutWizard({ plan, slug }: Props) {
   )
 
   // -- Progress bar -------------------------------------------------------------
+  // Sem permissão de agenda o checkout tem três passos, não quatro.
+  const passos = podeAgendar ? STEPS : STEPS.slice(0, 3)
+
   const progressBar = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 32 }}>
-      {STEPS.map((s, i) => {
+      {passos.map((s, i) => {
         const done    = i < step
         const current = i === step
         return (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', flex: i < STEPS.length - 1 ? 1 : 'none' }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', flex: i < passos.length - 1 ? 1 : 'none' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <div style={{
                 width: 36, height: 36, borderRadius: '50%',
@@ -292,7 +337,7 @@ export function CheckoutWizard({ plan, slug }: Props) {
                 {s.label}
               </span>
             </div>
-            {i < STEPS.length - 1 && (
+            {i < passos.length - 1 && (
               <div style={{ flex: 1, height: 1.5, background: done ? '#22c55e' : 'var(--hairline)', margin: '0 8px', marginBottom: 22 }} />
             )}
           </div>
@@ -453,9 +498,74 @@ export function CheckoutWizard({ plan, slug }: Props) {
   if (step === 2) return (
     <div>
       {progressBar}
+
+      {/* Como vai ser pago */}
+      <div className="card" style={{ padding: '20px 24px', marginBottom: 14 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+          Como vai ser pago
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          {([
+            ['AVISTA',    'À vista'],
+            ['PARCELADO', 'Entrada + parcelas'],
+            ['A_RECEBER', 'A receber'],
+          ] as const).map(([k, label]) => (
+            <button key={k} type="button" onClick={() => setFormaPgto(k)}
+              style={{
+                padding: '10px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                border:     formaPgto === k ? '2px solid var(--brand)' : '1.5px solid var(--border)',
+                background: formaPgto === k ? 'var(--brand)'           : 'var(--surface)',
+                color:      formaPgto === k ? '#fff'                   : 'var(--text)',
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {formaPgto === 'PARCELADO' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="form-2col">
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Entrada (opcional)</label>
+                <input
+                  inputMode="decimal" value={entrada} onChange={e => setEntrada(e.target.value)}
+                  placeholder="0,00" className="field" style={{ marginTop: 5 }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Parcelas do saldo</label>
+                <select value={parcelas} onChange={e => setParcelas(Number(e.target.value))} className="field" style={{ marginTop: 5 }}>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
+                    <option key={n} value={n}>{n}x</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Vencimento da 1ª parcela</label>
+              <input type="date" value={primeiroVenc} onChange={e => setPrimeiroVenc(e.target.value)} className="field" style={{ marginTop: 5 }} />
+            </div>
+            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 600 }}>
+              {entradaNum > 0 && <>Entrada de {fmtBRL(entradaNum)} agora · </>}
+              {parcelas}× de {fmtBRL(valorParcela)} a partir de {primeiroVenc.split('-').reverse().join('/')}
+            </p>
+          </div>
+        )}
+
+        {formaPgto === 'A_RECEBER' && (
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Vencimento</label>
+            <input type="date" value={primeiroVenc} onChange={e => setPrimeiroVenc(e.target.value)} className="field" style={{ marginTop: 5, maxWidth: 220 }} />
+            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 8 }}>
+              Nada entra no caixa agora — o valor fica como a receber.
+            </p>
+          </div>
+        )}
+      </div>
+
       <div className="card" style={{ padding: '20px 24px', marginBottom: 20 }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
-          Forma de pagamento
+          {formaPgto === 'AVISTA' ? 'Forma de pagamento' : 'Método'}
         </p>
         <div className="form-2col" style={{ marginBottom: 20 }}>
           {PAYMENT_METHODS.map(m => (
@@ -476,14 +586,23 @@ export function CheckoutWizard({ plan, slug }: Props) {
           ))}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>
-          <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 600 }}>Total a cobrar</span>
-          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(total)}</span>
+          <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 600 }}>
+            {formaPgto === 'AVISTA' ? 'Total a cobrar' : formaPgto === 'PARCELADO' ? 'Recebido agora' : 'Total a receber'}
+          </span>
+          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+            {fmtBRL(formaPgto === 'AVISTA' ? total : formaPgto === 'PARCELADO' ? entradaNum : 0)}
+          </span>
         </div>
+        {formaPgto !== 'AVISTA' && (
+          <p style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'right' }}>
+            Plano de {fmtBRL(total)}
+          </p>
+        )}
       </div>
       <button
-        onClick={() => setStep(3)}
+        onClick={() => (podeAgendar ? setStep(3) : handleFinish())}
         style={{ width: '100%', padding: '14px', borderRadius: 12, background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
-        Confirmar pagamento <ChevronRight size={18} />
+        {podeAgendar ? 'Ir para o agendamento' : 'Confirmar'} <ChevronRight size={18} />
       </button>
 
       {cancelBlock}

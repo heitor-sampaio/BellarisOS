@@ -1,8 +1,26 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertPodeReceber, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getOpenCashRegisterId } from '@/lib/cash-register'
+
+/**
+ * Quem pode o quê, neste arquivo.
+ *
+ * Tudo aqui exigia `procedures: MANAGE` — o módulo do CATÁLOGO de procedimentos
+ * da rede. O efeito era que ninguém operava o fluxo: a profissional (catálogo em
+ * "Ver") não conseguia gerar o plano da avaliação, e a recepção (caixa, mas
+ * catálogo em "Ver") não conseguia fechar o checkout. Só quem podia editar preço
+ * da rede vendia.
+ *
+ * Agora cada gesto exige a permissão do que ele é:
+ *
+ * - montar, salvar e propor o plano → `medical_records: MANAGE` (quem atende)
+ * - fechar, receber e assinar termo  → caixa ou financeiro (`assertPodeReceber`)
+ * - agendar as sessões do plano      → `agenda: MANAGE`, conferido na hora
+ * - ler plano e sessões              → `agenda: VIEW`
+ */
 
 // -- Tipos ---------------------------------------------------------------------
 
@@ -61,7 +79,7 @@ export async function saveTreatmentPlan(
   slug: string,
 ) {
   const ctx   = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'MANAGE')
+  assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
   const { data: appt, error: apptErr } = await admin
@@ -125,7 +143,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
   total:    number
 }> {
   const ctx   = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'VIEW')
+  assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -187,7 +205,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
 
 export async function proposeTreatmentPlan(planId: string, slug: string) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'MANAGE')
+  assertPermission(ctx, 'medical_records', 'MANAGE')
 
   const admin = createAdminClient()
 
@@ -258,7 +276,7 @@ export async function cancelCheckout(
   slug:   string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'MANAGE')
+  assertPodeReceber(ctx)
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -306,7 +324,7 @@ export async function cancelTreatmentPlan(
   slug:   string,
 ): Promise<{ error?: string }> {
   const ctx   = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'MANAGE')
+  assertPermission(ctx, 'agenda', 'MANAGE')
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -416,7 +434,7 @@ export async function generateEvaluationPlan(
   slug:                  string,
 ): Promise<{ error?: string; planId?: string }> {
   const ctx   = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'MANAGE')
+  assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
   if (!complaints.trim()) return { error: 'Registre as dores/queixas do cliente.' }
@@ -517,7 +535,7 @@ export async function generateEvaluationPlan(
 
 export async function signConsentTerm(consentId: string, signatureDataUrl: string, slug: string) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'MANAGE')
+  assertPodeReceber(ctx)
 
   const admin = createAdminClient()
 
@@ -548,7 +566,7 @@ export async function createCheckoutConsentTerms(
   totalAmount: number,
 ) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'MANAGE')
+  assertPodeReceber(ctx)
 
   const admin  = createAdminClient()
   const today  = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -620,14 +638,41 @@ export type SessionScheduleInput = {
   branchId:       string
 }
 
+/**
+ * Como o plano foi pago.
+ *
+ * `entrada` só existe em `PARCELADO`, e vale 0 quando não houve entrada. As
+ * parcelas são o SALDO (total − entrada) dividido em `parcelas` vezes, a partir
+ * de `primeiroVencimento`.
+ */
+export type PagamentoDoPlano =
+  | { forma: 'AVISTA';    metodo: string }
+  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string }
+  | { forma: 'A_RECEBER'; metodo: string | null; vencimento: string }
+
+/**
+ * Como o pagamento entra na linha do tempo do atendimento.
+ *
+ * ⚠️ Não é export: todo export de um arquivo `'use server'` vira endpoint
+ * público, e isto é formatação de texto.
+ */
+function rotuloDoPagamento(p: PagamentoDoPlano): string {
+  if (p.forma === 'AVISTA')    return `${p.metodo} à vista`
+  if (p.forma === 'A_RECEBER') return 'a receber'
+  const entrada = p.entrada > 0
+    ? `entrada de R$ ${p.entrada.toFixed(2).replace('.', ',')} + `
+    : ''
+  return `${entrada}${p.parcelas}x em ${p.metodo}`
+}
+
 export async function checkoutTreatmentPlan(
   planId:           string,
-  paymentMethod:    string,
+  pagamento:        PagamentoDoPlano,
   sessionSchedules: SessionScheduleInput[],
   slug:             string,
 ) {
   const ctx   = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'MANAGE')
+  assertPodeReceber(ctx)
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -643,39 +688,122 @@ export async function checkoutTreatmentPlan(
   const { sessions, total } = await getTreatmentPlanSessions(planId)
   if (sessions.length === 0) return { error: 'Plano sem sessões cadastradas.' }
 
-  // Caixa aberto
-  const { data: cashRegister } = await admin
-    .from('cash_registers')
-    .select('id')
-    .eq('branch_id', plan.branch_id)
-    .eq('status', 'OPEN')
-    .maybeSingle()
+  // Caixa aberto da unidade. Antes isto procurava `status = 'OPEN'`, coluna que
+  // não existe em `cash_registers` — o erro era descartado, `cash_register_id`
+  // ficava sempre nulo e a venda do plano nunca entrava num fechamento.
+  const cashRegisterId = await getOpenCashRegisterId(plan.branch_id as string)
 
-  // 1. Transação financeira
-  const { data: transaction, error: txErr } = await admin
-    .from('financial_transactions')
-    .insert({
-      branch_id:        plan.branch_id,
-      client_id:        plan.client_id,
-      cash_register_id: cashRegister?.id ?? null,
-      type:             'INCOME',
-      category:         'Serviços',
-      description:      'Plano de tratamento — checkout novo paciente',
+  const agora     = new Date().toISOString()
+  const descricao = 'Plano de tratamento — checkout novo paciente'
+
+  /** Uma transação do plano; devolve o id ou aborta com erro. */
+  async function lancar(campos: Record<string, unknown>) {
+    return admin
+      .from('financial_transactions')
+      .insert({
+        branch_id:   plan!.branch_id,
+        client_id:   plan!.client_id,
+        type:        'INCOME',
+        category:    'Serviços',
+        description: descricao,
+        created_by:  ctx.internalUserId,
+        ...campos,
+      })
+      .select('id')
+      .single()
+  }
+
+  // 1. Dinheiro.
+  //
+  // O que foi RECEBIDO agora e o que ficou A RECEBER são transações separadas:
+  // `revenueCash` conta INCOME pago com eixo em `paid_at`, então uma transação
+  // única marcada como não paga faria a entrada sumir do caixa do dia.
+  let transactionId: string | null = null
+
+  if (pagamento.forma === 'AVISTA') {
+    const { data, error } = await lancar({
+      cash_register_id: cashRegisterId,
       amount:           total,
-      payment_method:   paymentMethod,
+      payment_method:   pagamento.metodo,
       is_paid:          true,
-      paid_at:          new Date().toISOString(),
-      created_by:       ctx.internalUserId,
+      paid_at:          agora,
     })
-    .select('id')
-    .single()
-  if (txErr) return { error: `Erro ao registrar pagamento: ${txErr.message}` }
+    if (error) return { error: `Erro ao registrar pagamento: ${error.message}` }
+    transactionId = data!.id as string
+
+  } else if (pagamento.forma === 'PARCELADO') {
+    const entrada = Math.max(0, Math.min(pagamento.entrada, total))
+    const saldo   = Math.round((total - entrada) * 100) / 100
+    const vezes   = Math.max(1, Math.min(pagamento.parcelas, 48))
+
+    if (entrada > 0) {
+      const { data, error } = await lancar({
+        cash_register_id: cashRegisterId,
+        amount:           entrada,
+        payment_method:   pagamento.metodo,
+        is_paid:          true,
+        paid_at:          agora,
+        notes:            'Entrada do plano de tratamento',
+      })
+      if (error) return { error: `Erro ao registrar a entrada: ${error.message}` }
+      transactionId = data!.id as string
+    }
+
+    if (saldo > 0) {
+      const { data, error } = await lancar({
+        amount:         saldo,
+        payment_method: pagamento.metodo,
+        is_paid:        false,
+        due_date:       pagamento.primeiroVencimento,
+        notes:          `Saldo do plano em ${vezes}x`,
+      })
+      if (error) return { error: `Erro ao registrar as parcelas: ${error.message}` }
+      transactionId = transactionId ?? (data!.id as string)
+
+      // Mesmo formato das despesas parceladas (actions/financial.ts): valor
+      // dividido igualmente e um vencimento por mês a partir do primeiro.
+      const valorParcela = Math.round((saldo / vezes) * 100) / 100
+      const base         = new Date(pagamento.primeiroVencimento)
+      const { error: parcErr } = await admin.from('installments').insert(
+        Array.from({ length: vezes }, (_, i) => {
+          const venc = new Date(base)
+          venc.setMonth(venc.getMonth() + i)
+          return {
+            transaction_id: data!.id as string,
+            number:         i + 1,
+            total:          vezes,
+            amount:         valorParcela,
+            due_date:       venc.toISOString(),
+            is_paid:        false,
+          }
+        }),
+      )
+      if (parcErr) return { error: `Erro ao registrar as parcelas: ${parcErr.message}` }
+    }
+
+  } else {
+    const { data, error } = await lancar({
+      amount:         total,
+      payment_method: pagamento.metodo,
+      is_paid:        false,
+      due_date:       pagamento.vencimento,
+    })
+    if (error) return { error: `Erro ao registrar o valor a receber: ${error.message}` }
+    transactionId = data!.id as string
+  }
 
   // 2. Para cada sessão: criar appointment (se agendado)
+  //
+  // Marcar horário na agenda é gesto de agenda: quem recebe mas não gerencia
+  // agenda fecha a venda e as sessões ficam para marcar depois, em vez de a tela
+  // inteira ser negada.
+  const podeAgendar = can(ctx, 'agenda', 'MANAGE')
   let newAppointmentId: string | null = null
 
   for (const sess of sessions) {
-    const sched = sessionSchedules.find(s => s.planSessionId === sess.id) ?? null
+    const sched = podeAgendar
+      ? sessionSchedules.find(s => s.planSessionId === sess.id) ?? null
+      : null
     let appointmentId: string | null = null
 
     if (sched && sess.mainProcedureId) {
@@ -719,14 +847,18 @@ export async function checkoutTreatmentPlan(
       changed_by_id:     ctx.internalUserId,
       changed_by_name:   ctx.userName || ctx.roleLabel || 'Recepção',
       action:            'CHECKOUT_COMPLETED',
-      description:       `Checkout concluído — R$ ${total.toFixed(2).replace('.', ',')} — ${paymentMethod}`,
+      description:       `Checkout concluído — R$ ${total.toFixed(2).replace('.', ',')} — ${rotuloDoPagamento(pagamento)}`,
     })
   }
 
-  revalidatePath(`/${slug}/agenda`)
-  revalidatePath(`/${slug}/checkout`)
-  revalidatePath(`/${slug}/dashboard`)
-  return { transactionId: transaction.id, newAppointmentId }
+  if (slug) {
+    revalidatePath(`/${slug}/agenda`)
+    revalidatePath(`/${slug}/checkout`)
+    revalidatePath(`/${slug}/dashboard`)
+  }
+  revalidatePath('/admin/checkout')
+  revalidatePath('/admin/dashboard')
+  return { transactionId, newAppointmentId }
 }
 
 // -- Ficha de tratamento -------------------------------------------------------
@@ -760,7 +892,7 @@ export interface TreatmentFileDetails {
 export async function getTreatmentPlanDetails(planId: string, clientId: string): Promise<{ data?: TreatmentFileDetails; error?: string }> {
   try {
     const ctx = await getTenantContext()
-    assertPermission(ctx, 'procedures', 'VIEW')
+    assertPermission(ctx, 'agenda', 'VIEW')
 
     const admin = createAdminClient()
 

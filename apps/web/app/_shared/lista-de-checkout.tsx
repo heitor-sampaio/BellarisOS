@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPodeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
@@ -27,18 +27,22 @@ export async function ListaDeCheckout({
   slug:        string
 }) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'VIEW')
+  assertPodeReceber(ctx)
 
   const ehRede = branchName === null
   const admin  = createAdminClient()
 
+  // O total vem das SESSÕES, que é o que o editor do plano grava. A consulta
+  // antiga somava `treatment_plan_items`, tabela que nenhum código escreve desde
+  // que o plano passou a ser por sessão: a fila mostrava R$ 0,00 em todo plano
+  // real, e quem ia receber não sabia de quanto era a venda.
   const { data: plansRaw, error } = await admin
     .from('treatment_plans')
     .select(`
       id, status, professional_notes, created_at, branch_id,
       clients(name, phone),
       branches!branch_id(name),
-      treatment_plan_items(unit_price, sessions)
+      treatment_plan_sessions(treatment_plan_session_procedures(price))
     `)
     .in('branch_id', branchIds)
     .eq('status', 'PROPOSED')
@@ -46,14 +50,17 @@ export async function ListaDeCheckout({
   if (error) throw new Error(`Falha ao carregar os checkouts: ${error.message}`)
 
   type RawClient = { name: string; phone: string | null }
-  type RawItem   = { unit_price: number; sessions: number }
+  type RawSess   = { treatment_plan_session_procedures: { price: number }[] }
   type RawBranch = { name: string }
 
   const plans = (plansRaw ?? []).map(p => {
-    const cli   = p.clients  as unknown as RawClient | null
-    const br    = p.branches as unknown as RawBranch | null
-    const items = (p.treatment_plan_items as RawItem[]) ?? []
-    const total = items.reduce((s, it) => s + Number(it.unit_price) * it.sessions, 0)
+    const cli      = p.clients  as unknown as RawClient | null
+    const br       = p.branches as unknown as RawBranch | null
+    const sessoes  = (p.treatment_plan_sessions as unknown as RawSess[]) ?? []
+    const total    = sessoes.reduce(
+      (s, sess) => s + (sess.treatment_plan_session_procedures ?? []).reduce((t, pr) => t + Number(pr.price), 0),
+      0,
+    )
     return {
       id:      p.id as string,
       name:    cli?.name ?? '—',

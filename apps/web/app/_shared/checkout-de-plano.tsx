@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPodeReceber, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getTreatmentPlanSessions } from '@/actions/treatment-plans'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
@@ -22,7 +22,7 @@ export async function CheckoutDePlano({
   planId:     string
 }) {
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'VIEW')
+  assertPodeReceber(ctx)
 
   const admin = createAdminClient()
 
@@ -80,7 +80,7 @@ export async function CheckoutDePlano({
         </p>
       </div>
 
-      <CheckoutWizard plan={plan} slug={slug} />
+      <CheckoutWizard plan={plan} slug={slug} podeAgendar={can(ctx, 'agenda', 'MANAGE')} />
     </div>
   )
 }

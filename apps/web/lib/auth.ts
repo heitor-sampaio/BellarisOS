@@ -147,6 +147,27 @@ export function can(ctx: TenantContext, module: AppModule, required: 'VIEW' | 'M
 }
 
 /**
+ * O cargo pode RECEBER dinheiro do cliente?
+ *
+ * Caixa e financeiro são portas diferentes para o mesmo gesto: `cashier` recebe
+ * e abre/fecha o caixa, `financial` lança e estorna. Quem tem qualquer um dos
+ * dois pode fechar uma venda — é o mesmo critério que a tela de atendimento já
+ * usa para "Confirmar pagamento".
+ *
+ * Existe porque o checkout do plano de tratamento exigia `procedures: MANAGE`,
+ * o módulo do CATÁLOGO: a recepção precisava poder editar preço de procedimento
+ * da rede para receber um plano, e na prática não conseguia fechar nada.
+ */
+export function podeReceber(ctx: TenantContext): boolean {
+  return can(ctx, 'cashier', 'MANAGE') || can(ctx, 'financial', 'MANAGE')
+}
+
+/** Barra quem não pode receber. */
+export function assertPodeReceber(ctx: TenantContext): void {
+  if (!podeReceber(ctx)) throw new Error('Forbidden')
+}
+
+/**
  * O cargo enxerga só os próprios registros neste módulo?
  *
  * Substitui a heurística `ctx.providesServices && permissions.agenda !== 'MANAGE'`,
