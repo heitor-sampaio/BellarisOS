@@ -95,7 +95,17 @@ export interface ReplyPreview {
   id:         string | null
 }
 
-export async function getConversations(): Promise<Conversation[]> {
+export async function getConversations(
+  /**
+   * Conversa que deve entrar na lista mesmo sem mensagem nenhuma.
+   *
+   * É o caso do deep-link vindo de um card do funil: a pessoa clicou em "ver
+   * conversa", a conversa existe e foi aberta de propósito, mas ninguém falou
+   * ainda. Sem esta exceção ela some da lista e o inbox abre parecendo vazio —
+   * com a conversa pedida em lugar nenhum.
+   */
+  incluirId?: string | null,
+): Promise<Conversation[]> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
@@ -121,11 +131,15 @@ export async function getConversations(): Promise<Conversation[]> {
     .from('conversations')
     .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, tags, branches(name)')
     .eq('tenant_id', ctx.tenantId!)
-    // Contato sem nenhuma mensagem não é conversa. A conversa é também o
-    // registro do contato, e contato criado pelo quadro (ou pelo backfill que
-    // deu dono às oportunidades antigas) nasce sem ninguém ter falado — na lista
-    // do inbox isso seria só ruído entre os atendimentos de verdade.
-    .not('last_message_at', 'is', null)
+  // Contato sem nenhuma mensagem não é conversa. A conversa é também o registro
+  // do contato, e contato criado pelo quadro (ou pelo backfill que deu dono às
+  // oportunidades antigas) nasce sem ninguém ter falado — na lista do inbox
+  // isso seria só ruído entre os atendimentos de verdade.
+  //
+  // A exceção é a conversa pedida pelo deep-link, que entra mesmo calada.
+  query = incluirId
+    ? query.or(`last_message_at.not.is.null,id.eq.${incluirId}`)
+    : query.not('last_message_at', 'is', null)
 
   if (ownLeadIds) {
     // Conversa sem lead é contato que ainda não virou card: fica no bolo comum,
