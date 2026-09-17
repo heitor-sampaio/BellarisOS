@@ -24,6 +24,7 @@ interface ProcedureFormProps {
     duration_min: number
     price:        string | number
     visible_on_client_app: boolean
+    is_evaluation?: boolean
   }
   onSuccess?: () => void
 }
@@ -100,6 +101,22 @@ export function ProcedureForm({ branchId, slug, userId, isNetworkAdmin, existing
             />
             <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
               Permitir agendamento self-service
+            </span>
+          </label>
+        </Field>
+
+        {/* A avaliação era um checkbox no agendamento, com preço R$ 0 e 60
+            minutos fixos. Sendo um procedimento, cada rede define se cobra,
+            quanto, quanto dura e com que ficha. */}
+        <Field label="Consulta de avaliação" hint="Abre o planejamento de tratamento durante o atendimento">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', paddingTop: 6 }}>
+            <input
+              name="is_evaluation" type="checkbox"
+              defaultChecked={existingProcedure?.is_evaluation ?? false}
+              style={{ accentColor: 'var(--brand)', width: 16, height: 16 }}
+            />
+            <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
+              Este procedimento é uma avaliação
             </span>
           </label>
         </Field>

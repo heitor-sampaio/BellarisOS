@@ -143,6 +143,18 @@ function NewProcedureModal({
             </div>
           </div>
 
+          {/* Consulta de avaliação — deixou de ser um checkbox no agendamento
+              (que fixava R$ 0 e 60 min) e virou atributo do procedimento. Com
+              ela marcada, o preço pode ser zero: avaliação de cortesia é caso
+              corrente, e era o único jeito que existia antes. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label className="field-label">Consulta de avaliação?</label>
+            <select name="is_evaluation" className="field" defaultValue="false">
+              <option value="false">Não</option>
+              <option value="true">Sim — abre o planejamento de tratamento</option>
+            </select>
+          </div>
+
           {/* Descrição */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label className="field-label">Descrição</label>

@@ -5,7 +5,7 @@ import { addAppointment } from '@/actions/appointments'
 import { X, Calendar, Search, UserPlus } from 'lucide-react'
 
 interface Client      { id: string; name: string; phone: string }
-interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number }
+interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number; is_evaluation?: boolean }
 interface Professional { id: string; name: string }
 interface Room        { id: string; name: string }
 
@@ -40,7 +40,6 @@ export function AppointmentModal({
   const [clientSearch, setClientSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [showClientList, setShowClientList] = useState(false)
-  const [isEvaluation, setIsEvaluation] = useState(false)
 
   useEffect(() => { if (state?.success) { onSuccess(); onClose() } }, [state?.success])
 
@@ -190,39 +189,21 @@ export function AppointmentModal({
             </div>
           </Field>
 
-          <label style={{
-            display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 14px', borderRadius: 10,
-            border: isEvaluation ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-            background: isEvaluation ? 'var(--brand-soft)' : 'var(--bg-app)',
-          }}>
-            <input
-              type="checkbox"
-              name="is_evaluation"
-              value="true"
-              checked={isEvaluation}
-              onChange={e => setIsEvaluation(e.target.checked)}
-              style={{ accentColor: 'var(--brand)', width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
-            />
-            <div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: isEvaluation ? 'var(--brand)' : 'var(--text)' }}>Consulta de avaliação</span>
-              <span style={{ fontSize: 11, color: 'var(--text-faint)', display: 'block', marginTop: 1 }}>
-                {isEvaluation ? 'Sem procedimento fixo — a profissional definirá o plano na consulta' : 'A profissional poderá registrar um plano de tratamento neste atendimento'}
-              </span>
-            </div>
-          </label>
-
-          {!isEvaluation && (
-            <Field label="Procedimento *">
-              <select name="procedure_id" required className="field">
-                <option value="">Selecione o procedimento…</option>
-                {procedures.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — {p.duration_min}min — R$ {parseFloat(String(p.price)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          )}
+          {/* A consulta de avaliação era um checkbox aqui, que criava o
+              atendimento SEM procedimento — preço R$ 0 e 60 minutos fixos.
+              Agora ela é um procedimento do catálogo como qualquer outro: a
+              rede define preço, duração e ficha, e o atendimento herda de lá
+              que é uma avaliação. */}
+          <Field label="Procedimento *">
+            <select name="procedure_id" required className="field">
+              <option value="">Selecione o procedimento…</option>
+              {procedures.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.is_evaluation ? '★ ' : ''}{p.name} — {p.duration_min}min — R$ {parseFloat(String(p.price)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </option>
+              ))}
+            </select>
+          </Field>
 
           <div className="form-2col">
             <Field label="Profissional *">

@@ -24,6 +24,8 @@ export async function addProcedure(
   const otherCostsRaw = (formData.get('other_costs') as string)?.replace(/\./g, '').replace(',', '.')
   const otherCosts    = parseFloat(otherCostsRaw) || 0
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
+  // Consulta de avaliação: abre o planejamento de tratamento no atendimento.
+  const isEvaluation       = formData.get('is_evaluation') === 'on'
   const anamnesisFormId = (formData.get('anamnesis_form_id') as string)?.trim() || null
   const attendanceFormId = (formData.get('attendance_form_id') as string)?.trim() || null
   const branchIds      = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
@@ -52,6 +54,7 @@ export async function addProcedure(
       visible_on_client_app: visibleOnClientApp,
       anamnesis_form_id:     anamnesisFormId,
       attendance_form_id:    attendanceFormId,
+      is_evaluation:         isEvaluation,
       is_active:             true,
     })
     .select('id')
@@ -115,6 +118,8 @@ export async function updateProcedure(
   const otherCostsRaw = (formData.get('other_costs') as string)?.replace(/\./g, '').replace(',', '.')
   const otherCosts    = parseFloat(otherCostsRaw) || 0
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
+  // Consulta de avaliação: abre o planejamento de tratamento no atendimento.
+  const isEvaluation       = formData.get('is_evaluation') === 'on'
   const anamnesisFormId = (formData.get('anamnesis_form_id') as string)?.trim() || null
   const attendanceFormId = (formData.get('attendance_form_id') as string)?.trim() || null
   const branchIds     = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
@@ -139,7 +144,7 @@ export async function updateProcedure(
   // Atualiza dados básicos
   const { error } = await admin
     .from('procedures')
-    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, anamnesis_form_id: anamnesisFormId, attendance_form_id: attendanceFormId })
+    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, is_evaluation: isEvaluation, anamnesis_form_id: anamnesisFormId, attendance_form_id: attendanceFormId })
     .eq('id', procedureId)
     .eq('tenant_id', ctx.tenantId!)
 
@@ -188,13 +193,17 @@ export async function createBranchProcedure(
   const durationMin = parseInt(formData.get('duration_min') as string, 10)
   const price       = parseFloat(((formData.get('price') as string) ?? '').replace(',', '.'))
   const visibleApp  = formData.get('visible_on_client_app') === 'true'
+  const isEvaluation = formData.get('is_evaluation') === 'true'
   const branchId    = (formData.get('branch_id')   as string | null)?.trim() || null
   const slug        = (formData.get('slug')         as string | null)?.trim()
 
   if (!name)                                  return { error: 'Informe o nome do procedimento.' }
   if (!category)                              return { error: 'Selecione uma categoria.' }
   if (isNaN(durationMin) || durationMin <= 0) return { error: 'Informe a duração em minutos.' }
-  if (isNaN(price) || price <= 0)             return { error: 'Informe um preço válido.' }
+  // Avaliação de cortesia é caso corrente — e era o único jeito que existia
+  // antes, quando a consulta nascia sempre em R$ 0.
+  if (isNaN(price) || price < 0)              return { error: 'Informe um preço válido.' }
+  if (price === 0 && !isEvaluation)           return { error: 'Informe um preço válido.' }
   if (!branchId)                              return { error: 'Filial não identificada.' }
 
   // Verifica que a filial pertence ao tenant
@@ -216,6 +225,7 @@ export async function createBranchProcedure(
     duration_min:          durationMin,
     price,
     visible_on_client_app: visibleApp,
+    is_evaluation:         isEvaluation,
     is_active:             true,
   })
 

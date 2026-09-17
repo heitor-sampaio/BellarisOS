@@ -114,12 +114,15 @@ export async function SessaoDeAtendimento({
       .eq('appointment_id', id)
       .maybeSingle(),
 
-    // Todos os procedimentos ativos da rede (para o plano de tratamento) — com insumos embutidos
+    // Todos os procedimentos ativos da rede (para o plano de tratamento) — com
+    // insumos embutidos. Fora os de avaliação: plano de tratamento é o que vem
+    // DEPOIS da avaliação, vender a própria consulta dentro dele não faz sentido.
     admin
       .from('procedures')
       .select('id, name, category, duration_min, price, procedure_products(product_id, quantity, products(id, name, unit, consumption_unit, units_per_package))')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
+      .eq('is_evaluation', false)
       .order('name'),
 
     // Pacotes disponíveis

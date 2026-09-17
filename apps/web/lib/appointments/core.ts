@@ -43,17 +43,23 @@ export async function createAppointmentCore(
   if (!input.scheduledAt)                           return { error: 'Informe data e hora.' }
 
   // Preço/duração do procedimento (quando houver)
-  let procedure: { price: number; duration_min: number } | null = null
+  let procedure: { price: number; duration_min: number; is_evaluation: boolean } | null = null
   if (input.procedureId) {
     const { data, error } = await admin
       .from('procedures')
-      .select('price, duration_min')
+      .select('price, duration_min, is_evaluation')
       .eq('id', input.procedureId)
       .eq('tenant_id', ctx.tenantId!)
       .single()
     if (error || !data) return { error: 'Procedimento não encontrado.' }
     procedure = data
   }
+
+  // Avaliação é atributo do PROCEDIMENTO: era um checkbox no agendamento que
+  // fixava R$ 0 e 60 minutos e criava o atendimento sem procedimento nenhum.
+  // O `input.isEvaluation` sobrevive para quem ainda manda a flag (extensão,
+  // chamadas antigas), mas quem manda um procedimento marcado não precisa dela.
+  const ehAvaliacao = procedure?.is_evaluation ?? input.isEvaluation ?? false
 
   const durationMin = procedure?.duration_min ?? 60
   const start       = new Date(input.scheduledAt)
@@ -102,7 +108,7 @@ export async function createAppointmentCore(
       notes:           input.notes ?? null,
       status:          'SCHEDULED',
       source:          input.source ?? 'INTERNAL',
-      is_evaluation:   input.isEvaluation ?? false,
+      is_evaluation:   ehAvaliacao,
       created_by_id:   ctx.internalUserId,
     })
     .select('id')

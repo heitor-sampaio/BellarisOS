@@ -182,7 +182,7 @@ export function getCachedBranchProcedures(branchId: string, tenantId: string) {
       const admin = createAdminClient()
       const { data } = await admin
         .from('procedures')
-        .select('id, name, category, duration_min, price')
+        .select('id, name, category, duration_min, price, is_evaluation')
         .eq('tenant_id', tenantId)
         .or(`branch_id.is.null,branch_id.eq.${branchId}`)
         .eq('is_active', true)
