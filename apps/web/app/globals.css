@@ -696,6 +696,23 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   .occupancy-row .occ-details { grid-area: details; flex-wrap: wrap; }
 }
 
+/* Quadro de oportunidades no celular: uma coluna por vez, encaixando no lugar.
+   Sem o snap, a rolagem para no meio de duas colunas e nenhuma fica legível —
+   com 248px de coluna num telefone de 390px, é o que acontece sempre. */
+@media (max-width: 767px) {
+  .crm-board-cols {
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .crm-board-cols > * {
+    scroll-snap-align: start;
+    /* Coluna quase cheia: a fresta mostra que há mais para o lado. */
+    flex: 0 0 86% !important;
+    max-width: 86% !important;
+  }
+}
+
 /* Editor de template: formulário + prévia. Empilha quando não cabe lado a lado. */
 .tpl-editor {
   display: grid;

@@ -4,7 +4,7 @@ import { useState, useTransition, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, ArrowRight, ArrowRightLeft, Trash2, Phone, Mail, X, AlertTriangle,
-  MoreHorizontal,
+  MoreHorizontal, Compass, Tag as TagIcon, UserCog, Package,
 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 import { updateLeadStage, deleteLead } from '@/actions/leads'
@@ -17,6 +17,7 @@ import {
   AWAITING_THRESHOLDS, STALE_THRESHOLDS, formatDurationShort,
 } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
+import { PickerCompacto } from '@/components/shared/picker-compacto'
 
 // --- Filtros e ordenação -----------------------------------------
 const SEM_DONO = '__sem_dono__'
@@ -120,125 +121,93 @@ function FiltersBar({
     borderRadius: 8, padding: '5px 8px', cursor: 'pointer', outline: 'none',
   }
 
+  /** Mesmo desenho dos selects da barra; rosé quando o filtro está valendo. */
+  function estiloGatilho(ativo: boolean): React.CSSProperties {
+    return {
+      ...selectStyle,
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      ...(ativo && {
+        border: '1.5px solid var(--brand)',
+        background: 'var(--brand-soft)',
+        color: 'var(--brand)',
+      }),
+    }
+  }
+
+  /** "Tags · 2" — o que está escolhido cabe no próprio rótulo. */
+  function rotuloFiltro(nome: string, quantos: number): string {
+    return quantos > 0 ? `${nome} · ${quantos}` : nome
+  }
+
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
       flexWrap: 'wrap', padding: '10px 0 4px',
     }}>
-      {/* Origem (chips dinâmicos dos dados) */}
+      {/* Origem, tags, dono e procedimento como SELETORES, não como chips.
+          Cada um despejava todas as opções na barra: numa rede com trinta tags,
+          a barra de filtros ficava mais alta que o quadro, e no celular virava
+          uma parede antes de qualquer card aparecer. Agora seguem a forma dos
+          outros filtros — um gatilho que abre a lista —, e o que está marcado
+          aparece no próprio rótulo. */}
       {availableSources.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)' }}>Origem</span>
-          {availableSources.map(src => {
-            const active = filters.sources.includes(src)
-            return (
-              <button
-                key={src} type="button"
-                onClick={() => toggleSource(src)}
-                style={{
-                  fontSize: 11.5, fontWeight: 600, padding: '4px 10px', borderRadius: 99,
-                  cursor: 'pointer', transition: 'all 120ms',
-                  border: active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-                  background: active ? 'var(--brand-soft)' : 'var(--surface)',
-                  color: active ? 'var(--brand)' : 'var(--text-muted)',
-                }}
-              >
-                {src}
-              </button>
-            )
-          })}
-        </div>
+        <PickerCompacto
+          icone={<Compass size={12} />}
+          rotuloBotao={rotuloFiltro('Origem', filters.sources.length)}
+          opcoes={availableSources.map(s => ({ valor: s, rotulo: s }))}
+          selecionadas={filters.sources}
+          multiplo
+          textoListaVazia="Nenhuma origem nos leads carregados."
+          classeBotao=""
+          estiloBotao={estiloGatilho(filters.sources.length > 0)}
+          onEscolher={toggleSource}
+        />
       )}
 
-      {/* Tags */}
       {availableTags.length > 0 && (
-        <>
-          {availableSources.length > 0 && (
-            <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)' }}>Tags</span>
-            {availableTags.map(tag => {
-              const active = filters.tags.includes(tag)
-              return (
-                <button
-                  key={tag} type="button"
-                  onClick={() => toggleTag(tag)}
-                  style={{
-                    fontSize: 11.5, fontWeight: 600, padding: '4px 10px', borderRadius: 99,
-                    cursor: 'pointer', transition: 'all 120ms',
-                    border: active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-                    background: active ? 'var(--brand-soft)' : 'var(--surface)',
-                    color: active ? 'var(--brand)' : 'var(--text-muted)',
-                  }}
-                >
-                  {tag}
-                </button>
-              )
-            })}
-          </div>
-        </>
+        <PickerCompacto
+          icone={<TagIcon size={12} />}
+          rotuloBotao={rotuloFiltro('Tags', filters.tags.length)}
+          opcoes={availableTags.map(t => ({ valor: t, rotulo: t }))}
+          selecionadas={filters.tags}
+          multiplo
+          textoListaVazia="Nenhuma tag nos leads carregados."
+          classeBotao=""
+          estiloBotao={estiloGatilho(filters.tags.length > 0)}
+          onEscolher={toggleTag}
+        />
       )}
 
-      {/* Dono do negócio */}
       {availableOwners.length > 0 && (
-        <>
-          {(availableSources.length > 0 || availableTags.length > 0) && (
-            <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)' }}>Dono</span>
-            {availableOwners.map(nome => {
-              const active = filters.owners.includes(nome)
-              return (
-                <button
-                  key={nome} type="button"
-                  onClick={() => toggleOwner(nome)}
-                  style={{
-                    fontSize: 11.5, fontWeight: 600, padding: '4px 10px', borderRadius: 99,
-                    cursor: 'pointer', transition: 'all 120ms',
-                    border: active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-                    background: active ? 'var(--brand-soft)' : 'var(--surface)',
-                    color: active ? 'var(--brand)' : 'var(--text-muted)',
-                  }}
-                >
-                  {nome === SEM_DONO ? 'Sem dono' : nome}
-                </button>
-              )
-            })}
-          </div>
-        </>
+        <PickerCompacto
+          icone={<UserCog size={12} />}
+          rotuloBotao={rotuloFiltro('Dono', filters.owners.length)}
+          opcoes={availableOwners.map(n => ({
+            valor: n, rotulo: n === SEM_DONO ? 'Sem dono' : n,
+          }))}
+          selecionadas={filters.owners}
+          multiplo
+          textoListaVazia="Nenhum dono nos leads carregados."
+          classeBotao=""
+          estiloBotao={estiloGatilho(filters.owners.length > 0)}
+          onEscolher={toggleOwner}
+        />
       )}
 
-      {/* Procedimentos */}
       {availableProcs.length > 0 && (
-        <>
-          {(availableSources.length > 0 || availableTags.length > 0) && (
-            <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)' }}>Procedimento</span>
-            {availableProcs.map(p => {
-              const active = filters.procedureIds.includes(p.id)
-              return (
-                <button
-                  key={p.id} type="button"
-                  onClick={() => toggleProcedure(p.id)}
-                  style={{
-                    fontSize: 11.5, fontWeight: 600, padding: '4px 10px', borderRadius: 99,
-                    cursor: 'pointer', transition: 'all 120ms',
-                    border: active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-                    background: active ? 'var(--brand-soft)' : 'var(--surface)',
-                    color: active ? 'var(--brand)' : 'var(--text-muted)',
-                  }}
-                >
-                  {p.name}
-                </button>
-              )
-            })}
-          </div>
-        </>
+        <PickerCompacto
+          icone={<Package size={12} />}
+          rotuloBotao={rotuloFiltro('Procedimento', filters.procedureIds.length)}
+          opcoes={availableProcs.map(p => ({ valor: p.id, rotulo: p.name }))}
+          selecionadas={filters.procedureIds}
+          multiplo
+          textoListaVazia="Nenhum procedimento nos leads carregados."
+          classeBotao=""
+          estiloBotao={estiloGatilho(filters.procedureIds.length > 0)}
+          onEscolher={toggleProcedure}
+        />
       )}
+
 
       {/* Separador antes dos selects */}
       <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
@@ -1054,10 +1023,15 @@ export function CRMBoard({
         onClear={() => { setFilters(DEFAULT_FILTERS); setSort('newest') }}
       />
 
-    <div style={{
+    {/* Quadro: rola na horizontal, uma coluna de cada vez no celular.
+        `scroll-snap` faz a coluna parar alinhada em vez de ficar cortada ao
+        meio, que é o que torna kanban usável no toque. E `100dvh` porque
+        `100vh` no celular conta com a barra de endereço recolhida — a diferença
+        vira uma faixa vazia embaixo do quadro. */}
+    <div className="crm-board-cols" style={{
       display: 'flex', gap: 12,
       overflowX: 'auto', paddingBottom: 20,
-      minHeight: 'calc(100vh - 240px)',
+      minHeight: 'calc(100dvh - 240px)',
       marginTop: 12,
     }}>
       {stages.map(stage => {

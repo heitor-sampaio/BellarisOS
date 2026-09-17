@@ -23,7 +23,8 @@ export interface OpcaoPicker {
 
 export function PickerCompacto({
   rotuloBotao, icone, opcoes, selecionadas, multiplo = false,
-  textoListaVazia, larguraPainel = 232, disabled = false, onEscolher,
+  textoListaVazia, larguraPainel = 232, disabled = false,
+  classeBotao = 'btn-ghost', estiloBotao, onEscolher,
 }: {
   rotuloBotao:      string
   icone:            React.ReactNode
@@ -34,6 +35,9 @@ export function PickerCompacto({
   textoListaVazia:  string
   larguraPainel?:   number
   disabled?:        boolean
+  /** Para o gatilho combinar com a barra onde ele vive (filtros, card…). */
+  classeBotao?:     string
+  estiloBotao?:     React.CSSProperties
   onEscolher:       (valor: string) => void
 }) {
   const [aberto, setAberto] = useState(false)
@@ -68,8 +72,8 @@ export function PickerCompacto({
           setBusca('')
           setTimeout(() => campoRef.current?.focus(), 0)
         }}
-        className="btn-ghost"
-        style={{ fontSize: 11.5, padding: '4px 8px', gap: 5 }}
+        className={classeBotao}
+        style={estiloBotao ?? { fontSize: 11.5, padding: '4px 8px', gap: 5 }}
       >
         {icone}
         {rotuloBotao}
