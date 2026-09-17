@@ -13,6 +13,7 @@ import { AttendanceRecordCard } from './attendance-record-card'
 import { AnamnesisTab, type GeneralAnamnesis } from './anamnesis-tab'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { TagBadge } from '@/components/shared/tag-badge'
+import { LeadTimeline } from './lead-timeline'
 import { CLIENT_TAGS, isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
 import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -157,6 +158,19 @@ interface Props {
   canManageProcedures:   boolean
   isNetworkWide:         boolean
   clientHistory:         ClientHistoryEvent[]
+  /** Oportunidades ligadas a este cliente — abertas e concluídas. */
+  opportunities?:        ClientOpportunity[]
+}
+
+/** Uma oportunidade na ficha do cliente: só o que a leitura precisa. */
+export interface ClientOpportunity {
+  id:          string
+  funnel_name: string | null
+  stage_name:  string | null
+  stage_color: string | null
+  outcome:     'OPEN' | 'WON' | 'LOST'
+  owner_name:  string | null
+  created_at:  string
 }
 
 // -- Helpers ------------------------------------------------------------------
@@ -185,10 +199,14 @@ const STATUS_LABEL: Record<string, string> = {
   NO_SHOW:     'Não compareceu',
 }
 
-type TabKey = 'visao' | 'historico' | 'fichas' | 'financeiro' | 'documentos' | 'dados'
+type TabKey = 'visao' | 'historico' | 'oportunidades' | 'fichas' | 'financeiro' | 'documentos' | 'dados'
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'visao',      label: 'Visão geral' },
   { key: 'historico',  label: 'Histórico' },
+  // Separada do histórico de propósito: uma conta o ATENDIMENTO (agendou, veio,
+  // pagou) e a outra a NEGOCIAÇÃO (o que foi proposto, ganho, perdido). Ser
+  // cliente não encerra a segunda — reativação é negociar com quem já comprou.
+  { key: 'oportunidades', label: 'Oportunidades' },
   { key: 'fichas',     label: 'Fichas' },
   { key: 'financeiro', label: 'Financeiro' },
   { key: 'documentos', label: 'Documentos' },
@@ -875,7 +893,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments,
   loyaltyBalance, activePackage, sessionNotes,
-  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clientHistory,
+  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clientHistory, opportunities = [],
 }: Props) {
   const router = useRouter()
   const [tab, setTab] = useState<TabKey>('visao')
@@ -1183,6 +1201,72 @@ export function ClientProfile({
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* -- Tab: Oportunidades ---------------------------------------- */}
+      {tab === 'oportunidades' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                Negociações
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {opportunities.filter(o => o.outcome === 'OPEN').length} em aberto ·{' '}
+                {opportunities.length} no total
+              </span>
+            </div>
+
+            {opportunities.length === 0 ? (
+              <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                Nenhuma oportunidade. Abra uma pela conversa no Inbox quando houver
+                interesse em algo novo.
+              </div>
+            ) : (
+              <div>
+                {opportunities.map((o, i) => (
+                  <div
+                    key={o.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '12px 20px',
+                      borderBottom: i === opportunities.length - 1 ? 'none' : '1px solid var(--hairline)',
+                    }}
+                  >
+                    <span style={{
+                      width: 3, height: 30, borderRadius: 99, flexShrink: 0,
+                      background: o.stage_color ?? 'var(--border)',
+                    }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                        {o.funnel_name ?? 'Sem funil'}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {o.stage_name ?? 'Sem etapa'}
+                        {o.owner_name ? ` · ${o.owner_name}` : ''}
+                        {' · desde '}
+                        {format(new Date(o.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                      </div>
+                    </div>
+                    <span style={{
+                      flexShrink: 0, fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 99,
+                      color: o.outcome === 'WON' ? 'var(--success)'
+                           : o.outcome === 'LOST' ? 'var(--text-faint)' : 'var(--brand)',
+                      background: o.outcome === 'OPEN' ? 'var(--brand-soft)' : 'var(--bg-app)',
+                    }}>
+                      {o.outcome === 'WON' ? 'Ganha' : o.outcome === 'LOST' ? 'Perdida' : 'Em aberto'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* A linha do tempo comercial: o que foi proposto e como terminou. */}
+          <div className="card">
+            <LeadTimeline clientId={client.id} />
+          </div>
         </div>
       )}
 

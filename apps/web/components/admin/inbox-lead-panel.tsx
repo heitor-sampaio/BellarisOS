@@ -236,13 +236,15 @@ export function InboxLeadPanel({
         {!disabled && (
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
             {cliente ? (
+              // Direto na ficha, não na lista: quem clica aqui quer ESTE
+              // cliente, e cair na lista obriga a procurá-lo de novo.
               <a
-                href={slug === '__admin__' ? '/admin/clientes' : `/${slug}/clients`}
+                href={slug === '__admin__' ? `/admin/clients/${cliente.id}` : `/${slug}/clients/${cliente.id}`}
                 className="btn-ghost"
                 style={{ fontSize: 11, padding: '4px 7px', textDecoration: 'none' }}
-                title={`Ficha de ${cliente.name}`}
+                title={`Abrir a ficha de ${cliente.name}`}
               >
-                <UserCheck size={12} color="var(--success)" /> Cliente
+                <UserCheck size={12} color="var(--success)" /> Ver cliente
               </a>
             ) : (
               <button type="button" className="btn-ghost"

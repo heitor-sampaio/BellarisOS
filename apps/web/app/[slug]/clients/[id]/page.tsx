@@ -6,6 +6,7 @@ import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
+import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ProfileTransaction, ProfileInternalCredit, ClientHistoryEvent } from '@/components/branch/client-profile'
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
@@ -410,6 +411,10 @@ export default async function ClientProfilePage({
 
   const clientHistory = history.sort((a, b) => b.date.localeCompare(a.date))
 
+  // Negociacoes desta pessoa: ser cliente nao encerra o funil -- reativacao e
+  // abrir oportunidade nova para quem ja comprou.
+  const oportunidades = await oportunidadesDoCliente(ctx.tenantId!, client.id)
+
   return (
     <>
     <RealtimeRefresher tables={['appointments', 'treatment_plans', 'client_packages']} />
@@ -435,6 +440,7 @@ export default async function ClientProfilePage({
       canManageProcedures={can(ctx, 'procedures', 'MANAGE')}
       isNetworkWide={ctx.branchId === null}
       clientHistory={clientHistory}
+      opportunities={oportunidades}
     />
     </>
   )

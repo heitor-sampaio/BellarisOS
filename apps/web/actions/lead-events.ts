@@ -43,6 +43,46 @@ export async function getLeadEvents(leadId: string): Promise<LeadEvent[]> {
 }
 
 /**
+ * Histórico comercial de um CLIENTE: os eventos das oportunidades dele.
+ *
+ * Fica ao lado do histórico de atendimento (agendamentos, pagamentos) na ficha,
+ * e responde outra pergunta: o que foi negociado com esta pessoa, ganho ou
+ * perdido. Uma pessoa vira cliente e continua recebendo propostas — reativação
+ * é isso — então a ficha precisa mostrar as duas histórias.
+ */
+export async function getClientEvents(clientId: string): Promise<LeadEvent[]> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'clients', 'VIEW')
+
+  const admin = createAdminClient()
+
+  const owner = ownerFilter(ctx, 'crm')
+  let q = admin
+    .from('leads')
+    .select('id')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('client_id', clientId)
+  if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
+
+  const { data: leads, error: erroLeads } = await q
+  if (erroLeads) throw new Error(`Falha ao carregar as oportunidades: ${erroLeads.message}`)
+
+  const ids = (leads ?? []).map(l => l.id as string)
+  if (ids.length === 0) return []
+
+  const { data, error } = await admin
+    .from('lead_events')
+    .select(LEAD_EVENT_COLS)
+    .in('lead_id', ids)
+    .eq('tenant_id', ctx.tenantId!)
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  if (error) throw new Error(`Falha ao carregar o histórico: ${error.message}`)
+  return (data ?? []) as LeadEvent[]
+}
+
+/**
  * Histórico do CONTATO: os eventos de todas as oportunidades dele, juntos.
  *
  * Antes o painel mostrava a linha do tempo de uma oportunidade só — o que

@@ -5,7 +5,7 @@ import {
   ArrowRight, Sparkles, UserCheck, UserCog, Clock, Building2, Pencil, CalendarPlus,
 } from 'lucide-react'
 import { formatDurationLong, secondsSince } from '@estetica-os/utils'
-import { getLeadEvents, getContactEvents } from '@/actions/lead-events'
+import { getLeadEvents, getContactEvents, getClientEvents } from '@/actions/lead-events'
 import type { LeadEvent } from '@/lib/lead-events'
 
 const DATA_HORA = new Intl.DateTimeFormat('pt-BR', {
@@ -105,10 +105,12 @@ function Descricao({ e }: { e: LeadEvent }) {
  *   deixava o histórico exibindo o estado anterior até recarregar a página.
  */
 export function LeadTimeline({
-  leadId, conversationId, refreshKey = 0,
+  leadId, conversationId, clientId, refreshKey = 0,
 }: {
-  /** Histórico de UMA oportunidade. Ignorado quando `conversationId` vem. */
+  /** Histórico de UMA oportunidade. Ignorado quando outro escopo vem. */
   leadId?: string
+  /** Histórico comercial de um cliente: as oportunidades ligadas a ele. */
+  clientId?: string
   /**
    * Histórico do CONTATO: junta as oportunidades dele.
    *
@@ -127,14 +129,15 @@ export function LeadTimeline({
   useEffect(() => {
     let ativo = true
     setEventos(null); setErro(null)
-    const busca = conversationId
-      ? getContactEvents(conversationId)
-      : leadId ? getLeadEvents(leadId) : Promise.resolve([])
+    const busca = conversationId ? getContactEvents(conversationId)
+      : clientId ? getClientEvents(clientId)
+      : leadId   ? getLeadEvents(leadId)
+      : Promise.resolve([])
     busca
       .then(r => { if (!ativo) return; setEventos(r); setNowMs(Date.now()) })
       .catch(() => { if (ativo) setErro('Não foi possível carregar o histórico.') })
     return () => { ativo = false }
-  }, [leadId, conversationId, refreshKey])
+  }, [leadId, conversationId, clientId, refreshKey])
 
   // O evento mais recente é o começo do tempo parado — é o número que diz se o
   // card está esquecido, e é a pergunta que a lista inteira responde.
