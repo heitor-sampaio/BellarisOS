@@ -222,31 +222,39 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
 }
 
 /**
- * Abre um plano novo para o cliente.
+ * Abre um plano novo.
  *
- * `appointmentId` é só a origem — de qual atendimento a conversa saiu. Sem ele o
- * plano existe do mesmo jeito, que é o ponto: planejar não depende de ter uma
- * consulta de avaliação marcada.
+ * `clientId` é opcional: `appointments.client_id` é NOT NULL, então toda
+ * avaliação já obrigava a cadastrar cliente (com CPF e e-mail, porque o
+ * cadastro cria login) antes mesmo de existir um plano. Aqui a profissional
+ * nomeia o plano e liga a um cliente quando houver um — o aceite é que exige.
+ *
+ * `appointmentId` é só a origem: de qual atendimento a conversa saiu.
  */
 export async function criarPlanoDoCliente(
-  clientId: string,
+  clientId: string | null,
   branchId: string,
   appointmentId?: string | null,
+  nome?: string,
 ): Promise<{ planId?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
-  const { data: cliente } = await admin
-    .from('clients')
-    .select('id, tenant_id, branch_id')
-    .eq('id', clientId)
-    .maybeSingle()
-  if (!cliente || cliente.tenant_id !== ctx.tenantId) return { error: 'Cliente não encontrado.' }
+  let filial = branchId
 
-  // A filial do plano é a de onde ele está sendo feito; sem ela, a de cadastro
-  // do cliente. É o que o checkout usa depois para o caixa e os agendamentos.
-  const filial = branchId || (cliente.branch_id as string | null)
+  if (clientId) {
+    const { data: cliente } = await admin
+      .from('clients')
+      .select('id, tenant_id, branch_id')
+      .eq('id', clientId)
+      .maybeSingle()
+    if (!cliente || cliente.tenant_id !== ctx.tenantId) return { error: 'Cliente não encontrado.' }
+    // A filial do plano é a de onde ele está sendo feito; sem ela, a de cadastro
+    // do cliente. É o que o aceite usa depois para o caixa e os agendamentos.
+    filial = filial || (cliente.branch_id as string | null) || ''
+  }
+
   if (!filial) return { error: 'Selecione a unidade do plano.' }
 
   const { data, error } = await admin
@@ -256,6 +264,7 @@ export async function criarPlanoDoCliente(
       branch_id:                 filial,
       professional_id:           ctx.internalUserId!,
       evaluation_appointment_id: appointmentId ?? null,
+      name:                      nome?.trim() || 'Plano de tratamento',
       status:                    'DRAFT',
     })
     .select('id')
@@ -263,6 +272,178 @@ export async function criarPlanoDoCliente(
 
   if (error || !data) return { error: `Erro ao criar o plano: ${error?.message}` }
   return { planId: data.id as string }
+}
+
+/**
+ * Liga um plano a um cliente — na criação ou depois.
+ *
+ * É o gesto que transforma um planejamento feito "para a Marina que veio por
+ * indicação" no plano de uma pessoa cadastrada, sem refazer nada.
+ */
+export async function vincularClienteAoPlano(
+  planId: string,
+  clientId: string,
+): Promise<{ error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'medical_records', 'MANAGE')
+  const admin = createAdminClient()
+
+  const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
+  if (!plan) return { error: 'Plano não encontrado.' }
+
+  const { data: cliente } = await admin
+    .from('clients')
+    .select('id, tenant_id')
+    .eq('id', clientId)
+    .maybeSingle()
+  if (!cliente || cliente.tenant_id !== ctx.tenantId) return { error: 'Cliente não encontrado.' }
+
+  const { error } = await admin
+    .from('treatment_plans')
+    .update({ client_id: clientId, updated_at: new Date().toISOString() })
+    .eq('id', planId)
+  if (error) return { error: error.message }
+
+  revalidatePath(`/${plan.slug}/clients/${clientId}`)
+  revalidatePath(`/admin/clients/${clientId}`)
+  return {}
+}
+
+/**
+ * Clientes para ligar a um plano.
+ *
+ * Busca por nome, telefone ou CPF — os três jeitos de reencontrar alguém no
+ * balcão. Devolve poucos: é um seletor, não uma listagem.
+ */
+export async function buscarClientesParaPlano(termo: string): Promise<{
+  clientes: { id: string; name: string; phone: string | null; document: string | null }[]
+}> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'clients', 'VIEW')
+
+  const busca = termo.trim()
+  if (busca.length < 2) return { clientes: [] }
+
+  const admin = createAdminClient()
+  const digitos = busca.replace(/\D/g, '')
+
+  const { data } = await admin
+    .from('clients')
+    .select('id, name, phone, document')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('is_active', true)
+    .or(
+      digitos.length >= 3
+        ? `name.ilike.%${busca}%,phone.ilike.%${digitos}%,document.ilike.%${digitos}%`
+        : `name.ilike.%${busca}%`,
+    )
+    .order('name')
+    .limit(8)
+
+  return { clientes: (data ?? []) as { id: string; name: string; phone: string | null; document: string | null }[] }
+}
+
+/** Renomeia o plano. */
+export async function renomearPlano(planId: string, nome: string): Promise<{ error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'medical_records', 'MANAGE')
+  const admin = createAdminClient()
+
+  const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
+  if (!plan) return { error: 'Plano não encontrado.' }
+  if (!nome.trim()) return { error: 'Dê um nome ao plano.' }
+
+  const { error } = await admin
+    .from('treatment_plans')
+    .update({ name: nome.trim(), updated_at: new Date().toISOString() })
+    .eq('id', planId)
+  return error ? { error: error.message } : {}
+}
+
+/**
+ * Todos os planejamentos da rede/unidade, com busca e filtro.
+ *
+ * A busca acha pelo NOME DO PLANO (o único jeito enquanto não há cliente) e
+ * pelos dados de quem já está ligado: nome, CPF ou telefone.
+ */
+export async function listarPlanejamentos(opcoes?: {
+  status?: string
+  busca?:  string
+  branchId?: string | null
+}): Promise<{
+  planos: {
+    id: string; nome: string; status: string; criadoEm: string
+    total: number; sessoes: number
+    cliente: { id: string; name: string; phone: string | null } | null
+    unidade: string | null
+  }[]
+}> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'VIEW')
+  const admin = createAdminClient()
+
+  // `treatment_plans` não tem tenant_id: o recorte é pela filial.
+  const { data: filiais } = await admin
+    .from('branches')
+    .select('id, name')
+    .eq('tenant_id', ctx.tenantId!)
+  const doTenant = (filiais ?? []) as { id: string; name: string }[]
+  const alcance  = opcoes?.branchId
+    ? doTenant.filter(b => b.id === opcoes.branchId)
+    : doTenant
+
+  let query = admin
+    .from('treatment_plans')
+    .select(`
+      id, name, status, created_at, branch_id,
+      clients(id, name, phone, document),
+      treatment_plan_sessions(treatment_plan_session_procedures(price))
+    `)
+    .in('branch_id', alcance.map(b => b.id))
+    .order('created_at', { ascending: false })
+    .limit(200)
+
+  if (opcoes?.status) query = query.eq('status', opcoes.status)
+
+  const { data, error } = await query
+  if (error) throw new Error(`Falha ao carregar os planejamentos: ${error.message}`)
+
+  type RawCli  = { id: string; name: string; phone: string | null; document: string | null }
+  type RawSess = { treatment_plan_session_procedures: { price: number }[] }
+
+  const termo = (opcoes?.busca ?? '').trim().toLowerCase()
+  const digitos = termo.replace(/\D/g, '')
+
+  const planos = (data ?? [])
+    .map(p => {
+      const cli     = p.clients as unknown as RawCli | null
+      const sessoes = (p.treatment_plan_sessions as unknown as RawSess[]) ?? []
+      return {
+        id:       p.id as string,
+        nome:     (p.name as string | null) ?? 'Plano de tratamento',
+        status:   p.status as string,
+        criadoEm: p.created_at as string,
+        sessoes:  sessoes.length,
+        total:    sessoes.reduce(
+          (s, sess) => s + (sess.treatment_plan_session_procedures ?? []).reduce((t, pr) => t + Number(pr.price), 0),
+          0,
+        ),
+        cliente:  cli ? { id: cli.id, name: cli.name, phone: cli.phone } : null,
+        unidade:  doTenant.find(b => b.id === p.branch_id)?.name ?? null,
+        _doc:     cli?.document ?? '',
+        _fone:    cli?.phone ?? '',
+      }
+    })
+    .filter(p => {
+      if (!termo) return true
+      if (p.nome.toLowerCase().includes(termo)) return true
+      if (p.cliente?.name.toLowerCase().includes(termo)) return true
+      if (digitos && (p._doc.includes(digitos) || p._fone.replace(/\D/g, '').includes(digitos))) return true
+      return false
+    })
+    .map(({ _doc, _fone, ...p }) => p)
+
+  return { planos }
 }
 
 /** Um plano no formato que o editor entende. */

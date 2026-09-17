@@ -19,6 +19,7 @@ const ICONS: Record<string, React.ReactNode> = {
   dashboard:  <LayoutGrid size={18} />,
   agenda:     <Calendar   size={18} />,
   clients:    <Users      size={18} />,
+  planejamentos:<ClipboardList size={18} />,
   checkout:   <ClipboardCheck size={18} />,
   inbox:        <Inbox    size={18} />,
   oportunidades:<Layers   size={18} />,

@@ -1,11 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ClipboardList, Plus, ChevronLeft, Loader2, Send, Save, CreditCard, CheckCircle2 } from 'lucide-react'
+import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CreditCard, CheckCircle2, UserPlus, UserCheck } from 'lucide-react'
 import {
   getPlanosDoCliente, criarPlanoDoCliente, salvarPlanoDoCliente, getPlanoParaEditar,
-  proposeTreatmentPlan, getCheckoutPlan,
+  proposeTreatmentPlan, getCheckoutPlan, vincularClienteAoPlano, buscarClientesParaPlano,
 } from '@/actions/treatment-plans'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, ExistingPlan, AvailableProduct } from '@/components/branch/treatment-plan-editor'
@@ -45,15 +45,18 @@ function fmtBRL(v: number) {
 }
 
 export function PlanejamentoTratamento({
-  clientId, branchId, slug, appointmentId = null,
+  clientId, branchId, slug, appointmentId = null, planIdInicial = null,
   procedures, availableProducts = [],
   podeEditar, podeReceber = false,
 }: {
+  /** Vazio quando o plano ainda não tem cliente — o caso da tela geral. */
   clientId:      string
   branchId:      string
   slug:          string
   /** Atendimento de onde o planejamento está sendo aberto — só a origem. */
   appointmentId?: string | null
+  /** Abre direto neste plano, em vez de listar os do cliente. */
+  planIdInicial?: string | null
   procedures:    TreatmentProcedure[]
   availableProducts?: AvailableProduct[]
   podeEditar:    boolean
@@ -68,12 +71,28 @@ export function PlanejamentoTratamento({
   const [erro,      setErro]       = useState<string | null>(null)
   const [checkout,  setCheckout]   = useState<CheckoutPlan | null>(null)
 
+  // Vínculo com cliente — um plano pode nascer só com nome e ganhar dono depois.
+  const [ligando,       setLigando]       = useState(false)
+  const [termoCliente,  setTermoCliente]  = useState('')
+  const [achados,       setAchados]       = useState<{ id: string; name: string; phone: string | null }[]>([])
+  const [clienteLigado, setClienteLigado] = useState<{ id: string; nome: string } | null>(null)
+  const termoRef = useRef("")
+
   const carregarLista = useCallback(async () => {
+    // Sem cliente não há lista: a tela geral já passa o plano a abrir.
+    if (!clientId) { setPlanos([]); return }
     const res = await getPlanosDoCliente(clientId)
     setPlanos(res.planos)
   }, [clientId])
 
   useEffect(() => { void carregarLista() }, [carregarLista])
+
+  // Aberto direto num plano (vem da tela de Planejamentos).
+  useEffect(() => {
+    if (!planIdInicial) return
+    void abrirPlano(planIdInicial)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planIdInicial])
 
   async function abrirPlano(planId: string) {
     setErro(null); setCarregando(true)
@@ -111,8 +130,37 @@ export function PlanejamentoTratamento({
     await abrirPlano(aberto.id)
   }
 
+  /**
+   * Busca de cliente, uma tecla por vez.
+   *
+   * `termoRef` descarta resposta atrasada: sem isso, a consulta de "De" chegava
+   * depois da de "Demo 05" e a lista mostrava todo mundo de novo.
+   */
+  async function buscarClientes(termo: string) {
+    setTermoCliente(termo)
+    termoRef.current = termo
+    if (termo.trim().length < 2) { setAchados([]); return }
+    const res = await buscarClientesParaPlano(termo)
+    if (termoRef.current !== termo) return
+    setAchados(res.clientes)
+  }
+
+  async function ligarCliente(id: string, nome: string) {
+    if (!aberto) return
+    setErro(null); setSalvando(true)
+    const res = await vincularClienteAoPlano(aberto.id, id)
+    setSalvando(false)
+    if (res.error) { setErro(res.error); return }
+    setClienteLigado({ id, nome })
+    setLigando(false); setTermoCliente(''); setAchados([])
+    router.refresh()
+  }
+
   async function fecharAgora() {
     if (!aberto) return
+    // Aceitar é quando vira venda: sem cliente não há a quem cobrar nem para
+    // quem agendar. Em vez de recusar, pede o vínculo.
+    if (!clienteLigado && !clientId) { setLigando(true); return }
     setErro(null); setSalvando(true)
     // Só plano proposto entra no checkout — é a regra da própria action.
     if (aberto.status === 'DRAFT') {
@@ -211,6 +259,52 @@ export function PlanejamentoTratamento({
 
       {erro && (
         <p style={{ fontSize: 12.5, color: '#dc2626', fontWeight: 600, padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>{erro}</p>
+      )}
+
+      {/* Sem cliente: o plano existe pelo nome, e ganha dono quando houver um. */}
+      {!clientId && podeEditar && (
+        <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {clienteLigado ? (
+            <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700, color: '#1f6b47' }}>
+              <UserCheck size={14} /> Ligado a {clienteLigado.nome}
+            </p>
+          ) : ligando ? (
+            <>
+              <input
+                className="field"
+                autoFocus
+                placeholder="Buscar por nome, telefone ou CPF…"
+                value={termoCliente}
+                onChange={e => buscarClientes(e.target.value)}
+              />
+              {achados.map(c => (
+                <button key={c.id} type="button" onClick={() => ligarCliente(c.id, c.name)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '8px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
+                    border: '1px solid var(--border)', background: 'var(--surface)',
+                  }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{c.name}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.phone ?? ''}</span>
+                </button>
+              ))}
+              <button type="button" onClick={() => { setLigando(false); setTermoCliente(''); setAchados([]) }}
+                className="btn-ghost" style={{ alignSelf: 'flex-start', fontSize: 12 }}>
+                Cancelar
+              </button>
+            </>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                Este plano ainda não tem cliente. Aceitar exige um.
+              </span>
+              <button type="button" onClick={() => setLigando(true)} className="btn-ghost"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
+                <UserPlus size={14} /> Ligar a um cliente
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* O editor é o mesmo da avaliação; aqui ele salva por planId, não por

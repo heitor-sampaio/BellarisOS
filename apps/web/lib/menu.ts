@@ -56,6 +56,7 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'clients',      group: 'atendimento',  label: 'Clientes',      href: '/admin/clients',        visible: p => has(p, 'clients') },
   // A fila de planos esperando para serem fechados. Existia e só se chegava por
   // um card do dashboard — quem recebe não tinha como achar.
+  { key: 'planejamentos',group: 'atendimento',  label: 'Planejamentos', href: '/admin/planejamentos',  visible: p => has(p, 'medical_records') || recebe(p) },
   { key: 'checkout',     group: 'atendimento',  label: 'Checkout',      href: '/admin/checkout',       visible: recebe },
 
   { key: 'inbox',        group: 'vendas',       label: 'Inbox',         href: '/admin/inbox',          visible: p => has(p, 'crm') },
@@ -84,6 +85,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 
   { key: 'agenda',        group: 'atendimento', label: 'Agenda',        href: '/agenda',        visible: p => has(p, 'agenda') },
   { key: 'clients',       group: 'atendimento', label: 'Clientes',      href: '/clients',       visible: p => has(p, 'clients') },
+  { key: 'planejamentos', group: 'atendimento', label: 'Planejamentos', href: '/planejamentos', visible: p => has(p, 'medical_records') || recebe(p) },
   { key: 'checkout',      group: 'atendimento', label: 'Checkout',      href: '/checkout',      visible: recebe },
 
   { key: 'inbox',         group: 'vendas',      label: 'Inbox',         href: '/inbox',         visible: p => has(p, 'crm') },
