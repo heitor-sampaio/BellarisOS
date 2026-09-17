@@ -696,6 +696,21 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   .occupancy-row .occ-details { grid-area: details; flex-wrap: wrap; }
 }
 
+/* Barra de abas: rola na horizontal em vez de quebrar em duas linhas.
+   Sete abas não cabem em 390px, e empilhá-las empurra o conteúdo para baixo da
+   dobra — a rolagem lateral mantém a âncora onde a pessoa espera. A barra de
+   rolagem some porque a aba cortada na borda já diz que há mais. */
+.tabs-bar {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tabs-bar::-webkit-scrollbar { display: none; }
+.tabs-bar > * { flex-shrink: 0; white-space: nowrap; }
+
 /* Tabelas do admin no celular: o respiro lateral de 20px vira 12px. Em 390px de
    largura, 40px só de padding por linha saem do nome de quem se está
    procurando. */

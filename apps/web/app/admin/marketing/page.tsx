@@ -167,7 +167,7 @@ export default async function AdminMarketingPage({
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
+      <div className="tabs-bar" style={{ marginBottom: 24 }}>
         {VIEWS.map(v => {
           const isActive = v.key === activeView
           return (

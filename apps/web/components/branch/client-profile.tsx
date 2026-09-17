@@ -1077,7 +1077,7 @@ export function ClientProfile({
       </div>
 
       {/* -- Tabs ------------------------------------------------------ */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
+      <div className="tabs-bar" style={{ gap: 0 }}>
         {visibleTabs.map(t => (
           <button
             key={t.key}

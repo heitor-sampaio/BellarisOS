@@ -97,7 +97,7 @@ export default async function BranchFormsPage({
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', marginBottom: 28 }}>
+      <div className="tabs-bar" style={{ marginBottom: 28 }}>
         {TABS.map(tab => {
           const isActive = tab.key === activeTab
           return (

@@ -152,8 +152,8 @@ export default async function AdminSettingsPage({
         </p>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', marginBottom: 28 }}>
+      {/* Tabs — `tabs-bar` rola na horizontal quando as sete não cabem. */}
+      <div className="tabs-bar" style={{ marginBottom: 28 }}>
         {tabs.map(tab => {
           const isActive = tab.key === activeTab
           return (

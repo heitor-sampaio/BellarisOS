@@ -552,8 +552,12 @@ function ModuleRow({
       padding: '12px 4px',
       borderBottom: last ? undefined : '1px solid var(--hairline)',
     }}>
+      {/* `flexWrap`: nome do módulo e seletor de nível lado a lado quando cabe,
+          um sobre o outro quando não. Sem isso, no celular o seletor de três
+          níveis espremia o nome do módulo até ele quebrar letra a letra. */}
       <div style={{
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+        gap: 12, flexWrap: 'wrap',
       }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{
