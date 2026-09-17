@@ -91,7 +91,12 @@ export default async function AdminTeamPage({
     <div>
       <RealtimeRefresher tables={['users']} />
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+      {/* `flexWrap` para o botão de adicionar descer em vez de espremer o
+          título quando a largura não dá para os dois lado a lado. */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+        gap: 12, flexWrap: 'wrap', marginBottom: 24,
+      }}>
         <div>
           <h1 style={{
             fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
@@ -133,11 +138,24 @@ export default async function AdminTeamPage({
             </p>
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          /* Rede de segurança: se a tela for MUITO estreita, a tabela rola na
+             horizontal em vez de empurrar a página inteira para o lado. */
+          <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 320 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Membro', 'Filial', 'Cargo', 'Situação', ''].map(h => (
-                  <th key={h} style={{
+                {/* Filial e cargo saem da tabela no celular e reaparecem sob o
+                    nome: cinco colunas em 390px ou viram rolagem lateral sem
+                    fim, ou espremem o nome — que é a única coluna que importa
+                    para achar alguém. */}
+                {([
+                  { h: 'Membro',   cls: '' },
+                  { h: 'Filial',   cls: 'hide-mobile' },
+                  { h: 'Cargo',    cls: 'hide-mobile' },
+                  { h: 'Situação', cls: '' },
+                  { h: '',         cls: '' },
+                ]).map(({ h, cls }) => (
+                  <th key={h} className={cls} style={{
                     padding: '12px 20px', textAlign: 'left',
                     fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-bold)',
                     letterSpacing: 'var(--tracking-overline)', textTransform: 'uppercase',
@@ -170,17 +188,28 @@ export default async function AdminTeamPage({
                           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
                             {m.email}
                           </p>
+                          {/* O que as colunas escondidas diriam, na linha de
+                              baixo — só no celular. */}
+                          <p className="show-mobile" style={{
+                            fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)',
+                            marginTop: 3, gap: 5, flexWrap: 'wrap',
+                          }}>
+                            {label}
+                            {m.provides_services ? ' · Atende' : ''}
+                            {' · '}
+                            {branchName}
+                          </p>
                         </div>
                       </div>
                     </td>
 
-                    <td style={{ padding: '14px 20px' }}>
+                    <td className="hide-mobile" style={{ padding: '14px 20px' }}>
                       <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
                         {branchName}
                       </span>
                     </td>
 
-                    <td style={{ padding: '14px 20px' }}>
+                    <td className="hide-mobile" style={{ padding: '14px 20px' }}>
                       <span className="chip chip-brand">{label}</span>
                       {m.provides_services && (
                         <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>
@@ -245,6 +274,7 @@ export default async function AdminTeamPage({
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>
