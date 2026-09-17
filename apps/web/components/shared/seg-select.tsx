@@ -19,6 +19,14 @@ interface Props {
   paramName?:   string
   extraParams?: Record<string, string>
   ariaLabel?:   string
+  /**
+   * Altura reduzida, para conviver com os gatilhos de filtro.
+   *
+   * O tamanho padrão é de seletor solto no topo de uma tela; ao lado de um
+   * filtro de 27px ele fica visivelmente mais alto, e dois controles quase
+   * iguais com alturas diferentes é o que faz uma barra parecer desalinhada.
+   */
+  compacto?:    boolean
 }
 
 /**
@@ -30,7 +38,7 @@ interface Props {
  * (`basePath` + `paramName` + `extraParams`), para uso em Server Components.
  */
 export function SegSelect({
-  options, value, onSelect,
+  options, value, onSelect, compacto = false,
   basePath, paramName = 'period', extraParams,
   ariaLabel,
 }: Props) {
@@ -66,9 +74,9 @@ export function SegSelect({
     return `${basePath}?${q.toString()}`
   }
 
-  const chipStyle: React.CSSProperties = {
-    fontSize: 'var(--text-xs-sz)', padding: '6px 12px', whiteSpace: 'nowrap',
-  }
+  const chipStyle: React.CSSProperties = compacto
+    ? { fontSize: 12, padding: '3px 9px', whiteSpace: 'nowrap' }
+    : { fontSize: 'var(--text-xs-sz)', padding: '6px 12px', whiteSpace: 'nowrap' }
 
   const renderChip = (o: SegOption) => {
     const cls = o.key === value ? 'btn-primary' : 'btn-ghost'
@@ -109,8 +117,11 @@ export function SegSelect({
       <div
         className="seg-desktop"
         style={{
-          display: 'inline-flex', flexWrap: 'wrap', gap: 4, background: 'var(--surface)',
-          borderRadius: 10, padding: 4, border: '1px solid var(--border)',
+          display: 'inline-flex', flexWrap: 'wrap', background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          ...(compacto
+            ? { gap: 2, borderRadius: 8, padding: 2 }
+            : { gap: 4, borderRadius: 10, padding: 4 }),
         }}
       >
         {options.map(renderChip)}
@@ -125,11 +136,13 @@ export function SegSelect({
         aria-expanded={open}
         onClick={toggle}
         style={{
-          alignItems: 'center', gap: 8,
-          padding: '8px 14px', borderRadius: 10,
+          alignItems: 'center',
           border: '1px solid var(--border)', background: 'var(--surface)',
-          color: 'var(--text)', fontWeight: 700, fontSize: 'var(--text-sm-sz)',
+          color: 'var(--text)', fontWeight: 700,
           fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
+          ...(compacto
+            ? { gap: 5, padding: '4px 9px', borderRadius: 8, fontSize: 12 }
+            : { gap: 8, padding: '8px 14px', borderRadius: 10, fontSize: 'var(--text-sm-sz)' }),
         }}
       >
         {current?.label}

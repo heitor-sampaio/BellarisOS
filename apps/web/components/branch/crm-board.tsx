@@ -154,7 +154,7 @@ function FiltersBar({
           ele, "Vendas" pareceria mais um filtro entre outros. */}
       {funnels.length > 1 && (
         <>
-          <FunnelSelect funnels={funnels} activeId={funnelId} />
+          <FunnelSelect funnels={funnels} activeId={funnelId} compacto />
           <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
         </>
       )}
@@ -657,6 +657,7 @@ function LeadCard({
 
       {/* Card */}
       <div
+        className="crm-card"
         draggable
         onDragStart={handleDragStartCard}
         onDragEnd={handleDragEndCard}
@@ -664,7 +665,7 @@ function LeadCard({
         style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',
-          borderRadius: 12, padding: '12px 14px',
+          borderRadius: 12, padding: "12px 14px",
           cursor: isDragging ? 'grabbing' : 'pointer',
           opacity: isDragging ? 0.35 : 1,
           transition: 'opacity 150ms, box-shadow 150ms',

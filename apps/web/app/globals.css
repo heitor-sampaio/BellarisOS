@@ -745,6 +745,21 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   .card table td { padding-left: 12px !important; padding-right: 12px !important; }
 }
 
+/* Card do quadro no celular: mesma informação, menos espaço em volta.
+   A coluna ocupa 86% da tela, então cada card é largo — o que sobra é altura, e
+   é a altura que decide quantos leads cabem sem rolar. Só respiro e escala
+   mudam; nada de informação sai, porque é do card que se decide quem atender. */
+@media (max-width: 767px) {
+  .crm-card {
+    padding: 9px 11px !important;
+    border-radius: 10px !important;
+  }
+  /* O texto encolhe meio ponto: o suficiente para caber mais uma linha por
+     card, pouco o bastante para continuar legível a um braço de distância. */
+  .crm-card p,
+  .crm-card span { line-height: 1.35; }
+}
+
 /* Quadro de oportunidades no celular: uma coluna por vez, encaixando no lugar.
    Sem o snap, a rolagem para no meio de duas colunas e nenhuma fica legível —
    com 248px de coluna num telefone de 390px, é o que acontece sempre. */
