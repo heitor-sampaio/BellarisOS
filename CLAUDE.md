@@ -213,6 +213,30 @@ NETWORK_ADMIN  → /admin/dashboard
 outros         → /[branch.slug]/dashboard
 ```
 
+### Portal não é filial
+
+O `slug` que um componente recebe é a **filial do registro**; o portal é **onde a
+pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava em
+"+ Agendar" para dentro de uma unidade.
+
+- Navegação em componente que roda nos dois portais vem de
+  `apps/web/lib/rotas.ts` (`ehPortalDaRede`, `rotaNoPortal` e os atalhos
+  `rotaCliente`, `rotaAgenda`, `rotaAtendimento`, `rotaInbox`, `rotaCheckout`…),
+  que decide pelo `usePathname()`. Nunca monte `/${slug}/…` à mão nesses
+  componentes — em componente exclusivo de um portal, à vontade.
+- **Telas iguais têm o mesmo sufixo nos dois portais** (`/admin/estoque` e
+  `/[slug]/estoque`), senão cada helper precisaria de um `if`. Caminho antigo
+  vira `redirect()` de uma linha, como em `app/[slug]/stock/page.tsx`.
+- Tela que existe na unidade e é útil à rede ganha a versão em `/admin`, com o
+  corpo em `app/_shared/` (pasta privada: o `_` a mantém fora do roteamento) e
+  as duas páginas finas — a da unidade resolve a filial pelo slug, a da rede
+  pelo próprio registro. Ver `sessao-de-atendimento.tsx`, `checkout-de-plano.tsx`.
+- Drill-down da rede (“ver esta unidade”) é `?unidade=<id|slug>` na tela da
+  rede, não link para o portal da filial. A única saída de portal que sobra é o
+  card “Abrir unidade” no dashboard, onde entrar nela é a intenção.
+- **Toda `page.tsx` chama `assertPermission` por si**, mesmo com o layout já
+  conferindo: o layout protege a navegação, não a URL.
+
 ### Mobile
 
 O app usa Expo Router com grupos de rotas:
@@ -632,6 +656,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Gerar exportação de LGPD dentro do request — usar after() + o cron de retomada
 ❌ Entregar pacote de LGPD com consulta que falhou em silêncio — no export, erro aborta
 ❌ Construir componente visual sem invocar /lumiere-design primeiro
+❌ Usar o slug do registro para decidir portal (é lib/rotas quem decide)
+❌ page.tsx sem assertPermission próprio, confiando no layout
 ❌ Somar/contar indicador na tela em vez de usar lib/metrics (trunca em 1000 linhas)
 ❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
 ❌ Comparar período parcial com período anterior inteiro
