@@ -449,7 +449,14 @@ export function InboxLeadPanel({
             </div>
             <div style={{ padding: 20 }}>
               <ClientForm
-                branchId=""
+                /* A unidade de cadastro vira a tag `Unidade: X`, e é POR ELA que
+                   a lista de clientes de cada filial filtra. Com `branchId` vazio
+                   o seletor abria na primeira unidade em ordem alfabética: quem
+                   cadastrava pelo portal de uma unidade gravava o cliente em
+                   outra sem perceber, e ele sumia da própria lista. No portal da
+                   filial a unidade atual é o padrão; no admin (`__admin__`) não
+                   há unidade corrente e o seletor segue como está. */
+                branchId={branches.find(b => b.slug === slug)?.id ?? ''}
                 slug={slug}
                 branches={branches}
                 conversationId={conversation.id}
