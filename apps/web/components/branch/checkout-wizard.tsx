@@ -49,6 +49,8 @@ interface ConsentTerm {
   title:   string
   content: string
   status:  string
+  /** 'web' (assinou na tela) ou 'paper' (imprimiu e assinou na folha). */
+  signed_via?: string | null
 }
 
 interface Props {
@@ -227,7 +229,15 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, onDone }: Props
         total,
       )
       if (result.error) { setError(result.error); return }
-      setTerms((result.terms ?? []) as ConsentTerm[])
+      const recebidos = (result.terms ?? []) as ConsentTerm[]
+      setTerms(recebidos)
+      // Termo que já veio assinado (checkout retomado) não pede assinatura de
+      // novo — a action devolve os do plano, não cria um par novo.
+      setAssinaturas(Object.fromEntries(
+        recebidos
+          .filter(t => t.status === 'SIGNED')
+          .map(t => [t.id, t.signed_via === 'paper' ? 'paper' : 'web'] as const),
+      ))
       setStep(1)
     })
   }

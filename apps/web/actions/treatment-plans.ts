@@ -628,6 +628,21 @@ export async function createCheckoutConsentTerms(
   assertPodeReceber(ctx)
 
   const admin  = createAdminClient()
+
+  // Os termos deste plano já existem? Reaproveita.
+  //
+  // Entrar duas vezes no passo de documentação criava outro par, e todo
+  // checkout abandonado deixava dois termos PENDING soltos no prontuário. Como
+  // agora eles carregam `treatment_plan_id`, dá para reencontrá-los — inclusive
+  // já assinados, quando alguém volta ao checkout depois de assinar.
+  const { data: existentes } = await admin
+    .from('consent_terms')
+    .select('id, title, content, status, signed_via')
+    .eq('treatment_plan_id', planId)
+    .order('created_at')
+
+  if (existentes && existentes.length > 0) return { terms: existentes }
+
   const today  = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
   const totalBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalAmount)
 
@@ -664,25 +679,28 @@ O contratante declara ter sido informado sobre os procedimentos, seus benefício
 
 Li, entendi e concordo com os termos deste Contrato de Prestação de Serviços.`
 
+  // `signed_via` nasce nulo: quem assina é que diz por onde — tela ou papel.
+  // Antes já entrava como 'web' aqui, o que fazia todo termo parecer assinado
+  // digitalmente mesmo sem ninguém ter assinado nada.
   const { data: terms, error } = await admin
     .from('consent_terms')
     .insert([
       {
         medical_record_id: medicalRecordId,
+        treatment_plan_id: planId,
         title:             'Termo de Anamnese',
         content:           anamnesisContent,
         status:            'PENDING',
-        signed_via:        'web',
       },
       {
         medical_record_id: medicalRecordId,
+        treatment_plan_id: planId,
         title:             'Contrato de Prestação de Serviços',
         content:           contractContent,
         status:            'PENDING',
-        signed_via:        'web',
       },
     ])
-    .select('id, title, content, status')
+    .select('id, title, content, status, signed_via')
 
   if (error) return { error: error.message }
   return { terms }
