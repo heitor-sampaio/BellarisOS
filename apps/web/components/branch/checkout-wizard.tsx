@@ -62,6 +62,12 @@ interface Props {
    * confere o mesmo, então esconder aqui não é a única defesa.
    */
   podeAgendar?: boolean
+  /**
+   * Pode cobrar agora (caixa ou financeiro). Sem isso, a única forma oferecida é
+   * "receber no atendimento": a profissional aceita o plano e o dinheiro fica
+   * para o balcão. A action confere o mesmo.
+   */
+  podeCobrar?: boolean
   /** Fechou tudo: usado quando o wizard roda dentro da tela do atendimento. */
   onDone?: (clientId: string) => void
 }
@@ -89,7 +95,7 @@ const STEPS = [
 
 // -- Componente principal ------------------------------------------------------
 
-export function CheckoutWizard({ plan, slug, podeAgendar = true, onDone }: Props) {
+export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = true, onDone }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const total  = plan.total
@@ -129,9 +135,14 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, onDone }: Props
   }
 
   // Pagamento — plano de milhares de reais raramente é à vista, então a forma
-  // vem antes do método: à vista, entrada + parcelas, ou tudo a receber.
+  // vem antes do método: nada agora, à vista, entrada + parcelas, ou a receber.
+  //
+  // O padrão é NADA_AGORA: aceitar o plano e pagar por ele são gestos
+  // diferentes. Quem aceita é o cliente, na sala; quem recebe é o balcão, na
+  // chegada da primeira sessão. Cobrar aqui obrigava a profissional a operar
+  // caixa — ou o plano a ficar parado numa fila esperando a recepção.
   const [paymentMethod, setPaymentMethod] = useState('PIX')
-  const [formaPgto,     setFormaPgto]     = useState<'AVISTA' | 'PARCELADO' | 'A_RECEBER'>('AVISTA')
+  const [formaPgto,     setFormaPgto]     = useState<'NADA_AGORA' | 'AVISTA' | 'PARCELADO' | 'A_RECEBER'>('NADA_AGORA')
   const [entrada,       setEntrada]       = useState('')
   const [parcelas,      setParcelas]      = useState(3)
   const [primeiroVenc,  setPrimeiroVenc]  = useState(
@@ -244,7 +255,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, onDone }: Props
 
   // -- Finalizar checkout -------------------------------------------------------
   /** O que a action precisa saber sobre o dinheiro. */
-  function montarPagamento(): PagamentoDoPlano {
+  function montarPagamento(): PagamentoDoPlano | null {
+    // `null` = aceito sem cobrar. O valor nasce em aberto e aparece no check-in
+    // do primeiro atendimento, com o botão de receber.
+    if (formaPgto === 'NADA_AGORA') return null
     if (formaPgto === 'PARCELADO') {
       return {
         forma:              'PARCELADO',
@@ -569,10 +583,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, onDone }: Props
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
           {([
-            ['AVISTA',    'À vista'],
-            ['PARCELADO', 'Entrada + parcelas'],
-            ['A_RECEBER', 'A receber'],
-          ] as const).map(([k, label]) => (
+            ['NADA_AGORA', 'Receber no atendimento'],
+            ['AVISTA',     'À vista'],
+            ['PARCELADO',  'Entrada + parcelas'],
+            ['A_RECEBER',  'A receber'],
+          ] as const).filter(([k]) => podeCobrar || k === 'NADA_AGORA').map(([k, label]) => (
             <button key={k} type="button" onClick={() => setFormaPgto(k)}
               style={{
                 padding: '10px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer',
@@ -624,8 +639,19 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, onDone }: Props
             </p>
           </div>
         )}
+
+        {formaPgto === 'NADA_AGORA' && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, flex: 1, minWidth: 220 }}>
+              O plano é aceito por {fmtBRL(total)} e o valor fica em aberto. A recepção
+              recebe na chegada da primeira sessão, pela tela do atendimento.
+            </p>
+            <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(total)}</span>
+          </div>
+        )}
       </div>
 
+      {formaPgto !== 'NADA_AGORA' && (
       <div className="card" style={{ padding: '20px 24px', marginBottom: 20 }}>
         <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
           {formaPgto === 'AVISTA' ? 'Forma de pagamento' : 'Método'}
@@ -662,10 +688,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, onDone }: Props
           </p>
         )}
       </div>
+      )}
       <button
         onClick={() => (podeAgendar ? setStep(3) : handleFinish())}
         style={{ width: '100%', padding: '14px', borderRadius: 12, background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
-        {podeAgendar ? 'Ir para o agendamento' : 'Confirmar'} <ChevronRight size={18} />
+        {podeAgendar ? 'Ir para o agendamento' : formaPgto === 'NADA_AGORA' ? 'Aceitar plano' : 'Confirmar'} <ChevronRight size={18} />
       </button>
 
       {cancelBlock}

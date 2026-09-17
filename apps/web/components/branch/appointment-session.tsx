@@ -19,7 +19,7 @@ import {
   saveDraftNotes,
   reassignProfessional,
 } from '@/actions/appointments'
-import { generateEvaluationPlan, getCheckoutPlan } from '@/actions/treatment-plans'
+import { generateEvaluationPlan, getCheckoutPlan, receberDoPlano } from '@/actions/treatment-plans'
 import { CheckoutWizard } from '@/components/branch/checkout-wizard'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
@@ -130,6 +130,11 @@ interface Props {
    * mandar o cliente para a recepção. O mesmo critério de "Confirmar pagamento".
    */
   podeReceber?:          boolean
+  /**
+   * Saldo do plano de tratamento ligado a este atendimento. Nulo quando não há
+   * plano ou quando não sobrou nada a receber.
+   */
+  planoEmAberto?:        { planId: string; nome: string | null; emAberto: number; recebido: number } | null
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -307,6 +312,159 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
         </form>
       </div>
     </div>
+  )
+}
+
+// -- Plano em aberto: receber no check-in --------------------------------------
+
+/**
+ * O saldo do plano de tratamento, cobrado quando a pessoa chega.
+ *
+ * Aceitar o plano e pagar por ele são gestos diferentes: a profissional aceita
+ * na sala, o dinheiro entra no balcão. Antes o plano ficava numa fila de
+ * checkout esperando alguém da recepção resolver uma decisão que já tinha sido
+ * tomada — e podia ficar lá semanas, porque um plano nem sempre nasce no dia da
+ * avaliação. Agora o saldo aparece aqui, no atendimento marcado.
+ */
+function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
+  plano:         { planId: string; nome: string | null; emAberto: number; recebido: number }
+  appointmentId: string
+  slug:          string
+  podeReceber:   boolean
+}) {
+  const router = useRouter()
+  const [aberto,  setAberto]  = useState(false)
+  const [forma,   setForma]   = useState<'AVISTA' | 'PARCELADO'>('AVISTA')
+  const [metodo,  setMetodo]  = useState('PIX')
+  const [entrada, setEntrada] = useState(0)
+  const [parcelas, setParcelas] = useState(3)
+  const [venc,    setVenc]    = useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() + 1)
+    return d.toISOString().slice(0, 10)
+  })
+  const [salvando, setSalvando] = useState(false)
+  const [erro,     setErro]     = useState<string | null>(null)
+
+  async function receber() {
+    setSalvando(true); setErro(null)
+    const res = await receberDoPlano(
+      plano.planId,
+      forma === 'AVISTA'
+        ? { forma: 'AVISTA', metodo }
+        : { forma: 'PARCELADO', metodo, entrada, parcelas, primeiroVencimento: new Date(`${venc}T12:00:00`).toISOString() },
+      appointmentId,
+      slug,
+    )
+    setSalvando(false)
+    if (res.error) { setErro(res.error); return }
+    setAberto(false)
+    router.refresh()
+  }
+
+  const restante = Math.max(0, Math.round((plano.emAberto - entrada) * 100) / 100)
+
+  return (
+    <>
+      <div style={{
+        padding: '12px 20px', borderRadius: 12, background: 'var(--brand-soft)',
+        border: '1.5px solid var(--brand-soft-border)',
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+      }}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <CreditCard size={15} style={{ color: 'var(--brand)' }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
+            {plano.nome ?? 'Plano de tratamento'} · em aberto {fmtBRL(plano.emAberto)}
+          </p>
+          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+            {plano.recebido > 0
+              ? `Já recebido: ${fmtBRL(plano.recebido)}. O saldo é cobrado no check-in.`
+              : 'O plano foi aceito sem cobrança. O valor é recebido agora, no check-in.'}
+          </p>
+        </div>
+        {podeReceber && (
+          <button type="button" onClick={() => setAberto(true)} className="btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', fontSize: 13 }}>
+            <CreditCard size={14} /> Receber {fmtBRL(plano.emAberto)}
+          </button>
+        )}
+      </div>
+
+      {aberto && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={e => { if (e.target === e.currentTarget) setAberto(false) }}>
+          <div className="card" style={{ width: '100%', maxWidth: 460, padding: 0, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <CreditCard size={16} style={{ color: 'var(--brand)' }} />
+              <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', flex: 1 }}>Receber o plano de tratamento</h2>
+              <button type="button" onClick={() => setAberto(false)} className="btn-ghost" style={{ padding: '4px 6px' }}><X size={15} /></button>
+            </div>
+
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)' }}>Em aberto</p>
+                <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(plano.emAberto)}</p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                {([['AVISTA', 'À vista'], ['PARCELADO', 'Entrada + parcelas']] as const).map(([v, label]) => (
+                  <button key={v} type="button" onClick={() => setForma(v)}
+                    className={forma === v ? 'btn-primary' : 'btn-secondary'}
+                    style={{ flex: 1, padding: '9px 12px', fontSize: 12.5, justifyContent: 'center' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label className="field-label">Forma de pagamento *</label>
+                <select className="field" value={metodo} onChange={e => setMetodo(e.target.value)}>
+                  {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+              </div>
+
+              {forma === 'PARCELADO' && (
+                <>
+                  <div className="form-2col">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label className="field-label">Entrada (R$)</label>
+                      <input type="number" className="field" min={0} max={plano.emAberto} step="0.01"
+                        value={entrada} onChange={e => setEntrada(Math.max(0, Number(e.target.value)))} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label className="field-label">Parcelas</label>
+                      <input type="number" className="field" min={1} max={48}
+                        value={parcelas} onChange={e => setParcelas(Math.max(1, Number(e.target.value)))} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    <label className="field-label">1º vencimento</label>
+                    <input type="date" className="field" value={venc} onChange={e => setVenc(e.target.value)} />
+                  </div>
+                  <p style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                    {restante > 0
+                      ? `${fmtBRL(restante)} em ${parcelas}x de ${fmtBRL(Math.round((restante / parcelas) * 100) / 100)}.`
+                      : 'Sem saldo a parcelar — a entrada cobre o total.'}
+                  </p>
+                </>
+              )}
+
+              {erro && <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>}
+
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
+                <button type="button" onClick={() => setAberto(false)} className="btn-secondary"><X size={13} /> Voltar</button>
+                <button type="button" onClick={receber} disabled={salvando} className="btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 13, minWidth: 170, justifyContent: 'center' }}>
+                  {salvando ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+                  {salvando ? 'Registrando…' : 'Confirmar recebimento'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -586,7 +744,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, canEditRecords, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, podeReceber = false,
+  isPartOfPlan = false, podeReceber = false, planoEmAberto = null,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1139,6 +1297,16 @@ export function AppointmentSession({
             </>
           )}
         </div>
+
+        {/* -- Plano em aberto: a cobrança acontece na chegada ------------- */}
+        {planoEmAberto && planoEmAberto.emAberto > 0 && (
+          <PlanoEmAbertoBanner
+            plano={planoEmAberto}
+            appointmentId={appointment.id}
+            slug={slug}
+            podeReceber={podeReceber}
+          />
+        )}
 
         {/* -- Banner de bloqueio / edição -------------------------------- */}
         {isDone && (

@@ -1,10 +1,12 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, assertPodeReceber, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can } from '@/lib/auth'
+import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getOpenCashRegisterId } from '@/lib/cash-register'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
+import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
 
 /**
@@ -19,10 +21,25 @@ import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
  * Agora cada gesto exige a permissão do que ele é:
  *
  * - montar, salvar e propor o plano → `medical_records: MANAGE` (quem atende)
- * - fechar, receber e assinar termo  → caixa ou financeiro (`assertPodeReceber`)
+ * - aceitar o plano e colher termos  → quem atende OU quem recebe
+ * - receber dinheiro                 → caixa ou financeiro (`assertPodeReceber`)
  * - agendar as sessões do plano      → `agenda: MANAGE`, conferido na hora
  * - ler plano e sessões              → `agenda: VIEW`
+ *
+ * Aceitar deixou de exigir caixa quando o pagamento saiu do aceite: a
+ * profissional fecha o plano na sala e o valor fica em aberto, recebido no
+ * check-in. Exigir caixa para aceitar era o que empurrava o plano para uma fila
+ * de checkout que ficava parada.
  */
+
+/**
+ * Pode transformar um plano em venda — aceitar, colher termos, abrir o wizard.
+ *
+ * ⚠️ Não é export: todo export de arquivo `'use server'` vira endpoint público.
+ */
+function assertPodeFecharPlano(ctx: TenantContext): void {
+  if (!can(ctx, 'medical_records', 'MANAGE') && !podeReceber(ctx)) throw new Error('Forbidden')
+}
 
 // -- Tipos ---------------------------------------------------------------------
 
@@ -643,14 +660,22 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
     }
   }
 
-  // 4. Anamnese preenchida
-  const { data: medRecord } = await admin
-    .from('medical_records')
-    .select('general_anamnesis')
-    .eq('client_id', plan.client_id)
-    .maybeSingle()
-  if (!medRecord?.general_anamnesis) {
-    return { error: 'Preencha a anamnese do cliente antes de enviar.' }
+  // 4. Anamnese preenchida — só quando o plano saiu de uma avaliação.
+  //
+  // A exigência foi escrita para a tela da avaliação, onde a aba de anamnese
+  // está ali do lado. Num plano criado direto em Planejamentos ela virava um
+  // beco sem saída: a tela não tem onde preencher, e o plano pode nem ter
+  // cliente ainda. O que protege a venda em si é o termo de consentimento, que
+  // o aceite colhe de qualquer jeito.
+  if (plan.evaluation_appointment_id) {
+    const { data: medRecord } = await admin
+      .from('medical_records')
+      .select('general_anamnesis')
+      .eq('client_id', plan.client_id)
+      .maybeSingle()
+    if (!medRecord?.general_anamnesis) {
+      return { error: 'Preencha a anamnese do cliente antes de enviar.' }
+    }
   }
 
   const { error } = await admin
@@ -675,7 +700,7 @@ export async function cancelCheckout(
   slug:   string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
-  assertPodeReceber(ctx)
+  assertPodeFecharPlano(ctx)
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -934,7 +959,7 @@ export async function generateEvaluationPlan(
 
 export async function signConsentTerm(consentId: string, signatureDataUrl: string, slug: string) {
   const ctx = await getTenantContext()
-  assertPodeReceber(ctx)
+  assertPodeFecharPlano(ctx)
 
   const admin = createAdminClient()
 
@@ -963,7 +988,7 @@ export async function signConsentTerm(consentId: string, signatureDataUrl: strin
  */
 export async function getCheckoutPlan(planId: string): Promise<{ plan?: CheckoutPlan; error?: string }> {
   const ctx = await getTenantContext()
-  assertPodeReceber(ctx)
+  assertPodeFecharPlano(ctx)
 
   const admin = createAdminClient()
   const { data: plan } = await admin
@@ -993,7 +1018,7 @@ export async function getCheckoutPlan(planId: string): Promise<{ plan?: Checkout
  */
 export async function marcarTermoAssinadoEmPapel(consentId: string, slug: string) {
   const ctx = await getTenantContext()
-  assertPodeReceber(ctx)
+  assertPodeFecharPlano(ctx)
 
   const admin = createAdminClient()
   const { error } = await admin
@@ -1022,7 +1047,7 @@ export async function createCheckoutConsentTerms(
   totalAmount: number,
 ) {
   const ctx = await getTenantContext()
-  assertPodeReceber(ctx)
+  assertPodeFecharPlano(ctx)
 
   const admin  = createAdminClient()
 
@@ -1130,7 +1155,8 @@ export type PagamentoDoPlano =
  * ⚠️ Não é export: todo export de um arquivo `'use server'` vira endpoint
  * público, e isto é formatação de texto.
  */
-function rotuloDoPagamento(p: PagamentoDoPlano): string {
+function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
+  if (!p)                      return 'em aberto, a receber no atendimento'
   if (p.forma === 'AVISTA')    return `${p.metodo} à vista`
   if (p.forma === 'A_RECEBER') return 'a receber'
   const entrada = p.entrada > 0
@@ -1141,12 +1167,20 @@ function rotuloDoPagamento(p: PagamentoDoPlano): string {
 
 export async function checkoutTreatmentPlan(
   planId:           string,
-  pagamento:        PagamentoDoPlano,
+  /**
+   * Como foi pago. `null` = **nada agora**: o plano é aceito e o valor fica em
+   * aberto, para ser recebido no check-in do primeiro atendimento. Aceitar e
+   * receber são dois gestos: o que ficava parado na fila de checkout era
+   * decisão do cliente, não tarefa da recepção.
+   */
+  pagamento:        PagamentoDoPlano | null,
   sessionSchedules: SessionScheduleInput[],
   slug:             string,
 ) {
   const ctx   = await getTenantContext()
-  assertPodeReceber(ctx)
+  // Aceitar é gesto de quem monta o plano; receber, de quem opera o caixa.
+  if (pagamento) assertPodeReceber(ctx)
+  else           assertPodeFecharPlano(ctx)
   const admin = createAdminClient()
 
   const { data: plan } = await admin
@@ -1175,12 +1209,15 @@ export async function checkoutTreatmentPlan(
     return admin
       .from('financial_transactions')
       .insert({
-        branch_id:   plan!.branch_id,
-        client_id:   plan!.client_id,
-        type:        'INCOME',
-        category:    'Serviços',
-        description: descricao,
-        created_by:  ctx.internalUserId,
+        branch_id:         plan!.branch_id,
+        client_id:         plan!.client_id,
+        // É por este vínculo que o check-in sabe quanto deste plano ainda está
+        // em aberto. Sem ele, o valor existiria no financeiro sem endereço.
+        treatment_plan_id: planId,
+        type:              'INCOME',
+        category:          'Serviços',
+        description:       descricao,
+        created_by:        ctx.internalUserId,
         ...campos,
       })
       .select('id')
@@ -1194,7 +1231,19 @@ export async function checkoutTreatmentPlan(
   // única marcada como não paga faria a entrada sumir do caixa do dia.
   let transactionId: string | null = null
 
-  if (pagamento.forma === 'AVISTA') {
+  if (!pagamento) {
+    // Aceito sem cobrar: o valor nasce a receber, sem vencimento, esperando o
+    // check-in do primeiro atendimento. Preço congelado no aceite — o que a
+    // recepção cobrar depois é este número, não o da tabela do dia.
+    const { data, error } = await lancar({
+      amount:   total,
+      is_paid:  false,
+      notes:    'Plano aceito — a receber no check-in',
+    })
+    if (error) return { error: `Erro ao registrar o valor do plano: ${error.message}` }
+    transactionId = data!.id as string
+
+  } else if (pagamento.forma === 'AVISTA') {
     const { data, error } = await lancar({
       cash_register_id: cashRegisterId,
       amount:           total,
@@ -1343,6 +1392,177 @@ export async function checkoutTreatmentPlan(
   }
 
   return { transactionId, newAppointmentId }
+}
+
+// -- Receber no check-in -------------------------------------------------------
+
+/**
+ * Como a recepção recebe o que ficou em aberto de um plano.
+ *
+ * Não tem `A_RECEBER`: o valor JÁ está a receber — é disto que se trata. Aqui só
+ * cabe quitar tudo agora ou receber uma entrada e parcelar o resto.
+ */
+export type RecebimentoDoPlano =
+  | { forma: 'AVISTA';    metodo: string }
+  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string }
+
+/**
+ * Recebe o saldo em aberto de um plano, no balcão.
+ *
+ * O gesto é o do check-in: a pessoa chega para a primeira sessão, paga, e segue
+ * para o procedimento. Por isso ele mora na tela do atendimento e não numa fila
+ * de checkout — a fila era uma tarefa que ninguém tinha, esperando uma decisão
+ * que já tinha sido tomada quando o plano foi aceito.
+ */
+export async function receberDoPlano(
+  planId:        string,
+  recebimento:   RecebimentoDoPlano,
+  appointmentId: string | null,
+  slug:          string,
+): Promise<{ error?: string; recebido?: number }> {
+  const ctx = await getTenantContext()
+  assertPodeReceber(ctx)
+
+  const admin = createAdminClient()
+
+  // Confere a rede antes de escrever: o id sozinho não pode bastar.
+  const { data: plan } = await admin
+    .from('treatment_plans')
+    .select('id, branch_id, client_id, branches!inner(tenant_id)')
+    .eq('id', planId)
+    .maybeSingle()
+
+  const planTenant = (plan?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+  if (!plan || planTenant !== ctx.tenantId) return { error: 'Plano não encontrado.' }
+
+  const saldo = await emAbertoDoPlano(planId)
+  if (!saldo || saldo.emAberto <= 0) return { error: 'Não há valor em aberto neste plano.' }
+
+  const agora          = new Date().toISOString()
+  const cashRegisterId = await getOpenCashRegisterId(plan.branch_id as string)
+
+  if (recebimento.forma === 'AVISTA') {
+    // Quita os lançamentos pendentes do plano. `paid_at` é o eixo de
+    // `revenueCash`: a receita entra no caixa de hoje, não no dia do aceite.
+    const { error } = await admin
+      .from('financial_transactions')
+      .update({
+        is_paid:          true,
+        paid_at:          agora,
+        payment_method:   recebimento.metodo,
+        cash_register_id: cashRegisterId,
+        updated_at:       agora,
+      })
+      .in('id', saldo.pendentes)
+    if (error) return { error: `Erro ao registrar o recebimento: ${error.message}` }
+
+    await admin.from('installments')
+      .update({ is_paid: true, paid_at: agora })
+      .in('transaction_id', saldo.pendentes)
+
+  } else {
+    const entrada = Math.max(0, Math.min(recebimento.entrada, saldo.emAberto))
+    const resto   = Math.round((saldo.emAberto - entrada) * 100) / 100
+    const vezes   = Math.max(1, Math.min(recebimento.parcelas, 48))
+
+    if (entrada <= 0 && resto <= 0) return { error: 'Informe o valor da entrada.' }
+
+    // O saldo anterior sai de cena inteiro e volta partido: o que foi recebido
+    // agora e o que ficou parcelado são lançamentos diferentes, porque o caixa
+    // conta pelo `paid_at` e uma transação só não pode estar nos dois lugares.
+    const { error: zerarErr } = await admin
+      .from('financial_transactions')
+      .update({
+        amount:     0,
+        notes:      'Substituído pelo recebimento no check-in',
+        updated_at: agora,
+      })
+      .in('id', saldo.pendentes)
+    if (zerarErr) return { error: `Erro ao atualizar o saldo do plano: ${zerarErr.message}` }
+
+    await admin.from('installments').delete().in('transaction_id', saldo.pendentes)
+
+    const base = {
+      branch_id:         plan.branch_id,
+      client_id:         plan.client_id,
+      treatment_plan_id: planId,
+      type:              'INCOME',
+      category:          'Serviços',
+      description:       'Plano de tratamento — recebimento no check-in',
+      created_by:        ctx.internalUserId,
+    }
+
+    if (entrada > 0) {
+      const { error } = await admin.from('financial_transactions').insert({
+        ...base,
+        amount:           entrada,
+        payment_method:   recebimento.metodo,
+        is_paid:          true,
+        paid_at:          agora,
+        cash_register_id: cashRegisterId,
+        notes:            'Entrada do plano de tratamento',
+      })
+      if (error) return { error: `Erro ao registrar a entrada: ${error.message}` }
+    }
+
+    if (resto > 0) {
+      const { data: parcelado, error } = await admin.from('financial_transactions').insert({
+        ...base,
+        amount:         resto,
+        payment_method: recebimento.metodo,
+        is_paid:        false,
+        due_date:       recebimento.primeiroVencimento,
+        notes:          `Saldo do plano em ${vezes}x`,
+      }).select('id').single()
+      if (error) return { error: `Erro ao registrar as parcelas: ${error.message}` }
+
+      const valorParcela = Math.round((resto / vezes) * 100) / 100
+      const primeira     = new Date(recebimento.primeiroVencimento)
+      const { error: parcErr } = await admin.from('installments').insert(
+        Array.from({ length: vezes }, (_, i) => {
+          const venc = new Date(primeira)
+          venc.setMonth(venc.getMonth() + i)
+          return {
+            transaction_id: parcelado!.id as string,
+            number:         i + 1,
+            total:          vezes,
+            amount:         valorParcela,
+            due_date:       venc.toISOString(),
+            is_paid:        false,
+          }
+        }),
+      )
+      if (parcErr) return { error: `Erro ao registrar as parcelas: ${parcErr.message}` }
+    }
+  }
+
+  if (appointmentId) {
+    await admin.from('appointment_history').insert({
+      appointment_id:  appointmentId,
+      changed_by_id:   ctx.internalUserId,
+      changed_by_name: ctx.userName || ctx.roleLabel || 'Recepção',
+      action:          'PAYMENT_CONFIRMED',
+      description:     `Plano de tratamento recebido — R$ ${saldo.emAberto.toFixed(2).replace('.', ',')} — ${
+        recebimento.forma === 'AVISTA'
+          ? `${recebimento.metodo} à vista`
+          : `entrada + ${recebimento.parcelas}x em ${recebimento.metodo}`
+      }`,
+    })
+  }
+
+  if (slug) {
+    revalidatePath(`/${slug}/agenda`)
+    revalidatePath(`/${slug}/financeiro`)
+    revalidatePath(`/${slug}/dashboard`)
+    revalidatePath(`/${slug}/planejamentos`)
+    if (appointmentId) revalidatePath(`/${slug}/agenda/${appointmentId}`)
+  }
+  revalidatePath('/admin/financeiro')
+  revalidatePath('/admin/dashboard')
+  revalidatePath('/admin/planejamentos')
+  if (appointmentId) revalidatePath(`/admin/agenda/${appointmentId}`)
+
+  return { recebido: saldo.emAberto }
 }
 
 // -- Ficha de tratamento -------------------------------------------------------

@@ -34,7 +34,7 @@ interface PlanoItem {
 
 const STATUS_LABEL: Record<string, { label: string; cor: string; fundo: string }> = {
   DRAFT:     { label: 'Rascunho',   cor: 'var(--text-muted)', fundo: 'var(--bg-app)' },
-  PROPOSED:  { label: 'Aguardando checkout', cor: '#92400e', fundo: '#fef3c7' },
+  PROPOSED:  { label: 'Aguardando aceite', cor: '#92400e', fundo: '#fef3c7' },
   ACCEPTED:  { label: 'Fechado',    cor: '#1f6b47', fundo: '#f0faf4' },
   COMPLETED: { label: 'Concluído',  cor: '#1f6b47', fundo: '#f0faf4' },
   CANCELLED: { label: 'Cancelado',  cor: '#b91c1c', fundo: '#fef2f2' },
@@ -322,17 +322,18 @@ export function PlanejamentoTratamento({
 
       {editavel && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {podeReceber && (
-            <button type="button" onClick={fecharAgora} disabled={salvando} className="btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
-              {salvando ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
-              Fechar agora
-            </button>
-          )}
+          {/* Aceitar deixou de depender do caixa: a profissional fecha o plano
+              na sala e o valor fica em aberto, para ser recebido no check-in.
+              Quem também opera caixa pode cobrar ali mesmo, no wizard. */}
+          <button type="button" onClick={fecharAgora} disabled={salvando} className="btn-primary"
+            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
+            {salvando ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
+            Aceitar plano
+          </button>
           {aberto.status === 'DRAFT' && (
             <button type="button" onClick={enviarParaRecepcao} disabled={salvando} className="btn-ghost"
               style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
-              <Send size={14} /> Enviar para a recepção
+              <Send size={14} /> Cliente vai pensar
             </button>
           )}
         </div>
@@ -340,7 +341,7 @@ export function PlanejamentoTratamento({
 
       {fechado && aberto.status !== 'CANCELLED' && (
         <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#1f6b47', fontWeight: 700 }}>
-          <CheckCircle2 size={14} /> Plano fechado — o pagamento foi registrado no checkout.
+          <CheckCircle2 size={14} /> Plano aceito. O que estiver em aberto é recebido no check-in do atendimento.
         </p>
       )}
 
@@ -358,6 +359,7 @@ export function PlanejamentoTratamento({
             <CheckoutWizard
               plan={checkout}
               slug={slug}
+              podeCobrar={podeReceber}
               onDone={async () => {
                 setCheckout(null)
                 await carregarLista()

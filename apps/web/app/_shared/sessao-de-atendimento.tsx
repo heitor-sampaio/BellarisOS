@@ -5,6 +5,7 @@ import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/
 import { AppointmentSession } from '@/components/branch/appointment-session'
 import type { SessionAppointment, SessionClient, SessionProduct, AvailableProduct, SessionProfessional, HistoryEntry } from '@/components/branch/appointment-session'
 import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
+import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 
@@ -330,6 +331,24 @@ export async function SessaoDeAtendimento({
     document:  cli.document ?? null,
   }
 
+  // Saldo do plano ligado a este atendimento.
+  //
+  // Vale tanto para a sessão do plano (`treatment_plan_id` no agendamento)
+  // quanto para a própria avaliação que gerou um plano já aceito: nos dois
+  // casos, quem está com a pessoa na frente precisa ver o que falta receber.
+  const planoDaCobranca = treatmentPlanId
+    ?? (planRaw?.status === 'ACCEPTED' ? (planRaw.id as string) : null)
+
+  const saldoDoPlano = planoDaCobranca ? await emAbertoDoPlano(planoDaCobranca) : null
+  const planoEmAberto = saldoDoPlano && saldoDoPlano.emAberto > 0
+    ? {
+        planId:   saldoDoPlano.planId,
+        nome:     saldoDoPlano.nome,
+        emAberto: saldoDoPlano.emAberto,
+        recebido: saldoDoPlano.recebido,
+      }
+    : null
+
   const isAdmin   = ctx.permissions.agenda === 'MANAGE'
   const isResponsibleProfessional = ctx.providesServices && ctx.internalUserId === apptRaw.professional_id
 
@@ -415,6 +434,7 @@ export async function SessaoDeAtendimento({
         procedureProductsMap={procedureProductsMap}
         isPartOfPlan={isPartOfPlan}
         podeReceber={podeReceber(ctx)}
+        planoEmAberto={planoEmAberto}
       />
     </>
   )
