@@ -1029,7 +1029,7 @@ export function CRMBoard({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+    <div className="crm-board-root" style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0 }}>
       <FiltersBar
         leads={leads}
         filters={filters}
@@ -1046,11 +1046,16 @@ export function CRMBoard({
         meio, que é o que torna kanban usável no toque. E `100dvh` porque
         `100vh` no celular conta com a barra de endereço recolhida — a diferença
         vira uma faixa vazia embaixo do quadro. */}
+    {/* `flex: 1` + `minHeight: 0`, e não `minHeight` em vh: com altura mínima
+        o quadro cresce com a coluna mais cheia e quem rola passa a ser a
+        página, levando embora o cabeçalho e a barra de filtros. Assim ele
+        ocupa o que sobra da tela, e a rolagem vertical acontece DENTRO de cada
+        coluna — que é onde os cards estão. */}
     <div className="crm-board-cols" style={{
       display: 'flex', gap: 12,
-      overflowX: 'auto', paddingBottom: 20,
-      minHeight: 'calc(100dvh - 240px)',
-      marginTop: 12,
+      overflowX: 'auto', overflowY: 'hidden',
+      flex: 1, minHeight: 0,
+      paddingBottom: 4, marginTop: 12,
     }}>
       {stages.map(stage => {
         // Etapa nula não cai mais na primeira coluna: com vários funis o mesmo
@@ -1070,7 +1075,8 @@ export function CRMBoard({
             onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
             onDrop={e => handleDrop(e, stage.id)}
             style={{
-              minWidth: 240, maxWidth: 260, flex: '0 0 248px',
+              minWidth: 240, maxWidth: 260, flex: "0 0 248px",
+              minHeight: 0,
               display: 'flex', flexDirection: 'column',
               borderRadius: 16,
               background: isDraggingToThis ? bg : 'transparent',
@@ -1124,7 +1130,8 @@ export function CRMBoard({
             {/* Cards */}
             <div style={{
               display: 'flex', flexDirection: 'column', gap: 8,
-              flex: 1, overflowY: 'auto', padding: '0 2px', minHeight: 80,
+              flex: 1, overflowY: 'auto', overscrollBehavior: 'contain',
+              padding: '0 2px 4px', minHeight: 0,
             }}>
               {stageLeads.map(lead => (
                 <LeadCard

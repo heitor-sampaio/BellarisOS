@@ -112,7 +112,7 @@ export default async function AdminOportunidadesPage({
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="crm-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <RealtimeRefresher tables={['leads', 'crm_stages', 'crm_funnels']} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>

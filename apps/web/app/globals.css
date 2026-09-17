@@ -745,6 +745,18 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   .card table td { padding-left: 12px !important; padding-right: 12px !important; }
 }
 
+/* Quadro de oportunidades: a tela não rola, as COLUNAS rolam.
+   Título e barra de filtros ficam parados; cada etapa rola a própria pilha de
+   cards. Com a página rolando, procurar um lead no fim de uma coluna levava
+   embora o cabeçalho e os filtros — justamente o que se usa para achá-lo.
+   A altura vem de `dvh` porque no celular `vh` conta com a barra de endereço
+   recolhida e sobraria uma faixa fora da tela. */
+.crm-page {
+  height: calc(100dvh - var(--topbar-h) - 2 * var(--content-pad-y));
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* Card do quadro no celular: mesma informação, menos espaço em volta.
    A coluna ocupa 86% da tela, então cada card é largo — o que sobra é altura, e
    é a altura que decide quantos leads cabem sem rolar. Só respiro e escala
@@ -771,9 +783,12 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   }
   .crm-board-cols > * {
     scroll-snap-align: start;
-    /* Coluna quase cheia: a fresta mostra que há mais para o lado. */
-    flex: 0 0 86% !important;
-    max-width: 86% !important;
+    /* Duas colunas na tela: kanban serve para comparar etapas, e com uma só de
+       cada vez ele vira uma lista com passos extras. `min-width` menor que o do
+       desktop porque 248px fixos não cabem duas vezes em 390px. */
+    flex: 0 0 calc(50% - 6px) !important;
+    min-width: 0 !important;
+    max-width: calc(50% - 6px) !important;
   }
 }
 
