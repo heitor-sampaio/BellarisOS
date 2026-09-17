@@ -696,6 +696,17 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   .occupancy-row .occ-details { grid-area: details; flex-wrap: wrap; }
 }
 
+/* Editor de template: formulário + prévia. Empilha quando não cabe lado a lado. */
+.tpl-editor {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 899px) {
+  .tpl-editor { grid-template-columns: 1fr; }
+}
+
 /* Master-detail (lista fixa + detalhe): empilha e vira largura cheia no mobile */
 .master-detail {
   display: flex;

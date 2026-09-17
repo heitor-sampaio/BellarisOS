@@ -278,11 +278,13 @@ export function TemplatesManager({
         </Aviso>
       )}
 
-      <div className="master-detail" style={{
-        display: 'grid', gridTemplateColumns: '280px 1fr', gap: 14, alignItems: 'start',
-      }}>
+      {/* `master-detail` já empilha e vira largura cheia abaixo de 900px — mas
+          só se ninguém a sobrescrever. O `display: grid` com colunas fixas que
+          estava aqui no estilo inline vencia a classe, e a lista de 280px mais o
+          detalhe não cabem em um telefone: era esta linha que quebrava a tela. */}
+      <div className="master-detail" style={{ gap: 14 }}>
         {/* Lista */}
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden', width: 280, flexShrink: 0 }}>
           <div style={{
             padding: '11px 14px', borderBottom: '1px solid var(--hairline)',
             display: 'flex', gap: 6,
@@ -345,12 +347,13 @@ export function TemplatesManager({
         {/* Editor */}
         {selId === null ? (
           <div className="card" style={{
+            flex: 1, minWidth: 0,
             padding: 40, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13,
           }}>
             Escolha um template na lista ou crie um novo.
           </div>
         ) : (
-          <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="card" style={{ flex: 1, minWidth: 0, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
             {selecionado?.status === 'REJECTED' && (
               <Aviso tom="erro">
                 A Meta recusou este template
@@ -373,7 +376,10 @@ export function TemplatesManager({
             )}
             {aviso && <Aviso tom="ok">{aviso}</Aviso>}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
+            {/* Formulário e prévia: lado a lado quando cabe, empilhados quando
+                não. A prévia embaixo continua útil no telefone — é ela que
+                mostra como a mensagem chega. */}
+            <div className="tpl-editor">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <Campo
                   label="Nome"
