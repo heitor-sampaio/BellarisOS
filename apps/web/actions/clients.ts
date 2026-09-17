@@ -306,6 +306,8 @@ export async function updateClientContactData(
     city:               string | null
     state:              string | null
     tags?:              string[]
+    /** Anotações sobre a pessoa. Opcional: caller que não edita não apaga. */
+    notes?:             string | null
   },
   slug: string,
 ): Promise<{ error?: string }> {
@@ -341,7 +343,10 @@ export async function updateClientContactData(
       neighborhood:        data.neighborhood || null,
       city:                data.city || null,
       state:               data.state || null,
-      ...(data.tags !== undefined ? { tags: data.tags } : {}),
+      ...(data.tags  !== undefined ? { tags: data.tags } : {}),
+      // Só quando o campo veio: a tela de dados não edita notas, e mandar
+      // `undefined` aqui apagaria o que a recepção escreveu em outra tela.
+      ...(data.notes !== undefined ? { notes: data.notes?.trim() || null } : {}),
       updated_at:          new Date().toISOString(),
     })
     .eq('id', clientId)

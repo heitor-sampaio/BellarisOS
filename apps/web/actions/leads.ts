@@ -197,6 +197,14 @@ export async function updateLead(
     const patch: Record<string, unknown> = {
       name, phone, email, social_media: social, source, notes,
     }
+    // Valor só entra quando o form mandou o campo: caller que não edita valor
+    // (o quadro, por exemplo) não pode apagar o que foi negociado. Vazio é
+    // NULO e não zero — zero seria "fechado por nada" e sujaria o ticket médio.
+    if (formData.has('value')) {
+      const bruto = str(formData, 'value')
+      const numero = bruto ? Number(bruto.replace(/\./g, '').replace(',', '.')) : null
+      patch.value = numero !== null && Number.isFinite(numero) ? numero : null
+    }
     // Etapa só entra no patch quando o form mandou uma: gravar null aqui tirava
     // o lead de todos os quadros.
     if (crmStageId) patch.crm_stage_id = crmStageId

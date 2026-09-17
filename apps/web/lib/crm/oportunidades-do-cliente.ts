@@ -20,7 +20,7 @@ export async function oportunidadesDoCliente(
 
   const { data: leads, error } = await admin
     .from('leads')
-    .select('id, crm_stage_id, owner_id, created_at')
+    .select('id, crm_stage_id, owner_id, created_at, value')
     .eq('tenant_id', tenantId)
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
@@ -68,6 +68,7 @@ export async function oportunidadesDoCliente(
       // pior do que aparecer sem ela.
       outcome:     (etapa?.outcome ?? 'OPEN') as ClientOpportunity['outcome'],
       owner_name:  l.owner_id ? porOwner.get(l.owner_id) ?? null : null,
+      value:       l.value === null || l.value === undefined ? null : Number(l.value),
       created_at:  l.created_at,
     }
   })

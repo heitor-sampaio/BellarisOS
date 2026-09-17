@@ -395,6 +395,8 @@ export interface ClienteDoContato {
 
 /** Oportunidade: o lead, agora só com o que é do negócio. */
 export interface Oportunidade extends InboxLead {
+  /** Valor negociado. Null = ainda sem proposta (zero seria "por nada"). */
+  value:       number | null
   stage_name:  string | null
   funnel_id:   string | null
   funnel_name: string | null
@@ -414,6 +416,8 @@ export interface ConversationCard {
   /** Etapas de TODOS os funis: é daqui que sai o menu que move de funil. */
   stages:  InboxStage[]
   funnels: { id: string; name: string }[]
+  /** Procedimentos ativos da rede: o que a oportunidade pode ter como produto. */
+  procedimentos: { id: string; name: string; price: number }[]
   /**
    * Tags já em uso na rede — o que o card oferece para escolher.
    *
@@ -463,6 +467,19 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   if (erroTags) console.error('[getConversationCard] tags:', erroTags.message)
   const tagsDaRede = ((tagRows ?? []) as { tag: string }[]).map(r => r.tag)
 
+  // Catálogo da rede e das unidades (branch_id null = base da rede), como em
+  // qualquer leitura de procedimento — ver CLAUDE.md §9.3.
+  const { data: procRows, error: erroProc } = await admin
+    .from('procedures')
+    .select('id, name, price')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('is_active', true)
+    .order('name')
+  if (erroProc) console.error('[getConversationCard] procedimentos:', erroProc.message)
+  const procedimentos = ((procRows ?? []) as any[]).map(p => ({
+    id: p.id as string, name: p.name as string, price: Number(p.price ?? 0),
+  }))
+
   const [cliente, oportunidades] = await Promise.all([
     clientId ? buscarCliente(admin, ctx.tenantId!, clientId) : Promise.resolve(null),
     buscarOportunidades(admin, ctx.tenantId!, conversationId, clientId, stages),
@@ -479,7 +496,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       tags:     (c.tags ?? []) as string[],
       canal:    c.channel as InboxChannel,
     },
-    cliente, abertas, concluidas, stages, funnels, tagsDaRede,
+    cliente, abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
   }
 }
 
@@ -508,7 +525,7 @@ async function buscarOportunidades(
 
   const { data, error } = await admin
     .from('leads')
-    .select('id, name, phone, email, social_media, source, notes, crm_stage_id, tags, branch_id, client_id, owner_id, created_at, lead_procedures(procedure_id)')
+    .select('id, name, phone, email, social_media, source, notes, crm_stage_id, tags, branch_id, client_id, owner_id, created_at, value, lead_procedures(procedure_id)')
     .eq('tenant_id', tenantId)
     .or(filtro)
     .order('created_at', { ascending: false })
@@ -538,6 +555,7 @@ async function buscarOportunidades(
       crm_stage_id: l.crm_stage_id, tags: (l.tags ?? []) as string[],
       branch_id: l.branch_id, client_id: l.client_id,
       procedure_ids: ((l.lead_procedures ?? []) as { procedure_id: string }[]).map(p => p.procedure_id),
+      value:       l.value === null || l.value === undefined ? null : Number(l.value),
       stage_name:  etapa?.name ?? null,
       funnel_id:   etapa?.funnel_id ?? null,
       funnel_name: etapa ? funis.get(etapa.funnel_id) ?? null : null,

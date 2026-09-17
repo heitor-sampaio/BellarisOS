@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useRef, useCallback } from 'react'
 import {
-  UserCheck, ExternalLink, CalendarPlus, X, Check, Compass, Plus, ChevronDown,
+  UserCheck, ExternalLink, CalendarPlus, X, Check, Compass, Plus, ChevronDown, Package,
 } from 'lucide-react'
 import { LEAD_SOURCES, sourceStyle } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
@@ -36,6 +36,11 @@ const labelStyle: React.CSSProperties = {
 function todayInSP(): string {
   // 'en-CA' devolve YYYY-MM-DD
   return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+}
+
+/** Moeda no formato do resto do sistema (CLAUDE.md §13). */
+function fmtBRL(v: number): string {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 /**
@@ -303,6 +308,7 @@ export function InboxLeadPanel({
             stages={card.stages}
             funnels={card.funnels}
             corDaEtapa={card.stages.find(s => s.id === o.crm_stage_id)?.color ?? null}
+            procedimentos={card.procedimentos}
             slug={slug}
             disabled={disabled}
             aberta={expandida === o.id}
@@ -463,13 +469,14 @@ export function InboxLeadPanel({
 
 /** Uma oportunidade aberta: resumo sempre visível, detalhes ao expandir. */
 function OportunidadeItem({
-  oportunidade: o, stages, funnels, corDaEtapa, slug, disabled, aberta,
+  oportunidade: o, stages, funnels, corDaEtapa, procedimentos, slug, disabled, aberta,
   onToggle, onConcluir, onMudou, onAgendar,
 }: {
   oportunidade: Oportunidade
   stages:   InboxStage[]
   funnels:  { id: string; name: string }[]
   /** Cor da etapa, que o quadro já usa e aqui era desperdiçada. */
+  procedimentos: { id: string; name: string; price: number }[]
   corDaEtapa: string | null
   slug:     string
   disabled: boolean
@@ -482,7 +489,13 @@ function OportunidadeItem({
   const [stageId, setStageId] = useState(o.crm_stage_id ?? '')
   const [notes,   setNotes]   = useState(o.notes ?? '')
   const [source,  setSource]  = useState(o.source ?? '')
+  const [valor,   setValor]   = useState(o.value === null ? '' : String(o.value).replace('.', ','))
+  const [procs,   setProcs]   = useState<string[]>(o.procedure_ids)
   const [salvando, startSave] = useTransition()
+
+  const somaDosProcedimentos = procs.reduce(
+    (t, id) => t + (procedimentos.find(p => p.id === id)?.price ?? 0), 0,
+  )
 
   function mudarEtapa(next: string) {
     setStageId(next)
@@ -504,7 +517,8 @@ function OportunidadeItem({
     fd.set('notes', notes)
     fd.set('crm_stage_id', stageId)
     fd.set('tags', JSON.stringify(o.tags))
-    fd.set('procedure_ids', JSON.stringify(o.procedure_ids))
+    fd.set('procedure_ids', JSON.stringify(procs))
+    fd.set('value', valor)
     startSave(async () => {
       await updateLead(undefined, fd)
       onMudou()
@@ -540,6 +554,11 @@ function OportunidadeItem({
             }}>
               {o.stage_name ?? 'Sem etapa'}
             </span>
+            {o.value !== null && (
+              <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text)' }}>
+                {fmtBRL(o.value)}
+              </span>
+            )}
             {o.owner_name && (
               <span style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>{o.owner_name}</span>
             )}
@@ -577,6 +596,59 @@ function OportunidadeItem({
             textoListaVazia="Nenhuma origem cadastrada."
             onEscolher={setSource}
           />
+
+          {/* Produto e valor: o que está sendo negociado, e por quanto. */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+            {procs.map(id => {
+              const p = procedimentos.find(x => x.id === id)
+              return (
+                <TagBadge
+                  key={id}
+                  label={p?.name ?? 'Procedimento'}
+                  size="xs"
+                  onRemove={disabled ? undefined : () => setProcs(prev => prev.filter(x => x !== id))}
+                />
+              )
+            })}
+            <PickerCompacto
+              icone={<Package size={12} />}
+              rotuloBotao={procs.length > 0 ? 'Editar produtos' : 'Adicionar produto'}
+              opcoes={procedimentos.map(p => ({
+                valor: p.id,
+                rotulo: p.price > 0 ? `${p.name} · ${fmtBRL(p.price)}` : p.name,
+              }))}
+              selecionadas={procs}
+              multiplo
+              disabled={disabled}
+              larguraPainel={252}
+              textoListaVazia="Nenhum procedimento ativo na rede."
+              onEscolher={id => setProcs(prev =>
+                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 11.5, color: 'var(--text-muted)', flexShrink: 0 }}>R$</span>
+            <input
+              className="field"
+              value={valor}
+              disabled={disabled}
+              inputMode="decimal"
+              placeholder="Valor negociado"
+              onChange={e => setValor(e.target.value)}
+              style={{ fontSize: 12.5, padding: '6px 9px' }}
+            />
+            {/* Sugestão, não preenchimento automático: o preço de tabela é
+                ponto de partida, e desconto é a regra, não a exceção. */}
+            {somaDosProcedimentos > 0 && !valor && !disabled && (
+              <button type="button" className="btn-ghost"
+                onClick={() => setValor(String(somaDosProcedimentos).replace('.', ','))}
+                style={{ fontSize: 10.5, padding: '4px 6px', flexShrink: 0 }}
+                title="Usar a soma dos procedimentos">
+                {fmtBRL(somaDosProcedimentos)}
+              </button>
+            )}
+          </div>
 
           <textarea className="field" value={notes} disabled={disabled} rows={2}
             placeholder="Anotações sobre esta oportunidade…"

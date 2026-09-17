@@ -170,7 +170,79 @@ export interface ClientOpportunity {
   stage_color: string | null
   outcome:     'OPEN' | 'WON' | 'LOST'
   owner_name:  string | null
+  /** Valor negociado. Null = ainda sem proposta. */
+  value:       number | null
   created_at:  string
+}
+
+/**
+ * Anotações sobre a pessoa, no topo da ficha.
+ *
+ * `clients.notes` existia desde sempre e só era gravada no cadastro — depois
+ * disso não havia onde ler nem editar. Fica na visão geral porque é o tipo de
+ * coisa que se quer ver ANTES de atender ("prefere à tarde", "alérgica a
+ * lidocaína"), não escondida numa aba de dados cadastrais.
+ *
+ * Salva ao sair do campo, e não a cada tecla: é texto corrido, e um salvamento
+ * por palavra digitada não serve a ninguém.
+ */
+function NotasDoCliente({
+  client, slug,
+}: { client: ProfileClient; slug: string }) {
+  const [texto, setTexto] = useState(client.notes ?? '')
+  const [estado, setEstado] = useState<'ocioso' | 'salvando' | 'salvo' | 'erro'>('ocioso')
+  const salvoRef = useRef(client.notes ?? '')
+
+  async function salvar() {
+    if (texto === salvoRef.current) return
+    setEstado('salvando')
+    const res = await updateClientContactData(
+      client.id,
+      {
+        document: client.document, phone: client.phone, email: client.email,
+        birthDate: client.birthDate, zipCode: client.zipCode, address: client.address,
+        addressNumber: client.addressNumber, addressComplement: client.addressComplement,
+        neighborhood: client.neighborhood, city: client.city, state: client.state,
+        notes: texto,
+      },
+      slug,
+    )
+    if (res.error) { setEstado('erro'); return }
+    salvoRef.current = texto
+    setEstado('salvo')
+  }
+
+  return (
+    <div className="card" style={{ padding: '14px 18px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+        <p className="overline" style={{ margin: 0 }}>ANOTAÇÕES</p>
+        {estado === 'salvando' && <span style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>salvando…</span>}
+        {estado === 'salvo' && (
+          <span style={{ fontSize: 10.5, color: 'var(--success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            <Check size={11} /> salvo
+          </span>
+        )}
+        {estado === 'erro' && (
+          <span style={{ fontSize: 10.5, color: 'var(--warning)', fontWeight: 700 }}>não foi possível salvar</span>
+        )}
+      </div>
+      {/* Quem autoriza é o servidor (`assertPermission(ctx, 'clients', 'MANAGE')`
+          em `updateClientContactData`), como no resto desta ficha. */}
+      <textarea
+        value={texto}
+        onChange={e => { setTexto(e.target.value); setEstado('ocioso') }}
+        onBlur={salvar}
+        rows={2}
+        placeholder="Preferências, restrições, combinados… o que ajudar quem for atender."
+        style={{
+          width: '100%', padding: '9px 12px', borderRadius: 10,
+          border: '1px solid var(--border)', background: 'var(--bg-app)',
+          fontSize: 13, fontFamily: 'inherit', color: 'var(--text)',
+          resize: 'vertical', lineHeight: 1.5,
+        }}
+      />
+    </div>
+  )
 }
 
 // -- Helpers ------------------------------------------------------------------
@@ -1028,6 +1100,7 @@ export function ClientProfile({
       {/* -- Tab: Visão geral ------------------------------------------ */}
       {tab === 'visao' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <NotasDoCliente client={client} slug={slug} />
         <div className="rg-3" style={{ gap: 12, alignItems: 'start' }}>
 
           {/* 1. Tratamento em andamento */}
@@ -1249,6 +1322,11 @@ export function ClientProfile({
                         {format(new Date(o.created_at), "dd/MM/yyyy", { locale: ptBR })}
                       </div>
                     </div>
+                    {o.value !== null && (
+                      <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
+                        {fmtBRL(o.value)}
+                      </span>
+                    )}
                     <span style={{
                       flexShrink: 0, fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 99,
                       color: o.outcome === 'WON' ? 'var(--success)'
