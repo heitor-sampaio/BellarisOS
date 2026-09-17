@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import React, { useActionState, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Star, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf } from '@/actions/clients'
 import { TreatmentSessionsModal } from './treatment-sessions-modal'
@@ -967,7 +967,18 @@ export function ClientProfile({
   loyaltyBalance, activePackage, sessionNotes,
   transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clientHistory, opportunities = [],
 }: Props) {
-  const router = useRouter()
+  const router   = useRouter()
+  const pathname = usePathname()
+  /**
+   * Portal em que o perfil está aberto — não é a unidade do cliente.
+   *
+   * `slug` continua sendo a filial DELE, e é por ela que se chega ao
+   * atendimento (o detalhe só existe no portal da unidade). Já a volta para a
+   * lista e o botão de agendar seguem a superfície onde a pessoa está: mandar
+   * quem veio de /admin para /${slug}/… trocava o portal da rede pelo de uma
+   * unidade sem ninguém ter pedido.
+   */
+  const noAdmin  = pathname.startsWith('/admin')
   const [tab, setTab] = useState<TabKey>('visao')
   const visibleTabs = TABS.filter(t => t.key !== 'fichas' || recordForms.length > 0)
   const [treatmentModalOpen, setTreatmentModalOpen] = useState(false)
@@ -982,7 +993,7 @@ export function ClientProfile({
           perfil ocupar a tela — sem isto não há caminho de volta a não ser o
           botão do navegador. */}
       <a
-        href={slug === '__admin__' ? '/admin/clients' : `/${slug}/clients`}
+        href={noAdmin ? '/admin/clients' : `/${slug}/clients`}
         className="show-mobile"
         style={{
           alignItems: 'center', gap: 5, alignSelf: 'flex-start',
@@ -1060,7 +1071,7 @@ export function ClientProfile({
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <button
               type="button"
-              onClick={() => router.push(`/${slug}/agenda`)}
+              onClick={() => router.push(noAdmin ? '/admin/agenda' : `/${slug}/agenda`)}
               className="btn-primary"
             >
               + Agendar
