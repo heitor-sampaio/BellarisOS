@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, UserPlus } from 'lucide-react'
+import { Search, UserPlus, Building2, Tag as TagIcon } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { unitTag } from '@estetica-os/utils'
+import { unitTag, isUnitTag } from '@estetica-os/utils'
+import { PickerCompacto } from '@/components/shared/picker-compacto'
 
 interface ClientItem {
   id:         string
@@ -57,9 +58,25 @@ export function ClientsSidebar({
   const [search,           setSearch]           = useState('')
   const [filter,           setFilter]           = useState<Filter>('todos')
   const [selectedBranchId, setSelectedBranchId] = useState<string>('')
+  const [tagsEscolhidas,   setTagsEscolhidas]   = useState<string[]>([])
 
   // Unidade é uma TAG (quem frequenta), não o branch_id de cadastro.
   const selectedBranchName = availableBranches?.find(b => b.id === selectedBranchId)?.name
+
+  /**
+   * Tags dos clientes carregados, menos as de unidade.
+   *
+   * As de unidade saem porque já têm filtro próprio: apareceriam duas vezes,
+   * uma como "Unidade: Centro" na lista de tags e outra no seletor de unidade,
+   * fazendo a mesma pergunta em dois lugares.
+   */
+  const tagsDisponiveis = useMemo(() => {
+    const todas = new Set<string>()
+    for (const c of clients) {
+      for (const t of c.tags) if (!isUnitTag(t)) todas.add(t)
+    }
+    return [...todas].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [clients])
 
   const filtered = clients.filter(c => {
     const matchSearch = !search ||
@@ -72,7 +89,9 @@ export function ClientsSidebar({
       filter === 'inativos' ? !c.isActive : true
     const matchBranch = !selectedBranchId
       || (selectedBranchName ? c.tags.includes(unitTag(selectedBranchName)) : c.branchId === selectedBranchId)
-    return matchSearch && matchFilter && matchBranch
+    // TODAS as tags marcadas, como no inbox: marcar duas estreita a busca.
+    const matchTags = tagsEscolhidas.every(t => c.tags.includes(t))
+    return matchSearch && matchFilter && matchBranch && matchTags
   })
 
   // Extract selected client id from pathname like /[slug]/clients/[id] or /admin/clients/[id]
@@ -87,6 +106,19 @@ export function ClientsSidebar({
   ]
 
   const addHref = newClientHref === undefined ? `${basePath}/new` : newClientHref
+  const temFiltroDeUnidade = !!availableBranches && availableBranches.length > 1
+
+  /** Mesmo desenho dos campos da coluna; rosé quando o filtro está valendo. */
+  function estiloFiltro(ativo: boolean): React.CSSProperties {
+    return {
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 20,
+      cursor: 'pointer', transition: 'all 120ms',
+      border: ativo ? '1.5px solid var(--brand)' : '1px solid var(--border)',
+      background: ativo ? 'var(--brand-soft)' : 'var(--bg-app)',
+      color: ativo ? 'var(--brand)' : 'var(--text-muted)',
+    }
+  }
 
   return (
     <div className="clients-master-list" style={{
@@ -127,21 +159,6 @@ export function ClientsSidebar({
           )}
         </div>
 
-        {/* Branch filter — admin-only */}
-        {availableBranches && availableBranches.length > 1 && (
-          <select
-            value={selectedBranchId}
-            onChange={e => setSelectedBranchId(e.target.value)}
-            className="field"
-            style={{ fontSize: 12, marginBottom: 8 }}
-          >
-            <option value="">Todas as unidades</option>
-            {availableBranches.map(b => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-        )}
-
         {/* Search */}
         <div style={{ position: 'relative', marginBottom: 10 }}>
           <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }} />
@@ -174,10 +191,53 @@ export function ClientsSidebar({
             </button>
           ))}
         </div>
+
+        {/* Unidade e tags no mesmo padrão do resto do sistema: um gatilho que
+            abre a lista, com o escolhido no rótulo. Aqui isso importa mais que
+            em outras telas — a coluna tem 336px, e despejar as tags como chips
+            empurraria a lista de clientes para fora da tela. */}
+        {(temFiltroDeUnidade || tagsDisponiveis.length > 0) && (
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
+            {temFiltroDeUnidade && (
+              <PickerCompacto
+                icone={<Building2 size={12} />}
+                rotuloBotao={selectedBranchName ?? 'Unidade'}
+                opcoes={availableBranches!.map(b => ({ valor: b.id, rotulo: b.name }))}
+                selecionadas={selectedBranchId ? [selectedBranchId] : []}
+                textoListaVazia="Nenhuma unidade."
+                larguraPainel={220}
+                classeBotao=""
+                estiloBotao={estiloFiltro(!!selectedBranchId)}
+                // Escolher a que já está marcada limpa: é como desmarcar um
+                // rádio, e sem isso a única saída seria recarregar a página.
+                onEscolher={id => setSelectedBranchId(prev => (prev === id ? '' : id))}
+              />
+            )}
+
+            {tagsDisponiveis.length > 0 && (
+              <PickerCompacto
+                icone={<TagIcon size={12} />}
+                rotuloBotao={tagsEscolhidas.length > 0 ? `Tags · ${tagsEscolhidas.length}` : 'Tags'}
+                opcoes={tagsDisponiveis.map(t => ({ valor: t, rotulo: t }))}
+                selecionadas={tagsEscolhidas}
+                multiplo
+                textoListaVazia="Nenhuma tag nos clientes."
+                larguraPainel={220}
+                classeBotao=""
+                estiloBotao={estiloFiltro(tagsEscolhidas.length > 0)}
+                onEscolher={t => setTagsEscolhidas(prev =>
+                  prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
+              />
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Client list */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      {/* A lista rola por dentro; cabeçalho, busca e filtros ficam parados.
+          `minHeight: 0` é o que permite isso: sem ele o item flex não encolhe
+          abaixo do conteúdo, a lista cresce até o tamanho de todos os clientes
+          e quem rola passa a ser a página, levando os filtros embora. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
         {filtered.length === 0 ? (
           <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 12 }}>
             Nenhum cliente encontrado

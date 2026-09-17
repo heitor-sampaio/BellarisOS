@@ -713,10 +713,12 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
     max-width: 100% !important;
   }
 
-  /* Sozinha na tela, usa a altura toda. O corte em 60vh existia para o detalhe
-     caber logo abaixo; sem detalhe embaixo, ele só deixava um vão. */
+  /* Sozinha na tela, ocupa a altura visível e rola POR DENTRO — como no inbox.
+     `max-height: none` deixaria a lista crescer com o número de clientes e a
+     rolagem voltaria a ser da página, levando busca e filtros junto. */
   .lista-detalhe[data-detalhe='0'] .clients-master-list {
     max-height: none !important;
+    height: calc(100dvh - var(--topbar-h) - 2 * var(--content-pad-y));
   }
 }
 
