@@ -334,13 +334,13 @@ export default async function AdminClientProfilePage({
     const label  = isEval ? 'Avaliação' : proc
 
     if (a.status === 'COMPLETED' && (a as any).completed_at) {
-      history.push({ id: uid('ac'), date: (a as any).completed_at, type: 'APPOINTMENT_COMPLETED', title: `Atendimento: ${label}`, subtitle: `com ${prof}`, amount: parseFloat(String(a.price ?? 0)), link: `/${slug}/agenda/${a.id}` })
+      history.push({ id: uid('ac'), date: (a as any).completed_at, type: 'APPOINTMENT_COMPLETED', title: `Atendimento: ${label}`, subtitle: `com ${prof}`, amount: parseFloat(String(a.price ?? 0)), link: `/admin/agenda/${a.id}` })
     } else if (a.status === 'CANCELLED' && (a as any).cancelled_at) {
-      history.push({ id: uid('ax'), date: (a as any).cancelled_at, type: 'APPOINTMENT_CANCELLED', title: `Cancelado: ${label}`, subtitle: null, amount: null, link: `/${slug}/agenda/${a.id}` })
+      history.push({ id: uid('ax'), date: (a as any).cancelled_at, type: 'APPOINTMENT_CANCELLED', title: `Cancelado: ${label}`, subtitle: null, amount: null, link: `/admin/agenda/${a.id}` })
     } else if (a.status === 'NO_SHOW') {
-      history.push({ id: uid('an'), date: a.scheduled_at, type: 'APPOINTMENT_NO_SHOW', title: `Não compareceu: ${label}`, subtitle: null, amount: null, link: `/${slug}/agenda/${a.id}` })
+      history.push({ id: uid('an'), date: a.scheduled_at, type: 'APPOINTMENT_NO_SHOW', title: `Não compareceu: ${label}`, subtitle: null, amount: null, link: `/admin/agenda/${a.id}` })
     } else {
-      history.push({ id: uid('as'), date: (a as any).created_at ?? a.scheduled_at, type: 'APPOINTMENT_SCHEDULED', title: `Agendamento: ${label}`, subtitle: `${format(new Date(a.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} · ${prof}`, amount: null, link: `/${slug}/agenda/${a.id}` })
+      history.push({ id: uid('as'), date: (a as any).created_at ?? a.scheduled_at, type: 'APPOINTMENT_SCHEDULED', title: `Agendamento: ${label}`, subtitle: `${format(new Date(a.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} · ${prof}`, amount: null, link: `/admin/agenda/${a.id}` })
     }
   }
 

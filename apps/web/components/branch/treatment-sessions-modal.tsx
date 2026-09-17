@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import { rotaAtendimento } from '@/lib/rotas'
 import { X, Calendar, Play, CheckCircle2, Loader2, ChevronRight, AlertTriangle } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -235,6 +236,7 @@ export function TreatmentSessionsModal({
   slug, branches, currentBranchId, canManageProcedures, isNetworkWide, onClose,
 }: Props) {
   const router = useRouter()
+  const pathname = usePathname()
   const [sessions,      setSessions]      = useState<Session[]>([])
   const [loading,       setLoading]       = useState(true)
   const [schedulingId,  setSchedulingId]  = useState<string | null>(null)
@@ -414,7 +416,7 @@ export function TreatmentSessionsModal({
 
                         {isBooked && sess.appointmentId && (
                           <button type="button"
-                            onClick={() => router.push(`/${slug}/agenda/${sess.appointmentId}`)}
+                            onClick={() => router.push(rotaAtendimento(pathname, slug, sess.appointmentId!))}
                             style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: 'var(--brand)', color: '#fff', border: 'none' }}>
                             <Play size={10} /> Iniciar
                           </button>
@@ -422,7 +424,7 @@ export function TreatmentSessionsModal({
 
                         {isDone && sess.appointmentId && (
                           <button type="button"
-                            onClick={() => router.push(`/${slug}/agenda/${sess.appointmentId}`)}
+                            onClick={() => router.push(rotaAtendimento(pathname, slug, sess.appointmentId!))}
                             style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: 'var(--bg-app)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
                             Ver <ChevronRight size={10} />
                           </button>

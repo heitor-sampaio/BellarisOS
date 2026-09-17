@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 
@@ -219,8 +220,12 @@ function DayGrid({ branches, appointments }: { branches: Branch[]; appointments:
                   const l   = `calc(${(col / totalCols) * 100}% + 3px)`
 
                   return (
-                    <div
+                    // O card já parecia clicável (cursor de mão) e não levava a
+                    // lugar nenhum: a tela do atendimento só existia no portal
+                    // da unidade. Agora abre pela rota da rede.
+                    <Link
                       key={a.id}
+                      href={`/admin/agenda/${a.id}`}
                       title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}`}
                       style={{
                         position: 'absolute',
@@ -235,6 +240,8 @@ function DayGrid({ branches, appointments }: { branches: Branch[]; appointments:
                         overflow:     'hidden',
                         cursor:       'pointer',
                         zIndex:       1,
+                        textDecoration: 'none',
+                        display:      'block',
                       }}
                     >
                       <div style={{ fontSize: 11, fontWeight: 700, color: st.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -246,7 +253,7 @@ function DayGrid({ branches, appointments }: { branches: Branch[]; appointments:
                       <div style={{ fontSize: 10, color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                         {a.users?.name ?? '—'}
                       </div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>

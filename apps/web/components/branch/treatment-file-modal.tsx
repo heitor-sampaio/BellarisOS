@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+import { rotaAtendimento } from '@/lib/rotas'
 import { X, User, Stethoscope, Calendar, CheckCircle2, Clock, Play, ChevronRight, Loader2, Settings } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -76,6 +77,7 @@ function SessionItem({
   onSessionClick: (apptId: string) => void
 }) {
   const router     = useRouter()
+  const pathname   = usePathname()
   const appt       = session.appointment
   const apptStatus = appt?.status ?? null
   const isDone     = apptStatus === 'COMPLETED'
@@ -146,7 +148,7 @@ function SessionItem({
             {(isDone || isBooked || isActive) && appt?.id && (
               <button
                 type="button"
-                onClick={() => router.push(`/${slug}/agenda/${appt.id}`)}
+                onClick={() => router.push(rotaAtendimento(pathname, slug, appt.id))}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 3,
                   padding: '4px 9px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',

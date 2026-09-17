@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useState, useRef, useMemo, useEffect, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   ArrowLeft, Check, X, Loader2, AlertTriangle,
   Plus, Search, Trash2, Pencil, CheckCircle2, Play,
@@ -579,7 +579,11 @@ export function AppointmentSession({
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false,
 }: Props) {
-  const router = useRouter()
+  const router   = useRouter()
+  // Portal de onde se está vendo o atendimento — `slug` é o endereço da
+  // FILIAL dele, usado pelas actions; a volta tem de respeitar quem veio de
+  // /admin, senão a rede é trocada pela unidade no meio do caminho.
+  const noAdmin  = usePathname().startsWith('/admin')
 
   const [showCancel,    setShowCancel]    = useState(false)
   const [showFinish,    setShowFinish]    = useState(false)
@@ -856,7 +860,7 @@ export function AppointmentSession({
 
         {/* -- Top bar --------------------------------------------------- */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-          <Link href={`/${slug}/agenda`} style={{ display: 'flex', alignItems: 'center', marginTop: 6, color: 'var(--text-faint)', textDecoration: 'none', flexShrink: 0 }}>
+          <Link href={noAdmin ? '/admin/agenda' : `/${slug}/agenda`} style={{ display: 'flex', alignItems: 'center', marginTop: 6, color: 'var(--text-faint)', textDecoration: 'none', flexShrink: 0 }}>
             <ArrowLeft size={18} />
           </Link>
 
