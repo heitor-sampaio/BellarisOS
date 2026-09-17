@@ -453,6 +453,32 @@
   .sidebar-scrim { display: block; }
 }
 
+/* Tela que ocupa a altura toda e rola por dentro (inbox). O documento não rola;
+   quem rola é a área de mensagens. Ver `components/shared/trava-rolagem.tsx`. */
+html.trava-rolagem,
+html.trava-rolagem body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* A página do inbox sai do fluxo e ocupa o retângulo entre a topbar e o fim da
+   tela. Sem isto ela herda o `min-height` em `vh` do <main>, que no celular é
+   maior que a viewport visível — e o excedente empurrava o campo de escrever
+   para baixo da dobra. `fixed` mede pela tela de verdade, não por `vh`. */
+.inbox-page {
+  position: fixed;
+  top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+  left: var(--sidebar-w);
+  right: 0;
+  bottom: 0;
+  margin: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  /* `--sidebar-w` já é 0 abaixo de 1024px e 76px com o menu recolhido, então a
+     borda esquerda acompanha o menu sem precisar de regra própria. */
+  transition: left var(--sidebar-anim) var(--sidebar-ease);
+}
+
 /* -- Inbox: três colunas no desktop, UMA TELA POR VEZ no celular ----------
    Lista (300px) + conversa + card (320px) não cabem em 390px de largura: as
    duas colunas fixas comiam a tela e a conversa — o que a pessoa foi ler —

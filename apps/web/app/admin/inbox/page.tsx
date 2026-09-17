@@ -5,6 +5,7 @@ import { canaisConectados } from '@/lib/channels/factory'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { CRMInbox } from '@/components/admin/crm-inbox'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { TravaRolagem } from '@/components/shared/trava-rolagem'
 
 /** Nome da unidade marcada no lead, se houver. */
 function unidadeDoLead(tags: unknown): string | null {
@@ -58,22 +59,17 @@ export default async function AdminInboxPage({
   }))
 
   return (
-    // Tela cheia, sem título nem contagem no topo.
+    // Tela cheia, sem título nem contagem no topo: a caixa de entrada não é uma
+    // página de conteúdo, é uma superfície de trabalho, como qualquer cliente de
+    // mensagem. A contagem de não lidas não se perde — já está no menu lateral e
+    // na própria lista de conversas.
     //
-    // As margens negativas cancelam o padding do <main> do layout: ele vale para
-    // página de conteúdo, e a caixa de entrada não é uma — é uma superfície de
-    // trabalho, como qualquer cliente de mensagem. A contagem de não lidas não
-    // se perde: já está no menu lateral e na própria lista de conversas.
-    <div style={{
-      margin: 'calc(var(--content-pad-y) * -1) calc(var(--content-pad-x) * -1)',
-      marginBottom: 'calc((var(--content-pad-y) + env(safe-area-inset-bottom, 0px)) * -1)',
-      // `dvh` e não `vh`: no celular a barra de endereço entra e sai, e `100vh`
-      // é sempre a altura MÁXIMA — a diferença vira conteúdo escondido atrás da
-      // barra do sistema. O `vh` fica como reserva para navegador sem `dvh`.
-      height: 'calc(100vh - var(--topbar-h))',
-      maxHeight: 'calc(100dvh - var(--topbar-h))',
-      display: 'flex', flexDirection: 'column', minHeight: 0,
-    }}>
+    // `.inbox-page` tira a tela do fluxo e a encaixa entre a topbar e o fim da
+    // tela de verdade — medida em pixels reais, não em `vh`, que no celular
+    // ignora a barra do navegador. `TravaRolagem` impede o documento de rolar
+    // por trás: quem rola aqui é só a conversa.
+    <div className="inbox-page" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <TravaRolagem />
       <RealtimeRefresher tables={['leads', 'conversations']} />
 
       <CRMInbox
