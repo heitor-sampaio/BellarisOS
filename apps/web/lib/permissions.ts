@@ -22,7 +22,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
   procedures:      'Procedimentos e pacotes',
   stock:           'Estoque',
   financial:       'Financeiro e comissões',
-  cashier:         'Caixa',
+  cashier:         'Recebimentos',
   crm:             'CRM',
   marketing:       'Marketing',
   // "Relatórios e dashboard" prometia governar o Dashboard, que nunca é
@@ -43,7 +43,7 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   procedures:      'Catálogo de procedimentos e pacotes',
   stock:           'Produtos, movimentações e transferências',
   financial:       'Lançamentos, relatórios, estorno e comissões',
-  cashier:         'Abrir e fechar o caixa, receber pagamentos',
+  cashier:         'Receber o pagamento do atendimento e do plano',
   crm:             'Leads, funil e conversas',
   marketing:       'Campanhas e notificações',
   reports:         'Indicadores e relatórios da rede',

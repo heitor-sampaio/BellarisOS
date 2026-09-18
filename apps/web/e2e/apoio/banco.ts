@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
  * Acesso direto ao banco para as conferências que a tela não mostra.
  *
  * Existe porque metade do que estas fases consertaram é invisível: o
- * `cash_register_id` carimbado no recebimento, o `branch_id` do crédito
+ * `branch_id` do lançamento feito pela rede, o `branch_id` do crédito
  * interno, o movimento de estoque do produto recém-criado. Conferir só pela
  * tela deixaria passar exatamente o tipo de gravação silenciosa que motivou o
  * trabalho.

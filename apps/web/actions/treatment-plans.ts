@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getOpenCashRegisterId } from '@/lib/cash-register'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
@@ -1178,7 +1177,7 @@ export async function checkoutTreatmentPlan(
   slug:             string,
 ) {
   const ctx   = await getTenantContext()
-  // Aceitar é gesto de quem monta o plano; receber, de quem opera o caixa.
+  // Aceitar é gesto de quem monta o plano; receber, de quem recebe na recepção.
   if (pagamento) assertPodeReceber(ctx)
   else           assertPodeFecharPlano(ctx)
   const admin = createAdminClient()
@@ -1195,11 +1194,6 @@ export async function checkoutTreatmentPlan(
   // Busca sessões com procedimentos
   const { sessions, total } = await getTreatmentPlanSessions(planId)
   if (sessions.length === 0) return { error: 'Plano sem sessões cadastradas.' }
-
-  // Caixa aberto da unidade. Antes isto procurava `status = 'OPEN'`, coluna que
-  // não existe em `cash_registers` — o erro era descartado, `cash_register_id`
-  // ficava sempre nulo e a venda do plano nunca entrava num fechamento.
-  const cashRegisterId = await getOpenCashRegisterId(plan.branch_id as string)
 
   const agora     = new Date().toISOString()
   const descricao = 'Plano de tratamento — checkout novo paciente'
@@ -1245,7 +1239,6 @@ export async function checkoutTreatmentPlan(
 
   } else if (pagamento.forma === 'AVISTA') {
     const { data, error } = await lancar({
-      cash_register_id: cashRegisterId,
       amount:           total,
       payment_method:   pagamento.metodo,
       is_paid:          true,
@@ -1261,8 +1254,7 @@ export async function checkoutTreatmentPlan(
 
     if (entrada > 0) {
       const { data, error } = await lancar({
-        cash_register_id: cashRegisterId,
-        amount:           entrada,
+          amount:           entrada,
         payment_method:   pagamento.metodo,
         is_paid:          true,
         paid_at:          agora,
@@ -1439,7 +1431,6 @@ export async function receberDoPlano(
   if (!saldo || saldo.emAberto <= 0) return { error: 'Não há valor em aberto neste plano.' }
 
   const agora          = new Date().toISOString()
-  const cashRegisterId = await getOpenCashRegisterId(plan.branch_id as string)
 
   if (recebimento.forma === 'AVISTA') {
     // Quita os lançamentos pendentes do plano. `paid_at` é o eixo de
@@ -1450,8 +1441,7 @@ export async function receberDoPlano(
         is_paid:          true,
         paid_at:          agora,
         payment_method:   recebimento.metodo,
-        cash_register_id: cashRegisterId,
-        updated_at:       agora,
+          updated_at:       agora,
       })
       .in('id', saldo.pendentes)
     if (error) return { error: `Erro ao registrar o recebimento: ${error.message}` }
@@ -1499,8 +1489,7 @@ export async function receberDoPlano(
         payment_method:   recebimento.metodo,
         is_paid:          true,
         paid_at:          agora,
-        cash_register_id: cashRegisterId,
-        notes:            'Entrada do plano de tratamento',
+          notes:            'Entrada do plano de tratamento',
       })
       if (error) return { error: `Erro ao registrar a entrada: ${error.message}` }
     }

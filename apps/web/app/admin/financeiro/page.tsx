@@ -1,10 +1,8 @@
-import { getTenantContext, assertAnyPermission, can, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCore, getByBranch, EMPTY_CORE } from '@/lib/metrics'
-import { getOpenCashRegistersByBranch } from '@/lib/cash-register'
-import { CaixasDaRede } from '@/components/admin/caixas-da-rede'
 
 export default async function AdminFinanceiroPage({
   searchParams,
@@ -21,17 +19,15 @@ export default async function AdminFinanceiroPage({
     resolvePeriod(period, sp.from, sp.to)
 
   const ctx = await getTenantContext()
-  // Quem opera o caixa entra: é aqui que ele abre e fecha o caixa das unidades.
-  // Exigir `financial` deixava um cargo com `cashier: Gerenciar` e abrangência de
-  // rede sem nenhuma tela onde trabalhar.
-  assertAnyPermission(ctx, ['financial', 'cashier'], 'VIEW')
+  // Esta tela é do financeiro. `cashier` governa RECEBER — no atendimento e no
+  // checkout do plano —, não ler o consolidado da rede.
+  assertPermission(ctx, 'financial', 'VIEW')
 
-  const veFinanceiro = can(ctx, 'financial', 'VIEW')
-  const operaCaixa   = can(ctx, 'cashier', 'MANAGE')
+  const operaCaixa = can(ctx, 'cashier', 'MANAGE')
 
   // Alcance "só as próprias comissões" não tem como virar um consolidado da
   // rede meio filtrado — sairiam números com cara de total que não são total.
-  const soAsProprias = veFinanceiro && isOwnScope(ctx, 'financial')
+  const soAsProprias = isOwnScope(ctx, 'financial')
 
   const admin = createAdminClient()
 
@@ -64,26 +60,14 @@ export default async function AdminFinanceiroPage({
     )
   }
 
-  // Caixa de cada unidade — o portal da rede abre e fecha daqui, sem entrar na
-  // unidade. Sem isto, todo recebimento feito pela rede caía fora de qualquer
-  // fechamento, porque `getOpenCashRegisterId` não achava caixa aberto.
-  const caixas = operaCaixa ? await getOpenCashRegistersByBranch(branchIds) : []
-
-  // Quem só vê as próprias comissões não recebe o consolidado — mas continua
-  // com o caixa, que é dele. Antes a tela inteira virava um beco sem saída
-  // mandando "abra pelo portal da unidade", portal que quem é da rede não tem.
-  if (soAsProprias || !veFinanceiro) {
+  // Alcance "só as próprias" não vira consolidado meio filtrado: sairiam
+  // números com cara de total que não são total.
+  if (soAsProprias) {
     return (
-      <>
-        <RealtimeRefresher tables={['financial_transactions', 'cash_registers']} />
-        <CaixasDaRede caixas={caixas} branches={branches} operaCaixa={operaCaixa} />
-        {soAsProprias && (
-          <p style={{ padding: '24px 4px', color: 'var(--text-muted)', fontSize: 14 }}>
-            Seu cargo vê apenas as próprias comissões, que aparecem no seu perfil —
-            o consolidado da rede não é exibido aqui.
-          </p>
-        )}
-      </>
+      <div style={{ padding: '24px 4px', color: 'var(--text-muted)', fontSize: 14 }}>
+        Seu cargo vê apenas as próprias comissões, que aparecem no seu perfil —
+        o consolidado da rede não é exibido aqui.
+      </div>
     )
   }
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
@@ -148,7 +132,7 @@ export default async function AdminFinanceiroPage({
 
   return (
     <>
-      <RealtimeRefresher tables={['financial_transactions', 'commissions', 'cash_registers']} />
+      <RealtimeRefresher tables={['financial_transactions', 'commissions']} />
       <AdminFinancialView
         period={period}
         periodLabel={label}
@@ -170,7 +154,6 @@ export default async function AdminFinanceiroPage({
         podeDarCredito={ctx.permissions.financial === 'MANAGE'}
         canReverse={ctx.permissions.financial === 'MANAGE'}
         clients={(clientsRaw ?? []) as { id: string; name: string }[]}
-        caixas={<CaixasDaRede caixas={caixas} branches={branches} operaCaixa={operaCaixa} />}
       />
     </>
   )

@@ -13,8 +13,8 @@ const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
 
 export default defineConfig({
   testDir: path.resolve(__dirname, 'e2e'),
-  // Um worker só: a suíte mexe em caixa, estoque e agenda do banco de
-  // desenvolvimento, e dois testes disputando o mesmo caixa aberto dariam
+  // Um worker só: a suíte mexe em financeiro, estoque e agenda do banco de
+  // desenvolvimento, e dois testes disputando o mesmo registro dariam
   // falha intermitente que não é do produto.
   workers: 1,
   fullyParallel: false,

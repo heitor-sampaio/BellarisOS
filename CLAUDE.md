@@ -6,7 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 1. O que é este projeto
 
-EstéticaOS é um SaaS B2B para redes de clínicas de estética (2–5 filiais).
+BellarisOS é o **ERP + CRM** de clínicas de estética — a ferramenta em que a
+clínica opera o dia inteiro: agenda, prontuário, clientes, conversas, estoque,
+comercial e financeiro. Não é um sistema financeiro com agenda em volta; o
+financeiro é uma parte, não o centro.
+
+**O tamanho real do cliente é uma clínica só.** Multiunidade existe no modelo
+(tudo carrega `tenantId` + `branchId`, e o portal da rede consolida), mas é a
+exceção: rede grande costuma ser franquia, e franquia já chega com o sistema
+dela. Na dúvida de projeto, otimize para a clínica única — sem tornar a segunda
+unidade impossível.
+
 É composto por três superfícies:
 
 - **Portal Web Admin** (`/admin`) — visão consolidada da rede inteira
@@ -414,15 +424,18 @@ const procedures = await prisma.procedure.findMany({
 - `ProductBatch`: rastreia lote e validade por produto; produtos com validade vencida devem ser sinalizados antes do uso
 
 ### 9.6 Financeiro
-- **Caixa** (`cash_registers`) é o módulo de permissão `cashier`, separado de
-  `financial`: recebe e abre/fecha, mas não lança nem estorna. "Aberto" é
-  `closed_at is null` — **não existe coluna `status`**. Um caixa aberto por
-  filial, garantido na action (`lib/cash-register.ts`).
-- Todo recebimento carimba `financial_transactions.cash_register_id` com o caixa
-  aberto da filial (`getOpenCashRegisterId`). Sem caixa aberto o valor fica
-  `null` e o pagamento acontece do mesmo jeito — receber **não** é bloqueado por
-  falta de caixa aberto, só deixa de entrar em um fechamento. O fechamento soma
-  por `cash_register_id`, nunca por janela de período.
+- **Não existe caixa de abrir e fechar.** Foi removido em 2026-09-18: quase
+  nada é recebido em dinheiro vivo (a rede opera em Pix e cartão), e a
+  conferência que o fechamento existia para fazer — contar a gaveta e comparar
+  com o esperado — não tinha gaveta para contar. A auditoria do dia é a própria
+  tela do financeiro: período, unidade e forma de pagamento.
+  A tabela `cash_registers` e a coluna `financial_transactions.cash_register_id`
+  continuam no banco com o histórico do que já passou por lá; nada novo é
+  escrito nelas. Registro financeiro não se apaga.
+- O módulo `cashier` **sobreviveu com outro significado**: RECEBER o pagamento
+  do atendimento e do plano, na recepção. Não abre tela nenhuma por si só — o
+  financeiro da unidade e o da rede pedem `financial`. `podeReceber` (cashier OU
+  financial) continua sendo o gate de quem fecha uma venda.
 - `FinancialTransaction` criada automaticamente ao concluir `Appointment`
 - `Installment`: parcelas de uma transação (ex: parcelamento no cartão) — rastrear `isPaid` + `paidAt` por parcela
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
@@ -498,7 +511,14 @@ Os 14 módulos: `agenda`, `clients`, `medical_records`, `procedures`, `stock`,
 `settings`. Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
 (`lib/permissions.ts`) declara o que cada um aceita, e a tela de cargos só
 oferece esses. O escopo aparece apenas em `SCOPED_MODULES`: `agenda`,
-`medical_records`, `financial`, `crm`.
+`medical_records`, `financial`, `crm` e `reports` (em `reports` o escopo é "só
+a minha unidade" × "a rede inteira", não "os meus registros").
+
+**Relatórios tem um eixo a mais**: `reports: VIEW` abre a tela, e
+`role_report_tabs` diz QUAIS abas o cargo enxerga — o time comercial vê o funil
+sem ver o faturamento. Sem nenhuma aba marcada, o módulo vale NONE
+(`buildContext`): a entrada some do menu em vez de abrir uma tela vazia. Ler com
+`podeVerRelatorio(ctx, aba)` / `assertRelatorio`.
 
 ```typescript
 // lib/auth.ts — os quatro helpers de autorização

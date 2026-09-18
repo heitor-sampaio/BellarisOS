@@ -2,12 +2,13 @@ import { test, expect } from '@playwright/test'
 import { banco, filiaisAtivas, nomeDeTeste } from './apoio/banco'
 
 /**
- * Dinheiro pelo portal da rede: caixa, lançamento e baixa de pendência.
+ * Dinheiro pelo portal da rede: lançar e dar baixa numa pendência.
  *
- * O que se guarda aqui é o efeito invisível: todo recebimento carimba
- * `financial_transactions.cash_register_id` com o caixa aberto da unidade, e
- * era isso que se perdia quando a rede recebia sem ter como abrir o caixa —
- * o valor entrava e ficava fora de qualquer fechamento.
+ * Este arquivo já cobriu abrir e fechar o caixa da unidade. O caixa saiu
+ * (2026-09-18): quase nada é recebido em dinheiro vivo, e abrir/fechar todo dia
+ * era cerimônia para conferir uma gaveta que não existe. O que sobrou é o que
+ * importa de verdade — a rede lança e recebe em nome de uma unidade, e o
+ * lançamento nasce na unidade certa.
  *
  * Estorno e crédito interno ficam de fora de propósito: os dois geram
  * contrapartida permanente (contra-transação e saldo do cliente), e um teste
@@ -17,55 +18,23 @@ import { banco, filiaisAtivas, nomeDeTeste } from './apoio/banco'
 const descricaoPaga     = nomeDeTeste('receita paga')
 const descricaoPendente = nomeDeTeste('receita pendente')
 
-let registerId:  string | null = null
-let criadas:     string[] = []
+const criadas: string[] = []
 
 test.afterAll(async () => {
   const db = banco()
   for (const id of criadas) await db.from('financial_transactions').delete().eq('id', id)
-  if (registerId) await db.from('cash_registers').delete().eq('id', registerId)
 })
 
-test('caixa da unidade, lançamento e baixa — tudo pelo /admin', async ({ page }) => {
+test('lançar receita na unidade escolhida e dar baixa — tudo pelo /admin', async ({ page }) => {
   const db = banco()
   const unidades = await filiaisAtivas()
+  const unidade  = unidades[0]!
 
-  const { data: abertos, error } = await db
-    .from('cash_registers').select('branch_id').is('closed_at', null)
-  expect(error, 'consulta de caixas abertos falhou').toBeNull()
-
-  const comCaixaAberto = new Set((abertos ?? []).map(r => r.branch_id as string))
-  const unidade = unidades.find(u => !comCaixaAberto.has(u.id))
-  test.skip(!unidade, 'todas as unidades já têm caixa aberto — o teste abriria um segundo')
-
-  await page.goto('/admin/financeiro')
-
-  // -- Abrir o caixa da unidade, sem sair do portal da rede ------------------
-  await expect(page.getByRole('heading', { name: 'Caixa das unidades' })).toBeVisible()
-  // O card traz o nome da unidade e a situação em linhas separadas: os dois
-  // filtros juntos distinguem o card do caixa de qualquer outro cartão da tela.
-  const cardFechado = page.locator('.card')
-    .filter({ hasText: unidade!.name })
-    .filter({ hasText: 'Caixa fechado' })
-    .first()
-  await cardFechado.getByRole('button', { name: 'Abrir caixa' }).click()
-
-  const dialogoAbrir = page.locator('dialog[open]')
-  await dialogoAbrir.locator('input[name="opening_balance"]').fill('50')
-  await dialogoAbrir.getByRole('button', { name: 'Abrir caixa' }).click()
-
-  await expect.poll(async () => {
-    const { data } = await db.from('cash_registers')
-      .select('id').eq('branch_id', unidade!.id).is('closed_at', null).maybeSingle()
-    registerId = (data?.id as string) ?? null
-    return registerId
-  }, { message: 'abrir caixa deveria criar um registro aberto' }).not.toBeNull()
-
-  // -- Receita paga: o carimbo do caixa é o ponto -----------------------------
+  // -- Receita já paga --------------------------------------------------------
   await page.goto('/admin/financeiro')
   await page.getByRole('button', { name: 'Novo lançamento' }).click()
   let dialogo = page.locator('dialog[open]')
-  await dialogo.locator('select').first().selectOption({ label: unidade!.name })
+  await dialogo.locator('select').first().selectOption({ label: unidade.name })
   await dialogo.getByRole('button', { name: 'Receita' }).click()
   await dialogo.locator('input[name="description"]').fill(descricaoPaga)
   await dialogo.locator('select[name="category"]').selectOption({ index: 1 })
@@ -77,14 +46,15 @@ test('caixa da unidade, lançamento e baixa — tudo pelo /admin', async ({ page
   const paga = await esperarTransacao(descricaoPaga)
   criadas.push(paga.id)
   expect(paga.is_paid).toBe(true)
-  expect(paga.branch_id).toBe(unidade!.id)
-  expect(paga.cash_register_id, 'o recebimento tem de entrar no caixa aberto da unidade').toBe(registerId)
+  // A unidade vem do formulário: sem ela o lançamento da rede não teria filial.
+  expect(paga.branch_id).toBe(unidade.id)
+  expect(paga.paid_at).not.toBeNull()
 
-  // -- Pendente e depois paga pela própria tela da rede ----------------------
+  // -- Pendente, e depois paga pela própria tela da rede ----------------------
   await page.goto('/admin/financeiro')
   await page.getByRole('button', { name: 'Novo lançamento' }).click()
   dialogo = page.locator('dialog[open]')
-  await dialogo.locator('select').first().selectOption({ label: unidade!.name })
+  await dialogo.locator('select').first().selectOption({ label: unidade.name })
   await dialogo.getByRole('button', { name: 'Receita' }).click()
   await dialogo.locator('input[name="description"]').fill(descricaoPendente)
   await dialogo.locator('select[name="category"]').selectOption({ index: 1 })
@@ -107,20 +77,6 @@ test('caixa da unidade, lançamento e baixa — tudo pelo /admin', async ({ page
       .select('is_paid, paid_at').eq('id', pendente.id).single()
     return Boolean(data?.is_paid && data?.paid_at)
   }, { message: 'marcar pago deveria gravar is_paid e paid_at' }).toBe(true)
-
-  // -- Fechar o caixa, devolvendo a unidade ao estado em que estava ----------
-  await page.goto('/admin/financeiro')
-  await page.locator('.card')
-    .filter({ hasText: unidade!.name })
-    .filter({ hasText: 'Saldo atual' })
-    .first()
-    .getByRole('button', { name: 'Fechar caixa' }).click()
-  await page.locator('dialog[open]').getByRole('button', { name: 'Confirmar fechamento' }).click()
-
-  await expect.poll(async () => {
-    const { data } = await db.from('cash_registers').select('closed_at').eq('id', registerId!).single()
-    return data?.closed_at !== null
-  }, { message: 'fechar caixa deveria carimbar closed_at' }).toBe(true)
 })
 
 async function esperarTransacao(descricao: string) {
@@ -129,11 +85,11 @@ async function esperarTransacao(descricao: string) {
   await expect.poll(async () => {
     const { data } = await db
       .from('financial_transactions')
-      .select('id, is_paid, branch_id, cash_register_id')
+      .select('id, is_paid, paid_at, branch_id')
       .eq('description', descricao)
       .maybeSingle()
     achada = data
     return data?.id ?? null
   }, { message: `a transação "${descricao}" deveria ter sido gravada` }).not.toBeNull()
-  return achada as { id: string; is_paid: boolean; branch_id: string; cash_register_id: string | null }
+  return achada as { id: string; is_paid: boolean; paid_at: string | null; branch_id: string }
 }

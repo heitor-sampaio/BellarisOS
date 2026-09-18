@@ -94,14 +94,10 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   { key: 'inbox',         group: 'vendas',      label: 'Inbox',         href: '/inbox',         visible: p => has(p, 'crm') },
   { key: 'oportunidades', group: 'vendas',      label: 'Oportunidades', href: '/oportunidades', visible: p => has(p, 'crm') },
 
-  // Mesma tela para financeiro e caixa: o rótulo acompanha o acesso, porque
-  // quem só opera o caixa entra e vê só o widget de abrir/fechar.
-  {
-    key: 'financial', group: 'dinheiro',
-    label: p => (has(p, 'financial') ? 'Financeiro' : 'Caixa'),
-    href: '/financeiro',
-    visible: p => has(p, 'financial') || has(p, 'cashier'),
-  },
+  // Só `financial`. O módulo `cashier` governa RECEBER — no atendimento e no
+  // checkout do plano —, e desde que o caixa de abrir/fechar saiu não há mais
+  // tela própria dele: quem só recebe entrava aqui e via a tela vazia.
+  { key: 'financial',     group: 'dinheiro',    label: 'Financeiro',    href: '/financeiro',    visible: p => has(p, 'financial') },
   { key: 'stock',         group: 'dinheiro',    label: 'Estoque',       href: '/estoque',       visible: p => has(p, 'stock') },
 
   { key: 'reports',       group: 'gestao',      label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },

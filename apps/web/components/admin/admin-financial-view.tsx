@@ -73,12 +73,6 @@ interface Props {
   podeDarCredito?:  boolean
   /** Clientes da rede, para o crédito interno. */
   clients?:         { id: string; name: string }[]
-  /**
-   * Bloco dos caixas das unidades, renderizado no servidor e encaixado abaixo
-   * dos KPIs. Vem como slot porque ler `cash_registers` é trabalho de servidor
-   * e esta tela é um componente de cliente.
-   */
-  caixas?:          React.ReactNode
 }
 
 // --- Helpers -----------------------------------------------------------------
@@ -178,7 +172,6 @@ export function AdminFinancialView({
   prevRevenue, prevExpenses,
   branchStats, transactions, branchSlugMap, branches, unidadeInicial = '',
   canPay = false, canReverse = false, podeDarCredito = false, clients = [],
-  caixas,
 }: Props) {
   const router      = useRouter()
   const [, startT]  = useTransition()
@@ -319,10 +312,6 @@ export function AdminFinancialView({
         />
       </div>
 
-      {/* Os caixas das unidades vêm logo abaixo dos números da rede: são
-          estado operacional do dia, não o titulo da tela. Chega montado do
-          servidor (`CaixasDaRede`), que é quem sabe ler `cash_registers`. */}
-      {caixas}
 
       {/* Por filial */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

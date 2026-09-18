@@ -91,7 +91,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   cashier: {
     NONE:   SEM_ACESSO,
-    MANAGE: 'Abre e fecha o caixa do dia e recebe os pagamentos dos atendimentos. Não lança despesa nem estorna — isso é Financeiro.',
+    MANAGE: 'Recebe o pagamento do atendimento e do plano de tratamento, na recepção. Não lança despesa, não estorna e não vê o financeiro da unidade — isso é Financeiro.',
   },
   crm: {
     NONE:   SEM_ACESSO,

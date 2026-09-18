@@ -26,12 +26,22 @@ describe('menuEntriesFor', () => {
   })
 })
 
-describe('rótulo que muda com o acesso', () => {
-  it('quem só opera o caixa vê "Caixa"; com financeiro, "Financeiro"', () => {
-    const soCaixa = menuEntriesFor(BRANCH_MENU, com({ cashier: 'MANAGE' })).find(e => e.key === 'financial')
-    const comFin  = menuEntriesFor(BRANCH_MENU, com({ financial: 'VIEW' })).find(e => e.key === 'financial')
-    expect(soCaixa!.label).toBe('Caixa')
+describe('quem só recebe não entra no financeiro', () => {
+  it('cashier sozinho não abre a tela — ela é do módulo financeiro', () => {
+    // `cashier` governa receber na recepção. Enquanto existia abrir/fechar
+    // caixa ele tinha tela própria; sem isso, entrar aqui dava tela vazia.
+    const soRecebe = menuEntriesFor(BRANCH_MENU, com({ cashier: 'MANAGE' }))
+    expect(soRecebe.map(e => e.key)).not.toContain('financial')
+  })
+
+  it('com financeiro, a entrada aparece', () => {
+    const comFin = menuEntriesFor(BRANCH_MENU, com({ financial: 'VIEW' })).find(e => e.key === 'financial')
     expect(comFin!.label).toBe('Financeiro')
+  })
+
+  it('mas quem só recebe continua vendo os planejamentos, onde ele cobra', () => {
+    const keys = menuEntriesFor(BRANCH_MENU, com({ cashier: 'MANAGE' })).map(e => e.key)
+    expect(keys).toContain('planejamentos')
   })
 })
 
