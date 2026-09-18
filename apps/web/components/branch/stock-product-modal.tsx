@@ -33,6 +33,12 @@ interface Props {
   trigger?:    React.ReactNode
   suppliers?:  string[]
   categories?: ProductCategory[]
+  /**
+   * Unidades da rede. Quando vem preenchida, o estoque inicial pergunta em qual
+   * unidade ele entra — quem e da rede nao tem uma filial corrente, e sem ela o
+   * lancamento era descartado em silencio.
+   */
+  branches?:   { id: string; name: string }[]
   onSuccess?:  () => void
 }
 
@@ -130,11 +136,12 @@ function Label({ children }: { children: React.ReactNode }) {
 
 // -- Campos compartilhados --------------------------------------------
 function ProductFields({
-  product, suppliers, categories = [], onClose, state, pending, submitLabel, isCreate = false,
+  product, suppliers, categories = [], branches = [], onClose, state, pending, submitLabel, isCreate = false,
 }: {
   product?:    StockProduct
   suppliers:   string[]
   categories:  ProductCategory[]
+  branches?:   { id: string; name: string }[]
   onClose:     () => void
   state:       { error?: string; success?: boolean } | undefined
   pending:     boolean
@@ -419,6 +426,18 @@ function ProductFields({
 
           {showStock && (
             <>
+              {/* Em qual unidade o estoque entra. Só aparece no portal da rede:
+                  estoque é da filial, e sem dizer qual o lançamento inteiro era
+                  descartado em silêncio — sem movimento, sem saldo, sem despesa. */}
+              {branches.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <Label>Unidade que recebe o estoque *</Label>
+                  <select name="_branchId" required className="field" defaultValue={branches[0]?.id ?? ''}>
+                    {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+              )}
+
               {/* Quantidade + Preço de custo por embalagem */}
               <div className="form-2col">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -499,9 +518,10 @@ function ProductFields({
 }
 
 // -- Form de criação ---------------------------------------------------
-function CreateForm({ suppliers, categories, onClose, onSuccess }: {
+function CreateForm({ suppliers, categories, branches, onClose, onSuccess }: {
   suppliers:  string[]
   categories: ProductCategory[]
+  branches?:  { id: string; name: string }[]
   onClose:    () => void
   onSuccess:  () => void
 }) {
@@ -527,7 +547,7 @@ function CreateForm({ suppliers, categories, onClose, onSuccess }: {
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <ProductFields
         isCreate
-        suppliers={suppliers} categories={categories} onClose={onClose}
+        suppliers={suppliers} categories={categories} branches={branches} onClose={onClose}
         state={error ? { error } : undefined}
         pending={pending} submitLabel="Criar produto"
       />
@@ -575,7 +595,7 @@ function EditForm({ product, suppliers, categories, onClose, onSuccess }: {
 
 // -- Modal wrapper -----------------------------------------------------
 export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
-  function StockProductModal({ product, trigger, suppliers = [], categories = [], onSuccess }, ref) {
+  function StockProductModal({ product, trigger, suppliers = [], categories = [], branches = [], onSuccess }, ref) {
     const isEdit    = !!product
     const dialogRef = useRef<HTMLDialogElement>(null)
     const router    = useRouter()
@@ -631,7 +651,7 @@ export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
           <div style={{ padding: '24px 24px 28px' }}>
             {isEdit
               ? <EditForm key={`${product.id}-${formKey}`} product={product} suppliers={suppliers} categories={categories} onClose={close} onSuccess={handleSuccess} />
-              : <CreateForm key={formKey} suppliers={suppliers} categories={categories} onClose={close} onSuccess={handleSuccess} />
+              : <CreateForm key={formKey} suppliers={suppliers} categories={categories} branches={branches} onClose={close} onSuccess={handleSuccess} />
             }
           </div>
         </dialog>

@@ -153,8 +153,11 @@ export default async function AdminClientProfilePage({
       .order('created_at', { ascending: false }),
   ])
 
-  // Filial "efetiva": a vinculada ao cliente ou, na ausência, a primeira ativa da
-  // rede — usada só como contexto para sub-componentes/links que exigem uma filial.
+  // Filial "efetiva": a vinculada ao cliente ou, na ausência, a primeira ativa
+  // da rede. Serve de CONTEXTO para links e leituras — nunca para gravar por
+  // filial: cliente de rede não tem filial (`clients.branch_id` é nulo desde a
+  // migração de clientes de rede), e herdar a primeira em ordem alfabética
+  // mandava o crédito interno para o caixa de outra unidade. Quem grava pergunta.
   const effBranch = branchRow ?? ((branchesRaw?.[0] ?? null) as { id: string; name: string; slug: string } | null)
   const branchId  = effBranch?.id ?? ''
   const slug      = effBranch?.slug ?? ''
@@ -413,6 +416,7 @@ export default async function AdminClientProfilePage({
         planProducts={planoProcs.products}
         podeReceber={podeReceber(ctx)}
         isNetworkWide={ctx.branchId === null}
+        clienteSemFilial={!branchRow}
         clientHistory={clientHistory}
         opportunities={oportunidades}
       />

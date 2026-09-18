@@ -101,12 +101,24 @@ export async function createProduct(
 
     if (error) return { error: error.message }
 
-    // Estoque inicial — só cria movimento se for usuário de filial e informou quantidade
-    const initialQty  = num(formData, 'initial_qty')
-    const initialCost = num(formData, 'initial_cost')
-    if (initialQty && initialQty > 0 && ctx.branchId && newProduct) {
+    // Estoque inicial.
+    //
+    // A unidade vem do formulário, não do contexto: quem é da REDE não tem
+    // `ctx.branchId`, e a condição antiga (`&& ctx.branchId`) descartava tudo em
+    // silêncio — o produto nascia sem movimento, sem saldo na filial, sem lote e
+    // sem a despesa, com a tela dizendo que deu certo. O modal pede a unidade
+    // quando quem cria é da rede; na unidade ela já vem do contexto.
+    const initialQty    = num(formData, 'initial_qty')
+    const initialCost   = num(formData, 'initial_cost')
+    const filialEstoque = str(formData, '_branchId') || ctx.branchId
+
+    if (initialQty && initialQty > 0 && newProduct && !filialEstoque) {
+      return { error: 'Escolha a unidade que vai receber o estoque inicial.' }
+    }
+
+    if (initialQty && initialQty > 0 && filialEstoque && newProduct) {
       await admin.from('stock_movements').insert({
-        branch_id:     ctx.branchId,
+        branch_id:     filialEstoque,
         product_id:    newProduct.id,
         type:          'PURCHASE',
         quantity:      initialQty,
@@ -117,7 +129,7 @@ export async function createProduct(
 
       await admin.from('branch_product_stock').upsert({
         product_id:    newProduct.id,
-        branch_id:     ctx.branchId,
+        branch_id:     filialEstoque,
         current_stock: initialQty,
         min_stock:     minStock,
         updated_at:    new Date().toISOString(),
@@ -139,7 +151,7 @@ export async function createProduct(
         await admin.from('products').update({ cost_price: initialCost }).eq('id', newProduct.id)
 
         await admin.from('financial_transactions').insert({
-          branch_id:   ctx.branchId,
+          branch_id:   filialEstoque,
           type:        'EXPENSE',
           category:    'Estoque',
           description: `Compra: ${name}`,

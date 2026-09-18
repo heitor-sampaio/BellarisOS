@@ -159,6 +159,11 @@ interface Props {
   slug:                  string
   canManageProcedures:   boolean
   isNetworkWide:         boolean
+  /**
+   * Cliente da REDE: `clients.branch_id` nulo. Os gestos que gravam por filial
+   * (credito interno) passam a perguntar a unidade em vez de herdarem uma.
+   */
+  clienteSemFilial?:     boolean
   clientHistory:         ClientHistoryEvent[]
   /** Procedimentos que podem entrar num plano de tratamento (sem os de avaliação). */
   planProcedures?:       { id: string; name: string; category: string; price: number; durationMin: number; products?: { productId: string; name: string; unit: string; quantity: number }[] }[]
@@ -714,8 +719,16 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 // -- Financeiro sub-component --------------------------------------------------
 
 function GrantCreditForm({
-  clientId, branchId, slug, onClose,
-}: { clientId: string; branchId: string; slug: string; onClose: () => void }) {
+  clientId, branchId, slug, onClose, unidades = [],
+}: {
+  clientId: string; branchId: string; slug: string; onClose: () => void
+  /**
+   * Unidades para escolher. So vem preenchida quando o cliente e da REDE (sem
+   * filial propria): antes a tela usava a primeira filial em ordem alfabetica,
+   * e o credito — que e dinheiro no caixa da unidade — ia parar na errada.
+   */
+  unidades?: { id: string; name: string }[]
+}) {
   const router = useRouter()
   const [state, action, pending] = useActionState(grantInternalCredit, null)
 
@@ -736,8 +749,18 @@ function GrantCreditForm({
       }}
     >
       <input type="hidden" name="client_id" value={clientId} />
-      <input type="hidden" name="branch_id" value={branchId} />
       <input type="hidden" name="slug"      value={slug} />
+      {unidades.length === 0 && <input type="hidden" name="branch_id" value={branchId} />}
+
+      {unidades.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label className="field-label">Unidade do crédito *</label>
+          <select name="branch_id" required className="field" style={{ background: 'var(--surface)' }} defaultValue="">
+            <option value="" disabled>Selecione a unidade…</option>
+            {unidades.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </div>
+      )}
 
       <div className="form-2col">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -784,6 +807,7 @@ function FinanceiroTab({
   clientId,
   branchId,
   slug,
+  unidadesParaCredito = [],
 }: {
   transactions:    ProfileTransaction[]
   internalCredits: ProfileInternalCredit[]
@@ -791,6 +815,8 @@ function FinanceiroTab({
   clientId:        string
   branchId:        string
   slug:            string
+  /** Preenchida so quando o cliente nao tem filial propria. */
+  unidadesParaCredito?: { id: string; name: string }[]
 }) {
   const [showGrantForm, setShowGrantForm] = useState(false)
 
@@ -927,6 +953,7 @@ function FinanceiroTab({
             clientId={clientId}
             branchId={branchId}
             slug={slug}
+            unidades={unidadesParaCredito}
             onClose={() => setShowGrantForm(false)}
           />
         )}
@@ -976,7 +1003,7 @@ const STATUS_ICON: Record<string, React.ReactNode> = {
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments,
   loyaltyBalance, activePackage, sessionNotes,
-  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false,
 }: Props) {
   const router   = useRouter()
@@ -1452,6 +1479,7 @@ export function ClientProfile({
           clientId={client.id}
           branchId={branchId}
           slug={slug}
+          unidadesParaCredito={clienteSemFilial ? branches : []}
         />
       )}
 

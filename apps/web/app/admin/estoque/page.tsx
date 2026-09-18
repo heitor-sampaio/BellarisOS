@@ -199,6 +199,7 @@ export default async function AdminEstoquePage({
             <StockProductModal
               suppliers={suppliers}
               categories={categories}
+              branches={branches}
               trigger={
                 <button type="button" className="btn-primary">
                   <Package size={15} />
