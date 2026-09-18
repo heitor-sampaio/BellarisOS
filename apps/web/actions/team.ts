@@ -160,7 +160,9 @@ export async function updateTeamMember(
     .eq('tenant_id', ctx.tenantId!)
   if (error) return { error: 'Erro ao atualizar membro.' }
 
-  // Reemite claims para refletir novo cargo/abrangência (vale no próximo refresh do token)
+  // Reemite os claims do JWT. O app já lê cargo e abrangência do banco (com a
+  // invalidação de `user:` logo abaixo), então a mudança vale na hora; os claims
+  // continuam sendo reescritos porque é deles que o RLS do Postgres depende.
   await admin.rpc('set_user_claims', {
     p_auth_id:   member.auth_id,
     p_tenant_id: ctx.tenantId!,

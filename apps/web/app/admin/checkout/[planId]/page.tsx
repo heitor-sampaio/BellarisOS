@@ -17,11 +17,14 @@ export default async function AdminCheckoutPage({
   const ctx        = await getTenantContext()
 
   const admin = createAdminClient()
-  const { data: plan } = await admin
+  const { data: plan, error: planErr } = await admin
     .from('treatment_plans')
     .select('branch_id, branches!branch_id(name, slug, tenant_id)')
     .eq('id', planId)
     .maybeSingle()
+
+  // Consulta que falha não é plano inexistente.
+  if (planErr) throw new Error('Não foi possível carregar o plano: ' + planErr.message)
 
   const branch = plan?.branches as unknown as { name: string; slug: string; tenant_id: string } | null
   if (!plan?.branch_id || !branch || branch.tenant_id !== ctx.tenantId) notFound()

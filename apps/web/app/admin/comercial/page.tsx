@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { filiaisAtivas } from '@/lib/branches'
 import { resolvePeriod, percent, getLeadFunnel } from '@/lib/metrics'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { FunnelSelect } from '@/components/shared/funnel-select'
@@ -48,9 +49,7 @@ export default async function AdminComercialPage({
   const admin = createAdminClient()
 
   // Filiais da rede
-  const { data: branchesRaw } = await admin
-    .from('branches').select('id').eq('tenant_id', ctx.tenantId!).eq('is_active', true)
-  const branchIds = (branchesRaw ?? []).map((b: { id: string }) => b.id)
+  const branchIds = (await filiaisAtivas(ctx.tenantId!)).map(b => b.id)
 
   if (branchIds.length === 0) {
     return (

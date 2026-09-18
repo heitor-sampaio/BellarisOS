@@ -1,5 +1,5 @@
 import { getTenantContext } from '@/lib/auth'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { filiaisAtivas } from '@/lib/branches'
 import { ListaDeCheckout } from '@/app/_shared/lista-de-checkout'
 
 /**
@@ -10,16 +10,8 @@ import { ListaDeCheckout } from '@/app/_shared/lista-de-checkout'
  */
 export default async function AdminCheckoutListPage() {
   const ctx   = await getTenantContext()
-  const admin = createAdminClient()
-
   // `treatment_plans` não tem `tenant_id`: a rede é o conjunto das filiais ativas.
-  const { data: branchesRaw } = await admin
-    .from('branches')
-    .select('id')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-
-  const branchIds = (branchesRaw ?? []).map(b => b.id as string)
+  const branchIds = (await filiaisAtivas(ctx.tenantId!)).map(b => b.id)
 
   return <ListaDeCheckout branchIds={branchIds} branchName={null} slug="" />
 }

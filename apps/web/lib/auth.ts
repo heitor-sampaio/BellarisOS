@@ -26,6 +26,13 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   const member = isClient ? null : await getCachedMember(authId)
   const roleId = member?.roleId ?? meta.role_id ?? null
 
+  // A abrangência segue a mesma regra, pelo mesmo motivo. Ela decide em quais
+  // unidades a pessoa trabalha e qual portal ela abre (`app/admin/layout.tsx`
+  // manda embora quem tem filial fixa): lendo só do JWT, promover alguém a
+  // abrangência de rede o deixava até uma hora trancado fora do portal certo.
+  // `undefined` = membro não carregado (cliente final); `null` = rede.
+  const branchId = member ? member.branchId : (meta.branch_id ?? null)
+
   let permissions: ResolvedPermissions
   let scopes: ResolvedScopes
   if (isClient) {
@@ -49,7 +56,7 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     userName: member?.name ?? '',
     roleLabel: member?.roleLabel ?? '',
     tenantId,
-    branchId: meta.branch_id ?? null,
+    branchId,
     role,
     roleId,
     clientId: meta.client_id ?? null,

@@ -26,13 +26,17 @@ export default async function AdminClientProfilePage({
 
   const admin = createAdminClient()
 
-  // Fetch client by id + tenant (no branch lock)
-  const { data: raw } = await admin
+  // Cliente por id + tenant (sem trava de filial).
+  //
+  // Erro de consulta não é cliente inexistente: com o erro descartado, uma
+  // recusa do PostgREST virava um 404 e a ficha sumia sem explicação.
+  const { data: raw, error: clientErr } = await admin
     .from('clients')
     .select('*, branches!branch_id(id, name, slug)')
     .eq('id', id)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .maybeSingle()
+  if (clientErr) throw new Error('Não foi possível carregar o cliente: ' + clientErr.message)
   if (!raw) notFound()
 
   // Cliente pertence à REDE — pode não ter filial vinculada (branch_id nullable).

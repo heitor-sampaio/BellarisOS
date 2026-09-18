@@ -1,5 +1,6 @@
 import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { filiaisAtivas } from '@/lib/branches'
 import { getConversations } from '@/actions/inbox'
 import { canaisConectados } from '@/lib/channels/factory'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
@@ -26,16 +27,8 @@ export default async function AdminInboxPage({
   // `?c=` é o deep-link do card de Oportunidades para a conversa.
   const { c: convParam } = await searchParams
 
-  const admin = createAdminClient()
-
-  const { data: branchesRaw } = await admin
-    .from('branches')
-    .select('id, name, slug')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .order('name')
-
-  const branches = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
+  const admin    = createAdminClient()
+  const branches = await filiaisAtivas(ctx.tenantId!)
 
   // `convParam` entra aqui: a conversa vinda de um card do funil pode não ter
   // mensagem nenhuma, e sem isso ela não estaria na lista para ser aberta.

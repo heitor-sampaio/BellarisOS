@@ -6,7 +6,19 @@ import { unitTag } from '@estetica-os/utils'
 // Traz id interno + cargo dinâmico + flag de profissional. Fonte de fallback dos
 // claims (role_id/provides_services) enquanto o JWT antigo não carrega role_id.
 // Invalidar em actions/team.ts via tag `user:${authId}`.
-export type CachedMember = { id: string; name: string; roleId: string | null; roleLabel: string; providesServices: boolean }
+export type CachedMember = {
+  id: string; name: string; roleId: string | null; roleLabel: string
+  providesServices: boolean
+  /**
+   * Abrangência do membro: `null` = rede inteira.
+   *
+   * Vem do banco pelo mesmo motivo que `role_id` vem: trocar a abrangência de
+   * alguém tem de valer na hora. Com o valor só no JWT, promover alguém a
+   * abrangência de rede o deixava até uma hora trancado fora do `/admin`, que é
+   * de onde o layout manda sair quem tem filial fixa.
+   */
+  branchId: string | null
+}
 
 export function getCachedMember(authId: string) {
   return unstable_cache(
@@ -14,7 +26,7 @@ export function getCachedMember(authId: string) {
       const admin = createAdminClient()
       const { data } = await admin
         .from('users')
-        .select('id, name, role_id, provides_services, tenant_roles(label)')
+        .select('id, name, role_id, branch_id, provides_services, tenant_roles(label)')
         .eq('auth_id', authId)
         .maybeSingle()
       if (!data) return null
@@ -25,6 +37,7 @@ export function getCachedMember(authId: string) {
         roleId: data.role_id ?? null,
         roleLabel: roleRef?.label ?? '',
         providesServices: data.provides_services ?? false,
+        branchId: (data.branch_id as string | null) ?? null,
       }
     },
     [`member-${authId}`],

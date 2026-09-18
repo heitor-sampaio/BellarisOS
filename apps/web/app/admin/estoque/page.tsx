@@ -21,8 +21,12 @@ export default async function AdminEstoquePage({
 
   const admin = createAdminClient()
 
-  // Primeira rodada: produtos com estoque, filiais e categorias
-  const [{ data: raw }, { data: branchesRaw }, { data: categoriesRaw }] = await Promise.all([
+  // Primeira rodada: produtos com estoque, filiais e categorias.
+  //
+  // O erro do embed aninhado (`products → branch_product_stock → branches`) era
+  // descartado: qualquer recusa do PostgREST deixava o estoque da rede inteiro
+  // em branco, sem mensagem nenhuma.
+  const [{ data: raw, error: produtosErr }, { data: branchesRaw, error: filiaisErr }, { data: categoriesRaw }] = await Promise.all([
     admin
       .from('products')
       .select(`
@@ -50,6 +54,9 @@ export default async function AdminEstoquePage({
       .eq('tenant_id', ctx.tenantId!)
       .order('name'),
   ])
+
+  if (produtosErr) throw new Error(`Não foi possível carregar o estoque: ${produtosErr.message}`)
+  if (filiaisErr)  throw new Error(`Não foi possível carregar as unidades: ${filiaisErr.message}`)
 
   // Normaliza produtos
   const products = (raw ?? []).map((p: any) => {

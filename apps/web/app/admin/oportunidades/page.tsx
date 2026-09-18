@@ -1,5 +1,6 @@
 import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { filiaisAtivas } from '@/lib/branches'
 import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { funnelStats } from '@/lib/crm'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
@@ -28,17 +29,9 @@ export default async function AdminOportunidadesPage({
 
   const { funil: rawFunil } = await searchParams
 
-  const admin = createAdminClient()
-
   // Filiais da rede
-  const { data: branchesRaw } = await admin
-    .from('branches')
-    .select('id, name, slug')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('is_active', true)
-    .order('name')
-
-  const branches = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
+  const admin    = createAdminClient()
+  const branches = await filiaisAtivas(ctx.tenantId!)
 
   const canEdit = can(ctx, 'crm', 'MANAGE')
 

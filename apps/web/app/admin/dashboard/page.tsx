@@ -67,12 +67,16 @@ export default async function AdminDashboardPage({
   const endOfToday   = endOfDayTZ(now)
 
   // -- Filiais -------------------------------------------------------
-  const { data: branchesRaw } = await admin
+  // Falha de consulta não é rede sem filial — o erro sobe em vez de virar um
+  // dashboard vazio com cara de rede nova.
+  const { data: branchesRaw, error: branchesError } = await admin
     .from('branches')
     .select('id, name, slug, city, state')
     .eq('tenant_id', ctx.tenantId!)
     .eq('is_active', true)
     .order('name')
+
+  if (branchesError) throw new Error(`Não foi possível carregar as unidades: ${branchesError.message}`)
 
   const branches  = branchesRaw ?? []
   const branchIds = branches.map(b => b.id)
