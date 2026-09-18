@@ -1,12 +1,17 @@
 # DEVLOG — BellarisOS
 
 Registro do desenvolvimento: o que existe hoje, como chegamos aqui e o que está
-em aberto. Documento único — atualizar **aqui** quando uma frente fechar.
+em aberto. Documento único.
 
 **Última atualização: 2026-09-18.**
 
+> **Este arquivo se atualiza a cada entrega** — feature nova ou edição do que já
+> existe (CLAUDE.md §16). Não é para acumular até o fim de uma frente: foi assim
+> que ele ficou três meses parado. Mudou o que o sistema faz, uma decisão de
+> produto ou o que está em aberto? O texto muda junto, no mesmo commit.
+>
 > O detalhe de cada mudança está nas mensagens de commit: `git log --oneline`.
-> Este arquivo é o panorama, não o diário linha a linha.
+> Aqui é o panorama, não o diário linha a linha.
 
 ---
 

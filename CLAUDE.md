@@ -683,6 +683,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Comparar período parcial com período anterior inteiro
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso)
 ❌ Introduzir cores, fontes ou sombras fora dos tokens da skill /lumiere-design
+❌ Encerrar uma entrega sem atualizar o DEVLOG e a memória (§16)
 ```
 
 ---
@@ -742,8 +743,38 @@ eas submit                          # submete para as stores
 pnpm lint                           # ESLint em todos os packages
 pnpm typecheck                      # tsc --noEmit em todos os packages
 pnpm test                           # Vitest
+pnpm --filter web test:e2e          # Playwright (sobe o dev sozinho)
 ```
 
 ---
 
-*BellarisOS — CLAUDE.md v1.3 | Setembro 2026*
+## 16. Registrar o que foi feito
+
+> **Toda entrega termina em três lugares: o código, o `DEVLOG.md` e a memória.**
+> Vale para feature nova e para edição do que já existe — decisão do Heitor em
+> 2026-09-18.
+
+Uma entrega só está pronta quando:
+
+1. **O commit está na `main`**, com o raciocínio na mensagem (por que, não só o
+   quê). É o registro mais detalhado e o único que nunca se perde.
+2. **O `DEVLOG.md` reflete o estado atual.** Ele é o panorama: se a mudança
+   alterou o que o sistema faz, o que uma decisão de produto passou a ser, ou o
+   que está em aberto, o texto correspondente muda junto. Frente grande ganha
+   entrada na linha do tempo; ajuste pequeno normalmente só corrige a seção de
+   estado ou risca uma pendência. **Não deixar acumular para o fim** — foi assim
+   que ele ficou três meses parado.
+3. **A memória do Claude foi atualizada** (`memory/bellaris.md`, arquivo único).
+   Lá vai o que não cabe no repositório: preferências de trabalho do Heitor,
+   armadilhas de ambiente, o que é falso de propósito no banco de teste, e onde
+   o trabalho parou.
+
+O que vai em cada lugar, quando há dúvida: **o repositório documenta o sistema**
+(CLAUDE.md o que é regra permanente, DEVLOG o que aconteceu e o que falta); **a
+memória documenta o contexto de trabalhar neste projeto com esta pessoa nesta
+máquina**. Regra de negócio nova é CLAUDE.md. Entrega é DEVLOG. "O dev server
+morre por memória nesta máquina" é memória.
+
+---
+
+*BellarisOS — CLAUDE.md v1.4 | Setembro 2026*
