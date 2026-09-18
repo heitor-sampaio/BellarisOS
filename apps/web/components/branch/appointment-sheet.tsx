@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { X, CheckCircle2, Clock, AlertCircle, Ban, Play } from 'lucide-react'
+import { useState, useActionState, useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { X, CheckCircle2, Clock, AlertCircle, Ban, Play, CalendarClock } from 'lucide-react'
 import Link from 'next/link'
-import { updateAppointmentStatus } from '@/actions/appointments'
+import { updateAppointmentStatus, rescheduleAppointment } from '@/actions/appointments'
+import { rotaAtendimento } from '@/lib/rotas'
 
 interface AppointmentEvent {
   id:               string
@@ -20,6 +21,16 @@ interface AppointmentSheetProps {
   appointment: AppointmentEvent
   slug:        string
   userRole:    string
+  /**
+   * Cargo com alcance "só a própria agenda". Quem tem esse alcance mexe no
+   * andamento do atendimento (iniciar, concluir), não no ciclo de vida do
+   * agendamento — é o que `updateAppointmentStatus` já confere.
+   *
+   * Existe porque `userRole` virou a chave do cargo dinâmico: comparar com
+   * `'PROFESSIONAL'` deixou de casar com qualquer cargo criado pela rede, e os
+   * botões apareciam para quem a action recusaria.
+   */
+  escopoProprio?: boolean
   onClose:     () => void
 }
 
@@ -40,16 +51,31 @@ const STATUS_CHIP: Record<string, string> = {
   NO_SHOW:     'chip chip-muted',
 }
 
-export function AppointmentSheet({ appointment, slug, userRole, onClose }: AppointmentSheetProps) {
-  const isProfessional = userRole === 'PROFESSIONAL'
-  const router = useRouter()
+export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, onClose }: AppointmentSheetProps) {
+  const isProfessional = escopoProprio ?? userRole === 'PROFESSIONAL'
+  const router   = useRouter()
+  // Para onde ir ao iniciar o atendimento: quem decide o portal é o caminho
+  // atual, não o slug do registro. Sem isto, iniciar pela agenda da rede jogava
+  // a pessoa para dentro do portal da unidade.
+  const pathname = usePathname()
   const [showCancelReason, setShowCancelReason] = useState(false)
   const [cancelReason, setCancelReason]         = useState('')
   const [loading, setLoading]                   = useState(false)
+  const [remarcando, setRemarcando]             = useState(false)
+
+  const [remarcaState, remarcaAction, remarcaPending] = useActionState(rescheduleAppointment, undefined)
+  useEffect(() => {
+    if (remarcaState?.success) { setRemarcando(false); onClose(); router.refresh() }
+  }, [remarcaState?.success])
 
   const dt = new Date(appointment.start)
   const dateStr = dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
   const timeStr = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+
+  // Data/hora atual no formato do input (local, não UTC).
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const inicioLocal = `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+  const [novoDT, setNovoDT] = useState(inicioLocal)
 
   async function changeStatus(status: Parameters<typeof updateAppointmentStatus>[1]) {
     setLoading(true)
@@ -59,7 +85,7 @@ export function AppointmentSheet({ appointment, slug, userRole, onClose }: Appoi
     setLoading(false)
     if (status === 'IN_PROGRESS') {
       onClose()
-      router.push(`/${slug}/agenda/${appointment.id}`)
+      router.push(rotaAtendimento(pathname, slug, appointment.id))
     } else {
       onClose()
     }
@@ -131,13 +157,46 @@ export function AppointmentSheet({ appointment, slug, userRole, onClose }: Appoi
             )}
             {appointment.status === 'IN_PROGRESS' && (
               <Link
-                href={`/${slug}/agenda/${appointment.id}`}
+                href={rotaAtendimento(pathname, slug, appointment.id)}
                 onClick={onClose}
                 className="btn-primary"
                 style={{ width: '100%', justifyContent: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 7 }}
               >
                 <Play size={14} /> Retomar atendimento
               </Link>
+            )}
+
+            {/* Remarcar existia só no arraste do calendário da unidade — a
+                agenda da rede é por unidade, não por profissional, e ali não há
+                o que arrastar. Aqui o horário novo é digitado. */}
+            {!isProfessional && appointment.status !== 'IN_PROGRESS' && (
+              <button disabled={loading} onClick={() => setRemarcando(v => !v)} className="btn-secondary"
+                style={{ width: '100%', justifyContent: 'center' }}>
+                <CalendarClock size={14} /> Remarcar
+              </button>
+            )}
+
+            {remarcando && (
+              <form action={remarcaAction} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--bg-app)', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)' }}>
+                <input type="hidden" name="_appointmentId" value={appointment.id} />
+                <input type="hidden" name="_slug"          value={slug} />
+                <input type="hidden" name="scheduled_at"   value={novoDT ? new Date(novoDT).toISOString() : ''} />
+                <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' }}>
+                  Novo horário
+                </label>
+                <input
+                  type="datetime-local" className="field"
+                  value={novoDT}
+                  onChange={e => setNovoDT(e.target.value)}
+                  style={{ background: 'var(--surface)' }}
+                />
+                {remarcaState?.error && (
+                  <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>{remarcaState.error}</p>
+                )}
+                <button type="submit" disabled={remarcaPending || !novoDT || novoDT === inicioLocal} className="btn-primary" style={{ justifyContent: 'center' }}>
+                  {remarcaPending ? 'Remarcando…' : 'Confirmar novo horário'}
+                </button>
+              </form>
             )}
 
             <div style={{ display: 'flex', gap: 8 }}>

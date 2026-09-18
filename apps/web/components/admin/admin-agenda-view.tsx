@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { AppointmentModal } from '@/components/branch/appointment-modal'
+import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
@@ -37,6 +37,8 @@ interface Props {
   appointments: Appointment[]
   /** Marcar horário daqui. Falso para quem só tem agenda em "Ver". */
   podeAgendar:  boolean
+  /** Cargo com alcance "só a própria agenda": não muda status do agendamento. */
+  escopoProprio: boolean
 }
 
 // -- Constantes visuais --------------------------------------------------------
@@ -106,7 +108,7 @@ function apptHeight(a: Appointment): number {
 }
 
 // -- View Dia -----------------------------------------------------------------
-function DayGrid({ branches, appointments }: { branches: Branch[]; appointments: Appointment[] }) {
+function DayGrid({ branches, appointments, onSelecionar }: { branches: Branch[]; appointments: Appointment[]; onSelecionar: (a: Appointment) => void }) {
   const byBranch: Record<string, Appointment[]> = {}
   for (const b of branches) byBranch[b.id] = []
   for (const a of appointments) {
@@ -229,12 +231,14 @@ function DayGrid({ branches, appointments }: { branches: Branch[]; appointments:
                   const l   = `calc(${(col / totalCols) * 100}% + 3px)`
 
                   return (
-                    // O card já parecia clicável (cursor de mão) e não levava a
-                    // lugar nenhum: a tela do atendimento só existia no portal
-                    // da unidade. Agora abre pela rota da rede.
-                    <Link
+                    // Clicar abre a folha do agendamento — confirmar, dar
+                    // check-in, remarcar, cancelar — em vez de ir direto para a
+                    // sessão. Era o único caminho que a rede tinha, e obrigava a
+                    // abrir o atendimento inteiro para mudar um status.
+                    <button
                       key={a.id}
-                      href={`/admin/agenda/${a.id}`}
+                      type="button"
+                      onClick={() => onSelecionar(a)}
                       title={`${a.procedures?.name ?? '—'} · ${a.clients?.name ?? '—'} · ${a.users?.name ?? '—'}`}
                       style={{
                         position: 'absolute',
@@ -262,7 +266,7 @@ function DayGrid({ branches, appointments }: { branches: Branch[]; appointments:
                       <div style={{ fontSize: 10, color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                         {a.users?.name ?? '—'}
                       </div>
-                    </Link>
+                    </button>
                   )
                 })}
               </div>
@@ -416,10 +420,11 @@ function StatusLegend() {
 
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
-  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, podeAgendar,
+  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, podeAgendar, escopoProprio,
 }: Props) {
   const router = useRouter()
   const [agendando, setAgendando] = useState(false)
+  const [selecionado, setSelecionado] = useState<Appointment | null>(null)
 
   const mondayStr = getMondayOf(selectedDate)
 
@@ -572,7 +577,7 @@ export function AdminAgendaView({
 
       {/* Grade principal */}
       {view === 'day' ? (
-        <DayGrid branches={branches} appointments={appointments} />
+        <DayGrid branches={branches} appointments={appointments} onSelecionar={setSelecionado} />
       ) : (
         <WeekGrid
           mondayStr={mondayStr}
@@ -588,6 +593,26 @@ export function AdminAgendaView({
 
       {/* O mesmo modal do portal da unidade — aqui ele pergunta a unidade
           antes, porque na rede não existe uma corrente. */}
+      {/* Folha do agendamento — a mesma da unidade. O slug sai da unidade do
+          proprio agendamento, que a grade ja conhece. */}
+      {selecionado && (
+        <AppointmentSheet
+          appointment={{
+            id:               selecionado.id,
+            status:           selecionado.status,
+            clientName:       selecionado.clients?.name ?? '—',
+            procedureName:    selecionado.procedures?.name ?? '—',
+            professionalName: selecionado.users?.name ?? '—',
+            price:            String(selecionado.price ?? 0),
+            start:            selecionado.scheduled_at,
+          }}
+          slug={todasUnidades.find(b => b.id === selecionado.branch_id)?.slug ?? ''}
+          userRole=""
+          escopoProprio={escopoProprio}
+          onClose={() => { setSelecionado(null); router.refresh() }}
+        />
+      )}
+
       {agendando && (
         <AppointmentModal
           branchId={unidadeId}

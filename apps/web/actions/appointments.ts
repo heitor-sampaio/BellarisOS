@@ -272,11 +272,16 @@ export async function updateAppointmentStatus(
     return
   }
 
-  await supabase
+  // O erro deste update era descartado, e o histórico logo abaixo é escrito
+  // pelo admin client: quando a escrita falhava, a linha do tempo registrava a
+  // mudança, a tela dizia que deu certo e o status continuava o mesmo.
+  const { error: updErr } = await supabase
     .from('appointments')
     .update(fields)
     .eq('id', appointmentId)
     .eq('branch_id', await resolveBranchId(supabase, appointmentId, ctx.tenantId!))
+
+  if (updErr) throw new Error(`Não foi possível atualizar o agendamento: ${updErr.message}`)
 
   const admin    = createAdminClient()
   const userName = await getUserName(admin, ctx.userId)
@@ -288,7 +293,15 @@ export async function updateAppointmentStatus(
   }
   await logHistory(admin, appointmentId, ctx.internalUserId, userName, status, actionDescMap[status] ?? status)
 
-  revalidatePath(`/${slug}/agenda`)
+  // Os dois portais olham a mesma agenda: confirmar pela rede tem de aparecer
+  // na unidade, e vice-versa.
+  if (slug) {
+    revalidatePath(`/${slug}/agenda`)
+    revalidatePath(`/${slug}/agenda/${appointmentId}`)
+  }
+  revalidatePath('/admin/agenda')
+  revalidatePath(`/admin/agenda/${appointmentId}`)
+  revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
   if (status === 'CANCELLED') notifyCancelledAppointment(appointmentId, cancellationReason)
 }
 
@@ -1078,7 +1091,8 @@ export async function rescheduleAppointment(
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'RESCHEDULED',
       `Reagendado para ${dtStr}`, { scheduled_at: scheduledAt })
 
-    revalidatePath(`/${slug}/agenda`)
+    if (slug) revalidatePath(`/${slug}/agenda`)
+    revalidatePath('/admin/agenda')
     revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
     notifyRescheduledAppointment(appointmentId)
     return { success: true }

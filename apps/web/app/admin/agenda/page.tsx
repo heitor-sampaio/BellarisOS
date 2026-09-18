@@ -116,6 +116,7 @@ export default async function AdminAgendaPage({
         unidadeId={unidadeId}
         appointments={appointments}
         podeAgendar={ctx.permissions.agenda === 'MANAGE'}
+        escopoProprio={agendaOwner !== null}
       />
     </>
   )
