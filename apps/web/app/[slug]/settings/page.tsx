@@ -1,28 +1,42 @@
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertAnyPermission } from '@/lib/auth'
+import { Configuracoes, ABAS_DA_UNIDADE } from '@/app/_shared/configuracoes'
 
 /**
- * Configurações da unidade.
+ * Configurações no portal da unidade.
  *
- * Ainda é um lugar reservado — o que existe hoje mora em Configurações da rede.
- * A checagem está aqui porque o layout protege a navegação, não a URL: sem ela,
- * qualquer pessoa da unidade abria a tela digitando o endereço.
+ * O conteúdo é da REDE — cargos, modelos de ficha e integrações valem para
+ * todas as unidades — e é por isso que a faixa de aviso está aqui. A tela
+ * existe mesmo assim porque quem tem unidade fixa não entra em `/admin`: sem
+ * ela, dar `settings`, `roles` ou `forms` em MANAGE a uma gerente não mudava
+ * nada. Fora daqui ficam "Unidades" (o card leva a `/admin/branches`) e
+ * "LGPD" (a lista é da rede inteira, sem recorte por unidade).
+ *
+ * A checagem é própria porque o layout protege a navegação, não a URL.
  */
-export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function BranchSettingsPage({
+  params,
+  searchParams,
+}: {
+  params:       Promise<{ slug: string }>
+  searchParams: Promise<{ tab?: string; meta_step?: string; meta_error?: string; meta_error_reason?: string }>
+}) {
   const { slug } = await params
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'settings', 'MANAGE')
+  assertAnyPermission(ctx, ['settings', 'roles', 'forms'], 'MANAGE')
+
+  const { tab, meta_step, meta_error, meta_error_reason } = await searchParams
 
   return (
-    <div>
-      <h1 style={{
-        fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
-        letterSpacing: 'var(--tracking-tight)', color: 'var(--text)',
-      }}>
-        Configurações
-      </h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-        Configurações da filial <strong>{slug}</strong>.
-      </p>
-    </div>
+    <Configuracoes
+      basePath={`/${slug}/settings`}
+      abas={ABAS_DA_UNIDADE}
+      abaPedida={tab}
+      subtitulo="Cargos, modelos de ficha e integrações da rede"
+      aviso="Estas configurações valem para a rede inteira. Alterar aqui muda para todas as unidades."
+      atalhoParaEquipe={false}
+      metaStep={meta_step}
+      metaError={meta_error}
+      metaErrorReason={meta_error_reason}
+    />
   )
 }

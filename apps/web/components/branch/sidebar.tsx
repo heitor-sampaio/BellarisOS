@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   LayoutGrid, Calendar, Users, Sparkles,
   Package, CreditCard, LogOut, UserCircle, Layers, ClipboardList, BarChart3,
-  ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight, Inbox, ClipboardCheck,
+  ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight, Inbox, ClipboardCheck, Settings,
 } from 'lucide-react'
 import { NavItem }    from '@/components/shared/nav-item'
 import { logoutAction } from '@/actions/auth'
@@ -28,7 +28,7 @@ const ICONS: Record<string, React.ReactNode> = {
   procedures: <Sparkles   size={18} />,
   stock:      <Package    size={18} />,
   team:       <UserCircle    size={18} />,
-  forms:      <ClipboardList size={18} />,
+  settings:   <Settings      size={18} />,
 }
 
 interface BranchSidebarProps {

@@ -108,9 +108,13 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   { key: 'reports',       group: 'gestao',      label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },
   { key: 'team',          group: 'gestao',      label: 'Equipe',        href: '/team',          visible: p => has(p, 'team') },
   { key: 'procedures',    group: 'gestao',      label: 'Procedimentos', href: '/procedures',    visible: p => has(p, 'procedures') },
-  // Os construtores de ficha viviam só no portal da rede, onde quem tem
-  // unidade fixa nem entra — `forms: MANAGE` numa gerente não fazia nada.
-  { key: 'forms',         group: 'gestao',      label: 'Modelos de ficha', href: '/settings/fichas', visible: p => has(p, 'forms') },
+  // Mesma tela da rede, e pelo mesmo motivo do `/admin`: uma entrada, três
+  // módulos. Quem tem unidade fixa não entra em `/admin`, então sem esta linha
+  // `settings`, `roles` ou `forms` em MANAGE não valiam nada numa gerente.
+  {
+    key: 'settings', group: 'gestao', label: 'Configurações', href: '/settings',
+    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms'),
+  },
 ]
 
 export function menuEntriesFor(

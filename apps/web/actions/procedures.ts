@@ -5,13 +5,33 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// --- Criar procedimento (apenas NETWORK_ADMIN) ---------------------
+/**
+ * Procedimento é dado da REDE.
+ *
+ * O catálogo, o preço e a disponibilidade valem para todas as unidades, então
+ * incluir, editar e remover é de quem tem abrangência de rede — decisão de
+ * produto de 2026-09-18. Existia um caminho paralelo (`createBranchProcedure`)
+ * que deixava a unidade criar procedimento local pelo `/[slug]/procedures`,
+ * com metade dos campos: saiu junto.
+ *
+ * A checagem é por abrangência (`branchId === null`), nunca por nome de cargo.
+ * `procedures: MANAGE` continua valendo — é a permissão que decide o quê; a
+ * abrangência decide onde.
+ */
+function assertRede(ctx: { branchId: string | null }) {
+  if (ctx.branchId !== null) {
+    throw new Error('Procedimentos são do catálogo da rede: só quem tem abrangência de rede pode alterá-los.')
+  }
+}
+
+// --- Criar procedimento (rede) -------------------------------------
 export async function addProcedure(
   _prev: { error?: string; success?: boolean; procedureId?: string } | undefined,
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'procedures', 'MANAGE')
+  assertRede(ctx)
 
   const name        = (formData.get('name') as string)?.trim()
   const category    = (formData.get('category') as string)?.trim()
@@ -88,13 +108,14 @@ export async function addProcedure(
   return { success: true, procedureId: procedure.id }
 }
 
-// --- Atualizar procedimento (apenas NETWORK_ADMIN) -----------------
+// --- Atualizar procedimento (rede) ---------------------------------
 export async function updateProcedure(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'procedures', 'MANAGE')
+  assertRede(ctx)
 
   const procedureId = formData.get('_procedureId') as string
 
@@ -179,67 +200,11 @@ export async function updateProcedure(
   return { success: true }
 }
 
-// --- Criar procedimento local da filial (apenas NETWORK_ADMIN) ----------------
-export async function createBranchProcedure(
-  _prev: { error?: string } | null,
-  formData: FormData,
-): Promise<{ error?: string }> {
-  const ctx = await getTenantContext()
-  assertPermission(ctx, 'procedures', 'MANAGE')
-
-  const name        = (formData.get('name')        as string | null)?.trim()
-  const category    = (formData.get('category')    as string | null)?.trim()
-  const description = (formData.get('description') as string | null)?.trim() || null
-  const durationMin = parseInt(formData.get('duration_min') as string, 10)
-  const price       = parseFloat(((formData.get('price') as string) ?? '').replace(',', '.'))
-  const visibleApp  = formData.get('visible_on_client_app') === 'true'
-  const isEvaluation = formData.get('is_evaluation') === 'true'
-  const branchId    = (formData.get('branch_id')   as string | null)?.trim() || null
-  const slug        = (formData.get('slug')         as string | null)?.trim()
-
-  if (!name)                                  return { error: 'Informe o nome do procedimento.' }
-  if (!category)                              return { error: 'Selecione uma categoria.' }
-  if (isNaN(durationMin) || durationMin <= 0) return { error: 'Informe a duração em minutos.' }
-  // Avaliação de cortesia é caso corrente — e era o único jeito que existia
-  // antes, quando a consulta nascia sempre em R$ 0.
-  if (isNaN(price) || price < 0)              return { error: 'Informe um preço válido.' }
-  if (price === 0 && !isEvaluation)           return { error: 'Informe um preço válido.' }
-  if (!branchId)                              return { error: 'Filial não identificada.' }
-
-  // Verifica que a filial pertence ao tenant
-  const supabase = await createSupabase()
-  const { data: branch } = await supabase
-    .from('branches')
-    .select('id')
-    .eq('id', branchId)
-    .eq('tenant_id', ctx.tenantId!)
-    .single()
-  if (!branch) return { error: 'Filial não encontrada.' }
-
-  const { error } = await supabase.from('procedures').insert({
-    tenant_id:             ctx.tenantId!,
-    branch_id:             branchId,
-    name,
-    category,
-    description,
-    duration_min:          durationMin,
-    price,
-    visible_on_client_app: visibleApp,
-    is_evaluation:         isEvaluation,
-    is_active:             true,
-  })
-
-  if (error) return { error: `Erro ao criar: ${error.message}` }
-
-  revalidatePath(`/${slug}/procedures`)
-  revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
-  return {}
-}
-
-// --- Ativar / desativar (apenas NETWORK_ADMIN) --------------------
+// --- Ativar / desativar (rede) -------------------------------------
 export async function toggleProcedureStatus(procedureId: string, isActive: boolean) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'procedures', 'MANAGE')
+  assertRede(ctx)
 
   const admin = createAdminClient()
   await admin

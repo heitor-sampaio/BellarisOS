@@ -10,7 +10,7 @@ type Result = { error?: string; id?: string; ok?: true }
 function revalidate() {
   revalidatePath('/admin/settings')
   revalidatePath('/admin/procedures')
-  revalidatePath('/[slug]/settings/fichas', 'page')
+  revalidatePath('/[slug]/settings', 'page')
 }
 
 export async function createAttendanceForm(input: { name: string; schema: unknown }): Promise<Result> {

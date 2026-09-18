@@ -87,20 +87,16 @@ export default async function BranchProceduresPage({
     ? items.reduce((s, p) => s + p.price, 0) / totalCount
     : 0
 
-  const canManage = ctx.permissions.procedures === 'MANAGE'
-
+  // Sem `canManage`: o catálogo é da rede e só se altera em `/admin/procedures`.
   return (
     <>
       <RealtimeRefresher tables={['procedures']} />
       <ProceduresClient
-      procedures={items}
-      categories={categoriesOrdered}
-      totalCount={totalCount}
-      ticketMedio={ticketMedio}
-      slug={slug}
-      branchId={branch.id}
-      canManage={canManage}
-    />
+        procedures={items}
+        categories={categoriesOrdered}
+        totalCount={totalCount}
+        ticketMedio={ticketMedio}
+      />
     </>
   )
 }
