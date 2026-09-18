@@ -42,7 +42,7 @@ function fmtBRL(v: number) {
 
 export function PlanejamentosClient({
   planosIniciais, branchId, branchName, slug,
-  procedures, availableProducts, podeEditar, podeReceberr,
+  procedures, availableProducts, unidades = [], podeEditar, podeReceberr,
 }: {
   planosIniciais:    PlanoDaLista[]
   branchId:          string
@@ -50,6 +50,8 @@ export function PlanejamentosClient({
   slug:              string
   procedures:        TreatmentProcedure[]
   availableProducts: AvailableProduct[]
+  /** Unidades da rede — só vem preenchida no portal da rede, onde não há "a atual". */
+  unidades?:         { id: string; name: string }[]
   podeEditar:        boolean
   podeReceberr:      boolean
 }) {
@@ -62,6 +64,13 @@ export function PlanejamentosClient({
   const [novoNome,   setNovoNome]   = useState('')
   const [criando,    setCriando]    = useState(false)
   const [erro,       setErro]       = useState<string | null>(null)
+
+  // Unidade do plano novo. Na filial é a própria; na rede, a escolhida — e com
+  // uma só unidade não há o que perguntar.
+  const [novaUnidade, setNovaUnidade] = useState(
+    branchId || (unidades.length === 1 ? unidades[0]!.id : ''),
+  )
+  const precisaEscolherUnidade = !branchId && unidades.length > 1
 
   /** Plano aberto para edição, sobre a lista. */
   const [aberto, setAberto] = useState<PlanoDaLista | null>(null)
@@ -78,8 +87,9 @@ export function PlanejamentosClient({
   }, [busca, status, branchId])
 
   async function criar() {
+    if (!novaUnidade) { setErro('Escolha a unidade do plano.'); return }
     setErro(null); setCriando(true)
-    const res = await criarPlanoDoCliente(null, branchId, null, novoNome)
+    const res = await criarPlanoDoCliente(null, novaUnidade, null, novoNome)
     setCriando(false)
     if (res.error || !res.planId) { setErro(res.error ?? 'Não foi possível criar o plano.'); return }
     setNovoAberto(false); setNovoNome('')
@@ -201,11 +211,25 @@ export function PlanejamentosClient({
               placeholder="Ex.: Harmonização — Marina (indicação)"
               value={novoNome}
               onChange={e => setNovoNome(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && novoNome.trim()) void criar() }}
+              onKeyDown={e => { if (e.key === 'Enter' && novoNome.trim() && novaUnidade) void criar() }}
             />
+
+            {/* Na rede o plano precisa dizer de qual unidade é: é ela que define
+                o caixa que recebe e a agenda onde as sessões caem. */}
+            {precisaEscolherUnidade && (
+              <div style={{ marginTop: 12 }}>
+                <label className="field-label">Unidade *</label>
+                <select className="field" style={{ marginTop: 4 }}
+                  value={novaUnidade} onChange={e => setNovaUnidade(e.target.value)}>
+                  <option value="">Selecione a unidade…</option>
+                  {unidades.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </div>
+            )}
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
               <button type="button" onClick={() => setNovoAberto(false)} className="btn-ghost">Cancelar</button>
-              <button type="button" onClick={criar} disabled={criando || !novoNome.trim()} className="btn-primary"
+              <button type="button" onClick={criar} disabled={criando || !novoNome.trim() || !novaUnidade} className="btn-primary"
                 style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 {criando ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Criar
               </button>
