@@ -56,3 +56,9 @@ apps/native/ios/App/App/GoogleService-Info.plist
 *.log
 npm-debug.log*
 pnpm-debug.log*
+
+# Testes automatizados
+# A sessão do E2E é uma credencial viva (cookies do Supabase) — nunca no repo.
+apps/web/e2e/.auth/
+apps/web/test-results/
+apps/web/playwright-report/
