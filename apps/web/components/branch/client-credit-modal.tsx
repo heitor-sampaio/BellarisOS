@@ -10,6 +10,12 @@ interface Props {
   branchId: string
   slug:     string
   clients:  { id: string; name: string }[]
+  /**
+   * Unidades da rede. Quando vem preenchida, o modal pergunta em qual unidade o
+   * credito entra — no portal da rede nao existe uma corrente, e o credito e
+   * dinheiro na filial: cai no caixa dela quando for usado.
+   */
+  branches?: { id: string; name: string; slug: string }[]
 }
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -24,9 +30,15 @@ function Label({ children }: { children: React.ReactNode }) {
 }
 
 export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
-  function ClientCreditModal({ branchId, slug, clients }, ref) {
+  function ClientCreditModal({ branchId, slug, clients, branches }, ref) {
     const dialogRef = useRef<HTMLDialogElement>(null)
     const formRef   = useRef<HTMLFormElement>(null)
+
+    const escolheUnidade = (branches?.length ?? 0) > 0
+    const [unidadeId, setUnidadeId] = useState(branchId || branches?.[0]?.id || '')
+    const slugDaUnidade = escolheUnidade
+      ? (branches!.find(b => b.id === unidadeId)?.slug ?? '')
+      : slug
 
     const [search,     setSearch]     = useState('')
     const [clientId,   setClientId]   = useState('')
@@ -95,9 +107,18 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
 
         <div style={{ padding: '24px 24px 28px' }}>
           <form ref={formRef} action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <input type="hidden" name="branch_id" value={branchId} />
-            <input type="hidden" name="slug"      value={slug} />
+            <input type="hidden" name="branch_id" value={escolheUnidade ? unidadeId : branchId} />
+            <input type="hidden" name="slug"      value={slugDaUnidade} />
             <input type="hidden" name="client_id" value={clientId} />
+
+            {escolheUnidade && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                <Label>Unidade *</Label>
+                <select className="field" value={unidadeId} onChange={e => setUnidadeId(e.target.value)}>
+                  {branches!.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+            )}
 
             {/* Cliente */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>

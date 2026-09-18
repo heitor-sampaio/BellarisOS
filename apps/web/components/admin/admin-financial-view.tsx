@@ -1,13 +1,15 @@
 ﻿'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet, Users,
   ArrowUpRight, ArrowDownRight,
-  ChevronRight, CreditCard, Plus,
+  ChevronRight, CreditCard, Plus, CheckCircle2, Clock, RotateCcw, Gift,
 } from 'lucide-react'
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
+import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
+import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { SegSelect } from '@/components/shared/seg-select'
 
 // --- Types -------------------------------------------------------------------
@@ -36,6 +38,8 @@ interface AdminTx {
   created_at:     string
   branch_id:      string
   branchName:     string
+  /** `'Estornada'` marca a ponta estornada — o estorno sai dos dois lados. */
+  notes:          string | null
 }
 
 interface Props {
@@ -61,6 +65,14 @@ interface Props {
    */
   unidadeInicial?:  string
   canWrite?:        boolean
+  /** Recebe (caixa ou financeiro): marca pendência como paga e dá crédito. */
+  canPay?:          boolean
+  /** Estorna: só `financial: Gerenciar` — estorno mexe em lançamento fechado. */
+  canReverse?:      boolean
+  /** Concede crédito interno — exige financial: Gerenciar, como a action. */
+  podeDarCredito?:  boolean
+  /** Clientes da rede, para o crédito interno. */
+  clients?:         { id: string; name: string }[]
 }
 
 // --- Helpers -----------------------------------------------------------------
@@ -159,9 +171,19 @@ export function AdminFinancialView({
   totalRevenue, totalExpenses, totalResult, totalCommissions,
   prevRevenue, prevExpenses,
   branchStats, transactions, branchSlugMap, branches, unidadeInicial = '',
+  canPay = false, canReverse = false, podeDarCredito = false, clients = [],
 }: Props) {
   const router      = useRouter()
   const [, startT]  = useTransition()
+  const creditModalRef = useRef<ClientCreditModalHandle>(null)
+
+  // A unidade da ação vem da própria transação — não há o que perguntar.
+  function marcarPago(id: string, slug: string) {
+    startT(async () => { await markTransactionPaid(id, slug); router.refresh() })
+  }
+  function estornar(id: string, branchId: string, slug: string) {
+    startT(async () => { await reverseTransaction(id, branchId, slug); router.refresh() })
+  }
   const [filterBranch, setFilterBranch] = useState<string>(unidadeInicial || 'all')
   const [customF, setCustomF] = useState(customFrom ?? '')
   const [customT, setCustomT] = useState(customTo   ?? '')
@@ -238,6 +260,18 @@ export function AdminFinancialView({
                 Aplicar
               </button>
             </div>
+          )}
+          {/* Crédito interno saía só pelo financeiro da unidade — quem opera a
+              rede tinha de entrar no portal dela para devolver um valor. */}
+          {podeDarCredito && clients.length > 0 && (
+            <button
+              type="button" className="btn-secondary"
+              onClick={() => creditModalRef.current?.open()}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 8 }}
+            >
+              <Gift size={14} />
+              Crédito para cliente
+            </button>
           )}
           <FinancialTransactionModal
             branches={branches}
@@ -398,7 +432,7 @@ export function AdminFinancialView({
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Data', 'Descrição', 'Filial', 'Método', 'Tipo', 'Valor'].map(h => (
+                {['Data', 'Descrição', 'Filial', 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
                   <th key={h} style={{
                     padding: '10px 16px', textAlign: h === 'Valor' ? 'right' : 'left',
                     fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
@@ -411,13 +445,16 @@ export function AdminFinancialView({
             </thead>
             <tbody>
               {visibleTxs.slice(0, 100).map((t, i) => {
-                const isIncome = t.type === 'INCOME'
+                const isIncome  = t.type === 'INCOME'
+                const estornada = t.notes === 'Estornada'
+                const slugDaTx  = branchSlugMap[t.branch_id] ?? ''
                 return (
                   <tr
                     key={t.id}
                     style={{
                       borderBottom: i < Math.min(visibleTxs.length, 100) - 1 ? '1px solid var(--hairline)' : 'none',
                       transition: 'background 0.1s',
+                      opacity: estornada ? 0.5 : 1,
                     }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
@@ -447,8 +484,58 @@ export function AdminFinancialView({
                         {isIncome ? 'Receita' : 'Despesa'}
                       </span>
                     </td>
+                    {/* Situação — a tabela da rede era só leitura e nem dizia se
+                        o lançamento estava pago. */}
+                    <td style={{ padding: '11px 16px' }}>
+                      {estornada ? (
+                        <span className="chip chip-muted" style={{ fontSize: 10 }}>Estornada</span>
+                      ) : t.is_paid ? (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                          background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0',
+                        }}>
+                          <CheckCircle2 size={10} /> Pago
+                        </span>
+                      ) : (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                          background: '#fffbeb', color: '#d97706', border: '1px solid #fcd34d',
+                        }}>
+                          <Clock size={10} /> Pendente
+                        </span>
+                      )}
+                    </td>
+
                     <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: isIncome ? '#16a34a' : 'var(--text)', whiteSpace: 'nowrap' }}>
                       {isIncome ? '+' : '−'} {fmtBRL(t.amount)}
+                    </td>
+
+                    {/* Receber e estornar sem sair do portal da rede. */}
+                    <td style={{ padding: '11px 16px' }}>
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        {!t.is_paid && !estornada && canPay && (
+                          <button type="button" onClick={() => marcarPago(t.id, slugDaTx)} title="Marcar como pago" style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            fontSize: 11.5, fontWeight: 700, padding: '5px 10px', borderRadius: 7,
+                            border: '1.5px solid #16a34a', background: '#f0fdf4',
+                            color: '#16a34a', cursor: 'pointer', whiteSpace: 'nowrap',
+                          }}>
+                            <CheckCircle2 size={12} /> Pagar
+                          </button>
+                        )}
+                        {t.is_paid && !estornada && canReverse && (
+                          <button type="button" onClick={() => estornar(t.id, t.branch_id, slugDaTx)} title="Estornar" style={{
+                            width: 30, height: 30, borderRadius: 7,
+                            border: '1px solid var(--border)', background: 'var(--surface)',
+                            color: 'var(--text-faint)', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <RotateCcw size={12} />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -463,6 +550,14 @@ export function AdminFinancialView({
           </div>
         )}
       </div>
+
+      <ClientCreditModal
+        ref={creditModalRef}
+        branchId={filterBranch !== 'all' ? filterBranch : ''}
+        slug=""
+        clients={clients}
+        branches={branches}
+      />
     </div>
   )
 }

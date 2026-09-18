@@ -299,7 +299,13 @@ export async function grantInternalCredit(
   })
   if (dbErr) return { error: `Erro ao conceder crédito: ${dbErr.message}` }
 
-  revalidatePath(`/${slug}/clients/${clientId}`)
+  // O crédito também é concedido pelo financeiro da rede, onde não há slug.
+  if (slug) {
+    revalidatePath(`/${slug}/clients/${clientId}`)
+    revalidatePath(`/${slug}/financeiro`)
+  }
+  revalidatePath(`/admin/clients/${clientId}`)
+  revalidatePath('/admin/financeiro')
   return {}
 }
 

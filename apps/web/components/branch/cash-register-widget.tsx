@@ -18,6 +18,12 @@ interface Props {
   register: CashRegister | null
   totalIncome:  number
   totalExpense: number
+  /**
+   * Nome da unidade. Só o portal da rede passa: lá aparece uma linha por
+   * unidade, e sem o nome não dá para saber qual caixa se está abrindo. Na
+   * unidade o nome está no cabeçalho da página, e repeti-lo seria ruído.
+   */
+  branchName?: string
 }
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -39,7 +45,7 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-export function CashRegisterWidget({ branchId, slug, register, totalIncome, totalExpense }: Props) {
+export function CashRegisterWidget({ branchId, slug, register, totalIncome, totalExpense, branchName }: Props) {
   const openDialogRef  = useRef<HTMLDialogElement>(null)
   const closeDialogRef = useRef<HTMLDialogElement>(null)
 
@@ -74,7 +80,7 @@ export function CashRegisterWidget({ branchId, slug, register, totalIncome, tota
           }} />
           <div>
             <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>
-              {isOpen ? 'Caixa aberto' : 'Caixa fechado'}
+              {branchName ? `${branchName} · ` : ''}{isOpen ? 'Caixa aberto' : 'Caixa fechado'}
             </p>
             {isOpen && (
               <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>

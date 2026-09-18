@@ -71,3 +71,79 @@ export async function getCashRegisterTotals(registerId: string): Promise<{ incom
   }
   return { income, expense }
 }
+
+/**
+ * Caixa aberto de cada filial, em duas consultas em vez de duas por unidade.
+ *
+ * É o que o portal da rede precisa: ver de relance quais caixas estão abertos e
+ * quanto passou por cada um. Chamar `getOpenCashRegister` + `getCashRegisterTotals`
+ * numa rede de cinco filiais seriam dez idas ao banco para montar uma lista.
+ */
+export type CaixaDaUnidade = {
+  branchId: string
+  register: OpenCashRegister | null
+  income:   number
+  expense:  number
+}
+
+export async function getOpenCashRegistersByBranch(branchIds: string[]): Promise<CaixaDaUnidade[]> {
+  const vazio = (id: string): CaixaDaUnidade => ({ branchId: id, register: null, income: 0, expense: 0 })
+  if (branchIds.length === 0) return []
+
+  const admin = createAdminClient()
+  const { data: abertos, error } = await admin
+    .from('cash_registers')
+    .select('id, branch_id, opening_balance, opened_at, notes')
+    .in('branch_id', branchIds)
+    .is('closed_at', null)
+    .order('opened_at', { ascending: false })
+
+  // Erro aqui não pode virar "todos os caixas fechados": alguém abriria um
+  // segundo caixa por cima do que já está aberto.
+  if (error) throw new Error(`Erro ao ler os caixas das unidades: ${error.message}`)
+
+  type Row = { id: string; branch_id: string; opening_balance: unknown; opened_at: string; notes: string | null }
+  const porFilial = new Map<string, Row>()
+  for (const r of (abertos ?? []) as Row[]) {
+    // `order` desc + primeiro a entrar vence: um caixa por filial é garantido na
+    // action, mas a leitura não depende disso.
+    if (!porFilial.has(r.branch_id)) porFilial.set(r.branch_id, r)
+  }
+
+  const ids = [...porFilial.values()].map(r => r.id)
+  const totais = new Map<string, { income: number; expense: number }>()
+
+  if (ids.length > 0) {
+    const { data: txs, error: txErr } = await admin
+      .from('financial_transactions')
+      .select('cash_register_id, type, amount')
+      .in('cash_register_id', ids)
+      .eq('is_paid', true)
+    if (txErr) throw new Error(`Erro ao somar o movimento dos caixas: ${txErr.message}`)
+
+    for (const t of (txs ?? []) as { cash_register_id: string; type: string; amount: unknown }[]) {
+      const atual = totais.get(t.cash_register_id) ?? { income: 0, expense: 0 }
+      const valor = Number(t.amount ?? 0)
+      if (t.type === 'INCOME') atual.income += valor
+      else                     atual.expense += valor
+      totais.set(t.cash_register_id, atual)
+    }
+  }
+
+  return branchIds.map(id => {
+    const row = porFilial.get(id)
+    if (!row) return vazio(id)
+    const t = totais.get(row.id) ?? { income: 0, expense: 0 }
+    return {
+      branchId: id,
+      register: {
+        id:              row.id,
+        opening_balance: Number(row.opening_balance ?? 0),
+        opened_at:       row.opened_at,
+        notes:           row.notes ?? null,
+      },
+      income:  t.income,
+      expense: t.expense,
+    }
+  })
+}

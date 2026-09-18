@@ -1,8 +1,10 @@
-import { getTenantContext, assertPermission, isOwnScope } from '@/lib/auth'
+import { getTenantContext, assertAnyPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCore, getByBranch, EMPTY_CORE } from '@/lib/metrics'
+import { getOpenCashRegistersByBranch } from '@/lib/cash-register'
+import { CaixasDaRede } from '@/components/admin/caixas-da-rede'
 
 export default async function AdminFinanceiroPage({
   searchParams,
@@ -19,29 +21,37 @@ export default async function AdminFinanceiroPage({
     resolvePeriod(period, sp.from, sp.to)
 
   const ctx = await getTenantContext()
-  assertPermission(ctx, 'financial', 'VIEW')
+  // Quem opera o caixa entra: é aqui que ele abre e fecha o caixa das unidades.
+  // Exigir `financial` deixava um cargo com `cashier: Gerenciar` e abrangência de
+  // rede sem nenhuma tela onde trabalhar.
+  assertAnyPermission(ctx, ['financial', 'cashier'], 'VIEW')
+
+  const veFinanceiro = can(ctx, 'financial', 'VIEW')
+  const operaCaixa   = can(ctx, 'cashier', 'MANAGE')
 
   // Alcance "só as próprias comissões" não tem como virar um consolidado da
   // rede meio filtrado — sairiam números com cara de total que não são total.
-  // A tela da unidade já trata esse alcance direito: lá só as comissões dela.
-  if (isOwnScope(ctx, 'financial')) {
-    return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
-        Seu cargo vê apenas as próprias comissões. Abra o <strong>Financeiro</strong> pelo
-        portal da unidade.
-      </div>
-    )
-  }
+  const soAsProprias = veFinanceiro && isOwnScope(ctx, 'financial')
 
   const admin = createAdminClient()
 
-  // Todas as filiais ativas do tenant
-  const { data: branchesRaw } = await admin
+  // Todas as filiais ativas do tenant. Falha de consulta não é rede sem filial —
+  // mesmo tratamento de /admin/agenda.
+  const { data: branchesRaw, error: branchesError } = await admin
     .from('branches')
     .select('id, name, slug')
     .eq('tenant_id', ctx.tenantId!)
     .eq('is_active', true)
     .order('name')
+
+  if (branchesError) {
+    console.error('[admin/financeiro] branches:', branchesError.message)
+    return (
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+        Não foi possível carregar as unidades agora. Tente recarregar em instantes.
+      </div>
+    )
+  }
 
   const branches   = branchesRaw ?? []
   const branchIds  = branches.map(b => b.id)
@@ -49,13 +59,36 @@ export default async function AdminFinanceiroPage({
   if (branchIds.length === 0) {
     return (
       <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
-        Nenhuma filial ativa encontrada.
+        Nenhuma filial ativa cadastrada.
       </div>
+    )
+  }
+
+  // Caixa de cada unidade — o portal da rede abre e fecha daqui, sem entrar na
+  // unidade. Sem isto, todo recebimento feito pela rede caía fora de qualquer
+  // fechamento, porque `getOpenCashRegisterId` não achava caixa aberto.
+  const caixas = operaCaixa ? await getOpenCashRegistersByBranch(branchIds) : []
+
+  // Quem só vê as próprias comissões não recebe o consolidado — mas continua
+  // com o caixa, que é dele. Antes a tela inteira virava um beco sem saída
+  // mandando "abra pelo portal da unidade", portal que quem é da rede não tem.
+  if (soAsProprias || !veFinanceiro) {
+    return (
+      <>
+        <RealtimeRefresher tables={['financial_transactions', 'cash_registers']} />
+        <CaixasDaRede caixas={caixas} branches={branches} operaCaixa={operaCaixa} />
+        {soAsProprias && (
+          <p style={{ padding: '24px 4px', color: 'var(--text-muted)', fontSize: 14 }}>
+            Seu cargo vê apenas as próprias comissões, que aparecem no seu perfil —
+            o consolidado da rede não é exibido aqui.
+          </p>
+        )}
+      </>
     )
   }
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, { data: txsRaw }] = await Promise.all([
+  const [core, prevCore, branchMetrics, { data: txsRaw }, { data: clientsRaw }] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
@@ -63,12 +96,19 @@ export default async function AdminFinanceiroPage({
     // A lista de lançamentos continua sendo lida direto — é extrato, não KPI.
     admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id')
+      .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id, notes')
       .in('branch_id', branchIds)
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString())
       .order('created_at', { ascending: false })
       .limit(500),
+
+    // Clientes da rede, para o crédito interno. Só quem recebe precisa.
+    ctx.permissions.financial === 'MANAGE'
+      ? admin.from('clients').select('id, name')
+          .eq('tenant_id', ctx.tenantId!).eq('is_active', true)
+          .order('name').limit(500)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
   ])
 
   const txs = (txsRaw ?? []) as any[]
@@ -108,7 +148,8 @@ export default async function AdminFinanceiroPage({
 
   return (
     <>
-      <RealtimeRefresher tables={['financial_transactions', 'commissions']} />
+      <RealtimeRefresher tables={['financial_transactions', 'commissions', 'cash_registers']} />
+      <CaixasDaRede caixas={caixas} branches={branches} operaCaixa={operaCaixa} />
       <AdminFinancialView
         period={period}
         periodLabel={label}
@@ -126,6 +167,10 @@ export default async function AdminFinanceiroPage({
         branches={branches}
         unidadeInicial={branches.find(b => b.id === sp.unidade || b.slug === sp.unidade)?.id ?? ""}
         canWrite={ctx.permissions.financial === 'MANAGE'}
+        canPay={operaCaixa || ctx.permissions.financial === 'MANAGE'}
+        podeDarCredito={ctx.permissions.financial === 'MANAGE'}
+        canReverse={ctx.permissions.financial === 'MANAGE'}
+        clients={(clientsRaw ?? []) as { id: string; name: string }[]}
       />
     </>
   )
