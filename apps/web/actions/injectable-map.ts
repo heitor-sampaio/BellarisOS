@@ -166,3 +166,90 @@ export async function podeEditarMapa(): Promise<boolean> {
   const ctx = await getTenantContext()
   return can(ctx, 'medical_records', 'MANAGE')
 }
+
+/** Uma linha da tela de Injetáveis: o cliente e o estado do mapa dele. */
+export interface MapaNaLista {
+  clientId:     string
+  clientName:   string
+  clientPhone:  string | null
+  unidade:      string | null
+  pontos:       number
+  produtos:     string[]
+  atualizadoEm: string | null
+  /** Última aplicação registrada — o que separa "planejado" de "aplicado". */
+  ultimaAplicacao: string | null
+  aplicacoes:      number
+}
+
+/**
+ * Quem tem mapa de injetáveis, com o estado de cada um.
+ *
+ * Existe porque o mapa só era alcançável por dentro da ficha de um cliente:
+ * quem queria "ver os planejamentos de injetáveis" precisava saber de antemão
+ * de quem eram. `branchId` nulo = a rede inteira.
+ */
+export async function listarMapasDeInjetaveis({ branchId }: { branchId: string | null }): Promise<{
+  mapas: MapaNaLista[]
+  error?: string
+}> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'medical_records', 'VIEW')
+  const admin = createAdminClient()
+
+  let q = admin
+    .from('injectable_maps')
+    .select('client_id, branch_id, points, updated_at, clients!inner(id, name, phone, tenant_id), branches(name)')
+    .eq('clients.tenant_id', ctx.tenantId!)
+    .order('updated_at', { ascending: false })
+    .limit(300)
+  if (branchId) q = q.eq('branch_id', branchId)
+
+  const { data: mapasRaw, error } = await q
+  if (error) return { mapas: [], error: `Não foi possível carregar os mapas: ${error.message}` }
+
+  const linhas = (mapasRaw ?? []) as unknown as {
+    client_id: string
+    points: InjectableMapValue['points'] | null
+    updated_at: string | null
+    clients: { name: string; phone: string | null } | null
+    branches: { name: string } | null
+  }[]
+
+  // Aplicações dos mesmos clientes, para a lista dizer o que já foi aplicado.
+  const ids = linhas.map(l => l.client_id)
+  const porCliente = new Map<string, { ultima: string; total: number }>()
+  if (ids.length > 0) {
+    const { data: aps } = await admin
+      .from('injectable_applications')
+      .select('client_id, applied_at')
+      .in('client_id', ids)
+      .order('applied_at', { ascending: false })
+
+    for (const a of (aps ?? []) as { client_id: string; applied_at: string }[]) {
+      const atual = porCliente.get(a.client_id)
+      // A consulta já vem da mais recente para a mais antiga: a primeira que
+      // chega de cada cliente é a última aplicação dele.
+      if (!atual) porCliente.set(a.client_id, { ultima: a.applied_at, total: 1 })
+      else atual.total++
+    }
+  }
+
+  const mapas: MapaNaLista[] = linhas.map(l => {
+    const pontos = l.points ?? []
+    const produtos = [...new Set(pontos.map(p => p.product?.trim()).filter(Boolean) as string[])]
+    const ap = porCliente.get(l.client_id)
+    return {
+      clientId:        l.client_id,
+      clientName:      l.clients?.name ?? 'Cliente',
+      clientPhone:     l.clients?.phone ?? null,
+      unidade:         l.branches?.name ?? null,
+      pontos:          pontos.length,
+      produtos,
+      atualizadoEm:    l.updated_at,
+      ultimaAplicacao: ap?.ultima ?? null,
+      aplicacoes:      ap?.total ?? 0,
+    }
+  })
+
+  return { mapas }
+}

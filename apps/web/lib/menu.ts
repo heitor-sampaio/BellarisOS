@@ -14,18 +14,20 @@ import type { ResolvedPermissions } from '@estetica-os/types'
 /**
  * Áreas do menu.
  *
- * São as MESMAS de `MODULE_GROUPS` (lib/permissions-copy.ts), de propósito: quem
- * monta um cargo vê os módulos agrupados exatamente como a pessoa vai ver o
- * menu depois. Duas taxonomias diferentes para a mesma coisa obrigariam a
- * traduzir de cabeça entre as duas telas.
+ * Nascem das mesmas de `MODULE_GROUPS` (lib/permissions-copy.ts), de propósito:
+ * quem monta um cargo vê os módulos agrupados como a pessoa vai ver o menu
+ * depois. "Planejamento" é a exceção — não é um módulo a mais, e sim duas telas
+ * do mesmo assunto (o que se planeja para o cliente) que saíram de `agenda` e
+ * `medical_records`. Misturadas em Atendimento, ninguém achava os injetáveis.
  */
-export type MenuGroupKey = 'atendimento' | 'vendas' | 'dinheiro' | 'gestao'
+export type MenuGroupKey = 'atendimento' | 'planejamento' | 'vendas' | 'dinheiro' | 'gestao'
 
 export const MENU_GROUPS: readonly { key: MenuGroupKey; label: string }[] = [
-  { key: 'atendimento', label: 'Atendimento' },
-  { key: 'vendas',      label: 'Vendas e marketing' },
-  { key: 'dinheiro',    label: 'Dinheiro e estoque' },
-  { key: 'gestao',      label: 'Gestão e configuração' },
+  { key: 'atendimento',  label: 'Atendimento' },
+  { key: 'planejamento', label: 'Planejamento' },
+  { key: 'vendas',       label: 'Vendas e marketing' },
+  { key: 'dinheiro',     label: 'Dinheiro e estoque' },
+  { key: 'gestao',       label: 'Gestão e configuração' },
 ]
 
 export type MenuEntry = {
@@ -59,7 +61,10 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // tarefa sem dono, esperando uma decisão do cliente. O dinheiro passou a ser
   // recebido no check-in do atendimento, e o que sobrava da fila virou o filtro
   // "Aguardando aceite" desta tela.
-  { key: 'planejamentos',group: 'atendimento',  label: 'Planejamentos', href: '/admin/planejamentos',  visible: p => has(p, 'medical_records') || recebe(p) },
+  { key: 'planejamentos',group: 'planejamento', label: 'Tratamentos',   href: '/admin/planejamentos',  visible: p => has(p, 'medical_records') || recebe(p) },
+  // O mapa de injetáveis era alcançável só por dentro da ficha de um cliente.
+  // É clínico (vira registro de prontuário), daí o módulo ser outro.
+  { key: 'injetaveis',   group: 'planejamento', label: 'Injetáveis',    href: '/admin/injetaveis',     visible: p => has(p, 'medical_records') },
 
   { key: 'inbox',        group: 'vendas',       label: 'Inbox',         href: '/admin/inbox',          visible: p => has(p, 'crm') },
   { key: 'oportunidades',group: 'vendas',       label: 'Oportunidades', href: '/admin/oportunidades',  visible: p => has(p, 'crm') },
@@ -89,7 +94,8 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 
   { key: 'agenda',        group: 'atendimento', label: 'Agenda',        href: '/agenda',        visible: p => has(p, 'agenda') },
   { key: 'clients',       group: 'atendimento', label: 'Clientes',      href: '/clients',       visible: p => has(p, 'clients') },
-  { key: 'planejamentos', group: 'atendimento', label: 'Planejamentos', href: '/planejamentos', visible: p => has(p, 'medical_records') || recebe(p) },
+  { key: 'planejamentos', group: 'planejamento', label: 'Tratamentos', href: '/planejamentos', visible: p => has(p, 'medical_records') || recebe(p) },
+  { key: 'injetaveis',    group: 'planejamento', label: 'Injetáveis',  href: '/injetaveis',    visible: p => has(p, 'medical_records') },
 
   { key: 'inbox',         group: 'vendas',      label: 'Inbox',         href: '/inbox',         visible: p => has(p, 'crm') },
   { key: 'oportunidades', group: 'vendas',      label: 'Oportunidades', href: '/oportunidades', visible: p => has(p, 'crm') },

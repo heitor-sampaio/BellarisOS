@@ -81,9 +81,22 @@ describe('menuSectionsFor', () => {
     expect(secoes[0]!.entries.map(e => e.key)).toEqual(['dashboard'])
   })
 
-  it('quem tem tudo vê as quatro categorias, na ordem', () => {
+  it('quem tem tudo vê as cinco categorias, na ordem', () => {
     const secoes = menuSectionsFor(ADMIN_MENU, ALL_PERMISSIONS)
-    expect(secoes.slice(1).map(s => s.key)).toEqual(['atendimento', 'vendas', 'dinheiro', 'gestao'])
+    expect(secoes.slice(1).map(s => s.key))
+      .toEqual(['atendimento', 'planejamento', 'vendas', 'dinheiro', 'gestao'])
+  })
+
+  it('Planejamento junta Tratamentos e Injetáveis', () => {
+    const secoes = menuSectionsFor(ADMIN_MENU, com({ medical_records: 'VIEW' }))
+    const planejamento = secoes.find(s => s.key === 'planejamento')
+    expect(planejamento!.entries.map(e => e.label)).toEqual(['Tratamentos', 'Injetáveis'])
+  })
+
+  it('quem só recebe vê Tratamentos (ele cobra o plano) mas não Injetáveis, que é clínico', () => {
+    const entries = menuEntriesFor(BRANCH_MENU, com({ cashier: 'MANAGE' })).map(e => e.key)
+    expect(entries).toContain('planejamentos')
+    expect(entries).not.toContain('injetaveis')
   })
 
   it('nenhuma entrada se perde entre a lista e as seções', () => {
