@@ -24,6 +24,13 @@ interface Props {
    * unidade o nome está no cabeçalho da página, e repeti-lo seria ruído.
    */
   branchName?: string
+  /**
+   * `linha` (padrão) é a barra larga do portal da unidade, onde existe um caixa
+   * só. `card` empilha o mesmo conteúdo para caber lado a lado: na rede são
+   * quatro unidades, e quatro barras largas empurravam a tela inteira para
+   * baixo antes de qualquer número aparecer.
+   */
+  variante?: 'linha' | 'card'
 }
 
 function Label({ children }: { children: React.ReactNode }) {
@@ -45,7 +52,9 @@ function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-export function CashRegisterWidget({ branchId, slug, register, totalIncome, totalExpense, branchName }: Props) {
+export function CashRegisterWidget({
+  branchId, slug, register, totalIncome, totalExpense, branchName, variante = 'linha',
+}: Props) {
   const openDialogRef  = useRef<HTMLDialogElement>(null)
   const closeDialogRef = useRef<HTMLDialogElement>(null)
 
@@ -63,75 +72,139 @@ export function CashRegisterWidget({ branchId, slug, register, totalIncome, tota
   const saldo   = (register?.opening_balance ?? 0) + totalIncome - totalExpense
   const isOpen  = !!register
 
+  const emCard = variante === 'card'
+
+  const statusDot = (
+    <div style={{
+      width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+      background: isOpen ? '#16a34a' : 'var(--text-faint)',
+      boxShadow: isOpen ? '0 0 0 3px #dcfce7' : 'none',
+    }} />
+  )
+
+  const botao = isOpen ? (
+    <button
+      type="button"
+      onClick={() => closeDialogRef.current?.showModal()}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 7, justifyContent: 'center',
+        fontSize: 13, fontWeight: 700, padding: '8px 14px', borderRadius: 10,
+        border: '1px solid var(--border)', background: 'var(--surface)',
+        color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0,
+        width: emCard ? '100%' : undefined,
+      }}
+    >
+      <Lock size={14} />
+      Fechar caixa
+    </button>
+  ) : emCard ? (
+    /* Na rede são quatro cards ao mesmo tempo: quatro botões preenchidos em
+       rosé brigariam com o KPI de receita logo acima, que é o destaque da
+       tela. Aqui a leitura é de estado; a ação fica em contorno. */
+    <button
+      type="button"
+      onClick={() => openDialogRef.current?.showModal()}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 7, justifyContent: 'center',
+        width: '100%', fontSize: 13, fontWeight: 700, padding: '8px 14px', borderRadius: 10,
+        border: '1.5px solid var(--brand)', background: 'var(--surface)',
+        color: 'var(--brand)', cursor: 'pointer',
+      }}
+    >
+      <Unlock size={14} />
+      Abrir caixa
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={() => openDialogRef.current?.showModal()}
+      className="btn-primary"
+      style={{ flexShrink: 0 }}
+    >
+      <Unlock size={14} />
+      Abrir caixa
+    </button>
+  )
+
   return (
     <>
-      {/* Widget inline */}
-      <div className="card" style={{
-        padding: '16px 20px',
-        display: 'flex', alignItems: 'center', gap: 16,
-        borderLeft: `4px solid ${isOpen ? '#16a34a' : 'var(--border)'}`,
-      }}>
-        {/* Status dot + label */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-          <div style={{
-            width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-            background: isOpen ? '#16a34a' : 'var(--text-faint)',
-            boxShadow: isOpen ? '0 0 0 3px #dcfce7' : 'none',
-          }} />
-          <div>
-            <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>
-              {branchName ? `${branchName} · ` : ''}{isOpen ? 'Caixa aberto' : 'Caixa fechado'}
+      {emCard ? (
+        /* Card da rede: nome em cima, situação no meio, ação no rodapé. O
+           saldo ocupa o lugar mesmo com o caixa fechado, senão os quatro
+           cards ficavam com alturas diferentes. */
+        <div className="card" style={{
+          padding: '14px 16px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+          borderLeft: `4px solid ${isOpen ? '#16a34a' : 'var(--border)'}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            {statusDot}
+            <p style={{
+              fontSize: 13, fontWeight: 800, color: 'var(--text)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {branchName ?? 'Unidade'}
             </p>
-            {isOpen && (
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>
-                Desde {fmtTime(register.opened_at)} · troco inicial {fmtBRL(register.opening_balance)}
-              </p>
-            )}
           </div>
-        </div>
 
-        {/* Saldo (só quando aberto) */}
-        {isOpen && (
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-              SALDO ATUAL
+          <div>
+            <p style={{
+              fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+              textTransform: 'uppercase', letterSpacing: '0.07em',
+            }}>
+              {isOpen ? 'Saldo atual' : 'Caixa fechado'}
             </p>
             <p style={{
-              fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em',
-              color: saldo >= 0 ? 'var(--text)' : '#dc2626',
+              fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 3,
+              color: !isOpen ? 'var(--text-faint)' : saldo >= 0 ? 'var(--text)' : '#dc2626',
             }}>
-              {fmtBRL(saldo)}
+              {isOpen ? fmtBRL(saldo) : '—'}
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2, minHeight: 15 }}>
+              {isOpen ? `Desde ${fmtTime(register.opened_at)} · troco ${fmtBRL(register.opening_balance)}` : ''}
             </p>
           </div>
-        )}
 
-        {/* Botão ação */}
-        {isOpen ? (
-          <button
-            type="button"
-            onClick={() => closeDialogRef.current?.showModal()}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 7,
-              fontSize: 13, fontWeight: 700, padding: '8px 14px', borderRadius: 10,
-              border: '1px solid var(--border)', background: 'var(--surface)',
-              color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0,
-            }}
-          >
-            <Lock size={14} />
-            Fechar caixa
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => openDialogRef.current?.showModal()}
-            className="btn-primary"
-            style={{ flexShrink: 0 }}
-          >
-            <Unlock size={14} />
-            Abrir caixa
-          </button>
-        )}
-      </div>
+          {botao}
+        </div>
+      ) : (
+        /* Barra larga do portal da unidade, onde há um caixa só. */
+        <div className="card" style={{
+          padding: '16px 20px',
+          display: 'flex', alignItems: 'center', gap: 16,
+          borderLeft: `4px solid ${isOpen ? '#16a34a' : 'var(--border)'}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+            {statusDot}
+            <div>
+              <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>
+                {branchName ? `${branchName} · ` : ''}{isOpen ? 'Caixa aberto' : 'Caixa fechado'}
+              </p>
+              {isOpen && (
+                <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>
+                  Desde {fmtTime(register.opened_at)} · troco inicial {fmtBRL(register.opening_balance)}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {isOpen && (
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                SALDO ATUAL
+              </p>
+              <p style={{
+                fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em',
+                color: saldo >= 0 ? 'var(--text)' : '#dc2626',
+              }}>
+                {fmtBRL(saldo)}
+              </p>
+            </div>
+          )}
+
+          {botao}
+        </div>
+      )}
 
       {/* Modal: Abrir caixa */}
       <dialog

@@ -149,7 +149,6 @@ export default async function AdminFinanceiroPage({
   return (
     <>
       <RealtimeRefresher tables={['financial_transactions', 'commissions', 'cash_registers']} />
-      <CaixasDaRede caixas={caixas} branches={branches} operaCaixa={operaCaixa} />
       <AdminFinancialView
         period={period}
         periodLabel={label}
@@ -171,6 +170,7 @@ export default async function AdminFinanceiroPage({
         podeDarCredito={ctx.permissions.financial === 'MANAGE'}
         canReverse={ctx.permissions.financial === 'MANAGE'}
         clients={(clientsRaw ?? []) as { id: string; name: string }[]}
+        caixas={<CaixasDaRede caixas={caixas} branches={branches} operaCaixa={operaCaixa} />}
       />
     </>
   )

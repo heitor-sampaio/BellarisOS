@@ -42,8 +42,13 @@ test('caixa da unidade, lançamento e baixa — tudo pelo /admin', async ({ page
 
   // -- Abrir o caixa da unidade, sem sair do portal da rede ------------------
   await expect(page.getByRole('heading', { name: 'Caixa das unidades' })).toBeVisible()
-  const linha = page.locator('.card').filter({ hasText: `${unidade!.name} · Caixa fechado` }).first()
-  await linha.getByRole('button', { name: 'Abrir caixa' }).click()
+  // O card traz o nome da unidade e a situação em linhas separadas: os dois
+  // filtros juntos distinguem o card do caixa de qualquer outro cartão da tela.
+  const cardFechado = page.locator('.card')
+    .filter({ hasText: unidade!.name })
+    .filter({ hasText: 'Caixa fechado' })
+    .first()
+  await cardFechado.getByRole('button', { name: 'Abrir caixa' }).click()
 
   const dialogoAbrir = page.locator('dialog[open]')
   await dialogoAbrir.locator('input[name="opening_balance"]').fill('50')
@@ -105,7 +110,10 @@ test('caixa da unidade, lançamento e baixa — tudo pelo /admin', async ({ page
 
   // -- Fechar o caixa, devolvendo a unidade ao estado em que estava ----------
   await page.goto('/admin/financeiro')
-  await page.locator('.card').filter({ hasText: `${unidade!.name} · Caixa aberto` }).first()
+  await page.locator('.card')
+    .filter({ hasText: unidade!.name })
+    .filter({ hasText: 'Saldo atual' })
+    .first()
     .getByRole('button', { name: 'Fechar caixa' }).click()
   await page.locator('dialog[open]').getByRole('button', { name: 'Confirmar fechamento' }).click()
 
