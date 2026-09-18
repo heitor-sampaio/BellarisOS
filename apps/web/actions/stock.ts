@@ -331,119 +331,11 @@ export async function deleteCategory(categoryId: string) {
 
 // --- Estoque por filial -------------------------------------------
 
-export async function createStockMovement(
-  _prev: { error?: string; success?: boolean; balanceAfter?: number } | undefined,
-  formData: FormData,
-) {
-  try {
-    const ctx = await getTenantContext()
-    assertPermission(ctx, 'stock', 'MANAGE')
-
-    const branchId  = str(formData, '_branchId')
-    const slug      = str(formData, '_slug') ?? ''
-    const productId = str(formData, '_productId')
-    if (!branchId || !productId) return { error: 'Produto não identificado.' }
-
-    const movType = str(formData, 'type') as 'PURCHASE' | 'MANUAL_ADJUSTMENT' | null
-    if (!movType) return { error: 'Tipo de movimentação é obrigatório.' }
-
-    const qtyRaw = str(formData, 'quantity')
-    if (!qtyRaw) return { error: 'Quantidade é obrigatória.' }
-    const qty = parseFloat(qtyRaw.replace(',', '.'))
-    if (isNaN(qty) || qty <= 0) return { error: 'Quantidade deve ser maior que zero.' }
-
-    const isExact = str(formData, 'is_exact') === 'true'
-
-    const supabase = await createSupabase()
-
-    // Busca estoque atual da filial para este produto
-    const { data: bps } = await supabase
-      .from('branch_product_stock')
-      .select('current_stock')
-      .eq('product_id', productId)
-      .eq('branch_id', branchId)
-      .single()
-
-    const currentStock = Number(bps?.current_stock ?? 0)
-    let delta: number
-    let balanceAfter: number
-
-    if (isExact) {
-      delta        = qty - currentStock
-      balanceAfter = qty
-    } else if (movType === 'PURCHASE') {
-      delta        = qty
-      balanceAfter = currentStock + qty
-    } else {
-      delta        = -qty
-      balanceAfter = currentStock - qty
-      if (balanceAfter < 0) return { error: `Estoque insuficiente. Disponível: ${currentStock}` }
-    }
-
-    const admin = createAdminClient()
-
-    await admin.from('stock_movements').insert({
-      branch_id:     branchId,
-      product_id:    productId,
-      type:          movType,
-      quantity:      delta,
-      balance_after: balanceAfter,
-      notes:         str(formData, 'notes'),
-      created_by:    ctx.internalUserId,
-    })
-
-    // Upsert do estoque da filial
-    await admin.from('branch_product_stock').upsert({
-      product_id:    productId,
-      branch_id:     branchId,
-      current_stock: balanceAfter,
-      min_stock:     Number(bps?.current_stock !== undefined
-        ? (await supabase.from('branch_product_stock').select('min_stock').eq('product_id', productId).eq('branch_id', branchId).single()).data?.min_stock ?? 0
-        : 0),
-      updated_at:    new Date().toISOString(),
-    }, { onConflict: 'product_id,branch_id' })
-
-    // Se informou lote, cria ProductBatch
-    const batchNumber = str(formData, 'batch_number')
-    const expiresAt   = str(formData, 'expires_at')
-    if (batchNumber && delta > 0) {
-      await admin.from('product_batches').insert({
-        product_id:   productId,
-        batch_number: batchNumber,
-        expires_at:   expiresAt ?? null,
-        quantity:     delta,
-      })
-    }
-
-    // Em entrada de compra: atualiza custo do produto e registra despesa financeira
-    if (movType === 'PURCHASE' && delta > 0) {
-      const costPerPkg = num(formData, 'cost_price')
-      if (costPerPkg && costPerPkg > 0) {
-        const productName = str(formData, '_productName') ?? 'Produto'
-
-        await admin.from('products').update({ cost_price: costPerPkg }).eq('id', productId)
-
-        await admin.from('financial_transactions').insert({
-          branch_id:   branchId,
-          type:        'EXPENSE',
-          category:    'Estoque',
-          description: `Compra: ${productName}`,
-          amount:      costPerPkg * delta,
-          is_paid:     true,
-          paid_at:     new Date().toISOString(),
-          notes:       str(formData, 'notes'),
-          created_by:  ctx.internalUserId,
-        })
-      }
-    }
-
-    revalidatePath(`/${slug}/estoque`)
-    revalidatePath(`/${slug}/financeiro`)
-    return { success: true, balanceAfter }
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
-  }
-}
+// `createStockMovement` e `updateBranchMinStock` foram removidas: as operações
+// de estoque passaram todas pelo modal de gerenciar (adminAddStock,
+// adminTransferStock, adminAdjustStock, adminUpdateMinStock), que os dois
+// portais usam. Ficaram sem chamador quando a filial adotou esse modal, e
+// todo export de um arquivo `use server` é um endpoint público.
 
 export async function adminUpdateMinStock(productId: string, branchId: string, minStock: number) {
   try {
@@ -462,26 +354,6 @@ export async function adminUpdateMinStock(productId: string, branchId: string, m
 
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
-    return { success: true }
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
-  }
-}
-
-export async function updateBranchMinStock(productId: string, branchId: string, minStock: number, slug: string) {
-  try {
-    const ctx = await getTenantContext()
-    assertPermission(ctx, 'stock', 'MANAGE')
-
-    const admin = createAdminClient()
-    await admin.from('branch_product_stock').upsert({
-      product_id: productId,
-      branch_id:  branchId,
-      min_stock:  minStock,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'product_id,branch_id' })
-
-    revalidatePath(`/${slug}/estoque`)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -746,20 +618,61 @@ export async function adminAdjustStock(
   }
 }
 
-export async function getProductMovements(productId: string, branchId: string) {
+export interface MovimentoDeEstoque {
+  id:           string
+  type:         string
+  quantity:     number
+  balanceAfter: number
+  notes:        string | null
+  createdAt:    string
+  branchName:   string
+}
+
+/**
+ * Histórico de movimentações de um produto.
+ *
+ * `branchId` vazio = todas as unidades, que é o que o portal da rede pede: de
+ * onde saiu e para onde entrou, numa lista só. Não havia caminho nenhum para
+ * isto na interface — dava para movimentar sem nunca ver o que já tinha sido
+ * movimentado.
+ */
+export async function getProductMovements(
+  productId: string,
+  branchId: string,
+): Promise<MovimentoDeEstoque[]> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'stock', 'VIEW')
 
-  const supabase = await createSupabase()
-  const { data } = await supabase
+  const admin = createAdminClient()
+  let query = admin
     .from('stock_movements')
-    .select('id, type, quantity, balance_after, notes, created_at')
+    .select('id, type, quantity, balance_after, notes, created_at, branches!inner(name, tenant_id)')
     .eq('product_id', productId)
-    .eq('branch_id', branchId)
+    .eq('branches.tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: false })
-    .limit(50)
+    .limit(80)
 
-  return data ?? []
+  // Quem tem unidade fixa só vê a dela; a rede vê todas.
+  const recorte = branchId || ctx.branchId
+  if (recorte) query = query.eq('branch_id', recorte)
+
+  const { data, error } = await query
+  // Histórico vazio é um fato; histórico que falhou é outra coisa.
+  if (error) throw new Error(`Não foi possível carregar o histórico: ${error.message}`)
+
+  type Row = {
+    id: string; type: string; quantity: number; balance_after: number
+    notes: string | null; created_at: string; branches: { name: string } | null
+  }
+  return ((data ?? []) as unknown as Row[]).map(m => ({
+    id:           m.id,
+    type:         m.type,
+    quantity:     Number(m.quantity),
+    balanceAfter: Number(m.balance_after),
+    notes:        m.notes,
+    createdAt:    m.created_at,
+    branchName:   m.branches?.name ?? '—',
+  }))
 }
 
 export async function saveBarcodeToProduct(productId: string, barcode: string) {

@@ -203,63 +203,10 @@ export async function addClient(
   return { success: true, clientId: client.id as string }
 }
 
-// --- Atualizar dados do cliente ------------------------------------
-export async function updateClient(
-  _prev: { error?: string; success?: boolean } | undefined,
-  formData: FormData,
-) {
-  const ctx = await getTenantContext()
-  assertPermission(ctx, 'clients', 'MANAGE')
-
-  const clientId = formData.get('_clientId') as string
-  const slug     = formData.get('_slug') as string
-  const supabase = await createSupabase()
-
-  // Confirma que o cliente pertence à rede
-  const { data: existing } = await supabase
-    .from('clients')
-    .select('id, document')
-    .eq('id', clientId)
-    .eq('tenant_id', ctx.tenantId!)
-    .single()
-  if (!existing) return { error: 'Cliente não encontrado.' }
-
-  const name      = (formData.get('name') as string)?.trim()
-  const phone     = (formData.get('phone') as string)?.trim()
-  const email     = (formData.get('email') as string)?.trim() || null
-  const rawDoc    = (formData.get('document') as string)?.trim() || null
-  const document  = rawDoc ? rawDoc.replace(/\D/g, '') : null
-  const birthDate = (formData.get('birth_date') as string) || null
-  const gender    = (formData.get('gender') as string) || null
-  const notes     = (formData.get('notes') as string)?.trim() || null
-  const tagsRaw   = formData.get('tags') as string
-  const tags      = tagsRaw ? JSON.parse(tagsRaw) : []
-
-  if (!name || !phone) return { error: 'Nome e telefone são obrigatórios.' }
-
-  // CPF único por rede (se alterado)
-  if (document && document !== existing.document) {
-    const { data: conflict } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('document', document)
-      .maybeSingle()
-    if (conflict) return { error: 'Já existe um cliente com este CPF nesta rede.' }
-  }
-
-  const { error } = await supabase
-    .from('clients')
-    .update({ name, phone, email, document, birth_date: birthDate, gender, notes, tags })
-    .eq('id', clientId)
-    .eq('tenant_id', ctx.tenantId!)
-
-  if (error) return { error: 'Erro ao atualizar cliente.' }
-
-  revalidatePath(`/${slug}/clients/${clientId}`)
-  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
-  return { success: true }
-}
+// `updateClient` foi removida: a aba Dados da ficha (updateClientContactData)
+// edita tudo o que ela editava, e nenhuma tela montava o modo de edição do
+// ClientForm que a chamava. Duas actions para a mesma coisa, uma sem porta —
+// e todo export daqui é um endpoint público.
 
 // --- Conceder crédito interno --------------------------------------
 export async function grantInternalCredit(
@@ -313,6 +260,15 @@ export async function grantInternalCredit(
 export async function updateClientContactData(
   clientId: string,
   data: {
+    /**
+     * Nome e gênero. Opcionais, como `notes`: quem não os edita não os apaga.
+     *
+     * Ficavam de fora porque a única tela que os editava era o modo de edição
+     * do `ClientForm`, que nenhuma página montava — corrigir um nome digitado
+     * errado no cadastro não tinha caminho nenhum no sistema.
+     */
+    name?:              string
+    gender?:            string | null
     document:           string | null
     phone:              string | null
     email:              string | null
@@ -334,6 +290,10 @@ export async function updateClientContactData(
   assertPermission(ctx, 'clients', 'MANAGE')
 
   const admin = createAdminClient()
+
+  if (data.name !== undefined && data.name.trim().length < 2) {
+    return { error: 'Informe o nome do cliente.' }
+  }
 
   // Verifica duplicidade de CPF no tenant (exceto o próprio cliente)
   if (data.document) {
@@ -362,7 +322,9 @@ export async function updateClientContactData(
       neighborhood:        data.neighborhood || null,
       city:                data.city || null,
       state:               data.state || null,
-      ...(data.tags  !== undefined ? { tags: data.tags } : {}),
+      ...(data.name   !== undefined ? { name: data.name.trim() } : {}),
+      ...(data.gender !== undefined ? { gender: data.gender || null } : {}),
+      ...(data.tags   !== undefined ? { tags: data.tags } : {}),
       // Só quando o campo veio: a tela de dados não edita notas, e mandar
       // `undefined` aqui apagaria o que a recepção escreveu em outra tela.
       ...(data.notes !== undefined ? { notes: data.notes?.trim() || null } : {}),
@@ -372,7 +334,9 @@ export async function updateClientContactData(
     .eq('tenant_id', ctx.tenantId!)
 
   if (error) return { error: error.message }
-  revalidatePath(`/${slug}/clients/${clientId}`)
+  // A ficha existe nos dois portais; o slug só vem quando a edição saiu da unidade.
+  if (slug) revalidatePath(`/${slug}/clients/${clientId}`)
+  revalidatePath(`/admin/clients/${clientId}`)
   revalidateTag(`clients:${ctx.tenantId!}`, 'max')
   return {}
 }
@@ -444,13 +408,20 @@ export async function toggleClientStatus(clientId: string, isActive: boolean, sl
   assertPermission(ctx, 'clients', 'MANAGE')
 
   const supabase = await createSupabase()
-  await supabase
+  const { error } = await supabase
     .from('clients')
     .update({ is_active: isActive })
     .eq('id', clientId)
     .eq('tenant_id', ctx.tenantId!)
 
-  revalidatePath(`/${slug}/clients`)
-  revalidatePath(`/${slug}/clients/${clientId}`)
+  if (error) return { error: `Não foi possível ${isActive ? 'reativar' : 'desativar'} o cliente: ${error.message}` }
+
+  if (slug) {
+    revalidatePath(`/${slug}/clients`)
+    revalidatePath(`/${slug}/clients/${clientId}`)
+  }
+  revalidatePath('/admin/clients')
+  revalidatePath(`/admin/clients/${clientId}`)
   revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+  return {}
 }

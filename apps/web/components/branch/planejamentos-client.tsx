@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { Search, Plus, ClipboardList, Loader2, User, X } from 'lucide-react'
-import { listarPlanejamentos, criarPlanoDoCliente } from '@/actions/treatment-plans'
+import { Search, Plus, ClipboardList, Loader2, User, X, Pencil } from 'lucide-react'
+import { listarPlanejamentos, criarPlanoDoCliente, renomearPlano } from '@/actions/treatment-plans'
 import { PlanejamentoTratamento } from '@/components/branch/planejamento-tratamento'
 import type { TreatmentProcedure, AvailableProduct } from '@/components/branch/treatment-plan-editor'
 
@@ -74,6 +74,23 @@ export function PlanejamentosClient({
 
   /** Plano aberto para edição, sobre a lista. */
   const [aberto, setAberto] = useState<PlanoDaLista | null>(null)
+
+  // Renomear: o nome é como o plano é encontrado enquanto não há cliente.
+  const [renomeando,   setRenomeando]   = useState(false)
+  const [nomeEditado,  setNomeEditado]  = useState('')
+  const [salvandoNome, setSalvandoNome] = useState(false)
+
+  async function salvarNome() {
+    if (!aberto) return
+    setSalvandoNome(true); setErro(null)
+    const res = await renomearPlano(aberto.id, nomeEditado)
+    setSalvandoNome(false)
+    if (res.error) { setErro(res.error); return }
+    setAberto({ ...aberto, nome: nomeEditado.trim() })
+    setRenomeando(false)
+    const lista = await listarPlanejamentos({ busca, status: status || undefined, branchId: branchId || null })
+    setPlanos(lista.planos)
+  }
 
   // Busca com espera: digitar não dispara uma consulta por tecla.
   useEffect(() => {
@@ -244,8 +261,41 @@ export function PlanejamentosClient({
           onClick={() => setAberto(null)}>
           <div className="card" style={{ width: 780, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
-              <div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{aberto.nome}</h3>
+              {/* O nome é como o plano é encontrado enquanto não há cliente — e
+                  era o único dado dele sem como corrigir: `renomearPlano` não
+                  tinha um único chamador. */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {renomeando ? (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input
+                      className="field" autoFocus value={nomeEditado}
+                      onChange={e => setNomeEditado(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && nomeEditado.trim()) void salvarNome()
+                        if (e.key === 'Escape') setRenomeando(false)
+                      }}
+                      style={{ fontSize: 15, fontWeight: 800, maxWidth: 420 }}
+                    />
+                    <button type="button" onClick={salvarNome} disabled={salvandoNome || !nomeEditado.trim()}
+                      className="btn-primary" style={{ fontSize: 12, padding: '6px 12px' }}>
+                      {salvandoNome ? 'Salvando…' : 'Salvar'}
+                    </button>
+                    <button type="button" onClick={() => setRenomeando(false)} className="btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }}>
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button"
+                    onClick={() => { setNomeEditado(aberto.nome); setRenomeando(true) }}
+                    title="Renomear plano"
+                    style={{
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 7, textAlign: 'left',
+                    }}>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{aberto.nome}</h3>
+                    <Pencil size={13} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+                  </button>
+                )}
                 <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
                   {aberto.cliente ? aberto.cliente.name : 'Sem cliente ligado'}
                 </p>

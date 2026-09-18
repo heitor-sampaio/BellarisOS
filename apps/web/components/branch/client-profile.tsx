@@ -3,7 +3,7 @@
 import React, { useActionState, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Star, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck } from 'lucide-react'
-import { grantInternalCredit, updateClientContactData, lookupClientByCpf } from '@/actions/clients'
+import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus } from '@/actions/clients'
 import { TreatmentSessionsModal } from './treatment-sessions-modal'
 import { TreatmentFileModal } from './treatment-file-modal'
 import { ClientDocumentsTab } from './client-documents-tab'
@@ -29,6 +29,7 @@ export interface ProfileClient {
   email:              string | null
   document:           string | null
   birthDate:          string | null
+  gender:             string | null
   tags:               string[]
   notes:              string | null
   isActive:           boolean
@@ -418,6 +419,11 @@ function applyCepMask(v: string) {
 function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: string; branches: { id: string; name: string }[] }) {
   const router = useRouter()
 
+  // Nome e genero ficavam de fora: a unica tela que os editava era o modo de
+  // edicao do ClientForm, que nenhuma pagina montava. Corrigir um nome
+  // digitado errado no cadastro nao tinha caminho nenhum no sistema.
+  const [nome,       setNome]       = useState(client.name ?? '')
+  const [gender,     setGender]     = useState(client.gender ?? '')
   const [cpf,        setCpf]        = useState(client.document ? applyDocMask(client.document) : '')
   const [phone,      setPhone]      = useState(client.phone ?? '')
   const [email,      setEmail]      = useState(client.email ?? '')
@@ -479,11 +485,12 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 
   async function handleSave() {
     if (cpfStatus === 'dup') return
+    if (nome.trim().length < 2) { setSaveError('Informe o nome do cliente.'); return }
     setSaving(true)
     setSaveError(null)
     const result = await updateClientContactData(
       client.id,
-      { document: cpf, phone, email, birthDate, zipCode, address, addressNumber: addrNum, addressComplement: addrComp, neighborhood, city, state, tags: selectedTags },
+      { name: nome, gender, document: cpf, phone, email, birthDate, zipCode, address, addressNumber: addrNum, addressComplement: addrComp, neighborhood, city, state, tags: selectedTags },
       slug,
     )
     setSaving(false)
@@ -503,6 +510,23 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 
   return (
     <div className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Nome e genero */}
+      <div className="form-2col">
+        <div>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Nome *</p>
+          <input type="text" value={nome} onChange={e => setNome(e.target.value)} style={fieldStyle} />
+        </div>
+        <div>
+          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Gênero</p>
+          <select value={gender} onChange={e => setGender(e.target.value)} style={fieldStyle}>
+            <option value="">Não informado</option>
+            <option value="F">Feminino</option>
+            <option value="M">Masculino</option>
+            <option value="O">Outro</option>
+          </select>
+        </div>
+      </div>
 
       {/* CPF */}
       <div>
@@ -1015,6 +1039,20 @@ export function ClientProfile({
    * portal da rede pelo de uma unidade sem ninguém ter pedido.
    */
   const [tab, setTab] = useState<TabKey>('visao')
+
+  // Menu do cabeçalho: desativar e reativar o cliente.
+  const [menuAberto,      setMenuAberto]      = useState(false)
+  const [alterandoStatus, setAlterandoStatus] = useState(false)
+  const [erroStatus,      setErroStatus]      = useState<string | null>(null)
+
+  async function alternarStatus() {
+    setAlterandoStatus(true); setErroStatus(null)
+    const res = await toggleClientStatus(client.id, !client.isActive, slug)
+    setAlterandoStatus(false)
+    if (res?.error) { setErroStatus(res.error); return }
+    setMenuAberto(false)
+    router.refresh()
+  }
   const visibleTabs = TABS.filter(t => t.key !== 'fichas' || recordForms.length > 0)
   const [treatmentModalOpen, setTreatmentModalOpen] = useState(false)
 
@@ -1111,9 +1149,43 @@ export function ClientProfile({
             >
               + Agendar
             </button>
-            <button type="button" className="btn-ghost" style={{ padding: '8px 10px' }}>
-              <MoreHorizontal size={16} />
-            </button>
+            {/* O "..." existia sem fazer nada. Desativar cliente era uma action
+                sem porta:  nao tinha um unico chamador. */}
+            <div style={{ position: 'relative' }}>
+              <button type="button" className="btn-ghost" style={{ padding: '8px 10px' }}
+                onClick={() => setMenuAberto(v => !v)}>
+                <MoreHorizontal size={16} />
+              </button>
+              {menuAberto && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuAberto(false)} />
+                  <div className="card" style={{
+                    position: 'absolute', right: 0, top: '100%', marginTop: 6, zIndex: 41,
+                    minWidth: 230, padding: 6, boxShadow: '0 12px 32px -8px rgba(34,22,25,.18)',
+                  }}>
+                    <button type="button" disabled={alterandoStatus}
+                      onClick={alternarStatus}
+                      style={{
+                        width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 8,
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 13, fontWeight: 700,
+                        color: client.isActive ? 'var(--warning)' : 'var(--success)',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                      }}>
+                      {client.isActive ? <><XCircle size={14} /> Desativar cliente</> : <><CheckCircle2 size={14} /> Reativar cliente</>}
+                    </button>
+                    <p style={{ fontSize: 11, color: 'var(--text-faint)', padding: '2px 12px 8px', lineHeight: 1.45 }}>
+                      {client.isActive
+                        ? 'Some das listas e da busca. O histórico e o prontuário ficam.'
+                        : 'Volta a aparecer nas listas e na busca.'}
+                    </p>
+                    {erroStatus && (
+                      <p style={{ fontSize: 11.5, color: '#dc2626', fontWeight: 600, padding: '0 12px 8px' }}>{erroStatus}</p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>

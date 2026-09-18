@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { addClient, updateClient } from '@/actions/clients'
+import { addClient } from '@/actions/clients'
 import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import { TagBadge } from '@/components/shared/tag-badge'
@@ -27,17 +27,6 @@ interface ClientFormProps {
   leadId?:    string
   /** Contato de onde veio o cadastro: e nele que o vinculo com o cliente fica. */
   conversationId?: string
-  existingClient?: {
-    id:         string
-    name:       string
-    phone:      string
-    email?:     string | null
-    document?:  string | null
-    birth_date?: string | null
-    gender?:    string | null
-    notes?:     string | null
-    tags?:      string[]
-  }
   onSuccess?:         (clientId?: string) => void
   showCancelButton?:  boolean
   onCancel?:          () => void
@@ -68,14 +57,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export function ClientForm({ branchId, slug, branchName, branches, prefill, leadId, conversationId, existingClient, onSuccess, showCancelButton, onCancel }: ClientFormProps) {
-  const isEdit = !!existingClient
-  const action = isEdit ? updateClient : addClient
-
-  const [state, formAction, pending] = useActionState(action, undefined)
-  const [selectedTags, setSelectedTags] = useState<string[]>(existingClient?.tags ?? [])
-  const [phone, setPhone] = useState(existingClient?.phone ?? prefill?.phone ?? '')
-  const [document, setDocument] = useState(existingClient?.document ?? '')
+export function ClientForm({ branchId, slug, branchName, branches, prefill, leadId, conversationId, onSuccess, showCancelButton, onCancel }: ClientFormProps) {
+  // Só cadastro. A edição mora na aba Dados da ficha: manter duas telas para a
+  // mesma coisa deixava esta aqui sem nenhuma página que a montasse.
+  const [state, formAction, pending] = useActionState(addClient, undefined)
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [phone, setPhone] = useState(prefill?.phone ?? '')
+  const [document, setDocument] = useState('')
   const [unitId, setUnitId] = useState(branchId || branches?.[0]?.id || '')
 
   const router   = useRouter()
@@ -83,10 +71,10 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
 
   useEffect(() => {
     if (!state?.success) return
-    const clientId = isEdit ? existingClient?.id : (state as unknown as { clientId?: string }).clientId
+    const clientId = (state as unknown as { clientId?: string }).clientId
     if (onSuccess) {
       onSuccess(clientId)
-    } else if (!isEdit && clientId) {
+    } else if (clientId) {
       router.push(rotaCliente(pathname, slug, clientId))
     }
   }, [state?.success])
@@ -99,12 +87,11 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <input type="hidden" name="_branchId" value={branches && branches.length > 0 ? unitId : branchId} />
       <input type="hidden" name="_slug" value={slug} />
-      {isEdit && <input type="hidden" name="_clientId" value={existingClient!.id} />}
       {leadId && <input type="hidden" name="_leadId" value={leadId} />}
       {conversationId && <input type="hidden" name="_conversationId" value={conversationId} />}
       <input type="hidden" name="tags" value={JSON.stringify(selectedTags)} />
 
-      {!isEdit && branches && branches.length > 0 ? (
+      {branches && branches.length > 0 ? (
         <Field label="Unidade de cadastro *">
           <select className="field" value={unitId} onChange={e => setUnitId(e.target.value)} required>
             {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -113,7 +100,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
             O cliente pode ser atendido em qualquer unidade.
           </span>
         </Field>
-      ) : !isEdit && branchName ? (
+      ) : branchName ? (
         <div style={{
           fontSize: 12.5, color: 'var(--text-muted)',
           background: 'var(--bg-app)', border: '1px solid var(--hairline)',
@@ -130,7 +117,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           <Field label="Nome completo *">
             <input
               name="name" type="text" required className="field"
-              defaultValue={existingClient?.name ?? prefill?.name ?? ''}
+              defaultValue={prefill?.name ?? ''}
               placeholder="Ana Paula Silva"
             />
           </Field>
@@ -148,7 +135,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         <Field label="E-mail *">
           <input
             name="email" type="email" required className="field"
-            defaultValue={existingClient?.email ?? prefill?.email ?? ''}
+            defaultValue={prefill?.email ?? ''}
             placeholder="ana@email.com"
           />
         </Field>
@@ -165,12 +152,12 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         <Field label="Data de nascimento">
           <input
             name="birth_date" type="date" className="field"
-            defaultValue={existingClient?.birth_date?.substring(0, 10) ?? ''}
+            defaultValue=''
           />
         </Field>
 
         <Field label="Gênero">
-          <select name="gender" className="field" defaultValue={existingClient?.gender ?? ''}>
+          <select name="gender" className="field" defaultValue=''>
             <option value="">Não informado</option>
             {GENDERS.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
           </select>
@@ -220,7 +207,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
       <Field label="Observações internas">
         <textarea
           name="notes" rows={3} className="field"
-          defaultValue={existingClient?.notes ?? ''}
+          defaultValue=''
           placeholder="Alergias, preferências, histórico relevante…"
           style={{ resize: 'vertical' }}
         />
@@ -238,21 +225,19 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
       )}
       {state?.success && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--success)', fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)' }}>
-          <CheckCircle2 size={14} /> {isEdit ? 'Dados atualizados.' : 'Cliente cadastrado com sucesso.'}
+          <CheckCircle2 size={14} /> Cliente cadastrado com sucesso.
         </div>
       )}
 
-      {!isEdit && (
-        <div style={{
-          fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5,
-          background: 'var(--bg-app)', border: '1px solid var(--hairline)',
-          borderRadius: 10, padding: '10px 12px',
-        }}>
-          Ao cadastrar, será criado um acesso do cliente ao app com{' '}
-          <b style={{ color: 'var(--text)' }}>login = e-mail</b> e{' '}
-          <b style={{ color: 'var(--text)' }}>senha = CPF</b>.
-        </div>
-      )}
+      <div style={{
+        fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5,
+        background: 'var(--bg-app)', border: '1px solid var(--hairline)',
+        borderRadius: 10, padding: '10px 12px',
+      }}>
+        Ao cadastrar, será criado um acesso do cliente ao app com{' '}
+        <b style={{ color: 'var(--text)' }}>login = e-mail</b> e{' '}
+        <b style={{ color: 'var(--text)' }}>senha = CPF</b>.
+      </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
         {showCancelButton && (
@@ -262,7 +247,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
         )}
         <button type="submit" disabled={pending} className="btn-primary">
           <UserPlus size={15} />
-          {pending ? (isEdit ? 'Salvando…' : 'Cadastrando…') : (isEdit ? 'Salvar alterações' : 'Cadastrar cliente')}
+          {pending ? 'Cadastrando…' : 'Cadastrar cliente'}
         </button>
       </div>
     </form>

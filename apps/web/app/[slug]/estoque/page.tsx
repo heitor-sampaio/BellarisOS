@@ -5,6 +5,7 @@ import { AdminStockView } from '@/components/admin/admin-stock-view'
 import { ProductCategoryModal } from '@/components/admin/product-category-modal'
 import { StockProductModal } from '@/components/branch/stock-product-modal'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { filiaisAtivas } from '@/lib/branches'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
 import { startOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 
@@ -100,6 +101,10 @@ export default async function BranchStockPage({
   })
 
   const branchData   = [{ id: branch.id, name: branch.name, slug: branch.slug }]
+  // As outras unidades entram só como DESTINO de transferência: a lista visível
+  // continua sendo a desta filial. Sem isto, a aba Transferência sumia — a
+  // unidade não tinha para onde mandar produto.
+  const unidadesDaRede = await filiaisAtivas(ctx.tenantId!)
   const categories   = categoriesRaw ?? []
   const productIds   = products.map(p => p.id)
 
@@ -268,6 +273,7 @@ export default async function BranchStockPage({
       <AdminStockView
         products={products}
         branches={branchData}
+        unidadesDaRede={unidadesDaRede}
         categories={stockCategories}
         productCategories={categories as { id: string; name: string }[]}
         suppliers={suppliers}

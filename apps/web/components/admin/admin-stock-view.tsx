@@ -51,6 +51,12 @@ interface Props {
    * antes mandava a pessoa para o portal da filial.
    */
   unidadeInicial?:   string
+  /**
+   * Todas as unidades da rede — só para as operações que envolvem outra
+   * unidade (transferir). `branches` continua sendo o recorte VISÍVEL: a filial
+   * não passa a ver o estoque das outras, só ganha para onde transferir.
+   */
+  unidadesDaRede?:   Branch[]
   readOnly?:         boolean
 }
 
@@ -129,7 +135,7 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
 }
 
-export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', readOnly = false }: Props) {
+export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false }: Props) {
   const router = useRouter()
   // Chegar com uma unidade na URL só faz sentido junto com a visão por unidade:
   // no consolidado o saldo dela ficaria somado ao das outras.
@@ -579,7 +585,7 @@ export function AdminStockView({ products, branches, categories, productCategori
       {managing && (
         <AdminStockManageModal
           product={managing}
-          allBranches={branches}
+          allBranches={unidadesDaRede && unidadesDaRede.length > 0 ? unidadesDaRede : branches}
           defaultBranchId={defaultBranchId}
           onClose={() => setManaging(null)}
           onSuccess={() => { setManaging(null); router.refresh() }}

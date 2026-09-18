@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import {
   adminAddStock, adminTransferStock, adminAdjustStock, adminUpdateMinStock,
+  getProductMovements, type MovimentoDeEstoque,
 } from '@/actions/stock'
 
 type BranchStock = {
@@ -33,7 +34,7 @@ interface Props {
   onSuccess:       () => void
 }
 
-type Tab   = 'movimentacoes' | 'min-stock'
+type Tab   = 'movimentacoes' | 'min-stock' | 'historico'
 type MovOp = 'entrada' | 'transferencia' | 'ajuste'
 
 // -- Primitivos --------------------------------------------------------
@@ -176,13 +177,15 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
 }
 
 // -- Formulário: Transferência -----------------------------------------
-function TransferenciaForm({ product, allBranches, onClose, onSuccess }: {
+function TransferenciaForm({ product, allBranches, defaultBranchId, onClose, onSuccess }: {
   product: ProductInfo; allBranches: AllBranch[]
+  /** Unidade de quem esta operando: a origem e ela, e nao ha o que escolher. */
+  defaultBranchId?: string
   onClose: () => void; onSuccess: () => void
 }) {
   const [error,   setError]   = useState<string>()
   const [pending, setPending] = useState(false)
-  const [fromId,  setFromId]  = useState('')
+  const [fromId,  setFromId]  = useState(defaultBranchId ?? '')
   const [toId,    setToId]    = useState('')
 
   const stockMap  = Object.fromEntries(product.branches.map(b => [b.branchId, b.currentStock]))
@@ -203,12 +206,14 @@ function TransferenciaForm({ product, allBranches, onClose, onSuccess }: {
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="flex-wrap-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'end', gap: 8 }}>
-        <BranchSelect name="fromBranchId" branches={product.branches} allBranches={allBranches}
-          label="Origem" required onChange={setFromId} />
+        <BranchSelect name="fromBranchId" branches={product.branches}
+          allBranches={defaultBranchId ? allBranches.filter(b => b.id === defaultBranchId) : allBranches}
+          label="Origem" required onChange={setFromId} defaultValue={defaultBranchId} />
         <div style={{ paddingBottom: 10, color: 'var(--text-faint)' }}>
           <ArrowLeftRight size={16} />
         </div>
-        <BranchSelect name="toBranchId" branches={product.branches} allBranches={allBranches}
+        <BranchSelect name="toBranchId" branches={product.branches}
+          allBranches={allBranches.filter(b => b.id !== fromId)}
           label="Destino" required onChange={setToId} />
       </div>
 
@@ -520,9 +525,11 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
     { op: 'transferencia', label: 'Transferência',  icon: <ArrowLeftRight   size={13} />, color: '#2563eb' },
     { op: 'ajuste',        label: 'Ajuste',         icon: <SlidersHorizontal size={13}/>, color: '#d97706' },
   ]
-  const MOV_OPTS = defaultBranchId
-    ? allMovOpts.filter(o => o.op !== 'transferencia')
-    : allMovOpts
+  // Transferir some so quando nao ha para onde: a filial mandava produto para
+  // lugar nenhum porque recebia apenas a propria unidade na lista.
+  const MOV_OPTS = allBranches.length > 1
+    ? allMovOpts
+    : allMovOpts.filter(o => o.op !== 'transferencia')
 
   return (
     <dialog
@@ -561,6 +568,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
       }}>
         {([
           ['movimentacoes', 'Movimentações'],
+          ['historico',     'Histórico'],
           ['min-stock',     'Estoque mínimo'],
         ] as [Tab, string][]).map(([t, l]) => (
           <button key={t} type="button" onClick={() => setTab(t)} style={{
@@ -600,13 +608,90 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
             </div>
 
             {movOp === 'entrada'       && <EntradaForm       product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
-            {movOp === 'transferencia' && <TransferenciaForm product={product} allBranches={allBranches} onClose={onClose} onSuccess={onSuccess} />}
+            {movOp === 'transferencia' && <TransferenciaForm product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
             {movOp === 'ajuste'        && <AjusteForm        product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} onClose={onClose} onSuccess={onSuccess} />}
           </div>
+        ) : tab === 'historico' ? (
+          <HistoricoTab product={product} defaultBranchId={defaultBranchId} />
         ) : (
           <MinStockTab product={product} allBranches={allBranches} defaultBranchId={defaultBranchId} />
         )}
       </div>
     </dialog>
+  )
+}
+
+// -- Histórico ---------------------------------------------------------
+//
+// De onde saiu e para onde entrou. Existia no back-end (`getProductMovements`)
+// e não tinha porta nenhuma na interface desde que a filial passou a usar este
+// modal — dava para movimentar sem nunca ver o que já tinha sido movimentado.
+
+const MOV_LABEL: Record<string, string> = {
+  PURCHASE:          'Entrada',
+  TRANSFER_IN:       'Transferência recebida',
+  TRANSFER_OUT:      'Transferência enviada',
+  PROCEDURE_USAGE:   'Consumo em atendimento',
+  MANUAL_ADJUSTMENT: 'Ajuste manual',
+  LOSS:              'Perda',
+}
+
+function HistoricoTab({ product, defaultBranchId }: {
+  product: ProductInfo
+  defaultBranchId?: string
+}) {
+  const [movs,    setMovs]    = useState<MovimentoDeEstoque[] | null>(null)
+  const [erro,    setErro]    = useState<string | null>(null)
+
+  useEffect(() => {
+    let vivo = true
+    getProductMovements(product.id, defaultBranchId ?? '')
+      .then(r => { if (vivo) setMovs(r) })
+      .catch(e => { if (vivo) setErro(e instanceof Error ? e.message : 'Erro inesperado.') })
+    return () => { vivo = false }
+  }, [product.id, defaultBranchId])
+
+  if (erro)   return <p style={{ fontSize: 12.5, color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>
+  if (!movs)  return <p style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>Carregando…</p>
+  if (movs.length === 0) {
+    return (
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '28px 0' }}>
+        Nenhuma movimentação registrada para este produto.
+      </p>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
+      {movs.map(m => {
+        const entrada = m.quantity >= 0
+        return (
+          <div key={m.id} style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '9px 12px', borderRadius: 9,
+            border: '1px solid var(--hairline)', background: 'var(--surface)',
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
+                {MOV_LABEL[m.type] ?? m.type}
+                <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {m.branchName}</span>
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>
+                {new Date(m.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                {m.notes ? ` · ${m.notes}` : ''}
+              </p>
+            </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 800, color: entrada ? '#16a34a' : '#dc2626' }}>
+                {entrada ? '+' : ''}{m.quantity.toLocaleString('pt-BR')} {product.unit}
+              </p>
+              <p style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>
+                saldo {m.balanceAfter.toLocaleString('pt-BR')}
+              </p>
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
