@@ -47,8 +47,11 @@ unidade.
 - **Clientes** — ficha com histórico, oportunidades, planejamento, financeiro,
   documentos e dados; desativar/reativar; crédito interno.
 - **Planejamento** — seção própria no menu, com **Tratamentos** (planos que viram
-  venda no checkout) e **Injetáveis** (mapa facial por cliente, com aplicações
-  congeladas no prontuário).
+  venda no checkout) e **Injetáveis** (mapa facial com pontos, produto e dose).
+  Os dois têm o mesmo desenho: **nome primeiro, cliente opcional** — dá para
+  planejar avulso e ligar a uma pessoa depois. A aplicação do injetável é outra
+  coisa: cópia congelada no prontuário, feita dentro do atendimento e só com
+  cliente ligado.
 - **CRM** — Inbox omnichannel (WhatsApp por uazapi e API oficial da Meta,
   Instagram, Messenger), funil de oportunidades, templates HSM, atribuição de
   origem de lead.
@@ -148,7 +151,21 @@ alfabeticamente primeira, e erro de query virando tela vazia ou 404.
 
 **Migrations** (via MCP, com paridade em `supabase/migrations/`):
 `20260918000001` `cliente_por_telefone`, `…02` `buscar_clientes`,
-`…03` permissões do cargo Admin da rede, `…04` `role_report_tabs`.
+`…03` permissões do cargo Admin da rede, `…04` `role_report_tabs`,
+`…05` planejamento de injetáveis.
+
+### 2026-09-18 (continuação) — Injetáveis vira planejamento com nome
+
+O mapa era **um por cliente** (`unique (client_id)`): obrigava a ter a pessoa
+cadastrada antes de desenhar qualquer coisa, e dava um único mapa para a vida
+inteira dela — sem comparar o que foi planejado em março com o de junho. Agora
+segue o desenho do plano de tratamento: `name` próprio, `client_id` opcional,
+vários por cliente. `tenant_id` passou a existir na tabela porque, sem cliente,
+não havia por onde descobrir de qual rede o planejamento era.
+
+Registrar aplicação continua exigindo cliente — aplicação é prontuário, e
+prontuário é de alguém. `injectable_applications.map_id` guarda de qual
+planejamento ela saiu.
 
 ---
 

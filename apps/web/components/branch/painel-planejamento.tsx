@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { PlanejamentoTratamento } from '@/components/branch/planejamento-tratamento'
-import { MapaInjetaveisCliente } from '@/components/branch/mapa-injetaveis-cliente'
+import { PlanejamentoInjetaveis } from '@/components/branch/planejamento-injetaveis'
 import type { TreatmentProcedure, AvailableProduct } from '@/components/branch/treatment-plan-editor'
 
 /**
@@ -63,8 +63,9 @@ export function PainelPlanejamento({
           podeReceber={podeReceber}
         />
       ) : (
-        <MapaInjetaveisCliente
+        <PlanejamentoInjetaveis
           clientId={clientId}
+          branchId={branchId}
           slug={slug}
           appointmentId={appointmentId}
           produtos={produtosInjetaveis}

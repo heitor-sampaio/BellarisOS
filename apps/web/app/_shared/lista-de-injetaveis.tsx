@@ -1,5 +1,4 @@
 import { getTenantContext, assertPermission, can } from '@/lib/auth'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { listarMapasDeInjetaveis } from '@/actions/injectable-map'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { InjetaveisClient } from '@/components/branch/injetaveis-client'
@@ -20,29 +19,18 @@ export async function ListaDeInjetaveis({
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'VIEW')
 
-  const admin = createAdminClient()
-
-  const [{ mapas, error }, catalogo, { data: clientesRaw, error: clientesErro }] = await Promise.all([
+  const [{ mapas, error }, catalogo] = await Promise.all([
     listarMapasDeInjetaveis({ branchId }),
     procedimentosParaPlano(ctx.tenantId!),
-    // Clientes para a busca. O mapa é do cliente, e cliente é da REDE — na
-    // unidade a lista segue a mesma regra das outras telas: quem frequenta.
-    admin
-      .from('clients')
-      .select('id, name, phone')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true)
-      .order('name')
-      .limit(500),
   ])
 
-  // Consulta que falhou não é "a clínica não tem mapa": sem checar, a tela
-  // convidaria a recomeçar um planejamento que já existe.
-  if (error || clientesErro) {
-    console.error('[injetaveis]', error ?? clientesErro?.message)
+  // Consulta que falhou não é "a clínica não tem planejamento": sem checar, a
+  // tela convidaria a recomeçar um que já existe.
+  if (error) {
+    console.error('[injetaveis]', error)
     return (
       <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
-        Não foi possível carregar os mapas agora. Tente recarregar em instantes.
+        Não foi possível carregar os planejamentos agora. Tente recarregar em instantes.
       </div>
     )
   }
@@ -50,9 +38,9 @@ export async function ListaDeInjetaveis({
   return (
     <InjetaveisClient
       mapas={mapas}
-      clientes={(clientesRaw ?? []) as { id: string; name: string; phone: string | null }[]}
       produtos={catalogo.products.map(p => p.name)}
       slug={slug}
+      branchId={branchId ?? ''}
       podeEditar={can(ctx, 'medical_records', 'MANAGE')}
     />
   )
