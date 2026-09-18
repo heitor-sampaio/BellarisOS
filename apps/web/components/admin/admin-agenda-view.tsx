@@ -1,9 +1,11 @@
 ﻿'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
+import { AppointmentModal } from '@/components/branch/appointment-modal'
 
 // -- Tipos ---------------------------------------------------------------------
 type AgendaView = 'day' | 'week'
@@ -33,6 +35,8 @@ interface Props {
   /** Unidade do recorte atual; vazio = rede inteira. */
   unidadeId:    string
   appointments: Appointment[]
+  /** Marcar horário daqui. Falso para quem só tem agenda em "Ver". */
+  podeAgendar:  boolean
 }
 
 // -- Constantes visuais --------------------------------------------------------
@@ -412,9 +416,10 @@ function StatusLegend() {
 
 // -- Componente principal ------------------------------------------------------
 export function AdminAgendaView({
-  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments,
+  view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, podeAgendar,
 }: Props) {
   const router = useRouter()
+  const [agendando, setAgendando] = useState(false)
 
   const mondayStr = getMondayOf(selectedDate)
 
@@ -530,6 +535,15 @@ export function AdminAgendaView({
             onSelect={(k) => navigate(selectedDate, k as AgendaView)}
             ariaLabel="Modo de visualização"
           />
+
+          {/* Agendar daqui. A rede via a agenda das unidades mas não conseguia
+              marcar nada: para isso era preciso entrar no portal de uma delas. */}
+          {podeAgendar && (
+            <button type="button" onClick={() => setAgendando(true)} className="btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              <Plus size={14} /> Agendar
+            </button>
+          )}
         </div>
       </div>
 
@@ -571,6 +585,21 @@ export function AdminAgendaView({
 
       {/* Legenda */}
       <StatusLegend />
+
+      {/* O mesmo modal do portal da unidade — aqui ele pergunta a unidade
+          antes, porque na rede não existe uma corrente. */}
+      {agendando && (
+        <AppointmentModal
+          branchId={unidadeId}
+          slug=""
+          procedures={[]}
+          professionals={[]}
+          rooms={[]}
+          unidades={todasUnidades}
+          onClose={() => setAgendando(false)}
+          onSuccess={() => { setAgendando(false); router.refresh() }}
+        />
+      )}
 
     </div>
   )

@@ -1,21 +1,28 @@
 'use client'
 
-import { useActionState, useEffect, useState, useMemo } from 'react'
-import { addAppointment } from '@/actions/appointments'
-import { X, Calendar, Search, UserPlus } from 'lucide-react'
+import { useActionState, useEffect, useState, useMemo, useRef } from 'react'
+import { addAppointment, dadosParaAgendar, buscarClientesParaAgendar } from '@/actions/appointments'
+import { X, Calendar, Search, UserPlus, Loader2 } from 'lucide-react'
 
 interface Client      { id: string; name: string; phone: string }
 interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number; is_evaluation?: boolean }
 interface Professional { id: string; name: string }
 interface Room        { id: string; name: string }
+interface Unidade     { id: string; name: string; slug: string }
 
 interface AppointmentModalProps {
+  /** Unidade do agendamento. Vazio no portal da rede, onde ela é escolhida aqui. */
   branchId:      string
   slug:          string
-  clients:       Client[]
   procedures:    Procedure[]
   professionals: Professional[]
   rooms:         Room[]
+  /**
+   * Unidades da rede. Quando vem preenchida, o modal pergunta em qual unidade é
+   * o atendimento e carrega procedimentos, profissionais e salas dela — no
+   * portal da rede não existe "a filial atual".
+   */
+  unidades?:     Unidade[]
   defaultDate?:  string   // ISO datetime hint (from calendar click)
   onClose:       () => void
   onSuccess:     () => void
@@ -33,8 +40,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export function AppointmentModal({
-  branchId, slug, clients, procedures, professionals, rooms,
-  defaultDate, onClose, onSuccess,
+  branchId, slug, procedures, professionals, rooms,
+  unidades, defaultDate, onClose, onSuccess,
 }: AppointmentModalProps) {
   const [state, formAction, pending] = useActionState(addAppointment, undefined)
   const [clientSearch, setClientSearch] = useState('')
@@ -45,21 +52,56 @@ export function AppointmentModal({
   // A ficha completa cria o login do portal (e-mail + CPF) — pedir isso para
   // marcar um horário é pedir na hora errada. O cliente nasce com o que a
   // pessoa deu e ganha o resto quando (e se) voltar.
-  const [novoContato, setNovoContato] = useState(clients.length === 0)
+  const [novoContato, setNovoContato] = useState(false)
   const [novoNome,    setNovoNome]    = useState('')
   const [novoTelefone, setNovoTelefone] = useState('')
 
+  // -- Unidade ----------------------------------------------------------------
+  // No portal da unidade ela já veio por prop; na rede é escolhida aqui, e cada
+  // troca recarrega o que é dela: procedimentos, profissionais e salas.
+  const escolheUnidade = (unidades?.length ?? 0) > 0
+  const [unidadeId, setUnidadeId] = useState(branchId || unidades?.[0]?.id || '')
+  const [dados, setDados] = useState({ procedures, professionals, rooms, slug })
+  const [carregandoUnidade, setCarregandoUnidade] = useState(false)
+
+  useEffect(() => {
+    if (!escolheUnidade || !unidadeId) return
+    let vivo = true
+    setCarregandoUnidade(true)
+    dadosParaAgendar(unidadeId).then(d => {
+      if (!vivo) return
+      setDados(d)
+      setCarregandoUnidade(false)
+    })
+    return () => { vivo = false }
+  }, [escolheUnidade, unidadeId])
+
   useEffect(() => { if (state?.success) { onSuccess(); onClose() } }, [state?.success])
 
-  // Telefone se compara por dígitos: quem busca digita "47991234567" e o
-  // cadastro guardou "(47) 99123-4567" — comparar o texto cru não achava.
-  const soDigitos = (v: string) => v.replace(/\D/g, '')
-  const buscaDigitos = soDigitos(clientSearch)
-  const filteredClients = clientSearch.length >= 1
-    ? clients.filter(c =>
-        c.name.toLowerCase().includes(clientSearch.toLowerCase())
-        || (buscaDigitos.length >= 3 && soDigitos(c.phone).includes(buscaDigitos)))
-    : []
+  // -- Busca de cliente -------------------------------------------------------
+  // No servidor, e não sobre uma lista carregada na tela: o telefone precisa ser
+  // comparado por dígitos ("(47) 99123-4567" contra "47991234567"), e trazer a
+  // rede inteira para filtrar aqui para de funcionar quando a base cresce.
+  const [achados, setAchados] = useState<Client[]>([])
+  const [buscando, setBuscando] = useState(false)
+  const termoRef = useRef('')
+
+  useEffect(() => {
+    const termo = clientSearch.trim()
+    termoRef.current = termo
+    if (termo.length < 2) { setAchados([]); setBuscando(false); return }
+
+    setBuscando(true)
+    const t = setTimeout(async () => {
+      const res = await buscarClientesParaAgendar(termo)
+      // Resposta atrasada não pode sobrescrever a busca atual: sem esta guarda,
+      // o resultado de "De" chegava depois do de "Demo 05".
+      if (termoRef.current !== termo) return
+      setAchados(res.clientes)
+      setBuscando(false)
+    }, 250)
+    return () => clearTimeout(t)
+  }, [clientSearch])
 
   const telefoneOk = novoTelefone.replace(/\D/g, '').length >= 10
   const contatoOk  = novoContato && novoNome.trim().length >= 2 && telefoneOk
@@ -122,9 +164,19 @@ export function AppointmentModal({
         </div>
 
         <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <input type="hidden" name="_branchId" value={branchId} />
-          <input type="hidden" name="_slug" value={slug} />
+          <input type="hidden" name="_branchId" value={unidadeId} />
+          <input type="hidden" name="_slug" value={dados.slug} />
           <input type="hidden" name="client_id" value={selectedClient?.id ?? ''} />
+
+          {/* Na rede o atendimento precisa dizer de qual unidade é: é ela que
+              tem a sala, a profissional e a agenda. */}
+          {escolheUnidade && (
+            <Field label="Unidade *">
+              <select className="field" value={unidadeId} onChange={e => setUnidadeId(e.target.value)}>
+                {unidades!.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </Field>
+          )}
 
           {/* Quem será atendido */}
           <Field label="Cliente *">
@@ -149,13 +201,11 @@ export function AppointmentModal({
                     <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
                       A ficha completa (CPF, e-mail) pode ser preenchida depois.
                     </span>
-                    {clients.length > 0 && (
-                      <button type="button"
-                        onClick={() => { setNovoContato(false); setNovoNome(''); setNovoTelefone('') }}
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand)', fontWeight: 700, fontSize: 'var(--text-xs-sz)', whiteSpace: 'nowrap' }}>
-                        Buscar cliente cadastrado
-                      </button>
-                    )}
+                    <button type="button"
+                      onClick={() => { setNovoContato(false); setNovoNome(''); setNovoTelefone('') }}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand)', fontWeight: 700, fontSize: 'var(--text-xs-sz)', whiteSpace: 'nowrap' }}>
+                      Buscar cliente cadastrado
+                    </button>
                   </div>
                 </div>
               ) : selectedClient ? (
@@ -193,8 +243,12 @@ export function AppointmentModal({
                       boxShadow: '0 8px 24px -6px rgba(34,22,25,.12)',
                       maxHeight: 200, overflow: 'auto',
                     }}>
-                      {filteredClients.length > 0 ? (
-                        filteredClients.slice(0, 8).map(c => (
+                      {buscando ? (
+                        <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+                          <Loader2 size={12} className="animate-spin" /> Procurando…
+                        </div>
+                      ) : achados.length > 0 ? (
+                        achados.map(c => (
                           <button
                             key={c.id} type="button"
                             onClick={() => { setSelectedClient(c); setClientSearch(''); setShowClientList(false) }}
@@ -250,9 +304,9 @@ export function AppointmentModal({
               rede define preço, duração e ficha, e o atendimento herda de lá
               que é uma avaliação. */}
           <Field label="Procedimento *">
-            <select name="procedure_id" required className="field">
-              <option value="">Selecione o procedimento…</option>
-              {procedures.map(p => (
+            <select name="procedure_id" required className="field" disabled={carregandoUnidade}>
+              <option value="">{carregandoUnidade ? 'Carregando…' : 'Selecione o procedimento…'}</option>
+              {dados.procedures.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.is_evaluation ? '★ ' : ''}{p.name} — {p.duration_min}min — R$ {parseFloat(String(p.price)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </option>
@@ -262,16 +316,16 @@ export function AppointmentModal({
 
           <div className="form-2col">
             <Field label="Profissional *">
-              <select name="professional_id" required className="field">
-                <option value="">Selecione…</option>
-                {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              <select name="professional_id" required className="field" disabled={carregandoUnidade}>
+                <option value="">{carregandoUnidade ? 'Carregando…' : 'Selecione…'}</option>
+                {dados.professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </Field>
 
             <Field label="Sala / Cabine">
               <select name="room_id" className="field">
                 <option value="">Sem sala definida</option>
-                {rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                {dados.rooms.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
             </Field>
           </div>

@@ -25,7 +25,6 @@ function toLocalDT(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-interface Client      { id: string; name: string; phone: string }
 interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number }
 interface Professional { id: string; name: string }
 interface Room        { id: string; name: string }
@@ -35,7 +34,6 @@ interface AgendaCalendarProps {
   branchName:    string
   slug:          string
   events:        CalendarEvent[]
-  clients:       Client[]
   procedures:    Procedure[]
   professionals: Professional[]
   rooms:         Room[]
@@ -117,7 +115,7 @@ function todayDate(view: ViewMode): Date {
 // -- Component ----------------------------------------------------------------
 
 export function AgendaCalendar({
-  branchId, branchName, slug, events, clients, procedures, professionals, rooms, canWrite, userRole,
+  branchId, branchName, slug, events, procedures, professionals, rooms, canWrite, userRole,
 }: AgendaCalendarProps) {
   const router = useRouter()
 
@@ -318,7 +316,6 @@ export function AgendaCalendar({
         <AppointmentModal
           branchId={branchId}
           slug={slug}
-          clients={clients}
           procedures={procedures}
           professionals={professionals}
           rooms={rooms}

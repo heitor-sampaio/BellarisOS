@@ -49,21 +49,17 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
     appointmentsQuery = appointmentsQuery.eq('professional_id', ctx.internalUserId)
   }
 
+  // A lista de clientes saiu daqui: a busca do agendamento passou a ser feita
+  // no servidor, por nome ou telefone. Carregar a filial inteira para filtrar
+  // em JavaScript para de funcionar quando a base cresce — e não achava o
+  // telefone mascarado de qualquer forma.
   const [
     { data: rawAppointments, error: apptErr },
-    { data: clients },
     procedures,
     professionals,
     rooms,
   ] = await Promise.all([
     appointmentsQuery,
-
-    supabase
-      .from('clients')
-      .select('id, name, phone')
-      .eq('branch_id', branchId)
-      .eq('is_active', true)
-      .order('name'),
 
     getCachedBranchProcedures(branchId, ctx.tenantId!),
     getCachedBranchProfessionals(branchId, ctx.tenantId!),
@@ -123,7 +119,6 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
         branchName={branch.name}
         slug={slug}
         events={events}
-        clients={clients ?? []}
         procedures={procedures ?? []}
         professionals={professionals ?? []}
         rooms={rooms ?? []}

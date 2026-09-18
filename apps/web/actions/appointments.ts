@@ -7,7 +7,9 @@ import { ptBR } from 'date-fns/locale'
 import { getTenantContext, assertClient, assertPermission, isOwnScope } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getCachedBranchProfessionals } from '@/lib/cached-queries'
+import {
+  getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch,
+} from '@/lib/cached-queries'
 import { getOpenCashRegisterId } from '@/lib/cash-register'
 import { notifyClient, notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots } from '@/lib/appointments/core'
@@ -1555,5 +1557,85 @@ export async function confirmAndRateAppointment(params: {
     return { ok: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+  }
+}
+
+// --- Apoio ao modal de agendamento --------------------------------
+//
+// A agenda da REDE não tem "a filial atual": a unidade é escolhida na hora, e
+// procedimentos, profissionais e salas mudam com ela. Por isso estes dados vêm
+// sob demanda, em vez de virem prontos da página como no portal da unidade.
+
+export interface DadosParaAgendar {
+  procedures:    { id: string; name: string; category: string; duration_min: number; price: number; is_evaluation: boolean }[]
+  professionals: { id: string; name: string }[]
+  rooms:         { id: string; name: string }[]
+  slug:          string
+}
+
+export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgendar> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'MANAGE')
+
+  const vazio: DadosParaAgendar = { procedures: [], professionals: [], rooms: [], slug: '' }
+  if (!branchId) return vazio
+
+  const admin = createAdminClient()
+  const { data: branch } = await admin
+    .from('branches')
+    .select('id, slug')
+    .eq('id', branchId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+  if (!branch) return vazio
+
+  const [procedures, professionals, rooms] = await Promise.all([
+    getCachedBranchProcedures(branchId, ctx.tenantId!),
+    getCachedBranchProfessionals(branchId, ctx.tenantId!),
+    getCachedRoomsByBranch(branchId, ctx.tenantId!),
+  ])
+
+  type Proc = { id: string; name: string; category: string; duration_min: number; price: number; is_evaluation?: boolean }
+  return {
+    procedures: (procedures as Proc[]).map(p => ({
+      id: p.id, name: p.name, category: p.category,
+      duration_min: p.duration_min, price: Number(p.price),
+      is_evaluation: Boolean(p.is_evaluation),
+    })),
+    professionals: (professionals as { id: string; name: string }[]).map(p => ({ id: p.id, name: p.name })),
+    rooms:         (rooms as { id: string; name: string }[]).map(r => ({ id: r.id, name: r.name })),
+    slug:          branch.slug as string,
+  }
+}
+
+/**
+ * Clientes que casam com o termo — nome ou telefone.
+ *
+ * A busca acontece no banco (`buscar_clientes`) porque o telefone precisa ser
+ * comparado por dígitos: o cadastro guarda "(47) 99123-4567" e quem procura
+ * digita "47991234567". E porque carregar a rede inteira na tela para filtrar
+ * em JavaScript para de funcionar assim que a base cresce.
+ */
+export async function buscarClientesParaAgendar(termo: string): Promise<{
+  clientes: { id: string; name: string; phone: string }[]
+}> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'VIEW')
+
+  const busca = termo?.trim() ?? ''
+  if (busca.length < 2) return { clientes: [] }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin.rpc('buscar_clientes', {
+    p_tenant: ctx.tenantId!,
+    p_termo:  busca,
+    p_limite: 10,
+  })
+  if (error) return { clientes: [] }
+
+  return {
+    clientes: ((data ?? []) as { id: string; name: string; phone: string | null }[]).map(c => ({
+      id: c.id, name: c.name, phone: c.phone ?? '',
+    })),
   }
 }
