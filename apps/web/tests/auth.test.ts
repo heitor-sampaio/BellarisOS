@@ -3,6 +3,7 @@ import type { TenantContext } from '@estetica-os/types'
 import {
   can, podeReceber, ownerFilter, isOwnScope,
   assertPermission, assertAnyPermission, assertPodeReceber, getRedirectPath,
+  podeVerRelatorio, assertRelatorio,
 } from '@/lib/auth'
 import { NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
 
@@ -23,6 +24,7 @@ function ctx(over: Partial<TenantContext> = {}): TenantContext {
     clientId:         null,
     permissions:      { ...NO_PERMISSIONS },
     scopes:           { ...ALL_SCOPES },
+    reportTabs:       [],
     providesServices: false,
     isNetworkAdmin:   false,
     isClient:         false,
@@ -103,6 +105,35 @@ describe('assertPermission / assertAnyPermission', () => {
     const c = ctx({ permissions: { ...NO_PERMISSIONS, forms: 'MANAGE' } })
     expect(() => assertAnyPermission(c, ['settings', 'roles', 'forms'], 'MANAGE')).not.toThrow()
     expect(() => assertAnyPermission(ctx(), ['settings', 'roles', 'forms'], 'MANAGE')).toThrow('Forbidden')
+  })
+})
+
+describe('abas de Relatórios', () => {
+  it('a aba precisa do módulo E da aba — uma coisa sem a outra não abre', () => {
+    const semModulo = ctx({ reportTabs: ['comercial'] })
+    const semAba    = ctx({ permissions: { ...NO_PERMISSIONS, reports: 'VIEW' } })
+    expect(podeVerRelatorio(semModulo, 'comercial')).toBe(false)
+    expect(podeVerRelatorio(semAba, 'comercial')).toBe(false)
+  })
+
+  it('o time comercial vê o funil e não vê o faturamento', () => {
+    const comercial = ctx({
+      permissions: { ...NO_PERMISSIONS, reports: 'VIEW', crm: 'MANAGE' },
+      reportTabs:  ['comercial', 'agenda'],
+    })
+    expect(podeVerRelatorio(comercial, 'comercial')).toBe(true)
+    expect(podeVerRelatorio(comercial, 'agenda')).toBe(true)
+    expect(podeVerRelatorio(comercial, 'financeiro')).toBe(false)
+    expect(() => assertRelatorio(comercial, 'financeiro')).toThrow('Forbidden')
+    expect(() => assertRelatorio(comercial, 'comercial')).not.toThrow()
+  })
+
+  it('financial em MANAGE não abre o relatório financeiro por tabela', () => {
+    const caixa = ctx({
+      permissions: { ...NO_PERMISSIONS, reports: 'VIEW', financial: 'MANAGE' },
+      reportTabs:  ['agenda'],
+    })
+    expect(podeVerRelatorio(caixa, 'financeiro')).toBe(false)
   })
 })
 

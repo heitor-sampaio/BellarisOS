@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getTenantContext } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
@@ -47,6 +48,22 @@ export async function ReportsBiSection({
   const ctx   = { tenantId }
 
   const branchIds = branches.map(b => b.id)
+
+  // -- Abas liberadas para o cargo -----------------------------------
+  // `reports: VIEW` abre a tela; QUAIS relatórios ela mostra é escolhido aba a
+  // aba na tela de Cargos. Resolver aqui — e não em cada página — garante que
+  // os dois portais obedecem à mesma regra, e que ninguém carrega dado de uma
+  // aba que não pode ver só porque digitou `?tab=` na URL.
+  const abasPermitidas = (await getTenantContext()).reportTabs
+  if (abasPermitidas.length === 0) {
+    return (
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+        Nenhum relatório liberado para o seu cargo.
+      </div>
+    )
+  }
+  // Aba pedida na URL só vale se o cargo tiver: senão cai na primeira liberada.
+  if (!abasPermitidas.includes(tab)) tab = abasPermitidas[0]!
 
   // -- Período -------------------------------------------------------
   // Janela no fuso do negócio, com período anterior de mesma duração decorrida.
@@ -309,6 +326,7 @@ export async function ReportsBiSection({
         allowNetwork={allowNetwork}
         showBranchFilter={showBranchFilter}
         tab={tab}
+        abasPermitidas={abasPermitidas}
         period={period}
         periodLabel={periodLabel}
         customFrom={rawFrom}

@@ -8,6 +8,7 @@ import { saveRolePermissions } from '@/actions/permissions'
 import {
   ALL_MODULES, MODULE_LABELS, MODULE_LEVELS, LEVEL_LABELS,
   SCOPE_LABELS, isScoped,
+  ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS,
 } from '@/lib/permissions'
 import {
   MODULE_GROUPS, LEVEL_COPY, SCOPE_NOTE, SENSITIVE_NOTE,
@@ -15,7 +16,7 @@ import {
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
 import type {
-  AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions,
+  AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ReportTab,
 } from '@estetica-os/types'
 
 export interface EditorRole {
@@ -35,6 +36,8 @@ export interface RoleModulePermission {
 interface RolesEditorProps {
   roles:       EditorRole[]
   permsByRole: Record<string, Partial<Record<AppModule, RoleModulePermission>>>
+  /** Abas de Relatórios por cargo. Cargo ausente = nenhuma aba, sem relatório. */
+  tabsByRole:  Record<string, ReportTab[]>
   /** Cargos e Equipe são módulos diferentes: sem `team`, o atalho não é link. */
   canSeeTeam:  boolean
 }
@@ -59,7 +62,7 @@ function buildScopes(perms: Partial<Record<AppModule, RoleModulePermission>>): S
   })) as Scopes
 }
 
-export function RolesEditor({ roles, permsByRole, canSeeTeam }: RolesEditorProps) {
+export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam }: RolesEditorProps) {
   const editable = roles.filter(r => !r.is_system)
   const [selectedId, setSelectedId] = useState<string | null>(editable[0]?.id ?? roles[0]?.id ?? null)
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
@@ -93,6 +96,7 @@ export function RolesEditor({ roles, permsByRole, canSeeTeam }: RolesEditorProps
             key={selected.id}
             role={selected}
             perms={permsByRole[selected.id] ?? {}}
+            tabs={tabsByRole[selected.id] ?? []}
             onDirtyChange={setDirty}
           />
         )}
@@ -394,24 +398,29 @@ function SystemRoleCard({ role }: { role: EditorRole }) {
 // ─── Matriz de um cargo ──────────────────────────────────────────────────────
 
 function PermissionMatrix({
-  role, perms, onDirtyChange,
+  role, perms, tabs, onDirtyChange,
 }: {
   role: EditorRole
   perms: Partial<Record<AppModule, RoleModulePermission>>
+  tabs: ReportTab[]
   onDirtyChange: (dirty: boolean) => void
 }) {
   const [state, action, pending] = useActionState(saveRolePermissions, undefined)
   const [levels, setLevels] = useState<Levels>(() => buildLevels(perms))
   const [scopes, setScopes] = useState<Scopes>(() => buildScopes(perms))
-  const [baseline, setBaseline] = useState(() => ({ levels: buildLevels(perms), scopes: buildScopes(perms) }))
+  const [reportTabs, setReportTabs] = useState<ReportTab[]>(() => [...tabs])
+  const [baseline, setBaseline] = useState(() => ({
+    levels: buildLevels(perms), scopes: buildScopes(perms), reportTabs: [...tabs],
+  }))
   const [dismissed, setDismissed] = useState(false)
 
   const dirty = useMemo(
     () => ALL_MODULES.some(m =>
       levels[m] !== baseline.levels[m] ||
       (isScoped(m) && levels[m] !== 'NONE' && scopes[m] !== baseline.scopes[m]),
-    ),
-    [levels, scopes, baseline],
+    ) || reportTabs.length !== baseline.reportTabs.length
+      || reportTabs.some(t => !baseline.reportTabs.includes(t)),
+    [levels, scopes, reportTabs, baseline],
   )
 
   useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
@@ -420,7 +429,7 @@ function PermissionMatrix({
   // mensagem de sucesso volta a valer.
   useEffect(() => {
     if (state?.success) {
-      setBaseline({ levels, scopes })
+      setBaseline({ levels, scopes, reportTabs })
       setDismissed(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -432,6 +441,10 @@ function PermissionMatrix({
   }
   function setScope(module: AppModule, v: PermissionScope) {
     setScopes(prev => ({ ...prev, [module]: v }))
+    setDismissed(true)
+  }
+  function toggleReportTab(t: ReportTab) {
+    setReportTabs(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
     setDismissed(true)
   }
 
@@ -446,6 +459,12 @@ function PermissionMatrix({
           <input type="hidden" name={`level:${m}`} value={levels[m]} />
           {isScoped(m) && <input type="hidden" name={`scope:${m}`} value={scopes[m]} />}
         </React.Fragment>
+      ))}
+      {/* Aba marcada vira `report:<aba>=on`, como um checkbox — a action só
+          grava as que chegam. Com Relatórios em "Sem acesso" nenhuma é enviada,
+          senão o cargo guardaria abas que não tem como abrir. */}
+      {levels.reports !== 'NONE' && reportTabs.map(t => (
+        <input key={t} type="hidden" name={`report:${t}`} value="on" />
       ))}
 
       <div style={{ marginBottom: 20 }}>
@@ -487,8 +506,10 @@ function PermissionMatrix({
                   level={levels[module]}
                   scope={scopes[module]}
                   last={i === group.modules.length - 1}
+                  reportTabs={reportTabs}
                   onLevel={v => setLevel(module, v)}
                   onScope={v => setScope(module, v)}
+                  onReportTab={toggleReportTab}
                 />
               ))}
             </div>
@@ -496,7 +517,7 @@ function PermissionMatrix({
         ))}
       </div>
 
-      <MenuPreview levels={levels} />
+      <MenuPreview levels={levels} reportTabs={reportTabs} />
 
       {state?.error && (
         <p style={{
@@ -533,14 +554,16 @@ function PermissionMatrix({
 }
 
 function ModuleRow({
-  module, level, scope, last, onLevel, onScope,
+  module, level, scope, last, reportTabs, onLevel, onScope, onReportTab,
 }: {
   module: AppModule
   level: PermissionLevel
   scope: PermissionScope
   last: boolean
+  reportTabs: ReportTab[]
   onLevel: (v: PermissionLevel) => void
   onScope: (v: PermissionScope) => void
+  onReportTab: (t: ReportTab) => void
 }) {
   const scoped      = isScoped(module)
   const enabled     = level !== 'NONE'
@@ -621,15 +644,77 @@ function ModuleRow({
           )}
         </div>
       )}
+
+      {/* Quais relatórios, um a um. "Ver relatórios" num nível só entregava o
+          faturamento da rede junto com o funil de leads. */}
+      {module === 'reports' && enabled && (
+        <AbasDeRelatorio marcadas={reportTabs} onToggle={onReportTab} />
+      )}
+    </div>
+  )
+}
+
+function AbasDeRelatorio({
+  marcadas, onToggle,
+}: {
+  marcadas: ReportTab[]
+  onToggle: (t: ReportTab) => void
+}) {
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 7 }}>
+        <span className="overline">Relatórios liberados</span>
+        {marcadas.length === 0 && (
+          <span style={{
+            fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)',
+          }}>
+            nenhum marcado — a tela não abre
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+        {ALL_REPORT_TABS.map(t => {
+          const on = marcadas.includes(t)
+          return (
+            <button
+              key={t}
+              type="button"
+              onClick={() => onToggle(t)}
+              title={REPORT_TAB_HINTS[t]}
+              aria-pressed={on}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '5px 11px', borderRadius: 999, cursor: 'pointer',
+                fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)',
+                border: '1.5px solid',
+                transition: 'all 120ms',
+                background:  on ? 'var(--brand)' : 'var(--surface)',
+                color:       on ? '#fff'         : 'var(--text-muted)',
+                borderColor: on ? 'var(--brand)' : 'var(--border)',
+              }}
+            >
+              {on && <Check size={11} />}
+              {REPORT_TAB_LABELS[t]}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
 
 // ─── Pré-visualização ────────────────────────────────────────────────────────
 
-function MenuPreview({ levels }: { levels: Levels }) {
+function MenuPreview({ levels, reportTabs }: { levels: Levels; reportTabs: ReportTab[] }) {
   // A pré-visualização usa o estado NÃO salvo: é para conferir antes de gravar.
-  const permissions = levels as ResolvedPermissions
+  // Relatórios sem nenhuma aba marcada não abre nada — o contexto de
+  // autorização faz a mesma conta (`buildContext`), e aqui ela precisa
+  // aparecer, senão a prévia promete uma entrada de menu que não existe.
+  const permissions = {
+    ...levels,
+    reports: reportTabs.length === 0 ? 'NONE' : levels.reports,
+  } as ResolvedPermissions
   const network = menuLabelsFor(ADMIN_MENU, permissions)
   const branch  = menuLabelsFor(BRANCH_MENU, permissions)
 

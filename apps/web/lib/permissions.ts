@@ -1,11 +1,11 @@
-import { APP_MODULES, SCOPED_MODULES } from '@estetica-os/types'
+import { APP_MODULES, SCOPED_MODULES, REPORT_TABS } from '@estetica-os/types'
 import type {
   AppModule, PermissionLevel, PermissionScope, ScopedModule,
-  ResolvedPermissions, ResolvedScopes,
+  ResolvedPermissions, ResolvedScopes, ReportTab,
 } from '@estetica-os/types'
 
 // Re-export para consumidores que importam de '@/lib/permissions'
-export type { AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ResolvedScopes }
+export type { AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ResolvedScopes, ReportTab }
 
 export const ALL_MODULES: readonly AppModule[] = APP_MODULES
 
@@ -134,6 +134,48 @@ export function resolveScopes(
   return Object.fromEntries(
     APP_MODULES.map(m => [m, (isScoped(m) ? map.get(m) : 'ALL') ?? 'ALL'] as const),
   ) as ResolvedScopes
+}
+
+// ─── Abas de Relatórios ──────────────────────────────────────────────────────
+
+export const ALL_REPORT_TABS: readonly ReportTab[] = REPORT_TABS
+
+export const REPORT_TAB_LABELS: Record<ReportTab, string> = {
+  overview:      'Visão geral',
+  financeiro:    'Financeiro',
+  agenda:        'Agenda',
+  clientes:      'Clientes',
+  procedimentos: 'Procedimentos',
+  profissionais: 'Profissionais',
+  estoque:       'Estoque',
+  comercial:     'Comercial',
+}
+
+/** O que cada aba entrega, para quem monta o cargo saber o que está liberando. */
+export const REPORT_TAB_HINTS: Record<ReportTab, string> = {
+  overview:      'Faturamento, lucro e o resumo do período inteiro.',
+  financeiro:    'Receita, despesa, DRE, formas de pagamento e parcelas a vencer.',
+  agenda:        'Volume, cancelamentos, faltas e horários mais procurados.',
+  clientes:      'Novos, retorno, gasto médio e perfil de quem frequenta.',
+  procedimentos: 'Execuções, margem e custo por procedimento.',
+  profissionais: 'Produção e comissões por profissional.',
+  estoque:       'Valor parado, giro, itens críticos e vencimentos.',
+  comercial:     'Funil de leads, conversão e ranking por vendedor.',
+}
+
+/**
+ * Abas liberadas para o cargo. Sem linha nenhuma, sem relatório — o contrário
+ * do escopo, que por omissão libera. Aqui a omissão fecha porque a decisão de
+ * produto foi começar fechado e abrir aba por aba (2026-09-18).
+ */
+export function resolveReportTabs(
+  rows: { tab: string }[],
+  opts?: { allAccess?: boolean },
+): ReportTab[] {
+  if (opts?.allAccess) return [...REPORT_TABS]
+  const marcadas = new Set(rows.map(r => r.tab))
+  // Filtra pela lista canônica e devolve na ordem da tela, não na do banco.
+  return REPORT_TABS.filter(t => marcadas.has(t))
 }
 
 // Rótulo pt-BR de cada nível (para selects/segmented controls)

@@ -3,7 +3,7 @@ import { getTenantContext, can } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RolesEditor } from '@/components/admin/roles-editor'
-import type { AppModule, PermissionLevel, PermissionScope } from '@estetica-os/types'
+import type { AppModule, PermissionLevel, PermissionScope, ReportTab } from '@estetica-os/types'
 import type { RoleModulePermission } from '@/components/admin/roles-editor'
 import { SettingsIntegrations } from '@/components/admin/settings-integrations'
 import { SettingsBranches } from '@/components/admin/settings-branches'
@@ -106,7 +106,7 @@ export async function Configuracoes({
   const wantsRoles = activeTab === 'permissions'
   const wantsForms = activeModule === 'forms'
 
-  const [{ data: allRoles, error: rolesError }, { data: overrides }, { data: integrationRows }, { data: anamnesisRows }, { data: attendanceRows }] = await Promise.all([
+  const [{ data: allRoles, error: rolesError }, { data: overrides }, { data: abasDeRelatorio }, { data: integrationRows }, { data: anamnesisRows }, { data: attendanceRows }] = await Promise.all([
     // Admin client de propósito: a policy de SELECT em `users` limita quem não
     // é da rede à própria unidade, e a contagem sairia menor do que a real —
     // "0 pessoas" num cargo que tem gente em outra unidade é pior que nada.
@@ -122,6 +122,12 @@ export async function Configuracoes({
       ? supabase
           .from('role_permissions')
           .select('role_id, module, level, scope')
+          .eq('tenant_id', ctx.tenantId!)
+      : { data: [] },
+    wantsRoles
+      ? supabase
+          .from('role_report_tabs')
+          .select('role_id, tab')
           .eq('tenant_id', ctx.tenantId!)
       : { data: [] },
     activeTab === 'integrations'
@@ -178,6 +184,13 @@ export async function Configuracoes({
     is_system:   r.is_system,
     memberCount: r.users?.[0]?.count ?? 0,
   }))
+
+  // Mapa cargo → abas de Relatórios. Cargo ausente fica sem nenhuma: é a
+  // decisão de produto de começar fechado e abrir aba a aba.
+  const tabsByRole: Record<string, ReportTab[]> = {}
+  for (const linha of (abasDeRelatorio ?? []) as { role_id: string; tab: string }[]) {
+    (tabsByRole[linha.role_id] ??= []).push(linha.tab as ReportTab)
+  }
 
   // Mapa cargo → { módulo: { nível, escopo } } para o editor
   const permsByRole: Record<string, Partial<Record<AppModule, RoleModulePermission>>> = {}
@@ -255,6 +268,7 @@ export async function Configuracoes({
           <RolesEditor
             roles={editorRoles}
             permsByRole={permsByRole}
+            tabsByRole={tabsByRole}
             canSeeTeam={atalhoParaEquipe && can(ctx, 'team', 'MANAGE')}
           />
         </div>

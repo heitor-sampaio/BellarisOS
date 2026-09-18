@@ -64,6 +64,8 @@ export interface ReportsBiProps {
    */
   allBranches?: { id: string; name: string; slug: string }[]
   tab: Tab
+  /** Abas que o cargo enxerga — a barra só mostra estas. */
+  abasPermitidas: Tab[]
   period: Period
   periodLabel: string
   customFrom?: string
@@ -1241,7 +1243,7 @@ export function ReportsBiView(props: ReportsBiProps) {
       {/* Tab nav + seletor de período na mesma linha */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <SegSelect
-          options={TABS}
+          options={TABS.filter(t => props.abasPermitidas.includes(t.key))}
           value={tab}
           onSelect={(k) => switchTab(k as Tab)}
           ariaLabel="Seção do relatório"

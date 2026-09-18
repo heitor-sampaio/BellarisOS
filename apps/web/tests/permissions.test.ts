@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   hasLevel, resolvePermissions, resolveScopes, isScoped,
   MODULE_LEVELS, ALL_MODULES, NO_PERMISSIONS, ALL_PERMISSIONS,
+  resolveReportTabs, ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS,
 } from '@/lib/permissions'
 
 describe('hasLevel', () => {
@@ -89,6 +90,32 @@ describe('MODULE_LEVELS', () => {
   it('declara níveis para os 14 módulos, sem sobra', () => {
     expect(Object.keys(MODULE_LEVELS).sort()).toEqual([...ALL_MODULES].sort())
     expect(ALL_MODULES).toHaveLength(14)
+  })
+})
+
+describe('resolveReportTabs', () => {
+  it('sem linha nenhuma, nenhum relatório — a omissão FECHA', () => {
+    expect(resolveReportTabs([])).toEqual([])
+  })
+
+  it('devolve na ordem da tela, não na do banco', () => {
+    const tabs = resolveReportTabs([{ tab: 'comercial' }, { tab: 'agenda' }, { tab: 'overview' }])
+    expect(tabs).toEqual(['overview', 'agenda', 'comercial'])
+  })
+
+  it('ignora aba que não existe mais', () => {
+    expect(resolveReportTabs([{ tab: 'marketing' }, { tab: 'estoque' }])).toEqual(['estoque'])
+  })
+
+  it('allAccess entrega todas', () => {
+    expect(resolveReportTabs([], { allAccess: true })).toEqual([...ALL_REPORT_TABS])
+  })
+
+  it('cada aba tem rótulo e explicação', () => {
+    for (const t of ALL_REPORT_TABS) {
+      expect(REPORT_TAB_LABELS[t]).toBeTruthy()
+      expect(REPORT_TAB_HINTS[t]).toBeTruthy()
+    }
   })
 })
 

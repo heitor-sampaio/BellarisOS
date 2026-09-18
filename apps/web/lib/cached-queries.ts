@@ -188,6 +188,25 @@ export function getCachedRolePermissions(tenantId: string, roleId: string) {
   )()
 }
 
+// ─── Abas de Relatórios por cargo ─────────────────────────────────────────────
+// Mesma tag das permissões: salvar a matriz do cargo invalida as duas coisas de
+// uma vez, e ninguém fica com a aba velha enquanto o cache não expira.
+export function getCachedRoleReportTabs(tenantId: string, roleId: string) {
+  return unstable_cache(
+    async (): Promise<{ tab: string }[]> => {
+      const admin = createAdminClient()
+      const { data } = await admin
+        .from('role_report_tabs')
+        .select('tab')
+        .eq('tenant_id', tenantId)
+        .eq('role_id', roleId)
+      return (data ?? []) as { tab: string }[]
+    },
+    [`role-report-tabs-${tenantId}-${roleId}`],
+    { revalidate: 600, tags: [`permissions:${tenantId}`] },
+  )()
+}
+
 // ─── Procedimentos da filial (base da rede + locais) ──────────────────────────
 export function getCachedBranchProcedures(branchId: string, tenantId: string) {
   return unstable_cache(

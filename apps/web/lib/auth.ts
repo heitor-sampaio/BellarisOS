@@ -2,13 +2,13 @@ import { cache } from 'react'
 import { createClient as createSupabaseJsClient } from '@supabase/supabase-js'
 import type {
   TenantContext, UserRole, JwtClaims, AppModule,
-  ResolvedPermissions, ResolvedScopes,
+  ResolvedPermissions, ResolvedScopes, ReportTab,
 } from '@estetica-os/types'
 import { createClient } from '@/lib/supabase/server'
-import { getCachedMember, getCachedRolePermissions } from '@/lib/cached-queries'
+import { getCachedMember, getCachedRolePermissions, getCachedRoleReportTabs } from '@/lib/cached-queries'
 import {
-  resolvePermissions, resolveScopes, hasLevel,
-  NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES,
+  resolvePermissions, resolveScopes, resolveReportTabs, hasLevel,
+  NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS,
 } from '@/lib/permissions'
 
 // Resolve permissões + campos derivados do membro a partir das claims do JWT.
@@ -35,19 +35,32 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
 
   let permissions: ResolvedPermissions
   let scopes: ResolvedScopes
+  let reportTabs: ReportTab[]
   if (isClient) {
     permissions = NO_PERMISSIONS
     scopes      = ALL_SCOPES
+    reportTabs  = []
   } else if (isNetworkAdmin) {
     permissions = ALL_PERMISSIONS
     scopes      = ALL_SCOPES
+    reportTabs  = [...ALL_REPORT_TABS]
   } else if (roleId && tenantId) {
-    const rows  = await getCachedRolePermissions(tenantId, roleId)
+    const [rows, tabRows] = await Promise.all([
+      getCachedRolePermissions(tenantId, roleId),
+      getCachedRoleReportTabs(tenantId, roleId),
+    ])
     permissions = resolvePermissions(rows)
     scopes      = resolveScopes(rows)
+    reportTabs  = resolveReportTabs(tabRows)
+
+    // Relatórios sem nenhuma aba é o mesmo que não ter relatórios: sem esta
+    // linha o menu mostraria a entrada e a tela abriria vazia, parecendo
+    // defeito em vez de permissão.
+    if (reportTabs.length === 0) permissions = { ...permissions, reports: 'NONE' }
   } else {
     permissions = NO_PERMISSIONS
     scopes      = ALL_SCOPES
+    reportTabs  = []
   }
 
   return {
@@ -62,6 +75,7 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     clientId: meta.client_id ?? null,
     permissions,
     scopes,
+    reportTabs,
     providesServices: member?.providesServices ?? false,
     isNetworkAdmin,
     isClient,
@@ -172,6 +186,22 @@ export function podeReceber(ctx: TenantContext): boolean {
 /** Barra quem não pode receber. */
 export function assertPodeReceber(ctx: TenantContext): void {
   if (!podeReceber(ctx)) throw new Error('Forbidden')
+}
+
+/**
+ * O cargo enxerga esta aba de Relatórios?
+ *
+ * `reports` sozinho é grosso demais — liberar relatórios ao time comercial
+ * entregava junto o faturamento da rede. A aba é escolhida uma a uma na tela de
+ * Cargos; aqui só se lê o que ficou gravado.
+ */
+export function podeVerRelatorio(ctx: TenantContext, tab: ReportTab): boolean {
+  return can(ctx, 'reports', 'VIEW') && ctx.reportTabs.includes(tab)
+}
+
+/** Barra quem não tem a aba. Use nas páginas que abrem um relatório direto. */
+export function assertRelatorio(ctx: TenantContext, tab: ReportTab): void {
+  if (!podeVerRelatorio(ctx, tab)) throw new Error('Forbidden')
 }
 
 /**

@@ -52,6 +52,28 @@ export type ScopedModule = typeof SCOPED_MODULES[number]
 export type ResolvedPermissions = Record<AppModule, PermissionLevel>
 export type ResolvedScopes      = Record<AppModule, PermissionScope>
 
+/**
+ * Abas de Relatórios, liberadas uma a uma por cargo.
+ *
+ * `reports` sozinho é grosso demais: o time comercial precisa do funil sem ver
+ * o faturamento da rede. A lista vive aqui porque três lugares dependem dela —
+ * o contexto de autorização, a tela de cargos e a própria tela de relatórios.
+ *
+ * A ordem é a das abas na tela.
+ */
+export const REPORT_TABS = [
+  'overview',
+  'financeiro',
+  'agenda',
+  'clientes',
+  'procedimentos',
+  'profissionais',
+  'estoque',
+  'comercial',
+] as const
+
+export type ReportTab = typeof REPORT_TABS[number]
+
 export interface JwtClaims {
   tenant_id: string | null
   branch_id: string | null
@@ -72,6 +94,7 @@ export interface TenantContext {
   clientId: string | null
   permissions: ResolvedPermissions  // nível resolvido por módulo
   scopes: ResolvedScopes            // alcance por módulo (OWN = só os próprios)
+  reportTabs: ReportTab[]           // abas de Relatórios liberadas para o cargo
   providesServices: boolean         // atende clientes (profissional)
   isNetworkAdmin: boolean
   isClient: boolean

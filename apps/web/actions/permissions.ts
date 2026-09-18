@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { ALL_MODULES, MODULE_LEVELS, isScoped } from '@/lib/permissions'
+import { ALL_MODULES, MODULE_LEVELS, isScoped, ALL_REPORT_TABS } from '@/lib/permissions'
 import type { PermissionLevel, PermissionScope } from '@estetica-os/types'
 
 const VALID_SCOPES: PermissionScope[] = ['OWN', 'ALL']
@@ -57,6 +57,28 @@ export async function saveRolePermissions(
     .upsert(rows, { onConflict: 'role_id,module' })
 
   if (error) return { error: 'Erro ao salvar permissões. Tente novamente.' }
+
+  // -- Abas de Relatórios ------------------------------------------------
+  // Vêm no mesmo formulário porque são o mesmo gesto: "o que este cargo
+  // acessa". Sem nenhuma marcada, o cargo fica sem relatório — e é por isso
+  // que o nível de `reports` sozinho não basta (ver `buildContext`).
+  const abas = ALL_REPORT_TABS.filter(t => formData.get(`report:${t}`) === 'on')
+
+  // Apaga e regrava: a lista é pequena e assim marcar e desmarcar na mesma
+  // salvada não deixa linha órfã de uma aba que saiu.
+  const { error: delErro } = await supabase
+    .from('role_report_tabs')
+    .delete()
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('role_id', roleId)
+  if (delErro) return { error: 'Erro ao salvar as abas de relatórios. Tente novamente.' }
+
+  if (abas.length > 0) {
+    const { error: insErro } = await supabase
+      .from('role_report_tabs')
+      .insert(abas.map(tab => ({ tenant_id: ctx.tenantId!, role_id: roleId, tab })))
+    if (insErro) return { error: 'Erro ao salvar as abas de relatórios. Tente novamente.' }
+  }
 
   revalidatePath('/admin/settings')
   revalidateTag(`permissions:${ctx.tenantId!}`, 'max')
