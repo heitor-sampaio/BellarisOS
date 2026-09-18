@@ -37,7 +37,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
       id, scheduled_at, duration_min, status, price, professional_id, is_evaluation,
       clients(name),
       procedures(name),
-      users(name)
+      users!professional_id(name)
     `)
     .eq('branch_id', branchId)
     .gte('scheduled_at', from)
@@ -50,7 +50,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
   }
 
   const [
-    { data: rawAppointments },
+    { data: rawAppointments, error: apptErr },
     { data: clients },
     procedures,
     professionals,
@@ -69,6 +69,12 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
     getCachedBranchProfessionals(branchId, ctx.tenantId!),
     getCachedRoomsByBranch(branchId, ctx.tenantId!),
   ])
+
+  // Agenda vazia é um fato; agenda que falhou é outra coisa. `appointments` tem
+  // duas chaves para `users` (`professional_id` e `created_by_id`), então o
+  // embed precisa dizer qual — sem isso o PostgREST recusa, o erro era
+  // descartado e a unidade inteira aparecia sem nenhum atendimento.
+  if (apptErr) throw new Error(`Erro ao carregar a agenda: ${apptErr.message}`)
 
   // Mapeia appointments para eventos do FullCalendar
   const events = (rawAppointments ?? []).map(a => {

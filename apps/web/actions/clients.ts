@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, assertAnyPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
@@ -9,6 +9,7 @@ import { getAdsConfig } from '@/lib/ads/factory'
 import { MetaAdsProvider } from '@/lib/ads/meta'
 import type { MetaAdsConfig } from '@/lib/ads/types'
 import { registrarEventoLead } from '@/lib/lead-events'
+import { garantirClienteRapido, ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
@@ -22,27 +23,30 @@ async function resolveBranch(tenantId: string, branchId: string) {
   return data
 }
 
-/**
- * Marca o contato como cliente.
- *
- * Fora de `addClient` porque a ligação acontece em dois caminhos — CPF novo e
- * CPF que já era de um cliente — e esquecer um deles deixaria a conversa sem o
- * selo, que é justamente o que o comercial precisa ver antes de responder.
- *
- * ⚠️ Não é export do arquivo `'use server'`: todo export daqui vira endpoint
- * público, e este grava vínculo sem autorizar nada por conta própria.
- */
-async function ligarContatoAoCliente(
-  admin: ReturnType<typeof createAdminClient>,
-  tenantId: string, conversationId: string, clientId: string,
-): Promise<void> {
-  const { error } = await admin
-    .from('conversations')
-    .update({ client_id: clientId, updated_at: new Date().toISOString() })
-    .eq('id', conversationId)
-    .eq('tenant_id', tenantId)
+// `ligarContatoAoCliente` mora em `lib/clients/cliente-rapido.ts`: o vínculo é
+// gravado por três caminhos (CPF novo, CPF que já era de um cliente, e o
+// cadastro rápido feito ao agendar), e esquecer um deixa a conversa sem o selo
+// que o comercial olha antes de responder.
 
-  if (error) console.error('[ligarContatoAoCliente]', error.message)
+// --- Cadastro rápido: só nome e telefone ---------------------------
+//
+// É o cadastro de quem vai ser atendido, não de quem vai usar o app. Sem CPF e
+// sem e-mail não há login — e é exatamente por isso que ele cabe no balcão e no
+// telefone, onde marcar o horário é o que importa.
+export async function cadastrarClienteRapido(input: {
+  nome: string; telefone: string; branchId: string; conversationId?: string | null
+}): Promise<{ clientId?: string; criado?: boolean; error?: string }> {
+  const ctx = await getTenantContext()
+  // Quem marca horário precisa poder registrar quem é a pessoa — senão a regra
+  // devolve o problema para a recepção sem lhe dar como resolver.
+  assertAnyPermission(ctx, ['clients', 'agenda'], 'MANAGE')
+
+  const admin = createAdminClient()
+  const res   = await garantirClienteRapido(admin, ctx, input)
+  if (res.error) return res
+
+  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+  return res
 }
 
 // --- Criar cliente ------------------------------------------------
@@ -122,6 +126,13 @@ export async function addClient(
     return { error: 'Já existe um cliente com este CPF nesta rede.' }
   }
 
+  // Mesma pessoa, cadastrada às pressas para marcar um horário.
+  //
+  // O cadastro rápido grava nome e telefone e deixa CPF nulo. Sem procurar por
+  // aqui, completar a ficha depois criaria um segundo cliente com o mesmo
+  // telefone — e o histórico de atendimento ficaria dividido entre os dois.
+  const jaExiste = await clienteRapidoDoTelefone(admin, ctx.tenantId!, phone)
+
   // 1) Conta de login PRIMEIRO (login = e-mail, senha = CPF). E-mail já usado → aborta sem criar cliente órfão.
   const { data: authUser, error: authErr } = await admin.auth.admin.createUser({
     email,
@@ -134,17 +145,19 @@ export async function addClient(
   }
   const authId = authUser.user.id
 
-  // 2) Cliente (com auth_id já vinculado)
-  const { data: client, error } = await admin
-    .from('clients')
-    .insert({
-      tenant_id: ctx.tenantId!, branch_id: branchId,
-      name, phone, email, document,
-      birth_date: birthDate, gender, notes, tags,
-      is_active: true, auth_id: authId,
-    })
-    .select('id')
-    .single()
+  // 2) Cliente — completa a ficha rápida quando ela existe, senão cria.
+  const dadosDoCliente = {
+    tenant_id: ctx.tenantId!, branch_id: branchId,
+    name, phone, email, document,
+    birth_date: birthDate, gender, notes, tags,
+    is_active: true, auth_id: authId,
+  }
+
+  const { data: client, error } = jaExiste
+    ? await admin.from('clients')
+        .update({ ...dadosDoCliente, updated_at: new Date().toISOString() })
+        .eq('id', jaExiste.id).select('id').single()
+    : await admin.from('clients').insert(dadosDoCliente).select('id').single()
 
   if (error || !client) {
     await admin.auth.admin.deleteUser(authId).catch(() => {})  // rollback do login órfão
@@ -153,7 +166,7 @@ export async function addClient(
 
   // 3) Claims do cliente + conta de fidelidade
   await admin.rpc('set_client_claims', { p_auth_id: authId, p_client_id: client.id })
-  await admin.from('loyalty_accounts').insert({ client_id: client.id })
+  if (!jaExiste) await admin.from('loyalty_accounts').insert({ client_id: client.id })
 
   // 4) O contato passa a ser cliente. É aqui que o selo aparece na conversa, e
   //    nenhuma oportunidade é tocada: cadastrar cliente não fecha negócio.

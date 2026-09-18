@@ -41,13 +41,40 @@ export function AppointmentModal({
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [showClientList, setShowClientList] = useState(false)
 
+  // Segunda via para dizer quem será atendido: nome e telefone, sem ficha.
+  // A ficha completa cria o login do portal (e-mail + CPF) — pedir isso para
+  // marcar um horário é pedir na hora errada. O cliente nasce com o que a
+  // pessoa deu e ganha o resto quando (e se) voltar.
+  const [novoContato, setNovoContato] = useState(clients.length === 0)
+  const [novoNome,    setNovoNome]    = useState('')
+  const [novoTelefone, setNovoTelefone] = useState('')
+
   useEffect(() => { if (state?.success) { onSuccess(); onClose() } }, [state?.success])
 
+  // Telefone se compara por dígitos: quem busca digita "47991234567" e o
+  // cadastro guardou "(47) 99123-4567" — comparar o texto cru não achava.
+  const soDigitos = (v: string) => v.replace(/\D/g, '')
+  const buscaDigitos = soDigitos(clientSearch)
   const filteredClients = clientSearch.length >= 1
-    ? clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase()) || c.phone.includes(clientSearch))
+    ? clients.filter(c =>
+        c.name.toLowerCase().includes(clientSearch.toLowerCase())
+        || (buscaDigitos.length >= 3 && soDigitos(c.phone).includes(buscaDigitos)))
     : []
 
-  const noClients = clients.length === 0
+  const telefoneOk = novoTelefone.replace(/\D/g, '').length >= 10
+  const contatoOk  = novoContato && novoNome.trim().length >= 2 && telefoneOk
+  const podeAgendar = !!selectedClient || contatoOk
+
+  /** Entra na via do contato novo, aproveitando o que já foi digitado na busca. */
+  function abrirNovoContato(nomeSugerido: string) {
+    setNovoContato(true)
+    setShowClientList(false)
+    // Um texto que só tem número é telefone, não nome — é assim que a recepção
+    // busca quando a pessoa está ao telefone.
+    if (/^[\d\s()+-]+$/.test(nomeSugerido) && nomeSugerido.trim()) setNovoTelefone(nomeSugerido.trim())
+    else if (nomeSugerido.trim()) setNovoNome(nomeSugerido.trim())
+    setClientSearch('')
+  }
 
   // Data/hora padrão em horário local (não UTC)
   const defaultDT = useMemo(() => {
@@ -99,10 +126,39 @@ export function AppointmentModal({
           <input type="hidden" name="_slug" value={slug} />
           <input type="hidden" name="client_id" value={selectedClient?.id ?? ''} />
 
-          {/* Busca de cliente */}
+          {/* Quem será atendido */}
           <Field label="Cliente *">
             <div style={{ position: 'relative' }}>
-              {selectedClient ? (
+              {novoContato && !selectedClient ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div className="form-2col">
+                    <input
+                      type="text" name="client_name" className="field" autoFocus
+                      placeholder="Nome de quem será atendido"
+                      value={novoNome}
+                      onChange={e => setNovoNome(e.target.value)}
+                    />
+                    <input
+                      type="tel" name="client_phone" className="field"
+                      placeholder="Telefone com DDD"
+                      value={novoTelefone}
+                      onChange={e => setNovoTelefone(e.target.value)}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+                      A ficha completa (CPF, e-mail) pode ser preenchida depois.
+                    </span>
+                    {clients.length > 0 && (
+                      <button type="button"
+                        onClick={() => { setNovoContato(false); setNovoNome(''); setNovoTelefone('') }}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--brand)', fontWeight: 700, fontSize: 'var(--text-xs-sz)', whiteSpace: 'nowrap' }}>
+                        Buscar cliente cadastrado
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : selectedClient ? (
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '9px 12px',
@@ -116,21 +172,6 @@ export function AppointmentModal({
                   <button type="button" onClick={() => setSelectedClient(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--brand)', lineHeight: 0 }}>
                     <X size={14} />
                   </button>
-                </div>
-              ) : noClients ? (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 12px',
-                  background: 'var(--bg-app)', border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-field-token)',
-                }}>
-                  <UserPlus size={14} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
-                  <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                    Nenhum cliente cadastrado nesta filial.{' '}
-                    <a href={`/${slug}/clients/new`} style={{ color: 'var(--brand)', fontWeight: 700 }}>
-                      Cadastrar cliente
-                    </a>
-                  </span>
                 </div>
               ) : (
                 <>
@@ -170,16 +211,17 @@ export function AppointmentModal({
                           </button>
                         ))
                       ) : (
-                        <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                            Nenhum resultado para "{clientSearch}".{' '}
+                            Nenhum resultado para "{clientSearch}".
                           </span>
-                          <a
-                            href={`/${slug}/clients/new`}
-                            style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 700, whiteSpace: 'nowrap' }}
+                          <button
+                            type="button"
+                            onClick={() => abrirNovoContato(clientSearch)}
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 700, whiteSpace: 'nowrap' }}
                           >
-                            + Cadastrar
-                          </a>
+                            + Agendar com nome e telefone
+                          </button>
                         </div>
                       )}
                     </div>
@@ -187,6 +229,19 @@ export function AppointmentModal({
                 </>
               )}
             </div>
+
+            {/* A saída não é "vá cadastrar primeiro": quem está com a pessoa na
+                linha resolve aqui, com o que ela deu. */}
+            {!novoContato && !selectedClient && (
+              <button type="button" onClick={() => abrirNovoContato(clientSearch)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, marginTop: 6,
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  color: 'var(--brand)', fontWeight: 700, fontSize: 'var(--text-xs-sz)',
+                }}>
+                <UserPlus size={13} /> Não é cliente ainda? Use nome e telefone
+              </button>
+            )}
           </Field>
 
           {/* A consulta de avaliação era um checkbox aqui, que criava o
@@ -242,17 +297,17 @@ export function AppointmentModal({
           )}
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4, alignItems: 'center' }}>
-            {!selectedClient && !noClients && (
+            {!podeAgendar && (
               <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginRight: 4 }}>
-                Selecione um cliente para continuar
+                {novoContato ? 'Informe nome e telefone com DDD' : 'Selecione um cliente para continuar'}
               </span>
             )}
             <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
             <button
               type="submit"
-              disabled={pending || !selectedClient || noClients}
+              disabled={pending || !podeAgendar}
               className="btn-primary"
-              style={{ opacity: (!selectedClient || noClients) ? 0.5 : 1 }}
+              style={{ opacity: podeAgendar ? 1 : 0.5 }}
             >
               <Calendar size={14} />
               {pending ? 'Agendando…' : 'Confirmar agendamento'}

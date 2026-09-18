@@ -80,7 +80,6 @@ export function InboxLeadPanel({
   const [saving,  startSave]  = useTransition()
   const [scheduling,  setScheduling]  = useState<string | null>(null)   // leadId ou '' para contato
   const [convertOpen, setConvertOpen] = useState(false)
-  const [chainToSchedule, setChainToSchedule] = useState(false)
   const [historicoKey, setHistoricoKey] = useState(0)
   const [expandida, setExpandida] = useState<string | null>(null)
   const [mostrarConcluidas, setMostrarConcluidas] = useState(false)
@@ -187,8 +186,6 @@ export function InboxLeadPanel({
     recarregar().then(() => {
       setHistoricoKey(k => k + 1)
       onLeadChanged?.()
-      // Emenda no agendamento: o cliente acabou de ser criado.
-      if (chainToSchedule) { setChainToSchedule(false); setScheduling('') }
     })
   }
 
@@ -263,16 +260,17 @@ export function InboxLeadPanel({
             ) : (
               <button type="button" className="btn-ghost"
                 style={{ fontSize: 11, padding: '4px 7px' }}
-                onClick={() => { setChainToSchedule(false); setConvertOpen(true) }}>
+                onClick={() => setConvertOpen(true)}>
                 <UserCheck size={12} /> Cadastrar cliente
               </button>
             )}
+            {/* Agendar não passa mais pelo cadastro. Exigir CPF e e-mail antes
+                de marcar um horário parava o agendamento justo na etapa em que
+                a pessoa ainda está decidindo — nome e telefone bastam, e são o
+                que a conversa já tem. */}
             <button type="button" className="btn-ghost"
               style={{ fontSize: 11, padding: '4px 7px' }}
-              onClick={() => {
-                if (cliente) setScheduling('')
-                else { setChainToSchedule(true); setConvertOpen(true) }
-              }}>
+              onClick={() => setScheduling('')}>
               <CalendarPlus size={12} /> Agendar
             </button>
           </div>
@@ -425,9 +423,15 @@ export function InboxLeadPanel({
         <LeadTimeline conversationId={conversation.id} refreshKey={historicoKey} />
       </div>
 
-      {scheduling !== null && cliente && (
+      {scheduling !== null && (
         <ScheduleModal
           leadId={scheduling || (card.abertas[0]?.id ?? '')}
+          conversationId={conversation.id}
+          /* Já é cliente: o nome é só informativo. Ainda não é: os campos vêm
+             preenchidos com o contato e são editáveis — o WhatsApp costuma
+             trazer um apelido no lugar do nome. */
+          clienteLigado={cliente ? cliente.name : null}
+          contatoInicial={{ nome, telefone }}
           branches={branches}
           onClose={() => setScheduling(null)}
           onScheduled={() => { setScheduling(null); void recarregar(); onLeadChanged?.() }}
@@ -441,15 +445,15 @@ export function InboxLeadPanel({
             background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
           }}
-          onClick={() => { setConvertOpen(false); setChainToSchedule(false) }}
+          onClick={() => { setConvertOpen(false) }}
         >
           <div className="card" style={{ width: 480, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}
             onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
-                {chainToSchedule ? 'Cadastrar cliente para agendar' : 'Cadastrar como cliente'}
+                Cadastrar como cliente
               </h3>
-              <button type="button" onClick={() => { setConvertOpen(false); setChainToSchedule(false) }} style={{
+              <button type="button" onClick={() => { setConvertOpen(false) }} style={{
                 width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)',
                 background: 'var(--bg-app)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
               }}>
@@ -473,7 +477,7 @@ export function InboxLeadPanel({
                 prefill={{ name: nome, phone: telefone || undefined }}
                 onSuccess={handleConverted}
                 showCancelButton
-                onCancel={() => { setConvertOpen(false); setChainToSchedule(false) }}
+                onCancel={() => { setConvertOpen(false) }}
               />
             </div>
           </div>
@@ -803,13 +807,19 @@ function NovaOportunidade({
 // --- Modal de agendamento ----------------------------------------------------
 
 function ScheduleModal({
-  leadId, branches, onClose, onScheduled,
+  leadId, conversationId, clienteLigado, contatoInicial, branches, onClose, onScheduled,
 }: {
-  leadId:      string
-  branches:    PanelBranch[]
-  onClose:     () => void
-  onScheduled: () => void
+  leadId:         string
+  conversationId: string
+  /** Nome do cliente já ligado à conversa, ou `null` quando ainda não há ficha. */
+  clienteLigado:  string | null
+  contatoInicial: { nome: string; telefone: string }
+  branches:       PanelBranch[]
+  onClose:        () => void
+  onScheduled:    () => void
 }) {
+  const [nome,     setNome]     = useState(contatoInicial.nome)
+  const [telefone, setTelefone] = useState(contatoInicial.telefone)
   const [branchId,   setBranchId]   = useState(branches[0]?.id ?? '')
   const [data,       setData]       = useState<CrmSchedulingData | null>(null)
   const [loadingData, setLoadingData] = useState(false)
@@ -854,17 +864,23 @@ function ScheduleModal({
     if (!professionalId)                  { setError('Selecione o profissional.'); return }
     if (!isEvaluation && !procedureId)    { setError('Selecione o procedimento.'); return }
     if (!slot)                            { setError('Selecione um horário.'); return }
+    if (!clienteLigado) {
+      if (nome.trim().length < 2)                   { setError('Informe o nome de quem será atendido.'); return }
+      if (telefone.replace(/\D/g, '').length < 10)  { setError('Informe um telefone com DDD.'); return }
+    }
 
     const scheduledAt = new Date(`${date}T${slot}:00-03:00`).toISOString()
     startSave(async () => {
       const res = await createCrmAppointment({
         leadId,
+        conversationId,
         branchId,
         professionalId,
         procedureId: isEvaluation ? null : procedureId,
         scheduledAt,
         roomId: roomId || null,
         isEvaluation,
+        contato: clienteLigado ? null : { nome: nome.trim(), telefone: telefone.trim() },
       })
       if (res.error) { setError(res.error); return }
       onScheduled()
@@ -895,6 +911,27 @@ function ScheduleModal({
         </div>
 
         <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Quem será atendido — vem da conversa, editável.
+              Antes era preciso converter o contato em cliente (CPF + e-mail)
+              para chegar até aqui. */}
+          {clienteLigado ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 11px', borderRadius: 9, background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)' }}>
+              <UserCheck size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brand)' }}>{clienteLigado}</span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={labelStyle}>Quem será atendido</span>
+              <input className="field" value={nome} onChange={e => setNome(e.target.value)}
+                placeholder="Nome" style={{ fontSize: 13 }} />
+              <input className="field" value={telefone} onChange={e => setTelefone(e.target.value)}
+                placeholder="Telefone com DDD" style={{ fontSize: 13 }} />
+              <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                O cliente é criado com estes dados. CPF e e-mail ficam para quando houver ficha completa.
+              </span>
+            </div>
+          )}
+
           {/* Unidade */}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span style={labelStyle}>Unidade</span>

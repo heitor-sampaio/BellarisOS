@@ -11,6 +11,7 @@ import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { getOpenCashRegisterId } from '@/lib/cash-register'
 import { notifyClient, notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots } from '@/lib/appointments/core'
+import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { periodRef } from '@/lib/datetime'
 
 // --- Helpers internos ---------------------------------------------
@@ -191,11 +192,29 @@ export async function addAppointment(
     assertPermission(ctx, 'agenda', 'MANAGE')
 
     const slug = formData.get('_slug') as string
+    const branchId = formData.get('_branchId') as string
     const admin = createAdminClient()
 
+    // Quem vai ser atendido: um cliente já cadastrado, ou só um nome e um
+    // telefone. Exigir ficha completa (CPF e e-mail, que criam o login do
+    // portal) para marcar um horário invertia a ordem das coisas — a pessoa que
+    // liga perguntando preço não dá documento, e a recepção ficava sem como
+    // registrar o horário.
+    let clientId = (formData.get('client_id') as string)?.trim() || ''
+    if (!clientId) {
+      const novo = await garantirClienteRapido(admin, ctx, {
+        nome:     (formData.get('client_name')  as string) ?? '',
+        telefone: (formData.get('client_phone') as string) ?? '',
+        branchId,
+      })
+      if (novo.error || !novo.clientId) return { error: novo.error ?? 'Não foi possível registrar o cliente.' }
+      clientId = novo.clientId
+      revalidateTag(`clients:${ctx.tenantId!}`, 'max')
+    }
+
     const result = await createAppointmentCore(admin, ctx, {
-      branchId:       formData.get('_branchId') as string,
-      clientId:       formData.get('client_id') as string,
+      branchId,
+      clientId,
       procedureId:    (formData.get('procedure_id') as string) || null,
       professionalId: formData.get('professional_id') as string,
       scheduledAt:    formData.get('scheduled_at') as string,
