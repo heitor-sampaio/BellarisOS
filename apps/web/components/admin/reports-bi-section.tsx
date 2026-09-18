@@ -3,9 +3,11 @@ import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
 import { addDaysTZ, startOfDayTZ } from '@/lib/datetime'
-import { resolvePeriod, getRetention, getNewClientsSeries } from '@/lib/metrics'
+import { resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, percent } from '@/lib/metrics'
+import { seedDefaultFunnel } from '@/actions/crm-funnels'
+import type { DadosComerciais } from '@/components/admin/reports-bi-view'
 
-export type ReportsTab    = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque'
+export type ReportsTab    = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
 export type ReportsPeriod = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
 
 type Tab    = ReportsTab
@@ -21,7 +23,7 @@ type Period = ReportsPeriod
  */
 export async function ReportsBiSection({
   tenantId, branches, todasAsUnidades, selectedBranchId, allowNetwork, showBranchFilter,
-  tab, period, rawFrom, rawTo, scopeLabel,
+  tab, period, rawFrom, rawTo, rawFunil, scopeLabel,
 }: {
   tenantId:   string
   /** Unidades que entram no cálculo. Uma só quando há recorte. */
@@ -35,6 +37,8 @@ export async function ReportsBiSection({
   period:     Period
   rawFrom?:   string
   rawTo?:     string
+  /** Funil escolhido na aba Comercial. A rede pode ter mais de um. */
+  rawFunil?:  string
   /** Overline do cabeçalho: 'Rede' ou o nome da unidade. */
   scopeLabel: string
 }) {
@@ -240,6 +244,13 @@ export async function ReportsBiSection({
   const installments   = ((installmentsRaw  ?? []) as any[])
     .filter(i => branchIds.includes(i.financial_transactions?.branch_id))
 
+  // -- Aba Comercial -------------------------------------------------
+  // Vive aqui desde que deixou de ser tela própria (/admin/comercial): o funil
+  // e a conversão são relatório, e estavam numa entrada de menu só deles.
+  const comercial = tab === 'comercial'
+    ? await painelComercial({ tenantId, branchIds, from: startDate, to: periodInfo.fullTo, rawFunil })
+    : undefined
+
   // -- Gráfico de evolução (mesmo padrão do dashboard) ---------------
   const granularity = period === 'today' ? 'hour' : 'day'
 
@@ -321,7 +332,113 @@ export async function ReportsBiSection({
         retention={retention}
         newClientsSeries={newClientsSeries}
         evolutionData={evolutionData}
+        comercial={comercial}
       />
     </>
   )
+}
+
+/**
+ * Funil, conversão e ranking do time comercial.
+ *
+ * Duas fronteiras diferentes de propósito: os **leads são da rede**
+ * (`leads.branch_id` é nulo — é assim que o inbox os cria, e filtrar por filial
+ * esvaziava o painel inteiro), enquanto os **atendimentos respeitam o recorte**
+ * de unidade escolhido no topo da tela.
+ */
+async function painelComercial({
+  tenantId, branchIds, from, to, rawFunil,
+}: {
+  tenantId:  string
+  branchIds: string[]
+  from:      Date
+  /** Fim natural do período, não "agora": avaliação marcada para amanhã conta. */
+  to:        Date
+  rawFunil?: string
+}): Promise<DadosComerciais> {
+  const admin    = createAdminClient()
+  const fromISO  = from.toISOString()
+  const toISO    = to.toISOString()
+
+  // A rede pode ter vários funis; o painel mostra um. Empilhar todos somaria
+  // etapas que não se sucedem.
+  const funis       = await seedDefaultFunnel(tenantId)
+  const funisAtivos = funis.filter(f => f.archived_at === null)
+  const funilAtivo  = funisAtivos.find(f => f.id === rawFunil)
+    ?? funisAtivos.find(f => f.is_default)
+    ?? funisAtivos[0]
+
+  const [etapasRaw, { data: leadsRaw }, { data: apptsRaw }, { data: usersRaw }] = await Promise.all([
+    getLeadFunnel({
+      tenantId, branchIds: null, from, to, funnelId: funilAtivo?.id ?? null,
+    }),
+
+    admin.from('leads')
+      .select('id, client_id, owner_id')
+      .eq('tenant_id', tenantId)
+      .gte('created_at', fromISO).lte('created_at', toISO),
+
+    admin.from('appointments')
+      .select('id, status, source, is_evaluation, created_by_id')
+      .in('branch_id', branchIds)
+      .gte('scheduled_at', fromISO).lte('scheduled_at', toISO),
+
+    admin.from('users').select('id, name').eq('tenant_id', tenantId),
+  ])
+
+  const leads = (leadsRaw ?? []) as { client_id: string | null; owner_id: string | null }[]
+  const appts = (apptsRaw ?? []) as { status: string; source: string; is_evaluation: boolean; created_by_id: string | null }[]
+  const nomeDe = new Map((usersRaw ?? []).map((u: { id: string; name: string }) => [u.id, u.name]))
+
+  const totalLeads  = leads.length
+  const convertidos = leads.filter(l => l.client_id).length
+
+  // Comparecimento exclui as canceladas do denominador: com elas dentro a
+  // métrica misturava "não cancelou" com "compareceu" e ficava sempre baixa.
+  const evals            = appts.filter(a => a.is_evaluation)
+  const evalConsideradas = evals.filter(a => a.status !== 'CANCELLED').length
+  const evalRealizadas   = evals.filter(a => a.status === 'COMPLETED').length
+
+  const comerciais = appts.filter(a => a.source === 'COMMERCIAL')
+
+  // Leads sem dono entram numa linha própria em vez de sumirem: antes o
+  // ranking somava menos leads que o KPI de leads recebidos, sem explicação.
+  type Vendedor = { id: string; name: string; leads: number; convertidos: number; agendamentos: number }
+  const vendedores = new Map<string, Vendedor>()
+  const SEM_DONO = '__sem_responsavel__'
+  const bump = (id: string | null): Vendedor => {
+    const chave = id ?? SEM_DONO
+    let v = vendedores.get(chave)
+    if (!v) {
+      v = {
+        id: chave,
+        name: id ? (nomeDe.get(id) ?? 'Sem nome') : 'Sem responsável',
+        leads: 0, convertidos: 0, agendamentos: 0,
+      }
+      vendedores.set(chave, v)
+    }
+    return v
+  }
+  for (const l of leads) {
+    const v = bump(l.owner_id)
+    v.leads++
+    if (l.client_id) v.convertidos++
+  }
+  for (const a of comerciais) bump(a.created_by_id).agendamentos++
+
+  return {
+    funis:      funisAtivos.map(f => ({ id: f.id, name: f.name })),
+    funilAtivo: funilAtivo?.id ?? '',
+    etapas:     etapasRaw.map(s => ({ name: s.name, count: s.leads })),
+    totalLeads,
+    convertidos,
+    conversao:      percent(convertidos, totalLeads) ?? 0,
+    evalAgendadas:  evals.length,
+    evalConsideradas,
+    evalRealizadas,
+    comparecimento: percent(evalRealizadas, evalConsideradas) ?? 0,
+    agendamentosComerciais: comerciais.length,
+    ranking: [...vendedores.values()]
+      .sort((a, b) => (b.leads + b.agendamentos) - (a.leads + a.agendamentos)),
+  }
 }

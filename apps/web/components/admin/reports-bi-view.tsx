@@ -6,6 +6,7 @@ import { mesclarParams } from '@/lib/query-params'
 import { EvolutionChart, type ChartPoint } from './evolution-chart'
 import { PeriodSelector, type Period } from './period-selector'
 import { SegSelect } from '@/components/shared/seg-select'
+import { FunnelSelect } from '@/components/shared/funnel-select'
 import { weekdayTZ } from '@/lib/datetime'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
@@ -15,7 +16,7 @@ import {
 } from './reports-charts'
 
 // -- Types ---------------------------------------------------------------------
-type Tab = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque'
+type Tab = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview',       label: 'Visão Geral'    },
@@ -25,7 +26,27 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'procedimentos',  label: 'Procedimentos'  },
   { key: 'profissionais',  label: 'Profissionais'  },
   { key: 'estoque',        label: 'Estoque'        },
+  // Era a tela /admin/comercial, com entrada própria no menu. O assunto é
+  // relatório — funil, conversão e ranking — e o módulo que a governa já era
+  // `reports`, então virou aba em vez de destino separado.
+  { key: 'comercial',      label: 'Comercial'      },
 ]
+
+/** Painel comercial, calculado no servidor (ver `painelComercial`). */
+export interface DadosComerciais {
+  funis:      { id: string; name: string }[]
+  funilAtivo: string
+  etapas:     { name: string; count: number }[]
+  totalLeads:  number
+  convertidos: number
+  conversao:   number
+  evalAgendadas:    number
+  evalConsideradas: number
+  evalRealizadas:   number
+  comparecimento:   number
+  agendamentosComerciais: number
+  ranking: { id: string; name: string; leads: number; convertidos: number; agendamentos: number }[]
+}
 
 export interface ReportsBiProps {
   /** 'Rede' no portal da rede, nome da unidade no portal dela. */
@@ -66,6 +87,8 @@ export interface ReportsBiProps {
   retention: { clientsServed: number; returningClients: number; firstTimeClients: number }
   newClientsSeries: { bucket: string; count: number }[]
   evolutionData: ChartPoint[]
+  /** Só vem preenchido quando a aba Comercial está aberta. */
+  comercial?: DadosComerciais
 }
 
 // -- Animated number -----------------------------------------------------------
@@ -1066,6 +1089,89 @@ function TabEstoque(p: ReportsBiProps) {
 }
 
 // -----------------------------------------------------------------------------
+// TAB: COMERCIAL
+// -----------------------------------------------------------------------------
+function TabComercial(p: ReportsBiProps) {
+  const c = p.comercial
+  if (!c) return <SCard title="Comercial"><EmptyMsg /></SCard>
+
+  const fmtInt = (n: number) => new Intl.NumberFormat('pt-BR').format(n)
+  const fmtPct = (n: number) => `${n.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`
+  // A barra mais cheia é a maior etapa, não o total: com o total, um funil de
+  // topo largo deixava todas as outras etapas invisíveis.
+  const maiorEtapa = Math.max(1, ...c.etapas.map(e => e.count))
+
+  const colunas: TableColumn[] = [
+    { key: 'name',         label: 'Vendedor' },
+    { key: 'leads',        label: 'Leads',   align: 'right', width: 80, render: v => fmtInt(v) },
+    { key: 'conversao',    label: 'Conv.',   align: 'right', width: 80,
+      render: (_v, row) => row.leads > 0
+        ? <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{fmtPct((row.convertidos / row.leads) * 100)}</span>
+        : '—' },
+    { key: 'agendamentos', label: 'Agend.',  align: 'right', width: 90, render: v => fmtInt(v) },
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        <KpiCard label="Conversão de leads"    value={c.conversao} format="pct" />
+        <KpiCard label="Leads recebidos"       value={c.totalLeads} format="int" accent="var(--text)" />
+        <KpiCard label="Avaliações agendadas"  value={c.evalAgendadas} format="int" accent="var(--text)" />
+        <KpiCard label="Comparecimento"        value={c.comparecimento} format="pct" accent="var(--text)" />
+        <KpiCard label="Agend. comerciais"     value={c.agendamentosComerciais} format="int" accent="var(--text)" />
+      </div>
+
+      <p style={{ fontSize: 11.5, color: 'var(--text-faint)', margin: 0 }}>
+        {fmtInt(c.convertidos)} de {fmtInt(c.totalLeads)} leads viraram cliente ·
+        {' '}{fmtInt(c.evalRealizadas)} de {fmtInt(c.evalConsideradas)} avaliações não canceladas
+        aconteceram · agendamentos comerciais são os gerados pelo time comercial.
+      </p>
+
+      <div className="rg-2" style={{ gap: 16 }}>
+        <SCard title="Funil de leads">
+          {c.funis.length > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+              <FunnelSelect funnels={c.funis} activeId={c.funilAtivo} />
+            </div>
+          )}
+          {c.etapas.length === 0 ? (
+            <EmptyMsg texto="Nenhuma etapa configurada." />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {c.etapas.map(e => (
+                <div key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 120, fontSize: 12.5, fontWeight: 600, color: 'var(--text)', flexShrink: 0 }}>
+                    {e.name}
+                  </div>
+                  <div style={{ flex: 1, height: 10, background: 'var(--track, #f0e6e3)', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ width: `${(e.count / maiorEtapa) * 100}%`, height: '100%', background: 'var(--brand)', borderRadius: 99 }} />
+                  </div>
+                  <div style={{ width: 40, textAlign: 'right', fontSize: 13, fontWeight: 800, color: 'var(--text)', fontVariant: 'tabular-nums' }}>
+                    {fmtInt(e.count)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SCard>
+
+        <SCard title="Ranking por vendedor">
+          <SimpleTable
+            columns={colunas}
+            rows={c.ranking}
+            emptyMsg="Nenhuma atividade comercial atribuída neste período."
+          />
+        </SCard>
+      </div>
+    </div>
+  )
+}
+
+function EmptyMsg({ texto = 'Sem dados no período.' }: { texto?: string }) {
+  return <p style={{ color: 'var(--text-faint)', fontSize: 13, margin: 0 }}>{texto}</p>
+}
+
+// -----------------------------------------------------------------------------
 // MAIN: ReportsBiView
 // -----------------------------------------------------------------------------
 export function ReportsBiView(props: ReportsBiProps) {
@@ -1087,6 +1193,7 @@ export function ReportsBiView(props: ReportsBiProps) {
     procedimentos:  <TabProcedimentos {...props} />,
     profissionais:  <TabProfissionais {...props} />,
     estoque:        <TabEstoque       {...props} />,
+    comercial:      <TabComercial     {...props} />,
   }[tab]
 
   return (

@@ -72,10 +72,9 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'financial',    group: 'dinheiro',     label: 'Financeiro',    href: '/admin/financeiro',     visible: p => has(p, 'financial') },
   { key: 'stock',        group: 'dinheiro',     label: 'Estoque',       href: '/admin/estoque',        visible: p => has(p, 'stock') },
 
+  // O funil comercial era uma entrada à parte (`/admin/comercial`). Virou a aba
+  // "Comercial" daqui: mesmo módulo, mesmo assunto, um destino só.
   { key: 'reports',      group: 'gestao',       label: 'Relatórios',    href: '/admin/reports',        visible: p => has(p, 'reports') },
-  // Funil comercial por período. A tela existia e não estava em menu nenhum:
-  // só se chegava nela digitando a URL.
-  { key: 'comercial',    group: 'gestao',       label: 'Comercial',     href: '/admin/comercial',      visible: p => has(p, 'reports') },
   { key: 'team',         group: 'gestao',       label: 'Equipe',        href: '/admin/team',           visible: p => has(p, 'team') },
   { key: 'procedures',   group: 'gestao',       label: 'Procedimentos', href: '/admin/procedures',     visible: p => has(p, 'procedures') },
   // Uma tela, três módulos: quem só tem cargos ou fichas continua chegando lá.

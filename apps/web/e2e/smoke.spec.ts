@@ -22,7 +22,8 @@ const TELAS: { rota: string; titulo: RegExp }[] = [
   { rota: '/admin/financeiro',    titulo: /financeiro|caixa/i },
   { rota: '/admin/estoque',       titulo: /estoque/i },
   { rota: '/admin/reports',       titulo: /relat/i },
-  { rota: '/admin/comercial',     titulo: /comercial|funil/i },
+  // A antiga /admin/comercial agora redireciona para esta aba.
+  { rota: '/admin/reports?tab=comercial', titulo: /comercial/i },
   { rota: '/admin/team',          titulo: /equipe/i },
   { rota: '/admin/procedures',    titulo: /procedimentos/i },
   { rota: '/admin/branches',      titulo: /unidades|filiais/i },

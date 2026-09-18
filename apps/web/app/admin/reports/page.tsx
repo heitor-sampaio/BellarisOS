@@ -7,9 +7,9 @@ import {
 export default async function AdminReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; period?: string; from?: string; to?: string; branch?: string }>
+  searchParams: Promise<{ tab?: string; period?: string; from?: string; to?: string; branch?: string; funil?: string }>
 }) {
-  const { tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo, branch: rawBranch } = await searchParams
+  const { tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo, branch: rawBranch, funil: rawFunil } = await searchParams
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'reports', 'VIEW')
@@ -66,6 +66,7 @@ export default async function AdminReportsPage({
       period={(rawPeriod ?? 'month') as ReportsPeriod}
       rawFrom={rawFrom}
       rawTo={rawTo}
+      rawFunil={rawFunil}
       scopeLabel={selecionada?.name ?? 'Rede'}
     />
   )
