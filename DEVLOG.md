@@ -1,159 +1,227 @@
 # DEVLOG — BellarisOS
 
-Registro cronológico de decisões, bloqueios e entregas. Uma entrada por sessão de trabalho.
+Registro do desenvolvimento: o que existe hoje, como chegamos aqui e o que está
+em aberto. Documento único — atualizar **aqui** quando uma frente fechar.
+
+**Última atualização: 2026-09-18.**
+
+> O detalhe de cada mudança está nas mensagens de commit: `git log --oneline`.
+> Este arquivo é o panorama, não o diário linha a linha.
 
 ---
 
-## 2026-06-20 — Supabase MCP: Projeto provisionado ✅
+## 1. O que é o produto
 
-### Projeto
-- **Nome:** estetica-os
-- **ID:** `tljoelsndawvfvifepqo`
-- **Região:** sa-east-1 (São Paulo)
-- **URL:** https://tljoelsndawvfvifepqo.supabase.co
-- **Dashboard:** https://supabase.com/dashboard/project/tljoelsndawvfvifepqo
+**BellarisOS é o ERP + CRM de clínicas de estética** — a ferramenta em que a
+clínica opera o dia inteiro: agenda, prontuário, clientes, conversas, comercial,
+estoque e financeiro. O financeiro é uma parte, não o centro.
 
-### O que foi feito via MCP
-- [x] Projeto criado (free tier)
-- [x] Schema completo aplicado (33 tabelas + 11 enums)
-- [x] JWT custom claims functions (`set_user_claims`, `set_client_claims`)
-- [x] RLS policies para todas as tabelas
-- [x] Seed de dev: tenant `bellaris-dev`, branch `centro`, loyalty config
-- [x] `.env.local` criado com URL e anon key
+**O cliente típico tem uma unidade.** Multiunidade existe no modelo (todo dado
+carrega `tenantId` + `branchId`, e o portal da rede consolida), mas é exceção:
+rede grande costuma ser franquia, e franquia já chega com sistema próprio. Na
+dúvida de projeto, otimizar para a clínica única sem tornar a segunda unidade
+impossível.
 
-### Pendente (manual)
-- [ ] Preencher `DATABASE_URL` e `DIRECT_URL` com a senha do banco
-  → Dashboard > Project Settings > Database > Connection string
-- [ ] Preencher `SUPABASE_SERVICE_ROLE_KEY`
-  → Dashboard > Project Settings > API > service_role
-- [ ] Criar primeiro usuário admin
-  → Dashboard > Authentication > Users > Add user
-  → Rodar: `select public.set_user_claims('<auth_id>', '00000000-0000-0000-0000-000000000001', null, 'NETWORK_ADMIN');`
+Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
+(`/[slug]`) e **app mobile** (Expo, com fluxo operacional e fluxo do cliente).
+Há ainda uma **extensão de Chrome** para o time comercial agendar em qualquer
+unidade.
 
 ---
 
-## 2026-06-20 — Sprint 1: Fundação ✅
+## 2. Estado atual (2026-09-18)
 
-### Contexto
-Início do projeto do zero. Apenas o schema.prisma, PRD e CLAUDE.md existiam.
+### Operação
 
-### Decisões
+- **Agenda** — grade por unidade e consolidada na rede, com confirmar, check-in,
+  no-show, cancelar com motivo e remarcar sem sair do portal em que se está.
+  Agendar exige só **nome e telefone**; o cliente nasce no ato e é deduplicado
+  por dígitos do telefone (`cliente_por_telefone`).
+- **Atendimento** — sessão com anamnese, ficha de atendimento, fotos, consumo de
+  estoque, comissão, fidelidade e recebimento no check-in.
+- **Clientes** — ficha com histórico, oportunidades, planejamento, financeiro,
+  documentos e dados; desativar/reativar; crédito interno.
+- **Planejamento** — seção própria no menu, com **Tratamentos** (planos que viram
+  venda no checkout) e **Injetáveis** (mapa facial por cliente, com aplicações
+  congeladas no prontuário).
+- **CRM** — Inbox omnichannel (WhatsApp por uazapi e API oficial da Meta,
+  Instagram, Messenger), funil de oportunidades, templates HSM, atribuição de
+  origem de lead.
+- **Estoque** — produtos, lotes, movimentações, transferência entre unidades,
+  mínimo por filial, histórico por produto.
+- **Financeiro** — receitas e despesas, parcelas, estorno com crédito interno,
+  comissões, DRE, indicadores por unidade e consolidados.
+- **Relatórios (BI)** — oito abas: visão geral, financeiro, agenda, clientes,
+  procedimentos, profissionais, estoque e comercial.
+- **Configurações** — unidades, cargos, modelos de ficha (anamnese e
+  atendimento), integrações, LGPD.
 
-**Monorepo:** Turborepo + pnpm workspaces. Estrutura `apps/` (web, mobile) + `packages/` (db, types, validators, utils).
+### Plataforma
 
-**pnpm 11:** Requer `allowBuilds` explícito em `pnpm-workspace.yaml` para Prisma, esbuild, sharp, unrs-resolver.
-
-**Auth:** Supabase Auth com custom JWT claims (`tenant_id`, `branch_id`, `role`, `client_id`). Functions SQL `set_user_claims` e `set_client_claims` chamadas manualmente ao criar usuários/vincular clientes.
-
-**Packages em dev:** tsconfig do web aponta `paths` para os arquivos `src/` dos packages (evita build prévio em dev). Em produção o Turborepo builda os packages antes.
-
-**React 19 Server Actions:** `useActionState` requer `(prevState, formData)` na assinatura da action, não só `(formData)`.
-
-**Design system:** Todos os tokens CSS do BellarisOS (cores, tipo, raios, sombras, espaçamento, layout) vivem em `apps/web/app/globals.css`. Skill `/lumiere-design` é a referência canônica para componentes novos.
-
-### O que foi feito
-- [x] Monorepo root (Turborepo + pnpm + turbo.json + tsconfig.base.json + .gitignore)
-- [x] `packages/types` — JwtClaims, TenantContext, UserRole, tipos de domínio
-- [x] `packages/validators` — LoginSchema, ClientLoginSchema, CreateAppointmentSchema, CreateClientSchema, CreateProcedureSchema, CompleteAppointmentSchema
-- [x] `packages/utils` — formatBRL, formatDate, maskCPF, maskPhone, CLIENT_TAGS
-- [x] `packages/db` — Prisma schema (copiado), client singleton, seed de dev
-- [x] `apps/web` (Next.js 16, Tailwind v4) — todas as dependências instaladas
-- [x] `apps/web/app/globals.css` — tokens BellarisOS completos + componentes base CSS
-- [x] Supabase clients (server, browser, middleware) com tipos explícitos
-- [x] `lib/auth.ts` — getTenantContext, assertRole, assertBranchAccess, getRedirectPath
-- [x] `middleware.ts` — proteção de rotas + refresh de sessão
-- [x] `(auth)/login` — tela de login operacional com design BellarisOS
-- [x] `(auth)/reset-password` — recuperação de senha
-- [x] Layout `/admin` — sidebar + topbar + proteção NETWORK_ADMIN
-- [x] Layout `/[slug]` — sidebar por filial + validação de acesso à filial correta
-- [x] `NavItem`, `BranchSidebar`, `AdminSidebar`, `Topbar` — componentes BellarisOS
-- [x] Migrations SQL: functions JWT claims + RLS policies completas
-- [x] `.env.local.example` para onboarding de devs
-- [x] TypeScript sem erros (`tsc --noEmit` limpo)
-
-### Bloqueios resolvidos
-- pnpm 11 `allowBuilds` — documentado acima.
-- React 19 `useActionState` signature — documentado acima.
-
----
-
-## Próxima sessão — Sprint 2: Core Operacional Web
-
-**Foco:** Módulo Clientes → Módulo Procedimentos → Módulo Agenda
-
-**Pré-requisito para rodar o app:**
-1. Criar projeto Supabase (local com `supabase start` ou remoto)
-2. Copiar `.env.local.example` → `.env.local` e preencher
-3. `pnpm db:migrate` para rodar as migrations Prisma
-4. `supabase db push` para aplicar as migrations SQL (RLS + JWT claims)
-5. `pnpm dev --filter=web`
+- Next.js 16 (App Router, Server Actions) + Supabase (Postgres, Auth, Storage,
+  RLS) + Turborepo/pnpm. Deploy na Railway (uma réplica, us-east4); banco em
+  us-east-1.
+- **Autorização dinâmica:** cargos por rede, 14 módulos com nível
+  (NONE/VIEW/MANAGE), escopo (OWN/ALL) em cinco deles, abrangência pelo
+  `users.branch_id`, e as abas de Relatórios liberadas uma a uma
+  (`role_report_tabs`).
+- **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
+  negócio resolvido em `lib/datetime.ts`.
+- **Testes:** 108 unitários (Vitest) + 26 E2E (Playwright) rodando contra o banco
+  de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
+- **Cron:** serviço na Railway roda `scripts/cron.mjs` de hora em hora
+  (campanhas de notificação e exportações de LGPD).
 
 ---
 
-> ⚠️ **Hiato de 2026-06-20 a 2026-09-17.** Nada foi registrado aqui nesse
-> período, e foi quando a maior parte do sistema nasceu: inbox omnichannel,
-> CRM, permissões dinâmicas, LGPD, indicadores, planos de tratamento, mapa de
-> injetáveis. **Para o estado recente, `git log --oneline` é a fonte** — cada
-> commit carrega o raciocínio na mensagem. O projeto Supabase citado na entrada
-> de 20/06 (`tljoelsndawvfvifepqo`) foi aposentado; o ativo é
-> `tagetlgivjbwhfscofjs`, e o produto passou a se chamar BellarisOS.
+## 3. Linha do tempo
 
----
+### 2026-06-20 — Fundação (Sprint 1)
 
-## 2026-09-18 — O admin opera tudo pelo `/admin`, testes, permissão por relatório, fim do caixa ✅
+Monorepo Turborepo + pnpm (`apps/web`, `apps/mobile`, `packages/{db,types,validators,utils}`),
+Supabase provisionado, auth com custom JWT claims, RLS, layouts dos dois portais,
+login e design system "Rosé Vivo" em `globals.css`.
 
-### Contexto
+Decisões que seguem valendo: pnpm 11 exige `allowBuilds` explícito; React 19 pede
+`(prevState, formData)` em `useActionState`; os packages são resolvidos por
+`paths` do tsconfig em dev.
 
-Dois defeitos vindos do mesmo lugar (criar plano pelo `/admin` falhava por falta
-de unidade; a agenda da rede era só leitura) expuseram o padrão: o portal da
-rede mostrava o consolidado e não deixava agir, forçando o admin a entrar no
-portal de uma unidade — o que o CLAUDE.md §6 proíbe. **Não era permissão nem
-RLS: era interface.**
+> O projeto Supabase daquela época (`tljoelsndawvfvifepqo`, sa-east-1) foi
+> **aposentado**. O ativo é `tagetlgivjbwhfscofjs` (us-east-1), criado em 08/07
+> para casar com a região do Railway.
 
-### Entregue (um commit por frente; o raciocínio está em cada mensagem)
+### 2026-07 — Núcleo operacional, CRM e cargos
+
+Clientes, procedimentos, agenda, atendimento, estoque e financeiro. CRM
+unificado: **card = lead + conversa**, com métricas de atendimento
+(`awaiting_since`, `first_response_seconds`) mantidas por trigger. Cargos de
+nível-rede e a extensão de Chrome agendando em qualquer unidade.
+
+Decisão estrutural: **cliente e lead pertencem à REDE**; a unidade é dimensão de
+métrica e tag, não fronteira.
+
+### 2026-09-09 — Indicadores, LGPD e permissões dinâmicas
+
+- **Indicadores revisados** (`864167f`): "as somas não batem" virou auditoria de
+  ~100 problemas com quatro causas estruturais. Nasceu `lib/metrics/` com
+  agregação no Postgres e o `lib/datetime.ts` com o fuso do negócio.
+- **LGPD** (`8957d59`): exportação de dados do titular em PDF + JSON, com
+  liberação da parte clínica por quem tem `medical_records: MANAGE`. Exclusão
+  segue fora de escopo.
+- **Permissões dinâmicas**: fim dos cargos fixos; cada rede monta a matriz.
+- **Cron validado** — até então nunca havia rodado em produção.
+
+### 2026-09-15/16 — Inbox omnichannel e troca de provedor
+
+`lib/channels/` abstrai o canal; `lib/templates/` valida HSM; realtime nas
+conversas. A **Z-API foi aposentada em favor da uazapi** (`71b7f46`): o problema
+era IP compartilhado entre clínicas, que faz ban em cascata numa API não oficial.
+
+### 2026-09-18 — O admin opera tudo pelo `/admin`
+
+**Contexto:** dois defeitos do mesmo lugar (criar plano pelo `/admin` falhava por
+falta de unidade; a agenda da rede era só leitura) expuseram o padrão — o portal
+da rede mostrava o consolidado e não deixava agir, forçando o admin a entrar no
+portal de uma unidade, o que o CLAUDE.md §6 proíbe. **Não era permissão nem RLS:
+era interface.** No caminho apareceram três gravações mudas: estoque inicial
+descartado quando `ctx.branchId` era nulo, crédito interno indo para a filial
+alfabeticamente primeira, e erro de query virando tela vazia ou 404.
 
 | Commit | O quê |
 |---|---|
 | `79c69cb` | Agendar só com nome e telefone — cliente nasce no ato |
 | `9ee1263` `685a5f1` | Agendar e conduzir o atendimento pela agenda da rede |
 | `8d88ba3` `3023a7b` | Dinheiro pela rede; gravações que iam para a unidade errada |
-| `aeb6e39` | Permissões do admin no banco, abrangência valendo na hora |
-| `439b4cc` | Ações que existiam no back-end e não tinham porta em portal nenhum |
+| `aeb6e39` | Permissões do admin no banco; abrangência valendo na hora |
+| `439b4cc` | Ações que existiam no back-end sem porta em portal nenhum |
 | `fa3348c` | `/[slug]/settings` de verdade; procedimento só pela rede |
-| `6743eba` | Suíte automatizada: 151 unitários (Vitest) + 31 E2E (Playwright) |
+| `6743eba` | Suíte automatizada: Vitest + Playwright |
 | `963b77d` | Painel comercial vira aba de Relatórios |
-| `3d9189f` | Cada aba de Relatórios vira permissão do cargo (`role_report_tabs`) |
-| `6f6a7d1` | **Caixa de abrir/fechar removido** |
-| `ea1f556` `2a2adda` | Seção Planejamento no menu: Tratamentos + Injetáveis |
+| `3d9189f` | Cada aba de Relatórios vira permissão do cargo |
+| `6f6a7d1` | Caixa de abrir/fechar removido |
+| `ea1f556` `2a2adda` | Seção Planejamento: Tratamentos + Injetáveis |
 
-### Decisões de produto (do Heitor, nesta sessão)
+**Migrations** (via MCP, com paridade em `supabase/migrations/`):
+`20260918000001` `cliente_por_telefone`, `…02` `buscar_clientes`,
+`…03` permissões do cargo Admin da rede, `…04` `role_report_tabs`.
 
-- **O produto é ERP + CRM de clínica**, não um financeiro com agenda em volta, e
-  **o cliente típico tem UMA unidade** — multiunidade segue no modelo, mas é
-  exceção (rede grande costuma ser franquia, que já tem sistema). CLAUDE.md §1
-  reescrito.
-- **Procedimento e configuração são dados da REDE.** A unidade vê o catálogo;
-  criar, editar e remover exige abrangência de rede.
-- **Caixa removido.** Menos de 1% dos recebimentos é em dinheiro; o fechamento
-  existe para contar a gaveta, e não há gaveta. `cash_registers` e
-  `cash_register_id` ficam no banco com o histórico, sem escrita nova. O módulo
-  `cashier` sobrevive significando RECEBER na recepção.
-- **Relatórios por aba.** `reports: VIEW` abre a tela; `role_report_tabs` diz
-  quais abas o cargo enxerga. Cargos existentes começaram **sem nenhuma** —
-  precisam ser liberados um a um em Configurações → Cargos.
+---
 
-### Banco
+## 4. Decisões de produto
 
-Migrations aplicadas via MCP, com paridade em `supabase/migrations/`:
-`20260918000001` (`cliente_por_telefone`), `…02` (`buscar_clientes`),
-`…03` (permissões do cargo Admin da rede), `…04` (`role_report_tabs`).
+O PRD e as primeiras versões do CLAUDE.md descrevem coisas que **não** são mais
+verdade. O que vale:
 
-### Pendências
+| Decisão | Quando | Por quê |
+|---|---|---|
+| **ERP + CRM de clínica, cliente típico com uma unidade** | 2026-09-18 | Rede grande é franquia e já tem sistema. O financeiro é parte, não centro. |
+| **Caixa de abrir/fechar removido** | 2026-09-18 | Menos de 1% dos recebimentos é em dinheiro; o fechamento existe para contar a gaveta, e não há gaveta. A auditoria do dia é a tela do financeiro. `cash_registers` fica com o histórico; `cashier` passa a significar RECEBER na recepção. |
+| **Procedimento e configuração são dados da REDE** | 2026-09-18 | A unidade vê o catálogo; alterar exige abrangência de rede. |
+| **Relatórios liberados aba a aba** | 2026-09-18 | `reports` num nível só entregava o faturamento junto com o funil. Cargos existentes começaram sem nenhuma aba. |
+| **Agendamento público sem login: descartado** | 2026-09-09 | Só equipe autenticada ou o próprio cliente pelo portal/app, e apenas para procedimentos `visible_on_client_app`. |
+| **LGPD: só exportação** | 2026-09-09 | Exclusão conflita com guarda legal de prontuário e registros fiscais. |
+| **Cliente não se auto-cadastra** | 2026-07-21 | A conta nasce quando a equipe cadastra. |
+| **Cliente e lead pertencem à rede** | 2026-07-21 | A unidade é métrica e tag, não fronteira. |
 
-- **`estetica-os-prd.md` está desatualizado**: descreve "SaaS para redes de 2–5
+---
+
+## 5. Em aberto
+
+### Depende do Heitor (fora do código)
+
+- **App da Meta não existe.** Instagram e Messenger foram verificados só com
+  payload simulado e HMAC válido: falta OAuth real, seleção de página e
+  `subscribed_apps`.
+- **`META_VERIFY_TOKEN` não está no Railway** — sem ele o handshake do webhook
+  não fecha em produção.
+- **`wabaId` não preenchido** nas integrações: o botão "enviar para aprovação"
+  da tela de Templates fica desabilitado.
+- **Nenhum número de WhatsApp real foi pareado.** A uazapi foi provada por sonda
+  (instância, webhook, proxy, QR, exclusão), mas enviar e receber de verdade só
+  com celular na mão.
+- **App Review da Meta** (`pages_messaging`, `instagram_manage_messages`).
+- Perguntas abertas com o suporte da uazapi: o proxy `internal` é dedicado por
+  instância ou compartilhado? `DELETE /instance` para a cobrança na hora?
+
+### Dívida técnica conhecida
+
+- **`estetica-os-prd.md` desatualizado**: descreve "SaaS para redes de 2–5
   filiais" e caixa com abertura/fechamento diário.
-- **Fidelidade** continua sem módulo (só saldo read-only no portal do cliente).
-- Da frente do inbox: app da Meta não existe, nenhum número real pareado,
-  `META_VERIFY_TOKEN` fora do Railway.
-- **Prisma está morto** no repo (`lib/prisma.ts` sem consumidor) e o CLAUDE.md
-  §2/§8 ainda o descreve como ORM.
+- **Prisma está morto**: `apps/web/lib/prisma.ts` re-exporta o client e ninguém
+  importa; o `postinstall` roda `prisma generate` para nada, e o CLAUDE.md §2/§8
+  ainda o descreve como ORM. Ou sai do repo, ou o doc para de descrevê-lo.
+- **RLS de `integration_configs` decide por nome de cargo**
+  (`jwt_claim('role') = 'NETWORK_ADMIN'`), o que o CLAUDE.md §11 proíbe. É a
+  última regra por nome de cargo no banco; não é exposição hoje porque o app lê
+  pelo cliente de serviço.
+- `metrics_core.new_clients` ignora o filtro de filial.
+- `product_batches` nunca é decrementado.
+- Apagar um lead leva junto o histórico dele (`lead_events` em cascata).
+
+### Próxima frente candidata
+
+**Fidelidade.** Hoje só existe saldo read-only no portal do cliente. Falta
+configurar regras (`loyalty_configs`), creditar e debitar pontos, extrato e
+resgate como desconto no pagamento. O módulo foi removido do catálogo de
+permissões em `4511b5c` por não ter gate nenhum — volta quando existir.
+
+---
+
+## 6. Rodar o projeto
+
+```bash
+pnpm install                 # uma vez, na raiz: cobre os 8 workspaces
+pnpm dev --filter=web        # http://localhost:3000
+pnpm typecheck               # tsc --noEmit em todos os pacotes
+pnpm test                    # Vitest
+pnpm --filter web test:e2e   # Playwright (sobe o dev sozinho)
+pnpm build --filter=web
+```
+
+O `.env.local` de `apps/web` precisa das chaves do Supabase, uazapi, Meta, VAPID
+e `CRON_SECRET` — ver CLAUDE.md §12. O E2E não pede nenhuma chave nova.
+
+**Mudança de schema** é aplicada por SQL direto (MCP do Supabase), com arquivo de
+paridade em `supabase/migrations/`. O banco é a fonte de verdade: inspecionar o
+schema real antes de qualquer DDL, e rodar `NOTIFY pgrst, 'reload schema'` **uma
+vez no fim do lote**.
