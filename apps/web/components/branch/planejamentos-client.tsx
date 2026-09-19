@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { Search, Plus, ClipboardList, Loader2, User, X, Pencil } from 'lucide-react'
-import { listarPlanejamentos, criarPlanoDoCliente, renomearPlano } from '@/actions/treatment-plans'
-import { PlanejamentoTratamento } from '@/components/branch/planejamento-tratamento'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Search, Plus, ClipboardList, Loader2, User } from 'lucide-react'
+import { listarPlanejamentos, criarPlanoDoCliente } from '@/actions/treatment-plans'
 import type { TreatmentProcedure, AvailableProduct } from '@/components/branch/treatment-plan-editor'
 
 /**
@@ -11,6 +12,11 @@ import type { TreatmentProcedure, AvailableProduct } from '@/components/branch/t
  *
  * A busca acha pelo NOME DO PLANO — o único jeito enquanto não há cliente — e
  * pelos dados de quem já está ligado (nome, CPF, telefone).
+ *
+ * Cada plano é um **link**, não um `setState`: o plano aberto mora na URL
+ * (`…/planejamentos/<id>`), tem a tela inteira e devolve o "voltar" do
+ * aparelho. Como camada sobre a lista ele era 780px espremendo um editor com
+ * procedimentos, sessões, preços e checkout.
  */
 
 export interface PlanoDaLista {
@@ -41,20 +47,20 @@ function fmtBRL(v: number) {
 }
 
 export function PlanejamentosClient({
-  planosIniciais, branchId, branchName, slug,
-  procedures, availableProducts, unidades = [], podeEditar, podeReceberr,
+  planosIniciais, branchId, branchName, basePath,
+  unidades = [], podeEditar,
 }: {
   planosIniciais:    PlanoDaLista[]
   branchId:          string
   branchName:        string | null
-  slug:              string
-  procedures:        TreatmentProcedure[]
-  availableProducts: AvailableProduct[]
+  /** Rota da lista — `/admin/planejamentos` ou `/<slug>/planejamentos`. */
+  basePath:          string
   /** Unidades da rede — só vem preenchida no portal da rede, onde não há "a atual". */
   unidades?:         { id: string; name: string }[]
   podeEditar:        boolean
-  podeReceberr:      boolean
 }) {
+  const router = useRouter()
+  const base = basePath.replace(/\/$/, '')
   const [planos, setPlanos] = useState(planosIniciais)
   const [busca,  setBusca]  = useState('')
   const [status, setStatus] = useState('')
@@ -71,26 +77,6 @@ export function PlanejamentosClient({
     branchId || (unidades.length === 1 ? unidades[0]!.id : ''),
   )
   const precisaEscolherUnidade = !branchId && unidades.length > 1
-
-  /** Plano aberto para edição, sobre a lista. */
-  const [aberto, setAberto] = useState<PlanoDaLista | null>(null)
-
-  // Renomear: o nome é como o plano é encontrado enquanto não há cliente.
-  const [renomeando,   setRenomeando]   = useState(false)
-  const [nomeEditado,  setNomeEditado]  = useState('')
-  const [salvandoNome, setSalvandoNome] = useState(false)
-
-  async function salvarNome() {
-    if (!aberto) return
-    setSalvandoNome(true); setErro(null)
-    const res = await renomearPlano(aberto.id, nomeEditado)
-    setSalvandoNome(false)
-    if (res.error) { setErro(res.error); return }
-    setAberto({ ...aberto, nome: nomeEditado.trim() })
-    setRenomeando(false)
-    const lista = await listarPlanejamentos({ busca, status: status || undefined, branchId: branchId || null })
-    setPlanos(lista.planos)
-  }
 
   // Busca com espera: digitar não dispara uma consulta por tecla.
   useEffect(() => {
@@ -110,10 +96,10 @@ export function PlanejamentosClient({
     setCriando(false)
     if (res.error || !res.planId) { setErro(res.error ?? 'Não foi possível criar o plano.'); return }
     setNovoAberto(false); setNovoNome('')
-    const lista = await listarPlanejamentos({ branchId: branchId || null })
-    setPlanos(lista.planos)
-    const novo = lista.planos.find(p => p.id === res.planId)
-    if (novo) setAberto(novo)
+    // Abrir o que se acabou de criar é a continuação do gesto. Sem `refresh()`
+    // junto: ele entra na mesma transição do `push` e a navegação não sai do
+    // lugar — e nem é preciso, porque a lista relê sozinha ao voltar.
+    router.push(`${base}/${res.planId}`)
   }
 
   return (
@@ -183,9 +169,9 @@ export function PlanejamentosClient({
           {planos.map(p => {
             const st = STATUS[p.status] ?? STATUS.DRAFT!
             return (
-              <button key={p.id} type="button" onClick={() => setAberto(p)}
+              <Link key={p.id} href={`${base}/${p.id}`}
                 className="card card-hover"
-                style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', cursor: 'pointer' }}>
+                style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', textDecoration: 'none' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)' }}>{p.nome}</span>
@@ -207,7 +193,7 @@ export function PlanejamentosClient({
                   </p>
                 </div>
                 <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>{fmtBRL(p.total)}</span>
-              </button>
+              </Link>
             )
           })}
         </div>
@@ -251,70 +237,6 @@ export function PlanejamentosClient({
                 {criando ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />} Criar
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Plano aberto */}
-      {aberto && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', zIndex: 110, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 16px', overflowY: 'auto' }}
-          onClick={() => setAberto(null)}>
-          <div className="card" style={{ width: 780, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
-              {/* O nome é como o plano é encontrado enquanto não há cliente — e
-                  era o único dado dele sem como corrigir: `renomearPlano` não
-                  tinha um único chamador. */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {renomeando ? (
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <input
-                      className="field" autoFocus value={nomeEditado}
-                      onChange={e => setNomeEditado(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && nomeEditado.trim()) void salvarNome()
-                        if (e.key === 'Escape') setRenomeando(false)
-                      }}
-                      style={{ fontSize: 15, fontWeight: 800, maxWidth: 420 }}
-                    />
-                    <button type="button" onClick={salvarNome} disabled={salvandoNome || !nomeEditado.trim()}
-                      className="btn-primary" style={{ fontSize: 12, padding: '6px 12px' }}>
-                      {salvandoNome ? 'Salvando…' : 'Salvar'}
-                    </button>
-                    <button type="button" onClick={() => setRenomeando(false)} className="btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }}>
-                      Cancelar
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button"
-                    onClick={() => { setNomeEditado(aberto.nome); setRenomeando(true) }}
-                    title="Renomear plano"
-                    style={{
-                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 7, textAlign: 'left',
-                    }}>
-                    <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>{aberto.nome}</h3>
-                    <Pencil size={13} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
-                  </button>
-                )}
-                <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {aberto.cliente ? aberto.cliente.name : 'Sem cliente ligado'}
-                </p>
-              </div>
-              <button type="button" onClick={() => setAberto(null)} className="btn-ghost" style={{ padding: '6px 10px' }}>
-                <X size={15} />
-              </button>
-            </div>
-
-            <PlanejamentoTratamento
-              clientId={aberto.cliente?.id ?? ''}
-              planIdInicial={aberto.id}
-              branchId={branchId}
-              slug={slug}
-              procedures={procedures}
-              availableProducts={availableProducts}
-              podeEditar={podeEditar}
-              podeReceber={podeReceberr}
-            />
           </div>
         </div>
       )}

@@ -1,29 +1,31 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
-import { ListaDePlanejamentos } from '@/app/_shared/lista-de-planejamentos'
+import { DetalheDePlano } from '@/app/_shared/detalhe-de-plano'
 
-export default async function BranchPlanejamentosPage({
+/** Um plano de tratamento aberto pelo portal da unidade. */
+export default async function BranchPlanoPage({
   params,
 }: {
-  params: Promise<{ slug: string }>
+  params: Promise<{ slug: string; planId: string }>
 }) {
-  const { slug } = await params
+  const { slug, planId } = await params
   const ctx = await getTenantContext()
 
   const supabase = await createSupabase()
   const { data: branch } = await supabase
     .from('branches')
-    .select('id, name')
+    .select('id')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
     .single()
   if (!branch) notFound()
 
   return (
-    <ListaDePlanejamentos
+    <DetalheDePlano
+      planId={planId}
       branchId={branch.id}
-      branchName={branch.name}
+      slug={slug}
       basePath={`/${slug}/planejamentos`}
     />
   )

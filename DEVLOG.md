@@ -52,8 +52,9 @@ unidade.
   planejar avulso e ligar a uma pessoa depois. A aplicação do injetável é outra
   coisa: cópia congelada no prontuário, feita dentro do atendimento e só com
   cliente ligado. O mapa aceita quatro ilustrações (rosto/corpo ×
-  feminino/masculino), zoom por pinça no celular, e o planejamento aberto tem
-  URL própria — no aparelho ele ocupa a tela inteira, com "voltar" para a lista.
+  feminino/masculino) e zoom por pinça no celular. **Nos dois, o que está aberto
+  tem URL própria** (`…/planejamentos/<id>`, `…/injetaveis/<id>`): no aparelho
+  ocupa a tela inteira, com "voltar" para a lista.
 - **CRM** — Inbox omnichannel (WhatsApp por uazapi e API oficial da Meta,
   Instagram, Messenger), funil de oportunidades, templates HSM, atribuição de
   origem de lead.
@@ -239,8 +240,30 @@ Detalhes que valem lembrar:
 - O nome do cliente no cabeçalho do mapa virou link para a ficha — era o que o
   botão "Abrir a ficha" fazia na versão anterior. Dentro da própria ficha ele
   continua sendo só o nome.
-- **Tratamentos não tinha esse problema**: lá o plano aberto é uma camada sobre
-  a lista, e camada já cobre a tela no celular.
+- **Tratamentos não tinha o mesmo sintoma**, mas foi pelo mesmo caminho logo em
+  seguida (abaixo).
+
+### 2026-09-18 (continuação) — Tratamentos: o plano aberto vira tela
+
+O plano era uma camada de 780px sobre a lista. No celular cobria tudo sem
+oferecer volta; no computador espremia um editor que tem procedimentos,
+sessões, preços, proposta e checkout. Virou rota — `…/planejamentos/<id>` nos
+dois portais — com a tela inteira, "voltar" para a lista, e o nome editável no
+topo (`renomearPlano` só tinha esse chamador).
+
+Aqui **não** se usou `ListaDetalhe`: a lista de planos é larga (status, cliente,
+sessões e valor em cada linha) e não caberia numa coluna de 300px ao lado. O
+resultado no celular é o mesmo — uma tela por vez —, e no desktop o editor
+ganhou a largura que a camada não dava.
+
+`getCabecalhoDoPlano` nasceu aqui: a página precisa do nome e do dono antes do
+editor, e `getPlanoParaEditar` traz sessões e preços, que é o outro assunto. A
+lista deixou de carregar o catálogo de procedimentos — quem precisa dele é o
+plano aberto, que agora o busca por conta própria.
+
+**Armadilha:** `router.refresh()` logo depois de `router.push()` cancela a
+navegação — entram na mesma transição e a URL não sai do lugar. Na lista de
+planos o refresh nem era preciso: ela relê sozinha ao voltar.
 
 ---
 

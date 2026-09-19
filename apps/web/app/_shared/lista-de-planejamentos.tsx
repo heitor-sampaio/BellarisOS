@@ -1,6 +1,5 @@
-import { getTenantContext, assertPermission, can, podeReceber } from '@/lib/auth'
+import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { listarPlanejamentos } from '@/actions/treatment-plans'
-import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { getCachedNetworkBranches } from '@/lib/cached-queries'
 import { PlanejamentosClient } from '@/components/branch/planejamentos-client'
 
@@ -11,14 +10,18 @@ import { PlanejamentosClient } from '@/components/branch/planejamentos-client'
  * haver cliente e é encontrado pela busca. Esta tela é a visão geral; a aba no
  * perfil do cliente continua como o caminho de quem está com a pessoa na frente.
  *
+ * Aqui é só a lista: o plano aberto é a rota `<basePath>/<id>`, que carrega o
+ * catálogo de procedimentos por conta própria — esta tela não precisa dele.
+ *
  * `branchId` nulo = rede inteira.
  */
 export async function ListaDePlanejamentos({
-  branchId, branchName, slug,
+  branchId, branchName, basePath,
 }: {
   branchId:   string | null
   branchName: string | null
-  slug:       string
+  /** Rota da lista — `/admin/planejamentos` ou `/<slug>/planejamentos`. */
+  basePath:   string
 }) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'VIEW')
@@ -26,9 +29,8 @@ export async function ListaDePlanejamentos({
   // Na rede não existe "a filial atual", e o plano precisa de uma: é ela que
   // decide o caixa que recebe e a agenda onde as sessões caem. Por isso o
   // portal da rede pergunta a unidade ao criar, em vez de recusar depois.
-  const [{ planos }, procs, unidades] = await Promise.all([
+  const [{ planos }, unidades] = await Promise.all([
     listarPlanejamentos({ branchId }),
-    procedimentosParaPlano(ctx.tenantId!),
     branchId ? Promise.resolve([]) : getCachedNetworkBranches(ctx.tenantId!),
   ])
 
@@ -37,12 +39,9 @@ export async function ListaDePlanejamentos({
       planosIniciais={planos}
       branchId={branchId ?? ''}
       branchName={branchName}
-      slug={slug}
-      procedures={procs.procedures}
-      availableProducts={procs.products}
+      basePath={basePath}
       unidades={unidades as { id: string; name: string }[]}
       podeEditar={can(ctx, 'medical_records', 'MANAGE')}
-      podeReceberr={podeReceber(ctx)}
     />
   )
 }

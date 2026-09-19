@@ -377,6 +377,54 @@ export async function renomearPlano(planId: string, nome: string): Promise<{ err
 }
 
 /**
+ * O cabeçalho de um plano: o que a tela dele precisa antes do editor.
+ *
+ * Existe porque o plano aberto virou uma rota própria: a página precisa saber
+ * de quem é e como se chama para desenhar o topo, e `getPlanoParaEditar` traz
+ * sessões e preços, que é o outro assunto.
+ */
+export async function getCabecalhoDoPlano(planId: string): Promise<{
+  plano?: {
+    id: string; nome: string; status: string
+    cliente: { id: string; name: string } | null
+    unidade: string | null
+    slug:    string
+  }
+  error?: string
+}> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'VIEW')
+  const admin = createAdminClient()
+
+  const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
+  if (!plan) return { error: 'Plano não encontrado.' }
+
+  const { data, error } = await admin
+    .from('treatment_plans')
+    .select('id, name, status, clients(id, name), branches!branch_id(name, slug)')
+    .eq('id', planId)
+    .maybeSingle()
+  // Erro de consulta não é "plano não existe": sem checar, a tela mandaria de
+  // volta para a lista como se o plano tivesse sumido.
+  if (error) return { error: `Falha ao carregar o plano: ${error.message}` }
+  if (!data) return { error: 'Plano não encontrado.' }
+
+  const cli    = data.clients  as unknown as { id: string; name: string } | null
+  const branch = data.branches as unknown as { name: string; slug: string } | null
+
+  return {
+    plano: {
+      id:      data.id as string,
+      nome:    (data.name as string | null) ?? 'Plano de tratamento',
+      status:  data.status as string,
+      cliente: cli ? { id: cli.id, name: cli.name } : null,
+      unidade: branch?.name ?? null,
+      slug:    branch?.slug ?? '',
+    },
+  }
+}
+
+/**
  * Todos os planejamentos da rede/unidade, com busca e filtro.
  *
  * A busca acha pelo NOME DO PLANO (o único jeito enquanto não há cliente) e
