@@ -182,6 +182,34 @@ conjunto. Foram normalizadas para os mesmos 109, escalando a tinta
 (255 − luminância) e preservando matiz e alfa. **Arte nova entra pelo mesmo
 crivo**; o critério está em `injectable-outline.tsx`.
 
+### 2026-09-18 (continuação) — Pinça no mapa de injetáveis
+
+Ponto de toxina fica a milímetros do vizinho, e o zoom já existia — mas só pelos
+botões de `+` e `−`, que ninguém procura no celular com o dedo já sobre o rosto.
+Agora o gesto de pinça aproxima e afasta.
+
+Como está feito (`injectable-map-field.tsx`): o Pointer Events unifica toque,
+caneta e mouse, então basta guardar todo ponteiro encostado num `Map` por
+`pointerId`. Com dois, `pincaRef` **congela** distância, zoom, meio dos dedos e
+pan do início do gesto; cada `pointermove` recalcula o zoom pela razão das
+distâncias e o pan pelo deslocamento do meio. Congelar o foco no início é o que
+impede a imagem de escorregar: recalcular o ponto fixo a cada quadro realimenta
+o próprio arrasto.
+
+Três detalhes que custariam um bug cada:
+- `touchAction: 'none'` no SVG — sem isso o navegador rouba o gesto para o zoom
+  da página inteira.
+- O `onPointerDown` **do ponto** também registra o ponteiro. Sem isso, um dedo
+  que pousa em cima de um marcador não conta para a pinça.
+- `moveu` marca que houve gesto, e o `click` que chega quando o último dedo sai
+  é descartado. Senão toda pinça terminava marcando um ponto novo.
+
+O E2E (`e2e/injetaveis-pinca.spec.ts`) emula os dois dedos por CDP
+(`Input.dispatchTouchEvent`) — o Playwright não tem pinça pronta. **Rolar a
+ilustração para dentro da viewport antes é obrigatório**: em 390×844 ela nasce
+inteira abaixo da dobra, e toque fora da viewport não chega a elemento nenhum —
+o teste falhava com zoom parado em 100% sem que o código estivesse errado.
+
 ---
 
 ## 4. Decisões de produto

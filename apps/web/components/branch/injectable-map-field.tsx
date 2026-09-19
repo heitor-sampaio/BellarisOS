@@ -47,6 +47,24 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
   const [panning, setPanning] = useState(false)
   const panRef = useRef<{ x: number; y: number; panX: number; panY: number; moveu: boolean } | null>(null)
 
+  /**
+   * Pinça no celular — o gesto que a profissional faz para aproximar antes de
+   * marcar um ponto a milímetros do vizinho. Os botões de zoom existem, mas
+   * ninguém os procura com o dedo já sobre o rosto.
+   *
+   * `ponteiros` guarda todo dedo encostado (o Pointer Events unifica toque,
+   * caneta e mouse); com dois, `pincaRef` congela a distância e o zoom do
+   * início do gesto, que é a referência do fator.
+   */
+  const ponteiros = useRef<Map<number, { x: number; y: number }>>(new Map())
+  const pincaRef  = useRef<{
+    dist: number
+    zoom: number
+    meio: { x: number; y: number }
+    pan:  { x: number; y: number }
+    moveu: boolean
+  } | null>(null)
+
   const { width: W, height: H } = MAP_VIEWBOX
   const janelaW = W / zoom
   const janelaH = H / zoom
@@ -174,13 +192,88 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom, pan.x, pan.y])
 
+  /**
+   * Registra todo ponteiro que encosta na ilustração — inclusive o que começa
+   * em cima de um ponto, que não propaga para o fundo. Sem isso, pinçar com um
+   * dedo sobre um ponto marcado não seria reconhecido como pinça.
+   */
+  function registrarPonteiro(e: React.PointerEvent) {
+    ponteiros.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    try { (e.currentTarget as Element).setPointerCapture(e.pointerId) } catch { /* o navegador pode recusar */ }
+
+    if (ponteiros.current.size === 2) iniciarPinca()
+  }
+
+  function esquecerPonteiro(e: React.PointerEvent) {
+    ponteiros.current.delete(e.pointerId)
+    if (ponteiros.current.size < 2) pincaRef.current = null
+  }
+
+  /** Distância e ponto médio entre os dois dedos, em pixels de tela. */
+  function medirDoisDedos() {
+    const [a, b] = [...ponteiros.current.values()]
+    if (!a || !b) return null
+    const dx = a.x - b.x
+    const dy = a.y - b.y
+    return {
+      dist: Math.hypot(dx, dy),
+      meio: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    }
+  }
+
+  function iniciarPinca() {
+    const m = medirDoisDedos()
+    if (!m || m.dist === 0) return
+    // Dois dedos não marcam ponto nem arrastam o que estava sob o primeiro.
+    setDragId(null)
+    panRef.current = null
+    pincaRef.current = { dist: m.dist, zoom, meio: m.meio, pan: { ...pan }, moveu: false }
+  }
+
   function handlePointerDown(e: React.PointerEvent) {
+    registrarPonteiro(e)
+    if (ponteiros.current.size > 1) return
     // Só o fundo chega aqui: os pontos param a propagação.
     if (zoom === ZOOM_MIN) return
     panRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y, moveu: false }
   }
 
   function handlePointerMove(e: React.PointerEvent) {
+    if (ponteiros.current.has(e.pointerId)) {
+      ponteiros.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    }
+
+    // -- Pinça: aproxima e desloca ao mesmo tempo, como num mapa -------------
+    const pinca = pincaRef.current
+    if (pinca && ponteiros.current.size >= 2) {
+      const m = medirDoisDedos()
+      const rect = svgRef.current?.getBoundingClientRect()
+      if (!m || !rect || rect.width === 0) return
+
+      const alvo = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinca.zoom * (m.dist / pinca.dist)))
+
+      // Ponto fixo do zoom: o meio dos dedos no INÍCIO do gesto, em 0..1 da
+      // área visível de então. Usar o meio atual faria a imagem escorregar
+      // junto com a mão.
+      const fx = Math.min(1, Math.max(0, (pinca.meio.x - rect.left) / rect.width))
+      const fy = Math.min(1, Math.max(0, (pinca.meio.y - rect.top) / rect.height))
+      const ux = pinca.pan.x + fx * (W / pinca.zoom)
+      const uy = pinca.pan.y + fy * (H / pinca.zoom)
+
+      // O deslocamento do meio dos dedos vira pan: quem pinça e arrasta junto
+      // espera que a região siga a mão.
+      const dx = ((m.meio.x - pinca.meio.x) / rect.width)  * (W / alvo)
+      const dy = ((m.meio.y - pinca.meio.y) / rect.height) * (H / alvo)
+
+      if (Math.abs(m.dist - pinca.dist) > 2 || Math.abs(dx) > PAN_LIMIAR || Math.abs(dy) > PAN_LIMIAR) {
+        pinca.moveu = true
+      }
+
+      setZoom(alvo)
+      setPan(limitarPan({ x: ux - fx * (W / alvo) - dx, y: uy - fy * (H / alvo) - dy }, alvo))
+      return
+    }
+
     if (dragId) {
       const rel = toRelative(e)
       if (rel) updatePoint(dragId, rel)
@@ -199,10 +292,19 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
     setPan(limitarPan({ x: p.panX - dx, y: p.panY - dy }))
   }
 
-  function encerrarArrasto() {
+  function encerrarArrasto(e?: React.PointerEvent) {
+    const pincou = !!pincaRef.current?.moveu
+    if (e) esquecerPonteiro(e)
+
     setDragId(null)
     setPanning(false)
+
     // O clique dispara depois do pointerup; a flag precisa sobreviver até lá.
+    // Vale para o pan e para a pinça: soltar os dedos depois de aproximar não
+    // pode marcar um ponto no lugar onde a mão estava.
+    if (pincou) {
+      panRef.current = { x: 0, y: 0, panX: pan.x, panY: pan.y, moveu: true }
+    }
     if (panRef.current) setTimeout(() => { panRef.current = null }, 0)
   }
 
@@ -293,6 +395,7 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={encerrarArrasto}
+            onPointerCancel={encerrarArrasto}
             onPointerLeave={encerrarArrasto}
           >
             <InjectableOutline view={view} />
@@ -309,7 +412,13 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
                   // aqui é o que diferencia ponto de área livre.
                   style={{ cursor: dragId === p.id ? 'grabbing' : canEdit ? 'grab' : 'pointer' }}
                   onClick={e => { e.stopPropagation(); setSelectedId(p.id) }}
-                  onPointerDown={e => { if (canEdit) { e.stopPropagation(); setDragId(p.id) } }}
+                  // O ponteiro é registrado mesmo começando sobre um ponto: é o
+                  // que permite pinçar com um dedo em cima de um marcador.
+                  onPointerDown={e => {
+                    registrarPonteiro(e)
+                    if (ponteiros.current.size > 1) return
+                    if (canEdit) { e.stopPropagation(); setDragId(p.id) }
+                  }}
                 >
                   {/* Alvo invisível, um pouco maior que o ponto. */}
                   <circle cx={cx} cy={cy} r={HIT_R * s} fill="transparent" />
