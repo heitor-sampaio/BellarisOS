@@ -176,6 +176,12 @@ quatro imagens têm a proporção do viewBox (1122×1402 ≈ 0,80 / 200×250), e
 trocar de vista não desloca ponto nenhum. Ponto sem vista é do rosto feminino,
 que era o único desenho até aqui.
 
+As artes novas chegaram mais escuras que a original — o rosto masculino com
+luminância média de traço 64 contra 109 — e ao lado dela pareciam de outro
+conjunto. Foram normalizadas para os mesmos 109, escalando a tinta
+(255 − luminância) e preservando matiz e alfa. **Arte nova entra pelo mesmo
+crivo**; o critério está em `injectable-outline.tsx`.
+
 ---
 
 ## 4. Decisões de produto

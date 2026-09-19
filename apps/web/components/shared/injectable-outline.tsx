@@ -14,6 +14,13 @@ import type { InjectableView } from '@/lib/anamnesis'
  * de ilustração não desloca ponto nenhum. **Arte nova com outra proporção exige
  * acertar as duas coisas juntas**, senão o desenho ganha faixa vazia dos lados
  * e os pontos deixam de casar com ele.
+ *
+ * ⚠️ O peso do traço também é padronizado: **luminância média ≈ 109 nos pixels
+ * opacos**, que é a do `mockup-rosto.png` original. As artes novas chegaram bem
+ * mais escuras (o rosto masculino em 64) e, ao lado da primeira, pareciam de
+ * outro conjunto. O acerto é feito na TINTA (255 − luminância), escalada por
+ * um fator: clareia preservando matiz e alfa, e a borda do desenho continua
+ * nítida — mexer no alfa deixaria o traço lavado.
  */
 
 export const MAP_VIEWBOX = { width: 200, height: 250 }
