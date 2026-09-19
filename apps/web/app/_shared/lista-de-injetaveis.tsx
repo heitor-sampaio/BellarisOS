@@ -1,28 +1,30 @@
 import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { listarMapasDeInjetaveis } from '@/actions/injectable-map'
-import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
-import { InjetaveisClient } from '@/components/branch/injetaveis-client'
+import { ListaDetalhe } from '@/components/shared/lista-detalhe'
+import { InjetaveisLista } from '@/components/branch/injetaveis-lista'
 
 /**
- * Injetáveis — a mesma tela nos dois portais.
+ * Injetáveis — a mesma tela nos dois portais, lista + detalhe.
  *
- * `branchId` nulo = rede inteira. Os produtos oferecidos no mapa são os do
- * estoque: é o que a clínica de fato aplica, e assim o nome do que se planeja
- * bate com o nome do que sai do estoque.
+ * É layout, não página: a lista fica montada enquanto se navega entre os
+ * planejamentos, e `ListaDetalhe` esconde uma das duas colunas no celular. Com
+ * o detalhe empilhado abaixo da lista, abrir um planejamento jogava o mapa
+ * várias telas para baixo e parecia que nada tinha acontecido.
+ *
+ * `branchId` nulo = rede inteira.
  */
 export async function ListaDeInjetaveis({
-  branchId, slug,
+  branchId, basePath, children,
 }: {
   branchId: string | null
-  slug:     string
+  /** Rota da lista sem detalhe — `/admin/injetaveis` ou `/<slug>/injetaveis`. */
+  basePath: string
+  children: React.ReactNode
 }) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'VIEW')
 
-  const [{ mapas, error }, catalogo] = await Promise.all([
-    listarMapasDeInjetaveis({ branchId }),
-    procedimentosParaPlano(ctx.tenantId!),
-  ])
+  const { mapas, error } = await listarMapasDeInjetaveis({ branchId })
 
   // Consulta que falhou não é "a clínica não tem planejamento": sem checar, a
   // tela convidaria a recomeçar um que já existe.
@@ -36,12 +38,18 @@ export async function ListaDeInjetaveis({
   }
 
   return (
-    <InjetaveisClient
-      mapas={mapas}
-      produtos={catalogo.products.map(p => p.name)}
-      slug={slug}
-      branchId={branchId ?? ''}
-      podeEditar={can(ctx, 'medical_records', 'MANAGE')}
-    />
+    <ListaDetalhe
+      basePath={basePath}
+      lista={
+        <InjetaveisLista
+          mapas={mapas}
+          basePath={basePath}
+          branchId={branchId ?? ''}
+          podeEditar={can(ctx, 'medical_records', 'MANAGE')}
+        />
+      }
+    >
+      {children}
+    </ListaDetalhe>
   )
 }

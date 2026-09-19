@@ -51,7 +51,9 @@ unidade.
   Os dois têm o mesmo desenho: **nome primeiro, cliente opcional** — dá para
   planejar avulso e ligar a uma pessoa depois. A aplicação do injetável é outra
   coisa: cópia congelada no prontuário, feita dentro do atendimento e só com
-  cliente ligado.
+  cliente ligado. O mapa aceita quatro ilustrações (rosto/corpo ×
+  feminino/masculino), zoom por pinça no celular, e o planejamento aberto tem
+  URL própria — no aparelho ele ocupa a tela inteira, com "voltar" para a lista.
 - **CRM** — Inbox omnichannel (WhatsApp por uazapi e API oficial da Meta,
   Instagram, Messenger), funil de oportunidades, templates HSM, atribuição de
   origem de lead.
@@ -209,6 +211,36 @@ O E2E (`e2e/injetaveis-pinca.spec.ts`) emula os dois dedos por CDP
 ilustração para dentro da viewport antes é obrigatório**: em 390×844 ela nasce
 inteira abaixo da dobra, e toque fora da viewport não chega a elemento nenhum —
 o teste falhava com zoom parado em 100% sem que o código estivesse errado.
+
+### 2026-09-18 (continuação) — Injetáveis: uma tela por vez no celular
+
+A lista e o planejamento aberto eram `.master-detail`, que no celular apenas
+**empilha**: o mapa nascia abaixo da lista inteira, e com uma dúzia de
+planejamentos cadastrados era rolagem demais até o desenho — tocar num nome
+parecia não fazer nada. O mesmo problema que a ficha de clientes já tinha
+resolvido.
+
+Injetáveis passou a usar `ListaDetalhe`, o componente de lá: no desktop as duas
+colunas continuam lado a lado; no celular só uma delas aparece. **Quem decide é
+a rota**, não um `useState` — o planejamento aberto virou
+`…/injetaveis/<mapId>`, nos dois portais. Isso traz de brinde o que estado local
+não dá: o "voltar" do aparelho funciona, o link de um planejamento pode ser
+mandado para alguém, e recarregar a página não perde o que estava aberto.
+
+A tela virou layout + páginas finas (`app/_shared/lista-de-injetaveis.tsx` é o
+layout com a lista; `detalhe-de-injetavel.tsx` é o corpo do aberto), e
+`injetaveis-client.tsx` deixou de existir. Criar um planejamento agora navega
+direto para ele — no celular já cai na tela do mapa.
+
+Detalhes que valem lembrar:
+- O botão "voltar" só existe onde a lista saiu da tela (`.ld-voltar`, com o
+  mesmo corte de 899px do `ListaDetalhe`). Usar `.show-mobile` seria errado por
+  12px: ela corta em 1023px, onde as duas colunas ainda aparecem.
+- O nome do cliente no cabeçalho do mapa virou link para a ficha — era o que o
+  botão "Abrir a ficha" fazia na versão anterior. Dentro da própria ficha ele
+  continua sendo só o nome.
+- **Tratamentos não tinha esse problema**: lá o plano aberto é uma camada sobre
+  a lista, e camada já cobre a tela no celular.
 
 ---
 

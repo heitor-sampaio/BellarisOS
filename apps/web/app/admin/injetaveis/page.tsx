@@ -1,6 +1,9 @@
-import { ListaDeInjetaveis } from '@/app/_shared/lista-de-injetaveis'
+import { getTenantContext, assertPermission } from '@/lib/auth'
+import { InjetavelVazio } from '@/app/_shared/injetavel-vazio'
 
-/** Mapas de injetáveis de toda a rede. */
-export default function AdminInjetaveisPage() {
-  return <ListaDeInjetaveis branchId={null} slug="" />
+/** Nenhum planejamento aberto. O layout cuida da lista. */
+export default async function AdminInjetaveisPage() {
+  // O layout também confere, mas a URL é uma porta própria (CLAUDE.md §6).
+  assertPermission(await getTenantContext(), 'medical_records', 'VIEW')
+  return <InjetavelVazio />
 }

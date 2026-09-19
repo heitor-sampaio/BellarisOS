@@ -696,6 +696,12 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   .occupancy-row .occ-details { grid-area: details; flex-wrap: wrap; }
 }
 
+/* Voltar para a lista: só onde ela saiu da tela. No desktop a lista continua
+   ao lado, e o botão seria um convite a lugar nenhum. Não é `.show-mobile`
+   porque aquele corta em 1023px — entre 900 e 1023 as duas colunas ainda
+   aparecem, e o botão apontaria para a coluna que está bem ali. */
+.ld-voltar { display: none !important; }
+
 /* Lista + detalhe no celular: só um dos dois na tela.
    `.master-detail` empilha, o que resolve a largura e não resolve a navegação:
    com a lista inteira acima, tocar num nome abria o detalhe fora da vista e
@@ -703,6 +709,7 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 @media (max-width: 899px) {
   .lista-detalhe[data-detalhe='1'] .ld-lista   { display: none !important; }
   .lista-detalhe[data-detalhe='0'] .ld-detalhe { display: none !important; }
+  .ld-voltar { display: inline-flex !important; }
 
   /* A lista passou a viver DENTRO de `.ld-lista`, então o
      `.master-detail > *` que a esticava não a alcança mais — ela voltava à

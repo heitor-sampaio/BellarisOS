@@ -1,7 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Syringe, Save, Loader2, ChevronLeft, CheckCircle2, UserPlus, UserCheck, Pencil, Search } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import {
+  Syringe, Save, Loader2, ChevronLeft, CheckCircle2,
+  UserPlus, UserCheck, Pencil, Search, ExternalLink,
+} from 'lucide-react'
 import { InjectableMapField } from '@/components/branch/injectable-map-field'
 import { injectableTotals, type InjectableMapValue } from '@/lib/anamnesis'
 import {
@@ -10,6 +15,7 @@ import {
   type AplicacaoInjetavel, type PlanejamentoInjetavel,
 } from '@/actions/injectable-map'
 import { buscarClientesParaPlano } from '@/actions/treatment-plans'
+import { rotaCliente } from '@/lib/rotas'
 
 /**
  * Um planejamento de injetáveis aberto.
@@ -33,6 +39,8 @@ export function MapaInjetavel({
   /** Avisa a lista que nome, cliente ou pontos mudaram. */
   onMudou?:       () => void
 }) {
+  const pathname = usePathname()
+
   const [plano,      setPlano]      = useState<PlanejamentoInjetavel | null>(null)
   const [mapa,       setMapa]       = useState<InjectableMapValue | null>(null)
   const [vendo,      setVendo]      = useState<AplicacaoInjetavel | null>(null)
@@ -170,11 +178,29 @@ export function MapaInjetavel({
         <span style={{ flex: 1 }} />
 
         {plano.clientId ? (
+          // O nome é a porta para a ficha: quem está com o mapa aberto e quer o
+          // histórico da pessoa clica onde ela está escrita. O portal certo sai
+          // do pathname — a ficha da rede é /admin. Dentro da própria ficha o
+          // link apontaria para onde já se está: ali vira só o nome.
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12,
             fontWeight: 700, color: 'var(--brand)',
           }}>
-            <UserCheck size={13} /> {plano.clientName ?? 'Cliente'}
+            <UserCheck size={13} />
+            {pathname.startsWith(rotaCliente(pathname, slug, plano.clientId)) ? (
+              plano.clientName ?? 'Cliente'
+            ) : (
+              <Link
+                href={rotaCliente(pathname, slug, plano.clientId)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  color: 'inherit', textDecoration: 'none',
+                }}
+              >
+                {plano.clientName ?? 'Cliente'}
+                <ExternalLink size={11} />
+              </Link>
+            )}
           </span>
         ) : podeEditar && (
           <button type="button" onClick={() => setLigando(v => !v)} className="btn-secondary"
