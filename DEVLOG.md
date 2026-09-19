@@ -167,6 +167,15 @@ Registrar aplicação continua exigindo cliente — aplicação é prontuário, 
 prontuário é de alguém. `injectable_applications.map_id` guarda de qual
 planejamento ela saiu.
 
+**Quatro ilustrações**: rosto e corpo, feminino e masculino
+(`public/mockup-*.png`), escolhidas por duas barras cruzadas. Cada ponto guarda
+a vista em que foi marcado, então um planejamento cobre rosto e corpo ao mesmo
+tempo: trocar de ilustração mostra os pontos dela e guarda os outros, e o total
+por produto soma tudo — é a dose que sai do estoque, não a que está na tela. As
+quatro imagens têm a proporção do viewBox (1122×1402 ≈ 0,80 / 200×250), então
+trocar de vista não desloca ponto nenhum. Ponto sem vista é do rosto feminino,
+que era o único desenho até aqui.
+
 ---
 
 ## 4. Decisões de produto

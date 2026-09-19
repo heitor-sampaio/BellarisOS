@@ -15,6 +15,21 @@ export type AnamnesisFieldType =
 export const INJECTABLE_UNITS = ['UI', 'ml', 'mg'] as const
 export type InjectableUnit = typeof INJECTABLE_UNITS[number]
 
+/**
+ * As ilustrações disponíveis.
+ *
+ * Duas escolhas cruzadas — corpo × sexo —, guardadas numa chave só porque é ela
+ * que aponta para a imagem. `'front'` é o valor legado de quando só existia o
+ * rosto feminino; `normalizeInjectableView` o traduz.
+ */
+export const INJECTABLE_VIEWS = ['rosto_f', 'rosto_m', 'corpo_f', 'corpo_m'] as const
+export type InjectableView = typeof INJECTABLE_VIEWS[number]
+
+export function normalizeInjectableView(v: string | null | undefined): InjectableView {
+  if (v && (INJECTABLE_VIEWS as readonly string[]).includes(v)) return v as InjectableView
+  return 'rosto_f'
+}
+
 export interface InjectablePoint {
   id:      string
   /** 0..1 relativo à imagem — ponto em pixel sairia do lugar ao redimensionar. */
@@ -27,17 +42,36 @@ export interface InjectablePoint {
   /** Dose confirmada na aplicação; `null` enquanto for só plano. */
   applied: number | null
   note?:   string
+  /**
+   * Ilustração em que o ponto foi marcado. Ausente nos pontos anteriores a
+   * 2026-09-18, que são todos do rosto feminino — é o que
+   * `pointsOfView` assume.
+   */
+  view?:   InjectableView
 }
 
 export interface InjectableMapValue {
-  /** Só existe o rosto de frente hoje; o campo evita migração ao crescer. */
-  view:         'front'
+  /** A ilustração aberta. Os pontos de outras vistas continuam guardados. */
+  view:         InjectableView | 'front'
   points:       InjectablePoint[]
   confirmedAt?: string | null
 }
 
 export function emptyInjectableMap(): InjectableMapValue {
-  return { view: 'front', points: [], confirmedAt: null }
+  return { view: 'rosto_f', points: [], confirmedAt: null }
+}
+
+/**
+ * Os pontos de uma ilustração.
+ *
+ * Um planejamento pode ter rosto e corpo ao mesmo tempo: trocar a vista mostra
+ * os pontos dela e guarda os outros, em vez de apagá-los.
+ */
+export function pointsOfView(
+  value: InjectableMapValue,
+  view: InjectableView,
+): InjectablePoint[] {
+  return value.points.filter(p => normalizeInjectableView(p.view) === view)
 }
 
 export function isInjectableMap(v: unknown): v is InjectableMapValue {

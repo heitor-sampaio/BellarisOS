@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Trash2, Check, Syringe, Plus, Minus, Maximize2 } from 'lucide-react'
-import { FaceOutline, FACE_VIEWBOX } from '@/components/shared/face-outline'
+import { InjectableOutline, MAP_VIEWBOX, viewDe, partesDaView } from '@/components/shared/injectable-outline'
 import {
   INJECTABLE_UNITS, emptyInjectableMap, injectableTotals, newId,
-  type InjectableMapValue, type InjectablePoint, type InjectableUnit,
+  normalizeInjectableView, pointsOfView,
+  type InjectableMapValue, type InjectablePoint, type InjectableUnit, type InjectableView,
 } from '@/lib/anamnesis'
 
 /**
@@ -46,7 +47,7 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
   const [panning, setPanning] = useState(false)
   const panRef = useRef<{ x: number; y: number; panX: number; panY: number; moveu: boolean } | null>(null)
 
-  const { width: W, height: H } = FACE_VIEWBOX
+  const { width: W, height: H } = MAP_VIEWBOX
   const janelaW = W / zoom
   const janelaH = H / zoom
   // Escala inversa do zoom: o marcador mantém o tamanho na tela enquanto o
@@ -55,7 +56,24 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
   const s = 1 / zoom
 
   const confirmed = !!map.confirmedAt
+  // O total é de TODAS as vistas: é a dose que sai do estoque, não a que está
+  // na tela. Mostrar só a da vista aberta faria a conferência mentir.
   const totals    = injectableTotals(map)
+
+  // Ilustração aberta. Os pontos das outras continuam guardados no valor — um
+  // planejamento cobre rosto e corpo, e trocar de vista não apaga nada.
+  const view     = normalizeInjectableView(map.view)
+  const daVista  = pointsOfView(map, view)
+  const emOutras = map.points.length - daVista.length
+  const { corpo, sexo } = partesDaView(view)
+
+  function trocarVista(v: InjectableView) {
+    if (v === view) return
+    setSelectedId(null)
+    setZoom(ZOOM_MIN)
+    setPan({ x: 0, y: 0 })
+    update({ view: v })
+  }
 
   function limitarPan(p: { x: number; y: number }, z = zoom) {
     return {
@@ -112,6 +130,9 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
       dose: 0,
       unit: 'UI',
       applied: confirmed ? 0 : null,
+      // O ponto pertence à ilustração em que foi marcado — é o que permite
+      // rosto e corpo no mesmo planejamento.
+      view,
     }
     update({ points: [...map.points, point] })
     setSelectedId(point.id)
@@ -197,11 +218,26 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="rg-2" style={{ alignItems: 'start' }}>
-        {/* -- Rosto -------------------------------------------------- */}
+        {/* -- Ilustração --------------------------------------------- */}
         <div style={{
           background: 'var(--bg-app)', border: '1px solid var(--border)',
           borderRadius: 'var(--radius-card-sm)', padding: 12, position: 'relative',
         }}>
+          {/* Rosto × corpo e feminino × masculino: duas escolhas cruzadas, que
+              é como se pensa na hora ("corpo dela"), e não uma lista de quatro. */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+            <SegVista
+              opcoes={[['rosto', 'Rosto'], ['corpo', 'Corpo']]}
+              valor={corpo}
+              onEscolher={c => trocarVista(viewDe(c as 'rosto' | 'corpo', sexo))}
+            />
+            <SegVista
+              opcoes={[['f', 'Feminino'], ['m', 'Masculino']]}
+              valor={sexo}
+              onEscolher={sx => trocarVista(viewDe(corpo, sx as 'f' | 'm'))}
+            />
+          </div>
+
           {/* Controles sobre a imagem: aproximar é o que dá precisão em região
               densa, sem depender de um marcador minúsculo. */}
           <div style={{
@@ -232,7 +268,7 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
             </BotaoZoom>
             {zoom > ZOOM_MIN && (
               <BotaoZoom
-                titulo="Enquadrar o rosto inteiro"
+                titulo="Enquadrar a ilustração inteira"
                 onClick={() => { setZoom(ZOOM_MIN); setPan({ x: 0, y: 0 }) }}
               >
                 <Maximize2 size={12} />
@@ -259,9 +295,9 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
             onPointerUp={encerrarArrasto}
             onPointerLeave={encerrarArrasto}
           >
-            <FaceOutline />
+            <InjectableOutline view={view} />
 
-            {map.points.map((p, i) => {
+            {daVista.map((p, i) => {
               const cx = p.x * W
               const cy = p.y * H
               const isSelected = p.id === selectedId
@@ -323,20 +359,30 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
             {canEdit
               ? zoom > ZOOM_MIN
                 ? 'Clique para marcar. Arraste o fundo para deslocar. Role para aproximar.'
-                : 'Clique para marcar. Role o mouse sobre o rosto para aproximar.'
-              : `${map.points.length} ${map.points.length === 1 ? 'ponto marcado' : 'pontos marcados'} · toque para identificar`}
+                : 'Clique para marcar. Role o mouse sobre a ilustração para aproximar.'
+              : `${daVista.length} ${daVista.length === 1 ? 'ponto marcado' : 'pontos marcados'} · toque para identificar`}
           </p>
         </div>
 
         {/* -- Lista e edição ----------------------------------------- */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {map.points.length === 0 && (
+          {daVista.length === 0 && (
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-              Nenhum ponto marcado ainda.
+              Nenhum ponto nesta ilustração.
             </p>
           )}
 
-          {map.points.map((p, i) => (
+          {/* Quem marcou o rosto e trocou para o corpo precisa saber que os
+              pontos não sumiram — o total abaixo já os inclui. */}
+          {emOutras > 0 && (
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+              {emOutras === 1
+                ? 'Mais 1 ponto em outra ilustração deste planejamento.'
+                : `Mais ${emOutras} pontos em outras ilustrações deste planejamento.`}
+            </p>
+          )}
+
+          {daVista.map((p, i) => (
             <PointRow
               key={p.id}
               index={i}
@@ -565,4 +611,47 @@ function DoseInput({
 /** Sem casas decimais quando é inteiro: "4 UI", não "4,00 UI". */
 function fmt(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+}
+
+/**
+ * Par de opções da ilustração (rosto × corpo, feminino × masculino).
+ *
+ * Duas barras de dois botões, e não uma lista com as quatro combinações: é
+ * assim que a escolha é pensada na hora ("o corpo dela"), e com quatro itens a
+ * barra não caberia ao lado do desenho no celular.
+ */
+function SegVista({
+  opcoes, valor, onEscolher,
+}: {
+  opcoes:     [string, string][]
+  valor:      string
+  onEscolher: (v: string) => void
+}) {
+  return (
+    <div style={{
+      display: 'inline-flex', borderRadius: 999, overflow: 'hidden',
+      border: '1px solid var(--border)', background: 'var(--surface)',
+    }}>
+      {opcoes.map(([v, label]) => {
+        const ativo = v === valor
+        return (
+          <button
+            key={v}
+            type="button"
+            onClick={e => { e.stopPropagation(); onEscolher(v) }}
+            onPointerDown={e => e.stopPropagation()}
+            style={{
+              padding: '5px 14px', border: 'none', cursor: 'pointer',
+              fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)',
+              background: ativo ? 'var(--brand)' : 'transparent',
+              color:      ativo ? '#fff'         : 'var(--text-muted)',
+              transition: 'background 120ms',
+            }}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
 }
