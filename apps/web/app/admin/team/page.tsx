@@ -139,9 +139,12 @@ export default async function AdminTeamPage({
           </div>
         ) : (
           /* Rede de segurança: se a tela for MUITO estreita, a tabela rola na
-             horizontal em vez de empurrar a página inteira para o lado. */
+             horizontal em vez de empurrar a página inteira para o lado.
+             `cards-mobile`: no celular cada membro vira um bloco. Antes duas
+             colunas eram simplesmente escondidas (`hide-mobile`) e o resto
+             ainda rolava 38px na horizontal — agora nada some nem rola. */
           <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 320 }}>
+          <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 320 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 {/* Filial e cargo saem da tabela no celular e reaparecem sob o
@@ -178,7 +181,7 @@ export default async function AdminTeamPage({
                     key={m.id}
                     style={{ borderBottom: i < members.length - 1 ? '1px solid var(--hairline)' : undefined }}
                   >
-                    <td style={{ padding: '14px 20px' }}>
+                    <td data-label="" style={{ padding: '14px 20px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <Initials name={m.name} />
                         <div>
@@ -203,26 +206,26 @@ export default async function AdminTeamPage({
                       </div>
                     </td>
 
-                    <td className="hide-mobile" style={{ padding: '14px 20px' }}>
+                    <td data-label="Filial" data-par style={{ padding: '14px 20px' }}>
                       <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
                         {branchName}
                       </span>
                     </td>
 
-                    <td className="hide-mobile" style={{ padding: '14px 20px' }}>
+                    <td data-label="Cargo" style={{ padding: '14px 20px' }}>
                       <span className="chip chip-brand">{label}</span>
                       {m.provides_services && (
                         <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>
                       )}
                     </td>
 
-                    <td style={{ padding: '14px 20px' }}>
+                    <td data-label="Situação" data-par style={{ padding: '14px 20px' }}>
                       <span className={m.is_active ? 'chip chip-success' : 'chip chip-muted'}>
                         {m.is_active ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
 
-                    <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                    <td data-label="" style={{ padding: '14px 20px', textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                       {canManage && <TeamMemberEdit
                         member={{

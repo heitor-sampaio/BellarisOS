@@ -500,7 +500,11 @@ export function AdminDashboardView({
           </div>
 
           <div className="table-wrap">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          {/* `cards-mobile`: sete colunas nao cabem em 390px, e a tabela
+              ganhava rolagem propria DENTRO do card -- rolar dentro de um card
+              e pior do que rolar a pagina. No celular cada filial vira um
+              bloco com rotulo e valor. */}
+          <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 {['#', 'Filial', 'Receita', 'Atend.', 'Novos', 'Ticket médio', ''].map((h, i) => (
@@ -524,29 +528,29 @@ export function AdminDashboardView({
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
-                    <td style={{ padding: '13px 8px 13px 18px', fontSize: 12, fontWeight: 800, color: 'var(--text-faint)', width: 32 }}>
+                    <td data-label="" className="so-desktop" style={{ padding: '13px 8px 13px 18px', fontSize: 12, fontWeight: 800, color: 'var(--text-faint)', width: 32 }}>
                       {i + 1}
                     </td>
-                    <td style={{ padding: '13px 16px', maxWidth: 220 }}>
+                    <td data-label="" style={{ padding: '13px 16px', maxWidth: 220 }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'block' }}>{b.name}</span>
                       {/* mini bar */}
                       <div style={{ marginTop: 5 }}>
                         <AnimatedBar pct={pct} color="var(--brand)" height={3} maxWidth={160} />
                       </div>
                     </td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: b.revenue > 0 ? '#16a34a' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                    <td data-label="Receita" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: b.revenue > 0 ? '#16a34a' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
                       {fmtBRL(b.revenue)}
                     </td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
+                    <td data-label="Atend." data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
                       {b.appointments}
                     </td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
+                    <td data-label="Novos" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
                       {b.newClients}
                     </td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    <td data-label="Ticket médio" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {b.ticketMedio > 0 ? fmtBRL(b.ticketMedio) : '—'}
                     </td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right' }}>
+                    <td data-label="" style={{ padding: '13px 16px', textAlign: 'right' }}>
                       {/* A única saída de portal que sobrou, e de propósito: aqui
                           a intenção É entrar na unidade. Agenda, estoque,
                           financeiro e checkout resolvem dentro de /admin. O
@@ -892,7 +896,7 @@ export function AdminDashboardView({
       {can('procedures') && (<>
       <SectionHeader title="Procedimentos" />
 
-      <div className="kpi-grid" style={{ gap: 16, alignItems: 'start' }}>
+      <div className="kpi-grid cards-1-col" style={{ gap: 16, alignItems: 'start' }}>
 
         {/* Ranking - Procedimentos realizados */}
         <div className="card" style={{ padding: '18px 20px' }}>
@@ -1070,7 +1074,7 @@ export function AdminDashboardView({
       {can('team') && (<>
       <SectionHeader title="Profissionais" />
 
-      <div className="kpi-grid" style={{ gap: 16, alignItems: 'start' }}>
+      <div className="kpi-grid cards-1-col" style={{ gap: 16, alignItems: 'start' }}>
 
         {/* Ranking — Mais solicitados */}
         <div className="card" style={{ padding: '18px 20px' }}>

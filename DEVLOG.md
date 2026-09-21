@@ -370,6 +370,46 @@ mesmo hash no nome. As medições passaram a mentir. Conferir sempre buscando o
 seletor dentro do texto do `link[rel=stylesheet]` antes de concluir que a regra
 não funciona; o conserto é matar o dev, `rm -rf apps/web/.next/dev` e subir.
 
+### 2026-09-21 — Nada de rolagem horizontal dentro de card
+
+A varredura anterior tinha um ponto cego: ela só olhava `overflow-x: visible`,
+então **ignorava justamente quem rolava por conta própria** — o card com uma
+tabela larga dentro. Dois cards por linha no dashboard davam 171px cada, e a
+tabela de dentro ganhava rolagem própria. Rolar dentro de um card de 171px é
+pior do que rolar a página: o gesto não é óbvio e o conteúdo fica espiado por
+uma fresta.
+
+Duas frentes:
+
+**1. Card com conteúdo de largura própria vai UM por linha no celular.**
+Modificador `.cards-1-col` (abaixo de 767px), aplicado às duas grades de
+ranking do dashboard da rede. `.kpi-grid`/`.kpi-grid-auto` continuam **dois por
+linha** para KPI de verdade (rótulo + número), que não tem conteúdo largo e
+ficaria uma faixa quase vazia sozinho.
+
+**2. Toda tabela larga virou `cards-mobile`.** Ranking de filiais, resumo por
+filial e movimentações do financeiro, as duas vistas do estoque e a lista da
+equipe. Na de equipe isso também **devolveu informação**: filial e cargo eram
+simplesmente escondidos (`hide-mobile`) e agora aparecem como linhas do bloco.
+
+Detalhes que apareceram no caminho:
+- `data-par` (duas células por linha) só serve a valor curto. "Gerente de
+  Unidade" e "12 UN · 1 abaixo do mín." não cabem em 165px — saíram do par. E
+  a célula pareada ganhou `flex-wrap` como rede de segurança: o valor desce
+  para baixo do rótulo em vez de esticar a tabela de volta.
+- `td.so-desktop` esconde no card a coluna que só faz sentido na tabela (o
+  número da posição no ranking — a ordem da lista já diz isso).
+- O KPI do estoque cortava o próprio `R$ 54.150,00`: ícone de 40px → 28px e
+  respiro menor, porque faltavam quatro pixels.
+
+Resultado: **zero rolagem horizontal indevida em 17 telas.** A que sobra é
+deliberada e continua: grade da agenda por unidade, quadro do CRM, barra de
+abas e fila de chips.
+
+**O preço:** o dashboard da rede foi de 6369px para 7626px. Um card por linha
+custa altura — foi a troca escolhida, porque ler o conteúdo vale mais do que
+rolar menos.
+
 ---
 
 ## 4. Decisões de produto

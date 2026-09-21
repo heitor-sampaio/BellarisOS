@@ -321,7 +321,9 @@ export function AdminFinancialView({
         </div>
 
         <div className="table-wrap">
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        {/* Sete colunas nao cabem em 390px: no celular cada filial vira um
+            bloco de rotulo e valor, em vez de a tabela rolar dentro do card. */}
+        <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--border)' }}>
               {['Filial', 'Receita', 'Despesas', 'Resultado', 'Comissões', 'Movim.', ''].map(h => (
@@ -347,25 +349,25 @@ export function AdminFinancialView({
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                 onMouseLeave={e => (e.currentTarget.style.background = '')}
               >
-                <td style={{ padding: '13px 16px' }}>
+                <td data-label="" style={{ padding: '13px 16px' }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{b.name}</span>
                 </td>
-                <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#16a34a' }}>
+                <td data-label="Receita" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#16a34a' }}>
                   {fmtBRL(b.revenue)}
                 </td>
-                <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
+                <td data-label="Despesas" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
                   {fmtBRL(b.expenses)}
                 </td>
-                <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: b.result >= 0 ? '#16a34a' : '#dc2626' }}>
+                <td data-label="Resultado" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: b.result >= 0 ? '#16a34a' : '#dc2626' }}>
                   {fmtBRL(b.result)}
                 </td>
-                <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
+                <td data-label="Comissões" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
                   {fmtBRL(b.commissions)}
                 </td>
-                <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-faint)' }}>
+                <td data-label="Movim." data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-faint)' }}>
                   {b.txCount}
                 </td>
-                <td style={{ padding: '13px 16px', textAlign: 'right' }}>
+                <td data-label="" style={{ padding: '13px 16px', textAlign: 'right' }}>
                   {/* Recorta a própria tela, em vez de abrir o portal da
                       unidade: quem está na rede continua na rede. */}
                   <button
@@ -430,7 +432,8 @@ export function AdminFinancialView({
           </div>
         ) : (
           <div className="table-wrap">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          {/* Oito colunas: no celular cada movimentacao vira um bloco. */}
+          <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 {['Data', 'Descrição', 'Filial', 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
@@ -460,15 +463,15 @@ export function AdminFinancialView({
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
-                    <td style={{ padding: '11px 16px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    <td data-label="Data" data-par style={{ padding: '11px 16px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {new Date(t.created_at).toLocaleDateString('pt-BR')}
                     </td>
-                    <td style={{ padding: '11px 16px', fontSize: 13, fontWeight: 600, color: 'var(--text)', maxWidth: 280 }}>
+                    <td data-label="" style={{ padding: '11px 16px', fontSize: 13, fontWeight: 600, color: 'var(--text)', maxWidth: 280 }}>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                         {t.description || '—'}
                       </span>
                     </td>
-                    <td style={{ padding: '11px 16px' }}>
+                    <td data-label="Filial" data-par style={{ padding: '11px 16px' }}>
                       <span style={{
                         fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--radius-field-token)',
                         background: 'var(--bg-app)', color: 'var(--text-muted)',
@@ -477,17 +480,17 @@ export function AdminFinancialView({
                         {t.branchName}
                       </span>
                     </td>
-                    <td style={{ padding: '11px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
+                    <td data-label="Método" data-par style={{ padding: '11px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
                       {t.payment_method ? PM_LABELS[t.payment_method] ?? t.payment_method : '—'}
                     </td>
-                    <td style={{ padding: '11px 16px' }}>
+                    <td data-label="Tipo" data-par style={{ padding: '11px 16px' }}>
                       <span className={isIncome ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 10 }}>
                         {isIncome ? 'Receita' : 'Despesa'}
                       </span>
                     </td>
                     {/* Situação — a tabela da rede era só leitura e nem dizia se
                         o lançamento estava pago. */}
-                    <td style={{ padding: '11px 16px' }}>
+                    <td data-label="Situação" data-par style={{ padding: '11px 16px' }}>
                       {estornada ? (
                         <span className="chip chip-muted" style={{ fontSize: 10 }}>Estornada</span>
                       ) : t.is_paid ? (
@@ -509,12 +512,12 @@ export function AdminFinancialView({
                       )}
                     </td>
 
-                    <td style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: isIncome ? '#16a34a' : 'var(--text)', whiteSpace: 'nowrap' }}>
+                    <td data-label="Valor" data-par style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: isIncome ? '#16a34a' : 'var(--text)', whiteSpace: 'nowrap' }}>
                       {isIncome ? '+' : '−'} {fmtBRL(t.amount)}
                     </td>
 
                     {/* Receber e estornar sem sair do portal da rede. */}
-                    <td style={{ padding: '11px 16px' }}>
+                    <td data-label="" style={{ padding: '11px 16px' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                         {!t.is_paid && !estornada && canPay && (
                           <button type="button" onClick={() => marcarPago(t.id, slugDaTx)} title="Marcar como pago" style={{

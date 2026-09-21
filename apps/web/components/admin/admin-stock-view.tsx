@@ -331,7 +331,9 @@ export function AdminStockView({ products, branches, categories, productCategori
         ) : view === 'consolidado' ? (
           /* -- VISTA CONSOLIDADA ------------------ */
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            {/* Sete a nove colunas nao cabem em 390px: no celular cada produto
+                vira um bloco de rotulo e valor. */}
+            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={thStyle}>PRODUTO</th>
@@ -361,16 +363,16 @@ export function AdminStockView({ products, branches, categories, productCategori
                         }}
                         onClick={() => p.branches.length > 0 && toggleExpand(p.id)}
                       >
-                        <td style={{ padding: '13px 16px' }}>
+                        <td data-label="" style={{ padding: '13px 16px' }}>
                           <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
                           {p.sku && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>{p.sku}</p>}
                         </td>
-                        <td style={{ padding: '13px 16px' }}>
+                        <td data-label="Categoria" data-par style={{ padding: '13px 16px' }}>
                           <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
                             {p.category ?? '—'}
                           </span>
                         </td>
-                        <td style={{ padding: '13px 16px' }}>
+                        <td data-label="Total rede" style={{ padding: '13px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
                               {p.totalStock.toLocaleString('pt-BR')}
@@ -394,7 +396,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                             )}
                           </div>
                         </td>
-                        <td style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <td data-label="Rendimento" data-par style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {p.consumptionUnit && p.totalRendimento != null ? (
                             <div>
                               <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
@@ -408,11 +410,11 @@ export function AdminStockView({ products, branches, categories, productCategori
                             <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>—</span>
                           )}
                         </td>
-                        <td style={{ padding: '13px 16px' }}>
+                        <td data-label="Por filial" style={{ padding: '13px 16px' }}>
                           <BranchPills branches={p.branches} unit={p.unit} />
                         </td>
                         {!readOnly && (
-                          <td style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <td data-label="Valor" data-par style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {p.costPrice > 0
                               ? (
                                 <span style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
@@ -425,14 +427,14 @@ export function AdminStockView({ products, branches, categories, productCategori
                           </td>
                         )}
                         {!readOnly && (
-                          <td style={{ padding: '13px 10px' }}>
+                          <td data-label="" style={{ padding: '13px 10px' }}>
                             <div style={{ display: 'flex', gap: 4 }}>
                               <PencilButton onClick={() => setEditing(p)} />
                               <GearButton   onClick={() => setManaging(p)} />
                             </div>
                           </td>
                         )}
-                        <td style={{ padding: '13px 16px', textAlign: 'center' }}>
+                        <td data-label="" style={{ padding: '13px 16px', textAlign: 'center' }}>
                           {p.branches.length > 0 && (
                             isExpanded
                               ? <ChevronUp   size={14} style={{ color: 'var(--text-faint)' }} />
@@ -442,7 +444,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                       </tr>
                       {isExpanded && (
                         <tr key={`${p.id}-detail`} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
-                          <td colSpan={readOnly ? 6 : 8} style={{ padding: '0 16px 14px 40px', background: 'var(--bg-app)' }}>
+                          <td data-label="" colSpan={readOnly ? 6 : 8} style={{ padding: '0 16px 14px 40px', background: 'var(--bg-app)' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {p.branches.map(b => (
                                 <div key={b.branchId} style={{
@@ -476,7 +478,9 @@ export function AdminStockView({ products, branches, categories, productCategori
         ) : (
           /* -- VISTA POR UNIDADE ------------------ */
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            {/* Sete a nove colunas nao cabem em 390px: no celular cada produto
+                vira um bloco de rotulo e valor. */}
+            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
                   <th style={thStyle}>PRODUTO</th>
@@ -500,14 +504,14 @@ export function AdminStockView({ products, branches, categories, productCategori
                       borderBottom: i < rowsByUnit.length - 1 ? '1px solid var(--hairline)' : 'none',
                       background: i % 2 === 0 ? 'var(--surface)' : 'transparent',
                     }}>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td data-label="" style={{ padding: '12px 16px' }}>
                         <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{row.name}</p>
                         {row.sku && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>{row.sku}</p>}
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td data-label="Categoria" data-par style={{ padding: '12px 16px' }}>
                         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{row.category ?? '—'}</span>
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
+                      <td data-label="Filial" data-par style={{ padding: '12px 16px' }}>
                         <span style={{
                           fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                           background: 'var(--bg-app)', color: 'var(--text-muted)',
@@ -516,7 +520,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                           {row.branch.branchName}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <td data-label="Estoque" style={{ padding: '12px 16px', textAlign: 'right' }}>
                         <span style={{
                           fontSize: 13.5, fontWeight: 800, letterSpacing: '-0.01em',
                           color: isZero ? '#dc2626' : isBaixo ? '#d97706' : 'var(--text)',
@@ -527,7 +531,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                           </span>
                         </span>
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <td data-label="Rendimento" data-par style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         {row.consumptionUnit && row.unitsPerPackage ? (() => {
                           const r = row.branch.currentRendimento != null
                             ? row.branch.currentRendimento
@@ -544,13 +548,13 @@ export function AdminStockView({ products, branches, categories, productCategori
                           <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>—</span>
                         )}
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <td data-label="Mínimo" data-par style={{ padding: '12px 16px', textAlign: 'right' }}>
                         <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
                           {row.branch.minStock > 0 ? `${row.branch.minStock.toLocaleString('pt-BR')} ${row.unit}` : '—'}
                         </span>
                       </td>
                       {!readOnly && (
-                        <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <td data-label="Valor" data-par style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {row.costPrice > 0
                             ? (
                               <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
@@ -562,11 +566,11 @@ export function AdminStockView({ products, branches, categories, productCategori
                           }
                         </td>
                       )}
-                      <td style={{ padding: '12px 16px' }}>
+                      <td data-label="Status" data-par style={{ padding: '12px 16px' }}>
                         <StockBadge current={row.branch.currentStock} min={row.branch.minStock} unit={row.unit} />
                       </td>
                       {!readOnly && (
-                        <td style={{ padding: '12px 10px' }}>
+                        <td data-label="" style={{ padding: '12px 10px' }}>
                           <div style={{ display: 'flex', gap: 4 }}>
                             <PencilButton onClick={() => setEditing(row)} />
                             <GearButton   onClick={() => setManaging(row)} />

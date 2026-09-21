@@ -398,8 +398,12 @@
      175px da coluna, e não era só o rótulo que saía cortado — o próprio
      "R$ 54.150,00" do card era. Ícone menor e rótulo que pode quebrar; o
      número continua em linha única, que é o que não se pode partir. */
-  .kpi-icone { width: 32px !important; height: 32px !important; }
+  /* 28px e não 32: com 32 sobravam 97px e o valor pedia 101 — faltavam
+     quatro. O respiro entre ícone e texto encolhe junto. */
+  .kpi-icone { width: 28px !important; height: 28px !important; }
   .kpi-rotulo { white-space: normal !important; }
+  .kpi-grid-auto > .card:has(.kpi-icone),
+  .kpi-grid-auto > .card-brand:has(.kpi-icone) { gap: 8px !important; }
   /* KPI hero (cards principais do dashboard): mais compactos no mobile */
   .kpi-hero { padding: 13px 15px !important; gap: 7px !important; }
   /* Condensação padrão de qualquer card KPI (em grades kpi) no mobile */
@@ -644,6 +648,18 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
    no bloco mobile, não na regra de 4 colunas. */
 @media (max-width: 1199px) {
   .kpi-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+/* Modificador: UM card por linha no celular.
+   Para card que carrega conteúdo de largura própria — tabela, ranking, gráfico.
+   Dois lado a lado em 390px dão 171px cada, e aí a tabela de dentro ganha
+   rolagem horizontal PRÓPRIA: rolar dentro de um card de 171px é bem pior do
+   que rolar a página, porque o gesto não é óbvio e o conteúdo fica espiado por
+   uma fresta. KPI (rótulo + número) não precisa disso e continua 2 por linha.
+   Acima de 767px dois cards já passam de 350px cada e a tabela cabe. */
+@media (max-width: 767px) {
+  .cards-1-col { grid-template-columns: minmax(0, 1fr) !important; }
+  .cards-1-col > :last-child:nth-child(odd) { grid-column: auto; }
 }
 
 /* 3 colunas → 2 → 1 */
@@ -1018,11 +1034,17 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   table.cards-mobile td[data-par] {
     flex: 1 1 calc(50% - 6px);
     min-width: 0;
+    /* Rede de segurança: valor que não cabe em meia largura desce para baixo do
+       rótulo em vez de esticar a célula e voltar a rolar a tabela. */
+    flex-wrap: wrap;
     /* Sem divisor: duas bordas lado a lado com o vão no meio viravam uma linha
        partida no meio do card. O par já se lê como um bloco pelo alinhamento. */
     border-bottom: none !important;
   }
   table.cards-mobile tr td:last-child { border-bottom: none !important; }
+  /* Coluna que só faz sentido na tabela (o número da posição, por exemplo):
+     no card ela é ruído, porque a ordem já é a da lista. */
+  table.cards-mobile td.so-desktop { display: none !important; }
 }
 
 /* -- Agenda: mês compacto no mobile ------------------------ */
