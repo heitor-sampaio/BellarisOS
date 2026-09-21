@@ -194,10 +194,10 @@ export default async function AdminProceduresPage() {
                           </p>
                         )}
                       </td>
-                      <td data-label="Duração" style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                      <td data-label="Duração" data-par style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>{p.duration_min} min</span>
                       </td>
-                      <td data-label="Preço" style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
+                      <td data-label="Preço" data-par style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>{formatBRL(p.price)}</span>
                       </td>
                       <td data-label="Unidades" style={{ padding: '13px 16px' }}>
@@ -211,12 +211,12 @@ export default async function AdminProceduresPage() {
                           {branchLabel}
                         </span>
                       </td>
-                      <td data-label="App" style={{ padding: '13px 16px' }}>
+                      <td data-label="App" data-par style={{ padding: '13px 16px' }}>
                         {p.visible_on_client_app
                           ? <Smartphone size={14} color="var(--brand)" aria-label="Visível no app" />
                           : <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>—</span>}
                       </td>
-                      <td data-label="Situação" style={{ padding: '13px 16px' }}>
+                      <td data-label="Situação" data-par style={{ padding: '13px 16px' }}>
                         <span className={p.is_active ? 'chip chip-success' : 'chip chip-muted'}>
                           {p.is_active ? 'Ativo' : 'Inativo'}
                         </span>

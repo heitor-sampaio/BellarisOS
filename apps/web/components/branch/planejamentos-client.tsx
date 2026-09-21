@@ -123,7 +123,7 @@ export function PlanejamentosClient({
 
       {/* Busca + filtros */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 380 }}>
+        <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 380, minWidth: 0, width: '100%' }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
           <input
             className="field"
@@ -133,6 +133,9 @@ export function PlanejamentosClient({
             onChange={e => setBusca(e.target.value)}
           />
         </div>
+        {/* Fila de chips: rola na horizontal no celular em vez de quebrar em
+            tres linhas. Ver `.chips-bar` no globals.css. */}
+        <div className="chips-bar" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
         {FILTROS.map(f => (
           <button key={f.key} type="button" onClick={() => setStatus(f.key)}
             style={{
@@ -145,6 +148,7 @@ export function PlanejamentosClient({
           </button>
         ))}
         {buscando && <Loader2 size={14} className="animate-spin" style={{ color: 'var(--text-faint)' }} />}
+        </div>
       </div>
 
       {erro && (

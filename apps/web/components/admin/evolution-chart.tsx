@@ -104,7 +104,10 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
           Evolução — {monthLabel}
         </span>
-        <div style={{ display: 'flex', gap: 20 }}>
+        {/* A legenda tem três valores em reais: com `gap: 20` fixo e sem quebra
+            ela estourava 11px da tela do celular. Quebra em duas linhas quando
+            não cabe, e o vão encolhe antes disso. */}
+        <div style={{ display: 'flex', gap: '10px 20px', flexWrap: 'wrap', minWidth: 0 }}>
           {(['revenue', 'cost', 'profit'] as const).map(k => (
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 20, height: 3, borderRadius: 2, background: COLORS[k] }} />

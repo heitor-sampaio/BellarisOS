@@ -66,9 +66,9 @@ export function TeamFilters({
   }
 
   return (
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div className="filtros-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
       {/* Busca */}
-      <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
+      <div className="filtro-largo" style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
         <Search
           size={14}
           style={{

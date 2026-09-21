@@ -216,7 +216,7 @@ export function AdminStockView({ products, branches, categories, productCategori
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
       {/* Filtros */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="filtros-bar" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
 
         {/* Toggle Consolidado / Por unidade */}
         <div style={{

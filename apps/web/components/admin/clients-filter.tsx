@@ -23,9 +23,9 @@ export function ClientsFilter({ branches }: Props) {
   }, [pathname, router, searchParams])
 
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+    <div className="filtros-bar" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
       {/* Search */}
-      <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 200 }}>
+      <div className="filtro-largo" style={{ position: 'relative', flex: '1 1 240px', minWidth: 200 }}>
         <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }} />
         {pending && <Loader2 size={13} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', animation: 'spin 1s linear infinite' }} />}
         <input

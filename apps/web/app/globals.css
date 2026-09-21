@@ -378,12 +378,28 @@
     --text-name:     18px;
     --text-kpi:      24px;
   }
-  /* Cards/KPIs mais densos no mobile */
+  /* Cards/KPIs mais densos no mobile. Duas colunas fixas em vez de `auto-fit`:
+     com `auto-fit` a contagem dependia da largura exata do aparelho, e a regra
+     do ímpar abaixo precisa saber quantas colunas existem. */
   .kpi-grid-auto {
     gap: 10px;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  /* Cinco KPIs em duas colunas deixavam o quinto sozinho com meia linha vazia
+     ao lado — o buraco mais visível do dashboard e do estoque. */
+  .kpi-grid-auto > :last-child:nth-child(odd) { grid-column: 1 / -1; }
   .kpi-grid { gap: 10px; }
+  /* Coluna de filial da agenda da rede: com 180px cabia uma e meia na tela e a
+     grade lia como cortada. A 138px entram duas e meia — e a terça parte
+     visível é o que diz que dá para arrastar. */
+  :root { --agenda-col: 138px; }
+
+  /* KPI com ícone à esquerda: 40px de ícone mais o respiro deixavam 81px dos
+     175px da coluna, e não era só o rótulo que saía cortado — o próprio
+     "R$ 54.150,00" do card era. Ícone menor e rótulo que pode quebrar; o
+     número continua em linha única, que é o que não se pode partir. */
+  .kpi-icone { width: 32px !important; height: 32px !important; }
+  .kpi-rotulo { white-space: normal !important; }
   /* KPI hero (cards principais do dashboard): mais compactos no mobile */
   .kpi-hero { padding: 13px 15px !important; gap: 7px !important; }
   /* Condensação padrão de qualquer card KPI (em grades kpi) no mobile */
@@ -398,6 +414,44 @@
 .seg-bar { flex-wrap: wrap !important; }
 @media (max-width: 639px) {
   .seg-bar { width: 100%; }
+}
+
+/* -- Barra de filtros ------------------------------------- */
+/* Uso: `className="filtros-bar"` na linha de busca + seletores de uma listagem.
+   No desktop é a mesma linha de sempre; no celular vira DUAS COLUNAS.
+
+   Cada `<select>` tinha largura de conteúdo e quebrava sozinho numa linha: o
+   estoque gastava 224px — um quarto da tela — só de filtros antes do primeiro
+   produto. Em duas colunas isso cai pela metade e nada some de vista, que é a
+   diferença para rolar na horizontal (bom para abas, ruim para filtro: filtro
+   escondido não é usado). */
+@media (max-width: 639px) {
+  .filtros-bar {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+  /* `!important` porque esses filhos carregam `minWidth` no style inline (a
+     busca do estoque pede 200px), e inline ganha da folha: sem isso a coluna
+     de 175px estourava a tela em 25px. */
+  .filtros-bar > * { min-width: 0 !important; width: auto; max-width: none; }
+  /* A busca merece a linha inteira: é o filtro mais usado e o que precisa de
+     espaço para o texto digitado. */
+  .filtros-bar > .filtro-largo { grid-column: 1 / -1; }
+  /* Último filtro sozinho numa linha ocupa as duas colunas, em vez de deixar
+     meia linha vazia. As duas formas cobrem as duas montagens reais: com a
+     busca larga na frente, e sem ela. */
+  .filtros-bar > .filtro-largo:first-child ~ :last-child:nth-child(even),
+  .filtros-bar:not(:has(.filtro-largo)) > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  /* `min-width: 0` também no campo: um `<input>` tem largura intrínseca de
+     ~20 caracteres e, mesmo dentro de uma célula de 175px, empurrava a grade
+     25px para fora da tela. Zerar só no pai não basta. */
+  .filtros-bar select,
+  .filtros-bar input { width: 100%; min-width: 0 !important; }
+  .filtros-bar .seg-root > .seg-mobile { width: 100%; justify-content: space-between; }
 }
 
 /* SegSelect: segmentado no desktop, botão dropdown no mobile.
@@ -575,14 +629,22 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 
 /* -- Grids responsivos ------------------------------------ */
 
-/* 4 colunas → 2 → 1 */
+/* 4 colunas → 2. NÃO cai para 1: um KPI é um rótulo curto e um número, e
+   sozinho numa linha de 350px ele vira uma faixa quase vazia — foi o que
+   deixava a ficha do cliente com quatro faixas para quatro números. */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
-@media (max-width: 1199px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 479px)  { .kpi-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1199px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Número ímpar de KPIs: o último ocupa a linha inteira em vez de deixar a
+   outra metade vazia. Só vale onde a grade tem 2 colunas — daí morar aqui e
+   no bloco mobile, não na regra de 4 colunas. */
+@media (max-width: 1199px) {
+  .kpi-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 
 /* 3 colunas → 2 → 1 */
 .rg-3 {
@@ -634,6 +696,18 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   }
   .page-header > :last-child {
     width: 100%;
+  }
+  /* A largura cheia acima não tinha nada dentro que a ocupasse: um seletor de
+     76px ficava perdido no meio de uma linha de 358 — era o "seletor pequeno
+     numa linha vazia". Os controles agora esticam para preencher, o que de
+     quebra dá um alvo de toque decente. Com dois ou três eles dividem a linha. */
+  .page-header > :last-child > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .page-header > :last-child .seg-root > .seg-mobile {
+    width: 100%;
+    justify-content: space-between;
   }
 }
 
@@ -750,6 +824,23 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 }
 .tabs-bar::-webkit-scrollbar { display: none; }
 .tabs-bar > * { flex-shrink: 0; white-space: nowrap; }
+
+/* Fila de chips mutuamente exclusivos (Todos / Rascunho / Aceitos…). Mesmo
+   raciocínio da barra de abas, e não o da barra de filtros: são opções de UMA
+   pergunta, lidas da esquerda para a direita, e a primeira é a mais usada — o
+   que fica fora da tela é o fim da fila, não um filtro inteiro. Cinco chips
+   gastavam três linhas em 390px. */
+@media (max-width: 639px) {
+  .chips-bar {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .chips-bar::-webkit-scrollbar { display: none; }
+  .chips-bar > * { flex-shrink: 0; white-space: nowrap; }
+}
 
 /* Tabelas do admin no celular: o respiro lateral de 20px vira 12px. Em 390px de
    largura, 40px só de padding por linha saem do nome de quem se está
@@ -908,9 +999,30 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   table.cards-mobile td:not([data-label])::before { content: none; }
   table.cards-mobile td[data-label=''],
   table.cards-mobile td:not([data-label]) {
+    /* Empilha: a célula sem rótulo carrega um bloco (nome + descrição), não um
+       par rótulo/valor. Em linha, o nome do procedimento era espremido contra
+       a descrição e quebrava no meio da palavra ("Avaliaç/ão"). */
+    flex-direction: column;
+    align-items: stretch;
     justify-content: flex-start;
     text-align: left;
+    gap: 2px;
   }
+
+  /* Duas por linha quando o valor é curto ("60 min", "R$ 200,00", "Ativo").
+     Uma linha inteira para três palavras era o que fazia cinco procedimentos
+     ocuparem 2300px de rolagem. Opt-in por `data-par` porque só quem escreve a
+     tabela sabe se o valor cabe em meia largura. */
+  table.cards-mobile tr { display: flex; flex-wrap: wrap; }
+  table.cards-mobile td { flex: 1 1 100%; }
+  table.cards-mobile td[data-par] {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+    /* Sem divisor: duas bordas lado a lado com o vão no meio viravam uma linha
+       partida no meio do card. O par já se lê como um bloco pelo alinhamento. */
+    border-bottom: none !important;
+  }
+  table.cards-mobile tr td:last-child { border-bottom: none !important; }
 }
 
 /* -- Agenda: mês compacto no mobile ------------------------ */

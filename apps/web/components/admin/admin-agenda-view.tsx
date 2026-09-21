@@ -119,11 +119,13 @@ function DayGrid({ branches, appointments, onSelecionar }: { branches: Branch[];
   }
 
   const TIME_COL = 52  // px
-  const MIN_COL  = 180 // px mínimo por filial
 
   return (
     <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '75vh', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)' }}>
-      <div style={{ minWidth: TIME_COL + branches.length * MIN_COL }}>
+      {/* A largura da coluna de filial vem do CSS (`--agenda-col`): no celular
+          ela encolhe para 138px, senão com 180px cabia UMA coluna e meia na
+          tela e a grade parecia cortada em vez de rolável. */}
+      <div style={{ minWidth: `calc(${TIME_COL}px + ${branches.length} * var(--agenda-col, 180px))` }}>
 
         {/* Cabeçalho com nomes das filiais */}
         <div style={{

@@ -188,8 +188,10 @@ export default async function AdminEstoquePage({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
+      {/* Sem `flexWrap`, os botões espremiam o título: no celular o subtítulo
+          do estoque virava uma coluna de quatro linhas com uma palavra em cada. */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ minWidth: 0, flex: '1 1 200px' }}>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
             Estoque
           </h1>
@@ -272,14 +274,14 @@ export default async function AdminEstoquePage({
             className={k.brand ? 'card-brand' : 'card'}
             style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}
           >
-            <div style={{
+            <div className="kpi-icone" style={{
               width: 40, height: 40, borderRadius: 'var(--radius-field-token)', flexShrink: 0,
               background: k.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {k.icon}
             </div>
             <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 10.5, fontWeight: 700, color: k.labelColor, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+              <p className="kpi-rotulo" style={{ fontSize: 10.5, fontWeight: 700, color: k.labelColor, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                 {k.label}
               </p>
               <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: k.color, marginTop: 3, whiteSpace: 'nowrap' }}>

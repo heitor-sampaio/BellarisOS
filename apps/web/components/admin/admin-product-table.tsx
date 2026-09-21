@@ -108,8 +108,8 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* Filtros */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{
+      <div className="filtros-bar" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="filtro-largo" style={{
           display: 'flex', alignItems: 'center', gap: 8,
           border: '1px solid var(--border)', borderRadius: 10,
           background: 'var(--surface)', padding: '7px 12px', flex: 1, minWidth: 200,
@@ -206,12 +206,12 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
                         )}
                       </div>
                     </td>
-                    <td data-label="Categoria" style={{ padding: '13px 16px' }}>
+                    <td data-label="Categoria" data-par style={{ padding: '13px 16px' }}>
                       <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
                         {p.category ?? '—'}
                       </span>
                     </td>
-                    <td data-label="Unidade" style={{ padding: '13px 16px' }}>
+                    <td data-label="Unidade" data-par style={{ padding: '13px 16px' }}>
                       <span style={{
                         fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                         background: 'var(--bg-app)', color: 'var(--text-muted)',

@@ -1118,9 +1118,12 @@ export function ClientProfile({
 
       {/* -- Hero card ------------------------------------------------- */}
       <div className="card" style={{ padding: '20px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        {/* `flexWrap` + `minWidth: 0` no bloco da identidade: sem os dois, o
+            e-mail do cliente esticava a coluna, as ações não encolhiam e o
+            "+ Agendar" saía 69px para fora da tela do celular. */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
           {/* Avatar + name + meta */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0, flex: '1 1 220px' }}>
             <div style={{
               width: 56, height: 56, borderRadius: 'var(--radius-squircle)', flexShrink: 0,
               background: 'var(--brand)',
@@ -1129,7 +1132,7 @@ export function ClientProfile({
             }}>
               {initials}
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>
                   {client.name}
@@ -1152,9 +1155,9 @@ export function ClientProfile({
                   </span>
                 )}
                 {client.email && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-muted)' }}>
-                    <Mail size={11} style={{ color: 'var(--text-faint)' }} />
-                    {client.email}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-muted)', minWidth: 0 }}>
+                    <Mail size={11} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.email}</span>
                   </span>
                 )}
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-muted)' }}>

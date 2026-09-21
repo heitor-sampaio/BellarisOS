@@ -332,6 +332,44 @@ A escala também vale em `.claude/skills/lumiere-design/tokens/radius.css` (a
 fonte declarada pelo CLAUDE.md §13, senão a próxima tela nasce com a escala
 velha) e no `.card` da extensão, que tem bundle próprio e não importa os tokens.
 
+### 2026-09-21 — Varredura de layout no celular
+
+Espaço morto, controles minúsculos ocupando linhas inteiras e coisas saindo da
+tela. A varredura foi feita medindo o DOM a 390×844 em 21 rotas (estouro
+horizontal, grade com item órfão, linha inteira para um controle pequeno) e
+conferindo na captura o que a medição apontava.
+
+O que estava errado e o que mudou:
+
+| Onde | Defeito | Correção |
+|---|---|---|
+| Ficha do cliente | "+ Agendar" saía **69px para fora da tela** | cabeçalho quebra linha, identidade com `minWidth: 0`, e-mail com reticências |
+| Ficha do cliente | 4 KPIs empilhados, um por linha | 2×2 — a regra que forçava 1 coluna abaixo de 479px caiu |
+| Dashboard, Estoque | 5º KPI sozinho com meia linha vazia | ímpar ocupa a linha inteira (`:last-child:nth-child(odd)`) |
+| Dashboard | seletor de 76px numa linha de 358 | os controles do cabeçalho esticam para preencher |
+| Estoque | 224px só de filtros antes do 1º produto | `.filtros-bar`: duas colunas no celular → 191px |
+| Estoque | `R$ 54.150,00` **cortado** dentro do card | ícone 40→32px e rótulo que quebra (`.kpi-icone`, `.kpi-rotulo`) |
+| Estoque | subtítulo espremido em 4 linhas de 1 palavra | cabeçalho com `flexWrap` |
+| Procedimentos | 5 linhas por procedimento, uma por atributo | `data-par` põe duas por linha → 2313px → 1873px |
+| Procedimentos | nome quebrando no meio ("Avaliaç/ão") | célula sem rótulo empilha em vez de pôr nome e descrição lado a lado |
+| Planejamentos | 5 chips de filtro em 3 linhas | `.chips-bar` rola na horizontal, como a barra de abas |
+| Relatórios | legenda do gráfico estourava 11px | quebra em duas linhas |
+| Agenda da rede | coluna de filial de 180px: cabia 1,5 na tela | `--agenda-col: 138px` no celular — 2,5 colunas, e a cortada avisa que rola |
+
+**Duas regras diferentes, de propósito:** filtro vira **grade de 2 colunas**
+(nada sai de vista — filtro escondido não é usado), fila de chips vira
+**rolagem horizontal** (são opções de uma pergunta só, lidas da esquerda para a
+direita, e o que some é o fim da fila). A barra de abas já seguia a segunda.
+
+Resultado: **zero estouro horizontal nas 21 rotas**, dashboard de 7087px para
+6369px, procedimentos de 2313px para 1873px.
+
+**Armadilha que reapareceu:** regra nova em `globals.css` parou de chegar ao
+navegador no meio da sessão — o dev server serve o CSS compilado antigo, com o
+mesmo hash no nome. As medições passaram a mentir. Conferir sempre buscando o
+seletor dentro do texto do `link[rel=stylesheet]` antes de concluir que a regra
+não funciona; o conserto é matar o dev, `rm -rf apps/web/.next/dev` e subir.
+
 ---
 
 ## 4. Decisões de produto
