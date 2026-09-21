@@ -450,6 +450,21 @@ Os dois parsers têm teste (`tests/anuncio-inbound.test.ts`), inclusive a
 asserção de que entregam o **mesmo id de anúncio** a partir de formatos
 diferentes — é esse id que liga à campanha.
 
+**Demonstração:** `supabase/seed_demo_inbox.sql` monta uma campanha inventada
+(`[SET/26] Toxina Botulínica | Conversas`, dois criativos) e três conversas —
+contato novo por anúncio, conhecida que voltou por OUTRO anúncio, e uma
+orgânica para o selo não parecer onipresente. Separado de `seed_demo.sql` de
+propósito: aquele existe para conferir números na mão, este para ver uma tela.
+Os nomes são longos de propósito, que é como agência nomeia e é onde o corte
+por reticências é posto à prova. `meta_ad_cache` é semeado à mão, senão sem a
+integração Meta Ads o selo mostraria só o título do criativo.
+
+Ao olhar a tela apareceu um defeito antigo do cabeçalho da conversa: no celular
+o telefone da cliente saía **cortado no meio do número**, porque o seletor de
+status e os botões não encolhiam. Corrigido com `flexWrap` no cabeçalho e corte
+por reticências no nome. A varredura de layout anterior tinha mascarado isso,
+por tratar o inbox inteiro como "rolagem deliberada".
+
 ---
 
 ## 4. Decisões de produto

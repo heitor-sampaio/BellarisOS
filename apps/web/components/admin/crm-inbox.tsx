@@ -1379,9 +1379,12 @@ export function CRMInbox({
           ) : (
             <>
               {/* Conversation header */}
+              {/* `flexWrap`: sem ele, o seletor de status e os botões não
+                  encolhem e espremem a identidade — no celular o telefone da
+                  cliente saía cortado no meio do número. */}
               <div style={{
                 padding: '13px 20px', borderBottom: '1px solid var(--hairline)',
-                display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, flexWrap: 'wrap',
               }}>
                 {/* Voltar para a lista. Só no celular, onde a conversa ocupou a
                     tela inteira e a lista saiu de cena. */}
@@ -1409,11 +1412,14 @@ export function CRMInbox({
                   {(selectedConv.contact_name ?? '?')[0]!.toUpperCase()}
                 </div>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', margin: 0 }}>
+                <div style={{ flex: '1 1 170px', minWidth: 0 }}>
+                  <p style={{
+                    fontSize: 14, fontWeight: 800, color: 'var(--text)', margin: 0,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
                     {selectedConv.contact_name ?? 'Sem nome'}
                   </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                     <ChannelBadge ch={selectedConv.channel} />
                     {selectedConv.contact_phone && (
                       <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>
