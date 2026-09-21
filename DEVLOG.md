@@ -410,6 +410,46 @@ abas e fila de chips.
 custa altura — foi a troca escolhida, porque ler o conteúdo vale mais do que
 rolar menos.
 
+### 2026-09-21 — O inbox diz quando a mensagem veio de anúncio
+
+Faltava saber que uma conversa nasceu de um clique em anúncio, e de qual.
+Metade estava pronta: `deriveLeadSource` já marcava o lead como "Meta Ads" e
+`conversations.attribution` já guardava `ad_id` e `ctwa_clid`. O que faltava era
+o resto do caminho.
+
+**Quatro buracos, fechados:**
+
+1. **A uazapi não lia anúncio nenhum.** Só a Cloud API tinha parser. Na uazapi
+   não existe um campo `referral`: ela repassa o `contextInfo` do próprio
+   protocolo, e o anúncio vem em `externalAdReply` (informação do Heitor). São
+   olhados três caminhos — `contextInfo` da mensagem, o aninhado em
+   `extendedTextMessage` e o da raiz — porque o aviso do anúncio chega **uma
+   vez só**, na primeira mensagem: errar o caminho não dá segunda chance, e a
+   falha é silenciosa (a mensagem entra normal, só sem a origem).
+2. **A procedência era da conversa, não da mensagem.** `attribution` só é
+   escrita quando a conversa nasce; quem já era conhecido e voltava por outro
+   anúncio não deixava rastro. Agora `messages.ad_referral` guarda por
+   mensagem, e a conversa passa a apontar para o anúncio mais recente.
+3. **Nada aparecia na tela.** Selo dentro da bolha, colado na mensagem que
+   trouxe, e um ícone na lista de conversas — porque isso muda a fila:
+   lead de campanha paga esfria em minutos.
+4. **Não havia nome de campanha.** O aviso do WhatsApp traz o id do anúncio e o
+   texto do criativo, **nunca a campanha**. `lib/ads/ad-lookup.ts` pergunta à
+   Graph API (`/<ad_id>?fields=name,adset{},campaign{}`) e guarda em
+   `meta_ad_cache`. O vínculo anúncio→campanha não muda, então a entrada não
+   expira; a busca que falha grava `erro` e não é repetida, senão cada mensagem
+   de uma campanha ativa viraria uma chamada.
+
+**Degrada sozinha, de propósito.** Sem a integração Meta Ads conectada (o caso
+de hoje), o selo mostra o título do criativo, a plataforma e o id. Saber que a
+pessoa veio de anúncio já muda a resposta, mesmo sem o nome da campanha —
+atribuição pela metade é melhor que erro de webhook, então `nomesDoAnuncio`
+nunca lança.
+
+Os dois parsers têm teste (`tests/anuncio-inbound.test.ts`), inclusive a
+asserção de que entregam o **mesmo id de anúncio** a partir de formatos
+diferentes — é esse id que liga à campanha.
+
 ---
 
 ## 4. Decisões de produto

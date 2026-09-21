@@ -1,6 +1,6 @@
 import type { WhatsAppProvider, UazapiConfig } from './types'
 import type {
-  InboundMsg, InboundMedia, MediaKind, StatusUpdate, OutboundMedia, SendOptions,
+  InboundMsg, InboundMedia, InboundReferral, MediaKind, StatusUpdate, OutboundMedia, SendOptions,
 } from '@/lib/channels/types'
 import {
   montarIdentidade, classificarIdentificador, ehConversaDeGrupo,
@@ -51,6 +51,41 @@ function primeiroTexto(...candidatos: unknown[]): string | undefined {
     if (typeof c === 'string' && c.trim()) return c
   }
   return undefined
+}
+
+/**
+ * Anúncio de origem (click-to-WhatsApp) na uazapi.
+ *
+ * Aqui não existe um campo `referral` como na Cloud API: a uazapi repassa o
+ * `contextInfo` do próprio protocolo, e o anúncio mora em `externalAdReply`.
+ * O `contextInfo` aparece em dois lugares conforme o evento — na mensagem e na
+ * raiz do payload —, e em mensagem de texto ele vem aninhado dentro de
+ * `extendedTextMessage`. Os três caminhos são olhados porque custam nada e
+ * perder a atribuição é irreversível: o aviso do anúncio só vem UMA vez, na
+ * primeira mensagem.
+ */
+function lerAnuncio(m: any, raiz: any): InboundReferral | undefined {
+  const ctx =
+    m?.contextInfo ??
+    m?.message?.extendedTextMessage?.contextInfo ??
+    raiz?.contextInfo
+  const ad = ctx?.externalAdReply
+  if (!ad) return undefined
+
+  // `sourceId` é o id do anúncio e é o que liga à campanha. Sem ele sobra o
+  // texto do criativo, que ainda diz de onde veio — então não se descarta.
+  const ref: InboundReferral = {}
+  if (ad.sourceType)   ref.sourceType   = String(ad.sourceType)
+  if (ad.sourceId)     ref.sourceId     = String(ad.sourceId)
+  if (ad.sourceUrl)    ref.sourceUrl    = String(ad.sourceUrl)
+  if (ad.ctwaClid)     ref.ctwaClid     = String(ad.ctwaClid)
+  if (ad.title)        ref.headline     = String(ad.title)
+  if (ad.body)         ref.body         = String(ad.body)
+  if (ad.mediaType)    ref.mediaType    = String(ad.mediaType)
+  if (ad.thumbnailUrl) ref.thumbnailUrl = String(ad.thumbnailUrl)
+
+  // Um `externalAdReply` sem nada dentro é ruído do protocolo, não anúncio.
+  return Object.keys(ref).length ? ref : undefined
 }
 
 const TIPO_DE_MIDIA: Record<string, MediaKind> = {
@@ -313,6 +348,9 @@ export class UazapiProvider implements WhatsAppProvider {
     // sempre o curto, para casar com o que está em `messages.external_id`.
     const citada = m.quoted ?? m.quotedMsgId ?? m.contextInfo?.stanzaId
     if (citada) out.replyToExternalId = idCurto(citada)
+
+    const anuncio = lerAnuncio(m, raiz)
+    if (anuncio) out.referral = anuncio
 
     return out
   }

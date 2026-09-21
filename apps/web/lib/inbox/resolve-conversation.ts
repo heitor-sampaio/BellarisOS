@@ -80,6 +80,12 @@ export async function resolveConversation(
 
   if (jaExiste) {
     await completarIdentidade(admin, jaExiste, aliases, phone, msg.displayName ?? null, provider)
+    // Quem já é conhecido pode voltar por um anúncio NOVO. A atribuição da
+    // conversa passa a apontar para o último — é ele que explica este retorno,
+    // e o histórico por mensagem continua em `messages.ad_referral`.
+    if (msg.referral?.sourceId) {
+      await marcarAnuncioNaConversa(admin, jaExiste.id, msg.referral)
+    }
     return { conversationId: jaExiste.id, branchId: jaExiste.branch_id }
   }
 
@@ -197,6 +203,37 @@ export async function resolveConversation(
  * Nunca SOBRESCREVE: telefone e nome que já existem foram possivelmente
  * corrigidos à mão por quem atende.
  */
+/**
+ * A conversa existente passou a vir de um anúncio.
+ *
+ * Mescla em vez de sobrescrever:  guarda também a origem do
+ * primeiro contato e o utm, e trocar o objeto inteiro apagaria isso. O que
+ * muda é o anúncio — o de agora é o que explica este retorno.
+ */
+async function marcarAnuncioNaConversa(
+  admin: ReturnType<typeof createAdminClient>,
+  conversationId: string,
+  referral: NonNullable<InboundMsg['referral']>,
+) {
+  const { data } = await admin
+    .from('conversations')
+    .select('attribution')
+    .eq('id', conversationId)
+    .maybeSingle()
+
+  const atual = (data?.attribution ?? {}) as Record<string, unknown>
+  const novo: Record<string, unknown> = { ...atual, ad_id: referral.sourceId }
+  if (referral.ctwaClid) novo.ctwa_clid = referral.ctwaClid
+  // Sem origem gravada ainda, o anúncio define: é Meta Ads por construção.
+  if (!atual.source) novo.source = 'Meta Ads'
+
+  const { error } = await admin
+    .from('conversations')
+    .update({ attribution: novo })
+    .eq('id', conversationId)
+  if (error) console.error('[marcarAnuncioNaConversa]', error.message)
+}
+
 async function completarIdentidade(
   admin:    ReturnType<typeof createAdminClient>,
   conversa: {
@@ -319,6 +356,20 @@ export async function insertInboundMessage(
     media_type:      msg.media?.kind ?? null,
     media_path:      mediaPath,
     reply_to_external_id: msg.replyToExternalId ?? null,
+    // Anúncio de origem NA MENSAGEM. `conversations.attribution` só é escrita
+    // quando a conversa nasce; quem já é conhecido e volta clicando em outro
+    // anúncio não deixava rastro. Snake_case porque é o que a Cloud API usa e
+    // o que a tela espera ler.
+    ad_referral: msg.referral ? {
+      source_type:   msg.referral.sourceType   ?? null,
+      source_id:     msg.referral.sourceId     ?? null,
+      source_url:    msg.referral.sourceUrl    ?? null,
+      ctwa_clid:     msg.referral.ctwaClid     ?? null,
+      headline:      msg.referral.headline     ?? null,
+      body:          msg.referral.body         ?? null,
+      media_type:    msg.referral.mediaType    ?? null,
+      thumbnail_url: msg.referral.thumbnailUrl ?? null,
+    } : null,
   })
 
   // Sem isto, mensagem perdida no webhook não deixava rastro nenhum.

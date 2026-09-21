@@ -8,6 +8,7 @@ import {
   Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip, FileText, Zap, UserCheck,
   Mic, Square,
   ArrowLeft,
+  Megaphone,
   Reply, Pencil, Check,
 } from 'lucide-react'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
@@ -17,7 +18,7 @@ import {
   getMessages, sendMessage, sendMediaMessage, markConversationRead,
   setConversationStatus, createConversationForLead, getMessageMediaUrl, editMessage,
   type Conversation, type Message, type InboxChannel, type ConvStatus,
-  type ReplyPreview,
+  type ReplyPreview, type AnuncioDaMensagem,
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
 import {
@@ -151,6 +152,12 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
             {conv.eh_cliente && (
               <UserCheck size={11} color="var(--success)" style={{ flexShrink: 0 }} />
             )}
+            {/* Veio de anúncio: muda a fila. Lead de campanha paga esfria em
+                minutos, e quem escolhe a próxima conversa precisa ver isso
+                antes de abrir. */}
+            {conv.veio_de_anuncio && (
+              <Megaphone size={11} color="var(--brand)" style={{ flexShrink: 0 }} aria-label="Veio de anúncio" />
+            )}
             <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>
               {relTime(conv.last_message_at)}
             </span>
@@ -208,6 +215,58 @@ function resumoDaCitada(preview: ReplyPreview): string {
   const rotulo = preview.media_type ? ROTULO_MIDIA[preview.media_type] : null
   if (rotulo && (!texto || texto.startsWith('['))) return rotulo
   return texto || 'Mensagem'
+}
+
+/**
+ * Selo de "veio de anúncio" dentro da bolha.
+ *
+ * O que sempre existe: o título e o texto do criativo, que chegam no próprio
+ * aviso do WhatsApp. Campanha e conjunto só aparecem com a integração Meta Ads
+ * conectada — o aviso não os traz. Sem eles o selo continua valendo: saber que
+ * a pessoa veio de um anúncio já muda a resposta, mesmo sem o nome da campanha.
+ */
+function SeloDeAnuncio({ anuncio }: { anuncio: AnuncioDaMensagem }) {
+  const linhas: { rotulo: string; valor: string }[] = []
+  if (anuncio.campaignName) linhas.push({ rotulo: 'Campanha', valor: anuncio.campaignName })
+  if (anuncio.adName)       linhas.push({ rotulo: 'Anúncio',  valor: anuncio.adName })
+  // Sem o nome do anúncio, o título do criativo faz o papel: é o que a pessoa
+  // leu antes de clicar, e é o que a recepção reconhece.
+  else if (anuncio.headline) linhas.push({ rotulo: 'Anúncio', valor: anuncio.headline })
+
+  const rodape = [anuncio.plataforma, anuncio.adsetName].filter(Boolean).join(' · ')
+
+  return (
+    <div style={{
+      background: 'var(--brand-soft)',
+      border: '1px solid var(--brand-soft-border)',
+      borderRadius: 8, padding: '6px 9px', marginBottom: 6,
+      fontSize: 11.5, lineHeight: 1.4, color: 'var(--text)',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 4,
+        fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
+        textTransform: 'uppercase', color: 'var(--brand)', marginBottom: 2,
+      }}>
+        <Megaphone size={11} /> Veio de anúncio
+      </div>
+      {linhas.map(l => (
+        <div key={l.rotulo} style={{ display: 'flex', gap: 5, minWidth: 0 }}>
+          <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>{l.rotulo}:</span>
+          <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {l.valor}
+          </span>
+        </div>
+      ))}
+      {rodape && (
+        <div style={{ color: 'var(--text-muted)', fontSize: 10.5, marginTop: 1 }}>{rodape}</div>
+      )}
+      {/* Sem campanha nem título não sobra texto nenhum: o id é o único fio
+          que resta para achar o anúncio no gerenciador. */}
+      {linhas.length === 0 && anuncio.adId && (
+        <div style={{ color: 'var(--text-muted)', fontSize: 10.5 }}>id {anuncio.adId}</div>
+      )}
+    </div>
+  )
 }
 
 /** A edição só vale nos primeiros 15 minutos — o WhatsApp recusa depois disso. */
@@ -301,6 +360,11 @@ function Bubble({
             </div>
           </div>
         )}
+
+        {/* Veio de anúncio. Fica DENTRO da bolha, colado na mensagem que
+            trouxe: é a primeira frase do cliente que vem da campanha, e é ela
+            que a recepção precisa reconhecer para responder de acordo. */}
+        {msg.anuncio && <SeloDeAnuncio anuncio={msg.anuncio} />}
 
         {/* Mídia recebida. O arquivo vive no bucket privado e chega aqui como
             link assinado — a URL do provedor expiraria em horas. */}

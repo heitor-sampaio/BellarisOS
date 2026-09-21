@@ -2,6 +2,7 @@
 
 import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { nomesDeAnuncios } from '@/lib/ads/ad-lookup'
 import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { revalidatePath } from 'next/cache'
 import { resolverCanal } from '@/lib/channels/factory'
@@ -43,6 +44,14 @@ export interface Conversation {
   lead_tags:    string[]
   /** Tem ficha de cliente? O comercial precisa saber antes de responder. */
   eh_cliente:   boolean
+  /**
+   * A conversa nasceu de um clique em anúncio.
+   *
+   * Fica na LISTA, e não só na bolha, porque muda a fila de atendimento: lead
+   * de campanha paga esfria em minutos, e quem está escolhendo a próxima
+   * conversa precisa ver isso antes de abrir.
+   */
+  veio_de_anuncio: boolean
   // -- Das oportunidades DESTE contato, agregadas.
   //
   // Listas, e não valores únicos: a mesma pessoa pode ter negócio aberto em dois
@@ -84,6 +93,27 @@ export interface Message {
   reply_preview?:  ReplyPreview | null
   /** Quando o texto foi editado. Null/ausente = nunca. */
   edited_at?:      string | null
+  /** Anúncio de origem, quando a mensagem veio de um clique em anúncio. */
+  anuncio?:        AnuncioDaMensagem | null
+}
+
+/**
+ * Anúncio que trouxe a mensagem (click-to-WhatsApp).
+ *
+ * Título, texto e id vêm do próprio aviso do WhatsApp e existem sempre.
+ * Campanha e conjunto só aparecem com a integração Meta Ads conectada — o
+ * aviso não os traz, e quem sabe é a API de Anúncios.
+ */
+export interface AnuncioDaMensagem {
+  adId:          string | null
+  headline:      string | null
+  body:          string | null
+  sourceUrl:     string | null
+  /** 'facebook' | 'instagram', inferida pelo link do anúncio. */
+  plataforma:    string | null
+  adName:        string | null
+  adsetName:     string | null
+  campaignName:  string | null
 }
 
 /** Resumo da mensagem citada — só o que a citação precisa mostrar. */
@@ -129,7 +159,7 @@ export async function getConversations(
 
   let query = admin
     .from('conversations')
-    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, tags, branches(name)')
+    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, tags, attribution, branches(name)')
     .eq('tenant_id', ctx.tenantId!)
   // Contato sem nenhuma mensagem não é conversa. A conversa é também o registro
   // do contato, e contato criado pelo quadro (ou pelo backfill que deu dono às
@@ -181,6 +211,7 @@ async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Co
     branch_name: c.branches?.name ?? null,
     lead_tags:   (c.tags as string[]) ?? [],
     eh_cliente:  !!c.client_id,
+    veio_de_anuncio: !!(c.attribution as Record<string, unknown> | null)?.ad_id,
     owner_ids: [], owner_names: [], stage_ids: [], stage_names: [],
     funnel_ids: [], funnel_names: [], abertas: 0,
   })
@@ -349,7 +380,7 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 
   const { data } = await admin
     .from('messages')
-    .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at, media_type, media_path, external_id, reply_to_external_id, edited_at')
+    .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at, media_type, media_path, external_id, reply_to_external_id, edited_at, ad_referral')
     .eq('conversation_id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: true })
@@ -364,7 +395,63 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
     media_url: m.media_path ? await urlDaMidia(m.media_path) : null,
   })))
 
-  return anexarCitacoes(mensagens, conversationId, ctx.tenantId!) as Promise<Message[]>
+  const comAnuncio = await anexarAnuncios(mensagens, ctx.tenantId!)
+  return anexarCitacoes(comAnuncio, conversationId, ctx.tenantId!) as Promise<Message[]>
+}
+
+/** Plataforma do anúncio pelo link, que é o único lugar onde ela aparece. */
+function plataformaDoLink(url: string | null | undefined): string | null {
+  const u = (url ?? '').toLowerCase()
+  if (!u) return null
+  if (u.includes('instagram') || u.includes('ig.me')) return 'Instagram'
+  if (u.includes('facebook') || u.includes('fb.')) return 'Facebook'
+  return null
+}
+
+/**
+ * Traduz o aviso de anúncio para o que a tela mostra.
+ *
+ * O aviso já traz título, texto e id do anúncio; campanha e conjunto vêm do
+ * cache/Graph API e podem faltar. Faltando, a mensagem continua marcada como
+ * vinda de anúncio — saber que veio já muda o atendimento, mesmo sem o nome
+ * da campanha.
+ */
+async function anexarAnuncios(mensagens: any[], tenantId: string): Promise<any[]> {
+  const comRef = mensagens.filter(m => m.ad_referral)
+  if (comRef.length === 0) return mensagens
+
+  const ids = comRef
+    .map(m => (m.ad_referral?.source_id ?? null) as string | null)
+    .filter(Boolean) as string[]
+
+  // A busca de nomes nunca derruba a leitura da conversa: sem integração, sem
+  // permissão ou com a Graph API fora do ar, o mapa volta vazio.
+  let nomes = new Map<string, { adName?: string | null; adsetName?: string | null; campaignName?: string | null }>()
+  if (ids.length > 0) {
+    try {
+      nomes = await nomesDeAnuncios(tenantId, ids)
+    } catch (e) {
+      console.error('[anexarAnuncios]', (e as Error).message)
+    }
+  }
+
+  return mensagens.map(m => {
+    const ref = m.ad_referral
+    if (!ref) return m
+    const id = (ref.source_id ?? null) as string | null
+    const n = id ? nomes.get(id) : undefined
+    const anuncio: AnuncioDaMensagem = {
+      adId:         id,
+      headline:     ref.headline ?? null,
+      body:         ref.body ?? null,
+      sourceUrl:    ref.source_url ?? null,
+      plataforma:   plataformaDoLink(ref.source_url),
+      adName:       n?.adName ?? null,
+      adsetName:    n?.adsetName ?? null,
+      campaignName: n?.campaignName ?? null,
+    }
+    return { ...m, anuncio }
+  })
 }
 
 // --- Card do lead ligado à conversa (3a coluna do inbox) ---------------------

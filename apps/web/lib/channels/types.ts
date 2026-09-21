@@ -14,13 +14,26 @@ export type MessageType = 'text' | 'image' | 'audio' | 'video' | 'document' | 'o
 
 export type MediaKind = 'image' | 'audio' | 'video' | 'document'
 
-/** Dados de atribuição de anúncio click-to-WhatsApp (Meta) ou equivalente. */
+/**
+ * Dados de atribuição de anúncio click-to-WhatsApp (Meta) ou equivalente.
+ *
+ * Chega pelos dois provedores, em lugares diferentes: na Cloud API é
+ * `messages[].referral`; na uazapi é `contextInfo.externalAdReply`, que é o
+ * campo do próprio protocolo do WhatsApp repassado quase cru.
+ *
+ * **O nome da campanha NUNCA vem aqui** — o aviso traz o id do anúncio e o
+ * texto dele. Campanha e conjunto saem de `lib/ads/ad-lookup.ts`, que pergunta
+ * à Graph API e guarda a resposta.
+ */
 export interface InboundReferral {
   sourceType?: string   // 'ad' | 'post' (Meta CTWA)
   sourceId?:   string   // ad id
   sourceUrl?:  string   // usado para inferir plataforma (facebook|instagram)
   ctwaClid?:   string   // click id do click-to-WhatsApp
   headline?:   string   // título do anúncio
+  body?:       string   // texto de apoio do anúncio
+  mediaType?:  string   // 'IMAGE' | 'VIDEO' — formato do criativo
+  thumbnailUrl?: string // miniatura do criativo, quando o provedor manda
 }
 
 /**

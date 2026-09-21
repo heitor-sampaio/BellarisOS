@@ -223,6 +223,9 @@ export class OfficialAPIProvider implements WhatsAppProvider {
         sourceUrl:  ref.source_url  ?? undefined,
         ctwaClid:   ref.ctwa_clid   ?? undefined,
         headline:   ref.headline    ?? undefined,
+        body:       ref.body        ?? undefined,
+        mediaType:  ref.media_type  ?? undefined,
+        thumbnailUrl: ref.image_url ?? ref.thumbnail_url ?? undefined,
       }
     }
 
