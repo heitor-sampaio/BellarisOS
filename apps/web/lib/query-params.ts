@@ -20,6 +20,22 @@ export function mesclarParams(
   return s ? `?${s}` : '?'
 }
 
+/**
+ * O mesmo, já como caminho completo.
+ *
+ * `mesclarParams` sozinho devolve `'?'` quando não sobra parâmetro nenhum, e
+ * `/clients/123?` fica na barra do navegador e no histórico como se fosse outra
+ * URL. Aqui o caminho volta limpo.
+ */
+export function rotaComParams(
+  pathname: string,
+  atuais: URLSearchParams | ReadonlyURLSearchParamsLike,
+  alteracoes: Record<string, string | null | undefined>,
+): string {
+  const qs = mesclarParams(atuais, alteracoes)
+  return qs === '?' ? pathname : pathname + qs
+}
+
 /** `useSearchParams()` do Next devolve um objeto somente-leitura com toString. */
 interface ReadonlyURLSearchParamsLike {
   toString(): string

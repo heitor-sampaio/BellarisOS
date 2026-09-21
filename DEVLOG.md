@@ -45,7 +45,9 @@ unidade.
 - **Atendimento** — sessão com anamnese, ficha de atendimento, fotos, consumo de
   estoque, comissão, fidelidade e recebimento no check-in.
 - **Clientes** — ficha com histórico, oportunidades, planejamento, financeiro,
-  documentos e dados; desativar/reativar; crédito interno.
+  documentos e dados; desativar/reativar; crédito interno. A aba aberta e o que
+  está aberto dentro dela ficam na URL (`?aba=`, `?planejamento=`, `?aberto=`),
+  então o voltar do aparelho anda um passo de cada vez.
 - **Planejamento** — seção própria no menu, com **Tratamentos** (planos que viram
   venda no checkout) e **Injetáveis** (mapa facial com pontos, produto e dose).
   Os dois têm o mesmo desenho: **nome primeiro, cliente opcional** — dá para
@@ -264,6 +266,33 @@ plano aberto, que agora o busca por conta própria.
 **Armadilha:** `router.refresh()` logo depois de `router.push()` cancela a
 navegação — entram na mesma transição e a URL não sai do lugar. Na lista de
 planos o refresh nem era preciso: ela relê sozinha ao voltar.
+
+### 2026-09-21 — A ficha do cliente guarda na URL o que está aberto
+
+Mesma ideia, em três níveis. A aba da ficha, a sub-aba de Planejamento e o
+plano/mapa aberto dentro dela eram todos `useState`: o voltar do aparelho saía
+da ficha inteira em vez de devolver o passo anterior, recarregar jogava de volta
+na Visão geral, e não havia como mandar a alguém "o financeiro deste cliente".
+
+Agora: `?aba=<chave>`, `?planejamento=tratamento|injetaveis` e `?aberto=<id>`.
+O voltar anda um passo de cada vez — plano → lista de planos → aba anterior →
+lista de clientes. Aba que não existe (link velho, ou a de Fichas quando a rede
+não tem formulário) cai na Visão geral em vez de deixar a tela vazia, e trocar
+de aba limpa `planejamento`/`aberto`, senão o id de um plano sobreviveria numa
+aba onde ele não significa nada.
+
+`PlanejamentoTratamento` e `PlanejamentoInjetaveis` ganharam o par
+`abertoId`/`onAbrir` e passaram a ser **controlados quando o pai quer**: a ficha
+manda pela URL, o atendimento continua com estado local — ali a URL é a da
+sessão, e empurrar histórico atrapalharia quem está no meio dela.
+
+Duas coisas resolvidas de passagem:
+- `rotaComParams` em `lib/query-params.ts`: `mesclarParams` devolve `'?'` quando
+  não sobra parâmetro nenhum, e `/clients/123?` entra no histórico como se fosse
+  outra URL.
+- Na rota do plano (`/planejamentos/<id>`) havia dois "voltar": o da página e um
+  "◀ Planos" interno que levava à lista de planos do cliente **dentro** da tela
+  do plano dele. O interno agora só aparece onde existe lista por trás.
 
 ---
 

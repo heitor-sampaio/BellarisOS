@@ -1,7 +1,8 @@
 ﻿'use client'
 
 import React, { useActionState, useState, useRef } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import Link from 'next/link'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Star, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus } from '@/actions/clients'
 import { TreatmentSessionsModal } from './treatment-sessions-modal'
@@ -16,6 +17,7 @@ import { TagBadge } from '@/components/shared/tag-badge'
 import { LeadTimeline } from './lead-timeline'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import { rotaAgenda, rotaClientes } from '@/lib/rotas'
+import { rotaComParams } from '@/lib/query-params'
 import { CLIENT_TAGS, isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
 import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -1038,7 +1040,7 @@ export function ClientProfile({
    * caminho atual — mandar quem veio de /admin para `/<unidade>/…` trocava o
    * portal da rede pelo de uma unidade sem ninguém ter pedido.
    */
-  const [tab, setTab] = useState<TabKey>('visao')
+  const params = useSearchParams()
 
   // Menu do cabeçalho: desativar e reativar o cliente.
   const [menuAberto,      setMenuAberto]      = useState(false)
@@ -1054,6 +1056,29 @@ export function ClientProfile({
     router.refresh()
   }
   const visibleTabs = TABS.filter(t => t.key !== 'fichas' || recordForms.length > 0)
+
+  /**
+   * A aba aberta mora na URL, não em `useState`.
+   *
+   * Em estado local, o voltar do aparelho saía da ficha inteira em vez de
+   * devolver a aba anterior, recarregar jogava de volta na Visão geral e não
+   * havia como mandar a alguém "o financeiro deste cliente". Aba que não
+   * existe (link velho, cargo sem a ficha) cai na primeira, em vez de deixar
+   * a tela sem conteúdo.
+   */
+  const abaPedida = params.get('aba')
+  const tab: TabKey = visibleTabs.some(t => t.key === abaPedida)
+    ? (abaPedida as TabKey)
+    : 'visao'
+
+  /** Link de uma aba, preservando o resto da URL e limpando o que era da aba anterior. */
+  function linkDaAba(key: TabKey) {
+    // `planejamento` e `aberto` descrevem o que está aberto DENTRO da aba de
+    // planejamento: levá-los para outra aba deixaria lixo na URL e reabriria o
+    // plano errado ao voltar.
+    return rotaComParams(pathname, params, { aba: key === 'visao' ? null : key, planejamento: null, aberto: null })
+  }
+
   const [treatmentModalOpen, setTreatmentModalOpen] = useState(false)
 
   const initials = getInitials(client.name)
@@ -1212,21 +1237,23 @@ export function ClientProfile({
       {/* -- Tabs ------------------------------------------------------ */}
       <div className="tabs-bar" style={{ gap: 0 }}>
         {visibleTabs.map(t => (
-          <button
+          <Link
             key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
+            href={linkDaAba(t.key)}
+            // A barra rola na horizontal e a aba clicada some se a página pular
+            // para o topo junto — o conteúdo troca logo abaixo dela.
+            scroll={false}
             style={{
               padding: '10px 18px',
-              fontSize: 13, fontWeight: 700,
-              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+              textDecoration: 'none',
               color:       tab === t.key ? 'var(--brand)' : 'var(--text-muted)',
               borderBottom: tab === t.key ? '2px solid var(--brand)' : '2px solid transparent',
               marginBottom: -1, transition: 'color 0.1s',
             }}
           >
             {t.label}
-          </button>
+          </Link>
         ))}
       </div>
 
@@ -1321,9 +1348,10 @@ export function ClientProfile({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>Histórico de procedimentos</h3>
               {recentAppointments.length > 8 && (
-                <button type="button" onClick={() => setTab('historico')} style={{ fontSize: 12, color: 'var(--brand)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}>
+                <Link href={linkDaAba('historico')} scroll={false}
+                  style={{ fontSize: 12, color: 'var(--brand)', fontWeight: 700, textDecoration: 'none' }}>
                   Ver tudo
-                </button>
+                </Link>
               )}
             </div>
 
@@ -1421,6 +1449,8 @@ export function ClientProfile({
             availableProducts={planProducts}
             podeEditar={canManageProcedures}
             podeReceber={podeReceber}
+            // A ficha já é uma rota: o plano aberto cabe na URL dela.
+            navegarPorUrl
           />
         </div>
       )}

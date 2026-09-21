@@ -18,6 +18,7 @@ import {
  */
 export function PlanejamentoInjetaveis({
   clientId, branchId, slug, appointmentId = null, produtos, podeEditar,
+  abertoId, onAbrir,
 }: {
   clientId:       string
   branchId:       string
@@ -25,9 +26,16 @@ export function PlanejamentoInjetaveis({
   appointmentId?: string | null
   produtos:       string[]
   podeEditar:     boolean
+  /**
+   * Qual planejamento está aberto, decidido de fora. Com `onAbrir` presente,
+   * quem manda é o pai — é assim que a ficha do cliente guarda o aberto na URL
+   * e devolve o voltar do aparelho.
+   */
+  abertoId?:      string | null
+  onAbrir?:       (mapId: string | null) => void
 }) {
   const [mapas,  setMapas]  = useState<MapaNaLista[] | null>(null)
-  const [aberto, setAberto] = useState<string | null>(null)
+  const [abertoLocal, setAbertoLocal] = useState<string | null>(null)
   const [criando, setCriando] = useState(false)
   const [erro,   setErro]   = useState<string | null>(null)
 
@@ -40,6 +48,15 @@ export function PlanejamentoInjetaveis({
 
   useEffect(() => { void carregar() }, [carregar])
 
+  const controlado = typeof onAbrir === 'function'
+  const aberto     = controlado ? (abertoId ?? null) : abertoLocal
+
+  /** Abrir/fechar passando por quem decide. */
+  function pedirAbrir(mapId: string | null) {
+    if (controlado) onAbrir!(mapId)
+    else setAbertoLocal(mapId)
+  }
+
   async function novo() {
     setErro(null); setCriando(true)
     // O nome nasce com a data: nomear no ato atrasa quem está com a pessoa na
@@ -49,7 +66,7 @@ export function PlanejamentoInjetaveis({
     setCriando(false)
     if (res.error || !res.id) { setErro(res.error ?? 'Não foi possível criar.'); return }
     await carregar()
-    setAberto(res.id)
+    pedirAbrir(res.id)
   }
 
   if (aberto) {
@@ -60,7 +77,7 @@ export function PlanejamentoInjetaveis({
         appointmentId={appointmentId}
         produtos={produtos}
         podeEditar={podeEditar}
-        onVoltar={() => { setAberto(null); void carregar() }}
+        onVoltar={() => { pedirAbrir(null); void carregar() }}
         onMudou={carregar}
       />
     )
@@ -79,7 +96,7 @@ export function PlanejamentoInjetaveis({
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {mapas.map(m => (
-            <button key={m.id} type="button" onClick={() => setAberto(m.id)}
+            <button key={m.id} type="button" onClick={() => pedirAbrir(m.id)}
               className="card"
               style={{
                 textAlign: 'left', cursor: 'pointer', padding: '12px 14px',

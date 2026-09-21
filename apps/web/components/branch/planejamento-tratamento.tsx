@@ -47,7 +47,7 @@ function fmtBRL(v: number) {
 export function PlanejamentoTratamento({
   clientId, branchId, slug, appointmentId = null, planIdInicial = null,
   procedures, availableProducts = [],
-  podeEditar, podeReceber = false,
+  podeEditar, podeReceber = false, abertoId, onAbrir,
 }: {
   /** Vazio quando o plano ainda não tem cliente — o caso da tela geral. */
   clientId:      string
@@ -61,6 +61,13 @@ export function PlanejamentoTratamento({
   availableProducts?: AvailableProduct[]
   podeEditar:    boolean
   podeReceber?:  boolean
+  /**
+   * Qual plano está aberto, decidido de fora. Com `onAbrir` presente, quem
+   * manda é o pai — é assim que a ficha do cliente guarda o plano na URL e
+   * devolve o voltar do aparelho.
+   */
+  abertoId?:     string | null
+  onAbrir?:      (planId: string | null) => void
 }) {
   const router   = useRouter()
 
@@ -87,12 +94,33 @@ export function PlanejamentoTratamento({
 
   useEffect(() => { void carregarLista() }, [carregarLista])
 
-  // Aberto direto num plano (vem da tela de Planejamentos).
+  /**
+   * Controlado quando o pai passa `onAbrir`; senão o estado é daqui.
+   *
+   * `planIdInicial` continua servindo à rota do plano (`/planejamentos/<id>`),
+   * onde não há lista por trás e o plano é a própria tela.
+   */
+  const controlado = typeof onAbrir === 'function'
+  const idPedido   = controlado ? (abertoId ?? null) : planIdInicial
+
   useEffect(() => {
-    if (!planIdInicial) return
-    void abrirPlano(planIdInicial)
+    if (!idPedido) {
+      // Só o controlado fecha sozinho: no modo local, `setAberto(null)` já
+      // aconteceu no clique, e reagir aqui apagaria o que o pai não pediu.
+      if (controlado) setAberto(null)
+      return
+    }
+    if (aberto?.id === idPedido) return
+    void abrirPlano(idPedido)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planIdInicial])
+  }, [idPedido, controlado])
+
+  /** Abrir/fechar passando por quem decide. */
+  function pedirAbrir(planId: string | null) {
+    if (controlado) { onAbrir!(planId); return }
+    if (planId) void abrirPlano(planId)
+    else setAberto(null)
+  }
 
   async function abrirPlano(planId: string) {
     setErro(null); setCarregando(true)
@@ -108,7 +136,7 @@ export function PlanejamentoTratamento({
     setCarregando(false)
     if (res.error || !res.planId) { setErro(res.error ?? 'Não foi possível criar o plano.'); return }
     await carregarLista()
-    await abrirPlano(res.planId)
+    pedirAbrir(res.planId)
   }
 
   async function salvar(sessions: Parameters<typeof salvarPlanoDoCliente>[1], notes: string) {
@@ -199,7 +227,7 @@ export function PlanejamentoTratamento({
             <button
               key={p.id}
               type="button"
-              onClick={() => abrirPlano(p.id)}
+              onClick={() => pedirAbrir(p.id)}
               className="card card-hover"
               style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--surface)' }}
             >
@@ -248,10 +276,15 @@ export function PlanejamentoTratamento({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button type="button" onClick={() => { setAberto(null); setErro(null) }} className="btn-ghost"
-          style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, padding: '5px 10px' }}>
-          <ChevronLeft size={14} /> Planos
-        </button>
+        {/* Na rota do plano (`planIdInicial` sem `onAbrir`) a tela É o plano: a
+            página já tem o seu "Planejamentos", e este levaria a uma lista que
+            não é a desta tela — a do cliente, dentro da tela do plano dele. */}
+        {!(planIdInicial && !controlado) && (
+          <button type="button" onClick={() => { pedirAbrir(null); setErro(null) }} className="btn-ghost"
+            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, padding: '5px 10px' }}>
+            <ChevronLeft size={14} /> Planos
+          </button>
+        )}
         <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, color: st.cor, background: st.fundo }}>
           {st.label}
         </span>
