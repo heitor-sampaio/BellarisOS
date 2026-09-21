@@ -266,7 +266,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                       fontSize: 11, fontWeight: 700,
                       color: '#22c55e',
                       background: '#22c55e18',
-                      padding: '3px 10px', borderRadius: 20,
+                      padding: '3px 10px', borderRadius: 'var(--radius-chip-token)',
                     }}>
                       {plan.status === 'ACCEPTED' ? 'Ativo' : 'Proposto'}
                     </span>

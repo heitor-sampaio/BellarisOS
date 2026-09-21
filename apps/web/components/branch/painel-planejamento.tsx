@@ -79,7 +79,7 @@ export function PainelPlanejamento({
         ] as const).map(([k, label]) => (
           <button key={k} type="button" onClick={() => trocarAba(k)}
             style={{
-              padding: '7px 14px', borderRadius: 20, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+              padding: '7px 14px', borderRadius: 'var(--radius-chip-token)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
               border:     aba === k ? '2px solid var(--brand)' : '1.5px solid var(--border)',
               background: aba === k ? 'var(--brand)'           : 'var(--surface)',
               color:      aba === k ? '#fff'                   : 'var(--text)',

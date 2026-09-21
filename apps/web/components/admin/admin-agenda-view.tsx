@@ -122,7 +122,7 @@ function DayGrid({ branches, appointments, onSelecionar }: { branches: Branch[];
   const MIN_COL  = 180 // px mínimo por filial
 
   return (
-    <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '75vh', borderRadius: 12, border: '1px solid var(--border)' }}>
+    <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '75vh', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)' }}>
       <div style={{ minWidth: TIME_COL + branches.length * MIN_COL }}>
 
         {/* Cabeçalho com nomes das filiais */}
@@ -302,7 +302,7 @@ function WeekGrid({
   }
 
   return (
-    <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid var(--border)', background: '#fff' }}>
+    <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: '#fff' }}>
       <div style={{ minWidth: 700, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
 
         {/* Cabeçalho dos dias */}

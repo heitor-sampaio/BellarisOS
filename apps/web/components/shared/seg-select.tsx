@@ -119,9 +119,12 @@ export function SegSelect({
         style={{
           display: 'inline-flex', flexWrap: 'wrap', background: 'var(--surface)',
           border: '1px solid var(--border)',
+          // Raio concêntrico: o invólucro é o raio do botão MAIS o respiro até
+          // ele. Com 8 ao redor de botões de 10, o canto do botão estourava o
+          // do invólucro — some quando os dois seguem a mesma conta.
           ...(compacto
-            ? { gap: 2, borderRadius: 8, padding: 2 }
-            : { gap: 4, borderRadius: 10, padding: 4 }),
+            ? { gap: 2, borderRadius: 'calc(var(--radius-field-token) + 2px)', padding: 2 }
+            : { gap: 4, borderRadius: 'calc(var(--radius-field-token) + 4px)', padding: 4 }),
         }}
       >
         {options.map(renderChip)}
@@ -157,7 +160,7 @@ export function SegSelect({
             ...(alignRight ? { right: 0 } : { left: 0 }),
             minWidth: 180, width: 'max-content', maxWidth: 'min(78vw, 280px)',
             background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 12, padding: 6, zIndex: 60,
+            borderRadius: 'var(--radius-field-token)', padding: 6, zIndex: 60,
             display: 'flex', flexDirection: 'column', gap: 2,
             boxShadow: '0 12px 32px rgba(34,22,25,.16)',
           }}

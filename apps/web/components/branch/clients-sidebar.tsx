@@ -112,7 +112,7 @@ export function ClientsSidebar({
   function estiloFiltro(ativo: boolean): React.CSSProperties {
     return {
       display: 'inline-flex', alignItems: 'center', gap: 5,
-      fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 20,
+      fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 'var(--radius-chip-token)',
       cursor: 'pointer', transition: 'all 120ms',
       border: ativo ? '1.5px solid var(--brand)' : '1px solid var(--border)',
       background: ativo ? 'var(--brand-soft)' : 'var(--bg-app)',
@@ -181,7 +181,7 @@ export function ClientsSidebar({
               onClick={() => setFilter(f.key)}
               style={{
                 fontSize: 11, fontWeight: 700, padding: '4px 10px',
-                borderRadius: 20, border: 'none', cursor: 'pointer',
+                borderRadius: 'var(--radius-chip-token)', border: 'none', cursor: 'pointer',
                 background: filter === f.key ? 'var(--brand)' : 'var(--bg-app)',
                 color:      filter === f.key ? '#fff' : 'var(--text-muted)',
                 transition: 'background 0.12s, color 0.12s',

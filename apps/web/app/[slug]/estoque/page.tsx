@@ -251,7 +251,7 @@ export default async function BranchStockPage({
             style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}
           >
             <div style={{
-              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+              width: 40, height: 40, borderRadius: 'var(--radius-field-token)', flexShrink: 0,
               background: k.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {k.icon}

@@ -337,7 +337,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Prop
         {localDocs.length === 0 && !showForm && (
           <div style={{ padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
             <div style={{
-              width: 48, height: 48, borderRadius: 14,
+              width: 48, height: 48, borderRadius: 'var(--radius-squircle)',
               background: 'var(--brand-soft)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>

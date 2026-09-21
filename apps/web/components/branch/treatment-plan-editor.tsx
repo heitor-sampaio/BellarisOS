@@ -636,7 +636,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
 
         {/* Sessões */}
         {sessions.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '24px 16px', borderRadius: 12, border: '2px dashed var(--hairline)' }}>
+          <div style={{ textAlign: 'center', padding: '24px 16px', borderRadius: 'var(--radius-field-token)', border: '2px dashed var(--hairline)' }}>
             <p style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 10 }}>Nenhuma sessão criada ainda.</p>
             <button type="button" onClick={addSession} className="btn-primary" style={{ fontSize: 12, justifyContent: 'center' }}>
               <Plus size={13} /> Nova sessão

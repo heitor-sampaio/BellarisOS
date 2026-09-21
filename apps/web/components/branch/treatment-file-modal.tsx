@@ -420,7 +420,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
-                        width: 40, height: 40, borderRadius: 12,
+                        width: 40, height: 40, borderRadius: 'var(--radius-field-token)',
                         background: 'var(--brand-soft)', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}>

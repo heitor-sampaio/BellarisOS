@@ -659,7 +659,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
                   setSaved(false)
                 }}
                 style={{
-                  padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                  padding: '5px 12px', borderRadius: 'var(--radius-chip-token)', fontSize: 12, fontWeight: 600,
                   cursor: 'pointer', border: active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
                   background: active ? 'var(--brand-soft)' : 'var(--surface)',
                   color: active ? 'var(--brand)' : 'var(--text-muted)',
@@ -689,7 +689,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
                   setSaved(false)
                 }}
                 style={{
-                  padding: '5px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                  padding: '5px 12px', borderRadius: 'var(--radius-chip-token)', fontSize: 12, fontWeight: 600,
                   cursor: 'pointer', border: active ? '1.5px solid #3b6cbf' : '1px solid var(--border)',
                   background: active ? '#e7f0fc' : 'var(--surface)',
                   color: active ? '#3b6cbf' : 'var(--text-muted)',
@@ -1122,7 +1122,7 @@ export function ClientProfile({
           {/* Avatar + name + meta */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{
-              width: 56, height: 56, borderRadius: 16, flexShrink: 0,
+              width: 56, height: 56, borderRadius: 'var(--radius-squircle)', flexShrink: 0,
               background: 'var(--brand)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 20, fontWeight: 800, color: '#fff',

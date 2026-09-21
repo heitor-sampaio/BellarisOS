@@ -261,7 +261,7 @@ export function AnamnesisFormBuilder({ existing, onDone, createAction, updateAct
         </aside>
 
         {/* Canvas */}
-        <div className="anamnesis-canvas" style={{ flex: '1 1 380px', minWidth: 0, background: 'var(--bg-app)', border: '1px dashed var(--border)', borderRadius: 12, padding: 10 }}>
+        <div className="anamnesis-canvas" style={{ flex: '1 1 380px', minWidth: 0, background: 'var(--bg-app)', border: '1px dashed var(--border)', borderRadius: 'var(--radius-field-token)', padding: 10 }}>
           {rows.length === 0 ? (
             <div
               onDragOver={e => { if (drag) { e.preventDefault(); setOver({ kind: 'sep', index: 0 }) } }}
@@ -330,12 +330,12 @@ export function AnamnesisFormBuilder({ existing, onDone, createAction, updateAct
             {!showAdd ? (
               <button
                 type="button" onClick={() => setShowAdd(true)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: 12, borderRadius: 12, border: 'none', background: 'var(--brand)', color: 'var(--on-brand)', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: 12, borderRadius: 'var(--radius-field-token)', border: 'none', background: 'var(--brand)', color: 'var(--on-brand)', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}
               >
                 <Plus size={18} /> Adicionar campo
               </button>
             ) : (
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>Escolha um bloco</span>
                   <button type="button" onClick={() => setShowAdd(false)} title="Fechar" style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
@@ -475,7 +475,7 @@ function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAd
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(2px)', zIndex: 500 }} />
       <div role="dialog" aria-modal="true"
-        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(440px, calc(100vw - 24px))', maxHeight: '88dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 24px 64px rgba(34,22,25,0.22)' }}
+        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(440px, calc(100vw - 24px))', maxHeight: '88dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-token)', boxShadow: '0 24px 64px rgba(34,22,25,0.22)' }}
       >
         <div style={{ position: 'sticky', top: 0, background: 'var(--surface)', borderBottom: '1px solid var(--hairline)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Configurar campo</span>
@@ -556,7 +556,7 @@ function FormPreviewModal({ name, rows, onClose }: { name: string; rows: Anamnes
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(2px)', zIndex: 500 }} />
       <div role="dialog" aria-modal="true"
-        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: `min(${wide ? 940 : 560}px, calc(100vw - 24px))`, maxHeight: '90dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 18, boxShadow: '0 24px 64px rgba(34,22,25,0.22)' }}
+        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: `min(${wide ? 940 : 560}px, calc(100vw - 24px))`, maxHeight: '90dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-token)', boxShadow: '0 24px 64px rgba(34,22,25,0.22)' }}
       >
         <div style={{ position: 'sticky', top: 0, background: 'var(--surface)', borderBottom: '1px solid var(--hairline)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
           <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Pré-visualização</span>

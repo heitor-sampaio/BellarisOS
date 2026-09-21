@@ -512,7 +512,7 @@ export function CRMStageSettings({
                 style={{
                   outline: overFunnelIdx === idx && draggingFunnel !== f.id
                     ? '2px dashed var(--brand)' : '2px solid transparent',
-                  borderRadius: 12,
+                  borderRadius: 'var(--radius-field-token)',
                   transition: 'outline 100ms',
                 }}
               >
@@ -589,7 +589,7 @@ export function CRMStageSettings({
                 style={{
                   outline: overStageIdx === idx && draggingStage !== stage.id
                     ? '2px dashed var(--brand)' : '2px solid transparent',
-                  borderRadius: 12,
+                  borderRadius: 'var(--radius-field-token)',
                   transition: 'outline 100ms',
                 }}
               >

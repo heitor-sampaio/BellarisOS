@@ -258,7 +258,7 @@ export function InboxFiltros({
             position: 'absolute', top: 40, left: 0, zIndex: 41,
             width: 288, maxHeight: '64vh', overflowY: 'auto',
             background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 12, padding: 12,
+            borderRadius: 'var(--radius-field-token)', padding: 12,
           }}>
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',

@@ -277,7 +277,7 @@ export function UazapiConnect() {
       ) : (
         <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div style={{
-            width: 220, height: 220, flexShrink: 0, borderRadius: 12,
+            width: 220, height: 220, flexShrink: 0, borderRadius: 'var(--radius-field-token)',
             border: '1px solid var(--border)', background: '#fff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>

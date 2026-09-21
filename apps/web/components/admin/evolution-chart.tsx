@@ -47,7 +47,7 @@ function CustomTooltip({ active, payload, label }: any) {
     <div style={{
       background: 'white',
       border: '1px solid #e8dde0',
-      borderRadius: 12,
+      borderRadius: 'var(--radius-field-token)',
       padding: '12px 16px',
       boxShadow: '0 8px 24px -6px rgba(34,22,25,.14)',
       fontFamily: 'system-ui, sans-serif',

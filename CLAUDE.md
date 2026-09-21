@@ -581,7 +581,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 > Ela contém tokens, componentes primitivos e guidelines completos da linguagem visual do projeto.
 > Nunca introduza cores, tipografia ou sombras fora do que está definido nos tokens da skill.
 
-A linguagem visual é **"Rosé Vivo"**: fundo nude quente, cards brancos com borda (sem sombra), cantos arredondados generosos e rosé saturado (`#c34d6b`) como único acento de marca.
+A linguagem visual é **"Rosé Vivo"**: fundo nude quente, cards brancos com borda (sem sombra), cantos arredondados contidos (card 12px, campo 10px) e rosé saturado (`#c34d6b`) como único acento de marca.
 
 Princípios inegociáveis:
 - **Hierarquia por preenchimento** — o elemento mais importante de um grupo é preenchido em `--brand` (rosé). Todo o resto fica branco com borda.

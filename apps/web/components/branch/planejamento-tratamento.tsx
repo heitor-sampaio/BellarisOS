@@ -212,7 +212,7 @@ export function PlanejamentoTratamento({
         <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Carregando planos…</p>
       ) : planos.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '32px 16px' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ClipboardList size={20} style={{ color: 'var(--text-faint)' }} />
           </div>
           <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum plano ainda</p>
@@ -236,7 +236,7 @@ export function PlanejamentoTratamento({
                   <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
                     {p.sessoes} sessão{p.sessoes !== 1 ? 'ões' : ''}
                   </span>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, color: st.cor, background: st.fundo }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
                     {st.label}
                   </span>
                   {p.origemId && (
@@ -285,7 +285,7 @@ export function PlanejamentoTratamento({
             <ChevronLeft size={14} /> Planos
           </button>
         )}
-        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, color: st.cor, background: st.fundo }}>
+        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
           {st.label}
         </span>
       </div>

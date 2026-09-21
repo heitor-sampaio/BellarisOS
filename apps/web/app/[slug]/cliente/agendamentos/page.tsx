@@ -100,7 +100,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
       {appointments.length === 0 && (
         <div style={{ textAlign: 'center', padding: '56px 0' }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 16, background: 'var(--brand-soft)',
+            width: 56, height: 56, borderRadius: 'var(--radius-squircle)', background: 'var(--brand-soft)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
           }}>
             <CalendarDays size={24} color="var(--brand)" />
@@ -166,7 +166,7 @@ function AppointmentCard({ appt, highlight = false }: { appt: Appt; highlight?: 
         <span style={{
           flexShrink:   0,
           padding:      '3px 10px',
-          borderRadius: 20,
+          borderRadius: 'var(--radius-chip-token)',
           fontSize:     10.5,
           fontWeight:   700,
           background:   `${color}18`,

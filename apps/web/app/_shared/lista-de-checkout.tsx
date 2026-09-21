@@ -92,7 +92,7 @@ export async function ListaDeCheckout({
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           padding: '60px 24px', gap: 12,
         }}>
-          <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ClipboardList size={24} style={{ color: 'var(--text-faint)' }} />
           </div>
           <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum checkout pendente</p>

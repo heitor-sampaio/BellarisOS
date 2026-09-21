@@ -212,7 +212,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
 
         {/* Card hero */}
         <div style={{
-          borderRadius: 14, padding: '18px 20px',
+          borderRadius: 'var(--radius-card-token)', padding: '18px 20px',
           display: 'flex', alignItems: 'center', gap: 14,
           background: heroEvent ? 'var(--brand)' : 'var(--surface)',
           border: heroEvent ? 'none' : '1.5px solid var(--border)',
@@ -392,7 +392,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
                           · {ev.durationMin}min
                         </span>
                         <span style={{
-                          fontSize: 9.5, fontWeight: 700, padding: '2px 9px', borderRadius: 20,
+                          fontSize: 9.5, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-chip-token)',
                           background: st.pill.bg, color: st.pill.color,
                         }}>
                           {st.label}
@@ -462,7 +462,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
               const isSel   = isSameDay(day, selectedDate)
               return (
                 <button key={key} type="button" onClick={() => selectDay(day)} style={{
-                  padding: '12px 8px 10px', borderRadius: 12,
+                  padding: '12px 8px 10px', borderRadius: 'var(--radius-field-token)',
                   border: isSel ? '1.5px solid var(--brand)' : isToday ? '1.5px solid #f4c0cb' : '1.5px solid var(--border)',
                   background: isSel ? 'var(--brand)' : isToday ? '#fef0f3' : 'var(--bg-app)',
                   cursor: 'pointer', textAlign: 'center',

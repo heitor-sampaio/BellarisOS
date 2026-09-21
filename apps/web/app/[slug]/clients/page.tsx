@@ -7,7 +7,7 @@ export default function ClientsPage() {
       minHeight: 400, gap: 12,
     }}>
       <div style={{
-        width: 56, height: 56, borderRadius: 16,
+        width: 56, height: 56, borderRadius: 'var(--radius-squircle)',
         background: 'var(--brand-soft)', border: '1.5px solid var(--brand-soft-border)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>

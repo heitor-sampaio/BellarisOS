@@ -136,7 +136,7 @@ export function PlanejamentosClient({
         {FILTROS.map(f => (
           <button key={f.key} type="button" onClick={() => setStatus(f.key)}
             style={{
-              padding: '7px 14px', borderRadius: 20, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+              padding: '7px 14px', borderRadius: 'var(--radius-chip-token)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
               border:     status === f.key ? '2px solid var(--brand)' : '1.5px solid var(--border)',
               background: status === f.key ? 'var(--brand)'           : 'var(--surface)',
               color:      status === f.key ? '#fff'                   : 'var(--text)',
@@ -154,7 +154,7 @@ export function PlanejamentosClient({
       {/* Lista */}
       {planos.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '48px 16px' }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 52, height: 52, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ClipboardList size={22} style={{ color: 'var(--text-faint)' }} />
           </div>
           <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>
@@ -175,7 +175,7 @@ export function PlanejamentosClient({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)' }}>{p.nome}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, color: st.cor, background: st.fundo }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
                       {st.label}
                     </span>
                   </div>

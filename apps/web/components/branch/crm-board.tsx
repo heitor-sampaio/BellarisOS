@@ -667,7 +667,7 @@ function LeadCard({
         style={{
           background: 'var(--surface)',
           border: '1px solid var(--border)',
-          borderRadius: 12, padding: "12px 14px",
+          borderRadius: 'var(--radius-field-token)', padding: "12px 14px",
           cursor: isDragging ? 'grabbing' : 'pointer',
           opacity: isDragging ? 0.35 : 1,
           transition: 'opacity 150ms, box-shadow 150ms',
@@ -720,7 +720,7 @@ function LeadCard({
                   minWidth: 190, padding: 5,
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',
-                  borderRadius: 12,
+                  borderRadius: 'var(--radius-field-token)',
                   boxShadow: '0 10px 28px -10px rgba(34,22,25,.28)',
                   display: 'flex', flexDirection: 'column', gap: 2,
                 }}
@@ -1080,7 +1080,7 @@ export function CRMBoard({
               minWidth: 240, maxWidth: 260, flex: "0 0 248px",
               minHeight: 0,
               display: 'flex', flexDirection: 'column',
-              borderRadius: 16,
+              borderRadius: 'var(--radius-card-token)',
               background: isDraggingToThis ? bg : 'transparent',
               border: `2px solid ${isDraggingToThis ? border : 'transparent'}`,
               transition: 'background 150ms, border-color 150ms',

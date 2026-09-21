@@ -295,7 +295,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
           maxHeight: 'calc(100dvh - 78px)',
           zIndex: 300,
           background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 16,
+          borderRadius: 'var(--radius-card-token)',
           boxShadow: '0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           animation: 'bell-panel-open 200ms cubic-bezier(0.34,1.4,0.64,1) both',
@@ -346,7 +346,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
           {!isPending && notifications?.length === 0 && (
             <div style={{ padding: '40px 16px', textAlign: 'center' }}>
               <div style={{
-                width: 44, height: 44, borderRadius: 14,
+                width: 44, height: 44, borderRadius: 'var(--radius-squircle)',
                 background: 'var(--bg-app)', border: '1px solid var(--hairline)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
               }}>
@@ -381,7 +381,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
               transform: 'translate(-50%, -50%)',
               width: 'min(400px, calc(100vw - 32px))',
               zIndex: 401,
-              background: 'var(--surface)', borderRadius: 20,
+              background: 'var(--surface)', borderRadius: 'var(--radius-card-token)',
               border: '1px solid var(--border)',
               boxShadow: '0 24px 64px rgba(0,0,0,0.2)',
               overflow: 'hidden',

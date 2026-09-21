@@ -96,7 +96,7 @@ export function SettingsForms({ forms, actions, labels }: Props) {
 
       {forms.length === 0 ? (
         <div className="card" style={{ padding: '40px 24px', textAlign: 'center' }}>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+          <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
             <ClipboardList size={22} color="var(--brand)" />
           </div>
           <p style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{labels.emptyTitle}</p>

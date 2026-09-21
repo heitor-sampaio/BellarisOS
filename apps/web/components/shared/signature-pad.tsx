@@ -85,7 +85,7 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
   if (confirmed) {
     return (
       <div style={{
-        border: '1px solid var(--hairline)', borderRadius: 12, padding: '16px 20px',
+        border: '1px solid var(--hairline)', borderRadius: 'var(--radius-field-token)', padding: '16px 20px',
         background: '#f0fdf4', display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <div style={{
@@ -109,7 +109,7 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
   return (
     <div>
       <div style={{
-        position: 'relative', border: '1.5px dashed var(--border)', borderRadius: 12,
+        position: 'relative', border: '1.5px dashed var(--border)', borderRadius: 'var(--radius-field-token)',
         background: '#fafaf9', overflow: 'hidden',
       }}>
         {!hasLines && (

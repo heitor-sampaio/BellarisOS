@@ -366,7 +366,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
   return (
     <>
       <div style={{
-        padding: '12px 20px', borderRadius: 12, background: 'var(--brand-soft)',
+        padding: '12px 20px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand-soft)',
         border: '1.5px solid var(--brand-soft-border)',
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       }}>
@@ -995,7 +995,7 @@ export function AppointmentSession({
               <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Clock size={13} style={{ color: 'var(--brand)' }} /> {real} min
               </p>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)',
                 background: delta <= 0 ? '#dcfce7' : delta <= 10 ? '#fef3c7' : '#fee2e2',
                 color:      delta <= 0 ? '#16a34a' : delta <= 10 ? '#d97706' : '#dc2626' }}>
                 {delta === 0 ? '= previsto' : delta > 0 ? `▲ ${delta} min vs previsto` : `▼ ${Math.abs(delta)} min vs previsto`}
@@ -1248,7 +1248,7 @@ export function AppointmentSession({
         <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {/* Avatar */}
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
               {initials(client.name)}
             </div>
 
@@ -1277,12 +1277,12 @@ export function AppointmentSession({
             {/* Right badges */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
               {anamnesis && (
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Check size={11} strokeWidth={3} /> Anamnese revisada
                 </span>
               )}
               {appointment.clientNotes && (
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'var(--brand-soft)', color: 'var(--brand)' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', background: 'var(--brand-soft)', color: 'var(--brand)' }}>
                   Obs. da cliente
                 </span>
               )}
@@ -1311,7 +1311,7 @@ export function AppointmentSession({
         {/* -- Banner de bloqueio / edição -------------------------------- */}
         {isDone && (
           <div style={{
-            padding: '12px 20px', borderRadius: 12,
+            padding: '12px 20px', borderRadius: 'var(--radius-field-token)',
             background: isUnlocked ? '#fffbeb' : 'var(--surface)',
             border: `1.5px solid ${isUnlocked ? '#fde68a' : 'var(--border)'}`,
             display: 'flex', alignItems: 'center', gap: 12,
@@ -1354,7 +1354,7 @@ export function AppointmentSession({
         {/* -- Concluído / Cancelado banner ------------------------------- */}
         {isDone && (
           <div style={{
-            padding: '14px 20px', borderRadius: 12,
+            padding: '14px 20px', borderRadius: 'var(--radius-field-token)',
             background: status === 'COMPLETED' ? '#f0faf4' : '#fef6f8',
             border: `1.5px solid ${status === 'COMPLETED' ? '#b8e8cc' : '#f0c5ce'}`,
           }}>
@@ -1560,7 +1560,7 @@ export function AppointmentSession({
                             onClick={() => gerarPlano(true)}
                             style={{
                               width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                              padding: '14px 20px', borderRadius: 12, fontSize: 14, fontWeight: 800,
+                              padding: '14px 20px', borderRadius: 'var(--radius-field-token)', fontSize: 14, fontWeight: 800,
                               background: generating ? 'var(--bg-app)' : 'var(--brand)',
                               color:      generating ? 'var(--text-faint)' : '#fff',
                               border:     generating ? '1px solid var(--border)' : 'none',
@@ -1585,7 +1585,7 @@ export function AppointmentSession({
                             padding: '12px 20px', fontSize: 13.5, fontWeight: 700,
                           } : {
                             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                            padding: '14px 20px', borderRadius: 12, fontSize: 14, fontWeight: 800,
+                            padding: '14px 20px', borderRadius: 'var(--radius-field-token)', fontSize: 14, fontWeight: 800,
                             background: generating ? 'var(--bg-app)' : 'var(--brand)',
                             color:      generating ? 'var(--text-faint)' : '#fff',
                             border:     generating ? '1px solid var(--border)' : 'none',

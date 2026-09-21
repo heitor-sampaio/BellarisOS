@@ -246,7 +246,7 @@ export function AgendaCalendar({
                 onClick={() => setCurrentDate(todayDate(view))}
                 style={{
                   fontSize: 'var(--text-xs-sz)', fontWeight: 700,
-                  padding: '4px 10px', borderRadius: 20,
+                  padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',
                   border: '1.5px solid var(--brand-soft-border)',
                   background: 'var(--brand-soft)', color: 'var(--brand)',
                   cursor: 'pointer',

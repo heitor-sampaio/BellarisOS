@@ -294,6 +294,44 @@ Duas coisas resolvidas de passagem:
   "◀ Planos" interno que levava à lista de planos do cliente **dentro** da tela
   do plano dele. O interno agora só aparece onde existe lista por trás.
 
+### 2026-09-21 — A escala de raios encolheu
+
+Card a 18px, avatar a 22px e modal a 20px liam como curva demais em tela cheia.
+A escala nova:
+
+| Token | De | Para |
+|---|---|---|
+| `--radius-card-token` | 18px | **12px** |
+| `--radius-card-sm` | 15px | **11px** |
+| `--radius-field-token` | 12px | **10px** |
+| `--radius-row` | 13px | **10px** |
+| `--radius-squircle` | 22px | **14px** |
+| `--radius-chip-token` | 20px | *inalterado* |
+| `--radius-full` | 9999px | *inalterado* |
+
+**Chip e avatar ficam fora da escala de propósito.** 20px numa altura de 22px é
+pílula, e é a pílula que faz um badge não ser confundido com um botão à primeira
+vista; reduzi-la deixaria os dois com a mesma silhueta. Decisão do Heitor.
+
+O degrau entre card (12) e campo (10) também é de propósito: **o elemento de
+dentro nunca mais redondo que o de fora**, senão o canto do botão estoura o do
+card que o contém.
+
+Não foi só trocar token: havia ~70 lugares com o número cru em `style={{
+borderRadius: N }}` e 3 no próprio `globals.css` (modal, dialog, bottom sheet).
+Todos passaram a apontar para o token — a próxima mudança de escala é uma linha.
+Valores ≤ 10px ficaram como estavam: elemento aninhado deve mesmo ter canto
+menor que o pai.
+
+Achado no caminho, com a conferência automática: o seletor segmentado
+(`seg-select.tsx`) tinha invólucro de 8px com botões de 10 dentro — os cantos dos
+botões vazavam. Agora segue a conta concêntrica (raio do filho + respiro até
+ele), que é como isso se resolve em geral.
+
+A escala também vale em `.claude/skills/lumiere-design/tokens/radius.css` (a
+fonte declarada pelo CLAUDE.md §13, senão a próxima tela nasce com a escala
+velha) e no `.card` da extensão, que tem bundle próprio e não importa os tokens.
+
 ---
 
 ## 4. Decisões de produto

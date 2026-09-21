@@ -102,7 +102,7 @@ export function ProductCategoryModal({ categories }: Props) {
                   padding: '9px 12px',
                   background: 'var(--bg-app)',
                   border: '1px solid var(--border)',
-                  borderRadius: 12,
+                  borderRadius: 'var(--radius-field-token)',
                 }}>
                   <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)' }}>
                     {cat.name}

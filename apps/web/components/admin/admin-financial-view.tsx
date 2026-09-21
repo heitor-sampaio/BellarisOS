@@ -470,7 +470,7 @@ export function AdminFinancialView({
                     </td>
                     <td style={{ padding: '11px 16px' }}>
                       <span style={{
-                        fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 12,
+                        fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--radius-field-token)',
                         background: 'var(--bg-app)', color: 'var(--text-muted)',
                         border: '1px solid var(--border)',
                       }}>

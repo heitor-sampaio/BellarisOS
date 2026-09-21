@@ -312,7 +312,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   }
 
   const cancelBlock = showCancel ? (
-    <div style={{ marginTop: 24, padding: '18px 20px', borderRadius: 12, border: '1.5px solid #fca5a5', background: '#fff5f5' }}>
+    <div style={{ marginTop: 24, padding: '18px 20px', borderRadius: 'var(--radius-field-token)', border: '1.5px solid #fca5a5', background: '#fff5f5' }}>
       <p style={{ fontSize: 13, fontWeight: 700, color: '#b91c1c', marginBottom: 10 }}>
         Cancelar checkout
       </p>
@@ -470,7 +470,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       {error && <p style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 
       <button onClick={handleGoToDocs} disabled={creatingTerms}
-        style={{ width: '100%', padding: '14px', borderRadius: 12, background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: creatingTerms ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
+        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: creatingTerms ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
         {creatingTerms ? 'Gerando documentos…' : 'Confirmar plano'} <ChevronRight size={18} />
       </button>
 
@@ -554,7 +554,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         onClick={() => setStep(2)}
         disabled={!termosResolvidos}
         style={{
-          width: '100%', padding: '14px', borderRadius: 12, fontSize: 15, fontWeight: 700,
+          width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', fontSize: 15, fontWeight: 700,
           background: termosResolvidos ? 'var(--brand)' : 'var(--bg-app)',
           color:      termosResolvidos ? '#fff'          : 'var(--text-faint)',
           border:     termosResolvidos ? 'none'          : '1px solid var(--border)',
@@ -590,7 +590,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           ] as const).filter(([k]) => podeCobrar || k === 'NADA_AGORA').map(([k, label]) => (
             <button key={k} type="button" onClick={() => setFormaPgto(k)}
               style={{
-                padding: '10px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                padding: '10px 16px', borderRadius: 'var(--radius-chip-token)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                 border:     formaPgto === k ? '2px solid var(--brand)' : '1.5px solid var(--border)',
                 background: formaPgto === k ? 'var(--brand)'           : 'var(--surface)',
                 color:      formaPgto === k ? '#fff'                   : 'var(--text)',
@@ -691,7 +691,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       )}
       <button
         onClick={() => (podeAgendar ? setStep(3) : handleFinish())}
-        style={{ width: '100%', padding: '14px', borderRadius: 12, background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
+        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
         {podeAgendar ? 'Ir para o agendamento' : formaPgto === 'NADA_AGORA' ? 'Aceitar plano' : 'Confirmar'} <ChevronRight size={18} />
       </button>
 
@@ -721,7 +721,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               return (
                 <button key={b.id} type="button" onClick={() => setSchedBranchId(b.id)}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 20, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 'var(--radius-chip-token)', cursor: 'pointer',
                     border:     isSel ? '2px solid var(--brand)' : '1.5px solid var(--border)',
                     background: isSel ? 'var(--brand-soft)'      : 'var(--surface)',
                     color:      isSel ? 'var(--brand)'           : 'var(--text)',
@@ -747,7 +747,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               return (
                 <button key={p.id} type="button" onClick={() => setProfId(p.id)}
                   style={{
-                    padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    padding: '8px 16px', borderRadius: 'var(--radius-chip-token)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
                     border:     sel ? '2px solid var(--brand)' : '1.5px solid var(--border)',
                     background: sel ? 'var(--brand)'           : 'var(--surface)',
                     color:      sel ? '#fff'                   : 'var(--text)',
@@ -859,7 +859,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         type="button"
         onClick={() => handleFinish()}
         disabled={submitting}
-        style={{ width: '100%', padding: '14px', borderRadius: 12, background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: submitting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
+        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: submitting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
         {submitting ? 'Finalizando…' : scheduledCount > 0 ? 'Concluir' : 'Concluir sem agendar'}
       </button>
 

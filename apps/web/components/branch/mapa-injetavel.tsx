@@ -127,7 +127,7 @@ export function MapaInjetavel({
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {vendo.totais.map(t => (
             <span key={`${t.product}-${t.unit}`} style={{
-              fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+              fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',
               background: 'var(--bg-app)', color: 'var(--text-muted)',
             }}>
               {t.product}: {t.applied || t.planned} {t.unit}
@@ -233,7 +233,7 @@ export function MapaInjetavel({
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {totais.map(t => (
             <span key={`${t.product}-${t.unit}`} style={{
-              fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 20,
+              fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',
               background: 'var(--brand-soft)', color: 'var(--brand)',
             }}>
               {t.product}: {t.planned} {t.unit}

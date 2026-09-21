@@ -312,7 +312,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         <Link href={`/${slug}/checkout`} style={{ textDecoration: 'none' }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 14,
-            padding: '14px 20px', borderRadius: 14,
+            padding: '14px 20px', borderRadius: 'var(--radius-card-token)',
             background: 'var(--brand-soft)', border: '1.5px solid var(--brand)',
           }}>
             <div style={{
@@ -342,7 +342,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
         {/* Faturamento — brand card */}
         {canFinancial && (
-        <div style={{ background: 'var(--brand)', borderRadius: 18, padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: '#fff' }}>
+        <div style={{ background: 'var(--brand)', borderRadius: 'var(--radius-card-token)', padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: '#fff' }}>
           <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }}>
             Faturamento do mês
           </p>

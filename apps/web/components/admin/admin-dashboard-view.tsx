@@ -425,7 +425,7 @@ export function AdminDashboardView({
           {!hasAlerts && (
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '5px 10px', borderRadius: 20, marginTop: 8,
+              padding: '5px 10px', borderRadius: 'var(--radius-chip-token)', marginTop: 8,
               background: '#f0fdf4', border: '1.5px solid #bbf7d0',
             }}>
               <CheckCircle2 size={11} color="#16a34a" />
@@ -653,7 +653,7 @@ export function AdminDashboardView({
                 </div>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '3px 10px', borderRadius: 20,
+                  padding: '3px 10px', borderRadius: 'var(--radius-chip-token)',
                   background: cfg.bg, border: `1.5px solid ${cfg.border}`,
                 }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />

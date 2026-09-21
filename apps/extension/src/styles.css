@@ -43,7 +43,9 @@ body {
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 15px;
+  /* Mesmo card do web (`--radius-card-token`). A extensão não importa os tokens
+     — é um bundle à parte —, então o valor é copiado; mudou lá, muda aqui. */
+  border-radius: 12px;
   padding: 14px;
 }
 

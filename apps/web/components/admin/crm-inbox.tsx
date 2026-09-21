@@ -596,7 +596,7 @@ function MenuDeAcoes({
           <div style={{
             position: 'absolute', bottom: 44, left: 0, zIndex: 41, width: 186,
             background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 12, padding: 6,
+            borderRadius: 'var(--radius-field-token)', padding: 6,
             boxShadow: '0 8px 28px -10px rgba(34,22,25,.25)',
           }}>
             {itens.map(i => (

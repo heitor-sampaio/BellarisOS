@@ -25,7 +25,7 @@ function Chip({ label, color, bg }: { label: string; color: string; bg: string }
   return (
     <span style={{
       fontSize: 10, fontWeight: 700, padding: '5px 10px',
-      borderRadius: 20, color, background: bg, whiteSpace: 'nowrap',
+      borderRadius: 'var(--radius-chip-token)', color, background: bg, whiteSpace: 'nowrap',
     }}>
       {label}
     </span>
@@ -54,7 +54,7 @@ function DownloadRow({ request }: { request: LgpdRequestRow }) {
 
   const btn = {
     display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '9px 14px', borderRadius: 12,
+    padding: '9px 14px', borderRadius: 'var(--radius-field-token)',
     border: '1px solid var(--border)', background: 'var(--surface)',
     color: 'var(--text)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
   } as const
@@ -104,7 +104,7 @@ export function DataRequestCard({ requests }: Props) {
       {openRequest ? (
         <div style={{
           display: 'flex', flexDirection: 'column', gap: 8,
-          padding: '14px 16px', borderRadius: 13,
+          padding: '14px 16px', borderRadius: 'var(--radius-field-token)',
           background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -145,7 +145,7 @@ export function DataRequestCard({ requests }: Props) {
             disabled={pending}
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '13px 16px', borderRadius: 12, border: 'none',
+              padding: '13px 16px', borderRadius: 'var(--radius-field-token)', border: 'none',
               background: 'var(--brand)', color: '#fff',
               fontWeight: 700, fontSize: 14, cursor: pending ? 'default' : 'pointer',
               boxShadow: '0 6px 16px rgba(195,77,107,0.25)',

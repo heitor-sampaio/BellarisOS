@@ -64,7 +64,7 @@ function Previa({ form }: { form: TemplateInput }) {
   const valores = form.example_values ?? {}
   return (
     <div style={{
-      background: '#ece5dd', borderRadius: 12, padding: 14,
+      background: '#ece5dd', borderRadius: 'var(--radius-field-token)', padding: 14,
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
       <p className="overline" style={{ color: '#6b7280', margin: 0 }}>Prévia</p>

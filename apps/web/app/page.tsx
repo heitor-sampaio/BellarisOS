@@ -161,7 +161,7 @@ export default async function LandingPage() {
               <div style={{
                 width: 40,
                 height: 40,
-                borderRadius: 12,
+                borderRadius: 'var(--radius-field-token)',
                 background: 'var(--brand-soft)',
                 display: 'flex',
                 alignItems: 'center',

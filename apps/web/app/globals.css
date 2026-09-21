@@ -94,12 +94,19 @@
     --leading-snug: 1.4;
     --leading-normal: 1.55;
 
-    /* --- Radii --------------------------------------- */
-    --radius-card-token: 18px;
-    --radius-card-sm: 15px;
-    --radius-field-token: 12px;
-    --radius-row: 13px;
-    --radius-squircle: 22px;
+    /* --- Radii ---------------------------------------
+       A escala encolheu em 2026-09-21: 18px de card lia como curva demais na
+       tela cheia. O degrau entre card e campo é de propósito — o elemento de
+       dentro nunca mais redondo que o de fora, senão o canto do botão parece
+       estourar o do card que o contém.
+
+       Chip e avatar NÃO seguem a escala: 20px numa altura de 22px é pílula, e
+       pílula é o que distingue um badge de um botão à primeira vista. */
+    --radius-card-token: 12px;
+    --radius-card-sm: 11px;
+    --radius-field-token: 10px;
+    --radius-row: 10px;
+    --radius-squircle: 14px;
     --radius-chip-token: 20px;
     --radius-full: 9999px;
 
@@ -293,7 +300,7 @@
     margin: 0;
     border: none;
     padding: 0;
-    border-radius: 20px;
+    border-radius: var(--radius-card-token);
     max-width: 560px;
     width: calc(100% - 32px);
     max-height: calc(100dvh - 48px);
@@ -323,7 +330,7 @@
     border-radius: 0;
   }
   .modal-container {
-    border-radius: 20px;
+    border-radius: var(--radius-card-token);
     overflow: hidden;
     max-height: calc(100dvh - 48px);
     display: flex;
@@ -949,7 +956,7 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
     transform: none;
     width: 100%;
     max-width: 100%;
-    border-radius: 20px 20px 0 0;
+    border-radius: var(--radius-card-token) var(--radius-card-token) 0 0;
     max-height: 92dvh;
   }
 }

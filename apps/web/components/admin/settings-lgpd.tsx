@@ -28,7 +28,7 @@ function Chip({ label, color, bg }: { label: string; color: string; bg: string }
   return (
     <span style={{
       fontSize: 10, fontWeight: 700, padding: '5px 10px',
-      borderRadius: 20, color, background: bg, whiteSpace: 'nowrap',
+      borderRadius: 'var(--radius-chip-token)', color, background: bg, whiteSpace: 'nowrap',
     }}>
       {label}
     </span>
@@ -43,7 +43,7 @@ function ReviewButtons({ requestId }: { requestId: string }) {
 
   const base = {
     display: 'inline-flex', alignItems: 'center', gap: 6,
-    padding: '8px 13px', borderRadius: 12, fontSize: 12.5,
+    padding: '8px 13px', borderRadius: 'var(--radius-field-token)', fontSize: 12.5,
     fontWeight: 700, cursor: pending ? 'default' : 'pointer',
     opacity: pending ? 0.6 : 1,
   } as const
@@ -90,7 +90,7 @@ export function SettingsLgpd({ requests, canReviewMedical }: Props) {
       {awaiting.length > 0 && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 9,
-          padding: '12px 16px', borderRadius: 13,
+          padding: '12px 16px', borderRadius: 'var(--radius-field-token)',
           background: 'var(--warning-soft)', border: '1px solid #f0dcb8',
         }}>
           <AlertTriangle size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} />

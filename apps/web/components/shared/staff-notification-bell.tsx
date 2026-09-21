@@ -137,7 +137,7 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
         style={{
           position: 'fixed', top: 'calc(var(--topbar-h) - 4px)', right: 12,
           width: 'min(380px, calc(100vw - 24px))', maxHeight: 'calc(100dvh - 90px)', zIndex: 300,
-          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
+          background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-token)',
           boxShadow: '0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
@@ -173,7 +173,7 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
           {!isPending && notifications?.length === 0 && (
             <div style={{ padding: '40px 16px', textAlign: 'center' }}>
               <div style={{
-                width: 44, height: 44, borderRadius: 14, background: 'var(--bg-app)',
+                width: 44, height: 44, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)',
                 border: '1px solid var(--hairline)', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', margin: '0 auto 12px',
               }}><BellOff size={20} color="var(--text-faint)" /></div>
@@ -228,7 +228,7 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
           <div role="dialog" aria-modal="true" style={{
             position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
             width: 'min(400px, calc(100vw - 32px))', zIndex: 401, background: 'var(--surface)',
-            borderRadius: 20, border: '1px solid var(--border)', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', overflow: 'hidden',
+            borderRadius: 'var(--radius-card-token)', border: '1px solid var(--border)', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', overflow: 'hidden',
           }}>
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',

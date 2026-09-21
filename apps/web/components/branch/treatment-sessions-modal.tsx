@@ -143,7 +143,7 @@ function SessionScheduler({
   const minDate = format(new Date(), 'yyyy-MM-dd')
 
   return (
-    <div style={{ background: 'var(--bg-app)', borderRadius: 12, padding: '16px', marginTop: 10, border: '1px solid var(--border)' }}>
+    <div style={{ background: 'var(--bg-app)', borderRadius: 'var(--radius-field-token)', padding: '16px', marginTop: 10, border: '1px solid var(--border)' }}>
 
       {branches.length > 1 && (
         <div style={{ marginBottom: 12 }}>
