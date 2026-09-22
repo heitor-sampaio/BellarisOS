@@ -522,12 +522,18 @@ despesa não gera, estorno não gera, cliente sem clique não gera.
 **Pré-requisito que não é código:** nada disso sai sem a integração **Meta Ads**
 conectada com permissão de escrita de eventos. Sem ela os eventos ficam
 `pendente` e saem assim que houver para onde mandar — por isso vale registrar
-mesmo sem poder enviar.
+mesmo sem poder enviar. Em 2026-09-22 a conexão está parada esperando a
+verificação de empresa pelo CNPJ, que é o que libera criar o app na Meta.
 
-**A conferir na doc da Meta antes de prometer ROI de ciclo longo:** a janela em
-que o `ctwa_clid` ainda é atribuível é curta (dias). Cliente que clica em
-setembro e fecha o plano em novembro provavelmente **não** será atribuído; o
-código já descarta o que passa de 7 dias.
+**A janela de atribuição é de 7 dias** (confirmado pelo Heitor). Isso é um
+limite de PRODUTO, não de código: venda de ciclo longo — clica em setembro,
+fecha o plano em novembro — **não é atribuível**, e o `Purchase` cobre o que
+fecha dentro da semana do clique. O código já descarta o que passa disso.
+
+**`Atendimento` (comparecimento) foi descartado.** Chegou a ser proposto como
+evento de leitura, já que no-show em estética é alto. Decisão do Heitor de não
+implementar: evento personalizado antes de os três principais produzirem dado
+real só cria uma série vazia a mais.
 
 ---
 

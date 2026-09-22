@@ -16,15 +16,15 @@ const GRAPH_API_VERSION = 'v25.0'
  * plano vendido e não pago vira ROI fantasma. O mesmo critério do §13.1: se a
  * receita exige `is_paid`, isto também.
  *
- * `Atendimento` é evento de LEITURA, não de otimização: no-show em estética é
- * alto, e separar "agendou" de "veio" muda a interpretação do CPA.
+ * Chegou a existir aqui um `Atendimento` (comparecimento), como evento de
+ * leitura. Saiu por decisão do Heitor: evento personalizado antes de os três
+ * principais produzirem dado real só cria uma série vazia a mais.
  */
 export type CapiEvent =
   | 'Lead'
   | 'Schedule'
   | 'Purchase'
   | 'CompleteRegistration'
-  | 'Atendimento'
 
 export interface CapiInput {
   tenantId: string
@@ -203,8 +203,14 @@ async function despachar(
  * entram os que falharam por rede, os que esperavam a integração ser conectada
  * e os que o processo não chegou a mandar.
  *
- * A Meta recusa evento com mais de 7 dias, então o que passar disso é
- * descartado — insistir só queima chamada.
+ * A janela de atribuição do `ctwa_clid` é de **7 dias** (confirmado pelo
+ * Heitor em 2026-09-22), e é também o limite que a Meta aceita. O que passar
+ * disso é descartado: insistir só queima chamada, e o evento não seria
+ * atribuído de qualquer forma.
+ *
+ * Consequência de produto, não de código: venda de ciclo longo — clica em
+ * setembro, fecha o plano em novembro — **não** é atribuível. O `Purchase`
+ * cobre o que fecha dentro da semana do clique.
  */
 export async function reenviarEventosPendentes(limite = 50): Promise<{
   enviados: number; descartados: number; falharam: number
