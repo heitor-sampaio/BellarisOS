@@ -525,6 +525,21 @@ conectada com permissão de escrita de eventos. Sem ela os eventos ficam
 mesmo sem poder enviar. Em 2026-09-22 a conexão está parada esperando a
 verificação de empresa pelo CNPJ, que é o que libera criar o app na Meta.
 
+**O `pixelId` nunca foi fixo no código** — seria impossível, o sistema é
+multi-tenant. Ele já vem do OAuth: a conexão lista as contas de anúncios e os
+pixels do perfil, a tela pede para escolher, e a escolha fica em
+`integration_configs.config` por tenant.
+
+O que **estava** frágil era de onde a lista vinha: só `/me/adspixels`, que
+devolve o que está pendurado no USUÁRIO. Pixel que pertence ao Business
+Manager — o caso normal de quem tem agência — não aparece ali, e a clínica
+terminava conectada **sem pixel**, com a API de Conversões calada e nenhuma
+mensagem dizendo por quê. Agora a busca pergunta também a cada conta de
+anúncios (`/act_<id>/adspixels`) e junta as duas listas; a tela deixou de
+chamar o pixel de "opcional" e avisa quando não há nenhum; e o erro gravado
+distingue "não conectada" de "conectada sem pixel", que pedem ações diferentes
+de quem for resolver.
+
 **A janela de atribuição é de 7 dias** (confirmado pelo Heitor). Isso é um
 limite de PRODUTO, não de código: venda de ciclo longo — clica em setembro,
 fecha o plano em novembro — **não é atribuível**, e o `Purchase` cobre o que

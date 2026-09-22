@@ -146,12 +146,23 @@ async function despachar(
 ): Promise<void> {
   const config = await getAdsConfig(input.tenantId, 'meta_ads') as MetaAdsConfig | null
 
-  // Sem integração não há para onde mandar. Fica `pendente`: quando a Meta Ads
-  // for conectada, o cron recolhe o que ficou para trás — e é por isso que
-  // vale a pena registrar mesmo sem poder enviar.
-  if (!config?.accessToken || !config.pixelId) {
+  // Fica `pendente` em vez de falhar: quando a integração for conectada (ou o
+  // pixel escolhido), o cron recolhe o que ficou para trás dentro dos 7 dias.
+  // É por isso que vale registrar mesmo sem poder enviar.
+  //
+  // Os dois casos são separados de propósito. "Não conectada" e "conectada sem
+  // pixel" pedem ações diferentes de quem for resolver, e uma mensagem só para
+  // os dois manda a pessoa procurar no lugar errado — o pixel some quando ele
+  // pertence ao Business Manager e não ao perfil.
+  if (!config?.accessToken) {
     await admin.from('meta_capi_events')
       .update({ erro: 'Integração Meta Ads não conectada' })
+      .eq('id', linhaId)
+    return
+  }
+  if (!config.pixelId) {
+    await admin.from('meta_capi_events')
+      .update({ erro: 'Meta Ads conectada, mas sem pixel escolhido em Configurações → Integrações' })
       .eq('id', linhaId)
     return
   }

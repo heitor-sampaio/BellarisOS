@@ -209,10 +209,27 @@ export async function fetchMetaAdAccounts(): Promise<{
 
     const pixData = await pixRes.json() as { data?: Array<{ id: string; name: string }> }
 
+    const adAccounts = (acctData.data ?? []).map(a => ({ id: a.id.replace('act_', ''), name: a.name }))
+    const pixels = new Map<string, string>()
+    for (const p of pixData.data ?? []) pixels.set(p.id, p.name)
+
+    // `/me/adspixels` lista o que está pendurado no USUÁRIO. Pixel que pertence
+    // ao Business Manager — o caso normal de quem tem agência — não aparece
+    // ali, e a clínica terminava conectada SEM pixel, com a API de Conversões
+    // calada e nenhuma mensagem dizendo por quê. Perguntar também a cada conta
+    // de anúncios cobre esse caso, que é o comum.
+    await Promise.all(adAccounts.slice(0, 10).map(async a => {
+      try {
+        const r = await fetch(`${GRAPH}/act_${a.id}/adspixels?fields=id,name&limit=50&access_token=${token}`)
+        const d = await r.json() as { data?: Array<{ id: string; name: string }> }
+        for (const p of d.data ?? []) pixels.set(p.id, p.name)
+      } catch { /* conta sem permissão de pixel não invalida o resto */ }
+    }))
+
     return {
       ok: true,
-      adAccounts: (acctData.data ?? []).map(a => ({ id: a.id.replace('act_', ''), name: a.name })),
-      pixels:     (pixData.data ?? []).map(p => ({ id: p.id, name: p.name })),
+      adAccounts,
+      pixels: [...pixels].map(([id, name]) => ({ id, name })),
     }
   } catch (e) {
     return { ok: false, error: (e as Error).message }

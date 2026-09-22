@@ -575,10 +575,13 @@ function MetaAdsConnect({
           </p>
         )}
 
-        {pixels.length > 0 && (
+        {pixels.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {/* Deixou de ser "opcional": sem pixel a API de Conversões não tem
+                para onde mandar, e agendamento e venda nunca voltam para a
+                campanha. Com um só na conta, ele já vem escolhido. */}
             <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-              PIXEL (OPCIONAL)
+              PIXEL
             </label>
             <select
               value={selectedPixel}
@@ -591,7 +594,22 @@ function MetaAdsConnect({
                 <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
               ))}
             </select>
+            {!selectedPixel && (
+              <p style={{ fontSize: 11.5, color: 'var(--warning)', fontWeight: 600 }}>
+                Sem pixel, os relatórios de campanha funcionam, mas agendamentos
+                e vendas não voltam para a Meta.
+              </p>
+            )}
           </div>
+        ) : (
+          // Silêncio aqui era o pior caso: conectava, parecia certo, e a
+          // atribuição simplesmente não acontecia.
+          <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>
+            Nenhum pixel encontrado neste perfil nem nas contas de anúncios.
+            Os relatórios de campanha vão funcionar, mas agendamentos e vendas
+            não voltam para a Meta — crie um pixel no Gerenciador de Eventos e
+            clique em atualizar.
+          </p>
         )}
 
         {confirmError && (
