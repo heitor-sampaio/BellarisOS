@@ -465,6 +465,70 @@ status e os botões não encolhiam. Corrigido com `flexWrap` no cabeçalho e cor
 por reticências no nome. A varredura de layout anterior tinha mascarado isso,
 por tratar o inbox inteiro como "rolagem deliberada".
 
+### 2026-09-22 — API de Conversões da Meta
+
+Fechar o ciclo: o `ctwa_clid` que passamos a guardar volta para a Meta dizendo
+"este clique virou agendamento / virou venda".
+
+**O que estava errado antes.** Existia um `sendCAPIEvent` com um chamador só
+(`CompleteRegistration` quando o lead vira cliente), e ele mandava
+`action_source: 'website'` com apenas o `fbclid`. Para click-to-WhatsApp a Meta
+**aceita esse evento com 200 e não o atribui a anúncio nenhum** — a pior das
+falhas, porque parece ter funcionado. O correto é `business_messaging` +
+`messaging_channel: 'whatsapp'` + `ctwa_clid` dentro de `user_data`.
+
+**Os eventos e o papel de cada um:**
+
+| Evento | Gatilho | Papel |
+|---|---|---|
+| `Schedule` | agendamento criado | **otimização** — é o primeiro compromisso real e tem volume |
+| `Purchase` | receita de cliente **paga** | ROI e valor |
+| `CompleteRegistration` | lead vira cliente | corrigido para CTWA |
+
+`Schedule` como alvo é a aposta: venda fechada não tem volume para a Meta sair
+do aprendizado numa clínica só. `Purchase` sai no **recebimento**, não no
+fechamento — plano vendido e não pago é ROI fantasma, e é o mesmo critério de
+simetria do §13.1.
+
+**Por que não é tudo imediato, nem tudo por cron.** A primeira ideia era uma
+fila drenada pelo cron; o Heitor questionou, com razão. A Meta penaliza evento
+que chega tarde, e no Railway (container longo, uma réplica) o `after()` é
+confiável — o argumento de durabilidade que eu tinha era mais fraco do que
+supus. Ficou assim:
+
+- **`Schedule` e `CompleteRegistration`: imediatos**, em `after()`. São eles que
+  a campanha usa para aprender, e freschor importa.
+- **`Purchase`: por GATILHO no banco** (`on_transaction_paid`) + cron. Um
+  pagamento vira real em **seis lugares** do código (concluir atendimento,
+  receber plano, marcar pago, lançamento avulso, entrada de estoque…);
+  instrumentar um a um é garantir esquecer o sétimo, e o que se perde é dinheiro
+  não atribuído, que ninguém percebe faltando. A troca é consciente: até uma
+  hora de atraso não custa nada num evento que serve a ROI, não a otimização.
+
+**A tabela `meta_capi_events` não é a fila — é o registro.** Ela existe porque
+o `event_id` precisa existir ANTES do envio: a Meta deduplica por ele, e sem um
+id estável guardado qualquer retentativa conta a mesma venda duas vezes. De
+quebra, quando o número da Meta divergir do nosso, é o único jeito de saber de
+que lado se perdeu.
+
+O `ctwa_clid` desce de `conversations.attribution` → `leads` → `clients`, para
+cada evento não precisar percorrer conversa e mensagens.
+
+**Verificado:** 8 testes do payload (`tests/capi-payload.test.ts` — é ali que
+mora a falha silenciosa) e 7 casos do gatilho rodados no banco de verdade:
+receita não paga não gera, virar paga gera uma, update repetido **não duplica**,
+despesa não gera, estorno não gera, cliente sem clique não gera.
+
+**Pré-requisito que não é código:** nada disso sai sem a integração **Meta Ads**
+conectada com permissão de escrita de eventos. Sem ela os eventos ficam
+`pendente` e saem assim que houver para onde mandar — por isso vale registrar
+mesmo sem poder enviar.
+
+**A conferir na doc da Meta antes de prometer ROI de ciclo longo:** a janela em
+que o `ctwa_clid` ainda é atribuível é curta (dias). Cliente que clica em
+setembro e fecha o plano em novembro provavelmente **não** será atribuído; o
+código já descarta o que passa de 7 dias.
+
 ---
 
 ## 4. Decisões de produto

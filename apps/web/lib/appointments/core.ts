@@ -9,6 +9,8 @@ import { ptBR } from 'date-fns/locale'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notifyClient, notifyUser } from '@/lib/notifications/notify'
+import { enviarEventoCapi } from '@/lib/ads/capi'
+import { cliqueDoCliente, contatoDoCliente } from '@/lib/ads/atribuicao'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -118,6 +120,28 @@ export async function createAppointmentCore(
 
   const userName = await getUserName(admin, ctx.userId)
   await logAppointmentHistory(admin, data.id as string, ctx.internalUserId, userName, 'CREATED', 'Agendamento criado')
+
+  // Meta: agendar é o primeiro compromisso real de quem veio de um anúncio, e
+  // é o evento pelo qual a campanha é otimizada. Vai em `after()` para não
+  // somar a latência da Graph API ao tempo de criar o agendamento, e nunca
+  // lança: anúncio não pode derrubar agenda.
+  after(async () => {
+    const clique = await cliqueDoCliente(ctx.tenantId!, input.clientId!)
+    if (!clique) return
+    const contato = await contatoDoCliente(ctx.tenantId!, input.clientId!)
+    await enviarEventoCapi({
+      tenantId: ctx.tenantId!,
+      event:    'Schedule',
+      // Determinístico: o mesmo agendamento nunca conta duas vezes, mesmo se
+      // este caminho rodar de novo.
+      eventId:  `schedule:${data.id}`,
+      ctwaClid: clique.ctwaClid,
+      adId:     clique.adId,
+      phone:    contato.phone,
+      email:    contato.email,
+      customData: { procedure_id: input.procedureId ?? null },
+    })
+  })
 
   return { id: data.id as string }
 }

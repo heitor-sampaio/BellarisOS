@@ -5,9 +5,8 @@ import { getTenantContext, assertClient, assertPermission, assertAnyPermission }
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
-import { getAdsConfig } from '@/lib/ads/factory'
-import { MetaAdsProvider } from '@/lib/ads/meta'
-import type { MetaAdsConfig } from '@/lib/ads/types'
+import { after } from 'next/server'
+import { enviarEventoCapi } from '@/lib/ads/capi'
 import { registrarEventoLead } from '@/lib/lead-events'
 import { garantirClienteRapido, ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
 
@@ -178,7 +177,7 @@ export async function addClient(
   // 5) Conversão de lead: liga o lead e dispara Meta CAPI (CompleteRegistration)
   if (leadId) {
     const { data: leadRow } = await admin
-      .from('leads').select('fbclid').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle()
+      .from('leads').select('ctwa_clid').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle()
     await admin.from('leads').update({ client_id: client.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
     await registrarEventoLead({
       tenantId:    ctx.tenantId!,
@@ -187,13 +186,30 @@ export async function addClient(
       actorUserId: ctx.internalUserId,
       actorName:   ctx.userName || null,
     })
-    getAdsConfig(ctx.tenantId!, 'meta_ads').then(metaConfig => {
-      if (!metaConfig) return
-      new MetaAdsProvider(metaConfig as MetaAdsConfig).sendCAPIEvent(
-        { email, phone, fbclid: (leadRow as { fbclid?: string | null } | null)?.fbclid ?? null },
-        'CompleteRegistration',
-      ).catch(() => null)
-    }).catch(() => null)
+
+    // O clique desce do lead para o CLIENTE: é do cliente que partem os
+    // eventos seguintes (agendou, pagou), e sem o carimbo aqui cada um deles
+    // teria de percorrer conversa e mensagens para achar o mesmo dado.
+    const clique = (leadRow as { ctwa_clid?: string | null } | null)?.ctwa_clid ?? null
+    if (clique) {
+      await admin.from('clients')
+        .update({ ctwa_clid: clique })
+        .eq('id', client.id).eq('tenant_id', ctx.tenantId!)
+    }
+
+    // Antes este envio saía como `action_source: 'website'` e mandava só o
+    // `fbclid` — a Meta ACEITAVA e não atribuía a anúncio nenhum, que é a pior
+    // das falhas: parece ter funcionado. Agora vai pelo caminho de
+    // click-to-WhatsApp, com dedup e registro.
+    after(() => enviarEventoCapi({
+      tenantId: ctx.tenantId!,
+      event:    'CompleteRegistration',
+      eventId:  `registration:${client.id}`,
+      ctwaClid: clique,
+      phone,
+      email,
+    }))
+
     revalidatePath('/admin/oportunidades')
     revalidatePath(`/${slug}/oportunidades`)
   }
