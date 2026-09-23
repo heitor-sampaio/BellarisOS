@@ -62,3 +62,7 @@ pnpm-debug.log*
 apps/web/e2e/.auth/
 apps/web/test-results/
 apps/web/playwright-report/
+
+# Saída de sondas — payloads crus de provedor, com dados de clientes reais.
+# Nunca versionar: a sonda existe para ser lida e apagada.
+uazapi-*-bruto.json
