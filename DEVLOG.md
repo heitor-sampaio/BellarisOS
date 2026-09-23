@@ -550,6 +550,69 @@ evento de leitura, já que no-show em estética é alto. Decisão do Heitor de n
 implementar: evento personalizado antes de os três principais produzirem dado
 real só cria uma série vazia a mais.
 
+### 2026-09-23 — Eventos de domínio (Fase 1 de 6)
+
+Preparação para as automações: elas precisam de gatilhos, e não havia onde
+perguntar "o que aconteceu no sistema". Existiam três tabelas de histórico com
+propósitos próprios e incompatíveis — `lead_events` (linha do tempo do card),
+`appointment_history` (auditoria) e `meta_capi_events` (fila da Meta) — e nada
+que cobrisse o resto. Agora toda ação relevante vira uma linha em
+`domain_events`, e o motor de automações vai assinar essa corrente sem conhecer
+tabela de negócio nenhuma.
+
+**Duas decisões do Heitor** que moldaram o desenho:
+
+- **Catálogo curado, não espelho de CRUD.** Eventos nomeados pela INTENÇÃO
+  (`agendamento.nao_compareceu`), não pela operação (`appointments.atualizado`).
+  São ~290 pontos de escrita no sistema; uma lista desse tamanho, toda
+  "atualizado", não cabe numa tela de automação e obrigaria o motor a
+  inspecionar campos para descobrir o que houve.
+- **Gatilhos de TEMPO ficam para a fase do motor.** "Sem retorno há 60 dias",
+  "aniversário", "lembrete 24h antes" não nascem de ação: são varredura
+  agendada, mecanismo diferente de emissão.
+
+**Três restrições que a varredura revelou e que decidiram a arquitetura:**
+
+1. **40 escritas acontecem fora de `actions/`** (webhook do WhatsApp, crons,
+   libs) — e é de lá que vêm fatos centrais como "conversa iniciada".
+   Instrumentar só `actions/` deixaria isso de fora.
+2. **O banco não sabe quem fez.** As 67 origens de escrita usam
+   `createAdminClient()` (service role, sem JWT), então `auth.uid()` é nulo e
+   gatilho no Postgres não teria como carimbar ator. **Foi o que decidiu a
+   favor de emitir no app, e não no banco.**
+3. **O emissor não pode morar em `actions/`** — todo export de arquivo
+   `'use server'` vira endpoint público, e um gravador exposto assim deixaria
+   qualquer cliente forjar a corrente que dispara as automações. Mesma razão já
+   documentada em `lib/lead-events.ts`.
+
+**O que ficou pronto:** a tabela (append-only, publicada na `supabase_realtime`
+— o motor escuta pelo mesmo caminho que `RealtimeRefresher` já usa), o catálogo
+tipado em `packages/types/src/eventos.ts`, o emissor em `lib/events/emitir.ts`
+(síncrono, nunca lança) e **a agenda inteira**: criado, confirmado, check-in,
+iniciado, concluído, cancelado, não compareceu, remarcado.
+
+`dados` leva **retrato + `alterou`**. O retrato (nome e telefone do cliente)
+poupa o motor de ir ao banco justamente quando precisa ser rápido; `alterou` é
+o que permitirá "se o telefone mudou, revalidar o WhatsApp". Mesmo desenho de
+`lead_events.changes`.
+
+`agendamento.criado` sai de `createAppointmentCore`, não das actions: são
+**quatro caminhos de criação** (agenda, inbox, checkout de plano, portal do
+cliente) e o fato é o mesmo — emitir em cada um seria esquecer o quinto. Mesma
+lição do `Purchase` da CAPI.
+
+**Guarda contra o drift mais cruel:** `tests/eventos-catalogo.test.ts` falha se
+um nome do catálogo não tiver emissor no código. Sem ela, a automação seria
+montada na tela, salva sem erro, e **nunca dispararia** — sem mensagem, sem log,
+sem onde procurar. O E2E da agenda passou a conferir os quatro eventos junto com
+os quatro status.
+
+**Faltam as fases 2 a 6:** clientes/CRM/inbox (inclui os webhooks), dinheiro,
+clínico e estoque, cadastro e configuração, e o painel de conferência.
+
+**Pendência anotada, não resolvida às cegas:** retenção. `domain_events` cresce
+para sempre; a base é pequena hoje e nada expira nesta fase.
+
 ---
 
 ## 4. Decisões de produto

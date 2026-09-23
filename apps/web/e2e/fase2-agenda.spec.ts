@@ -36,6 +36,7 @@ test.afterAll(async () => {
   const db = banco()
   if (appointmentId) {
     await db.from('appointment_status_history').delete().eq('appointment_id', appointmentId)
+    await db.from('domain_events').delete().eq('entidade_id', appointmentId)
     await db.from('appointments').delete().eq('id', appointmentId)
   }
   if (clientId) await db.from('clients').delete().eq('id', clientId)
@@ -130,4 +131,43 @@ test('agenda pela rede: marcar com nome e telefone, confirmar, remarcar e cancel
       .select('status, cancellation_reason').eq('id', appointmentId!).single()
     return `${data?.status}|${data?.cancellation_reason ?? ''}`
   }, { message: 'cancelar deveria gravar status e motivo' }).toBe(`CANCELLED|${PREFIXO} desmarcou`)
+
+  // -- A corrente de eventos acompanhou tudo ---------------------------------
+  //
+  // Este trecho existe porque emitir evento é a coisa mais fácil de quebrar sem
+  // ninguém notar: a tela continua funcionando, o status grava, e só a
+  // automação — que ainda nem existe — deixaria de disparar. Aqui as quatro
+  // ações acima têm de ter deixado rastro.
+  await expect.poll(async () => {
+    const { data } = await db.from('domain_events')
+      .select('nome').eq('entidade_id', appointmentId!).order('ocorrido_em')
+    return (data ?? []).map(e => e.nome).join(',')
+  }, { message: 'criar, confirmar, remarcar e cancelar deveriam emitir evento' })
+    .toBe('agendamento.criado,agendamento.confirmado,agendamento.remarcado,agendamento.cancelado')
+
+  const { data: evs } = await db.from('domain_events')
+    .select('nome, entidade, ator_tipo, ator_nome, origem, branch_id, dados')
+    .eq('entidade_id', appointmentId!)
+
+  const porNome = new Map((evs ?? []).map(e => [e.nome as string, e]))
+
+  const criado = porNome.get('agendamento.criado')!
+  expect(criado.entidade).toBe('agendamento')
+  expect(criado.origem).toBe('app')
+  // Quem agiu foi a pessoa logada, não o sistema: sem isto a automação não
+  // consegue distinguir o que a equipe fez do que o cliente fez sozinho.
+  expect(criado.ator_tipo).toBe('usuario')
+  expect(criado.ator_nome).toBeTruthy()
+  expect(criado.branch_id).toBeTruthy()
+  // O retrato viaja junto — é o que poupa o motor de consultar o banco.
+  expect((criado.dados as Record<string, unknown>).clienteNome).toContain(PREFIXO)
+
+  // O motivo do cancelamento é o texto que a automação usaria na mensagem.
+  expect((porNome.get('agendamento.cancelado')!.dados as Record<string, unknown>).motivo)
+    .toBe(`${PREFIXO} desmarcou`)
+
+  // Remarcação diz de quando para quando; sem o "de", a automação não tem como
+  // avisar o cliente do que mudou.
+  expect((porNome.get('agendamento.remarcado')!.dados as Record<string, unknown>).deAgendadoPara)
+    .toBeTruthy()
 })

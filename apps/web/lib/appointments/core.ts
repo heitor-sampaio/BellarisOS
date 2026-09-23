@@ -11,6 +11,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { notifyClient, notifyUser } from '@/lib/notifications/notify'
 import { enviarEventoCapi } from '@/lib/ads/capi'
 import { cliqueDoCliente, contatoDoCliente } from '@/lib/ads/atribuicao'
+import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
+import { EVENTOS } from '@estetica-os/types'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -120,6 +122,12 @@ export async function createAppointmentCore(
 
   const userName = await getUserName(admin, ctx.userId)
   await logAppointmentHistory(admin, data.id as string, ctx.internalUserId, userName, 'CREATED', 'Agendamento criado')
+
+  // A corrente de eventos. Sai daqui, e não das actions que chamam este core,
+  // porque são quatro caminhos de criação (agenda, inbox, checkout de plano,
+  // portal do cliente) e o fato é o mesmo — emitir em cada um seria esquecer
+  // o quinto.
+  await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CRIADO, data.id as string, { ...ctx, userName })
 
   // Meta: agendar é o primeiro compromisso real de quem veio de um anúncio, e
   // é o evento pelo qual a campanha é otimizada. Vai em `after()` para não

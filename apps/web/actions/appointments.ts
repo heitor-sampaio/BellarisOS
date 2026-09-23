@@ -12,6 +12,8 @@ import {
 } from '@/lib/cached-queries'
 import { notifyClient, notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots } from '@/lib/appointments/core'
+import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
+import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { periodRef } from '@/lib/datetime'
 
@@ -292,6 +294,23 @@ export async function updateAppointmentStatus(
   }
   await logHistory(admin, appointmentId, ctx.internalUserId, userName, status, actionDescMap[status] ?? status)
 
+  // A corrente de eventos, ao lado do histórico. São coisas diferentes: o
+  // histórico é a linha do tempo que a tela do agendamento mostra; o evento é
+  // o gatilho que a automação escuta, e por isso é nomeado pela intenção e
+  // carrega o retrato do agendamento junto.
+  const EVENTO_DO_STATUS: Record<string, NomeDeEvento> = {
+    CONFIRMED:   EVENTOS.AGENDAMENTO_CONFIRMADO,
+    IN_PROGRESS: EVENTOS.AGENDAMENTO_INICIADO,
+    CANCELLED:   EVENTOS.AGENDAMENTO_CANCELADO,
+    NO_SHOW:     EVENTOS.AGENDAMENTO_NAO_COMPARECEU,
+  }
+  const evento = EVENTO_DO_STATUS[status]
+  if (evento) {
+    await emitirEventoDeAgendamento(evento, appointmentId, { ...ctx, userName }, {
+      motivo: status === 'CANCELLED' ? cancellationReason ?? null : null,
+    })
+  }
+
   // Os dois portais olham a mesma agenda: confirmar pela rede tem de aparecer
   // na unidade, e vice-versa.
   if (slug) {
@@ -422,6 +441,7 @@ export async function checkinAppointment(
 
     const userName = await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'CHECKIN', 'Check-in realizado — cliente chegou')
+    await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CHECK_IN, appointmentId, { ...ctx, userName })
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
@@ -463,6 +483,7 @@ export async function startAppointment(
 
     const userName = await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'STARTED', 'Atendimento iniciado')
+    await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_INICIADO, appointmentId, { ...ctx, userName })
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
@@ -568,6 +589,7 @@ export async function cancelAppointmentSession(
     const userName = await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'CANCELLED',
       `Cancelado: ${cancellationReason}`)
+    await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CANCELADO, appointmentId, { ...ctx, userName }, { motivo: cancellationReason })
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
@@ -819,6 +841,7 @@ export async function finishSession(
 
     const userName = await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'COMPLETED', 'Atendimento concluído pelo profissional')
+    await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CONCLUIDO, appointmentId, { ...ctx, userName })
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
@@ -1058,7 +1081,9 @@ export async function rescheduleAppointment(
     // Verifica que o agendamento pertence ao tenant antes de atualizar
     const { data: existing } = await admin
       .from('appointments')
-      .select('id, branch_id, branches!inner(tenant_id)')
+      // `scheduled_at` entra aqui para o evento poder dizer DE QUANDO para
+      // quando: uma automação de remarcação quase sempre quer comparar os dois.
+      .select('id, branch_id, scheduled_at, branches!inner(tenant_id)')
       .eq('id', appointmentId)
       .single()
 
@@ -1083,6 +1108,9 @@ export async function rescheduleAppointment(
     const dtStr = dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'RESCHEDULED',
       `Reagendado para ${dtStr}`, { scheduled_at: scheduledAt })
+    await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_REMARCADO, appointmentId, { ...ctx, userName }, {
+      deAgendadoPara: (existing?.scheduled_at as string) ?? null,
+    })
 
     if (slug) revalidatePath(`/${slug}/agenda`)
     revalidatePath('/admin/agenda')

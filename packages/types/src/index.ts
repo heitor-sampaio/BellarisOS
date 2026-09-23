@@ -5,3 +5,8 @@ export type {
 export { APP_MODULES, SCOPED_MODULES, REPORT_TABS } from './auth'
 export type { AppointmentStatus, AppointmentSource, AppointmentWithClient, AppointmentWithDetails } from './appointment'
 export type { ClientWithLoyalty, ClientSummary } from './client'
+export type {
+  NomeDeEvento, EntidadeDeEvento, OrigemDeEvento, TipoDeAtor, AtorDoEvento,
+  DadosDeEvento, EventoDeDominio, DadosDeAgendamento,
+} from './eventos'
+export { EVENTOS } from './eventos'
