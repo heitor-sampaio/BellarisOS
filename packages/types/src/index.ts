@@ -14,3 +14,17 @@ export type {
   DadosDeProcedimento, DadosDeMembro, DadosDeCargo, DadosDeIntegracao,
 } from './eventos'
 export { EVENTOS } from './eventos'
+export type {
+  TipoDeNo, OperadorDeCondicao, RegraDeCondicao, GrupoDeCondicao,
+  ConfigGatilhoEvento, ConfigGatilhoAgenda, ConfigBuscarClientes,
+  ConfigCondicaoSe, ConfigCondicaoEscolha,
+  ConfigEsperaDuracao, ConfigEsperaAte,
+  ConfigAcaoMensagem, ConfigAcaoNotificarEquipe, ConfigAcaoMoverEtapa,
+  ConfigAcaoDesfecho, ConfigAcaoTagCliente, ConfigAcaoAtribuir,
+  ConfigAcaoAnotar, ConfigAcaoLembrete, ConfigDeNo,
+  NoDoGrafo, LigacaoDoGrafo, GrafoDeAutomacao,
+  LimitesDaAutomacao, StatusDaAutomacao, StatusDaExecucao,
+} from './automacoes'
+export {
+  NODES, TIPOS_DE_GATILHO, SAIDAS_DE, LIMITES_PADRAO, PROFUNDIDADE_MAXIMA,
+} from './automacoes'

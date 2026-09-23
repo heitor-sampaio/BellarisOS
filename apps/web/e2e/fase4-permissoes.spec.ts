@@ -35,7 +35,7 @@ test('o cargo Admin da rede tem acesso a todos os módulos, gravado no banco', a
     expect(MODULE_LEVELS[modulo], `${modulo} não aceita ${linha!.level}`).toContain(linha!.level)
   }
 
-  expect(porModulo.size, 'nenhum módulo a mais que os 14 declarados').toBe(ALL_MODULES.length)
+  expect(porModulo.size, 'nenhum módulo a mais que os declarados em ALL_MODULES').toBe(ALL_MODULES.length)
 })
 
 test('quem é da rede tem abrangência nula — é o que abre o portal da rede', async () => {

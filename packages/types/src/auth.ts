@@ -27,6 +27,9 @@ export const APP_MODULES = [
   'forms',
   'roles',
   'settings',
+  // A automação mexe em agenda, CRM e financeiro: espremê-la em 'marketing'
+  // faria quem cuida de anúncio herdar o poder de mover oportunidade.
+  'automations',
 ] as const
 
 export type AppModule = typeof APP_MODULES[number]

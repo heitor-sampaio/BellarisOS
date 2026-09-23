@@ -33,6 +33,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
   forms:           'Modelos de ficha',
   roles:           'Cargos e permissões',
   settings:        'Configurações da rede',
+  automations:     'Automações',
 }
 
 // Descrição curta de cada módulo (ajuda na tela de montagem do cargo)
@@ -51,6 +52,7 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   forms:           'Molde da anamnese e da ficha de atendimento',
   roles:           'Criar cargos e definir o que cada um acessa',
   settings:        'Dados da rede, unidades e integrações',
+  automations:     'Fluxos que reagem sozinhos ao que acontece',
 }
 
 /** Rótulo do escopo, por módulo — o que "só os meus" significa em cada um. */
@@ -82,6 +84,7 @@ export const MODULE_LEVELS: Record<AppModule, readonly PermissionLevel[]> = {
   forms:           ['NONE', 'MANAGE'],
   roles:           ['NONE', 'MANAGE'],
   settings:        ['NONE', 'MANAGE'],
+  automations:     ['NONE', 'VIEW', 'MANAGE'],
 }
 
 // ─── Níveis ──────────────────────────────────────────────────────────────────

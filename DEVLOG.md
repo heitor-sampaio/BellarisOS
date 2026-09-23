@@ -85,7 +85,7 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 185 unitários (Vitest) + 45 E2E (Playwright) rodando contra o banco
+- **Testes:** 201 unitários (Vitest) + 46 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** serviço na Railway roda `scripts/cron.mjs` de hora em hora
   (campanhas de notificação e exportações de LGPD).
@@ -830,6 +830,64 @@ entram os gatilhos de TEMPO ("sem retorno há 60 dias", aniversário, lembrete
 24h antes, `estoque.lote_vencendo`), que foram adiados de propósito: não nascem
 de ação nenhuma, são varredura agendada, e quem os agenda é o motor.
 
+### 2026-09-24 — Automações, Fase 1 (o motor, sem tela)
+
+Alguém finalmente reage aos 42 eventos. Três tabelas (`automations`,
+`automation_runs`, `automation_run_steps`), o catálogo de nodes tipado em
+`packages/types/src/automacoes.ts`, e um executor que já roda **gatilho de
+evento → IF → SWITCH → ação**. Sem quadro ainda: a automação de prova foi
+inserida por SQL, e o que se provou é o motor.
+
+**A fila é uma tabela, não um broker.** Redis e BullMQ estão na tabela de stack
+do CLAUDE.md e nunca foram usados; o projeto opera com `after()` + cron, o
+volume de uma clínica é de dezenas de execuções por dia, e uma tabela dá
+histórico e observabilidade de graça. `automation_runs` É a fila: o cron
+recolhe por `status` + `rodar_apos`.
+
+**O processo não segura nada.** Cada passo lê o run, executa um node, grava
+onde parou e devolve. Uma espera só grava a data — é isso que vai permitir
+"esperar 3 dias" num container que reinicia sozinho.
+
+**O disparo é imediato**, em `after()` dentro do emissor de eventos: enfileirar
+e esperar o cron faria "responder na hora quem chegou pelo anúncio" virar
+"responder em até cinco minutos", que é exatamente o que essa automação não
+pode ser. O cron (Fase 4) fica para o que espera, o que falhou e o que é de
+tempo.
+
+**Três travas que já nascem prontas**, porque a primeira automação em anel
+manda mensagem ao cliente em laço:
+- origem nova `'automacao'` na corrente, para o motor distinguir o que ele fez
+  do que uma pessoa fez;
+- `profundidade` no run, com teto de 3 — o anel fecha em três voltas;
+- índice único `(automation_id, evento_id)`: a mesma automação não roda duas
+  vezes pelo mesmo fato. E o despacho fica **depois** do `if` do 23505: a
+  repetição barrada pela chave de idempotência não é fato novo, e disparar
+  automação por ela faria a segunda tentativa de um webhook mandar a mensagem
+  de novo.
+
+**O contexto é hidratado sob demanda** e nunca leva prontuário. O evento
+carrega um retrato magro — `DadosClinicos` nem tem telefone — então o motor
+busca cliente, agendamento, lead, conversa, plano, produto ou membro conforme o
+que as condições e os textos citarem. Anamnese, evolução e foto continuam fora,
+pela mesma razão de sempre: a automação avisa que a ficha chegou, não conta o
+que tem nela.
+
+**Um defeito achado escrevendo o teste**: a ação de avisar a equipe com alvo
+vazio devolvia um resumo e o passo ficava **verde**. Run verde que não fez nada
+é pior que vermelho — é a mentira que o passo a passo existe para não contar.
+Configuração incompleta passou a lançar.
+
+Módulo de permissão novo: **`automations`** (15º). A automação mexe em agenda,
+CRM e financeiro; espremê-la em `marketing` faria quem cuida de anúncio herdar
+o poder de mover oportunidade. **Módulo novo não nasce no banco**: `role_permissions`
+tem uma linha por cargo e por módulo, e cargo criado antes fica sem a linha — o
+admin simplesmente não veria Automações no menu. Quem pegou foi
+`e2e/fase4-permissoes.spec.ts`, e a migração dá MANAGE **só ao Admin da rede**:
+automação ligada manda mensagem sozinha, e distribuir isso a todo cargo
+existente seria decidir pela clínica um acesso que ela não pediu.
+
+Faltam as fases 2 a 5: o quadro, as ações que falam, o tempo e o histórico.
+
 ---
 
 ## 4. Decisões de produto
@@ -839,6 +897,7 @@ verdade. O que vale:
 
 | Decisão | Quando | Por quê |
 |---|---|---|
+| **Campanha e automação são dois produtos** | 2026-09-24 | Campanha é disparo em massa por público (aniversário, X dias após a visita); automação é reação a um fato. A tela de campanhas fica como está e nada migra para o motor. |
 | **ERP + CRM de clínica, cliente típico com uma unidade** | 2026-09-18 | Rede grande é franquia e já tem sistema. O financeiro é parte, não centro. |
 | **Caixa de abrir/fechar removido** | 2026-09-18 | Menos de 1% dos recebimentos é em dinheiro; o fechamento existe para contar a gaveta, e não há gaveta. A auditoria do dia é a tela do financeiro. `cash_registers` fica com o histórico; `cashier` passa a significar RECEBER na recepção. |
 | **Procedimento e configuração são dados da REDE** | 2026-09-18 | A unidade vê o catálogo; alterar exige abrangência de rede. |

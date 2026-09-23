@@ -13,16 +13,30 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
  */
 
 const insert = vi.fn()
+/** O que o insert encadeado devolve — trocado por teste. */
+let resultadoDoInsert: { data: { id: string } | null; error: { code: string; message: string } | null } =
+  { data: { id: 'ev1' }, error: null }
+// O insert encadeia `.select('id').maybeSingle()`: o emissor precisa do id do
+// fato recém-gravado para entregá-lo ao motor de automações.
 vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({ from: () => ({ insert }) }),
 }))
+
+// O despacho roda em `after()` e puxa a árvore das automações — fora do
+// escopo deste teste, que é sobre o REGISTRO do fato.
+const despacharEvento = vi.fn()
+vi.mock('@/lib/automacoes/executar', () => ({ despacharEvento }))
 
 const { emitirEvento, atorDoContexto, ATOR_SISTEMA, camposAlterados } =
   await import('@/lib/events/emitir')
 
 beforeEach(() => {
   insert.mockReset()
-  insert.mockResolvedValue({ error: null })
+  despacharEvento.mockReset()
+  insert.mockReturnValue({
+    select: () => ({ maybeSingle: async () => resultadoDoInsert }),
+  })
+  resultadoDoInsert = { data: { id: 'ev1' }, error: null }
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
 
@@ -53,7 +67,7 @@ describe('emitirEvento', () => {
   })
 
   it('erro de banco não derruba quem chamou', async () => {
-    insert.mockResolvedValue({ error: { code: '42P01', message: 'tabela sumiu' } })
+    resultadoDoInsert = { data: null, error: { code: '42P01', message: 'tabela sumiu' } }
     await expect(
       emitirEvento('agendamento.criado', { tenantId: 't' }),
     ).resolves.toBeUndefined()
@@ -61,14 +75,14 @@ describe('emitirEvento', () => {
   })
 
   it('exceção inesperada também não derruba', async () => {
-    insert.mockRejectedValue(new Error('rede caiu'))
+    insert.mockImplementation(() => { throw new Error('rede caiu') })
     await expect(
       emitirEvento('agendamento.criado', { tenantId: 't' }),
     ).resolves.toBeUndefined()
   })
 
   it('repetição barrada pela chave não vira erro no log', async () => {
-    insert.mockResolvedValue({ error: { code: '23505', message: 'duplicate key' } })
+    resultadoDoInsert = { data: null, error: { code: '23505', message: 'duplicate key' } }
     await emitirEvento('agendamento.confirmado', {
       tenantId: 't', chave: 'agendamento.confirmado:a1',
     })

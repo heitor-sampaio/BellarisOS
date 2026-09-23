@@ -124,6 +124,11 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     NONE:   SEM_ACESSO,
     MANAGE: 'Cadastra e edita unidades, conecta WhatsApp e contas de anúncio, e trata os pedidos de LGPD.',
   },
+  automations: {
+    NONE:   SEM_ACESSO,
+    VIEW:   'Abre as automações e vê o que cada uma fez — sem poder mudar nem ligar.',
+    MANAGE: 'Tudo do Ver, mais montar o fluxo, escolher o que ele faz e ligar ou desligar. Automação ligada manda mensagem e mexe no CRM sozinha.',
+  },
 }
 
 // ─── Alcance ("Enxerga") ─────────────────────────────────────────────────────

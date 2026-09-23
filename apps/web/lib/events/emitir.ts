@@ -34,11 +34,55 @@ export interface EntradaDeEvento {
   chave?:      string
   /** Momento do FATO, quando ele não é agora (webhook atrasado). */
   ocorridoEm?: Date
+  /**
+   * Quantas automações houve antes deste fato.
+   *
+   * Zero quando o fato nasce de uma pessoa ou de um webhook. Uma ação de
+   * automação emite com a profundidade da execução que a gerou + 1, e o motor
+   * para no teto — é o que faz um grafo em anel fechar em três voltas em vez
+   * de mandar mensagem ao cliente em laço.
+   */
+  profundidade?: number
 }
 
 /** A entidade é sempre o prefixo do nome — não há por que pedir duas vezes. */
 function entidadeDe(nome: NomeDeEvento): EntidadeDeEvento {
   return nome.split('.')[0] as EntidadeDeEvento
+}
+
+/**
+ * Entrega o fato ao motor de automações.
+ *
+ * Em `after()`, e não no caminho crítico: gravar o evento é o compromisso
+ * desta função; reagir a ele é de outra. Um motor lento — ou quebrado — não
+ * pode segurar o agendamento que acabou de ser criado.
+ *
+ * O import é dinâmico porque `lib/automacoes/` puxa as ações, que puxam push e
+ * canais: carregar essa árvore em toda emissão, inclusive nas que nenhuma
+ * automação assina, sairia caro à toa.
+ */
+async function despachar(
+  evento: Parameters<typeof import('@/lib/automacoes/executar')['despacharEvento']>[0],
+  tenantId: string,
+  profundidade: number,
+): Promise<void> {
+  try {
+    const { after } = await import('next/server')
+    const disparar = async () => {
+      try {
+        const { despacharEvento } = await import('@/lib/automacoes/executar')
+        await despacharEvento(evento, tenantId, profundidade)
+      } catch (e) {
+        console.error('[despachar]', (e as Error).message)
+      }
+    }
+    // Fora de um request (cron, script, gatilho do banco chamado por rota)
+    // `after()` lança. Ali o trabalho roda direto: não há resposta para
+    // devolver primeiro.
+    try { after(disparar) } catch { await disparar() }
+  } catch (e) {
+    console.error('[despachar]', (e as Error).message)
+  }
 }
 
 export async function emitirEvento(
@@ -48,7 +92,7 @@ export async function emitirEvento(
   try {
     const admin = createAdminClient()
 
-    const { error } = await admin.from('domain_events').insert({
+    const { data, error } = await admin.from('domain_events').insert({
       tenant_id:   e.tenantId,
       branch_id:   e.branchId ?? null,
       nome,
@@ -61,14 +105,32 @@ export async function emitirEvento(
       origem:      e.origem ?? 'app',
       chave:       e.chave ?? null,
       ocorrido_em: (e.ocorridoEm ?? new Date()).toISOString(),
-    })
+    }).select('id').maybeSingle()
 
     // 23505 = a chave de idempotência barrou uma repetição. Não é erro: é a
     // trava fazendo o trabalho dela, e registrar como falha poluiria o log
-    // justamente no caminho que funcionou.
+    // justamente no caminho que funcionou. E é também por isso que o despacho
+    // fica abaixo do `if`: repetição barrada não é fato novo, e disparar
+    // automação por ela faria a segunda tentativa de um webhook mandar a
+    // mensagem de novo.
     if (error && error.code !== '23505') {
       console.error('[emitirEvento]', nome, error.message)
+      return
     }
+    if (error || !data) return
+
+    await despachar({
+      id:         data.id as string,
+      nome,
+      entidade:   entidadeDe(nome),
+      entidadeId: e.entidadeId ?? null,
+      dados:      (e.dados ?? {}) as Record<string, unknown>,
+      atorNome:   e.ator?.nome ?? null,
+      atorTipo:   e.ator?.tipo ?? 'sistema',
+      origem:     e.origem ?? 'app',
+      ocorridoEm: (e.ocorridoEm ?? new Date()).toISOString(),
+      branchId:   e.branchId ?? null,
+    }, e.tenantId, e.profundidade ?? 0)
   } catch (err) {
     console.error('[emitirEvento]', nome, (err as Error).message)
   }

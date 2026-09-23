@@ -455,6 +455,39 @@ const procedures = await prisma.procedure.findMany({
 
 ---
 
+### 9.9 Eventos de domínio e automações
+
+Toda ação relevante do sistema vira um fato em `domain_events` — 42 eventos
+nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
+`packages/types/src/eventos.ts`. As automações assinam essa corrente.
+
+- **O emissor mora em `lib/events/`, fora de `actions/`.** Todo export de um
+  arquivo `'use server'` vira endpoint público, e um gravador exposto assim
+  deixaria qualquer cliente forjar a corrente que dispara as automações. Vale
+  igual para o motor: em `actions/automacoes.ts` só entra LEITURA.
+- **Acrescentar nome ao catálogo sem emissor quebra o teste** — de propósito:
+  catálogo prometendo evento que ninguém emite faz a automação ser montada e
+  nunca disparar.
+- **Retenção de 30 dias.** A corrente é uma janela, não arquivo: automação que
+  precise olhar mais para trás consulta o dado de negócio.
+- **Eventos clínicos não carregam conteúdo clínico**, e o contexto da automação
+  também não hidrata prontuário. A automação avisa que a ficha chegou; quem
+  precisa do conteúdo abre o prontuário, com a permissão que ele exige.
+- `pagamento.*` e `estoque.*` saem de GATILHO no banco (`origem: 'banco'`, sem
+  ator), porque esses fatos nascem em cinco ou seis lugares do código e
+  instrumentar um a um é garantir esquecer o próximo.
+- **Campanha ≠ automação.** Campanha é disparo em massa por público; automação
+  é reação a um fato. São dois produtos, e nada migra de um para o outro.
+- **A fila do motor é `automation_runs`**, no Postgres — não há broker no
+  projeto. O disparo é imediato (`after()`); o cron recolhe o que espera, o que
+  falhou e o que é de tempo.
+- **Três travas contra o anel**: origem `'automacao'`, `profundidade` com teto
+  de 3, e índice único `(automation_id, evento_id)`. Ação de automação que
+  emite evento **passa a profundidade adiante** — sem isso, um grafo em anel
+  manda mensagem ao cliente em laço.
+
+---
+
 ## 10. Fluxo de conclusão de atendimento
 
 Executar em `prisma.$transaction`:
@@ -506,9 +539,9 @@ Escopo e abrangência são coisas diferentes: o escopo é do **cargo**, a abrang
 é do **membro**. Um mesmo cargo "Profissional" serve para alguém de uma filial e
 para alguém da rede.
 
-Os 14 módulos: `agenda`, `clients`, `medical_records`, `procedures`, `stock`,
+Os 15 módulos: `agenda`, `clients`, `medical_records`, `procedures`, `stock`,
 `financial`, `cashier`, `crm`, `marketing`, `reports`, `team`, `forms`, `roles`,
-`settings`. Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
+`settings`, `automations`. Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
 (`lib/permissions.ts`) declara o que cada um aceita, e a tela de cargos só
 oferece esses. O escopo aparece apenas em `SCOPED_MODULES`: `agenda`,
 `medical_records`, `financial`, `crm` e `reports` (em `reports` o escopo é "só
