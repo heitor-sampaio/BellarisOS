@@ -1081,9 +1081,12 @@ despejar o JSON, que transferiria para quem lê a tarefa de garimpar.
 largo encolhia a ponto de ninguém ler os cards. O enquadramento ganhou piso de
 zoom — cortado e legível é melhor que inteiro e ilegível, e o quadro rola.
 
-**O motor está completo.** O que falta não é fase: é o serviço de cron no
-Railway (`*/5 * * * *`, `CRON_JOBS=automacoes`), sem o qual esperas e gatilhos
-de agenda não andam em produção.
+**O motor está completo e no ar.** O serviço **Automations Cron** foi criado no
+Railway (`*/5 * * * *`, `CRON_JOBS=automacoes`, mesmo Dockerfile e mesmo
+`node /app/cron.mjs` do outro), e a primeira passagem respondeu
+`{ok:true, retomadas:0, erros:0, agendas:0}` em 350ms. As credenciais entraram
+por **referência** ao serviço principal, não copiadas: um segredo duplicado é
+um segredo que um dia diverge.
 
 ---
 
