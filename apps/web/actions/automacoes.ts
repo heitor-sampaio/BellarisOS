@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { LIMITES_PADRAO } from '@estetica-os/types'
-import type { GrafoDeAutomacao, StatusDaAutomacao, LimitesDaAutomacao } from '@estetica-os/types'
+import type {
+  GrafoDeAutomacao, StatusDaAutomacao, LimitesDaAutomacao, StatusDaExecucao,
+} from '@estetica-os/types'
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
 import { CLIENT_TAGS, isUnitTag } from '@estetica-os/utils'
 
@@ -88,6 +90,9 @@ async function resumoDeExecucoes(
     .from('automation_runs')
     .select('automation_id, status')
     .in('automation_id', ids)
+    // Ensaio não é execução: contá-lo aqui faria a lista dizer que a
+    // automação rodou sozinha quando alguém só conferiu o fluxo.
+    .eq('simulacao', false)
     .gte('created_at', desde)
 
   if (error) { console.error('[resumoDeExecucoes]', error.message); return mapa }
@@ -326,6 +331,193 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
     tags:     [...tags].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     unidades: (unidades.data ?? []).map(b => ({ id: b.id as string, nome: b.name as string })),
   }
+}
+
+// ─── Histórico e ensaio ─────────────────────────────────────────────────────
+
+export interface ExecucaoNaLista {
+  id:         string
+  status:     StatusDaExecucao
+  simulacao:  boolean
+  erro:       string | null
+  criadaEm:   string
+  fimEm:      string | null
+  /** Do que o fluxo estava falando: o cliente, quando há um. */
+  sobre:      string | null
+}
+
+export interface PassoDaExecucao {
+  ordem:  number
+  noId:   string
+  tipo:   string
+  status: string
+  resumo: Record<string, unknown>
+  ms:     number | null
+}
+
+export async function listarExecucoes(
+  automationId: string,
+  opcoes?: { incluirEnsaios?: boolean },
+): Promise<{ execucoes: ExecucaoNaLista[]; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'automations', 'VIEW')
+  const admin = createAdminClient()
+
+  let q = admin
+    .from('automation_runs')
+    .select('id, status, simulacao, erro, created_at, fim_em, contexto')
+    .eq('automation_id', automationId)
+    .eq('tenant_id', ctx.tenantId!)
+    .order('created_at', { ascending: false })
+    .limit(40)
+
+  // Ensaio fica de fora por padrão: ele é do momento de montar o fluxo, e
+  // misturado ao histórico faria a clínica achar que a automação rodou sozinha.
+  if (!opcoes?.incluirEnsaios) q = q.eq('simulacao', false)
+
+  const { data, error } = await q
+  if (error) return { execucoes: [], error: error.message }
+
+  return {
+    execucoes: (data ?? []).map(r => {
+      const contexto = r.contexto as { cliente?: { nome?: string }; lead?: { nome?: string } } | null
+      return {
+        id:        r.id as string,
+        status:    r.status as StatusDaExecucao,
+        simulacao: !!r.simulacao,
+        erro:      (r.erro as string | null) ?? null,
+        criadaEm:  r.created_at as string,
+        fimEm:     (r.fim_em as string | null) ?? null,
+        sobre:     contexto?.cliente?.nome ?? contexto?.lead?.nome ?? null,
+      }
+    }),
+  }
+}
+
+export async function passosDaExecucao(runId: string): Promise<{
+  passos: PassoDaExecucao[]
+  error?: string
+}> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'automations', 'VIEW')
+  const admin = createAdminClient()
+
+  // A execução tem de ser da rede de quem pergunta. O passo a passo carrega
+  // nome de cliente e texto de mensagem; um id de outra clínica não pode
+  // devolver isso.
+  const { data: run } = await admin
+    .from('automation_runs').select('id, tenant_id').eq('id', runId).maybeSingle()
+  if (!run || run.tenant_id !== ctx.tenantId) return { passos: [], error: 'Execução não encontrada.' }
+
+  const { data, error } = await admin
+    .from('automation_run_steps')
+    .select('ordem, no_id, tipo, status, resumo, ms')
+    .eq('run_id', runId)
+    .order('ordem')
+
+  if (error) return { passos: [], error: error.message }
+
+  return {
+    passos: (data ?? []).map(p => ({
+      ordem:  p.ordem as number,
+      noId:   p.no_id as string,
+      tipo:   p.tipo as string,
+      status: p.status as string,
+      resumo: (p.resumo as Record<string, unknown>) ?? {},
+      ms:     (p.ms as number | null) ?? null,
+    })),
+  }
+}
+
+/**
+ * Ensaia a automação com um fato REAL da corrente.
+ *
+ * As condições são avaliadas de verdade — é isso que responde "por que não
+ * disparou". O que não acontece são os efeitos: a mensagem não sai, a etapa
+ * não muda. Ensaiar com dados inventados provaria só que o desenho é bonito.
+ *
+ * Funciona com a automação DESLIGADA, e é aí que ele mais serve: conferir
+ * antes de ligar é o ponto.
+ */
+export async function ensaiarAutomacao(automationId: string): Promise<{
+  runId?: string
+  error?: string
+}> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'automations', 'MANAGE')
+  const admin = createAdminClient()
+
+  const { data: auto } = await admin
+    .from('automations').select('id, tenant_id, grafo, gatilhos')
+    .eq('id', automationId).maybeSingle()
+
+  if (!auto || auto.tenant_id !== ctx.tenantId) return { error: 'Automação não encontrada.' }
+
+  const grafo = auto.grafo as GrafoDeAutomacao
+  const gatilho = grafo?.nos?.find(n => n.tipo === 'gatilho.evento')
+  if (!gatilho) {
+    return { error: 'O ensaio precisa de um gatilho de evento — um gatilho de horário não tem fato para repetir.' }
+  }
+
+  const nome = (gatilho.config as { evento?: string })?.evento
+  if (!nome) return { error: 'Escolha o evento do gatilho antes de ensaiar.' }
+
+  // O fato mais recente daquele tipo. Sem nenhum, o ensaio não tem o que
+  // repetir — e dizer isso é mais útil que inventar um evento de mentira:
+  // significa que o gatilho ainda não aconteceu nesta rede.
+  const { data: evento } = await admin
+    .from('domain_events')
+    .select('id, nome, entidade, entidade_id, dados, ator_nome, ator_tipo, origem, ocorrido_em, branch_id')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('nome', nome)
+    .order('ocorrido_em', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!evento) {
+    return { error: `"${nome}" ainda não aconteceu nesta rede — não há fato para ensaiar. Veja em Configurações → Eventos.` }
+  }
+
+  const { data: run, error } = await admin
+    .from('automation_runs')
+    .insert({
+      tenant_id:     ctx.tenantId!,
+      automation_id: automationId,
+      // Sem `evento_id`: o índice de idempotência é para execução real, e
+      // travaria o segundo ensaio com o mesmo fato — que é exatamente o que
+      // se faz ao ajustar uma condição e conferir de novo.
+      evento_id:     null,
+      simulacao:     true,
+      no_atual:      gatilho.id,
+      profundidade:  0,
+      status:        'esperando',
+      contexto: {
+        evento: {
+          id:         evento.id,
+          nome:       evento.nome,
+          entidade:   evento.entidade,
+          entidadeId: evento.entidade_id,
+          dados:      evento.dados,
+          ator:       evento.ator_nome,
+          atorTipo:   evento.ator_tipo,
+          origem:     evento.origem,
+          quando:     evento.ocorrido_em,
+        },
+      },
+    })
+    .select('id')
+    .single()
+
+  if (error || !run) return { error: `Não consegui abrir o ensaio: ${error?.message}` }
+
+  // O ensaio roda ATIVO ou não: conferir antes de ligar é o ponto, e o
+  // executor recusa run de automação desligada. Por isso ele é chamado por
+  // aqui com a checagem própria, e não pelo caminho do despacho.
+  const { executarRun } = await import('@/lib/automacoes/executar')
+  await executarRun(run.id as string, { ignorarStatus: true })
+
+  revalidatePath(`/admin/automacoes/${automationId}`)
+  return { runId: run.id as string }
 }
 
 /** Problemas do grafo, para a tela acender o aviso enquanto se monta. */

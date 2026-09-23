@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
-  ChevronLeft, Play, Pause, Save, Plus, AlertCircle, CheckCircle2, ShieldCheck,
+  ChevronLeft, Play, Pause, Save, Plus, AlertCircle, CheckCircle2, ShieldCheck, History,
 } from 'lucide-react'
 import {
   NODES,
@@ -14,6 +14,7 @@ import {
 import { Quadro } from './quadro'
 import { PainelDoNo } from './painel-do-no'
 import { PainelDeLimites } from './painel-de-limites'
+import { PainelDeExecucoes } from './painel-de-execucoes'
 import { validarGrafo, ROTULOS, type ProblemaDoGrafo } from '@/lib/automacoes/validar'
 import { novoIdDeNo, configPadrao } from '@/lib/automacoes/ids'
 import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor } from '@/actions/automacoes'
@@ -63,7 +64,8 @@ export function EditorDeAutomacao({
   const [enquadrar, setEnquadrar] = useState(0)
   const [opcoes, setOpcoes]       = useState<OpcoesDoEditor | null>(null)
   const [limites, setLimites]     = useState<LimitesDaAutomacao>(automacao.limites)
-  const [verLimites, setVerLimites] = useState(false)
+  // Um painel por vez: 'no' vem da seleção no quadro; os outros dois, da barra.
+  const [gaveta, setGaveta] = useState<'limites' | 'execucoes' | null>(null)
   const [salvando, salvar]      = useTransition()
 
   // Etapas, cargos, pessoas e tags: uma consulta ao abrir. Pedi-las por node
@@ -195,7 +197,15 @@ export function EditorDeAutomacao({
           <>
             <button
               type="button" className="btn-ghost"
-              onClick={() => { setVerLimites(v => !v); setSel(null) }}
+              onClick={() => { setGaveta(g => (g === 'execucoes' ? null : 'execucoes')); setSel(null) }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
+              title="Histórico e ensaio"
+            >
+              <History size={14} /> Execuções
+            </button>
+            <button
+              type="button" className="btn-ghost"
+              onClick={() => { setGaveta(g => (g === 'limites' ? null : 'limites')); setSel(null) }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
               title="Silêncio noturno e teto por cliente"
             >
@@ -281,12 +291,18 @@ export function EditorDeAutomacao({
             onFechar={() => setSel(null)}
             somenteLeitura={!podeEditar}
           />
-        ) : verLimites ? (
+        ) : gaveta === 'limites' ? (
           <PainelDeLimites
             limites={limites}
             onChange={l => { setLimites(l); setSujo(true) }}
-            onFechar={() => setVerLimites(false)}
+            onFechar={() => setGaveta(null)}
             somenteLeitura={!podeEditar}
+          />
+        ) : gaveta === 'execucoes' ? (
+          <PainelDeExecucoes
+            automacaoId={automacao.id}
+            podeEditar={podeEditar}
+            onFechar={() => setGaveta(null)}
           />
         ) : null}
       </div>

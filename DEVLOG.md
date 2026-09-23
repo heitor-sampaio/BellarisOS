@@ -71,8 +71,13 @@ unidade.
   sistema, com o catálogo cruzado com o que já ocorreu na rede).
 - **Eventos de domínio** — 42 fatos nomeados pela intenção
   (`agendamento.nao_compareceu`, `pagamento.recebido`, `estoque.abaixo_do_minimo`)
-  gravados em `domain_events` com ator, origem e retrato. É a base das
-  automações, que ainda não existem. Retenção de 30 dias.
+  gravados em `domain_events` com ator, origem e retrato. Retenção de 30 dias.
+- **Automações** (`/admin/automacoes`) — quadro infinito de nodes que reage a
+  esses fatos: gatilho por evento ou por horário, condições (SE e ESCOLHER),
+  esperas, e ações que mandam mensagem, avisam a equipe e mexem no CRM. Com
+  silêncio noturno, teto de contatos por cliente e anti-loop por profundidade.
+  Cada execução guarda o passo a passo, e o **ensaio** percorre o fluxo com um
+  fato real sem executar nada.
 
 ### Plataforma
 
@@ -85,7 +90,7 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 232 unitários (Vitest) + 49 E2E (Playwright) rodando contra o banco
+- **Testes:** 232 unitários (Vitest) + 50 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
   (campanhas e LGPD) e a cada 5 minutos (fila das automações).
@@ -1039,6 +1044,46 @@ antes de as esperas existirem: "daqui a 3 dias, avise a equipe" agora é
 catálogo curado não deve ter.
 
 Falta a fase 5: o histórico das execuções.
+
+### 2026-09-24 — Automações, Fase 5 (histórico e ensaio) — motor completo
+
+Painel de **Execuções** no editor, com o passo a passo de cada uma — e o
+**ensaio**, que é a peça que faltava. Com isto o plano de cinco fases fecha: as
+automações estão de pé, do gatilho ao histórico.
+
+**O ensaio responde "por que não disparou?" sem cobrar o preço da resposta.**
+Sem ele, conferir um fluxo significa provocar o fato real e torcer: mandar a
+mensagem ao cliente para descobrir que a condição estava invertida. O ensaio
+percorre o fluxo com um fato que **realmente aconteceu** — o mais recente
+daquele tipo na corrente — e não executa nada.
+
+**As condições são avaliadas de verdade; só os EFEITOS não acontecem.** Simular
+também as condições transformaria o ensaio num desenho bonito que não prova
+nada. A ação vira uma anotação ("Faria: avisar a equipe"), a espera é pulada
+(ninguém confere um fluxo esperando três dias) e `buscar.clientes` entra na
+lista de efeitos porque abrir cem execuções filhas é efeito — cada uma agiria.
+
+**Funciona com a automação desligada**, e é aí que mais serve: conferir antes
+de ligar é o ponto.
+
+**Ensaio não conta como execução.** A coluna `simulacao` o separa no histórico,
+e isso teve duas consequências que precisaram ser corrigidas junto: ele sai da
+contagem da lista de automações (senão a clínica acharia que o fluxo rodou
+sozinho) e do **teto de contatos por cliente do dia** — conferir o fluxo três
+vezes calaria a automação até amanhã.
+
+**O passo a passo mostra o que cada node DECIDIU**, não só que rodou: qual saída
+do IF, para quem foi o aviso, por que a mensagem não saiu. É a diferença entre
+um log e uma explicação — e o resumo é traduzido para uma frase em vez de
+despejar o JSON, que transferiria para quem lê a tarefa de garimpar.
+
+**Ajuste de leitura no quadro:** com um painel aberto comendo 360px, um fluxo
+largo encolhia a ponto de ninguém ler os cards. O enquadramento ganhou piso de
+zoom — cortado e legível é melhor que inteiro e ilegível, e o quadro rola.
+
+**O motor está completo.** O que falta não é fase: é o serviço de cron no
+Railway (`*/5 * * * *`, `CRON_JOBS=automacoes`), sem o qual esperas e gatilhos
+de agenda não andam em produção.
 
 ---
 

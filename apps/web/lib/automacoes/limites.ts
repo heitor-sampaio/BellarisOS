@@ -97,6 +97,9 @@ export async function falouHojeCom(
     .from('automation_runs')
     .select('id, contexto')
     .eq('automation_id', automationId)
+    // Ensaio não fala com ninguém, então não gasta o teto do dia. Contá-lo
+    // faria conferir o fluxo três vezes calar a automação até amanhã.
+    .eq('simulacao', false)
     .in('status', ['ok', 'esperando'])
     .gte('created_at', inicio.toISOString())
 

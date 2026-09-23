@@ -21,6 +21,7 @@ import {
 import { mandarMensagem } from './acoes-mensagem'
 import { podeFalarCom, limitesDe } from './limites'
 import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
+import { resumoDoNo } from './resumo'
 
 /**
  * O executor: um passo por vez, dirigido por `automation_runs`.
@@ -34,6 +35,19 @@ import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
  * agendamento que a disparou — a mesma regra do emissor de eventos.
  */
 
+/**
+ * Os tipos que produzem EFEITO fora do motor.
+ *
+ * É a lista que o ensaio respeita: tudo aqui é anotado em vez de executado.
+ * `buscar.clientes` entra porque abrir cem execuções filhas é efeito — cada
+ * uma delas agiria de verdade.
+ */
+const ACOES: TipoDeNo[] = [
+  NODES.ACAO_MENSAGEM, NODES.ACAO_NOTIFICAR_EQUIPE, NODES.ACAO_MOVER_ETAPA,
+  NODES.ACAO_DESFECHO, NODES.ACAO_TAG_CLIENTE, NODES.ACAO_ATRIBUIR,
+  NODES.ACAO_ANOTAR, NODES.BUSCAR_CLIENTES,
+]
+
 /** Teto de nodes por execução. Grafo em anel que escape do validador para aqui. */
 const MAX_PASSOS = 100
 
@@ -46,6 +60,7 @@ interface Run {
   no_atual:      string | null
   tentativas:    number
   profundidade:  number
+  simulacao:     boolean
 }
 
 interface Automacao {
@@ -168,12 +183,15 @@ export async function despacharEvento(
  *
  * Devolve o status final, para o cron somar o lote.
  */
-export async function executarRun(runId: string): Promise<string> {
+export async function executarRun(
+  runId: string,
+  opcoes?: { ignorarStatus?: boolean },
+): Promise<string> {
   const admin = createAdminClient()
 
   const { data: runRow, error } = await admin
     .from('automation_runs')
-    .select('id, tenant_id, automation_id, evento_id, contexto, no_atual, tentativas, profundidade')
+    .select('id, tenant_id, automation_id, evento_id, contexto, no_atual, tentativas, profundidade, simulacao')
     .eq('id', runId)
     .maybeSingle()
 
@@ -191,7 +209,9 @@ export async function executarRun(runId: string): Promise<string> {
 
   // Pausar uma automação tem de valer para o que já está na fila, senão uma
   // espera de três dias ressuscita o que alguém desligou ontem.
-  if (automacao.status !== 'ATIVA') {
+  //
+  // O ENSAIO é a exceção, e é o ponto dele: conferir o fluxo ANTES de ligar.
+  if (automacao.status !== 'ATIVA' && !opcoes?.ignorarStatus) {
     return await encerrar(run.id, 'parado', 'Automação não está ativa.')
   }
 
@@ -288,6 +308,25 @@ async function rodarNo(
   automacao: Automacao,
 ): Promise<ResultadoDoNo> {
   const tipo = no.tipo as TipoDeNo
+
+  /**
+   * No ENSAIO, o que muda é só o EFEITO.
+   *
+   * Condições são avaliadas de verdade, com o contexto de um fato que
+   * realmente aconteceu — é isso que faz o ensaio responder "por que não
+   * disparou". O que não acontece é a ação: a mensagem não sai, a etapa não
+   * muda, a tag não é gravada. Simular também as condições transformaria o
+   * ensaio num desenho bonito que não prova nada.
+   */
+  if (run.simulacao && ACOES.includes(tipo)) {
+    return { resumo: { ensaio: true, faria: resumoDoNo(tipo, no.config as Record<string, unknown>) } }
+  }
+
+  // A espera, no ensaio, é anotada e pulada: ninguém confere um fluxo
+  // esperando três dias para ver o próximo passo.
+  if (run.simulacao && (tipo === NODES.ESPERA_DURACAO || tipo === NODES.ESPERA_ATE)) {
+    return { resumo: { ensaio: true, pulou: resumoDoNo(tipo, no.config as Record<string, unknown>) } }
+  }
 
   switch (tipo) {
     // O gatilho já foi avaliado no despacho; aqui ele é só o ponto de partida.

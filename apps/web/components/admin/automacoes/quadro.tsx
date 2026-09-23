@@ -71,7 +71,7 @@ function QuadroInterno({
     // O node novo nasce à direita do último e cairia fora da área visível. O
     // quadro é infinito: sem reenquadrar, "não aconteceu nada" é o que a
     // pessoa vê ao clicar na paleta.
-    fitView({ padding: 0.25, maxZoom: 1, duration: 260 })
+    fitView({ padding: 0.2, maxZoom: 1, minZoom: 0.65, duration: 260 })
   }, [enquadrarEm, fitView])
 
   useEffect(() => {
@@ -86,7 +86,7 @@ function QuadroInterno({
     let primeira = true
     const obs = new ResizeObserver(() => {
       if (primeira) { primeira = false; return }
-      fitView({ padding: 0.25, maxZoom: 1, duration: 200 })
+      fitView({ padding: 0.2, maxZoom: 1, minZoom: 0.65, duration: 200 })
     })
     obs.observe(alvo)
     return () => obs.disconnect()
@@ -180,7 +180,11 @@ function QuadroInterno({
         nodesDraggable={!somenteLeitura}
         nodesConnectable={!somenteLeitura}
         fitView
-        fitViewOptions={{ padding: 0.25, maxZoom: 1 }}
+        // `minZoom` no enquadramento: com um painel aberto comendo 360px, um
+        // fluxo largo encolhia a ponto de ninguém ler o que está escrito nos
+        // cards. Cortado e legível é melhor que inteiro e ilegível — o quadro
+        // rola.
+        fitViewOptions={{ padding: 0.2, maxZoom: 1, minZoom: 0.65 }}
         proOptions={{ hideAttribution: false }}
         defaultEdgeOptions={{ type: 'smoothstep' }}
         style={{ background: 'var(--bg-app)' }}
