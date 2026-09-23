@@ -9,5 +9,6 @@ export type {
   NomeDeEvento, EntidadeDeEvento, OrigemDeEvento, TipoDeAtor, AtorDoEvento,
   DadosDeEvento, EventoDeDominio, DadosDeAgendamento,
   DadosDeCliente, DadosDeLead, DadosDeConversa,
+  DadosDePagamento, DadosDePlano, DadosDePacote, DadosDeComissao,
 } from './eventos'
 export { EVENTOS } from './eventos'

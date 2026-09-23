@@ -58,15 +58,38 @@ export const EVENTOS = {
   CONVERSA_MENSAGEM_RECEBIDA: 'conversa.mensagem_recebida',
   CONVERSA_MENSAGEM_ENVIADA:  'conversa.mensagem_enviada',
   CONVERSA_VEIO_DE_ANUNCIO:   'conversa.veio_de_anuncio',
+
+  // ── Dinheiro ──────────────────────────────────────────────────────────
+  // ⚠️ `pagamento.*` são os ÚNICOS eventos que saem de gatilho no banco, e
+  // por isso chegam com `origem: 'banco'` e SEM ator. A razão está na
+  // migração `20260923000002`: um pagamento vira real em seis lugares do
+  // código, e para dinheiro completude vale mais que saber quem digitou.
+  PAGAMENTO_RECEBIDO:  'pagamento.recebido',
+  PAGAMENTO_ESTORNADO: 'pagamento.estornado',
+
+  PLANO_CRIADO:   'plano.criado',
+  PLANO_PROPOSTO: 'plano.proposto',
+  PLANO_ACEITO:   'plano.aceito',
+
+  PACOTE_SESSAO_USADA: 'pacote.sessao_usada',
+  COMISSAO_GERADA:     'comissao.gerada',
 } as const
 
 export type NomeDeEvento = typeof EVENTOS[keyof typeof EVENTOS]
 
 /** Entidade a que o evento se refere — o prefixo do nome. */
-export type EntidadeDeEvento = 'agendamento' | 'cliente' | 'lead' | 'conversa'
+export type EntidadeDeEvento =
+  | 'agendamento' | 'cliente' | 'lead' | 'conversa'
+  | 'pagamento' | 'plano' | 'pacote' | 'comissao'
 
-/** De onde o fato veio. Webhook e cron não têm ator humano. */
-export type OrigemDeEvento = 'app' | 'webhook' | 'cron'
+/**
+ * De onde o fato veio. Webhook, cron e banco não têm ator humano.
+ *
+ * `'banco'` é gatilho no Postgres — a escrita passa pelo service role e
+ * `auth.uid()` é nulo, então ali **nunca** haverá ator. É por este campo que o
+ * motor sabe que não adianta procurar por um.
+ */
+export type OrigemDeEvento = 'app' | 'webhook' | 'cron' | 'banco'
 
 export type TipoDeAtor = 'usuario' | 'cliente' | 'sistema'
 
@@ -175,4 +198,52 @@ export interface DadosDeConversa extends DadosDeEvento {
   anuncioId?:      string | null
   anuncioTitulo?:  string | null
   campanhaNome?:   string | null
+}
+
+/**
+ * Retrato de um pagamento.
+ *
+ * ⚠️ Montado pelo GATILHO no banco, não pela aplicação — o que explica a
+ * ausência de ator e a origem `'banco'`. Ver `EVENTOS.PAGAMENTO_RECEBIDO`.
+ */
+export interface DadosDePagamento extends DadosDeEvento {
+  clienteId:      string | null
+  clienteNome:    string | null
+  /** Em reais. Vem do banco como `numeric`, então chega string no JSON. */
+  valor:          string | number | null
+  formaPagamento: string | null
+  categoria:      string | null
+  descricao:      string | null
+  planoId:        string | null
+  agendamentoId:  string | null
+}
+
+/** Retrato do plano de tratamento. */
+export interface DadosDePlano extends DadosDeEvento {
+  nome:        string | null
+  clienteId:   string | null
+  clienteNome: string | null
+  /** Soma dos procedimentos das sessões. */
+  total:       number
+  sessoes:     number
+  status:      string
+}
+
+/** Sessão de pacote consumida num atendimento. */
+export interface DadosDePacote extends DadosDeEvento {
+  clienteId:     string | null
+  clienteNome:   string | null
+  pacoteNome:    string | null
+  agendamentoId: string | null
+  /** Quantas sobraram DEPOIS desta. Zero é o gatilho de "acabou, renove". */
+  restantes:     number | null
+}
+
+/** Comissão gerada na conclusão de um atendimento. */
+export interface DadosDeComissao extends DadosDeEvento {
+  profissionalId:   string | null
+  profissionalNome: string | null
+  agendamentoId:    string | null
+  valor:            number | null
+  periodo:          string | null   // 'YYYY-MM'
 }

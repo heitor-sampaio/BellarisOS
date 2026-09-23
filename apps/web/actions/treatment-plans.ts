@@ -1,6 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
+import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -287,6 +288,8 @@ export async function criarPlanoDoCliente(
     .single()
 
   if (error || !data) return { error: `Erro ao criar o plano: ${error?.message}` }
+  await planoCriado(data.id as string, ctx)
+
   return { planId: data.id as string }
 }
 
@@ -731,6 +734,8 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
     .eq('id', planId)
 
   if (error) return { error: error.message }
+
+  await planoProposto(planId, ctx)
 
   revalidatePath(`/${slug}/agenda`)
   if (plan.evaluation_appointment_id) {
@@ -1402,6 +1407,9 @@ export async function checkoutTreatmentPlan(
     .from('treatment_plans')
     .update({ status: 'ACCEPTED', updated_at: new Date().toISOString() })
     .eq('id', planId)
+
+  // Plano aceito é o fato comercial mais forte do sistema: virou venda.
+  await planoAceito(planId, ctx)
 
   // 4. Log no appointment de avaliação
   if (plan.evaluation_appointment_id) {

@@ -36,12 +36,34 @@ const fonte = PASTAS
   .map(f => readFileSync(f, 'utf8'))
   .join('\n')
 
+/**
+ * Os eventos de pagamento saem de GATILHO no banco, não de TypeScript.
+ *
+ * É exceção deliberada — um pagamento vira real em seis lugares do código e o
+ * gatilho é o único jeito de não esquecer o sétimo (ver a migração
+ * `20260923000002`). Como não há `EVENTOS.X` no código para eles, o teste
+ * procura o nome literal nas migrações: a garantia continua valendo, só muda
+ * onde se olha.
+ */
+const MIGRACOES = join(RAIZ, '..', '..', 'supabase', 'migrations')
+const sql = readdirSync(MIGRACOES)
+  .filter(f => f.endsWith('.sql'))
+  .map(f => readFileSync(join(MIGRACOES, f), 'utf8'))
+  .join('\n')
+
 describe('catálogo de eventos', () => {
   it.each(Object.entries(EVENTOS))(
     '%s tem quem o emita',
     (chave, nome) => {
-      const usado = fonte.includes(`EVENTOS.${chave}`)
-      expect(usado, `${nome} está no catálogo e ninguém emite — a automação seria montada e nunca dispararia`).toBe(true)
+      const noCodigo    = fonte.includes(`EVENTOS.${chave}`)
+      // `insert into public.domain_events` perto do nome: menção em comentário
+      // não conta como emissor.
+      const noGatilho   = new RegExp(`'${nome}'`).test(sql)
+        && /insert into public\.domain_events/.test(sql)
+      expect(
+        noCodigo || noGatilho,
+        `${nome} está no catálogo e ninguém emite — a automação seria montada e nunca dispararia`,
+      ).toBe(true)
     },
   )
 

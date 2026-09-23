@@ -13,6 +13,7 @@ import {
 import { notifyClient, notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots } from '@/lib/appointments/core'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
+import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
 import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { periodRef } from '@/lib/datetime'
@@ -711,6 +712,11 @@ export async function finishSession(
           status:          'OPEN',
         })
         if (commErr) return { error: `Erro ao registrar a comissão: ${commErr.message}` }
+
+        await emitirComissaoGerada(
+          appointmentId, appt.professional_id as string | null,
+          commissionAmount, periodRef(now), appt.branch_id as string | null, ctx,
+        )
       }
     }
 
@@ -837,6 +843,13 @@ export async function finishSession(
           .update({ used_sessions: Number(pkg.used_sessions) + 1 })
           .eq('id', pkgSession.client_package_id)
       }
+
+      // DEPOIS do incremento, para `restantes` já refletir esta sessão — é
+      // zero que dispara a automação de renovação, e emitir antes daria
+      // sempre um a mais.
+      await emitirSessaoDePacoteUsada(
+        pkgSession.client_package_id as string, appointmentId, ctx,
+      )
     }
 
     const userName = await getUserName(admin, ctx.userId)

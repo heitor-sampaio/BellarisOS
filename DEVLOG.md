@@ -650,7 +650,51 @@ Dois cuidados que evitam disparo à toa:
   lead por dois. A chave determinística barra o segundo evento quando dois
   caminhos passam pelo mesmo fato.
 
-**Faltam as fases 3 a 6.**
+### 2026-09-23 — Eventos, Fase 3 (dinheiro)
+
+Sete eventos: `pagamento.recebido`, `pagamento.estornado`, `plano.criado`,
+`plano.proposto`, `plano.aceito`, `pacote.sessao_usada`, `comissao.gerada`.
+O catálogo chega a **26**.
+
+**Os dois de pagamento saem de GATILHO no banco** — exceção deliberada, e a
+razão é a mesma que decidiu o `Purchase` da API de Conversões: um pagamento
+vira real em **seis lugares** do código, e instrumentar um a um é garantir
+esquecer o sétimo. O que se perde ali é uma venda que a automação não vê,
+falta que ninguém percebe acontecendo. O preço é que o banco não sabe quem
+registrou (service role, `auth.uid()` nulo) — para dinheiro, completude vale
+mais que ator. Daí a **origem nova, `'banco'`**: dizer `'app'` seria mentir
+sobre a procedência, e é por ela que o motor saberá que não adianta procurar
+ator.
+
+Um gatilho só alimenta a corrente E a fila da Meta, porque reagem ao **mesmo
+fato**; duplicar a regra criaria duas verdades sobre o que é um pagamento.
+
+**Dois defeitos achados ao escrever, que teriam falhado calados:**
+
+1. **`pagamento.estornado` nunca dispararia.** A contrapartida do estorno é
+   gravada como `EXPENSE` e **sem `client_id`** — meu corte por `INCOME` a
+   descartava, e mesmo sem ele não haveria de quem foi o dinheiro. O estorno
+   passou a ser detectado na transação **original**, que ganha
+   `notes='Estornada'` e tem cliente, valor e plano.
+2. **`42P10` dentro do gatilho.** `on conflict (tenant_id, chave)` sem repetir
+   o predicado do índice PARCIAL faz o Postgres recusar — e ali dentro isso
+   **quebraria o próprio pagamento**, não só o evento. É a mesma armadilha já
+   documentada em `resolve-conversation.ts`; agora está nos dois lugares.
+
+Oito casos rodados no banco de verdade cobrem os dois: receita paga emite,
+valor e origem corretos, estorno emite o oposto, repetir não duplica, despesa
+não emite, a receber não emite e virar paga emite.
+
+**A guarda do catálogo precisou aprender a exceção:** ela varria só TypeScript
+e acusou os dois de pagamento como "sem emissor". Passou a olhar também as
+migrações, exigindo o nome literal perto de um `insert into domain_events` —
+menção em comentário não conta.
+
+`pacote.sessao_usada` carrega `restantes`, e é ele que justifica o evento:
+**zero é o gatilho de "acabou, hora de renovar"**. Emitido DEPOIS do
+incremento, senão daria sempre um a mais.
+
+**Faltam as fases 4 a 6.**
 
 ---
 
