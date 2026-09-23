@@ -79,13 +79,13 @@ unidade.
 - Next.js 16 (App Router, Server Actions) + Supabase (Postgres, Auth, Storage,
   RLS) + Turborepo/pnpm. Deploy na Railway (uma réplica, us-east4); banco em
   us-east-1.
-- **Autorização dinâmica:** cargos por rede, 14 módulos com nível
+- **Autorização dinâmica:** cargos por rede, 15 módulos com nível
   (NONE/VIEW/MANAGE), escopo (OWN/ALL) em cinco deles, abrangência pelo
   `users.branch_id`, e as abas de Relatórios liberadas uma a uma
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 201 unitários (Vitest) + 46 E2E (Playwright) rodando contra o banco
+- **Testes:** 210 unitários (Vitest) + 47 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** serviço na Railway roda `scripts/cron.mjs` de hora em hora
   (campanhas de notificação e exportações de LGPD).
@@ -887,6 +887,58 @@ automação ligada manda mensagem sozinha, e distribuir isso a todo cargo
 existente seria decidir pela clínica um acesso que ela não pediu.
 
 Faltam as fases 2 a 5: o quadro, as ações que falam, o tempo e o histórico.
+
+### 2026-09-24 — Automações, Fase 2 (o quadro)
+
+`/admin/automacoes`: lista e editor de quadro infinito com **`@xyflow/react`**
+(React Flow 12, dependência nova). Ao fim desta fase dá para montar na tela a
+automação que a Fase 1 escreveu à mão em SQL — e o E2E prova exatamente isso,
+conferindo que o grafo salvo pelo editor é o que o motor lê.
+
+**A lib fica contida no quadro.** A conversão entre o nosso grafo
+(`nos`/`ligacoes`, o que vai para o banco) e o formato `Node`/`Edge` acontece
+num arquivo só; motor, validador e resumo nunca veem a biblioteca. Trocá-la um
+dia não deveria obrigar a reescrever o executor.
+
+**Salvar é explícito.** O grafo é regra de negócio que age sozinha depois:
+gravar a cada arrastão gravaria estados intermediários — um fluxo pela metade,
+ligado, disparando errado. Mas **ligar salva antes**, senão a pessoa ligaria a
+versão do banco convencida de que ligou a que está vendo.
+
+**A validação é o coração desta fase**, e é função pura com 9 casos de teste:
+sem gatilho, dois gatilhos, node solto, campo obrigatório vazio, anel, e a
+distinção entre erro (impede ligar) e aviso (só alerta). Automação inválida e
+ligada é o mesmo erro mudo do gatilho que nunca dispara — o fluxo fica salvo,
+ativo e silencioso.
+
+Detalhes que existem por uma razão:
+- **Uma saída leva a um lugar só.** Ligar "sim" a dois nodes pareceria "faça os
+  dois", e o executor seguiria um — o caminho errado, em silêncio. A segunda
+  ligação substitui a primeira.
+- **`gatilhos` é derivado do grafo** a cada salvamento. Escrito à mão,
+  dessincronizaria no primeiro ajuste, e o motor procuraria por um evento que
+  ninguém assina.
+- **Node desconhecido no meio do fluxo para a execução com motivo.** Os nove
+  tipos que ainda não têm executor aparecem esmaecidos na paleta e avisam na
+  barra inferior; seguir adiante fingindo que a ação aconteceu seria pior.
+- **Excluir exige desligar antes**: apagar uma automação ligada é apagar algo
+  que está agindo agora.
+
+**Dois defeitos que o E2E pegou na hora de montar o fluxo pela tela:**
+1. **O node novo nascia fora da área visível** — e o painel de configuração,
+   abrindo, comia mais 320px. Clicar na paleta parecia não fazer nada. Um
+   `ResizeObserver` reenquadra quando a área do quadro muda, o que cobre de uma
+   vez o painel abrindo, a barra lateral recolhendo e a janela mudando de
+   tamanho; acertar isso com `setTimeout` seria cravar um número que a máquina
+   lenta desmente.
+2. **O painel mostrava "A unidade do fato" e o grafo salvava `alvo: undefined`**
+   — a tela dizendo uma coisa e o banco guardando outra. Cada tipo de node
+   passou a nascer com os padrões dele.
+
+Módulo novo no menu da rede (só lá: o motor reage a fatos de todas as unidades,
+e uma versão por filial prometeria um recorte que ele não faz).
+
+Faltam as fases 3 a 5: as ações que falam, o tempo e o histórico.
 
 ---
 

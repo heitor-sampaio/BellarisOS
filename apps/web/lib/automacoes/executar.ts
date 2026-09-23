@@ -191,7 +191,7 @@ export async function executarRun(runId: string): Promise<string> {
 
   const porId = new Map(automacao.grafo.nos.map(n => [n.id, n]))
   let atual: NoDoGrafo | undefined = run.no_atual ? porId.get(run.no_atual) : undefined
-  let contexto = run.contexto
+  const contexto = run.contexto
   let ordem = await proximaOrdem(run.id)
   let passos = 0
 

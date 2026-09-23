@@ -82,6 +82,9 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   { key: 'reports',      group: 'gestao',       label: 'Relatórios',    href: '/admin/reports',        visible: p => has(p, 'reports') },
   { key: 'team',         group: 'gestao',       label: 'Equipe',        href: '/admin/team',           visible: p => has(p, 'team') },
   { key: 'procedures',   group: 'gestao',       label: 'Procedimentos', href: '/admin/procedures',     visible: p => has(p, 'procedures') },
+  // Só na rede: a automação reage a fatos de todas as unidades, e uma versão
+  // por filial prometeria um recorte que o motor não faz.
+  { key: 'automations',  group: 'gestao',       label: 'Automações',    href: '/admin/automacoes',     visible: p => has(p, 'automations') },
   // Uma tela, três módulos: quem só tem cargos ou fichas continua chegando lá.
   {
     key: 'settings', group: 'gestao', label: 'Configurações', href: '/admin/settings',
