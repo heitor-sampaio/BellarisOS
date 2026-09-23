@@ -35,7 +35,6 @@ export const NODES = {
   ACAO_TAG_CLIENTE:      'acao.tag_cliente',
   ACAO_ATRIBUIR:         'acao.atribuir',
   ACAO_ANOTAR:           'acao.anotar',
-  ACAO_LEMBRETE:         'acao.lembrete',
 } as const
 
 export type TipoDeNo = typeof NODES[keyof typeof NODES]
@@ -178,16 +177,6 @@ export interface ConfigAcaoAnotar {
   texto: string
 }
 
-export interface ConfigAcaoLembrete {
-  /** Para quem, no mesmo formato do aviso à equipe. */
-  alvo:       'usuario' | 'cargo' | 'unidade'
-  alvoId?:    string | null
-  titulo:     string
-  corpo:      string
-  quantidade: number
-  unidade:    'minutos' | 'horas' | 'dias'
-}
-
 export type ConfigDeNo =
   | ConfigGatilhoEvento | ConfigGatilhoAgenda | ConfigBuscarClientes
   | ConfigCondicaoSe | ConfigCondicaoEscolha
@@ -195,7 +184,7 @@ export type ConfigDeNo =
   | ConfigAcaoMensagem | ConfigAcaoNotificarEquipe
   | ConfigAcaoMoverEtapa | ConfigAcaoDesfecho
   | ConfigAcaoTagCliente | ConfigAcaoAtribuir
-  | ConfigAcaoAnotar | ConfigAcaoLembrete
+  | ConfigAcaoAnotar
 
 // ─── O grafo ────────────────────────────────────────────────────────────────
 

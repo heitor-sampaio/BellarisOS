@@ -40,7 +40,6 @@ export function configPadrao(tipo: string): Record<string, unknown> {
     case 'gatilho.agenda':        return { frequencia: 'diaria', hora: '09:00' }
     case 'espera.duracao':        return { quantidade: 1, unidade: 'dias' }
     case 'espera.ate':            return { minutos: -1440 }
-    case 'acao.lembrete':         return { alvo: 'unidade', alvoId: null, quantidade: 1, unidade: 'dias' }
     default:                      return {}
   }
 }

@@ -5,6 +5,7 @@ import type {
   ConfigCondicaoSe, ConfigCondicaoEscolha,
   ConfigAcaoNotificarEquipe, ConfigAcaoAnotar, ConfigAcaoMensagem,
   ConfigAcaoMoverEtapa, ConfigAcaoDesfecho, ConfigAcaoTagCliente, ConfigAcaoAtribuir,
+  ConfigEsperaDuracao, ConfigEsperaAte, ConfigBuscarClientes,
 } from '@estetica-os/types'
 import { avaliarGrupo, escolherSaida } from './condicoes'
 import {
@@ -19,6 +20,7 @@ import {
 } from './acoes-crm'
 import { mandarMensagem } from './acoes-mensagem'
 import { podeFalarCom, limitesDe } from './limites'
+import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
 
 /**
  * O executor: um passo por vez, dirigido por `automation_runs`.
@@ -235,10 +237,24 @@ export async function executarRun(runId: string): Promise<string> {
 
     if (resultado.esperarAte) {
       await gravarPasso(run.id, ordem++, atual, 'esperando', resultado.resumo ?? {}, Date.now() - comecou)
+
+      // ⚠️ `no_atual` guarda o PRÓXIMO node, não o da espera.
+      //
+      // A espera já aconteceu; o que falta é o que vem depois dela. Gravar o
+      // próprio node de espera faria o cron re-executá-lo ao retomar — e
+      // "esperar 3 dias" viraria esperar 3 dias, para sempre, a cada
+      // retomada. O fluxo nunca passaria dali, sem nada explicar.
+      const depois = ligacaoSaindo(automacao.grafo, atual.id, resultado.saida)
+      if (!depois) {
+        // Esperar e não ter para onde ir é fim de ramo: não há por que
+        // guardar um run que vai acordar para não fazer nada.
+        return await encerrar(run.id, 'ok', null, contexto, null)
+      }
+
       await admin.from('automation_runs').update({
         status:     'esperando',
         contexto,
-        no_atual:   atual.id,
+        no_atual:   depois,
         rodar_apos: resultado.esperarAte.toISOString(),
       }).eq('id', run.id)
       return 'esperando'
@@ -382,13 +398,49 @@ async function rodarNo(
       }
     }
 
-    // Declarados no catálogo, executores na fase do TEMPO. Parar com motivo é
-    // melhor que seguir adiante fingindo que a ação aconteceu.
-    case NODES.BUSCAR_CLIENTES:
-    case NODES.ESPERA_DURACAO:
-    case NODES.ESPERA_ATE:
-    case NODES.ACAO_LEMBRETE:
-      throw new Error(`O node "${tipo}" ainda não é executável.`)
+    case NODES.ESPERA_DURACAO: {
+      const cfg = no.config as ConfigEsperaDuracao
+      const ate = quandoVoltar(cfg)
+      return {
+        esperarAte: ate,
+        resumo: { esperando: `${cfg.quantidade} ${cfg.unidade}`, ate: ate.toISOString() },
+      }
+    }
+
+    case NODES.ESPERA_ATE: {
+      const cfg = no.config as ConfigEsperaAte
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, [cfg.campo ?? ''])
+      const r = quandoChegarEm(cfg, contexto)
+      // Momento que já passou não vira espera eterna: o fluxo segue agora, com
+      // o motivo no passo. Travar num passado seria o pior sintoma possível —
+      // nada acontece e nada explica.
+      return r.data
+        ? { esperarAte: r.data, resumo: { esperando: 'até', campo: cfg.campo, ate: r.data.toISOString() } }
+        : { resumo: { esperando: false, motivo: r.motivo } }
+    }
+
+    case NODES.BUSCAR_CLIENTES: {
+      const cfg = no.config as ConfigBuscarClientes
+      const { clientes, truncado } = await buscarClientes(run.tenant_id, cfg)
+
+      const proximo = ligacaoSaindo(automacao.grafo, no.id)
+      if (!proximo) return { parar: true, resumo: { encontrados: clientes.length, motivo: 'Nada ligado depois da busca.' } }
+
+      // Uma EXECUÇÃO POR CLIENTE, e não um laço aqui dentro: cada cliente tem
+      // o próprio contexto, o próprio passo a passo e os próprios limites. Um
+      // laço faria os mil clientes compartilharem um histórico só, e o teto por
+      // cliente não teria como funcionar.
+      const abertas = await abrirExecucoesFilhas(run, automacao, clientes, proximo)
+
+      return {
+        parar: true,
+        resumo: {
+          encontrados: clientes.length, abertas,
+          ...(truncado ? { aviso: `O teto de ${cfg.limite ?? 200} cortou a lista.` } : {}),
+        },
+      }
+    }
+
   }
 
   // Sem `default`: o switch acima cobre o catálogo inteiro, e é o compilador
@@ -397,6 +449,54 @@ async function rodarNo(
 }
 
 // ─── Utilidades do grafo e do registro ──────────────────────────────────────
+
+/**
+ * Uma execução por cliente, a partir da busca.
+ *
+ * Cada cliente ganha o próprio run — com o próprio contexto, o próprio passo a
+ * passo e os próprios limites. Um laço aqui dentro faria os mil clientes
+ * compartilharem um histórico só, e o teto por cliente não teria como
+ * funcionar: ele conta execuções.
+ *
+ * As filhas nascem no node SEGUINTE à busca, já com o cliente no contexto —
+ * não há evento para hidratar.
+ */
+async function abrirExecucoesFilhas(
+  pai: Run,
+  automacao: Automacao,
+  clientes: { id: string; nome: string; telefone: string | null }[],
+  noInicial: string,
+): Promise<number> {
+  if (!clientes.length) return 0
+
+  const admin = createAdminClient()
+
+  const linhas = clientes.map(c => ({
+    tenant_id:     pai.tenant_id,
+    automation_id: automacao.id,
+    pai_id:        pai.id,
+    evento_id:     null,
+    no_atual:      noInicial,
+    status:        'esperando',
+    profundidade:  pai.profundidade,
+    contexto: {
+      ...pai.contexto,
+      cliente: { id: c.id, nome: c.nome, telefone: c.telefone },
+    },
+  }))
+
+  const { data, error } = await admin.from('automation_runs').insert(linhas).select('id')
+  if (error) throw new Error(`Não consegui abrir as execuções: ${error.message}`)
+
+  // Rodam JÁ, em sequência. Em paralelo, cem clientes virariam cem envios
+  // simultâneos pelo mesmo canal — e o provedor de WhatsApp trata isso como
+  // disparo em massa.
+  for (const linha of data ?? []) {
+    await executarRun(linha.id as string)
+  }
+
+  return (data ?? []).length
+}
 
 function ligacaoSaindo(
   grafo: GrafoDeAutomacao,

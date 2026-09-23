@@ -723,13 +723,26 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 
 ## 14.1 Jobs agendados (cron)
 
-O serviço **"Notification Cron"** no Railway roda `node /app/cron.mjs` de hora
-em hora. O script (`scripts/cron.mjs`) chama as rotas `/api/cron/*` do app com
-o `CRON_SECRET` e sai com código 1 se alguma falhar — assim a execução aparece
-vermelha no painel em vez de falhar em silêncio.
+São **dois serviços** no Railway, com ritmos diferentes, e os dois rodam o
+mesmo `node /app/cron.mjs` da mesma imagem. O script chama as rotas
+`/api/cron/*` do app com o `CRON_SECRET` e sai com código 1 se alguma falhar —
+assim a execução aparece vermelha no painel em vez de falhar em silêncio.
+
+| Serviço | Ritmo | `CRON_JOBS` |
+|---|---|---|
+| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`) |
+| **Automations Cron** | `*/5 * * * *` (5 min) | `automacoes` |
+
+O segundo existe porque **granularidade de uma hora não serve a automação**:
+"esperar 30 minutos e mandar" viraria "em até 1h30". E os jobs do primeiro
+varrem a base inteira — rodá-los de cinco em cinco minutos seria carga sem
+motivo. Por isso a lista de jobs é escolhida por env (`CRON_JOBS`), e não um
+script por serviço: o `railway.toml` da raiz fixa o Dockerfile para todos, e
+cada ritmo novo faria o Dockerfile crescer.
 
 **Para adicionar um job:** criar `apps/web/app/api/cron/<nome>/route.ts`
-(protegida por `CRON_SECRET`) e acrescentar o nome ao array `JOBS` do script.
+(protegida por `CRON_SECRET`) e acrescentar o nome ao `PADRAO` do script — ou
+ao `CRON_JOBS` do serviço que deve chamá-lo.
 
 Três detalhes de infraestrutura que não são óbvios e já custaram tempo:
 

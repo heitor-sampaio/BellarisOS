@@ -217,5 +217,4 @@ export const ROTULOS: Record<TipoDeNo, string> = {
   [NODES.ACAO_TAG_CLIENTE]:      'Marcar com tag',
   [NODES.ACAO_ATRIBUIR]:         'Definir responsável',
   [NODES.ACAO_ANOTAR]:           'Anotar na oportunidade',
-  [NODES.ACAO_LEMBRETE]:         'Criar lembrete',
 }

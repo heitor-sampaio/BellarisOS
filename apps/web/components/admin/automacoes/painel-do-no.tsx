@@ -328,6 +328,169 @@ export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteL
           </Campo>
         )}
 
+        {no.tipo === NODES.GATILHO_AGENDA && (
+          <>
+            <Campo rotulo="Com que frequência">
+              <select
+                className="field" value={(c.frequencia as string) ?? 'diaria'}
+                disabled={somenteLeitura}
+                onChange={e => set({ frequencia: e.target.value })}
+              >
+                <option value="diaria">Todo dia</option>
+                <option value="semanal">Toda semana</option>
+                <option value="mensal">Todo mês</option>
+              </select>
+            </Campo>
+
+            {c.frequencia === 'semanal' && (
+              <Campo rotulo="No dia">
+                <select
+                  className="field" value={String(c.diaDaSemana ?? 1)}
+                  disabled={somenteLeitura}
+                  onChange={e => set({ diaDaSemana: Number(e.target.value) })}
+                >
+                  {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+                    .map((d, i) => <option key={d} value={i}>{d}</option>)}
+                </select>
+              </Campo>
+            )}
+
+            {c.frequencia === 'mensal' && (
+              <Campo rotulo="No dia do mês">
+                <input
+                  type="number" min={1} max={28} className="field"
+                  value={String(c.diaDoMes ?? 1)}
+                  disabled={somenteLeitura}
+                  onChange={e => set({ diaDoMes: Number(e.target.value) })}
+                />
+                <Dica>Até o dia 28: 29, 30 e 31 não existem em todo mês.</Dica>
+              </Campo>
+            )}
+
+            <Campo rotulo="Às">
+              <input
+                type="time" className="field" value={(c.hora as string) ?? '09:00'}
+                disabled={somenteLeitura}
+                onChange={e => set({ hora: e.target.value })}
+              />
+              <Dica>
+                O relógio roda de cinco em cinco minutos, então o disparo
+                acontece na primeira passagem depois do horário.
+              </Dica>
+            </Campo>
+          </>
+        )}
+
+        {no.tipo === NODES.BUSCAR_CLIENTES && (
+          <>
+            <Campo rotulo="Sem retorno há (dias)">
+              <input
+                type="number" min={1} className="field"
+                value={String(c.semRetornoHaDias ?? '')}
+                disabled={somenteLeitura}
+                onChange={e => set({ semRetornoHaDias: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="deixe vazio para não filtrar"
+              />
+            </Campo>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox" checked={!!c.aniversarioHoje}
+                disabled={somenteLeitura}
+                onChange={e => set({ aniversarioHoje: e.target.checked })}
+                style={{ accentColor: 'var(--brand)', width: 15, height: 15 }}
+              />
+              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)' }}>
+                Só quem faz aniversário hoje
+              </span>
+            </label>
+            <Campo rotulo="Unidade">
+              <select
+                className="field" value={(c.unidadeId as string) ?? ''}
+                disabled={somenteLeitura}
+                onChange={e => set({ unidadeId: e.target.value || null })}
+              >
+                <option value="">Todas</option>
+                {(opcoes?.unidades ?? []).map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+              </select>
+            </Campo>
+            <Campo rotulo="No máximo">
+              <input
+                type="number" min={1} max={500} className="field"
+                value={String(c.limite ?? 200)}
+                disabled={somenteLeitura}
+                onChange={e => set({ limite: Number(e.target.value) })}
+              />
+              <Dica>
+                Cada cliente encontrado vira uma execução própria. O teto é a
+                diferença entre a campanha que você quis e um disparo em massa
+                que ninguém revisou.
+              </Dica>
+            </Campo>
+          </>
+        )}
+
+        {no.tipo === NODES.ESPERA_DURACAO && (
+          <Campo rotulo="Esperar">
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="number" min={1} className="field" style={{ width: 90 }}
+                value={String(c.quantidade ?? 1)}
+                disabled={somenteLeitura}
+                onChange={e => set({ quantidade: Number(e.target.value) })}
+              />
+              <select
+                className="field" value={(c.unidade as string) ?? 'dias'}
+                disabled={somenteLeitura}
+                onChange={e => set({ unidade: e.target.value })}
+              >
+                <option value="minutos">minutos</option>
+                <option value="horas">horas</option>
+                <option value="dias">dias</option>
+              </select>
+            </div>
+            <Dica>
+              A espera não segura nada rodando: o fluxo fica guardado e volta
+              sozinho, mesmo que o sistema reinicie no meio.
+            </Dica>
+          </Campo>
+        )}
+
+        {no.tipo === NODES.ESPERA_ATE && (
+          <>
+            <Campo rotulo="Esperar até a data em">
+              <select
+                className="field" value={(c.campo as string) ?? ''}
+                disabled={somenteLeitura}
+                onChange={e => set({ campo: e.target.value })}
+              >
+                <option value="">Escolha o campo…</option>
+                <option value="agendamento.data">Agendamento · data e hora</option>
+                <option value="cliente.nascimento">Cliente · data de nascimento</option>
+              </select>
+            </Campo>
+            <Campo rotulo="Com deslocamento">
+              <select
+                className="field" value={String(c.minutos ?? -1440)}
+                disabled={somenteLeitura}
+                onChange={e => set({ minutos: Number(e.target.value) })}
+              >
+                <option value="-2880">2 dias antes</option>
+                <option value="-1440">1 dia antes</option>
+                <option value="-180">3 horas antes</option>
+                <option value="-60">1 hora antes</option>
+                <option value="0">No momento exato</option>
+                <option value="60">1 hora depois</option>
+                <option value="1440">1 dia depois</option>
+                <option value="4320">3 dias depois</option>
+              </select>
+              <Dica>
+                Se o momento já tiver passado quando o fluxo chegar aqui, ele
+                segue na hora em vez de esperar um instante que não existe mais.
+              </Dica>
+            </Campo>
+          </>
+        )}
+
         {NODES_SEM_EDITOR.includes(no.tipo as TipoDeNo) && (
           <div className="card-sm" style={{ background: 'var(--bg-app)' }}>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
@@ -355,10 +518,10 @@ export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteL
 }
 
 /** Os que estão no catálogo e no quadro, mas ainda sem executor. */
-const NODES_SEM_EDITOR: TipoDeNo[] = [
-  NODES.GATILHO_AGENDA, NODES.BUSCAR_CLIENTES,
-  NODES.ESPERA_DURACAO, NODES.ESPERA_ATE, NODES.ACAO_LEMBRETE,
-]
+// Todos os tipos do catálogo têm editor e executor. A lista fica aqui,
+// vazia, porque é ela que o painel consulta — e um tipo novo sem editor
+// precisa aparecer explicitamente, não sumir num `else` silencioso.
+const NODES_SEM_EDITOR: TipoDeNo[] = []
 
 // ─── Peças ──────────────────────────────────────────────────────────────────
 

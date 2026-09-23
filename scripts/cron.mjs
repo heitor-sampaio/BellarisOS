@@ -13,7 +13,27 @@
  * falha em vez de engolir o erro.
  */
 
-const JOBS = ['notification-campaigns', 'lgpd-exports', 'meta-capi', 'eventos-expirados']
+/**
+ * Quais rotas chamar.
+ *
+ * Configurável por env porque agora há **dois serviços de cron** com ritmos
+ * diferentes: o de hora em hora (o padrão abaixo) e o das automações, a cada
+ * cinco minutos. O segundo define `CRON_JOBS=automacoes` e usa o mesmo script e
+ * a mesma imagem — criar um script por serviço faria o Dockerfile crescer a
+ * cada ritmo novo, e o `railway.toml` da raiz fixa o Dockerfile para todos.
+ *
+ * Por que não juntar tudo num cron de cinco minutos: as campanhas de
+ * notificação e a exportação de LGPD varrem a base inteira. De hora em hora é
+ * de propósito.
+ */
+const PADRAO = ['notification-campaigns', 'lgpd-exports', 'meta-capi', 'eventos-expirados']
+
+const JOBS = (process.env.CRON_JOBS ?? '')
+  .split(',')
+  .map(j => j.trim())
+  .filter(Boolean)
+
+if (JOBS.length === 0) JOBS.push(...PADRAO)
 
 const APP_URL     = process.env.APP_URL
 const CRON_SECRET = process.env.CRON_SECRET

@@ -4,7 +4,7 @@ import { memo } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import {
   Zap, Clock, Users, GitBranch, Split, Timer, CalendarClock,
-  MessageSquare, Bell, MoveRight, Trophy, Tag, UserCheck, PenLine, AlarmClock,
+  MessageSquare, Bell, MoveRight, Trophy, Tag, UserCheck, PenLine,
   AlertCircle, type LucideIcon,
 } from 'lucide-react'
 import { NODES, type TipoDeNo } from '@estetica-os/types'
@@ -37,7 +37,6 @@ const ICONE: Record<TipoDeNo, LucideIcon> = {
   [NODES.ACAO_TAG_CLIENTE]:      Tag,
   [NODES.ACAO_ATRIBUIR]:         UserCheck,
   [NODES.ACAO_ANOTAR]:           PenLine,
-  [NODES.ACAO_LEMBRETE]:         AlarmClock,
 }
 
 export interface DadosDoNo extends Record<string, unknown> {

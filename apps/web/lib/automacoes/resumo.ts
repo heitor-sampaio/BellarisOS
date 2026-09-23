@@ -110,8 +110,6 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
     case NODES.ACAO_ANOTAR:
       return trecho(c.texto as string)
 
-    case NODES.ACAO_LEMBRETE:
-      return `em ${c.quantidade ?? '?'} ${(c.unidade as string) ?? 'dias'}: ${trecho(c.titulo as string)}`
   }
 
   return ''

@@ -85,10 +85,10 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 219 unitários (Vitest) + 48 E2E (Playwright) rodando contra o banco
+- **Testes:** 232 unitários (Vitest) + 49 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
-- **Cron:** serviço na Railway roda `scripts/cron.mjs` de hora em hora
-  (campanhas de notificação e exportações de LGPD).
+- **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
+  (campanhas e LGPD) e a cada 5 minutos (fila das automações).
 
 ---
 
@@ -989,6 +989,56 @@ profundidade máxima. Fechou em dez voltas; sem a trava seriam centenas em
 segundos.
 
 Faltam as fases 4 e 5: o tempo e o histórico.
+
+### 2026-09-24 — Automações, Fase 4 (o tempo)
+
+Esperar, esperar até uma data, gatilho de horário e busca de clientes — mais o
+**segundo serviço de cron no Railway, a cada 5 minutos**. Com isto o catálogo
+inteiro de nodes é executável, e os gatilhos de tempo adiados desde a frente de
+eventos finalmente existem.
+
+**A espera não segura nada rodando.** Ela grava uma data em `rodar_apos` e
+devolve o run à fila; quem o faz andar de novo é outra execução, outro request,
+possivelmente outro container. É a promessa central do motor, e agora há um E2E
+que a prova: o fluxo para, ninguém é avisado, o cron roda, o fluxo termina.
+
+**Um defeito que só apareceu escrevendo esse teste:** ao esperar, o run gravava
+o **próprio** node de espera em `no_atual` — e o cron o re-executaria ao
+retomar. "Esperar 3 dias" viraria esperar 3 dias **a cada retomada**, para
+sempre, sem nada explicar. Agora grava o node SEGUINTE: a espera já aconteceu,
+o que falta é o depois.
+
+**`espera.ate` com momento que já passou segue em frente**, em vez de aguardar
+um instante que não existe mais — "24h antes" de um agendamento que é daqui a
+duas horas. Travar num passado é o pior sintoma possível: nada acontece e nada
+explica.
+
+**`buscar.clientes` abre uma execução POR CLIENTE**, e não um laço interno.
+Cada cliente tem o próprio contexto, o próprio passo a passo e os próprios
+limites — um laço faria os mil compartilharem um histórico só, e o teto por
+cliente não teria como funcionar, porque ele conta execuções. As filhas rodam
+em sequência: em paralelo, cem clientes virariam cem envios simultâneos pelo
+mesmo canal, que é como um provedor de WhatsApp define disparo em massa. E há
+teto obrigatório (200): é a diferença entre a campanha que alguém quis e um
+disparo que ninguém revisou.
+
+**O gatilho de agenda precisa de memória.** O cron passa de cinco em cinco
+minutos; sem registrar o último disparo, o lembrete das 9h sairia doze vezes
+por hora. `ultimo_disparo_agenda` é marcado **antes** de executar e só se
+ninguém marcou no meio-tempo — uma busca de quinhentos clientes demora mais que
+a passagem seguinte do cron, e sem isso ela recomeçaria inteira.
+
+**Dois serviços de cron, mesmo script e mesma imagem**, com a lista de jobs
+escolhida por `CRON_JOBS`. Um script por serviço faria o Dockerfile crescer a
+cada ritmo novo, e o `railway.toml` da raiz fixa o Dockerfile para todos.
+Documentado no CLAUDE.md §14.1.
+
+**`acao.lembrete` foi REMOVIDO do catálogo.** Ele estava no plano, escrito
+antes de as esperas existirem: "daqui a 3 dias, avise a equipe" agora é
+`espera` + `avisar`. Dois caminhos para a mesma coisa é exatamente o que um
+catálogo curado não deve ter.
+
+Falta a fase 5: o histórico das execuções.
 
 ---
 

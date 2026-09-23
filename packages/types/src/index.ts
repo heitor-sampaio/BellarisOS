@@ -21,7 +21,7 @@ export type {
   ConfigEsperaDuracao, ConfigEsperaAte,
   ConfigAcaoMensagem, ConfigAcaoNotificarEquipe, ConfigAcaoMoverEtapa,
   ConfigAcaoDesfecho, ConfigAcaoTagCliente, ConfigAcaoAtribuir,
-  ConfigAcaoAnotar, ConfigAcaoLembrete, ConfigDeNo,
+  ConfigAcaoAnotar, ConfigDeNo,
   NoDoGrafo, LigacaoDoGrafo, GrafoDeAutomacao,
   LimitesDaAutomacao, StatusDaAutomacao, StatusDaExecucao,
 } from './automacoes'
