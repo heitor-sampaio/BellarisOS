@@ -67,7 +67,12 @@ unidade.
 - **Relatórios (BI)** — oito abas: visão geral, financeiro, agenda, clientes,
   procedimentos, profissionais, estoque e comercial.
 - **Configurações** — unidades, cargos, modelos de ficha (anamnese e
-  atendimento), integrações, LGPD.
+  atendimento), integrações, LGPD e **Eventos** (a corrente de fatos do
+  sistema, com o catálogo cruzado com o que já ocorreu na rede).
+- **Eventos de domínio** — 42 fatos nomeados pela intenção
+  (`agendamento.nao_compareceu`, `pagamento.recebido`, `estoque.abaixo_do_minimo`)
+  gravados em `domain_events` com ator, origem e retrato. É a base das
+  automações, que ainda não existem. Retenção de 30 dias.
 
 ### Plataforma
 
@@ -80,7 +85,7 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 185 unitários (Vitest) + 43 E2E (Playwright) rodando contra o banco
+- **Testes:** 185 unitários (Vitest) + 45 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** serviço na Railway roda `scripts/cron.mjs` de hora em hora
   (campanhas de notificação e exportações de LGPD).
@@ -779,6 +784,51 @@ desde a Fase 2 (doze eventos, não onze), e o erro se propagou pelos totais.
 Corrigido nas três entradas.
 
 **Falta a fase 6** — o painel de conferência. Depois dele, o motor.
+
+### 2026-09-23 — Eventos, Fase 6 (visibilidade) — fim da base
+
+Aba **Eventos** em Configurações, e com ela a base das automações está
+completa: **42 eventos**, todos emitidos e todos visíveis.
+
+**O painel responde uma pergunta só: este gatilho já disparou alguma vez?**
+Montar automação sobre um evento que nunca ocorreu é um erro mudo — ela fica
+salva, ativa e silenciosa, e o sintoma de "o nome do evento está errado" é
+idêntico ao de "ainda não aconteceu". Por isso a tela mostra o **catálogo
+inteiro**, não só o que a corrente tem: `vezes: 0` é informação, não ausência
+dela. E não é diagnóstico — `pagamento.estornado` fica em zero numa clínica que
+nunca estornou, e está tudo certo.
+
+Quem cruza catálogo com corrente é a **aplicação**, porque o catálogo mora em
+`packages/types` e não no banco, de propósito (um `check` no Postgres obrigaria
+uma migração a cada evento novo). Do banco vem só a agregação, por uma função
+`eventos_resumo_do_catalogo` — **contar em JS traria no máximo 1000 linhas**, o
+teto do PostgREST, e subcontaria em silêncio quando a corrente crescer. É a
+mesma regra dos indicadores, e aqui pesa mais: o número decide se um gatilho
+funciona, e um zero errado manda alguém caçar defeito que não existe.
+
+A lista traz ator, origem e um resumo em uma linha; o payload completo abre no
+clique, que é o que quem escreve automação precisa ver — o formato dos dados,
+não só que algo aconteceu. Realtime ligado: a corrente cresce com a tela
+aberta, e conferir um gatilho é justamente disparar a ação e ver chegar.
+
+**No celular, o catálogo vem recolhido.** Os 42 chips ocupavam a primeira tela
+inteira e empurravam para fora justamente a corrente, que é o que se veio ver;
+os que já ocorreram ficam à vista e os mudos atrás de um toque.
+
+`listarEventosDeDominio` e `resumoDoCatalogo` são **só leitura**, com
+`settings: MANAGE`. O emissor continua fora de `actions/`: exposto como
+endpoint, qualquer cliente forjaria a corrente que as automações usam de
+gatilho.
+
+**A sobreposição com as tabelas antigas fica como está.** `lead_events` e
+`appointment_history` **permanecem**: são linha do tempo de tela, com leitura,
+RLS e propósito próprios. O que `domain_events` substitui é a falta de um lugar
+onde perguntar "o que aconteceu no sistema", não essas duas.
+
+**Base das automações concluída.** O próximo passo é o motor — e é lá que
+entram os gatilhos de TEMPO ("sem retorno há 60 dias", aniversário, lembrete
+24h antes, `estoque.lote_vencendo`), que foram adiados de propósito: não nascem
+de ação nenhuma, são varredura agendada, e quem os agenda é o motor.
 
 ---
 

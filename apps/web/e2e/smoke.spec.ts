@@ -32,7 +32,7 @@ const TELAS: { rota: string; titulo: RegExp }[] = [
 ]
 
 /** As abas de Configurações são telas distintas atrás da mesma rota. */
-const ABAS_DE_CONFIG = ['unidades', 'permissions', 'anamnese', 'atendimento', 'integrations', 'lgpd', 'general']
+const ABAS_DE_CONFIG = ['unidades', 'permissions', 'anamnese', 'atendimento', 'integrations', 'lgpd', 'eventos', 'general']
 
 async function abrir(page: Page, rota: string) {
   const res = await page.goto(rota, { waitUntil: 'domcontentloaded' })

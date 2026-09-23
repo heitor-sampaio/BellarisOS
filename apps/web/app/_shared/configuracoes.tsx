@@ -13,6 +13,9 @@ import { normalizeFormSchema } from '@/lib/anamnesis'
 import type { IntegrationConfig } from '@/actions/integrations'
 import { SettingsLgpd } from '@/components/admin/settings-lgpd'
 import { listDataRequests } from '@/actions/lgpd'
+import { SettingsEventos } from '@/components/admin/settings-eventos'
+import { listarEventosDeDominio, resumoDoCatalogo } from '@/actions/eventos'
+import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -37,6 +40,7 @@ const TABS = [
   { key: 'atendimento',   label: 'Atendimento',  module: 'forms'    },
   { key: 'integrations',  label: 'Integrações',  module: 'settings' },
   { key: 'lgpd',          label: 'LGPD',         module: 'settings' },
+  { key: 'eventos',       label: 'Eventos',      module: 'settings' },
   { key: 'general',       label: 'Geral',        module: 'settings' },
 ] as const satisfies readonly { key: string; label: string; module: AppModule }[]
 
@@ -154,6 +158,12 @@ export async function Configuracoes({
 
   // Só carrega quando a aba está aberta: a lista não é usada nas outras.
   const lgpdRequests = activeTab === 'lgpd' ? await listDataRequests() : []
+
+  // A corrente de eventos, idem. São duas consultas (o resumo agregado e as
+  // últimas linhas) e nenhuma outra aba as usa.
+  const [resumo, primeiraPagina] = activeTab === 'eventos'
+    ? await Promise.all([resumoDoCatalogo(), listarEventosDeDominio()])
+    : [null, null]
 
   const integrationConfigs = (integrationRows ?? []) as IntegrationConfig[]
   const anamnesisForms: AdminAnamnesisForm[] = (anamnesisRows ?? []).map((r: any) => ({
@@ -296,6 +306,21 @@ export async function Configuracoes({
           requests={lgpdRequests}
           canReviewMedical={ctx.permissions.medical_records === 'MANAGE'}
         />
+      )}
+
+      {activeTab === 'eventos' && resumo && primeiraPagina && (
+        <>
+          {/* A corrente cresce enquanto a tela está aberta — quem veio conferir
+              se um gatilho dispara quer ver o fato chegando, não recarregar. */}
+          <RealtimeRefresher tables={['domain_events']} debounceMs={1500} />
+          <SettingsEventos
+            linhasIniciais={resumo.linhas}
+            eventosIniciais={primeiraPagina.eventos}
+            fimInicial={primeiraPagina.fim}
+            desdeQuando={resumo.desdeQuando}
+            erro={resumo.error ?? primeiraPagina.error}
+          />
+        </>
       )}
 
       {activeTab === 'general' && (
