@@ -90,7 +90,7 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 232 unitários (Vitest) + 50 E2E (Playwright) rodando contra o banco
+- **Testes:** 242 unitários (Vitest) + 50 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
   (campanhas e LGPD) e a cada 5 minutos (fila das automações).
@@ -431,11 +431,11 @@ o resto do caminho.
 
 1. **A uazapi não lia anúncio nenhum.** Só a Cloud API tinha parser. Na uazapi
    não existe um campo `referral`: ela repassa o `contextInfo` do próprio
-   protocolo, e o anúncio vem em `externalAdReply` (informação do Heitor). São
-   olhados três caminhos — `contextInfo` da mensagem, o aninhado em
-   `extendedTextMessage` e o da raiz — porque o aviso do anúncio chega **uma
-   vez só**, na primeira mensagem: errar o caminho não dá segunda chance, e a
-   falha é silenciosa (a mensagem entra normal, só sem a origem).
+   protocolo, e o anúncio vem em `externalAdReply` (informação do Heitor). O
+   aviso do anúncio chega **uma vez só**, na primeira mensagem: errar o caminho
+   não dá segunda chance, e a falha é silenciosa (a mensagem entra normal, só
+   sem a origem). **Os caminhos escolhidos aqui estavam todos errados — ver a
+   correção de 24/09, feita contra o tráfego real.**
 2. **A procedência era da conversa, não da mensagem.** `attribution` só é
    escrita quando a conversa nasce; quem já era conhecido e voltava por outro
    anúncio não deixava rastro. Agora `messages.ad_referral` guarda por
@@ -1087,6 +1087,41 @@ Railway (`*/5 * * * *`, `CRON_JOBS=automacoes`, mesmo Dockerfile e mesmo
 `{ok:true, retomadas:0, erros:0, agendas:0}` em 350ms. As credenciais entraram
 por **referência** ao serviço principal, não copiadas: um segredo duplicado é
 um segredo que um dia diverge.
+
+### 2026-09-24 — O parser de anúncio da uazapi estava errado nos três campos
+
+As primeiras mensagens de anúncio de verdade chegaram, e **nenhuma foi
+marcada**: todas nasceram "Orgânico". O parser foi escrito a partir da
+documentação e de um webhook de teste; sondar a instância real mostrou que a
+forma é outra.
+
+**O que o tráfego real diz** (51 mensagens de anúncio num lote de 200):
+
+| o que se supunha | o que chega |
+|---|---|
+| `m.contextInfo` / `extendedTextMessage` / raiz | **`m.content.contextInfo`** — e só ele |
+| `sourceId` | **`sourceID`** — 51 de 51; com a grafia minúscula, zero |
+| `sourceUrl`, `thumbnailUrl` | **`sourceURL`**, **`thumbnailURL`** |
+| `mediaType` textual (`"IMAGE"`) | **número** (1 = imagem, 2 = vídeo) |
+
+Qualquer um dos dois primeiros erros sozinho já anulava tudo: sem o caminho não
+se acha o objeto, e sem `sourceID` não há id de anúncio — que é o campo que
+liga à campanha. **E falha em silêncio**, do pior jeito: a mensagem é gravada
+normalmente, a conversa nasce "Orgânico", e ninguém descobre que o anúncio
+trouxe o cliente.
+
+**Um campo de brinde:** `sourceApp` (`"instagram"` | `"facebook"`) diz a
+plataforma direto, sem adivinhar pela URL — que é o que a inferência fazia, e
+erra justamente com os encurtadores que o próprio Facebook usa (`fb.me`).
+
+**A lição, que virou teste:** contrato de terceiro se confere no tráfego, não na
+documentação. `tests/uazapi-anuncio.test.ts` fixa a forma real com dez casos, e
+o primeiro deles falharia com o parser antigo.
+
+**Tamanho do estrago:** só 4 conversas gravadas perderam a atribuição — o
+webhook é recente. Mas **26% das mensagens recebidas naquela instância vêm de
+anúncio** (264 de 1000 no histórico), então o que se corrigiu vale para todas as
+próximas.
 
 ---
 

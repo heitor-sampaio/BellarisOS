@@ -56,6 +56,8 @@ export interface InboundReferralAttribution {
   sourceUrl?:  string | null
   ctwaClid?:   string | null
   headline?:   string | null
+  /** Plataforma dita pelo provedor: 'instagram' | 'facebook'. */
+  sourceApp?:  string | null
 }
 
 export interface AttributionInput {
@@ -81,6 +83,11 @@ function hasAttribution(a: AttributionInput): boolean {
 
 /** Infere a plataforma Meta (facebook|instagram) a partir de utm_source/sourceUrl. */
 function metaPlatform(a: AttributionInput): string | undefined {
+  // O provedor diz a plataforma quando sabe. Adivinhar pela URL erra com
+  // encurtador (`fb.me`, `ig.me`), que é justamente o que o Facebook usa.
+  const app = a.referral?.sourceApp?.toLowerCase()
+  if (app === 'instagram' || app === 'facebook') return app
+
   const utm = a.utm_source?.toLowerCase()
   if (utm === 'instagram' || utm === 'ig') return 'instagram'
   if (utm === 'facebook'  || utm === 'fb') return 'facebook'

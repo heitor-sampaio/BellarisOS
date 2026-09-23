@@ -28,7 +28,9 @@ export type MediaKind = 'image' | 'audio' | 'video' | 'document'
 export interface InboundReferral {
   sourceType?: string   // 'ad' | 'post' (Meta CTWA)
   sourceId?:   string   // ad id
-  sourceUrl?:  string   // usado para inferir plataforma (facebook|instagram)
+  sourceUrl?:  string   // usado para inferir plataforma quando sourceApp falta
+  /** Plataforma dita pelo próprio provedor: 'instagram' | 'facebook'. */
+  sourceApp?:  string
   ctwaClid?:   string   // click id do click-to-WhatsApp
   headline?:   string   // título do anúncio
   body?:       string   // texto de apoio do anúncio

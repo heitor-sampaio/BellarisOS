@@ -64,25 +64,79 @@ function primeiroTexto(...candidatos: unknown[]): string | undefined {
  * perder a atribuição é irreversível: o aviso do anúncio só vem UMA vez, na
  * primeira mensagem.
  */
+/**
+ * O `mediaType` do `externalAdReply` é um NÚMERO, não um texto.
+ *
+ * São os códigos do Baileys. Guardar "1" como se fosse tipo de mídia deixaria
+ * a tela mostrando `1` onde deveria dizer "imagem".
+ */
+const MIDIA_DO_ANUNCIO: Record<number, string> = {
+  1: 'IMAGE',
+  2: 'VIDEO',
+}
+
+/**
+ * O anúncio que originou a mensagem (click-to-WhatsApp).
+ *
+ * ⚠️ **Os nomes conferidos contra o tráfego REAL de uma instância** (setembro
+ * de 2026, 51 mensagens de anúncio em 200). O que a documentação sugeria e o
+ * que chega são coisas diferentes, e errar aqui falha em silêncio: a mensagem
+ * é gravada, a conversa nasce "Orgânico", e ninguém descobre que o anúncio
+ * trouxe o cliente.
+ *
+ * As três diferenças que anulavam a captura:
+ *
+ *  1. **o caminho** é `content.contextInfo` — nenhum dos que se supunha;
+ *  2. **`sourceID`** tem o ID em maiúsculas (51 de 51 mensagens; com
+ *     `sourceId` minúsculo, zero). É o id do anúncio, o campo que liga à
+ *     campanha — sem ele não há atribuição nenhuma;
+ *  3. **`sourceURL`** e **`thumbnailURL`** seguem a mesma grafia.
+ *
+ * As duas grafias são aceitas porque a uazapi repassa o protocolo quase cru e
+ * versões diferentes do Baileys já nomearam isto de formas diferentes.
+ */
 function lerAnuncio(m: any, raiz: any): InboundReferral | undefined {
   const ctx =
+    m?.content?.contextInfo ??       // o caminho REAL, conferido no tráfego
     m?.contextInfo ??
     m?.message?.extendedTextMessage?.contextInfo ??
     raiz?.contextInfo
   const ad = ctx?.externalAdReply
   if (!ad) return undefined
 
-  // `sourceId` é o id do anúncio e é o que liga à campanha. Sem ele sobra o
-  // texto do criativo, que ainda diz de onde veio — então não se descarta.
   const ref: InboundReferral = {}
-  if (ad.sourceType)   ref.sourceType   = String(ad.sourceType)
-  if (ad.sourceId)     ref.sourceId     = String(ad.sourceId)
-  if (ad.sourceUrl)    ref.sourceUrl    = String(ad.sourceUrl)
-  if (ad.ctwaClid)     ref.ctwaClid     = String(ad.ctwaClid)
-  if (ad.title)        ref.headline     = String(ad.title)
-  if (ad.body)         ref.body         = String(ad.body)
-  if (ad.mediaType)    ref.mediaType    = String(ad.mediaType)
-  if (ad.thumbnailUrl) ref.thumbnailUrl = String(ad.thumbnailUrl)
+  const primeiro = (...vs: unknown[]) => vs.find(v => v !== undefined && v !== null && v !== '')
+
+  if (ad.sourceType) ref.sourceType = String(ad.sourceType)
+
+  const id = primeiro(ad.sourceID, ad.sourceId)
+  if (id) ref.sourceId = String(id)
+
+  const url = primeiro(ad.sourceURL, ad.sourceUrl)
+  if (url) ref.sourceUrl = String(url)
+
+  if (ad.ctwaClid) ref.ctwaClid = String(ad.ctwaClid)
+
+  // `title` é o botão do anúncio ("Fale conosco") e `body`, o texto do
+  // criativo. O nome da campanha não vem aqui — sai do `sourceId` pela Graph
+  // API, em `lib/ads/ad-lookup.ts`.
+  if (ad.title) ref.headline = String(ad.title)
+  if (ad.body)  ref.body     = String(ad.body)
+
+  if (ad.mediaType !== undefined && ad.mediaType !== null) {
+    const n = Number(ad.mediaType)
+    ref.mediaType = Number.isFinite(n)
+      ? (MIDIA_DO_ANUNCIO[n] ?? String(ad.mediaType))
+      : String(ad.mediaType)
+  }
+
+  const thumb = primeiro(ad.thumbnailURL, ad.thumbnailUrl)
+  if (thumb) ref.thumbnailUrl = String(thumb)
+
+  // `sourceApp` diz a plataforma de graça ("instagram" | "facebook"), sem
+  // precisar adivinhar pela URL — que é o que a inferência fazia, e erra
+  // quando o anúncio usa um encurtador (`fb.me`, `ig.me`).
+  if (ad.sourceApp) ref.sourceApp = String(ad.sourceApp).toLowerCase()
 
   // Um `externalAdReply` sem nada dentro é ruído do protocolo, não anúncio.
   return Object.keys(ref).length ? ref : undefined
