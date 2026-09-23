@@ -80,7 +80,7 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 172 unitários (Vitest) + 42 E2E (Playwright) rodando contra o banco
+- **Testes:** 185 unitários (Vitest) + 43 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** serviço na Railway roda `scripts/cron.mjs` de hora em hora
   (campanhas de notificação e exportações de LGPD).
@@ -620,7 +620,7 @@ há 90" — tem de consultar o dado de negócio direto, não `domain_events`. O
 histórico duradouro segue onde sempre esteve: `lead_events` e
 `appointment_history` têm retenção própria e não são tocados.
 
-**Fase 2 — onze eventos**, em três domínios:
+**Fase 2 — doze eventos**, em três domínios:
 
 - **Cliente:** `criado`, `dados_alterados` (com `alterou`), `desativado`,
   `reativado`.
@@ -654,7 +654,7 @@ Dois cuidados que evitam disparo à toa:
 
 Sete eventos: `pagamento.recebido`, `pagamento.estornado`, `plano.criado`,
 `plano.proposto`, `plano.aceito`, `pacote.sessao_usada`, `comissao.gerada`.
-O catálogo chega a **26**.
+O catálogo chega a **27**.
 
 **Os dois de pagamento saem de GATILHO no banco** — exceção deliberada, e a
 razão é a mesma que decidiu o `Purchase` da API de Conversões: um pagamento
@@ -698,7 +698,7 @@ incremento, senão daria sempre um a mais.
 
 Sete eventos: `prontuario.entrada_criada`, `anamnese.respondida`,
 `termo.assinado`, `foto.enviada`, `injetavel.aplicado`;
-`estoque.movimentado`, `estoque.abaixo_do_minimo`. O catálogo chega a **33**.
+`estoque.movimentado`, `estoque.abaixo_do_minimo`. O catálogo chega a **34**.
 
 **O payload clínico é deliberadamente magro.** `lib/events/clinico.ts` carrega
 cliente, agendamento, uma referência (nome da ficha, do termo, do
@@ -735,6 +735,50 @@ retorno há 60 dias" que já tinha sido adiado para a fase das automações, que
 quem vai agendá-los.
 
 **Faltam as fases 5 e 6.**
+
+### 2026-09-23 — Eventos, Fase 5 (cadastro e configuração)
+
+Oito eventos: `procedimento.criado`, `procedimento.preco_alterado`;
+`membro.criado`, `.desativado`, `.reativado`; `cargo.permissoes_alteradas`;
+`integracao.conectada`, `.desconectada`. O catálogo chega a **42**.
+
+São os de menor volume do sistema e os que mais interessam a quem **audita**:
+quem mexeu no preço, quem deu acesso a quê, quem desligou a integração.
+
+**Três eventos saem só na TRAVESSIA**, e é o que os separa de ruído:
+- `procedimento.preco_alterado` só quando o preço mudou de verdade. Editar a
+  descrição e salvar é o uso comum daquela tela.
+- `integracao.conectada` compara o `is_active` anterior. O formulário da API
+  oficial também serve para corrigir uma credencial com tudo no ar, e o
+  pareamento da uazapi roda em **polling** — sem a comparação, cada volta do
+  laço contaria uma reconexão que não houve.
+- `cargo.permissoes_alteradas` não sai quando nada mudou. Abrir a matriz e
+  salvar é como se confere um cargo; emitir aí faria a auditoria gritar sobre
+  uma conferência de rotina.
+
+**O evento de cargo leva de→para por módulo.** Sem isso ele diria apenas
+"mexeram nas permissões", e a pergunta que se faz é outra: *alguém ganhou
+acesso ao financeiro?* Isso obrigou a **ler a matriz antes do upsert** — depois
+dele a anterior não existe mais, foi sobrescrita.
+
+**Nada de credencial no payload.** A integração é identificada por um `rotulo`
+legível (o id do número, o nome da conta de anúncio, o nome da página) e nunca
+por token. A entidade é o **provedor**, não a linha de `integration_configs`:
+o id da linha não diz nada a quem lê o evento, e `removerConexaoUazapi` apaga e
+recria essa linha sem que a integração mude de identidade.
+
+Desconectar distingue `pedido` de `removida`: os dois levam ao mesmo "saiu do
+ar", mas só um volta apertando um botão.
+
+`membro.desativado` carrega o cargo e a abrangência que a pessoa **tinha** — é
+o que uma automação de "revogar o que ela ainda alcança" precisa, e depois de
+desativada procurar isso já é arqueologia.
+
+**Correção de contagem:** as entradas anteriores subcontavam o catálogo em um
+desde a Fase 2 (doze eventos, não onze), e o erro se propagou pelos totais.
+Corrigido nas três entradas.
+
+**Falta a fase 6** — o painel de conferência. Depois dele, o motor.
 
 ---
 

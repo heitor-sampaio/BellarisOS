@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
+import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
 
 export interface IntegrationConfig {
   id:         string
@@ -46,6 +47,17 @@ export async function saveWhatsAppConfig(
 
   const admin = createAdminClient()
 
+  // Estado anterior, para o evento sair só na TRAVESSIA. Este formulário também
+  // é usado para corrigir uma credencial com a integração já no ar, e emitir
+  // "conectada" a cada salvamento faria a corrente contar uma reconexão que não
+  // houve.
+  const { data: anterior } = await admin
+    .from('integration_configs')
+    .select('is_active')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('provider', provider)
+    .maybeSingle()
+
   const { error } = await admin
     .from('integration_configs')
     .upsert({
@@ -62,6 +74,15 @@ export async function saveWhatsAppConfig(
   // porque há três caminhos que ativam: este formulário, o pareamento e o evento
   // de conexão do webhook — e por um tempo só este aqui cumpria.
   if (isActive) await desativarOutroProvedorWhatsApp(ctx.tenantId!, provider)
+
+  // Na API oficial, guardar as credenciais com `is_active` É conectar — não há
+  // pareamento nem handshake depois disso. O rótulo é o id do número (nunca o
+  // token): é por ele que se reconhece qual linha está no ar.
+  if (isActive !== (anterior?.is_active ?? false)) {
+    await (isActive
+      ? integracaoConectada(provider, ctx, cleanConfig.phoneNumberId ?? null)
+      : integracaoDesconectada(provider, ctx, 'pedido'))
+  }
 
   revalidatePath('/admin/settings')
   return { ok: true }
@@ -171,6 +192,10 @@ export async function confirmMetaAdsSelection(
 
   if (error) return { ok: false, error: error.message }
 
+  // O OAuth sozinho não conecta nada: sem conta de anúncio e pixel escolhidos,
+  // a CAPI não tem para onde mandar evento. É ESTE passo que põe no ar.
+  await integracaoConectada('meta_ads', ctx, adAccountName || adAccountId)
+
   revalidatePath('/admin/settings')
   revalidatePath('/admin/marketing')
   return { ok: true }
@@ -253,6 +278,8 @@ export async function disconnectMetaAds(): Promise<{ ok: boolean; error?: string
     .eq('provider', 'meta_ads')
 
   if (error) return { ok: false, error: error.message }
+
+  await integracaoDesconectada('meta_ads', ctx, 'pedido')
 
   revalidatePath('/admin/settings')
   revalidatePath('/admin/marketing')
@@ -341,6 +368,12 @@ export async function confirmMetaPageSelection(
 
   if (error) return { ok: false, error: error.message }
 
+  // O rótulo é o nome da página, não o id: é assim que ela aparece na tela e
+  // numa mensagem de "o Instagram da clínica caiu".
+  const pagina = (pages as Array<{ pageId: string; pageName?: string }>)
+    .find(p => p.pageId === pageId)
+  await integracaoConectada('meta_messaging', ctx, pagina?.pageName ?? pageId)
+
   revalidatePath('/admin/settings')
   revalidatePath('/admin/inbox')
   return { ok: true }
@@ -362,6 +395,8 @@ export async function disconnectMetaMessaging(): Promise<{ ok: boolean; error?: 
     .eq('provider', 'meta_messaging')
 
   if (error) return { ok: false, error: error.message }
+
+  await integracaoDesconectada('meta_messaging', ctx, 'pedido')
 
   revalidatePath('/admin/settings')
   revalidatePath('/admin/inbox')

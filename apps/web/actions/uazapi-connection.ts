@@ -11,6 +11,7 @@ import {
 } from '@/lib/whatsapp/uazapi-admin'
 import { telefoneDoJid } from '@/lib/whatsapp/uazapi'
 import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
+import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
 
 /**
  * Conexão de WhatsApp gerenciada pelo BellarisOS.
@@ -139,7 +140,7 @@ export async function getEstadoConexaoUazapi(): Promise<EstadoConexaoUazapi> {
     const dadosMudaram    = status.connected
       && (config.connectedPhone !== base.phone || config.connectedName !== base.name)
     if (precisaAtivar || dadosMudaram) {
-      await marcarConectada(ctx.tenantId!, config, base.phone, base.name)
+      await marcarConectada(ctx.tenantId!, config, base.phone, base.name, ctx)
     }
 
     const proxy = await lerProxy(baseDa(config), config.token)
@@ -299,7 +300,7 @@ export async function getQrCodeUazapi(): Promise<{
     // cada volta do polling.
     const status = await statusDaInstancia(baseDa(config), config.token)
     if (status.connected) {
-      await marcarConectada(ctx.tenantId!, config, telefoneDoJid(status.jid), status.nome)
+      await marcarConectada(ctx.tenantId!, config, telefoneDoJid(status.jid), status.nome, ctx)
       // Aqui revalidar é correto: é a transição "pareando" → "conectado", que
       // acontece uma vez e encerra o polling. O que não pode revalidar é a
       // leitura de estado, que roda em laço.
@@ -346,8 +347,19 @@ export async function getCodigoPareamentoUazapi(
  */
 async function marcarConectada(
   tenantId: string, config: UazapiConfig, phone: string | null, name: string | null,
+  ctx?: { tenantId?: string | null; internalUserId?: string | null; userName?: string | null },
 ): Promise<void> {
   const admin = createAdminClient()
+
+  // Estado antes de escrever: esta função é chamada tanto na transição quanto
+  // quando só o número mudou, e o evento tem de sair apenas na TRAVESSIA. Sem
+  // isso, o polling do pareamento emitiria "conectada" em cada volta.
+  const { data: antes } = await admin
+    .from('integration_configs')
+    .select('is_active')
+    .eq('tenant_id', tenantId)
+    .eq('provider', 'uazapi')
+    .maybeSingle()
 
   // `provider` mora na coluna, não no jsonb. Removido explicitamente em vez de
   // gravar `undefined` e confiar no acaso da serialização.
@@ -368,6 +380,14 @@ async function marcarConectada(
   // Ativar a uazapi sem desativar a `official` deixava as duas ativas, e o envio
   // saía pela oficial — que a rede tinha configurado mas não usa.
   await desativarOutroProvedorWhatsApp(tenantId, 'uazapi')
+
+  if (!antes?.is_active) {
+    // O ator é quem está na tela — os dois caminhos que chegam aqui, o QR e o
+    // polling do estado, rodam autenticados. O `ctx` é opcional só para um
+    // chamador futuro que não tenha um; ali o ator vira sistema, que é a
+    // verdade.
+    await integracaoConectada('uazapi', ctx ?? { tenantId }, phone ?? name)
+  }
 
   // Sem `revalidatePath` aqui: quem chama decide. Esta função roda dentro de
   // leituras em polling, e revalidar a rota que pediu a leitura é o que fazia a
@@ -395,6 +415,8 @@ export async function desconectarUazapi(): Promise<{ ok: boolean; error?: string
     .eq('provider', 'uazapi')
 
   if (error) return { ok: false, error: error.message }
+
+  await integracaoDesconectada('uazapi', ctx, 'pedido')
 
   revalidatePath('/admin/settings')
   revalidatePath('/admin/inbox')
@@ -431,6 +453,11 @@ export async function removerConexaoUazapi(): Promise<{ ok: boolean; error?: str
     .eq('provider', 'uazapi')
 
   if (error) return { ok: false, error: error.message }
+
+  // `removida` e não `pedido`: desligar o celular e apagar a instância levam ao
+  // mesmo "não está mais no ar", mas só um deles é reversível apertando um
+  // botão — e é isso que a automação de aviso precisa distinguir.
+  await integracaoDesconectada('uazapi', ctx, 'removida')
 
   revalidatePath('/admin/settings')
   revalidatePath('/admin/inbox')

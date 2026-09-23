@@ -11,5 +11,6 @@ export type {
   DadosDeCliente, DadosDeLead, DadosDeConversa,
   DadosDePagamento, DadosDePlano, DadosDePacote, DadosDeComissao,
   DadosClinicos, DadosDeEstoque,
+  DadosDeProcedimento, DadosDeMembro, DadosDeCargo, DadosDeIntegracao,
 } from './eventos'
 export { EVENTOS } from './eventos'

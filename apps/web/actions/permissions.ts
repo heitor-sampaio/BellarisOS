@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { ALL_MODULES, MODULE_LEVELS, isScoped, ALL_REPORT_TABS } from '@/lib/permissions'
+import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/cadastro'
 import type { PermissionLevel, PermissionScope } from '@estetica-os/types'
 
 const VALID_SCOPES: PermissionScope[] = ['OWN', 'ALL']
@@ -33,6 +34,10 @@ export async function saveRolePermissions(
     .single()
   if (!role) return { error: 'Cargo não encontrado.' }
   if (role.is_system) return { error: 'Cargos do sistema têm acesso total e não são editáveis.' }
+
+  // A matriz ANTES de ser sobrescrita. Sem ler aqui, o de→para do evento é
+  // impossível de reconstruir depois: o upsert abaixo substitui as linhas.
+  const antes = await lerMatrizDoCargo(ctx.tenantId!, roleId)
 
   const rows = ALL_MODULES.map(module => {
     // Cada módulo declara os níveis que distingue: gravar "Ver" num módulo só
@@ -79,6 +84,13 @@ export async function saveRolePermissions(
       .insert(abas.map(tab => ({ tenant_id: ctx.tenantId!, role_id: roleId, tab })))
     if (insErro) return { error: 'Erro ao salvar as abas de relatórios. Tente novamente.' }
   }
+
+  await emitirCargoPermissoesAlteradas(
+    roleId, ctx,
+    antes,
+    rows.map(r => ({ modulo: r.module, nivel: r.level, escopo: r.scope })),
+    abas,
+  )
 
   revalidatePath('/admin/settings')
   revalidateTag(`permissions:${ctx.tenantId!}`, 'max')

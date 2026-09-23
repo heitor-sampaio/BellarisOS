@@ -93,6 +93,21 @@ export const EVENTOS = {
   // alerta, e a automação mandaria a mesma mensagem cinco vezes no dia.
   ESTOQUE_MOVIMENTADO:      'estoque.movimentado',
   ESTOQUE_ABAIXO_DO_MINIMO: 'estoque.abaixo_do_minimo',
+
+  // ── Cadastro e configuração ───────────────────────────────────────────
+  // Os de menor volume do catálogo, e os que mais interessam a quem AUDITA:
+  // quem mexeu no preço, quem deu acesso a quê, quem desligou a integração.
+  PROCEDIMENTO_CRIADO:         'procedimento.criado',
+  PROCEDIMENTO_PRECO_ALTERADO: 'procedimento.preco_alterado',
+
+  MEMBRO_CRIADO:     'membro.criado',
+  MEMBRO_DESATIVADO: 'membro.desativado',
+  MEMBRO_REATIVADO:  'membro.reativado',
+
+  CARGO_PERMISSOES_ALTERADAS: 'cargo.permissoes_alteradas',
+
+  INTEGRACAO_CONECTADA:    'integracao.conectada',
+  INTEGRACAO_DESCONECTADA: 'integracao.desconectada',
 } as const
 
 export type NomeDeEvento = typeof EVENTOS[keyof typeof EVENTOS]
@@ -102,6 +117,7 @@ export type EntidadeDeEvento =
   | 'agendamento' | 'cliente' | 'lead' | 'conversa'
   | 'pagamento' | 'plano' | 'pacote' | 'comissao'
   | 'prontuario' | 'anamnese' | 'termo' | 'injetavel' | 'foto' | 'estoque'
+  | 'procedimento' | 'membro' | 'cargo' | 'integracao'
 
 /**
  * De onde o fato veio. Webhook, cron e banco não têm ator humano.
@@ -289,6 +305,64 @@ export interface DadosDeEstoque extends DadosDeEvento {
   /** Só no alerta de mínimo. */
   saldo?:      string | number | null
   minimo?:     string | number | null
+}
+
+/**
+ * Procedimento do catálogo da rede.
+ *
+ * `precoAnterior` só aparece em `preco_alterado`, e é o que torna o evento
+ * acionável: "subiu mais de 20%" e "baixou" são perguntas diferentes, e nenhuma
+ * dá para responder só com o preço novo.
+ */
+export interface DadosDeProcedimento extends DadosDeEvento {
+  nome:           string | null
+  categoria:      string | null
+  preco:          number | null
+  precoAnterior?: number | null
+  duracaoMin?:    number | null
+}
+
+/**
+ * Membro da equipe. O cargo vai por NOME além do id: a automação que avisa
+ * "entrou uma recepcionista" não deveria precisar resolver um uuid.
+ */
+export interface DadosDeMembro extends DadosDeEvento {
+  nome:       string | null
+  email:      string | null
+  cargoId:    string | null
+  cargoNome:  string | null
+  /** `null` = abrangência de rede. */
+  unidadeId:  string | null
+  atendeNaAgenda?: boolean
+}
+
+/**
+ * Cargo cujas permissões mudaram.
+ *
+ * `alterou` lista os MÓDULOS que mudaram de nível ou escopo — sem ele o evento
+ * diria apenas "mexeram nas permissões", e a pergunta que se faz de verdade é
+ * "alguém ganhou acesso ao financeiro?".
+ */
+export interface DadosDeCargo extends DadosDeEvento {
+  nome:      string | null
+  /** Módulos alterados, e como ficaram. */
+  mudancas:  { modulo: string; de: string; para: string }[]
+  /** Abas de relatório depois da mudança. */
+  relatorios: string[]
+}
+
+/**
+ * Integração de canal ou de anúncios.
+ *
+ * `rotulo` é o que identifica a conexão para um humano — o número do WhatsApp,
+ * o nome da conta de anúncio, o nome da página. É o que vai na mensagem de
+ * "a integração X caiu".
+ */
+export interface DadosDeIntegracao extends DadosDeEvento {
+  provedor: string
+  rotulo:   string | null
+  /** Por que desconectou, quando se sabe: 'pedido' | 'removida'. */
+  motivo?:  string | null
 }
 
 /** Comissão gerada na conclusão de um atendimento. */

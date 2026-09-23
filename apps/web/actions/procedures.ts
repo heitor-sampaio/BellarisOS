@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cadastro'
 
 /**
  * Procedimento é dado da REDE.
@@ -103,6 +104,11 @@ export async function addProcedure(
     )
   }
 
+  // Emitido DEPOIS dos insumos e da disponibilidade: o retrato de um
+  // procedimento recém-criado sem eles descreveria um estado que durou
+  // milissegundos e nunca existiu para o usuário.
+  await procedimentoCriado(procedure.id as string, ctx)
+
   revalidatePath('/admin/procedures')
   revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
   return { success: true, procedureId: procedure.id }
@@ -154,7 +160,9 @@ export async function updateProcedure(
   const admin = createAdminClient()
 
   // Histório de preço se alterado
-  if (price !== parseFloat(String(existing.price))) {
+  const precoAnterior = parseFloat(String(existing.price))
+  const precoMudou    = price !== precoAnterior
+  if (precoMudou) {
     await admin.from('procedure_price_history').insert({
       procedure_id: procedureId,
       price:        existing.price,
@@ -194,6 +202,10 @@ export async function updateProcedure(
       branchPricing.map(bp => ({ procedure_id: procedureId, branch_id: bp.branch_id, price: bp.price, labor_cost: bp.labor_cost }))
     )
   }
+
+  // Só quando o preço mudou de verdade. Editar a descrição e salvar é o uso
+  // comum desta tela; emitir aí faria a automação de preço disparar à toa.
+  if (precoMudou) await procedimentoPrecoAlterado(procedureId, ctx, precoAnterior)
 
   revalidatePath('/admin/procedures')
   revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
