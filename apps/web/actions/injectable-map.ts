@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { emitirEventoClinico } from '@/lib/events/clinico'
+import { EVENTOS } from '@estetica-os/types'
 import { injectableTotals, emptyInjectableMap, type InjectableMapValue } from '@/lib/anamnesis'
 
 /**
@@ -331,6 +333,17 @@ export async function registrarAplicacao(
     .single()
 
   if (error || !data) return { error: `Erro ao registrar a aplicação: ${error?.message}` }
+
+  // A aplicação é o fato clínico de retorno: é dela que sai o lembrete de
+  // reaplicação, que é a automação mais óbvia sobre toxina. `referencia` leva
+  // o nome do planejamento — nada do conteúdo do mapa, que é prontuário.
+  await emitirEventoClinico(EVENTOS.INJETAVEL_APLICADO, data.id as string, ctx, {
+    clientId,
+    agendamentoId: appointmentId,
+    referencia:    (plano.name as string) ?? null,
+    branchId:      (plano.branch_id as string) ?? null,
+    chave:         `injetavel.aplicado:${data.id}`,
+  })
 
   revalidarPlanejamento(slug, clientId)
   if (appointmentId) {

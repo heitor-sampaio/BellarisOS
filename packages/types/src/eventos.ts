@@ -73,6 +73,26 @@ export const EVENTOS = {
 
   PACOTE_SESSAO_USADA: 'pacote.sessao_usada',
   COMISSAO_GERADA:     'comissao.gerada',
+
+  // ── Clínico ───────────────────────────────────────────────────────────
+  PRONTUARIO_ENTRADA_CRIADA: 'prontuario.entrada_criada',
+  ANAMNESE_RESPONDIDA:       'anamnese.respondida',
+  TERMO_ASSINADO:            'termo.assinado',
+  INJETAVEL_APLICADO:        'injetavel.aplicado',
+  // A foto vive DENTRO da resposta da ficha, não numa galeria à parte: o fato
+  // é o upload, que acontece antes de salvar e pode acabar descartado. Serve
+  // para "a foto do antes chegou", não como inventário do que existe.
+  FOTO_ENVIADA:              'foto.enviada',
+
+  // ── Estoque ───────────────────────────────────────────────────────────
+  // ⚠️ Como `pagamento.*`, estes saem de GATILHO no banco (`origem: 'banco'`,
+  // sem ator): cinco caminhos do código gravam movimentação.
+  //
+  // `abaixo_do_minimo` dispara na TRAVESSIA do mínimo, não enquanto o saldo
+  // está baixo — senão cada consumo de um produto já em falta repetiria o
+  // alerta, e a automação mandaria a mesma mensagem cinco vezes no dia.
+  ESTOQUE_MOVIMENTADO:      'estoque.movimentado',
+  ESTOQUE_ABAIXO_DO_MINIMO: 'estoque.abaixo_do_minimo',
 } as const
 
 export type NomeDeEvento = typeof EVENTOS[keyof typeof EVENTOS]
@@ -81,6 +101,7 @@ export type NomeDeEvento = typeof EVENTOS[keyof typeof EVENTOS]
 export type EntidadeDeEvento =
   | 'agendamento' | 'cliente' | 'lead' | 'conversa'
   | 'pagamento' | 'plano' | 'pacote' | 'comissao'
+  | 'prontuario' | 'anamnese' | 'termo' | 'injetavel' | 'foto' | 'estoque'
 
 /**
  * De onde o fato veio. Webhook, cron e banco não têm ator humano.
@@ -237,6 +258,37 @@ export interface DadosDePacote extends DadosDeEvento {
   agendamentoId: string | null
   /** Quantas sobraram DEPOIS desta. Zero é o gatilho de "acabou, renove". */
   restantes:     number | null
+}
+
+/**
+ * Retrato de um fato clínico.
+ *
+ * O cliente vem junto porque toda automação clínica termina falando com ele —
+ * confirmar que a anamnese chegou, avisar que o termo foi assinado.
+ */
+export interface DadosClinicos extends DadosDeEvento {
+  clienteId:      string | null
+  clienteNome:    string | null
+  agendamentoId:  string | null
+  /** Nome da ficha/termo/procedimento, conforme o evento. */
+  referencia:     string | null
+}
+
+/**
+ * Retrato de estoque. Montado pelo GATILHO no banco — daí não haver ator.
+ */
+export interface DadosDeEstoque extends DadosDeEvento {
+  produtoId:   string | null
+  produtoNome: string | null
+  unidade:     string | null
+  /** Só em movimentação. */
+  tipo?:       string | null
+  quantidade?: string | number | null
+  saldoApos?:  string | number | null
+  observacao?: string | null
+  /** Só no alerta de mínimo. */
+  saldo?:      string | number | null
+  minimo?:     string | number | null
 }
 
 /** Comissão gerada na conclusão de um atendimento. */

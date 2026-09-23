@@ -14,6 +14,7 @@ import { notifyClient, notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots } from '@/lib/appointments/core'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
+import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { periodRef } from '@/lib/datetime'
@@ -375,6 +376,13 @@ async function completeAppointment(
     { appointment_id: appointmentId, professional_id: appt.professional_id, anamnesis_data: {} },
     { onConflict: 'appointment_id', ignoreDuplicates: true }
   )
+
+  await emitirEventoClinico(EVENTOS.PRONTUARIO_ENTRADA_CRIADA, appointmentId, ctx, {
+    clientId:      appt.client_id as string | null,
+    agendamentoId: appointmentId,
+    branchId:      appt.branch_id as string | null,
+    chave:         'prontuario.entrada_criada:' + appointmentId,
+  })
 
   // 3. Lança a receita do atendimento como CONTA A RECEBER; confirmPayment
   //    depois dá baixa (is_paid). Comissão, fidelidade, estoque e pacote já

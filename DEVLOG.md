@@ -3,7 +3,7 @@
 Registro do desenvolvimento: o que existe hoje, como chegamos aqui e o que está
 em aberto. Documento único.
 
-**Última atualização: 2026-09-18.**
+**Última atualização: 2026-09-23.**
 
 > **Este arquivo se atualiza a cada entrega** — feature nova ou edição do que já
 > existe (CLAUDE.md §16). Não é para acumular até o fim de uma frente: foi assim
@@ -80,7 +80,7 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 108 unitários (Vitest) + 26 E2E (Playwright) rodando contra o banco
+- **Testes:** 172 unitários (Vitest) + 42 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** serviço na Railway roda `scripts/cron.mjs` de hora em hora
   (campanhas de notificação e exportações de LGPD).
@@ -694,7 +694,47 @@ menção em comentário não conta.
 **zero é o gatilho de "acabou, hora de renovar"**. Emitido DEPOIS do
 incremento, senão daria sempre um a mais.
 
-**Faltam as fases 4 a 6.**
+### 2026-09-23 — Eventos, Fase 4 (clínico e estoque)
+
+Sete eventos: `prontuario.entrada_criada`, `anamnese.respondida`,
+`termo.assinado`, `foto.enviada`, `injetavel.aplicado`;
+`estoque.movimentado`, `estoque.abaixo_do_minimo`. O catálogo chega a **33**.
+
+**O payload clínico é deliberadamente magro.** `lib/events/clinico.ts` carrega
+cliente, agendamento, uma referência (nome da ficha, do termo, do
+planejamento) e os ids — **nada de conteúdo clínico**: nenhuma resposta de
+anamnese, nenhuma foto, nenhuma evolução. A corrente vai ser lida pelo motor
+de automações e, um dia, por integrações; dado de saúde não atravessa essa
+fronteira por conveniência de gatilho. Quem precisar do conteúdo abre o
+prontuário, com a permissão que ele exige.
+
+`anamnese.respondida` é o único da fase **sem chave de idempotência**: a ficha
+é preenchida aos poucos e cada salvamento é um fato novo. A automação "a
+anamnese chegou" quer saber do último, não só do primeiro.
+
+`foto.enviada` sai do UPLOAD, não do salvamento da ficha — a foto vive dentro
+da resposta e pode acabar descartada. O fato é o envio, e é dele que nasce "a
+foto do antes chegou". Não serve de inventário do que existe.
+
+**Os dois de estoque saem de GATILHO no banco**, pela mesma razão da Fase 3:
+cinco caminhos do código gravam movimentação. Origem `'banco'`, sem ator.
+
+**`abaixo_do_minimo` dispara na TRAVESSIA do mínimo, não enquanto o saldo está
+baixo.** Sem isso, cada consumo de um produto já em falta repetiria o alerta e
+a automação mandaria a mesma mensagem cinco vezes no dia. O gatilho sai cedo
+quando o saldo anterior já estava abaixo; e a chave fica **nula** de propósito
+— repor e cair de novo é um alerta novo, não o mesmo.
+
+Seis casos rodados no banco de verdade: saldo saudável não alerta, movimentação
+emite, a travessia alerta uma vez, continuar abaixo **não** repete, repor e
+cruzar outra vez alerta de novo, e o nome do produto chega no retrato.
+
+**`estoque.lote_vencendo` ficou de fora, de propósito.** Não nasce de ação
+nenhuma: é varredura de calendário, o mesmo mecanismo de "aniversário" e "sem
+retorno há 60 dias" que já tinha sido adiado para a fase das automações, que é
+quem vai agendá-los.
+
+**Faltam as fases 5 e 6.**
 
 ---
 

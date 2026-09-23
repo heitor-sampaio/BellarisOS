@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { emitirEventoClinico } from '@/lib/events/clinico'
+import { EVENTOS } from '@estetica-os/types'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import { ANAMNESIS_BUCKET, ensurePrivateBucket, getSignedUrl, getSignedUrls } from '@/lib/storage'
 
@@ -90,6 +92,27 @@ export async function uploadAnamnesisPhoto(
       .from(ANAMNESIS_BUCKET)
       .upload(path, buffer, { contentType: file.type, upsert: false })
     if (upErr) return { error: `Falha no upload: ${upErr.message}` }
+
+    // O agendamento é quem carrega o cliente e a unidade — o upload só conhece
+    // o id dele. Sem o agendamento, o evento não sai: retrato incompleto não
+    // serve de gatilho.
+    const { data: appt } = await admin
+      .from('appointments')
+      .select('client_id, branch_id, branches!inner(tenant_id)')
+      .eq('id', appointmentId)
+      .maybeSingle()
+
+    if ((appt?.branches as unknown as { tenant_id?: string } | null)?.tenant_id === ctx.tenantId) {
+      await emitirEventoClinico(EVENTOS.FOTO_ENVIADA, appointmentId, ctx, {
+        clientId:      (appt!.client_id as string | null) ?? null,
+        agendamentoId: appointmentId,
+        referencia:    file.name,
+        branchId:      (appt!.branch_id as string | null) ?? null,
+        // O path é único por upload — reenvio do mesmo arquivo gera outro path
+        // (tem timestamp no nome) e é, de fato, outro envio.
+        chave:         `foto.enviada:${path}`,
+      })
+    }
 
     const url = await getSignedUrl(ANAMNESIS_BUCKET, path)
     return { path, url: url ?? undefined }
@@ -192,6 +215,15 @@ async function saveProcedureForm(params: {
     }, { onConflict: 'appointment_id' })
 
     if (error) return { error: `Erro ao salvar: ${error.message}` }
+
+    // Sem chave de idempotência: a ficha é preenchida aos poucos, e cada
+    // salvamento é um fato novo — a automação de "avisar o profissional que a
+    // anamnese chegou" quer saber do último, não só do primeiro.
+    await emitirEventoClinico(EVENTOS.ANAMNESE_RESPONDIDA, params.appointmentId, ctx, {
+      clientId:      appt.client_id as string | null,
+      agendamentoId: params.appointmentId,
+      referencia:    params.dataColumn,
+    })
 
     revalidatePath(`/${params.slug}/agenda/${params.appointmentId}`)
     return { ok: true }

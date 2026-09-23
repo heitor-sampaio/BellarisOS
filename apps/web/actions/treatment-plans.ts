@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
+import { emitirEventoClinico } from '@/lib/events/clinico'
+import { EVENTOS } from '@estetica-os/types'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -1009,6 +1011,41 @@ export async function generateEvaluationPlan(
 
 // -- Assinar termo de consentimento digitalmente -------------------------------
 
+/**
+ * Emite `termo.assinado` a partir do id do termo.
+ *
+ * Existe porque a assinatura acontece por DOIS caminhos — na tela, com
+ * rabisco, e "assinado em papel" — e o fato é o mesmo. Buscar o cliente e o
+ * plano em cada um seria a forma mais fácil de os dois eventos saírem
+ * diferentes.
+ */
+async function emitirTermoAssinado(
+  consentId: string,
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+) {
+  // O termo NÃO tem `client_id`: ele pendura no prontuário, e é de lá que sai
+  // o cliente. A unidade vem do plano, quando houver — termo avulso não tem
+  // unidade nenhuma, e inventar a do usuário seria pior que deixar nulo.
+  const { data, error } = await createAdminClient()
+    .from('consent_terms')
+    .select('id, title, medical_records!inner(client_id), treatment_plans(branch_id)')
+    .eq('id', consentId)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[termo.assinado] não foi possível montar o retrato:', error.message)
+    return
+  }
+
+  await emitirEventoClinico(EVENTOS.TERMO_ASSINADO, consentId, ctx, {
+    clientId:   ((data?.medical_records as unknown as { client_id?: string } | null)?.client_id) ?? null,
+    referencia: (data?.title as string) ?? null,
+    branchId:   ((data?.treatment_plans as unknown as { branch_id?: string } | null)?.branch_id) ?? null,
+    // Assinar é irreversível: uma vez só, venha do rabisco ou do papel.
+    chave:      'termo.assinado:' + consentId,
+  })
+}
+
 export async function signConsentTerm(consentId: string, signatureDataUrl: string, slug: string) {
   const ctx = await getTenantContext()
   assertPodeFecharPlano(ctx)
@@ -1026,6 +1063,8 @@ export async function signConsentTerm(consentId: string, signatureDataUrl: strin
     .eq('id', consentId)
 
   if (error) return { error: error.message }
+
+  await emitirTermoAssinado(consentId, ctx)
 
   revalidatePath(`/${slug}/checkout`)
   return {}
@@ -1083,6 +1122,8 @@ export async function marcarTermoAssinadoEmPapel(consentId: string, slug: string
     .eq('id', consentId)
 
   if (error) return { error: error.message }
+
+  await emitirTermoAssinado(consentId, ctx)
 
   if (slug) revalidatePath(`/${slug}/checkout`)
   return {}
