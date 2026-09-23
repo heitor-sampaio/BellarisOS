@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEvento, atorDoContexto, ATOR_SISTEMA } from './emitir'
-import type { NomeDeEvento, AtorDoEvento, DadosDeCliente } from '@estetica-os/types'
+import type { NomeDeEvento, AtorDoEvento, OrigemDeEvento, DadosDeCliente } from '@estetica-os/types'
 
 /**
  * Emite um evento de cliente com o retrato dele junto.
@@ -17,7 +17,13 @@ export async function emitirEventoDeCliente(
   nome: NomeDeEvento,
   clientId: string,
   ctx: { tenantId?: string | null; internalUserId?: string | null; userName?: string | null },
-  extras?: { alterou?: string[]; ator?: AtorDoEvento; origem?: 'app' | 'webhook' | 'cron' },
+  extras?: {
+    alterou?: string[]
+    ator?: AtorDoEvento
+    origem?: OrigemDeEvento
+    /** Quantas automações houve antes deste fato — o anti-loop do motor. */
+    profundidade?: number
+  },
 ): Promise<void> {
   try {
     if (!ctx.tenantId) return
@@ -46,7 +52,8 @@ export async function emitirEventoDeCliente(
       entidadeId: clientId,
       dados,
       ator:       extras?.ator ?? (ctx.internalUserId ? atorDoContexto(ctx) : ATOR_SISTEMA),
-      origem:     extras?.origem ?? 'app',
+      origem:       extras?.origem ?? 'app',
+      profundidade: extras?.profundidade,
       // `dados_alterados` acontece muitas vezes para o mesmo cliente e cada uma
       // é um fato novo; os outros três são marcos e não se repetem.
       chave: nome === 'cliente.dados_alterados' ? undefined : `${nome}:${clientId}`,

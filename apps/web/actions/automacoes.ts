@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { LIMITES_PADRAO } from '@estetica-os/types'
 import type { GrafoDeAutomacao, StatusDaAutomacao, LimitesDaAutomacao } from '@estetica-os/types'
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
+import { CLIENT_TAGS, isUnitTag } from '@estetica-os/utils'
 
 /**
  * As automações, pela tela.
@@ -272,6 +273,59 @@ export async function excluirAutomacao(id: string): Promise<{ error?: string }> 
 
   revalidatePath('/admin/automacoes')
   return {}
+}
+
+/**
+ * As listas que o painel precisa para oferecer escolhas de verdade.
+ *
+ * Uma só chamada, feita quando o editor abre: são poucos registros e pedi-los
+ * um a um faria cada clique num node esperar uma ida ao banco.
+ */
+export interface OpcoesDoEditor {
+  etapas:   { id: string; nome: string; funil: string }[]
+  cargos:   { id: string; nome: string }[]
+  pessoas:  { id: string; nome: string }[]
+  tags:     string[]
+  unidades: { id: string; nome: string }[]
+}
+
+export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'automations', 'VIEW')
+  const admin = createAdminClient()
+  const tenant = ctx.tenantId!
+
+  const [etapas, cargos, pessoas, clientes, unidades] = await Promise.all([
+    admin.from('crm_stages').select('id, name, crm_funnels(name)').eq('tenant_id', tenant).order('position'),
+    admin.from('tenant_roles').select('id, label').eq('tenant_id', tenant).order('label'),
+    admin.from('users').select('id, name').eq('tenant_id', tenant).eq('is_active', true).order('name'),
+    // As tags que a rede realmente usa, não só o vocabulário padrão: quem
+    // criou "Pós-operatório" à mão deveria poder automatizar em cima dela.
+    admin.from('clients').select('tags').eq('tenant_id', tenant).not('tags', 'eq', '{}').limit(500),
+    admin.from('branches').select('id, name').eq('tenant_id', tenant).eq('is_active', true).order('name'),
+  ])
+
+  const tags = new Set<string>(CLIENT_TAGS)
+  for (const c of clientes.data ?? []) {
+    for (const t of (c.tags as string[] | null) ?? []) {
+      // A tag de unidade é derivada dos agendamentos, não escolhida: oferecer
+      // "Unidade: Centro" como ação faria a automação brigar com o gatilho que
+      // a mantém.
+      if (!isUnitTag(t)) tags.add(t)
+    }
+  }
+
+  return {
+    etapas: (etapas.data ?? []).map(e => ({
+      id:    e.id as string,
+      nome:  e.name as string,
+      funil: (e.crm_funnels as unknown as { name?: string } | null)?.name ?? 'Funil',
+    })),
+    cargos:   (cargos.data ?? []).map(r => ({ id: r.id as string, nome: r.label as string })),
+    pessoas:  (pessoas.data ?? []).map(u => ({ id: u.id as string, nome: u.name as string })),
+    tags:     [...tags].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    unidades: (unidades.data ?? []).map(b => ({ id: b.id as string, nome: b.name as string })),
+  }
 }
 
 /** Problemas do grafo, para a tela acender o aviso enquanto se monta. */

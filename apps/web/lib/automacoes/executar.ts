@@ -3,7 +3,8 @@ import { NODES, PROFUNDIDADE_MAXIMA } from '@estetica-os/types'
 import type {
   GrafoDeAutomacao, NoDoGrafo, TipoDeNo,
   ConfigCondicaoSe, ConfigCondicaoEscolha,
-  ConfigAcaoNotificarEquipe, ConfigAcaoAnotar,
+  ConfigAcaoNotificarEquipe, ConfigAcaoAnotar, ConfigAcaoMensagem,
+  ConfigAcaoMoverEtapa, ConfigAcaoDesfecho, ConfigAcaoTagCliente, ConfigAcaoAtribuir,
 } from '@estetica-os/types'
 import { avaliarGrupo, escolherSaida } from './condicoes'
 import {
@@ -12,6 +13,12 @@ import {
 } from './contexto'
 import { interpolarTexto, caminhosDoTexto } from './variaveis'
 import { notificarEquipe, anotarNaLinhaDoTempo } from './acoes'
+import {
+  moverDeEtapa, marcarDesfecho, mudarTagDoCliente, definirResponsavel,
+  type AtorDaAutomacao,
+} from './acoes-crm'
+import { mandarMensagem } from './acoes-mensagem'
+import { podeFalarCom, limitesDe } from './limites'
 
 /**
  * O executor: um passo por vez, dirigido por `automation_runs`.
@@ -45,6 +52,22 @@ interface Automacao {
   grafo:    GrafoDeAutomacao
   limites:  Record<string, unknown>
   status:   string
+}
+
+/**
+ * Quem está agindo, do ponto de vista de quem recebe a ação.
+ *
+ * A **profundidade vem do run**, não de um contador local: é ela que as ações
+ * repassam aos eventos que emitem, e é o que faz um anel fechar em três voltas
+ * em vez de três mil.
+ */
+function atorDaAutomacao(run: Run, automacao: Automacao): AtorDaAutomacao {
+  return {
+    tenantId:     run.tenant_id,
+    automacaoId:  automacao.id,
+    nome:         automacao.nome,
+    profundidade: run.profundidade,
+  }
 }
 
 /** O que um node devolve ao executor. */
@@ -299,16 +322,71 @@ async function rodarNo(
       return { resumo: r }
     }
 
-    // Declarados no catálogo, executores nas fases seguintes. Parar com motivo
-    // é melhor que seguir adiante fingindo que a ação aconteceu.
+    case NODES.ACAO_MENSAGEM: {
+      const cfg = no.config as ConfigAcaoMensagem
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, [
+        ...caminhosDoTexto(cfg.texto ?? ''), 'cliente', 'conversa',
+      ])
+
+      // Só o que FALA COM O CLIENTE passa pelos limites. Avisar a equipe não
+      // acorda ninguém, e travá-lo faria a recepção descobrir de manhã um
+      // no-show da véspera.
+      const veredito = await podeFalarCom(
+        automacao.id,
+        (contexto.cliente as { id?: string } | null)?.id ?? null,
+        limitesDe(automacao.limites),
+      )
+      if (!veredito.liberado) {
+        // Silêncio noturno ESPERA; teto recusa. Descartar a mensagem por causa
+        // do horário faria o lembrete simplesmente não acontecer.
+        return veredito.esperarAte
+          ? { esperarAte: veredito.esperarAte, resumo: { adiado: veredito.motivo } }
+          : { parar: true, resumo: { enviada: false, motivo: veredito.motivo } }
+      }
+
+      const r = await mandarMensagem(atorDaAutomacao(run, automacao), contexto, {
+        canal: cfg.canal,
+        texto: interpolarTexto(cfg.texto ?? '', contexto),
+        templateId: cfg.templateId ?? null,
+      })
+      return { resumo: r.resumo, esperarAte: r.esperarAte }
+    }
+
+    case NODES.ACAO_MOVER_ETAPA: {
+      const cfg = no.config as ConfigAcaoMoverEtapa
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, ['lead'])
+      return { resumo: await moverDeEtapa(atorDaAutomacao(run, automacao), contexto, cfg.etapaId) }
+    }
+
+    case NODES.ACAO_DESFECHO: {
+      const cfg = no.config as ConfigAcaoDesfecho
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, ['lead'])
+      return { resumo: await marcarDesfecho(atorDaAutomacao(run, automacao), contexto, cfg.desfecho) }
+    }
+
+    case NODES.ACAO_TAG_CLIENTE: {
+      const cfg = no.config as ConfigAcaoTagCliente
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, ['cliente'])
+      return {
+        resumo: await mudarTagDoCliente(
+          atorDaAutomacao(run, automacao), contexto, cfg.tag, cfg.modo ?? 'adicionar',
+        ),
+      }
+    }
+
+    case NODES.ACAO_ATRIBUIR: {
+      const cfg = no.config as ConfigAcaoAtribuir
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, ['lead'])
+      return {
+        resumo: await definirResponsavel(atorDaAutomacao(run, automacao), contexto, cfg.usuarioId ?? null),
+      }
+    }
+
+    // Declarados no catálogo, executores na fase do TEMPO. Parar com motivo é
+    // melhor que seguir adiante fingindo que a ação aconteceu.
     case NODES.BUSCAR_CLIENTES:
     case NODES.ESPERA_DURACAO:
     case NODES.ESPERA_ATE:
-    case NODES.ACAO_MENSAGEM:
-    case NODES.ACAO_MOVER_ETAPA:
-    case NODES.ACAO_DESFECHO:
-    case NODES.ACAO_TAG_CLIENTE:
-    case NODES.ACAO_ATRIBUIR:
     case NODES.ACAO_LEMBRETE:
       throw new Error(`O node "${tipo}" ainda não é executável.`)
   }

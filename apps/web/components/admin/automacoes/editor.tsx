@@ -1,18 +1,23 @@
 'use client'
 
-import { useCallback, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
-  ChevronLeft, Play, Pause, Save, Plus, AlertCircle, CheckCircle2,
+  ChevronLeft, Play, Pause, Save, Plus, AlertCircle, CheckCircle2, ShieldCheck,
 } from 'lucide-react'
-import { NODES, type GrafoDeAutomacao, type TipoDeNo, type StatusDaAutomacao } from '@estetica-os/types'
+import {
+  NODES,
+  type GrafoDeAutomacao, type TipoDeNo, type StatusDaAutomacao, type LimitesDaAutomacao,
+} from '@estetica-os/types'
 import { Quadro } from './quadro'
 import { PainelDoNo } from './painel-do-no'
+import { PainelDeLimites } from './painel-de-limites'
 import { validarGrafo, ROTULOS, type ProblemaDoGrafo } from '@/lib/automacoes/validar'
 import { novoIdDeNo, configPadrao } from '@/lib/automacoes/ids'
-import { salvarAutomacao, mudarStatusDaAutomacao } from '@/actions/automacoes'
+import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor } from '@/actions/automacoes'
+import type { OpcoesDoEditor } from '@/actions/automacoes'
 import type { AutomacaoCompleta } from '@/actions/automacoes'
 
 /**
@@ -40,7 +45,9 @@ const PALETA: { grupo: string; tipos: TipoDeNo[] }[] = [
 /** Os que já rodam de verdade. Os outros entram no fluxo, mas param a execução. */
 const EXECUTAVEIS: TipoDeNo[] = [
   NODES.GATILHO_EVENTO, NODES.CONDICAO_SE, NODES.CONDICAO_ESCOLHA,
-  NODES.ACAO_NOTIFICAR_EQUIPE, NODES.ACAO_ANOTAR,
+  NODES.ACAO_NOTIFICAR_EQUIPE, NODES.ACAO_ANOTAR, NODES.ACAO_MENSAGEM,
+  NODES.ACAO_MOVER_ETAPA, NODES.ACAO_DESFECHO, NODES.ACAO_TAG_CLIENTE,
+  NODES.ACAO_ATRIBUIR,
 ]
 
 export function EditorDeAutomacao({
@@ -53,7 +60,14 @@ export function EditorDeAutomacao({
   const [selecionado, setSel]   = useState<string | null>(null)
   const [sujo, setSujo]         = useState(false)
   const [enquadrar, setEnquadrar] = useState(0)
+  const [opcoes, setOpcoes]       = useState<OpcoesDoEditor | null>(null)
+  const [limites, setLimites]     = useState<LimitesDaAutomacao>(automacao.limites)
+  const [verLimites, setVerLimites] = useState(false)
   const [salvando, salvar]      = useTransition()
+
+  // Etapas, cargos, pessoas e tags: uma consulta ao abrir. Pedi-las por node
+  // faria cada clique esperar uma ida ao banco.
+  useEffect(() => { opcoesDoEditor().then(setOpcoes).catch(() => setOpcoes(null)) }, [])
 
   const problemas = useMemo(() => validarGrafo(grafo), [grafo])
   const erros     = problemas.filter(p => p.grau === 'erro')
@@ -111,7 +125,7 @@ export function EditorDeAutomacao({
 
   function aoSalvar() {
     salvar(async () => {
-      const r = await salvarAutomacao({ id: automacao.id, nome, grafo })
+      const r = await salvarAutomacao({ id: automacao.id, nome, grafo, limites })
       if (r.error) {
         toast.error(r.error, { description: r.problemas?.join(' · ') })
         return
@@ -129,7 +143,7 @@ export function EditorDeAutomacao({
       // Ligar com alterações na tela ligaria a versão do BANCO, não a que a
       // pessoa está vendo — e ela sairia convencida de que ligou o que montou.
       if (sujo) {
-        const s = await salvarAutomacao({ id: automacao.id, nome, grafo })
+        const s = await salvarAutomacao({ id: automacao.id, nome, grafo, limites })
         if (s.error) {
           toast.error(s.error, { description: s.problemas?.join(' · ') })
           return
@@ -178,6 +192,14 @@ export function EditorDeAutomacao({
 
         {podeEditar && (
           <>
+            <button
+              type="button" className="btn-ghost"
+              onClick={() => { setVerLimites(v => !v); setSel(null) }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
+              title="Silêncio noturno e teto por cliente"
+            >
+              <ShieldCheck size={14} /> Limites
+            </button>
             <button
               type="button" className="btn-secondary" onClick={aoSalvar}
               disabled={salvando || !sujo}
@@ -247,15 +269,25 @@ export function EditorDeAutomacao({
           <ListaDeProblemas problemas={problemas} naoExecutaveis={naoExecutaveis.length} />
         </div>
 
-        {noSelecionado && (
+        {/* Um painel por vez: os dois juntos comeriam 640px do quadro, e as
+            duas coisas se configuram em momentos diferentes. */}
+        {noSelecionado ? (
           <PainelDoNo
             no={noSelecionado}
+            opcoes={opcoes}
             onChange={configurar}
             onExcluir={excluirNo}
             onFechar={() => setSel(null)}
             somenteLeitura={!podeEditar}
           />
-        )}
+        ) : verLimites ? (
+          <PainelDeLimites
+            limites={limites}
+            onChange={l => { setLimites(l); setSujo(true) }}
+            onFechar={() => setVerLimites(false)}
+            somenteLeitura={!podeEditar}
+          />
+        ) : null}
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEvento, atorDoContexto, ATOR_SISTEMA } from './emitir'
 import { EVENTOS } from '@estetica-os/types'
-import type { NomeDeEvento, AtorDoEvento, DadosDeConversa } from '@estetica-os/types'
+import type { OrigemDeEvento, NomeDeEvento, AtorDoEvento, DadosDeConversa } from '@estetica-os/types'
 
 /**
  * Emite um evento do inbox com o retrato da conversa.
@@ -26,7 +26,9 @@ export async function emitirEventoDeConversa(
     temMidia?:   boolean
     anuncio?:    { id?: string | null; titulo?: string | null; campanha?: string | null } | null
     ator?:       AtorDoEvento
-    origem?:     'app' | 'webhook' | 'cron'
+    origem?:     OrigemDeEvento
+    /** Quantas automações houve antes deste fato — o anti-loop do motor. */
+    profundidade?: number
     ctx?:        { internalUserId?: string | null; userName?: string | null }
   },
 ): Promise<void> {
@@ -67,7 +69,8 @@ export async function emitirEventoDeConversa(
       entidadeId: conversationId,
       dados,
       ator,
-      origem:     extras?.origem ?? 'app',
+      origem:       extras?.origem ?? 'app',
+      profundidade: extras?.profundidade,
       // A mensagem é a unidade de dedup, não a conversa: reentrega de webhook é
       // comum e não pode virar dois eventos da mesma mensagem. `iniciada` usa a
       // conversa, que acontece uma vez só.

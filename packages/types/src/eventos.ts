@@ -120,13 +120,17 @@ export type EntidadeDeEvento =
   | 'procedimento' | 'membro' | 'cargo' | 'integracao'
 
 /**
- * De onde o fato veio. Webhook, cron e banco não têm ator humano.
+ * De onde o fato veio. Webhook, cron, banco e automação não têm ator humano.
  *
  * `'banco'` é gatilho no Postgres — a escrita passa pelo service role e
  * `auth.uid()` é nulo, então ali **nunca** haverá ator. É por este campo que o
  * motor sabe que não adianta procurar por um.
+ *
+ * `'automacao'` é o próprio motor agindo, e existe para ele distinguir o que
+ * ELE fez do que uma pessoa fez. É metade do anti-loop: a outra metade é a
+ * profundidade que o fato carrega adiante.
  */
-export type OrigemDeEvento = 'app' | 'webhook' | 'cron' | 'banco'
+export type OrigemDeEvento = 'app' | 'webhook' | 'cron' | 'banco' | 'automacao'
 
 export type TipoDeAtor = 'usuario' | 'cliente' | 'sistema'
 

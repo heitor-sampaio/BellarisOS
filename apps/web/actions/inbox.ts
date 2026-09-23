@@ -10,6 +10,7 @@ import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { revalidatePath } from 'next/cache'
 import { resolverCanal } from '@/lib/channels/factory'
 import { estadoDaJanela } from '@/lib/channels/window'
+import { enviarNaConversa } from '@/lib/inbox/enviar'
 import {
   urlDaMidia, guardarUpload, classificarArquivo, validarArquivo,
 } from '@/lib/inbox/media'
@@ -1032,36 +1033,6 @@ export async function sendMessage(
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
 
-  const { data: conv } = await admin
-    .from('conversations')
-    .select('id, channel, tenant_id, status, contact_phone, contact_external_id, last_inbound_at')
-    .eq('id', conversationId)
-    .eq('tenant_id', ctx.tenantId!)
-    .single()
-
-  if (!conv) return { ok: false, error: 'Conversa não encontrada' }
-  if (conv.status === 'closed') return { ok: false, error: 'Conversa encerrada' }
-
-  const channel = conv.channel as ChannelKind
-
-  // Como se envia neste canal? Um lugar só decide — antes havia um `if` com
-  // forma de WhatsApp e um `else` que marcava a mensagem como "enviada" sem
-  // enviar nada: responder um Instagram dava "enviado" e o cliente nunca
-  // recebia.
-  const canal = await resolverCanal(ctx.tenantId!, channel)
-
-  if (!canal && channel !== 'manual') {
-    return {
-      ok: false,
-      error: `Canal ${channel} não está conectado. Configure em Configurações → Integrações.`,
-    }
-  }
-
-  // Janela de 24h da Meta. Fora dela a API recusa, então barrar aqui evita a
-  // pessoa escrever e a mensagem sumir.
-  const janela = estadoDaJanela(channel, conv.last_inbound_at as string | null, canal?.nome)
-  if (!janela.aberta) return { ok: false, error: janela.motivo ?? 'Janela de resposta fechada.' }
-
   // Quem está respondendo.
   //
   // ⚠️ `ctx.userId` é o id do AUTH, e `messages.sent_by_id` referencia
@@ -1075,76 +1046,36 @@ export async function sendMessage(
     .maybeSingle()
   if (erroPerfil) console.error('[sendMessage] perfil:', erroPerfil.message)
 
-  const senderId   = profile?.id   ?? ctx.internalUserId ?? null
-  const senderName = profile?.name ?? null
+  // O envio em si mora em `lib/inbox/enviar.ts`: a pessoa no inbox e o motor
+  // de automações mandam pelo mesmo caminho, com a mesma checagem de canal e
+  // de janela. Duas implementações divergiriam, e a primeira divergência seria
+  // a janela de 24h — a regra que, quando falha, marca como "enviado" o que o
+  // cliente nunca recebeu.
+  const r = await enviarNaConversa(
+    ctx.tenantId!, conversationId, content,
+    { id: profile?.id ?? ctx.internalUserId ?? null, nome: profile?.name ?? null },
+    { replyToExternalId },
+  )
 
-  const { data: msg, error } = await admin
-    .from('messages')
-    .insert({
-      conversation_id: conversationId,
-      tenant_id:       ctx.tenantId!,
-      direction:       'outbound',
-      content:         content.trim(),
-      channel:         conv.channel,
-      status:          'sending',
-      sent_by_id:      senderId,
-      sent_by_name:    senderName,
-      reply_to_external_id: replyToExternalId ?? null,
-    })
-    .select()
-    .single()
-
-  if (error) return { ok: false, error: error.message }
-
-  const msgTyped = msg as unknown as { id: string; status: string }
+  if (!r.ok && !r.mensagemId) return { ok: false, error: r.error }
 
   // Mensagem da EQUIPE. Serve a automações que reagem ao atendimento (marcar
   // primeira resposta, parar uma sequência porque alguém já respondeu) e por
   // isso carrega o ator de verdade, ao contrário da recebida.
   await emitirEventoDeConversa(EVENTOS.CONVERSA_MENSAGEM_ENVIADA, conversationId, ctx.tenantId!, {
     texto:      content.trim(),
-    mensagemId: msgTyped.id,
+    mensagemId: r.mensagemId!,
     ctx,
   })
 
-  if (!canal) {
-    // `manual`: nota interna, não tem para onde enviar. Fica registrada.
-    await admin.from('messages').update({ status: 'sent' }).eq('id', msgTyped.id)
-    msgTyped.status = 'sent'
-    revalidarInbox()
-    return { ok: true, message: msg as unknown as Message }
-  }
-
-  // O destinatário é o id do contato NO CANAL: telefone no WhatsApp, PSID ou
-  // IGSID nos canais da Meta.
-  // Telefone primeiro quando existe: a chave da conversa pode ser um @lid, que
-  // funciona, mas o número é o identificador estável dos dois lados. Em
-  // Instagram e Messenger não há telefone e cai no id do canal, como sempre.
-  const destino = (conv.contact_phone as string | null) ?? (conv.contact_external_id as string | null)
-  if (!destino) {
-    await admin.from('messages').update({ status: 'failed' }).eq('id', msgTyped.id)
-    return { ok: false, error: 'Esta conversa não tem um destinatário identificado.' }
-  }
-
-  try {
-    const { externalId } = await canal.provider.send(destino, content.trim(), {
-      replyToExternalId: replyToExternalId ?? undefined,
-    })
-    await admin
-      .from('messages')
-      .update({ status: 'sent', external_id: externalId, provider: canal.nome })
-      .eq('id', msgTyped.id)
-    msgTyped.status = 'sent'
-  } catch (sendErr) {
-    // A falha fica visível na conversa em vez de virar um "enviado" mentiroso.
-    console.error('[sendMessage]', sendErr)
-    await admin.from('messages').update({ status: 'failed' }).eq('id', msgTyped.id)
-    msgTyped.status = 'failed'
-    return { ok: false, error: mensagemDeFalha(sendErr) }
-  }
-
   revalidarInbox()
-  return { ok: true, message: msg as unknown as Message }
+
+  const { data: msg } = await admin
+    .from('messages').select('*').eq('id', r.mensagemId!).single()
+
+  return r.ok
+    ? { ok: true, message: msg as unknown as Message }
+    : { ok: false, error: mensagemDeFalha(new Error(r.error ?? 'Falha no envio.')), message: msg as unknown as Message }
 }
 
 /** O WhatsApp recusa edição depois disso, e a recusa vem como erro genérico. */

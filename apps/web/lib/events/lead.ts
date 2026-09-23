@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEvento, atorDoContexto, ATOR_SISTEMA } from './emitir'
 import { EVENTOS } from '@estetica-os/types'
-import type { NomeDeEvento, AtorDoEvento, DadosDeLead } from '@estetica-os/types'
+import type { NomeDeEvento, AtorDoEvento, OrigemDeEvento, DadosDeLead } from '@estetica-os/types'
 
 /**
  * Emite um evento do funil com o retrato do card.
@@ -18,7 +18,13 @@ export async function emitirEventoDeLead(
   nome: NomeDeEvento,
   leadId: string,
   ctx: { tenantId?: string | null; internalUserId?: string | null; userName?: string | null },
-  extras?: { deEtapaNome?: string | null; ator?: AtorDoEvento; origem?: 'app' | 'webhook' | 'cron' },
+  extras?: {
+    deEtapaNome?: string | null
+    ator?: AtorDoEvento
+    origem?: OrigemDeEvento
+    /** Quantas automações houve antes deste fato — o anti-loop do motor. */
+    profundidade?: number
+  },
 ): Promise<void> {
   try {
     if (!ctx.tenantId) return
@@ -57,7 +63,8 @@ export async function emitirEventoDeLead(
       entidadeId: leadId,
       dados,
       ator:       extras?.ator ?? (ctx.internalUserId ? atorDoContexto(ctx) : ATOR_SISTEMA),
-      origem:     extras?.origem ?? 'app',
+      origem:       extras?.origem ?? 'app',
+      profundidade: extras?.profundidade,
       // Só a criação é única. Um card entra e sai da mesma etapa várias vezes,
       // e pode ser reaberto depois de ganho — cada passagem é um fato novo.
       chave: nome === EVENTOS.LEAD_CRIADO ? `${nome}:${leadId}` : undefined,

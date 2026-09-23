@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
-import type { GrafoDeAutomacao } from '@estetica-os/types'
+import type { GrafoDeAutomacao, NoDoGrafo } from '@estetica-os/types'
 
 /**
  * A conferência do grafo.
@@ -11,12 +11,12 @@ import type { GrafoDeAutomacao } from '@estetica-os/types'
  * segundo gatilho.
  */
 
-const gatilho = {
-  id: 'g1', tipo: 'gatilho.evento' as const, pos: { x: 0, y: 0 },
+const gatilho: NoDoGrafo = {
+  id: 'g1', tipo: 'gatilho.evento', pos: { x: 0, y: 0 },
   config: { evento: 'cliente.criado' },
 }
-const acao = {
-  id: 'a1', tipo: 'acao.anotar' as const, pos: { x: 200, y: 0 },
+const acao: NoDoGrafo = {
+  id: 'a1', tipo: 'acao.anotar', pos: { x: 200, y: 0 },
   config: { texto: 'oi' },
 }
 
@@ -75,7 +75,7 @@ describe('validarGrafo', () => {
   })
 
   it('condição sem nenhuma saída ligada é erro; com uma só, aviso', () => {
-    const se = { id: 'c1', tipo: 'condicao.se' as const, pos: { x: 100, y: 0 }, config: {} }
+    const se: NoDoGrafo = { id: 'c1', tipo: 'condicao.se', pos: { x: 100, y: 0 }, config: {} }
 
     const solta = grafo({
       nos: [gatilho, se], ligacoes: [{ id: 'l1', de: 'g1', para: 'c1' }],

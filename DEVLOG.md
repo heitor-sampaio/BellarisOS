@@ -85,7 +85,7 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 210 unitários (Vitest) + 47 E2E (Playwright) rodando contra o banco
+- **Testes:** 219 unitários (Vitest) + 48 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** serviço na Railway roda `scripts/cron.mjs` de hora em hora
   (campanhas de notificação e exportações de LGPD).
@@ -939,6 +939,56 @@ Módulo novo no menu da rede (só lá: o motor reage a fatos de todas as unidade
 e uma versão por filial prometeria um recorte que ele não faz).
 
 Faltam as fases 3 a 5: as ações que falam, o tempo e o histórico.
+
+### 2026-09-24 — Automações, Fase 3 (as ações que falam)
+
+Cinco ações novas: **mandar mensagem** ao cliente, mover de etapa, marcar
+ganho/perdido, marcar com tag e definir responsável. É aqui que a automação
+deixa de mexer só em coisas internas e passa a **falar com o cliente** — e é
+por isso que os limites de bom comportamento entram nesta fase, não na próxima.
+
+**O envio saiu de `actions/` para `lib/inbox/enviar.ts`.** Agora há dois
+remetentes: a pessoa no inbox e o motor. Uma segunda implementação divergiria
+no primeiro ajuste, e a primeira divergência seria justamente a **janela de 24h
+da Meta** — a regra que, quando falha, marca como "enviado" o que o cliente
+nunca recebeu. A action continua existindo e passou a chamar o núcleo.
+
+**A mensagem precisa de uma conversa.** Mensagem não existe no vácuo: mora numa
+thread do inbox, que é onde a equipe vê a resposta. O motor usa a conversa do
+contexto ou a mais recente do cliente naquele canal; **não abre conversa
+nova** — e no WhatsApp oficial nem seria possível sem template aprovado. Fora
+da janela de 24h o passo falha dizendo exatamente isso, em vez de um "enviado"
+que não chega.
+
+**Dois limites, e cada um falha de um jeito diferente:**
+- **Silêncio noturno (21h–8h por padrão) faz a mensagem ESPERAR**, não sumir.
+  Descartar faria o lembrete do dia seguinte simplesmente não acontecer. A
+  faixa atravessa a meia-noite, e é aí que a aritmética ingênua erra: comparar
+  sempre com `>=` e `<=` daria "nunca é noite" no caso normal.
+- **Teto por cliente por dia (3) RECUSA.** Esperar até amanhã acumularia a fila
+  e mandaria tudo de uma vez às 8h01.
+
+Valem só para o que fala com o cliente: avisar a equipe e anotar na
+oportunidade não acordam ninguém, e travá-los faria a recepção descobrir de
+manhã um no-show da véspera.
+
+**As ações de CRM fazem o mesmo que a tela, pelos mesmos caminhos.** Mover de
+etapa também grava a linha do tempo do card e emite os eventos, como
+`updateLeadStage`; uma ação que só trocasse a coluna deixaria o histórico
+mentindo sobre como o card chegou ali. E "nada a fazer" é um **fato, não um
+erro**: adicionar uma tag que já está lá não pinta o passo de vermelho nem
+emite "dados alterados".
+
+**O anel agora tem teste de verdade.** O validador recusa o ciclo dentro de um
+grafo; este é outro — dois grafos em linha reta cujo anel se fecha pela corrente
+de eventos, porque a ação de um emite o gatilho do outro. O E2E monta o par
+adiciona-tag/remove-tag (com uma automação só o anel morreria sozinho: a
+segunda passagem não alteraria nada), acende o pavio editando o cliente pela
+tela, e confere que as execuções **estabilizam** e que nenhuma passa da
+profundidade máxima. Fechou em dez voltas; sem a trava seriam centenas em
+segundos.
+
+Faltam as fases 4 e 5: o tempo e o histórico.
 
 ---
 

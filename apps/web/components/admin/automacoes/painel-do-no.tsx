@@ -6,6 +6,7 @@ import type {
   NoDoGrafo, TipoDeNo, GrupoDeCondicao, RegraDeCondicao, OperadorDeCondicao,
 } from '@estetica-os/types'
 import { ROTULOS } from '@/lib/automacoes/validar'
+import type { OpcoesDoEditor } from '@/actions/automacoes'
 
 /**
  * O painel de configuração do node selecionado.
@@ -69,13 +70,15 @@ const CAMPOS: { grupo: string; itens: { caminho: string; rotulo: string }[] }[] 
 
 interface Props {
   no:       NoDoGrafo
+  /** Etapas, cargos, pessoas e tags da rede — carregadas uma vez pelo editor. */
+  opcoes:   OpcoesDoEditor | null
   onChange: (config: Record<string, unknown>) => void
   onExcluir: () => void
   onFechar:  () => void
   somenteLeitura?: boolean
 }
 
-export function PainelDoNo({ no, onChange, onExcluir, onFechar, somenteLeitura }: Props) {
+export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteLeitura }: Props) {
   const c = (no.config ?? {}) as Record<string, unknown>
   const set = (patch: Record<string, unknown>) => onChange({ ...c, ...patch })
 
@@ -159,11 +162,25 @@ export function PainelDoNo({ no, onChange, onExcluir, onFechar, somenteLeitura }
                 <option value="cargo">Um cargo</option>
                 <option value="usuario">Uma pessoa</option>
               </select>
-              {(c.alvo === 'cargo' || c.alvo === 'usuario') && (
-                <Dica>
-                  Escolher {c.alvo === 'cargo' ? 'o cargo' : 'a pessoa'} ainda não
-                  está nesta tela — por enquanto, deixe em &quot;a unidade do fato&quot;.
-                </Dica>
+              {c.alvo === 'cargo' && (
+                <select
+                  className="field" style={{ marginTop: 6 }} value={(c.alvoId as string) ?? ''}
+                  disabled={somenteLeitura}
+                  onChange={e => set({ alvoId: e.target.value || null })}
+                >
+                  <option value="">Escolha o cargo…</option>
+                  {(opcoes?.cargos ?? []).map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
+                </select>
+              )}
+              {c.alvo === 'usuario' && (
+                <select
+                  className="field" style={{ marginTop: 6 }} value={(c.alvoId as string) ?? ''}
+                  disabled={somenteLeitura}
+                  onChange={e => set({ alvoId: e.target.value || null })}
+                >
+                  <option value="">Escolha a pessoa…</option>
+                  {(opcoes?.pessoas ?? []).map(u => <option key={u.id} value={u.id}>{u.nome}</option>)}
+                </select>
               )}
             </Campo>
             <Campo rotulo="Título">
@@ -202,6 +219,115 @@ export function PainelDoNo({ no, onChange, onExcluir, onFechar, somenteLeitura }
           </Campo>
         )}
 
+        {no.tipo === NODES.ACAO_MENSAGEM && (
+          <>
+            <Campo rotulo="Canal">
+              <select
+                className="field" value={(c.canal as string) ?? 'whatsapp'}
+                disabled={somenteLeitura}
+                onChange={e => set({ canal: e.target.value })}
+              >
+                <option value="whatsapp">WhatsApp</option>
+                <option value="instagram">Instagram</option>
+                <option value="messenger">Messenger</option>
+              </select>
+            </Campo>
+            <Campo rotulo="Mensagem">
+              <textarea
+                className="field" rows={4} value={(c.texto as string) ?? ''}
+                disabled={somenteLeitura}
+                onChange={e => set({ texto: e.target.value })}
+                placeholder="Oi {{cliente.nome}}, tudo bem?"
+              />
+              <Dica>
+                A mensagem vai para a conversa aberta do cliente neste canal.
+                Fora das <strong>24 horas</strong> da última mensagem dele, a
+                Meta só aceita template aprovado — e esta versão ainda não
+                envia template, então o passo falha dizendo isso em vez de dar
+                um &quot;enviado&quot; que não chega.
+              </Dica>
+            </Campo>
+          </>
+        )}
+
+        {no.tipo === NODES.ACAO_MOVER_ETAPA && (
+          <Campo rotulo="Mover para">
+            <select
+              className="field" value={(c.etapaId as string) ?? ''}
+              disabled={somenteLeitura}
+              onChange={e => {
+                const op = opcoes?.etapas.find(x => x.id === e.target.value)
+                // O nome vai junto só para o card do quadro poder dizer "para
+                // Fechamento" sem consultar nada. Quem manda é o id.
+                set({ etapaId: e.target.value, etapaNome: op?.nome ?? null })
+              }}
+            >
+              <option value="">Escolha a etapa…</option>
+              {(opcoes?.etapas ?? []).map(e => (
+                <option key={e.id} value={e.id}>{e.funil} · {e.nome}</option>
+              ))}
+            </select>
+          </Campo>
+        )}
+
+        {no.tipo === NODES.ACAO_DESFECHO && (
+          <Campo rotulo="Marcar como">
+            <select
+              className="field" value={(c.desfecho as string) ?? 'ganho'}
+              disabled={somenteLeitura}
+              onChange={e => set({ desfecho: e.target.value })}
+            >
+              <option value="ganho">Ganho</option>
+              <option value="perdido">Perdido</option>
+            </select>
+            <Dica>
+              Move a oportunidade para a etapa de desfecho do funil em que ela
+              está — é assim que o sistema representa ganho e perdido.
+            </Dica>
+          </Campo>
+        )}
+
+        {no.tipo === NODES.ACAO_TAG_CLIENTE && (
+          <>
+            <Campo rotulo="O que fazer">
+              <select
+                className="field" value={(c.modo as string) ?? 'adicionar'}
+                disabled={somenteLeitura}
+                onChange={e => set({ modo: e.target.value })}
+              >
+                <option value="adicionar">Adicionar a tag</option>
+                <option value="remover">Remover a tag</option>
+              </select>
+            </Campo>
+            <Campo rotulo="Tag">
+              <select
+                className="field" value={(c.tag as string) ?? ''}
+                disabled={somenteLeitura}
+                onChange={e => set({ tag: e.target.value })}
+              >
+                <option value="">Escolha a tag…</option>
+                {(opcoes?.tags ?? []).map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </Campo>
+          </>
+        )}
+
+        {no.tipo === NODES.ACAO_ATRIBUIR && (
+          <Campo rotulo="Responsável">
+            <select
+              className="field" value={(c.usuarioId as string) ?? ''}
+              disabled={somenteLeitura}
+              onChange={e => {
+                const op = opcoes?.pessoas.find(x => x.id === e.target.value)
+                set({ usuarioId: e.target.value || null, usuarioNome: op?.nome ?? null })
+              }}
+            >
+              <option value="">Tirar o responsável</option>
+              {(opcoes?.pessoas ?? []).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+            </select>
+          </Campo>
+        )}
+
         {NODES_SEM_EDITOR.includes(no.tipo as TipoDeNo) && (
           <div className="card-sm" style={{ background: 'var(--bg-app)' }}>
             <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
@@ -231,9 +357,7 @@ export function PainelDoNo({ no, onChange, onExcluir, onFechar, somenteLeitura }
 /** Os que estão no catálogo e no quadro, mas ainda sem executor. */
 const NODES_SEM_EDITOR: TipoDeNo[] = [
   NODES.GATILHO_AGENDA, NODES.BUSCAR_CLIENTES,
-  NODES.ESPERA_DURACAO, NODES.ESPERA_ATE,
-  NODES.ACAO_MENSAGEM, NODES.ACAO_MOVER_ETAPA, NODES.ACAO_DESFECHO,
-  NODES.ACAO_TAG_CLIENTE, NODES.ACAO_ATRIBUIR, NODES.ACAO_LEMBRETE,
+  NODES.ESPERA_DURACAO, NODES.ESPERA_ATE, NODES.ACAO_LEMBRETE,
 ]
 
 // ─── Peças ──────────────────────────────────────────────────────────────────
