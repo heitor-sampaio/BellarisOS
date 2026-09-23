@@ -610,8 +610,47 @@ os quatro status.
 **Faltam as fases 2 a 6:** clientes/CRM/inbox (inclui os webhooks), dinheiro,
 clínico e estoque, cadastro e configuração, e o painel de conferência.
 
-**Pendência anotada, não resolvida às cegas:** retenção. `domain_events` cresce
-para sempre; a base é pequena hoje e nada expira nesta fase.
+### 2026-09-23 — Eventos: retenção de 30 dias e Fase 2 (clientes, CRM, inbox)
+
+**Retenção: 30 dias** (decisão do Heitor). Um cron novo
+(`/api/cron/eventos-expirados`) apaga o que passar disso. A consequência é de
+produto e vale lembrar ao montar automação: **a corrente é uma janela, não um
+arquivo**. Automação que precise olhar além de 30 dias — "cliente que não volta
+há 90" — tem de consultar o dado de negócio direto, não `domain_events`. O
+histórico duradouro segue onde sempre esteve: `lead_events` e
+`appointment_history` têm retenção própria e não são tocados.
+
+**Fase 2 — onze eventos**, em três domínios:
+
+- **Cliente:** `criado`, `dados_alterados` (com `alterou`), `desativado`,
+  `reativado`.
+- **CRM:** `lead.criado`, `etapa_mudou`, `ganho`, `perdido`.
+- **Inbox:** `conversa.iniciada`, `mensagem_recebida`, `mensagem_enviada`,
+  `veio_de_anuncio`.
+
+**`ganho` e `perdido` são eventos próprios**, e não `etapa_mudou` com um campo.
+Mover para uma etapa de desfecho emite os DOIS: quem automatiza "avisar o dono
+quando o card sai da coluna X" quer o movimento; quem automatiza "pedir
+avaliação ao fechar" quer o desfecho. Obrigar o motor a ler o `outcome` da
+etapa seria devolver a ele o trabalho que o catálogo existe para poupar. Mesma
+razão para `conversa.veio_de_anuncio` ser separado de `conversa.iniciada`.
+
+**O webhook foi o caso que mais importava.** Metade destes eventos nasce
+quando o WhatsApp entrega a mensagem, sem ninguém logado — por isso saem com
+`ator_tipo='sistema'` e `origem='webhook'`. Uma automação de primeiro
+atendimento precisa dessa distinção para **não responder à própria clínica**.
+`e2e/eventos-webhook.spec.ts` dispara um webhook real de anúncio e confere os
+três eventos, o ator, a origem, o texto e o id do anúncio.
+
+Dois cuidados que evitam disparo à toa:
+- `cliente.dados_alterados` só sai quando algo mudou de verdade
+  (`camposAlterados`). Abrir a aba e clicar em salvar é comum, e emitir aí faria
+  toda automação do tipo disparar sem motivo.
+- Criação emite do CORE, não das actions: cliente nasce por três caminhos e
+  lead por dois. A chave determinística barra o segundo evento quando dois
+  caminhos passam pelo mesmo fato.
+
+**Faltam as fases 3 a 6.**
 
 ---
 

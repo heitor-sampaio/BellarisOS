@@ -7,6 +7,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
 import { after } from 'next/server'
 import { enviarEventoCapi } from '@/lib/ads/capi'
+import { emitirEventoDeCliente } from '@/lib/events/cliente'
+import { camposAlterados } from '@/lib/events/emitir'
+import { EVENTOS } from '@estetica-os/types'
 import { registrarEventoLead } from '@/lib/lead-events'
 import { garantirClienteRapido, ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
 
@@ -167,6 +170,12 @@ export async function addClient(
   await admin.rpc('set_client_claims', { p_auth_id: authId, p_client_id: client.id })
   if (!jaExiste) await admin.from('loyalty_accounts').insert({ client_id: client.id })
 
+  // A ficha completa não passa por `garantirClienteRapido` quando o cliente
+  // nasce aqui — daí a emissão também neste ponto. Completar uma ficha rápida
+  // (`jaExiste`) não é criação, e nesse caso a chave determinística do ajudante
+  // já barra o segundo evento.
+  await emitirEventoDeCliente(EVENTOS.CLIENTE_CRIADO, client.id as string, ctx)
+
   // 4) O contato passa a ser cliente. É aqui que o selo aparece na conversa, e
   //    nenhuma oportunidade é tocada: cadastrar cliente não fecha negócio.
   if (conversationId) {
@@ -324,6 +333,14 @@ export async function updateClientContactData(
     if (dup) return { error: `CPF já cadastrado para ${dup.name}.` }
   }
 
+  // O estado ANTERIOR, para o evento poder dizer O QUE mudou. Sem isto a
+  // automação só saberia que "o cliente mudou", e não que foi o telefone — que
+  // é a pergunta que ela realmente faz.
+  const { data: antes } = await admin
+    .from('clients')
+    .select('name, phone, email, birth_date, document, tags, gender, notes, city')
+    .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle()
+
   const { error } = await admin
     .from('clients')
     .update({
@@ -350,6 +367,19 @@ export async function updateClientContactData(
     .eq('tenant_id', ctx.tenantId!)
 
   if (error) return { error: error.message }
+
+  const { data: depois } = await admin
+    .from('clients')
+    .select('name, phone, email, birth_date, document, tags, gender, notes, city')
+    .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle()
+
+  const alterou = camposAlterados(antes ?? {}, depois ?? {})
+  // Salvar sem mexer em nada é comum — abriu a aba, clicou em salvar. Emitir
+  // aí faria toda automação de "dados alterados" disparar à toa.
+  if (alterou.length > 0) {
+    await emitirEventoDeCliente(EVENTOS.CLIENTE_DADOS_ALTERADOS, clientId, ctx, { alterou })
+  }
+
   // A ficha existe nos dois portais; o slug só vem quando a edição saiu da unidade.
   if (slug) revalidatePath(`/${slug}/clients/${clientId}`)
   revalidatePath(`/admin/clients/${clientId}`)
@@ -431,6 +461,11 @@ export async function toggleClientStatus(clientId: string, isActive: boolean, sl
     .eq('tenant_id', ctx.tenantId!)
 
   if (error) return { error: `Não foi possível ${isActive ? 'reativar' : 'desativar'} o cliente: ${error.message}` }
+
+  await emitirEventoDeCliente(
+    isActive ? EVENTOS.CLIENTE_REATIVADO : EVENTOS.CLIENTE_DESATIVADO,
+    clientId, ctx,
+  )
 
   if (slug) {
     revalidatePath(`/${slug}/clients`)

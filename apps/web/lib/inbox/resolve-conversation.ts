@@ -2,6 +2,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { InboundMsg, ChannelKind, SendProvider } from '@/lib/channels/types'
 import { guardarMidia } from '@/lib/inbox/media'
 import { resolveLeadSource } from '@estetica-os/utils'
+import { emitirEventoDeConversa } from '@/lib/events/conversa'
+import { EVENTOS } from '@estetica-os/types'
 
 interface ResolveResult {
   conversationId: string
@@ -189,6 +191,28 @@ export async function resolveConversation(
   // andamento e o quadro enchia de card que ninguém abriu. Criar oportunidade é
   // decisão de quem atende (ou, mais tarde, de uma automação), não efeito
   // colateral de receber mensagem.
+  // A corrente de eventos. `conversa.iniciada` só acontece AQUI — depois do
+  // insert que de fato criou o contato. Emitir no começo da função marcaria
+  // como nova toda mensagem de quem já é conhecido.
+  await emitirEventoDeConversa(EVENTOS.CONVERSA_INICIADA, inserted!.id, tenantId, {
+    origem: 'webhook',
+    anuncio: msg.referral ? {
+      id:     msg.referral.sourceId ?? null,
+      titulo: msg.referral.headline ?? null,
+    } : null,
+  })
+
+  // Veio de anúncio é evento PRÓPRIO, e não um campo do anterior: a automação
+  // de lead pago é diferente da de contato orgânico — responde mais rápido,
+  // com outra mensagem — e separar evita que toda automação de conversa
+  // precise abrir o payload para descobrir se aquela é a sua.
+  if (msg.referral?.sourceId) {
+    await emitirEventoDeConversa(EVENTOS.CONVERSA_VEIO_DE_ANUNCIO, inserted!.id, tenantId, {
+      origem:  'webhook',
+      anuncio: { id: msg.referral.sourceId, titulo: msg.referral.headline ?? null },
+    })
+  }
+
   return { conversationId: inserted!.id, branchId: null }
 }
 
@@ -374,6 +398,23 @@ export async function insertInboundMessage(
 
   // Sem isto, mensagem perdida no webhook não deixava rastro nenhum.
   if (error) console.error('[insertInboundMessage]', error.message)
+
+  // Mensagem do CLIENTE — é o gatilho de primeiro atendimento, resposta
+  // automática fora do horário e SLA. Ator 'sistema' porque ninguém da equipe
+  // agiu: quem falou foi a pessoa do outro lado, e a automação precisa dessa
+  // distinção para não responder à própria clínica.
+  if (!error) {
+    await emitirEventoDeConversa(EVENTOS.CONVERSA_MENSAGEM_RECEBIDA, conversationId, tenantId, {
+      origem:     'webhook',
+      texto:      msg.content,
+      mensagemId: msg.externalId,
+      temMidia:   !!msg.media,
+      anuncio:    msg.referral ? {
+        id:     msg.referral.sourceId ?? null,
+        titulo: msg.referral.headline ?? null,
+      } : null,
+    })
+  }
 }
 
 /**

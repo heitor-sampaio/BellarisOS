@@ -3,6 +3,9 @@
 import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { nomesDeAnuncios } from '@/lib/ads/ad-lookup'
+import { emitirEventoDeConversa } from '@/lib/events/conversa'
+import { emitirEventoDeLead, eventoDoDesfecho } from '@/lib/events/lead'
+import { EVENTOS } from '@estetica-os/types'
 import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { revalidatePath } from 'next/cache'
 import { resolverCanal } from '@/lib/channels/factory'
@@ -755,6 +758,12 @@ export async function criarOportunidade(
     actorName:   ctx.userName || null,
   })
 
+  // O card nasce por dois caminhos — cadastro manual em Oportunidades e este,
+  // a partir de uma conversa. Emitir nos dois é o que faz a automação de
+  // "novo negócio" valer para os dois, e a chave determinística garante que
+  // não haja evento repetido.
+  await emitirEventoDeLead(EVENTOS.LEAD_CRIADO, leadId, ctx)
+
   // `conversations.lead_id` é a oportunidade PRINCIPAL: é por ela que o card do
   // quadro volta para a conversa certa. A primeira criada assume o posto.
   if (!c.lead_id) {
@@ -1088,6 +1097,15 @@ export async function sendMessage(
   if (error) return { ok: false, error: error.message }
 
   const msgTyped = msg as unknown as { id: string; status: string }
+
+  // Mensagem da EQUIPE. Serve a automações que reagem ao atendimento (marcar
+  // primeira resposta, parar uma sequência porque alguém já respondeu) e por
+  // isso carrega o ator de verdade, ao contrário da recebida.
+  await emitirEventoDeConversa(EVENTOS.CONVERSA_MENSAGEM_ENVIADA, conversationId, ctx.tenantId!, {
+    texto:      content.trim(),
+    mensagemId: msgTyped.id,
+    ctx,
+  })
 
   if (!canal) {
     // `manual`: nota interna, não tem para onde enviar. Fica registrada.

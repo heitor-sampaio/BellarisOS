@@ -9,6 +9,8 @@ import {
   registrarEventoLead, etapaAtualDoLead, estadoAtualDoLead,
   diferencas, listaLegivel,
 } from '@/lib/lead-events'
+import { emitirEventoDeLead, eventoDoDesfecho, etapaDeCrm } from '@/lib/events/lead'
+import { EVENTOS } from '@estetica-os/types'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 
 function str(fd: FormData, key: string) {
@@ -159,6 +161,8 @@ export async function createLead(
       actorUserId: ctx.internalUserId,
       actorName:   ctx.userName || null,
     })
+
+    await emitirEventoDeLead(EVENTOS.LEAD_CRIADO, lead.id as string, ctx)
 
     revalidatePath(`/${slug}/oportunidades`)
     revalidatePath('/admin/oportunidades')
@@ -331,6 +335,17 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
         actorUserId: ctx.internalUserId,
         actorName:   ctx.userName || null,
       })
+
+      // A corrente de eventos, ao lado da linha do tempo do card. O movimento
+      // sempre emite; chegar numa etapa de desfecho emite TAMBÉM o ganho ou o
+      // perdido — ver `lib/events/lead.ts` para o porquê de serem dois.
+      const de      = await etapaDeCrm(ctx.tenantId!, etapaAnterior)
+      const destino = await etapaDeCrm(ctx.tenantId!, crm_stage_id)
+
+      await emitirEventoDeLead(EVENTOS.LEAD_ETAPA_MUDOU, leadId, ctx, { deEtapaNome: de.nome })
+
+      const evento = eventoDoDesfecho(destino.desfecho)
+      if (evento) await emitirEventoDeLead(evento, leadId, ctx, { deEtapaNome: de.nome })
     }
 
     revalidatePath(`/${slug}/oportunidades`)

@@ -13,7 +13,7 @@
  * falha em vez de engolir o erro.
  */
 
-const JOBS = ['notification-campaigns', 'lgpd-exports', 'meta-capi']
+const JOBS = ['notification-campaigns', 'lgpd-exports', 'meta-capi', 'eventos-expirados']
 
 const APP_URL     = process.env.APP_URL
 const CRON_SECRET = process.env.CRON_SECRET

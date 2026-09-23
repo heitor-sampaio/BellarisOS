@@ -11,6 +11,8 @@
 // Quem chama já autorizou.
 
 import { unitTag } from '@estetica-os/utils'
+import { emitirEventoDeCliente } from '@/lib/events/cliente'
+import { EVENTOS } from '@estetica-os/types'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -118,6 +120,13 @@ export async function garantirClienteRapido(
   if (error || !cliente) return { error: `Erro ao cadastrar o cliente: ${error?.message ?? 'desconhecido'}` }
 
   await admin.from('loyalty_accounts').insert({ client_id: cliente.id })
+
+  // A corrente de eventos. Sai daqui, e não das actions, pelo mesmo motivo do
+  // agendamento: cliente nasce por três caminhos (cadastro rápido no agendar,
+  // ficha completa, conversão de contato no inbox) e o fato é um só. A chave
+  // determinística no ajudante garante que o caminho da ficha completa, que
+  // passa por aqui antes, não emita duas vezes.
+  await emitirEventoDeCliente(EVENTOS.CLIENTE_CRIADO, cliente.id as string, ctx)
 
   if (input.conversationId) {
     await ligarContatoAoCliente(admin, ctx.tenantId!, input.conversationId, cliente.id as string)

@@ -8,5 +8,6 @@ export type { ClientWithLoyalty, ClientSummary } from './client'
 export type {
   NomeDeEvento, EntidadeDeEvento, OrigemDeEvento, TipoDeAtor, AtorDoEvento,
   DadosDeEvento, EventoDeDominio, DadosDeAgendamento,
+  DadosDeCliente, DadosDeLead, DadosDeConversa,
 } from './eventos'
 export { EVENTOS } from './eventos'
