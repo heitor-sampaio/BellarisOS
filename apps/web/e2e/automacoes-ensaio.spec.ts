@@ -97,5 +97,8 @@ test('o ensaio percorre o fluxo, mostra o caminho e NÃO executa as ações', as
   // que o fluxo rodou sozinho.
   await page.goto('/admin/automacoes')
   const cartao = page.locator('a', { hasText: nome })
-  await expect(cartao.getByText('0')).toBeVisible()
+  // Pelo texto do contador, e não por `getByText('0')`: o nome do teste carrega
+  // um sufixo em base 36, e quando o relógio produzia um "0" ali o seletor
+  // casava com duas coisas e o teste caía sem nada a ver com o produto.
+  await expect(cartao.getByText(/^0$/)).toBeVisible()
 })

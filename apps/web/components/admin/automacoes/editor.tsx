@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   ChevronLeft, Play, Pause, Save, Plus, AlertCircle, CheckCircle2, ShieldCheck, History,
+  X,
   GitBranch,
 } from 'lucide-react'
 import {
@@ -69,6 +70,8 @@ export function EditorDeAutomacao({
   const [limites, setLimites]     = useState<LimitesDaAutomacao>(automacao.limites)
   // Um painel por vez: 'no' vem da seleção no quadro; os outros dois, da barra.
   const [gaveta, setGaveta] = useState<'limites' | 'execucoes' | 'versoes' | null>(null)
+  // Só o celular usa: lá a paleta cobre o quadro em vez de ser uma coluna.
+  const [paleta, setPaleta] = useState(false)
   const [salvando, salvar]      = useTransition()
 
   // Etapas, cargos, pessoas e tags: uma consulta ao abrir. Pedi-las por node
@@ -212,9 +215,12 @@ export function EditorDeAutomacao({
   const naoExecutaveis = grafo.nos.filter(n => !EXECUTAVEIS.includes(n.tipo as TipoDeNo))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 92px)' }}>
+    <div
+      className="auto-editor"
+      style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 92px)' }}
+    >
       {/* -- Barra ---------------------------------------------------------- */}
-      <div style={{
+      <div className="auto-barra" style={{
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
         padding: '0 0 14px', borderBottom: '1px solid var(--hairline)',
       }}>
@@ -239,29 +245,37 @@ export function EditorDeAutomacao({
 
         {podeEditar && (
           <>
+            {/* No celular a paleta não cabe como coluna: vira esta gaveta. */}
+            <button
+              type="button" className="btn-secondary show-mobile"
+              onClick={() => { setPaleta(true); setSel(null); setGaveta(null) }}
+              style={{ alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
+            >
+              <Plus size={14} /> Passo
+            </button>
             <button
               type="button" className="btn-ghost"
               onClick={() => { setGaveta(g => (g === 'execucoes' ? null : 'execucoes')); setSel(null) }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
-              title="Histórico e ensaio"
+              title="Histórico e ensaio" aria-label="Execuções"
             >
-              <History size={14} /> Execuções
+              <History size={14} /> <span className="auto-rotulo">Execuções</span>
             </button>
             <button
               type="button" className="btn-ghost"
               onClick={() => { setGaveta(g => (g === 'versoes' ? null : 'versoes')); setSel(null) }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
-              title="Histórico do fluxo — e voltar para uma versão anterior"
+              title="Histórico do fluxo — e voltar para uma versão anterior" aria-label="Versões"
             >
-              <GitBranch size={14} /> Versões
+              <GitBranch size={14} /> <span className="auto-rotulo">Versões</span>
             </button>
             <button
               type="button" className="btn-ghost"
               onClick={() => { setGaveta(g => (g === 'limites' ? null : 'limites')); setSel(null) }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
-              title="Silêncio noturno e teto por cliente"
+              title="Silêncio noturno e teto por cliente" aria-label="Limites"
             >
-              <ShieldCheck size={14} /> Limites
+              <ShieldCheck size={14} /> <span className="auto-rotulo">Limites</span>
             </button>
             <button
               type="button" className="btn-secondary" onClick={aoSalvar}
@@ -284,19 +298,46 @@ export function EditorDeAutomacao({
 
       {/* -- Corpo ---------------------------------------------------------- */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        {/* Paleta */}
+        {/* Paleta — coluna no desktop, gaveta de tela cheia no celular. */}
         {podeEditar && (
-          <aside style={{
-            width: 190, flexShrink: 0, overflowY: 'auto', paddingRight: 12,
-            borderRight: '1px solid var(--hairline)',
-          }}>
+          <aside
+            className="auto-paleta"
+            data-aberta={paleta ? '1' : '0'}
+            aria-label="Passos disponíveis"
+            style={{
+              width: 190, flexShrink: 0, overflowY: 'auto', paddingRight: 12,
+              borderRight: '1px solid var(--hairline)',
+            }}
+          >
+            {/* Só aparece quando a paleta está por cima do quadro; na coluna
+                do desktop não há o que fechar. */}
+            <div className="show-mobile" style={{
+              alignItems: 'center', justifyContent: 'space-between',
+              gap: 8, paddingBottom: 6, borderBottom: '1px solid var(--hairline)',
+            }}>
+              <span style={{ fontWeight: 'var(--weight-extrabold)', fontSize: 'var(--text-sm-sz)' }}>
+                Adicionar passo
+              </span>
+              <button
+                type="button" onClick={() => setPaleta(false)} className="btn-ghost"
+                aria-label="Fechar" style={{ padding: 4 }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
             {PALETA.map(g => (
               <div key={g.grupo} style={{ marginTop: 14 }}>
                 <p className="overline" style={{ marginBottom: 6 }}>{g.grupo}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {g.tipos.map(t => (
                     <button
-                      key={t} type="button" onClick={() => adicionar(t)}
+                      key={t} type="button"
+                      // No celular a paleta cobre o quadro: deixá-la aberta
+                      // depois de escolher esconderia justamente o node que
+                      // acabou de nascer, e o toque pareceria não ter feito
+                      // nada — o mesmo sintoma que o reenquadramento resolveu.
+                      onClick={() => { adicionar(t); setPaleta(false) }}
                       className="btn-ghost"
                       style={{
                         justifyContent: 'flex-start', textAlign: 'left',
@@ -386,7 +427,7 @@ function ListaDeProblemas({
 
   if (!problemas.length && !naoExecutaveis) {
     return (
-      <div style={{
+      <div className="auto-rodape" style={{
         padding: '9px 14px', borderTop: '1px solid var(--hairline)',
         display: 'flex', alignItems: 'center', gap: 7,
         fontSize: 'var(--text-xs-sz)', color: 'var(--success)',
@@ -397,7 +438,7 @@ function ListaDeProblemas({
   }
 
   return (
-    <div style={{
+    <div className="auto-rodape" style={{
       padding: '9px 14px', borderTop: '1px solid var(--hairline)',
       maxHeight: 108, overflowY: 'auto',
       display: 'flex', flexDirection: 'column', gap: 5,

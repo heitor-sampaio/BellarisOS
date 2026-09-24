@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
-  ReactFlow, ReactFlowProvider, Background, Controls, useReactFlow,
+  ReactFlow, ReactFlowProvider, Background, Controls, useReactFlow, useNodesInitialized,
   applyEdgeChanges, applyNodeChanges,
   type Node, type Edge, type Connection, type NodeChange, type EdgeChange,
   BackgroundVariant, MarkerType,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { NODES, SAIDAS_DE } from '@estetica-os/types'
+import { NODES, SAIDAS_DE, TIPOS_DE_GATILHO } from '@estetica-os/types'
 import type { GrafoDeAutomacao, TipoDeNo, ConfigCondicaoEscolha } from '@estetica-os/types'
 import { NoDoQuadro, type DadosDoNo } from './no-do-quadro'
 import { resumoDoNo } from '@/lib/automacoes/resumo'
@@ -66,6 +66,34 @@ function QuadroInterno({
   const { fitView } = useReactFlow()
   const caixa = useRef<HTMLDivElement>(null)
 
+  /**
+   * Enquadra o fluxo — e num quadro estreito começa pelo GATILHO.
+   *
+   * Enquadrar tudo em 390px daria zoom de 0,45 num fluxo de três passos:
+   * ilegível. Com o piso de zoom, o que se via era o MEIO do fluxo, cortado
+   * dos dois lados — a tela abria no lugar errado e ninguém sabia para que
+   * lado arrastar. Começando no gatilho, o caminho é sempre o mesmo: seguir as
+   * setas para a direita.
+   */
+  const enquadrar = useCallback((duracao: number) => {
+    const estreito = (caixa.current?.clientWidth ?? 0) < 700
+    const gatilho = grafo.nos.find(
+      n => (TIPOS_DE_GATILHO as readonly string[]).includes(n.tipo),
+    )
+
+    if (estreito && gatilho) {
+      fitView({ nodes: [{ id: gatilho.id }], padding: 0.3, maxZoom: 1, minZoom: 0.8, duration: duracao })
+      return
+    }
+    fitView({ padding: 0.2, maxZoom: 1, minZoom: 0.65, duration: duracao })
+  }, [fitView, grafo.nos])
+
+  // Os nodes precisam estar MEDIDOS para o enquadramento valer: chamado antes
+  // disso, o React Flow calcula sobre caixas de tamanho zero e o quadro abre
+  // com o fluxo fora da vista.
+  const medidos = useNodesInitialized()
+  useEffect(() => { if (medidos) enquadrar(0) }, [medidos, enquadrar])
+
   useEffect(() => {
     if (!enquadrarEm) return
     // O node novo nasce à direita do último e cairia fora da área visível. O
@@ -83,14 +111,22 @@ function QuadroInterno({
     // abrindo e comendo 320px, a barra lateral recolhendo, e a janela mudando
     // de tamanho. Tentar acertar isso com um `setTimeout` depois de abrir o
     // painel é cravar um número que a máquina lenta desmente.
+    // A PRIMEIRA medida também enquadra, só que sem animação. Ela chegava a ser
+    // ignorada — fazia sentido enquanto a prop `fitView` do React Flow cuidava
+    // da abertura. Sem ela, ignorar a primeira deixava o fluxo enquadrado para
+    // um quadro que ainda não tinha o tamanho final: os cards apareciam
+    // transbordando por cima da paleta.
     let primeira = true
     const obs = new ResizeObserver(() => {
-      if (primeira) { primeira = false; return }
-      fitView({ padding: 0.2, maxZoom: 1, minZoom: 0.65, duration: 200 })
+      // Pelo mesmo caminho do enquadramento inicial: girar o aparelho atravessa
+      // a fronteira do estreito, e reenquadrar "tudo" ali devolveria o fluxo
+      // cortado pelo meio que este ajuste resolveu.
+      enquadrar(primeira ? 0 : 200)
+      primeira = false
     })
     obs.observe(alvo)
     return () => obs.disconnect()
-  }, [fitView])
+  }, [enquadrar])
   const nodes: Node[] = useMemo(() => grafo.nos.map(n => ({
     id: n.id,
     type: 'bellaris',
@@ -179,7 +215,9 @@ function QuadroInterno({
         onPaneClick={() => onSelecionar(null)}
         nodesDraggable={!somenteLeitura}
         nodesConnectable={!somenteLeitura}
-        fitView
+        // Sem a prop `fitView`: ela enquadra TUDO no mesmo instante em que os
+        // nodes são medidos, e sobrescrevia o enquadramento pelo gatilho que o
+        // quadro estreito precisa. Quem enquadra agora é o efeito acima.
         // `minZoom` no enquadramento: com um painel aberto comendo 360px, um
         // fluxo largo encolhia a ponto de ninguém ler o que está escrito nos
         // cards. Cortado e legível é melhor que inteiro e ilegível — o quadro

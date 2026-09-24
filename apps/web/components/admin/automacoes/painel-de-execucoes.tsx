@@ -83,6 +83,7 @@ export function PainelDeExecucoes({
 
   return (
     <aside
+      className="auto-gaveta"
       aria-label="Execuções da automação"
       style={{
         width: 360, flexShrink: 0, background: 'var(--surface)',

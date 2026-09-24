@@ -55,6 +55,7 @@ export function PainelDeVersoes({
 
   return (
     <aside
+      className="auto-gaveta"
       aria-label="Versões da automação"
       style={{
         width: 340, flexShrink: 0, background: 'var(--surface)',

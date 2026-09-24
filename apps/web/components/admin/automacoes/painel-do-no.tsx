@@ -88,6 +88,7 @@ export function PainelDoNo({
 
   return (
     <aside
+      className="auto-gaveta"
       aria-label="Configuração do node"
       style={{
         width: 320, flexShrink: 0, background: 'var(--surface)',
@@ -535,7 +536,9 @@ export function PainelDoNo({
       </div>
 
       {!somenteLeitura && (
-        <div style={{ padding: 16, borderTop: '1px solid var(--hairline)' }}>
+        // `auto-rodape` afasta do botão flutuante do app, que no celular fica
+        // no canto de baixo à esquerda — bem em cima deste botão.
+        <div className="auto-rodape" style={{ padding: 16, borderTop: '1px solid var(--hairline)' }}>
           <button
             type="button" onClick={onExcluir} className="btn-ghost"
             style={{ color: '#b42318', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}

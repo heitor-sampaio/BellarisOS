@@ -24,6 +24,7 @@ export function PainelDeLimites({
 }) {
   return (
     <aside
+      className="auto-gaveta"
       aria-label="Limites da automação"
       style={{
         width: 320, flexShrink: 0, background: 'var(--surface)',

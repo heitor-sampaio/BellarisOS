@@ -1095,6 +1095,57 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   }
 }
 
+/* -- Automações: o editor no celular ---------------------- */
+/* O editor nasceu em três colunas — paleta (190px), quadro e painel (320px) —
+   e em 390px de tela isso deixava ~200px para o quadro: o fluxo virava um card
+   cortado ao lado de uma lista de botões. Aqui as duas laterais saem do fluxo
+   e viram tela cheia, uma por vez, e o quadro fica com a largura inteira.
+
+   `!important` porque as medidas são `style` inline no componente (o editor é
+   todo estilizado assim) e regra de classe não vence especificidade de inline
+   — é o mesmo motivo de `.show-mobile` usar. */
+@media (max-width: 1023px) {
+  /* `dvh` e não `vh`: com a barra do navegador aparecendo e sumindo, `vh` é a
+     altura MÁXIMA, e o rodapé de problemas ficava debaixo dela. */
+  .auto-editor { height: calc(100dvh - var(--topbar-h) - 24px) !important; }
+
+  /* A paleta vira gaveta: fora do fluxo até alguém pedir um passo novo. */
+  .auto-paleta { display: none !important; }
+  .auto-paleta[data-aberta='1'] {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 60;
+    width: 100% !important;
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    border-right: none !important;
+    background: var(--surface);
+    overflow-y: auto;
+  }
+
+  /* Painel do node, limites, execuções e versões: a mesma gaveta de tela
+     cheia. Eles têm larguras diferentes (320/340/360) porque no desktop
+     convivem com o quadro; aqui nenhum convive com nada. */
+  .auto-gaveta {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 60;
+    width: 100% !important;
+    border-left: none !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Os botões da barra que não são ação principal ficam só com o ícone:
+     cinco botões com texto quebravam a barra em três linhas e comiam um terço
+     da altura útil. Salvar e Ligar mantêm o rótulo — são o que se procura. */
+  .auto-barra .auto-rotulo { display: none !important; }
+
+  /* O botão flutuante do app fica no canto de baixo À ESQUERDA e cobria o
+     começo da última linha do rodapé — justamente onde o problema do fluxo
+     está escrito. */
+  .auto-rodape { padding-left: 64px !important; }
+}
+
 /* -- Topbar: padding reduzido em mobile ------------------- */
 @media (max-width: 639px) {
   :root {

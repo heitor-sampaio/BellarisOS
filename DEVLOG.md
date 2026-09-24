@@ -1161,6 +1161,48 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
+### 2026-09-24 — O editor de automações no celular
+
+O editor nasceu em três colunas — paleta (190px), quadro e painel (320px). Em
+390px de tela isso deixava **cerca de 200px para o quadro**: o fluxo virava um
+card cortado ao lado de uma lista de botões, e a barra de ações quebrava em três
+linhas, comendo um terço da altura útil. A lista de automações, essa, já estava
+bem: cards que quebram sozinhos.
+
+As duas laterais saíram do fluxo e viraram tela cheia, uma por vez — o mesmo
+princípio de "uma tela por vez" que injetáveis e a ficha do cliente já seguem:
+
+- a **paleta** vira gaveta, aberta por um "+ Passo" que só existe no celular, e
+  fecha ao escolher — deixá-la aberta esconderia o node que acabou de nascer, e
+  o toque pareceria não ter feito nada;
+- **painel do node, limites, execuções e versões** cobrem a tela (eles têm
+  larguras diferentes porque no desktop convivem com o quadro; ali não convivem
+  com nada);
+- os botões que não são ação principal ficam **só com o ícone**; Salvar e Ligar
+  mantêm o rótulo.
+
+**O fluxo passou a abrir pelo gatilho quando o quadro é estreito.** Enquadrar
+três passos em 390px daria zoom de 0,45 — ilegível — e, com o piso de zoom, o
+que aparecia era o MEIO do fluxo, cortado dos dois lados: a tela abria no lugar
+errado e não havia pista de para que lado arrastar. Começando no gatilho, o
+caminho é sempre o mesmo: seguir as setas para a direita.
+
+Dois detalhes que só apareceram olhando a tela de verdade (retratos em 390px
+pelo próprio Playwright, não por leitura de código):
+
+- o **botão flutuante do app** fica no canto de baixo à ESQUERDA e cobria
+  exatamente o começo da última linha do rodapé de problemas — onde o problema
+  do fluxo está escrito — e o "Remover do fluxo" do painel;
+- tirar a prop `fitView` do React Flow (para o enquadramento pelo gatilho valer)
+  **quebrou o desktop**: o `ResizeObserver` ignorava de propósito a primeira
+  medida, que era justamente a que a prop cobria, e os cards apareciam
+  transbordando por cima da paleta. Agora a primeira medida também enquadra, só
+  que sem animação.
+
+De caminho, um teste que falhava por sorteio: `automacoes-ensaio` procurava o
+texto `0` no cartão da lista, e o sufixo em base 36 do nome de teste às vezes
+tem um zero — duas correspondências, falha sem nada a ver com o produto.
+
 ### 2026-09-24 — Automações: o histórico do fluxo
 
 O terceiro item fora de escopo. `automations.versao` existia desde a Fase 1 e só
