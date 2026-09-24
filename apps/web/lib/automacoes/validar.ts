@@ -1,6 +1,6 @@
-import { NODES, TIPOS_DE_GATILHO, ROTULOS_DE_NO } from '@estetica-os/types'
+import { NODES, TIPOS_DE_GATILHO, ROTULOS_DE_NO, INTERVALO_MINIMO_MIN } from '@estetica-os/types'
 import type {
-  GrafoDeAutomacao, NoDoGrafo, TipoDeNo, GrupoDeCondicao,
+  GrafoDeAutomacao, NoDoGrafo, TipoDeNo, GrupoDeCondicao, ConfigGatilhoAgenda,
 } from '@estetica-os/types'
 import { caminhosDoTexto } from './variaveis'
 import { conferirExpressao, ehCaminhoSimples } from './expressao'
@@ -30,7 +30,6 @@ export interface ProblemaDoGrafo {
 /** Campos sem os quais o node não faz nada — por tipo. */
 const OBRIGATORIOS: Partial<Record<TipoDeNo, { campo: string; rotulo: string }[]>> = {
   [NODES.GATILHO_EVENTO]:        [{ campo: 'evento', rotulo: 'o evento que dispara' }],
-  [NODES.GATILHO_AGENDA]:        [{ campo: 'hora',   rotulo: 'o horário' }],
   [NODES.ACAO_NOTIFICAR_EQUIPE]: [{ campo: 'alvo',   rotulo: 'quem avisar' }, { campo: 'corpo', rotulo: 'a mensagem' }],
   [NODES.ACAO_ANOTAR]:           [{ campo: 'texto',  rotulo: 'o texto da anotação' }],
   [NODES.ACAO_MENSAGEM]:         [{ campo: 'canal',  rotulo: 'o canal' }, { campo: 'texto', rotulo: 'a mensagem' }],
@@ -112,6 +111,38 @@ export function validarGrafo(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
         problemas.push({
           grau: 'aviso', noId: no.id,
           mensagem: 'Só um lado da condição está ligado — o outro caminho termina aqui.',
+        })
+      }
+    }
+
+    // O gatilho de horário pede coisas diferentes conforme a frequência: "a
+    // cada 30 minutos" não tem horário do dia, e "todo dia" não tem intervalo.
+    // Uma tabela de campos fixos cobraria sempre os dois.
+    if (no.tipo === NODES.GATILHO_AGENDA) {
+      const cfg = no.config as ConfigGatilhoAgenda
+      const porIntervalo = cfg?.frequencia === 'minutos' || cfg?.frequencia === 'horas'
+
+      if (porIntervalo) {
+        const n = Number(cfg?.intervalo ?? 0)
+        if (!Number.isFinite(n) || n <= 0) {
+          problemas.push({
+            grau: 'erro', noId: no.id,
+            mensagem: `Falta de quanto em quanto disparar em "${rotuloCurto(no)}".`,
+          })
+        } else if (cfg.frequencia === 'minutos' && n < INTERVALO_MINIMO_MIN) {
+          // Não é preciosismo: o cron passa de cinco em cinco minutos, e
+          // aceitar "a cada 1 minuto" seria prometer um ritmo que o relógio
+          // não entrega — a automação sairia de cinco em cinco do mesmo jeito,
+          // sem nada dizendo por quê.
+          problemas.push({
+            grau: 'erro', noId: no.id,
+            mensagem: `O menor intervalo é de ${INTERVALO_MINIMO_MIN} minutos — é de quanto em quanto o relógio passa.`,
+          })
+        }
+      } else if (!cfg?.hora) {
+        problemas.push({
+          grau: 'erro', noId: no.id,
+          mensagem: `Falta o horário em "${rotuloCurto(no)}".`,
         })
       }
     }

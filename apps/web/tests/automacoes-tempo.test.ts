@@ -116,3 +116,57 @@ describe('estaNaHora', () => {
     expect(estaNaHora({ frequencia: 'diaria', hora: '25:00' }, null, emBrasilia(9))).toBe(false)
   })
 })
+
+describe('estaNaHora — de tempos em tempos', () => {
+  const cada30 = { frequencia: 'minutos' as const, intervalo: 30 }
+
+  it('nunca disparou: começa agora', () => {
+    // O primeiro ciclo é o de ligar a automação — esperar 30 minutos para o
+    // primeiro seria a automação parecer morta justo quando se confere.
+    expect(estaNaHora(cada30, null, emBrasilia(3, 17))).toBe(true)
+  })
+
+  it('conta a partir do último disparo, não do relógio', () => {
+    const ultimo = emBrasilia(9, 7).toISOString()
+    expect(estaNaHora(cada30, ultimo, emBrasilia(9, 30))).toBe(false)
+    expect(estaNaHora(cada30, ultimo, emBrasilia(9, 37))).toBe(true)
+  })
+
+  it('não tem hora do dia: dispara de madrugada igual', () => {
+    // A trava de "já disparou hoje" e a tolerância de uma hora são das
+    // frequências de relógio. Aqui elas parariam o fluxo depois do 1º disparo.
+    const ultimo = emBrasilia(2, 0).toISOString()
+    expect(estaNaHora(cada30, ultimo, emBrasilia(2, 31))).toBe(true)
+  })
+
+  it('meio passo do cron de folga, senão o intervalo dobra', () => {
+    // Disparo às 9:00:05, passagem seguinte às 9:05:03: cobrar os 5 minutos
+    // cheios reprovaria por dois segundos e o próximo iria para as 9:10 — "a
+    // cada 5" virando 10, e o atraso somando a cada volta.
+    const cada5 = { frequencia: 'minutos' as const, intervalo: 5 }
+    const ultimo = new Date(emBrasilia(9, 0).getTime() + 5_000).toISOString()
+    const agora  = new Date(emBrasilia(9, 5).getTime() + 3_000)
+    expect(estaNaHora(cada5, ultimo, agora)).toBe(true)
+  })
+
+  it('horas multiplicam por 60', () => {
+    const cada2h = { frequencia: 'horas' as const, intervalo: 2 }
+    const ultimo = emBrasilia(8, 0).toISOString()
+    expect(estaNaHora(cada2h, ultimo, emBrasilia(9, 30))).toBe(false)
+    expect(estaNaHora(cada2h, ultimo, emBrasilia(10, 0))).toBe(true)
+  })
+
+  it('intervalo abaixo do piso vale como o piso, não como "sempre"', () => {
+    // O validador recusa antes de ativar, mas grafo salvo com 1 minuto não
+    // pode virar disparo em toda passagem do cron.
+    const cada1 = { frequencia: 'minutos' as const, intervalo: 1 }
+    const ultimo = emBrasilia(9, 0).toISOString()
+    expect(estaNaHora(cada1, ultimo, emBrasilia(9, 2))).toBe(false)
+    expect(estaNaHora(cada1, ultimo, emBrasilia(9, 5))).toBe(true)
+  })
+
+  it('sem intervalo não dispara nunca', () => {
+    expect(estaNaHora({ frequencia: 'minutos' }, null, emBrasilia(9))).toBe(false)
+    expect(estaNaHora({ frequencia: 'horas', intervalo: 0 }, null, emBrasilia(9))).toBe(false)
+  })
+})

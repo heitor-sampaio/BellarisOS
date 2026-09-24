@@ -61,6 +61,36 @@ describe('validarGrafo', () => {
     expect(validarGrafo(g).some(p => p.mensagem.includes('o evento que dispara'))).toBe(true)
   })
 
+  it('o gatilho de tempo cobra o campo da frequência escolhida', () => {
+    // Uma tabela de campos fixos cobraria os dois sempre: "a cada 30 minutos"
+    // não tem horário do dia, e "todo dia" não tem intervalo.
+    const comAgenda = (config: Record<string, unknown>) => grafo({
+      nos: [{ id: 'g1', tipo: 'gatilho.agenda', pos: { x: 0, y: 0 }, config }, acao],
+      ligacoes: [{ id: 'l1', de: 'g1', para: 'a1' }],
+    })
+
+    expect(validarGrafo(comAgenda({ frequencia: 'diaria', hora: '09:00' }))).toEqual([])
+    expect(validarGrafo(comAgenda({ frequencia: 'minutos', intervalo: 30 }))).toEqual([])
+
+    expect(validarGrafo(comAgenda({ frequencia: 'diaria' }))
+      .some(p => p.mensagem.includes('Falta o horário'))).toBe(true)
+    expect(validarGrafo(comAgenda({ frequencia: 'horas' }))
+      .some(p => p.mensagem.includes('de quanto em quanto'))).toBe(true)
+  })
+
+  it('intervalo abaixo do que o relógio entrega é recusado', () => {
+    // "A cada 1 minuto" sairia de cinco em cinco do mesmo jeito — e nada na
+    // tela diria por quê.
+    const g = grafo({
+      nos: [
+        { id: 'g1', tipo: 'gatilho.agenda', pos: { x: 0, y: 0 }, config: { frequencia: 'minutos', intervalo: 1 } },
+        acao,
+      ],
+      ligacoes: [{ id: 'l1', de: 'g1', para: 'a1' }],
+    })
+    expect(validarGrafo(g).some(p => p.grau === 'erro' && p.mensagem.includes('menor intervalo'))).toBe(true)
+  })
+
   it('anel é recusado antes de rodar', () => {
     // O executor tem teto de passos, mas descobrir o anel só na execução é
     // descobrir depois de repetir a ação até o teto bater.

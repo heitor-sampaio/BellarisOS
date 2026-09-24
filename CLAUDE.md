@@ -481,6 +481,13 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - **A fila do motor é `automation_runs`**, no Postgres — não há broker no
   projeto. O disparo é imediato (`after()`); o cron recolhe o que espera, o que
   falhou e o que é de tempo.
+- **O gatilho de tempo tem duas famílias**: intervalo (`minutos`, `horas`, conta
+  a partir do último disparo) e relógio (`diaria`/`semanal`/`mensal`, num
+  horário do dia). Cada uma usa o seu campo — `intervalo` ou `hora` — e o outro
+  não vai para o grafo. **O piso do intervalo é `INTERVALO_MINIMO_MIN` (5 min),
+  que é o ritmo do cron**: prometer menos é prometer o que o relógio não
+  entrega. Quem controla a repetição é `automations.ultimo_disparo_agenda`, e a
+  marca é gravada ANTES de executar, conferindo quantas linhas mudou.
 - **Cada salvamento deixa um retrato em `automation_versions`** (os últimos 30).
   Voltar para uma versão **carrega** o fluxo dela no editor e não grava nada —
   salvar continua sendo explícito, e o retrato de onde se veio permanece. O

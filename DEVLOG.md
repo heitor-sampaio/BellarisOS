@@ -73,7 +73,8 @@ unidade.
   (`agendamento.nao_compareceu`, `pagamento.recebido`, `estoque.abaixo_do_minimo`)
   gravados em `domain_events` com ator, origem e retrato. Retenção de 30 dias.
 - **Automações** (`/admin/automacoes`) — quadro infinito de nodes que reage a
-  esses fatos: gatilho por evento ou por horário, condições (SE e ESCOLHER),
+  esses fatos: gatilho por evento ou pelo relógio (de X em X minutos ou horas,
+  ou num horário do dia — diário, semanal, mensal), condições (SE e ESCOLHER),
   esperas, e ações que mandam mensagem, avisam a equipe e mexem no CRM. Com
   silêncio noturno, teto de contatos por cliente e anti-loop por profundidade.
   Cada execução guarda o passo a passo, e o **ensaio** percorre o fluxo com um
@@ -90,7 +91,7 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 256 unitários (Vitest) + 50 E2E (Playwright) rodando contra o banco
+- **Testes:** 345 unitários (Vitest) + 57 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
   (campanhas e LGPD) e a cada 5 minutos (fila das automações).
@@ -1160,6 +1161,55 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 **A legenda não repete o que já virou nome.** Sem a integração Meta Ads o nome
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
+
+### 2026-09-24 — Automações: o funil antes da etapa, e o relógio em minutos
+
+Dois pedidos do Heitor sobre as escolhas que o painel oferece.
+
+**Mover de etapa passou a perguntar o funil primeiro.** A lista era única —
+"Funil · Etapa" em cada linha —, e ela cresce pelo produto das duas coisas: com
+quatro funis de seis etapas são 24 linhas para ler prefixo a prefixo. Agora o
+funil é o primeiro campo e a lista de etapas é a dele. **Com um funil só o
+seletor não aparece**: seria uma escolha de uma opção.
+
+O funil **não** entrou no grafo como destino. Quem manda continua sendo o
+`etapaId` — a etapa já pertence a um funil, e gravar os dois abriria a chance de
+discordarem. O campo é derivado da etapa gravada, e só o `funilNome` vai junto
+(quando há mais de um funil) para o card do quadro poder dizer "para Pós-venda ·
+Retorno" sem consultar nada.
+
+Funil arquivado some da lista, **menos quando é o destino que já está gravado**:
+escondê-lo apagaria da tela para onde aquela automação move.
+
+**O gatilho de tempo deixou de ser só "num horário do dia".** Tinha diária,
+semanal e mensal; faltava o que a maior parte das automações de acompanhamento
+quer — "a cada 30 minutos", "a cada 2 horas". São duas famílias de frequência no
+mesmo node: a de intervalo conta **a partir do último disparo** e a de relógio
+acontece numa hora marcada. O formulário troca de campo junto com a frequência,
+e o que não vale some do grafo: um `hora: '09:00'` esquecido numa automação de
+30 em 30 minutos ficaria no JSON parecendo respeitar um horário que ninguém lê.
+
+**O piso é de 5 minutos**, que é de quanto em quanto o cron passa. Aceitar "a
+cada 1 minuto" seria prometer um ritmo que o relógio não entrega: sairia de
+cinco em cinco do mesmo jeito, sem nada dizendo por quê. O validador recusa
+antes de ligar, e o motor trata o valor menor como o piso — grafo salvo por
+outro caminho não vira disparo em toda passagem.
+
+A folga de **meio passo do cron** na comparação não é preciosismo: o cron não
+cai no minuto exato, e cobrar os 5 minutos cheios reprovaria por dois segundos
+um disparo de 9:05:03 contra a marca das 9:00:05 — "a cada 5" viraria 10, e o
+atraso somaria a cada volta.
+
+De caminho, um defeito que só doeria agora: a trava de concorrência do cron
+comparava `ultimo_disparo_agenda` com `.eq(..., null)` no primeiro disparo de
+cada automação. `eq.null` compara **com** NULL e nunca casa, então o UPDATE
+passava sem gravar nada e sem erro. Com gatilho diário isso repetia o disparo
+dentro da hora de tolerância; com "a cada 5 minutos" repetiria para sempre.
+Agora é `.is(..., null)` e a marca **confere quantas linhas mudou** — zero linha
+significa que outra passagem chegou primeiro.
+
+Também mudou o nome do node na paleta: **"Pelo relógio"**, não mais "Todo dia,
+no horário", que já era impreciso com semanal e mensal.
 
 ### 2026-09-24 — O editor de automações no celular
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Trash2, X } from 'lucide-react'
-import { EVENTOS, NODES } from '@estetica-os/types'
+import { EVENTOS, NODES, INTERVALO_MINIMO_MIN } from '@estetica-os/types'
 import type {
   NoDoGrafo, GrafoDeAutomacao, TipoDeNo,
   GrupoDeCondicao, RegraDeCondicao, OperadorDeCondicao,
@@ -85,6 +85,11 @@ export function PainelDoNo({
   const [rascunhoNome, setRascunhoNome] = useState(nomeDoPasso(no, grafo))
 
   const variaveis = variaveisDisponiveis(grafo, no.id, { vistos })
+
+  // O gatilho de tempo tem duas famílias de frequência: a que repete de tempos
+  // em tempos ("a cada 30 minutos") e a que acontece num horário do dia. Os
+  // campos de uma não fazem sentido na outra.
+  const porIntervalo = c.frequencia === 'minutos' || c.frequencia === 'horas'
 
   return (
     <aside
@@ -283,23 +288,9 @@ export function PainelDoNo({
         )}
 
         {no.tipo === NODES.ACAO_MOVER_ETAPA && (
-          <Campo rotulo="Mover para">
-            <select
-              className="field" value={(c.etapaId as string) ?? ''}
-              disabled={somenteLeitura}
-              onChange={e => {
-                const op = opcoes?.etapas.find(x => x.id === e.target.value)
-                // O nome vai junto só para o card do quadro poder dizer "para
-                // Fechamento" sem consultar nada. Quem manda é o id.
-                set({ etapaId: e.target.value, etapaNome: op?.nome ?? null })
-              }}
-            >
-              <option value="">Escolha a etapa…</option>
-              {(opcoes?.etapas ?? []).map(e => (
-                <option key={e.id} value={e.id}>{e.funil} · {e.nome}</option>
-              ))}
-            </select>
-          </Campo>
+          <MoverDeEtapa
+            config={c} opcoes={opcoes} set={set} somenteLeitura={somenteLeitura}
+          />
         )}
 
         {no.tipo === NODES.ACAO_DESFECHO && (
@@ -366,13 +357,51 @@ export function PainelDoNo({
               <select
                 className="field" value={(c.frequencia as string) ?? 'diaria'}
                 disabled={somenteLeitura}
-                onChange={e => set({ frequencia: e.target.value })}
+                onChange={e => {
+                  const f = e.target.value
+                  const porIntervalo = f === 'minutos' || f === 'horas'
+                  // Cada família tem o seu campo, e o da outra é apagado: um
+                  // `hora: '09:00'` esquecido numa automação "a cada 30
+                  // minutos" ficaria no JSON parecendo que ela respeita um
+                  // horário que ninguém lê.
+                  set({
+                    frequencia: f,
+                    hora:      porIntervalo ? undefined : (c.hora as string) ?? '09:00',
+                    intervalo: porIntervalo
+                      ? Number(c.intervalo ?? 0) || (f === 'minutos' ? 30 : 1)
+                      : undefined,
+                  })
+                }}
               >
+                <option value="minutos">A cada X minutos</option>
+                <option value="horas">A cada X horas</option>
                 <option value="diaria">Todo dia</option>
                 <option value="semanal">Toda semana</option>
                 <option value="mensal">Todo mês</option>
               </select>
             </Campo>
+
+            {porIntervalo && (
+              <Campo rotulo={c.frequencia === 'horas' ? 'A cada (horas)' : 'A cada (minutos)'}>
+                <input
+                  type="number"
+                  min={c.frequencia === 'horas' ? 1 : INTERVALO_MINIMO_MIN}
+                  step={c.frequencia === 'horas' ? 1 : INTERVALO_MINIMO_MIN}
+                  className="field"
+                  value={String(c.intervalo ?? '')}
+                  disabled={somenteLeitura}
+                  onChange={e => set({ intervalo: e.target.value ? Number(e.target.value) : undefined })}
+                />
+                <Dica>
+                  A conta é a partir do último disparo, não do relógio: ligar às
+                  9:07 com &quot;a cada 30 minutos&quot; dá 9:37, 10:07…{' '}
+                  {c.frequencia === 'minutos' && (
+                    <>O mínimo é {INTERVALO_MINIMO_MIN} minutos, que é de quanto
+                    em quanto o relógio do sistema passa.</>
+                  )}
+                </Dica>
+              </Campo>
+            )}
 
             {c.frequencia === 'semanal' && (
               <Campo rotulo="No dia">
@@ -399,17 +428,19 @@ export function PainelDoNo({
               </Campo>
             )}
 
-            <Campo rotulo="Às">
-              <input
-                type="time" className="field" value={(c.hora as string) ?? '09:00'}
-                disabled={somenteLeitura}
-                onChange={e => set({ hora: e.target.value })}
-              />
-              <Dica>
-                O relógio roda de cinco em cinco minutos, então o disparo
-                acontece na primeira passagem depois do horário.
-              </Dica>
-            </Campo>
+            {!porIntervalo && (
+              <Campo rotulo="Às">
+                <input
+                  type="time" className="field" value={(c.hora as string) ?? '09:00'}
+                  disabled={somenteLeitura}
+                  onChange={e => set({ hora: e.target.value })}
+                />
+                <Dica>
+                  O relógio roda de cinco em cinco minutos, então o disparo
+                  acontece na primeira passagem depois do horário.
+                </Dica>
+              </Campo>
+            )}
           </>
         )}
 
@@ -567,6 +598,98 @@ const NODES_SEM_EDITOR: TipoDeNo[] = []
  * procurá-lo por "Título" em vez de "o terceiro input", tanto para quem usa
  * leitor de tela quanto para o teste.
  */
+/**
+ * A escolha da etapa de destino.
+ *
+ * Com mais de um funil na rede, uma lista única de "Funil · Etapa" cresce pelo
+ * produto das duas coisas e obriga a ler o prefixo de cada linha para achar o
+ * funil certo. Então o funil vira o primeiro passo da escolha e a lista de
+ * etapas passa a ser a dele. Com um funil só o seletor não aparece: seria uma
+ * escolha de uma opção.
+ *
+ * **O funil não é gravado como destino** — quem manda é o `etapaId`, e a etapa
+ * já pertence a um funil. Ele é só o caminho até ela, e por isso nasce
+ * derivado da etapa que já estava escolhida, sem campo novo no grafo.
+ */
+function MoverDeEtapa({ config, opcoes, set, somenteLeitura }: {
+  config:  Record<string, unknown>
+  opcoes:  OpcoesDoEditor | null
+  set:     (patch: Record<string, unknown>) => void
+  somenteLeitura?: boolean
+}) {
+  const etapas    = opcoes?.etapas ?? []
+  const escolhida = etapas.find(e => e.id === ((config.etapaId as string) ?? ''))
+
+  // Só o funil TROCADO À MÃO vira estado; o resto se deriva da etapa gravada.
+  // Um `useState` inicializado de uma vez nasceria vazio, porque as opções
+  // chegam depois do primeiro render e a etapa ainda não teria funil conhecido.
+  const [funilTrocado, setFunilTrocado] = useState<string | null>(null)
+
+  // Funil arquivado some da lista, menos quando é o destino que já está
+  // gravado: aí esconder o funil apagaria da tela para onde a automação move.
+  const funis  = (opcoes?.funis ?? []).filter(f => !f.arquivado || f.id === escolhida?.funilId)
+  const varios = funis.length > 1
+  const funilId = funilTrocado ?? escolhida?.funilId ?? ''
+
+  // Com um funil só (ou nenhum, em rede cujas etapas nasceram antes dos funis)
+  // a lista não é filtrada: todas as etapas são dele.
+  const daEtapa = varios ? etapas.filter(e => e.funilId === funilId) : etapas
+
+  const escolher = (id: string) => {
+    const op = etapas.find(x => x.id === id)
+    // Os nomes vão junto só para o card do quadro dizer "para Fechamento" sem
+    // consultar nada. Quem manda é o id. O nome do funil só entra quando há
+    // mais de um — senão o card repetiria em toda automação a mesma palavra.
+    set({
+      etapaId:   id,
+      etapaNome: op?.nome ?? null,
+      funilNome: varios ? op?.funil ?? null : null,
+    })
+  }
+
+  return (
+    <>
+      {varios && (
+        <Campo rotulo="Funil">
+          <select
+            className="field" value={funilId}
+            disabled={somenteLeitura}
+            onChange={e => {
+              setFunilTrocado(e.target.value)
+              // Trocar de funil zera a etapa: a que estava escolhida é de
+              // outro funil, e deixá-la gravada faria o seletor mostrar vazio
+              // enquanto a automação continuava movendo para o lugar antigo.
+              escolher('')
+            }}
+          >
+            <option value="">Escolha o funil…</option>
+            {funis.map(f => (
+              <option key={f.id} value={f.id}>
+                {f.nome}{f.arquivado ? ' (arquivado)' : ''}
+              </option>
+            ))}
+          </select>
+        </Campo>
+      )}
+
+      <Campo rotulo="Mover para">
+        <select
+          className="field" value={(config.etapaId as string) ?? ''}
+          disabled={somenteLeitura || (varios && !funilId)}
+          onChange={e => escolher(e.target.value)}
+        >
+          <option value="">
+            {varios && !funilId ? 'Escolha o funil primeiro…' : 'Escolha a etapa…'}
+          </option>
+          {daEtapa.map(e => (
+            <option key={e.id} value={e.id}>{e.nome}</option>
+          ))}
+        </select>
+      </Campo>
+    </>
+  )
+}
+
 function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
     <label style={{ display: 'block' }}>

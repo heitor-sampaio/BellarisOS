@@ -52,9 +52,19 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
     }
 
     case NODES.GATILHO_AGENDA: {
-      const freq = { diaria: 'Todo dia', semanal: 'Toda semana', mensal: 'Todo mês' }[
-        (c.frequencia as string) ?? 'diaria'
-      ] ?? 'Todo dia'
+      const frequencia = (c.frequencia as string) ?? 'diaria'
+
+      if (frequencia === 'minutos' || frequencia === 'horas') {
+        const n = Number(c.intervalo ?? 0)
+        if (!n) return 'escolha de quanto em quanto'
+        const unidade = frequencia === 'horas'
+          ? (n === 1 ? 'hora' : 'horas')
+          : 'minutos'
+        return `a cada ${n} ${unidade}`
+      }
+
+      const freq = { diaria: 'Todo dia', semanal: 'Toda semana', mensal: 'Todo mês' }[frequencia]
+        ?? 'Todo dia'
       return `${freq} às ${(c.hora as string) ?? '--:--'}`
     }
 
@@ -96,7 +106,12 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
     }
 
     case NODES.ACAO_MOVER_ETAPA:
-      return c.etapaNome ? `para "${c.etapaNome}"` : 'escolha a etapa'
+      if (!c.etapaNome) return 'escolha a etapa'
+      // O funil só aparece quando a rede tem mais de um (é o painel que decide
+      // gravá-lo): "para Fechamento" é ambíguo quando três funis têm essa etapa.
+      return c.funilNome
+        ? `para "${c.funilNome} · ${c.etapaNome}"`
+        : `para "${c.etapaNome}"`
 
     case NODES.ACAO_DESFECHO:
       return (c.desfecho as string) === 'perdido' ? 'marcar como perdido' : 'marcar como ganho'

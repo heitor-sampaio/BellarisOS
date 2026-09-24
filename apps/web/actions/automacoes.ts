@@ -425,7 +425,13 @@ export async function excluirAutomacao(id: string): Promise<{ error?: string }> 
  * um a um faria cada clique num node esperar uma ida ao banco.
  */
 export interface OpcoesDoEditor {
-  etapas:   { id: string; nome: string; funil: string }[]
+  /**
+   * Os funis da rede, na ordem do quadro. Arquivado vem junto e marcado: a
+   * automação que já aponta para uma etapa dele precisa continuar mostrando
+   * para onde move — esconder o funil deixaria o seletor vazio sem explicar.
+   */
+  funis:    { id: string; nome: string; arquivado: boolean }[]
+  etapas:   { id: string; nome: string; funil: string; funilId: string }[]
   cargos:   { id: string; nome: string }[]
   pessoas:  { id: string; nome: string }[]
   tags:     string[]
@@ -438,8 +444,9 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
   const admin = createAdminClient()
   const tenant = ctx.tenantId!
 
-  const [etapas, cargos, pessoas, clientes, unidades] = await Promise.all([
-    admin.from('crm_stages').select('id, name, crm_funnels(name)').eq('tenant_id', tenant).order('position'),
+  const [funis, etapas, cargos, pessoas, clientes, unidades] = await Promise.all([
+    admin.from('crm_funnels').select('id, name, archived_at').eq('tenant_id', tenant).order('position'),
+    admin.from('crm_stages').select('id, name, funnel_id, position').eq('tenant_id', tenant).order('position'),
     admin.from('tenant_roles').select('id, label').eq('tenant_id', tenant).order('label'),
     admin.from('users').select('id, name').eq('tenant_id', tenant).eq('is_active', true).order('name'),
     // As tags que a rede realmente usa, não só o vocabulário padrão: quem
@@ -458,12 +465,30 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
     }
   }
 
+  const listaDeFunis = (funis.data ?? []).map(f => ({
+    id:        f.id as string,
+    nome:      f.name as string,
+    arquivado: f.archived_at !== null,
+  }))
+  const ordemDoFunil = new Map(listaDeFunis.map((f, i) => [f.id, i]))
+
   return {
-    etapas: (etapas.data ?? []).map(e => ({
-      id:    e.id as string,
-      nome:  e.name as string,
-      funil: (e.crm_funnels as unknown as { name?: string } | null)?.name ?? 'Funil',
-    })),
+    funis: listaDeFunis,
+    // Ordenadas pelo funil e, dentro dele, pela posição no quadro — a mesma
+    // ordem que a pessoa vê no CRM. O `order('position')` do banco sozinho
+    // intercala os funis, porque a posição recomeça em cada um.
+    etapas: (etapas.data ?? [])
+      .slice()
+      .sort((a, b) =>
+        (ordemDoFunil.get(a.funnel_id as string) ?? 99) -
+        (ordemDoFunil.get(b.funnel_id as string) ?? 99) ||
+        ((a.position as number | null) ?? 0) - ((b.position as number | null) ?? 0))
+      .map(e => ({
+        id:      e.id as string,
+        nome:    e.name as string,
+        funilId: (e.funnel_id as string | null) ?? '',
+        funil:   listaDeFunis.find(f => f.id === e.funnel_id)?.nome ?? 'Funil',
+      })),
     cargos:   (cargos.data ?? []).map(r => ({ id: r.id as string, nome: r.label as string })),
     pessoas:  (pessoas.data ?? []).map(u => ({ id: u.id as string, nome: u.name as string })),
     tags:     [...tags].sort((a, b) => a.localeCompare(b, 'pt-BR')),

@@ -62,7 +62,11 @@ export const SAIDAS_DE: Partial<Record<TipoDeNo, readonly string[]>> = {
  */
 export const ROTULOS_DE_NO: Record<TipoDeNo, string> = {
   [NODES.GATILHO_EVENTO]:        'Quando acontecer',
-  [NODES.GATILHO_AGENDA]:        'Todo dia, no horário',
+  // Não diz mais "Todo dia": o mesmo gatilho cobre de cinco em cinco minutos e
+  // todo mês. Grafo antigo sem `nome` gravado passa a derivar deste rótulo —
+  // e esses são justamente os que nasceram antes de existir `{{passos.…}}`,
+  // então não há referência a quebrar.
+  [NODES.GATILHO_AGENDA]:        'Pelo relógio',
   [NODES.BUSCAR_CLIENTES]:       'Buscar clientes',
   [NODES.CONDICAO_SE]:           'Se',
   [NODES.CONDICAO_ESCOLHA]:      'Escolher por',
@@ -215,10 +219,28 @@ export interface ConfigGatilhoEvento {
   filtro?: GrupoDeCondicao
 }
 
+/** De quanto em quanto tempo o cron das automações passa. */
+export const PASSO_DO_CRON_MIN = 5
+
+/** Piso do intervalo de um gatilho de tempo: o ritmo do próprio relógio. */
+export const INTERVALO_MINIMO_MIN = PASSO_DO_CRON_MIN
+
 export interface ConfigGatilhoAgenda {
-  frequencia: 'diaria' | 'semanal' | 'mensal'
-  /** 'HH:MM' no fuso do negócio (America/Sao_Paulo). */
-  hora:       string
+  /**
+   * Duas famílias na mesma lista: **de tempos em tempos** ('minutos', 'horas'),
+   * que repete a partir do último disparo, e **no relógio** ('diaria',
+   * 'semanal', 'mensal'), que acontece num horário do dia. A primeira usa
+   * `intervalo`; a segunda, `hora`.
+   */
+  frequencia: 'minutos' | 'horas' | 'diaria' | 'semanal' | 'mensal'
+  /** 'HH:MM' no fuso do negócio (America/Sao_Paulo). Só nas frequências de relógio. */
+  hora?:      string
+  /**
+   * De quanto em quanto, na unidade da frequência. Só em 'minutos' e 'horas'.
+   * Piso de 5 minutos: é de cinco em cinco que o cron passa, e prometer menos
+   * seria prometer o que o relógio não entrega.
+   */
+  intervalo?:   number
   /** 0=domingo. Só em 'semanal'. */
   diaDaSemana?: number
   /** 1–28. Só em 'mensal' — 29 a 31 não existem todo mês. */

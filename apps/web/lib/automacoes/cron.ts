@@ -3,6 +3,7 @@ import { NODES } from '@estetica-os/types'
 import type { GrafoDeAutomacao, ConfigGatilhoAgenda } from '@estetica-os/types'
 import { executarRun } from './executar'
 import { estaNaHora } from './tempo'
+import { partsInTZ } from '@/lib/datetime'
 
 /**
  * O que o cron faz a cada cinco minutos.
@@ -109,15 +110,28 @@ async function dispararAgendas(): Promise<number> {
     // Marca ANTES de executar. Se a execução demorar mais que a passagem
     // seguinte do cron — uma busca de quinhentos clientes leva —, a próxima
     // passagem encontraria o gatilho ainda "na hora" e abriria tudo de novo.
-    const { error: erroMarca } = await admin
+    const anterior = a.ultimo_disparo_agenda as string | null
+    let marca = admin
       .from('automations')
       .update({ ultimo_disparo_agenda: new Date().toISOString() })
       .eq('id', a.id as string)
-      // Só marca se ninguém marcou no meio-tempo: duas instâncias do cron não
-      // podem disparar o mesmo gatilho.
-      .eq('ultimo_disparo_agenda', a.ultimo_disparo_agenda as string)
+      .select('id')
+
+    // Só marca se ninguém marcou no meio-tempo: duas instâncias do cron não
+    // podem disparar o mesmo gatilho. NULL exige `is`: `eq.null` compara com
+    // NULL e nunca casa, e o update passava sem gravar nada — no primeiro
+    // disparo de cada automação, justamente.
+    marca = anterior === null
+      ? marca.is('ultimo_disparo_agenda', null)
+      : marca.eq('ultimo_disparo_agenda', anterior)
+
+    const { data: marcadas, error: erroMarca } = await marca
 
     if (erroMarca) { console.error('[cron automacoes] marca:', erroMarca.message); continue }
+    // Nenhuma linha: outra passagem do cron chegou primeiro. Sem isto os dois
+    // processos disparariam o mesmo gatilho — e com "a cada 5 minutos" uma
+    // marca que não grava vira disparo em toda passagem, para sempre.
+    if (!marcadas || marcadas.length === 0) continue
 
     const { data: run, error: erroRun } = await admin
       .from('automation_runs')
@@ -130,7 +144,10 @@ async function dispararAgendas(): Promise<number> {
         // Gatilho de tempo nasce na profundidade zero: não veio de automação
         // nenhuma, veio do relógio.
         profundidade:  0,
-        contexto:      { agenda: { hora: cfg.hora, quando: new Date().toISOString() } },
+        // Gatilho de intervalo não tem horário configurado — o que ele tem é a
+        // hora em que de fato saiu. Deixar `hora` vazia faria a variável sair
+        // em branco no meio da mensagem, sem nada explicando.
+        contexto:      { agenda: { hora: cfg.hora ?? horaAgora(), quando: new Date().toISOString() } },
       })
       .select('id')
       .single()
@@ -142,4 +159,10 @@ async function dispararAgendas(): Promise<number> {
   }
 
   return disparadas
+}
+
+/** 'HH:MM' no fuso do negócio, para o gatilho que não tem horário marcado. */
+function horaAgora(): string {
+  const p = partsInTZ(new Date())
+  return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
 }

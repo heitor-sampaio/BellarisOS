@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { partsInTZ, startOfDayTZ } from '@/lib/datetime'
 import { valorDoCampo } from './condicoes'
+import { PASSO_DO_CRON_MIN, INTERVALO_MINIMO_MIN } from '@estetica-os/types'
 import type {
   ConfigEsperaDuracao, ConfigEsperaAte, ConfigGatilhoAgenda, ConfigBuscarClientes,
 } from '@estetica-os/types'
@@ -68,12 +69,21 @@ export function quandoChegarEm(
  * passagem depois das 9h". A janela de tolerância existe para isso — e o
  * `ultimoDisparo` é o que impede as passagens seguintes de repetirem: sem ele,
  * das 9:00 às 9:05 o lembrete diário chegaria uma vez por passagem.
+ *
+ * **De tempos em tempos é outra pergunta.** "A cada 30 minutos" não tem horário
+ * do dia a comparar: o que conta é quanto tempo passou desde o último disparo.
+ * Por isso sai antes, sem a tolerância de uma hora e sem a trava de "já
+ * disparou hoje" — que ali seria um disparo por dia.
  */
 export function estaNaHora(
   cfg: ConfigGatilhoAgenda,
   ultimoDisparo: string | null,
   agora = new Date(),
 ): boolean {
+  if (cfg.frequencia === 'minutos' || cfg.frequencia === 'horas') {
+    return passouOIntervalo(cfg, ultimoDisparo, agora)
+  }
+
   const p = partsInTZ(agora)
   const alvo = emMinutos(cfg.hora)
   if (alvo === null) return false
@@ -100,6 +110,35 @@ export function estaNaHora(
   }
 
   return true
+}
+
+/**
+ * "A cada N minutos/horas": passou tempo suficiente desde o último disparo?
+ *
+ * **Meio passo do cron de folga.** O cron não cai no minuto exato: se o último
+ * disparo foi às 9:00:05 e a passagem seguinte é 9:05:03, cobrar os 5 minutos
+ * cheios reprovaria por dois segundos e o disparo iria para as 9:10 — "a cada
+ * 5 minutos" virando 10, e o atraso somando a cada volta.
+ *
+ * Nunca disparou: começa agora. O primeiro ciclo é o de ligar a automação.
+ */
+function passouOIntervalo(
+  cfg: ConfigGatilhoAgenda,
+  ultimoDisparo: string | null,
+  agora: Date,
+): boolean {
+  const n = Number(cfg.intervalo ?? 0)
+  if (!Number.isFinite(n) || n <= 0) return false
+
+  const minutos = Math.max(
+    cfg.frequencia === 'horas' ? n * 60 : n,
+    INTERVALO_MINIMO_MIN,
+  )
+  if (!ultimoDisparo) return true
+
+  const desde = agora.getTime() - new Date(ultimoDisparo).getTime()
+  if (Number.isNaN(desde)) return true
+  return desde >= (minutos - PASSO_DO_CRON_MIN / 2) * MINUTO
 }
 
 function emMinutos(hhmm?: string): number | null {
