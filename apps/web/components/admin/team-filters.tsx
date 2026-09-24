@@ -13,19 +13,6 @@ interface TeamFiltersProps {
   initialStatus:  string
 }
 
-const selectStyle: React.CSSProperties = {
-  padding: '8px 10px',
-  background: 'var(--bg-app)',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--radius-field-token)',
-  fontFamily: 'inherit',
-  fontSize: 'var(--text-sm-sz)',
-  fontWeight: 'var(--weight-semibold)',
-  color: 'var(--text)',
-  cursor: 'pointer',
-  outline: 'none',
-  height: 38,
-}
 
 export function TeamFilters({
   branches, roles,
@@ -87,10 +74,9 @@ export function TeamFilters({
       </div>
 
       {/* Filial */}
-      <select
+      <select className="filtro-select"
         value={initialBranch}
         onChange={e => handleSelect('branch', e.target.value)}
-        style={selectStyle}
       >
         <option value="">Todas as filiais</option>
         {branches.map(b => (
@@ -99,10 +85,9 @@ export function TeamFilters({
       </select>
 
       {/* Cargo */}
-      <select
+      <select className="filtro-select"
         value={initialRole}
         onChange={e => handleSelect('role', e.target.value)}
-        style={selectStyle}
       >
         <option value="">Todos os cargos</option>
         {roles.map(r => (
@@ -111,10 +96,9 @@ export function TeamFilters({
       </select>
 
       {/* Situação */}
-      <select
+      <select className="filtro-select"
         value={initialStatus}
         onChange={e => handleSelect('status', e.target.value)}
-        style={selectStyle}
       >
         <option value="">Todas as situações</option>
         <option value="active">Ativo</option>

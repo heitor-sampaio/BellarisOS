@@ -1358,3 +1358,70 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 input[type="search"].field {
   background: var(--surface);
 }
+
+/* ============================================================
+   SELETORES — uma forma para cada função
+   ============================================================
+
+   O sistema tinha quatro aparências para a mesma ideia: segmento feito à mão,
+   pílulas soltas, `<select>` cru e botão de estado, cada um com sua altura,
+   seu raio e sua fonte. A regra passou a ser por FUNÇÃO, não por gosto de
+   quem escreveu a tela:
+
+   - escolha exclusiva, 2 a 5 opções curtas e FIXAS  → <SegSelect>
+   - opções vindas de DADOS, ou mais de 5, ou longas → .filtro-select
+   - liga/desliga de um filtro só                    → .filtro-toggle
+   - filtro que ACUMULA (tag, marcador)              → .chip
+
+   Ícone: seletor de texto NÃO leva. O rótulo já diz o que é, e o ícone vira
+   ruído repetido cinco vezes na mesma barra. O toggle pode levar — ali o
+   ícone é o próprio assunto que se liga. */
+
+/* Dropdown de filtro. Mesma altura e raio do SegSelect compacto, para os dois
+   conviverem na mesma barra sem degrau. */
+.filtro-select {
+  appearance: none;
+  padding: 6px 30px 6px 11px;
+  background: var(--surface);
+  /* A seta é do sistema, não do sistema operacional: o chevron nativo muda de
+     desenho em cada navegador e não acompanha a cor do texto. */
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a7a7e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-sm-sz);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 120ms ease;
+}
+.filtro-select:focus { border-color: var(--brand); }
+
+/* Liga/desliga. Ligado = preenchido em brand-soft com borda de marca; não é
+   `--brand` cheio porque ele não compete com o item selecionado de um
+   segmento ao lado. */
+.filtro-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-sm-sz);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.filtro-toggle:hover { color: var(--text); }
+.filtro-toggle.is-ativo {
+  background: var(--brand-soft);
+  border-color: var(--brand-soft-border);
+  color: var(--brand);
+}

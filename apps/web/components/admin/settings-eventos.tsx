@@ -207,7 +207,7 @@ export function SettingsEventos({
       {/* -- Filtros ---------------------------------------------------------- */}
       <div className="filtros-bar" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
         <select
-          className="field" value={filtroNome}
+          className="filtro-select" value={filtroNome}
           onChange={e => { setNome(e.target.value); recarregar(e.target.value, filtroOrigem) }}
           style={{ maxWidth: 260 }}
         >

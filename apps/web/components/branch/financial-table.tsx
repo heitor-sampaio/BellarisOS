@@ -8,6 +8,7 @@ import {
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { SegSelect } from '@/components/shared/seg-select'
 
 export interface Transaction {
   id:             string
@@ -141,39 +142,33 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
           )}
         </div>
 
-        {/* Tipo */}
-        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-app)', padding: 4, borderRadius: 10, border: '1px solid var(--border)' }}>
-          {([['all', 'Todos'], ['INCOME', 'Receitas'], ['EXPENSE', 'Despesas']] as [FilterType, string][]).map(([v, l]) => (
-            <button key={v} type="button" onClick={() => setFilterType(v)} style={{
-              fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
-              cursor: 'pointer', border: 'none', transition: 'all 100ms',
-              background: filterType === v ? 'var(--surface)' : 'transparent',
-              color: filterType === v ? 'var(--text)' : 'var(--text-muted)',
-              boxShadow: filterType === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-            }}>
-              {l}
-            </button>
-          ))}
-        </div>
+        {/* Tipo — três opções fixas e curtas: é segmento, e o segmento do
+            sistema é o SegSelect. Estava reimplementado à mão aqui, com outro
+            raio, outra altura e uma sombra que superfície neutra não usa. */}
+        <SegSelect
+          compacto
+          ariaLabel="Tipo de lançamento"
+          value={filterType}
+          onSelect={v => setFilterType(v as FilterType)}
+          options={[
+            { key: 'all',     label: 'Todos' },
+            { key: 'INCOME',  label: 'Receitas' },
+            { key: 'EXPENSE', label: 'Despesas' },
+          ]}
+        />
 
         {/* Status */}
-        <select value={filterPaid} onChange={e => setFilterPaid(e.target.value as any)} style={{
-          fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 10, padding: '7px 10px', cursor: 'pointer', outline: 'none',
-        }}>
+        <select value={filterPaid} onChange={e => setFilterPaid(e.target.value as any)} className="filtro-select">
           <option value="all">Todos os status</option>
           <option value="paid">Pago</option>
           <option value="pending">Pendente</option>
         </select>
 
         {/* Ordenar */}
-        <button type="button" onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5,
-          fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '7px 12px', borderRadius: 10,
-          border: '1px solid var(--border)', background: 'var(--surface)',
-          color: 'var(--text-muted)', cursor: 'pointer',
-        }}>
+        <button
+          type="button" className="filtro-toggle"
+          onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+        >
           {sortDir === 'desc' ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
           {sortDir === 'desc' ? 'Mais recente' : 'Mais antigo'}
         </button>

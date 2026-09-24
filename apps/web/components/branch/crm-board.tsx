@@ -121,16 +121,18 @@ function FiltersBar({
     onFiltersChange({ ...filters, procedureIds: next })
   }
 
-  const selectStyle: React.CSSProperties = {
-    fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
-    background: 'var(--surface)', border: '1px solid var(--border)',
-    borderRadius: 8, padding: '5px 8px', cursor: 'pointer', outline: 'none',
-  }
 
-  /** Mesmo desenho dos selects da barra; rosé quando o filtro está valendo. */
+  /**
+   * Gatilho de filtro que liga e desliga — o mesmo papel do `.filtro-toggle`.
+   * Herdava do `selectStyle` local, que saiu quando os selects da barra
+   * passaram a usar a classe do sistema.
+   */
   function estiloGatilho(ativo: boolean): React.CSSProperties {
     return {
-      ...selectStyle,
+      fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)',
+      color: 'var(--text-muted)', background: 'var(--surface)',
+      border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)',
+      padding: '6px 11px', cursor: 'pointer', outline: 'none',
       display: 'inline-flex', alignItems: 'center', gap: 5,
       ...(ativo && {
         border: '1.5px solid var(--brand)',
@@ -229,10 +231,9 @@ function FiltersBar({
       <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
 
       {/* Situação */}
-      <select
+      <select className="filtro-select"
         value={filters.situation}
         onChange={e => onFiltersChange({ ...filters, situation: e.target.value as FiltersState['situation'] })}
-        style={selectStyle}
       >
         <option value="all">Todos os leads</option>
         <option value="not_converted">Não convertidos</option>
@@ -240,10 +241,9 @@ function FiltersBar({
       </select>
 
       {/* Período */}
-      <select
+      <select className="filtro-select"
         value={filters.period}
         onChange={e => onFiltersChange({ ...filters, period: e.target.value as FiltersState['period'] })}
-        style={selectStyle}
       >
         <option value="all">Qualquer período</option>
         <option value="7d">Últimos 7 dias</option>
@@ -253,7 +253,7 @@ function FiltersBar({
 
       {/* Ordenação */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <select value={sort} onChange={e => onSortChange(e.target.value as SortOrder)} style={selectStyle}>
+        <select value={sort} onChange={e => onSortChange(e.target.value as SortOrder)}>
           <option value="newest">Mais recente</option>
           <option value="oldest">Mais antigo</option>
           <option value="name_asc">Nome A → Z</option>

@@ -427,10 +427,10 @@ export function AdminFinancialView({
 
           {/* Filtro por filial */}
           <select
+            className="filtro-select"
             value={filterBranch}
             onChange={e => setFilterBranch(e.target.value)}
-            className="field"
-            style={{ width: 200, fontSize: 'var(--text-sm-sz)', padding: '6px 10px' }}
+            style={{ width: 200 }}
           >
             <option value="all">Todas as filiais</option>
             {branchStats.map(b => (

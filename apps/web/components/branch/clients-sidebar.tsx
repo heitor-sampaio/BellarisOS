@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { unitTag, isUnitTag } from '@estetica-os/utils'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
+import { SegSelect } from '@/components/shared/seg-select'
 
 interface ClientItem {
   id:         string
@@ -172,25 +173,17 @@ export function ClientsSidebar({
           />
         </div>
 
-        {/* Filter chips */}
-        <div style={{ display: 'flex', gap: 4 }}>
-          {filterOptions.map(f => (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setFilter(f.key)}
-              style={{
-                fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '4px 10px',
-                borderRadius: 'var(--radius-chip-token)', border: 'none', cursor: 'pointer',
-                background: filter === f.key ? 'var(--brand)' : 'var(--bg-app)',
-                color:      filter === f.key ? 'var(--on-brand)' : 'var(--text-muted)',
-                transition: 'background 0.12s, color 0.12s',
-              }}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        {/* Todos / VIP / Novos / Inativos: escolha EXCLUSIVA entre opções
+            fixas e curtas — é segmento, não pílula solta. A pílula solta é
+            para filtro que acumula (tag), e usá-la aqui prometia que dava
+            para marcar VIP e Novos ao mesmo tempo. */}
+        <SegSelect
+          compacto
+          ariaLabel="Filtrar clientes"
+          value={filter}
+          onSelect={k => setFilter(k as typeof filter)}
+          options={filterOptions.map(f => ({ key: f.key, label: f.label }))}
+        />
 
         {/* Unidade e tags no mesmo padrão do resto do sistema: um gatilho que
             abre a lista, com o escolhido no rótulo. Aqui isso importa mais que

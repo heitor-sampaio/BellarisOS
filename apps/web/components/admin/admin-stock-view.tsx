@@ -7,6 +7,7 @@ import { AdminStockManageModal } from './admin-stock-manage-modal'
 import { BarcodeEntryModal } from './barcode-entry-modal'
 import { StockProductModal } from '../branch/stock-product-modal'
 import type { StockProduct, ProductCategory, StockProductModalHandle } from '../branch/stock-product-modal'
+import { SegSelect } from '@/components/shared/seg-select'
 
 type BranchStock = {
   branchId:          string
@@ -218,23 +219,19 @@ export function AdminStockView({ products, branches, categories, productCategori
       {/* Filtros */}
       <div className="filtros-bar" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
 
-        {/* Toggle Consolidado / Por unidade */}
-        <div style={{
-          display: 'flex', background: 'var(--bg-app)', padding: 4,
-          borderRadius: 10, border: '1px solid var(--border)', flexShrink: 0,
-        }}>
-          {([['consolidado', 'Consolidado'], ['por-unidade', 'Por unidade']] as [ViewMode, string][]).map(([v, l]) => (
-            <button key={v} type="button" onClick={() => setView(v)} style={{
-              fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '5px 12px', borderRadius: 7,
-              cursor: 'pointer', border: 'none', transition: 'all 100ms',
-              background: view === v ? 'var(--surface)' : 'transparent',
-              color: view === v ? 'var(--text)' : 'var(--text-muted)',
-              boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-            }}>
-              {l}
-            </button>
-          ))}
-        </div>
+        {/* Consolidado / Por unidade — duas opções fixas que trocam a visão:
+            segmento. Era o SegSelect reimplementado à mão, com raio e altura
+            próprios. */}
+        <SegSelect
+          compacto
+          ariaLabel="Como ver o estoque"
+          value={view}
+          onSelect={v => setView(v as ViewMode)}
+          options={[
+            { key: 'consolidado', label: 'Consolidado' },
+            { key: 'por-unidade', label: 'Por unidade' },
+          ]}
+        />
 
         {/* Busca */}
         <div style={{
@@ -258,11 +255,7 @@ export function AdminStockView({ products, branches, categories, productCategori
 
         {/* Categoria */}
         {categories.length > 0 && (
-          <select value={category} onChange={e => setCategory(e.target.value)} style={{
-            fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 10, padding: '7px 10px', cursor: 'pointer', outline: 'none',
-          }}>
+          <select className="filtro-select" value={category} onChange={e => setCategory(e.target.value)}>
             <option value="">Todas as categorias</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -270,22 +263,14 @@ export function AdminStockView({ products, branches, categories, productCategori
 
         {/* Filial */}
         {branches.length > 1 && (
-          <select value={branchId} onChange={e => setBranchId(e.target.value)} style={{
-            fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 10, padding: '7px 10px', cursor: 'pointer', outline: 'none',
-          }}>
+          <select className="filtro-select" value={branchId} onChange={e => setBranchId(e.target.value)}>
             <option value="">Todas as filiais</option>
             {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         )}
 
         {/* Status */}
-        <select value={status} onChange={e => setStatus(e.target.value as StatusFilter)} style={{
-          fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
-          background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 10, padding: '7px 10px', cursor: 'pointer', outline: 'none',
-        }}>
+        <select className="filtro-select" value={status} onChange={e => setStatus(e.target.value as StatusFilter)}>
           <option value="all">Todos os status</option>
           <option value="ok">OK</option>
           <option value="baixo">Abaixo do mínimo</option>
@@ -293,12 +278,10 @@ export function AdminStockView({ products, branches, categories, productCategori
         </select>
 
         {/* Ordenação */}
-        <button type="button" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5,
-          fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '7px 12px', borderRadius: 10,
-          border: '1px solid var(--border)', background: 'var(--surface)',
-          color: 'var(--text-muted)', cursor: 'pointer',
-        }}>
+        <button
+          type="button" className="filtro-toggle"
+          onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+        >
           {sortDir === 'asc' ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
           A–Z
         </button>

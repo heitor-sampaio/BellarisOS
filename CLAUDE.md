@@ -665,6 +665,18 @@ Princípios inegociáveis:
 - **Ícones** — Lucide, linha, `currentColor`. O `✦` é motivo de marca, não ícone funcional.
 - **Sombras apenas em elementos de marca** — botão primário, KPI hero, nav ativo. Superfícies neutras usam borda, nunca sombra. O que **flutua** sobre a página é a exceção e tem token: `--shadow-overlay` (modal, drawer) e `--shadow-popover` (dropdown, tooltip).
 - **Sem gradientes de fundo** — único gradiente permitido é o card "Pacote ativo" (`--brand` → `--brand-deep`).
+- **Seletor: a forma vem da FUNÇÃO**, não do gosto de quem escreve a tela.
+  - escolha exclusiva, 2 a 5 opções curtas e **fixas** → `<SegSelect>` (vira
+    dropdown sozinho no celular);
+  - opções vindas de **dados**, ou mais de 5, ou longas → `.filtro-select`;
+  - **liga/desliga** de um filtro só → `.filtro-toggle` + `aria-pressed`;
+  - filtro que **acumula** (tag, marcador) → `.chip`. Se é exclusivo, não é
+    chip: a pílula solta promete que dá para marcar duas.
+  - **Seletor de texto não leva ícone** — o rótulo já diz, e o ícone repetido
+    cinco vezes na mesma barra vira ruído. O toggle pode levar: ali o ícone é
+    o assunto que se liga.
+  - Lista mestre-detalhe e passo de wizard **não são seletores** e seguem as
+    próprias regras.
 - **Campo de busca tem fundo branco** (`.campo-busca`), diferente dos demais
   campos, que usam `--bg-app`. A busca vive numa barra de filtros sobre o fundo
   do app; com o mesmo tom do fundo ela sumia na superfície em vez de convidar

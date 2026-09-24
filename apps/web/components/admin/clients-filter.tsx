@@ -43,14 +43,10 @@ export function ClientsFilter({ branches }: Props) {
       </div>
 
       {/* Branch filter */}
-      <select
+      <select className="filtro-select"
         defaultValue={searchParams.get('branch') ?? ''}
         onChange={e => update('branch', e.target.value)}
-        style={{
-          padding: '8px 10px', borderRadius: 9, border: '1px solid var(--border)',
-          fontSize: 'var(--text-base-sz)', background: 'var(--surface)', color: 'var(--text)',
-          outline: 'none', minWidth: 160,
-        }}
+ style={{ minWidth: 160 }}
       >
         <option value="">Todas as filiais</option>
         {branches.map(b => (

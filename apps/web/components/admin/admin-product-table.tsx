@@ -129,24 +129,18 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
         </div>
 
         {categories.length > 0 && (
-          <select value={category} onChange={e => setCategory(e.target.value)} style={{
-            fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 10, padding: '7px 10px', cursor: 'pointer', outline: 'none',
-          }}>
+          <select className="filtro-select" value={category} onChange={e => setCategory(e.target.value)}>
             <option value="">Todas as categorias</option>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         )}
 
-        <button type="button" onClick={() => setShowInactive(v => !v)} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '7px 12px', borderRadius: 10,
-          cursor: 'pointer', transition: 'all 120ms',
-          border: showInactive ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-          background: showInactive ? 'var(--brand-soft)' : 'var(--surface)',
-          color: showInactive ? 'var(--brand)' : 'var(--text-muted)',
-        }}>
+        <button
+          type="button"
+          className={showInactive ? 'filtro-toggle is-ativo' : 'filtro-toggle'}
+          aria-pressed={showInactive}
+          onClick={() => setShowInactive(v => !v)}
+        >
           Mostrar inativos
         </button>
 
