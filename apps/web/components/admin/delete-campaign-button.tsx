@@ -26,7 +26,7 @@ export function DeleteCampaignButton({ action }: Props) {
       onClick={handleClick}
       disabled={pending}
       className="btn-ghost"
-      style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: 5 }}
+      style={{ color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 5 }}
     >
       <Trash2 size={14} />
       {pending ? 'Removendo...' : 'Remover'}

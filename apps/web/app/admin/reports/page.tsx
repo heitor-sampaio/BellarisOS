@@ -33,7 +33,7 @@ export default async function AdminReportsPage({
   if (branchesError) {
     console.error('[admin/reports] branches:', branchesError.message)
     return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Não foi possível carregar as unidades agora. Tente recarregar em instantes.
       </div>
     )
@@ -43,7 +43,7 @@ export default async function AdminReportsPage({
 
   if (branches.length === 0) {
     return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Nenhuma filial ativa cadastrada.
       </div>
     )

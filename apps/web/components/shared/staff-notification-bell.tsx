@@ -123,7 +123,7 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
           <span style={{
             position: 'absolute', top: -2, right: -2,
             minWidth: 17, height: 17, borderRadius: 9,
-            background: 'var(--brand)', color: '#fff', fontSize: 10, fontWeight: 800,
+            background: 'var(--brand)', color: 'var(--surface)', fontSize: 'var(--text-overline)', fontWeight: 800,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 4px', border: '1.5px solid var(--surface)', lineHeight: 1,
           }}>{badge}</span>
@@ -138,7 +138,7 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
           position: 'fixed', top: 'calc(var(--topbar-h) - 4px)', right: 12,
           width: 'min(380px, calc(100vw - 24px))', maxHeight: 'calc(100dvh - 90px)', zIndex: 300,
           background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-token)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06)',
+          boxShadow: 'var(--shadow-popover)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
@@ -148,7 +148,7 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Bell size={15} color="var(--brand)" strokeWidth={2.5} />
-            <h2 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', margin: 0 }}>Notificações</h2>
+            <h2 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', margin: 0 }}>Notificações</h2>
           </div>
           <button
             type="button" onClick={() => setOpen(false)}
@@ -167,7 +167,7 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
                 width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--hairline)',
                 borderTopColor: 'var(--brand)', margin: '0 auto 10px', animation: 'spin 0.7s linear infinite',
               }} />
-              <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Carregando...</p>
+              <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Carregando...</p>
             </div>
           )}
           {!isPending && notifications?.length === 0 && (
@@ -177,8 +177,8 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
                 border: '1px solid var(--hairline)', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', margin: '0 auto 12px',
               }}><BellOff size={20} color="var(--text-faint)" /></div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Tudo em dia</p>
-              <p style={{ fontSize: 12.5, color: 'var(--text-faint)', lineHeight: 1.5 }}>Nenhuma notificação por aqui.</p>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Tudo em dia</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', lineHeight: 1.5 }}>Nenhuma notificação por aqui.</p>
             </div>
           )}
           {notifications && notifications.length > 0 && (
@@ -201,17 +201,17 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
                     }}><Icon size={15} color={color} strokeWidth={2} /></div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{
-                        fontSize: 13.5, fontWeight: n.is_received ? 500 : 700,
+                        fontSize: 'var(--text-base-sz)', fontWeight: n.is_received ? 500 : 700,
                         color: n.is_received ? 'var(--text-muted)' : 'var(--text)',
                         marginBottom: 2, lineHeight: 1.35, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>{n.title}</p>
                       {n.body && (
                         <p style={{
-                          fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.4, marginBottom: 2,
+                          fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', lineHeight: 1.4, marginBottom: 2,
                           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                         }}>{n.body}</p>
                       )}
-                      <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>{notificationRelativeTime(n.created_at)}</p>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{notificationRelativeTime(n.created_at)}</p>
                     </div>
                     {!n.is_received && <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--brand)', flexShrink: 0, marginTop: 5 }} />}
                   </li>
@@ -228,7 +228,7 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
           <div role="dialog" aria-modal="true" style={{
             position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
             width: 'min(400px, calc(100vw - 32px))', zIndex: 401, background: 'var(--surface)',
-            borderRadius: 'var(--radius-card-token)', border: '1px solid var(--border)', boxShadow: '0 24px 64px rgba(0,0,0,0.2)', overflow: 'hidden',
+            borderRadius: 'var(--radius-card-token)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-overlay)', overflow: 'hidden',
           }}>
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -243,9 +243,9 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
               }}><X size={14} /></button>
             </div>
             <div style={{ padding: '20px 20px 24px' }}>
-              <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', lineHeight: 1.35, marginBottom: 10 }}>{selected.title}</p>
-              {selected.body && <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>{selected.body}</p>}
-              <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 14 }}>{notificationRelativeTime(selected.created_at)}</p>
+              <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', lineHeight: 1.35, marginBottom: 10 }}>{selected.title}</p>
+              {selected.body && <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', lineHeight: 1.6 }}>{selected.body}</p>}
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 14 }}>{notificationRelativeTime(selected.created_at)}</p>
             </div>
             <div style={{ padding: '0 20px 20px' }}>
               <button type="button" onClick={() => setSelected(null)} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>Fechar</button>

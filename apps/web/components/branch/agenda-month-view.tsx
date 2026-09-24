@@ -45,9 +45,9 @@ function getMonthGrid(date: Date): Date[] {
 
 function barColor(count: number): string {
   if (count === 0)  return 'transparent'
-  if (count < 6)   return '#fcd5de'
-  if (count < 11)  return '#e07a93'
-  return '#c34d6b'
+  if (count < 6)   return 'var(--brand-soft-border)'
+  if (count < 11)  return 'var(--brand-2)'
+  return 'var(--brand)'
 }
 
 export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
@@ -65,7 +65,7 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
       <div className="agenda-month-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, padding: '0 2px', marginBottom: 4 }}>
         {WEEKDAYS.map(d => (
           <div key={d} style={{
-            textAlign: 'center', fontSize: 10, fontWeight: 700,
+            textAlign: 'center', fontSize: 'var(--text-overline)', fontWeight: 700,
             color: 'var(--text-faint)', letterSpacing: '0.06em', padding: '6px 0',
           }}>
             {d}
@@ -102,7 +102,7 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
               onMouseLeave={e => { if (!isToday) e.currentTarget.style.borderColor = 'var(--border)' }}
             >
               <span style={{
-                fontSize: 14, fontWeight: 800, letterSpacing: '-0.01em',
+                fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em',
                 color: isToday ? 'var(--brand)' : 'var(--text)',
               }}>
                 {format(day, 'd')}
@@ -110,7 +110,7 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
 
               {count > 0 ? (
                 <>
-                  <span className="agenda-cell-label" style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
+                  <span className="agenda-cell-label" style={{ fontSize: 'var(--text-2xs)', fontWeight: 600, color: 'var(--text-muted)' }}>
                     {count} atend.
                   </span>
                   <div style={{ marginTop: 'auto' }}>
@@ -124,7 +124,7 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
                 </>
               ) : (
                 inMonth && (
-                  <span className="agenda-cell-label" style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 600 }}>
+                  <span className="agenda-cell-label" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', fontWeight: 600 }}>
                     Sem agenda
                   </span>
                 )
@@ -137,13 +137,13 @@ export function AgendaMonthView({ currentDate, events, onDayClick }: Props) {
       {/* Legend */}
       <div style={{ display: 'flex', gap: 16, marginTop: 16, justifyContent: 'flex-end', paddingRight: 4 }}>
         {[
-          { label: 'Leve', color: '#fcd5de' },
-          { label: 'Médio', color: '#e07a93' },
-          { label: 'Cheio', color: '#c34d6b' },
+          { label: 'Leve', color: 'var(--brand-soft-border)' },
+          { label: 'Médio', color: 'var(--brand-2)' },
+          { label: 'Cheio', color: 'var(--brand)' },
         ].map(l => (
           <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: l.color }} />
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{l.label}</span>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>{l.label}</span>
           </div>
         ))}
       </div>

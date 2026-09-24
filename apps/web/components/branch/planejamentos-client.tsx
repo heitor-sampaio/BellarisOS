@@ -36,10 +36,10 @@ const FILTROS: { key: string; label: string }[] = [
 
 const STATUS: Record<string, { label: string; cor: string; fundo: string }> = {
   DRAFT:     { label: 'Rascunho',          cor: 'var(--text-muted)', fundo: 'var(--bg-app)' },
-  PROPOSED:  { label: 'Aguardando aceite', cor: '#92400e', fundo: '#fef3c7' },
-  ACCEPTED:  { label: 'Aceito',            cor: '#1f6b47', fundo: '#f0faf4' },
-  COMPLETED: { label: 'Concluído',         cor: '#1f6b47', fundo: '#f0faf4' },
-  CANCELLED: { label: 'Cancelado',         cor: '#b91c1c', fundo: '#fef2f2' },
+  PROPOSED:  { label: 'Aguardando aceite', cor: 'var(--warning)', fundo: 'var(--warning-soft)' },
+  ACCEPTED:  { label: 'Aceito',            cor: 'var(--success)', fundo: 'var(--success-bg)' },
+  COMPLETED: { label: 'Concluído',         cor: 'var(--success)', fundo: 'var(--success-bg)' },
+  CANCELLED: { label: 'Cancelado',         cor: 'var(--danger)', fundo: 'var(--danger-soft)' },
 }
 
 function fmtBRL(v: number) {
@@ -139,10 +139,10 @@ export function PlanejamentosClient({
         {FILTROS.map(f => (
           <button key={f.key} type="button" onClick={() => setStatus(f.key)}
             style={{
-              padding: '7px 14px', borderRadius: 'var(--radius-chip-token)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+              padding: '7px 14px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, cursor: 'pointer',
               border:     status === f.key ? '2px solid var(--brand)' : '1.5px solid var(--border)',
               background: status === f.key ? 'var(--brand)'           : 'var(--surface)',
-              color:      status === f.key ? '#fff'                   : 'var(--text)',
+              color:      status === f.key ? 'var(--on-brand)'                   : 'var(--text)',
             }}>
             {f.label}
           </button>
@@ -152,7 +152,7 @@ export function PlanejamentosClient({
       </div>
 
       {erro && (
-        <p style={{ fontSize: 12.5, color: '#dc2626', fontWeight: 600, padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>{erro}</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>{erro}</p>
       )}
 
       {/* Lista */}
@@ -161,10 +161,10 @@ export function PlanejamentosClient({
           <div style={{ width: 52, height: 52, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ClipboardList size={22} style={{ color: 'var(--text-faint)' }} />
           </div>
-          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
             {busca || status ? 'Nada encontrado com esse filtro' : 'Nenhum plano ainda'}
           </p>
-          <p style={{ fontSize: 12.5, color: 'var(--text-faint)', textAlign: 'center', maxWidth: 380 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', maxWidth: 380 }}>
             O plano pode ser montado antes de a pessoa virar cliente — basta dar um nome e ligar a um cadastro depois.
           </p>
         </div>
@@ -178,25 +178,25 @@ export function PlanejamentosClient({
                 style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, textAlign: 'left', textDecoration: 'none' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 14.5, fontWeight: 800, color: 'var(--text)' }}>{p.nome}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
+                    <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{p.nome}</span>
+                    <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
                       {st.label}
                     </span>
                   </div>
-                  <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
                     {p.cliente ? (
                       <><User size={12} /> {p.cliente.name}{p.cliente.phone ? ` · ${p.cliente.phone}` : ''}</>
                     ) : (
                       <span style={{ color: 'var(--text-faint)' }}>Sem cliente ligado</span>
                     )}
                   </p>
-                  <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 2 }}>
+                  <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
                     {p.sessoes} sessão{p.sessoes !== 1 ? 'ões' : ''}
                     {p.unidade ? ` · ${p.unidade}` : ''}
                     {' · '}{new Date(p.criadoEm).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
-                <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>{fmtBRL(p.total)}</span>
+                <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>{fmtBRL(p.total)}</span>
               </Link>
             )
           })}
@@ -208,8 +208,8 @@ export function PlanejamentosClient({
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
           onClick={() => setNovoAberto(false)}>
           <div className="card" style={{ width: 460, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Novo plano</h3>
-            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 16 }}>
+            <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Novo plano</h3>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 16 }}>
               Dê um nome para reencontrar o plano depois. O cliente pode ser ligado agora ou quando houver cadastro.
             </p>
             <input

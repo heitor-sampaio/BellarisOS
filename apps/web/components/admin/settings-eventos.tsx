@@ -134,8 +134,8 @@ export function SettingsEventos({
       </div>
 
       {falha && (
-        <div className="card" style={{ borderColor: '#fda29b', background: '#fee4e2' }}>
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: '#b42318', fontWeight: 'var(--weight-semibold)' }}>
+        <div className="card" style={{ borderColor: 'var(--danger-border)', background: 'var(--danger-soft)' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
             Não foi possível ler a corrente: {falha}
           </p>
         </div>
@@ -275,7 +275,7 @@ export function SettingsEventos({
                   {expandido && (
                     <pre style={{
                       margin: 0, padding: '0 16px 14px 40px',
-                      fontSize: 11.5, lineHeight: 1.6, color: 'var(--text-soft)',
+                      fontSize: 'var(--text-xs-sz)', lineHeight: 1.6, color: 'var(--text-soft)',
                       overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                     }}>
                       {JSON.stringify({ entidade: ev.entidade, entidadeId: ev.entidadeId, dados: ev.dados }, null, 2)}

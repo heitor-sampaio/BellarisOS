@@ -112,7 +112,7 @@ export function ClientsSidebar({
   function estiloFiltro(ativo: boolean): React.CSSProperties {
     return {
       display: 'inline-flex', alignItems: 'center', gap: 5,
-      fontSize: 11, fontWeight: 700, padding: '4px 9px', borderRadius: 'var(--radius-chip-token)',
+      fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '4px 9px', borderRadius: 'var(--radius-chip-token)',
       cursor: 'pointer', transition: 'all 120ms',
       border: ativo ? '1.5px solid var(--brand)' : '1px solid var(--border)',
       background: ativo ? 'var(--brand-soft)' : 'var(--bg-app)',
@@ -135,10 +135,10 @@ export function ClientsSidebar({
       <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div>
-            <h2 style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
               Clientes
             </h2>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>
               {totalActive.toLocaleString('pt-BR')} ativos
             </span>
           </div>
@@ -148,7 +148,7 @@ export function ClientsSidebar({
               onClick={() => router.push(addHref!)}
               style={{
                 width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                background: 'var(--brand)', color: '#fff',
+                background: 'var(--brand)', color: 'var(--surface)',
                 border: 'none', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
@@ -168,7 +168,7 @@ export function ClientsSidebar({
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="field"
-            style={{ paddingLeft: 28, fontSize: 12 }}
+            style={{ paddingLeft: 28, fontSize: 'var(--text-sm-sz)' }}
           />
         </div>
 
@@ -180,10 +180,10 @@ export function ClientsSidebar({
               type="button"
               onClick={() => setFilter(f.key)}
               style={{
-                fontSize: 11, fontWeight: 700, padding: '4px 10px',
+                fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '4px 10px',
                 borderRadius: 'var(--radius-chip-token)', border: 'none', cursor: 'pointer',
                 background: filter === f.key ? 'var(--brand)' : 'var(--bg-app)',
-                color:      filter === f.key ? '#fff' : 'var(--text-muted)',
+                color:      filter === f.key ? 'var(--on-brand)' : 'var(--text-muted)',
                 transition: 'background 0.12s, color 0.12s',
               }}
             >
@@ -239,7 +239,7 @@ export function ClientsSidebar({
           e quem rola passa a ser a página, levando os filtros embora. */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
         {filtered.length === 0 ? (
-          <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 12 }}>
+          <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>
             Nenhum cliente encontrado
           </div>
         ) : (
@@ -248,8 +248,8 @@ export function ClientsSidebar({
             const initials   = getInitials(c.name).toUpperCase()
             const isVip      = c.tags.includes('VIP')
             const badgeLabel = isVip ? 'VIP' : c.isNew ? 'Novo' : 'Regular'
-            const badgeColor = isVip ? '#c34d6b' : c.isNew ? '#3f9b6f' : 'var(--text-faint)'
-            const badgeBg    = isVip ? '#fce7ec' : c.isNew ? '#e7fce7' : 'var(--bg-app)'
+            const badgeColor = isVip ? 'var(--brand)' : c.isNew ? 'var(--success)' : 'var(--text-faint)'
+            const badgeBg    = isVip ? 'var(--brand-soft)' : c.isNew ? 'var(--success-soft)' : 'var(--bg-app)'
 
             return (
               <button
@@ -272,19 +272,19 @@ export function ClientsSidebar({
                   width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
                   background: isSelected ? 'var(--brand)' : 'var(--brand-soft)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 800,
-                  color: isSelected ? '#fff' : 'var(--brand)',
+                  fontSize: 'var(--text-sm-sz)', fontWeight: 800,
+                  color: isSelected ? 'var(--on-brand)' : 'var(--brand)',
                 }}>
                   {initials}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: isSelected ? 'var(--brand)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isSelected ? 'var(--brand)' : 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {c.name}
                     </span>
                     <span style={{
-                      fontSize: 10, fontWeight: 700, flexShrink: 0,
+                      fontSize: 'var(--text-overline)', fontWeight: 700, flexShrink: 0,
                       padding: '2px 6px', borderRadius: 10,
                       background: badgeBg, color: badgeColor,
                     }}>
@@ -292,16 +292,16 @@ export function ClientsSidebar({
                     </span>
                   </div>
                   {c.branchName ? (
-                    <p style={{ fontSize: 11, color: 'var(--brand)', marginTop: 2, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--brand)', marginTop: 2, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {c.branchName}
                     </p>
                   ) : (
-                    <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {lastVisitLabel(c.lastVisit)}
                     </p>
                   )}
                   {c.branchName && (
-                    <p style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {lastVisitLabel(c.lastVisit)}
                     </p>
                   )}

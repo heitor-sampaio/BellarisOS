@@ -167,9 +167,9 @@ export function AgendaCalendar({
       {dropError && (
         <div style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 9999, background: '#dc2626', color: '#fff', padding: '10px 20px',
+          zIndex: 9999, background: 'var(--danger)', color: 'var(--surface)', padding: '10px 20px',
           borderRadius: 10, fontWeight: 700, fontSize: 'var(--text-sm-sz)',
-          boxShadow: '0 4px 20px rgba(0,0,0,.2)', pointerEvents: 'none',
+          boxShadow: 'var(--shadow-popover)', pointerEvents: 'none',
         }}>
           {dropError}
         </div>
@@ -188,7 +188,7 @@ export function AgendaCalendar({
             {waitingCount > 0 && (
               <>
                 {' · '}
-                <span style={{ fontWeight: 700, color: '#d97706' }}>{waitingCount}</span> aguardando confirmação
+                <span style={{ fontWeight: 700, color: 'var(--warning)' }}>{waitingCount}</span> aguardando confirmação
               </>
             )}
           </p>
@@ -229,7 +229,7 @@ export function AgendaCalendar({
             >
               <ChevronLeft size={16} />
             </button>
-            <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', minWidth: 200, textAlign: 'center' }}>
+            <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', minWidth: 200, textAlign: 'center' }}>
               {navLabel(view, currentDate)}
             </span>
             <button
@@ -261,13 +261,13 @@ export function AgendaCalendar({
           {view === 'dia' && (
             <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
               {[
-                { color: '#3f9b6f', label: 'Confirmado' },
-                { color: '#c34d6b', label: 'Em atendimento' },
-                { color: '#c4b4b8', label: 'Aguardando' },
+                { color: 'var(--success)', label: 'Confirmado' },
+                { color: 'var(--brand)', label: 'Em atendimento' },
+                { color: 'var(--text-faint)', label: 'Aguardando' },
               ].map(l => (
                 <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: l.color }} />
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{l.label}</span>
+                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>{l.label}</span>
                 </div>
               ))}
             </div>
@@ -275,7 +275,7 @@ export function AgendaCalendar({
 
           {/* Week view: occupancy */}
           {view === 'semana' && totalCount > 0 && (
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+            <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
               {totalCount} atendimentos · {occupancy}% de ocupação
             </span>
           )}

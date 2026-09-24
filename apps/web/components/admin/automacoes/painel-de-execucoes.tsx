@@ -28,7 +28,7 @@ import type { TipoDeNo } from '@estetica-os/types'
 
 const ICONE_STATUS: Record<string, { icone: React.ReactNode; cor: string; rotulo: string }> = {
   ok:        { icone: <CheckCircle2 size={13} />, cor: 'var(--success)',  rotulo: 'Concluída' },
-  falhou:    { icone: <AlertCircle size={13} />,  cor: '#b42318',         rotulo: 'Falhou' },
+  falhou:    { icone: <AlertCircle size={13} />,  cor: 'var(--danger)',         rotulo: 'Falhou' },
   esperando: { icone: <Clock size={13} />,        cor: 'var(--warning)',  rotulo: 'Esperando' },
   rodando:   { icone: <Clock size={13} />,        cor: 'var(--warning)',  rotulo: 'Rodando' },
   parado:    { icone: <CircleSlash size={13} />,  cor: 'var(--text-muted)', rotulo: 'Interrompida' },
@@ -123,7 +123,7 @@ export function PainelDeExecucoes({
           >
             <FlaskConical size={14} /> Ensaiar com o último fato
           </button>
-          <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 7, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 7, lineHeight: 1.5 }}>
             Percorre o fluxo com um evento que <strong>realmente aconteceu</strong> e
             mostra o caminho — sem mandar mensagem, mover etapa nem gravar nada.
             Funciona com a automação desligada.
@@ -185,7 +185,7 @@ export function PainelDeExecucoes({
                     {quando(ex.criadaEm)}{ex.sobre ? ` · ${ex.sobre}` : ''}
                   </p>
                   {ex.erro && (
-                    <p style={{ fontSize: 'var(--text-xs-sz)', color: '#b42318', marginTop: 3, lineHeight: 1.45 }}>
+                    <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', marginTop: 3, lineHeight: 1.45 }}>
                       {ex.erro}
                     </p>
                   )}
@@ -229,7 +229,7 @@ function Passos({ passos }: { passos: PassoDaExecucao[] }) {
                 {ROTULOS[p.tipo as TipoDeNo] ?? p.tipo}
               </span>
               <p style={{
-                fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.5, marginTop: 1,
+                fontSize: 'var(--text-overline)', color: 'var(--text-muted)', lineHeight: 1.5, marginTop: 1,
                 wordBreak: 'break-word',
               }}>
                 {descrever(p.resumo)}

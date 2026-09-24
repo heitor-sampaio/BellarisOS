@@ -189,7 +189,7 @@ export default async function AdminProceduresPage() {
                             precisa poder ocupar duas linhas sem estourar. */}
                         <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflowWrap: 'anywhere' }}>{p.name}</p>
                         {p.description && (
-                          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {p.description}
                           </p>
                         )}
@@ -202,7 +202,7 @@ export default async function AdminProceduresPage() {
                       </td>
                       <td data-label="Unidades" style={{ padding: '13px 16px' }}>
                         <span style={{
-                          fontSize: 11, fontWeight: 700,
+                          fontSize: 'var(--text-2xs)', fontWeight: 700,
                           color: branchCount === 0 ? 'var(--brand)' : 'var(--text-soft)',
                           background: branchCount === 0 ? 'var(--brand-soft)' : 'var(--bg-app)',
                           border: `1px solid ${branchCount === 0 ? 'var(--brand-soft-border)' : 'var(--border)'}`,
@@ -214,7 +214,7 @@ export default async function AdminProceduresPage() {
                       <td data-label="App" data-par style={{ padding: '13px 16px' }}>
                         {p.visible_on_client_app
                           ? <Smartphone size={14} color="var(--brand)" aria-label="Visível no app" />
-                          : <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>—</span>}
+                          : <span style={{ color: 'var(--text-faint)', fontSize: 'var(--text-2xs)' }}>—</span>}
                       </td>
                       <td data-label="Situação" data-par style={{ padding: '13px 16px' }}>
                         <span className={p.is_active ? 'chip chip-success' : 'chip chip-muted'}>

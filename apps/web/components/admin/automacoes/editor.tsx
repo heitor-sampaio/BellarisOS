@@ -444,7 +444,7 @@ function ListaDeProblemas({
       display: 'flex', flexDirection: 'column', gap: 5,
     }}>
       {erros.map((p, i) => (
-        <p key={`e${i}`} style={{ fontSize: 'var(--text-xs-sz)', color: '#b42318', display: 'flex', gap: 6 }}>
+        <p key={`e${i}`} style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', display: 'flex', gap: 6 }}>
           <AlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} /> {p.mensagem}
         </p>
       ))}

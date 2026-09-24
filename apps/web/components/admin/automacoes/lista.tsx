@@ -75,8 +75,8 @@ export function ListaDeAutomacoes({
       </div>
 
       {erro && (
-        <div className="card" style={{ borderColor: '#fda29b', background: '#fee4e2', marginBottom: 16 }}>
-          <p style={{ fontSize: 'var(--text-sm-sz)', color: '#b42318', fontWeight: 'var(--weight-semibold)' }}>
+        <div className="card" style={{ borderColor: 'var(--danger-border)', background: 'var(--danger-soft)', marginBottom: 16 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>
             Não foi possível carregar: {erro}
           </p>
         </div>
@@ -145,11 +145,11 @@ export function ListaDeAutomacoes({
                   }}>
                     {a.execucoes}
                   </p>
-                  <p style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>
+                  <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
                     {a.execucoes === 1 ? 'execução em 7 dias' : 'execuções em 7 dias'}
                   </p>
                   {a.falhas > 0 && (
-                    <p style={{ fontSize: 10.5, color: '#b42318', fontWeight: 'var(--weight-bold)', marginTop: 2 }}>
+                    <p style={{ fontSize: 'var(--text-overline)', color: 'var(--danger)', fontWeight: 'var(--weight-bold)', marginTop: 2 }}>
                       {a.falhas} {a.falhas === 1 ? 'falhou' : 'falharam'}
                     </p>
                   )}

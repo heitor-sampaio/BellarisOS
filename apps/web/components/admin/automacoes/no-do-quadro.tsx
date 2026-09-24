@@ -51,7 +51,7 @@ export interface DadosDoNo extends Record<string, unknown> {
 const ALCA = {
   width: 9, height: 9,
   background: 'var(--surface)',
-  border: '1.5px solid var(--border-strong, #d9c7c2)',
+  border: '1.5px solid var(--border-strong, var(--border))',
 } as const
 
 function NoDoQuadroBase({ data, selected }: NodeProps) {
@@ -66,7 +66,7 @@ function NoDoQuadroBase({ data, selected }: NodeProps) {
         background: ehGatilho ? 'var(--brand)' : 'var(--surface)',
         color: ehGatilho ? 'var(--on-brand)' : 'var(--text)',
         border: `1px solid ${
-          d.temProblema ? '#fda29b'
+          d.temProblema ? 'var(--danger-border)'
           : selected    ? 'var(--brand)'
           : ehGatilho   ? 'var(--brand)'
           : 'var(--border)'
@@ -86,7 +86,7 @@ function NoDoQuadroBase({ data, selected }: NodeProps) {
         <span style={{ fontWeight: 'var(--weight-bold)', flex: 1, minWidth: 0 }}>
           {ROTULOS[d.tipo] ?? d.tipo}
         </span>
-        {d.temProblema && <AlertCircle size={13} color={ehGatilho ? 'var(--on-brand)' : '#b42318'} />}
+        {d.temProblema && <AlertCircle size={13} color={ehGatilho ? 'var(--on-brand)' : 'var(--danger)'} />}
       </div>
 
       {d.resumo && (
@@ -116,7 +116,7 @@ function NoDoQuadroBase({ data, selected }: NodeProps) {
               <span style={{
                 position: 'absolute', right: -6, top: `${topo}%`,
                 transform: 'translate(100%, -50%)',
-                fontSize: 9.5, fontWeight: 'var(--weight-bold)',
+                fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-bold)',
                 color: 'var(--text-muted)', whiteSpace: 'nowrap',
                 paddingLeft: 10,
               }}>

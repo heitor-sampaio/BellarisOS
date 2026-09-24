@@ -250,7 +250,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
               <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
                 {isEdit ? 'Editar lead' : 'Novo lead'}
               </h2>
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                 {isEdit ? existing!.name : 'Adicionar contato ao funil de CRM'}
               </p>
             </div>
@@ -268,7 +268,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                     display: 'inline-flex', alignItems: 'center', gap: 5,
                     padding: '7px 12px', borderRadius: 10, cursor: 'pointer',
                     border: '1px solid var(--border)', background: 'var(--bg-app)',
-                    color: 'var(--brand)', fontSize: 12, fontWeight: 700,
+                    color: 'var(--brand)', fontSize: 'var(--text-sm-sz)', fontWeight: 700,
                     fontFamily: 'inherit', whiteSpace: 'nowrap',
                     opacity: abrindoConversa ? 0.6 : 1,
                   }}
@@ -292,7 +292,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
           {erroConversa && (
             <p style={{
-              padding: '10px 24px 0', fontSize: 12,
+              padding: '10px 24px 0', fontSize: 'var(--text-sm-sz)',
               color: 'var(--warning)', fontWeight: 700,
             }}>
               {erroConversa}
@@ -321,23 +321,23 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 4 }}>
                   CONTATO <span style={{ color: 'var(--brand)' }}>*</span>
                 </p>
-                <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 10 }}>
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
                   Preencha pelo menos um dos campos abaixo
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)', minWidth: 80 }}>Telefone</span>
+                    <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>Telefone</span>
                     <input name="phone" type="tel" className="field" style={{ flex: 1 }}
                       value={phone} onChange={e => setPhone(maskPhone(e.target.value))}
                       placeholder="(11) 99999-9999" />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)', minWidth: 80 }}>E-mail</span>
+                    <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>E-mail</span>
                     <input name="email" type="email" className="field" style={{ flex: 1 }}
                       defaultValue={existing?.email ?? ''} placeholder="contato@email.com" />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)', minWidth: 80 }}>Rede social</span>
+                    <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 80 }}>Rede social</span>
                     <input name="social_media" type="text" className="field" style={{ flex: 1 }}
                       defaultValue={existing?.social_media ?? ''} placeholder="@usuario ou link do perfil" />
                   </div>
@@ -350,7 +350,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   PROCEDIMENTOS DE INTERESSE
                 </p>
                 {procedures.length === 0 ? (
-                  <p style={{ fontSize: 12, color: 'var(--text-faint)', padding: '4px 0' }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', padding: '4px 0' }}>
                     Nenhum procedimento cadastrado. Acesse o portal admin para cadastrar.
                   </p>
                 ) : (
@@ -361,7 +361,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                         return (
                           <button key={p.id} type="button" onClick={() => toggleProc(p.id)} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 5,
-                            fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 99, cursor: 'pointer',
+                            fontSize: 'var(--text-sm-sz)', fontWeight: 600, padding: '5px 10px', borderRadius: 99, cursor: 'pointer',
                             border: selected ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
                             background: selected ? 'var(--brand-soft)' : 'var(--bg-app)',
                             color: selected ? 'var(--brand)' : 'var(--text-muted)',
@@ -374,7 +374,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                       })}
                     </div>
                     {selectedProcs.length > 0 && (
-                      <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6 }}>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 6 }}>
                         {selectedProcs.length} selecionado{selectedProcs.length > 1 ? 's' : ''}
                       </p>
                     )}
@@ -415,7 +415,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                 <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 4 }}>
                   TAGS
                 </p>
-                <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 10 }}>
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
                   Classifique o lead (origem manual, filial, campanha…)
                 </p>
 
@@ -447,7 +447,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                     disabled={!tagDraft.trim()}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
-                      fontSize: 12, fontWeight: 700, padding: '7px 12px', borderRadius: 10,
+                      fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '7px 12px', borderRadius: 10,
                       border: '1.5px solid var(--border)', background: 'var(--bg-app)',
                       color: 'var(--text-muted)', cursor: tagDraft.trim() ? 'pointer' : 'default',
                       opacity: tagDraft.trim() ? 1 : 0.5, flexShrink: 0,
@@ -463,7 +463,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                     {suggestedTags.filter(s => !tags.includes(s)).map(s => (
                       <button key={s} type="button" onClick={() => toggleTag(s)} style={{
                         display: 'inline-flex', alignItems: 'center', gap: 5,
-                        fontSize: 12, fontWeight: 600, padding: '5px 10px', borderRadius: 99, cursor: 'pointer',
+                        fontSize: 'var(--text-sm-sz)', fontWeight: 600, padding: '5px 10px', borderRadius: 99, cursor: 'pointer',
                         border: '1.5px dashed var(--border)', background: 'var(--surface)',
                         color: 'var(--text-muted)', transition: 'all 120ms',
                       }}>

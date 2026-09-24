@@ -29,7 +29,7 @@ const Wizard = dynamic(
   {
     ssr:     false,
     loading: () => (
-      <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-faint)', fontSize: 14 }}>
+      <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)' }}>
         Carregando…
       </div>
     ),

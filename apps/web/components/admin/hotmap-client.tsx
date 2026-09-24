@@ -137,14 +137,14 @@ export function HotmapClient({ branches, layers }: Props) {
           center={[b.lat, b.lng]}
           radius={10}
           pathOptions={{
-            fillColor:   '#c34d6b',
+            fillColor:   'var(--brand)',
             fillOpacity: 1,
-            color:       '#fff',
+            color:       'var(--on-brand)',
             weight:      2.5,
           }}
         >
           <Tooltip direction="top" offset={[0, -8]} permanent={branches.length <= 8}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#c34d6b' }}>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--brand)' }}>
               ✦ {b.name}
             </span>
           </Tooltip>

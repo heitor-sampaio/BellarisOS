@@ -48,10 +48,10 @@ const SKIN_TYPE_LABEL: Record<string, string> = Object.fromEntries(SKIN_TYPES.ma
 function FieldRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+      <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
         {label}
       </p>
-      <p style={{ fontSize: 13, color: value ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.6 }}>
+      <p style={{ fontSize: 'var(--text-base-sz)', color: value ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.6 }}>
         {value || 'Não informado'}
       </p>
     </div>
@@ -61,14 +61,14 @@ function FieldRow({ label, value }: { label: string; value: string | null | unde
 function BoolRow({ label, value }: { label: string; value: boolean }) {
   return (
     <div>
-      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+      <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
         {label}
       </p>
       <span style={{
-        display: 'inline-block', fontSize: 12, fontWeight: 700,
+        display: 'inline-block', fontSize: 'var(--text-sm-sz)', fontWeight: 700,
         padding: '2px 10px', borderRadius: 10,
-        background: value ? '#e7fcf0' : 'var(--bg-app)',
-        color:      value ? '#3a9b6f' : 'var(--text-faint)',
+        background: value ? 'var(--cat-6-soft)' : 'var(--bg-app)',
+        color:      value ? 'var(--success)' : 'var(--text-faint)',
       }}>
         {value ? 'Sim' : 'Não'}
       </span>
@@ -103,7 +103,7 @@ function AnamnesisView({ data, onEdit, canEdit, embedded }: { data: GeneralAnamn
       <div>
         {canEdit && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
-            <button type="button" onClick={onEdit} className="btn-secondary" style={{ fontSize: 12, gap: 5 }}>
+            <button type="button" onClick={onEdit} className="btn-secondary" style={{ fontSize: 'var(--text-sm-sz)', gap: 5 }}>
               <Edit2 size={12} /> Editar
             </button>
           </div>
@@ -117,14 +117,14 @@ function AnamnesisView({ data, onEdit, canEdit, embedded }: { data: GeneralAnamn
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
         <ClipboardList size={15} style={{ color: 'var(--brand)' }} />
-        <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', flex: 1 }}>Ficha de anamnese</h3>
+        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Ficha de anamnese</h3>
         {data.updatedAt && (
-          <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
             Atualizado em {new Date(data.updatedAt).toLocaleDateString('pt-BR')}
           </span>
         )}
         {canEdit && (
-          <button type="button" onClick={onEdit} className="btn-secondary" style={{ fontSize: 12, gap: 5 }}>
+          <button type="button" onClick={onEdit} className="btn-secondary" style={{ fontSize: 'var(--text-sm-sz)', gap: 5 }}>
             <Edit2 size={12} /> Editar
           </button>
         )}
@@ -162,7 +162,7 @@ function AnamnesisForm({
       {!embedded && (
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <ClipboardList size={15} style={{ color: 'var(--brand)' }} />
-          <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand)', flex: 1 }}>
+          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', flex: 1 }}>
             {initial ? 'Editar anamnese' : 'Preencher ficha de anamnese'}
           </h3>
           <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '4px 6px' }}>
@@ -266,7 +266,7 @@ function AnamnesisForm({
         </div>
 
         {state?.error && (
-          <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>
         )}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
@@ -308,7 +308,7 @@ export function AnamnesisTab({ anamnesis, clientId, branchId, slug, canEdit, emb
   // No data, no permission
   if (embedded) {
     return (
-      <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>
+      <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>
         Anamnese geral não preenchida.
       </p>
     )
@@ -322,10 +322,10 @@ export function AnamnesisTab({ anamnesis, clientId, branchId, slug, canEdit, emb
       }}>
         <ClipboardList size={22} style={{ color: 'var(--brand)' }} />
       </div>
-      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>
+      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
         Anamnese não preenchida
       </p>
-      <p style={{ fontSize: 12, color: 'var(--text-faint)', maxWidth: 280 }}>
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', maxWidth: 280 }}>
         A ficha de anamnese ainda não foi preenchida para esta cliente.
       </p>
     </div>

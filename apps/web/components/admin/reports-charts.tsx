@@ -8,7 +8,7 @@ import {
 import { categoryAxisWidth, numericAxisWidth } from '@/lib/chart-utils'
 
 // -- Palette -------------------------------------------------------------------
-export const CHART_COLORS = ['#c34d6b', '#7c3aed', '#0ea5e9', '#16a34a', '#d97706', '#64748b']
+export const CHART_COLORS = ['var(--brand)', 'var(--cat-4)', 'var(--info)', 'var(--success)', 'var(--warning)', 'var(--text-muted)']
 
 // -- Formatters ----------------------------------------------------------------
 const _fmtBRL = (v: number) =>
@@ -27,7 +27,7 @@ function EmptyChart({ msg = 'Sem dados no período.' }: { msg?: string }) {
   return (
     <div style={{
       padding: '28px 0', textAlign: 'center',
-      fontSize: 12, color: 'var(--text-faint)',
+      fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)',
     }}>
       {msg}
     </div>
@@ -57,30 +57,30 @@ export function HBarChart({
   return (
     <ResponsiveContainer width="100%" height={h}>
       <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 92, left: 8, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 0" horizontal={false} stroke="var(--hairline,#f4ebe8)" />
+        <CartesianGrid strokeDasharray="3 0" horizontal={false} stroke="var(--hairline,var(--hairline))" />
         <XAxis
           type="number"
-          tick={{ fontSize: 10, fill: 'var(--text-faint)' }}
+          tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-faint)' }}
           tickLine={false} axisLine={false}
           tickFormatter={formatValue}
         />
         <YAxis
           type="category" dataKey="name"
-          tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+          tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--text-muted)' }}
           tickLine={false} axisLine={false}
           width={categoryAxisWidth(rows.map(r => r.name), { fontPx: 11 })}
         />
         <Tooltip
           formatter={(v) => [formatValue(Number(v ?? 0)), '']}
           contentStyle={{
-            background: 'white', border: '1px solid var(--border,#f0e6e3)',
-            borderRadius: 10, fontSize: 12,
+            background: 'white', border: '1px solid var(--border,var(--border))',
+            borderRadius: 10, fontSize: 'var(--text-sm-sz)',
           }}
-          cursor={{ fill: 'var(--hairline,#f4ebe8)' }}
+          cursor={{ fill: 'var(--hairline,var(--hairline))' }}
         />
         <Bar
           dataKey="value" fill={color} radius={[0, 4, 4, 0]} maxBarSize={22}
-          label={{ position: 'right', fontSize: 10, fill: 'var(--text-muted)', formatter: (v: unknown) => formatValue(Number(v ?? 0)) }}
+          label={{ position: 'right', fontSize: 'var(--text-overline)', fill: 'var(--text-muted)', formatter: (v: unknown) => formatValue(Number(v ?? 0)) }}
         />
       </BarChart>
     </ResponsiveContainer>
@@ -101,18 +101,18 @@ export function WeekBarChart({ data }: { data: { day: number; count: number }[] 
         <CartesianGrid strokeDasharray="3 0" stroke="var(--hairline)" vertical={false} />
         <XAxis
           dataKey="name"
-          tick={{ fontSize: 11, fill: 'var(--text-muted)' }}
+          tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--text-muted)' }}
           tickLine={false} axisLine={{ stroke: 'var(--border)' }}
         />
         <YAxis
-          tick={{ fontSize: 9, fill: 'var(--text-faint)' }}
+          tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-faint)' }}
           tickLine={false} axisLine={false} allowDecimals={false}
           width={yAxisW}
         />
         <Tooltip
           contentStyle={{
             background: 'white', border: '1px solid var(--border)',
-            borderRadius: 10, fontSize: 12,
+            borderRadius: 10, fontSize: 'var(--text-sm-sz)',
           }}
         />
         <Bar dataKey="count" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} maxBarSize={40} />
@@ -153,7 +153,7 @@ export function DonutChart({
             formatter={(v, name) => [fmt(Number(v ?? 0), total), String(name ?? '')]}
             contentStyle={{
               background: 'white', border: '1px solid var(--border)',
-              borderRadius: 10, fontSize: 12,
+              borderRadius: 10, fontSize: 'var(--text-sm-sz)',
             }}
           />
         </PieChart>
@@ -166,13 +166,13 @@ export function DonutChart({
               background: colors[i % colors.length], flexShrink: 0,
             }} />
             <span style={{
-              fontSize: 11, color: 'var(--text-muted)',
+              fontSize: 'var(--text-2xs)', color: 'var(--text-muted)',
               flex: 1, minWidth: 0, overflow: 'hidden',
               textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {d.name}
             </span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', flexShrink: 0 }}>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text)', flexShrink: 0 }}>
               {fmt(d.value, total)}
             </span>
           </div>
@@ -207,19 +207,19 @@ export function MiniAreaChart({
         <CartesianGrid strokeDasharray="3 0" stroke="var(--hairline)" vertical={false} />
         <XAxis
           dataKey="label"
-          tick={{ fontSize: 9, fill: 'var(--text-faint)' }}
+          tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-faint)' }}
           tickLine={false} axisLine={{ stroke: 'var(--border)' }}
           interval="preserveStartEnd"
         />
         <YAxis
-          tick={{ fontSize: 9, fill: 'var(--text-faint)' }}
+          tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-faint)' }}
           tickLine={false} axisLine={false} allowDecimals={false}
           width={yAxisW}
         />
         <Tooltip
           contentStyle={{
             background: 'white', border: '1px solid var(--border)',
-            borderRadius: 10, fontSize: 12,
+            borderRadius: 10, fontSize: 'var(--text-sm-sz)',
           }}
         />
         <Area
@@ -243,13 +243,13 @@ export function DreWaterfall({
   lucro: number
 }) {
   const rows = [
-    { label: 'Receita Bruta',          v: receita,       color: '#c34d6b', pct: 100 },
-    { label: '− Custo de Insumos',      v: custoProdutos, color: '#dc2626', pct: receita > 0 ? (custoProdutos / receita) * 100 : 0 },
-    { label: '− Despesas Operacionais', v: despesas,      color: '#d97706', pct: receita > 0 ? (despesas / receita) * 100 : 0 },
+    { label: 'Receita Bruta',          v: receita,       color: 'var(--brand)', pct: 100 },
+    { label: '− Custo de Insumos',      v: custoProdutos, color: 'var(--danger)', pct: receita > 0 ? (custoProdutos / receita) * 100 : 0 },
+    { label: '− Despesas Operacionais', v: despesas,      color: 'var(--warning)', pct: receita > 0 ? (despesas / receita) * 100 : 0 },
     {
       label: '= Lucro Operacional',
       v: lucro,
-      color: lucro >= 0 ? '#16a34a' : '#dc2626',
+      color: lucro >= 0 ? 'var(--success)' : 'var(--danger)',
       pct: receita > 0 ? Math.min(Math.abs(lucro / receita) * 100, 100) : 0,
     },
   ]
@@ -262,14 +262,14 @@ export function DreWaterfall({
             alignItems: 'baseline', marginBottom: 6,
           }}>
             <span style={{
-              fontSize: 12,
+              fontSize: 'var(--text-sm-sz)',
               color: 'var(--text-muted)',
               fontWeight: i === 3 ? 700 : 500,
             }}>
               {r.label}
             </span>
             <span style={{
-              fontSize: 14, fontWeight: 800,
+              fontSize: 'var(--text-base-sz)', fontWeight: 800,
               color: r.color, letterSpacing: '-0.01em',
             }}>
               {_fmtBRL(r.v)}
@@ -313,14 +313,14 @@ export function SimpleTable({
   if (!rows.length) return <EmptyChart msg={emptyMsg} />
   return (
     <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm-sz)' }}>
         <thead>
           <tr>
             {columns.map(col => (
               <th key={col.key} style={{
                 padding: '8px 12px',
                 textAlign: col.align ?? 'left',
-                fontSize: 10, fontWeight: 700,
+                fontSize: 'var(--text-overline)', fontWeight: 700,
                 color: 'var(--text-muted)',
                 textTransform: 'uppercase', letterSpacing: '0.06em',
                 borderBottom: '1px solid var(--border)',
@@ -363,10 +363,10 @@ export function Badge({
   color?: 'green' | 'amber' | 'red' | 'blue' | 'gray'
 }) {
   const map = {
-    green: { bg: '#dcfce7', text: '#16a34a' },
-    amber: { bg: '#fef3c7', text: '#d97706' },
-    red:   { bg: '#fee2e2', text: '#dc2626' },
-    blue:  { bg: '#dbeafe', text: '#2563eb' },
+    green: { bg: 'var(--success-soft)', text: 'var(--success)' },
+    amber: { bg: 'var(--warning-soft)', text: 'var(--warning)' },
+    red:   { bg: 'var(--danger-soft)', text: 'var(--danger)' },
+    blue:  { bg: 'var(--info-soft)', text: 'var(--info)' },
     gray:  { bg: 'var(--hairline)', text: 'var(--text-muted)' },
   }
   const { bg, text } = map[color]
@@ -375,7 +375,7 @@ export function Badge({
       display: 'inline-block',
       padding: '2px 8px',
       borderRadius: 6,
-      fontSize: 10,
+      fontSize: 'var(--text-overline)',
       fontWeight: 700,
       background: bg,
       color: text,

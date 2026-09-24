@@ -29,7 +29,7 @@ export async function DetalheDePlano({
   if (error || !plano) {
     return (
       <div style={{ padding: 40, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
           {error ?? 'Plano não encontrado.'}
         </p>
         <Link href={basePath} className="btn-secondary" style={{ textDecoration: 'none' }}>

@@ -55,8 +55,8 @@ function EmptyState({ platform, configured }: { platform: string; configured: bo
 
 function ErrorState({ platform, message }: { platform: string; message: string }) {
   return (
-    <div className="card" style={{ padding: '32px', borderColor: 'var(--danger, #dc2626)', textAlign: 'center' }}>
-      <p style={{ color: 'var(--danger, #dc2626)', fontWeight: 'var(--weight-bold)', marginBottom: 6 }}>
+    <div className="card" style={{ padding: '32px', borderColor: 'var(--danger, var(--danger))', textAlign: 'center' }}>
+      <p style={{ color: 'var(--danger, var(--danger))', fontWeight: 'var(--weight-bold)', marginBottom: 6 }}>
         Erro ao buscar dados do {platform}
       </p>
       <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>{message}</p>

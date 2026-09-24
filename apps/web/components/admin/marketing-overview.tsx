@@ -166,7 +166,7 @@ export function MarketingOverview({
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 6, fontWeight: 'var(--weight-bold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Campanhas ativas
           </p>
-          <p style={{ fontSize: 22, fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
+          <p style={{ fontSize: 'var(--text-name)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
             {allCampaigns.filter(c => c.status === 'ACTIVE').length}
             <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-normal)', color: 'var(--text-muted)', marginLeft: 6 }}>
               de {allCampaigns.length} totais
@@ -177,7 +177,7 @@ export function MarketingOverview({
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 6, fontWeight: 'var(--weight-bold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             CPC médio
           </p>
-          <p style={{ fontSize: 22, fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
+          <p style={{ fontSize: 'var(--text-name)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
             {totals.clicks > 0 ? fmtBRL(totals.spend / totals.clicks) : '—'}
           </p>
         </div>
@@ -185,7 +185,7 @@ export function MarketingOverview({
           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 6, fontWeight: 'var(--weight-bold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Taxa de conversão
           </p>
-          <p style={{ fontSize: 22, fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
+          <p style={{ fontSize: 'var(--text-name)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
             {totals.clicks > 0
               ? fmtPct((attributedLeadsCount / totals.clicks) * 100)
               : '—'

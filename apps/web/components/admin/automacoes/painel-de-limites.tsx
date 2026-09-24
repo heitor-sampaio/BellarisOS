@@ -54,7 +54,7 @@ export function PainelDeLimites({
         </p>
 
         <div>
-          <p style={{ fontSize: 11, fontWeight: 'var(--weight-bold)', color: 'var(--text-soft)', marginBottom: 5 }}>
+          <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-soft)', marginBottom: 5 }}>
             Não mandar mensagem entre
           </p>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -70,14 +70,14 @@ export function PainelDeLimites({
               onChange={e => onChange({ ...limites, silencioAte: e.target.value || undefined })}
             />
           </div>
-          <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
             A mensagem não é descartada: ela <strong>espera</strong> o horário.
             Descartar faria o lembrete simplesmente não acontecer.
           </p>
         </div>
 
         <div>
-          <p style={{ fontSize: 11, fontWeight: 'var(--weight-bold)', color: 'var(--text-soft)', marginBottom: 5 }}>
+          <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-soft)', marginBottom: 5 }}>
             No máximo, por cliente por dia
           </p>
           <input
@@ -89,7 +89,7 @@ export function PainelDeLimites({
               tetoPorClienteDia: e.target.value ? Number(e.target.value) : undefined,
             })}
           />
-          <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
             Conta as execuções desta automação com o mesmo cliente. Passou do
             teto, o fluxo para — esperar até amanhã acumularia a fila e
             mandaria tudo de uma vez.

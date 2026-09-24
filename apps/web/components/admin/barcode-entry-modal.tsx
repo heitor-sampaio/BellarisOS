@@ -29,7 +29,7 @@ interface FoundProduct {
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+    <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
       {children}
     </label>
   )
@@ -183,13 +183,13 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
               Entrada por código de barras
             </h2>
             {step === 'entry' && product && (
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
                 {product.name}
                 {product.sku && <span style={{ color: 'var(--text-faint)' }}> · {product.sku}</span>}
               </p>
             )}
             {step === 'not-found' && (
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
                 Código não cadastrado · {barcode}
               </p>
             )}
@@ -209,7 +209,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
         {/* -- Passo 1: leitura -- */}
         {step === 'scan' && (
           <>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.55 }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', lineHeight: 1.55 }}>
               Aponte a leitora para o código de barras do produto ou digite o código manualmente.
             </p>
 
@@ -225,7 +225,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
                   onKeyDown={e => e.key === 'Enter' && handleScan()}
                   placeholder="EAN-13, UPC, EAN-8…"
                   autoComplete="off"
-                  style={{ flex: 1, fontFamily: 'monospace', letterSpacing: '0.08em', fontSize: 14 }}
+                  style={{ flex: 1, fontFamily: 'monospace', letterSpacing: '0.08em', fontSize: 'var(--text-base-sz)' }}
                 />
                 <button
                   type="button"
@@ -242,8 +242,8 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
 
             {scanError && (
               <p style={{
-                fontSize: 12.5, fontWeight: 700, padding: '8px 12px', borderRadius: 8,
-                background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca',
+                fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '8px 12px', borderRadius: 8,
+                background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid var(--danger-border)',
               }}>
                 {scanError}
               </p>
@@ -256,13 +256,13 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
           <>
             <div style={{
               padding: '12px 14px', borderRadius: 10,
-              background: '#fff7ed', border: '1.5px solid #fed7aa',
+              background: 'var(--cat-5-soft)', border: '1.5px solid var(--cat-5-soft)',
               display: 'flex', alignItems: 'flex-start', gap: 10,
             }}>
-              <Barcode size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+              <Barcode size={18} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
               <div>
-                <p style={{ fontSize: 13, fontWeight: 800, color: '#92400e' }}>Código não cadastrado</p>
-                <p style={{ fontSize: 12, color: '#b45309', marginTop: 2 }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--warning)' }}>Código não cadastrado</p>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', marginTop: 2 }}>
                   Nenhum produto com o código <code style={{ fontFamily: 'monospace', fontWeight: 700 }}>{barcode}</code>.
                   Vincule a um produto existente para continuar.
                 </p>
@@ -306,11 +306,11 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
                     onMouseLeave={e => (e.currentTarget.style.background = 'var(--surface)')}
                   >
                     <div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
-                      <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>
+                      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
                         {p.sku && <span>{p.sku} · </span>}
                         {p.unit}
-                        {p.barcode && <span style={{ color: '#d97706' }}> · já tem código</span>}
+                        {p.barcode && <span style={{ color: 'var(--warning)' }}> · já tem código</span>}
                       </p>
                     </div>
                     <Link2 size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} />
@@ -326,8 +326,8 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
               }}>
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>{selectedProd.name}</p>
-                  <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>
+                  <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>{selectedProd.name}</p>
+                  <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
                     Vincular código <code style={{ fontFamily: 'monospace' }}>{barcode}</code>
                   </p>
                 </div>
@@ -338,7 +338,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
             )}
 
             {linkError && (
-              <p style={{ fontSize: 12.5, fontWeight: 700, padding: '8px 12px', borderRadius: 8, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '8px 12px', borderRadius: 8, background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid var(--danger-border)' }}>
                 {linkError}
               </p>
             )}
@@ -372,8 +372,8 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
             }}>
               <Barcode size={20} style={{ color: 'var(--brand)', flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{product.name}</p>
-                <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>{product.name}</p>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                   {product.category && <span>{product.category} · </span>}
                   {displayUnit && <span>Unidade: {displayUnit}</span>}
                   {product.barcode && <span style={{ color: 'var(--text-faint)' }}> · {product.barcode}</span>}
@@ -384,7 +384,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
                 onClick={resetToScan}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5,
-                  fontSize: 11.5, fontWeight: 700, color: 'var(--brand)',
+                  fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)',
                   background: 'none', border: 'none', cursor: 'pointer', padding: 0,
                 }}
               >
@@ -416,7 +416,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
                       placeholder="0" style={{ paddingRight: 36 }} autoFocus />
                     <span style={{
                       position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                      fontSize: 11, color: 'var(--text-faint)', pointerEvents: 'none',
+                      fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', pointerEvents: 'none',
                     }}>{displayUnit}</span>
                   </div>
                 </FieldWrap>
@@ -425,7 +425,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
                   <div style={{ position: 'relative' }}>
                     <span style={{
                       position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-                      fontSize: 11.5, color: 'var(--text-faint)', pointerEvents: 'none',
+                      fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', pointerEvents: 'none',
                     }}>R$</span>
                     <input name="unit_cost" type="number" step="0.0001" min="0" className="field"
                       defaultValue={defaultUnitCost} placeholder="0,00" style={{ paddingLeft: 28 }} />
@@ -452,15 +452,15 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
 
               {entryError && (
                 <p style={{
-                  fontSize: 12.5, fontWeight: 700, padding: '8px 12px', borderRadius: 8,
-                  background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca',
+                  fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '8px 12px', borderRadius: 8,
+                  background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid var(--danger-border)',
                 }}>{entryError}</p>
               )}
 
               {success && (
                 <p style={{
-                  fontSize: 12.5, fontWeight: 700, padding: '8px 12px', borderRadius: 8,
-                  background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0',
+                  fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '8px 12px', borderRadius: 8,
+                  background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)',
                   display: 'flex', alignItems: 'center', gap: 7,
                 }}>
                   ✓ Entrada registrada. Preparando próxima leitura…

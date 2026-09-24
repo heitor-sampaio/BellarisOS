@@ -43,7 +43,7 @@ export default async function AdminFinanceiroPage({
   if (branchesError) {
     console.error('[admin/financeiro] branches:', branchesError.message)
     return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Não foi possível carregar as unidades agora. Tente recarregar em instantes.
       </div>
     )
@@ -54,7 +54,7 @@ export default async function AdminFinanceiroPage({
 
   if (branchIds.length === 0) {
     return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Nenhuma filial ativa cadastrada.
       </div>
     )
@@ -64,7 +64,7 @@ export default async function AdminFinanceiroPage({
   // números com cara de total que não são total.
   if (soAsProprias) {
     return (
-      <div style={{ padding: '24px 4px', color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: '24px 4px', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Seu cargo vê apenas as próprias comissões, que aparecem no seu perfil —
         o consolidado da rede não é exibido aqui.
       </div>

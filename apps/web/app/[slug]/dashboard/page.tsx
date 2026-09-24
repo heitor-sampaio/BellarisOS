@@ -21,12 +21,12 @@ import { ler } from '@/lib/db'
 
 // --- Avatar colorido determinístico ------------------------------
 const PALETTE = [
-  { bg: '#e8f4f0', color: '#2a7a5e' },
-  { bg: '#f0e8f4', color: '#7a2d68' },
-  { bg: '#e8edf4', color: '#2d4e7a' },
-  { bg: '#fef3e8', color: '#8a5a1a' },
-  { bg: '#eef4e8', color: '#3a6a1a' },
-  { bg: '#f4e8e8', color: '#7a2a2a' },
+  { bg: 'var(--success-soft)', color: 'var(--success)' },
+  { bg: 'var(--cat-4-soft)', color: 'var(--cat-4)' },
+  { bg: 'var(--info-soft)', color: 'var(--info)' },
+  { bg: 'var(--cat-5-soft)', color: 'var(--cat-5)' },
+  { bg: 'var(--hairline)', color: 'var(--success)' },
+  { bg: 'var(--hairline)', color: 'var(--danger)' },
 ]
 function avatarColor(name: string) {
   const h = [...name].reduce((a, c) => a + c.charCodeAt(0), 0)
@@ -66,7 +66,7 @@ function StatusChip({ status }: { status: string }) {
   return (
     <span style={{
       display: 'inline-block', padding: '3px 9px',
-      borderRadius: 99, fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap',
+      borderRadius: 99, fontSize: 'var(--text-overline)', fontWeight: 700, whiteSpace: 'nowrap',
       background: s.bg, color: s.color,
       border: status === 'SCHEDULED' ? '1px solid var(--border)' : 'none',
     }}>
@@ -301,7 +301,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
           Dashboard
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 12.5, marginTop: 3 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 3 }}>
           {branch.name} · {format(now, "EEE, dd 'de' MMM yyyy", { locale: ptBR })}
         </p>
       </div>
@@ -320,15 +320,15 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
               width: 36, height: 36, borderRadius: '50%',
               background: 'var(--brand)', flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(195,77,107,0.35)',
+              boxShadow: 'var(--shadow-brand-btn)',
             }}>
-              <ClipboardList size={16} color="#fff" />
+              <ClipboardList size={16} color="var(--surface)" />
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
                 {pendingCheckouts} paciente{(pendingCheckouts ?? 0) !== 1 ? 's' : ''} aguardando checkout
               </p>
-              <p style={{ fontSize: 12, color: 'var(--brand)', opacity: 0.75, marginTop: 2 }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', opacity: 0.75, marginTop: 2 }}>
                 Clique para revisar e finalizar os planos de tratamento
               </p>
             </div>
@@ -343,15 +343,15 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
 
         {/* Faturamento — brand card */}
         {canFinancial && (
-        <div style={{ background: 'var(--brand)', borderRadius: 'var(--radius-card-token)', padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: '#fff' }}>
-          <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }}>
+        <div style={{ background: 'var(--brand)', borderRadius: 'var(--radius-card-token)', padding: '22px 24px', boxShadow: 'var(--shadow-brand-card)', color: 'var(--surface)' }}>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }}>
             Faturamento do mês
           </p>
-          <p style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.02em', marginTop: 10, lineHeight: 1 }}>
+          <p style={{ fontSize: 'var(--text-display)', fontWeight: 800, letterSpacing: '-0.02em', marginTop: 10, lineHeight: 1 }}>
             {formatBRL(monthRevenue)}
           </p>
           {revDelta && (
-            <p style={{ fontSize: 11.5, marginTop: 10, opacity: 0.85, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <p style={{ fontSize: 'var(--text-xs-sz)', marginTop: 10, opacity: 0.85, display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontWeight: 700 }}>{revDelta.up ? '▲' : '▼'} {revDelta.value}%</span>
               <span style={{ opacity: 0.75 }}>vs. mês anterior</span>
             </p>
@@ -366,7 +366,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
             {todayCount}
           </p>
-          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 8 }}>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
             {awaitingCount} aguardando confirmação
           </p>
         </div>
@@ -379,7 +379,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
             {monthCompletedCount ?? 0}
           </p>
-          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 8 }}>concluídos neste mês</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>concluídos neste mês</p>
         </div>
         ) : (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -391,7 +391,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             <div style={{ height: 5, borderRadius: 99, background: 'var(--bg-app)', overflow: 'hidden', marginTop: 8 }}>
               <div style={{ height: '100%', width: `${occupancy}%`, background: occupancy > 70 ? 'var(--brand)' : occupancy > 40 ? 'var(--warning)' : 'var(--border)', borderRadius: 99, transition: 'width 600ms ease' }} />
             </div>
-            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6 }}>
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6 }}>
               {scheduledMin}min de {capacityMin}min disponíveis
             </p>
           </div>
@@ -405,7 +405,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 10 }}>
             {avgTicket > 0 ? formatBRL(avgTicket) : '—'}
           </p>
-          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 8 }}>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
             {monthCompletedCount ?? 0} atendimentos concluídos
           </p>
         </div>
@@ -423,11 +423,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
             <div>
               <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Faturamento</h2>
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>Últimos 6 meses</p>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>Últimos 6 meses</p>
             </div>
             {semesterDelta > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 99 }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--success)' }}>
+                <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--success)' }}>
                   ▲ {formatBRL(semesterDelta)} no semestre
                 </span>
               </div>
@@ -442,13 +442,13 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '18px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Agenda de hoje</h2>
-            <Link href={`/${slug}/agenda`} style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--brand)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Link href={`/${slug}/agenda`} style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
               Ver tudo <ChevronRight size={12} />
             </Link>
           </div>
 
           {validToday.length === 0 ? (
-            <p style={{ padding: '16px 20px 24px', color: 'var(--text-faint)', fontSize: 12.5, textAlign: 'center' }}>
+            <p style={{ padding: '16px 20px 24px', color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', textAlign: 'center' }}>
               Sem agendamentos hoje
             </p>
           ) : (
@@ -459,15 +459,15 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                 const isLast    = i === Math.min(validToday.length, 5) - 1
                 return (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 20px', borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--brand)', minWidth: 38, flexShrink: 0 }}>
+                    <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 800, color: 'var(--brand)', minWidth: 38, flexShrink: 0 }}>
                       {format(new Date(a.scheduled_at), 'HH:mm')}
                     </span>
                     {client && <Avatar name={client.name} size={32} />}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {client?.name ?? '—'}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {procedure?.name ?? '—'}
                       </p>
                     </div>
@@ -476,7 +476,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                 )
               })}
               {validToday.length > 5 && (
-                <Link href={`/${slug}/agenda`} style={{ display: 'block', padding: '10px 20px', fontSize: 11.5, fontWeight: 700, color: 'var(--brand)', textDecoration: 'none', borderTop: '1px solid var(--hairline)' }}>
+                <Link href={`/${slug}/agenda`} style={{ display: 'block', padding: '10px 20px', fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none', borderTop: '1px solid var(--hairline)' }}>
                   +{validToday.length - 5} agendamentos →
                 </Link>
               )}
@@ -497,19 +497,19 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
           <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
             Procedimentos mais procurados
           </h2>
-          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 18 }}>Últimos 30 dias</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>Últimos 30 dias</p>
 
           {topProcs.length === 0 ? (
-            <p style={{ color: 'var(--text-faint)', fontSize: 12.5, textAlign: 'center', paddingTop: 8 }}>Sem dados</p>
+            <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', textAlign: 'center', paddingTop: 8 }}>Sem dados</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
               {topProcs.map((p, i) => (
                 <div key={i}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>
+                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>
                       {p.name}
                     </span>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>{p.count}</span>
+                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>{p.count}</span>
                   </div>
                   <div style={{ height: 5, borderRadius: 99, background: 'var(--bg-app)', overflow: 'hidden' }}>
                     <div style={{
@@ -533,18 +533,18 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
               Funil de leads
             </h2>
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--brand)', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)', borderRadius: 99, padding: '2px 8px' }}>
+            <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--brand)', background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)', borderRadius: 99, padding: '2px 8px' }}>
               CRM
             </span>
           </div>
-          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 18 }}>Situação atual da filial</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>Situação atual da filial</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {funnel.map((f, i) => {
               const barPct = funnelMax > 0 ? Math.round((f.count / Math.max(funnelMax, 1)) * 100) : 0
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)', minWidth: 110, flexShrink: 0 }}>{f.label}</span>
+                  <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 110, flexShrink: 0 }}>{f.label}</span>
                   <div style={{ flex: 1, height: 22, borderRadius: 6, background: 'var(--bg-app)', overflow: 'hidden', position: 'relative' }}>
                     <div style={{
                       position: 'absolute', left: 0, top: 0, bottom: 0,
@@ -552,7 +552,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                       background: f.color, borderRadius: 6,
                     }} />
                     {f.count > 0 && (
-                      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 800, color: '#fff', zIndex: 1 }}>
+                      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--on-brand)', zIndex: 1 }}>
                         {f.count}
                       </span>
                     )}
@@ -573,10 +573,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
               <span style={{ color: 'var(--brand)', fontWeight: 700 }}>✦</span>
             </h2>
           </div>
-          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginBottom: 18 }}>Sem visita há mais de 90 dias</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginBottom: 18 }}>Sem visita há mais de 90 dias</p>
 
           {toReactivate.length === 0 ? (
-            <p style={{ fontSize: 12.5, color: 'var(--text-faint)', textAlign: 'center', paddingTop: 8, flex: 1 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', paddingTop: 8, flex: 1 }}>
               Todos os clientes retornaram 🎉
             </p>
           ) : (
@@ -586,10 +586,10 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                   <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Avatar name={c.name} size={34} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {c.name}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
                         {c.daysSince !== null ? `Última visita há ${c.daysSince} dias` : 'Nunca veio'}
                       </p>
                     </div>
@@ -607,7 +607,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                 <Link href={`/${slug}/clients?status=active`} style={{
                   display: 'block', textAlign: 'center', marginTop: 16,
                   padding: '8px', borderRadius: 10, border: '1px solid var(--border)',
-                  fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'none',
+                  fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'none',
                 }}>
                   Ver {inactiveClients.length - 3} clientes inativos
                 </Link>

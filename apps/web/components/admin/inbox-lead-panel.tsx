@@ -31,7 +31,7 @@ import {
 export interface PanelBranch { id: string; name: string; slug: string }
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)',
+  fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
   letterSpacing: '0.05em', textTransform: 'uppercase',
 }
 
@@ -190,10 +190,10 @@ export function InboxLeadPanel({
   }
 
   if (loading) {
-    return <div style={{ padding: 20, fontSize: 12.5, color: 'var(--text-faint)' }}>Carregando…</div>
+    return <div style={{ padding: 20, fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando…</div>
   }
   if (!card) {
-    return <div style={{ padding: 20, fontSize: 12.5, color: 'var(--text-faint)' }}>Contato não encontrado.</div>
+    return <div style={{ padding: 20, fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Contato não encontrado.</div>
   }
 
   const disabled = !canEdit
@@ -212,9 +212,9 @@ export function InboxLeadPanel({
               uma linha inteira para dizer, quase sempre, que está tudo salvo. */}
           {!disabled && (
             salvando ? (
-              <span style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>salvando…</span>
+              <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>salvando…</span>
             ) : salvoEm ? (
-              <span style={{ fontSize: 10.5, color: 'var(--success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ fontSize: 'var(--text-overline)', color: 'var(--success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                 <Check size={11} /> salvo
               </span>
             ) : null
@@ -223,10 +223,10 @@ export function InboxLeadPanel({
 
         <input className="field" value={nome} disabled={disabled} placeholder="Nome"
           onChange={e => setNome(e.target.value)}
-          style={{ fontSize: 13.5, fontWeight: 700, padding: '7px 10px' }} />
+          style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, padding: '7px 10px' }} />
         <input className="field" value={telefone} disabled={disabled} placeholder="Telefone"
           onChange={e => setTelefone(e.target.value)}
-          style={{ fontSize: 12.5, padding: '6px 10px' }} />
+          style={{ fontSize: 'var(--text-sm-sz)', padding: '6px 10px' }} />
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
           {tags.map(t => (
@@ -252,14 +252,14 @@ export function InboxLeadPanel({
               <a
                 href={rotaCliente(pathname, slug, cliente.id)}
                 className="btn-ghost"
-                style={{ fontSize: 11, padding: '4px 7px', textDecoration: 'none' }}
+                style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px', textDecoration: 'none' }}
                 title={`Abrir a ficha de ${cliente.name}`}
               >
                 <UserCheck size={12} color="var(--success)" /> Ver cliente
               </a>
             ) : (
               <button type="button" className="btn-ghost"
-                style={{ fontSize: 11, padding: '4px 7px' }}
+                style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}
                 onClick={() => setConvertOpen(true)}>
                 <UserCheck size={12} /> Cadastrar cliente
               </button>
@@ -269,7 +269,7 @@ export function InboxLeadPanel({
                 a pessoa ainda está decidindo — nome e telefone bastam, e são o
                 que a conversa já tem. */}
             <button type="button" className="btn-ghost"
-              style={{ fontSize: 11, padding: '4px 7px' }}
+              style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}
               onClick={() => setScheduling('')}>
               <CalendarPlus size={12} /> Agendar
             </button>
@@ -279,8 +279,8 @@ export function InboxLeadPanel({
 
       {erro && (
         <p style={{
-          fontSize: 11.5, fontWeight: 700, color: '#dc2626', lineHeight: 1.45,
-          background: '#fef2f2', border: '1px solid #dc262633', borderRadius: 8, padding: '7px 10px',
+          fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--danger)', lineHeight: 1.45,
+          background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)', borderRadius: 8, padding: '7px 10px',
         }}>
           {erro}
         </p>
@@ -289,20 +289,20 @@ export function InboxLeadPanel({
       {/* ---------------- Oportunidades ---------------- */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ ...labelStyle, fontSize: 11.5, color: 'var(--text)' }}>
+          <span style={{ ...labelStyle, fontSize: 'var(--text-xs-sz)', color: 'var(--text)' }}>
             Oportunidades{card.abertas.length > 0 ? ` (${card.abertas.length})` : ''}
           </span>
           <a
             href={rotaOportunidades(pathname, slug)}
             title="Ver no quadro"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--brand)' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)' }}
           >
             Quadro <ExternalLink size={12} />
           </a>
         </div>
 
         {card.abertas.length === 0 && (
-          <p style={{ fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.5, margin: 0 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', lineHeight: 1.5, margin: 0 }}>
             Nenhuma oportunidade aberta. Nem toda conversa é um negócio — crie uma
             quando houver interesse de verdade.
           </p>
@@ -339,17 +339,17 @@ export function InboxLeadPanel({
 
         {aviso && (
           <div style={{
-            fontSize: 11.5, lineHeight: 1.5, color: '#92400e',
-            background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 10px',
+            fontSize: 'var(--text-xs-sz)', lineHeight: 1.5, color: 'var(--warning)',
+            background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: 8, padding: '8px 10px',
           }}>
             Já existe uma oportunidade aberta neste funil.{' '}
             <button type="button" onClick={() => { setExpandida(aviso.leadId); setAviso(null) }}
-              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontWeight: 800, color: '#92400e', textDecoration: 'underline' }}>
+              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontWeight: 800, color: 'var(--warning)', textDecoration: 'underline' }}>
               Ver a que existe
             </button>
             {' · '}
             <button type="button" onClick={() => novaOportunidade(aviso.funnelId, true)}
-              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontWeight: 800, color: '#92400e', textDecoration: 'underline' }}>
+              style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontWeight: 800, color: 'var(--warning)', textDecoration: 'underline' }}>
               Criar mesmo assim
             </button>
           </div>
@@ -363,7 +363,7 @@ export function InboxLeadPanel({
               style={{
                 border: 'none', background: 'none', padding: 0, cursor: 'pointer',
                 display: 'inline-flex', alignItems: 'center', gap: 4,
-                fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+                fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
               }}
             >
               <ChevronDown
@@ -378,7 +378,7 @@ export function InboxLeadPanel({
                 {card.concluidas.map(o => (
                   <div key={o.id} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                    fontSize: 11.5, color: 'var(--text-muted)',
+                    fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)',
                     padding: '6px 8px', borderRadius: 8, background: 'var(--bg-app)',
                   }}>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
@@ -399,7 +399,7 @@ export function InboxLeadPanel({
                         onClick={() => comAcao(() => definirSituacaoOportunidade(o.id, 'OPEN'))}
                         style={{
                           flexShrink: 0, border: 'none', background: 'none', padding: 0,
-                          cursor: 'pointer', fontSize: 10.5, fontWeight: 700, color: 'var(--brand)',
+                          cursor: 'pointer', fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--brand)',
                         }}
                       >
                         Reabrir
@@ -450,7 +450,7 @@ export function InboxLeadPanel({
           <div className="card" style={{ width: 480, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}
             onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
+              <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
                 Cadastrar como cliente
               </h3>
               <button type="button" onClick={() => { setConvertOpen(false) }} style={{
@@ -563,24 +563,24 @@ function OportunidadeItem({
           background: corDaEtapa ?? 'var(--border)',
         }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {o.funnel_name ?? 'Sem funil'}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
             <span style={{
-              fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 99,
+              fontSize: 'var(--text-overline)', fontWeight: 700, padding: '1px 7px', borderRadius: 99,
               color: corDaEtapa ?? 'var(--text-muted)',
               background: corDaEtapa ? `${corDaEtapa}1a` : 'var(--bg-app)',
             }}>
               {o.stage_name ?? 'Sem etapa'}
             </span>
             {o.value !== null && (
-              <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text)' }}>
+              <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--text)' }}>
                 {fmtBRL(o.value)}
               </span>
             )}
             {o.owner_name && (
-              <span style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>{o.owner_name}</span>
+              <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>{o.owner_name}</span>
             )}
           </div>
         </div>
@@ -593,7 +593,7 @@ function OportunidadeItem({
       {aberta && (
         <div style={{ padding: '10px', borderTop: '1px solid var(--hairline)', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <select className="field" value={stageId} disabled={disabled}
-            onChange={e => mudarEtapa(e.target.value)} style={{ fontSize: 12.5 }}>
+            onChange={e => mudarEtapa(e.target.value)} style={{ fontSize: 'var(--text-sm-sz)' }}>
             <option value="">—</option>
             <StageOptions funnels={funnels} stages={stages} />
           </select>
@@ -605,7 +605,7 @@ function OportunidadeItem({
                   style={sourceStyle(source)} size="xs"
                   onRemove={disabled ? undefined : () => { setSource(''); }}
                 />
-              : <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>Origem não informada</span>}
+              : <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>Origem não informada</span>}
           </div>
           <PickerCompacto
             icone={<Compass size={12} />}
@@ -648,7 +648,7 @@ function OportunidadeItem({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 11.5, color: 'var(--text-muted)', flexShrink: 0 }}>R$</span>
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', flexShrink: 0 }}>R$</span>
             <input
               className="field"
               value={valor}
@@ -656,14 +656,14 @@ function OportunidadeItem({
               inputMode="decimal"
               placeholder="Valor negociado"
               onChange={e => setValor(e.target.value)}
-              style={{ fontSize: 12.5, padding: '6px 9px' }}
+              style={{ fontSize: 'var(--text-sm-sz)', padding: '6px 9px' }}
             />
             {/* Sugestão, não preenchimento automático: o preço de tabela é
                 ponto de partida, e desconto é a regra, não a exceção. */}
             {somaDosProcedimentos > 0 && !valor && !disabled && (
               <button type="button" className="btn-ghost"
                 onClick={() => setValor(String(somaDosProcedimentos).replace('.', ','))}
-                style={{ fontSize: 10.5, padding: '4px 6px', flexShrink: 0 }}
+                style={{ fontSize: 'var(--text-overline)', padding: '4px 6px', flexShrink: 0 }}
                 title="Usar a soma dos procedimentos">
                 {fmtBRL(somaDosProcedimentos)}
               </button>
@@ -673,12 +673,12 @@ function OportunidadeItem({
           <textarea className="field" value={notes} disabled={disabled} rows={2}
             placeholder="Anotações sobre esta oportunidade…"
             onChange={e => setNotes(e.target.value)}
-            style={{ fontSize: 12.5, resize: 'vertical' }} />
+            style={{ fontSize: 'var(--text-sm-sz)', resize: 'vertical' }} />
 
           {!disabled && (
             <>
               <button type="button" className="btn-ghost" onClick={salvarDetalhes}
-                disabled={salvando} style={{ alignSelf: 'flex-start', fontSize: 11.5 }}>
+                disabled={salvando} style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}>
                 {salvando ? 'Salvando…' : 'Salvar detalhes'}
               </button>
 
@@ -689,7 +689,7 @@ function OportunidadeItem({
                   acontece, e sem ele a única saída seria arrastar o card no
                   quadro. */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Situação
                 </span>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -705,7 +705,7 @@ function OportunidadeItem({
                         type="button"
                         onClick={() => { if (!ativa) onConcluir(s.key) }}
                         style={{
-                          fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                          fontSize: 'var(--text-overline)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                           cursor: ativa ? 'default' : 'pointer', transition: 'all 100ms',
                           border:     ativa ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
                           background: ativa ? 'var(--brand-soft)' : 'var(--bg-app)',
@@ -722,7 +722,7 @@ function OportunidadeItem({
               {/* Agenda, não desfecho: marca um atendimento e o registra na
                   linha do tempo desta oportunidade. */}
               <button type="button" className="btn-ghost" onClick={onAgendar}
-                style={{ alignSelf: 'flex-start', fontSize: 11.5 }}>
+                style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}>
                 <CalendarPlus size={12} /> Agendar atendimento
               </button>
             </>
@@ -747,7 +747,7 @@ function NovaOportunidade({
 
   if (funnels.length === 0) {
     return (
-      <p style={{ fontSize: 11.5, color: 'var(--text-faint)', margin: 0 }}>
+      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0 }}>
         Crie um funil em Oportunidades para poder abrir negócios.
       </p>
     )
@@ -758,7 +758,7 @@ function NovaOportunidade({
     return (
       <button type="button" className={classe} disabled={pendente}
         onClick={() => onCriar(funnels[0]!.id)}
-        style={{ alignSelf: 'flex-start', fontSize: 11.5 }}>
+        style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}>
         <Plus size={12} /> {pendente ? 'Criando…' : 'Nova oportunidade'}
       </button>
     )
@@ -768,7 +768,7 @@ function NovaOportunidade({
     <div style={{ position: 'relative' }}>
       <button type="button" className={classe} disabled={pendente}
         onClick={() => setAberto(a => !a)}
-        style={{ fontSize: 11.5 }}>
+        style={{ fontSize: 'var(--text-xs-sz)' }}>
         <Plus size={12} /> {pendente ? 'Criando…' : 'Nova oportunidade'}
       </button>
 
@@ -780,7 +780,7 @@ function NovaOportunidade({
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 10, padding: 6,
           }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', padding: '2px 6px 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', padding: '2px 6px 4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Em qual funil?
             </div>
             {funnels.map(f => (
@@ -791,7 +791,7 @@ function NovaOportunidade({
                 style={{
                   display: 'block', width: '100%', textAlign: 'left',
                   padding: '6px', borderRadius: 6, border: 'none', background: 'transparent',
-                  cursor: 'pointer', fontSize: 12, color: 'var(--text)',
+                  cursor: 'pointer', fontSize: 'var(--text-sm-sz)', color: 'var(--text)',
                 }}
               >
                 {f.name}
@@ -887,7 +887,7 @@ function ScheduleModal({
     })
   }
 
-  const selectStyle: React.CSSProperties = { fontSize: 13, width: '100%' }
+  const selectStyle: React.CSSProperties = { fontSize: 'var(--text-base-sz)', width: '100%' }
 
   return (
     <div
@@ -901,7 +901,7 @@ function ScheduleModal({
       <div className="card" style={{ width: 400, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}
         onClick={e => e.stopPropagation()}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Novo agendamento</h3>
+          <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Novo agendamento</h3>
           <button type="button" onClick={onClose} style={{
             width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)',
             background: 'var(--bg-app)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
@@ -917,16 +917,16 @@ function ScheduleModal({
           {clienteLigado ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 11px', borderRadius: 9, background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)' }}>
               <UserCheck size={13} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brand)' }}>{clienteLigado}</span>
+              <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)' }}>{clienteLigado}</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={labelStyle}>Quem será atendido</span>
               <input className="field" value={nome} onChange={e => setNome(e.target.value)}
-                placeholder="Nome" style={{ fontSize: 13 }} />
+                placeholder="Nome" style={{ fontSize: 'var(--text-base-sz)' }} />
               <input className="field" value={telefone} onChange={e => setTelefone(e.target.value)}
-                placeholder="Telefone com DDD" style={{ fontSize: 13 }} />
-              <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                placeholder="Telefone com DDD" style={{ fontSize: 'var(--text-base-sz)' }} />
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                 O cliente é criado com estes dados. CPF e e-mail ficam para quando houver ficha completa.
               </span>
             </div>
@@ -944,7 +944,7 @@ function ScheduleModal({
           {/* Avaliação */}
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <input type="checkbox" checked={isEvaluation} onChange={e => setIsEvaluation(e.target.checked)} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Consulta de avaliação</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)' }}>Consulta de avaliação</span>
           </label>
 
           {/* Procedimento */}
@@ -988,9 +988,9 @@ function ScheduleModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={labelStyle}>Horário</span>
             {loadingSlots ? (
-              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Carregando horários…</span>
+              <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando horários…</span>
             ) : slots.length === 0 ? (
-              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+              <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
                 {professionalId && (isEvaluation || procedureId) ? 'Sem horários livres neste dia.' : 'Escolha profissional e procedimento.'}
               </span>
             ) : (
@@ -998,7 +998,7 @@ function ScheduleModal({
                 {slots.map(h => (
                   <button key={h} type="button" onClick={() => setSlot(h)}
                     style={{
-                      fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: 99, cursor: 'pointer',
+                      fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '5px 11px', borderRadius: 99, cursor: 'pointer',
                       border: slot === h ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
                       background: slot === h ? 'var(--brand-soft)' : 'var(--bg-app)',
                       color: slot === h ? 'var(--brand)' : 'var(--text-muted)',
@@ -1011,7 +1011,7 @@ function ScheduleModal({
           </div>
 
           {error && (
-            <p style={{ fontSize: 12, color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontWeight: 700 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontWeight: 700 }}>
               {error}
             </p>
           )}

@@ -13,9 +13,9 @@ const HotmapClient = dynamic(
       <div style={{
         width: '100%', height: '100%',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: '#fdf8f9', borderRadius: 'inherit',
+        background: 'var(--bg-app)', borderRadius: 'inherit',
       }}>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Carregando mapa…</span>
+        <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Carregando mapa…</span>
       </div>
     ),
   },
@@ -31,14 +31,14 @@ const MODES: { key: HeatMode; label: string }[] = [
 
 const LEGENDS: Record<HeatMode, Array<{ gradient: string; label: string }>> = {
   clients: [
-    { gradient: 'linear-gradient(to right, #fde8ed, #c34d6b, #7a1e3d)', label: 'Densidade de clientes' },
+    { gradient: 'linear-gradient(to right, var(--brand-soft), var(--brand), var(--brand-deep))', label: 'Densidade de clientes' },
   ],
   ltv: [
-    { gradient: 'linear-gradient(to right, #fef9e7, #fbd462, #8a5c00)', label: 'LTV acumulado' },
+    { gradient: 'linear-gradient(to right, var(--cat-5-soft), var(--warning-border), var(--warning))', label: 'LTV acumulado' },
   ],
   consolidated: [
-    { gradient: 'linear-gradient(to right, #fde8ed, #c34d6b, #7a1e3d)', label: 'Clientes'   },
-    { gradient: 'linear-gradient(to right, #fef9e7, #fbd462, #8a5c00)', label: 'LTV'         },
+    { gradient: 'linear-gradient(to right, var(--brand-soft), var(--brand), var(--brand-deep))', label: 'Clientes'   },
+    { gradient: 'linear-gradient(to right, var(--cat-5-soft), var(--warning-border), var(--warning))', label: 'LTV'         },
   ],
 }
 
@@ -132,8 +132,8 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
         gap: 12, flexWrap: 'wrap',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 15, color: 'var(--brand)' }}>✦</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+          <span style={{ fontSize: 'var(--text-card-title)', color: 'var(--brand)' }}>✦</span>
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
             Mapa de concentração
           </span>
         </div>
@@ -142,7 +142,7 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
           {/* Mode toggle */}
           <div style={{
             display: 'flex', gap: 3,
-            background: 'var(--surface-subtle, #f5eff1)',
+            background: 'var(--surface-subtle, var(--track))',
             borderRadius: 8, padding: 3,
           }}>
             {MODES.map(m => (
@@ -151,9 +151,9 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
                 onClick={() => setMode(m.key)}
                 style={{
                   padding: '4px 12px', borderRadius: 6, border: 'none',
-                  fontSize: 11, fontWeight: mode === m.key ? 700 : 500,
-                  background:  mode === m.key ? 'var(--brand, #c34d6b)' : 'transparent',
-                  color:       mode === m.key ? '#fff' : 'var(--text-muted)',
+                  fontSize: 'var(--text-2xs)', fontWeight: mode === m.key ? 700 : 500,
+                  background:  mode === m.key ? 'var(--brand, var(--brand))' : 'transparent',
+                  color:       mode === m.key ? 'var(--on-brand)' : 'var(--text-muted)',
                   cursor: 'pointer', transition: 'all .15s',
                 }}
               >
@@ -165,13 +165,13 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
           {/* Legend */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#c34d6b', border: '2px solid #fff', boxShadow: '0 0 0 1.5px #c34d6b' }} />
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Filial</span>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--brand)', border: '2px solid var(--surface)', boxShadow: 'none' }} />
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>Filial</span>
             </div>
             {LEGENDS[mode].map((l, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 56, height: 8, borderRadius: 4, background: l.gradient }} />
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{l.label}</span>
+                <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{l.label}</span>
               </div>
             ))}
           </div>
@@ -180,8 +180,8 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
 
       {/* Map */}
       {loading ? (
-        <div style={{ height: 480, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fdf8f9' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Carregando mapa…</span>
+        <div style={{ height: 480, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)' }}>
+          <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Carregando mapa…</span>
         </div>
       ) : hasData ? (
         <div style={{ height: 480 }}>
@@ -189,7 +189,7 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
         </div>
       ) : (
         <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             Cadastre endereços nas filiais e clientes para visualizar o mapa.
           </p>
         </div>

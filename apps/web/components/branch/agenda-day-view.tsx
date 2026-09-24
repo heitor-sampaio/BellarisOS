@@ -23,12 +23,12 @@ const TOTAL_PX   = (END_HOUR - START_HOUR) * HOUR_PX
 const TIME_COL_W = 60
 
 const PROF_COLORS = [
-  { bg: '#fce7ec', text: '#c34d6b' },
-  { bg: '#e7f0fc', text: '#3b6cbf' },
-  { bg: '#e7fce7', text: '#2e7d32' },
-  { bg: '#f0e7fc', text: '#6a3baa' },
-  { bg: '#fceee7', text: '#b85c1a' },
-  { bg: '#e7fcf8', text: '#1a8a73' },
+  { bg: 'var(--brand-soft)', text: 'var(--brand)' },
+  { bg: 'var(--info-soft)', text: 'var(--info)' },
+  { bg: 'var(--success-soft)', text: 'var(--success)' },
+  { bg: 'var(--cat-4-soft)', text: 'var(--cat-4)' },
+  { bg: 'var(--cat-5-soft)', text: 'var(--cat-5)' },
+  { bg: 'var(--cat-6-soft)', text: 'var(--cat-6)' },
 ]
 
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i)
@@ -149,17 +149,17 @@ function ProfColumn({
               opacity:    isDragging ? 0.3 : 1,
               transition: 'opacity 0.1s, box-shadow 0.1s',
 
-              background:  isProgress ? '#fce7ec' : isCompleted ? 'var(--bg-app)' : 'var(--surface)',
+              background:  isProgress ? 'var(--brand-soft)' : isCompleted ? 'var(--bg-app)' : 'var(--surface)',
               border:      isScheduled
-                ? '1.5px dashed #d0bfc4'
-                : `1px solid ${isProgress ? '#f4b8c4' : 'var(--border)'}`,
+                ? '1.5px dashed var(--text-faint)'
+                : `1px solid ${isProgress ? 'var(--brand-3)' : 'var(--border)'}`,
               borderLeft:  isProgress
-                ? '3.5px solid #c34d6b'
+                ? '3.5px solid var(--brand)'
                 : isConfirmed
-                ? '3.5px solid #3f9b6f'
+                ? '3.5px solid var(--success)'
                 : isCompleted
-                ? '3.5px solid #c0b0b5'
-                : '3px dashed #c4b4b8',
+                ? '3.5px solid var(--text-faint)'
+                : '3px dashed var(--text-faint)',
             }}
             onMouseEnter={e => {
               if (!isDragging) (e.currentTarget as HTMLElement).style.boxShadow = '0 3px 12px rgba(34,22,25,.10)'
@@ -168,18 +168,18 @@ function ProfColumn({
               (e.currentTarget as HTMLElement).style.boxShadow = 'none'
             }}
           >
-            <div style={{ fontSize: 10, fontWeight: 700, color: isCompleted ? 'var(--text-faint)' : '#3f9b6f', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: isCompleted ? 'var(--text-faint)' : 'var(--success)', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               <span>{timeStr} · {ev.durationMin}min</span>
-              {isProgress && <span style={{ color: '#c34d6b' }}>· em atend.</span>}
+              {isProgress && <span style={{ color: 'var(--brand)' }}>· em atend.</span>}
               {isCompleted && <span style={{ color: 'var(--text-faint)' }}>· concluído</span>}
             </div>
             {height > 42 && (
-              <div style={{ fontSize: 12, fontWeight: 700, color: isCompleted ? 'var(--text-muted)' : 'var(--text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: isCompleted ? 'var(--text-muted)' : 'var(--text)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {ev.clientName}
               </div>
             )}
             {height > 64 && (
-              <div style={{ fontSize: 10, color: isProgress ? '#c34d6b' : isConfirmed ? '#3f9b6f' : 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 'var(--text-overline)', color: isProgress ? 'var(--brand)' : isConfirmed ? 'var(--success)' : 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {ev.isEvaluation ? 'Avaliação' : ev.procedureName}
               </div>
             )}
@@ -248,13 +248,13 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
                   width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
                   background: clr.bg,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 800, color: clr.text,
+                  fontSize: 'var(--text-2xs)', fontWeight: 800, color: clr.text,
                 }}>
                   {getInitials(pro.name)}
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{pro.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                  <div style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{pro.name}</div>
+                  <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>
                     {proEvs.length} atendimento{proEvs.length !== 1 ? 's' : ''}
                   </div>
                 </div>
@@ -273,7 +273,7 @@ export function AgendaDayView({ currentDate, events, professionals, canWrite, on
               position: 'absolute',
               top: (h - START_HOUR) * HOUR_PX - 7,
               right: 8,
-              fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', userSelect: 'none',
+              fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', userSelect: 'none',
             }}>
               {String(h).padStart(2, '0')}:00
             </div>

@@ -73,7 +73,7 @@ export function PickerCompacto({
           setTimeout(() => campoRef.current?.focus(), 0)
         }}
         className={classeBotao}
-        style={estiloBotao ?? { fontSize: 11.5, padding: '4px 8px', gap: 5 }}
+        style={estiloBotao ?? { fontSize: 'var(--text-xs-sz)', padding: '4px 8px', gap: 5 }}
       >
         {icone}
         {rotuloBotao}
@@ -104,14 +104,14 @@ export function PickerCompacto({
                   value={busca}
                   onChange={e => setBusca(e.target.value)}
                   placeholder="Buscar…"
-                  style={{ fontSize: 12, padding: '6px 8px 6px 25px' }}
+                  style={{ fontSize: 'var(--text-sm-sz)', padding: '6px 8px 6px 25px' }}
                 />
               </div>
             )}
 
             <div style={{ maxHeight: 190, overflowY: 'auto' }}>
               {lista.length === 0 && (
-                <p style={{ fontSize: 11.5, color: 'var(--text-faint)', margin: '6px 4px', lineHeight: 1.45 }}>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: '6px 4px', lineHeight: 1.45 }}>
                   {opcoes.length === 0 ? textoListaVazia : 'Nada com esse nome.'}
                 </p>
               )}
@@ -131,7 +131,7 @@ export function PickerCompacto({
                       padding: '5px 6px', borderRadius: 6, border: 'none', cursor: 'pointer',
                       background: marcada ? 'var(--brand-soft)' : 'transparent',
                       color: marcada ? 'var(--brand)' : 'var(--text)',
-                      fontSize: 12, fontWeight: marcada ? 700 : 500,
+                      fontSize: 'var(--text-sm-sz)', fontWeight: marcada ? 700 : 500,
                       textAlign: 'left',
                     }}
                   >
@@ -142,7 +142,7 @@ export function PickerCompacto({
                       background: marcada ? 'var(--brand)' : 'transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      {marcada && <Check size={9} color="#fff" strokeWidth={3.5} />}
+                      {marcada && <Check size={9} color="var(--surface)" strokeWidth={3.5} />}
                     </span>
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {o.rotulo}

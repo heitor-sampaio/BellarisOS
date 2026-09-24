@@ -18,7 +18,7 @@ const PERIODS: { key: DatePreset; label: string }[] = [
 
 const STATUS_COLOR: Record<string, string> = {
   ACTIVE:   'var(--success)',
-  PAUSED:   'var(--warning, #d97706)',
+  PAUSED:   'var(--warning, var(--warning))',
   ARCHIVED: 'var(--text-muted)',
 }
 const STATUS_LABEL: Record<string, string> = {
@@ -38,35 +38,35 @@ function MetricCard({ m }: {
     ? (m.deltaPositiveIsGood === false ? m.delta! < 0 : m.delta! > 0)
     : false
   const deltaNeutral = m.deltaPositiveIsGood == null
-  const deltaColor = deltaNeutral ? 'var(--text-muted)' : deltaGood ? '#16a34a' : '#dc2626'
+  const deltaColor = deltaNeutral ? 'var(--text-muted)' : deltaGood ? 'var(--success)' : 'var(--danger)'
   const deltaSign  = m.delta != null && m.delta > 0 ? '+' : ''
 
   return (
     <div className="card" style={{ padding: '14px 16px' }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 5 }}>
+      <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 5 }}>
         {m.label}
       </span>
       {m.fmt != null ? (
         <>
           <span style={{
             fontSize: 20, fontWeight: 800, letterSpacing: 'var(--tracking-tight)',
-            color: m.highlight === true ? '#16a34a' : m.highlight === false ? '#dc2626' : 'var(--text)',
+            color: m.highlight === true ? 'var(--success)' : m.highlight === false ? 'var(--danger)' : 'var(--text)',
           }}>
             {m.fmt}
           </span>
           {showDelta && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 10.5, fontWeight: 700, color: deltaColor, marginTop: 3, marginLeft: 6 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 'var(--text-overline)', fontWeight: 700, color: deltaColor, marginTop: 3, marginLeft: 6 }}>
               {m.delta! > 0 ? '↑' : '↓'} {deltaSign}{m.delta!.toFixed(1).replace('.', ',')}{m.deltaUnit ?? '%'}
             </span>
           )}
           {m.alert && (
-            <span style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#92400e', background: '#fef3c7', borderRadius: 4, padding: '2px 5px', marginTop: 5 }}>
+            <span style={{ display: 'block', fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 4, padding: '2px 5px', marginTop: 5 }}>
               {m.alert}
             </span>
           )}
         </>
       ) : (
-        <span style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', fontWeight: 500 }}>
+        <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontStyle: 'italic', fontWeight: 500 }}>
           Indisponível
         </span>
       )}
@@ -97,13 +97,13 @@ export default async function CampaignDetailPage({
       <div>
         <Link
           href={`/admin/marketing?view=meta&period=${period}`}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 13, textDecoration: 'none', marginBottom: 24 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', textDecoration: 'none', marginBottom: 24 }}
         >
           <ArrowLeft size={14} /> Voltar para campanhas
         </Link>
-        <div className="card" style={{ padding: '40px', textAlign: 'center', borderColor: 'var(--danger, #dc2626)' }}>
-          <p style={{ color: 'var(--danger, #dc2626)', fontWeight: 700, marginBottom: 6 }}>Erro ao carregar campanha</p>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{result.error}</p>
+        <div className="card" style={{ padding: '40px', textAlign: 'center', borderColor: 'var(--danger, var(--danger))' }}>
+          <p style={{ color: 'var(--danger, var(--danger))', fontWeight: 700, marginBottom: 6 }}>Erro ao carregar campanha</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>{result.error}</p>
         </div>
       </div>
     )
@@ -165,7 +165,7 @@ export default async function CampaignDetailPage({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
           <Link
             href={`/admin/marketing?view=meta&period=${period}`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 13, textDecoration: 'none' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', textDecoration: 'none' }}
           >
             <ArrowLeft size={14} /> Voltar para campanhas
           </Link>
@@ -173,14 +173,14 @@ export default async function CampaignDetailPage({
             {campaign.name}
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: STATUS_COLOR[campaign.status] ?? 'var(--text-muted)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: STATUS_COLOR[campaign.status] ?? 'var(--text-muted)' }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
               {STATUS_LABEL[campaign.status] ?? campaign.status}
             </span>
-            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>·</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Meta Ads</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>·</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: 12, fontFamily: 'monospace' }}>{id}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>·</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>Meta Ads</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>·</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', fontFamily: 'monospace' }}>{id}</span>
           </div>
         </div>
 

@@ -183,11 +183,11 @@ export function PainelDeAnexo({ a, enviando }: { a: Anexos; enviando: boolean })
       {a.gravando && (
         <div style={{
           margin: '0 16px 8px', padding: '9px 12px', borderRadius: 10,
-          border: '1px solid #dc262633', background: '#fef2f2',
+          border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)', background: 'var(--danger-soft)',
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
-          <span style={{ width: 9, height: 9, borderRadius: '50%', background: '#dc2626', flexShrink: 0 }} />
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: '#dc2626' }}>
+          <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--danger)', flexShrink: 0 }} />
+          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--danger)' }}>
             Gravando · {duracaoLegivel(a.segundos)}
           </span>
           <button type="button" onClick={a.alternarGravacao} className="btn-primary"
@@ -204,7 +204,7 @@ export function PainelDeAnexo({ a, enviando }: { a: Anexos; enviando: boolean })
           display: 'flex', flexDirection: 'column', gap: 8,
         }}>
           {a.erro && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 12, color: '#dc2626', fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>
               <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
               <span>{a.erro}</span>
             </div>
@@ -227,12 +227,12 @@ export function PainelDeAnexo({ a, enviando }: { a: Anexos; enviando: boolean })
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{
-                    margin: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--text)',
+                    margin: 0, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     {a.pendente.name}
                   </p>
-                  <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text-faint)' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                     {tamanhoLegivel(a.pendente.size)}
                   </p>
                   {ehAudio && a.previewUrl && <audio controls src={a.previewUrl} style={{ width: '100%', height: 30, marginTop: 5 }} />}
@@ -254,7 +254,7 @@ export function PainelDeAnexo({ a, enviando }: { a: Anexos; enviando: boolean })
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); a.confirmar() } }}
                     placeholder="Legenda (opcional)"
                     className="field"
-                    style={{ flex: 1, fontSize: 12.5 }}
+                    style={{ flex: 1, fontSize: 'var(--text-sm-sz)' }}
                     autoFocus
                   />
                 )}
@@ -302,7 +302,7 @@ export function BotoesDeAnexo({ a, disabled }: { a: Anexos; disabled: boolean })
         style={{
           ...ESTILO_BOTAO,
           cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
-          ...(a.gravando && { borderColor: '#dc2626', background: '#fef2f2', color: '#dc2626' }),
+          ...(a.gravando && { borderColor: 'var(--danger)', background: 'var(--danger-soft)', color: 'var(--danger)' }),
         }}
       >
         {a.gravando ? <Square size={14} /> : <Mic size={15} />}

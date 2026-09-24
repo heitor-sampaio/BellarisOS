@@ -17,13 +17,13 @@ type Branch    = { id: string; name: string; city: string | null }
 type Procedure = { id: string; name: string; category: string | null }
 
 const NOTIF_TYPES = [
-  { value: 'promotion',             label: 'Promoção',      Icon: Sparkles,    color: '#f59e0b' },
+  { value: 'promotion',             label: 'Promoção',      Icon: Sparkles,    color: 'var(--warning)' },
   { value: 'general',               label: 'Geral',         Icon: Bell,        color: 'var(--text-muted)' },
   { value: 'appointment_reminder',  label: 'Lembrete',      Icon: CalendarDays,color: 'var(--brand)' },
-  { value: 'points_earned',         label: 'Pontos',        Icon: Star,        color: '#f59e0b' },
+  { value: 'points_earned',         label: 'Pontos',        Icon: Star,        color: 'var(--warning)' },
   { value: 'package_activated',     label: 'Pacote',        Icon: Package,     color: 'var(--brand)' },
-  { value: 'appointment_confirmed', label: 'Confirmação',   Icon: CheckCircle2,color: '#22c55e' },
-  { value: 'appointment_cancelled', label: 'Cancelamento',  Icon: AlertCircle, color: '#ef4444' },
+  { value: 'appointment_confirmed', label: 'Confirmação',   Icon: CheckCircle2,color: 'var(--success)' },
+  { value: 'appointment_cancelled', label: 'Cancelamento',  Icon: AlertCircle, color: 'var(--danger)' },
 ]
 
 // -- Main Component -----------------------------------------------------
@@ -135,8 +135,8 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
 
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {([
-              { type: 'IMMEDIATE', label: 'Imediata',   desc: 'Disparada agora para todos os clientes selecionados', Icon: Zap,       color: '#7c3aed' },
-              { type: 'SCHEDULED', label: 'Agendada',   desc: 'Disparada em uma data e hora específica',              Icon: Clock,     color: '#0284c7' },
+              { type: 'IMMEDIATE', label: 'Imediata',   desc: 'Disparada agora para todos os clientes selecionados', Icon: Zap,       color: 'var(--cat-4)' },
+              { type: 'SCHEDULED', label: 'Agendada',   desc: 'Disparada em uma data e hora específica',              Icon: Clock,     color: 'var(--info)' },
               { type: 'AUTOMATED', label: 'Automática', desc: 'Recorrente, disparada por evento ou data',             Icon: RefreshCw, color: 'var(--brand)' },
             ] as { type: CampaignType; label: string; desc: string; Icon: React.ElementType; color: string }[]).map(opt => (
               <button
@@ -155,11 +155,11 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <opt.Icon size={18} color={opt.color} />
-                  <span style={{ fontWeight: 800, fontSize: 14, color: campType === opt.type ? opt.color : 'var(--text)' }}>
+                  <span style={{ fontWeight: 800, fontSize: 'var(--text-base-sz)', color: campType === opt.type ? opt.color : 'var(--text)' }}>
                     {opt.label}
                   </span>
                 </div>
-                <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.4 }}>{opt.desc}</p>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.4 }}>{opt.desc}</p>
               </button>
             ))}
           </div>
@@ -205,10 +205,10 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
                     }}
                   >
                     <opt.Icon size={16} color={triggerType === opt.t ? 'var(--brand)' : 'var(--text-muted)'} style={{ marginBottom: 6 }} />
-                    <p style={{ fontSize: 13, fontWeight: 800, color: triggerType === opt.t ? 'var(--brand)' : 'var(--text)', marginBottom: 3 }}>
+                    <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: triggerType === opt.t ? 'var(--brand)' : 'var(--text)', marginBottom: 3 }}>
                       {opt.label}
                     </p>
-                    <p style={{ fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.3 }}>{opt.desc}</p>
+                    <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', lineHeight: 1.3 }}>{opt.desc}</p>
                   </button>
                 ))}
               </div>
@@ -244,7 +244,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
                           border:     triggerHours === h ? '2px solid var(--brand)' : '1px solid var(--border)',
                           background: triggerHours === h ? 'var(--brand-soft)' : 'var(--surface)',
                           color:      triggerHours === h ? 'var(--brand)' : 'var(--text-muted)',
-                          fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                          fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer',
                         }}
                       >
                         {h}h
@@ -296,7 +296,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
               onChange={e => setTitle(e.target.value)}
             />
             {title && (
-              <p style={{ marginTop: 5, fontSize: 12, color: 'var(--brand)', fontWeight: 600 }}>
+              <p style={{ marginTop: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', fontWeight: 600 }}>
                 Preview: {previewTitle}
               </p>
             )}
@@ -329,7 +329,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
                       padding:      '7px 14px', borderRadius: 8,
                       border:       active ? `2px solid ${opt.color}` : '1px solid var(--border)',
                       background:   active ? `${opt.color}18` : 'var(--surface)',
-                      cursor:       'pointer', fontSize: 13, fontWeight: 700,
+                      cursor:       'pointer', fontSize: 'var(--text-base-sz)', fontWeight: 700,
                       color:        active ? opt.color : 'var(--text-muted)',
                     }}
                   >
@@ -351,7 +351,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
             <AudiencePreview rules={audienceRules} />
           </div>
 
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: -8 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginTop: -8 }}>
             Todos os filtros são opcionais. Deixe em branco para atingir todos os clientes ativos.
           </p>
 
@@ -370,7 +370,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
               ))}
             </div>
             {branchIds.length === 0 && (
-              <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4 }}>Nenhuma selecionada = todas as filiais</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 4 }}>Nenhuma selecionada = todas as filiais</p>
             )}
           </div>
 
@@ -390,7 +390,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
                       border:     sel ? '2px solid var(--brand)' : '1px solid var(--border)',
                       background: sel ? 'var(--brand-soft)' : 'var(--surface)',
                       color:      sel ? 'var(--brand)' : 'var(--text-muted)',
-                      fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                      fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer',
                     }}
                   >
                     {lbl}
@@ -422,7 +422,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
             <SectionLabel>Tags do CRM</SectionLabel>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {tags.map(t => (
-                <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 99, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 12, fontWeight: 700 }}>
+                <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 99, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 'var(--text-sm-sz)', fontWeight: 700 }}>
                   {t}
                   <button type="button" onClick={() => setTags(tags.filter(x => x !== t))} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, color: 'inherit' }}>×</button>
                 </span>
@@ -455,7 +455,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
               onChange={e => setHasApp(e.target.checked)}
               style={{ width: 16, height: 16, accentColor: 'var(--brand)' }}
             />
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)' }}>
               Apenas clientes com conta no app
             </span>
           </label>
@@ -473,7 +473,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
                 onChange={e => setMaxDays(e.target.value ? Number(e.target.value) : null)}
                 style={{ width: 80 }}
               />
-              {maxDays && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>dias</span>}
+              {maxDays && <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>dias</span>}
             </div>
           </div>
         </div>
@@ -503,14 +503,14 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
           <ReviewRow label="Canal"      value="In-app (sino do portal do cliente)" />
 
           <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 16 }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
               Público estimado
             </p>
             <AudiencePreview rules={audienceRules} />
           </div>
 
           {error && (
-            <p style={{ color: '#ef4444', background: '#ef444418', borderRadius: 8, padding: '10px 14px', fontSize: 13, fontWeight: 700 }}>
+            <p style={{ color: 'var(--danger)', background: 'color-mix(in srgb, var(--danger) 9%, transparent)', borderRadius: 8, padding: '10px 14px', fontSize: 'var(--text-base-sz)', fontWeight: 700 }}>
               {error}
             </p>
           )}
@@ -580,14 +580,14 @@ function StepIndicator({ current, total, labels }: { current: number; total: num
               <div style={{
                 width: 32, height: 32, borderRadius: '50%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, fontWeight: 800,
+                fontSize: 'var(--text-base-sz)', fontWeight: 800,
                 background: done ? 'var(--brand)' : active ? 'var(--brand)' : 'var(--surface)',
                 border:     done || active ? 'none' : '2px solid var(--border)',
-                color:      done || active ? '#fff' : 'var(--text-muted)',
+                color:      done || active ? 'var(--on-brand)' : 'var(--text-muted)',
               }}>
                 {done ? '✓' : n}
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: active ? 'var(--brand)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: active ? 'var(--brand)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 {labels[i]}
               </span>
             </div>
@@ -604,7 +604,7 @@ function StepIndicator({ current, total, labels }: { current: number; total: num
 function SectionLabel({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <p style={{
-      fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+      fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
       textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8, ...style,
     }}>
       {children}
@@ -627,9 +627,9 @@ function CheckRow({ label, sub, checked, onChange, indent }: {
         onChange={e => onChange(e.target.checked)}
         style={{ width: 15, height: 15, accentColor: 'var(--brand)', flexShrink: 0 }}
       />
-      <span style={{ fontSize: 13.5, fontWeight: checked ? 700 : 500, color: 'var(--text)' }}>
+      <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: checked ? 700 : 500, color: 'var(--text)' }}>
         {label}
-        {sub && <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 12, marginLeft: 5 }}>· {sub}</span>}
+        {sub && <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 'var(--text-sm-sz)', marginLeft: 5 }}>· {sub}</span>}
       </span>
     </label>
   )
@@ -638,10 +638,10 @@ function CheckRow({ label, sub, checked, onChange, indent }: {
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, borderBottom: '1px solid var(--hairline)', paddingBottom: 12 }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
         {label}
       </span>
-      <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{value}</span>
+      <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 500, color: 'var(--text)' }}>{value}</span>
     </div>
   )
 }

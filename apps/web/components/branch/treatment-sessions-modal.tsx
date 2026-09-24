@@ -64,11 +64,11 @@ const TIME_SLOTS = Array.from({ length: 25 }, (_, i) => {
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   AVAILABLE:   { label: 'Não agendado',  color: 'var(--text-faint)' },
-  SCHEDULED:   { label: 'Agendado',      color: '#2563eb' },
-  IN_PROGRESS: { label: 'Em andamento',  color: '#d97706' },
+  SCHEDULED:   { label: 'Agendado',      color: 'var(--info)' },
+  IN_PROGRESS: { label: 'Em andamento',  color: 'var(--warning)' },
   USED:        { label: 'Realizada',     color: 'var(--success)' },
   COMPLETED:   { label: 'Realizada',     color: 'var(--success)' },
-  CANCELLED:   { label: 'Cancelada',     color: '#dc2626' },
+  CANCELLED:   { label: 'Cancelada',     color: 'var(--danger)' },
 }
 
 // -- Mini-scheduler inline -----------------------------------------------------
@@ -147,14 +147,14 @@ function SessionScheduler({
 
       {branches.length > 1 && (
         <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 8 }}>FILIAL</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 8 }}>FILIAL</p>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {branches.map(b => (
               <button key={b.id} type="button" onClick={() => setBranchId(b.id)}
                 style={{
-                  padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  padding: '6px 12px', borderRadius: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700, cursor: 'pointer',
                   background: branchId === b.id ? 'var(--brand)' : 'var(--surface)',
-                  color: branchId === b.id ? '#fff' : 'var(--text-muted)',
+                  color: branchId === b.id ? 'var(--on-brand)' : 'var(--text-muted)',
                   border: `1px solid ${branchId === b.id ? 'var(--brand)' : 'var(--border)'}`,
                 }}>
                 {b.name}
@@ -166,28 +166,28 @@ function SessionScheduler({
 
       <div className="form-2col" style={{ marginBottom: 12 }}>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>PROFISSIONAL</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>PROFISSIONAL</p>
           {loadingProfs ? (
             <Loader2 size={14} style={{ color: 'var(--text-faint)', animation: 'spin 1s linear infinite' }} />
           ) : (
             <select value={profId} onChange={e => setProfId(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, background: 'var(--surface)', color: 'var(--text)', outline: 'none' }}>
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)', background: 'var(--surface)', color: 'var(--text)', outline: 'none' }}>
               <option value="">Selecionar…</option>
               {profs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           )}
         </div>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>DATA</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>DATA</p>
           <input type="date" min={minDate} value={date} onChange={e => setDate(e.target.value)}
             disabled={!profId}
-            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, background: 'var(--surface)', color: 'var(--text)', outline: 'none', boxSizing: 'border-box' as const }} />
+            style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)', background: 'var(--surface)', color: 'var(--text)', outline: 'none', boxSizing: 'border-box' as const }} />
         </div>
       </div>
 
       {profId && date && (
         <div style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 8 }}>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 8 }}>
             HORÁRIO {loadingSlots && <Loader2 size={10} style={{ display: 'inline', animation: 'spin 1s linear infinite' }} />}
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4 }}>
@@ -197,9 +197,9 @@ function SessionScheduler({
               return (
                 <button key={t} type="button" disabled={!!booked} onClick={() => setTime(t)}
                   style={{
-                    padding: '6px 0', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: booked ? 'not-allowed' : 'pointer',
+                    padding: '6px 0', borderRadius: 6, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: booked ? 'not-allowed' : 'pointer',
                     background: sel ? 'var(--brand)' : booked ? 'var(--bg-app)' : 'var(--surface)',
-                    color: sel ? '#fff' : booked ? 'var(--text-faint)' : 'var(--text)',
+                    color: sel ? 'var(--on-brand)' : booked ? 'var(--text-faint)' : 'var(--text)',
                     border: `1px solid ${sel ? 'var(--brand)' : 'var(--border)'}`,
                     textDecoration: booked ? 'line-through' : 'none',
                   }}>
@@ -211,11 +211,11 @@ function SessionScheduler({
         </div>
       )}
 
-      {error && <p style={{ fontSize: 12, color: '#dc2626', fontWeight: 600, marginBottom: 10 }}>{error}</p>}
+      {error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, marginBottom: 10 }}>{error}</p>}
 
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" onClick={onCancel}
-          style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}>
+          style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}>
           Cancelar
         </button>
         <button type="button" onClick={handleSave} disabled={saving || !branchId || !profId || !date || !time}
@@ -325,19 +325,19 @@ export function TreatmentSessionsModal({
         width: '100%', maxWidth: 560, maxHeight: '90vh',
         display: 'flex', flexDirection: 'column',
         border: '1px solid var(--border)',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+        boxShadow: 'var(--shadow-overlay)',
       }}>
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', marginBottom: 4 }}>TRATAMENTO EM ANDAMENTO</p>
-            <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{packageName}</p>
-            {!isPlanMode && <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{procedureName}</p>}
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', marginBottom: 4 }}>TRATAMENTO EM ANDAMENTO</p>
+            <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{packageName}</p>
+            {!isPlanMode && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 3 }}>{procedureName}</p>}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
               <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--hairline)' }}>
                 <div style={{ height: '100%', borderRadius: 3, background: 'var(--brand)', width: `${pct}%`, transition: 'width 0.3s' }} />
               </div>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
+              <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
                 {completedCount} / {totalSessions} sessões
               </span>
             </div>
@@ -353,7 +353,7 @@ export function TreatmentSessionsModal({
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '24px 0', color: 'var(--text-faint)' }}>
               <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
-              <span style={{ fontSize: 13 }}>Carregando sessões…</span>
+              <span style={{ fontSize: 'var(--text-base-sz)' }}>Carregando sessões…</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -375,41 +375,41 @@ export function TreatmentSessionsModal({
                       {/* Número */}
                       <div style={{
                         width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                        background: isDone ? 'var(--success-soft)' : isBooked ? '#eff6ff' : 'var(--bg-app)',
-                        border: `1.5px solid ${isDone ? 'var(--success)' : isBooked ? '#2563eb' : 'var(--border)'}`,
+                        background: isDone ? 'var(--success-soft)' : isBooked ? 'var(--info-soft)' : 'var(--bg-app)',
+                        border: `1.5px solid ${isDone ? 'var(--success)' : isBooked ? 'var(--info)' : 'var(--border)'}`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 12, fontWeight: 800,
-                        color: isDone ? 'var(--success)' : isBooked ? '#2563eb' : 'var(--text-faint)',
+                        fontSize: 'var(--text-sm-sz)', fontWeight: 800,
+                        color: isDone ? 'var(--success)' : isBooked ? 'var(--info)' : 'var(--text-faint)',
                       }}>
                         {isDone ? <CheckCircle2 size={14} /> : sess.sessionNumber}
                       </div>
 
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
                           Sessão {sess.sessionNumber}
                           {isPlanMode && sess.procedureName && (
-                            <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 6 }}>· {sess.procedureName}</span>
+                            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 6 }}>· {sess.procedureName}</span>
                           )}
                         </p>
                         {sess.scheduledAt ? (
-                          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
                             <Calendar size={10} style={{ display: 'inline', marginRight: 3 }} />
                             {format(new Date(sess.scheduledAt), "EEE, dd MMM · HH:mm", { locale: ptBR })}
                             {sess.professionalName && ` · ${sess.professionalName}`}
                           </p>
                         ) : (
-                          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>Sem agendamento</p>
+                          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>Sem agendamento</p>
                         )}
                       </div>
 
                       {/* Status + Ações */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, color: st.color }}>{st.label}</span>
+                        <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: st.color }}>{st.label}</span>
 
                         {isAvail && !isScheduling && (
                           <button type="button" onClick={() => setSchedulingId(sess.id)}
-                            style={{ padding: '5px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: 'var(--brand-soft)', color: 'var(--brand)', border: 'none' }}>
+                            style={{ padding: '5px 10px', borderRadius: 7, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: 'pointer', background: 'var(--brand-soft)', color: 'var(--brand)', border: 'none' }}>
                             Agendar
                           </button>
                         )}
@@ -417,7 +417,7 @@ export function TreatmentSessionsModal({
                         {isBooked && sess.appointmentId && (
                           <button type="button"
                             onClick={() => router.push(rotaAtendimento(pathname, slug, sess.appointmentId!))}
-                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: 'var(--brand)', color: '#fff', border: 'none' }}>
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: 'pointer', background: 'var(--brand)', color: 'var(--surface)', border: 'none' }}>
                             <Play size={10} /> Iniciar
                           </button>
                         )}
@@ -425,7 +425,7 @@ export function TreatmentSessionsModal({
                         {isDone && sess.appointmentId && (
                           <button type="button"
                             onClick={() => router.push(rotaAtendimento(pathname, slug, sess.appointmentId!))}
-                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', background: 'var(--bg-app)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 7, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: 'pointer', background: 'var(--bg-app)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
                             Ver <ChevronRight size={10} />
                           </button>
                         )}
@@ -486,30 +486,30 @@ export function TreatmentSessionsModal({
           <div style={{ borderTop: '1px solid var(--hairline)', padding: '14px 24px' }}>
             {!showCancel ? (
               <button type="button" onClick={() => setShowCancel(true)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: '#dc2626', textDecoration: 'underline', padding: 0 }}>
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--danger)', textDecoration: 'underline', padding: 0 }}>
                 Cancelar tratamento
               </button>
             ) : (
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <AlertTriangle size={14} color="#dc2626" />
-                  <p style={{ fontSize: 13, fontWeight: 800, color: '#dc2626' }}>Confirmar cancelamento</p>
+                  <AlertTriangle size={14} color="var(--danger)" />
+                  <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--danger)' }}>Confirmar cancelamento</p>
                 </div>
                 <textarea
                   value={cancelReason}
                   onChange={e => setCancelReason(e.target.value)}
                   placeholder="Motivo do cancelamento (opcional)…"
                   rows={2}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #fca5a5', fontSize: 12, background: '#fff5f5', color: 'var(--text)', resize: 'none', outline: 'none', boxSizing: 'border-box' as const, marginBottom: 10 }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--danger-border)', fontSize: 'var(--text-sm-sz)', background: 'var(--danger-soft)', color: 'var(--text)', resize: 'none', outline: 'none', boxSizing: 'border-box' as const, marginBottom: 10 }}
                 />
-                {cancelError && <p style={{ fontSize: 12, color: '#dc2626', fontWeight: 600, marginBottom: 8 }}>{cancelError}</p>}
+                {cancelError && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, marginBottom: 8 }}>{cancelError}</p>}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button type="button" onClick={() => { setShowCancel(false); setCancelError(null) }}
-                    style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    style={{ padding: '7px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)', cursor: 'pointer' }}>
                     Voltar
                   </button>
                   <button type="button" onClick={handleCancelTreatment} disabled={cancelling}
-                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: '#dc2626', fontSize: 12, fontWeight: 800, color: '#fff', cursor: cancelling ? 'not-allowed' : 'pointer', opacity: cancelling ? 0.7 : 1 }}>
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: 'none', background: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--surface)', cursor: cancelling ? 'not-allowed' : 'pointer', opacity: cancelling ? 0.7 : 1 }}>
                     {cancelling ? <><Loader2 size={12} className="animate-spin" /> Cancelando…</> : 'Confirmar cancelamento'}
                   </button>
                 </div>

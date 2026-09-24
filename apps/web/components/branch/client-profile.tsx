@@ -232,14 +232,14 @@ function NotasDoCliente({
     <div className="card" style={{ padding: '14px 18px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
         <p className="overline" style={{ margin: 0 }}>ANOTAÇÕES</p>
-        {estado === 'salvando' && <span style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>salvando…</span>}
+        {estado === 'salvando' && <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>salvando…</span>}
         {estado === 'salvo' && (
-          <span style={{ fontSize: 10.5, color: 'var(--success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+          <span style={{ fontSize: 'var(--text-overline)', color: 'var(--success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
             <Check size={11} /> salvo
           </span>
         )}
         {estado === 'erro' && (
-          <span style={{ fontSize: 10.5, color: 'var(--warning)', fontWeight: 700 }}>não foi possível salvar</span>
+          <span style={{ fontSize: 'var(--text-overline)', color: 'var(--warning)', fontWeight: 700 }}>não foi possível salvar</span>
         )}
       </div>
       {/* Quem autoriza é o servidor (`assertPermission(ctx, 'clients', 'MANAGE')`
@@ -253,7 +253,7 @@ function NotasDoCliente({
         style={{
           width: '100%', padding: '9px 12px', borderRadius: 10,
           border: '1px solid var(--border)', background: 'var(--bg-app)',
-          fontSize: 13, fontFamily: 'inherit', color: 'var(--text)',
+          fontSize: 'var(--text-base-sz)', fontFamily: 'inherit', color: 'var(--text)',
           resize: 'vertical', lineHeight: 1.5,
         }}
       />
@@ -321,18 +321,18 @@ type HistoryCfg = {
   Icon:     React.FC<any>
 }
 const HISTORY_CONFIG: Record<ClientHistoryEvent['type'], HistoryCfg> = {
-  CLIENT_CREATED:        { dotColor: '#c34d6b', bgColor: '#fce7ec', Icon: UserPlus },
-  APP_ACCOUNT:           { dotColor: '#3b6cbf', bgColor: '#e7f0fc', Icon: Smartphone },
-  APPOINTMENT_SCHEDULED: { dotColor: '#3b6cbf', bgColor: '#e7f0fc', Icon: CalendarPlus },
-  APPOINTMENT_COMPLETED: { dotColor: '#2e7d32', bgColor: '#e7fce7', Icon: CheckCircle2 },
-  APPOINTMENT_CANCELLED: { dotColor: '#9e9e9e', bgColor: '#f5f5f5', Icon: XCircle },
-  APPOINTMENT_NO_SHOW:   { dotColor: '#ed6c02', bgColor: '#fff3e0', Icon: AlertCircle },
-  PAYMENT:               { dotColor: '#2e7d32', bgColor: '#e7fce7', Icon: CreditCard },
-  PLAN_PROPOSED:         { dotColor: '#6a3baa', bgColor: '#f0e7fc', Icon: ClipboardList },
-  PLAN_ACCEPTED:         { dotColor: '#c34d6b', bgColor: '#fce7ec', Icon: ClipboardCheck },
-  PLAN_CANCELLED:        { dotColor: '#9e9e9e', bgColor: '#f5f5f5', Icon: XCircle },
-  PACKAGE_PURCHASED:     { dotColor: '#3b6cbf', bgColor: '#e7f0fc', Icon: Package },
-  CONSENT_SIGNED:        { dotColor: '#2e7d32', bgColor: '#e7fce7', Icon: FileCheck },
+  CLIENT_CREATED:        { dotColor: 'var(--brand)', bgColor: 'var(--brand-soft)', Icon: UserPlus },
+  APP_ACCOUNT:           { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: Smartphone },
+  APPOINTMENT_SCHEDULED: { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: CalendarPlus },
+  APPOINTMENT_COMPLETED: { dotColor: 'var(--success)', bgColor: 'var(--success-soft)', Icon: CheckCircle2 },
+  APPOINTMENT_CANCELLED: { dotColor: 'var(--text-faint)', bgColor: 'var(--bg-app)', Icon: XCircle },
+  APPOINTMENT_NO_SHOW:   { dotColor: 'var(--danger)', bgColor: 'var(--danger-soft)', Icon: AlertCircle },
+  PAYMENT:               { dotColor: 'var(--success)', bgColor: 'var(--success-soft)', Icon: CreditCard },
+  PLAN_PROPOSED:         { dotColor: 'var(--cat-4)', bgColor: 'var(--cat-4-soft)', Icon: ClipboardList },
+  PLAN_ACCEPTED:         { dotColor: 'var(--brand)', bgColor: 'var(--brand-soft)', Icon: ClipboardCheck },
+  PLAN_CANCELLED:        { dotColor: 'var(--text-faint)', bgColor: 'var(--bg-app)', Icon: XCircle },
+  PACKAGE_PURCHASED:     { dotColor: 'var(--info)', bgColor: 'var(--info-soft)', Icon: Package },
+  CONSENT_SIGNED:        { dotColor: 'var(--success)', bgColor: 'var(--success-soft)', Icon: FileCheck },
 }
 
 function fmtHistoryDate(dateStr: string): string {
@@ -363,19 +363,19 @@ function HistoryEventRow({ ev, isLast, slug }: { ev: ClientHistoryEvent; isLast:
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{ev.title}</span>
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{ev.title}</span>
           {ev.amount != null && ev.amount > 0 && (
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#2e7d32', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--success)', whiteSpace: 'nowrap' }}>
               {fmtBRL(ev.amount)}
             </span>
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{fmtHistoryDate(ev.date)}</span>
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{fmtHistoryDate(ev.date)}</span>
           {ev.subtitle && (
             <>
-              <span style={{ fontSize: 11, color: 'var(--hairline)' }}>·</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{ev.subtitle}</span>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--hairline)' }}>·</span>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{ev.subtitle}</span>
             </>
           )}
         </div>
@@ -503,12 +503,12 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 
   const fieldStyle: React.CSSProperties = {
     width: '100%', padding: '9px 12px', borderRadius: 10,
-    border: '1px solid var(--border)', fontSize: 13,
+    border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)',
     fontFamily: 'inherit', color: 'var(--text)',
     background: 'var(--bg-app)', boxSizing: 'border-box' as const,
     outline: 'none',
   }
-  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 5, display: 'block', letterSpacing: '0.04em' }
+  const labelStyle: React.CSSProperties = { fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 5, display: 'block', letterSpacing: '0.04em' }
 
   return (
     <div className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -516,11 +516,11 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
       {/* Nome e genero */}
       <div className="form-2col">
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Nome *</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Nome *</p>
           <input type="text" value={nome} onChange={e => setNome(e.target.value)} style={fieldStyle} />
         </div>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Gênero</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Gênero</p>
           <select value={gender} onChange={e => setGender(e.target.value)} style={fieldStyle}>
             <option value="">Não informado</option>
             <option value="F">Feminino</option>
@@ -532,7 +532,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 
       {/* CPF */}
       <div>
-        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>CPF</p>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>CPF</p>
         <div style={{ position: 'relative' }}>
           <input
             type="text"
@@ -550,19 +550,19 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
           )}
         </div>
         {cpfStatus === 'dup' && (
-          <p style={{ fontSize: 12, color: '#dc2626', fontWeight: 600, marginTop: 5 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, marginTop: 5 }}>
             CPF já cadastrado para <strong>{cpfDupName}</strong>.
           </p>
         )}
         {cpfStatus === 'self' && (
-          <p style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600, marginTop: 5 }}>CPF já vinculado a este cliente.</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 600, marginTop: 5 }}>CPF já vinculado a este cliente.</p>
         )}
       </div>
 
       {/* Contato */}
       <div className="form-2col">
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Telefone</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Telefone</p>
           <input
             type="tel"
             placeholder="(11) 99999-9999"
@@ -572,7 +572,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
           />
         </div>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Data de nascimento</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Data de nascimento</p>
           <input
             type="date"
             value={birthDate}
@@ -584,7 +584,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 
       {/* E-mail */}
       <div>
-        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>E-mail</p>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>E-mail</p>
         <input
           type="email"
           placeholder="email@exemplo.com"
@@ -596,7 +596,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 
       {/* Endereço */}
       <div>
-        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Endereço</p>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Endereço</p>
 
         <div className="form-2col" style={{ marginBottom: 10 }}>
           <div>
@@ -646,7 +646,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 
       {/* Tags */}
       <div>
-        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Tags</p>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Tags</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {CLIENT_TAGS.map(tag => {
             const active = selectedTags.includes(tag)
@@ -659,7 +659,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
                   setSaved(false)
                 }}
                 style={{
-                  padding: '5px 12px', borderRadius: 'var(--radius-chip-token)', fontSize: 12, fontWeight: 600,
+                  padding: '5px 12px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-sm-sz)', fontWeight: 600,
                   cursor: 'pointer', border: active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
                   background: active ? 'var(--brand-soft)' : 'var(--surface)',
                   color: active ? 'var(--brand)' : 'var(--text-muted)',
@@ -675,7 +675,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
 
       {/* Unidades que frequenta (tags "Unidade: <nome>") */}
       <div>
-        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Unidades que frequenta</p>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Unidades que frequenta</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {branches.map(b => {
             const tag = unitTag(b.name)
@@ -689,10 +689,10 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
                   setSaved(false)
                 }}
                 style={{
-                  padding: '5px 12px', borderRadius: 'var(--radius-chip-token)', fontSize: 12, fontWeight: 600,
-                  cursor: 'pointer', border: active ? '1.5px solid #3b6cbf' : '1px solid var(--border)',
-                  background: active ? '#e7f0fc' : 'var(--surface)',
-                  color: active ? '#3b6cbf' : 'var(--text-muted)',
+                  padding: '5px 12px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-sm-sz)', fontWeight: 600,
+                  cursor: 'pointer', border: active ? '1.5px solid var(--info)' : '1px solid var(--border)',
+                  background: active ? 'var(--info-soft)' : 'var(--surface)',
+                  color: active ? 'var(--info)' : 'var(--text-muted)',
                   transition: 'all 0.12s',
                 }}
               >
@@ -711,7 +711,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
                 <TagBadge
                   key={tag}
                   label={unitTagName(tag)}
-                  style={{ bg: '#e7f0fc', color: '#3b6cbf' }}
+                  style={{ bg: 'var(--info-soft)', color: 'var(--info)' }}
                   onRemove={() => {
                     setSelectedTags(prev => prev.filter(t => t !== tag))
                     setSaved(false)
@@ -723,7 +723,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
         })()}
       </div>
 
-      {saveError && <p style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>{saveError}</p>}
+      {saveError && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>{saveError}</p>}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button
@@ -810,14 +810,14 @@ function GrantCreditForm({
       </div>
 
       {state?.error && (
-        <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>
       )}
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button type="button" onClick={onClose} className="btn-secondary" style={{ fontSize: 12 }}>
+        <button type="button" onClick={onClose} className="btn-secondary" style={{ fontSize: 'var(--text-sm-sz)' }}>
           Cancelar
         </button>
-        <button type="submit" disabled={pending} className="btn-primary" style={{ fontSize: 12, gap: 6, minWidth: 130, justifyContent: 'center' }}>
+        <button type="submit" disabled={pending} className="btn-primary" style={{ fontSize: 'var(--text-sm-sz)', gap: 6, minWidth: 130, justifyContent: 'center' }}>
           {pending ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
           {pending ? 'Concedendo…' : 'Conceder crédito'}
         </button>
@@ -861,7 +861,7 @@ function FinanceiroTab({
           { label: 'CRÉDITO INTERNO',  value: fmtBRL(creditoTotal),   accent: creditoTotal > 0 },
         ].map(k => (
           <div key={k.label} className="card" style={{ padding: '14px 18px' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
               {k.label}
             </p>
             <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: k.accent ? 'var(--brand)' : 'var(--text)' }}>
@@ -874,9 +874,9 @@ function FinanceiroTab({
       {/* Transações */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', flex: 1 }}>Transações</h3>
+          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Transações</h3>
           {transactions.length > 0 && (
-            <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'var(--brand-soft)', color: 'var(--brand)' }}>
+            <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'var(--brand-soft)', color: 'var(--brand)' }}>
               {transactions.length}
             </span>
           )}
@@ -884,7 +884,7 @@ function FinanceiroTab({
 
         {transactions.length === 0 ? (
           <div style={{ padding: '36px 20px', textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nenhuma transação registrada.</p>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Nenhuma transação registrada.</p>
           </div>
         ) : (
           <div className="table-wrap">
@@ -892,7 +892,7 @@ function FinanceiroTab({
             <thead>
               <tr style={{ borderBottom: '1px solid var(--hairline)' }}>
                 {['Data', 'Descrição', 'Forma', 'Valor', 'Status'].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                     {h}
                   </th>
                 ))}
@@ -906,7 +906,7 @@ function FinanceiroTab({
 
                 return (
                   <tr key={t.id} style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
-                    <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {t.scheduledAt
                         ? format(new Date(t.scheduledAt), 'dd/MM/yyyy', { locale: ptBR })
                         : format(new Date(t.createdAt), 'dd/MM/yyyy', { locale: ptBR })
@@ -917,12 +917,12 @@ function FinanceiroTab({
                         {t.isCheckout && (
                           <Receipt size={12} style={{ color: 'var(--brand)', flexShrink: 0 }} />
                         )}
-                        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {t.procedureName ?? t.description}
                         </p>
                       </div>
                       {hasInstallments && (
-                        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
+                        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
                           {`${paidCount}/${t.installments[0]?.total ?? t.installments.length} parcelas · ${fmtBRL(t.installments[0]?.amount ?? 0)}/mês`}
                         </p>
                       )}
@@ -930,7 +930,7 @@ function FinanceiroTab({
                     <td style={{ padding: '12px 16px' }}>
                       {t.paymentMethod && (
                         <span style={{
-                          fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 10,
+                          fontSize: 'var(--text-overline)', fontWeight: 700, padding: '3px 8px', borderRadius: 10,
                           background: 'var(--bg-app)', color: 'var(--text-muted)',
                           whiteSpace: 'nowrap',
                         }}>
@@ -938,11 +938,11 @@ function FinanceiroTab({
                         </span>
                       )}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', whiteSpace: 'nowrap' }}>
                       {fmtBRL(t.amount)}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <span className={t.isPaid ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 10 }}>
+                      <span className={t.isPaid ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
                         {t.isPaid ? 'Pago' : 'Pendente'}
                       </span>
                     </td>
@@ -958,8 +958,8 @@ function FinanceiroTab({
       {/* Crédito interno */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: (showGrantForm || internalCredits.length > 0) ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', flex: 1 }}>Crédito interno</h3>
-          <span style={{ fontSize: 15, fontWeight: 800, color: creditoTotal > 0 ? 'var(--brand)' : 'var(--text-faint)', marginRight: 8 }}>
+          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Crédito interno</h3>
+          <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: creditoTotal > 0 ? 'var(--brand)' : 'var(--text-faint)', marginRight: 8 }}>
             {fmtBRL(creditoTotal)}
           </span>
           {canGrantCredit && (
@@ -967,7 +967,7 @@ function FinanceiroTab({
               type="button"
               onClick={() => setShowGrantForm(v => !v)}
               className={showGrantForm ? 'btn-ghost' : 'btn-primary'}
-              style={{ fontSize: 12, gap: 5 }}
+              style={{ fontSize: 'var(--text-sm-sz)', gap: 5 }}
             >
               {showGrantForm ? <><X size={12} /> Cancelar</> : <><Plus size={12} /> Conceder crédito</>}
             </button>
@@ -986,7 +986,7 @@ function FinanceiroTab({
 
         {internalCredits.length === 0 && !showGrantForm ? (
           <div style={{ padding: '28px 20px', textAlign: 'center' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
               {canGrantCredit ? 'Nenhum crédito concedido ainda.' : 'Sem crédito disponível.'}
             </p>
           </div>
@@ -1001,12 +1001,12 @@ function FinanceiroTab({
               }}
             >
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{c.description}</p>
-                <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)' }}>{c.description}</p>
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
                   {format(new Date(c.createdAt), "dd/MM/yyyy", { locale: ptBR })}
                 </p>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--success)', flexShrink: 0 }}>
+              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--success)', flexShrink: 0 }}>
                 +{fmtBRL(c.amount)}
               </span>
             </div>
@@ -1095,7 +1095,7 @@ export function ClientProfile({
         className="show-mobile"
         style={{
           alignItems: 'center', gap: 5, alignSelf: 'flex-start',
-          fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
+          fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)',
           textDecoration: 'none', padding: '2px 0',
         }}
       >
@@ -1128,7 +1128,7 @@ export function ClientProfile({
               width: 56, height: 56, borderRadius: 'var(--radius-squircle)', flexShrink: 0,
               background: 'var(--brand)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 20, fontWeight: 800, color: '#fff',
+              fontSize: 20, fontWeight: 800, color: 'var(--on-brand)',
             }}>
               {initials}
             </div>
@@ -1139,28 +1139,28 @@ export function ClientProfile({
                 </h1>
                 {client.tags.map(tag => {
                   if (isUnitTag(tag)) {
-                    return <TagBadge key={tag} label={unitTagName(tag)} size="xs" style={{ bg: '#e7f0fc', color: '#3b6cbf' }} />
+                    return <TagBadge key={tag} label={unitTagName(tag)} size="xs" style={{ bg: 'var(--info-soft)', color: 'var(--info)' }} />
                   }
                   if (tag === 'VIP') {
-                    return <TagBadge key={tag} label="VIP · Ouro" size="xs" style={{ bg: '#fce7ec', color: '#c34d6b' }} />
+                    return <TagBadge key={tag} label="VIP · Ouro" size="xs" style={{ bg: 'var(--brand-soft)', color: 'var(--brand)' }} />
                   }
                   return <TagBadge key={tag} label={tag} size="xs" />
                 })}
               </div>
               <div style={{ display: 'flex', gap: 14, marginTop: 5, flexWrap: 'wrap' }}>
                 {client.phone && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                     <Phone size={11} style={{ color: 'var(--text-faint)' }} />
                     {client.phone}
                   </span>
                 )}
                 {client.email && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-muted)', minWidth: 0 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', minWidth: 0 }}>
                     <Mail size={11} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.email}</span>
                   </span>
                 )}
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-muted)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   <Calendar size={11} style={{ color: 'var(--text-faint)' }} />
                   Cliente desde {since}
                 </span>
@@ -1189,26 +1189,26 @@ export function ClientProfile({
                   <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setMenuAberto(false)} />
                   <div className="card" style={{
                     position: 'absolute', right: 0, top: '100%', marginTop: 6, zIndex: 41,
-                    minWidth: 230, padding: 6, boxShadow: '0 12px 32px -8px rgba(34,22,25,.18)',
+                    minWidth: 230, padding: 6, boxShadow: 'var(--shadow-popover)',
                   }}>
                     <button type="button" disabled={alterandoStatus}
                       onClick={alternarStatus}
                       style={{
                         width: '100%', textAlign: 'left', padding: '9px 12px', borderRadius: 8,
                         background: 'none', border: 'none', cursor: 'pointer',
-                        fontSize: 13, fontWeight: 700,
+                        fontSize: 'var(--text-base-sz)', fontWeight: 700,
                         color: client.isActive ? 'var(--warning)' : 'var(--success)',
                         display: 'flex', alignItems: 'center', gap: 8,
                       }}>
                       {client.isActive ? <><XCircle size={14} /> Desativar cliente</> : <><CheckCircle2 size={14} /> Reativar cliente</>}
                     </button>
-                    <p style={{ fontSize: 11, color: 'var(--text-faint)', padding: '2px 12px 8px', lineHeight: 1.45 }}>
+                    <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '2px 12px 8px', lineHeight: 1.45 }}>
                       {client.isActive
                         ? 'Some das listas e da busca. O histórico e o prontuário ficam.'
                         : 'Volta a aparecer nas listas e na busca.'}
                     </p>
                     {erroStatus && (
-                      <p style={{ fontSize: 11.5, color: '#dc2626', fontWeight: 600, padding: '0 12px 8px' }}>{erroStatus}</p>
+                      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600, padding: '0 12px 8px' }}>{erroStatus}</p>
                     )}
                   </div>
                 </>
@@ -1227,7 +1227,7 @@ export function ClientProfile({
           { label: 'PONTOS',           value: loyaltyBalance.toLocaleString('pt-BR') },
         ].map(k => (
           <div key={k.label} className="card" style={{ padding: '14px 18px' }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
               {k.label}
             </p>
             <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
@@ -1248,7 +1248,7 @@ export function ClientProfile({
             scroll={false}
             style={{
               padding: '10px 18px',
-              fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+              fontSize: 'var(--text-base-sz)', fontWeight: 700, whiteSpace: 'nowrap',
               textDecoration: 'none',
               color:       tab === t.key ? 'var(--brand)' : 'var(--text-muted)',
               borderBottom: tab === t.key ? '2px solid var(--brand)' : '2px solid transparent',
@@ -1270,35 +1270,35 @@ export function ClientProfile({
           {activePackage ? (
             <div role="button" onClick={() => setTreatmentModalOpen(true)} style={{
               borderRadius: 'var(--radius-card)',
-              background: 'linear-gradient(135deg, var(--brand), var(--brand-deep, #a03358))',
-              padding: '20px 24px', color: '#fff', cursor: 'pointer',
+              background: 'var(--gradient-brand)',
+              padding: '20px 24px', color: 'var(--on-brand)', cursor: 'pointer',
             }}>
-              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', opacity: 0.75, marginBottom: 6 }}>
+              <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', opacity: 0.75, marginBottom: 6 }}>
                 TRATAMENTO EM ANDAMENTO
               </p>
-              <p style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>{activePackage.name}</p>
+              <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, marginBottom: 4 }}>{activePackage.name}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
                 <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.25)' }}>
                   <div style={{
-                    height: '100%', borderRadius: 3, background: '#fff',
+                    height: '100%', borderRadius: 3, background: 'var(--surface)',
                     width: `${Math.round((activePackage.usedSessions / activePackage.totalSessions) * 100)}%`,
                     transition: 'width 0.3s',
                   }} />
                 </div>
-                <p style={{ fontSize: 13, fontWeight: 800, opacity: 0.95, flexShrink: 0 }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, opacity: 0.95, flexShrink: 0 }}>
                   {activePackage.usedSessions} / {activePackage.totalSessions} sessões
                 </p>
               </div>
               {activePackage.totalSessions - activePackage.usedSessions > 0 && (
-                <p style={{ fontSize: 11, opacity: 0.7, marginTop: 6 }}>
+                <p style={{ fontSize: 'var(--text-2xs)', opacity: 0.7, marginTop: 6 }}>
                   {activePackage.totalSessions - activePackage.usedSessions} sessões restantes
                 </p>
               )}
             </div>
           ) : (
             <div className="card" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, minHeight: 90 }}>
-              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-faint)' }}>TRATAMENTO EM ANDAMENTO</p>
-              <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Nenhum pacote ativo.</p>
+              <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-faint)' }}>TRATAMENTO EM ANDAMENTO</p>
+              <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum pacote ativo.</p>
             </div>
           )}
 
@@ -1307,8 +1307,8 @@ export function ClientProfile({
             <div className="card" style={{ padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                 <Clock size={14} style={{ color: 'var(--brand)' }} />
-                <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>Próximos agendamentos</h3>
-                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'var(--brand-soft)', color: 'var(--brand)', marginLeft: 'auto' }}>
+                <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Próximos agendamentos</h3>
+                <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'var(--brand-soft)', color: 'var(--brand)', marginLeft: 'auto' }}>
                   {upcomingAppointments.length}
                 </span>
               </div>
@@ -1326,13 +1326,13 @@ export function ClientProfile({
                       <Stethoscope size={14} style={{ color: 'var(--brand)' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{a.procedureName}</p>
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{a.procedureName}</p>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
                         {format(new Date(a.scheduledAt), "EEE, dd MMM · HH:mm", { locale: ptBR })}
                         {a.professionalName !== '—' && ` · ${a.professionalName}`}
                       </p>
                     </div>
-                    <span className={a.status === 'CONFIRMED' ? 'chip chip-success' : 'chip chip-brand'} style={{ fontSize: 10 }}>
+                    <span className={a.status === 'CONFIRMED' ? 'chip chip-success' : 'chip chip-brand'} style={{ fontSize: 'var(--text-overline)' }}>
                       {STATUS_LABEL[a.status] ?? a.status}
                     </span>
                   </div>
@@ -1342,24 +1342,24 @@ export function ClientProfile({
           ) : (
             <div className="card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <Clock size={14} style={{ color: 'var(--text-faint)' }} />
-              <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Nenhum agendamento futuro.</p>
+              <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum agendamento futuro.</p>
             </div>
           )}
 
           {/* 3. Histórico de procedimentos */}
           <div className="card" style={{ padding: '20px 24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>Histórico de procedimentos</h3>
+              <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Histórico de procedimentos</h3>
               {recentAppointments.length > 8 && (
                 <Link href={linkDaAba('historico')} scroll={false}
-                  style={{ fontSize: 12, color: 'var(--brand)', fontWeight: 700, textDecoration: 'none' }}>
+                  style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', fontWeight: 700, textDecoration: 'none' }}>
                   Ver tudo
                 </Link>
               )}
             </div>
 
             {recentAppointments.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--text-faint)', padding: '4px 0 8px' }}>
+              <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', padding: '4px 0 8px' }}>
                 Nenhum procedimento realizado ainda.
               </p>
             ) : (
@@ -1378,15 +1378,15 @@ export function ClientProfile({
                       <Stethoscope size={12} style={{ color: a.status === 'COMPLETED' ? 'var(--success)' : 'var(--text-faint)' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{a.procedureName}</p>
-                      <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
+                      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{a.procedureName}</p>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
                         {format(new Date(a.scheduledAt), "dd MMM yyyy", { locale: ptBR })}
                         {a.professionalName !== '—' && ` · ${a.professionalName}`}
                       </p>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{fmtBRL(a.price)}</p>
-                      <p style={{ fontSize: 10, color: a.status === 'COMPLETED' ? 'var(--success)' : 'var(--text-faint)', fontWeight: 600, marginTop: 2 }}>
+                      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{fmtBRL(a.price)}</p>
+                      <p style={{ fontSize: 'var(--text-overline)', color: a.status === 'COMPLETED' ? 'var(--success)' : 'var(--text-faint)', fontWeight: 600, marginTop: 2 }}>
                         {STATUS_LABEL[a.status] ?? a.status}
                       </p>
                     </div>
@@ -1401,7 +1401,7 @@ export function ClientProfile({
           {loyaltyBalance > 0 && (
             <div className="card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
               <Star size={14} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-              <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                 <strong style={{ color: 'var(--text)' }}>{loyaltyBalance.toLocaleString('pt-BR')} pontos</strong> de fidelidade acumulados
               </p>
             </div>
@@ -1414,16 +1414,16 @@ export function ClientProfile({
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           {/* header */}
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
               Linha do tempo
             </span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
               {clientHistory.length} evento{clientHistory.length !== 1 ? 's' : ''}
             </span>
           </div>
 
           {clientHistory.length === 0 ? (
-            <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+            <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
               Nenhum evento registrado.
             </div>
           ) : (
@@ -1462,17 +1462,17 @@ export function ClientProfile({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
                 Negociações
               </span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                 {opportunities.filter(o => o.outcome === 'OPEN').length} em aberto ·{' '}
                 {opportunities.length} no total
               </span>
             </div>
 
             {opportunities.length === 0 ? (
-              <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+              <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
                 Nenhuma oportunidade. Abra uma pela conversa no Inbox quando houver
                 interesse em algo novo.
               </div>
@@ -1492,10 +1492,10 @@ export function ClientProfile({
                       background: o.stage_color ?? 'var(--border)',
                     }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                      <div style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
                         {o.funnel_name ?? 'Sem funil'}
                       </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                      <div style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                         {o.stage_name ?? 'Sem etapa'}
                         {o.owner_name ? ` · ${o.owner_name}` : ''}
                         {' · desde '}
@@ -1503,12 +1503,12 @@ export function ClientProfile({
                       </div>
                     </div>
                     {o.value !== null && (
-                      <span style={{ flexShrink: 0, fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
+                      <span style={{ flexShrink: 0, fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
                         {fmtBRL(o.value)}
                       </span>
                     )}
                     <span style={{
-                      flexShrink: 0, fontSize: 10.5, fontWeight: 800, padding: '2px 9px', borderRadius: 99,
+                      flexShrink: 0, fontSize: 'var(--text-overline)', fontWeight: 800, padding: '2px 9px', borderRadius: 99,
                       color: o.outcome === 'WON' ? 'var(--success)'
                            : o.outcome === 'LOST' ? 'var(--text-faint)' : 'var(--brand)',
                       background: o.outcome === 'OPEN' ? 'var(--brand-soft)' : 'var(--bg-app)',
@@ -1532,7 +1532,7 @@ export function ClientProfile({
       {tab === 'fichas' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {recordForms.length === 0 ? (
-            <div className="card" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+            <div className="card" style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
               Nenhuma ficha preenchida ainda.
             </div>
           ) : (

@@ -47,7 +47,7 @@ export default async function AdminNewClientPage() {
       </div>
 
       {branches.length === 0 ? (
-        <div className="card" style={{ padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>
+        <div className="card" style={{ padding: 24, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
           Nenhuma unidade ativa cadastrada. Cadastre uma unidade antes de criar clientes.
         </div>
       ) : (

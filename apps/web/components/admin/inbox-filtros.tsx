@@ -170,7 +170,7 @@ function Pastilha({
       type="button"
       onClick={onClick}
       style={{
-        fontSize: 10.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+        fontSize: 'var(--text-overline)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
         cursor: 'pointer', transition: 'all 100ms',
         border:     ativa ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
         background: ativa ? 'var(--brand-soft)' : 'var(--bg-app)',
@@ -186,7 +186,7 @@ function Secao({ titulo, children }: { titulo: string; children: React.ReactNode
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{
-        fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase',
+        fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase',
         letterSpacing: '0.06em', color: 'var(--text-faint)', marginBottom: 6,
       }}>
         {titulo}
@@ -240,8 +240,8 @@ export function InboxFiltros({
           <span style={{
             position: 'absolute', top: -5, right: -5,
             minWidth: 16, height: 16, borderRadius: 99, padding: '0 4px',
-            background: 'var(--brand)', color: '#fff',
-            fontSize: 9.5, fontWeight: 800,
+            background: 'var(--brand)', color: 'var(--surface)',
+            fontSize: 'var(--text-overline)', fontWeight: 800,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {ativos}
@@ -264,7 +264,7 @@ export function InboxFiltros({
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               marginBottom: 10,
             }}>
-              <strong style={{ fontSize: 12.5, color: 'var(--text)' }}>Filtros</strong>
+              <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>Filtros</strong>
               <div style={{ display: 'flex', gap: 4 }}>
                 {ativos > 0 && (
                   <button
@@ -272,7 +272,7 @@ export function InboxFiltros({
                     onClick={() => onChange(FILTROS_VAZIOS)}
                     style={{
                       border: 'none', background: 'none', cursor: 'pointer',
-                      fontSize: 11, fontWeight: 700, color: 'var(--brand)', padding: 0,
+                      fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', padding: 0,
                     }}
                   >
                     Limpar
@@ -390,7 +390,7 @@ export function InboxFiltros({
                   className="field"
                   value={filtros.funil}
                   onChange={e => onChange({ ...filtros, funil: e.target.value, etapa: 'todas' })}
-                  style={{ fontSize: 12.5, padding: '7px 9px' }}
+                  style={{ fontSize: 'var(--text-sm-sz)', padding: '7px 9px' }}
                 >
                   <option value="todos">Todos os funis</option>
                   {opcoes.funis.map(f => (
@@ -406,7 +406,7 @@ export function InboxFiltros({
                   className="field"
                   value={filtros.etapa}
                   onChange={e => onChange({ ...filtros, etapa: e.target.value })}
-                  style={{ fontSize: 12.5, padding: '7px 9px' }}
+                  style={{ fontSize: 'var(--text-sm-sz)', padding: '7px 9px' }}
                 >
                   <option value="todas">Todas as etapas</option>
                   {etapasVisiveis.map(e => (
@@ -438,7 +438,7 @@ export function InboxFiltros({
                   className="field"
                   value={filtros.unidade}
                   onChange={e => onChange({ ...filtros, unidade: e.target.value })}
-                  style={{ fontSize: 12.5, padding: '7px 9px' }}
+                  style={{ fontSize: 'var(--text-sm-sz)', padding: '7px 9px' }}
                 >
                   <option value="todas">Todas as unidades</option>
                   {opcoes.unidades.map(u => (
@@ -534,7 +534,7 @@ export function ChipsDeFiltro({
           key={`${chip.rotulo}-${i}`}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 4,
-            fontSize: 10, fontWeight: 700, padding: '2px 5px 2px 8px',
+            fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 5px 2px 8px',
             borderRadius: 99, background: 'var(--brand-soft)', color: 'var(--brand)',
           }}
         >

@@ -165,7 +165,7 @@ function ProcRow({
           }}
           style={{
             flex: 1, padding: '7px 10px', borderRadius: 8,
-            border: '1px solid var(--border)', fontSize: 13,
+            border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)',
             background: 'var(--surface)', color: 'var(--text)', outline: 'none',
           }}
         >
@@ -176,14 +176,14 @@ function ProcRow({
         </select>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-faint)', fontWeight: 600 }}>R$</span>
+          <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', fontWeight: 600 }}>R$</span>
           <input
             type="number" min={0} step={0.01} value={proc.price || ''}
             onChange={e => onChangePrice(proc.localId, parseFloat(e.target.value) || 0)}
             placeholder="0,00"
             style={{
               width: 90, padding: '7px 8px', borderRadius: 8, textAlign: 'right',
-              border: '1px solid var(--border)', fontSize: 13,
+              border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)',
               background: 'var(--surface)', color: 'var(--text)', outline: 'none',
             }}
           />
@@ -197,7 +197,7 @@ function ProcRow({
             background: showProducts ? 'var(--brand-soft)' : 'none',
             border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 6, flexShrink: 0,
             color: proc.products.length > 0 ? 'var(--brand)' : 'var(--text-faint)',
-            display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700,
+            display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-2xs)', fontWeight: 700,
           }}
         >
           <FlaskConical size={12} />
@@ -216,23 +216,23 @@ function ProcRow({
       {/* Seção de insumos */}
       {showProducts && (
         <div style={{ padding: '8px 12px 10px', borderTop: '1px solid var(--hairline)', background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 2 }}>INSUMOS</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 2 }}>INSUMOS</p>
           {proc.products.length === 0 && (
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', fontStyle: 'italic' }}>Nenhum insumo adicionado.</p>
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', fontStyle: 'italic' }}>Nenhum insumo adicionado.</p>
           )}
           {proc.products.map(pr => (
             <div key={pr.localId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ flex: 1, fontSize: 12, color: 'var(--text)' }}>{pr.name}</span>
+              <span style={{ flex: 1, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{pr.name}</span>
               <input
                 type="number" min={0.01} step={0.01} value={pr.quantity || ''}
                 onChange={e => onChangeProductQty(proc.localId, pr.localId, parseFloat(e.target.value) || 0)}
                 style={{
                   width: 70, padding: '5px 8px', borderRadius: 7, textAlign: 'right',
-                  border: '1px solid var(--border)', fontSize: 12,
+                  border: '1px solid var(--border)', fontSize: 'var(--text-sm-sz)',
                   background: 'var(--surface)', color: 'var(--text)', outline: 'none',
                 }}
               />
-              <span style={{ fontSize: 11, color: 'var(--text-faint)', width: 32, flexShrink: 0 }}>{pr.unit}</span>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', width: 32, flexShrink: 0 }}>{pr.unit}</span>
               <button
                 type="button"
                 onClick={() => onRemoveProduct(proc.localId, pr.localId)}
@@ -251,7 +251,7 @@ function ProcRow({
               }}
               style={{
                 flex: 1, padding: '5px 8px', borderRadius: 7,
-                border: '1px dashed var(--border)', fontSize: 12,
+                border: '1px dashed var(--border)', fontSize: 'var(--text-sm-sz)',
                 background: 'var(--surface)', color: 'var(--text)', outline: 'none',
               }}
             >
@@ -304,22 +304,22 @@ function SessionCard({
       }}>
         <div style={{
           width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-          background: 'var(--brand)', color: '#fff',
+          background: 'var(--brand)', color: 'var(--surface)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800,
+          fontSize: 'var(--text-2xs)', fontWeight: 800,
         }}>
           {index + 1}
         </div>
-        <span style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+        <span style={{ flex: 1, fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
           Sessão {index + 1}
           {session.procs.length > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>
               {session.procs.map(p => p.name || '—').join(' · ')}
             </span>
           )}
         </span>
         {total > 0 && (
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)', flexShrink: 0 }}>
+          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)', flexShrink: 0 }}>
             {fmtBRL(total)}
           </span>
         )}
@@ -354,7 +354,7 @@ function SessionCard({
       {!collapsed && (
         <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {session.procs.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'center', padding: '8px 0' }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', padding: '8px 0' }}>
               Nenhum procedimento. Clique em "Adicionar" abaixo.
             </p>
           ) : (
@@ -389,7 +389,7 @@ function SessionCard({
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--brand)', fontSize: 12, fontWeight: 700,
+              color: 'var(--brand)', fontSize: 'var(--text-sm-sz)', fontWeight: 700,
               padding: '4px 0', alignSelf: 'flex-start',
             }}
           >
@@ -583,8 +583,8 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     return (
       <div className="card" style={{ overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Tratamento</h3>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#2a8a5c', background: '#f0faf4', border: '1px solid #b8e8cc', borderRadius: 6, padding: '2px 8px' }}>
+          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Tratamento</h3>
+          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--success)', background: 'var(--success-bg)', border: '1px solid var(--success-border)', borderRadius: 6, padding: '2px 8px' }}>
             {existingPlan?.status === 'PROPOSED' ? 'Aguardando checkout' : 'Em execução'}
           </span>
         </div>
@@ -592,17 +592,17 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
           {(existingPlan?.sessions ?? []).map((s, i) => (
             <div key={i} style={{ borderRadius: 10, border: '1px solid var(--hairline)', overflow: 'hidden' }}>
               <div style={{ padding: '10px 14px', background: 'var(--bg-app)', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--brand)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--text-overline)', fontWeight: 800, flexShrink: 0 }}>
                   {i + 1}
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Sessão {i + 1}</span>
-                <span style={{ fontSize: 11, color: 'var(--brand)', fontWeight: 700, marginLeft: 'auto' }}>
+                <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>Sessão {i + 1}</span>
+                <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--brand)', fontWeight: 700, marginLeft: 'auto' }}>
                   {fmtBRL(s.procedures.reduce((sum, p) => sum + p.price, 0))}
                 </span>
               </div>
               <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {s.procedures.map((p, j) => (
-                  <div key={j} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text)' }}>
+                  <div key={j} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
                     <span>{p.name}</span>
                     <span style={{ color: 'var(--text-muted)' }}>{fmtBRL(p.price)}</span>
                   </div>
@@ -611,7 +611,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
             </div>
           ))}
           {existingPlan?.notes && (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 12px', background: 'var(--bg-app)', borderRadius: 8 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 12px', background: 'var(--bg-app)', borderRadius: 8 }}>
               "{existingPlan.notes}"
             </p>
           )}
@@ -624,9 +624,9 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
     <div className="card" style={{ overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Tratamento</h3>
+        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Tratamento</h3>
         {grandTotal > 0 && (
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
             {fmtBRL(grandTotal)}
           </span>
         )}
@@ -637,8 +637,8 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
         {/* Sessões */}
         {sessions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '24px 16px', borderRadius: 'var(--radius-field-token)', border: '2px dashed var(--hairline)' }}>
-            <p style={{ fontSize: 13, color: 'var(--text-faint)', marginBottom: 10 }}>Nenhuma sessão criada ainda.</p>
-            <button type="button" onClick={addSession} className="btn-primary" style={{ fontSize: 12, justifyContent: 'center' }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', marginBottom: 10 }}>Nenhuma sessão criada ainda.</p>
+            <button type="button" onClick={addSession} className="btn-primary" style={{ fontSize: 'var(--text-sm-sz)', justifyContent: 'center' }}>
               <Plus size={13} /> Nova sessão
             </button>
           </div>
@@ -673,7 +673,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 padding: '9px 16px', borderRadius: 10,
                 border: '1.5px dashed var(--brand)', background: 'var(--brand-soft)',
-                color: 'var(--brand)', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                color: 'var(--brand)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, cursor: 'pointer',
               }}
             >
               <Plus size={13} /> Nova sessão
@@ -683,7 +683,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
 
         {/* Observações */}
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>OBSERVAÇÕES DA PROFISSIONAL</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>OBSERVAÇÕES DA PROFISSIONAL</p>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
@@ -691,7 +691,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
             placeholder="Recomendações, contraindicações, observações clínicas…"
             style={{
               width: '100%', padding: '10px 12px', borderRadius: 10,
-              border: '1px solid var(--border)', fontSize: 13,
+              border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)',
               background: 'var(--surface)', color: 'var(--text)', outline: 'none',
               resize: 'vertical', boxSizing: 'border-box',
             }}
@@ -717,7 +717,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
         ) : !hideActions && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'flex-end' }}>
             <button type="button" onClick={handleSave} disabled={isPending}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 13, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}>
               <Save size={13} /> Salvar rascunho
             </button>
             <button type="button" onClick={handlePropose} disabled={isPending || sessions.length === 0}
@@ -728,7 +728,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
         )}
 
         {msg && (
-          <p style={{ fontSize: 12, fontWeight: 600, color: msg.startsWith('Erro') ? '#dc2626' : 'var(--success)' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: msg.startsWith('Erro') ? 'var(--danger)' : 'var(--success)' }}>
             {msg}
           </p>
         )}

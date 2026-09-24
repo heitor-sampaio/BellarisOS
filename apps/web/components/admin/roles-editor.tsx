@@ -690,7 +690,7 @@ function AbasDeRelatorio({
                 border: '1.5px solid',
                 transition: 'all 120ms',
                 background:  on ? 'var(--brand)' : 'var(--surface)',
-                color:       on ? '#fff'         : 'var(--text-muted)',
+                color:       on ? 'var(--on-brand)'         : 'var(--text-muted)',
                 borderColor: on ? 'var(--brand)' : 'var(--border)',
               }}
             >
@@ -891,7 +891,7 @@ function ConfirmDialog({
             style={danger ? {
               padding: '9px 16px', borderRadius: 'var(--radius-field-token)',
               fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)',
-              border: '1px solid #dc2626', background: '#fef2f2', color: '#dc2626', cursor: 'pointer',
+              border: '1px solid var(--danger)', background: 'var(--danger-soft)', color: 'var(--danger)', cursor: 'pointer',
             } : undefined}
           >
             {confirmLabel}

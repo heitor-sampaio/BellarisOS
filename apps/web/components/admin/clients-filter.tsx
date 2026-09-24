@@ -36,7 +36,7 @@ export function ClientsFilter({ branches }: Props) {
           style={{
             width: '100%', padding: '8px 10px 8px 32px',
             borderRadius: 9, border: '1px solid var(--border)',
-            fontSize: 13, background: 'var(--surface)', color: 'var(--text)',
+            fontSize: 'var(--text-base-sz)', background: 'var(--surface)', color: 'var(--text)',
             outline: 'none', boxSizing: 'border-box',
           }}
         />
@@ -48,7 +48,7 @@ export function ClientsFilter({ branches }: Props) {
         onChange={e => update('branch', e.target.value)}
         style={{
           padding: '8px 10px', borderRadius: 9, border: '1px solid var(--border)',
-          fontSize: 13, background: 'var(--surface)', color: 'var(--text)',
+          fontSize: 'var(--text-base-sz)', background: 'var(--surface)', color: 'var(--text)',
           outline: 'none', minWidth: 160,
         }}
       >

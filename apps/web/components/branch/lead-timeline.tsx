@@ -152,7 +152,7 @@ export function LeadTimeline({
         <p className="overline" style={{ margin: 0 }}>HISTÓRICO</p>
         {paradoDesde && (
           <span style={{
-            fontSize: 11, color: 'var(--text-muted)', fontWeight: 600,
+            fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600,
             display: 'inline-flex', alignItems: 'center', gap: 4,
           }}>
             <Clock size={11} />
@@ -162,15 +162,15 @@ export function LeadTimeline({
       </div>
 
       {erro && (
-        <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 700 }}>{erro}</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 700 }}>{erro}</p>
       )}
 
       {!erro && eventos === null && (
-        <p style={{ fontSize: 12, color: 'var(--text-faint)' }}>Carregando…</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando…</p>
       )}
 
       {!erro && eventos?.length === 0 && (
-        <p style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
           Nada registrado ainda.
         </p>
       )}
@@ -201,10 +201,10 @@ export function LeadTimeline({
                 </div>
 
                 <div style={{ paddingBottom: ultimo ? 0 : 14, minWidth: 0, flex: 1 }}>
-                  <p style={{ fontSize: 12.5, lineHeight: 1.35, color: 'var(--text-muted)' }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', lineHeight: 1.35, color: 'var(--text-muted)' }}>
                     <Descricao e={e} />
                   </p>
-                  <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
+                  <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
                     <span title={DATA_HORA.format(new Date(e.created_at))}>
                       {DATA_HORA.format(new Date(e.created_at))}
                     </span>

@@ -24,19 +24,19 @@ function fmtDateTime(d: string) {
 
 const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> = {
   ACCEPTED:   { label: 'Em andamento', color: 'var(--brand)',   bg: 'var(--brand-soft)' },
-  COMPLETED:  { label: 'Concluído',    color: '#16a34a',        bg: '#f0fdf4' },
-  REJECTED:   { label: 'Cancelado',    color: '#dc2626',        bg: '#fef2f2' },
-  PROPOSED:   { label: 'Aguardando',   color: '#d97706',        bg: '#fffbeb' },
+  COMPLETED:  { label: 'Concluído',    color: 'var(--success)',        bg: 'var(--success-bg)' },
+  REJECTED:   { label: 'Cancelado',    color: 'var(--danger)',        bg: 'var(--danger-soft)' },
+  PROPOSED:   { label: 'Aguardando',   color: 'var(--warning)',        bg: 'var(--warning-soft)' },
   DRAFT:      { label: 'Rascunho',     color: 'var(--text-faint)', bg: 'var(--bg-app)' },
 }
 
 const APPT_STATUS: Record<string, { label: string; color: string }> = {
-  SCHEDULED:   { label: 'Agendada',     color: '#2563eb' },
-  CONFIRMED:   { label: 'Confirmada',   color: '#2563eb' },
-  IN_PROGRESS: { label: 'Em andamento', color: '#d97706' },
-  COMPLETED:   { label: 'Realizada',    color: '#16a34a' },
-  CANCELLED:   { label: 'Cancelada',    color: '#dc2626' },
-  NO_SHOW:     { label: 'Não compareceu', color: '#6b7280' },
+  SCHEDULED:   { label: 'Agendada',     color: 'var(--info)' },
+  CONFIRMED:   { label: 'Confirmada',   color: 'var(--info)' },
+  IN_PROGRESS: { label: 'Em andamento', color: 'var(--warning)' },
+  COMPLETED:   { label: 'Realizada',    color: 'var(--success)' },
+  CANCELLED:   { label: 'Cancelada',    color: 'var(--danger)' },
+  NO_SHOW:     { label: 'Não compareceu', color: 'var(--text-muted)' },
 }
 
 const ANAMNESE_LABELS: Record<string, string> = {
@@ -53,7 +53,7 @@ const ANAMNESE_LABELS: Record<string, string> = {
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <p style={{
-      fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+      fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
       color: 'var(--text-faint)', marginBottom: 12,
     }}>
       {children}
@@ -85,8 +85,8 @@ function SessionItem({
   const isBooked   = apptStatus === 'SCHEDULED' || apptStatus === 'CONFIRMED'
   const isPending  = !appt
 
-  const dotColor = isDone ? '#16a34a' : isActive ? '#d97706' : isBooked ? '#2563eb' : 'var(--border)'
-  const dotBg    = isDone ? '#f0fdf4' : isActive ? '#fffbeb' : isBooked ? '#eff6ff' : 'var(--bg-app)'
+  const dotColor = isDone ? 'var(--success)' : isActive ? 'var(--warning)' : isBooked ? 'var(--info)' : 'var(--border)'
+  const dotBg    = isDone ? 'var(--success-bg)' : isActive ? 'var(--warning-soft)' : isBooked ? 'var(--info-soft)' : 'var(--bg-app)'
 
   const procNames = session.procedures.map(p => p.name).join(' + ')
 
@@ -98,8 +98,8 @@ function SessionItem({
           width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
           background: dotBg, border: `2px solid ${dotColor}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 800,
-          color: isDone ? '#16a34a' : dotColor,
+          fontSize: 'var(--text-2xs)', fontWeight: 800,
+          color: isDone ? 'var(--success)' : dotColor,
         }}>
           {isDone ? <CheckCircle2 size={14} /> : index + 1}
         </div>
@@ -112,25 +112,25 @@ function SessionItem({
       <div style={{ flex: 1, paddingBottom: isLast ? 0 : 20, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.3 }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', lineHeight: 1.3 }}>
               Sessão {index + 1}
               {procNames && (
-                <span style={{ fontSize: 11.5, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 6 }}>
+                <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 6 }}>
                   · {procNames}
                 </span>
               )}
             </p>
             {appt ? (
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Calendar size={10} style={{ flexShrink: 0 }} />
                 {fmtDateTime(appt.scheduledAt)}
               </p>
             ) : (
-              <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 3 }}>Aguardando agendamento</p>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 3 }}>Aguardando agendamento</p>
             )}
             {appt?.notes && isDone && (
               <p style={{
-                fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6,
+                fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6,
                 background: 'var(--bg-app)', borderRadius: 6, padding: '6px 10px',
                 borderLeft: '2px solid var(--brand-soft)',
               }}>
@@ -141,7 +141,7 @@ function SessionItem({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             {apptStatus && (
-              <span style={{ fontSize: 10, fontWeight: 700, color: APPT_STATUS[apptStatus]?.color ?? 'var(--text-faint)' }}>
+              <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: APPT_STATUS[apptStatus]?.color ?? 'var(--text-faint)' }}>
                 {APPT_STATUS[apptStatus]?.label ?? apptStatus}
               </span>
             )}
@@ -151,9 +151,9 @@ function SessionItem({
                 onClick={() => router.push(rotaAtendimento(pathname, slug, appt.id))}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 3,
-                  padding: '4px 9px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  padding: '4px 9px', borderRadius: 6, fontSize: 'var(--text-2xs)', fontWeight: 700, cursor: 'pointer',
                   background: isActive ? 'var(--brand)' : 'var(--bg-app)',
-                  color: isActive ? '#fff' : 'var(--text-muted)',
+                  color: isActive ? 'var(--on-brand)' : 'var(--text-muted)',
                   border: `1px solid ${isActive ? 'var(--brand)' : 'var(--border)'}`,
                 }}
               >
@@ -191,7 +191,7 @@ function Timeline({ details }: { details: TreatmentFileDetails }) {
       date:  fmtDate(s.appointment.scheduledAt),
       label: `Sessão ${s.sortOrder + 1} realizada`,
       sub:   procName,
-      color: '#16a34a',
+      color: 'var(--success)',
       icon:  <CheckCircle2 size={12} />,
     })
   })
@@ -204,7 +204,7 @@ function Timeline({ details }: { details: TreatmentFileDetails }) {
       date:  fmtDate(s.appointment.scheduledAt),
       label: `Sessão ${s.sortOrder + 1} agendada`,
       sub:   procName,
-      color: '#2563eb',
+      color: 'var(--info)',
       icon:  <Calendar size={12} />,
     })
   })
@@ -212,7 +212,7 @@ function Timeline({ details }: { details: TreatmentFileDetails }) {
   events.sort((a, b) => a.date.localeCompare(b.date))
 
   if (events.length === 0) {
-    return <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Nenhum evento registrado ainda.</p>
+    return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum evento registrado ainda.</p>
   }
 
   return (
@@ -234,9 +234,9 @@ function Timeline({ details }: { details: TreatmentFileDetails }) {
             )}
           </div>
           <div style={{ paddingBottom: i < events.length - 1 ? 8 : 0 }}>
-            <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>{ev.label}</p>
-            {ev.sub && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{ev.sub}</p>}
-            <p style={{ fontSize: 10.5, color: 'var(--text-faint)', marginTop: 2 }}>{ev.date}</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{ev.label}</p>
+            {ev.sub && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 1 }}>{ev.sub}</p>}
+            <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginTop: 2 }}>{ev.date}</p>
           </div>
         </div>
       ))}
@@ -351,24 +351,24 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
         width: '100%', maxWidth: 720, maxHeight: '92vh',
         display: 'flex', flexDirection: 'column',
         border: '1px solid var(--border)',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.2)',
+        boxShadow: 'var(--shadow-overlay)',
         overflow: 'hidden',
       }}>
 
         {/* -- Header --------------------------------------------------- */}
         <div style={{
-          background: 'linear-gradient(135deg, var(--brand), var(--brand-deep, #a03358))',
-          padding: '20px 24px', color: '#fff',
+          background: 'var(--gradient-brand)',
+          padding: '20px 24px', color: 'var(--on-brand)',
           display: 'flex', alignItems: 'flex-start', gap: 16,
           flexShrink: 0,
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', opacity: 0.75 }}>
+              <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', opacity: 0.75 }}>
                 FICHA DE TRATAMENTO
               </p>
               <span style={{
-                fontSize: 9, fontWeight: 800, padding: '2px 7px', borderRadius: 99,
+                fontSize: 'var(--text-overline)', fontWeight: 800, padding: '2px 7px', borderRadius: 99,
                 background: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em',
               }}>
                 {status.label.toUpperCase()}
@@ -378,16 +378,16 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
               {activePackage.name}
             </p>
             {details?.professionalName && (
-              <p style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', opacity: 0.8, marginTop: 4 }}>
                 Profissional responsável: {details.professionalName}
               </p>
             )}
             {/* Progress */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
               <div style={{ flex: 1, height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.25)' }}>
-                <div style={{ height: '100%', borderRadius: 3, background: '#fff', width: `${pct}%`, transition: 'width 0.4s' }} />
+                <div style={{ height: '100%', borderRadius: 3, background: 'var(--surface)', width: `${pct}%`, transition: 'width 0.4s' }} />
               </div>
-              <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.95, flexShrink: 0 }}>
+              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, opacity: 0.95, flexShrink: 0 }}>
                 {activePackage.usedSessions} / {activePackage.totalSessions} sessões
               </span>
             </div>
@@ -395,7 +395,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
           <button type="button" onClick={onClose} style={{
             width: 32, height: 32, borderRadius: 8, cursor: 'pointer', flexShrink: 0,
             background: 'rgba(255,255,255,0.2)', border: 'none',
-            color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--on-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <X size={16} />
           </button>
@@ -406,10 +406,10 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '40px 0', color: 'var(--text-faint)', justifyContent: 'center' }}>
               <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-              <span style={{ fontSize: 13 }}>Carregando ficha…</span>
+              <span style={{ fontSize: 'var(--text-base-sz)' }}>Carregando ficha…</span>
             </div>
           ) : error ? (
-            <p style={{ fontSize: 13, color: '#dc2626', padding: '20px 0' }}>{error}</p>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--danger)', padding: '20px 0' }}>{error}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
 
@@ -427,9 +427,9 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                         <User size={18} style={{ color: 'var(--brand)' }} />
                       </div>
                       <div>
-                        <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{client.name}</p>
+                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>{client.name}</p>
                         {client.document && (
-                          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>
+                          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
                             CPF: {maskCPF(client.document)}
                           </p>
                         )}
@@ -437,25 +437,25 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginLeft: 50 }}>
                       {client.birthDate && (
-                        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text)', marginRight: 6 }}>Idade</span>
                           {calcAge(client.birthDate)} anos
                         </p>
                       )}
                       {client.phone && (
-                        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text)', marginRight: 6 }}>Telefone</span>
                           {client.phone}
                         </p>
                       )}
                       {client.email && (
-                        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text)', marginRight: 6 }}>Email</span>
                           {client.email}
                         </p>
                       )}
                       {client.city && (
-                        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                           <span style={{ fontWeight: 700, color: 'var(--text)', marginRight: 6 }}>Cidade</span>
                           {client.city}{client.state ? ` · ${client.state}` : ''}
                         </p>
@@ -473,27 +473,27 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                       padding: '14px 16px', border: '1px solid var(--border)',
                       display: 'flex', flexDirection: 'column', gap: 10,
                     }}>
-                      <p style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
                         <Calendar size={12} style={{ color: 'var(--brand)', flexShrink: 0 }} />
                         {fmtDate(details.evaluationDate)}
                         {details.professionalName && ` · ${details.professionalName}`}
                       </p>
                       {details.evaluationComplaints && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 4 }}>
+                          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 4 }}>
                             QUEIXAS DO CLIENTE
                           </p>
-                          <p style={{ fontSize: 12.5, color: 'var(--text)', lineHeight: 1.5 }}>
+                          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.5 }}>
                             {details.evaluationComplaints}
                           </p>
                         </div>
                       )}
                       {details.professionalNotes && (
                         <div>
-                          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 4 }}>
+                          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 4 }}>
                             NOTAS DA PROFISSIONAL
                           </p>
-                          <p style={{ fontSize: 12.5, color: 'var(--text)', lineHeight: 1.5 }}>
+                          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.5 }}>
                             {details.professionalNotes}
                           </p>
                         </div>
@@ -506,7 +506,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                 {!details?.evaluationDate && details?.professionalNotes && (
                   <div>
                     <SectionTitle>Observações do tratamento</SectionTitle>
-                    <p style={{ fontSize: 12.5, color: 'var(--text)', lineHeight: 1.6 }}>
+                    <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.6 }}>
                       {details.professionalNotes}
                     </p>
                   </div>
@@ -533,10 +533,10 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                             background: 'var(--bg-app)', borderRadius: 8, padding: '10px 12px',
                             border: '1px solid var(--border)',
                           }}>
-                            <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.05em', marginBottom: 4 }}>
+                            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.05em', marginBottom: 4 }}>
                               {label.toUpperCase()}
                             </p>
-                            <p style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 500 }}>{strVal}</p>
+                            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 500 }}>{strVal}</p>
                           </div>
                         )
                       })}
@@ -557,7 +557,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                         onClick={() => setSessionsOpen(true)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 6,
-                          fontSize: 12, fontWeight: 700, color: 'var(--brand)',
+                          fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)',
                           background: 'var(--brand-soft)', border: 'none',
                           padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
                         }}
@@ -593,7 +593,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                         onClick={() => setSessionsOpen(true)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 6,
-                          fontSize: 12, fontWeight: 700, color: 'var(--brand)',
+                          fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)',
                           background: 'var(--brand-soft)', border: 'none',
                           padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
                         }}
@@ -601,7 +601,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                         <Settings size={12} /> Gerenciar sessões
                       </button>
                     </div>
-                    <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                    <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                       {activePackage.usedSessions} de {activePackage.totalSessions} sessões realizadas.
                     </p>
                   </div>

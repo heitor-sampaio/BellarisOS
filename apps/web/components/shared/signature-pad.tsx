@@ -21,7 +21,7 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.strokeStyle = '#1a1a1a'
+    ctx.strokeStyle = 'var(--text)'
     ctx.lineWidth   = 2
     ctx.lineCap     = 'round'
     ctx.lineJoin    = 'round'
@@ -86,18 +86,18 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
     return (
       <div style={{
         border: '1px solid var(--hairline)', borderRadius: 'var(--radius-field-token)', padding: '16px 20px',
-        background: '#f0fdf4', display: 'flex', alignItems: 'center', gap: 12,
+        background: 'var(--success-bg)', display: 'flex', alignItems: 'center', gap: 12,
       }}>
         <div style={{
-          width: 36, height: 36, borderRadius: '50%', background: '#22c55e',
+          width: 36, height: 36, borderRadius: '50%', background: 'var(--success)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}>
-          <Check size={18} color="#fff" />
+          <Check size={18} color="var(--surface)" />
         </div>
         <div>
-          <p style={{ fontWeight: 700, fontSize: 13, color: '#15803d' }}>Assinatura confirmada</p>
+          <p style={{ fontWeight: 700, fontSize: 'var(--text-base-sz)', color: 'var(--success)' }}>Assinatura confirmada</p>
           {confirmedAt && (
-            <p style={{ fontSize: 12, color: '#16a34a', marginTop: 2 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 2 }}>
               {new Date(confirmedAt).toLocaleString('pt-BR')}
             </p>
           )}
@@ -110,7 +110,7 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
     <div>
       <div style={{
         position: 'relative', border: '1.5px dashed var(--border)', borderRadius: 'var(--radius-field-token)',
-        background: '#fafaf9', overflow: 'hidden',
+        background: 'var(--bg-app)', overflow: 'hidden',
       }}>
         {!hasLines && (
           <div style={{
@@ -118,7 +118,7 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
             alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', gap: 8,
           }}>
             <Pencil size={20} style={{ color: 'var(--text-faint)' }} />
-            <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+            <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
               Assine aqui com o dedo ou mouse
             </span>
           </div>
@@ -146,7 +146,7 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)',
-            background: 'var(--surface)', fontSize: 13, fontWeight: 600,
+            background: 'var(--surface)', fontSize: 'var(--text-base-sz)', fontWeight: 600,
             color: hasLines ? 'var(--text)' : 'var(--text-faint)',
             cursor: hasLines ? 'pointer' : 'not-allowed',
           }}
@@ -163,8 +163,8 @@ export function SignaturePad({ onConfirm, disabled, confirmedAt }: Props) {
             padding: '8px 16px', borderRadius: 8,
             border: hasLines ? 'none' : '1px solid var(--border)',
             background: hasLines ? 'var(--brand)' : 'var(--bg-app)',
-            color: hasLines ? '#fff' : 'var(--text-faint)',
-            fontSize: 13, fontWeight: 700,
+            color: hasLines ? 'var(--on-brand)' : 'var(--text-faint)',
+            fontSize: 'var(--text-base-sz)', fontWeight: 700,
             cursor: hasLines ? 'pointer' : 'not-allowed',
             boxShadow: hasLines ? '0 1px 8px rgba(195,77,107,0.25)' : 'none',
           }}

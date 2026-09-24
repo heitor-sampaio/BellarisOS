@@ -50,13 +50,13 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
       {/* Top row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{
-          fontSize: 10, fontWeight: 700, color: 'var(--brand)',
+          fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--brand)',
           textTransform: 'uppercase', letterSpacing: '0.07em',
         }}>
           {p.category}
         </span>
         <span style={{
-          fontSize: 11, color: 'var(--text-faint)',
+          fontSize: 'var(--text-2xs)', color: 'var(--text-faint)',
           display: 'flex', alignItems: 'center', gap: 4,
         }}>
           <Star size={10} style={{ fill: 'currentColor' }} />
@@ -67,7 +67,7 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
       {/* Name + app badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <p style={{
-          fontSize: 16, fontWeight: 800, color: 'var(--text)',
+          fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)',
           letterSpacing: '-0.01em', lineHeight: 1.25,
         }}>
           {p.name}
@@ -79,7 +79,7 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
 
       {/* Description */}
       {p.description && (
-        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, flexGrow: 1 }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.55, flexGrow: 1 }}>
           {p.description}
         </p>
       )}
@@ -90,7 +90,7 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
         paddingTop: 8, borderTop: '1px solid var(--hairline)', marginTop: 'auto',
       }}>
         <span style={{
-          fontSize: 12, color: 'var(--text-faint)',
+          fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)',
           display: 'flex', alignItems: 'center', gap: 5,
         }}>
           <Clock size={12} /> {p.durationMin} min
@@ -139,12 +139,12 @@ export function ProceduresClient({ procedures, categories, totalCount, ticketMed
             type="button"
             onClick={() => setActiveTab(tab)}
             style={{
-              fontSize: 13, fontWeight: 600,
+              fontSize: 'var(--text-base-sz)', fontWeight: 600,
               padding: '6px 16px', borderRadius: 999,
               border: '1.5px solid',
               cursor: 'pointer', transition: 'all 0.15s',
               background:  tab === activeTab ? 'var(--brand)' : 'var(--surface)',
-              color:       tab === activeTab ? '#fff'         : 'var(--text)',
+              color:       tab === activeTab ? 'var(--on-brand)'         : 'var(--text)',
               borderColor: tab === activeTab ? 'var(--brand)' : 'var(--border)',
             }}
           >

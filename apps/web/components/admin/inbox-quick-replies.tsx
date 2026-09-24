@@ -86,7 +86,7 @@ export function InboxQuickReplies({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Zap size={15} color="var(--brand)" />
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+            <p style={{ margin: 0, fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
               Respostas rápidas
             </p>
           </div>
@@ -104,7 +104,7 @@ export function InboxQuickReplies({
                 onChange={e => setEditando({ ...editando, title: e.target.value })}
                 placeholder="Preço da limpeza de pele"
                 className="field"
-                style={{ fontSize: 13 }}
+                style={{ fontSize: 'var(--text-base-sz)' }}
                 autoFocus
               />
             </div>
@@ -116,7 +116,7 @@ export function InboxQuickReplies({
                 rows={6}
                 placeholder="A limpeza de pele profunda sai por R$ 180 e leva cerca de 1h…"
                 className="field"
-                style={{ fontSize: 13, resize: 'vertical' }}
+                style={{ fontSize: 'var(--text-base-sz)', resize: 'vertical' }}
               />
             </div>
             {erro && <Erro texto={erro} />}
@@ -140,7 +140,7 @@ export function InboxQuickReplies({
                   onChange={e => setFiltro(e.target.value)}
                   placeholder="Buscar…"
                   className="field"
-                  style={{ fontSize: 13, paddingLeft: 30, width: '100%' }}
+                  style={{ fontSize: 'var(--text-base-sz)', paddingLeft: 30, width: '100%' }}
                   autoFocus
                 />
               </div>
@@ -160,9 +160,9 @@ export function InboxQuickReplies({
               {erro && <Erro texto={erro} />}
 
               {itens === null ? (
-                <p style={{ padding: 8, fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>Carregando…</p>
+                <p style={{ padding: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>Carregando…</p>
               ) : visiveis.length === 0 ? (
-                <p style={{ padding: 12, fontSize: 12.5, color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
+                <p style={{ padding: 12, fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
                   {itens.length === 0
                     ? 'Nenhuma resposta rápida ainda. Guarde aqui o que você já digitou três vezes hoje: preço, horário de funcionamento, como chegar.'
                     : 'Nada encontrado com esse termo.'}
@@ -184,11 +184,11 @@ export function InboxQuickReplies({
                       cursor: 'pointer', padding: 0, minWidth: 0,
                     }}
                   >
-                    <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
+                    <p style={{ margin: 0, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
                       {q.title}
                     </p>
                     <p style={{
-                      margin: '2px 0 0', fontSize: 11.5, color: 'var(--text-muted)',
+                      margin: '2px 0 0', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)',
                       overflow: 'hidden', textOverflow: 'ellipsis',
                       display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                     }}>
@@ -204,7 +204,7 @@ export function InboxQuickReplies({
                       </button>
                       <button type="button" title="Apagar"
                         onClick={() => apagar(q)}
-                        className="btn-ghost" style={{ height: 28, padding: '0 7px', color: '#dc2626' }}>
+                        className="btn-ghost" style={{ height: 28, padding: '0 7px', color: 'var(--danger)' }}>
                         <Trash2 size={12} />
                       </button>
                     </div>
@@ -225,8 +225,8 @@ function Erro({ texto }: { texto: string }) {
   return (
     <div style={{
       padding: '8px 12px', borderRadius: 8,
-      background: '#fef2f2', border: '1px solid #dc262633',
-      fontSize: 12.5, color: '#dc2626', fontWeight: 600,
+      background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
+      fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600,
     }}>
       {texto}
     </div>

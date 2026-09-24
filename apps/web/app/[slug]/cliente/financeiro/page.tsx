@@ -68,14 +68,14 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
 
       {/* KPI */}
       <div className="card" style={{ padding: '18px 22px', marginBottom: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>Total investido</p>
-        <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.02em' }}>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>Total investido</p>
+        <p style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.02em' }}>
           R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </p>
       </div>
 
       {rows.length === 0 && (
-        <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 14, padding: '48px 0' }}>
+        <p style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)', padding: '48px 0' }}>
           Nenhuma transação encontrada.
         </p>
       )}
@@ -84,10 +84,10 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
         {rows.map(r => (
           <div key={r.id} className="card" style={{ padding: '13px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 13.5, marginBottom: 2 }}>
+              <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
                 {r.procedure_name ?? r.description}
               </p>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                 {r.paid_at
                   ? new Date(r.paid_at).toLocaleDateString('pt-BR')
                   : new Date(r.created_at).toLocaleDateString('pt-BR')}
@@ -95,13 +95,13 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
               </p>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-              <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+              <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
                 R$ {r.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
               <span style={{
-                fontSize:   10.5,
+                fontSize: 'var(--text-overline)',
                 fontWeight: 700,
-                color:      r.is_paid ? '#22c55e' : '#f59e0b',
+                color:      r.is_paid ? 'var(--success)' : 'var(--warning)',
               }}>
                 {r.is_paid ? 'Pago' : 'Pendente'}
               </span>

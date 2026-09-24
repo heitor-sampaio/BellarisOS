@@ -15,7 +15,7 @@ export interface TagBadgeProps {
   title?:    string
 }
 
-const NEUTRAL: TagBadgeStyle = { bg: '#f3eef0', color: 'var(--text-muted)' }
+const NEUTRAL: TagBadgeStyle = { bg: 'var(--hairline)', color: 'var(--text-muted)' }
 
 /** Chip de classificação (origem de lead, tags). Linguagem "Rosé Vivo": pill, peso 700. */
 export function TagBadge({ label, style, size = 'sm', onRemove, title }: TagBadgeProps) {

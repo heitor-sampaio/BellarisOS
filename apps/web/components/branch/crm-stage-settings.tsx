@@ -113,7 +113,7 @@ function StageRow({
             background: color,
             border: `2px solid ${softBorder(color)}`,
             cursor: 'pointer', flexShrink: 0,
-            boxShadow: `0 0 0 3px ${softBg(color)}`,
+            boxShadow: `none`,
           }}
         />
         <input
@@ -129,7 +129,7 @@ function StageRow({
           onBlur={handleNameBlur}
           style={{
             flex: 1, minWidth: 60, border: 'none', outline: 'none', background: 'transparent',
-            fontSize: 13.5, fontWeight: 700, color: 'var(--text)',
+            fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)',
             padding: '2px 4px', borderRadius: 6,
           }}
           onFocus={e => { e.currentTarget.style.background = 'var(--bg-app)'; e.currentTarget.style.outline = `2px solid ${color}` }}
@@ -146,7 +146,7 @@ function StageRow({
             border: '1px solid var(--border)', background: 'var(--bg-app)',
             color: outcome === 'OPEN' ? 'var(--text-muted)'
               : outcome === 'WON' ? 'var(--success)' : 'var(--text-faint)',
-            fontSize: 11.5, fontWeight: 700, padding: '4px 6px',
+            fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '4px 6px',
           }}
         >
           {OUTCOME_VALUES.map(v => (
@@ -171,7 +171,7 @@ function StageRow({
       </div>
 
       {deleteErr && (
-        <p style={{ fontSize: 11.5, color: 'var(--warning)', fontWeight: 700, width: '100%', paddingLeft: 44 }}>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 700, width: '100%', paddingLeft: 44 }}>
           {deleteErr}
         </p>
       )}
@@ -245,12 +245,12 @@ function FunnelRow({
           onClick={e => e.stopPropagation()}
           style={{
             width: '100%', border: 'none', outline: 'none', background: 'transparent',
-            fontSize: 13, fontWeight: 800, letterSpacing: '-0.01em',
+            fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em',
             color: selected ? 'var(--brand)' : 'var(--text)',
             padding: '1px 3px', borderRadius: 6,
           }}
         />
-        <span style={{ fontSize: 10.5, color: 'var(--text-faint)', fontWeight: 600, paddingLeft: 3 }}>
+        <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', fontWeight: 600, paddingLeft: 3 }}>
           {etapas} etapa{etapas === 1 ? '' : 's'}
           {funnel.is_default && ' · padrão'}
           {arquivado && ' · arquivado'}
@@ -480,7 +480,7 @@ export function CRMStageSettings({
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
               Configurar funis
             </h2>
-            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
               Arraste para reordenar · clique no círculo para mudar a cor · o resultado da etapa alimenta a conversão
             </p>
           </div>
@@ -531,7 +531,7 @@ export function CRMStageSettings({
             ))}
 
             {funnelErr && (
-              <p style={{ fontSize: 11.5, color: 'var(--warning)', fontWeight: 700 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 700 }}>
                 {funnelErr}
               </p>
             )}
@@ -542,7 +542,7 @@ export function CRMStageSettings({
                 onClick={() => setMostrarArquivados(v => !v)}
                 style={{
                   alignSelf: 'flex-start', border: 'none', background: 'transparent',
-                  color: 'var(--text-muted)', fontSize: 11.5, fontWeight: 700,
+                  color: 'var(--text-muted)', fontSize: 'var(--text-xs-sz)', fontWeight: 700,
                   cursor: 'pointer', padding: '2px 3px',
                 }}
               >
@@ -564,11 +564,11 @@ export function CRMStageSettings({
             </form>
 
             {funnelState?.error && (
-              <p style={{ fontSize: 11.5, color: 'var(--warning)', fontWeight: 700 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 700 }}>
                 {funnelState.error}
               </p>
             )}
-            <p style={{ fontSize: 10.5, color: 'var(--text-faint)', lineHeight: 1.45 }}>
+            <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', lineHeight: 1.45 }}>
               O funil novo já vem com quatro etapas, que você renomeia ou remove.
             </p>
           </div>
@@ -620,7 +620,7 @@ export function CRMStageSettings({
                 </select>
                 <input
                   name="color" type="color"
-                  defaultValue="#c34d6b"
+                  defaultValue="var(--brand)"
                   title="Cor da etapa"
                   style={{
                     width: 38, height: 38, borderRadius: 10,
@@ -635,12 +635,12 @@ export function CRMStageSettings({
               </form>
 
               {stageState?.error && (
-                <p style={{ marginTop: 8, fontSize: 12, color: 'var(--warning)', fontWeight: 700 }}>
+                <p style={{ marginTop: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 700 }}>
                   {stageState.error}
                 </p>
               )}
               {stageState?.success && (
-                <div style={{ marginTop: 8, fontSize: 12, color: 'var(--success)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ marginTop: 8, fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
                   <CheckCircle2 size={13} /> Etapa adicionada.
                 </div>
               )}

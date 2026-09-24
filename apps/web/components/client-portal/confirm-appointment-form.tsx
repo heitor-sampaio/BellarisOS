@@ -21,7 +21,7 @@ function StarRating({ value, onChange, label }: {
   const [hover, setHover] = useState(0)
   return (
     <div>
-      <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{label}</p>
+      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{label}</p>
       <div style={{ display: 'flex', gap: 6 }}>
         {[1, 2, 3, 4, 5].map(n => {
           const active = n <= (hover || value)
@@ -86,10 +86,10 @@ export function ConfirmAppointmentForm({
           {procedureName}
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: 'var(--text-muted)' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             <User size={12} /> {professionalName}
           </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: 'var(--text-muted)' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             <CalendarDays size={12} />
             {dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })} às {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </span>
@@ -98,13 +98,13 @@ export function ConfirmAppointmentForm({
 
       {/* Avaliações (opcionais) */}
       <div className="card" style={{ padding: '18px 18px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           Avalie (opcional)
         </p>
         <StarRating label="Procedimento" value={procedureRating} onChange={setProcedureRating} />
         <StarRating label="Profissional" value={professionalRating} onChange={setProfessionalRating} />
         <div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>Comentário</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>Comentário</p>
           <textarea
             value={feedback}
             onChange={e => setFeedback(e.target.value)}
@@ -118,7 +118,7 @@ export function ConfirmAppointmentForm({
       </div>
 
       {error && (
-        <p style={{ fontSize: 13, color: '#dc2626', fontWeight: 600, textAlign: 'center' }}>{error}</p>
+        <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--danger)', fontWeight: 600, textAlign: 'center' }}>{error}</p>
       )}
 
       <button
@@ -126,7 +126,7 @@ export function ConfirmAppointmentForm({
         onClick={handleConfirm}
         disabled={submitting}
         className="btn-primary"
-        style={{ justifyContent: 'center', padding: '13px 16px', fontSize: 14, opacity: submitting ? 0.6 : 1 }}
+        style={{ justifyContent: 'center', padding: '13px 16px', fontSize: 'var(--text-base-sz)', opacity: submitting ? 0.6 : 1 }}
       >
         <CheckCircle2 size={17} />
         {submitting ? 'Confirmando…' : 'Confirmar que realizei o atendimento'}

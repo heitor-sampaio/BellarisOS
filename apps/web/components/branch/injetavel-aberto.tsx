@@ -27,7 +27,7 @@ export function InjetavelAberto({
       <Link href={basePath} className="btn-ghost ld-voltar"
         style={{
           alignItems: 'center', gap: 4, alignSelf: 'flex-start',
-          fontSize: 12.5, padding: '5px 10px', textDecoration: 'none',
+          fontSize: 'var(--text-sm-sz)', padding: '5px 10px', textDecoration: 'none',
         }}>
         <ChevronLeft size={14} /> Planejamentos
       </Link>

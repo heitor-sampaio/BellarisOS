@@ -126,7 +126,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
               Novo lançamento
             </h2>
-            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
               Receita ou despesa manual
             </p>
           </div>
@@ -172,13 +172,13 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
               {(['INCOME', 'EXPENSE'] as TxType[]).map(t => {
                 const active = type === t
                 const cfg = {
-                  INCOME:  { label: 'Receita',  icon: <TrendingUp  size={15} />, color: '#16a34a', soft: '#f0fdf4', border: '#86efac' },
-                  EXPENSE: { label: 'Despesa',   icon: <TrendingDown size={15} />, color: '#dc2626', soft: '#fef2f2', border: '#fca5a5' },
+                  INCOME:  { label: 'Receita',  icon: <TrendingUp  size={15} />, color: 'var(--success)', soft: 'var(--success-bg)', border: 'var(--success-border)' },
+                  EXPENSE: { label: 'Despesa',   icon: <TrendingDown size={15} />, color: 'var(--danger)', soft: 'var(--danger-soft)', border: 'var(--danger-border)' },
                 }[t]
                 return (
                   <button key={t} type="button" onClick={() => setType(t)} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    padding: '10px 0', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 13.5,
+                    padding: '10px 0', borderRadius: 10, cursor: 'pointer', fontWeight: 700, fontSize: 'var(--text-base-sz)',
                     transition: 'all 120ms',
                     border: active ? `1.5px solid ${cfg.color}` : '1px solid var(--border)',
                     background: active ? cfg.soft : 'var(--surface)',
@@ -237,10 +237,10 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                       key={dt} type="button"
                       onClick={() => setDiscountType(dt)}
                       style={{
-                        padding: '8px 12px', fontSize: 12.5, fontWeight: 800,
+                        padding: '8px 12px', fontSize: 'var(--text-sm-sz)', fontWeight: 800,
                         cursor: 'pointer', border: 'none', transition: 'all 80ms',
                         background: discountType === dt ? 'var(--brand)' : 'var(--surface)',
-                        color:      discountType === dt ? '#fff' : 'var(--text-muted)',
+                        color:      discountType === dt ? 'var(--on-brand)' : 'var(--text-muted)',
                       }}
                     >
                       {dt === 'percent' ? '%' : 'R$'}
@@ -268,10 +268,10 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                 transition: 'all 200ms',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>Valor final</span>
+                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>Valor final</span>
                   {hasDiscount && (
                     <span style={{
-                      fontSize: 11.5, color: 'var(--text-faint)',
+                      fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)',
                       textDecoration: 'line-through',
                     }}>
                       {fmtBRL(grossAmount)}
@@ -279,12 +279,12 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                   )}
                 </div>
                 <span style={{
-                  fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em',
+                  fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em',
                   color: hasDiscount ? 'var(--brand)' : 'var(--text)',
                 }}>
                   {fmtBRL(finalAmount)}
                   {hasDiscount && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand)', marginLeft: 6, opacity: 0.8 }}>
+                    <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', marginLeft: 6, opacity: 0.8 }}>
                       − {fmtBRL(discountAmt)}
                     </span>
                   )}
@@ -316,10 +316,10 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                   {[true, false].map(v => (
                     <button key={String(v)} type="button" onClick={() => setIsPaid(v)} style={{
                       flex: 1, padding: '8px 0', borderRadius: 8, cursor: 'pointer',
-                      fontSize: 12, fontWeight: 700, transition: 'all 100ms',
-                      border: isPaid === v ? (v ? '1.5px solid #16a34a' : '1.5px solid #d97706') : '1px solid var(--border)',
-                      background: isPaid === v ? (v ? '#f0fdf4' : '#fffbeb') : 'var(--surface)',
-                      color: isPaid === v ? (v ? '#16a34a' : '#d97706') : 'var(--text-muted)',
+                      fontSize: 'var(--text-sm-sz)', fontWeight: 700, transition: 'all 100ms',
+                      border: isPaid === v ? (v ? '1.5px solid var(--success)' : '1.5px solid var(--warning)') : '1px solid var(--border)',
+                      background: isPaid === v ? (v ? 'var(--success-bg)' : 'var(--warning-soft)') : 'var(--surface)',
+                      color: isPaid === v ? (v ? 'var(--success)' : 'var(--warning)') : 'var(--text-muted)',
                     }}>
                       {v ? 'Pago' : 'Pendente'}
                     </button>
@@ -355,7 +355,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                     return (
                       <button key={mode} type="button" onClick={() => setScheduleMode(mode)} style={{
                         flex: 1, padding: '7px 0', borderRadius: 8, cursor: 'pointer',
-                        fontSize: 12, fontWeight: 700, transition: 'all 100ms',
+                        fontSize: 'var(--text-sm-sz)', fontWeight: 700, transition: 'all 100ms',
                         border: active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
                         background: active ? 'var(--brand-soft)' : 'var(--surface)',
                         color: active ? 'var(--brand)' : 'var(--text-muted)',
@@ -386,7 +386,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                       </div>
                     </div>
                     {finalAmount > 0 && parseInt(installCount, 10) >= 2 && (
-                      <p style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700 }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontWeight: 700 }}>
                         {parseInt(installCount, 10)}x de {fmtBRL(finalAmount / parseInt(installCount, 10))} · Total {fmtBRL(finalAmount)}
                       </p>
                     )}
@@ -424,7 +424,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
                       />
                     </div>
                     {finalAmount > 0 && parseInt(recurringCount, 10) >= 2 && (
-                      <p style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700 }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontWeight: 700 }}>
                         {parseInt(recurringCount, 10)} lançamentos de {fmtBRL(finalAmount)}
                       </p>
                     )}
@@ -440,7 +440,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
             <input type="hidden" name="first_due_date"    value={firstDueDate} />
 
             {state?.error && (
-              <p style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 700 }}>
+              <p style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontSize: 'var(--text-sm-sz)', fontWeight: 700 }}>
                 {state.error}
               </p>
             )}

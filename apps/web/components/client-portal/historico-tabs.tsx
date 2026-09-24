@@ -34,7 +34,7 @@ interface Props {
 function MiniStars({ label, value }: { label: string; value: number }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
       <span style={{ display: 'inline-flex', gap: 1 }}>
         {[1, 2, 3, 4, 5].map(n => (
           <Star
@@ -99,7 +99,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
               style={{
                 padding:       '10px 16px',
                 whiteSpace:    'nowrap',
-                fontSize:      13,
+                fontSize: 'var(--text-base-sz)',
                 fontWeight:    active ? 700 : 500,
                 color:         active ? 'var(--brand)' : 'var(--text-muted)',
                 background:    'transparent',
@@ -115,7 +115,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
               {label}
               {count > 0 && (
                 <span style={{
-                  fontSize:    10,
+                  fontSize: 'var(--text-overline)',
                   fontWeight:  700,
                   color:       active ? 'var(--brand)' : 'var(--text-faint)',
                   background:  active ? 'var(--brand-soft)' : 'var(--bg-app)',
@@ -140,10 +140,10 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
             const hasRating = p.procedure_rating != null || p.professional_rating != null
             return (
               <div key={p.id} className="card" style={{ padding: '13px 18px' }}>
-                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14, marginBottom: 3 }}>
+                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 3 }}>
                   {p.procedure_name}
                 </p>
-                <div style={{ display: 'flex', gap: 12, fontSize: 12.5, color: 'var(--text-muted)' }}>
+                <div style={{ display: 'flex', gap: 12, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   {p.professional_name && <span>{p.professional_name}</span>}
                   <span>
                     {new Date(p.scheduled_at).toLocaleDateString('pt-BR', {
@@ -158,7 +158,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                     href={`/${slug}/cliente/atendimentos/${p.id}/confirmar`}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 10,
-                      fontSize: 12.5, fontWeight: 700, color: 'var(--brand)', textDecoration: 'none',
+                      fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none',
                       background: 'var(--brand-soft)', padding: '6px 12px', borderRadius: 8,
                     }}
                   >
@@ -170,7 +170,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                     {p.professional_rating != null && <MiniStars label="Profissional" value={p.professional_rating} />}
                   </div>
                 ) : (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 11.5, color: '#22c55e', fontWeight: 700 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 10, fontSize: 'var(--text-xs-sz)', color: 'var(--success)', fontWeight: 700 }}>
                     <CheckCircle2 size={12} /> Confirmado
                   </span>
                 )}
@@ -189,10 +189,10 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
           {pagamentos.map(p => (
             <div key={p.id} className="card" style={{ padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 13.5, marginBottom: 2 }}>
+                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
                   {p.procedure_name ?? p.description}
                 </p>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   {p.paid_at
                     ? new Date(p.paid_at).toLocaleDateString('pt-BR')
                     : 'Pendente'}
@@ -200,14 +200,14 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                 </p>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
                   R$ {p.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3, marginTop: 2 }}>
                   {p.is_paid
-                    ? <CheckCircle2 size={11} color="#22c55e" />
-                    : <Clock3 size={11} color="#f59e0b" />}
-                  <span style={{ fontSize: 10.5, fontWeight: 700, color: p.is_paid ? '#22c55e' : '#f59e0b' }}>
+                    ? <CheckCircle2 size={11} color="var(--success)" />
+                    : <Clock3 size={11} color="var(--warning)" />}
+                  <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: p.is_paid ? 'var(--success)' : 'var(--warning)' }}>
                     {p.is_paid ? 'Pago' : 'Pendente'}
                   </span>
                 </div>
@@ -234,15 +234,15 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                 <FileText size={16} color="var(--brand)" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 13.5, marginBottom: 2 }}>
+                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
                   {c.title}
                 </p>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   Assinado em {new Date(c.signed_at).toLocaleDateString('pt-BR')}
                   {c.signed_via && ` · via ${c.signed_via}`}
                 </p>
               </div>
-              <CheckCircle2 size={16} color="#22c55e" style={{ flexShrink: 0 }} />
+              <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0 }} />
             </div>
           ))}
 
@@ -264,10 +264,10 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                   <FileText size={16} color="var(--text-muted)" />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 13.5, marginBottom: 2 }}>
+                  <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
                     {d.name}
                   </p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                     {DOC_CATEGORY[d.category] ?? 'Documento'} · {new Date(d.created_at).toLocaleDateString('pt-BR')}
                   </p>
                 </div>
@@ -283,7 +283,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <p style={{ textAlign: 'center', fontSize: 13.5, color: 'var(--text-faint)', padding: '40px 0' }}>
+    <p style={{ textAlign: 'center', fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', padding: '40px 0' }}>
       {message}
     </p>
   )

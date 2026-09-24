@@ -99,7 +99,7 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
     v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   const thStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+    fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
     letterSpacing: '0.05em', padding: '10px 16px', textAlign: 'left',
     background: 'var(--bg-app)', borderBottom: '1px solid var(--border)',
     whiteSpace: 'nowrap', userSelect: 'none',
@@ -118,7 +118,7 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
           <input
             type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Buscar produto ou SKU…"
-            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--text)', width: '100%' }}
+            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 'var(--text-base-sz)', color: 'var(--text)', width: '100%' }}
           />
           {search && (
             <button type="button" onClick={() => setSearch('')}
@@ -130,7 +130,7 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
 
         {categories.length > 0 && (
           <select value={category} onChange={e => setCategory(e.target.value)} style={{
-            fontSize: 12.5, fontWeight: 600, color: 'var(--text)',
+            fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 10, padding: '7px 10px', cursor: 'pointer', outline: 'none',
           }}>
@@ -141,7 +141,7 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
 
         <button type="button" onClick={() => setShowInactive(v => !v)} style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontSize: 12.5, fontWeight: 700, padding: '7px 12px', borderRadius: 10,
+          fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '7px 12px', borderRadius: 10,
           cursor: 'pointer', transition: 'all 120ms',
           border: showInactive ? '1.5px solid var(--brand)' : '1px solid var(--border)',
           background: showInactive ? 'var(--brand-soft)' : 'var(--surface)',
@@ -150,7 +150,7 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
           Mostrar inativos
         </button>
 
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-faint)', fontWeight: 600 }}>
+        <span style={{ marginLeft: 'auto', fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', fontWeight: 600 }}>
           {filtered.length} produto{filtered.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -160,8 +160,8 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <PackageX size={36} style={{ color: 'var(--text-faint)', margin: '0 auto 12px' }} />
-            <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 14 }}>Nenhum produto encontrado</p>
-            <p style={{ color: 'var(--text-faint)', fontSize: 12.5, marginTop: 4 }}>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-base-sz)' }}>Nenhum produto encontrado</p>
+            <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
               Crie o primeiro produto com o botão "Novo produto".
             </p>
           </div>
@@ -193,12 +193,12 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
                     <td data-label="" style={{ padding: '13px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div>
-                          <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
-                          {p.sku && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>{p.sku}</p>}
+                          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
+                          {p.sku && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{p.sku}</p>}
                         </div>
                         {!p.is_active && (
                           <span style={{
-                            fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+                            fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 7px', borderRadius: 99,
                             background: 'var(--border)', color: 'var(--text-faint)',
                           }}>
                             INATIVO
@@ -207,13 +207,13 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
                       </div>
                     </td>
                     <td data-label="Categoria" data-par style={{ padding: '13px 16px' }}>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                      <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
                         {p.category ?? '—'}
                       </span>
                     </td>
                     <td data-label="Unidade" data-par style={{ padding: '13px 16px' }}>
                       <span style={{
-                        fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                        fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                         background: 'var(--bg-app)', color: 'var(--text-muted)',
                         border: '1px solid var(--border)',
                       }}>
@@ -221,7 +221,7 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
                       </span>
                     </td>
                     <td data-label="Fornecedor" style={{ padding: '13px 16px' }}>
-                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.supplier ?? '—'}</span>
+                      <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{p.supplier ?? '—'}</span>
                     </td>
                     <td data-label="" style={{ padding: '13px 16px' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
@@ -239,9 +239,9 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
                           onClick={() => handleToggleActive(p)}
                           style={{
                             width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
-                            border: p.is_active ? '1px solid var(--border)' : '1.5px solid #16a34a',
-                            background: p.is_active ? 'var(--surface)' : '#f0fdf4',
-                            color: p.is_active ? 'var(--text-muted)' : '#16a34a',
+                            border: p.is_active ? '1px solid var(--border)' : '1.5px solid var(--success)',
+                            background: p.is_active ? 'var(--surface)' : 'var(--success-bg)',
+                            color: p.is_active ? 'var(--text-muted)' : 'var(--success)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}
                         >

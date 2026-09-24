@@ -103,15 +103,15 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
         ))}
       </div>
 
-      {error && <p style={{ color: '#dc2626', fontSize: 12.5, fontWeight: 600 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>{error}</p>}
 
       {canEdit && !hideSaveButton && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 2 }}>
-          <button type="button" onClick={save} disabled={saving} className="btn-primary" style={{ fontSize: 13 }}>
+          <button type="button" onClick={save} disabled={saving} className="btn-primary" style={{ fontSize: 'var(--text-base-sz)' }}>
             <Save size={14} /> {saving ? 'Salvando…' : 'Salvar ficha'}
           </button>
           {savedAt && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#16a34a', fontWeight: 700 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>
               <CheckCircle2 size={13} /> Salvo
             </span>
           )}
@@ -131,7 +131,7 @@ function isEmpty(v: AnswerValue | undefined): boolean {
 }
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 12.5, fontWeight: 700, color: 'var(--text)', marginBottom: 6, display: 'block',
+  fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 6, display: 'block',
 }
 
 function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoUploaded, onChange, onToggle }: {
@@ -148,7 +148,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
   if (f.type === 'section') {
     return (
       <div style={{ marginTop: 6, paddingBottom: 4, borderBottom: '1px solid var(--hairline)' }}>
-        <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</p>
       </div>
     )
   }
@@ -170,7 +170,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
   return (
     <div>
       <label style={labelStyle}>{f.label}{req}</label>
-      {f.help && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: -3, marginBottom: 6 }}>{f.help}</p>}
+      {f.help && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: -3, marginBottom: 6 }}>{f.help}</p>}
 
       {f.type === 'text' && (
         <input className="field" value={str} placeholder={f.placeholder} onChange={e => onChange(e.target.value)} />
@@ -193,7 +193,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
       {f.type === 'radio' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(f.options ?? []).map(o => (
-            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-soft)' }}>
+            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--text-base-sz)', color: 'var(--text-soft)' }}>
               <input type="radio" name={f.id} checked={str === o} onChange={() => onChange(o)} style={{ accentColor: 'var(--brand)' }} />
               {o}
             </label>
@@ -205,7 +205,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
           {(f.options ?? []).map(o => {
             const checked = Array.isArray(value) && value.includes(o)
             return (
-              <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-soft)' }}>
+              <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--text-base-sz)', color: 'var(--text-soft)' }}>
                 <input type="checkbox" checked={checked} onChange={() => onToggle(o)} style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
                 {o}
               </label>
@@ -233,13 +233,13 @@ function ReadOnlyValue({ field: f, value, photoUrl }: { field: AnamnesisField; v
     if (typeof value === 'string' && value && photoUrl) {
       return <img src={photoUrl} alt={f.label} style={{ maxWidth: 220, borderRadius: 10, border: '1px solid var(--border)' }} />
     }
-    return <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>{value ? 'Carregando foto…' : 'Não informado'}</p>
+    return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>{value ? 'Carregando foto…' : 'Não informado'}</p>
   }
   // Antes do fallback: sem este caso o mapa virava "[object Object]" na aba
   // Fichas do perfil do cliente e no pacote de LGPD.
   if (f.type === 'injectable_map') {
     if (!isInjectableMap(value) || value.points.length === 0) {
-      return <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Nenhum ponto marcado</p>
+      return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum ponto marcado</p>
     }
     return <InjectableMapField value={value} products={f.options ?? []} canEdit={false} onChange={() => {}} />
   }
@@ -251,7 +251,7 @@ function ReadOnlyValue({ field: f, value, photoUrl }: { field: AnamnesisField; v
     : isInjectableMap(value) ? ''
     : (value ?? '')
   return (
-    <p style={{ fontSize: 13, color: text ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+    <p style={{ fontSize: 'var(--text-base-sz)', color: text ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
       {text || 'Não informado'}
     </p>
   )
@@ -284,26 +284,26 @@ function PhotoField({ path, displayUrl, appointmentId, onChange, onUploaded }: {
           <img src={displayUrl} alt="Foto" style={{ maxWidth: 220, borderRadius: 10, border: '1px solid var(--border)', display: 'block' }} />
           <button
             type="button" onClick={() => onChange('')} title="Remover"
-            style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: 8, border: 'none', background: 'rgba(0,0,0,0.55)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: 8, border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
           >
             <X size={14} />
           </button>
         </div>
       ) : path ? (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', fontSize: 13 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
           <ImageIcon size={16} /> Carregando foto…
           <button type="button" onClick={() => onChange('')} title="Remover" style={{ border: 'none', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex' }}><X size={14} /></button>
         </div>
       ) : (
         <button
           type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', fontWeight: 600, cursor: 'pointer' }}
         >
           {uploading ? <ImageIcon size={16} /> : <Upload size={16} />}
           {uploading ? 'Enviando…' : 'Enviar foto'}
         </button>
       )}
-      {err && <p style={{ color: '#dc2626', fontSize: 12, marginTop: 6 }}>{err}</p>}
+      {err && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-sm-sz)', marginTop: 6 }}>{err}</p>}
     </div>
   )
 }

@@ -30,7 +30,7 @@ export function RevenueBarChart({ data }: RevenueBarChartProps) {
       {/* Gridlines */}
       {[0.25, 0.5, 0.75, 1].map((frac, i) => {
         const y = PAD.top + plotH * (1 - frac)
-        return <line key={i} x1={PAD.left} x2={W - PAD.right} y1={y} y2={y} stroke="#f4ebe8" strokeWidth={1} />
+        return <line key={i} x1={PAD.left} x2={W - PAD.right} y1={y} y2={y} stroke="var(--hairline)" strokeWidth={1} />
       })}
 
       {data.map((d, i) => {
@@ -43,12 +43,12 @@ export function RevenueBarChart({ data }: RevenueBarChartProps) {
           <g key={i}>
             {/* Barra */}
             <rect x={x} y={y} width={barW} height={barH}
-              fill={isCurrent ? '#c34d6b' : '#f3c7d3'} rx={5} />
+              fill={isCurrent ? 'var(--brand)' : 'var(--brand-soft-border)'} rx={5} />
 
             {/* Label de valor */}
             {d.value > 0 && (
               <text x={x + barW / 2} y={y - 7} textAnchor="middle"
-                fill={isCurrent ? '#c34d6b' : '#b7a8ac'}
+                fill={isCurrent ? 'var(--brand)' : 'var(--text-faint)'}
                 fontSize={9} fontWeight={700}
                 fontFamily="'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif">
                 {formatVal(d.value)}
@@ -57,7 +57,7 @@ export function RevenueBarChart({ data }: RevenueBarChartProps) {
 
             {/* Mês */}
             <text x={x + barW / 2} y={H - 8} textAnchor="middle"
-              fill={isCurrent ? '#c34d6b' : '#8a7a7e'}
+              fill={isCurrent ? 'var(--brand)' : 'var(--text-muted)'}
               fontSize={10} fontWeight={700}
               fontFamily="'Hanken Grotesk', ui-sans-serif, system-ui, sans-serif">
               {d.label.toUpperCase()}

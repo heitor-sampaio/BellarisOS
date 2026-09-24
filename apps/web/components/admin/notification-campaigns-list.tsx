@@ -11,16 +11,16 @@ import { SegSelect } from '@/components/shared/seg-select'
 // -- Constants ----------------------------------------------------------
 
 const STATUS_CFG: Record<CampaignStatus, { label: string; color: string }> = {
-  DRAFT:     { label: 'Rascunho',  color: '#6b7280' },
-  ACTIVE:    { label: 'Ativa',     color: '#16a34a' },
-  PAUSED:    { label: 'Pausada',   color: '#d97706' },
-  COMPLETED: { label: 'Concluída', color: '#2563eb' },
-  ARCHIVED:  { label: 'Arquivada', color: '#9ca3af' },
+  DRAFT:     { label: 'Rascunho',  color: 'var(--text-muted)' },
+  ACTIVE:    { label: 'Ativa',     color: 'var(--success)' },
+  PAUSED:    { label: 'Pausada',   color: 'var(--warning)' },
+  COMPLETED: { label: 'Concluída', color: 'var(--info)' },
+  ARCHIVED:  { label: 'Arquivada', color: 'var(--text-faint)' },
 }
 
 const TYPE_CFG: Record<CampaignType, { label: string; Icon: React.ElementType; color: string }> = {
-  IMMEDIATE: { label: 'Imediata',   Icon: Zap,        color: '#7c3aed' },
-  SCHEDULED: { label: 'Agendada',   Icon: Clock,      color: '#0284c7' },
+  IMMEDIATE: { label: 'Imediata',   Icon: Zap,        color: 'var(--cat-4)' },
+  SCHEDULED: { label: 'Agendada',   Icon: Clock,      color: 'var(--info)' },
   AUTOMATED: { label: 'Automática', Icon: RefreshCw,  color: 'var(--brand)' },
 }
 
@@ -121,10 +121,10 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
       {/* -- Table ------------------------------------------------ */}
       {filtered.length === 0 ? (
         <div className="card" style={{ padding: '48px 32px', textAlign: 'center' }}>
-          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
+          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
             Nenhuma campanha encontrada
           </p>
-          <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>
             Crie sua primeira campanha para começar a se comunicar com clientes.
           </p>
         </div>
@@ -140,7 +140,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                       fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)',
                       color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em',
                       textAlign: h === 'Campanha' ? 'left' : 'center',
-                      whiteSpace: 'nowrap', background: 'var(--surface-raised, #fafaf9)',
+                      whiteSpace: 'nowrap', background: 'var(--surface-raised, var(--bg-app))',
                     }}>
                       {h}
                     </th>
@@ -158,21 +158,21 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                     <tr
                       key={c.id}
                       style={{ borderTop: '1px solid var(--hairline)', cursor: 'pointer' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-raised, #fafaf9)')}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-raised, var(--bg-app))')}
                       onMouseLeave={e => (e.currentTarget.style.background = '')}
                     >
                       {/* Name */}
                       <td style={{ padding: '13px 16px' }}>
-                        <p style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>
+                        <p style={{ fontWeight: 700, fontSize: 'var(--text-base-sz)', color: 'var(--text)', marginBottom: 2 }}>
                           {c.name}
                         </p>
                         {c.description && (
-                          <p style={{ fontSize: 12, color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 280 }}>
+                          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 280 }}>
                             {c.description}
                           </p>
                         )}
                         {c.trigger_type && (
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                             {TRIGGER_LABELS[c.trigger_type] ?? c.trigger_type}
                           </span>
                         )}
@@ -183,7 +183,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5,
                           padding: '3px 10px', borderRadius: 99,
-                          fontSize: 12, fontWeight: 700,
+                          fontSize: 'var(--text-sm-sz)', fontWeight: 700,
                           color: typeCfg.color,
                           background: `${typeCfg.color}18`,
                         }}>
@@ -196,7 +196,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                       <td style={{ padding: '13px 16px', textAlign: 'center' }}>
                         <span style={{
                           display: 'inline-block', padding: '3px 10px', borderRadius: 99,
-                          fontSize: 12, fontWeight: 700,
+                          fontSize: 'var(--text-sm-sz)', fontWeight: 700,
                           color: statusCfg.color,
                           background: `${statusCfg.color}18`,
                         }}>
@@ -205,23 +205,23 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                       </td>
 
                       {/* Sent */}
-                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
                         {c.total_sent.toLocaleString('pt-BR')}
                       </td>
 
                       {/* Read rate */}
                       <td style={{ padding: '13px 16px', textAlign: 'center' }}>
                         {c.total_sent > 0 ? (
-                          <span style={{ fontSize: 13, fontWeight: 700, color: readRate >= 40 ? '#16a34a' : 'var(--text-muted)' }}>
+                          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: readRate >= 40 ? 'var(--success)' : 'var(--text-muted)' }}>
                             {readRate}%
                           </span>
                         ) : (
-                          <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>—</span>
+                          <span style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>—</span>
                         )}
                       </td>
 
                       {/* Last run */}
-                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                         {c.last_run_at
                           ? new Date(c.last_run_at).toLocaleDateString('pt-BR')
                           : '—'}
@@ -248,7 +248,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                             <IconBtn
                               icon={<Pause size={14} />}
                               title="Pausar"
-                              color="#d97706"
+                              color="var(--warning)"
                               loading={isLoading}
                               onClick={() => handleAction(c.id, () => pauseCampaign(c.id))}
                             />
@@ -257,7 +257,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
                             <IconBtn
                               icon={<Archive size={14} />}
                               title="Arquivar"
-                              color="#6b7280"
+                              color="var(--text-muted)"
                               loading={isLoading}
                               onClick={() => {
                                 if (confirm(`Arquivar "${c.name}"?`))
@@ -284,7 +284,7 @@ export function NotificationCampaignsList({ campaigns, totalSent, activeCount }:
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="card" style={{ flex: '1 1 160px', padding: '16px 20px', minWidth: 140 }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+      <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
         {label}
       </p>
       <p style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>

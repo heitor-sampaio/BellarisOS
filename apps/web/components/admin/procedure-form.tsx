@@ -63,7 +63,7 @@ function Field({ label, children, hint }: { label: string; children: React.React
         {label}
       </label>
       {children}
-      {hint && <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>{hint}</p>}
+      {hint && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{hint}</p>}
     </div>
   )
 }
@@ -254,7 +254,7 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
             <input type="checkbox" name="visible_on_client_app"
               defaultChecked={existing?.visible_on_client_app ?? true}
               style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
-            <span style={{ fontSize: 12.5, color: 'var(--text-soft)' }}>
+            <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
               Permitir agendamento self-service
             </span>
           </label>
@@ -293,7 +293,7 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
         <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 8 }}>
           DISPONÍVEL NAS FILIAIS
         </p>
-        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 10 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 10 }}>
           Sem seleção = disponível em toda a rede
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
@@ -305,7 +305,7 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
                 background: on ? 'var(--brand-soft)' : 'var(--bg-app)',
                 border: `1.5px solid ${on ? 'var(--brand-soft-border)' : 'var(--border)'}`,
                 borderRadius: 'var(--radius-chip-token)',
-                fontSize: 12.5, fontWeight: 'var(--weight-bold)',
+                fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)',
                 color: on ? 'var(--brand)' : 'var(--text-muted)',
                 cursor: 'pointer',
               }}>
@@ -325,7 +325,7 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
           {products.length > 0 && (
             <button type="button" onClick={addInsumo} style={{
               display: 'flex', alignItems: 'center', gap: 4,
-              fontSize: 11.5, fontWeight: 700, color: 'var(--brand)',
+              fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)',
               background: 'none', border: 'none', cursor: 'pointer', padding: 0,
             }}>
               <Plus size={13} /> Adicionar insumo
@@ -334,13 +334,13 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
         </div>
 
         {products.length === 0 && (
-          <p style={{ fontSize: 12, color: 'var(--text-faint)', padding: '8px 0' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', padding: '8px 0' }}>
             Nenhum produto cadastrado no estoque ainda.
           </p>
         )}
 
         {insumos.length === 0 && products.length > 0 && (
-          <p style={{ fontSize: 12, color: 'var(--text-faint)', padding: '8px 0' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', padding: '8px 0' }}>
             Nenhum insumo adicionado. Clique em "Adicionar insumo" para vincular produtos do estoque.
           </p>
         )}
@@ -377,14 +377,14 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
                     value={ins.quantity}
                     onChange={e => setInsumos(p => p.map((x, idx) => idx === i ? { ...x, quantity: parseFloat(e.target.value) || 0 } : x))}
                   />
-                  <span style={{ fontSize: 11.5, color: 'var(--text-faint)', minWidth: 24 }}>
+                  <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', minWidth: 24 }}>
                     {(prod?.consumption_unit && prod?.units_per_package) ? prod.consumption_unit : (prod?.unit ?? '')}
                   </span>
                 </div>
 
                 {/* Custo unitário */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 11.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
+                  <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
                   <input
                     type="number" min={0} step={0.01} className="field"
                     style={{ width: 100, paddingLeft: 28 }}
@@ -418,7 +418,7 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
           {/* Mão de obra */}
           <Field label="Mão de obra">
             <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
+              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
               <input name="labor_cost" type="text" className="field" value={laborCost} onChange={handleLaborCostInput} placeholder="0,00" style={{ paddingLeft: 30 }} />
             </div>
           </Field>
@@ -426,7 +426,7 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
           {/* Insumos — calculado da lista de insumos */}
           <Field label="Insumos" hint="Calculado dos insumos">
             <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
+              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
               <div className="field" style={{ paddingLeft: 30, background: 'var(--surface)', color: 'var(--text)', cursor: 'default', userSelect: 'none' }}>
                 {formatPrice(productsCostCalc)}
               </div>
@@ -436,7 +436,7 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
           {/* Outros custos */}
           <Field label="Outros custos">
             <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
+              <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
               <input name="other_costs" type="text" className="field" value={otherCosts} onChange={handleOtherCostsInput} placeholder="0,00" style={{ paddingLeft: 30 }} />
             </div>
           </Field>
@@ -452,7 +452,7 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
           <Field label="Margem de lucro" hint="Defina a margem e o preço se ajusta">
             <div style={{ position: 'relative' }}>
               <input type="text" inputMode="decimal" className="field" value={marginPct} onChange={handleMarginInput} placeholder="0,0" style={{ paddingRight: 26 }} />
-              <span style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
+              <span style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>%</span>
             </div>
           </Field>
         </div>
@@ -461,7 +461,7 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
       {/* -- Preço do procedimento (abaixo da calculadora, vinculado à margem) -- */}
       <Field label="Preço do procedimento (R$) *" hint="Edite a margem ou o preço — o outro se ajusta automaticamente.">
         <div style={{ position: 'relative' }}>
-          <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 12.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
+          <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
           <input name="price" type="text" required className="field" value={price} onChange={handlePriceCalcInput} placeholder="0,00" style={{ paddingLeft: 30, fontWeight: 700 }} />
         </div>
       </Field>
@@ -483,7 +483,7 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
                 Personalizar valores por filial
               </span>
               {branchPricing.some(b => b.price !== '') && (
-                <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--brand-soft)', color: 'var(--brand)', border: '1px solid var(--brand-soft-border)', borderRadius: 99, padding: '1px 7px' }}>
+                <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, background: 'var(--brand-soft)', color: 'var(--brand)', border: '1px solid var(--brand-soft-border)', borderRadius: 99, padding: '1px 7px' }}>
                   {branchPricing.filter(b => b.price !== '').length} filial(is) com override
                 </span>
               )}
@@ -498,13 +498,13 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
           {/* Conteúdo do acordeão */}
           {branchPricingOpen && (
             <div style={{ borderTop: '1px solid var(--border)' }}>
-              <p style={{ fontSize: 11, color: 'var(--text-faint)', padding: '8px 14px 6px' }}>
+              <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '8px 14px 6px' }}>
                 Deixe em branco para usar os valores base do procedimento.
               </p>
               {/* Header da tabela */}
               <div className="form-2col" style={{ background: 'var(--bg-app)', borderTop: '1px solid var(--hairline)', borderBottom: '1px solid var(--border)', padding: '6px 12px' }}>
                 {['Filial', 'Preço'].map(h => (
-                  <span key={h} style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</span>
+                  <span key={h} style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</span>
                 ))}
               </div>
               {branches.map((b, i) => {
@@ -514,13 +514,13 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
                     padding: '8px 12px', alignItems: 'center',
                     borderBottom: i < branches.length - 1 ? '1px solid var(--hairline)' : undefined,
                   }}>
-                    <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 600 }}>{b.name}</span>
+                    <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)', fontWeight: 600 }}>{b.name}</span>
                     <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 11.5, color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
+                      <span style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', pointerEvents: 'none' }}>R$</span>
                       <input type="text" className="field" value={ov.price}
                         onChange={branchOverrideInput(b.id, 'price')}
                         placeholder={price || '—'}
-                        style={{ paddingLeft: 26, fontSize: 12, height: 32 }} />
+                        style={{ paddingLeft: 26, fontSize: 'var(--text-sm-sz)', height: 32 }} />
                     </div>
                   </div>
                 )

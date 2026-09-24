@@ -20,9 +20,9 @@ interface Props {
 }
 
 const COLORS = {
-  revenue: '#7c3aed',
-  cost:    '#dc2626',
-  profit:  '#16a34a',
+  revenue: 'var(--brand)',
+  cost:    'var(--danger)',
+  profit:  'var(--success)',
 }
 
 const LABELS: Record<string, string> = {
@@ -45,24 +45,24 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
     <div style={{
-      background: 'white',
-      border: '1px solid #e8dde0',
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
       borderRadius: 'var(--radius-field-token)',
       padding: '12px 16px',
-      boxShadow: '0 8px 24px -6px rgba(34,22,25,.14)',
-      fontFamily: 'system-ui, sans-serif',
+      boxShadow: 'var(--shadow-popover)',
+      fontFamily: 'var(--font-sans-custom)',
       minWidth: 180,
     }}>
-      <p style={{ fontSize: 10, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>
+      <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>
         Dia {label}
       </p>
       {payload.map((entry: any) => (
         <div key={entry.dataKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, marginBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#666' }}>{LABELS[entry.dataKey]}</span>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 600, color: '#666' }}>{LABELS[entry.dataKey]}</span>
           </div>
-          <span style={{ fontSize: 12, fontWeight: 800, color: entry.color }}>{fmtBRL(Number(entry.value))}</span>
+          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: entry.color }}>{fmtBRL(Number(entry.value))}</span>
         </div>
       ))}
     </div>
@@ -75,7 +75,7 @@ function CustomLegend({ payload }: any) {
       {payload?.map((entry: any) => (
         <div key={entry.dataKey ?? entry.value} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <div style={{ width: 24, height: 3, borderRadius: 2, background: entry.color }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#888', letterSpacing: '0.03em' }}>
+          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>
             {LABELS[entry.dataKey ?? entry.value] ?? entry.value}
           </span>
         </div>
@@ -87,7 +87,7 @@ function CustomLegend({ payload }: any) {
 export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props) {
   if (!data.length) {
     return (
-      <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+      <div style={{ padding: '32px 20px', textAlign: 'center', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
         Sem movimentações no período.
       </div>
     )
@@ -101,7 +101,7 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
   return (
     <div style={{ padding: '18px 20px 8px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+        <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
           Evolução — {monthLabel}
         </span>
         {/* A legenda tem três valores em reais: com `gap: 20` fixo e sem quebra
@@ -112,10 +112,10 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 20, height: 3, borderRadius: 2, background: COLORS[k] }} />
               <div>
-                <p style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+                <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
                   {LABELS[k]}
                 </p>
-                <p style={{ fontSize: 12, fontWeight: 800, color: COLORS[k], margin: 0, letterSpacing: '-0.01em' }}>
+                <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: COLORS[k], margin: 0, letterSpacing: '-0.01em' }}>
                   {fmtBRL(totals[k])}
                 </p>
               </div>
@@ -143,34 +143,34 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
 
           <CartesianGrid
             strokeDasharray="3 0"
-            stroke="var(--hairline, #f0e8eb)"
+            stroke="var(--hairline, var(--hairline))"
             vertical={false}
           />
 
           <XAxis
             dataKey="day"
-            tick={{ fontSize: 10, fill: 'var(--text-faint, #c5b0b8)', fontFamily: 'system-ui' }}
+            tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-faint, var(--text-faint))', fontFamily: 'var(--font-sans-custom)' }}
             tickLine={false}
-            axisLine={{ stroke: 'var(--border, #e8dde0)' }}
+            axisLine={{ stroke: 'var(--border, var(--border))' }}
             tickFormatter={v => granularity === 'hour' ? `${v}h` : String(v)}
             interval={data.length <= 10 ? 0 : Math.floor(data.length / 6)}
           />
 
           <YAxis
-            tick={{ fontSize: 10, fill: 'var(--text-faint, #c5b0b8)', fontFamily: 'system-ui' }}
+            tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-faint, var(--text-faint))', fontFamily: 'var(--font-sans-custom)' }}
             tickLine={false}
             axisLine={false}
             tickFormatter={fmtAxis}
             width={yAxisW}
           />
 
-          <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border, #e8dde0)', strokeWidth: 1.5, strokeDasharray: '4 3' }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border, var(--border))', strokeWidth: 1.5, strokeDasharray: '4 3' }} />
 
           <Area
             type="monotone" dataKey="revenue"
             stroke={COLORS.revenue} strokeWidth={2.5}
             fill="url(#gradRevenue)"
-            dot={false} activeDot={{ r: 5, fill: COLORS.revenue, stroke: 'white', strokeWidth: 2 }}
+            dot={false} activeDot={{ r: 5, fill: COLORS.revenue, stroke: 'var(--surface)', strokeWidth: 2 }}
             animationDuration={1000} animationEasing="ease-out"
           />
           <Area
@@ -178,14 +178,14 @@ export function EvolutionChart({ data, monthLabel, granularity = 'day' }: Props)
             stroke={COLORS.cost} strokeWidth={2}
             fill="url(#gradCost)"
             strokeDasharray="6 3"
-            dot={false} activeDot={{ r: 4, fill: COLORS.cost, stroke: 'white', strokeWidth: 2 }}
+            dot={false} activeDot={{ r: 4, fill: COLORS.cost, stroke: 'var(--surface)', strokeWidth: 2 }}
             animationDuration={1100} animationEasing="ease-out"
           />
           <Area
             type="monotone" dataKey="profit"
             stroke={COLORS.profit} strokeWidth={2.5}
             fill="url(#gradProfit)"
-            dot={false} activeDot={{ r: 5, fill: COLORS.profit, stroke: 'white', strokeWidth: 2 }}
+            dot={false} activeDot={{ r: 5, fill: COLORS.profit, stroke: 'var(--surface)', strokeWidth: 2 }}
             animationDuration={1200} animationEasing="ease-out"
           />
         </AreaChart>

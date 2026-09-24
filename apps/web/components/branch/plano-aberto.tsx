@@ -65,7 +65,7 @@ export function PlanoAberto({
       <Link href={basePath} className="btn-ghost"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
-          fontSize: 12.5, padding: '5px 10px', textDecoration: 'none',
+          fontSize: 'var(--text-sm-sz)', padding: '5px 10px', textDecoration: 'none',
         }}>
         <ChevronLeft size={14} /> Planejamentos
       </Link>
@@ -82,14 +82,14 @@ export function PlanoAberto({
                   if (e.key === 'Enter' && rascunho.trim()) void salvarNome()
                   if (e.key === 'Escape') { setRascunho(nome); setRenomeando(false) }
                 }}
-                style={{ fontSize: 15, fontWeight: 800, maxWidth: 420 }}
+                style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, maxWidth: 420 }}
               />
               <button type="button" onClick={salvarNome} disabled={salvando || !rascunho.trim()}
-                className="btn-primary" style={{ fontSize: 12, padding: '6px 12px' }}>
+                className="btn-primary" style={{ fontSize: 'var(--text-sm-sz)', padding: '6px 12px' }}>
                 {salvando ? 'Salvando…' : 'Salvar'}
               </button>
               <button type="button" onClick={() => { setRascunho(nome); setRenomeando(false) }}
-                className="btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }}>
+                className="btn-ghost" style={{ fontSize: 'var(--text-sm-sz)', padding: '6px 10px' }}>
                 Cancelar
               </button>
             </div>
@@ -113,7 +113,7 @@ export function PlanoAberto({
             </button>
           )}
 
-          <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
             {plano.cliente ? (
               // O nome leva à ficha — dentro dela viraria link para onde já se está.
               <Link href={rotaCliente(pathname, slug, plano.cliente.id)}
@@ -129,7 +129,7 @@ export function PlanoAberto({
       </div>
 
       {erro && (
-        <p style={{ fontSize: 12.5, color: '#dc2626', fontWeight: 600, padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>
           {erro}
         </p>
       )}

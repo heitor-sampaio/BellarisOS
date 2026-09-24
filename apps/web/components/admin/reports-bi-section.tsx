@@ -57,7 +57,7 @@ export async function ReportsBiSection({
   const abasPermitidas = (await getTenantContext()).reportTabs
   if (abasPermitidas.length === 0) {
     return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Nenhum relatório liberado para o seu cargo.
       </div>
     )

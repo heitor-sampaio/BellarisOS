@@ -59,23 +59,23 @@ export function PeriodSelector({ current, fromDate, toDate }: Props) {
             max={to || undefined}
             onChange={e => setFrom(e.target.value)}
             className="field"
-            style={{ width: 140, fontSize: 12, padding: '5px 10px' }}
+            style={{ width: 140, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }}
           />
-          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>até</span>
+          <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>até</span>
           <input
             type="date"
             value={to}
             min={from || undefined}
             onChange={e => setTo(e.target.value)}
             className="field"
-            style={{ width: 140, fontSize: 12, padding: '5px 10px' }}
+            style={{ width: 140, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }}
           />
           <button
             type="button"
             onClick={applyCustom}
             disabled={!canApply}
             className="btn-primary"
-            style={{ fontSize: 12, padding: '5px 12px', opacity: canApply ? 1 : 0.4, cursor: canApply ? 'pointer' : 'not-allowed' }}
+            style={{ fontSize: 'var(--text-sm-sz)', padding: '5px 12px', opacity: canApply ? 1 : 0.4, cursor: canApply ? 'pointer' : 'not-allowed' }}
           >
             Aplicar
           </button>

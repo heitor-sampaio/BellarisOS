@@ -223,25 +223,25 @@ export default async function BranchStockPage({
           {
             label: 'ABAIXO DO MÍNIMO',
             value: String(abaixoMinimo),
-            icon:  <AlertTriangle size={18} style={{ color: abaixoMinimo > 0 ? '#d97706' : 'var(--text-faint)' }} />,
-            iconBg: abaixoMinimo > 0 ? '#fffbeb' : 'var(--bg-app)',
-            color: abaixoMinimo > 0 ? '#d97706' : 'var(--text)',
+            icon:  <AlertTriangle size={18} style={{ color: abaixoMinimo > 0 ? 'var(--warning)' : 'var(--text-faint)' }} />,
+            iconBg: abaixoMinimo > 0 ? 'var(--warning-soft)' : 'var(--bg-app)',
+            color: abaixoMinimo > 0 ? 'var(--warning)' : 'var(--text)',
             labelColor: 'var(--text-muted)', brand: false,
           },
           {
             label: 'SEM ESTOQUE',
             value: String(semEstoque),
-            icon:  <Package size={18} style={{ color: semEstoque > 0 ? '#dc2626' : 'var(--text-faint)' }} />,
-            iconBg: semEstoque > 0 ? '#fef2f2' : 'var(--bg-app)',
-            color: semEstoque > 0 ? '#dc2626' : 'var(--text)',
+            icon:  <Package size={18} style={{ color: semEstoque > 0 ? 'var(--danger)' : 'var(--text-faint)' }} />,
+            iconBg: semEstoque > 0 ? 'var(--danger-soft)' : 'var(--bg-app)',
+            color: semEstoque > 0 ? 'var(--danger)' : 'var(--text)',
             labelColor: 'var(--text-muted)', brand: false,
           },
           {
             label: 'VALIDADE EM 30 DIAS',
             value: String(validadeProxima),
-            icon:  <CalendarClock size={18} style={{ color: validadeProxima > 0 ? '#d97706' : 'var(--text-faint)' }} />,
-            iconBg: validadeProxima > 0 ? '#fffbeb' : 'var(--bg-app)',
-            color: validadeProxima > 0 ? '#d97706' : 'var(--text)',
+            icon:  <CalendarClock size={18} style={{ color: validadeProxima > 0 ? 'var(--warning)' : 'var(--text-faint)' }} />,
+            iconBg: validadeProxima > 0 ? 'var(--warning-soft)' : 'var(--bg-app)',
+            color: validadeProxima > 0 ? 'var(--warning)' : 'var(--text)',
             labelColor: 'var(--text-muted)', brand: false,
           },
         ]
@@ -260,7 +260,7 @@ export default async function BranchStockPage({
               {k.icon}
             </div>
             <div style={{ minWidth: 0 }}>
-              <p className="kpi-rotulo" style={{ fontSize: 10.5, fontWeight: 700, color: k.labelColor, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+              <p className="kpi-rotulo" style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: k.labelColor, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                 {k.label}
               </p>
               <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: k.color, marginTop: 3, whiteSpace: 'nowrap' }}>

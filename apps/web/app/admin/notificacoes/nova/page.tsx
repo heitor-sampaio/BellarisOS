@@ -28,7 +28,7 @@ export default async function NovaCampanhaPage() {
       <div style={{ marginBottom: 28 }}>
         <Link
           href="/admin/notificacoes"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, textDecoration: 'none', marginBottom: 12 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', fontWeight: 600, textDecoration: 'none', marginBottom: 12 }}
         >
           <ChevronLeft size={14} />
           Voltar

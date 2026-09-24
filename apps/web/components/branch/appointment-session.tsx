@@ -165,12 +165,12 @@ function realDurationMin(startedAt: string | null, completedAt: string | null): 
 }
 
 const STATUS_OVERLINE: Record<string, { label: string; color: string }> = {
-  SCHEDULED:   { label: 'Agendado',          color: '#6b7280' },
-  CONFIRMED:   { label: 'Confirmado',         color: '#3a6bcc' },
+  SCHEDULED:   { label: 'Agendado',          color: 'var(--text-muted)' },
+  CONFIRMED:   { label: 'Confirmado',         color: 'var(--info)' },
   IN_PROGRESS: { label: 'Atendimento em andamento', color: 'var(--brand)' },
-  COMPLETED:   { label: 'Concluído',          color: '#2a8a5c' },
+  COMPLETED:   { label: 'Concluído',          color: 'var(--success)' },
   CANCELLED:   { label: 'Cancelado',          color: 'var(--warning)' },
-  NO_SHOW:     { label: 'Não compareceu',     color: '#9ca3af' },
+  NO_SHOW:     { label: 'Não compareceu',     color: 'var(--text-faint)' },
 }
 
 const PAYMENT_METHODS = [
@@ -190,10 +190,10 @@ function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="card" style={{ width: '100%', maxWidth: 460, padding: 0, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+      <div className="card" style={{ width: '100%', maxWidth: 460, padding: 0, overflow: 'hidden', boxShadow: 'var(--shadow-overlay)' }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <AlertTriangle size={16} style={{ color: 'var(--warning)' }} />
-          <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', flex: 1 }}>Cancelar atendimento</h2>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Cancelar atendimento</h2>
           <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '4px 6px' }}><X size={15} /></button>
         </div>
         <form action={action} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -203,10 +203,10 @@ function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; 
             <label className="field-label">Motivo do cancelamento *</label>
             <textarea name="cancellation_reason" required rows={3} placeholder="Descreva o motivo…" className="field" style={{ resize: 'vertical' }} />
           </div>
-          {state?.error && <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
+          {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>
-            <button type="submit" disabled={pending} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--warning)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            <button type="submit" disabled={pending} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--warning)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer' }}>
               {pending ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
               {pending ? 'Cancelando…' : 'Confirmar cancelamento'}
             </button>
@@ -229,12 +229,12 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="card" style={{ width: '100%', maxWidth: 500, padding: 0, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+      <div className="card" style={{ width: '100%', maxWidth: 500, padding: 0, overflow: 'hidden', boxShadow: 'var(--shadow-overlay)' }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <CheckCircle2 size={16} style={{ color: '#2a8a5c' }} />
+          <CheckCircle2 size={16} style={{ color: 'var(--success)' }} />
           <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Finalizar atendimento</h2>
-            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 1 }}>O pagamento será confirmado pela recepcionista.</p>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Finalizar atendimento</h2>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 1 }}>O pagamento será confirmado pela recepcionista.</p>
           </div>
           <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '4px 6px' }}><X size={15} /></button>
         </div>
@@ -242,9 +242,9 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
           <input type="hidden" name="appointment_id" value={appointmentId} />
           <input type="hidden" name="slug" value={slug} />
           <input type="hidden" name="products_used" value={JSON.stringify(insumos)} />
-          <div style={{ padding: '12px 16px', borderRadius: 10, background: '#f0faf4', border: '1px solid #b8e8cc' }}>
-            <p style={{ fontSize: 13, color: '#2a8a5c', fontWeight: 600 }}>O procedimento foi realizado com sucesso?</p>
-            <p style={{ fontSize: 12, color: '#4b7a62', marginTop: 3 }}>Confirme para liberar o cliente. Adicione observações se necessário.</p>
+          <div style={{ padding: '12px 16px', borderRadius: 10, background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 600 }}>O procedimento foi realizado com sucesso?</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 3 }}>Confirme para liberar o cliente. Adicione observações se necessário.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label className="field-label">Observações finais <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
@@ -254,10 +254,10 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
             <label className="field-label">Intercorrências <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}>(opcional)</span></label>
             <textarea name="intercurrences" rows={2} defaultValue={initialIntercurrences ?? ''} placeholder="Reações ou observações…" className="field" style={{ resize: 'vertical' }} />
           </div>
-          {state?.error && <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
+          {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>
-            <button type="submit" disabled={pending} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', borderRadius: 9, border: 'none', background: '#2a8a5c', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', minWidth: 180, justifyContent: 'center' }}>
+            <button type="submit" disabled={pending} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', borderRadius: 9, border: 'none', background: 'var(--success)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', minWidth: 180, justifyContent: 'center' }}>
               {pending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
               {pending ? 'Finalizando…' : 'Confirmar conclusão'}
             </button>
@@ -278,10 +278,10 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="card" style={{ width: '100%', maxWidth: 440, padding: 0, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+      <div className="card" style={{ width: '100%', maxWidth: 440, padding: 0, overflow: 'hidden', boxShadow: 'var(--shadow-overlay)' }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <CheckCircle2 size={16} style={{ color: 'var(--brand)' }} />
-          <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', flex: 1 }}>Confirmar pagamento</h2>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Confirmar pagamento</h2>
           <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '4px 6px' }}><X size={15} /></button>
         </div>
         <form action={action} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -300,11 +300,11 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
                 style={{ background: 'var(--bg-app)', color: 'var(--text-muted)', fontWeight: 700 }} />
             </div>
           </div>
-          {state?.error && <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
+          {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>
             <button type="submit" disabled={pending} className="btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 13, minWidth: 170, justifyContent: 'center' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
               {pending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
               {pending ? 'Registrando…' : 'Confirmar pagamento'}
             </button>
@@ -370,14 +370,14 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
         border: '1.5px solid var(--brand-soft-border)',
         display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
       }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <CreditCard size={15} style={{ color: 'var(--brand)' }} />
         </div>
         <div style={{ flex: 1, minWidth: 180 }}>
-          <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
             {plano.nome ?? 'Plano de tratamento'} · em aberto {fmtBRL(plano.emAberto)}
           </p>
-          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
             {plano.recebido > 0
               ? `Já recebido: ${fmtBRL(plano.recebido)}. O saldo é cobrado no check-in.`
               : 'O plano foi aceito sem cobrança. O valor é recebido agora, no check-in.'}
@@ -385,7 +385,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
         </div>
         {podeReceber && (
           <button type="button" onClick={() => setAberto(true)} className="btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', fontSize: 13 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', fontSize: 'var(--text-base-sz)' }}>
             <CreditCard size={14} /> Receber {fmtBRL(plano.emAberto)}
           </button>
         )}
@@ -394,16 +394,16 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
       {aberto && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
           onClick={e => { if (e.target === e.currentTarget) setAberto(false) }}>
-          <div className="card" style={{ width: '100%', maxWidth: 460, padding: 0, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+          <div className="card" style={{ width: '100%', maxWidth: 460, padding: 0, overflow: 'hidden', boxShadow: 'var(--shadow-overlay)' }}>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <CreditCard size={16} style={{ color: 'var(--brand)' }} />
-              <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', flex: 1 }}>Receber o plano de tratamento</h2>
+              <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Receber o plano de tratamento</h2>
               <button type="button" onClick={() => setAberto(false)} className="btn-ghost" style={{ padding: '4px 6px' }}><X size={15} /></button>
             </div>
 
             <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
-                <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)' }}>Em aberto</p>
+                <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)' }}>Em aberto</p>
                 <p style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(plano.emAberto)}</p>
               </div>
 
@@ -411,7 +411,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                 {([['AVISTA', 'À vista'], ['PARCELADO', 'Entrada + parcelas']] as const).map(([v, label]) => (
                   <button key={v} type="button" onClick={() => setForma(v)}
                     className={forma === v ? 'btn-primary' : 'btn-secondary'}
-                    style={{ flex: 1, padding: '9px 12px', fontSize: 12.5, justifyContent: 'center' }}>
+                    style={{ flex: 1, padding: '9px 12px', fontSize: 'var(--text-sm-sz)', justifyContent: 'center' }}>
                     {label}
                   </button>
                 ))}
@@ -442,7 +442,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                     <label className="field-label">1º vencimento</label>
                     <input type="date" className="field" value={venc} onChange={e => setVenc(e.target.value)} />
                   </div>
-                  <p style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                  <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                     {restante > 0
                       ? `${fmtBRL(restante)} em ${parcelas}x de ${fmtBRL(Math.round((restante / parcelas) * 100) / 100)}.`
                       : 'Sem saldo a parcelar — a entrada cobre o total.'}
@@ -450,12 +450,12 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
                 </>
               )}
 
-              {erro && <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>}
+              {erro && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>}
 
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
                 <button type="button" onClick={() => setAberto(false)} className="btn-secondary"><X size={13} /> Voltar</button>
                 <button type="button" onClick={receber} disabled={salvando} className="btn-primary"
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 13, minWidth: 170, justifyContent: 'center' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
                   {salvando ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                   {salvando ? 'Registrando…' : 'Confirmar recebimento'}
                 </button>
@@ -493,11 +493,11 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
   return (
     <div className={embedded ? '' : 'card'} style={embedded ? { position: 'relative' } : { padding: 0, overflow: 'hidden' }}>
       {embedded ? (
-        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>Baixa automática no estoque</p>
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginBottom: 4 }}>Baixa automática no estoque</p>
       ) : (
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Insumos utilizados</h3>
-          <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 500 }}>Baixa automática no estoque</span>
+          <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Insumos utilizados</h3>
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', fontWeight: 500 }}>Baixa automática no estoque</span>
         </div>
       )}
 
@@ -507,21 +507,21 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
             <Search size={13} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
             <input ref={searchRef} type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Buscar produto…"
-              style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--text)', width: '100%' }} />
+              style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 'var(--text-base-sz)', color: 'var(--text)', width: '100%' }} />
             <button type="button" onClick={() => { setAdding(false); setSearch('') }}
               style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-faint)', display: 'flex', padding: 0 }}>
               <X size={13} />
             </button>
           </div>
           {filtered.length > 0 && (
-            <div style={{ position: 'absolute', top: 'calc(100% - 2px)', left: 16, right: 16, zIndex: 30, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', maxHeight: 200, overflowY: 'auto' }}>
+            <div style={{ position: 'absolute', top: 'calc(100% - 2px)', left: 16, right: 16, zIndex: 30, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: 'var(--shadow-popover)', maxHeight: 200, overflowY: 'auto' }}>
               {filtered.map((p, i) => (
                 <button key={p.id} type="button" onMouseDown={() => { onAdd(p); setSearch(''); setAdding(false) }}
-                  style={{ width: '100%', textAlign: 'left', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text)' }}
+                  style={{ width: '100%', textAlign: 'left', padding: '9px 14px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none', display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-base-sz)', color: 'var(--text)' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                   <span style={{ flex: 1 }}>{p.name}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{p.unit}</span>
+                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{p.unit}</span>
                 </button>
               ))}
             </div>
@@ -531,7 +531,7 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
 
       <div style={{ padding: items.length === 0 ? '20px' : '0 0 4px' }}>
         {items.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: 'var(--text-faint)', textAlign: 'center' }}>Nenhum insumo registrado.</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center' }}>Nenhum insumo registrado.</p>
         ) : items.map((item, i) => {
           const checked = checkedIds.has(item.productId)
           return (
@@ -547,16 +547,16 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
                   cursor: readonly ? 'default' : 'pointer', transition: 'all 0.15s',
                 }}
               >
-                {checked && <Check size={11} color="#fff" strokeWidth={3} />}
+                {checked && <Check size={11} color="var(--surface)" strokeWidth={3} />}
               </div>
               {/* Info */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: checked ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.3 }}>{item.name}</p>
-                <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>{item.unit}</p>
+                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: checked ? 'var(--text)' : 'var(--text-faint)', lineHeight: 1.3 }}>{item.name}</p>
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{item.unit}</p>
               </div>
               {/* Qty */}
               {readonly || !checked ? (
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: checked ? 'var(--text-muted)' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: checked ? 'var(--text-muted)' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
                   {item.quantity} {item.unit}
                 </span>
               ) : (
@@ -566,12 +566,12 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
                       const v = parseFloat(e.target.value.replace(',', '.'))
                       if (!isNaN(v) && v >= 0) onChangeQty(item.productId, v)
                     }}
-                    style={{ width: 68, textAlign: 'right', fontSize: 13, fontWeight: 700, border: '1px solid var(--border)', borderRadius: 7, padding: '4px 8px', background: 'var(--surface)', color: 'var(--text)', outline: 'none' }}
+                    style={{ width: 68, textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, border: '1px solid var(--border)', borderRadius: 7, padding: '4px 8px', background: 'var(--surface)', color: 'var(--text)', outline: 'none' }}
                     onFocus={e => e.target.select()} />
-                  <span style={{ fontSize: 11.5, color: 'var(--text-faint)', minWidth: 24 }}>{item.unit}</span>
+                  <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', minWidth: 24 }}>{item.unit}</span>
                   <button type="button" onClick={() => onRemove(item.productId)}
                     style={{ width: 26, height: 26, borderRadius: 6, flexShrink: 0, border: '1px solid var(--border)', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.borderColor = '#dc2626' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.borderColor = 'var(--danger)' }}
                     onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-faint)'; e.currentTarget.style.borderColor = 'var(--border)' }}>
                     <Trash2 size={12} />
                   </button>
@@ -586,7 +586,7 @@ function InsumoCard({ items, available, checkedIds, onToggle, onChangeQty, onAdd
         <div style={{ padding: '10px 20px', borderTop: items.length > 0 ? '1px solid var(--hairline)' : 'none' }}>
           <button type="button"
             onClick={() => { setAdding(v => !v); setTimeout(() => searchRef.current?.focus(), 50) }}
-            style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
             <Plus size={13} /> Adicionar insumo
           </button>
         </div>
@@ -605,7 +605,7 @@ function ObservacoesCard({ notes, intercurrences, onNotesChange, onIntercurrence
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-        <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Observações do atendimento</h3>
+        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Observações do atendimento</h3>
       </div>
       <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -635,8 +635,8 @@ function DorasCard({ value, onChange, readonly }: {
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-        <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</h3>
-        <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>Queixas e necessidades relatadas pelo cliente</p>
+        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</h3>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Queixas e necessidades relatadas pelo cliente</p>
       </div>
       <div style={{ padding: '18px 20px' }}>
         <textarea
@@ -675,8 +675,8 @@ function EvaluationAnamnesisFields({
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-        <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Anamnese</h3>
-        <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 2 }}>Ficha clínica do cliente</p>
+        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Anamnese</h3>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 2 }}>Ficha clínica do cliente</p>
       </div>
       <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="form-3col">
@@ -912,15 +912,15 @@ export function AppointmentSession({
       {!isProfessional && (
         <>
           <div>
-            <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Profissional</p>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Profissional</p>
             {editingProf && canReassign ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <select value={selectedProfId} onChange={e => setSelectedProfId(e.target.value)} className="field" style={{ fontSize: 12.5, padding: '4px 8px', height: 30 }} autoFocus>
+                <select value={selectedProfId} onChange={e => setSelectedProfId(e.target.value)} className="field" style={{ fontSize: 'var(--text-sm-sz)', padding: '4px 8px', height: 30 }} autoFocus>
                   {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
                 <button type="button" disabled={savingProf}
                   onClick={async () => { setSavingProf(true); await reassignProfessional(appointment.id, selectedProfId, slug); setSavingProf(false); setEditingProf(false); router.refresh() }}
-                  style={{ height: 30, padding: '0 10px', borderRadius: 6, border: 'none', background: 'var(--brand)', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  style={{ height: 30, padding: '0 10px', borderRadius: 6, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontSize: 'var(--text-xs-sz)', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                   {savingProf ? <Loader2 size={11} className="animate-spin" /> : 'Salvar'}
                 </button>
                 <button type="button" onClick={() => { setEditingProf(false); setSelectedProfId(appointment.professionalId) }}
@@ -930,7 +930,7 @@ export function AppointmentSession({
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{selectedProfName}</p>
+                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{selectedProfName}</p>
                 {canReassign && !isDone && professionals.length > 1 && (
                   <button type="button" onClick={() => setEditingProf(true)}
                     style={{ width: 22, height: 22, borderRadius: 5, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -941,47 +941,47 @@ export function AppointmentSession({
             )}
           </div>
           <div>
-            <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Procedimento</p>
-            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{appointment.procedureName}{appointment.procedureCategory ? ` · ${appointment.procedureCategory}` : ''}</p>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Procedimento</p>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{appointment.procedureName}{appointment.procedureCategory ? ` · ${appointment.procedureCategory}` : ''}</p>
           </div>
         </>
       )}
 
       <div>
-        <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Agendado para</p>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Agendado para</p>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
           {format(new Date(appointment.scheduledAt), "dd/MM 'às' HH:mm", { locale: ptBR })}
         </p>
       </div>
 
       <div>
-        <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Duração prevista</p>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 5 }}>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Duração prevista</p>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 5 }}>
           <Clock size={12} style={{ color: 'var(--text-faint)' }} /> {appointment.durationMin} min
         </p>
       </div>
 
       {!isProfessional && (
         <div>
-          <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{appointment.roomName ? 'Sala / Cabine' : 'Valor'}</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{appointment.roomName ? 'Sala / Cabine' : 'Valor'}</p>
           {appointment.roomName ? (
-            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{appointment.roomName}</p>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{appointment.roomName}</p>
           ) : (
-            <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{fmtBRL(appointment.price)}</p>
+            <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{fmtBRL(appointment.price)}</p>
           )}
         </div>
       )}
 
       {appointment.startedAt && (
         <div>
-          <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Início real</p>
-          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{format(new Date(appointment.startedAt), 'HH:mm', { locale: ptBR })}</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Início real</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{format(new Date(appointment.startedAt), 'HH:mm', { locale: ptBR })}</p>
         </div>
       )}
       {appointment.completedAt && (
         <div>
-          <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Término</p>
-          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{format(new Date(appointment.completedAt), 'HH:mm', { locale: ptBR })}</p>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Término</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{format(new Date(appointment.completedAt), 'HH:mm', { locale: ptBR })}</p>
         </div>
       )}
       {(() => {
@@ -990,14 +990,14 @@ export function AppointmentSession({
         const delta = real - appointment.durationMin
         return (
           <div style={{ gridColumn: 'span 2' }}>
-            <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Duração real</p>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Duração real</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <Clock size={13} style={{ color: 'var(--brand)' }} /> {real} min
               </p>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)',
-                background: delta <= 0 ? '#dcfce7' : delta <= 10 ? '#fef3c7' : '#fee2e2',
-                color:      delta <= 0 ? '#16a34a' : delta <= 10 ? '#d97706' : '#dc2626' }}>
+              <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)',
+                background: delta <= 0 ? 'var(--success-soft)' : delta <= 10 ? 'var(--warning-soft)' : 'var(--danger-soft)',
+                color:      delta <= 0 ? 'var(--success)' : delta <= 10 ? 'var(--warning)' : 'var(--danger)' }}>
                 {delta === 0 ? '= previsto' : delta > 0 ? `▲ ${delta} min vs previsto` : `▼ ${Math.abs(delta)} min vs previsto`}
               </span>
             </div>
@@ -1078,10 +1078,10 @@ export function AppointmentSession({
           <div className="card" style={{ width: 760, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   {client.name}
                 </p>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Planejamento de tratamento</h3>
+                <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Planejamento de tratamento</h3>
               </div>
               <button type="button" onClick={() => setPlanejamentoAberto(false)} className="btn-ghost" style={{ padding: '6px 10px' }}>
                 Fechar
@@ -1115,10 +1115,10 @@ export function AppointmentSession({
           <div className="card" style={{ width: 700, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
             <div className="esconde-impressao" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   Novo paciente
                 </p>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Checkout</h3>
+                <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Checkout</h3>
               </div>
               <button type="button" onClick={() => setCheckoutPlan(null)} className="btn-ghost" style={{ padding: '6px 10px' }}>
                 Fechar
@@ -1159,10 +1159,10 @@ export function AppointmentSession({
           </Link>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: overline.color, marginBottom: 3 }}>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: overline.color, marginBottom: 3 }}>
               {overline.label}
             </p>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+            <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.15 }}>
               {appointment.procedureName}
             </h1>
           </div>
@@ -1171,7 +1171,7 @@ export function AppointmentSession({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginTop: 4 }}>
             {/* Timer IN_PROGRESS */}
             {status === 'IN_PROGRESS' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 15, fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)', letterSpacing: '-0.01em' }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--brand)', display: 'inline-block', animation: 'pulse 1.4s ease-in-out infinite' }} />
                 {fmtTimer(elapsed)}
               </div>
@@ -1181,13 +1181,13 @@ export function AppointmentSession({
             {/* O planejamento é do cliente e abre de qualquer atendimento —
                 não só da consulta de avaliação, como era antes. */}
             <button type="button" onClick={() => setPlanejamentoAberto(true)} className="btn-ghost"
-              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', fontSize: 13 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', fontSize: 'var(--text-base-sz)' }}>
               <ClipboardList size={14} /> Planejamento
             </button>
 
             {status === 'SCHEDULED' && canCheckin && (
               <button type="button" onClick={handleCheckin} disabled={checkingIn}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: 'none', background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, border: 'none', background: 'var(--success)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer' }}>
                 {checkingIn ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
                 {checkingIn ? 'Registrando…' : 'Check-in'}
               </button>
@@ -1196,7 +1196,7 @@ export function AppointmentSession({
             {/* Iniciar (CONFIRMED + canManage) */}
             {status === 'CONFIRMED' && canManage && (
               <button type="button" onClick={handleStart} disabled={starting} className="btn-primary"
-                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 13 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>
                 {starting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
                 {starting ? 'Iniciando…' : 'Iniciar atendimento'}
               </button>
@@ -1205,7 +1205,7 @@ export function AppointmentSession({
             {/* Finalizar (IN_PROGRESS + canManage) — conclui clinicamente */}
             {status === 'IN_PROGRESS' && canManage && (
               <button type="button" onClick={() => setShowFinish(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 8px rgba(195,77,107,.3)' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
                 <CheckCircle2 size={14} /> Finalizar atendimento
               </button>
             )}
@@ -1218,7 +1218,7 @@ export function AppointmentSession({
             {status === 'COMPLETED' && !paymentTransaction && canPayment && !isPartOfPlan
               && appointment.price > 0 && (
               <button type="button" onClick={() => setShowPayment(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 2px 8px rgba(195,77,107,.3)' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
                 <CheckCircle2 size={14} />
                 {appointment.isEvaluation
                   ? `Confirmar pagamento da avaliação (${fmtBRL(appointment.price)})`
@@ -1228,16 +1228,16 @@ export function AppointmentSession({
 
             {/* Pagamento confirmado — badge informativo */}
             {status === 'COMPLETED' && paymentTransaction && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, background: '#f0faf4', border: '1px solid #b8e8cc' }}>
-                <CheckCircle2 size={14} style={{ color: '#2a8a5c' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#2a8a5c' }}>Pago</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 9, background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
+                <CheckCircle2 size={14} style={{ color: 'var(--success)' }} />
+                <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--success)' }}>Pago</span>
               </div>
             )}
 
             {/* Cancelar (qualquer ativo) */}
             {isActive && (canCheckin || canManage) && (
               <button type="button" onClick={() => setShowCancel(true)}
-                className="btn-ghost" style={{ padding: '9px 14px', fontSize: 13, color: 'var(--text-faint)', gap: 5 }}>
+                className="btn-ghost" style={{ padding: '9px 14px', fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', gap: 5 }}>
                 <XCircle size={14} /> Cancelar
               </button>
             )}
@@ -1248,24 +1248,24 @@ export function AppointmentSession({
         <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {/* Avatar */}
-            <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, flexShrink: 0 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--brand)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--text-card-title)', fontWeight: 800, flexShrink: 0 }}>
               {initials(client.name)}
             </div>
 
             {/* Nome + info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
-                <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{client.name}</span>
+                <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{client.name}</span>
                 {client.tags.map(tag => (
                   <span key={tag} style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                    background: tag === 'VIP' ? 'var(--brand-soft)' : '#fef3c7',
-                    color: tag === 'VIP' ? 'var(--brand)' : '#d97706',
-                    border: `1px solid ${tag === 'VIP' ? 'var(--brand-soft-border)' : '#fde68a'}`,
+                    fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 8px', borderRadius: 10,
+                    background: tag === 'VIP' ? 'var(--brand-soft)' : 'var(--warning-soft)',
+                    color: tag === 'VIP' ? 'var(--brand)' : 'var(--warning)',
+                    border: `1px solid ${tag === 'VIP' ? 'var(--brand-soft-border)' : 'var(--warning-border)'}`,
                   }}>{tag}</span>
                 ))}
               </div>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                 {[
                   age ? `${age} anos` : null,
                   anamnesis?.skinType ? `Pele ${anamnesis.skinType}` : null,
@@ -1277,12 +1277,12 @@ export function AppointmentSession({
             {/* Right badges */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
               {anamnesis && (
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', background: 'var(--success-soft)', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4 }}>
                   <Check size={11} strokeWidth={3} /> Anamnese revisada
                 </span>
               )}
               {appointment.clientNotes && (
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', background: 'var(--brand-soft)', color: 'var(--brand)' }}>
+                <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', background: 'var(--brand-soft)', color: 'var(--brand)' }}>
                   Obs. da cliente
                 </span>
               )}
@@ -1292,8 +1292,8 @@ export function AppointmentSession({
           {appointment.clientNotes && (
             <>
               <div style={{ height: 1, background: 'var(--hairline)', margin: '12px 0' }} />
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Solicitação da cliente</p>
-              <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55 }}>{appointment.clientNotes}</p>
+              <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Solicitação da cliente</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.55 }}>{appointment.clientNotes}</p>
             </>
           )}
         </div>
@@ -1312,24 +1312,24 @@ export function AppointmentSession({
         {isDone && (
           <div style={{
             padding: '12px 20px', borderRadius: 'var(--radius-field-token)',
-            background: isUnlocked ? '#fffbeb' : 'var(--surface)',
-            border: `1.5px solid ${isUnlocked ? '#fde68a' : 'var(--border)'}`,
+            background: isUnlocked ? 'var(--warning-soft)' : 'var(--surface)',
+            border: `1.5px solid ${isUnlocked ? 'var(--warning-border)' : 'var(--border)'}`,
             display: 'flex', alignItems: 'center', gap: 12,
           }}>
             <div style={{
               width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-              background: isUnlocked ? '#fef3c7' : 'var(--bg-app)',
+              background: isUnlocked ? 'var(--warning-soft)' : 'var(--bg-app)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {isUnlocked
-                ? <LockOpen size={15} style={{ color: '#d97706' }} />
+                ? <LockOpen size={15} style={{ color: 'var(--warning)' }} />
                 : <Lock     size={15} style={{ color: 'var(--text-faint)' }} />}
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: isUnlocked ? '#92400e' : 'var(--text-muted)' }}>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isUnlocked ? 'var(--warning)' : 'var(--text-muted)' }}>
                 {isUnlocked ? 'Editando registro finalizado' : 'Registro bloqueado para edição'}
               </p>
-              <p style={{ fontSize: 11.5, color: isUnlocked ? '#b45309' : 'var(--text-faint)', marginTop: 2 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: isUnlocked ? 'var(--warning)' : 'var(--text-faint)', marginTop: 2 }}>
                 {isUnlocked
                   ? 'Todas as alterações serão registradas no histórico do atendimento.'
                   : 'Atendimento concluído. Apenas gerentes podem editar este registro.'}
@@ -1338,12 +1338,12 @@ export function AppointmentSession({
             {canReassign && (
               isUnlocked ? (
                 <button type="button" onClick={() => setIsUnlocked(false)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1.5px solid #fde68a', background: 'transparent', color: '#92400e', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--warning-border)', background: 'transparent', color: 'var(--warning)', fontWeight: 700, fontSize: 'var(--text-sm-sz)', cursor: 'pointer' }}>
                   <Lock size={13} /> Bloquear
                 </button>
               ) : (
                 <button type="button" onClick={() => setIsUnlocked(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-sm-sz)', cursor: 'pointer' }}>
                   <LockOpen size={13} /> Editar registro
                 </button>
               )
@@ -1355,49 +1355,49 @@ export function AppointmentSession({
         {isDone && (
           <div style={{
             padding: '14px 20px', borderRadius: 'var(--radius-field-token)',
-            background: status === 'COMPLETED' ? '#f0faf4' : '#fef6f8',
-            border: `1.5px solid ${status === 'COMPLETED' ? '#b8e8cc' : '#f0c5ce'}`,
+            background: status === 'COMPLETED' ? 'var(--success-bg)' : 'var(--bg-app)',
+            border: `1.5px solid ${status === 'COMPLETED' ? 'var(--success-border)' : 'var(--brand-soft-border)'}`,
           }}>
             {status === 'COMPLETED' && appointment.completedAt && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <p style={{ fontSize: 13, color: '#2a8a5c', fontWeight: 600 }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 600 }}>
                   ✓ Atendimento concluído em {format(new Date(appointment.completedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                 </p>
                 {paymentTransaction ? (
-                  <p style={{ fontSize: 12, color: '#4b7a62' }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
                     Pagamento confirmado — {PAYMENT_METHODS.find(m => m.value === paymentTransaction.paymentMethod)?.label ?? paymentTransaction.paymentMethod} · {fmtBRL(paymentTransaction.amount)}
                   </p>
                 ) : isPartOfPlan ? (
-                  <p style={{ fontSize: 12, color: '#4b7a62' }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
                     Pagamento realizado no checkout do plano de tratamento.
                   </p>
                 ) : (
-                  <p style={{ fontSize: 12, color: '#d97706', fontWeight: 600 }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
                     ⏳ Aguardando confirmação de pagamento pela recepcionista
                   </p>
                 )}
 
                 {/* Confirmação do cliente pelo app (prova que substitui a ficha de papel) */}
                 {appointment.clientConfirmedAt ? (
-                  <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid #cde8d9' }}>
-                    <p style={{ fontSize: 12, color: '#2a8a5c', fontWeight: 700 }}>
+                  <div style={{ marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--success-border)' }}>
+                    <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>
                       ✓ Confirmado pelo cliente em {format(new Date(appointment.clientConfirmedAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </p>
                     {(appointment.procedureRating != null || appointment.clientRating != null) && (
-                      <p style={{ fontSize: 12, color: '#4b7a62', marginTop: 2 }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 2 }}>
                         {appointment.procedureRating != null && <>Procedimento {appointment.procedureRating}/5</>}
                         {appointment.procedureRating != null && appointment.clientRating != null && ' · '}
                         {appointment.clientRating != null && <>Profissional {appointment.clientRating}/5</>}
                       </p>
                     )}
                     {appointment.clientFeedback && (
-                      <p style={{ fontSize: 12, color: '#4b7a62', marginTop: 2, fontStyle: 'italic' }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 2, fontStyle: 'italic' }}>
                         “{appointment.clientFeedback}”
                       </p>
                     )}
                   </div>
                 ) : (
-                  <p style={{ fontSize: 12, color: '#d97706', fontWeight: 600, marginTop: 6, paddingTop: 8, borderTop: '1px solid #cde8d9' }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600, marginTop: 6, paddingTop: 8, borderTop: '1px solid var(--success-border)' }}>
                     ⏳ Aguardando confirmação do cliente pelo app
                   </p>
                 )}
@@ -1405,11 +1405,11 @@ export function AppointmentSession({
             )}
             {status === 'CANCELLED' && (
               <>
-                <p style={{ fontSize: 13, color: 'var(--warning)', fontWeight: 700 }}>Atendimento cancelado</p>
-                {appointment.cancellationReason && <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Motivo: {appointment.cancellationReason}</p>}
+                <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--warning)', fontWeight: 700 }}>Atendimento cancelado</p>
+                {appointment.cancellationReason && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 4 }}>Motivo: {appointment.cancellationReason}</p>}
               </>
             )}
-            {status === 'NO_SHOW' && <p style={{ fontSize: 13, color: '#9ca3af', fontWeight: 600 }}>Cliente não compareceu.</p>}
+            {status === 'NO_SHOW' && <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', fontWeight: 600 }}>Cliente não compareceu.</p>}
           </div>
         )}
 
@@ -1426,13 +1426,13 @@ export function AppointmentSession({
                   {/* Plano já fechado: o que a tela precisa dizer é que a venda
                       saiu, não convidar a fechar de novo. */}
                   {existingPlan?.status === 'ACCEPTED' && (
-                    <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, background: '#f0faf4', borderColor: '#b8e8cc' }}>
-                      <CheckCircle2 size={18} style={{ color: '#2a8a5c', flexShrink: 0 }} />
+                    <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--success-bg)', borderColor: 'var(--success-border)' }}>
+                      <CheckCircle2 size={18} style={{ color: 'var(--success)', flexShrink: 0 }} />
                       <div>
-                        <p style={{ fontSize: 13.5, fontWeight: 800, color: '#1f6b47' }}>
+                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--success)' }}>
                           Plano fechado · {fmtBRL(totalDoPlano)}
                         </p>
-                        <p style={{ fontSize: 12, color: '#2a8a5c', marginTop: 2 }}>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', marginTop: 2 }}>
                           O pagamento do plano foi registrado no checkout.
                         </p>
                       </div>
@@ -1444,12 +1444,12 @@ export function AppointmentSession({
                   {podeReceber && existingPlan?.status === 'PROPOSED' && (
                     <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                       <div>
-                        <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>Plano aguardando checkout</p>
-                        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Plano aguardando checkout</p>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                           Está na fila da recepção — você também pode fechar por aqui.
                         </p>
                       </div>
-                      <button type="button" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}
+                      <button type="button" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}
                         onClick={() => abrirCheckout(existingPlan.id)}>
                         <CreditCard size={14} /> Fechar checkout
                       </button>
@@ -1457,7 +1457,7 @@ export function AppointmentSession({
                   )}
 
                   {genError && (
-                    <p style={{ fontSize: 12.5, color: '#dc2626', fontWeight: 600, padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>
+                    <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>
                       {genError}
                     </p>
                   )}
@@ -1465,10 +1465,10 @@ export function AppointmentSession({
                   {appointment.complaints && (
                     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--hairline)' }}>
-                        <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</h3>
+                        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Dores do cliente</h3>
                       </div>
                       <div style={{ padding: '16px 20px' }}>
-                        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{appointment.complaints}</p>
+                        <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{appointment.complaints}</p>
                       </div>
                     </div>
                   )}
@@ -1516,7 +1516,7 @@ export function AppointmentSession({
                   {/* Observações do atendimento — controladas, sem save individual */}
                   <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-                      <h3 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Observações do atendimento</h3>
+                      <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Observações do atendimento</h3>
                     </div>
                     <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1547,7 +1547,7 @@ export function AppointmentSession({
                   {canManage && (
                     <div className="card" style={{ padding: '20px 24px' }}>
                       {genError && (
-                        <p style={{ fontSize: 12.5, color: '#dc2626', fontWeight: 600, marginBottom: 12, padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, marginBottom: 12, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>
                           {genError}
                         </p>
                       )}
@@ -1560,9 +1560,9 @@ export function AppointmentSession({
                             onClick={() => gerarPlano(true)}
                             style={{
                               width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                              padding: '14px 20px', borderRadius: 'var(--radius-field-token)', fontSize: 14, fontWeight: 800,
+                              padding: '14px 20px', borderRadius: 'var(--radius-field-token)', fontSize: 'var(--text-base-sz)', fontWeight: 800,
                               background: generating ? 'var(--bg-app)' : 'var(--brand)',
-                              color:      generating ? 'var(--text-faint)' : '#fff',
+                              color:      generating ? 'var(--text-faint)' : 'var(--on-brand)',
                               border:     generating ? '1px solid var(--border)' : 'none',
                               cursor:     generating ? 'wait' : 'pointer',
                               boxShadow:  generating ? 'none' : '0 2px 12px rgba(195,77,107,0.3)',
@@ -1582,12 +1582,12 @@ export function AppointmentSession({
                           className={podeReceber ? 'btn-ghost' : undefined}
                           style={podeReceber ? {
                             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                            padding: '12px 20px', fontSize: 13.5, fontWeight: 700,
+                            padding: '12px 20px', fontSize: 'var(--text-base-sz)', fontWeight: 700,
                           } : {
                             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                            padding: '14px 20px', borderRadius: 'var(--radius-field-token)', fontSize: 14, fontWeight: 800,
+                            padding: '14px 20px', borderRadius: 'var(--radius-field-token)', fontSize: 'var(--text-base-sz)', fontWeight: 800,
                             background: generating ? 'var(--bg-app)' : 'var(--brand)',
-                            color:      generating ? 'var(--text-faint)' : '#fff',
+                            color:      generating ? 'var(--text-faint)' : 'var(--on-brand)',
                             border:     generating ? '1px solid var(--border)' : 'none',
                             cursor:     generating ? 'wait' : 'pointer',
                             boxShadow:  generating ? 'none' : '0 2px 12px rgba(195,77,107,0.3)',
@@ -1600,7 +1600,7 @@ export function AppointmentSession({
                         </button>
                       </div>
 
-                      <p style={{ fontSize: 11.5, color: 'var(--text-faint)', textAlign: 'center', marginTop: 10 }}>
+                      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', textAlign: 'center', marginTop: 10 }}>
                         {podeReceber
                           ? 'Salva a avaliação e o plano. "Fechar agora" abre o checkout aqui mesmo; enviar deixa o plano na fila da recepção.'
                           : 'Salva todas as informações e envia o plano para a recepção realizar o checkout.'}
@@ -1624,16 +1624,16 @@ export function AppointmentSession({
                 {/* Salvar tudo de uma vez */}
                 {!editLocked && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <button type="button" onClick={handleSaveAll} disabled={savingAll} className="btn-primary" style={{ gap: 7, fontSize: 14, padding: '10px 22px' }}>
+                    <button type="button" onClick={handleSaveAll} disabled={savingAll} className="btn-primary" style={{ gap: 7, fontSize: 'var(--text-base-sz)', padding: '10px 22px' }}>
                       {savingAll ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
                       {savingAll ? 'Salvando…' : 'Salvar'}
                     </button>
                     {savedAllAt && !savingAll && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#16a34a', fontWeight: 700 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 700 }}>
                         <CheckCircle2 size={15} /> Tudo salvo
                       </span>
                     )}
-                    {saveAllError && <span style={{ fontSize: 13, color: 'var(--warning)', fontWeight: 600 }}>{saveAllError}</span>}
+                    {saveAllError && <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--warning)', fontWeight: 600 }}>{saveAllError}</span>}
                   </div>
                 )}
               </>
@@ -1641,11 +1641,11 @@ export function AppointmentSession({
 
             {/* Histórico */}
             <div className="card" style={{ padding: '18px 20px' }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
+              <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 16 }}>
                 Histórico
               </p>
               {history.length === 0 ? (
-                <p style={{ fontSize: 12.5, color: 'var(--text-faint)', fontStyle: 'italic' }}>Nenhum registro ainda.</p>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', fontStyle: 'italic' }}>Nenhum registro ainda.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {history.map((entry, idx) => {
@@ -1653,12 +1653,12 @@ export function AppointmentSession({
                     return (
                       <div key={entry.id} style={{ display: 'flex', gap: 14, paddingBottom: idx < history.length - 1 ? 14 : 0 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, width: 18 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 3, background: entry.action === 'COMPLETED' ? '#2e7d32' : 'var(--brand)' }} />
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 3, background: entry.action === 'COMPLETED' ? 'var(--success)' : 'var(--brand)' }} />
                           {idx < history.length - 1 && <div style={{ width: 1, flex: 1, background: 'var(--border)', marginTop: 4 }} />}
                         </div>
                         <div style={{ flex: 1, paddingBottom: 2 }}>
-                          <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', marginBottom: 1 }}>{entry.description}</p>
-                          <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                          <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)', marginBottom: 1 }}>{entry.description}</p>
+                          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                             {entry.changedByName} · {dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>

@@ -92,7 +92,7 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
               Crédito para cliente
             </h2>
-            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
               Conceder saldo de crédito interno
             </p>
           </div>
@@ -130,7 +130,7 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
                   padding: '0 10px', background: 'var(--surface)',
                 }}>
                   {clientId
-                    ? <Check size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
+                    ? <Check size={13} style={{ color: 'var(--success)', flexShrink: 0 }} />
                     : <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                   }
                   <input
@@ -146,7 +146,7 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
                     onFocus={() => setOpenDd(true)}
                     style={{
                       flex: 1, border: 'none', outline: 'none', background: 'transparent',
-                      fontSize: 13, color: 'var(--text)', padding: '9px 0',
+                      fontSize: 'var(--text-base-sz)', color: 'var(--text)', padding: '9px 0',
                     }}
                     autoComplete="off"
                   />
@@ -156,7 +156,7 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
                   <div style={{
                     position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 50,
                     background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)', overflow: 'hidden',
+                    boxShadow: 'var(--shadow-popover)', overflow: 'hidden',
                   }}>
                     {filtered.map(c => (
                       <button
@@ -164,7 +164,7 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
                         onMouseDown={() => selectClient(c.id, c.name)}
                         style={{
                           display: 'block', width: '100%', textAlign: 'left',
-                          padding: '9px 14px', fontSize: 13, cursor: 'pointer',
+                          padding: '9px 14px', fontSize: 'var(--text-base-sz)', cursor: 'pointer',
                           background: 'transparent', border: 'none',
                           color: 'var(--text)',
                           borderBottom: '1px solid var(--hairline)',
@@ -179,7 +179,7 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
                 )}
               </div>
               {search.length >= 2 && !clientId && filtered.length === 0 && (
-                <p style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>Nenhum cliente encontrado.</p>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>Nenhum cliente encontrado.</p>
               )}
             </div>
 
@@ -202,7 +202,7 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
             </div>
 
             {state?.error && (
-              <p style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 700 }}>
+              <p style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontSize: 'var(--text-sm-sz)', fontWeight: 700 }}>
                 {state.error}
               </p>
             )}

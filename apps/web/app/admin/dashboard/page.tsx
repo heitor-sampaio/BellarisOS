@@ -83,7 +83,7 @@ export default async function AdminDashboardPage({
 
   if (branchIds.length === 0) {
     return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Nenhuma filial ativa cadastrada.
       </div>
     )

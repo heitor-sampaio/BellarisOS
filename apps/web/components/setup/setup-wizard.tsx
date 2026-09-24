@@ -53,7 +53,7 @@ function Stepper({ current }: { current: number }) {
                 justifyContent: 'center',
                 background: done ? 'var(--success)' : active ? 'var(--brand)' : 'transparent',
                 border: done || active ? 'none' : '2px solid var(--border)',
-                color: done || active ? '#fff' : 'var(--text-faint)',
+                color: done || active ? 'var(--on-brand)' : 'var(--text-faint)',
                 fontSize: 'var(--text-xs-sz)',
                 fontWeight: 'var(--weight-bold)',
                 transition: 'all 200ms',
@@ -62,7 +62,7 @@ function Stepper({ current }: { current: number }) {
                 {done ? <Check size={15} strokeWidth={2.5} /> : i + 1}
               </div>
               <span style={{
-                fontSize: 11,
+                fontSize: 'var(--text-2xs)',
                 fontWeight: active ? 'var(--weight-bold)' : 'var(--weight-medium)',
                 color: active ? 'var(--text)' : done ? 'var(--success)' : 'var(--text-faint)',
                 whiteSpace: 'nowrap',
@@ -437,7 +437,7 @@ function StepDone({ tenantName }: { tenantName: string }) {
         width: 72,
         height: 72,
         borderRadius: '50%',
-        background: 'var(--success-soft, #d1fae5)',
+        background: 'var(--success-soft, var(--success-soft))',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

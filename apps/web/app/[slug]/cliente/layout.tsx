@@ -53,8 +53,8 @@ export default async function ClientPortalLayout({
           paddingRight:   '20px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-            <span style={{ fontSize: 15, color: 'var(--brand)', fontWeight: 800, marginRight: 8, lineHeight: 1 }}>✦</span>
-            <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+            <span style={{ fontSize: 'var(--text-card-title)', color: 'var(--brand)', fontWeight: 800, marginRight: 8, lineHeight: 1 }}>✦</span>
+            <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
               {branchName}
             </span>
           </div>

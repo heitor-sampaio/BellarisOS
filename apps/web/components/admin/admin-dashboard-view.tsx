@@ -137,7 +137,7 @@ function pctDelta(curr: number, prev: number) {
   return { pct: Math.abs(pct), up: pct >= 0 }
 }
 
-const AGE_PIE_COLORS = ['#c34d6b', '#7c3aed', '#0ea5e9', '#16a34a', '#d97706', '#64748b']
+const AGE_PIE_COLORS = ['var(--brand)', 'var(--cat-4)', 'var(--info)', 'var(--success)', 'var(--warning)', 'var(--text-muted)']
 
 // --- Animation primitives -----------------------------------------------------
 
@@ -219,7 +219,7 @@ function SectionHeader({ title }: { title: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
       <span style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+        fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
         color: 'var(--text-muted)', flexShrink: 0,
       }}>
         {title}
@@ -242,15 +242,15 @@ function MiniBarRow({
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0' }}>
-      <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-faint)', width: 16, flexShrink: 0, textAlign: 'right' }}>
+      <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--text-faint)', width: 16, flexShrink: 0, textAlign: 'right' }}>
         {rank}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {name}
           </span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0, marginLeft: 8 }}>
+          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0, marginLeft: 8 }}>
             {label}
           </span>
         </div>
@@ -264,14 +264,14 @@ function MiniBarRow({
 
 function RatingBadge({ value, max = 5 }: { value: number; max?: number }) {
   const pct = (value / max) * 100
-  const color = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626'
+  const color = pct >= 80 ? 'var(--success)' : pct >= 60 ? 'var(--warning)' : 'var(--danger)'
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <span style={{ fontSize: 13, fontWeight: 800, color, letterSpacing: '-0.01em' }}>
+      <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color, letterSpacing: '-0.01em' }}>
         {value.toFixed(1)}
       </span>
-      <span style={{ fontSize: 11, color }}>★</span>
-      <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>/ {max}</span>
+      <span style={{ fontSize: 'var(--text-2xs)', color }}>★</span>
+      <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>/ {max}</span>
     </div>
   )
 }
@@ -298,7 +298,7 @@ function KpiCard({
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+          fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
           color: brand ? 'rgba(255,255,255,.72)' : 'var(--text-muted)',
         }}>{label}</span>
         <div style={{
@@ -314,12 +314,12 @@ function KpiCard({
         format={format}
         style={{
           fontSize: 'clamp(21px, 5.4vw, 28px)', fontWeight: 800, letterSpacing: '-0.028em', lineHeight: 1,
-          color: brand ? '#fff' : 'var(--text)',
+          color: brand ? 'var(--on-brand)' : 'var(--text)',
         }}
       />
 
       {sub && (
-        <span style={{ fontSize: 11, color: brand ? 'rgba(255,255,255,.6)' : 'var(--text-faint)' }}>
+        <span style={{ fontSize: 'var(--text-2xs)', color: brand ? 'rgba(255,255,255,.6)' : 'var(--text-faint)' }}>
           {sub}
         </span>
       )}
@@ -327,13 +327,13 @@ function KpiCard({
       {delta != null && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: -2 }}>
           {delta.up
-            ? <ArrowUpRight  size={12} color={brand ? 'rgba(255,255,255,.8)' : '#16a34a'} />
-            : <ArrowDownRight size={12} color={brand ? 'rgba(255,255,255,.55)' : '#dc2626'} />}
+            ? <ArrowUpRight  size={12} color={brand ? 'rgba(255,255,255,.8)' : 'var(--success)'} />
+            : <ArrowDownRight size={12} color={brand ? 'rgba(255,255,255,.55)' : 'var(--danger)'} />}
           <span style={{
-            fontSize: 11, fontWeight: 700,
+            fontSize: 'var(--text-2xs)', fontWeight: 700,
             color: brand
               ? (delta.up ? 'rgba(255,255,255,.8)' : 'rgba(255,255,255,.55)')
-              : (delta.up ? '#16a34a' : '#dc2626'),
+              : (delta.up ? 'var(--success)' : 'var(--danger)'),
           }}>
             {delta.pct.toFixed(1).replace('.', ',')}% vs. mês anterior
           </span>
@@ -346,10 +346,10 @@ function KpiCard({
 // --- Status dot --------------------------------------------------------------
 
 const STATUS_COLORS: Record<string, string> = {
-  scheduled:  '#94a3b8',
-  confirmed:  '#3b82f6',
-  inProgress: '#f59e0b',
-  completed:  '#16a34a',
+  scheduled:  'var(--text-muted)',
+  confirmed:  'var(--info)',
+  inProgress: 'var(--warning)',
+  completed:  'var(--success)',
 }
 
 function StatusPill({ label, count, colorKey }: { label: string; count: number; colorKey: string }) {
@@ -361,7 +361,7 @@ function StatusPill({ label, count, colorKey }: { label: string; count: number; 
         background: STATUS_COLORS[colorKey],
         flexShrink: 0,
       }} />
-      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600 }}>
         {count} {label}
       </span>
     </div>
@@ -419,17 +419,17 @@ export function AdminDashboardView({
           }}>
             Visão geral da rede
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 4 }}>
             {monthLabel} · {branchCount} filial{branchCount !== 1 ? 'is' : ''} · {totalClientsEver.toLocaleString('pt-BR')} clientes
           </p>
           {!hasAlerts && (
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '5px 10px', borderRadius: 'var(--radius-chip-token)', marginTop: 8,
-              background: '#f0fdf4', border: '1.5px solid #bbf7d0',
+              background: 'var(--success-bg)', border: '1.5px solid var(--success-border)',
             }}>
-              <CheckCircle2 size={11} color="#16a34a" />
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#15803d' }}>
+              <CheckCircle2 size={11} color="var(--success)" />
+              <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--success)' }}>
                 Tudo em ordem
               </span>
             </div>
@@ -449,7 +449,7 @@ export function AdminDashboardView({
           value={totalRevenue}
           format="brl"
           delta={deltaRevenue}
-          icon={<TrendingUp size={16} color="#fff" />}
+          icon={<TrendingUp size={16} color="var(--surface)" />}
         />}
         {can('financial') && <KpiCard
           label="Custo do mês"
@@ -495,8 +495,8 @@ export function AdminDashboardView({
           <EvolutionChart data={evolutionData} monthLabel={monthLabel} granularity={granularity} />
 
           <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking de filiais</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{monthLabel}</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking de filiais</span>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{monthLabel}</span>
           </div>
 
           <div className="table-wrap">
@@ -511,7 +511,7 @@ export function AdminDashboardView({
                   <th key={i} style={{
                     padding: i === 0 ? '9px 8px 9px 18px' : '9px 16px',
                     textAlign: i <= 1 ? 'left' : (i === 6 ? 'right' : 'right'),
-                    fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+                    fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                     width: i === 0 ? 32 : i === 6 ? 56 : undefined,
                   }}>{h}</th>
@@ -528,26 +528,26 @@ export function AdminDashboardView({
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
-                    <td data-label="" className="so-desktop" style={{ padding: '13px 8px 13px 18px', fontSize: 12, fontWeight: 800, color: 'var(--text-faint)', width: 32 }}>
+                    <td data-label="" className="so-desktop" style={{ padding: '13px 8px 13px 18px', fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text-faint)', width: 32 }}>
                       {i + 1}
                     </td>
                     <td data-label="" style={{ padding: '13px 16px', maxWidth: 220 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'block' }}>{b.name}</span>
+                      <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', display: 'block' }}>{b.name}</span>
                       {/* mini bar */}
                       <div style={{ marginTop: 5 }}>
                         <AnimatedBar pct={pct} color="var(--brand)" height={3} maxWidth={160} />
                       </div>
                     </td>
-                    <td data-label="Receita" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: b.revenue > 0 ? '#16a34a' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
+                    <td data-label="Receita" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: b.revenue > 0 ? 'var(--success)' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
                       {fmtBRL(b.revenue)}
                     </td>
-                    <td data-label="Atend." data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
+                    <td data-label="Atend." data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                       {b.appointments}
                     </td>
-                    <td data-label="Novos" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
+                    <td data-label="Novos" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                       {b.newClients}
                     </td>
-                    <td data-label="Ticket médio" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    <td data-label="Ticket médio" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {b.ticketMedio > 0 ? fmtBRL(b.ticketMedio) : '—'}
                     </td>
                     <td data-label="" style={{ padding: '13px 16px', textAlign: 'right' }}>
@@ -559,7 +559,7 @@ export function AdminDashboardView({
                       <a
                         href={`/${b.slug}/dashboard`}
                         title={`Abrir o portal da unidade ${b.name}`}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none' }}
                       >
                         Abrir unidade <ExternalLink size={10} />
                       </a>
@@ -571,7 +571,7 @@ export function AdminDashboardView({
           </table>
 
           {sortedStats.length === 0 && (
-            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+            <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
               Nenhuma filial ativa.
             </div>
           )}
@@ -589,7 +589,7 @@ export function AdminDashboardView({
           <div style={{ padding: '16px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Clock size={14} color="var(--text-muted)" />
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Hoje na rede</span>
+              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Hoje na rede</span>
             </div>
             <AnimatedNum
               value={todayTotal}
@@ -603,7 +603,7 @@ export function AdminDashboardView({
           {todayByBranch.length === 0 ? (
             <div style={{ padding: '28px 18px', textAlign: 'center' }}>
               <CheckCircle2 size={28} color="var(--border)" style={{ margin: '0 auto 10px' }} />
-              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Nenhum agendamento para hoje</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum agendamento para hoje</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -621,11 +621,11 @@ export function AdminDashboardView({
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <a
                         href={`/admin/agenda?unidade=${b.slug}`}
-                        style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', textDecoration: 'none' }}
+                        style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', textDecoration: 'none' }}
                       >
                         {b.name}
                       </a>
-                      <AnimatedNum value={b.total} format="int" style={{ fontSize: 16, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }} />
+                      <AnimatedNum value={b.total} format="int" style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }} />
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
                       <StatusPill label="ag."    count={b.scheduled}  colorKey="scheduled"  />
@@ -643,9 +643,9 @@ export function AdminDashboardView({
         {/* Card indicador de estoque */}
         {can('stock') && (() => {
           const cfg = {
-            healthy:  { label: 'Saudável',   bg: '#f0fdf4', border: '#bbf7d0', dot: '#16a34a', text: '#15803d' },
-            warning:  { label: 'Atenção',    bg: '#fffbeb', border: '#fde68a', dot: '#d97706', text: '#92400e' },
-            critical: { label: 'Emergência', bg: '#fff1f2', border: '#fecaca', dot: '#dc2626', text: '#991b1b' },
+            healthy:  { label: 'Saudável',   bg: 'var(--success-bg)', border: 'var(--success-border)', dot: 'var(--success)', text: 'var(--success)' },
+            warning:  { label: 'Atenção',    bg: 'var(--warning-soft)', border: 'var(--warning-border)', dot: 'var(--warning)', text: 'var(--warning)' },
+            critical: { label: 'Emergência', bg: 'var(--danger-soft)', border: 'var(--danger-border)', dot: 'var(--danger)', text: 'var(--danger)' },
           }[stockStatus]
           return (
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -653,7 +653,7 @@ export function AdminDashboardView({
               <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Package size={14} color="var(--text-muted)" />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Estoque</span>
+                  <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Estoque</span>
                 </div>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 5,
@@ -661,31 +661,31 @@ export function AdminDashboardView({
                   background: cfg.bg, border: `1.5px solid ${cfg.border}`,
                 }}>
                   <div style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.dot, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: cfg.text }}>{cfg.label}</span>
+                  <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: cfg.text }}>{cfg.label}</span>
                 </div>
               </div>
 
               {/* Giro */}
               <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Giro do mês</span>
-                <AnimatedNum value={stockTurnover} format="brl" style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }} />
+                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Giro do mês</span>
+                <AnimatedNum value={stockTurnover} format="brl" style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }} />
               </div>
 
               {/* Zerados */}
               <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Produtos zerados</span>
+                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Produtos zerados</span>
                 <AnimatedNum value={zeroStockCount} format="int" style={{
-                  fontSize: 14, fontWeight: 800, letterSpacing: '-0.01em',
-                  color: zeroStockCount > 0 ? '#dc2626' : 'var(--text-faint)',
+                  fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em',
+                  color: zeroStockCount > 0 ? 'var(--danger)' : 'var(--text-faint)',
                 }} />
               </div>
 
               {/* Estoque baixo */}
               <div style={{ padding: '13px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Estoque baixo</span>
+                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Estoque baixo</span>
                 <AnimatedNum value={lowStockCount} format="int" style={{
-                  fontSize: 14, fontWeight: 800, letterSpacing: '-0.01em',
-                  color: lowStockCount > 0 ? '#d97706' : 'var(--text-faint)',
+                  fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em',
+                  color: lowStockCount > 0 ? 'var(--warning)' : 'var(--text-faint)',
                 }} />
               </div>
             </div>
@@ -703,15 +703,15 @@ export function AdminDashboardView({
 
           {/* Planos aguardando checkout */}
           {can('procedures') && pendingPlans.length > 0 && (
-            <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1.5px solid #fde68a' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 8, background: '#fffbeb' }}>
-                <ClipboardList size={14} color="#d97706" />
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1.5px solid var(--warning-border)' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--warning-border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--warning-soft)' }}>
+                <ClipboardList size={14} color="var(--warning)" />
+                <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--warning)' }}>
                   Planos aguardando checkout
                 </span>
                 <span style={{
-                  marginLeft: 'auto', fontSize: 11, fontWeight: 800,
-                  background: '#d97706', color: '#fff',
+                  marginLeft: 'auto', fontSize: 'var(--text-2xs)', fontWeight: 800,
+                  background: 'var(--warning)', color: 'var(--surface)',
                   padding: '2px 8px', borderRadius: 10,
                 }}>
                   {pendingPlans.length}
@@ -728,23 +728,23 @@ export function AdminDashboardView({
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {p.clientName}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', margin: '2px 0 0' }}>
                         {p.branchName} · {timeSince(p.createdAt)}
                       </p>
                     </div>
                     <a
                       href={`/admin/checkout/${p.id}`}
-                      style={{ fontSize: 11, fontWeight: 700, color: '#d97706', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                      style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--warning)', textDecoration: 'none', whiteSpace: 'nowrap' }}
                     >
                       Checkout →
                     </a>
                   </div>
                 ))}
                 {pendingPlans.length > 5 && (
-                  <div style={{ padding: '10px 18px', borderTop: '1px solid var(--hairline)', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
+                  <div style={{ padding: '10px 18px', borderTop: '1px solid var(--hairline)', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', textAlign: 'center' }}>
                     +{pendingPlans.length - 5} mais
                   </div>
                 )}
@@ -754,15 +754,15 @@ export function AdminDashboardView({
 
           {/* Estoque crítico */}
           {can('stock') && lowStockItems.length > 0 && (
-            <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1.5px solid #fecaca' }}>
-              <div style={{ padding: '14px 18px', borderBottom: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: 8, background: '#fff1f2' }}>
-                <Package size={14} color="#dc2626" />
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#991b1b' }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden', border: '1.5px solid var(--danger-border)' }}>
+              <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--danger-border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--danger-soft)' }}>
+                <Package size={14} color="var(--danger)" />
+                <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--danger)' }}>
                   Estoque crítico
                 </span>
                 <span style={{
-                  marginLeft: 'auto', fontSize: 11, fontWeight: 800,
-                  background: '#dc2626', color: '#fff',
+                  marginLeft: 'auto', fontSize: 'var(--text-2xs)', fontWeight: 800,
+                  background: 'var(--danger)', color: 'var(--surface)',
                   padding: '2px 8px', borderRadius: 10,
                 }}>
                   {lowStockItems.length}
@@ -779,23 +779,23 @@ export function AdminDashboardView({
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {item.productName}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', margin: '2px 0 0' }}>
                         {item.branchName} · {item.currentStock} de {item.minStock} mín.
                       </p>
                     </div>
                     <a
                       href={`/admin/estoque?unidade=${item.branchSlug}`}
-                      style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                      style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--danger)', textDecoration: 'none', whiteSpace: 'nowrap' }}
                     >
                       Ver →
                     </a>
                   </div>
                 ))}
                 {lowStockItems.length > 5 && (
-                  <div style={{ padding: '10px 18px', borderTop: '1px solid var(--hairline)', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
+                  <div style={{ padding: '10px 18px', borderTop: '1px solid var(--hairline)', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', textAlign: 'center' }}>
                     +{lowStockItems.length - 5} mais
                   </div>
                 )}
@@ -815,24 +815,24 @@ export function AdminDashboardView({
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Taxa de aproveitamento</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 10 }}>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Taxa de aproveitamento</span>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginLeft: 10 }}>
               horários passados concluídos ÷ total marcado
             </span>
           </div>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{monthLabel}</span>
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{monthLabel}</span>
         </div>
 
         {branchOccupancy.length === 0 ? (
-          <p style={{ padding: '24px 20px', fontSize: 12, color: 'var(--text-muted)' }}>
+          <p style={{ padding: '24px 20px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             Sem agendamentos registrados no período.
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {branchOccupancy.map((b, i) => {
               const pct    = b.occupancyPct
-              const color  = pct >= 80 ? '#16a34a' : pct >= 60 ? '#d97706' : '#dc2626'
-              const barBg  = pct >= 80 ? '#dcfce7' : pct >= 60 ? '#fef3c7' : '#fee2e2'
+              const color  = pct >= 80 ? 'var(--success)' : pct >= 60 ? 'var(--warning)' : 'var(--danger)'
+              const barBg  = pct >= 80 ? 'var(--success-soft)' : pct >= 60 ? 'var(--warning-soft)' : 'var(--danger-soft)'
               return (
                 <div
                   key={b.slug}
@@ -852,7 +852,7 @@ export function AdminDashboardView({
                   <a
                     href={`/admin/agenda?unidade=${b.slug}`}
                     className="occ-name"
-                    style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', textDecoration: 'none' }}
+                    style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', textDecoration: 'none' }}
                   >
                     {b.name}
                   </a>
@@ -869,7 +869,7 @@ export function AdminDashboardView({
                       color,
                     }} />
                     <span style={{
-                      fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+                      fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 6px', borderRadius: 6,
                       background: barBg, color,
                     }}>
                       {pct >= 80 ? 'Alta' : pct >= 60 ? 'Média' : 'Baixa'}
@@ -877,8 +877,8 @@ export function AdminDashboardView({
                   </div>
 
                   {/* Detalhes */}
-                  <div className="occ-details" style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--text-muted)' }}>
-                    <span style={{ color: '#16a34a', fontWeight: 700 }}>{b.completed} concluídos</span>
+                  <div className="occ-details" style={{ display: 'flex', gap: 12, fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                    <span style={{ color: 'var(--success)', fontWeight: 700 }}>{b.completed} concluídos</span>
                     <span>{b.cancelled} cancelados</span>
                     <span>{b.noShow} no-show</span>
                   </div>
@@ -901,10 +901,10 @@ export function AdminDashboardView({
         {/* Ranking - Procedimentos realizados */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos realizados</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos realizados</span>
           </div>
           {topProcedures.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados de procedimentos no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados de procedimentos no período.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {topProcedures.map((p, i) => (
@@ -920,10 +920,10 @@ export function AdminDashboardView({
         {/* Ranking - Recorrência */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking — Recorrência</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Recorrência</span>
           </div>
           {topRecurring.filter(p => p.repeatVisits > 0).length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Sem retornos no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem retornos no período.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {(() => {
@@ -944,10 +944,10 @@ export function AdminDashboardView({
         {/* Ranking - Procedimentos por receita bruta */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos por receita bruta</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos por receita bruta</span>
           </div>
           {topProceduresByRevenue.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados de receita no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados de receita no período.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {topProceduresByRevenue.map((p, i) => (
@@ -963,10 +963,10 @@ export function AdminDashboardView({
         {/* Ranking - Procedimentos por margem */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos por margem</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Procedimentos por margem</span>
           </div>
           {procedureMargins.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '20px 18px' }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>
               Sem custo variável cadastrado nos procedimentos.
             </p>
           ) : (
@@ -977,7 +977,7 @@ export function AdminDashboardView({
                   {['Procedimento', 'Preço', 'Margem'].map(h => (
                     <th key={h} style={{
                       padding: '9px 14px', textAlign: h === 'Procedimento' ? 'left' : 'right',
-                      fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+                      fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
                       letterSpacing: '0.06em', textTransform: 'uppercase',
                     }}>{h}</th>
                   ))}
@@ -991,18 +991,18 @@ export function AdminDashboardView({
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
-                    <td style={{ padding: '11px 14px', fontSize: 12, fontWeight: 600, color: 'var(--text)', maxWidth: 160 }}>
+                    <td style={{ padding: '11px 14px', fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)', maxWidth: 160 }}>
                       <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {p.name}
                       </span>
                     </td>
-                    <td style={{ padding: '11px 14px', textAlign: 'right', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '11px 14px', textAlign: 'right', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {p.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </td>
                     <td style={{ padding: '11px 14px', textAlign: 'right' }}>
                       <span style={{
-                        fontSize: 12, fontWeight: 800,
-                        color: p.marginPct >= 70 ? '#16a34a' : p.marginPct >= 40 ? '#d97706' : '#dc2626',
+                        fontSize: 'var(--text-sm-sz)', fontWeight: 800,
+                        color: p.marginPct >= 70 ? 'var(--success)' : p.marginPct >= 40 ? 'var(--warning)' : 'var(--danger)',
                       }}>
                         {p.marginPct.toFixed(1).replace('.', ',')}%
                       </span>
@@ -1017,11 +1017,11 @@ export function AdminDashboardView({
 
         {/* Procedimentos melhor avaliados */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: '#f0fdf4' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#166534' }}>★ Procedimentos melhor avaliados</span>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--success-bg)' }}>
+            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)' }}>★ Procedimentos melhor avaliados</span>
           </div>
           {bestRatedProcedures.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
@@ -1029,10 +1029,10 @@ export function AdminDashboardView({
                   <tr key={i} style={{ borderBottom: i < bestRatedProcedures.length - 1 ? '1px solid var(--hairline)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                    <td style={{ padding: '10px 14px', width: 28 }}><span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-faint)' }}>{i + 1}</span></td>
-                    <td style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{p.name}</td>
+                    <td style={{ padding: '10px 14px', width: 28 }}><span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--text-faint)' }}>{i + 1}</span></td>
+                    <td style={{ padding: '10px 8px', fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)' }}>{p.name}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }}><RatingBadge value={p.avgRating} /></td>
-                    <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{p.count} aval.</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{p.count} aval.</td>
                   </tr>
                 ))}
               </tbody>
@@ -1042,11 +1042,11 @@ export function AdminDashboardView({
 
         {/* Procedimentos pior avaliados */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: '#fff1f2' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#991b1b' }}>⚠ Procedimentos pior avaliados</span>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--danger-soft)' }}>
+            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--danger)' }}>⚠ Procedimentos pior avaliados</span>
           </div>
           {worstRatedProcedures.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
@@ -1054,10 +1054,10 @@ export function AdminDashboardView({
                   <tr key={i} style={{ borderBottom: i < worstRatedProcedures.length - 1 ? '1px solid var(--hairline)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                    <td style={{ padding: '10px 14px', width: 28 }}><span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-faint)' }}>{i + 1}</span></td>
-                    <td style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{p.name}</td>
+                    <td style={{ padding: '10px 14px', width: 28 }}><span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--text-faint)' }}>{i + 1}</span></td>
+                    <td style={{ padding: '10px 8px', fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)' }}>{p.name}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }}><RatingBadge value={p.avgRating} /></td>
-                    <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{p.count} aval.</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{p.count} aval.</td>
                   </tr>
                 ))}
               </tbody>
@@ -1079,14 +1079,14 @@ export function AdminDashboardView({
         {/* Ranking — Mais solicitados */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking — Mais solicitados</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Mais solicitados</span>
           </div>
           {topProfessionals.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados no período.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {topProfessionals.map((p, i) => (
-                <MiniBarRow key={i} rank={i + 1} name={p.name} label={`${p.count} atend.`} pct={p.pct} accent="#3b82f6" />
+                <MiniBarRow key={i} rank={i + 1} name={p.name} label={`${p.count} atend.`} pct={p.pct} accent="var(--info)" />
               ))}
             </div>
           )}
@@ -1095,17 +1095,17 @@ export function AdminDashboardView({
         {/* Ranking — Vendas */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking — Vendas</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Vendas</span>
           </div>
           {topProfessionalsByRevenue.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados no período.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {topProfessionalsByRevenue.map((p, i) => (
                 <MiniBarRow
                   key={i} rank={i + 1} name={p.name}
                   label={p.revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  pct={p.pct} accent="#3b82f6"
+                  pct={p.pct} accent="var(--info)"
                 />
               ))}
             </div>
@@ -1115,17 +1115,17 @@ export function AdminDashboardView({
         {/* Ranking — Comissão */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking — Comissão</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Comissão</span>
           </div>
           {topProfessionalsByCommission.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Sem comissões no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem comissões no período.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {topProfessionalsByCommission.map((p, i) => (
                 <MiniBarRow
                   key={i} rank={i + 1} name={p.name}
                   label={p.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  pct={p.pct} accent="#3b82f6"
+                  pct={p.pct} accent="var(--info)"
                 />
               ))}
             </div>
@@ -1134,11 +1134,11 @@ export function AdminDashboardView({
 
         {/* Melhor avaliados */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: '#f0fdf4' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#166534' }}>★ Melhor avaliados</span>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--success-bg)' }}>
+            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)' }}>★ Melhor avaliados</span>
           </div>
           {bestRatedPros.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
@@ -1146,10 +1146,10 @@ export function AdminDashboardView({
                   <tr key={i} style={{ borderBottom: i < bestRatedPros.length - 1 ? '1px solid var(--hairline)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                    <td style={{ padding: '10px 14px', width: 28 }}><span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-faint)' }}>{i + 1}</span></td>
-                    <td style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{p.name}</td>
+                    <td style={{ padding: '10px 14px', width: 28 }}><span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--text-faint)' }}>{i + 1}</span></td>
+                    <td style={{ padding: '10px 8px', fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)' }}>{p.name}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }}><RatingBadge value={p.avgRating} /></td>
-                    <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{p.count} aval.</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{p.count} aval.</td>
                   </tr>
                 ))}
               </tbody>
@@ -1159,11 +1159,11 @@ export function AdminDashboardView({
 
         {/* Pior avaliados */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: '#fff1f2' }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#991b1b' }}>⚠ Pior avaliados</span>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--danger-soft)' }}>
+            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--danger)' }}>⚠ Pior avaliados</span>
           </div>
           {worstRatedPros.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '20px 18px' }}>Sem avaliações no período.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
@@ -1171,10 +1171,10 @@ export function AdminDashboardView({
                   <tr key={i} style={{ borderBottom: i < worstRatedPros.length - 1 ? '1px solid var(--hairline)' : 'none' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                    <td style={{ padding: '10px 14px', width: 28 }}><span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-faint)' }}>{i + 1}</span></td>
-                    <td style={{ padding: '10px 8px', fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{p.name}</td>
+                    <td style={{ padding: '10px 14px', width: 28 }}><span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--text-faint)' }}>{i + 1}</span></td>
+                    <td style={{ padding: '10px 8px', fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)' }}>{p.name}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }}><RatingBadge value={p.avgRating} /></td>
-                    <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 11, color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{p.count} aval.</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'right', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{p.count} aval.</td>
                   </tr>
                 ))}
               </tbody>
@@ -1195,10 +1195,10 @@ export function AdminDashboardView({
         {/* Ranking — Valor gasto */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking — Valor gasto</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Valor gasto</span>
           </div>
           {topClients.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '24px 20px' }}>Sem dados de clientes no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '24px 20px' }}>Sem dados de clientes no período.</p>
           ) : (
             <div className="table-wrap">
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1208,7 +1208,7 @@ export function AdminDashboardView({
                     <th key={h} style={{
                       padding: i === 0 ? '9px 8px 9px 18px' : '9px 16px',
                       textAlign: i <= 1 ? 'left' : 'right',
-                      fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+                      fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
                       letterSpacing: '0.06em', textTransform: 'uppercase',
                       width: i === 0 ? 32 : undefined,
                     }}>{h}</th>
@@ -1223,13 +1223,13 @@ export function AdminDashboardView({
                       style={{ borderBottom: i < topClients.length - 1 ? '1px solid var(--hairline)' : 'none' }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                       onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                      <td style={{ padding: '12px 8px 12px 18px', fontSize: 12, fontWeight: 800, color: 'var(--text-faint)', width: 32 }}>{i + 1}</td>
-                      <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{c.name}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#16a34a', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 8px 12px 18px', fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text-faint)', width: 32 }}>{i + 1}</td>
+                      <td style={{ padding: '12px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{c.name}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--success)', whiteSpace: 'nowrap' }}>
                         {c.totalSpent.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>{c.appointmentCount}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>{c.appointmentCount}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                         {ticketC > 0 ? ticketC.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
                       </td>
                     </tr>
@@ -1244,10 +1244,10 @@ export function AdminDashboardView({
         {/* Ranking — Recorrência */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking — Recorrência</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Recorrência</span>
           </div>
           {topClientsByRecurrence.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados no período.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem dados no período.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {topClientsByRecurrence.map((c, i) => (
@@ -1260,11 +1260,11 @@ export function AdminDashboardView({
 
         {/* Faixa etária — pizza */}
         <div className="card" style={{ padding: '18px 20px' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'block', marginBottom: 12 }}>
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', display: 'block', marginBottom: 12 }}>
             Faixa etária
           </span>
           {clientAgeGroups.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>
               Sem data de nascimento cadastrada.
             </p>
           ) : (
@@ -1290,9 +1290,9 @@ export function AdminDashboardView({
                       [`${value} cliente${Number(value) !== 1 ? 's' : ''}`, String(name)]
                     }
                     contentStyle={{
-                      fontSize: 11, borderRadius: 6,
+                      fontSize: 'var(--text-2xs)', borderRadius: 6,
                       border: '1px solid var(--border)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,.08)',
+                      boxShadow: 'none',
                     }}
                   />
                 </PieChart>
@@ -1306,9 +1306,9 @@ export function AdminDashboardView({
                         width: 8, height: 8, borderRadius: 2, flexShrink: 0,
                         background: AGE_PIE_COLORS[i % AGE_PIE_COLORS.length],
                       }} />
-                      <span style={{ fontSize: 11, color: 'var(--text)' }}>{g.label}</span>
+                      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text)' }}>{g.label}</span>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+                    <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>
                       {g.count} · {g.pct.toFixed(0)}%
                     </span>
                   </div>
@@ -1321,10 +1321,10 @@ export function AdminDashboardView({
         {/* Ranking — Localização */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Ranking — Localização</span>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Localização</span>
           </div>
           {topClientsByLocation.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Sem cidade cadastrada.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem cidade cadastrada.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {topClientsByLocation.map((l, i) => (
@@ -1364,22 +1364,22 @@ export function AdminDashboardView({
             justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
           }}>
             <div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Funil de leads por estágio</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 10 }}>{monthLabel}</span>
+              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Funil de leads por estágio</span>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginLeft: 10 }}>{monthLabel}</span>
             </div>
             {/* Um funil por vez: as etapas de funis diferentes não se sucedem. */}
             <FunnelSelect funnels={funnels} activeId={activeFunnelId} />
           </div>
           {leadFunnel.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', padding: '16px 0' }}>Nenhum estágio de CRM configurado.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Nenhum estágio de CRM configurado.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {leadFunnel.map((f, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)', minWidth: 120, flexShrink: 0 }}>{f.name}</span>
+                  <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', minWidth: 120, flexShrink: 0 }}>{f.name}</span>
                   <div style={{ flex: 1, height: 22, borderRadius: 6, background: 'var(--bg-app)', overflow: 'hidden', position: 'relative' }}>
                     <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.max((f.count / maxFunnel) * 100, f.count > 0 ? 12 : 0)}%`, background: 'var(--brand)', borderRadius: 6 }} />
-                    {f.count > 0 && <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, fontWeight: 800, color: '#fff' }}>{f.count}</span>}
+                    {f.count > 0 && <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--on-brand)' }}>{f.count}</span>}
                   </div>
                 </div>
               ))}
@@ -1392,7 +1392,7 @@ export function AdminDashboardView({
           <p style={{ fontSize: 34, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--brand)', marginTop: 8, lineHeight: 1 }}>
             {conversionRate.toFixed(1).replace('.', ',')}%
           </p>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 8 }}>
             {leadsConverted} de {leadsTotal} leads convertidos
           </p>
         </div>
@@ -1414,12 +1414,12 @@ export function AdminDashboardView({
       ) : (
         <div className="card" style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Conecte o Meta Ads</p>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Conecte o Meta Ads</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
               Integre sua conta de anúncios para ver alcance e gasto. {marketing.notifActive} campanha(s) de notificação ativa(s).
             </p>
           </div>
-          <a href="/admin/settings?tab=integrations" style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Configurar →</a>
+          <a href="/admin/settings?tab=integrations" style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Configurar →</a>
         </div>
       )}
       </>)}

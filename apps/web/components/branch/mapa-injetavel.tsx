@@ -103,10 +103,10 @@ export function MapaInjetavel({
   }
 
   if (erro && !plano) {
-    return <p style={{ fontSize: 13, color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>
+    return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>
   }
   if (!plano || !mapa) {
-    return <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Carregando planejamento…</p>
+    return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Carregando planejamento…</p>
   }
 
   // -- Uma aplicação antiga, em leitura ---------------------------------------
@@ -115,10 +115,10 @@ export function MapaInjetavel({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button type="button" onClick={() => setVendo(null)} className="btn-ghost"
-            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, padding: '5px 10px' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }}>
             <ChevronLeft size={14} /> Planejamento
           </button>
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
+          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
             Aplicação de {new Date(vendo.appliedAt).toLocaleDateString('pt-BR')}
             {vendo.profissional ? ` · ${vendo.profissional}` : ''}
           </span>
@@ -127,7 +127,7 @@ export function MapaInjetavel({
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {vendo.totais.map(t => (
             <span key={`${t.product}-${t.unit}`} style={{
-              fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',
+              fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',
               background: 'var(--bg-app)', color: 'var(--text-muted)',
             }}>
               {t.product}: {t.applied || t.planned} {t.unit}
@@ -146,7 +146,7 @@ export function MapaInjetavel({
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         {onVoltar && (
           <button type="button" onClick={onVoltar} className="btn-ghost"
-            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, padding: '5px 10px' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }}>
             <ChevronLeft size={14} /> Voltar
           </button>
         )}
@@ -157,15 +157,15 @@ export function MapaInjetavel({
               className="field" autoFocus value={nomeNovo}
               onChange={e => setNomeNovo(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') void renomear(); if (e.key === 'Escape') setRenomeando(false) }}
-              style={{ width: 240, padding: '5px 9px', fontSize: 13 }}
+              style={{ width: 240, padding: '5px 9px', fontSize: 'var(--text-base-sz)' }}
             />
-            <button type="button" onClick={renomear} className="btn-primary" style={{ padding: '5px 12px', fontSize: 12.5 }}>
+            <button type="button" onClick={renomear} className="btn-primary" style={{ padding: '5px 12px', fontSize: 'var(--text-sm-sz)' }}>
               Salvar
             </button>
           </span>
         ) : (
           <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>{plano.nome}</h3>
+            <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>{plano.nome}</h3>
             {podeEditar && (
               <button type="button" className="btn-ghost" style={{ padding: '3px 5px' }}
                 onClick={() => { setNomeNovo(plano.nome); setRenomeando(true) }}>
@@ -183,7 +183,7 @@ export function MapaInjetavel({
           // do pathname — a ficha da rede é /admin. Dentro da própria ficha o
           // link apontaria para onde já se está: ali vira só o nome.
           <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12,
+            display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)',
             fontWeight: 700, color: 'var(--brand)',
           }}>
             <UserCheck size={13} />
@@ -204,7 +204,7 @@ export function MapaInjetavel({
           </span>
         ) : podeEditar && (
           <button type="button" onClick={() => setLigando(v => !v)} className="btn-secondary"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm-sz)' }}>
             <UserPlus size={13} /> Ligar a um cliente
           </button>
         )}
@@ -233,7 +233,7 @@ export function MapaInjetavel({
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {totais.map(t => (
             <span key={`${t.product}-${t.unit}`} style={{
-              fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',
+              fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',
               background: 'var(--brand-soft)', color: 'var(--brand)',
             }}>
               {t.product}: {t.planned} {t.unit}
@@ -245,7 +245,7 @@ export function MapaInjetavel({
       {podeEditar && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" onClick={salvar} disabled={salvando} className="btn-ghost"
-            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
             {salvando ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             Salvar planejamento
           </button>
@@ -254,18 +254,18 @@ export function MapaInjetavel({
               cópia congelada passa a fazer parte. */}
           {appointmentId && plano.clientId && (
             <button type="button" onClick={registrar} disabled={salvando} className="btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
               <Syringe size={14} /> Registrar aplicação
             </button>
           )}
 
           {msg && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#16a34a', fontWeight: 700 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>
               <CheckCircle2 size={14} /> {msg}
             </span>
           )}
           {erro && (
-            <span style={{ fontSize: 12.5, color: 'var(--warning)', fontWeight: 700 }}>{erro}</span>
+            <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 700 }}>{erro}</span>
           )}
         </div>
       )}
@@ -273,11 +273,11 @@ export function MapaInjetavel({
       {/* Histórico — do CLIENTE, não deste planejamento: quem abre um mapa novo
           precisa ver o que já foi aplicado antes. */}
       <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 12 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
           Aplicações do cliente ({plano.aplicacoes.length})
         </p>
         {plano.aplicacoes.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
             {plano.clientId
               ? 'Nenhuma aplicação registrada ainda. O que for registrado num atendimento fica guardado aqui, como foi.'
               : 'Sem cliente ligado, não há histórico para mostrar.'}
@@ -291,11 +291,11 @@ export function MapaInjetavel({
                   padding: '10px 12px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
                   border: '1px solid var(--border)', background: 'var(--surface)',
                 }}>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
+                <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
                   {new Date(a.appliedAt).toLocaleDateString('pt-BR')}
                   {a.profissional ? ` · ${a.profissional}` : ''}
                 </span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   {a.totais.length > 0
                     ? a.totais.map(t => `${t.product} ${t.applied || t.planned} ${t.unit}`).join(' · ')
                     : `${a.mapa.points.length} ponto(s)`}
@@ -343,15 +343,15 @@ function BuscaDeCliente({ onEscolher }: { onEscolher: (id: string, nome: string)
           onChange={e => setTermo(e.target.value)}
         />
       </div>
-      {buscando && <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>Procurando…</span>}
+      {buscando && <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Procurando…</span>}
       {achados.map(c => (
         <button key={c.id} type="button" onClick={() => onEscolher(c.id, c.name)}
           style={{
             textAlign: 'left', padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
             border: '1px solid var(--border)', background: 'var(--surface)',
           }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{c.name}</span>
-          {c.phone && <span style={{ fontSize: 11.5, color: 'var(--text-muted)', marginLeft: 8 }}>{c.phone}</span>}
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{c.name}</span>
+          {c.phone && <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginLeft: 8 }}>{c.phone}</span>}
         </button>
       ))}
     </div>

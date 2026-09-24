@@ -41,10 +41,10 @@ const PM_LABELS: Record<string, string> = {
 }
 
 const PM_COLORS: Record<string, { bg: string; color: string }> = {
-  CASH:            { bg: '#f0fdf4', color: '#16a34a' },
-  PIX:             { bg: '#eff6ff', color: '#2563eb' },
-  DEBIT_CARD:      { bg: '#faf5ff', color: '#7c3aed' },
-  CREDIT_CARD:     { bg: '#fff7ed', color: '#c2410c' },
+  CASH:            { bg: 'var(--success-bg)', color: 'var(--success)' },
+  PIX:             { bg: 'var(--info-soft)', color: 'var(--info)' },
+  DEBIT_CARD:      { bg: 'var(--surface)', color: 'var(--cat-4)' },
+  CREDIT_CARD:     { bg: 'var(--cat-5-soft)', color: 'var(--cat-5)' },
   INTERNAL_CREDIT: { bg: 'var(--brand-soft)', color: 'var(--brand)' },
 }
 
@@ -112,7 +112,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
   }, 0)
 
   const thStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+    fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
     letterSpacing: '0.05em', padding: '10px 16px', textAlign: 'left',
     background: 'var(--bg-app)', borderBottom: '1px solid var(--border)',
     whiteSpace: 'nowrap',
@@ -132,7 +132,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
           <input
             type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Buscar descrição ou categoria…"
-            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--text)', width: '100%' }}
+            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 'var(--text-base-sz)', color: 'var(--text)', width: '100%' }}
           />
           {search && (
             <button type="button" onClick={() => setSearch('')} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-faint)', display: 'flex' }}>
@@ -145,7 +145,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
         <div style={{ display: 'flex', gap: 4, background: 'var(--bg-app)', padding: 4, borderRadius: 10, border: '1px solid var(--border)' }}>
           {([['all', 'Todos'], ['INCOME', 'Receitas'], ['EXPENSE', 'Despesas']] as [FilterType, string][]).map(([v, l]) => (
             <button key={v} type="button" onClick={() => setFilterType(v)} style={{
-              fontSize: 12, fontWeight: 700, padding: '5px 10px', borderRadius: 7,
+              fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
               cursor: 'pointer', border: 'none', transition: 'all 100ms',
               background: filterType === v ? 'var(--surface)' : 'transparent',
               color: filterType === v ? 'var(--text)' : 'var(--text-muted)',
@@ -158,7 +158,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
 
         {/* Status */}
         <select value={filterPaid} onChange={e => setFilterPaid(e.target.value as any)} style={{
-          fontSize: 12.5, fontWeight: 600, color: 'var(--text)',
+          fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 10, padding: '7px 10px', cursor: 'pointer', outline: 'none',
         }}>
@@ -170,7 +170,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
         {/* Ordenar */}
         <button type="button" onClick={() => setSortDir(d => d === 'desc' ? 'asc' : 'desc')} style={{
           display: 'inline-flex', alignItems: 'center', gap: 5,
-          fontSize: 12.5, fontWeight: 700, padding: '7px 12px', borderRadius: 10,
+          fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '7px 12px', borderRadius: 10,
           border: '1px solid var(--border)', background: 'var(--surface)',
           color: 'var(--text-muted)', cursor: 'pointer',
         }}>
@@ -180,8 +180,8 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
 
         {/* Resultado filtrado */}
         <span style={{
-          marginLeft: 'auto', fontSize: 12.5, fontWeight: 800,
-          color: totalFiltered >= 0 ? '#16a34a' : '#dc2626',
+          marginLeft: 'auto', fontSize: 'var(--text-sm-sz)', fontWeight: 800,
+          color: totalFiltered >= 0 ? 'var(--success)' : 'var(--danger)',
         }}>
           {filtered.length} lançamento{filtered.length !== 1 ? 's' : ''} · {fmtBRL(Math.abs(totalFiltered))}
         </span>
@@ -191,8 +191,8 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '52px 24px' }}>
-            <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 14 }}>Nenhum lançamento encontrado</p>
-            <p style={{ color: 'var(--text-faint)', fontSize: 12.5, marginTop: 4 }}>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-base-sz)' }}>Nenhum lançamento encontrado</p>
+            <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
               Ajuste os filtros ou lance uma nova transação.
             </p>
           </div>
@@ -224,7 +224,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
                     }}>
                       {/* Data */}
                       <td data-label="Data" data-par style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
-                        <p style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)' }}>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
                           {fmtDatetime(tx.created_at)}
                         </p>
                       </td>
@@ -235,18 +235,18 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
                           <div style={{
                             width: 28, height: 28, borderRadius: 8, flexShrink: 0,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: isIncome ? '#f0fdf4' : '#fef2f2',
+                            background: isIncome ? 'var(--success-bg)' : 'var(--danger-soft)',
                           }}>
                             {isIncome
-                              ? <TrendingUp   size={13} style={{ color: '#16a34a' }} />
-                              : <TrendingDown size={13} style={{ color: '#dc2626' }} />}
+                              ? <TrendingUp   size={13} style={{ color: 'var(--success)' }} />
+                              : <TrendingDown size={13} style={{ color: 'var(--danger)' }} />}
                           </div>
                           <div>
-                            <p style={{ fontSize: 13, fontWeight: 700, color: isReversed ? 'var(--text-muted)' : 'var(--text)', lineHeight: 1.3 }}>
+                            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isReversed ? 'var(--text-muted)' : 'var(--text)', lineHeight: 1.3 }}>
                               {tx.description}
                             </p>
                             {tx.appointment_id && (
-                              <p style={{ fontSize: 10.5, color: 'var(--text-faint)', marginTop: 1 }}>Atendimento</p>
+                              <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginTop: 1 }}>Atendimento</p>
                             )}
                           </div>
                         </div>
@@ -255,10 +255,10 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
                       {/* Categoria */}
                       <td data-label="Categoria" style={{ padding: '13px 16px' }}>
                         <span style={{
-                          fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                          background: tx.category === 'Estorno' ? '#fef2f2' : 'var(--bg-app)',
-                          color: tx.category === 'Estorno' ? '#dc2626' : 'var(--text-muted)',
-                          border: `1px solid ${tx.category === 'Estorno' ? '#fca5a5' : 'var(--border)'}`,
+                          fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                          background: tx.category === 'Estorno' ? 'var(--danger-soft)' : 'var(--bg-app)',
+                          color: tx.category === 'Estorno' ? 'var(--danger)' : 'var(--text-muted)',
+                          border: `1px solid ${tx.category === 'Estorno' ? 'var(--danger-border)' : 'var(--border)'}`,
                         }}>
                           {tx.category}
                         </span>
@@ -268,22 +268,22 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
                       <td data-label="Pagamento" data-par style={{ padding: '13px 16px' }}>
                         {tx.payment_method && pmStyle ? (
                           <span style={{
-                            fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                            fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                             background: pmStyle.bg, color: pmStyle.color,
                             border: `1px solid ${pmStyle.color}30`,
                           }}>
                             {PM_LABELS[tx.payment_method]}
                           </span>
                         ) : (
-                          <span style={{ color: 'var(--text-faint)', fontSize: 12 }}>—</span>
+                          <span style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)' }}>—</span>
                         )}
                       </td>
 
                       {/* Valor */}
                       <td data-label="Valor" data-par style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <span style={{
-                          fontSize: 14, fontWeight: 800, letterSpacing: '-0.01em',
-                          color: isIncome ? '#16a34a' : '#dc2626',
+                          fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em',
+                          color: isIncome ? 'var(--success)' : 'var(--danger)',
                         }}>
                           {isIncome ? '+' : '- '}{fmtBRL(tx.amount)}
                         </span>
@@ -293,7 +293,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
                       <td data-label="Status" data-par style={{ padding: '13px 16px' }}>
                         {isReversed ? (
                           <span style={{
-                            fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                            fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                             background: 'var(--bg-app)', color: 'var(--text-faint)',
                             border: '1px solid var(--border)',
                           }}>
@@ -302,16 +302,16 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
                         ) : tx.is_paid ? (
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', gap: 4,
-                            fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                            background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac',
+                            fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                            background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)',
                           }}>
                             <CheckCircle2 size={10} /> Pago
                           </span>
                         ) : (
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', gap: 4,
-                            fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                            background: '#fffbeb', color: '#d97706', border: '1px solid #fcd34d',
+                            fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                            background: 'var(--warning-soft)', color: 'var(--warning)', border: '1px solid var(--warning-border)',
                           }}>
                             <Clock size={10} /> Pendente
                           </span>
@@ -324,9 +324,9 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
                           {!tx.is_paid && !isReversed && canPay && (
                             <button type="button" onClick={() => handleMarkPaid(tx.id)} title="Marcar como pago" style={{
                               display: 'inline-flex', alignItems: 'center', gap: 5,
-                              fontSize: 11.5, fontWeight: 700, padding: '5px 10px', borderRadius: 7,
-                              border: '1.5px solid #16a34a', background: '#f0fdf4',
-                              color: '#16a34a', cursor: 'pointer',
+                              fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
+                              border: '1.5px solid var(--success)', background: 'var(--success-bg)',
+                              color: 'var(--success)', cursor: 'pointer',
                             }}>
                               <CheckCircle2 size={12} />
                               Pagar

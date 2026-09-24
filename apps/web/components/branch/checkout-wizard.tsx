@@ -312,11 +312,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   }
 
   const cancelBlock = showCancel ? (
-    <div style={{ marginTop: 24, padding: '18px 20px', borderRadius: 'var(--radius-field-token)', border: '1.5px solid #fca5a5', background: '#fff5f5' }}>
-      <p style={{ fontSize: 13, fontWeight: 700, color: '#b91c1c', marginBottom: 10 }}>
+    <div style={{ marginTop: 24, padding: '18px 20px', borderRadius: 'var(--radius-field-token)', border: '1.5px solid var(--danger-border)', background: 'var(--danger-soft)' }}>
+      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--danger)', marginBottom: 10 }}>
         Cancelar checkout
       </p>
-      <p style={{ fontSize: 12, color: '#7f1d1d', marginBottom: 12 }}>
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', marginBottom: 12 }}>
         O plano voltará para rascunho e o profissional poderá revisá-lo antes de reenviar.
       </p>
       <textarea
@@ -325,8 +325,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         placeholder="Motivo do cancelamento (opcional)…"
         rows={2}
         style={{
-          width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 13, resize: 'vertical',
-          border: '1px solid #fca5a5', background: '#fff', color: 'var(--text)', outline: 'none',
+          width: '100%', padding: '9px 12px', borderRadius: 8, fontSize: 'var(--text-base-sz)', resize: 'vertical',
+          border: '1px solid var(--danger-border)', background: 'var(--surface)', color: 'var(--text)', outline: 'none',
           boxSizing: 'border-box', marginBottom: 12,
         }}
       />
@@ -334,7 +334,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         <button
           type="button"
           onClick={() => setShowCancel(false)}
-          style={{ flex: 1, padding: '10px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 13, fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}
+          style={{ flex: 1, padding: '10px', borderRadius: 9, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', cursor: 'pointer' }}
         >
           Voltar
         </button>
@@ -342,7 +342,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           type="button"
           onClick={handleCancel}
           disabled={cancelling}
-          style={{ flex: 2, padding: '10px', borderRadius: 9, border: 'none', background: '#dc2626', fontSize: 13, fontWeight: 700, color: '#fff', cursor: cancelling ? 'wait' : 'pointer' }}
+          style={{ flex: 2, padding: '10px', borderRadius: 9, border: 'none', background: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--surface)', cursor: cancelling ? 'wait' : 'pointer' }}
         >
           {cancelling ? 'Cancelando…' : 'Confirmar cancelamento'}
         </button>
@@ -352,7 +352,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     <button
       type="button"
       onClick={() => setShowCancel(true)}
-      style={{ width: '100%', marginTop: 12, padding: '10px', borderRadius: 10, border: 'none', background: 'none', fontSize: 13, fontWeight: 600, color: 'var(--text-faint)', cursor: 'pointer', textDecoration: 'underline' }}
+      style={{ width: '100%', marginTop: 12, padding: '10px', borderRadius: 10, border: 'none', background: 'none', fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text-faint)', cursor: 'pointer', textDecoration: 'underline' }}
     >
       Cancelar checkout
     </button>
@@ -372,25 +372,25 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <div style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background:  done ? '#dcfce7' : current ? 'var(--brand)' : 'var(--bg-app)',
-                border:      done ? '1.5px solid #22c55e' : current ? 'none' : '1.5px solid var(--border)',
+                background:  done ? 'var(--success-soft)' : current ? 'var(--brand)' : 'var(--bg-app)',
+                border:      done ? '1.5px solid var(--success)' : current ? 'none' : '1.5px solid var(--border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
               }}>
                 {done
-                  ? <Check size={16} color="#22c55e" />
-                  : <s.icon size={15} color={current ? '#fff' : 'var(--text-faint)'} />}
+                  ? <Check size={16} color="var(--success)" />
+                  : <s.icon size={15} color={current ? 'var(--surface)' : 'var(--text-faint)'} />}
               </div>
               <span style={{
-                fontSize: 11, fontWeight: current ? 700 : 600,
-                color: current ? 'var(--brand)' : done ? '#22c55e' : 'var(--text-faint)',
+                fontSize: 'var(--text-2xs)', fontWeight: current ? 700 : 600,
+                color: current ? 'var(--brand)' : done ? 'var(--success)' : 'var(--text-faint)',
                 whiteSpace: 'nowrap',
               }}>
                 {s.label}
               </span>
             </div>
             {i < passos.length - 1 && (
-              <div style={{ flex: 1, height: 1.5, background: done ? '#22c55e' : 'var(--hairline)', margin: '0 8px', marginBottom: 22 }} />
+              <div style={{ flex: 1, height: 1.5, background: done ? 'var(--success)' : 'var(--hairline)', margin: '0 8px', marginBottom: 22 }} />
             )}
           </div>
         )
@@ -414,8 +414,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           <User size={20} style={{ color: 'var(--brand)' }} />
         </div>
         <div>
-          <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{plan.clientName}</p>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{plan.clientName}</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
             {plan.clientDocument ? `CPF ${plan.clientDocument}` : 'CPF não informado'}
             {plan.clientPhone ? ` · ${plan.clientPhone}` : ''}
           </p>
@@ -424,7 +424,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
       {/* Sessões do plano */}
       <div className="card" style={{ padding: '18px 20px', marginBottom: 16 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
           Plano de tratamento — {plan.sessions.length} sessão(ões)
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -434,16 +434,16 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderBottom: '1px solid var(--hairline)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--brand)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--brand)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--text-overline)', fontWeight: 800, flexShrink: 0 }}>
                     {i + 1}
                   </div>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Sessão {i + 1}</span>
+                  <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Sessão {i + 1}</span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand)' }}>{fmtBRL(sess.totalPrice)}</span>
+                <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)' }}>{fmtBRL(sess.totalPrice)}</span>
               </div>
               <div style={{ padding: '8px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {sess.procedures.map((p, j) => (
-                  <div key={j} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)' }}>
+                  <div key={j} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Stethoscope size={11} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
                       {p.name}
@@ -457,7 +457,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         </div>
 
         {plan.professionalNotes && (
-          <p style={{ marginTop: 14, fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', paddingTop: 14, borderTop: '1px solid var(--hairline)' }}>
+          <p style={{ marginTop: 14, fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontStyle: 'italic', paddingTop: 14, borderTop: '1px solid var(--hairline)' }}>
             "{plan.professionalNotes}"
           </p>
         )}
@@ -467,10 +467,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         </div>
       </div>
 
-      {error && <p style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 
       <button onClick={handleGoToDocs} disabled={creatingTerms}
-        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: creatingTerms ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
+        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: creatingTerms ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
         {creatingTerms ? 'Gerando documentos…' : 'Confirmar plano'} <ChevronRight size={18} />
       </button>
 
@@ -492,17 +492,17 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           return (
             <div key={term.id} className="card" style={{ padding: '20px 24px', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   {term.title}
                 </p>
                 {assinado && (
-                  <span className="esconde-impressao" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, fontWeight: 700, color: '#15803d' }}>
+                  <span className="esconde-impressao" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--success)' }}>
                     <Check size={13} /> {assinado === 'paper' ? 'Assinado em papel' : 'Assinado na tela'}
                   </span>
                 )}
               </div>
 
-              <pre style={{ fontSize: 13, lineHeight: 1.8, color: 'var(--text-muted)', whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+              <pre style={{ fontSize: 'var(--text-base-sz)', lineHeight: 1.8, color: 'var(--text-muted)', whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
                 {term.content}
               </pre>
 
@@ -511,11 +511,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                 <div style={{ display: 'flex', gap: 40 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ borderBottom: '1px solid var(--text)', marginBottom: 6 }} />
-                    <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>Assinatura do cliente</p>
+                    <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Assinatura do cliente</p>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ borderBottom: '1px solid var(--text)', marginBottom: 6 }} />
-                    <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>Data</p>
+                    <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Data</p>
                   </div>
                 </div>
               </div>
@@ -525,16 +525,16 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                   {assinandoNaTela === term.id ? (
                     <>
                       <SignaturePad onConfirm={dataUrl => assinarNaTela(term.id, dataUrl)} />
-                      <button type="button" onClick={() => setAssinandoNaTela(null)} className="btn-ghost" style={{ marginTop: 8, fontSize: 12 }}>
+                      <button type="button" onClick={() => setAssinandoNaTela(null)} className="btn-ghost" style={{ marginTop: 8, fontSize: 'var(--text-sm-sz)' }}>
                         Cancelar
                       </button>
                     </>
                   ) : (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => setAssinandoNaTela(term.id)} className="btn-primary" style={{ fontSize: 13, padding: '9px 16px' }}>
+                      <button type="button" onClick={() => setAssinandoNaTela(term.id)} className="btn-primary" style={{ fontSize: 'var(--text-base-sz)', padding: '9px 16px' }}>
                         Assinar na tela
                       </button>
-                      <button type="button" onClick={() => imprimirEConfirmar(term.id)} className="btn-ghost" style={{ fontSize: 13, padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button type="button" onClick={() => imprimirEConfirmar(term.id)} className="btn-ghost" style={{ fontSize: 'var(--text-base-sz)', padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Printer size={14} /> Imprimir e confirmar em papel
                       </button>
                     </div>
@@ -546,7 +546,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         })}
       </div>
 
-      {error && <p className="esconde-impressao" style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{error}</p>}
+      {error && <p className="esconde-impressao" style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 
       <button
         type="button"
@@ -554,9 +554,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         onClick={() => setStep(2)}
         disabled={!termosResolvidos}
         style={{
-          width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', fontSize: 15, fontWeight: 700,
+          width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', fontSize: 'var(--text-card-title)', fontWeight: 700,
           background: termosResolvidos ? 'var(--brand)' : 'var(--bg-app)',
-          color:      termosResolvidos ? '#fff'          : 'var(--text-faint)',
+          color:      termosResolvidos ? 'var(--on-brand)'          : 'var(--text-faint)',
           border:     termosResolvidos ? 'none'          : '1px solid var(--border)',
           cursor:     termosResolvidos ? 'pointer'       : 'not-allowed',
           boxShadow:  termosResolvidos ? '0 2px 12px rgba(195,77,107,0.3)' : 'none',
@@ -578,7 +578,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
       {/* Como vai ser pago */}
       <div className="card" style={{ padding: '20px 24px', marginBottom: 14 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
           Como vai ser pago
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -590,10 +590,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           ] as const).filter(([k]) => podeCobrar || k === 'NADA_AGORA').map(([k, label]) => (
             <button key={k} type="button" onClick={() => setFormaPgto(k)}
               style={{
-                padding: '10px 16px', borderRadius: 'var(--radius-chip-token)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                padding: '10px 16px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-base-sz)', fontWeight: 700, cursor: 'pointer',
                 border:     formaPgto === k ? '2px solid var(--brand)' : '1.5px solid var(--border)',
                 background: formaPgto === k ? 'var(--brand)'           : 'var(--surface)',
-                color:      formaPgto === k ? '#fff'                   : 'var(--text)',
+                color:      formaPgto === k ? 'var(--on-brand)'                   : 'var(--text)',
               }}>
               {label}
             </button>
@@ -604,14 +604,14 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="form-2col">
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Entrada (opcional)</label>
+                <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Entrada (opcional)</label>
                 <input
                   inputMode="decimal" value={entrada} onChange={e => setEntrada(e.target.value)}
                   placeholder="0,00" className="field" style={{ marginTop: 5 }}
                 />
               </div>
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Parcelas do saldo</label>
+                <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Parcelas do saldo</label>
                 <select value={parcelas} onChange={e => setParcelas(Number(e.target.value))} className="field" style={{ marginTop: 5 }}>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map(n => (
                     <option key={n} value={n}>{n}x</option>
@@ -620,10 +620,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Vencimento da 1ª parcela</label>
+              <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Vencimento da 1ª parcela</label>
               <input type="date" value={primeiroVenc} onChange={e => setPrimeiroVenc(e.target.value)} className="field" style={{ marginTop: 5 }} />
             </div>
-            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 600 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
               {entradaNum > 0 && <>Entrada de {fmtBRL(entradaNum)} agora · </>}
               {parcelas}× de {fmtBRL(valorParcela)} a partir de {primeiroVenc.split('-').reverse().join('/')}
             </p>
@@ -632,9 +632,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
         {formaPgto === 'A_RECEBER' && (
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Vencimento</label>
+            <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Vencimento</label>
             <input type="date" value={primeiroVenc} onChange={e => setPrimeiroVenc(e.target.value)} className="field" style={{ marginTop: 5, maxWidth: 220 }} />
-            <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 8 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 8 }}>
               Nada entra no caixa agora — o valor fica como a receber.
             </p>
           </div>
@@ -642,18 +642,18 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
         {formaPgto === 'NADA_AGORA' && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, flex: 1, minWidth: 220 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.55, flex: 1, minWidth: 220 }}>
               O plano é aceito por {fmtBRL(total)} e o valor fica em aberto. A recepção
               recebe na chegada da primeira sessão, pela tela do atendimento.
             </p>
-            <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(total)}</span>
+            <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(total)}</span>
           </div>
         )}
       </div>
 
       {formaPgto !== 'NADA_AGORA' && (
       <div className="card" style={{ padding: '20px 24px', marginBottom: 20 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 14 }}>
           {formaPgto === 'AVISTA' ? 'Forma de pagamento' : 'Método'}
         </p>
         <div className="form-2col" style={{ marginBottom: 20 }}>
@@ -663,7 +663,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               type="button"
               onClick={() => setPaymentMethod(m.value)}
               style={{
-                padding: '14px', borderRadius: 10, textAlign: 'center', fontWeight: 700, fontSize: 14,
+                padding: '14px', borderRadius: 10, textAlign: 'center', fontWeight: 700, fontSize: 'var(--text-base-sz)',
                 border:     paymentMethod === m.value ? '2px solid var(--brand)'   : '1.5px solid var(--border)',
                 background: paymentMethod === m.value ? 'var(--brand-soft)'        : 'var(--surface)',
                 color:      paymentMethod === m.value ? 'var(--brand)'             : 'var(--text)',
@@ -675,15 +675,15 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           ))}
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', borderTop: '1px solid var(--hairline)' }}>
-          <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 600 }}>
+          <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
             {formaPgto === 'AVISTA' ? 'Total a cobrar' : formaPgto === 'PARCELADO' ? 'Recebido agora' : 'Total a receber'}
           </span>
-          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+          <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
             {fmtBRL(formaPgto === 'AVISTA' ? total : formaPgto === 'PARCELADO' ? entradaNum : 0)}
           </span>
         </div>
         {formaPgto !== 'AVISTA' && (
-          <p style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'right' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'right' }}>
             Plano de {fmtBRL(total)}
           </p>
         )}
@@ -691,7 +691,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       )}
       <button
         onClick={() => (podeAgendar ? setStep(3) : handleFinish())}
-        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
+        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
         {podeAgendar ? 'Ir para o agendamento' : formaPgto === 'NADA_AGORA' ? 'Aceitar plano' : 'Confirmar'} <ChevronRight size={18} />
       </button>
 
@@ -709,7 +709,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
       {/* Filial + Profissional (compartilhados) */}
       <div className="card" style={{ padding: '18px 20px', marginBottom: 14 }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
           Filial e profissional
         </p>
 
@@ -725,10 +725,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                     border:     isSel ? '2px solid var(--brand)' : '1.5px solid var(--border)',
                     background: isSel ? 'var(--brand-soft)'      : 'var(--surface)',
                     color:      isSel ? 'var(--brand)'           : 'var(--text)',
-                    fontWeight: 700, fontSize: 13,
+                    fontWeight: 700, fontSize: 'var(--text-base-sz)',
                   }}>
                   <MapPin size={13} /> {b.name}
-                  {b.id === plan.currentBranchId && <span style={{ fontSize: 10, opacity: 0.6 }}>(atual)</span>}
+                  {b.id === plan.currentBranchId && <span style={{ fontSize: 'var(--text-overline)', opacity: 0.6 }}>(atual)</span>}
                 </button>
               )
             })}
@@ -737,9 +737,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
         {/* Profissional */}
         {loadingProfs ? (
-          <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Carregando profissionais…</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Carregando profissionais…</p>
         ) : schedProfs.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Nenhum profissional nesta filial.</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Nenhum profissional nesta filial.</p>
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {schedProfs.map(p => {
@@ -747,10 +747,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               return (
                 <button key={p.id} type="button" onClick={() => setProfId(p.id)}
                   style={{
-                    padding: '8px 16px', borderRadius: 'var(--radius-chip-token)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    padding: '8px 16px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-base-sz)', fontWeight: 700, cursor: 'pointer',
                     border:     sel ? '2px solid var(--brand)' : '1.5px solid var(--border)',
                     background: sel ? 'var(--brand)'           : 'var(--surface)',
-                    color:      sel ? '#fff'                   : 'var(--text)',
+                    color:      sel ? 'var(--on-brand)'                   : 'var(--text)',
                   }}>
                   {p.name}
                 </button>
@@ -763,7 +763,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       {/* Tabs por sessão */}
       {schedProfId && (
         <div className="card" style={{ padding: '18px 20px', marginBottom: 14 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+          <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
             Agendamento por sessão
           </p>
 
@@ -779,14 +779,14 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               return (
                 <button key={sess.id} type="button" onClick={() => setActiveSession(sess.id)}
                   style={{
-                    padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    padding: '6px 12px', borderRadius: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700, cursor: 'pointer',
                     border:     isActive ? '2px solid var(--brand)' : '1.5px solid var(--border)',
-                    background: isActive ? 'var(--brand-soft)'      : hasDate ? '#f0fdf4' : 'var(--surface)',
-                    color:      isActive ? 'var(--brand)'           : hasDate ? '#16a34a' : 'var(--text-muted)',
+                    background: isActive ? 'var(--brand-soft)'      : hasDate ? 'var(--success-bg)' : 'var(--surface)',
+                    color:      isActive ? 'var(--brand)'           : hasDate ? 'var(--success)' : 'var(--text-muted)',
                     display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1,
                   }}>
                   <span>{hasDate ? <Check size={10} style={{ display: 'inline', marginRight: 3 }} /> : null}{label}</span>
-                  {subLabel && <span style={{ fontSize: 10, fontWeight: 500, opacity: 0.7 }}>{subLabel}</span>}
+                  {subLabel && <span style={{ fontSize: 'var(--text-overline)', fontWeight: 500, opacity: 0.7 }}>{subLabel}</span>}
                 </button>
               )
             })}
@@ -794,11 +794,11 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
           {/* Data */}
           <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>Data</label>
+            <label style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>Data</label>
             <input
               type="date" min={minDate} value={activeDate}
               onChange={e => setActiveDate(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 13, fontFamily: 'inherit', color: 'var(--text)', background: 'var(--bg-app)', boxSizing: 'border-box' as const }}
+              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)', fontFamily: 'inherit', color: 'var(--text)', background: 'var(--bg-app)', boxSizing: 'border-box' as const }}
             />
           </div>
 
@@ -806,8 +806,8 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           {activeDate && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Horários</p>
-                {loadingSlots && <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>carregando…</p>}
+                <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Horários</p>
+                {loadingSlots && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>carregando…</p>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
                 {TIME_SLOTS.map(t => {
@@ -816,10 +816,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
                   return (
                     <button key={t} type="button" disabled={!!booked} onClick={() => setActiveTime(t)}
                       style={{
-                        padding: '8px 4px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                        padding: '8px 4px', borderRadius: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700,
                         cursor:     booked ? 'not-allowed' : 'pointer',
                         background: sel ? 'var(--brand)' : booked ? 'var(--bg-app)' : 'var(--surface)',
-                        color:      sel ? '#fff'         : booked ? 'var(--text-faint)' : 'var(--text)',
+                        color:      sel ? 'var(--on-brand)'         : booked ? 'var(--text-faint)' : 'var(--text)',
                         border:     sel ? '2px solid var(--brand)' : booked ? '1px solid var(--hairline)' : '1.5px solid var(--border)',
                         textDecoration: booked ? 'line-through' : 'none',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
@@ -832,7 +832,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
               {activeTime && (
                 <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 10, background: 'var(--brand-soft)' }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)' }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)' }}>
                     <Clock size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
                     {activeDate.split('-').reverse().join('/')} às {activeTime} · {schedProfs.find(p => p.id === schedProfId)?.name}
                   </p>
@@ -846,20 +846,20 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       {/* Resumo de sessões agendadas */}
       {scheduledCount > 0 && (
         <div className="card" style={{ padding: '14px 20px', marginBottom: 14 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)', letterSpacing: '0.06em' }}>
+          <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--success)', letterSpacing: '0.06em' }}>
             <Check size={12} style={{ display: 'inline', marginRight: 4 }} />
             {scheduledCount} de {plan.sessions.length} sessão{plan.sessions.length !== 1 ? 'ões' : ''} com data definida
           </p>
         </div>
       )}
 
-      {error && <p style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 
       <button
         type="button"
         onClick={() => handleFinish()}
         disabled={submitting}
-        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: '#fff', fontWeight: 700, fontSize: 15, border: 'none', cursor: submitting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: '0 2px 12px rgba(195,77,107,0.3)' }}>
+        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: submitting ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
         {submitting ? 'Finalizando…' : scheduledCount > 0 ? 'Concluir' : 'Concluir sem agendar'}
       </button>
 

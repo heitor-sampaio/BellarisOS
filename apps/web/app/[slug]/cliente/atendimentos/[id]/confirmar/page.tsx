@@ -41,15 +41,15 @@ export default async function ConfirmAppointmentPage({
     <div>
       <Link
         href={`/${slug}/cliente/historico`}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', fontSize: 13, textDecoration: 'none', marginBottom: 16 }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', textDecoration: 'none', marginBottom: 16 }}
       >
         <ChevronLeft size={16} /> Voltar
       </Link>
 
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 6 }}>
+      <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 6 }}>
         Confirmar atendimento
       </h1>
-      <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 20 }}>
+      <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 20 }}>
         Confirme que este atendimento foi realizado. Se quiser, avalie o procedimento e a profissional.
       </p>
 

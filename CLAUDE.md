@@ -659,10 +659,11 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 A linguagem visual é **"Rosé Vivo"**: fundo nude quente, cards brancos com borda (sem sombra), cantos arredondados contidos (card 12px, campo 10px) e rosé saturado (`#c34d6b`) como único acento de marca.
 
 Princípios inegociáveis:
-- **Hierarquia por preenchimento** — o elemento mais importante de um grupo é preenchido em `--brand` (rosé). Todo o resto fica branco com borda.
+- **Hierarquia por preenchimento** — o elemento mais importante de um grupo é preenchido em `--brand` (rosé). Todo o resto fica branco com borda. Vale em toda tela que mostra um grupo de números: seis KPIs iguais não têm hierarquia nenhuma, e o olho não sabe onde pousar.
+- **Nada de cor, sombra, raio ou tamanho de fonte escrito à mão** — todo valor vem de `var(--token)`. A paleta fechou em 2026-09-24 com `--danger`, `--info`, a escala categórica `--cat-1…6`, `--shadow-overlay`, `--shadow-popover` e `--gradient-brand`: antes faltava como pintar um erro, e a falta produziu 143 tons inventados e 587 usos da paleta do Tailwind. Cor de marca de terceiro (Facebook, Instagram, WhatsApp, Google) é a única exceção.
 - **Tipografia única** — Hanken Grotesk em todo o sistema. Títulos e números em `800` com tracking negativo; overlines em `700` uppercase.
 - **Ícones** — Lucide, linha, `currentColor`. O `✦` é motivo de marca, não ícone funcional.
-- **Sombras apenas em elementos de marca** — botão primário, KPI hero, nav ativo. Superfícies neutras usam borda, nunca sombra.
+- **Sombras apenas em elementos de marca** — botão primário, KPI hero, nav ativo. Superfícies neutras usam borda, nunca sombra. O que **flutua** sobre a página é a exceção e tem token: `--shadow-overlay` (modal, drawer) e `--shadow-popover` (dropdown, tooltip).
 - **Sem gradientes de fundo** — único gradiente permitido é o card "Pacote ativo" (`--brand` → `--brand-deep`).
 - **Copy em pt-BR**, sentence case, moeda no formato `R$ 1.240`, percentuais com vírgula (`12,4%`).
 
@@ -771,6 +772,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Chamar action que grava e ignorar o { error } que ela devolve
 ❌ Escrever no banco fora de transação quando duas gravações precisam valer juntas
 ❌ Introduzir cores, fontes ou sombras fora dos tokens da skill /lumiere-design
+❌ Escrever cor/sombra/raio/tamanho de fonte à mão em vez de var(--token)
+❌ Usar a paleta do Tailwind (red-600, green-600…) — o sistema tem a sua
 ❌ Encerrar uma entrega sem atualizar o DEVLOG e a memória (§16)
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
 ```

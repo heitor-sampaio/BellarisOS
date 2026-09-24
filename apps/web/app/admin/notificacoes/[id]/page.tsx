@@ -10,11 +10,11 @@ import { DeleteCampaignButton } from '@/components/admin/delete-campaign-button'
 export const dynamic = 'force-dynamic'
 
 const STATUS_CFG: Record<CampaignStatus, { label: string; color: string }> = {
-  DRAFT:     { label: 'Rascunho',  color: '#6b7280' },
-  ACTIVE:    { label: 'Ativa',     color: '#16a34a' },
-  PAUSED:    { label: 'Pausada',   color: '#d97706' },
-  COMPLETED: { label: 'Concluída', color: '#2563eb' },
-  ARCHIVED:  { label: 'Arquivada', color: '#9ca3af' },
+  DRAFT:     { label: 'Rascunho',  color: 'var(--text-muted)' },
+  ACTIVE:    { label: 'Ativa',     color: 'var(--success)' },
+  PAUSED:    { label: 'Pausada',   color: 'var(--warning)' },
+  COMPLETED: { label: 'Concluída', color: 'var(--info)' },
+  ARCHIVED:  { label: 'Arquivada', color: 'var(--text-faint)' },
 }
 
 const TYPE_ICON: Record<CampaignType, React.ElementType> = {
@@ -58,7 +58,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
       {/* Back */}
       <Link
         href="/admin/notificacoes"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', fontWeight: 600, textDecoration: 'none' }}
       >
         <ChevronLeft size={14} />
         Notificações
@@ -75,14 +75,14 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
               {campaign.name}
             </h1>
             <span style={{
-              padding: '3px 10px', borderRadius: 99, fontSize: 12, fontWeight: 700,
+              padding: '3px 10px', borderRadius: 99, fontSize: 'var(--text-sm-sz)', fontWeight: 700,
               color: statusCfg.color, background: `${statusCfg.color}18`,
             }}>
               {statusCfg.label}
             </span>
           </div>
           {campaign.description && (
-            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{campaign.description}</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>{campaign.description}</p>
           )}
         </div>
 
@@ -127,7 +127,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
         <div className="card" style={{ flex: '1 1 300px', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <TypeIcon size={16} color="var(--brand)" />
-            <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Conteúdo</h2>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Conteúdo</h2>
           </div>
           <InfoRow label="Tipo"  value={{ IMMEDIATE: 'Imediata', SCHEDULED: 'Agendada', AUTOMATED: 'Automática' }[campaign.type]} />
           {campaign.type === 'SCHEDULED' && campaign.scheduled_at && (
@@ -155,7 +155,7 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
 
         {/* Audience */}
         <div className="card" style={{ flex: '1 1 260px', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Público</h2>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Público</h2>
           <AudienceRow rules={campaign.audience_rules} />
         </div>
       </div>
@@ -164,15 +164,15 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
       {dispatches.length > 0 && (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
-            <h2 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
+            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
               Últimos envios
             </h2>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-raised, #fafaf9)' }}>
+              <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-raised, var(--bg-app))' }}>
                 {['Cliente', 'Data/hora', 'Status'].map(h => (
-                  <th key={h} style={{ padding: '9px 16px', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
+                  <th key={h} style={{ padding: '9px 16px', fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'left' }}>
                     {h}
                   </th>
                 ))}
@@ -181,19 +181,19 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
             <tbody>
               {dispatches.map((d, i) => (
                 <tr key={i} style={{ borderTop: '1px solid var(--hairline)' }}>
-                  <td style={{ padding: '11px 16px', fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{d.client_name}</td>
-                  <td style={{ padding: '11px 16px', fontSize: 13, color: 'var(--text-muted)' }}>
+                  <td style={{ padding: '11px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 500, color: 'var(--text)' }}>{d.client_name}</td>
+                  <td style={{ padding: '11px 16px', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                     {new Date(d.sent_at).toLocaleString('pt-BR')}
                   </td>
                   <td style={{ padding: '11px 16px' }}>
                     {(() => {
                       const cfg =
-                        d.status === 'READ'   ? { label: 'Lida',    color: '#2563eb' } :
-                        d.status === 'SENT'   ? { label: 'Enviada', color: '#16a34a' } :
-                                                { label: 'Falhou',  color: '#dc2626' }
+                        d.status === 'READ'   ? { label: 'Lida',    color: 'var(--info)' } :
+                        d.status === 'SENT'   ? { label: 'Enviada', color: 'var(--success)' } :
+                                                { label: 'Falhou',  color: 'var(--danger)' }
                       return (
                         <span style={{
-                          padding: '2px 8px', borderRadius: 99, fontSize: 11.5, fontWeight: 700,
+                          padding: '2px 8px', borderRadius: 99, fontSize: 'var(--text-xs-sz)', fontWeight: 700,
                           color: cfg.color, background: `${cfg.color}18`,
                         }}>
                           {cfg.label}
@@ -218,8 +218,8 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
     <div className="card" style={{ flex: '1 1 140px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ color: 'var(--brand)' }}>{icon}</div>
       <div>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</p>
-        <p style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{value}</p>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</p>
+        <p style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{value}</p>
       </div>
     </div>
   )
@@ -228,8 +228,8 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</p>
-      <p style={{ fontSize: 14, color: 'var(--text)' }}>{value}</p>
+      <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>{label}</p>
+      <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)' }}>{value}</p>
     </div>
   )
 }
@@ -248,7 +248,7 @@ function AudienceRow({ rules }: { rules: Record<string, unknown> }) {
 
   if (!r.branch_ids?.length && !r.genders?.length
       && !r.procedure_ids?.length && !r.tags?.length && !r.has_app_account && !r.max_days_since_visit) {
-    return <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Todos os clientes ativos da rede</p>
+    return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Todos os clientes ativos da rede</p>
   }
 
   if (r.branch_ids?.length)       items.push({ label: 'Filiais',    value: `${r.branch_ids.length} selecionada(s)` })

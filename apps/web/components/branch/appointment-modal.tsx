@@ -240,7 +240,7 @@ export function AppointmentModal({
                       position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
                       background: 'var(--surface)', border: '1px solid var(--border)',
                       borderRadius: 'var(--radius-card-sm)', marginTop: 4,
-                      boxShadow: '0 8px 24px -6px rgba(34,22,25,.12)',
+                      boxShadow: 'var(--shadow-popover)',
                       maxHeight: 200, overflow: 'auto',
                     }}>
                       {buscando ? (

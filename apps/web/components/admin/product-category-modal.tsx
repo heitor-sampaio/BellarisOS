@@ -49,7 +49,7 @@ export function ProductCategoryModal({ categories }: Props) {
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             minWidth: 18, height: 18, borderRadius: 99,
             background: 'var(--brand-soft)', color: 'var(--brand)',
-            fontSize: 10.5, fontWeight: 700, padding: '0 4px',
+            fontSize: 'var(--text-overline)', fontWeight: 700, padding: '0 4px',
           }}>
             {categories.length}
           </span>
@@ -73,7 +73,7 @@ export function ProductCategoryModal({ categories }: Props) {
             <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
               Categorias de produto
             </h2>
-            <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+            <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
               Organizam o catálogo e geram o prefixo do SKU
             </p>
           </div>
@@ -135,7 +135,7 @@ export function ProductCategoryModal({ categories }: Props) {
           {/* Form nova categoria */}
           <form ref={formRef} action={formAction}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                 NOVA CATEGORIA
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -152,7 +152,7 @@ export function ProductCategoryModal({ categories }: Props) {
                 </button>
               </div>
               {state?.error && (
-                <p style={{ fontSize: 11.5, color: 'var(--brand)', margin: 0 }}>{state.error}</p>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', margin: 0 }}>{state.error}</p>
               )}
             </div>
           </form>

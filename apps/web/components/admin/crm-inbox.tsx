@@ -40,10 +40,10 @@ import {
 // --- Channel meta ------------------------------------------------------------
 
 const CH = {
-  whatsapp:  { label: 'WhatsApp',  color: '#25D366', bg: '#f0fdf4', border: '#25D36633' },
-  instagram: { label: 'Instagram', color: '#E1306C', bg: '#fff0f5', border: '#E1306C33' },
-  messenger: { label: 'Messenger', color: '#0084FF', bg: '#eff6ff', border: '#0084FF33' },
-  email:     { label: 'E-mail',    color: '#3B82F6', bg: '#eff6ff', border: '#3B82F633' },
+  whatsapp:  { label: 'WhatsApp',  color: '#25D366', bg: 'var(--success-bg)', border: '#25D36633' },
+  instagram: { label: 'Instagram', color: '#E1306C', bg: 'var(--bg-app)', border: '#E1306C33' },
+  messenger: { label: 'Messenger', color: '#0084FF', bg: 'var(--info-soft)', border: '#0084FF33' },
+  email:     { label: 'E-mail',    color: 'var(--info)', bg: 'var(--info-soft)', border: 'color-mix(in srgb, var(--info) 20%, transparent)' },
   manual:    { label: 'Nota',      color: 'var(--text-faint)', bg: 'var(--bg-app)', border: 'var(--border)' },
 } satisfies Record<InboxChannel, { label: string; color: string; bg: string; border: string }>
 
@@ -102,8 +102,8 @@ function ordenarPorUltimaMensagem(convs: Conversation[]): Conversation[] {
 // --- Status chip -------------------------------------------------------------
 
 const STATUS_META: Record<ConvStatus, { label: string; color: string; bg: string; border: string }> = {
-  open:    { label: 'Aberta',    color: '#3f9b6f', bg: '#f0fdf4', border: '#3f9b6f33' },
-  pending: { label: 'Pendente',  color: '#b45309', bg: '#fffbeb', border: '#b4530933' },
+  open:    { label: 'Aberta',    color: 'var(--success)', bg: 'var(--success-bg)', border: 'color-mix(in srgb, var(--success) 20%, transparent)' },
+  pending: { label: 'Pendente',  color: 'var(--warning)', bg: 'var(--warning-soft)', border: 'color-mix(in srgb, var(--cat-5) 20%, transparent)' },
   closed:  { label: 'Encerrada', color: 'var(--text-faint)', bg: 'var(--bg-app)', border: 'var(--border)' },
 }
 
@@ -133,8 +133,8 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
           width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
           background: selected ? 'var(--brand)' : 'var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, fontWeight: 800,
-          color: selected ? '#fff' : 'var(--text-muted)',
+          fontSize: 'var(--text-base-sz)', fontWeight: 800,
+          color: selected ? 'var(--on-brand)' : 'var(--text-muted)',
         }}>
           {(conv.contact_name ?? '?')[0]!.toUpperCase()}
         </div>
@@ -143,7 +143,7 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
           {/* Name + time */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
             <span style={{
-              fontSize: 13, fontWeight: conv.unread_count > 0 ? 800 : 600,
+              fontSize: 'var(--text-base-sz)', fontWeight: conv.unread_count > 0 ? 800 : 600,
               color: selected ? 'var(--brand)' : 'var(--text)',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
             }}>
@@ -160,7 +160,7 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
             {conv.veio_de_anuncio && (
               <Megaphone size={11} color="var(--brand)" style={{ flexShrink: 0 }} aria-label="Veio de anúncio" />
             )}
-            <span style={{ fontSize: 10, color: 'var(--text-faint)', flexShrink: 0 }}>
+            <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', flexShrink: 0 }}>
               {relTime(conv.last_message_at)}
             </span>
           </div>
@@ -169,15 +169,15 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
             <ChannelIcon ch={conv.channel} />
             <span style={{
-              fontSize: 11.5, color: 'var(--text-muted)', flex: 1,
+              fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', flex: 1,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {conv.last_message ?? 'Nenhuma mensagem'}
             </span>
             {conv.unread_count > 0 && (
               <span style={{
-                background: 'var(--brand)', color: '#fff',
-                borderRadius: 99, fontSize: 10, fontWeight: 800,
+                background: 'var(--brand)', color: 'var(--surface)',
+                borderRadius: 99, fontSize: 'var(--text-overline)', fontWeight: 800,
                 padding: '1px 6px', flexShrink: 0,
               }}>
                 {conv.unread_count}
@@ -194,7 +194,7 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
               />
             )}
             {conv.branch_name && (
-              <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>
+              <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>
                 {conv.branch_name}
               </span>
             )}
@@ -249,11 +249,11 @@ function SeloDeAnuncio({ anuncio }: { anuncio: AnuncioDaMensagem }) {
       background: 'var(--brand-soft)',
       border: '1px solid var(--brand-soft-border)',
       borderRadius: 8, padding: '6px 9px', marginBottom: 6,
-      fontSize: 11.5, lineHeight: 1.4, color: 'var(--text)',
+      fontSize: 'var(--text-xs-sz)', lineHeight: 1.4, color: 'var(--text)',
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 4,
-        fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
+        fontSize: 'var(--text-overline)', fontWeight: 800, letterSpacing: '0.06em',
         textTransform: 'uppercase', color: 'var(--brand)', marginBottom: 3,
       }}>
         <Megaphone size={11} /> Veio de anúncio
@@ -285,7 +285,7 @@ function SeloDeAnuncio({ anuncio }: { anuncio: AnuncioDaMensagem }) {
           ))}
           {rodape && (
             <div style={{
-              color: 'var(--text-muted)', fontSize: 10.5, marginTop: 1,
+              color: 'var(--text-muted)', fontSize: 'var(--text-overline)', marginTop: 1,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {rodape}
@@ -294,7 +294,7 @@ function SeloDeAnuncio({ anuncio }: { anuncio: AnuncioDaMensagem }) {
           {/* Sem campanha nem texto não sobra nome nenhum: o id é o único fio
               que resta para achar o anúncio no gerenciador. */}
           {linhas.length === 0 && anuncio.adId && (
-            <div style={{ color: 'var(--text-muted)', fontSize: 10.5 }}>id {anuncio.adId}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 'var(--text-overline)' }}>id {anuncio.adId}</div>
           )}
         </div>
       </div>
@@ -325,7 +325,7 @@ function LegendaDoCriativo({ texto }: { texto: string }) {
   return (
     <div style={{ marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--brand-soft-border)' }}>
       <div style={{
-        color: 'var(--text-soft)', fontSize: 11, lineHeight: 1.45,
+        color: 'var(--text-soft)', fontSize: 'var(--text-2xs)', lineHeight: 1.45,
         whiteSpace: 'pre-wrap', wordBreak: 'break-word',
         ...(aberta ? {
           // Teto com rolagem: alguns criativos passam de mil caracteres, e a
@@ -345,7 +345,7 @@ function LegendaDoCriativo({ texto }: { texto: string }) {
           onClick={() => setAberta(v => !v)}
           style={{
             background: 'none', border: 'none', padding: '2px 0 0', cursor: 'pointer',
-            color: 'var(--brand)', fontSize: 10.5, fontWeight: 700,
+            color: 'var(--brand)', fontSize: 'var(--text-overline)', fontWeight: 700,
           }}
         >
           {aberta ? 'ver menos' : 'ver o anúncio todo'}
@@ -409,12 +409,12 @@ function Bubble({
 
       <div style={{
         maxWidth: '70%',
-        background: falhou ? '#fef2f2' : out ? 'var(--brand)' : 'var(--surface)',
-        color:      falhou ? '#991b1b' : out ? '#fff' : 'var(--text)',
-        border:     falhou ? '1px solid #dc262633' : out ? 'none' : '1px solid var(--border)',
+        background: falhou ? 'var(--danger-soft)' : out ? 'var(--brand)' : 'var(--surface)',
+        color:      falhou ? 'var(--danger)' : out ? 'var(--on-brand)' : 'var(--text)',
+        border:     falhou ? '1px solid color-mix(in srgb, var(--danger) 20%, transparent)' : out ? 'none' : '1px solid var(--border)',
         borderRadius: out ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
         padding:   '8px 12px',
-        fontSize:   13.5, lineHeight: 1.45,
+        fontSize: 'var(--text-base-sz)', lineHeight: 1.45,
         boxShadow:  out && !falhou ? '0 2px 8px -3px rgba(195,77,107,.3)' : 'none',
         opacity: msg.status === 'sending' ? 0.6 : 1,
         transition: 'opacity 0.2s',
@@ -426,10 +426,10 @@ function Bubble({
             borderLeft: `3px solid ${out ? 'rgba(255,255,255,0.65)' : 'var(--brand)'}`,
             background: out ? 'rgba(255,255,255,0.14)' : 'var(--bg)',
             borderRadius: 6, padding: '5px 8px', marginBottom: 6,
-            fontSize: 12, lineHeight: 1.35,
+            fontSize: 'var(--text-sm-sz)', lineHeight: 1.35,
           }}>
             <div style={{
-              fontWeight: 700, fontSize: 10.5, marginBottom: 1,
+              fontWeight: 700, fontSize: 'var(--text-overline)', marginBottom: 1,
               color: out ? 'rgba(255,255,255,0.85)' : 'var(--brand)',
             }}>
               {msg.reply_preview
@@ -476,8 +476,8 @@ function Bubble({
             href={msg.media_url} target="_blank" rel="noreferrer"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 6,
-              fontSize: 12.5, fontWeight: 700,
-              color: out ? '#fff' : 'var(--brand)', textDecoration: 'underline',
+              fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+              color: out ? 'var(--on-brand)' : 'var(--brand)', textDecoration: 'underline',
             }}
           >
             <Paperclip size={13} /> Abrir arquivo
@@ -486,7 +486,7 @@ function Bubble({
         {/* Mídia que não desceu: o texto vira "[imagem]" e o link não existe. */}
         {msg.media_type && !msg.media_url && (
           <p style={{
-            margin: '0 0 4px', fontSize: 11.5,
+            margin: '0 0 4px', fontSize: 'var(--text-xs-sz)',
             color: out ? 'rgba(255,255,255,0.7)' : 'var(--text-faint)',
           }}>
             Anexo indisponível
@@ -500,24 +500,24 @@ function Bubble({
           display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end', marginTop: 4,
         }}>
           {out && msg.sent_by_name && (
-            <span style={{ fontSize: 10, color: falhou ? '#99181899' : out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)' }}>
+            <span style={{ fontSize: 'var(--text-overline)', color: falhou ? 'color-mix(in srgb, var(--danger) 60%, transparent)' : out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)' }}>
               {msg.sent_by_name}
             </span>
           )}
           {falhou && (
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626' }}>
+            <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--danger)' }}>
               Não enviada
             </span>
           )}
           {msg.edited_at && (
             <span style={{
-              fontSize: 10, fontStyle: 'italic',
+              fontSize: 'var(--text-overline)', fontStyle: 'italic',
               color: out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)',
             }}>
               editada
             </span>
           )}
-          <span style={{ fontSize: 10, color: falhou ? '#99181899' : out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)' }}>
+          <span style={{ fontSize: 'var(--text-overline)', color: falhou ? 'color-mix(in srgb, var(--danger) 60%, transparent)' : out ? 'rgba(255,255,255,0.55)' : 'var(--text-faint)' }}>
             {msg.status === 'sending' ? '…' : format(parseISO(msg.created_at), 'HH:mm')}
           </span>
           {out && !falhou && msg.status !== 'sending' && (
@@ -613,7 +613,7 @@ function NewConvModal({
           padding: '18px 22px', borderBottom: '1px solid var(--hairline)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>Nova conversa</h3>
+          <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Nova conversa</h3>
           <button type="button" onClick={onClose} style={{
             width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)',
             background: 'var(--bg-app)', cursor: 'pointer',
@@ -624,7 +624,7 @@ function NewConvModal({
         </div>
         <form onSubmit={handleSubmit} style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>LEAD</label>
+            <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>LEAD</label>
             <select className="field" value={leadId} onChange={e => setLeadId(e.target.value)} required>
               {leads.length === 0 && <option value="">Nenhum lead disponível</option>}
               {leads.map(l => (
@@ -636,7 +636,7 @@ function NewConvModal({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>CANAL</label>
+            <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>CANAL</label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {(Object.keys(CH) as InboxChannel[]).map(c => (
                 <button
@@ -644,7 +644,7 @@ function NewConvModal({
                   type="button"
                   onClick={() => setChannel(c)}
                   style={{
-                    fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 99, cursor: 'pointer',
+                    fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '5px 12px', borderRadius: 99, cursor: 'pointer',
                     border: channel === c ? `1.5px solid ${CH[c].color}` : '1.5px solid var(--border)',
                     background: channel === c ? CH[c].bg : 'var(--bg-app)',
                     color: channel === c ? CH[c].color : 'var(--text-muted)',
@@ -658,7 +658,7 @@ function NewConvModal({
           </div>
 
           {error && (
-            <p style={{ fontSize: 12, color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontWeight: 700 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 8, padding: '8px 12px', fontWeight: 700 }}>
               {error}
             </p>
           )}
@@ -714,7 +714,7 @@ function MenuDeAcoes({
         className="show-mobile"
         onClick={anexos.alternarGravacao}
         title="Parar gravação"
-        style={{ ...botao, borderColor: '#dc2626', background: '#fef2f2', color: '#dc2626' }}
+        style={{ ...botao, borderColor: 'var(--danger)', background: 'var(--danger-soft)', color: 'var(--danger)' }}
       >
         <Square size={14} />
       </button>
@@ -747,7 +747,7 @@ function MenuDeAcoes({
             position: 'absolute', bottom: 44, left: 0, zIndex: 41, width: 186,
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 'var(--radius-field-token)', padding: 6,
-            boxShadow: '0 8px 28px -10px rgba(34,22,25,.25)',
+            boxShadow: 'var(--shadow-popover)',
           }}>
             {itens.map(i => (
               <button
@@ -758,7 +758,7 @@ function MenuDeAcoes({
                   display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                   padding: '9px 8px', borderRadius: 8, border: 'none',
                   background: 'transparent', cursor: 'pointer',
-                  fontSize: 13, color: 'var(--text)', textAlign: 'left',
+                  fontSize: 'var(--text-base-sz)', color: 'var(--text)', textAlign: 'left',
                 }}
               >
                 <span style={{ color: 'var(--text-muted)', display: 'flex' }}>{i.icone}</span>
@@ -1384,7 +1384,7 @@ export function CRMInbox({
                 <input
                   type="text" placeholder="Pesquisar…" value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="field" style={{ paddingLeft: 28, fontSize: 12.5 }}
+                  className="field" style={{ paddingLeft: 28, fontSize: 'var(--text-sm-sz)' }}
                 />
               </div>
               <InboxFiltros
@@ -1430,7 +1430,7 @@ export function CRMInbox({
               flexShrink: 0, padding: '7px 14px',
               borderBottom: '1px solid var(--hairline)',
               display: 'flex', alignItems: 'center', gap: 7,
-              fontSize: 11.5, fontWeight: 700,
+              fontSize: 'var(--text-xs-sz)', fontWeight: 700,
               color: hasAwaitingAlert ? AGING_STYLE.alert.color : AGING_STYLE.warn.color,
               background: hasAwaitingAlert ? AGING_STYLE.alert.bg : AGING_STYLE.warn.bg,
             }}>
@@ -1447,7 +1447,7 @@ export function CRMInbox({
             {filtered.length === 0 ? (
               <div style={{ padding: '40px 16px', textAlign: 'center' }}>
                 <MessageSquare size={26} color="var(--border)" />
-                <p style={{ fontSize: 12.5, color: 'var(--text-faint)', marginTop: 10 }}>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 10 }}>
                   {search || filtrosAtivos ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
                 </p>
                 {/* Lista vazia por causa de filtro tem saída à mão: sem isto a
@@ -1457,7 +1457,7 @@ export function CRMInbox({
                     type="button"
                     onClick={() => setFiltros(FILTROS_VAZIOS)}
                     className="btn-ghost"
-                    style={{ fontSize: 12, marginTop: 8 }}
+                    style={{ fontSize: 'var(--text-sm-sz)', marginTop: 8 }}
                   >
                     Limpar filtros
                   </button>
@@ -1467,7 +1467,7 @@ export function CRMInbox({
                     type="button"
                     onClick={() => setShowNewConv(true)}
                     className="btn-secondary"
-                    style={{ fontSize: 12, marginTop: 12 }}
+                    style={{ fontSize: 'var(--text-sm-sz)', marginTop: 12 }}
                   >
                     <Plus size={13} /> Iniciar primeira conversa
                   </button>
@@ -1498,10 +1498,10 @@ export function CRMInbox({
                 <MessageSquare size={28} color="var(--border)" />
               </div>
               <div style={{ textAlign: 'center' }}>
-                <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>
                   Selecione uma conversa
                 </p>
-                <p style={{ fontSize: 12.5, maxWidth: 220 }}>
+                <p style={{ fontSize: 'var(--text-sm-sz)', maxWidth: 220 }}>
                   Escolha um contato na lista para ver o histórico e enviar mensagens
                 </p>
               </div>
@@ -1537,14 +1537,14 @@ export function CRMInbox({
                   width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
                   background: 'var(--brand-soft)', border: '2px solid var(--brand-soft-border)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 15, fontWeight: 800, color: 'var(--brand)',
+                  fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)',
                 }}>
                   {(selectedConv.contact_name ?? '?')[0]!.toUpperCase()}
                 </div>
 
                 <div style={{ flex: '1 1 170px', minWidth: 0 }}>
                   <p style={{
-                    fontSize: 14, fontWeight: 800, color: 'var(--text)', margin: 0,
+                    fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', margin: 0,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     {selectedConv.contact_name ?? 'Sem nome'}
@@ -1552,12 +1552,12 @@ export function CRMInbox({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                     <ChannelBadge ch={selectedConv.channel} />
                     {selectedConv.contact_phone && (
-                      <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>
+                      <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
                         {selectedConv.contact_phone}
                       </span>
                     )}
                     {selectedConv.branch_name && (
-                      <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>
+                      <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
                         · {selectedConv.branch_name}
                       </span>
                     )}
@@ -1565,7 +1565,7 @@ export function CRMInbox({
 
                   {/* Service metrics */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                       {nowMs != null && <>Última interação há {formatDurationShort(secondsSince(selectedConv.last_message_at, nowMs))}</>}
                       {selectedConv.first_response_seconds != null && (
                         <>{nowMs != null && ' · '}1ª resposta em {formatDurationLong(selectedConv.first_response_seconds)}</>
@@ -1576,7 +1576,7 @@ export function CRMInbox({
                       const st = AGING_STYLE[agingLevel(s, AWAITING_THRESHOLDS)]
                       return (
                         <span style={{
-                          fontSize: 11, fontWeight: 700,
+                          fontSize: 'var(--text-2xs)', fontWeight: 700,
                           padding: '1px 8px', borderRadius: 99,
                           background: st.bg, color: st.color, whiteSpace: 'nowrap',
                         }}>
@@ -1624,12 +1624,12 @@ export function CRMInbox({
               }}>
                 {loadingMsgs ? (
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <p style={{ color: 'var(--text-faint)', fontSize: 13 }}>Carregando mensagens…</p>
+                    <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)' }}>Carregando mensagens…</p>
                   </div>
                 ) : messages.length === 0 ? (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                     <MessageSquare size={22} color="var(--border)" />
-                    <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Nenhuma mensagem ainda. Inicie a conversa!</p>
+                    <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhuma mensagem ainda. Inicie a conversa!</p>
                   </div>
                 ) : (
                   dayGroups.map(g => (
@@ -1637,7 +1637,7 @@ export function CRMInbox({
                       {/* Day separator */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 20px' }}>
                         <div style={{ flex: 1, height: 1, background: 'var(--hairline)' }} />
-                        <span style={{ fontSize: 10.5, color: 'var(--text-faint)', fontWeight: 700 }}>
+                        <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', fontWeight: 700 }}>
                           {dayLabel(g.msgs[0]!.created_at)}
                         </span>
                         <div style={{ flex: 1, height: 1, background: 'var(--hairline)' }} />
@@ -1665,14 +1665,14 @@ export function CRMInbox({
                 <div style={{
                   margin: '0 16px 8px',
                   padding: '8px 12px', borderRadius: 8,
-                  background: '#fffbeb', border: '1px solid #fde68a',
+                  background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
                   display: 'flex', alignItems: 'flex-start', gap: 8,
-                  fontSize: 12, color: '#92400e',
+                  fontSize: 'var(--text-sm-sz)', color: 'var(--warning)',
                 }}>
                   <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   <span>
                     Canal {CH[selectedConv.channel].label} não está conectado — não é possível responder por aqui.{' '}
-                    <a href="/admin/settings?tab=integrations" style={{ color: '#92400e', fontWeight: 700, textDecoration: 'underline' }}>
+                    <a href="/admin/settings?tab=integrations" style={{ color: 'var(--warning)', fontWeight: 700, textDecoration: 'underline' }}>
                       Configurar integração →
                     </a>
                   </span>
@@ -1685,9 +1685,9 @@ export function CRMInbox({
                 <div style={{
                   margin: '0 16px 8px',
                   padding: '8px 12px', borderRadius: 8,
-                  background: '#fffbeb', border: '1px solid #fde68a',
+                  background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
                   display: 'flex', alignItems: 'flex-start', gap: 8,
-                  fontSize: 12, color: '#92400e',
+                  fontSize: 'var(--text-sm-sz)', color: 'var(--warning)',
                 }}>
                   <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   <div style={{ flex: 1 }}>
@@ -1701,7 +1701,7 @@ export function CRMInbox({
                         style={{
                           display: 'block', marginTop: 6, padding: 0, border: 'none',
                           background: 'none', cursor: 'pointer',
-                          fontSize: 12, fontWeight: 800, color: '#92400e',
+                          fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--warning)',
                           textDecoration: 'underline',
                         }}
                       >
@@ -1716,9 +1716,9 @@ export function CRMInbox({
                 <div style={{
                   margin: '0 16px 8px',
                   padding: '8px 12px', borderRadius: 8,
-                  background: '#fef2f2', border: '1px solid #dc262633',
+                  background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
                   display: 'flex', alignItems: 'flex-start', gap: 8,
-                  fontSize: 12, color: '#dc2626', fontWeight: 600,
+                  fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600,
                 }}>
                   <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   <span>{sendError}</span>
@@ -1741,13 +1741,13 @@ export function CRMInbox({
                 }}>
                   {editando ? <Pencil size={13} color="var(--brand)" /> : <Reply size={13} color="var(--brand)" />}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--brand)' }}>
+                    <div style={{ fontSize: 'var(--text-overline)', fontWeight: 800, color: 'var(--brand)' }}>
                       {editando
                         ? 'Editando mensagem'
                         : `Respondendo ${respondendoA!.direction === 'outbound' ? 'você mesmo' : selectedConv.contact_name ?? 'o contato'}`}
                     </div>
                     <div style={{
-                      fontSize: 12, color: 'var(--text-muted)',
+                      fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>
                       {(editando ?? respondendoA)!.content}
@@ -1836,7 +1836,7 @@ export function CRMInbox({
                         : 'Digite uma mensagem… (Enter para enviar)'}
                     disabled={bloqueado}
                     className="field"
-                    style={{ flex: 1, resize: 'none', fontSize: 13.5, lineHeight: 1.5, maxHeight: 100, overflowY: 'auto' }}
+                    style={{ flex: 1, resize: 'none', fontSize: 'var(--text-base-sz)', lineHeight: 1.5, maxHeight: 100, overflowY: 'auto' }}
                   />
                   <button
                     type="button"
@@ -1852,7 +1852,7 @@ export function CRMInbox({
               ) : (
                 <div className="inbox-encerrada" style={{
                   padding: '12px 16px', borderTop: '1px solid var(--hairline)',
-                  textAlign: 'center', fontSize: 12, color: 'var(--text-faint)',
+                  textAlign: 'center', fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)',
                   background: 'var(--bg-app)',
                 }}>
                   Conversa encerrada · Altere o status para reabrir
@@ -1879,7 +1879,7 @@ export function CRMInbox({
                 alignItems: 'center', justifyContent: 'space-between', gap: 8,
               }}
             >
-              <strong style={{ fontSize: 13, color: 'var(--text)' }}>Contato</strong>
+              <strong style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)' }}>Contato</strong>
               <button
                 type="button"
                 onClick={() => setPainelAberto(false)}
@@ -1928,7 +1928,7 @@ function StatusDropdown({
         onClick={() => setOpen(o => !o)}
         style={{
           display: 'flex', alignItems: 'center', gap: 5,
-          fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 99, cursor: disabled ? 'default' : 'pointer',
+          fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '4px 10px', borderRadius: 99, cursor: disabled ? 'default' : 'pointer',
           background: m.bg, color: m.color,
           border: `1px solid ${m.border}`,
         }}
@@ -1943,7 +1943,7 @@ function StatusDropdown({
           <div style={{
             position: 'absolute', right: 0, top: 'calc(100% + 4px)',
             background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 10, boxShadow: '0 8px 24px -6px rgba(34,22,25,.14)',
+            borderRadius: 10, boxShadow: 'var(--shadow-popover)',
             zIndex: 10, overflow: 'hidden', minWidth: 140,
           }}>
             {(Object.entries(STATUS_META) as [ConvStatus, typeof STATUS_META[ConvStatus]][]).map(([key, meta]) => (
@@ -1953,7 +1953,7 @@ function StatusDropdown({
                 onClick={() => { onChange(key); setOpen(false) }}
                 style={{
                   width: '100%', textAlign: 'left', padding: '10px 14px',
-                  fontSize: 12.5, fontWeight: key === status ? 800 : 500,
+                  fontSize: 'var(--text-sm-sz)', fontWeight: key === status ? 800 : 500,
                   color: key === status ? meta.color : 'var(--text)',
                   background: key === status ? meta.bg : 'transparent',
                   border: 'none', borderBottom: '1px solid var(--hairline)', cursor: 'pointer',

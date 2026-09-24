@@ -10,9 +10,9 @@ type StatusFilter = 'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'
 type Signal = 'scale' | 'watch' | 'review' | 'neutral'
 
 const SIGNAL_CONFIG: Record<Signal, { label: string; color: string; bg: string; rowBg: string }> = {
-  scale:   { label: 'Escalar',  color: '#15803d', bg: '#dcfce7', rowBg: '#f0fdf440' },
-  watch:   { label: 'Observar', color: '#92400e', bg: '#fef3c7', rowBg: '#fffbeb40' },
-  review:  { label: 'Revisar',  color: '#991b1b', bg: '#fee2e2', rowBg: '#fef2f240' },
+  scale:   { label: 'Escalar',  color: 'var(--success)', bg: 'var(--success-soft)', rowBg: 'color-mix(in srgb, var(--success-bg) 25%, transparent)' },
+  watch:   { label: 'Observar', color: 'var(--warning)', bg: 'var(--warning-soft)', rowBg: 'color-mix(in srgb, var(--bg-app) 25%, transparent)' },
+  review:  { label: 'Revisar',  color: 'var(--danger)', bg: 'var(--danger-soft)', rowBg: 'color-mix(in srgb, var(--bg-app) 25%, transparent)' },
   neutral: { label: '',         color: 'var(--text-muted)', bg: 'transparent', rowBg: '' },
 }
 
@@ -56,9 +56,9 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  ACTIVE:   '#16a34a',
-  PAUSED:   '#6b7280',
-  ARCHIVED: '#9ca3af',
+  ACTIVE:   'var(--success)',
+  PAUSED:   'var(--text-muted)',
+  ARCHIVED: 'var(--text-faint)',
 }
 
 function fmtBRL(v: number) {
@@ -70,7 +70,7 @@ function fmtPct(v: number) {
 function fmtNum(v: number) {
   return v.toLocaleString('pt-BR')
 }
-const UNAVAIL = <span style={{ color: 'var(--text-muted)', fontSize: 11, fontStyle: 'italic' }}>Indisponível</span>
+const UNAVAIL = <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-2xs)', fontStyle: 'italic' }}>Indisponível</span>
 
 function fmtRoi(v: number) {
   return (v >= 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + '%'
@@ -184,7 +184,7 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
     ...cellStyle,
     fontWeight: 'var(--weight-bold)',
     borderTop: '2px solid var(--border)',
-    background: 'var(--surface-raised, #fafaf9)',
+    background: 'var(--surface-raised, var(--bg-app))',
   }
 
   function SortIcon({ k }: { k: SortKey }) {
@@ -207,7 +207,7 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
         <div style={{
           display: 'flex', alignItems: 'center', gap: 7,
           border: '1px solid var(--border)', borderRadius: 8,
-          padding: '6px 10px', background: '#fff', flex: '1 1 200px', minWidth: 180,
+          padding: '6px 10px', background: 'var(--surface)', flex: '1 1 200px', minWidth: 180,
         }}>
           <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
           <input
@@ -228,14 +228,14 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
         </div>
 
         {/* Filtro de status */}
-        <div className="seg-bar" style={{ display: 'flex', gap: 4, background: '#fff', borderRadius: 8, padding: 3, border: '1px solid var(--border)', flexShrink: 0 }}>
+        <div className="seg-bar" style={{ display: 'flex', gap: 4, background: 'var(--surface)', borderRadius: 8, padding: 3, border: '1px solid var(--border)', flexShrink: 0 }}>
           {STATUS_FILTERS.map(f => (
             <button
               key={f.key}
               type="button"
               onClick={() => setStatus(f.key)}
               className={statusFilter === f.key ? 'btn-primary' : 'btn-ghost'}
-              style={{ fontSize: 12, padding: '4px 10px', whiteSpace: 'nowrap' }}
+              style={{ fontSize: 'var(--text-sm-sz)', padding: '4px 10px', whiteSpace: 'nowrap' }}
             >
               {f.label}
             </button>
@@ -245,20 +245,20 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
 
       {/* Card de resumo de sinais */}
       {filtered.length > 0 && (signalCounts.scale > 0 || signalCounts.watch > 0 || signalCounts.review > 0) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: '#fff', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 4 }}>Sinais</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 4 }}>Sinais</span>
           {signalCounts.scale > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: SIGNAL_CONFIG.scale.color, background: SIGNAL_CONFIG.scale.bg, borderRadius: 99, padding: '3px 10px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: SIGNAL_CONFIG.scale.color, background: SIGNAL_CONFIG.scale.bg, borderRadius: 99, padding: '3px 10px' }}>
               ↑ {signalCounts.scale} para escalar
             </span>
           )}
           {signalCounts.watch > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: SIGNAL_CONFIG.watch.color, background: SIGNAL_CONFIG.watch.bg, borderRadius: 99, padding: '3px 10px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: SIGNAL_CONFIG.watch.color, background: SIGNAL_CONFIG.watch.bg, borderRadius: 99, padding: '3px 10px' }}>
               ◎ {signalCounts.watch} para observar
             </span>
           )}
           {signalCounts.review > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: SIGNAL_CONFIG.review.color, background: SIGNAL_CONFIG.review.bg, borderRadius: 99, padding: '3px 10px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: SIGNAL_CONFIG.review.color, background: SIGNAL_CONFIG.review.bg, borderRadius: 99, padding: '3px 10px' }}>
               ↓ {signalCounts.review} para revisar
             </span>
           )}
@@ -311,7 +311,7 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
                   key={c.id}
                   onClick={() => router.push(`/admin/marketing/campanhas/${c.id}?period=${preset}`)}
                   style={{ cursor: 'pointer', background: SIGNAL_CONFIG[signals[c.id] ?? 'neutral'].rowBg || undefined }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-raised, #fafaf9)')}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-raised, var(--bg-app))')}
                   onMouseLeave={e => (e.currentTarget.style.background = SIGNAL_CONFIG[signals[c.id] ?? 'neutral'].rowBg || '')}
                 >
                   <td style={{ ...cellStyle, textAlign: 'left', maxWidth: 260 }}>
@@ -326,9 +326,9 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
                     {(() => {
                       const sig = signals[c.id] ?? 'neutral'
                       const cfg = SIGNAL_CONFIG[sig]
-                      if (sig === 'neutral') return <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
+                      if (sig === 'neutral') return <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-2xs)' }}>—</span>
                       return (
-                        <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700, color: cfg.color, background: cfg.bg, whiteSpace: 'nowrap' }}>
+                        <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 99, fontSize: 'var(--text-2xs)', fontWeight: 700, color: cfg.color, background: cfg.bg, whiteSpace: 'nowrap' }}>
                           {sig === 'scale' ? '↑' : sig === 'review' ? '↓' : '◎'} {cfg.label}
                         </span>
                       )

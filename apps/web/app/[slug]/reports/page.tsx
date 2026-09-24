@@ -41,7 +41,7 @@ export default async function BranchReportsPage({
   if (error) {
     console.error('[branch/reports] branch:', error.message)
     return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Não foi possível carregar a unidade agora. Tente recarregar em instantes.
       </div>
     )

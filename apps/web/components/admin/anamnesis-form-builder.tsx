@@ -219,10 +219,10 @@ export function AnamnesisFormBuilder({ existing, onDone, createAction, updateAct
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-        <button type="button" onClick={onDone} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+        <button type="button" onClick={onDone} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
           <ChevronLeft size={16} /> Voltar às fichas
         </button>
-        <button type="button" onClick={() => setShowPreview(true)} className="btn-secondary" style={{ fontSize: 13 }}>
+        <button type="button" onClick={() => setShowPreview(true)} className="btn-secondary" style={{ fontSize: 'var(--text-base-sz)' }}>
           <Eye size={15} /> Pré-visualizar
         </button>
       </div>
@@ -235,7 +235,7 @@ export function AnamnesisFormBuilder({ existing, onDone, createAction, updateAct
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         {/* Paleta (desktop) */}
         <aside className="anamnesis-palette" style={{ flex: '0 0 200px', minWidth: 180 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Blocos</p>
+          <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Blocos</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {FIELD_TYPES.map(t => {
               const Icon = TYPE_ICON[t.value]
@@ -247,14 +247,14 @@ export function AnamnesisFormBuilder({ existing, onDone, createAction, updateAct
                   onDragEnd={() => { setDrag(null); setOver(null) }}
                   onClick={() => addRowAtEnd(t.value)}
                   title="Arraste para o formulário (ou clique para adicionar ao fim)"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, cursor: 'grab', fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, cursor: 'grab', fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)' }}
                 >
                   <Icon size={15} /> {t.label}
                 </div>
               )
             })}
           </div>
-          <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 10, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 10, lineHeight: 1.5 }}>
             Solte um bloco <strong>sobre uma linha</strong> para adicionar uma coluna (máx. {MAX_COLS}).
             Solte <strong>entre as linhas</strong> para criar uma nova linha.
           </p>
@@ -266,7 +266,7 @@ export function AnamnesisFormBuilder({ existing, onDone, createAction, updateAct
             <div
               onDragOver={e => { if (drag) { e.preventDefault(); setOver({ kind: 'sep', index: 0 }) } }}
               onDrop={e => { e.preventDefault(); performDrop({ kind: 'sep', index: 0 }) }}
-              style={{ minHeight: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', border: `2px dashed ${drag && over?.kind === 'sep' ? 'var(--brand)' : 'transparent'}`, borderRadius: 10, color: 'var(--text-faint)', fontSize: 13, padding: '8px' }}
+              style={{ minHeight: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', border: `2px dashed ${drag && over?.kind === 'sep' ? 'var(--brand)' : 'transparent'}`, borderRadius: 10, color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)', padding: '8px' }}
             >
               Arraste um bloco aqui ou toque em <strong style={{ margin: '0 3px' }}>+</strong> para adicionar
             </div>
@@ -330,14 +330,14 @@ export function AnamnesisFormBuilder({ existing, onDone, createAction, updateAct
             {!showAdd ? (
               <button
                 type="button" onClick={() => setShowAdd(true)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: 12, borderRadius: 'var(--radius-field-token)', border: 'none', background: 'var(--brand)', color: 'var(--on-brand)', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: 12, borderRadius: 'var(--radius-field-token)', border: 'none', background: 'var(--brand)', color: 'var(--on-brand)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}
               >
                 <Plus size={18} /> Adicionar campo
               </button>
             ) : (
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)', padding: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>Escolha um bloco</span>
+                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>Escolha um bloco</span>
                   <button type="button" onClick={() => setShowAdd(false)} title="Fechar" style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                     <X size={14} />
                   </button>
@@ -349,7 +349,7 @@ export function AnamnesisFormBuilder({ existing, onDone, createAction, updateAct
                       <button
                         key={t.value} type="button"
                         onClick={() => { addRowAtEnd(t.value); setShowAdd(false) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text)', fontSize: 'var(--text-sm-sz)', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
                       >
                         <Icon size={15} /> {t.label}
                       </button>
@@ -362,7 +362,7 @@ export function AnamnesisFormBuilder({ existing, onDone, createAction, updateAct
         </div>
       </div>
 
-      {error && <p style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 10, padding: '8px 12px', fontSize: 12.5, fontWeight: 600 }}>{error}</p>}
+      {error && <p style={{ color: 'var(--warning)', background: 'var(--warning-soft)', borderRadius: 10, padding: '8px 12px', fontSize: 'var(--text-sm-sz)', fontWeight: 600 }}>{error}</p>}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
         <button type="button" onClick={onDone} className="btn-secondary" disabled={saving}>Cancelar</button>
@@ -402,7 +402,7 @@ function IconBtn({ children, onClick, title, disabled }: { children: React.React
 function CardBtn({ children, onClick, title, danger }: { children: React.ReactNode; onClick: (e: React.MouseEvent) => void; title: string; danger?: boolean }) {
   return (
     <button type="button" onClick={onClick} title={title}
-      style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: danger ? '#dc2626' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+      style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: danger ? 'var(--danger)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
       {children}
     </button>
   )
@@ -435,10 +435,10 @@ function FieldCard({ field: f, dragging, insertHighlight, canMergeUp, canSplit, 
     >
       <span style={{ display: 'flex', color: 'var(--brand)', flexShrink: 0 }}><Icon size={15} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 12.5, fontWeight: 700, color: f.label ? 'var(--text)' : 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: f.label ? 'var(--text)' : 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {f.label || 'Sem título'}
         </p>
-        <p style={{ fontSize: 10, color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {FIELD_TYPE_LABEL[f.type]}{f.required ? ' · obrig.' : ''}
         </p>
       </div>
@@ -475,10 +475,10 @@ function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAd
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(2px)', zIndex: 500 }} />
       <div role="dialog" aria-modal="true"
-        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(440px, calc(100vw - 24px))', maxHeight: '88dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-token)', boxShadow: '0 24px 64px rgba(34,22,25,0.22)' }}
+        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(440px, calc(100vw - 24px))', maxHeight: '88dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-token)', boxShadow: 'var(--shadow-overlay)' }}
       >
         <div style={{ position: 'sticky', top: 0, background: 'var(--surface)', borderBottom: '1px solid var(--hairline)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Configurar campo</span>
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Configurar campo</span>
           <button type="button" onClick={onClose} title="Fechar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <X size={15} />
           </button>
@@ -501,12 +501,12 @@ function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAd
                 {(f.options ?? []).map((opt, oi) => (
                   <div key={oi} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <input className="field" style={{ flex: 1 }} value={opt} onChange={e => onSetOption(oi, e.target.value)} placeholder={`Opção ${oi + 1}`} />
-                    <button type="button" onClick={() => onRemoveOption(oi)} title="Remover opção" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                    <button type="button" onClick={() => onRemoveOption(oi)} title="Remover opção" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                       <X size={14} />
                     </button>
                   </div>
                 ))}
-                <button type="button" onClick={onAddOption} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 700, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <button type="button" onClick={onAddOption} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                   <Plus size={14} /> Adicionar opção
                 </button>
               </div>
@@ -520,7 +520,7 @@ function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAd
           )}
 
           {!isSection && (
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text-soft)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 'var(--text-base-sz)', color: 'var(--text-soft)' }}>
               <input type="checkbox" checked={!!f.required} onChange={e => onPatch({ required: e.target.checked })} style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} />
               Campo obrigatório
             </label>
@@ -556,18 +556,18 @@ function FormPreviewModal({ name, rows, onClose }: { name: string; rows: Anamnes
     <>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(2px)', zIndex: 500 }} />
       <div role="dialog" aria-modal="true"
-        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: `min(${wide ? 940 : 560}px, calc(100vw - 24px))`, maxHeight: '90dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-token)', boxShadow: '0 24px 64px rgba(34,22,25,0.22)' }}
+        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: `min(${wide ? 940 : 560}px, calc(100vw - 24px))`, maxHeight: '90dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-token)', boxShadow: 'var(--shadow-overlay)' }}
       >
         <div style={{ position: 'sticky', top: 0, background: 'var(--surface)', borderBottom: '1px solid var(--hairline)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
-          <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Pré-visualização</span>
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Pré-visualização</span>
           <button type="button" onClick={onClose} title="Fechar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <X size={15} />
           </button>
         </div>
         <div style={{ padding: '18px 18px 24px' }}>
-          {name.trim() && <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 16 }}>{name}</p>}
+          {name.trim() && <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 16 }}>{name}</p>}
           {rows.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-faint)', textAlign: 'center', padding: '24px 0' }}>Nenhum campo ainda.</p>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', textAlign: 'center', padding: '24px 0' }}>Nenhum campo ainda.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {rows.map(row => (
@@ -587,14 +587,14 @@ function PreviewField({ field: f }: { field: AnamnesisField }) {
   if (f.type === 'section') {
     return (
       <div style={{ marginTop: 4, paddingBottom: 4, borderBottom: '1px solid var(--hairline)' }}>
-        <p style={{ fontSize: 12, fontWeight: 800, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label || 'Seção'}</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label || 'Seção'}</p>
       </div>
     )
   }
   const opts = f.options ?? []
   return (
     <div>
-      <label style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', marginBottom: 6, display: 'block' }}>
+      <label style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginBottom: 6, display: 'block' }}>
         {f.label || 'Sem título'}{f.required && <span style={{ color: 'var(--brand)' }}> *</span>}
       </label>
       {f.type === 'text' && <input className="field" disabled placeholder={f.placeholder} />}
@@ -610,7 +610,7 @@ function PreviewField({ field: f }: { field: AnamnesisField }) {
       {f.type === 'radio' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {opts.map(o => (
-            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-soft)' }}>
+            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-base-sz)', color: 'var(--text-soft)' }}>
               <input type="radio" disabled style={{ accentColor: 'var(--brand)' }} /> {o}
             </label>
           ))}
@@ -619,14 +619,14 @@ function PreviewField({ field: f }: { field: AnamnesisField }) {
       {f.type === 'checkbox' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {opts.map(o => (
-            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-soft)' }}>
+            <label key={o} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-base-sz)', color: 'var(--text-soft)' }}>
               <input type="checkbox" disabled style={{ accentColor: 'var(--brand)', width: 15, height: 15 }} /> {o}
             </label>
           ))}
         </div>
       )}
       {f.type === 'photo' && (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 10, border: '1.5px dashed var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', fontWeight: 600 }}>
           <Upload size={16} /> Enviar foto
         </div>
       )}

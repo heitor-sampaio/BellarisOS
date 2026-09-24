@@ -86,7 +86,7 @@ export function SettingsForms({ forms, actions, labels }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 520 }}>
+        <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', maxWidth: 520 }}>
           {labels.description}
         </p>
         <button type="button" className="btn-primary" onClick={() => setView({ mode: 'new' })}>
@@ -99,8 +99,8 @@ export function SettingsForms({ forms, actions, labels }: Props) {
           <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
             <ClipboardList size={22} color="var(--brand)" />
           </div>
-          <p style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{labels.emptyTitle}</p>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{labels.emptySubtitle}</p>
+          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{labels.emptyTitle}</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>{labels.emptySubtitle}</p>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -110,18 +110,18 @@ export function SettingsForms({ forms, actions, labels }: Props) {
                 <FileText size={17} color="var(--brand)" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>{f.name}</p>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>{f.name}</p>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   {fieldCount(f.rows)} campo{fieldCount(f.rows) !== 1 ? 's' : ''}
                   {!f.isActive && ' · inativa'}
                 </p>
               </div>
               <button
                 type="button" onClick={() => toggleActive(f)} disabled={busy === f.id}
-                style={{ fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 99, cursor: 'pointer',
-                  border: `1px solid ${f.isActive ? '#86efac' : 'var(--border)'}`,
-                  background: f.isActive ? '#f0fdf4' : 'var(--bg-app)',
-                  color: f.isActive ? '#16a34a' : 'var(--text-muted)' }}
+                style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '4px 10px', borderRadius: 99, cursor: 'pointer',
+                  border: `1px solid ${f.isActive ? 'var(--success-border)' : 'var(--border)'}`,
+                  background: f.isActive ? 'var(--success-bg)' : 'var(--bg-app)',
+                  color: f.isActive ? 'var(--success)' : 'var(--text-muted)' }}
               >
                 {f.isActive ? 'Ativa' : 'Inativa'}
               </button>
@@ -132,7 +132,7 @@ export function SettingsForms({ forms, actions, labels }: Props) {
               >
                 <Pencil size={14} />
               </button>
-              <button type="button" title="Excluir" onClick={() => handleDelete(f.id, f.name)} disabled={busy === f.id} style={{ ...iconBtn, color: '#dc2626' }}>
+              <button type="button" title="Excluir" onClick={() => handleDelete(f.id, f.name)} disabled={busy === f.id} style={{ ...iconBtn, color: 'var(--danger)' }}>
                 <Trash2 size={14} />
               </button>
             </div>

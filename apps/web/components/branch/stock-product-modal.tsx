@@ -84,7 +84,7 @@ function SupplierCombobox({ suppliers, defaultValue }: { suppliers: string[]; de
         <div style={{
           position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 60,
           background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
+          borderRadius: 10, boxShadow: 'var(--shadow-popover)',
           maxHeight: 192, overflowY: 'auto',
         }}>
           {filtered.map((s, i) => (
@@ -96,7 +96,7 @@ function SupplierCombobox({ suppliers, defaultValue }: { suppliers: string[]; de
                 width: '100%', textAlign: 'left', padding: '9px 14px',
                 background: 'none', border: 'none',
                 borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none',
-                cursor: 'pointer', fontSize: 13, color: 'var(--text)',
+                cursor: 'pointer', fontSize: 'var(--text-base-sz)', color: 'var(--text)',
                 display: 'flex', alignItems: 'center', gap: 9,
               }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
@@ -185,7 +185,7 @@ function ProductFields({
           {product?.sku ? (
             <div className="field" style={{
               background: 'var(--bg-app)', cursor: 'default',
-              fontFamily: 'monospace', fontSize: 13, fontWeight: 700,
+              fontFamily: 'monospace', fontSize: 'var(--text-base-sz)', fontWeight: 700,
               color: 'var(--text)', letterSpacing: '0.05em',
             }}>
               {product.sku}
@@ -193,7 +193,7 @@ function ProductFields({
           ) : (
             <div className="field" style={{
               background: 'var(--bg-app)', cursor: 'default',
-              fontFamily: 'monospace', fontSize: 13, fontWeight: 700,
+              fontFamily: 'monospace', fontSize: 'var(--text-base-sz)', fontWeight: 700,
               color: skuPreview ? 'var(--brand)' : 'var(--text-faint)',
               letterSpacing: '0.05em',
             }}>
@@ -210,7 +210,7 @@ function ProductFields({
           {barcodeReady && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: 10.5, fontWeight: 700, color: 'var(--brand)',
+              fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--brand)',
               letterSpacing: '0.02em',
             }}>
               <Barcode size={11} />
@@ -279,7 +279,7 @@ function ProductFields({
 
       {/* Conversão de embalagem (opcional) */}
       <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px' }}>
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
           Conteúdo da embalagem <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: 'var(--text-faint)' }}>— opcional</span>
         </p>
         <div className="form-2col">
@@ -301,7 +301,7 @@ function ProductFields({
             </select>
           </div>
         </div>
-        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 8 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 8 }}>
           Ex: 1 frasco com <strong>100 ml</strong> → custo por ml = preço ÷ 100
         </p>
       </div>
@@ -334,15 +334,15 @@ function ProductFields({
               left: vendaDireta ? 19 : 3,
               width: 14, height: 14, borderRadius: '50%',
               background: 'white',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              boxShadow: 'none',
               transition: 'left 200ms',
             }} />
           </div>
           <div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'block' }}>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', display: 'block' }}>
               Produto para venda direta ao cliente
             </span>
-            <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
               {vendaDireta ? 'Informe o preço de venda abaixo' : 'Apenas para uso interno como insumo'}
             </span>
           </div>
@@ -354,7 +354,7 @@ function ProductFields({
             <div style={{ position: 'relative' }}>
               <span style={{
                 position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-                fontSize: 11.5, color: 'var(--text-faint)', pointerEvents: 'none',
+                fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', pointerEvents: 'none',
               }}>R$</span>
               <input name="sale_price" type="number" step="0.01" min="0" className="field"
                 defaultValue={product?.sale_price ?? ''}
@@ -385,9 +385,9 @@ function ProductFields({
       {isCreate && (
         <div style={{
           display: 'flex', flexDirection: 'column', gap: showStock ? 12 : 0,
-          border: `1px solid ${showStock ? 'var(--brand-soft, #f3d9e0)' : 'var(--border)'}`,
+          border: `1px solid ${showStock ? 'var(--brand-soft, var(--border))' : 'var(--border)'}`,
           borderRadius: 10, padding: '12px 14px',
-          background: showStock ? 'var(--brand-soft, #fdf4f6)' : 'transparent',
+          background: showStock ? 'var(--brand-soft, var(--bg-app))' : 'transparent',
           transition: 'background 200ms, border-color 200ms',
         }}>
           <button
@@ -410,15 +410,15 @@ function ProductFields({
                 left: showStock ? 19 : 3,
                 width: 14, height: 14, borderRadius: '50%',
                 background: 'white',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                boxShadow: 'none',
                 transition: 'left 200ms',
               }} />
             </div>
             <div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'block' }}>
+              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', display: 'block' }}>
                 Adicionar estoque inicial
               </span>
-              <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                 {showStock ? 'Lançamento de entrada registrado junto ao cadastro' : 'Registrar quantidade disponível agora'}
               </span>
             </div>
@@ -454,7 +454,7 @@ function ProductFields({
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                     <Label>Custo por embalagem</Label>
                     {costPerUnit !== null && (
-                      <span style={{ fontSize: 10, color: 'var(--brand)', fontWeight: 700 }}>
+                      <span style={{ fontSize: 'var(--text-overline)', color: 'var(--brand)', fontWeight: 700 }}>
                         = R$ {costPerUnit.toLocaleString('pt-BR', { minimumFractionDigits: 4, maximumFractionDigits: 4 })} / {consumptionUnit}
                       </span>
                     )}
@@ -462,7 +462,7 @@ function ProductFields({
                   <div style={{ position: 'relative' }}>
                     <span style={{
                       position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-                      fontSize: 11.5, color: 'var(--text-faint)', pointerEvents: 'none',
+                      fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', pointerEvents: 'none',
                     }}>R$</span>
                     <input name="initial_cost" type="number" step="0.01" min="0" className="field"
                       value={costPriceStr}
@@ -635,7 +635,7 @@ export const StockProductModal = forwardRef<StockProductModalHandle, Props>(
               <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
                 {isEdit ? 'Editar produto' : 'Novo produto'}
               </h2>
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                 {isEdit ? product.name : 'Adicionar ao catálogo da rede'}
               </p>
             </div>

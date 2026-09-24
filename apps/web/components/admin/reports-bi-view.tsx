@@ -125,7 +125,7 @@ function AnimatedNum({ value, format = 'brl' }: {
 
 // -- KPI card ------------------------------------------------------------------
 function KpiCard({
-  label, value, format = 'brl', delta, accent, showDelta = false, deltaUnit = '%',
+  label, value, format = 'brl', delta, accent, showDelta = false, deltaUnit = '%', hero = false,
 }: {
   label: string
   value: number
@@ -135,33 +135,55 @@ function KpiCard({
   showDelta?: boolean
   /** Unidade da variação. Métricas que já são percentuais variam em "p.p.". */
   deltaUnit?: '%' | 'p.p.'
+  /**
+   * O número que a tela existe para mostrar, preenchido em rosé.
+   *
+   * É a regra de hierarquia do design system — o mais importante de um grupo é
+   * o único preenchido, todo o resto fica branco com borda. O dashboard e o
+   * financeiro já faziam isso; aqui os seis cards eram iguais, e seis cards
+   * iguais não têm hierarquia nenhuma: o olho não sabe onde pousar.
+   */
+  hero?: boolean
 }) {
   const hasDelta = delta != null
   return (
-    <div className="card" style={{ padding: '16px 20px', flex: '1 1 160px' }}>
+    <div className="card" style={{
+      padding: '16px 20px', flex: '1 1 160px',
+      ...(hero && {
+        background: 'var(--brand)',
+        borderColor: 'transparent',
+        boxShadow: 'var(--shadow-brand-card)',
+      }),
+    }}>
       <p style={{
-        fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+        fontSize: 'var(--text-overline)', fontWeight: 700,
+        color: hero ? 'color-mix(in srgb, var(--on-brand) 78%, transparent)' : 'var(--text-muted)',
         textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px',
       }}>
         {label}
       </p>
       <p style={{
-        fontSize: 22, fontWeight: 800,
-        color: accent ?? 'var(--brand)',
+        fontSize: 'var(--text-name)', fontWeight: 800,
+        color: hero ? 'var(--on-brand)' : accent ?? 'var(--brand)',
         margin: 0, letterSpacing: '-0.02em',
       }}>
         <AnimatedNum value={value} format={format} />
       </p>
       {hasDelta ? (
         <p style={{
-          fontSize: 11, margin: '4px 0 0',
-          color: delta! >= 0 ? 'var(--success)' : '#dc2626',
+          fontSize: 'var(--text-2xs)', margin: '4px 0 0',
+          color: hero
+            ? 'color-mix(in srgb, var(--on-brand) 82%, transparent)'
+            : delta! >= 0 ? 'var(--success)' : 'var(--danger)',
           fontWeight: 600,
         }}>
           {delta! >= 0 ? '▲' : '▼'} {Math.abs(delta!).toFixed(1).replace('.', ',')}{deltaUnit} vs anterior
         </p>
       ) : showDelta ? (
-        <p style={{ fontSize: 11, margin: '4px 0 0', color: 'var(--text-faint)', fontWeight: 500 }}>
+        <p style={{
+          fontSize: 'var(--text-2xs)', margin: '4px 0 0', fontWeight: 500,
+          color: hero ? 'color-mix(in srgb, var(--on-brand) 65%, transparent)' : 'var(--text-faint)',
+        }}>
           — sem dados anteriores
         </p>
       ) : null}
@@ -184,8 +206,8 @@ function SCard({
         borderBottom: '1px solid var(--hairline)',
         display: 'flex', alignItems: 'center', gap: 6,
       }}>
-        <span style={{ color: 'var(--brand)', fontSize: 11 }}>✦</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{title}</span>
+        <span style={{ color: 'var(--brand)', fontSize: 'var(--text-2xs)' }}>✦</span>
+        <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{title}</span>
       </div>
       <div style={{ padding: '16px 18px' }}>{children}</div>
     </div>
@@ -303,9 +325,9 @@ function TabOverview(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KpiCard label="Faturamento"    value={revenue}           format="brl" delta={pctDelta(revenue, prevRevenue)}           showDelta />
-        <KpiCard label="Despesas"       value={expenses}          format="brl" accent="#dc2626" delta={pctDelta(expenses, prevExpenses)}   showDelta />
-        <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? '#16a34a' : '#dc2626'} delta={pctDelta(profit, prevProfit)}     showDelta />
+        <KpiCard label="Faturamento"    value={revenue}           format="brl" delta={pctDelta(revenue, prevRevenue)}           showDelta hero />
+        <KpiCard label="Despesas"       value={expenses}          format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta />
+        <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}     showDelta />
         <KpiCard label="Atendimentos"   value={apptsCurr.length}  format="int" delta={pctDelta(apptsCurr.length, apptsPrevCount)}         showDelta />
         <KpiCard label="Novos Clientes" value={clientsCurr.length} format="int" delta={pctDelta(clientsCurr.length, clientsPrevCount)}    showDelta />
         {/* Sem delta: a receita de serviço do período anterior não é carregada,
@@ -330,7 +352,7 @@ function TabOverview(p: ReportsBiProps) {
           <DonutChart data={byPayment} />
         </SCard>
         <SCard title="Status dos Agendamentos">
-          <DonutChart data={byStatus} colors={[CHART_COLORS[3]!, CHART_COLORS[4]!, '#dc2626', CHART_COLORS[2]!, CHART_COLORS[0]!, CHART_COLORS[5]!]} />
+          <DonutChart data={byStatus} colors={[CHART_COLORS[3]!, CHART_COLORS[4]!, 'var(--danger)', CHART_COLORS[2]!, CHART_COLORS[0]!, CHART_COLORS[5]!]} />
         </SCard>
       </div>
     </div>
@@ -407,11 +429,11 @@ function TabFinanceiro(p: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KpiCard label="Receita Bruta"   value={revenue}   format="brl" delta={pctDelta(revenue, prevRevenue)}   showDelta />
-        <KpiCard label="Consumo de insumos" value={stockCOGS} format="brl" accent="#dc2626" />
-        <KpiCard label="Despesas Op."    value={opEx}      format="brl" accent="#d97706"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
-        <KpiCard label="Lucro"           value={profit}    format="brl" accent={profit >= 0 ? '#16a34a' : '#dc2626'} delta={pctDelta(profit, prevProfit)}   showDelta />
-        <KpiCard label="Margem"          value={margin}    format="pct" accent={margin >= 20 ? '#16a34a' : margin >= 0 ? '#d97706' : '#dc2626'} delta={prevRevenue > 0 ? marginDeltaPp : null} showDelta deltaUnit="p.p." />
+        <KpiCard label="Receita Bruta"   value={revenue}   format="brl" delta={pctDelta(revenue, prevRevenue)}   showDelta hero />
+        <KpiCard label="Consumo de insumos" value={stockCOGS} format="brl" accent="var(--danger)" />
+        <KpiCard label="Despesas Op."    value={opEx}      format="brl" accent="var(--warning)"  delta={pctDelta(opEx, prevOpEx)}     showDelta />
+        <KpiCard label="Lucro"           value={profit}    format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}   showDelta />
+        <KpiCard label="Margem"          value={margin}    format="pct" accent={margin >= 20 ? 'var(--success)' : margin >= 0 ? 'var(--warning)' : 'var(--danger)'} delta={prevRevenue > 0 ? marginDeltaPp : null} showDelta deltaUnit="p.p." />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="DRE Simplificado" style={{ gridColumn: '1 / -1' }}>
@@ -509,15 +531,15 @@ function TabAgenda(p: ReportsBiProps) {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Total Agendamentos" value={total}     format="int" />
         <KpiCard label="Realizados"         value={completed} format="int" delta={pctDelta(completed, apptsPrevCount)} showDelta />
-        <KpiCard label="Cancelados"         value={cancelled} format="int" accent="#d97706" />
-        <KpiCard label="Não Compareceu"     value={noShow}    format="int" accent="#dc2626" />
-        <KpiCard label="Taxa de Conclusão"  value={rate}      format="pct" accent={rate >= 70 ? '#16a34a' : '#d97706'} />
+        <KpiCard label="Cancelados"         value={cancelled} format="int" accent="var(--warning)" />
+        <KpiCard label="Não Compareceu"     value={noShow}    format="int" accent="var(--danger)" />
+        <KpiCard label="Taxa de Conclusão"  value={rate}      format="pct" accent={rate >= 70 ? 'var(--success)' : 'var(--warning)'} />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="Distribuição por Status">
           <DonutChart
             data={byStatus}
-            colors={[CHART_COLORS[3]!, CHART_COLORS[4]!, '#dc2626', CHART_COLORS[5]!]}
+            colors={[CHART_COLORS[3]!, CHART_COLORS[4]!, 'var(--danger)', CHART_COLORS[5]!]}
             formatLabel={(v, t) => `${v} (${((v/t)*100).toFixed(0)}%)`}
           />
         </SCard>
@@ -636,7 +658,7 @@ function TabClientes(p: ReportsBiProps) {
         <KpiCard label="Novos no Período" value={novos}        format="int" delta={pctDelta(novos, clientsPrevCount)} showDelta />
         <KpiCard label="Atendidos no Período" value={clientsServed}    format="int" accent={CHART_COLORS[1]} />
         <KpiCard label="Primeira Vez"         value={firstTimeClients} format="int" accent={CHART_COLORS[2]} />
-        <KpiCard label="Taxa de Retenção"     value={taxaRetencao}     format="pct" accent={taxaRetencao >= 40 ? '#16a34a' : '#d97706'} />
+        <KpiCard label="Taxa de Retenção"     value={taxaRetencao}     format="pct" accent={taxaRetencao >= 40 ? 'var(--success)' : 'var(--warning)'} />
         <KpiCard label="Gasto Médio"      value={gastoMedio}   format="brl" />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
@@ -684,7 +706,7 @@ function AgeRankCard({ data }: {
   data: { ageGroup: string; top3: { name: string; label: string }[] }[]
 }) {
   if (data.length === 0) {
-    return <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>Sem dados para exibir.</p>
+    return <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', margin: 0 }}>Sem dados para exibir.</p>
   }
   const rankColors = ['var(--brand)', 'var(--text-muted)', 'var(--text-faint)']
   return (
@@ -692,7 +714,7 @@ function AgeRankCard({ data }: {
       {data.map(({ ageGroup, top3 }) => (
         <div key={ageGroup}>
           <div style={{
-            fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+            fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
             textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8,
           }}>
             {ageGroup}
@@ -703,16 +725,16 @@ function AgeRankCard({ data }: {
               padding: '6px 0',
               borderBottom: idx < top3.length - 1 ? '1px solid var(--hairline)' : 'none',
             }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: rankColors[idx], minWidth: 20 }}>
+              <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: rankColors[idx], minWidth: 20 }}>
                 #{idx + 1}
               </span>
               <span style={{
-                flex: 1, fontSize: 13, color: 'var(--text)',
+                flex: 1, fontSize: 'var(--text-base-sz)', color: 'var(--text)',
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
                 {item.name}
               </span>
-              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 {item.label}
               </span>
             </div>
@@ -853,10 +875,10 @@ function TabProcedimentos(p: ReportsBiProps) {
         <KpiCard label="Receita Total"   value={totalRev}  format="brl" />
         <KpiCard label="Ticket Médio"    value={avgTicket} format="brl" />
         <div className="card" style={{ padding: '16px 20px', flex: '1 1 160px' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
+          <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 8px' }}>
             Mais Realizado
           </p>
-          <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--brand)', margin: 0, lineHeight: 1.3 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)', margin: 0, lineHeight: 1.3 }}>
             {maisRealizado}
           </p>
         </div>
@@ -882,7 +904,7 @@ function TabProcedimentos(p: ReportsBiProps) {
         </SCard>
         <SCard title="Top 3 por Faixa de Idade — Margem">
           {procedureCosts.length === 0
-            ? <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>
+            ? <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', margin: 0 }}>
                 Configure o custo dos insumos em Procedimentos para visualizar a margem por faixa etária.
               </p>
             : <AgeRankCard data={topByAgeMargin} />
@@ -964,8 +986,8 @@ function TabProfissionais(p: ReportsBiProps) {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Profissionais Ativos" value={professionais} format="int" />
         <KpiCard label="Atendimentos"         value={totalAppts}    format="int" delta={pctDelta(totalAppts, apptsPrevCount ?? 0)} showDelta />
-        <KpiCard label="Comissões em Aberto"  value={commOpen}      format="brl" accent="#d97706" />
-        <KpiCard label="Comissões Pagas"      value={commPaid}      format="brl" accent="#16a34a" />
+        <KpiCard label="Comissões em Aberto"  value={commOpen}      format="brl" accent="var(--warning)" />
+        <KpiCard label="Comissões Pagas"      value={commPaid}      format="brl" accent="var(--success)" />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="Receita Gerada por Profissional">
@@ -1065,14 +1087,14 @@ function TabEstoque(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Valor em Estoque" value={totalStockValue} format="brl" />
-        <KpiCard label="Consumo no Período" value={consumoValue} format="brl" accent="#d97706" />
-        <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro >= 50 ? '#16a34a' : '#d97706'} />
-        <KpiCard label="Itens Críticos" value={criticos} format="int" accent="#d97706" />
-        <KpiCard label="Itens Zerados"  value={zerados}  format="int" accent="#dc2626" />
+        <KpiCard label="Consumo no Período" value={consumoValue} format="brl" accent="var(--warning)" />
+        <KpiCard label="Giro (%)" value={giro} format="pct" accent={giro >= 50 ? 'var(--success)' : 'var(--warning)'} />
+        <KpiCard label="Itens Críticos" value={criticos} format="int" accent="var(--warning)" />
+        <KpiCard label="Itens Zerados"  value={zerados}  format="int" accent="var(--danger)" />
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="Top 10 Produtos Mais Consumidos (custo)">
-          <HBarChart data={topConsumed} color="#d97706" />
+          <HBarChart data={topConsumed} color="var(--warning)" />
         </SCard>
         <SCard title="Valor em Estoque por Categoria">
           <DonutChart data={byCategory} />
@@ -1123,7 +1145,7 @@ function TabComercial(p: ReportsBiProps) {
         <KpiCard label="Agend. comerciais"     value={c.agendamentosComerciais} format="int" accent="var(--text)" />
       </div>
 
-      <p style={{ fontSize: 11.5, color: 'var(--text-faint)', margin: 0 }}>
+      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0 }}>
         {fmtInt(c.convertidos)} de {fmtInt(c.totalLeads)} leads viraram cliente ·
         {' '}{fmtInt(c.evalRealizadas)} de {fmtInt(c.evalConsideradas)} avaliações não canceladas
         aconteceram · agendamentos comerciais são os gerados pelo time comercial.
@@ -1142,13 +1164,13 @@ function TabComercial(p: ReportsBiProps) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {c.etapas.map(e => (
                 <div key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 120, fontSize: 12.5, fontWeight: 600, color: 'var(--text)', flexShrink: 0 }}>
+                  <div style={{ width: 120, fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)', flexShrink: 0 }}>
                     {e.name}
                   </div>
-                  <div style={{ flex: 1, height: 10, background: 'var(--track, #f0e6e3)', borderRadius: 99, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, height: 10, background: 'var(--track, var(--border))', borderRadius: 99, overflow: 'hidden' }}>
                     <div style={{ width: `${(e.count / maiorEtapa) * 100}%`, height: '100%', background: 'var(--brand)', borderRadius: 99 }} />
                   </div>
-                  <div style={{ width: 40, textAlign: 'right', fontSize: 13, fontWeight: 800, color: 'var(--text)', fontVariant: 'tabular-nums' }}>
+                  <div style={{ width: 40, textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', fontVariant: 'tabular-nums' }}>
                     {fmtInt(e.count)}
                   </div>
                 </div>
@@ -1170,7 +1192,7 @@ function TabComercial(p: ReportsBiProps) {
 }
 
 function EmptyMsg({ texto = 'Sem dados no período.' }: { texto?: string }) {
-  return <p style={{ color: 'var(--text-faint)', fontSize: 13, margin: 0 }}>{texto}</p>
+  return <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)', margin: 0 }}>{texto}</p>
 }
 
 // -----------------------------------------------------------------------------
@@ -1204,18 +1226,18 @@ export function ReportsBiView(props: ReportsBiProps) {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <p style={{
-            fontSize: 10, fontWeight: 700, color: 'var(--brand)',
+            fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--brand)',
             textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px',
           }}>
             ✦ {props.scopeLabel}
           </p>
           <h1 style={{
-            fontSize: 22, fontWeight: 800, color: 'var(--text)',
+            fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)',
             margin: 0, letterSpacing: '-0.02em',
           }}>
             BI — Relatórios
           </h1>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: '4px 0 0' }}>
             {props.periodLabel}
           </p>
         </div>

@@ -21,7 +21,7 @@ export function DashboardEmptyState({
 
   return (
     <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-      <div style={{ fontSize: 28, color: 'var(--brand)', marginBottom: 8 }}>✦</div>
+      <div style={{ fontSize: 'var(--text-kpi)', color: 'var(--brand)', marginBottom: 8 }}>✦</div>
       <h1 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
         Bem-vindo(a){first ? `, ${first}` : ''}
       </h1>

@@ -8,7 +8,7 @@ import type { CampaignDetail, AdSet, Ad, AgeBreakdown, PlacementBreakdown, Daily
 
 const STATUS_COLOR: Record<string, string> = {
   ACTIVE:   'var(--success)',
-  PAUSED:   'var(--warning, #d97706)',
+  PAUSED:   'var(--warning, var(--warning))',
   ARCHIVED: 'var(--text-muted)',
 }
 const STATUS_LABEL: Record<string, string> = {
@@ -28,7 +28,7 @@ function fmtNum(v: number) { return v.toLocaleString('pt-BR') }
 
 function SectionTitle({ children, count }: { children: React.ReactNode; count?: number }) {
   return (
-    <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
+    <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>
       {children}{count != null && ` (${count})`}
     </p>
   )
@@ -36,9 +36,9 @@ function SectionTitle({ children, count }: { children: React.ReactNode; count?: 
 
 function MetricMini({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ padding: '8px 12px', borderRadius: 7, border: '1px solid var(--border)', background: '#fff' }}>
-      <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 3 }}>{label}</span>
-      <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: 'var(--tracking-tight)' }}>{value}</span>
+    <div style={{ padding: '8px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 3 }}>{label}</span>
+      <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: 'var(--tracking-tight)' }}>{value}</span>
     </div>
   )
 }
@@ -47,7 +47,7 @@ function AdCard({ ad, ageBreakdowns, placements }: { ad: Ad; ageBreakdowns: AgeB
   const [open, setOpen] = useState(false)
   const hasBreakdowns = ageBreakdowns.length > 0 || placements.length > 0
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
       {ad.creative.imageUrl || ad.creative.thumbnailUrl ? (
         <img
           src={ad.creative.imageUrl ?? ad.creative.thumbnailUrl}
@@ -55,20 +55,20 @@ function AdCard({ ad, ageBreakdowns, placements }: { ad: Ad; ageBreakdowns: AgeB
           style={{ width: '100%', height: 150, objectFit: 'cover', display: 'block' }}
         />
       ) : (
-        <div style={{ width: '100%', height: 80, background: 'var(--surface-raised, #f5f5f4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: '100%', height: 80, background: 'var(--surface-raised, var(--bg-app))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <ImageOff size={20} style={{ color: 'var(--text-muted)' }} />
         </div>
       )}
       <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.name}</span>
-          <span style={{ fontSize: 10.5, fontWeight: 700, color: STATUS_COLOR[ad.status] ?? 'var(--text-muted)', flexShrink: 0 }}>{STATUS_LABEL[ad.status] ?? ad.status}</span>
+          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.name}</span>
+          <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: STATUS_COLOR[ad.status] ?? 'var(--text-muted)', flexShrink: 0 }}>{STATUS_LABEL[ad.status] ?? ad.status}</span>
         </div>
         {ad.creative.title && (
-          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.creative.title}</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ad.creative.title}</p>
         )}
         {ad.creative.callToAction && (
-          <span style={{ fontSize: 10.5, padding: '2px 7px', borderRadius: 99, background: '#1877F215', color: '#1877F2', fontWeight: 700, alignSelf: 'flex-start' }}>
+          <span style={{ fontSize: 'var(--text-overline)', padding: '2px 7px', borderRadius: 99, background: '#1877F215', color: '#1877F2', fontWeight: 700, alignSelf: 'flex-start' }}>
             {ad.creative.callToAction.replace(/_/g, ' ')}
           </span>
         )}
@@ -79,8 +79,8 @@ function AdCard({ ad, ageBreakdowns, placements }: { ad: Ad; ageBreakdowns: AgeB
             ['CTR',     fmtPct(ad.insights.ctr)],
           ] as [string, string][]).map(([l, v]) => (
             <div key={l} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{v}</span>
+              <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{l}</span>
+              <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{v}</span>
             </div>
           ))}
         </div>
@@ -89,7 +89,7 @@ function AdCard({ ad, ageBreakdowns, placements }: { ad: Ad; ageBreakdowns: AgeB
           <button
             type="button"
             onClick={() => setOpen(o => !o)}
-            style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', color: 'var(--text-muted)', fontSize: 10.5, fontWeight: 600, alignSelf: 'flex-start' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', color: 'var(--text-muted)', fontSize: 'var(--text-overline)', fontWeight: 600, alignSelf: 'flex-start' }}
           >
             {open ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
             {open ? 'Ocultar' : 'Ver segmentação'}
@@ -100,13 +100,13 @@ function AdCard({ ad, ageBreakdowns, placements }: { ad: Ad; ageBreakdowns: AgeB
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 8 }}>
             {ageBreakdowns.length > 0 && (
               <div>
-                <p style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Idade</p>
+                <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Idade</p>
                 <AgeMini breakdowns={ageBreakdowns} />
               </div>
             )}
             {placements.length > 0 && (
               <div>
-                <p style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Posicionamentos</p>
+                <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Posicionamentos</p>
                 <PlacementMini placements={placements} />
               </div>
             )}
@@ -144,19 +144,19 @@ function AdSetRow({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--surface)', border: 'none', cursor: 'pointer', textAlign: 'left' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: STATUS_COLOR[s.status] ?? 'var(--text-muted)' }} />
-          <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {s.name}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0, marginLeft: 12 }}>
-          <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 700 }}>{fmtBRL(s.insights.spend)}</span>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtNum(s.insights.impressions)} imp.</span>
+          <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text)', fontWeight: 700 }}>{fmtBRL(s.insights.spend)}</span>
+          <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{fmtNum(s.insights.impressions)} imp.</span>
           {ads.length > 0 && (
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--surface-raised, #f5f5f4)', border: '1px solid var(--border)', borderRadius: 99, padding: '1px 7px' }}>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', background: 'var(--surface-raised, var(--bg-app))', border: '1px solid var(--border)', borderRadius: 99, padding: '1px 7px' }}>
               {ads.length} {ads.length === 1 ? 'anúncio' : 'anúncios'}
             </span>
           )}
@@ -165,7 +165,7 @@ function AdSetRow({
       </button>
 
       {open && (
-        <div style={{ borderTop: '1px solid var(--hairline)', background: 'var(--surface-raised, #fafaf9)' }}>
+        <div style={{ borderTop: '1px solid var(--hairline)', background: 'var(--surface-raised, var(--bg-app))' }}>
           {/* Métricas do conjunto */}
           <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {(() => {
@@ -180,10 +180,10 @@ function AdSetRow({
                   <MetricMini label="CTR"        value={fmtPct(s.insights.ctr)} />
                   <MetricMini label="CPC"        value={fmtBRL(s.insights.cpc)} />
                   {freq != null && (
-                    <div style={{ padding: '8px 12px', borderRadius: 7, border: `1px solid ${freq > 3 ? '#fcd34d' : 'var(--border)'}`, background: freq > 3 ? '#fef9c3' : '#fff' }}>
-                      <span style={{ fontSize: 9.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 3 }}>Frequência</span>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: freq > 3 ? '#92400e' : 'var(--text)', letterSpacing: 'var(--tracking-tight)' }}>{freq.toFixed(2).replace('.', ',')}</span>
-                      {freq > 3 && <span style={{ display: 'block', fontSize: 9, fontWeight: 600, color: '#92400e', marginTop: 2 }}>Saturando</span>}
+                    <div style={{ padding: '8px 12px', borderRadius: 7, border: `1px solid ${freq > 3 ? 'var(--warning-border)' : 'var(--border)'}`, background: freq > 3 ? 'var(--warning-soft)' : 'var(--surface)' }}>
+                      <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 3 }}>Frequência</span>
+                      <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: freq > 3 ? 'var(--warning)' : 'var(--text)', letterSpacing: 'var(--tracking-tight)' }}>{freq.toFixed(2).replace('.', ',')}</span>
+                      {freq > 3 && <span style={{ display: 'block', fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--warning)', marginTop: 2 }}>Saturando</span>}
                     </div>
                   )}
                 </div>
@@ -193,7 +193,7 @@ function AdSetRow({
             {tags.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {tags.map((tag, i) => (
-                  <span key={i} style={{ fontSize: 11.5, padding: '3px 9px', borderRadius: 99, background: 'var(--brand-pale, #fdf2f5)', color: 'var(--brand)', fontWeight: 600, border: '1px solid var(--brand-light, #f0c0cc)' }}>
+                  <span key={i} style={{ fontSize: 'var(--text-xs-sz)', padding: '3px 9px', borderRadius: 99, background: 'var(--brand-pale, var(--bg-app))', color: 'var(--brand)', fontWeight: 600, border: '1px solid var(--brand-light, var(--brand-soft-border))' }}>
                     {tag}
                   </span>
                 ))}
@@ -206,13 +206,13 @@ function AdSetRow({
             <div style={{ borderTop: '1px solid var(--hairline)', padding: '14px 16px', display: 'grid', gridTemplateColumns: ageBreakdowns.length > 0 && placements.length > 0 ? '1fr 1fr' : '1fr', gap: 24 }}>
               {ageBreakdowns.length > 0 && (
                 <div>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Segmentação por idade</p>
+                  <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Segmentação por idade</p>
                   <DonutChart data={ageBreakdowns} totalSpend={totalAgeSpend} />
                 </div>
               )}
               {placements.length > 0 && (
                 <div>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Posicionamentos</p>
+                  <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>Posicionamentos</p>
                   <PlacementList placements={placements} />
                 </div>
               )}
@@ -222,7 +222,7 @@ function AdSetRow({
           {/* Criativos do conjunto */}
           {ads.length > 0 && (
             <div style={{ borderTop: '1px solid var(--hairline)', padding: '14px 16px' }}>
-              <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+              <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
                 Criativos ({ads.length})
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
@@ -244,14 +244,14 @@ function AdSetRow({
 }
 
 const AGE_COLORS = [
-  '#c34d6b', // brand rosé
-  '#e07a94', // rosé claro
-  '#9b2e4a', // rosé escuro
-  '#f3a4b8', // rosé pálido
-  '#6b7280', // cinza neutro
-  '#374151', // cinza escuro
-  '#d1d5db', // cinza claro
-  '#a78bfa', // lavanda
+  'var(--brand)', // brand rosé
+  'var(--brand-2)', // rosé claro
+  'var(--brand-deep)', // rosé escuro
+  'var(--brand-3)', // rosé pálido
+  'var(--text-muted)', // cinza neutro
+  'var(--text-soft)', // cinza escuro
+  'var(--border)', // cinza claro
+  'var(--cat-4)', // lavanda
 ]
 
 function polarToXY(cx: number, cy: number, r: number, angleDeg: number) {
@@ -325,11 +325,11 @@ function DonutChart({ data, totalSpend }: { data: { age: string; spend: number }
         {slices.map((s, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: s.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', minWidth: 52 }}>{s.age}</span>
-            <div style={{ flex: 1, height: 4, background: 'var(--hairline, #e8e5e0)', borderRadius: 2, overflow: 'hidden' }}>
+            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)', minWidth: 52 }}>{s.age}</span>
+            <div style={{ flex: 1, height: 4, background: 'var(--hairline, var(--border))', borderRadius: 2, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${Math.max(3, s.pct * 100)}%`, background: s.color, borderRadius: 2 }} />
             </div>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', minWidth: 34, textAlign: 'right' }}>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text)', minWidth: 34, textAlign: 'right' }}>
               {(s.pct * 100).toFixed(1).replace('.', ',')}%
             </span>
           </div>
@@ -342,8 +342,8 @@ function DonutChart({ data, totalSpend }: { data: { age: string; spend: number }
 const PLATFORM_COLORS: Record<string, string> = {
   facebook:         '#1877F2',
   instagram:        '#E1306C',
-  audience_network: '#4CAF50',
-  messenger:        '#00B2FF',
+  audience_network: 'var(--success)',
+  messenger:        'var(--info)',
 }
 const PLATFORM_NAMES: Record<string, string> = {
   facebook: 'Facebook', instagram: 'Instagram',
@@ -366,18 +366,18 @@ function PlacementList({ placements }: { placements: PlacementBreakdown[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {placements.map((p, i) => {
-        const color = PLATFORM_COLORS[p.platform] ?? '#6b7280'
+        const color = PLATFORM_COLORS[p.platform] ?? 'var(--text-muted)'
         const barW  = max > 0 ? Math.max(3, (p.spend / max) * 100) : 0
         const pct   = total > 0 ? (p.spend / total) * 100 : 0
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ width: 8, height: 8, borderRadius: 2, background: color, flexShrink: 0 }} />
-            <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text)', minWidth: 148, flexShrink: 0 }}>{placementLabel(p)}</span>
-            <div style={{ flex: 1, background: 'var(--hairline, #e8e5e0)', borderRadius: 3, height: 5, overflow: 'hidden' }}>
+            <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text)', minWidth: 148, flexShrink: 0 }}>{placementLabel(p)}</span>
+            <div style={{ flex: 1, background: 'var(--hairline, var(--border))', borderRadius: 3, height: 5, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${barW}%`, background: color, borderRadius: 3 }} />
             </div>
-            <span style={{ fontSize: 11.5, color: 'var(--text)', fontWeight: 700, minWidth: 68, textAlign: 'right', flexShrink: 0 }}>{fmtBRL(p.spend)}</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 34, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(1).replace('.', ',')}%</span>
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text)', fontWeight: 700, minWidth: 68, textAlign: 'right', flexShrink: 0 }}>{fmtBRL(p.spend)}</span>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', minWidth: 34, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(1).replace('.', ',')}%</span>
           </div>
         )
       })}
@@ -395,11 +395,11 @@ function AgeMini({ breakdowns }: { breakdowns: AgeBreakdown[] }) {
         return (
           <div key={a.age} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: 2, background: color, flexShrink: 0 }} />
-            <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--text)', minWidth: 36 }}>{a.age}</span>
-            <div style={{ flex: 1, background: 'var(--hairline, #e8e5e0)', borderRadius: 2, height: 4, overflow: 'hidden' }}>
+            <span style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: 'var(--text)', minWidth: 36 }}>{a.age}</span>
+            <div style={{ flex: 1, background: 'var(--hairline, var(--border))', borderRadius: 2, height: 4, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${Math.max(3, pct)}%`, background: color, borderRadius: 2 }} />
             </div>
-            <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}%</span>
+            <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', fontWeight: 600, minWidth: 28, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}%</span>
           </div>
         )
       })}
@@ -412,13 +412,13 @@ function PlacementMini({ placements }: { placements: PlacementBreakdown[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {placements.slice(0, 3).map((p, i) => {
-        const color = PLATFORM_COLORS[p.platform] ?? '#6b7280'
+        const color = PLATFORM_COLORS[p.platform] ?? 'var(--text-muted)'
         const pct   = total > 0 ? (p.spend / total) * 100 : 0
         return (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: 2, background: color, flexShrink: 0 }} />
-            <span style={{ fontSize: 10.5, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{placementLabel(p)}</span>
-            <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, minWidth: 24, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}%</span>
+            <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{placementLabel(p)}</span>
+            <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', fontWeight: 600, minWidth: 24, textAlign: 'right', flexShrink: 0 }}>{pct.toFixed(0)}%</span>
           </div>
         )
       })}
@@ -431,12 +431,12 @@ function BreakdownBar({ label, spend, maxSpend, totalSpend }: { label: string; s
   const pct      = totalSpend > 0 ? ((spend / totalSpend) * 100) : 0
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', minWidth: 80, flexShrink: 0 }}>{label}</span>
-      <div style={{ flex: 1, background: 'var(--hairline, #e8e5e0)', borderRadius: 3, height: 6, overflow: 'hidden' }}>
+      <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)', minWidth: 80, flexShrink: 0 }}>{label}</span>
+      <div style={{ flex: 1, background: 'var(--hairline, var(--border))', borderRadius: 3, height: 6, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${barWidth}%`, background: 'var(--brand)', borderRadius: 3 }} />
       </div>
-      <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: 700, minWidth: 72, textAlign: 'right', flexShrink: 0 }}>{fmtBRL(spend)}</span>
-      <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 38, textAlign: 'right', flexShrink: 0 }}>{fmtPct(pct)}</span>
+      <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 700, minWidth: 72, textAlign: 'right', flexShrink: 0 }}>{fmtBRL(spend)}</span>
+      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', minWidth: 38, textAlign: 'right', flexShrink: 0 }}>{fmtPct(pct)}</span>
     </div>
   )
 }
@@ -445,8 +445,8 @@ type TrendMetric = 'spend' | 'conversions' | 'roi'
 
 const TREND_METRICS: { key: TrendMetric; label: string; fmt: (v: number) => string; color: string }[] = [
   { key: 'spend',       label: 'Gasto',       fmt: v => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), color: 'var(--brand)' },
-  { key: 'conversions', label: 'Conversões',  fmt: v => v.toLocaleString('pt-BR'),                                          color: '#2563eb' },
-  { key: 'roi',         label: 'ROI',         fmt: v => (v >= 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + '%',         color: '#16a34a' },
+  { key: 'conversions', label: 'Conversões',  fmt: v => v.toLocaleString('pt-BR'),                                          color: 'var(--info)' },
+  { key: 'roi',         label: 'ROI',         fmt: v => (v >= 0 ? '+' : '') + v.toFixed(1).replace('.', ',') + '%',         color: 'var(--success)' },
 ]
 
 function TrendChart({ daily }: { daily: DailyInsight[] }) {
@@ -469,8 +469,8 @@ function TrendChart({ daily }: { daily: DailyInsight[] }) {
   if (!hasData) {
     return (
       <div className="card">
-        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Tendência</p>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>Dados insuficientes para o período selecionado.</p>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Tendência</p>
+        <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontStyle: 'italic' }}>Dados insuficientes para o período selecionado.</p>
       </div>
     )
   }
@@ -491,15 +491,15 @@ function TrendChart({ daily }: { daily: DailyInsight[] }) {
   return (
     <div className="card">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Tendência diária</p>
-        <div className="seg-bar" style={{ display: 'flex', gap: 3, background: 'var(--surface-raised, #fafaf9)', borderRadius: 7, padding: 3, border: '1px solid var(--border)' }}>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Tendência diária</p>
+        <div className="seg-bar" style={{ display: 'flex', gap: 3, background: 'var(--surface-raised, var(--bg-app))', borderRadius: 7, padding: 3, border: '1px solid var(--border)' }}>
           {TREND_METRICS.map(m => (
             <button
               key={m.key}
               type="button"
               onClick={() => setMetric(m.key)}
               className={metric === m.key ? 'btn-primary' : 'btn-ghost'}
-              style={{ fontSize: 11, padding: '4px 10px', whiteSpace: 'nowrap' }}
+              style={{ fontSize: 'var(--text-2xs)', padding: '4px 10px', whiteSpace: 'nowrap' }}
             >
               {m.label}
             </button>
@@ -515,24 +515,24 @@ function TrendChart({ daily }: { daily: DailyInsight[] }) {
               <stop offset="95%" stopColor={cfg.color} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline, #e8e5e0)" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--hairline, var(--border))" vertical={false} />
           <XAxis
             dataKey="date"
             tickFormatter={xFmt}
-            tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+            tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-muted)' }}
             tickLine={false}
             axisLine={false}
             interval="preserveStartEnd"
           />
           <YAxis
             tickFormatter={yFmt}
-            tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+            tick={{ fontSize: 'var(--text-overline)', fill: 'var(--text-muted)' }}
             tickLine={false}
             axisLine={false}
             width={yAxisW}
           />
           <Tooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--border)', background: '#fff', padding: '8px 12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+            contentStyle={{ fontSize: 'var(--text-sm-sz)', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', padding: '8px 12px', boxShadow: 'var(--shadow-popover)' }}
             labelFormatter={(label: unknown) => xFmt(String(label))}
             formatter={(value: unknown) => {
               if (typeof value === 'number') return [cfg.fmt(value), cfg.label]
@@ -546,7 +546,7 @@ function TrendChart({ daily }: { daily: DailyInsight[] }) {
             strokeWidth={2}
             fill={`url(#grad-${metric})`}
             dot={{ r: 3, fill: cfg.color, strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: cfg.color, stroke: '#fff', strokeWidth: 2 }}
+            activeDot={{ r: 5, fill: cfg.color, stroke: 'var(--on-brand)', strokeWidth: 2 }}
             connectNulls={false}
           />
         </AreaChart>

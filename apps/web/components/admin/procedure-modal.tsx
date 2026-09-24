@@ -80,7 +80,7 @@ export function ProcedureModal({ branches, products, anamnesisForms = [], attend
               <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
                 {isEdit ? 'Editar procedimento' : 'Novo procedimento'}
               </h2>
-              <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                 {isEdit ? existing!.name : 'Catálogo da rede · disponível em todas as filiais selecionadas'}
               </p>
             </div>

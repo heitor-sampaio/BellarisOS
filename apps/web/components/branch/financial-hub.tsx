@@ -64,11 +64,11 @@ const PM_LABELS: Record<string, string> = {
   INTERNAL_CREDIT: 'Crédito interno',
 }
 const PM_COLORS: Record<string, string> = {
-  CASH:            '#16a34a',
-  PIX:             '#2563eb',
-  DEBIT_CARD:      '#7c3aed',
-  CREDIT_CARD:     '#c2410c',
-  INTERNAL_CREDIT: '#c34d6b',
+  CASH:            'var(--success)',
+  PIX:             'var(--info)',
+  DEBIT_CARD:      'var(--cat-4)',
+  CREDIT_CARD:     'var(--cat-5)',
+  INTERNAL_CREDIT: 'var(--brand)',
 }
 
 const PERIOD_OPTIONS = [
@@ -109,10 +109,10 @@ function KpiCardFull({
   const hl = highlight
   const cardBg     = hl ? 'var(--brand)'           : undefined
   const labelColor = hl ? 'rgba(255,255,255,0.65)'  : 'var(--text-muted)'
-  const valColor   = hl ? '#fff'                    : (valueColor ?? 'var(--text)')
+  const valColor   = hl ? 'var(--surface)'                    : (valueColor ?? 'var(--text)')
   const iconBgFin  = hl ? 'rgba(255,255,255,0.18)'  : iconBg
-  const deltaGood  = hl ? '#fff'                    : (isGood ? '#16a34a' : '#dc2626')
-  const deltaBad   = hl ? 'rgba(255,255,255,0.65)'  : (isGood ? '#16a34a' : '#dc2626')
+  const deltaGood  = hl ? 'var(--surface)'                    : (isGood ? 'var(--success)' : 'var(--danger)')
+  const deltaBad   = hl ? 'rgba(255,255,255,0.65)'  : (isGood ? 'var(--success)' : 'var(--danger)')
   const deltaColor = isGood ? deltaGood : deltaBad
   const mutedColor = hl ? 'rgba(255,255,255,0.5)'   : 'var(--text-faint)'
 
@@ -124,7 +124,7 @@ function KpiCardFull({
       border: hl ? 'none' : undefined,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ fontSize: 9.5, fontWeight: 700, color: labelColor, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: labelColor, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
           {label}
         </p>
         <div style={{
@@ -143,13 +143,13 @@ function KpiCardFull({
           {d.up
             ? <ArrowUpRight   size={10} style={{ color: deltaColor }} />
             : <ArrowDownRight size={10} style={{ color: deltaColor }} />}
-          <span style={{ fontSize: 10, fontWeight: 700, color: deltaColor }}>
+          <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: deltaColor }}>
             {d.pct.toFixed(1).replace('.', ',')}%
           </span>
-          <span style={{ fontSize: 10, color: mutedColor }}>vs anterior</span>
+          <span style={{ fontSize: 'var(--text-overline)', color: mutedColor }}>vs anterior</span>
         </div>
       ) : (
-        <span style={{ fontSize: 10, color: mutedColor }}>sem dados anteriores</span>
+        <span style={{ fontSize: 'var(--text-overline)', color: mutedColor }}>sem dados anteriores</span>
       )}
     </div>
   )
@@ -264,7 +264,7 @@ function EvolutionChart({ data }: { data: BarDatum[] }) {
               {d.income > 0 && (
                 <rect
                   x={x} y={H - incH} width={barW} height={incH}
-                  fill="#16a34a" opacity={0.85} rx={2}
+                  fill="var(--success)" opacity={0.85} rx={2}
                 >
                   <title>{`Receitas: ${fmtBRL(d.income)}`}</title>
                 </rect>
@@ -273,7 +273,7 @@ function EvolutionChart({ data }: { data: BarDatum[] }) {
               {d.expense > 0 && (
                 <rect
                   x={x + barW + gap} y={H - expH} width={barW} height={expH}
-                  fill="#dc2626" opacity={0.75} rx={2}
+                  fill="var(--danger)" opacity={0.75} rx={2}
                 >
                   <title>{`Despesas: ${fmtBRL(d.expense)}`}</title>
                 </rect>
@@ -366,7 +366,7 @@ function CategoryBars({
 }: { items: { label: string; value: number; pct: number }[]; color: string }) {
   if (items.length === 0) {
     return (
-      <p style={{ color: 'var(--text-faint)', fontSize: 12.5, textAlign: 'center', padding: '16px 0' }}>
+      <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', textAlign: 'center', padding: '16px 0' }}>
         Nenhum lançamento
       </p>
     )
@@ -376,8 +376,8 @@ function CategoryBars({
       {items.slice(0, 6).map(item => (
         <div key={item.label}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{item.label}</span>
-            <span style={{ fontSize: 12, fontWeight: 800, color }}>
+            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{item.label}</span>
+            <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color }}>
               {fmtBRL(item.value)}
             </span>
           </div>
@@ -392,7 +392,7 @@ function CategoryBars({
               transition: 'width 600ms ease',
             }} />
           </div>
-          <span style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 2, display: 'block' }}>
+          <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginTop: 2, display: 'block' }}>
             {item.pct.toFixed(0)}% do total
           </span>
         </div>
@@ -421,22 +421,22 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
   return (
     <div className="card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Header */}
-      <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 4 }}>
+      <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 4 }}>
         Comissões
       </p>
-      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 14 }}>
+      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 14 }}>
         {groups.length} profissional{groups.length !== 1 ? 'is' : ''} · {entries.length} lançamentos
       </p>
 
       {/* Total */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14, paddingBottom: 14, borderBottom: '1px solid var(--hairline)' }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>TOTAL</span>
+        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>TOTAL</span>
         <div style={{ textAlign: 'right' }}>
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--brand)' }}>
             {fmtBRL(totalComm)}
           </span>
           {totalPaid > 0 && totalPaid < totalComm && (
-            <p style={{ fontSize: 10, color: 'var(--text-faint)', marginTop: 1 }}>
+            <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginTop: 1 }}>
               {fmtBRL(totalPaid)} pago
             </p>
           )}
@@ -445,7 +445,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
 
       {/* Lista por profissional */}
       {entries.length === 0 ? (
-        <p style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'center', padding: '12px 0' }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', padding: '12px 0' }}>
           Sem comissões no período
         </p>
       ) : (
@@ -461,14 +461,14 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
                     width: 22, height: 22, borderRadius: 99, flexShrink: 0,
                     background: 'var(--brand-soft)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 9, fontWeight: 800, color: 'var(--brand)',
+                    fontSize: 'var(--text-overline)', fontWeight: 800, color: 'var(--brand)',
                   }}>
                     {initials}
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {group.name}
                   </span>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>
+                  <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>
                     {fmtBRL(groupTotal)}
                   </span>
                 </div>
@@ -481,18 +481,18 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
                       padding: '5px 0',
                       borderBottom: ii < group.items.length - 1 ? '1px solid var(--hairline)' : 'none',
                     }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                         {new Date(item.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>
+                        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text)' }}>
                           {fmtBRL(item.amount)}
                         </span>
                         <span style={{
-                          fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 99,
-                          background: item.isPaid ? '#f0fdf4' : '#fffbeb',
-                          color:      item.isPaid ? '#16a34a' : '#d97706',
-                          border:     `1px solid ${item.isPaid ? '#86efac' : '#fcd34d'}`,
+                          fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 5px', borderRadius: 99,
+                          background: item.isPaid ? 'var(--success-bg)' : 'var(--warning-soft)',
+                          color:      item.isPaid ? 'var(--success)' : 'var(--warning)',
+                          border:     `1px solid ${item.isPaid ? 'var(--success-border)' : 'var(--warning-border)'}`,
                         }}>
                           {item.isPaid ? 'Pago' : 'Pend.'}
                         </span>
@@ -631,9 +631,9 @@ export function FinancialHub({
                   router.push(`?period=custom&from=${from}&to=${to}`)
                 }}
                 className="field"
-                style={{ width: 140, fontSize: 12, padding: '5px 10px' }}
+                style={{ width: 140, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }}
               />
-              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>até</span>
+              <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>até</span>
               <input
                 type="date"
                 defaultValue={customTo}
@@ -643,7 +643,7 @@ export function FinancialHub({
                   router.push(`?period=custom&from=${from}&to=${to}`)
                 }}
                 className="field"
-                style={{ width: 140, fontSize: 12, padding: '5px 10px' }}
+                style={{ width: 140, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }}
               />
             </div>
           )}
@@ -673,23 +673,23 @@ export function FinancialHub({
         <KpiCardFull
           label="Lucro Líquido"
           curr={saldo} prev={prevSaldo}
-          icon={<Wallet size={13} style={{ color: '#fff' }} />}
+          icon={<Wallet size={13} style={{ color: 'var(--on-brand)' }} />}
           iconBg="rgba(255,255,255,0.18)"
           highlight
         />
         <KpiCardFull
           label="Receita Bruta"
           curr={income} prev={prevIncome}
-          icon={<TrendingUp size={13} style={{ color: '#16a34a' }} />}
-          iconBg="#f0fdf4"
-          valueColor="#16a34a"
+          icon={<TrendingUp size={13} style={{ color: 'var(--success)' }} />}
+          iconBg="var(--success-bg)"
+          valueColor="var(--success)"
         />
         <KpiCardFull
           label="Despesas"
           curr={expense} prev={prevExpense}
-          icon={<TrendingDown size={13} style={{ color: '#dc2626' }} />}
-          iconBg="#fef2f2"
-          valueColor="#dc2626"
+          icon={<TrendingDown size={13} style={{ color: 'var(--danger)' }} />}
+          iconBg="var(--danger-soft)"
+          valueColor="var(--danger)"
           invertDelta
         />
         {/* Denominador explícito no rótulo: aqui é por LANÇAMENTO de receita.
@@ -698,23 +698,23 @@ export function FinancialHub({
         <KpiCardFull
           label="Receita por lançamento"
           curr={avgTicket} prev={0}
-          icon={<BarChart2 size={13} style={{ color: '#2563eb' }} />}
-          iconBg="#eff6ff"
-          valueColor="#2563eb"
+          icon={<BarChart2 size={13} style={{ color: 'var(--info)' }} />}
+          iconBg="var(--info-soft)"
+          valueColor="var(--info)"
         />
         <KpiCardFull
           label="A Receber"
           curr={pendingIncome} prev={prevPendingIncome}
-          icon={<Clock size={13} style={{ color: '#16a34a' }} />}
-          iconBg="#f0fdf4"
-          valueColor={pendingIncome > 0 ? '#16a34a' : 'var(--text)'}
+          icon={<Clock size={13} style={{ color: 'var(--success)' }} />}
+          iconBg="var(--success-bg)"
+          valueColor={pendingIncome > 0 ? 'var(--success)' : 'var(--text)'}
         />
         <KpiCardFull
           label="A Pagar"
           curr={pendingExpense} prev={prevPendingExpense}
-          icon={<Clock size={13} style={{ color: '#d97706' }} />}
-          iconBg="#fffbeb"
-          valueColor={pendingExpense > 0 ? '#d97706' : 'var(--text)'}
+          icon={<Clock size={13} style={{ color: 'var(--warning)' }} />}
+          iconBg="var(--warning-soft)"
+          valueColor={pendingExpense > 0 ? 'var(--warning)' : 'var(--text)'}
           invertDelta
         />
       </div>}
@@ -725,21 +725,21 @@ export function FinancialHub({
         {!ownScope && <div className="card" style={{ padding: '20px 20px 12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
-              <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
                 Evolução financeira
               </p>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+              <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginTop: 2 }}>
                 Receitas vs despesas realizadas
               </p>
             </div>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 3, background: '#16a34a' }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Receitas</span>
+                <div style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--success)' }} />
+                <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Receitas</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 3, background: '#dc2626' }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Despesas</span>
+                <div style={{ width: 10, height: 10, borderRadius: 3, background: 'var(--danger)' }} />
+                <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Despesas</span>
               </div>
             </div>
           </div>
@@ -751,10 +751,10 @@ export function FinancialHub({
 
         {/* Formas de pagamento */}
         {!ownScope && <div className="card" style={{ padding: '20px' }}>
-          <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 4 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 4 }}>
             Formas de pagamento
           </p>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 16 }}>Receitas por método</p>
+          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 16 }}>Receitas por método</p>
 
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
             <DonutChart segments={paymentSegments} total={paymentTotal} />
@@ -765,20 +765,20 @@ export function FinancialHub({
               <div key={seg.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                   <div style={{ width: 8, height: 8, borderRadius: '50%', background: seg.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{seg.label}</span>
+                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{seg.label}</span>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)' }}>
+                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>
                     {paymentTotal > 0 ? ((seg.value / paymentTotal) * 100).toFixed(0) : 0}%
                   </span>
-                  <span style={{ fontSize: 10.5, color: 'var(--text-faint)', marginLeft: 4 }}>
+                  <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginLeft: 4 }}>
                     {fmtBRL(seg.value)}
                   </span>
                 </div>
               </div>
             ))}
             {paymentSegments.length === 0 && (
-              <p style={{ fontSize: 12, color: 'var(--text-faint)', textAlign: 'center' }}>Sem receitas pagas</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center' }}>Sem receitas pagas</p>
             )}
           </div>
         </div>}
@@ -787,24 +787,24 @@ export function FinancialHub({
       {/* Category breakdown */}
       {!ownScope && <div className="rg-2">
         <div className="card" style={{ padding: '20px' }}>
-          <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
             Categorias de receita
           </p>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 16 }}>Top 6 categorias</p>
-          <CategoryBars items={incomeCategories} color="#16a34a" />
+          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 16 }}>Top 6 categorias</p>
+          <CategoryBars items={incomeCategories} color="var(--success)" />
         </div>
         <div className="card" style={{ padding: '20px' }}>
-          <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
             Categorias de despesa
           </p>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 16 }}>Top 6 categorias</p>
-          <CategoryBars items={expenseCategories} color="#dc2626" />
+          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', marginBottom: 16 }}>Top 6 categorias</p>
+          <CategoryBars items={expenseCategories} color="var(--danger)" />
         </div>
       </div>}
 
       {/* Transactions */}
       {!ownScope && <div>
-        <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 12 }}>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', marginBottom: 12 }}>
           Lançamentos
         </p>
         <FinancialTable

@@ -31,7 +31,7 @@ export async function ListaDeInjetaveis({
   if (error) {
     console.error('[injetaveis]', error)
     return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Não foi possível carregar os planejamentos agora. Tente recarregar em instantes.
       </div>
     )

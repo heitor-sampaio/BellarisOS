@@ -1164,6 +1164,68 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
+### 2026-09-24 — A paleta fecha, e 2.882 desvios de design somem
+
+Relatado pelo Heitor: "percebo alguns desalinhamentos de design em todo o
+sistema". Mesmo método da varredura anterior — medir antes de opinar.
+
+Os tokens do app batiam **exatamente** com os da skill `/lumiere-design`. O
+desvio não estava na definição, estava no uso:
+
+| Desvio | Antes | Agora |
+|---|---|---|
+| Tamanho de fonte em px | 1.734 | 31 |
+| Cor da paleta do **Tailwind** | 587 | 0 |
+| Cor inventada | 353 (143 tons) | 54 (só marca de terceiro) |
+| Token escrito à mão (`#c34d6b`) | 165 | 0 |
+| Sombra em superfície neutra | 34 | 0 |
+| Gradiente | 9 | 4 (legendas de mapa de calor) |
+
+**A causa não era descuido: a paleta não cobria o que o sistema precisa.** Não
+havia como pintar um erro — então cada tela pegou o vermelho do Tailwind (146
+usos de `red-600`) ou inventou o seu. O mesmo com azul de estado informativo,
+que não existe no Rosé Vivo. Verde era o caso mais claro: existe
+`--success`, e o código tinha **sete verdes diferentes**.
+
+A paleta fechou com o que faltava, e cada peça resolve uma lacuna real:
+
+- `--danger` / `--info` (+ soft e border) — terrosos de propósito: o vermelho
+  do Tailwind é frio demais ao lado do nude quente;
+- **escala categórica `--cat-1…6`** — para DISTINGUIR, não para significar
+  (qual profissional ocupa o horário). Seis tons de rosé seriam
+  indistinguíveis, e era por isso que cada tela escolhia os seus. As três
+  primeiras reusam brand/info/success: quem tem quatro profissionais nunca sai
+  da paleta;
+- `--shadow-overlay` / `--shadow-popover` — "superfície neutra usa borda" vale
+  para o que está NO plano da página; modal e dropdown precisam de elevação, e
+  sem token havia sete sombras pretas diferentes;
+- `--gradient-brand` — o único gradiente do sistema era regra de texto e virou
+  string copiada em cinco lugares.
+
+**Duas correções que se viam na tela**, e eram as que mais saltavam:
+
+1. **Os gráficos falavam outra língua.** A linha de faturamento era **roxa**,
+   custo vermelho, lucro verde — e as barras logo abaixo, na mesma tela, eram
+   rosé. Faturamento é o dado principal do sistema: passou a ser `--brand`. De
+   caminho, os eixos e o tooltip usavam `system-ui`, não a Hanken.
+2. **O KPI tinha dois padrões.** Dashboard e Financeiro preenchiam o primeiro
+   card em rosé (a regra de hierarquia do DS); Relatórios mostrava seis cards
+   iguais. Seis cards iguais não têm hierarquia — o olho não sabe onde pousar.
+
+A cauda de 97 tons com um ou dois usos era quase toda **quase-token**:
+`#3a9b6f` ao lado de `--success #3f9b6f`, `#a03358` ao lado de
+`--brand-deep #a63a55`. Ninguém escolheu aquilo — é token digitado de memória.
+Resolvida por distância de cor, com corte: acima dele a cor é outra coisa e
+foi decidida à mão.
+
+Na tipografia, 28 tamanhos em uso para uma escala de 10. Os vizinhos foram
+puxados para o degrau (12px e 12.5px não são dois degraus, são dois jeitos de
+escrever o mesmo). Os saltos grandes — 18, 20, 24, 26 — ficaram de fora: ali a
+diferença é visível, e mudá-los sem olhar seria redesenhar a tela no escuro.
+
+A skill `/lumiere-design` e o CLAUDE.md §13 foram atualizados junto: a regra
+mora onde é consultada.
+
 ### 2026-09-24 — Varredura de falha silenciosa: 399 pontos, e um defeito no ar
 
 Frente aberta por uma pergunta do Heitor: "toda vez que você mexe, acha

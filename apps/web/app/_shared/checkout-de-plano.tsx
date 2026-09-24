@@ -32,7 +32,7 @@ export async function CheckoutDePlano({
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 4px 40px' }}>
       <div style={{ marginBottom: 28 }} className="esconde-impressao">
-        <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
           Novo paciente
         </p>
         <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>

@@ -56,7 +56,7 @@ export default async function AdminAgendaPage({
   if (branchesError) {
     console.error('[admin/agenda] branches:', branchesError.message)
     return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Não foi possível carregar as unidades agora. Tente recarregar em instantes.
       </div>
     )
@@ -75,7 +75,7 @@ export default async function AdminAgendaPage({
 
   if (branchIds.length === 0) {
     return (
-      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 14 }}>
+      <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
         Nenhuma filial ativa cadastrada.
       </div>
     )

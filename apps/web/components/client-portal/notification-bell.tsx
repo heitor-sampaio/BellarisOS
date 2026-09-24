@@ -273,7 +273,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
           <span style={{
             position: 'absolute', top: -5, right: -5,
             minWidth: 18, height: 18, borderRadius: 9,
-            background: 'var(--brand)', color: '#fff', fontSize: 10, fontWeight: 800,
+            background: 'var(--brand)', color: 'var(--surface)', fontSize: 'var(--text-overline)', fontWeight: 800,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '0 4px', border: '1.5px solid var(--surface)', lineHeight: 1,
           }}>
@@ -296,7 +296,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
           zIndex: 300,
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 'var(--radius-card-token)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06)',
+          boxShadow: 'var(--shadow-popover)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
           animation: 'bell-panel-open 200ms cubic-bezier(0.34,1.4,0.64,1) both',
           transformOrigin: 'top right',
@@ -309,12 +309,12 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Bell size={15} color="var(--brand)" strokeWidth={2.5} />
-            <h2 style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', margin: 0 }}>
+            <h2 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em', margin: 0 }}>
               Notificações
             </h2>
             {notifications !== null && notifications.length === 0 && (
               <span style={{
-                fontSize: 11, fontWeight: 700, color: 'var(--text-faint)',
+                fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)',
                 background: 'var(--bg-app)', border: '1px solid var(--hairline)',
                 borderRadius: 99, padding: '1px 7px',
               }}>Em dia</span>
@@ -340,7 +340,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
                 border: '2px solid var(--hairline)', borderTopColor: 'var(--brand)',
                 margin: '0 auto 10px', animation: 'spin 0.7s linear infinite',
               }} />
-              <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Carregando...</p>
+              <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Carregando...</p>
             </div>
           )}
           {!isPending && notifications?.length === 0 && (
@@ -352,8 +352,8 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
               }}>
                 <BellOff size={20} color="var(--text-faint)" />
               </div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Tudo em dia</p>
-              <p style={{ fontSize: 12.5, color: 'var(--text-faint)', lineHeight: 1.5 }}>Nenhuma notificacao por aqui.</p>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Tudo em dia</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', lineHeight: 1.5 }}>Nenhuma notificacao por aqui.</p>
             </div>
           )}
           {notifications && notifications.length > 0 && (
@@ -383,7 +383,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
               zIndex: 401,
               background: 'var(--surface)', borderRadius: 'var(--radius-card-token)',
               border: '1px solid var(--border)',
-              boxShadow: '0 24px 64px rgba(0,0,0,0.2)',
+              boxShadow: 'var(--shadow-overlay)',
               overflow: 'hidden',
             }}
           >
@@ -413,17 +413,17 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
             {/* Modal body */}
             <div style={{ padding: '20px 20px 24px' }}>
               <p style={{
-                fontSize: 16, fontWeight: 800, color: 'var(--text)',
+                fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)',
                 letterSpacing: '-0.01em', lineHeight: 1.35, marginBottom: 10,
               }}>
                 {selected.title}
               </p>
               {selected.body && (
-                <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                   {selected.body}
                 </p>
               )}
-              <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 14 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 14 }}>
                 {relativeTime(selected.created_at)}
               </p>
             </div>
@@ -490,7 +490,7 @@ function NotificationItem({ notification: n, onClick }: { notification: ClientNo
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{
-          fontSize: 13.5, fontWeight: n.is_received ? 500 : 700,
+          fontSize: 'var(--text-base-sz)', fontWeight: n.is_received ? 500 : 700,
           color: n.is_received ? 'var(--text-muted)' : 'var(--text)',
           marginBottom: 2, lineHeight: 1.35,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -499,13 +499,13 @@ function NotificationItem({ notification: n, onClick }: { notification: ClientNo
         </p>
         {n.body && (
           <p style={{
-            fontSize: 12, color: 'var(--text-faint)', lineHeight: 1.4, marginBottom: 2,
+            fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', lineHeight: 1.4, marginBottom: 2,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>
             {n.body}
           </p>
         )}
-        <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>{relativeTime(n.created_at)}</p>
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{relativeTime(n.created_at)}</p>
       </div>
       {!n.is_received && (
         <div style={{

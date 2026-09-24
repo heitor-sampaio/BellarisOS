@@ -12,19 +12,19 @@ const STATUS_CHIP: Record<string, { label: string; color: string; bg: string }> 
   pending:    { label: 'Em preparo',  color: 'var(--warning)',    bg: 'var(--warning-soft)' },
   processing: { label: 'Em preparo',  color: 'var(--warning)',    bg: 'var(--warning-soft)' },
   completed:  { label: 'Pronto',      color: 'var(--success)',    bg: 'var(--success-soft)' },
-  failed:     { label: 'Falhou',      color: '#b42318',           bg: '#fee4e2' },
+  failed:     { label: 'Falhou',      color: 'var(--danger)',           bg: 'var(--danger-soft)' },
 }
 
 const MEDICAL_CHIP: Record<string, { label: string; color: string; bg: string }> = {
   pending:  { label: 'Prontuário em análise', color: 'var(--warning)',   bg: 'var(--warning-soft)' },
   approved: { label: 'Prontuário incluído',   color: 'var(--success)',   bg: 'var(--success-soft)' },
-  denied:   { label: 'Prontuário não incluído', color: 'var(--text-muted)', bg: '#f3eef0' },
+  denied:   { label: 'Prontuário não incluído', color: 'var(--text-muted)', bg: 'var(--hairline)' },
 }
 
 function Chip({ label, color, bg }: { label: string; color: string; bg: string }) {
   return (
     <span style={{
-      fontSize: 10, fontWeight: 700, padding: '5px 10px',
+      fontSize: 'var(--text-overline)', fontWeight: 700, padding: '5px 10px',
       borderRadius: 'var(--radius-chip-token)', color, background: bg, whiteSpace: 'nowrap',
     }}>
       {label}
@@ -56,7 +56,7 @@ function DownloadRow({ request }: { request: LgpdRequestRow }) {
     display: 'inline-flex', alignItems: 'center', gap: 6,
     padding: '9px 14px', borderRadius: 'var(--radius-field-token)',
     border: '1px solid var(--border)', background: 'var(--surface)',
-    color: 'var(--text)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
+    color: 'var(--text)', fontWeight: 700, fontSize: 'var(--text-sm-sz)', cursor: 'pointer',
   } as const
 
   return (
@@ -70,11 +70,11 @@ function DownloadRow({ request }: { request: LgpdRequestRow }) {
         </button>
       </div>
       {request.expires_at && (
-        <p style={{ fontSize: 11.5, color: 'var(--text-muted)', margin: 0 }}>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', margin: 0 }}>
           Disponível até {fmt(request.expires_at)}.
         </p>
       )}
-      {error && <p style={{ fontSize: 12, color: '#b42318', margin: 0 }}>{error}</p>}
+      {error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', margin: 0 }}>{error}</p>}
     </div>
   )
 }
@@ -90,12 +90,12 @@ export function DataRequestCard({ requests }: Props) {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
         <ShieldCheck size={17} style={{ color: 'var(--brand)' }} />
-        <h2 style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
+        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
           Meus dados pessoais
         </h2>
       </div>
 
-      <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
+      <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
         Você pode pedir uma cópia de tudo o que guardamos sobre você — cadastro,
         agendamentos, atendimentos, pagamentos e pontos. Preparamos o arquivo e
         avisamos aqui quando estiver pronto.
@@ -113,7 +113,7 @@ export function DataRequestCard({ requests }: Props) {
               <Chip {...MEDICAL_CHIP[openRequest.medical_status]!} />
             )}
           </div>
-          <p style={{ fontSize: 12.5, color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0, lineHeight: 1.5 }}>
             Solicitado em {fmt(openRequest.requested_at)}. Estamos reunindo seus dados
             {openRequest.medical_status === 'pending'
               ? ' — a parte do prontuário depende da liberação da clínica.'
@@ -124,7 +124,7 @@ export function DataRequestCard({ requests }: Props) {
         <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <label style={{
             display: 'flex', alignItems: 'flex-start', gap: 9,
-            fontSize: 12.5, color: 'var(--text)', lineHeight: 1.5, cursor: 'pointer',
+            fontSize: 'var(--text-sm-sz)', color: 'var(--text)', lineHeight: 1.5, cursor: 'pointer',
           }}>
             <input
               type="checkbox"
@@ -146,9 +146,9 @@ export function DataRequestCard({ requests }: Props) {
             style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               padding: '13px 16px', borderRadius: 'var(--radius-field-token)', border: 'none',
-              background: 'var(--brand)', color: '#fff',
-              fontWeight: 700, fontSize: 14, cursor: pending ? 'default' : 'pointer',
-              boxShadow: '0 6px 16px rgba(195,77,107,0.25)',
+              background: 'var(--brand)', color: 'var(--surface)',
+              fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: pending ? 'default' : 'pointer',
+              boxShadow: 'var(--shadow-brand-btn)',
               opacity: pending ? 0.7 : 1,
             }}
           >
@@ -156,9 +156,9 @@ export function DataRequestCard({ requests }: Props) {
             {pending ? 'Registrando…' : 'Solicitar meus dados'}
           </button>
 
-          {state?.error   && <p style={{ fontSize: 12.5, color: '#b42318', margin: 0 }}>{state.error}</p>}
+          {state?.error   && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', margin: 0 }}>{state.error}</p>}
           {state?.success && (
-            <p style={{ fontSize: 12.5, color: 'var(--success)', margin: 0 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', margin: 0 }}>
               Solicitação registrada. Avisaremos aqui assim que o arquivo estiver pronto.
             </p>
           )}
@@ -172,7 +172,7 @@ export function DataRequestCard({ requests }: Props) {
             {latestDone.include_medical && MEDICAL_CHIP[latestDone.medical_status] && (
               <Chip {...MEDICAL_CHIP[latestDone.medical_status]!} />
             )}
-            <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
               Solicitado em {fmt(latestDone.requested_at)}
             </span>
           </div>
@@ -181,7 +181,7 @@ export function DataRequestCard({ requests }: Props) {
       )}
 
       {requests.some(r => r.status === 'failed') && !openRequest && (
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>
           A última tentativa não foi concluída. Você pode solicitar novamente.
         </p>
       )}

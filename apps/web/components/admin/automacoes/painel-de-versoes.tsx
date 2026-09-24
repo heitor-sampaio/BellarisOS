@@ -101,17 +101,17 @@ export function PainelDeVersoes({
                 Versão {v.versao}
                 {v.atual && (
                   <span style={{
-                    marginLeft: 6, fontSize: 10, fontWeight: 'var(--weight-bold)',
+                    marginLeft: 6, fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-bold)',
                     color: 'var(--success)',
                   }}>
                     no ar
                   </span>
                 )}
               </span>
-              <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{quando(v.quando)}</span>
+              <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>{quando(v.quando)}</span>
             </div>
 
-            <span style={{ fontSize: 11, color: 'var(--text-soft)' }}>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-soft)' }}>
               {v.nome} · {v.nos} {v.nos === 1 ? 'passo' : 'passos'}, {v.ligacoes}{' '}
               {v.ligacoes === 1 ? 'ligação' : 'ligações'}
               {v.por ? ` · ${v.por}` : ''}
@@ -121,7 +121,7 @@ export function PainelDeVersoes({
               <button
                 type="button" className="btn-ghost" disabled={carregando}
                 style={{
-                  alignSelf: 'flex-start', fontSize: 11, display: 'flex',
+                  alignSelf: 'flex-start', fontSize: 'var(--text-2xs)', display: 'flex',
                   alignItems: 'center', gap: 5, color: 'var(--brand)',
                 }}
                 onClick={() => restaurar(v)}
@@ -132,7 +132,7 @@ export function PainelDeVersoes({
           </div>
         ))}
 
-        <p style={{ fontSize: 10.5, color: 'var(--text-muted)', padding: '4px 8px', lineHeight: 1.6 }}>
+        <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', padding: '4px 8px', lineHeight: 1.6 }}>
           Voltar para uma versão <strong>carrega</strong> o fluxo dela na tela —
           nada muda até você salvar. O histórico guarda os últimos 30
           salvamentos.

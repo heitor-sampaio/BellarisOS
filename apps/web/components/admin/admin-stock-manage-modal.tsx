@@ -40,7 +40,7 @@ type MovOp = 'entrada' | 'transferencia' | 'ajuste'
 // -- Primitivos --------------------------------------------------------
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+    <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
       {children}
     </label>
   )
@@ -52,8 +52,8 @@ function ErrorMsg({ msg }: { msg?: string }) {
   if (!msg) return null
   return (
     <p style={{
-      fontSize: 12.5, fontWeight: 700, padding: '8px 12px', borderRadius: 8,
-      background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca',
+      fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '8px 12px', borderRadius: 8,
+      background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid var(--danger-border)',
     }}>{msg}</p>
   )
 }
@@ -62,7 +62,7 @@ function UnitSuffix({ unit }: { unit: string }) {
   return (
     <span style={{
       position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-      fontSize: 11, color: 'var(--text-faint)', pointerEvents: 'none',
+      fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', pointerEvents: 'none',
     }}>{unit}</span>
   )
 }
@@ -139,7 +139,7 @@ function EntradaForm({ product, allBranches, defaultBranchId, onClose, onSuccess
           <div style={{ position: 'relative' }}>
             <span style={{
               position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 11.5, color: 'var(--text-faint)', pointerEvents: 'none',
+              fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', pointerEvents: 'none',
             }}>R$</span>
             <input name="unit_cost" type="number" step="0.01" min="0" className="field"
               placeholder="0,00" style={{ paddingLeft: 28 }} />
@@ -221,7 +221,7 @@ function TransferenciaForm({ product, allBranches, defaultBranchId, onClose, onS
         <div style={{
           padding: '8px 12px', borderRadius: 8,
           background: 'var(--bg-app)', border: '1px solid var(--border)',
-          fontSize: 12.5, color: 'var(--text-muted)',
+          fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
         }}>
           Disponível na origem:&nbsp;
           <strong style={{ color: 'var(--text)' }}>
@@ -292,11 +292,11 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{
         padding: '10px 13px', borderRadius: 9,
-        background: '#fff7ed', border: '1.5px solid #fed7aa',
+        background: 'var(--cat-5-soft)', border: '1.5px solid var(--cat-5-soft)',
         display: 'flex', gap: 9, alignItems: 'flex-start',
       }}>
-        <AlertTriangle size={15} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
-        <p style={{ fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
+        <AlertTriangle size={15} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', lineHeight: 1.5 }}>
           <strong>Operação crítica.</strong> O ajuste sobrescreve o estoque e pode gerar
           inconsistência com movimentações anteriores. Use apenas após inventário físico confirmado.
         </p>
@@ -315,25 +315,25 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
           background: 'var(--bg-app)', border: '1px solid var(--border)',
         }}>
           <div>
-            <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 2 }}>
+            <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 2 }}>
               ESTOQUE ATUAL
             </p>
-            <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+            <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
               {currentStock.toLocaleString('pt-BR')}
-              <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-faint)', marginLeft: 4 }}>{product.unit}</span>
+              <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-faint)', marginLeft: 4 }}>{product.unit}</span>
             </p>
           </div>
           {delta !== null && !isNaN(delta) && (
             <div>
-              <p style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 2 }}>
+              <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 2 }}>
                 VARIAÇÃO
               </p>
               <p style={{
-                fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em',
-                color: delta > 0 ? '#16a34a' : delta < 0 ? '#dc2626' : 'var(--text-faint)',
+                fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.01em',
+                color: delta > 0 ? 'var(--success)' : delta < 0 ? 'var(--danger)' : 'var(--text-faint)',
               }}>
                 {delta > 0 ? '+' : ''}{delta.toLocaleString('pt-BR')}
-                <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-faint)', marginLeft: 4 }}>{product.unit}</span>
+                <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-faint)', marginLeft: 4 }}>{product.unit}</span>
               </p>
             </div>
           )}
@@ -366,7 +366,7 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
       }}>
         <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)}
           style={{ marginTop: 2, accentColor: 'var(--brand)', flexShrink: 0 }} />
-        <span style={{ fontSize: 12.5, fontWeight: 700, lineHeight: 1.4,
+        <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, lineHeight: 1.4,
           color: confirmed ? 'var(--brand)' : 'var(--text-muted)' }}>
           Confirmo que o novo valor foi verificado fisicamente e estou ciente da inconsistência no histórico.
         </span>
@@ -377,10 +377,10 @@ function AjusteForm({ product, allBranches, defaultBranchId, onClose, onSuccess 
         <button type="button" onClick={onClose} className="btn-secondary" disabled={pending}>Cancelar</button>
         <button type="submit" disabled={pending || !confirmed} style={{
           display: 'inline-flex', alignItems: 'center', gap: 7,
-          fontSize: 13, fontWeight: 700, padding: '8px 16px', borderRadius: 10,
+          fontSize: 'var(--text-base-sz)', fontWeight: 700, padding: '8px 16px', borderRadius: 10,
           border: 'none', cursor: pending || !confirmed ? 'not-allowed' : 'pointer',
-          background: confirmed ? '#dc2626' : 'var(--border)',
-          color: confirmed ? '#fff' : 'var(--text-faint)',
+          background: confirmed ? 'var(--danger)' : 'var(--border)',
+          color: confirmed ? 'var(--on-brand)' : 'var(--text-faint)',
           transition: 'all 150ms',
         }}>
           <SlidersHorizontal size={14} />
@@ -431,7 +431,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
         Configure o estoque mínimo desejável de <strong style={{ color: 'var(--text)' }}>{product.name}</strong> em
         cada filial. Abaixo deste valor, o produto será sinalizado como alerta.
       </p>
@@ -451,8 +451,8 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
           }}>
             {/* Branch info */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{b.name}</p>
-              <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 1 }}>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{b.name}</p>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 1 }}>
                 Atual: {currentStock.toLocaleString('pt-BR')} {product.unit}
               </p>
             </div>
@@ -472,7 +472,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
               />
               <span style={{
                 position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                fontSize: 10.5, color: 'var(--text-faint)', pointerEvents: 'none',
+                fontSize: 'var(--text-overline)', color: 'var(--text-faint)', pointerEvents: 'none',
               }}>{product.unit}</span>
             </div>
 
@@ -485,8 +485,8 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
                 width: 34, height: 34, borderRadius: 9, flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 border: 'none', cursor: isBusy ? 'wait' : 'pointer',
-                background: isDone ? '#f0fdf4' : 'var(--brand-soft)',
-                color: isDone ? '#16a34a' : 'var(--brand)',
+                background: isDone ? 'var(--success-bg)' : 'var(--brand-soft)',
+                color: isDone ? 'var(--success)' : 'var(--brand)',
                 transition: 'all 150ms',
               }}
               title="Salvar"
@@ -500,7 +500,7 @@ function MinStockTab({ product, allBranches, defaultBranchId }: {
             </button>
 
             {errMsg && (
-              <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 700 }}>{errMsg}</span>
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)', fontWeight: 700 }}>{errMsg}</span>
             )}
           </div>
         )
@@ -521,9 +521,9 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
   }, [])
 
   const allMovOpts: { op: MovOp; label: string; icon: React.ReactNode; color: string }[] = [
-    { op: 'entrada',       label: 'Entrada',       icon: <PackagePlus      size={13} />, color: '#16a34a' },
-    { op: 'transferencia', label: 'Transferência',  icon: <ArrowLeftRight   size={13} />, color: '#2563eb' },
-    { op: 'ajuste',        label: 'Ajuste',         icon: <SlidersHorizontal size={13}/>, color: '#d97706' },
+    { op: 'entrada',       label: 'Entrada',       icon: <PackagePlus      size={13} />, color: 'var(--success)' },
+    { op: 'transferencia', label: 'Transferência',  icon: <ArrowLeftRight   size={13} />, color: 'var(--info)' },
+    { op: 'ajuste',        label: 'Ajuste',         icon: <SlidersHorizontal size={13}/>, color: 'var(--warning)' },
   ]
   // Transferir some so quando nao ha para onde: a filial mandava produto para
   // lugar nenhum porque recebia apenas a propria unidade na lista.
@@ -548,7 +548,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
           <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
             Gerenciar estoque
           </h2>
-          <p style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 1 }}>{product.name}</p>
+          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>{product.name}</p>
         </div>
         <button type="button" onClick={onClose} style={{
           width: 32, height: 32, borderRadius: 10, cursor: 'pointer', flexShrink: 0,
@@ -572,7 +572,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
           ['min-stock',     'Estoque mínimo'],
         ] as [Tab, string][]).map(([t, l]) => (
           <button key={t} type="button" onClick={() => setTab(t)} style={{
-            padding: '10px 16px', fontSize: 13, fontWeight: 700,
+            padding: '10px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 700,
             border: 'none', background: 'none', cursor: 'pointer',
             color: tab === t ? 'var(--brand)' : 'var(--text-muted)',
             borderBottom: tab === t ? '2px solid var(--brand)' : '2px solid transparent',
@@ -595,7 +595,7 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
               {MOV_OPTS.map(o => (
                 <button key={o.op} type="button" onClick={() => setMovOp(o.op)} style={{
                   flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  fontSize: 12, fontWeight: 700, padding: '6px 10px', borderRadius: 7,
+                  fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '6px 10px', borderRadius: 7,
                   border: 'none', cursor: 'pointer', transition: 'all 100ms',
                   background: movOp === o.op ? 'var(--surface)' : 'transparent',
                   color: movOp === o.op ? o.color : 'var(--text-muted)',
@@ -651,11 +651,11 @@ function HistoricoTab({ product, defaultBranchId }: {
     return () => { vivo = false }
   }, [product.id, defaultBranchId])
 
-  if (erro)   return <p style={{ fontSize: 12.5, color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>
-  if (!movs)  return <p style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>Carregando…</p>
+  if (erro)   return <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>
+  if (!movs)  return <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando…</p>
   if (movs.length === 0) {
     return (
-      <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '28px 0' }}>
+      <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', textAlign: 'center', padding: '28px 0' }}>
         Nenhuma movimentação registrada para este produto.
       </p>
     )
@@ -672,20 +672,20 @@ function HistoricoTab({ product, defaultBranchId }: {
             border: '1px solid var(--hairline)', background: 'var(--surface)',
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
                 {MOV_LABEL[m.type] ?? m.type}
                 <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {m.branchName}</span>
               </p>
-              <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>
+              <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
                 {new Date(m.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
                 {m.notes ? ` · ${m.notes}` : ''}
               </p>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 800, color: entrada ? '#16a34a' : '#dc2626' }}>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: entrada ? 'var(--success)' : 'var(--danger)' }}>
                 {entrada ? '+' : ''}{m.quantity.toLocaleString('pt-BR')} {product.unit}
               </p>
-              <p style={{ fontSize: 10.5, color: 'var(--text-faint)' }}>
+              <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>
                 saldo {m.balanceAfter.toLocaleString('pt-BR')}
               </p>
             </div>

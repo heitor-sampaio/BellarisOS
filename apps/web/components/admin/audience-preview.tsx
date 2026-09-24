@@ -35,7 +35,7 @@ export function AudiencePreview({ rules }: Props) {
       borderRadius: 99,
       background:  isPending ? 'var(--surface)' : 'var(--brand-soft)',
       border:      '1px solid var(--border)',
-      fontSize:    13,
+      fontSize: 'var(--text-base-sz)',
       fontWeight:  700,
       color:       isPending ? 'var(--text-muted)' : 'var(--brand)',
       transition:  'background 200ms, color 200ms',

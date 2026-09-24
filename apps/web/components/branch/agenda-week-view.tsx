@@ -17,12 +17,12 @@ interface Props {
 const WEEKDAYS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB']
 
 const PROF_COLORS = [
-  { bg: '#fce7ec', text: '#c34d6b' },
-  { bg: '#e7f0fc', text: '#3b6cbf' },
-  { bg: '#e7fce7', text: '#2e7d32' },
-  { bg: '#f0e7fc', text: '#6a3baa' },
-  { bg: '#fceee7', text: '#b85c1a' },
-  { bg: '#e7fcf8', text: '#1a8a73' },
+  { bg: 'var(--brand-soft)', text: 'var(--brand)' },
+  { bg: 'var(--info-soft)', text: 'var(--info)' },
+  { bg: 'var(--success-soft)', text: 'var(--success)' },
+  { bg: 'var(--cat-4-soft)', text: 'var(--cat-4)' },
+  { bg: 'var(--cat-5-soft)', text: 'var(--cat-5)' },
+  { bg: 'var(--cat-6-soft)', text: 'var(--cat-6)' },
 ]
 
 function getInitials(name: string) {
@@ -49,26 +49,26 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
         borderRadius: 8,
         marginBottom: 4,
         cursor:      'pointer',
-        background:  isProgress ? '#fce7ec' : 'var(--surface)',
+        background:  isProgress ? 'var(--brand-soft)' : 'var(--surface)',
         border:      isScheduled
-          ? '1.5px dashed #d0bfc4'
-          : `1px solid ${isProgress ? '#f4b8c4' : 'var(--border)'}`,
+          ? '1.5px dashed var(--text-faint)'
+          : `1px solid ${isProgress ? 'var(--brand-3)' : 'var(--border)'}`,
         borderLeft:  isProgress
-          ? '3px solid #c34d6b'
+          ? '3px solid var(--brand)'
           : isConfirmed
-          ? '3px solid #3f9b6f'
-          : '3px dashed #c4b4b8',
+          ? '3px solid var(--success)'
+          : '3px dashed var(--text-faint)',
         opacity: isScheduled ? 0.75 : 1,
         transition: 'box-shadow 0.1s',
       }}
       onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(34,22,25,.08)')}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
     >
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#3f9b6f' }}>{time}</div>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--success)' }}>{time}</div>
+      <div style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {shortName(ev.clientName)}
       </div>
-      <div style={{ fontSize: 10, color: isProgress ? '#c34d6b' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ fontSize: 'var(--text-overline)', color: isProgress ? 'var(--brand)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {ev.isEvaluation ? 'Avaliação' : ev.procedureName}
       </div>
     </div>
@@ -103,7 +103,7 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
               const isToday = isSameDay(day, today)
               return (
                 <th key={i} style={{ padding: '0 6px 12px', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 4 }}>
+                  <div style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 4 }}>
                     {WEEKDAYS[i]}
                   </div>
                   <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.02em', color: isToday ? 'var(--brand)' : 'var(--text)' }}>
@@ -132,11 +132,11 @@ export function AgendaWeekView({ currentDate, events, professionals, onEventClic
                       width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
                       background: clr.bg,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 11, fontWeight: 800, color: clr.text,
+                      fontSize: 'var(--text-2xs)', fontWeight: 800, color: clr.text,
                     }}>
                       {getInitials(pro.name)}
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', lineHeight: 1.3 }}>
+                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', lineHeight: 1.3 }}>
                       {pro.name}
                     </span>
                   </div>

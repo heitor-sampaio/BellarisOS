@@ -44,12 +44,12 @@ const CATEGORIES: { value: string; label: string }[] = [
 ]
 
 const CATEGORY_COLOR: Record<string, { bg: string; text: string }> = {
-  termo_consentimento: { bg: '#fce7ec', text: '#c34d6b' },
-  exame:               { bg: '#e7f0fc', text: '#3a6bcc' },
-  laudo:               { bg: '#f0e7fc', text: '#7a3acc' },
-  contrato:            { bg: '#e7fcf0', text: '#3a9b6f' },
-  foto_clinica:        { bg: '#fcf0e7', text: '#cc7a3a' },
-  receita:             { bg: '#fcfce7', text: '#9b9b3a' },
+  termo_consentimento: { bg: 'var(--brand-soft)', text: 'var(--brand)' },
+  exame:               { bg: 'var(--info-soft)', text: 'var(--info)' },
+  laudo:               { bg: 'var(--cat-4-soft)', text: 'var(--cat-4)' },
+  contrato:            { bg: 'var(--cat-6-soft)', text: 'var(--success)' },
+  foto_clinica:        { bg: 'var(--cat-5-soft)', text: 'var(--cat-5)' },
+  receita:             { bg: 'var(--warning-soft)', text: 'var(--warning)' },
   outro:               { bg: 'var(--bg-app)', text: 'var(--text-faint)' },
 }
 
@@ -114,7 +114,7 @@ function UploadForm({
       <input type="hidden" name="slug"      value={slug} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--brand)' }}>Novo documento</p>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--brand)' }}>Novo documento</p>
         <button type="button" onClick={onClose} className="btn-ghost" style={{ padding: '2px 4px' }}>
           <X size={14} />
         </button>
@@ -151,7 +151,7 @@ function UploadForm({
           cursor: 'pointer',
         }}>
           <Upload size={14} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-          <span style={{ fontSize: 13, color: fileName ? 'var(--text)' : 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 'var(--text-base-sz)', color: fileName ? 'var(--text)' : 'var(--text-faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {fileName ?? 'Clique para selecionar…'}
           </span>
           <input
@@ -161,13 +161,13 @@ function UploadForm({
             style={{ display: 'none' }}
           />
         </label>
-        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 4 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 4 }}>
           PDF, Word, Excel, imagens — máximo 20 MB
         </p>
       </div>
 
       {state?.error && (
-        <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
           {state.error}
         </p>
       )}
@@ -219,10 +219,10 @@ function DocumentRow({
 
       {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {doc.name}
         </p>
-        <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 2 }}>
+        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
           {doc.fileName}
           {doc.fileSize && ` · ${fileSizeLabel(doc.fileSize)}`}
           {` · ${format(new Date(doc.createdAt), "dd/MM/yyyy", { locale: ptBR })}`}
@@ -232,7 +232,7 @@ function DocumentRow({
 
       {/* Category badge */}
       <span style={{
-        fontSize: 10, fontWeight: 700, flexShrink: 0,
+        fontSize: 'var(--text-overline)', fontWeight: 700, flexShrink: 0,
         padding: '3px 8px', borderRadius: 10,
         background: catColor.bg, color: catColor.text,
       }}>
@@ -311,12 +311,12 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Prop
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileText size={15} style={{ color: 'var(--brand)' }} />
-            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)' }}>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
               Documentos
             </span>
             {localDocs.length > 0 && (
               <span style={{
-                fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+                fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 7px', borderRadius: 10,
                 background: 'var(--brand-soft)', color: 'var(--brand)',
               }}>
                 {localDocs.length}
@@ -327,7 +327,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Prop
             type="button"
             onClick={() => setShowForm(v => !v)}
             className={showForm ? 'btn-ghost' : 'btn-primary'}
-            style={{ gap: 6, fontSize: 12 }}
+            style={{ gap: 6, fontSize: 'var(--text-sm-sz)' }}
           >
             {showForm ? <><X size={13} /> Cancelar</> : <><Plus size={13} /> Adicionar documento</>}
           </button>
@@ -343,10 +343,10 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Prop
             }}>
               <FileText size={22} style={{ color: 'var(--brand)' }} />
             </div>
-            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
               Nenhum documento anexado
             </p>
-            <p style={{ fontSize: 12, color: 'var(--text-faint)', maxWidth: 280 }}>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', maxWidth: 280 }}>
               Adicione termos de consentimento, laudos, exames ou qualquer arquivo do cliente.
             </p>
             <button
@@ -374,13 +374,13 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Prop
                 display: 'flex', alignItems: 'center', gap: 8,
               }}>
                 <span style={{
-                  fontSize: 10, fontWeight: 700,
+                  fontSize: 'var(--text-overline)', fontWeight: 700,
                   padding: '2px 8px', borderRadius: 10,
                   background: catColor.bg, color: catColor.text,
                 }}>
                   {catName}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text-faint)' }}>
+                <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>
                   {items.length} {items.length === 1 ? 'arquivo' : 'arquivos'}
                 </span>
               </div>

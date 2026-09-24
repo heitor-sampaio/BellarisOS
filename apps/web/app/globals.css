@@ -21,6 +21,8 @@
   --color-text-faint: var(--text-faint);
   --color-success: var(--success);
   --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
 
   --font-sans: var(--font-sans-custom);
 
@@ -59,11 +61,47 @@
     --success-border: #cfe9da;
     --warning: #c98a1e;
     --warning-soft: #fbeed6;
+    --warning-border: #f0dcb4;
     --gold: #c9a227;
+
+    /* Erro e informação — ver tokens/colors.css da skill /lumiere-design.
+       Faltavam, e a falta produziu a bagunça: sem vermelho de sistema, cada
+       tela pegou o do Tailwind (red-600, 146 vezes) ou inventou o seu.
+       Terrosos de propósito: o vermelho do Tailwind é frio demais ao lado do
+       nude quente. O azul tem um papel só — estado informativo neutro
+       (Agendado, Concluída, tipo de documento). Nunca é dado; dado é rosé. */
+    --danger: #b42318;
+    --danger-soft: #fdecea;
+    --danger-border: #f5cdc7;
+    --info: #3b6cbf;
+    --info-soft: #e7f0fc;
+    --info-border: #c9dcf5;
+
+    /* ─── Escala categórica (2026-09-24) ───────────────
+       Para DISTINGUIR, não para significar: qual profissional ocupa o horário,
+       de qual canal veio a conversa. É a outra lacuna que produzia invenção —
+       seis tons de rosé seriam indistinguíveis à primeira vista, então cada
+       tela escolheu os seus.
+    
+       As três primeiras REUSAM os tokens semânticos de propósito: quem tem
+       quatro profissionais nunca chega nas outras, e a tela fica na paleta.
+       As três últimas são quentes e dessaturadas para conviver com o nude. */
+    --cat-1: var(--brand);        --cat-1-soft: var(--brand-soft);
+    --cat-2: var(--info);         --cat-2-soft: var(--info-soft);
+    --cat-3: var(--success);      --cat-3-soft: var(--success-soft);
+    --cat-4: #6a3baa;             --cat-4-soft: #f0e7fc;   /* ameixa */
+    --cat-5: #b85c1a;             --cat-5-soft: #fceee7;   /* terracota */
+    --cat-6: #1a8a73;             --cat-6-soft: #e7fcf8;   /* teal */
 
     /* --- Aliases ------------------------------------- */
     --on-brand: #ffffff;
     --accent: var(--brand);
+    /* O ÚNICO gradiente de fundo do sistema (2026-09-24).
+       Era regra de texto — "só o card Pacote ativo" — e virou string copiada
+       em cinco lugares: as duas barras laterais, a home do cliente, o avatar
+       da ficha e o cabeçalho do plano. Como token, a regra fica onde ela é
+       obedecida: superfície de MARCA pode usá-lo; fundo neutro, nunca. */
+    --gradient-brand: linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%);
 
     /* --- Typography ---------------------------------- */
     --font-sans-custom: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -115,6 +153,15 @@
     --shadow-brand-btn: 0 10px 24px -8px rgba(195, 77, 107, .6);
     --shadow-nav-active: 0 8px 18px -6px rgba(195, 77, 107, .55);
     --shadow-agenda-card: 0 2px 8px -3px rgba(63, 155, 111, .25);
+    /* Elevação de overlay (2026-09-24) — a terceira lacuna.
+       "Superfície neutra usa borda, não sombra" vale para o que está NO plano
+       da página. O que flutua sobre ela — modal, dropdown, tooltip — precisa de
+       elevação, e sem token cada tela inventou a sua: sete sombras pretas
+       diferentes, de `rgba(0,0,0,.08)` a `rgba(0,0,0,.22)`.
+       Tingidas de rosé como todas as outras do sistema. */
+    --shadow-overlay: 0 18px 44px -14px rgba(122, 30, 61, .30);
+    --shadow-popover: 0 8px 22px -8px rgba(122, 30, 61, .22);
+
 
     /* --- Layout constants ---------------------------- */
     --sidebar-w: 244px;

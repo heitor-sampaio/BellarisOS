@@ -61,7 +61,7 @@ export default async function ClientProfilePage({ params: _params }: { params: P
           display:        'flex',
           alignItems:     'center',
           justifyContent: 'center',
-          fontSize:       22,
+          fontSize: 'var(--text-name)',
           fontWeight:     800,
           color:          'var(--brand)',
           flexShrink:     0,
@@ -73,7 +73,7 @@ export default async function ClientProfilePage({ params: _params }: { params: P
             {client.name}
           </h1>
           {client.email && (
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 1 }}>{client.email}</p>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginTop: 1 }}>{client.email}</p>
           )}
         </div>
       </div>
@@ -81,7 +81,7 @@ export default async function ClientProfilePage({ params: _params }: { params: P
       {/* -- Dados imutáveis (staff-only) --------------------------- */}
       <section>
         <p style={{
-          fontSize:      11,
+          fontSize: 'var(--text-2xs)',
           fontWeight:    700,
           color:         'var(--text-muted)',
           letterSpacing: '0.08em',
@@ -102,7 +102,7 @@ export default async function ClientProfilePage({ params: _params }: { params: P
             <StaticRow label="Sexo" value={genderMap[client.gender] ?? client.gender} />
           )}
         </div>
-        <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 8, paddingLeft: 4 }}>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 8, paddingLeft: 4 }}>
           Para alterar esses dados, fale com a recepção.
         </p>
       </section>
@@ -142,9 +142,9 @@ export default async function ClientProfilePage({ params: _params }: { params: P
               borderRadius:   12,
               border:         '1px solid var(--border)',
               background:     'var(--surface)',
-              color:          '#ef4444',
+              color:          'var(--danger)',
               fontWeight:     700,
-              fontSize:       14,
+              fontSize: 'var(--text-base-sz)',
               cursor:         'pointer',
             }}
           >
@@ -167,7 +167,7 @@ function StaticRow({ label, value }: { label: string; value: string }) {
       borderBottom:  '1px solid var(--hairline)',
     }}>
       <span style={{
-        fontSize:      10.5,
+        fontSize: 'var(--text-overline)',
         fontWeight:    700,
         color:         'var(--text-muted)',
         letterSpacing: '0.06em',
@@ -176,7 +176,7 @@ function StaticRow({ label, value }: { label: string; value: string }) {
       }}>
         {label}
       </span>
-      <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }}>{value || '—'}</span>
+      <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 600, color: 'var(--text)' }}>{value || '—'}</span>
     </div>
   )
 }

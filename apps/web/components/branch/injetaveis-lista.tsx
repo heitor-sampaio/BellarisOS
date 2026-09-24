@@ -196,7 +196,7 @@ function NovoPlanejamento({
           padding: '16px 20px', borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
-          <h2 style={{ fontSize: 15, fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', flex: 1 }}>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)', flex: 1 }}>
             Novo planejamento
           </h2>
           <button type="button" onClick={onFechar} className="btn-ghost" style={{ padding: '4px 6px' }}>
@@ -225,7 +225,7 @@ function NovoPlanejamento({
           </p>
 
           {erro && (
-            <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>
           )}
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

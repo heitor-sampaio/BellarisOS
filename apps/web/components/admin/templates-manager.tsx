@@ -22,9 +22,9 @@ const IDIOMAS = [
 
 const TOM_STATUS = {
   neutro: { bg: 'var(--bg-app)', color: 'var(--text-muted)', border: 'var(--border)' },
-  espera: { bg: '#fffbeb', color: '#b45309', border: '#b4530933' },
-  ok:     { bg: '#f0fdf4', color: '#3f9b6f', border: '#3f9b6f33' },
-  erro:   { bg: '#fef2f2', color: '#dc2626', border: '#dc262633' },
+  espera: { bg: 'var(--warning-soft)', color: 'var(--warning)', border: 'color-mix(in srgb, var(--cat-5) 20%, transparent)' },
+  ok:     { bg: 'var(--success-bg)', color: 'var(--success)', border: 'color-mix(in srgb, var(--success) 20%, transparent)' },
+  erro:   { bg: 'var(--danger-soft)', color: 'var(--danger)', border: 'color-mix(in srgb, var(--danger) 20%, transparent)' },
 } as const
 
 function StatusChip({ status }: { status: TemplateStatus }) {
@@ -32,7 +32,7 @@ function StatusChip({ status }: { status: TemplateStatus }) {
   const tom  = TOM_STATUS[meta.tom]
   return (
     <span style={{
-      fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+      fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 8px', borderRadius: 99,
       background: tom.bg, color: tom.color, border: `1px solid ${tom.border}`,
       whiteSpace: 'nowrap',
     }}>
@@ -67,12 +67,12 @@ function Previa({ form }: { form: TemplateInput }) {
       background: '#ece5dd', borderRadius: 'var(--radius-field-token)', padding: 14,
       display: 'flex', flexDirection: 'column', gap: 6,
     }}>
-      <p className="overline" style={{ color: '#6b7280', margin: 0 }}>Prévia</p>
+      <p className="overline" style={{ color: 'var(--text-muted)', margin: 0 }}>Prévia</p>
       <div style={{
-        background: '#fff', borderRadius: '10px 10px 10px 2px',
+        background: 'var(--surface)', borderRadius: '10px 10px 10px 2px',
         padding: '8px 10px', maxWidth: 300,
-        boxShadow: '0 1px 1px rgba(0,0,0,.08)',
-        fontSize: 13, lineHeight: 1.45, color: '#111b21',
+        boxShadow: 'none',
+        fontSize: 'var(--text-base-sz)', lineHeight: 1.45, color: '#111b21',
       }}>
         {form.header_text && (
           <p style={{ margin: '0 0 4px', fontWeight: 800 }}>
@@ -82,10 +82,10 @@ function Previa({ form }: { form: TemplateInput }) {
         <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
           {form.body_text
             ? interpolar(form.body_text, valores)
-            : <span style={{ color: '#9ca3af' }}>O corpo da mensagem aparece aqui.</span>}
+            : <span style={{ color: 'var(--text-faint)' }}>O corpo da mensagem aparece aqui.</span>}
         </p>
         {form.footer_text && (
-          <p style={{ margin: '6px 0 0', fontSize: 11, color: '#667781' }}>
+          <p style={{ margin: '6px 0 0', fontSize: 'var(--text-2xs)', color: '#667781' }}>
             {form.footer_text}
           </p>
         )}
@@ -93,7 +93,7 @@ function Previa({ form }: { form: TemplateInput }) {
           <div style={{ marginTop: 8, borderTop: '1px solid #e9edef', paddingTop: 4 }}>
             {form.buttons.map((b, i) => (
               <div key={i} style={{
-                textAlign: 'center', color: '#00a5f4', fontSize: 12.5,
+                textAlign: 'center', color: 'var(--info)', fontSize: 'var(--text-sm-sz)',
                 fontWeight: 600, padding: '5px 0',
                 borderTop: i > 0 ? '1px solid #e9edef' : 'none',
               }}>
@@ -123,8 +123,8 @@ function Campo({
         <label className="overline" style={{ color: 'var(--text-muted)' }}>{label}</label>
         {max && (
           <span style={{
-            fontSize: 10.5,
-            color: value.length > max ? '#dc2626' : 'var(--text-faint)',
+            fontSize: 'var(--text-overline)',
+            color: value.length > max ? 'var(--danger)' : 'var(--text-faint)',
             fontWeight: value.length > max ? 700 : 400,
           }}>
             {value.length}/{max}
@@ -138,9 +138,9 @@ function Campo({
         disabled={disabled}
         className="field"
         rows={multiline ? 5 : undefined}
-        style={{ fontSize: 13, resize: multiline ? 'vertical' : undefined }}
+        style={{ fontSize: 'var(--text-base-sz)', resize: multiline ? 'vertical' : undefined }}
       />
-      {hint && <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0 }}>{hint}</p>}
+      {hint && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0 }}>{hint}</p>}
     </div>
   )
 }
@@ -152,7 +152,7 @@ function Aviso({ tom, children }: { tom: 'erro' | 'ok' | 'espera'; children: Rea
       display: 'flex', alignItems: 'flex-start', gap: 8,
       padding: '9px 12px', borderRadius: 8,
       background: t.bg, border: `1px solid ${t.border}`,
-      fontSize: 12.5, color: t.color, fontWeight: 600,
+      fontSize: 'var(--text-sm-sz)', color: t.color, fontWeight: 600,
     }}>
       {tom === 'ok' ? <CheckCircle2 size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                     : <AlertCircle  size={14} style={{ flexShrink: 0, marginTop: 1 }} />}
@@ -291,7 +291,7 @@ export function TemplatesManager({
           }}>
             {podeEditar && (
               <button type="button" onClick={() => abrir('novo')} className="btn-primary"
-                style={{ flex: 1, height: 34, fontSize: 12.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                style={{ flex: 1, height: 34, fontSize: 'var(--text-sm-sz)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                 <Plus size={14} /> Novo
               </button>
             )}
@@ -305,7 +305,7 @@ export function TemplatesManager({
           </div>
 
           {initial.length === 0 ? (
-            <p style={{ padding: 20, fontSize: 12.5, color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ padding: 20, fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
               Nenhum template ainda. Eles servem para retomar conversa que passou de
               24 horas — lembrete de consulta, retorno, resposta a quem sumiu.
             </p>
@@ -325,7 +325,7 @@ export function TemplatesManager({
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                   <span style={{
-                    fontSize: 12.5, fontWeight: 700,
+                    fontSize: 'var(--text-sm-sz)', fontWeight: 700,
                     color: ativo ? 'var(--brand)' : 'var(--text)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
@@ -334,7 +334,7 @@ export function TemplatesManager({
                   <StatusChip status={t.status} />
                 </div>
                 <p style={{
-                  margin: '3px 0 0', fontSize: 11, color: 'var(--text-faint)',
+                  margin: '3px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)',
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
                   {t.body_text}
@@ -348,7 +348,7 @@ export function TemplatesManager({
         {selId === null ? (
           <div className="card" style={{
             flex: 1, minWidth: 0,
-            padding: 40, textAlign: 'center', color: 'var(--text-faint)', fontSize: 13,
+            padding: 40, textAlign: 'center', color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)',
           }}>
             Escolha um template na lista ou crie um novo.
           </div>
@@ -411,7 +411,7 @@ export function TemplatesManager({
                             border: ativo ? '2px solid var(--brand)' : '1.5px solid var(--border)',
                             background: ativo ? 'var(--brand-soft)' : 'var(--bg-app)',
                             color: ativo ? 'var(--brand)' : 'var(--text-muted)',
-                            fontWeight: 700, fontSize: 12.5, textAlign: 'left',
+                            fontWeight: 700, fontSize: 'var(--text-sm-sz)', textAlign: 'left',
                           }}
                         >
                           {c.label}
@@ -419,7 +419,7 @@ export function TemplatesManager({
                       )
                     })}
                   </div>
-                  <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
                     {CATEGORIAS.find(c => c.value === form.category)?.hint}
                   </p>
                 </div>
@@ -431,7 +431,7 @@ export function TemplatesManager({
                     disabled={!podeEditar || jaSubmetido}
                     onChange={e => set('language', e.target.value)}
                     className="field"
-                    style={{ fontSize: 13 }}
+                    style={{ fontSize: 'var(--text-base-sz)' }}
                   >
                     {IDIOMAS.map(i => <option key={i.code} value={i.code}>{i.label}</option>)}
                   </select>
@@ -459,7 +459,7 @@ export function TemplatesManager({
                   />
                   {podeEditar && (
                     <button type="button" onClick={inserirVariavel} className="btn-ghost"
-                      style={{ alignSelf: 'flex-start', height: 28, fontSize: 11.5, padding: '0 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      style={{ alignSelf: 'flex-start', height: 28, fontSize: 'var(--text-xs-sz)', padding: '0 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
                       <Braces size={12} /> Inserir variável
                     </button>
                   )}
@@ -491,7 +491,7 @@ export function TemplatesManager({
                             j === i ? { ...x, type: tipo, url: tipo === 'URL' ? x.url ?? '' : undefined } : x))
                         }}
                         className="field"
-                        style={{ fontSize: 12, width: 120, flexShrink: 0 }}
+                        style={{ fontSize: 'var(--text-sm-sz)', width: 120, flexShrink: 0 }}
                       >
                         <option value="QUICK_REPLY">Resposta</option>
                         <option value="URL">Link</option>
@@ -502,7 +502,7 @@ export function TemplatesManager({
                         onChange={e => set('buttons', form.buttons.map((x, j) => j === i ? { ...x, text: e.target.value } : x))}
                         placeholder="Texto do botão"
                         className="field"
-                        style={{ fontSize: 12, flex: 1 }}
+                        style={{ fontSize: 'var(--text-sm-sz)', flex: 1 }}
                       />
                       {b.type === 'URL' && (
                         <input
@@ -511,7 +511,7 @@ export function TemplatesManager({
                           onChange={e => set('buttons', form.buttons.map((x, j) => j === i ? { ...x, url: e.target.value } : x))}
                           placeholder="https://"
                           className="field"
-                          style={{ fontSize: 12, flex: 1 }}
+                          style={{ fontSize: 'var(--text-sm-sz)', flex: 1 }}
                         />
                       )}
                       {podeEditar && (
@@ -525,7 +525,7 @@ export function TemplatesManager({
                   {podeEditar && form.buttons.length < LIMITES.botoes && (
                     <button type="button" className="btn-ghost"
                       onClick={() => set('buttons', [...form.buttons, { type: 'QUICK_REPLY', text: '' }])}
-                      style={{ alignSelf: 'flex-start', height: 28, fontSize: 11.5, padding: '0 10px' }}>
+                      style={{ alignSelf: 'flex-start', height: 28, fontSize: 'var(--text-xs-sz)', padding: '0 10px' }}>
                       + Adicionar botão
                     </button>
                   )}
@@ -542,7 +542,7 @@ export function TemplatesManager({
                       <label className="overline" style={{ color: 'var(--text-muted)' }}>
                         Exemplos das variáveis
                       </label>
-                      <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '3px 0 0', lineHeight: 1.5 }}>
+                      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: '3px 0 0', lineHeight: 1.5 }}>
                         A Meta precisa ver a mensagem preenchida para revisar. Isto não é o
                         valor que o cliente recebe — esse é digitado na hora de enviar.
                       </p>
@@ -550,7 +550,7 @@ export function TemplatesManager({
                     {variaveis.map(v => (
                       <div key={v} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                         <code style={{
-                          fontSize: 11, fontWeight: 700, color: 'var(--brand)',
+                          fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)',
                           background: 'var(--brand-soft)', padding: '3px 7px', borderRadius: 6,
                           whiteSpace: 'nowrap',
                         }}>
@@ -562,7 +562,7 @@ export function TemplatesManager({
                           onChange={e => set('example_values', { ...form.example_values, [v]: e.target.value })}
                           placeholder="Ex.: Ana"
                           className="field"
-                          style={{ fontSize: 12, flex: 1 }}
+                          style={{ fontSize: 'var(--text-sm-sz)', flex: 1 }}
                         />
                       </div>
                     ))}
@@ -593,7 +593,7 @@ export function TemplatesManager({
 
                 {selId !== 'novo' && (
                   <button type="button" onClick={apagar} disabled={isPending} className="btn-ghost"
-                    style={{ marginLeft: 'auto', color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    style={{ marginLeft: 'auto', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Trash2 size={14} /> Apagar
                   </button>
                 )}

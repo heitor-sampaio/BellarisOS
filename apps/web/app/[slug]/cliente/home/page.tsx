@@ -111,7 +111,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
         }}>
           Olá, {firstName}!
         </h1>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>
+        <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
           Bem-vinda ao seu espaço pessoal.
         </p>
       </div>
@@ -119,19 +119,19 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       {/* -- Pontos de fidelidade ----------------------------------- */}
       {points > 0 && (
         <div style={{
-          background:    'linear-gradient(135deg, var(--brand) 0%, #9b2d47 100%)',
+          background:    'var(--gradient-brand)',
           borderRadius:  14,
           padding:       '16px 20px',
           display:       'flex',
           alignItems:    'center',
           justifyContent: 'space-between',
-          color:         '#fff',
+          color:         'var(--on-brand)',
         }}>
           <div>
-            <p style={{ fontSize: 11.5, fontWeight: 700, opacity: 0.8, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>
+            <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, opacity: 0.8, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>
               Seus pontos
             </p>
-            <p style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
+            <p style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
               {points.toLocaleString('pt-BR')}
             </p>
           </div>
@@ -156,10 +156,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 14.5, letterSpacing: '-0.01em', marginBottom: 2 }}>
+                  <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-card-title)', letterSpacing: '-0.01em', marginBottom: 2 }}>
                     {a.procedures?.name ?? 'Procedimento'}
                   </p>
-                  <p style={{ fontSize: 12.5, color: 'var(--brand-deep, var(--brand))', fontWeight: 600 }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand-deep, var(--brand))', fontWeight: 600 }}>
                     Toque para confirmar e avaliar
                   </p>
                 </div>
@@ -180,12 +180,12 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 15.5, marginBottom: 4, letterSpacing: '-0.01em' }}>
                   {nextAppt.procedures?.name ?? 'Procedimento'}
                 </p>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 8 }}>
                   {nextAppt.professionals?.name ?? 'Profissional'}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <CalendarDays size={13} color="var(--brand)" />
-                  <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--brand)' }}>
+                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--brand)' }}>
                     {(() => {
                       const { date, time } = fmtDateTime(nextAppt.scheduled_at)
                       return `${date} às ${time}`
@@ -197,7 +197,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
           </div>
         ) : (
           <div className="card" style={{ padding: '20px 18px', textAlign: 'center' }}>
-            <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 14 }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 14 }}>
               Nenhum agendamento próximo.
             </p>
             <Link href={`/${slug}/cliente/agendamentos/novo`} className="btn-primary">
@@ -221,17 +221,17 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 <div key={pkg.id} className="card" style={{ padding: '14px 18px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
                     <Sparkles size={15} color="var(--brand)" />
-                    <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>
+                    <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
                       {(pkg.service_packages as { name: string } | null)?.name ?? 'Pacote de sessões'}
                     </p>
                   </div>
                   <ProgressBar pct={pct} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                    <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                       {used} de {total} sessões realizadas
                     </span>
                     {pkg.expires_at && (
-                      <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>
+                      <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
                         válido até {new Date(pkg.expires_at).toLocaleDateString('pt-BR')}
                       </span>
                     )}
@@ -252,20 +252,20 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Sparkles size={15} color="var(--brand)" />
                     <div>
-                      <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>
+                      <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
                         Plano de tratamento
                       </p>
                       {procs && (
-                        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                           {procs}
                         </p>
                       )}
                     </div>
                     <span style={{
                       marginLeft: 'auto',
-                      fontSize: 11, fontWeight: 700,
-                      color: '#22c55e',
-                      background: '#22c55e18',
+                      fontSize: 'var(--text-2xs)', fontWeight: 700,
+                      color: 'var(--success)',
+                      background: 'color-mix(in srgb, var(--success) 9%, transparent)',
                       padding: '3px 10px', borderRadius: 'var(--radius-chip-token)',
                     }}>
                       {plan.status === 'ACCEPTED' ? 'Ativo' : 'Proposto'}
@@ -297,7 +297,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
 function SectionHeader({ label }: { label: string }) {
   return (
     <p style={{
-      fontSize:      11,
+      fontSize: 'var(--text-2xs)',
       fontWeight:    700,
       color:         'var(--text-muted)',
       letterSpacing: '0.08em',

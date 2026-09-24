@@ -44,10 +44,10 @@ function maskCPF(doc: string | null): string | null {
 function IdentityRow({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div>
-      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+      <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
         {label}
       </p>
-      <p style={{ fontSize: 13, color: value ? 'var(--text)' : 'var(--text-faint)' }}>
+      <p style={{ fontSize: 'var(--text-base-sz)', color: value ? 'var(--text)' : 'var(--text-faint)' }}>
         {value || 'Não informado'}
       </p>
     </div>
@@ -57,11 +57,11 @@ function IdentityRow({ label, value }: { label: string; value: string | null | u
 function SectionOverline({ label, subtitle }: { label: string; subtitle?: string }) {
   return (
     <div style={{ marginBottom: 12 }}>
-      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
         {label}
       </p>
       {subtitle && (
-        <p style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)', marginTop: 2 }}>{subtitle}</p>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', marginTop: 2 }}>{subtitle}</p>
       )}
     </div>
   )
@@ -80,8 +80,8 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
       {/* Cabeçalho do documento */}
       <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
         <FileText size={15} style={{ color: 'var(--brand)' }} />
-        <h3 style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', flex: 1 }}>Ficha de atendimento</h3>
-        {subtitle && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{subtitle}</span>}
+        <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Ficha de atendimento</h3>
+        {subtitle && <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{subtitle}</span>}
       </div>
 
       <div style={{ padding: '20px 24px' }}>
@@ -102,7 +102,7 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
             {procedureNode}
             {insumos && (
               <div style={{ marginTop: procedureNode ? 18 : 0 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Insumos</p>
+                <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Insumos</p>
                 {insumos}
               </div>
             )}

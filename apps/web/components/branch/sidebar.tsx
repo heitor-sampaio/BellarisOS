@@ -41,7 +41,7 @@ interface BranchSidebarProps {
   allBranches?:    { name: string; slug: string }[]
 }
 
-const SIDEBAR_GRADIENT = 'linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%)'
+const SIDEBAR_GRADIENT = 'var(--gradient-brand)'
 
 export function BranchSidebar({
   slug, branchName, permissions, isNetworkAdmin, allBranches = [],
@@ -109,7 +109,7 @@ export function BranchSidebar({
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '5px 8px', borderRadius: 8,
-                fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+                fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
                 textDecoration: 'none', letterSpacing: '0.03em',
                 transition: 'background 0.1s, color 0.1s',
               }}
@@ -128,7 +128,7 @@ export function BranchSidebar({
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '7px 10px', borderRadius: 8, cursor: 'pointer',
                   background: 'var(--brand-soft)', border: '1.5px solid var(--brand-soft-border)',
-                  fontSize: 12, fontWeight: 700, color: 'var(--brand)',
+                  fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)',
                   transition: 'background 0.1s',
                 }}
               >
@@ -142,7 +142,7 @@ export function BranchSidebar({
                   <div style={{
                     position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
                     background: 'var(--surface)', border: '1px solid var(--border)',
-                    borderRadius: 10, zIndex: 51, boxShadow: '0 8px 24px -6px rgba(34,22,25,.14)', overflow: 'hidden',
+                    borderRadius: 10, zIndex: 51, boxShadow: 'var(--shadow-popover)', overflow: 'hidden',
                   }}>
                     {allBranches.map(b => (
                       <Link
@@ -152,7 +152,7 @@ export function BranchSidebar({
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '9px 12px', textDecoration: 'none',
-                          fontSize: 12, fontWeight: b.slug === slug ? 700 : 500,
+                          fontSize: 'var(--text-sm-sz)', fontWeight: b.slug === slug ? 700 : 500,
                           color: b.slug === slug ? 'var(--brand)' : 'var(--text)',
                           borderBottom: '1px solid var(--hairline)', transition: 'background 0.1s',
                         }}

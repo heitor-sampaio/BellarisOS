@@ -132,7 +132,7 @@ function KpiCard({
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+          fontSize: 'var(--text-overline)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
           color: brand ? 'rgba(255,255,255,0.75)' : 'var(--text-muted)',
         }}>{label}</span>
         <div style={{
@@ -145,17 +145,17 @@ function KpiCard({
       </div>
       <span style={{
         fontSize: 'clamp(20px, 5.4vw, 26px)', fontWeight: 800, letterSpacing: '-0.025em',
-        color: brand ? '#fff' : 'var(--text)',
+        color: brand ? 'var(--on-brand)' : 'var(--text)',
       }}>{value}</span>
       {delta !== null && delta !== undefined && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           {delta.up
-            ? <ArrowUpRight size={13} color={brand ? 'rgba(255,255,255,0.8)' : '#16a34a'} />
-            : <ArrowDownRight size={13} color={brand ? 'rgba(255,255,255,0.6)' : '#dc2626'} />
+            ? <ArrowUpRight size={13} color={brand ? 'rgba(255,255,255,0.8)' : 'var(--success)'} />
+            : <ArrowDownRight size={13} color={brand ? 'rgba(255,255,255,0.6)' : 'var(--danger)'} />
           }
           <span style={{
-            fontSize: 11, fontWeight: 700,
-            color: brand ? 'rgba(255,255,255,0.8)' : delta.up ? '#16a34a' : '#dc2626',
+            fontSize: 'var(--text-2xs)', fontWeight: 700,
+            color: brand ? 'rgba(255,255,255,0.8)' : delta.up ? 'var(--success)' : 'var(--danger)',
           }}>
             {delta.pct.toFixed(1).replace('.', ',')}% vs. período anterior
           </span>
@@ -232,7 +232,7 @@ export function AdminFinancialView({
   const result      = statDaUnidade ? statDaUnidade.result      : totalResult
   const commissions = statDaUnidade ? statDaUnidade.commissions : totalCommissions
 
-  const iconColor    = (brand: boolean) => brand ? '#fff' : 'var(--brand)'
+  const iconColor    = (brand: boolean) => brand ? 'var(--surface)' : 'var(--brand)'
   // Sem base de comparação por unidade, não se inventa delta: `prevRevenue` e
   // `prevExpenses` são da rede.
   const deltaRevenue  = statDaUnidade ? null : pctDelta(totalRevenue,  prevRevenue)
@@ -250,7 +250,7 @@ export function AdminFinancialView({
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
             Financeiro da Rede
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 3 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', marginTop: 3 }}>
             {periodLabel} · {statDaUnidade
               ? statDaUnidade.name
               : `${branchStats.length} filial${branchStats.length !== 1 ? 'is' : ''}`}
@@ -266,10 +266,10 @@ export function AdminFinancialView({
           />
           {period === 'custom' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <input type="date" value={customF} onChange={e => setCustomF(e.target.value)} className="field" style={{ width: 140, fontSize: 12, padding: '5px 10px' }} />
-              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>até</span>
-              <input type="date" value={customT} onChange={e => setCustomT(e.target.value)} className="field" style={{ width: 140, fontSize: 12, padding: '5px 10px' }} />
-              <button type="button" className="btn-primary" style={{ fontSize: 12, padding: '5px 12px' }} onClick={() => navigate('custom', customF, customT)}>
+              <input type="date" value={customF} onChange={e => setCustomF(e.target.value)} className="field" style={{ width: 140, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }} />
+              <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>até</span>
+              <input type="date" value={customT} onChange={e => setCustomT(e.target.value)} className="field" style={{ width: 140, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }} />
+              <button type="button" className="btn-primary" style={{ fontSize: 'var(--text-sm-sz)', padding: '5px 12px' }} onClick={() => navigate('custom', customF, customT)}>
                 Aplicar
               </button>
             </div>
@@ -329,8 +329,8 @@ export function AdminFinancialView({
       {/* Por filial */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Por filial</span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{periodLabel}</span>
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Por filial</span>
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>{periodLabel}</span>
         </div>
 
         <div className="table-wrap">
@@ -342,7 +342,7 @@ export function AdminFinancialView({
               {['Filial', 'Receita', 'Despesas', 'Resultado', 'Comissões', 'Movim.', ''].map(h => (
                 <th key={h} style={{
                   padding: '10px 16px', textAlign: h === 'Filial' ? 'left' : 'right',
-                  fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+                  fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
                   letterSpacing: '0.06em', textTransform: 'uppercase',
                   width: h === '' ? 80 : undefined,
                 }}>
@@ -363,21 +363,21 @@ export function AdminFinancialView({
                 onMouseLeave={e => (e.currentTarget.style.background = '')}
               >
                 <td data-label="" style={{ padding: '13px 16px' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{b.name}</span>
+                  <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{b.name}</span>
                 </td>
-                <td data-label="Receita" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#16a34a' }}>
+                <td data-label="Receita" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--success)' }}>
                   {fmtBRL(b.revenue)}
                 </td>
-                <td data-label="Despesas" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
+                <td data-label="Despesas" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                   {fmtBRL(b.expenses)}
                 </td>
-                <td data-label="Resultado" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: b.result >= 0 ? '#16a34a' : '#dc2626' }}>
+                <td data-label="Resultado" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: b.result >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                   {fmtBRL(b.result)}
                 </td>
-                <td data-label="Comissões" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-muted)' }}>
+                <td data-label="Comissões" data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
                   {fmtBRL(b.commissions)}
                 </td>
-                <td data-label="Movim." data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, color: 'var(--text-faint)' }}>
+                <td data-label="Movim." data-par style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>
                   {b.txCount}
                 </td>
                 <td data-label="" style={{ padding: '13px 16px', textAlign: 'right' }}>
@@ -388,7 +388,7 @@ export function AdminFinancialView({
                     onClick={() => verUnidade(b.id === filterBranch ? 'all' : b.id)}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
-                      fontSize: 11, fontWeight: 700,
+                      fontSize: 'var(--text-2xs)', fontWeight: 700,
                       color: b.id === filterBranch ? 'var(--text-muted)' : 'var(--brand)',
                       background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
                     }}
@@ -402,12 +402,12 @@ export function AdminFinancialView({
           {/* Totais */}
           <tfoot>
             <tr style={{ borderTop: '2px solid var(--border)', background: 'var(--bg-app)' }}>
-              <td style={{ padding: '13px 16px', fontSize: 12, fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total rede</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#16a34a' }}>{fmtBRL(totalRevenue)}</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: 'var(--text-muted)' }}>{fmtBRL(totalExpenses)}</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: totalResult >= 0 ? '#16a34a' : '#dc2626' }}>{fmtBRL(totalResult)}</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: 'var(--text-muted)' }}>{fmtBRL(totalCommissions)}</td>
-              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: 'var(--text-faint)' }}>{transactions.length}</td>
+              <td style={{ padding: '13px 16px', fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total rede</td>
+              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--success)' }}>{fmtBRL(totalRevenue)}</td>
+              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-muted)' }}>{fmtBRL(totalExpenses)}</td>
+              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: totalResult >= 0 ? 'var(--success)' : 'var(--danger)' }}>{fmtBRL(totalResult)}</td>
+              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-muted)' }}>{fmtBRL(totalCommissions)}</td>
+              <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text-faint)' }}>{transactions.length}</td>
               <td />
             </tr>
           </tfoot>
@@ -418,9 +418,9 @@ export function AdminFinancialView({
       {/* Movimentações */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+          <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
             Movimentações
-            <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 8 }}>
               {visibleTxs.length} registro{visibleTxs.length !== 1 ? 's' : ''}
             </span>
           </span>
@@ -430,7 +430,7 @@ export function AdminFinancialView({
             value={filterBranch}
             onChange={e => setFilterBranch(e.target.value)}
             className="field"
-            style={{ width: 200, fontSize: 12, padding: '6px 10px' }}
+            style={{ width: 200, fontSize: 'var(--text-sm-sz)', padding: '6px 10px' }}
           >
             <option value="all">Todas as filiais</option>
             {branchStats.map(b => (
@@ -440,7 +440,7 @@ export function AdminFinancialView({
         </div>
 
         {visibleTxs.length === 0 ? (
-          <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+          <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
             Nenhuma movimentação no período.
           </div>
         ) : (
@@ -452,7 +452,7 @@ export function AdminFinancialView({
                 {['Data', 'Descrição', 'Filial', 'Método', 'Tipo', 'Situação', 'Valor', ''].map(h => (
                   <th key={h} style={{
                     padding: '10px 16px', textAlign: h === 'Valor' ? 'right' : 'left',
-                    fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+                    fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
                     letterSpacing: '0.06em', textTransform: 'uppercase',
                   }}>
                     {h}
@@ -476,28 +476,28 @@ export function AdminFinancialView({
                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-app)')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
-                    <td data-label="Data" data-par style={{ padding: '11px 16px', fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    <td data-label="Data" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                       {new Date(t.created_at).toLocaleDateString('pt-BR')}
                     </td>
-                    <td data-label="" style={{ padding: '11px 16px', fontSize: 13, fontWeight: 600, color: 'var(--text)', maxWidth: 280 }}>
+                    <td data-label="" style={{ padding: '11px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)', maxWidth: 280 }}>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
                         {t.description || '—'}
                       </span>
                     </td>
                     <td data-label="Filial" data-par style={{ padding: '11px 16px' }}>
                       <span style={{
-                        fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--radius-field-token)',
+                        fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 8px', borderRadius: 'var(--radius-field-token)',
                         background: 'var(--bg-app)', color: 'var(--text-muted)',
                         border: '1px solid var(--border)',
                       }}>
                         {t.branchName}
                       </span>
                     </td>
-                    <td data-label="Método" data-par style={{ padding: '11px 16px', fontSize: 12, color: 'var(--text-muted)' }}>
+                    <td data-label="Método" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                       {t.payment_method ? PM_LABELS[t.payment_method] ?? t.payment_method : '—'}
                     </td>
                     <td data-label="Tipo" data-par style={{ padding: '11px 16px' }}>
-                      <span className={isIncome ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 10 }}>
+                      <span className={isIncome ? 'chip chip-success' : 'chip chip-muted'} style={{ fontSize: 'var(--text-overline)' }}>
                         {isIncome ? 'Receita' : 'Despesa'}
                       </span>
                     </td>
@@ -505,27 +505,27 @@ export function AdminFinancialView({
                         o lançamento estava pago. */}
                     <td data-label="Situação" data-par style={{ padding: '11px 16px' }}>
                       {estornada ? (
-                        <span className="chip chip-muted" style={{ fontSize: 10 }}>Estornada</span>
+                        <span className="chip chip-muted" style={{ fontSize: 'var(--text-overline)' }}>Estornada</span>
                       ) : t.is_paid ? (
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: 4,
-                          fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                          background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0',
+                          fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                          background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid var(--success-border)',
                         }}>
                           <CheckCircle2 size={10} /> Pago
                         </span>
                       ) : (
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: 4,
-                          fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                          background: '#fffbeb', color: '#d97706', border: '1px solid #fcd34d',
+                          fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                          background: 'var(--warning-soft)', color: 'var(--warning)', border: '1px solid var(--warning-border)',
                         }}>
                           <Clock size={10} /> Pendente
                         </span>
                       )}
                     </td>
 
-                    <td data-label="Valor" data-par style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: isIncome ? '#16a34a' : 'var(--text)', whiteSpace: 'nowrap' }}>
+                    <td data-label="Valor" data-par style={{ padding: '11px 16px', textAlign: 'right', fontSize: 'var(--text-base-sz)', fontWeight: 700, color: isIncome ? 'var(--success)' : 'var(--text)', whiteSpace: 'nowrap' }}>
                       {isIncome ? '+' : '−'} {fmtBRL(t.amount)}
                     </td>
 
@@ -535,9 +535,9 @@ export function AdminFinancialView({
                         {!t.is_paid && !estornada && canPay && (
                           <button type="button" onClick={() => marcarPago(t.id, slugDaTx)} title="Marcar como pago" style={{
                             display: 'inline-flex', alignItems: 'center', gap: 5,
-                            fontSize: 11.5, fontWeight: 700, padding: '5px 10px', borderRadius: 7,
-                            border: '1.5px solid #16a34a', background: '#f0fdf4',
-                            color: '#16a34a', cursor: 'pointer', whiteSpace: 'nowrap',
+                            fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '5px 10px', borderRadius: 7,
+                            border: '1.5px solid var(--success)', background: 'var(--success-bg)',
+                            color: 'var(--success)', cursor: 'pointer', whiteSpace: 'nowrap',
                           }}>
                             <CheckCircle2 size={12} /> Pagar
                           </button>
@@ -562,7 +562,7 @@ export function AdminFinancialView({
           </div>
         )}
         {visibleTxs.length > 100 && (
-          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--hairline)', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+          <div style={{ padding: '12px 20px', borderTop: '1px solid var(--hairline)', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', textAlign: 'center' }}>
             Exibindo 100 de {visibleTxs.length} registros. Use filtro de filial para refinar.
           </div>
         )}

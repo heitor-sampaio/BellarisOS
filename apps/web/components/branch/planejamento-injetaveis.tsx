@@ -85,12 +85,12 @@ export function PlanejamentoInjetaveis({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {erro && <p style={{ fontSize: 12.5, color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>}
+      {erro && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{erro}</p>}
 
       {mapas === null ? (
-        <p style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>Carregando…</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando…</p>
       ) : mapas.length === 0 ? (
-        <p style={{ fontSize: 12.5, color: 'var(--text-faint)' }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
           Nenhum planejamento de injetáveis ainda.
         </p>
       ) : (

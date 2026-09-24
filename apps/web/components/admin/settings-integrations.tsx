@@ -38,7 +38,7 @@ function Field({
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+      <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
         {label}
       </label>
       <input
@@ -49,9 +49,9 @@ function Field({
         placeholder={placeholder}
         autoComplete="off"
         className="field"
-        style={{ fontSize: 13 }}
+        style={{ fontSize: 'var(--text-base-sz)' }}
       />
-      {hint && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>{hint}</p>}
+      {hint && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{hint}</p>}
     </div>
   )
 }
@@ -61,10 +61,10 @@ function ConnectionStatus({ ok, detail }: { ok: boolean; detail?: string }) {
     <div style={{
       display: 'flex', alignItems: 'center', gap: 7,
       padding: '8px 12px', borderRadius: 8,
-      background: ok ? '#f0fdf4' : '#fef2f2',
-      border: `1px solid ${ok ? '#3f9b6f33' : '#dc262633'}`,
-      fontSize: 12.5, fontWeight: 600,
-      color: ok ? '#3f9b6f' : '#dc2626',
+      background: ok ? 'var(--success-bg)' : 'var(--danger-soft)',
+      border: `1px solid ${ok ? 'color-mix(in srgb, var(--success) 20%, transparent)' : 'color-mix(in srgb, var(--danger) 20%, transparent)'}`,
+      fontSize: 'var(--text-sm-sz)', fontWeight: 600,
+      color: ok ? 'var(--success)' : 'var(--danger)',
     }}>
       {ok
         ? <CheckCircle2 size={14} />
@@ -137,7 +137,7 @@ function UazapiForm({ initial }: { initial?: IntegrationConfig }) {
           onChange={e => setIsActive(e.target.checked)}
           style={{ width: 16, height: 16, cursor: 'pointer' }}
         />
-        <label htmlFor="uazapi-active" style={{ fontSize: 13, cursor: 'pointer', color: 'var(--text)' }}>
+        <label htmlFor="uazapi-active" style={{ fontSize: 'var(--text-base-sz)', cursor: 'pointer', color: 'var(--text)' }}>
           Ativar integração uazapi
         </label>
       </div>
@@ -145,7 +145,7 @@ function UazapiForm({ initial }: { initial?: IntegrationConfig }) {
       {testResult && <ConnectionStatus ok={testResult.ok} detail={testResult.detail} />}
 
       {saved && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--success)', fontWeight: 700 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 700 }}>
           <CheckCircle2 size={14} /> Configuração salva.
         </div>
       )}
@@ -175,14 +175,14 @@ function UazapiForm({ initial }: { initial?: IntegrationConfig }) {
         href="https://docs.uazapi.com/"
         target="_blank"
         rel="noopener noreferrer"
-        style={{ fontSize: 12, color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+        style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
       >
         <ExternalLink size={12} />
         Documentação da uazapi →
       </a>
-      <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: -8 }}>
+      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: -8 }}>
         URL do webhook:{' '}
-        <code style={{ background: 'var(--bg-app)', padding: '2px 6px', borderRadius: 4, fontSize: 11 }}>
+        <code style={{ background: 'var(--bg-app)', padding: '2px 6px', borderRadius: 4, fontSize: 'var(--text-2xs)' }}>
           {origem}/api/webhooks/uazapi
         </code>
       </p>
@@ -275,7 +275,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
           onChange={e => setIsActive(e.target.checked)}
           style={{ width: 16, height: 16, cursor: 'pointer' }}
         />
-        <label htmlFor="official-active" style={{ fontSize: 13, cursor: 'pointer', color: 'var(--text)' }}>
+        <label htmlFor="official-active" style={{ fontSize: 'var(--text-base-sz)', cursor: 'pointer', color: 'var(--text)' }}>
           Ativar WhatsApp Oficial
         </label>
       </div>
@@ -283,7 +283,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
       {testResult && <ConnectionStatus ok={testResult.ok} detail={testResult.detail} />}
 
       {saved && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--success)', fontWeight: 700 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 700 }}>
           <CheckCircle2 size={14} /> Configuração salva.
         </div>
       )}
@@ -309,9 +309,9 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
         </button>
       </div>
 
-      <div style={{ fontSize: 11.5, color: 'var(--text-faint)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <div style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', display: 'flex', flexDirection: 'column', gap: 3 }}>
         <p>URL do webhook para configurar no painel Meta:</p>
-        <code style={{ background: 'var(--bg-app)', padding: '4px 8px', borderRadius: 4, fontSize: 11 }}>
+        <code style={{ background: 'var(--bg-app)', padding: '4px 8px', borderRadius: 4, fontSize: 'var(--text-2xs)' }}>
           {origem}/api/webhooks/whatsapp
         </code>
         <p style={{ marginTop: 4 }}>Campos obrigatórios: <strong>messages</strong>, <strong>message_status_updates</strong></p>
@@ -402,14 +402,14 @@ function MetaAdsConnect({
             display: 'flex', alignItems: 'center', gap: 7,
             padding: '10px 14px', borderRadius: 8,
             background: '#1877F210', border: '1px solid #1877F230',
-            fontSize: 13, fontWeight: 600, color: '#1877F2',
+            fontSize: 'var(--text-base-sz)', fontWeight: 600, color: '#1877F2',
           }}>
             <CheckCircle2 size={15} />
             Conectado como <strong>{(config.meta_user_name as string) || 'Usuário Facebook'}</strong>
           </div>
 
           {isFetching ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
               <Loader2 size={14} className="animate-spin" />
               Buscando contas de anúncios...
             </div>
@@ -417,8 +417,8 @@ function MetaAdsConnect({
             <div style={{
               display: 'flex', alignItems: 'center', gap: 7,
               padding: '8px 12px', borderRadius: 8,
-              background: '#fef2f2', border: '1px solid #dc262633',
-              fontSize: 12.5, fontWeight: 600, color: '#dc2626',
+              background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
+              fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--danger)',
             }}>
               <AlertCircle size={14} /> {fetchError}
             </div>
@@ -426,14 +426,14 @@ function MetaAdsConnect({
             <>
               {liveAccounts.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                  <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                     CONTA DE ANÚNCIOS
                   </label>
                   <select
                     value={selectedAccount}
                     onChange={e => setSelectedAccount(e.target.value)}
                     className="field"
-                    style={{ fontSize: 13 }}
+                    style={{ fontSize: 'var(--text-base-sz)' }}
                   >
                     {liveAccounts.map(a => (
                       <option key={a.id} value={a.id}>act_{a.id} — {a.name}</option>
@@ -441,21 +441,21 @@ function MetaAdsConnect({
                   </select>
                 </div>
               ) : (
-                <p style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   Nenhuma conta de anúncios encontrada. Certifique-se de ter acesso a uma conta no Meta Business Manager.
                 </p>
               )}
 
               {livePixels.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                  <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                     PIXEL (OPCIONAL)
                   </label>
                   <select
                     value={selectedPixel}
                     onChange={e => setSelectedPixel(e.target.value)}
                     className="field"
-                    style={{ fontSize: 13 }}
+                    style={{ fontSize: 'var(--text-base-sz)' }}
                   >
                     <option value="">Sem pixel</option>
                     {livePixels.map(p => (
@@ -469,8 +469,8 @@ function MetaAdsConnect({
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 7,
                   padding: '8px 12px', borderRadius: 8,
-                  background: '#fef2f2', border: '1px solid #dc262633',
-                  fontSize: 12.5, fontWeight: 600, color: '#dc2626',
+                  background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
+                  fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--danger)',
                 }}>
                   <AlertCircle size={14} /> {confirmError}
                 </div>
@@ -505,13 +505,13 @@ function MetaAdsConnect({
         <div style={{
           display: 'flex', alignItems: 'center', gap: 7,
           padding: '10px 14px', borderRadius: 8,
-          background: '#f0fdf4', border: '1px solid #3f9b6f33',
-          fontSize: 13, fontWeight: 600, color: '#3f9b6f',
+          background: 'var(--success-bg)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)',
+          fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--success)',
         }}>
           <CheckCircle2 size={15} />
           Conectado como <strong>{(config.meta_user_name as string) || 'Usuário Facebook'}</strong>
         </div>
-        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>
           Conta: <strong>{(config.adAccountName as string) || `act_${config.adAccountId as string}`}</strong>
           {!!config.pixelId && <> · Pixel: <strong>{(config.pixelName as string) || (config.pixelId as string)}</strong></>}
         </p>
@@ -547,7 +547,7 @@ function MetaAdsConnect({
           display: 'flex', alignItems: 'center', gap: 7,
           padding: '10px 14px', borderRadius: 8,
           background: '#1877F210', border: '1px solid #1877F230',
-          fontSize: 13, fontWeight: 600, color: '#1877F2',
+          fontSize: 'var(--text-base-sz)', fontWeight: 600, color: '#1877F2',
         }}>
           <CheckCircle2 size={15} />
           Facebook conectado como <strong>{(config.meta_user_name as string) || 'Usuário Facebook'}</strong>
@@ -555,14 +555,14 @@ function MetaAdsConnect({
 
         {adAccounts.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+            <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
               CONTA DE ANÚNCIOS
             </label>
             <select
               value={selectedAccount}
               onChange={e => setSelectedAccount(e.target.value)}
               className="field"
-              style={{ fontSize: 13 }}
+              style={{ fontSize: 'var(--text-base-sz)' }}
             >
               {adAccounts.map(a => (
                 <option key={a.id} value={a.id}>act_{a.id} — {a.name}</option>
@@ -570,7 +570,7 @@ function MetaAdsConnect({
             </select>
           </div>
         ) : (
-          <p style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
             Nenhuma conta de anúncios encontrada neste perfil. Certifique-se de ter acesso a uma conta no Meta Business Manager.
           </p>
         )}
@@ -580,14 +580,14 @@ function MetaAdsConnect({
             {/* Deixou de ser "opcional": sem pixel a API de Conversões não tem
                 para onde mandar, e agendamento e venda nunca voltam para a
                 campanha. Com um só na conta, ele já vem escolhido. */}
-            <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+            <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
               PIXEL
             </label>
             <select
               value={selectedPixel}
               onChange={e => setSelectedPixel(e.target.value)}
               className="field"
-              style={{ fontSize: 13 }}
+              style={{ fontSize: 'var(--text-base-sz)' }}
             >
               <option value="">Sem pixel</option>
               {pixels.map(p => (
@@ -595,7 +595,7 @@ function MetaAdsConnect({
               ))}
             </select>
             {!selectedPixel && (
-              <p style={{ fontSize: 11.5, color: 'var(--warning)', fontWeight: 600 }}>
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>
                 Sem pixel, os relatórios de campanha funcionam, mas agendamentos
                 e vendas não voltam para a Meta.
               </p>
@@ -604,7 +604,7 @@ function MetaAdsConnect({
         ) : (
           // Silêncio aqui era o pior caso: conectava, parecia certo, e a
           // atribuição simplesmente não acontecia.
-          <p style={{ fontSize: 12, color: 'var(--warning)', fontWeight: 600 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>
             Nenhum pixel encontrado neste perfil nem nas contas de anúncios.
             Os relatórios de campanha vão funcionar, mas agendamentos e vendas
             não voltam para a Meta — crie um pixel no Gerenciador de Eventos e
@@ -616,8 +616,8 @@ function MetaAdsConnect({
           <div style={{
             display: 'flex', alignItems: 'center', gap: 7,
             padding: '8px 12px', borderRadius: 8,
-            background: '#fef2f2', border: '1px solid #dc262633',
-            fontSize: 12.5, fontWeight: 600, color: '#dc2626',
+            background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
+            fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--danger)',
           }}>
             <AlertCircle size={14} /> {confirmError}
           </div>
@@ -653,15 +653,15 @@ function MetaAdsConnect({
         <div style={{
           display: 'flex', flexDirection: 'column', gap: 4,
           padding: '10px 14px', borderRadius: 8,
-          background: '#fef2f2', border: '1px solid #dc262633',
-          fontSize: 13, fontWeight: 600, color: '#dc2626',
+          background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
+          fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--danger)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <AlertCircle size={15} />
             Falha ao conectar com o Facebook. Verifique as permissões do app e tente novamente.
           </div>
           {metaErrorReason && (
-            <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.8, paddingLeft: 22 }}>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 400, opacity: 0.8, paddingLeft: 22 }}>
               Motivo: {metaErrorReason}
             </span>
           )}
@@ -671,7 +671,7 @@ function MetaAdsConnect({
       <div style={{
         padding: '10px 14px', borderRadius: 8,
         background: '#1877F208', border: '1px solid #1877F220',
-        fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.6,
+        fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.6,
       }}>
         Conecte sua conta do Facebook para importar automaticamente suas contas de anúncios e pixels. Nenhuma configuração manual necessária.
       </div>
@@ -682,8 +682,8 @@ function MetaAdsConnect({
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 9,
           padding: '10px 20px', borderRadius: 10, cursor: 'pointer',
-          background: '#1877F2', border: 'none', color: '#fff',
-          fontWeight: 700, fontSize: 14, fontFamily: 'inherit',
+          background: '#1877F2', border: 'none', color: 'var(--surface)',
+          fontWeight: 700, fontSize: 'var(--text-base-sz)', fontFamily: 'inherit',
           alignSelf: 'flex-start', transition: 'opacity 120ms',
         }}
       >
@@ -693,7 +693,7 @@ function MetaAdsConnect({
         Continuar com Facebook
       </button>
 
-      <p style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+      <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
         Você será redirecionado para o Facebook para autorizar o acesso às suas contas de anúncios.
       </p>
     </div>
@@ -741,7 +741,7 @@ function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
       <div style={{
         padding: '10px 14px', borderRadius: 8,
         background: '#34A85308', border: '1px solid #34A85330',
-        fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6,
+        fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.6,
       }}>
         <strong>Atenção:</strong> A Google Ads API requer um Developer Token com aprovação manual da Google (processo pode levar dias).
         Além disso, é necessário configurar um projeto OAuth2 no Google Cloud Console.
@@ -797,14 +797,14 @@ function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
           onChange={e => setIsActive(e.target.checked)}
           style={{ width: 16, height: 16, cursor: 'pointer' }}
         />
-        <label htmlFor="google-active" style={{ fontSize: 13, cursor: 'pointer', color: 'var(--text)' }}>
+        <label htmlFor="google-active" style={{ fontSize: 'var(--text-base-sz)', cursor: 'pointer', color: 'var(--text)' }}>
           Ativar integração Google Ads
         </label>
       </div>
 
       {testResult && <ConnectionStatus ok={testResult.ok} detail={testResult.detail} />}
       {saved && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--success)', fontWeight: 700 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-base-sz)', color: 'var(--success)', fontWeight: 700 }}>
           <CheckCircle2 size={14} /> Configuração salva.
         </div>
       )}
@@ -834,7 +834,7 @@ function GoogleAdsForm({ initial }: { initial?: IntegrationConfig }) {
         href="https://developers.google.com/google-ads/api/docs/get-started/make-first-call"
         target="_blank"
         rel="noopener noreferrer"
-        style={{ fontSize: 12, color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+        style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
       >
         <ExternalLink size={12} />
         Guia de configuração da Google Ads API →
@@ -897,7 +897,7 @@ function MetaMessagingConnect({
   if (!hasToken) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
           Conecte a página do Facebook da clínica para receber e responder Messenger e
           Instagram Direct dentro do Inbox. O Instagram precisa ser uma conta profissional
           ligada a essa página.
@@ -918,7 +918,7 @@ function MetaMessagingConnect({
           display: 'flex', alignItems: 'center', gap: 7,
           padding: '10px 14px', borderRadius: 8,
           background: '#1877F210', border: '1px solid #1877F230',
-          fontSize: 13, fontWeight: 600, color: '#1877F2',
+          fontSize: 'var(--text-base-sz)', fontWeight: 600, color: '#1877F2',
         }}>
           <CheckCircle2 size={15} />
           Conectado como <strong>{(config.meta_user_name as string) || 'Usuário Facebook'}</strong>
@@ -927,20 +927,20 @@ function MetaMessagingConnect({
         {erroOAuth && <ErroBox texto={erroOAuth} />}
 
         {pages.length === 0 ? (
-          <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>
             Nenhuma página encontrada nesta conta. Você precisa ser administrador de ao menos
             uma página do Facebook.
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+            <label style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
               PÁGINA
             </label>
             <select
               value={selected}
               onChange={e => setSelected(e.target.value)}
               className="field"
-              style={{ fontSize: 13 }}
+              style={{ fontSize: 'var(--text-base-sz)' }}
             >
               {pages.map(p => (
                 <option key={p.pageId} value={p.pageId}>
@@ -948,7 +948,7 @@ function MetaMessagingConnect({
                 </option>
               ))}
             </select>
-            <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>
               {pages.find(p => p.pageId === selected)?.igUserId
                 ? 'Messenger e Instagram Direct serão recebidos no Inbox.'
                 : 'Sem conta profissional do Instagram ligada — só o Messenger será recebido.'}
@@ -983,8 +983,8 @@ function MetaMessagingConnect({
       <div style={{
         display: 'flex', alignItems: 'center', gap: 7,
         padding: '10px 14px', borderRadius: 8,
-        background: '#f0fdf4', border: '1px solid #3f9b6f33',
-        fontSize: 13, fontWeight: 600, color: '#3f9b6f',
+        background: 'var(--success-bg)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)',
+        fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--success)',
       }}>
         <CheckCircle2 size={15} />
         <span>
@@ -993,7 +993,7 @@ function MetaMessagingConnect({
         </span>
       </div>
 
-      <p style={{ fontSize: 11.5, color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
+      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
         Nestes canais só é possível responder até 24 horas depois da última mensagem do
         contato — regra da Meta. Passado esse prazo o Inbox bloqueia o envio.
       </p>
@@ -1007,7 +1007,7 @@ function MetaMessagingConnect({
           onClick={handleDisconnect}
           disabled={isDisconnecting}
           className="btn-ghost"
-          style={{ color: '#dc2626' }}
+          style={{ color: 'var(--danger)' }}
         >
           {isDisconnecting ? 'Desconectando…' : 'Desconectar'}
         </button>
@@ -1021,8 +1021,8 @@ function ErroBox({ texto }: { texto: string }) {
     <div style={{
       display: 'flex', alignItems: 'center', gap: 7,
       padding: '8px 12px', borderRadius: 8,
-      background: '#fef2f2', border: '1px solid #dc262633',
-      fontSize: 12.5, fontWeight: 600, color: '#dc2626',
+      background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
+      fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--danger)',
     }}>
       <AlertCircle size={14} /> {texto}
     </div>
@@ -1094,15 +1094,15 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
               {icon}
             </div>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', margin: 0 }}>{title}</p>
-              <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: 0, marginTop: 2 }}>{subtitle}</p>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', margin: 0 }}>{title}</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', margin: 0, marginTop: 2 }}>{subtitle}</p>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {isActive && (
               <span style={{
-                fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-                background: '#f0fdf4', color: '#3f9b6f', border: '1px solid #3f9b6f33',
+                fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+                background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)',
               }}>
                 Ativo
               </span>
@@ -1125,7 +1125,7 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 640 }}>
       {/* -- Seção: Comunicação ---------------------------------------------- */}
-      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+      <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
         Comunicação
       </p>
 
@@ -1139,7 +1139,7 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
       >
         {/* Provider selector */}
         <div style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 10 }}>
+          <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 10 }}>
             PROVEDOR
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -1152,13 +1152,13 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
                   flex: 1, padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
                   border: wpProvider === p ? '2px solid var(--brand)' : '1.5px solid var(--border)',
                   background: wpProvider === p ? 'var(--brand-soft)' : 'var(--bg-app)',
-                  fontWeight: 700, fontSize: 13,
+                  fontWeight: 700, fontSize: 'var(--text-base-sz)',
                   color: wpProvider === p ? 'var(--brand)' : 'var(--text-muted)',
                   transition: 'all 120ms',
                 }}
               >
                 {p === 'uazapi' ? 'uazapi' : 'WhatsApp Oficial'}
-                <p style={{ fontSize: 10.5, fontWeight: 500, marginTop: 3, color: 'inherit', opacity: 0.75 }}>
+                <p style={{ fontSize: 'var(--text-overline)', fontWeight: 500, marginTop: 3, color: 'inherit', opacity: 0.75 }}>
                   {p === 'uazapi' ? 'Via WhatsApp Web — mais fácil de configurar' : 'Meta Cloud API — requer aprovação da Meta'}
                 </p>
               </button>
@@ -1180,7 +1180,7 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
                   onClick={() => setUazapiModo(modo)}
                   style={{
                     padding: '7px 12px', borderRadius: 99, cursor: 'pointer',
-                    fontSize: 12.5, fontWeight: 700,
+                    fontSize: 'var(--text-sm-sz)', fontWeight: 700,
                     border: uazapiModo === modo ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
                     background: uazapiModo === modo ? 'var(--brand-soft)' : 'var(--bg-app)',
                     color: uazapiModo === modo ? 'var(--brand)' : 'var(--text-muted)',
@@ -1232,12 +1232,12 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
               <Mail size={18} color="var(--text-faint)" />
             </div>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>E-mail (Resend)</p>
-              <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: 0, marginTop: 1 }}>Em breve</p>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', margin: 0 }}>E-mail (Resend)</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', margin: 0, marginTop: 1 }}>Em breve</p>
             </div>
           </div>
           <span style={{
-            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+            fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '2px 8px', borderRadius: 99,
             background: 'var(--bg-app)', color: 'var(--text-faint)', border: '1px solid var(--border)',
           }}>
             Em breve
@@ -1246,7 +1246,7 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
       </div>
 
       {/* -- Seção: Marketing ------------------------------------------------ */}
-      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 8 }}>
+      <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', marginTop: 8 }}>
         Marketing
       </p>
 

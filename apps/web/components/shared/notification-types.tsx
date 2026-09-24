@@ -6,19 +6,19 @@ import {
 // Config visual dos tipos de notificação (cliente + staff). Ícones Lucide, cores dos tokens.
 export const NOTIFICATION_TYPE_CFG: Record<string, { Icon: React.ElementType; color: string }> = {
   // Cliente
-  appointment_confirmed:   { Icon: CheckCircle2, color: '#22c55e' },
+  appointment_confirmed:   { Icon: CheckCircle2, color: 'var(--success)' },
   appointment_reminder:    { Icon: CalendarDays, color: 'var(--brand)' },
-  appointment_cancelled:   { Icon: AlertCircle,  color: '#ef4444' },
+  appointment_cancelled:   { Icon: AlertCircle,  color: 'var(--danger)' },
   appointment_rescheduled: { Icon: CalendarClock, color: 'var(--brand)' },
   appointment_completed:   { Icon: CheckCircle2, color: 'var(--text-muted)' },
-  payment_received:        { Icon: CreditCard,   color: '#22c55e' },
-  points_earned:           { Icon: Star,         color: '#f59e0b' },
+  payment_received:        { Icon: CreditCard,   color: 'var(--success)' },
+  points_earned:           { Icon: Star,         color: 'var(--warning)' },
   package_activated:       { Icon: Sparkles,     color: 'var(--brand)' },
-  promotion:               { Icon: Sparkles,     color: '#f59e0b' },
+  promotion:               { Icon: Sparkles,     color: 'var(--warning)' },
   // Staff
   appointment_new:         { Icon: CalendarPlus, color: 'var(--brand)' },
-  appointment_reassigned:  { Icon: UserCog,      color: '#f59e0b' },
-  client_checkin:          { Icon: DoorOpen,     color: '#22c55e' },
+  appointment_reassigned:  { Icon: UserCog,      color: 'var(--warning)' },
+  client_checkin:          { Icon: DoorOpen,     color: 'var(--success)' },
   // Fallback
   general:                 { Icon: Bell,         color: 'var(--text-muted)' },
 }

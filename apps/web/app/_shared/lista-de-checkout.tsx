@@ -95,11 +95,11 @@ export async function ListaDeCheckout({
           <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ClipboardList size={24} style={{ color: 'var(--text-faint)' }} />
           </div>
-          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum checkout pendente</p>
-          <p style={{ fontSize: 13, color: 'var(--text-faint)', textAlign: 'center' }}>
+          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum checkout pendente</p>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', textAlign: 'center' }}>
             Quando uma profissional enviar um plano de tratamento para a recepção, ele aparecerá aqui.
           </p>
-          <Link href={`${base}/agenda`} style={{ fontSize: 13, color: 'var(--brand)', fontWeight: 700, textDecoration: 'none', marginTop: 4 }}>
+          <Link href={`${base}/agenda`} style={{ fontSize: 'var(--text-base-sz)', color: 'var(--brand)', fontWeight: 700, textDecoration: 'none', marginTop: 4 }}>
             ← Voltar para agenda
           </Link>
         </div>
@@ -118,23 +118,23 @@ export async function ListaDeCheckout({
                   <User size={20} style={{ color: 'var(--brand)' }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{plan.name}</p>
-                  <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                  <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{plan.name}</p>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                     {ehRede && plan.unidade ? `${plan.unidade} · ` : ""}
                     {plan.phone ?? 'Sem telefone'} · aguardando {formatDistanceToNow(new Date(plan.waitingSince), { locale: ptBR, addSuffix: false })}
                   </p>
                   {plan.notes && (
-                    <p style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       &quot;{plan.notes}&quot;
                     </p>
                   )}
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <p style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>
+                  <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
                     {plan.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, justifyContent: 'flex-end' }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--brand)' }}>Iniciar checkout</span>
+                    <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)' }}>Iniciar checkout</span>
                     <ChevronRight size={14} style={{ color: 'var(--brand)' }} />
                   </div>
                 </div>

@@ -17,7 +17,7 @@ function Initials({ name }: { name: string }) {
       width: 36, height: 36, borderRadius: '50%',
       background: 'var(--brand-soft)', border: '1.5px solid var(--brand-soft-border)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 11, fontWeight: 'var(--weight-bold)', color: 'var(--brand)',
+      fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--brand)',
       flexShrink: 0,
     }}>
       {letters.toUpperCase()}

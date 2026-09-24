@@ -75,7 +75,7 @@ export function SegSelect({
   }
 
   const chipStyle: React.CSSProperties = compacto
-    ? { fontSize: 12, padding: '3px 9px', whiteSpace: 'nowrap' }
+    ? { fontSize: 'var(--text-sm-sz)', padding: '3px 9px', whiteSpace: 'nowrap' }
     : { fontSize: 'var(--text-xs-sz)', padding: '6px 12px', whiteSpace: 'nowrap' }
 
   const renderChip = (o: SegOption) => {
@@ -88,7 +88,7 @@ export function SegSelect({
   const menuItemStyle = (active: boolean): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
     width: '100%', padding: '10px 12px', borderRadius: 9,
-    fontSize: 13, fontWeight: 700, fontFamily: 'inherit', textAlign: 'left',
+    fontSize: 'var(--text-base-sz)', fontWeight: 700, fontFamily: 'inherit', textAlign: 'left',
     border: 'none', cursor: 'pointer', textDecoration: 'none',
     background: active ? 'var(--brand-soft)' : 'transparent',
     color: active ? 'var(--brand)' : 'var(--text)',
@@ -144,7 +144,7 @@ export function SegSelect({
           color: 'var(--text)', fontWeight: 700,
           fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
           ...(compacto
-            ? { gap: 5, padding: '4px 9px', borderRadius: 8, fontSize: 12 }
+            ? { gap: 5, padding: '4px 9px', borderRadius: 8, fontSize: 'var(--text-sm-sz)' }
             : { gap: 8, padding: '8px 14px', borderRadius: 10, fontSize: 'var(--text-sm-sz)' }),
         }}
       >
@@ -162,7 +162,7 @@ export function SegSelect({
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 'var(--radius-field-token)', padding: 6, zIndex: 60,
             display: 'flex', flexDirection: 'column', gap: 2,
-            boxShadow: '0 12px 32px rgba(34,22,25,.16)',
+            boxShadow: 'var(--shadow-popover)',
           }}
         >
           {options.map(renderMenuItem)}

@@ -29,16 +29,16 @@ const MAX_TENTATIVAS = 12   // ~3 minutos
 
 function Aviso({ tom, children }: { tom: 'erro' | 'ok' | 'espera'; children: React.ReactNode }) {
   const cores = {
-    erro:   { bg: '#fef2f2', color: '#dc2626', border: '#dc262633' },
-    ok:     { bg: '#f0fdf4', color: '#3f9b6f', border: '#3f9b6f33' },
-    espera: { bg: '#fffbeb', color: '#b45309', border: '#b4530933' },
+    erro:   { bg: 'var(--danger-soft)', color: 'var(--danger)', border: 'color-mix(in srgb, var(--danger) 20%, transparent)' },
+    ok:     { bg: 'var(--success-bg)', color: 'var(--success)', border: 'color-mix(in srgb, var(--success) 20%, transparent)' },
+    espera: { bg: 'var(--warning-soft)', color: 'var(--warning)', border: 'color-mix(in srgb, var(--cat-5) 20%, transparent)' },
   }[tom]
   return (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: 8,
       padding: '9px 12px', borderRadius: 8,
       background: cores.bg, border: `1px solid ${cores.border}`,
-      fontSize: 12.5, color: cores.color, fontWeight: 600, lineHeight: 1.5,
+      fontSize: 'var(--text-sm-sz)', color: cores.color, fontWeight: 600, lineHeight: 1.5,
     }}>
       {tom === 'ok'
         ? <CheckCircle2 size={14} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -136,7 +136,7 @@ export function UazapiConnect() {
 
   if (!estado) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
         <Loader2 size={14} className="animate-spin" /> Carregando…
       </div>
     )
@@ -156,11 +156,11 @@ export function UazapiConnect() {
     const perto = estado.teto > 0 && estado.usadas >= estado.teto - 5
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.55, margin: 0 }}>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.55, margin: 0 }}>
           Conecte o WhatsApp da clínica escaneando um QR code, como no WhatsApp Web.
           Não é preciso contratar nada à parte — a conexão já faz parte do plano.
         </p>
-        <p style={{ fontSize: 11.5, color: 'var(--text-faint)', lineHeight: 1.55, margin: 0 }}>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', lineHeight: 1.55, margin: 0 }}>
           Use um número dedicado ao atendimento. O WhatsApp permite um aparelho por
           número, e conectar aqui desconecta outras sessões do WhatsApp Web.
         </p>
@@ -195,7 +195,7 @@ export function UazapiConnect() {
         {estado.proxyModo && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 7,
-            fontSize: 11.5, color: 'var(--text-faint)',
+            fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)',
           }}>
             <ShieldCheck size={13} />
             {estado.proxyModo === 'internal'
@@ -221,7 +221,7 @@ export function UazapiConnect() {
             <Unplug size={14} /> Desconectar número
           </button>
           <button type="button" onClick={remover} disabled={isPending} className="btn-ghost"
-            style={{ marginLeft: 'auto', color: '#dc2626' }}>
+            style={{ marginLeft: 'auto', color: 'var(--danger)' }}>
             Remover conexão
           </button>
         </div>
@@ -237,7 +237,7 @@ export function UazapiConnect() {
 
       {modoCodigo ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
             No celular: WhatsApp → Aparelhos conectados → Conectar aparelho → Conectar
             com número de telefone.
           </p>
@@ -247,7 +247,7 @@ export function UazapiConnect() {
               onChange={e => setTelefone(e.target.value)}
               placeholder="5511999999999"
               className="field"
-              style={{ fontSize: 13, flex: 1 }}
+              style={{ fontSize: 'var(--text-base-sz)', flex: 1 }}
             />
             <button type="button" onClick={pedirCodigo} disabled={isPending} className="btn-primary">
               {isPending ? 'Gerando…' : 'Gerar código'}
@@ -264,7 +264,7 @@ export function UazapiConnect() {
               }}>
                 {codigo}
               </p>
-              <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
+              <p style={{ margin: '4px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                 Digite no celular. O código expira em alguns minutos.
               </p>
             </div>
@@ -278,16 +278,16 @@ export function UazapiConnect() {
         <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div style={{
             width: 220, height: 220, flexShrink: 0, borderRadius: 'var(--radius-field-token)',
-            border: '1px solid var(--border)', background: '#fff',
+            border: '1px solid var(--border)', background: 'var(--surface)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
             {pausado ? (
               <div style={{ textAlign: 'center', padding: 16 }}>
-                <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
                   O código expirou.
                 </p>
                 <button type="button" onClick={recomecarQr} className="btn-primary"
-                  style={{ marginTop: 10, height: 32, fontSize: 12.5 }}>
+                  style={{ marginTop: 10, height: 32, fontSize: 'var(--text-sm-sz)' }}>
                   Gerar novo
                 </button>
               </div>
@@ -297,7 +297,7 @@ export function UazapiConnect() {
             ) : (
               <div style={{ textAlign: 'center' }}>
                 <Loader2 size={20} className="animate-spin" color="var(--text-faint)" />
-                <p style={{ fontSize: 11, color: 'var(--text-faint)', margin: '8px 0 0' }}>
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: '8px 0 0' }}>
                   Preparando o código…
                 </p>
               </div>
@@ -310,7 +310,7 @@ export function UazapiConnect() {
                 Como conectar
               </p>
               <ol style={{
-                margin: '8px 0 0', paddingLeft: 18, fontSize: 12.5,
+                margin: '8px 0 0', paddingLeft: 18, fontSize: 'var(--text-sm-sz)',
                 color: 'var(--text-muted)', lineHeight: 1.7,
               }}>
                 <li>Abra o WhatsApp no celular da clínica</li>
@@ -327,7 +327,7 @@ export function UazapiConnect() {
             </button>
 
             <button type="button" onClick={remover} disabled={isPending} className="btn-ghost"
-              style={{ alignSelf: 'flex-start', color: '#dc2626', fontSize: 12 }}>
+              style={{ alignSelf: 'flex-start', color: 'var(--danger)', fontSize: 'var(--text-sm-sz)' }}>
               Cancelar conexão
             </button>
           </div>

@@ -67,8 +67,8 @@ function StockBadge({ current, min, unit }: { current: number; min: number; unit
   const isZero  = current === 0
   const isBaixo = !isZero && min > 0 && current <= min
 
-  const bg    = isZero ? '#fef2f2' : isBaixo ? '#fffbeb' : '#f0fdf4'
-  const color = isZero ? '#dc2626' : isBaixo ? '#d97706' : '#16a34a'
+  const bg    = isZero ? 'var(--danger-soft)' : isBaixo ? 'var(--warning-soft)' : 'var(--success-bg)'
+  const color = isZero ? 'var(--danger)' : isBaixo ? 'var(--warning)' : 'var(--success)'
   const icon  = isZero
     ? <PackageX   size={10} />
     : isBaixo
@@ -78,7 +78,7 @@ function StockBadge({ current, min, unit }: { current: number; min: number; unit
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
-      fontSize: 11.5, fontWeight: 800, padding: '3px 8px', borderRadius: 99,
+      fontSize: 'var(--text-xs-sz)', fontWeight: 800, padding: '3px 8px', borderRadius: 99,
       background: bg, color,
     }}>
       {icon}
@@ -93,11 +93,11 @@ function BranchPills({ branches, unit }: { branches: BranchStock[]; unit: string
       {branches.map(b => {
         const isZero  = b.currentStock === 0
         const isBaixo = !isZero && b.minStock > 0 && b.currentStock <= b.minStock
-        const color   = isZero ? '#dc2626' : isBaixo ? '#d97706' : '#16a34a'
-        const bg      = isZero ? '#fef2f2' : isBaixo ? '#fffbeb' : '#f0fdf4'
+        const color   = isZero ? 'var(--danger)' : isBaixo ? 'var(--warning)' : 'var(--success)'
+        const bg      = isZero ? 'var(--danger-soft)' : isBaixo ? 'var(--warning-soft)' : 'var(--success-bg)'
         return (
           <span key={b.branchId} title={b.branchName} style={{
-            fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+            fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 8px', borderRadius: 99,
             background: bg, color, whiteSpace: 'nowrap',
           }}>
             {b.branchName.split(' ')[0]} · {b.currentStock.toLocaleString('pt-BR')} {unit}
@@ -105,7 +105,7 @@ function BranchPills({ branches, unit }: { branches: BranchStock[]; unit: string
         )
       })}
       {branches.length === 0 && (
-        <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Sem estoque registrado</span>
+        <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Sem estoque registrado</span>
       )}
     </div>
   )
@@ -206,7 +206,7 @@ export function AdminStockView({ products, branches, categories, productCategori
   }, [filtered, branchId])
 
   const thStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+    fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
     letterSpacing: '0.05em', padding: '10px 16px', textAlign: 'left',
     background: 'var(--bg-app)', borderBottom: '1px solid var(--border)',
     whiteSpace: 'nowrap',
@@ -225,7 +225,7 @@ export function AdminStockView({ products, branches, categories, productCategori
         }}>
           {([['consolidado', 'Consolidado'], ['por-unidade', 'Por unidade']] as [ViewMode, string][]).map(([v, l]) => (
             <button key={v} type="button" onClick={() => setView(v)} style={{
-              fontSize: 12, fontWeight: 700, padding: '5px 12px', borderRadius: 7,
+              fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '5px 12px', borderRadius: 7,
               cursor: 'pointer', border: 'none', transition: 'all 100ms',
               background: view === v ? 'var(--surface)' : 'transparent',
               color: view === v ? 'var(--text)' : 'var(--text-muted)',
@@ -246,7 +246,7 @@ export function AdminStockView({ products, branches, categories, productCategori
           <input
             type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Buscar produto ou SKU…"
-            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 13, color: 'var(--text)', width: '100%' }}
+            style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: 'var(--text-base-sz)', color: 'var(--text)', width: '100%' }}
           />
           {search && (
             <button type="button" onClick={() => setSearch('')}
@@ -259,7 +259,7 @@ export function AdminStockView({ products, branches, categories, productCategori
         {/* Categoria */}
         {categories.length > 0 && (
           <select value={category} onChange={e => setCategory(e.target.value)} style={{
-            fontSize: 12.5, fontWeight: 600, color: 'var(--text)',
+            fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 10, padding: '7px 10px', cursor: 'pointer', outline: 'none',
           }}>
@@ -271,7 +271,7 @@ export function AdminStockView({ products, branches, categories, productCategori
         {/* Filial */}
         {branches.length > 1 && (
           <select value={branchId} onChange={e => setBranchId(e.target.value)} style={{
-            fontSize: 12.5, fontWeight: 600, color: 'var(--text)',
+            fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
             background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: 10, padding: '7px 10px', cursor: 'pointer', outline: 'none',
           }}>
@@ -282,7 +282,7 @@ export function AdminStockView({ products, branches, categories, productCategori
 
         {/* Status */}
         <select value={status} onChange={e => setStatus(e.target.value as StatusFilter)} style={{
-          fontSize: 12.5, fontWeight: 600, color: 'var(--text)',
+          fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
           background: 'var(--surface)', border: '1px solid var(--border)',
           borderRadius: 10, padding: '7px 10px', cursor: 'pointer', outline: 'none',
         }}>
@@ -295,7 +295,7 @@ export function AdminStockView({ products, branches, categories, productCategori
         {/* Ordenação */}
         <button type="button" onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')} style={{
           display: 'inline-flex', alignItems: 'center', gap: 5,
-          fontSize: 12.5, fontWeight: 700, padding: '7px 12px', borderRadius: 10,
+          fontSize: 'var(--text-sm-sz)', fontWeight: 700, padding: '7px 12px', borderRadius: 10,
           border: '1px solid var(--border)', background: 'var(--surface)',
           color: 'var(--text-muted)', cursor: 'pointer',
         }}>
@@ -303,7 +303,7 @@ export function AdminStockView({ products, branches, categories, productCategori
           A–Z
         </button>
 
-        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-faint)', fontWeight: 600 }}>
+        <span style={{ marginLeft: 'auto', fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', fontWeight: 600 }}>
           {view === 'consolidado' ? filtered.length : rowsByUnit.length} resultado{(view === 'consolidado' ? filtered.length : rowsByUnit.length) !== 1 ? 's' : ''}
         </span>
 
@@ -325,8 +325,8 @@ export function AdminStockView({ products, branches, categories, productCategori
         {(view === 'consolidado' ? filtered.length : rowsByUnit.length) === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <PackageX size={36} style={{ color: 'var(--text-faint)', margin: '0 auto 12px' }} />
-            <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 14 }}>Nenhum produto encontrado</p>
-            <p style={{ color: 'var(--text-faint)', fontSize: 12.5, marginTop: 4 }}>Ajuste os filtros.</p>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-base-sz)' }}>Nenhum produto encontrado</p>
+            <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>Ajuste os filtros.</p>
           </div>
         ) : view === 'consolidado' ? (
           /* -- VISTA CONSOLIDADA ------------------ */
@@ -364,32 +364,32 @@ export function AdminStockView({ products, branches, categories, productCategori
                         onClick={() => p.branches.length > 0 && toggleExpand(p.id)}
                       >
                         <td data-label="" style={{ padding: '13px 16px' }}>
-                          <p style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
-                          {p.sku && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>{p.sku}</p>}
+                          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{p.name}</p>
+                          {p.sku && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{p.sku}</p>}
                         </td>
                         <td data-label="Categoria" data-par style={{ padding: '13px 16px' }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
                             {p.category ?? '—'}
                           </span>
                         </td>
                         <td data-label="Total rede" style={{ padding: '13px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                            <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
                               {p.totalStock.toLocaleString('pt-BR')}
                             </span>
-                            <span style={{ fontSize: 11.5, color: 'var(--text-faint)' }}>{p.unit}</span>
+                            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>{p.unit}</span>
                             {totalZero > 0 && (
                               <span style={{
-                                fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99,
-                                background: '#fef2f2', color: '#dc2626',
+                                fontSize: 'var(--text-overline)', fontWeight: 700, padding: '1px 6px', borderRadius: 99,
+                                background: 'var(--danger-soft)', color: 'var(--danger)',
                               }}>
                                 {totalZero} sem estoque
                               </span>
                             )}
                             {totalZero === 0 && totalBaixo > 0 && (
                               <span style={{
-                                fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 99,
-                                background: '#fffbeb', color: '#d97706',
+                                fontSize: 'var(--text-overline)', fontWeight: 700, padding: '1px 6px', borderRadius: 99,
+                                background: 'var(--warning-soft)', color: 'var(--warning)',
                               }}>
                                 {totalBaixo} abaixo do mín.
                               </span>
@@ -399,15 +399,15 @@ export function AdminStockView({ products, branches, categories, productCategori
                         <td data-label="Rendimento" data-par style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {p.consumptionUnit && p.totalRendimento != null ? (
                             <div>
-                              <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
                                 {p.totalRendimento.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
                               </span>
-                              <span style={{ fontSize: 11.5, color: 'var(--text-faint)', marginLeft: 4 }}>
+                              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginLeft: 4 }}>
                                 {p.consumptionUnit}
                               </span>
                             </div>
                           ) : (
-                            <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>—</span>
+                            <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>—</span>
                           )}
                         </td>
                         <td data-label="Por filial" style={{ padding: '13px 16px' }}>
@@ -417,11 +417,11 @@ export function AdminStockView({ products, branches, categories, productCategori
                           <td data-label="Valor" data-par style={{ padding: '13px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {p.costPrice > 0
                               ? (
-                                <span style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
+                                <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
                                   {(p.costPrice * p.totalStock).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                 </span>
                               ) : (
-                                <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>—</span>
+                                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>—</span>
                               )
                             }
                           </td>
@@ -452,12 +452,12 @@ export function AdminStockView({ products, branches, categories, productCategori
                                   padding: '8px 12px', borderRadius: 8,
                                   background: 'var(--surface)', border: '1px solid var(--hairline)',
                                 }}>
-                                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)' }}>
+                                  <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
                                     {b.branchName}
                                   </span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                                     {b.minStock > 0 && (
-                                      <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                                      <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                                         mín. {b.minStock.toLocaleString('pt-BR')} {p.unit}
                                       </span>
                                     )}
@@ -505,15 +505,15 @@ export function AdminStockView({ products, branches, categories, productCategori
                       background: i % 2 === 0 ? 'var(--surface)' : 'transparent',
                     }}>
                       <td data-label="" style={{ padding: '12px 16px' }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{row.name}</p>
-                        {row.sku && <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 1 }}>{row.sku}</p>}
+                        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{row.name}</p>
+                        {row.sku && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 1 }}>{row.sku}</p>}
                       </td>
                       <td data-label="Categoria" data-par style={{ padding: '12px 16px' }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{row.category ?? '—'}</span>
+                        <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{row.category ?? '—'}</span>
                       </td>
                       <td data-label="Filial" data-par style={{ padding: '12px 16px' }}>
                         <span style={{
-                          fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 99,
+                          fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                           background: 'var(--bg-app)', color: 'var(--text-muted)',
                           border: '1px solid var(--border)',
                         }}>
@@ -522,11 +522,11 @@ export function AdminStockView({ products, branches, categories, productCategori
                       </td>
                       <td data-label="Estoque" style={{ padding: '12px 16px', textAlign: 'right' }}>
                         <span style={{
-                          fontSize: 13.5, fontWeight: 800, letterSpacing: '-0.01em',
-                          color: isZero ? '#dc2626' : isBaixo ? '#d97706' : 'var(--text)',
+                          fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em',
+                          color: isZero ? 'var(--danger)' : isBaixo ? 'var(--warning)' : 'var(--text)',
                         }}>
                           {row.branch.currentStock.toLocaleString('pt-BR')}
-                          <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-faint)', marginLeft: 4 }}>
+                          <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 600, color: 'var(--text-faint)', marginLeft: 4 }}>
                             {row.unit}
                           </span>
                         </span>
@@ -537,19 +537,19 @@ export function AdminStockView({ products, branches, categories, productCategori
                             ? row.branch.currentRendimento
                             : row.branch.currentStock * row.unitsPerPackage
                           return (
-                            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>
+                            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
                               {r.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                              <span style={{ fontSize: 11, color: 'var(--text-faint)', marginLeft: 4 }}>
+                              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginLeft: 4 }}>
                                 {row.consumptionUnit}
                               </span>
                             </span>
                           )
                         })() : (
-                          <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>—</span>
+                          <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>—</span>
                         )}
                       </td>
                       <td data-label="Mínimo" data-par style={{ padding: '12px 16px', textAlign: 'right' }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+                        <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
                           {row.branch.minStock > 0 ? `${row.branch.minStock.toLocaleString('pt-BR')} ${row.unit}` : '—'}
                         </span>
                       </td>
@@ -557,11 +557,11 @@ export function AdminStockView({ products, branches, categories, productCategori
                         <td data-label="Valor" data-par style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                           {row.costPrice > 0
                             ? (
-                              <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
+                              <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, letterSpacing: '-0.01em', color: 'var(--text)' }}>
                                 {(row.costPrice * row.branch.currentStock).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                               </span>
                             ) : (
-                              <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>—</span>
+                              <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>—</span>
                             )
                           }
                         </td>

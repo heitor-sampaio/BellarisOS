@@ -122,7 +122,7 @@ function FiltersBar({
   }
 
   const selectStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 600, color: 'var(--text)',
+    fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text)',
     background: 'var(--surface)', border: '1px solid var(--border)',
     borderRadius: 8, padding: '5px 8px', cursor: 'pointer', outline: 'none',
   }
@@ -266,7 +266,7 @@ function FiltersBar({
             type="button" onClick={onClear}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
-              fontSize: 11.5, fontWeight: 700, color: 'var(--text-muted)',
+              fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)',
               background: 'var(--bg-app)', border: '1px solid var(--border)',
               borderRadius: 8, padding: '5px 10px', cursor: 'pointer',
             }}
@@ -275,8 +275,8 @@ function FiltersBar({
             Limpar
             {activeCount > 0 && (
               <span style={{
-                fontSize: 10, fontWeight: 800, minWidth: 16, height: 16,
-                background: 'var(--brand)', color: '#fff',
+                fontSize: 'var(--text-overline)', fontWeight: 800, minWidth: 16, height: 16,
+                background: 'var(--brand)', color: 'var(--surface)',
                 borderRadius: 99, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 padding: '0 4px',
               }}>
@@ -352,16 +352,16 @@ function MenuItem({
         display: 'flex', alignItems: 'center', gap: 8, width: '100%',
         padding: '8px 10px', borderRadius: 8, cursor: 'pointer',
         border: 'none', background: 'transparent', textAlign: 'left',
-        fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit',
-        color: danger ? '#e53935' : 'var(--text)',
+        fontSize: 'var(--text-sm-sz)', fontWeight: 600, fontFamily: 'inherit',
+        color: danger ? 'var(--danger)' : 'var(--text)',
         whiteSpace: 'nowrap',
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.background = danger ? '#fde8e8' : 'var(--bg-app)'
+        e.currentTarget.style.background = danger ? 'var(--danger-soft)' : 'var(--bg-app)'
       }}
       onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
     >
-      <span style={{ display: 'flex', flexShrink: 0, color: danger ? '#e53935' : 'var(--text-faint)' }}>
+      <span style={{ display: 'flex', flexShrink: 0, color: danger ? 'var(--danger)' : 'var(--text-faint)' }}>
         {icon}
       </span>
       {children}
@@ -538,13 +538,13 @@ function LeadCard({
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
                 width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: '#fde8e8', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: 'var(--danger-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <AlertTriangle size={18} color="#e53935" />
+                <AlertTriangle size={18} color="var(--danger)" />
               </div>
               <div>
-                <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Remover lead?</p>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Remover lead?</p>
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
                   {lead.name}
                 </p>
               </div>
@@ -563,7 +563,7 @@ function LeadCard({
             </button>
           </div>
 
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Este lead será removido permanentemente do funil de CRM. Esta ação não pode ser desfeita.
           </p>
 
@@ -584,8 +584,8 @@ function LeadCard({
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '8px 16px', borderRadius: 10, cursor: 'pointer',
                 fontSize: 'var(--text-sm-sz)', fontWeight: 700,
-                background: '#fde8e8', color: '#e53935',
-                border: '1.5px solid #f5b8b8',
+                background: 'var(--danger-soft)', color: 'var(--danger)',
+                border: '1.5px solid var(--brand-3)',
                 opacity: deleting ? 0.6 : 1,
               }}
             >
@@ -606,8 +606,8 @@ function LeadCard({
         <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>Mover para outro funil</p>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{lead.name}</p>
+              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Mover para outro funil</p>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>{lead.name}</p>
             </div>
             <button
               type="button"
@@ -623,7 +623,7 @@ function LeadCard({
             </button>
           </div>
 
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             O lead entra na primeira etapa do funil escolhido e sai deste quadro.
           </p>
 
@@ -646,8 +646,8 @@ function LeadCard({
                     opacity: moving || etapas.length === 0 ? 0.5 : 1,
                   }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{f.name}</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-faint)', fontWeight: 600 }}>
+                  <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{f.name}</span>
+                  <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', fontWeight: 600 }}>
                     {etapas.length > 0 ? `→ ${etapas[0]!.name}` : 'sem etapas'}
                   </span>
                 </button>
@@ -721,7 +721,7 @@ function LeadCard({
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',
                   borderRadius: 'var(--radius-field-token)',
-                  boxShadow: '0 10px 28px -10px rgba(34,22,25,.28)',
+                  boxShadow: 'var(--shadow-popover)',
                   display: 'flex', flexDirection: 'column', gap: 2,
                 }}
               >
@@ -746,7 +746,7 @@ function LeadCard({
         </div>
 
         {/* Nome */}
-        <p style={{ fontSize: 13, fontWeight: 800, color: 'var(--text)', lineHeight: 1.3, marginBottom: 5 }}>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', lineHeight: 1.3, marginBottom: 5 }}>
           {lead.name}
         </p>
 
@@ -754,21 +754,21 @@ function LeadCard({
         {lead.phone && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
             <Phone size={10} color="var(--text-faint)" />
-            <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{lead.phone}</span>
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{lead.phone}</span>
           </div>
         )}
         {lead.email && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
             <Mail size={10} color="var(--text-faint)" />
-            <span style={{ fontSize: 11.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
               {lead.email}
             </span>
           </div>
         )}
         {lead.social_media && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-            <span style={{ fontSize: 10, color: 'var(--text-faint)', fontWeight: 700 }}>@</span>
-            <span style={{ fontSize: 11.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
+            <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)', fontWeight: 700 }}>@</span>
+            <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>
               {lead.social_media}
             </span>
           </div>
@@ -780,7 +780,7 @@ function LeadCard({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {procNames.slice(0, 2).map(name => (
                 <span key={name} style={{
-                  fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 99,
+                  fontSize: 'var(--text-overline)', fontWeight: 600, padding: '2px 7px', borderRadius: 99,
                   background: 'var(--brand-soft)', color: 'var(--brand)',
                   border: '1px solid var(--brand-soft-border)',
                 }}>
@@ -789,7 +789,7 @@ function LeadCard({
               ))}
               {procNames.length > 2 && (
                 <span style={{
-                  fontSize: 10.5, fontWeight: 600, padding: '2px 7px', borderRadius: 99,
+                  fontSize: 'var(--text-overline)', fontWeight: 600, padding: '2px 7px', borderRadius: 99,
                   background: 'var(--bg-app)', color: 'var(--text-faint)',
                   border: '1px solid var(--border)',
                 }}>
@@ -799,7 +799,7 @@ function LeadCard({
             </div>
             {formattedValue && (
               <p style={{
-                marginTop: 5, fontSize: 13, fontWeight: 800,
+                marginTop: 5, fontSize: 'var(--text-base-sz)', fontWeight: 800,
                 color: 'var(--brand)', letterSpacing: '-0.01em',
               }}>
                 {formattedValue}
@@ -811,7 +811,7 @@ function LeadCard({
         {/* Notas */}
         {lead.notes && (
           <p style={{
-            fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6,
+            fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 6,
             display: '-webkit-box', WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>
@@ -823,7 +823,7 @@ function LeadCard({
         {lead.branch_name && (
           <div style={{ marginTop: 8 }}>
             <span style={{
-              fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99,
+              fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 7px', borderRadius: 99,
               background: 'var(--bg-app)', color: 'var(--text-muted)',
               border: '1px solid var(--border)',
             }}>
@@ -848,7 +848,7 @@ function LeadCard({
                 style={AGING_STYLE.alert}
               />
             ) : lead.last_interaction_at ? (
-              <span style={{ fontSize: 11, fontWeight: staleLevel === 'warn' ? 700 : 400, color: staleColor }}>
+              <span style={{ fontSize: 'var(--text-2xs)', fontWeight: staleLevel === 'warn' ? 700 : 400, color: staleColor }}>
                 Última interação há {formatDurationShort(lastSecs)}
               </span>
             ) : null}
@@ -857,9 +857,9 @@ function LeadCard({
 
         {/* Footer */}
         <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{ageLabel}</span>
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{ageLabel}</span>
           {lead.client_id ? (
-            <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700 }}>✓ Cliente</span>
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--success)', fontWeight: 700 }}>✓ Cliente</span>
           ) : networkMode ? (
             // Lead de rede converte no painel do inbox (escolhe a unidade de cadastro).
             null
@@ -868,7 +868,7 @@ function LeadCard({
               type="button" onClick={handleConvert}
               style={{
                 display: 'flex', alignItems: 'center', gap: 4,
-                fontSize: 11, fontWeight: 700, color: 'var(--success)',
+                fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--success)',
                 background: 'var(--success-soft)', border: '1px solid var(--success-border)',
                 borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
               }}
@@ -890,7 +890,7 @@ function LeadCard({
         >
           <div className="card" style={{ width: 480, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto' }}
             onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>Converter em cliente</h3>
+            <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>Converter em cliente</h3>
             <ClientForm
               branchId={branchId}
               slug={slug}
@@ -1095,9 +1095,9 @@ export function CRMBoard({
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: stage.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--text)' }}>{stage.name}</span>
+                <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>{stage.name}</span>
                 <span style={{
-                  fontSize: 10.5, fontWeight: 700, minWidth: 18, height: 18,
+                  fontSize: 'var(--text-overline)', fontWeight: 700, minWidth: 18, height: 18,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   background: stageLeads.length > 0 ? bg : 'var(--bg-app)',
                   color: stageLeads.length > 0 ? stage.color : 'var(--text-faint)',
@@ -1158,7 +1158,7 @@ export function CRMBoard({
                   background: isDraggingToThis ? bg : 'transparent',
                   transition: 'all 150ms',
                 }}>
-                  <p style={{ fontSize: 11.5, color: isDraggingToThis ? stage.color : 'var(--text-faint)', fontWeight: isDraggingToThis ? 700 : 400 }}>
+                  <p style={{ fontSize: 'var(--text-xs-sz)', color: isDraggingToThis ? stage.color : 'var(--text-faint)', fontWeight: isDraggingToThis ? 700 : 400 }}>
                     {isDraggingToThis ? 'Soltar aqui' : 'Sem leads'}
                   </p>
                 </div>

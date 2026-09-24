@@ -83,10 +83,10 @@ export function InboxTemplatePicker({
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+            <p style={{ margin: 0, fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
               Enviar template
             </p>
-            <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--text-faint)' }}>
+            <p style={{ margin: '2px 0 0', fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
               {janelaFechada
                 ? 'A janela de 24 horas fechou; só um template aprovado chega agora.'
                 : 'Mensagem pronta, aprovada pela Meta.'}
@@ -99,12 +99,12 @@ export function InboxTemplatePicker({
 
         <div style={{ padding: 18, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {templates === null ? (
-            <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>Carregando…</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0 }}>Carregando…</p>
           ) : templates.length === 0 ? (
             <div style={{
               padding: '10px 12px', borderRadius: 8,
-              background: '#fffbeb', border: '1px solid #fde68a',
-              fontSize: 12.5, color: '#92400e', lineHeight: 1.5,
+              background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+              fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', lineHeight: 1.5,
             }}>
               Nenhum template aprovado ainda. Crie um em <strong>Templates</strong> e envie
               para a aprovação da Meta — a análise costuma sair em até 24 horas.
@@ -120,7 +120,7 @@ export function InboxTemplatePicker({
                     if (t) escolher(t)
                   }}
                   className="field"
-                  style={{ fontSize: 13 }}
+                  style={{ fontSize: 'var(--text-base-sz)' }}
                 >
                   <option value="" disabled>Escolha um template</option>
                   {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -137,7 +137,7 @@ export function InboxTemplatePicker({
                       {sel.variaveis.map(v => (
                         <div key={v} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <code style={{
-                            fontSize: 11, fontWeight: 700, color: 'var(--brand)',
+                            fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--brand)',
                             background: 'var(--brand-soft)', padding: '4px 8px',
                             borderRadius: 6, whiteSpace: 'nowrap', minWidth: 70,
                           }}>
@@ -147,7 +147,7 @@ export function InboxTemplatePicker({
                             value={valores[v] ?? ''}
                             onChange={e => setValores(s => ({ ...s, [v]: e.target.value }))}
                             className="field"
-                            style={{ fontSize: 13, flex: 1 }}
+                            style={{ fontSize: 'var(--text-base-sz)', flex: 1 }}
                             autoFocus={v === sel.variaveis[0]}
                           />
                         </div>
@@ -159,7 +159,7 @@ export function InboxTemplatePicker({
                   <div style={{ background: '#ece5dd', borderRadius: 10, padding: 12 }}>
                     <div style={{
                       background: '#d9fdd3', borderRadius: '10px 10px 2px 10px',
-                      padding: '8px 10px', fontSize: 13, lineHeight: 1.45, color: '#111b21',
+                      padding: '8px 10px', fontSize: 'var(--text-base-sz)', lineHeight: 1.45, color: '#111b21',
                     }}>
                       {sel.header_text && (
                         <p style={{ margin: '0 0 4px', fontWeight: 800 }}>
@@ -170,7 +170,7 @@ export function InboxTemplatePicker({
                         {interpolar(sel.body_text, valores)}
                       </p>
                       {sel.footer_text && (
-                        <p style={{ margin: '6px 0 0', fontSize: 11, color: '#667781' }}>
+                        <p style={{ margin: '6px 0 0', fontSize: 'var(--text-2xs)', color: '#667781' }}>
                           {sel.footer_text}
                         </p>
                       )}
@@ -185,8 +185,8 @@ export function InboxTemplatePicker({
             <div style={{
               display: 'flex', alignItems: 'flex-start', gap: 8,
               padding: '9px 12px', borderRadius: 8,
-              background: '#fef2f2', border: '1px solid #dc262633',
-              fontSize: 12.5, color: '#dc2626', fontWeight: 600,
+              background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
+              fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600,
             }}>
               <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
               <span>{erro}</span>
@@ -200,7 +200,7 @@ export function InboxTemplatePicker({
             display: 'flex', justifyContent: 'flex-end', gap: 8, alignItems: 'center',
           }}>
             {faltando.length > 0 && (
-              <span style={{ fontSize: 11.5, color: 'var(--text-faint)', marginRight: 'auto' }}>
+              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginRight: 'auto' }}>
                 Falta preencher {faltando.join(', ')}
               </span>
             )}

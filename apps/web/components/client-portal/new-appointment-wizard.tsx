@@ -153,7 +153,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
               marginBottom: 4,
             }} />
             <p style={{
-              fontSize:   10.5,
+              fontSize: 'var(--text-overline)',
               fontWeight: s.n === step ? 700 : 500,
               color:      s.n === step ? 'var(--brand)' : 'var(--text-faint)',
               letterSpacing: '0.02em',
@@ -166,7 +166,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
 
       {/* Diagnostic strip — remove after debugging */}
       <div style={{
-        fontSize: 10, color: 'var(--text-faint)', marginBottom: 8,
+        fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginBottom: 8,
         display: 'flex', gap: 12, padding: '4px 0',
       }}>
         <span>React: {mounted ? '✓ ativo' : '○ SSR'}</span>
@@ -177,11 +177,11 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
       {/* --- Step 1: Procedimento ---------------------------------- */}
       {step === 1 && (
         <div>
-          <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 16 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 16 }}>
             Qual procedimento você deseja agendar?
           </p>
           {procedures.length === 0 && (
-            <p style={{ color: 'var(--text-faint)', fontSize: 14, textAlign: 'center', padding: '48px 0' }}>
+            <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)', textAlign: 'center', padding: '48px 0' }}>
               Nenhum procedimento disponível para agendamento online.
             </p>
           )}
@@ -208,15 +208,15 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
                 }}
               >
                 <div>
-                  <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14, marginBottom: 2 }}>
+                  <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)', marginBottom: 2 }}>
                     {p.name}
                   </p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                     {p.duration_min}min
                   </p>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-                  <p style={{ fontSize: 15, fontWeight: 800, color: 'var(--brand)' }}>
+                  <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)' }}>
                     {fmtPrice(p.price)}
                   </p>
                 </div>
@@ -229,11 +229,11 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
       {/* --- Step 2: Profissional ---------------------------------- */}
       {step === 2 && (
         <div>
-          <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 16 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 16 }}>
             Com quem você prefere ser atendido?
           </p>
           {professionals.length === 0 && (
-            <p style={{ color: 'var(--text-faint)', fontSize: 14, textAlign: 'center', padding: '48px 0' }}>
+            <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-base-sz)', textAlign: 'center', padding: '48px 0' }}>
               Nenhum profissional disponível.
             </p>
           )}
@@ -260,11 +260,11 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
                 <div style={{
                   width: 36, height: 36, borderRadius: '50%',
                   background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'var(--brand)', fontWeight: 800, fontSize: 14, flexShrink: 0,
+                  color: 'var(--brand)', fontWeight: 800, fontSize: 'var(--text-base-sz)', flexShrink: 0,
                 }}>
                   {p.name.charAt(0).toUpperCase()}
                 </div>
-                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14 }}>
+                <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
                   {p.name}
                 </p>
               </button>
@@ -276,12 +276,12 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
       {/* --- Step 3: Data e horário -------------------------------- */}
       {step === 3 && (
         <div>
-          <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 16 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 16 }}>
             Escolha a data e o horário disponível.
           </p>
 
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', display: 'block', marginBottom: 6 }}>
               DATA
             </label>
             <input
@@ -296,11 +296,11 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
 
           {date && (
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', display: 'block', marginBottom: 10 }}>
+              <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', display: 'block', marginBottom: 10 }}>
                 HORÁRIOS DISPONÍVEIS
               </label>
               {isPending ? (
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', padding: '16px 0' }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>
                   Carregando horários…
                 </p>
               ) : slots.length > 0 ? (
@@ -320,7 +320,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
                         background:   time === slot ? 'var(--brand-soft)' : 'var(--surface)',
                         color:        time === slot ? 'var(--brand)' : 'var(--text)',
                         fontWeight:   time === slot ? 700 : 500,
-                        fontSize:     13.5,
+                        fontSize: 'var(--text-base-sz)',
                         cursor:       'pointer',
                         transition:   'all 120ms',
                       }}
@@ -331,7 +331,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
                   ))}
                 </div>
               ) : (
-                <p style={{ fontSize: 13, color: 'var(--text-faint)', padding: '16px 0' }}>
+                <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)', padding: '16px 0' }}>
                   Nenhum horário disponível para esta data.
                 </p>
               )}
@@ -343,7 +343,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
       {/* --- Step 4: Confirmar ------------------------------------- */}
       {step === 4 && procedure && prof && date && time && (
         <div>
-          <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 20 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 20 }}>
             Confirme os detalhes do seu agendamento.
           </p>
 
@@ -362,7 +362,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
               background:   'var(--warning-soft)',
               borderRadius: 8,
               padding:      '10px 14px',
-              fontSize:     13,
+              fontSize: 'var(--text-base-sz)',
               fontWeight:   700,
               marginBottom: 16,
             }}>
@@ -375,7 +375,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
             onClick={handleConfirm}
             disabled={isPending}
             className="btn-primary"
-            style={{ width: '100%', justifyContent: 'center', fontSize: 14 }}
+            style={{ width: '100%', justifyContent: 'center', fontSize: 'var(--text-base-sz)' }}
           >
             {isPending ? 'Agendando…' : 'Confirmar agendamento'}
           </button>
@@ -394,9 +394,9 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
       padding:        '9px 0',
       borderBottom:   '1px solid var(--hairline)',
     }}>
-      <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontWeight: 500 }}>{label}</span>
       <span style={{
-        fontSize:   14,
+        fontSize: 'var(--text-base-sz)',
         fontWeight: accent ? 800 : 600,
         color:      accent ? 'var(--brand)' : 'var(--text)',
       }}>

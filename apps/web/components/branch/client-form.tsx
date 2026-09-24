@@ -96,13 +96,13 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
           <select className="field" value={unitId} onChange={e => setUnitId(e.target.value)} required>
             {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
-          <span style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 4, display: 'block' }}>
+          <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 4, display: 'block' }}>
             O cliente pode ser atendido em qualquer unidade.
           </span>
         </Field>
       ) : branchName ? (
         <div style={{
-          fontSize: 12.5, color: 'var(--text-muted)',
+          fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
           background: 'var(--bg-app)', border: '1px solid var(--hairline)',
           borderRadius: 10, padding: '8px 12px', display: 'flex', gap: 6, alignItems: 'center',
         }}>
@@ -195,7 +195,7 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
               <TagBadge
                 key={tag}
                 label={unitTagName(tag)}
-                style={{ bg: '#e7f0fc', color: '#3b6cbf' }}
+                style={{ bg: 'var(--info-soft)', color: 'var(--info)' }}
                 onRemove={() => toggleTag(tag)}
               />
             ))}

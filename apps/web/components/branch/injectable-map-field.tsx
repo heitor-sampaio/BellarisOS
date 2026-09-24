@@ -615,7 +615,7 @@ function PointRow({
         <span style={{
           width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
           background: 'var(--brand)', color: 'var(--on-brand)',
-          fontSize: 10, fontWeight: 'var(--weight-extrabold)',
+          fontSize: 'var(--text-overline)', fontWeight: 'var(--weight-extrabold)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {index + 1}
@@ -753,7 +753,7 @@ function SegVista({
               padding: '5px 14px', border: 'none', cursor: 'pointer',
               fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)',
               background: ativo ? 'var(--brand)' : 'transparent',
-              color:      ativo ? '#fff'         : 'var(--text-muted)',
+              color:      ativo ? 'var(--on-brand)'         : 'var(--text-muted)',
               transition: 'background 120ms',
             }}
           >

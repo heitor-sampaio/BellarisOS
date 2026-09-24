@@ -12,7 +12,7 @@ import { useSidebar } from '@/components/shared/sidebar-context'
 import { ADMIN_MENU, menuSectionsFor } from '@/lib/menu'
 import type { ResolvedPermissions } from '@estetica-os/types'
 
-const SIDEBAR_GRADIENT = 'linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%)'
+const SIDEBAR_GRADIENT = 'var(--gradient-brand)'
 
 // A lista de itens e o que os libera vive em lib/menu.ts, para a tela de cargos
 // poder pré-visualizar o menu sem virar uma segunda cópia da regra.

@@ -127,7 +127,7 @@ export function MarketingAttribution({ leads }: { leads: AttributedLead[] }) {
                   <td style={{ ...cellStyle, color: 'var(--text-muted)' }}>
                     {lead.utm_campaign ?? '—'}
                   </td>
-                  <td style={{ ...cellStyle, fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)' }}>
+                  <td style={{ ...cellStyle, fontFamily: 'monospace', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
                     {truncate(lead.fbclid) ?? truncate(lead.gclid) ?? '—'}
                   </td>
                   <td style={{ ...cellStyle, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>

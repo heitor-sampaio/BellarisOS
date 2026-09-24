@@ -572,7 +572,7 @@ export function PainelDoNo({
         <div className="auto-rodape" style={{ padding: 16, borderTop: '1px solid var(--hairline)' }}>
           <button
             type="button" onClick={onExcluir} className="btn-ghost"
-            style={{ color: '#b42318', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
+            style={{ color: 'var(--danger)', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
           >
             <Trash2 size={14} /> Remover do fluxo
           </button>
@@ -695,7 +695,7 @@ function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode
     <label style={{ display: 'block' }}>
       <span style={{
         display: 'block',
-        fontSize: 11, fontWeight: 'var(--weight-bold)', color: 'var(--text-soft)',
+        fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-soft)',
         marginBottom: 5,
       }}>
         {rotulo}
@@ -707,7 +707,7 @@ function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode
 
 function Dica({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
+    <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 5, lineHeight: 1.5 }}>
       {children}
     </p>
   )
@@ -754,10 +754,10 @@ function SelectDeCampo({
           placeholder="evento.dados.algumCampo"
           // O mesmo vermelho da lista de problemas do editor: um terceiro tom
           // de erro na mesma tela seria ruído.
-          style={erro ? { borderColor: '#b42318' } : undefined}
+          style={erro ? { borderColor: 'var(--danger)' } : undefined}
         />
         {erro && (
-          <p style={{ fontSize: 10.5, color: '#b42318', lineHeight: 1.5 }}>{erro}</p>
+          <p style={{ fontSize: 'var(--text-overline)', color: 'var(--danger)', lineHeight: 1.5 }}>{erro}</p>
         )}
         <Dica>
           Um caminho (<code>evento.dados.texto</code>) ou uma expressão:{' '}
@@ -768,7 +768,7 @@ function SelectDeCampo({
         {!somenteLeitura && (
           <button
             type="button" className="btn-ghost"
-            style={{ alignSelf: 'flex-start', fontSize: 11, color: 'var(--text-muted)' }}
+            style={{ alignSelf: 'flex-start', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}
             onClick={() => { setLivre(false); onChange('') }}
           >
             Voltar para a lista
@@ -851,7 +851,7 @@ function TextoComVariaveis({
       {!somenteLeitura && (
         <select
           className="field"
-          style={{ marginTop: 6, fontSize: 11 }}
+          style={{ marginTop: 6, fontSize: 'var(--text-2xs)' }}
           value=""
           onChange={e => { inserir(e.target.value); e.target.value = '' }}
         >
@@ -921,7 +921,7 @@ function EditorDeGrupo({
             {!somenteLeitura && (
               <button
                 type="button" className="btn-ghost"
-                style={{ alignSelf: 'flex-start', fontSize: 11, color: 'var(--text-muted)' }}
+                style={{ alignSelf: 'flex-start', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}
                 onClick={() => onChange({ ...grupo, regras: regras.filter((_, j) => j !== i) })}
               >
                 Remover regra

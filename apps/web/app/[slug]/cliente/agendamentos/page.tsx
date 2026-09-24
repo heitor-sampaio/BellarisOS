@@ -15,11 +15,11 @@ const STATUS_LABEL: Record<string, string> = {
 
 const STATUS_COLOR: Record<string, string> = {
   SCHEDULED:   'var(--brand)',
-  CONFIRMED:   '#22c55e',
-  IN_PROGRESS: '#f59e0b',
+  CONFIRMED:   'var(--success)',
+  IN_PROGRESS: 'var(--warning)',
   COMPLETED:   'var(--text-muted)',
-  CANCELLED:   '#ef4444',
-  NO_SHOW:     '#ef4444',
+  CANCELLED:   'var(--danger)',
+  NO_SHOW:     'var(--danger)',
 }
 
 type Appt = {
@@ -53,7 +53,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
     <div>
       {/* -- Header ----------------------------------------------- */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+        <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
           Agenda
         </h1>
         <Link
@@ -64,12 +64,12 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
             gap:            6,
             padding:        '9px 16px',
             background:     'var(--brand)',
-            color:          '#fff',
+            color:          'var(--on-brand)',
             borderRadius:   10,
             fontWeight:     700,
-            fontSize:       13,
+            fontSize: 'var(--text-base-sz)',
             textDecoration: 'none',
-            boxShadow:      '0 2px 8px var(--brand-shadow, rgba(195,77,107,0.35))',
+            boxShadow: 'var(--shadow-brand-btn)',
           }}
         >
           <Plus size={14} />
@@ -106,10 +106,10 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
           }}>
             <CalendarDays size={24} color="var(--brand)" />
           </div>
-          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
             Nenhum agendamento ainda
           </p>
-          <p style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 24 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', marginBottom: 24 }}>
             Escolha um procedimento e agende sua consulta.
           </p>
           <Link href={`/${slug}/cliente/agendamentos/novo`} className="btn-primary">
@@ -126,7 +126,7 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <p style={{
-      fontSize:      11,
+      fontSize: 'var(--text-2xs)',
       fontWeight:    700,
       color:         'var(--text-muted)',
       letterSpacing: '0.08em',
@@ -168,7 +168,7 @@ function AppointmentCard({ appt, highlight = false }: { appt: Appt; highlight?: 
           flexShrink:   0,
           padding:      '3px 10px',
           borderRadius: 'var(--radius-chip-token)',
-          fontSize:     10.5,
+          fontSize: 'var(--text-overline)',
           fontWeight:   700,
           background:   `${color}18`,
           color,
@@ -180,20 +180,20 @@ function AppointmentCard({ appt, highlight = false }: { appt: Appt; highlight?: 
 
       {/* Details row */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: 'var(--text-muted)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <User size={11} />
           {appt.professionals?.name ?? 'Profissional'}
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: 'var(--text-muted)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <CalendarDays size={11} />
           {dt.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: 'var(--text-muted)' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           <Clock3 size={11} />
           {dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
         </span>
         {appt.price > 0 && (
-          <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--text)', marginLeft: 'auto' }}>
+          <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)', marginLeft: 'auto' }}>
             {price}
           </span>
         )}

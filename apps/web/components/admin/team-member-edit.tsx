@@ -173,7 +173,7 @@ function ScopeChip({ active, onClick, label }: { active: boolean; onClick: () =>
         borderRadius: 'var(--radius-field-token)',
         border: `1.5px solid ${active ? 'var(--brand)' : 'var(--border)'}`,
         background: active ? 'var(--brand)' : 'var(--surface)',
-        color: active ? '#fff' : 'var(--text-muted)',
+        color: active ? 'var(--on-brand)' : 'var(--text-muted)',
         fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)',
         transition: 'background 120ms, border 120ms',
       }}

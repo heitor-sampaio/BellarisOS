@@ -54,7 +54,7 @@ export function ClientPortalNav({ slug }: Props) {
           >
             <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
             <span style={{
-              fontSize:      10,
+              fontSize: 'var(--text-overline)',
               fontWeight:    active ? 700 : 500,
               letterSpacing: '0.02em',
             }}>

@@ -34,10 +34,10 @@ interface PlanoItem {
 
 const STATUS_LABEL: Record<string, { label: string; cor: string; fundo: string }> = {
   DRAFT:     { label: 'Rascunho',   cor: 'var(--text-muted)', fundo: 'var(--bg-app)' },
-  PROPOSED:  { label: 'Aguardando aceite', cor: '#92400e', fundo: '#fef3c7' },
-  ACCEPTED:  { label: 'Fechado',    cor: '#1f6b47', fundo: '#f0faf4' },
-  COMPLETED: { label: 'Concluído',  cor: '#1f6b47', fundo: '#f0faf4' },
-  CANCELLED: { label: 'Cancelado',  cor: '#b91c1c', fundo: '#fef2f2' },
+  PROPOSED:  { label: 'Aguardando aceite', cor: 'var(--warning)', fundo: 'var(--warning-soft)' },
+  ACCEPTED:  { label: 'Fechado',    cor: 'var(--success)', fundo: 'var(--success-bg)' },
+  COMPLETED: { label: 'Concluído',  cor: 'var(--success)', fundo: 'var(--success-bg)' },
+  CANCELLED: { label: 'Cancelado',  cor: 'var(--danger)', fundo: 'var(--danger-soft)' },
 }
 
 function fmtBRL(v: number) {
@@ -205,18 +205,18 @@ export function PlanejamentoTratamento({
   if (!aberto) return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {erro && (
-        <p style={{ fontSize: 12.5, color: '#dc2626', fontWeight: 600, padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>{erro}</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>{erro}</p>
       )}
 
       {planos === null ? (
-        <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Carregando planos…</p>
+        <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Carregando planos…</p>
       ) : planos.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '32px 16px' }}>
           <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-squircle)', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ClipboardList size={20} style={{ color: 'var(--text-faint)' }} />
           </div>
-          <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum plano ainda</p>
-          <p style={{ fontSize: 12.5, color: 'var(--text-faint)', textAlign: 'center', maxWidth: 320 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>Nenhum plano ainda</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', maxWidth: 320 }}>
             O plano de tratamento é do cliente: pode ser montado agora, revisado depois e fechado quando ele decidir.
           </p>
         </div>
@@ -233,26 +233,26 @@ export function PlanejamentoTratamento({
             >
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>
+                  <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>
                     {p.sessoes} sessão{p.sessoes !== 1 ? 'ões' : ''}
                   </span>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
+                  <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
                     {st.label}
                   </span>
                   {p.origemId && (
-                    <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>· de uma avaliação</span>
+                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>· de uma avaliação</span>
                   )}
                 </div>
                 {p.notes && (
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {p.notes}
                   </p>
                 )}
-                <p style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 2 }}>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 2 }}>
                   {new Date(p.criadoEm).toLocaleDateString('pt-BR')}
                 </p>
               </div>
-              <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>{fmtBRL(p.total)}</span>
+              <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flexShrink: 0 }}>{fmtBRL(p.total)}</span>
             </button>
           )
         })
@@ -260,7 +260,7 @@ export function PlanejamentoTratamento({
 
       {podeEditar && (
         <button type="button" onClick={novoPlano} disabled={carregando} className="btn-primary"
-          style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
+          style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
           {carregando ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           Novo plano
         </button>
@@ -281,24 +281,24 @@ export function PlanejamentoTratamento({
             não é a desta tela — a do cliente, dentro da tela do plano dele. */}
         {!(planIdInicial && !controlado) && (
           <button type="button" onClick={() => { pedirAbrir(null); setErro(null) }} className="btn-ghost"
-            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, padding: '5px 10px' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }}>
             <ChevronLeft size={14} /> Planos
           </button>
         )}
-        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
+        <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '3px 10px', borderRadius: 'var(--radius-chip-token)', color: st.cor, background: st.fundo }}>
           {st.label}
         </span>
       </div>
 
       {erro && (
-        <p style={{ fontSize: 12.5, color: '#dc2626', fontWeight: 600, padding: '8px 12px', background: '#fef2f2', borderRadius: 8 }}>{erro}</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600, padding: '8px 12px', background: 'var(--danger-soft)', borderRadius: 8 }}>{erro}</p>
       )}
 
       {/* Sem cliente: o plano existe pelo nome, e ganha dono quando houver um. */}
       {!clientId && podeEditar && (
         <div className="card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {clienteLigado ? (
-            <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 700, color: '#1f6b47' }}>
+            <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--success)' }}>
               <UserCheck size={14} /> Ligado a {clienteLigado.nome}
             </p>
           ) : ligando ? (
@@ -317,22 +317,22 @@ export function PlanejamentoTratamento({
                     padding: '8px 12px', borderRadius: 8, cursor: 'pointer', textAlign: 'left',
                     border: '1px solid var(--border)', background: 'var(--surface)',
                   }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{c.name}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.phone ?? ''}</span>
+                  <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{c.name}</span>
+                  <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>{c.phone ?? ''}</span>
                 </button>
               ))}
               <button type="button" onClick={() => { setLigando(false); setTermoCliente(''); setAchados([]) }}
-                className="btn-ghost" style={{ alignSelf: 'flex-start', fontSize: 12 }}>
+                className="btn-ghost" style={{ alignSelf: 'flex-start', fontSize: 'var(--text-sm-sz)' }}>
                 Cancelar
               </button>
             </>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                 Este plano ainda não tem cliente. Aceitar exige um.
               </span>
               <button type="button" onClick={() => setLigando(true)} className="btn-ghost"
-                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm-sz)' }}>
                 <UserPlus size={14} /> Ligar a um cliente
               </button>
             </div>
@@ -359,13 +359,13 @@ export function PlanejamentoTratamento({
               na sala e o valor fica em aberto, para ser recebido no check-in.
               Quem também opera caixa pode cobrar ali mesmo, no wizard. */}
           <button type="button" onClick={fecharAgora} disabled={salvando} className="btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
             {salvando ? <Loader2 size={14} className="animate-spin" /> : <CreditCard size={14} />}
             Aceitar plano
           </button>
           {aberto.status === 'DRAFT' && (
             <button type="button" onClick={enviarParaRecepcao} disabled={salvando} className="btn-ghost"
-              style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'var(--text-base-sz)' }}>
               <Send size={14} /> Cliente vai pensar
             </button>
           )}
@@ -373,7 +373,7 @@ export function PlanejamentoTratamento({
       )}
 
       {fechado && aberto.status !== 'CANCELLED' && (
-        <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#1f6b47', fontWeight: 700 }}>
+        <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 700 }}>
           <CheckCircle2 size={14} /> Plano aceito. O que estiver em aberto é recebido no check-in do atendimento.
         </p>
       )}
@@ -386,7 +386,7 @@ export function PlanejamentoTratamento({
         >
           <div className="card" style={{ width: 700, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
             <div className="esconde-impressao" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)' }}>Checkout</h3>
+              <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Checkout</h3>
               <button type="button" onClick={() => setCheckout(null)} className="btn-ghost" style={{ padding: '6px 10px' }}>Fechar</button>
             </div>
             <CheckoutWizard

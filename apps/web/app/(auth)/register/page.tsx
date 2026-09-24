@@ -16,7 +16,7 @@ export default function RegisterPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 20px',
         }}>
-          <span style={{ fontSize: 22 }}>✉️</span>
+          <span style={{ fontSize: 'var(--text-name)' }}>✉️</span>
         </div>
         <h1 style={{
           fontSize: 'var(--text-title)',

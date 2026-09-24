@@ -23,7 +23,7 @@ interface Props {
 function Label({ children }: { children: React.ReactNode }) {
   return (
     <label style={{
-      fontSize:      10.5,
+      fontSize: 'var(--text-overline)',
       fontWeight:    700,
       color:         'var(--text-muted)',
       letterSpacing: '0.06em',
@@ -58,7 +58,7 @@ export function EditProfileForm({ client }: Props) {
       {/* Section header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <p style={{
-          fontSize:      11,
+          fontSize: 'var(--text-2xs)',
           fontWeight:    700,
           color:         'var(--text-muted)',
           letterSpacing: '0.08em',
@@ -79,7 +79,7 @@ export function EditProfileForm({ client }: Props) {
               border:      '1px solid var(--border)',
               background:  'var(--surface)',
               color:       'var(--text-muted)',
-              fontSize:    12,
+              fontSize: 'var(--text-sm-sz)',
               fontWeight:  600,
               cursor:      'pointer',
             }}
@@ -227,7 +227,7 @@ export function EditProfileForm({ client }: Props) {
               background:   'var(--warning-soft)',
               borderRadius: 8,
               padding:      '8px 12px',
-              fontSize:     12.5,
+              fontSize: 'var(--text-sm-sz)',
               fontWeight:   700,
             }}>
               {state.error}
@@ -236,11 +236,11 @@ export function EditProfileForm({ client }: Props) {
 
           {state?.success && (
             <p style={{
-              color:        '#22c55e',
-              background:   '#22c55e18',
+              color:        'var(--success)',
+              background:   'color-mix(in srgb, var(--success) 9%, transparent)',
               borderRadius: 8,
               padding:      '8px 12px',
-              fontSize:     12.5,
+              fontSize: 'var(--text-sm-sz)',
               fontWeight:   700,
             }}>
               Dados atualizados com sucesso!
@@ -262,7 +262,7 @@ export function EditProfileForm({ client }: Props) {
                 background:  'var(--surface)',
                 color:       'var(--text-muted)',
                 fontWeight:  600,
-                fontSize:    13,
+                fontSize: 'var(--text-base-sz)',
                 cursor:      'pointer',
               }}
             >
@@ -280,11 +280,11 @@ export function EditProfileForm({ client }: Props) {
                 borderRadius: 10,
                 border:     'none',
                 background: 'var(--brand)',
-                color:      '#fff',
+                color:      'var(--on-brand)',
                 fontWeight: 700,
-                fontSize:   13,
+                fontSize: 'var(--text-base-sz)',
                 cursor:     'pointer',
-                boxShadow:  '0 2px 8px rgba(195,77,107,0.35)',
+                boxShadow: 'var(--shadow-brand-btn)',
               }}
             >
               <Check size={13} />
@@ -306,7 +306,7 @@ function Row({ label, value }: { label: string; value: string }) {
       borderBottom:  '1px solid var(--hairline)',
     }}>
       <span style={{
-        fontSize:      10.5,
+        fontSize: 'var(--text-overline)',
         fontWeight:    700,
         color:         'var(--text-muted)',
         letterSpacing: '0.06em',
@@ -315,7 +315,7 @@ function Row({ label, value }: { label: string; value: string }) {
       }}>
         {label}
       </span>
-      <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }}>{value}</span>
+      <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 600, color: 'var(--text)' }}>{value}</span>
     </div>
   )
 }

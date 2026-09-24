@@ -147,8 +147,8 @@ function QuadroInterno({
     target: l.para,
     sourceHandle: l.saida ?? null,
     animated: false,
-    style: { stroke: 'var(--border-strong, #d9c7c2)', strokeWidth: 1.5 },
-    markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--border-strong, #d9c7c2)' },
+    style: { stroke: 'var(--border-strong, var(--border))', strokeWidth: 1.5 },
+    markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--border-strong, var(--border))' },
   })), [grafo.ligacoes])
 
   const aoMudarNodes = useCallback((mudancas: NodeChange[]) => {

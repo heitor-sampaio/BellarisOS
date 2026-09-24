@@ -124,7 +124,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
 
   return (
     <div>
-      <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 20 }}>
+      <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 20 }}>
         Histórico
       </h1>
       <HistoricoTabs

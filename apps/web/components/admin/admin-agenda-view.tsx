@@ -49,12 +49,12 @@ const HOURS      = Array.from({ length: GRID_END - GRID_START }, (_, i) => i + G
 const GRID_H     = HOURS.length * HOUR_H
 
 const STATUS_STYLE: Record<string, { bg: string; border: string; text: string; label: string }> = {
-  SCHEDULED:   { bg: '#eff6ff', border: '#93c5fd', text: '#1d4ed8', label: 'Agendado'      },
-  CONFIRMED:   { bg: '#f5f3ff', border: '#c4b5fd', text: '#5b21b6', label: 'Confirmado'     },
-  IN_PROGRESS: { bg: '#fffbeb', border: '#fcd34d', text: '#b45309', label: 'Em atendimento' },
-  COMPLETED:   { bg: '#f0fdf4', border: '#86efac', text: '#15803d', label: 'Concluído'      },
-  CANCELLED:   { bg: '#f9fafb', border: '#d1d5db', text: '#9ca3af', label: 'Cancelado'      },
-  NO_SHOW:     { bg: '#fef2f2', border: '#fca5a5', text: '#b91c1c', label: 'Não compareceu' },
+  SCHEDULED:   { bg: 'var(--info-soft)', border: 'var(--info-border)', text: 'var(--info)', label: 'Agendado'      },
+  CONFIRMED:   { bg: 'var(--success-bg)', border: 'var(--cat-4-soft)', text: 'var(--cat-4)', label: 'Confirmado'     },
+  IN_PROGRESS: { bg: 'var(--warning-soft)', border: 'var(--warning-border)', text: 'var(--warning)', label: 'Em atendimento' },
+  COMPLETED:   { bg: 'var(--success-bg)', border: 'var(--success-border)', text: 'var(--success)', label: 'Concluído'      },
+  CANCELLED:   { bg: 'var(--bg-app)', border: 'var(--border)', text: 'var(--text-faint)', label: 'Cancelado'      },
+  NO_SHOW:     { bg: 'var(--danger-soft)', border: 'var(--danger-border)', text: 'var(--danger)', label: 'Não compareceu' },
 }
 
 // -- Helpers de data -----------------------------------------------------------
@@ -139,7 +139,7 @@ function DayGrid({ branches, appointments, onSelecionar }: { branches: Branch[];
           {branches.map(b => (
             <div key={b.id} style={{
               padding: '10px 12px',
-              fontSize: 11, fontWeight: 700, color: 'var(--text)',
+              fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text)',
               textAlign: 'center',
               borderLeft: '1px solid var(--hairline)',
               letterSpacing: '0.02em',
@@ -153,7 +153,7 @@ function DayGrid({ branches, appointments, onSelecionar }: { branches: Branch[];
         <div style={{
           display: 'grid',
           gridTemplateColumns: `${TIME_COL}px repeat(${branches.length}, 1fr)`,
-          background: '#fff',
+          background: 'var(--surface)',
         }}>
 
           {/* Coluna de horas */}
@@ -165,7 +165,7 @@ function DayGrid({ branches, appointments, onSelecionar }: { branches: Branch[];
                 paddingTop: 6,
                 paddingRight: 8,
                 justifyContent: 'flex-end',
-                fontSize: 10, fontWeight: 600,
+                fontSize: 'var(--text-overline)', fontWeight: 600,
                 color: 'var(--text-muted)',
                 letterSpacing: '0.05em',
                 borderTop: '1px solid var(--hairline)',
@@ -259,13 +259,13 @@ function DayGrid({ branches, appointments, onSelecionar }: { branches: Branch[];
                         display:      'block',
                       }}
                     >
-                      <div style={{ fontSize: 11, fontWeight: 700, color: st.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: st.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {a.procedures?.name ?? '—'}
                       </div>
-                      <div style={{ fontSize: 10, color: st.text, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+                      <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                         {a.clients?.name ?? '—'}
                       </div>
-                      <div style={{ fontSize: 10, color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+                      <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                         {a.users?.name ?? '—'}
                       </div>
                     </button>
@@ -295,16 +295,16 @@ function WeekGrid({
   const DAY_NAMES = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 
   const STATUS_DOT: Record<string, string> = {
-    SCHEDULED:   '#3b82f6',
-    CONFIRMED:   '#7c3aed',
-    IN_PROGRESS: '#d97706',
-    COMPLETED:   '#16a34a',
-    CANCELLED:   '#9ca3af',
-    NO_SHOW:     '#dc2626',
+    SCHEDULED:   'var(--info)',
+    CONFIRMED:   'var(--cat-4)',
+    IN_PROGRESS: 'var(--warning)',
+    COMPLETED:   'var(--success)',
+    CANCELLED:   'var(--text-faint)',
+    NO_SHOW:     'var(--danger)',
   }
 
   return (
-    <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: '#fff' }}>
+    <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
       <div style={{ minWidth: 700, display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
 
         {/* Cabeçalho dos dias */}
@@ -320,15 +320,15 @@ function WeekGrid({
                 borderRight: i < 6 ? '1px solid var(--hairline)' : 'none',
                 borderBottom: '1px solid var(--border)',
                 cursor: 'pointer',
-                background: isToday ? '#fdf2f4' : 'var(--surface)',
+                background: isToday ? 'var(--bg-app)' : 'var(--surface)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                   {DAY_NAMES[i]}
                 </span>
                 <span style={{
-                  fontSize: 16, fontWeight: 800,
+                  fontSize: 'var(--text-card-title)', fontWeight: 800,
                   color: isToday ? 'var(--brand)' : 'var(--text)',
                   letterSpacing: '-0.02em',
                 }}>
@@ -336,7 +336,7 @@ function WeekGrid({
                 </span>
               </div>
               {dayAppts.length > 0 && (
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+                <div style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', marginTop: 2 }}>
                   {dayAppts.length} horário{dayAppts.length !== 1 ? 's' : ''}
                 </div>
               )}
@@ -357,13 +357,13 @@ function WeekGrid({
                 minHeight: 200,
                 borderRight: i < 6 ? '1px solid var(--hairline)' : 'none',
                 padding: '8px 6px',
-                background: isToday ? '#fffbfb' : '#fff',
+                background: isToday ? 'var(--surface)' : 'var(--surface)',
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', gap: 3,
               }}
             >
               {dayAppts.length === 0 ? (
-                <div style={{ fontSize: 11, color: 'var(--text-faint)', padding: '8px 4px' }}>—</div>
+                <div style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', padding: '8px 4px' }}>—</div>
               ) : dayAppts.map(a => {
                 const st  = STATUS_STYLE[a.status] ?? STATUS_STYLE.SCHEDULED!
                 const t   = new Date(a.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
@@ -380,18 +380,18 @@ function WeekGrid({
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: st.text }}>{t}</span>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: st.text }}>{t}</span>
+                      <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {branches.find(b => b.id === a.branch_id)?.name ?? ''}
                       </span>
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: st.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: st.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {a.procedures?.name ?? '—'}
                     </div>
-                    <div style={{ fontSize: 10, fontWeight: 600, color: st.text, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+                    <div style={{ fontSize: 'var(--text-overline)', fontWeight: 600, color: st.text, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                       {a.clients?.name ?? '—'}
                     </div>
-                    <div style={{ fontSize: 10, color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
+                    <div style={{ fontSize: 'var(--text-overline)', color: st.text, opacity: 0.6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
                       {a.users?.name ?? '—'}
                     </div>
                   </div>
@@ -413,7 +413,7 @@ function StatusLegend() {
       {Object.entries(STATUS_STYLE).map(([, st]) => (
         <div key={st.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <div style={{ width: 10, height: 10, borderRadius: 2, background: st.bg, border: `1px solid ${st.border}` }} />
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{st.label}</span>
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 500 }}>{st.label}</span>
         </div>
       ))}
     </div>
@@ -470,10 +470,10 @@ export function AdminAgendaView({
 
       {/* Cabeçalho */}
       <div>
-        <p style={{ fontSize: 10, fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>
+        <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>
           ✦ Rede
         </p>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: 0, letterSpacing: '-0.02em' }}>
+        <h1 style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', margin: 0, letterSpacing: '-0.02em' }}>
           Agenda
         </h1>
       </div>
@@ -493,7 +493,7 @@ export function AdminAgendaView({
           </button>
 
           <div style={{ textAlign: 'center', minWidth: 220 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
               {periodLabel}
             </span>
           </div>
@@ -511,7 +511,7 @@ export function AdminAgendaView({
             <button
               onClick={() => navigate(todayStr)}
               className="btn-ghost"
-              style={{ fontSize: 12, padding: '5px 12px', fontWeight: 600 }}
+              style={{ fontSize: 'var(--text-sm-sz)', padding: '5px 12px', fontWeight: 600 }}
             >
               Hoje
             </button>
@@ -547,7 +547,7 @@ export function AdminAgendaView({
               marcar nada: para isso era preciso entrar no portal de uma delas. */}
           {podeAgendar && (
             <button type="button" onClick={() => setAgendando(true)} className="btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-base-sz)' }}>
               <Plus size={14} /> Agendar
             </button>
           )}
@@ -558,21 +558,21 @@ export function AdminAgendaView({
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {[
           { label: 'Total',          value: total,     color: 'var(--brand)' },
-          { label: 'Confirmados',    value: confirmed, color: '#7c3aed' },
-          { label: 'Em atendimento', value: inProg,    color: '#d97706' },
-          { label: 'Concluídos',     value: completed, color: '#16a34a' },
-          { label: 'Cancelamentos',  value: cancelled, color: '#dc2626' },
+          { label: 'Confirmados',    value: confirmed, color: 'var(--cat-4)' },
+          { label: 'Em atendimento', value: inProg,    color: 'var(--warning)' },
+          { label: 'Concluídos',     value: completed, color: 'var(--success)' },
+          { label: 'Cancelamentos',  value: cancelled, color: 'var(--danger)' },
         ].map(k => (
           <div key={k.label} style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 14px',
-            background: '#fff',
+            background: 'var(--surface)',
             border: '1px solid var(--border)',
             borderRadius: 8,
             flex: '1 1 100px',
           }}>
             <span style={{ fontSize: 18, fontWeight: 800, color: k.color }}>{k.value}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{k.label}</span>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 600, color: 'var(--text-muted)' }}>{k.label}</span>
           </div>
         ))}
       </div>
