@@ -442,7 +442,7 @@ export function AdminDashboardView({
 
       {/* -- KPI cards -- */}
       {(can('financial') || can('agenda') || can('clients')) && (
-      <div className="kpi-grid-auto" style={{ gap: 14 }}>
+      <div className="kpi-grid-auto" style={{ gap: 16 }}>
         {can('financial') && <KpiCard
           brand
           label="Receita bruta do mês"
@@ -486,7 +486,7 @@ export function AdminDashboardView({
 
       {/* -- Middle: ranking + hoje -- */}
       {(can('reports') || can('financial') || can('agenda') || can('stock')) && (
-      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 16, alignItems: 'start' }}>
+      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: 16 }}>
 
         {/* Ranking de filiais + gráfico de evolução */}
         {(can('reports') || can('financial')) && (
@@ -601,8 +601,14 @@ export function AdminDashboardView({
             />
           </div>
           {todayByBranch.length === 0 ? (
-            <div style={{ padding: '28px 18px', textAlign: 'center' }}>
-              <CheckCircle2 size={28} color="var(--border)" style={{ margin: '0 auto 10px' }} />
+            // Vazio em UMA linha, ícone ao lado do texto. Empilhado e
+            // centralizado, este estado ocupava a altura de quatro filiais
+            // listadas — e como a coluna da direita é mais curta que a
+            // esquerda, o branco do card somava ao branco do fim da coluna.
+            <div style={{
+              padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 9,
+            }}>
+              <CheckCircle2 size={16} color="var(--text-faint)" style={{ flexShrink: 0 }} />
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum agendamento para hoje</p>
             </div>
           ) : (
@@ -648,7 +654,13 @@ export function AdminDashboardView({
             critical: { label: 'Emergência', bg: 'var(--danger-soft)', border: 'var(--danger-border)', dot: 'var(--danger)', text: 'var(--danger)' },
           }[stockStatus]
           return (
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            // `flex: 1` fecha a coluna na mesma altura da esquerda. A direita
+            // tem menos conteúdo — gráfico e ranking de filiais somam bem mais
+            // que dois cards —, e a sobra virava uma faixa nude de uns 200px
+            // ao lado do ranking: a "coluna em branco". Com o card ocupando o
+            // que resta, as duas colunas terminam juntas e o respiro fica
+            // dentro de uma borda, que é o que o olho lê como acabado.
+            <div className="card" style={{ padding: 0, overflow: 'hidden', flex: 1 }}>
               {/* Header */}
               <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -896,7 +908,7 @@ export function AdminDashboardView({
       {can('procedures') && (<>
       <SectionHeader title="Procedimentos" />
 
-      <div className="kpi-grid cards-1-col" style={{ gap: 16, alignItems: 'start' }}>
+      <div className="kpi-grid cards-1-col" style={{ gap: 16 }}>
 
         {/* Ranking - Procedimentos realizados */}
         <div className="card" style={{ padding: '18px 20px' }}>
@@ -1015,6 +1027,15 @@ export function AdminDashboardView({
           )}
         </div>
 
+      </div>
+
+      {/* Os dois cards de avaliação saem da grade de quatro colunas.
+          Eram o 5º e o 6º item de uma grade de 4: a segunda linha nascia com
+          metade vazia à direita, e em 1920px isso é meia tela de branco. Numa
+          grade de duas, a linha fecha — e a largura dobrada cai bem para um
+          card que mostra nome, nota e número de avaliações lado a lado. */}
+      <div className="rg-2 cards-1-col" style={{ gap: 16, marginTop: 16 }}>
+
         {/* Procedimentos melhor avaliados */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--success-bg)' }}>
@@ -1074,7 +1095,10 @@ export function AdminDashboardView({
       {can('team') && (<>
       <SectionHeader title="Profissionais" />
 
-      <div className="kpi-grid cards-1-col" style={{ gap: 16, alignItems: 'start' }}>
+      {/* Três colunas, não quatro: são três rankings e dois cards de
+          avaliação. Em quatro colunas o quinto card ficava sozinho na segunda
+          linha, com três quartos de branco ao lado. */}
+      <div className="rg-3 cards-1-col" style={{ gap: 16 }}>
 
         {/* Ranking — Mais solicitados */}
         <div className="card" style={{ padding: '18px 20px' }}>
@@ -1131,6 +1155,11 @@ export function AdminDashboardView({
             </div>
           )}
         </div>
+
+      </div>
+
+      {/* Os dois de avaliação, lado a lado e fechando a linha. */}
+      <div className="rg-2 cards-1-col" style={{ gap: 16, marginTop: 16 }}>
 
         {/* Melhor avaliados */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -1190,7 +1219,7 @@ export function AdminDashboardView({
       {can('clients') && (<>
       <SectionHeader title="Clientes" />
 
-      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 16 }}>
 
         {/* Ranking — Valor gasto */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -1319,12 +1348,16 @@ export function AdminDashboardView({
         </div>
 
         {/* Ranking — Localização */}
-        <div className="card" style={{ padding: '18px 20px' }}>
+        {/* Coluna em flex: com a fileira alinhada por altura, o "sem cidade
+            cadastrada" ficava colado no título e o resto do card era branco.
+            Em `margin: auto` a frase ocupa o meio do espaço que sobra, que é
+            onde o olho procura um estado vazio. */}
+        <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column' }}>
           <div style={{ marginBottom: 16 }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Localização</span>
           </div>
           {topClientsByLocation.length === 0 ? (
-            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', padding: '16px 0' }}>Sem cidade cadastrada.</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 'auto 0' }}>Sem cidade cadastrada.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {topClientsByLocation.map((l, i) => (
@@ -1356,7 +1389,7 @@ export function AdminDashboardView({
       ══════════════════════════════════════════════════════════════ */}
       {can('crm') && (<>
       <SectionHeader title="Comercial" />
-      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, alignItems: 'start' }}>
+      <div className="grid-stack-md" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
         {/* Funil de leads por estágio */}
         <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{
@@ -1405,7 +1438,7 @@ export function AdminDashboardView({
       {can('marketing') && marketing && (<>
       <SectionHeader title="Marketing" />
       {marketing.connected ? (
-        <div className="kpi-grid-auto" style={{ gap: 14 }}>
+        <div className="kpi-grid-auto" style={{ gap: 16 }}>
           <KpiCard label="Investimento (Meta)" value={marketing.spend} format="brl" sub="no período" icon={<TrendingUp size={16} color="var(--brand)" />} />
           <KpiCard label="Alcance" value={marketing.reach} format="int" sub="pessoas alcançadas" icon={<Users size={16} color="var(--brand)" />} />
           <KpiCard label="Campanhas ativas" value={marketing.activeCampaigns} format="int" sub={`${marketing.totalCampaigns} no total`} icon={<Zap size={16} color="var(--brand)" />} />
