@@ -3,6 +3,7 @@ import type {
   GrafoDeAutomacao, NoDoGrafo, TipoDeNo, GrupoDeCondicao,
 } from '@estetica-os/types'
 import { caminhosDoTexto } from './variaveis'
+import { conferirExpressao, ehCaminhoSimples } from './expressao'
 import { antecessoresDe } from './disponiveis'
 import { chaveDoPasso, nomeDoPasso } from './passos'
 
@@ -130,8 +131,58 @@ export function validarGrafo(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
   }
 
   problemas.push(...conferirReferencias(grafo))
+  problemas.push(...conferirExpressoes(grafo))
 
   return problemas
+}
+
+/**
+ * Expressão com erro de escrita não pode passar daqui.
+ *
+ * No motor, expressão quebrada devolve vazio em vez de explodir — derrubar o
+ * run no meio de um fluxo com efeitos seria pior. O preço disso é que o erro
+ * fica MUDO na execução: a mensagem sai com um buraco e ninguém sabe por quê.
+ * Então a hora de reclamar é esta, antes de ativar.
+ */
+function conferirExpressoes(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
+  const problemas: ProblemaDoGrafo[] = []
+
+  for (const no of grafo?.nos ?? []) {
+    for (const texto of expressoesDoNo(no)) {
+      if (ehCaminhoSimples(texto)) continue
+      const erro = conferirExpressao(texto)
+      if (!erro) continue
+      problemas.push({
+        grau: 'erro', noId: no.id,
+        mensagem: `Em "${rotuloCurto(no)}", a expressão \`${texto.trim()}\` tem um problema: ${erro}`,
+      })
+    }
+  }
+
+  return problemas
+}
+
+/** Tudo que este node guarda e que é avaliado como expressão. */
+function expressoesDoNo(no: NoDoGrafo): string[] {
+  const c = (no.config ?? {}) as Record<string, unknown>
+  const achadas: string[] = []
+
+  // Dentro das chaves duplas, nos textos.
+  for (const chave of ['titulo', 'corpo', 'texto']) {
+    const v = c[chave]
+    if (typeof v !== 'string') continue
+    for (const m of v.matchAll(/\{\{([^}]*)\}\}/g)) achadas.push(m[1]!)
+  }
+
+  if (typeof c.campo === 'string' && c.campo.trim()) achadas.push(c.campo)
+
+  for (const chave of ['grupo', 'filtro']) {
+    for (const r of (c[chave] as GrupoDeCondicao | undefined)?.regras ?? []) {
+      if (r.campo?.trim()) achadas.push(r.campo)
+    }
+  }
+
+  return achadas
 }
 
 /**

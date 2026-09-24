@@ -44,6 +44,71 @@ export function chaveDoPasso(no: NoDoGrafo, grafo: GrafoDeAutomacao): string {
 }
 
 /**
+ * Renomeia um passo **e conserta quem o citava**.
+ *
+ * O nome é a chave (`{{passos.mandar_mensagem.enviada}}`), então trocá-lo sem
+ * mais nada deixaria toda referência apontando para o vazio — e variável sem
+ * valor vira string vazia: a frase sairia pela metade para o cliente. O
+ * validador avisa, mas avisar é o segundo melhor; melhor é não quebrar.
+ *
+ * Troca só o segmento inteiro (`passos.<chave>.`), nunca por prefixo: renomear
+ * "Mandar mensagem" não pode mexer no que cita "Mandar mensagem 2".
+ *
+ * Nome que vira slug vazio não propaga — o passo volta ao nome derivado do tipo
+ * e as referências ficam como estavam, à espera do nome de verdade.
+ */
+export function renomearPasso(
+  grafo: GrafoDeAutomacao,
+  noId:  string,
+  nome:  string,
+): GrafoDeAutomacao {
+  const alvo = grafo.nos.find(n => n.id === noId)
+  if (!alvo) return grafo
+
+  const antes  = chaveDoPasso(alvo, grafo)
+  const depois = slugDoPasso(nome)
+
+  const renomeado: GrafoDeAutomacao = {
+    ...grafo,
+    nos: grafo.nos.map(n => (n.id === noId ? { ...n, nome } : n)),
+  }
+
+  if (!depois || depois === antes) return renomeado
+
+  return {
+    ...renomeado,
+    nos: renomeado.nos.map(n => ({
+      ...n,
+      config: trocarNaConfig(n.config as Record<string, unknown>, antes, depois),
+    })),
+  }
+}
+
+/** Reescreve `passos.<antes>.` em tudo que a config guarda como texto. */
+function trocarNaConfig(
+  config: Record<string, unknown>,
+  antes:  string,
+  depois: string,
+): Record<string, unknown> {
+  const de = new RegExp(`passos\\.${escaparRegex(antes)}\\.`, 'g')
+  const troca = (v: unknown): unknown => {
+    if (typeof v === 'string') return v.replace(de, `passos.${depois}.`)
+    if (Array.isArray(v)) return v.map(troca)
+    if (v && typeof v === 'object') {
+      return Object.fromEntries(
+        Object.entries(v as Record<string, unknown>).map(([k, val]) => [k, troca(val)]),
+      )
+    }
+    return v
+  }
+  return troca(config ?? {}) as Record<string, unknown>
+}
+
+function escaparRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
  * O nome que um node novo recebe ao nascer.
  *
  * Numerado a partir dos que já existem, para dois "Mandar mensagem" não

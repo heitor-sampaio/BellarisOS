@@ -7,7 +7,7 @@ import type {
   ConfigAcaoMoverEtapa, ConfigAcaoDesfecho, ConfigAcaoTagCliente, ConfigAcaoAtribuir,
   ConfigEsperaDuracao, ConfigEsperaAte, ConfigBuscarClientes,
 } from '@estetica-os/types'
-import { avaliarGrupo, escolherSaida } from './condicoes'
+import { avaliarGrupo, escolherSaida, caminhosDoCampo } from './condicoes'
 import {
   contextoDoEvento, hidratarParaCaminhos,
   type ContextoDaExecucao, type EventoDoGatilho,
@@ -143,7 +143,7 @@ export async function despacharEvento(
         const ctx = contextoDoEvento(evento)
         await hidratarParaCaminhos(
           ctx, evento, tenantId,
-          (config.filtro.regras ?? []).map(r => r.campo),
+          (config.filtro.regras ?? []).flatMap(r => caminhosDoCampo(r.campo)),
         )
         if (!avaliarGrupo(ctx, config.filtro)) continue
       }
@@ -365,7 +365,7 @@ async function rodarNo(
       const cfg = no.config as ConfigCondicaoSe
       await hidratarParaCaminhos(
         contexto, evento, run.tenant_id,
-        (cfg.grupo?.regras ?? []).map(r => r.campo),
+        (cfg.grupo?.regras ?? []).flatMap(r => caminhosDoCampo(r.campo)),
       )
       const passou = avaliarGrupo(contexto, cfg.grupo)
       return { saida: passou ? 'sim' : 'nao', resumo: { resultado: passou ? 'sim' : 'não' } }
@@ -373,7 +373,7 @@ async function rodarNo(
 
     case NODES.CONDICAO_ESCOLHA: {
       const cfg = no.config as ConfigCondicaoEscolha
-      await hidratarParaCaminhos(contexto, evento, run.tenant_id, [cfg.campo])
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, caminhosDoCampo(cfg.campo))
       const saida = escolherSaida(contexto, cfg.campo, cfg.casos ?? [])
       return { saida, resumo: { campo: cfg.campo, saida } }
     }
@@ -475,7 +475,7 @@ async function rodarNo(
 
     case NODES.ESPERA_ATE: {
       const cfg = no.config as ConfigEsperaAte
-      await hidratarParaCaminhos(contexto, evento, run.tenant_id, [cfg.campo ?? ''])
+      await hidratarParaCaminhos(contexto, evento, run.tenant_id, caminhosDoCampo(cfg.campo ?? ''))
       const r = quandoChegarEm(cfg, contexto)
       // Momento que já passou não vira espera eterna: o fluxo segue agora, com
       // o motivo no passo. Travar num passado seria o pior sintoma possível —

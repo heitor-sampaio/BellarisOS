@@ -498,6 +498,24 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
     mesmo erro mudo do gatilho que nunca dispara.
   - A tela soma a essas listas os campos **vistos no último fato real**
     (`amostraDoEvento`): `dados` tem índice livre e nenhum catálogo cobre tudo.
+  - **Renomear um passo reescreve quem o citava** (`renomearPasso`). A troca é
+    por segmento inteiro: renomear "Mandar mensagem" não pode mexer no que cita
+    "Mandar mensagem 2".
+- **Campo de condição aceita EXPRESSÃO**, não só caminho — decisão do Heitor em
+  2026-09-24, que abriu o "condição é construtor, não linguagem" original. A
+  lista de campos continua sendo o caminho normal da tela; a expressão é a saída
+  para o que ela não cobre.
+  - `lib/automacoes/expressao.ts` é o avaliador: analisador próprio, **sem
+    `eval` e sem `new Function`**. O texto vem do banco e roda no servidor
+    dentro do motor — ali um `new Function` seria execução remota de código a um
+    `update` de distância. Funções só as da lista fechada; `__proto__`,
+    `constructor` e `prototype` não são navegáveis.
+  - **Expressão quebrada devolve vazio, não derruba o run** — parar um fluxo no
+    meio dos efeitos por um erro de digitação seria pior. Quem reclama é o
+    validador, antes de ativar.
+  - Toda leitura de campo passa por `valorDoCampo`, e toda hidratação por
+    `caminhosDoCampo`: ler à mão com `lerCaminho` volta a ignorar expressões, e
+    o texto sai vazio sem nada explicar.
 
 ---
 
@@ -730,6 +748,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso)
 ❌ Introduzir cores, fontes ou sombras fora dos tokens da skill /lumiere-design
 ❌ Encerrar uma entrega sem atualizar o DEVLOG e a memória (§16)
+❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
 ```
 
 ---

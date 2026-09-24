@@ -13,6 +13,7 @@ import {
   type GrupoDeVariaveis, type CampoVisto,
 } from '@/lib/automacoes/disponiveis'
 import { nomeDoPasso, chaveDoPasso } from '@/lib/automacoes/passos'
+import { conferirExpressao, ehCaminhoSimples, NOMES_DE_FUNCAO } from '@/lib/automacoes/expressao'
 import { amostraDoEvento } from '@/actions/automacoes'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 
@@ -79,6 +80,10 @@ export function PainelDoNo({
 
   const vistos = amostra?.evento === evento ? amostra.campos : []
 
+  // O painel remonta a cada node (`key` no editor), então o rascunho nasce
+  // sempre com o nome do passo que está aberto.
+  const [rascunhoNome, setRascunhoNome] = useState(nomeDoPasso(no, grafo))
+
   const variaveis = variaveisDisponiveis(grafo, no.id, { vistos })
 
   return (
@@ -106,15 +111,21 @@ export function PainelDoNo({
         {/* O nome vem primeiro porque é por ele que os passos seguintes leem o
             que este deixou — é identidade, não enfeite. */}
         <Campo rotulo="Nome do passo">
+          {/* Rascunho local, aplicado ao sair do campo: renomear a cada tecla
+              faria o nome passar por "" no meio da digitação, e as referências
+              dos outros passos seriam reescritas para um nome pela metade. */}
           <input
-            className="field" value={nomeDoPasso(no, grafo)}
+            className="field" value={rascunhoNome}
             disabled={somenteLeitura}
-            onChange={e => onRenomear(e.target.value)}
+            onChange={e => setRascunhoNome(e.target.value)}
+            onBlur={() => { if (rascunhoNome !== nomeDoPasso(no, grafo)) onRenomear(rascunhoNome) }}
+            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }}
             placeholder={ROTULOS[no.tipo as TipoDeNo]}
           />
           <Dica>
             Os passos seguintes leem o que este produziu por{' '}
             <code>{`{{passos.${chaveDoPasso(no, grafo)}.…}}`}</code>.
+            Renomear troca as referências junto.
           </Dica>
         </Campo>
 
@@ -606,13 +617,28 @@ function SelectDeCampo({
   const [livre, setLivre] = useState(!!valor && !naLista)
 
   if (livre) {
+    // Conferida enquanto se digita: no motor, expressão quebrada devolve vazio
+    // em silêncio — o erro tem de aparecer aqui, onde dá para consertar.
+    const erro = valor.trim() && !ehCaminhoSimples(valor) ? conferirExpressao(valor) : null
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         <input
           className="field" value={valor} disabled={somenteLeitura}
           onChange={e => onChange(e.target.value)}
           placeholder="evento.dados.algumCampo"
+          // O mesmo vermelho da lista de problemas do editor: um terceiro tom
+          // de erro na mesma tela seria ruído.
+          style={erro ? { borderColor: '#b42318' } : undefined}
         />
+        {erro && (
+          <p style={{ fontSize: 10.5, color: '#b42318', lineHeight: 1.5 }}>{erro}</p>
+        )}
+        <Dica>
+          Um caminho (<code>evento.dados.texto</code>) ou uma expressão:{' '}
+          <code>{"contem(evento.dados.texto, 'preço')"}</code>,{' '}
+          <code>{"cliente.email ?? 'sem e-mail'"}</code>.{' '}
+          Funções: {NOMES_DE_FUNCAO.join(', ')}.
+        </Dica>
         {!somenteLeitura && (
           <button
             type="button" className="btn-ghost"
@@ -644,7 +670,7 @@ function SelectDeCampo({
           ))}
         </optgroup>
       ))}
-      <option value={OUTRO}>Outro campo…</option>
+      <option value={OUTRO}>Outro campo ou expressão…</option>
     </select>
   )
 }

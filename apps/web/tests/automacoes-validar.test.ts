@@ -189,3 +189,64 @@ describe('gatilhosDoGrafo', () => {
     expect(gatilhosDoGrafo(grafo({ nos: [{ ...gatilho, config: {} }] }))).toEqual([])
   })
 })
+
+describe('expressões no grafo', () => {
+  // No motor, expressão quebrada devolve vazio em vez de explodir — derrubar o
+  // run no meio de um fluxo com efeitos seria pior. O preço é que o erro fica
+  // mudo na execução, então tem de aparecer aqui.
+
+  it('expressão com erro de escrita impede ativar', () => {
+    const g = grafo({
+      nos: [gatilho, { ...acao, config: { texto: 'Oi {{cliente.nome +}}' } }],
+      ligacoes: [{ id: 'l1', de: 'g1', para: 'a1' }],
+    })
+    expect(podeAtivar(g)).toBe(false)
+    expect(validarGrafo(g)[0]!.mensagem).toContain('tem um problema')
+  })
+
+  it('expressão válida passa', () => {
+    const g = grafo({
+      nos: [gatilho, { ...acao, config: { texto: "Oi {{cliente.nome ?? 'tudo bem'}}" } }],
+      ligacoes: [{ id: 'l1', de: 'g1', para: 'a1' }],
+    })
+    expect(validarGrafo(g)).toEqual([])
+  })
+
+  it('função inventada é pega antes de ativar', () => {
+    const se: NoDoGrafo = {
+      id: 'c1', tipo: 'condicao.se', pos: { x: 100, y: 0 }, nome: 'Se',
+      config: { grupo: { juncao: 'e', regras: [
+        { campo: 'inventada(cliente.nome)', operador: 'preenchido' },
+      ] } },
+    }
+    const g = grafo({
+      nos: [gatilho, se, acao],
+      ligacoes: [
+        { id: 'l1', de: 'g1', para: 'c1' },
+        { id: 'l2', de: 'c1', para: 'a1', saida: 'sim' },
+        { id: 'l3', de: 'c1', para: 'a1', saida: 'nao' },
+      ],
+    })
+    expect(validarGrafo(g).some(p => p.mensagem.includes('Não existe a função'))).toBe(true)
+  })
+
+  it('caminho simples não passa pelo analisador', () => {
+    // É o que 95% das regras usam; tratá-lo como expressão só criaria chance
+    // de erro onde não havia.
+    const se: NoDoGrafo = {
+      id: 'c1', tipo: 'condicao.se', pos: { x: 100, y: 0 }, nome: 'Se',
+      config: { grupo: { juncao: 'e', regras: [
+        { campo: 'evento.dados.texto', operador: 'preenchido' },
+      ] } },
+    }
+    const g = grafo({
+      nos: [gatilho, se, acao],
+      ligacoes: [
+        { id: 'l1', de: 'g1', para: 'c1' },
+        { id: 'l2', de: 'c1', para: 'a1', saida: 'sim' },
+        { id: 'l3', de: 'c1', para: 'a1', saida: 'nao' },
+      ],
+    })
+    expect(validarGrafo(g)).toEqual([])
+  })
+})

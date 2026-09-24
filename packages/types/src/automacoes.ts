@@ -175,10 +175,15 @@ export const DADOS_DO_NO: Record<TipoDeNo, readonly DadoDoPasso[]> = {
 /**
  * Operadores de comparação.
  *
- * Deliberadamente poucos e sem expressão livre: quem monta isto é a recepção da
- * clínica, não um programador. `vazio`/`preenchido` existem porque "o cliente
- * não tem e-mail" é uma pergunta comum e, com `igual a ""`, dá a resposta
- * errada quando o campo é nulo.
+ * Deliberadamente poucos: quem monta isto é a recepção da clínica, não um
+ * programador. `vazio`/`preenchido` existem porque "o cliente não tem e-mail" é
+ * uma pergunta comum e, com `igual a ""`, dá a resposta errada quando o campo
+ * é nulo.
+ *
+ * O CAMPO comparado, por outro lado, deixou de ser só um caminho: desde
+ * 2026-09-24 aceita expressão (`lib/automacoes/expressao.ts`), a pedido do
+ * Heitor. A lista continua sendo o caminho normal da tela — a expressão é a
+ * saída para o que ela não cobre, e nenhum operador novo nasceu daí.
  */
 export type OperadorDeCondicao =
   | 'igual' | 'diferente'

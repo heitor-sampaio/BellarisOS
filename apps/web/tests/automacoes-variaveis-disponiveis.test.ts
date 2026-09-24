@@ -4,7 +4,9 @@ import type { GrafoDeAutomacao } from '@estetica-os/types'
 import {
   antecessoresDe, eventoDoGatilhoDe, variaveisDisponiveis, achatarDados,
 } from '@/lib/automacoes/disponiveis'
-import { slugDoPasso, nomeDoPasso, chaveDoPasso, nomePadraoDoPasso } from '@/lib/automacoes/passos'
+import {
+  slugDoPasso, nomeDoPasso, chaveDoPasso, nomePadraoDoPasso, renomearPasso,
+} from '@/lib/automacoes/passos'
 
 /**
  * O que cada node enxerga no ponto em que está.
@@ -250,5 +252,73 @@ describe('o payload do gatilho antes de ligar', () => {
     }
     const caminhos = variaveisDisponiveis(g, 'se').flatMap(x => x.itens.map(i => i.caminho))
     expect(caminhos.some(c => c.startsWith('passos.mandar_mensagem.'))).toBe(false)
+  })
+})
+
+describe('renomearPasso', () => {
+  // O nome é a chave. Trocá-lo sem mais nada deixaria as referências
+  // apontando para o vazio — e variável sem valor vira string vazia, ou seja,
+  // a frase sai pela metade para o cliente sem nada avisar.
+  function comReferencias(): GrafoDeAutomacao {
+    return {
+      nos: [
+        { id: 'g', tipo: NODES.GATILHO_EVENTO, pos: { x: 0, y: 0 }, nome: 'Quando acontecer',
+          config: { evento: EVENTOS.CONVERSA_MENSAGEM_RECEBIDA } },
+        { id: 'm', tipo: NODES.ACAO_MENSAGEM, pos: { x: 1, y: 0 }, nome: 'Mandar mensagem',
+          config: { canal: 'whatsapp', texto: 'oi' } },
+        { id: 'm2', tipo: NODES.ACAO_MENSAGEM, pos: { x: 2, y: 0 }, nome: 'Mandar mensagem 2',
+          config: { canal: 'whatsapp', texto: 'de novo' } },
+        { id: 'a', tipo: NODES.ACAO_ANOTAR, pos: { x: 3, y: 0 }, nome: 'Anotar',
+          config: { texto: 'Enviou: {{passos.mandar_mensagem.enviada}} e {{passos.mandar_mensagem_2.canal}}' } },
+        { id: 'se', tipo: NODES.CONDICAO_SE, pos: { x: 4, y: 0 }, nome: 'Se',
+          config: { grupo: { juncao: 'e', regras: [
+            { campo: 'passos.mandar_mensagem.conversaId', operador: 'preenchido' },
+          ] } } },
+      ],
+      ligacoes: [],
+    }
+  }
+
+  const textoDe = (g: GrafoDeAutomacao, id: string) =>
+    (g.nos.find(n => n.id === id)!.config as { texto?: string }).texto
+
+  it('troca as referências nos textos', () => {
+    const g = renomearPasso(comReferencias(), 'm', 'Primeira mensagem')
+    expect(textoDe(g, 'a')).toContain('{{passos.primeira_mensagem.enviada}}')
+    expect(textoDe(g, 'a')).not.toContain('mandar_mensagem.enviada')
+  })
+
+  it('troca também dentro das regras de condição', () => {
+    const g = renomearPasso(comReferencias(), 'm', 'Primeira mensagem')
+    const grupo = (g.nos.find(n => n.id === 'se')!.config as { grupo: { regras: { campo: string }[] } }).grupo
+    expect(grupo.regras[0]!.campo).toBe('passos.primeira_mensagem.conversaId')
+  })
+
+  it('NÃO mexe no passo de nome parecido', () => {
+    // "Mandar mensagem" é prefixo de "Mandar mensagem 2": trocar por prefixo
+    // destruiria a referência do vizinho.
+    const g = renomearPasso(comReferencias(), 'm', 'Primeira mensagem')
+    expect(textoDe(g, 'a')).toContain('{{passos.mandar_mensagem_2.canal}}')
+  })
+
+  it('nome que vira slug vazio não propaga nada', () => {
+    // Acontece no meio da digitação. Reescrever para `passos..campo` deixaria
+    // lixo que nem o nome final conserta.
+    const g = renomearPasso(comReferencias(), 'm', '   ')
+    expect(textoDe(g, 'a')).toContain('{{passos.mandar_mensagem.enviada}}')
+    expect(g.nos.find(n => n.id === 'm')!.nome).toBe('   ')
+  })
+
+  it('renomear para o mesmo nome não muda nada', () => {
+    const antes = comReferencias()
+    const g = renomearPasso(antes, 'm', 'Mandar mensagem')
+    expect(textoDe(g, 'a')).toBe(textoDe(antes, 'a'))
+  })
+
+  it('o grafo renomeado continua válido para o seletor', () => {
+    const g = renomearPasso(comReferencias(), 'm', 'Primeira mensagem')
+    g.ligacoes.push({ id: 'l1', de: 'm', para: 'a' })
+    const caminhos = variaveisDisponiveis(g, 'a').flatMap(x => x.itens.map(i => i.caminho))
+    expect(caminhos).toContain('passos.primeira_mensagem.enviada')
   })
 })

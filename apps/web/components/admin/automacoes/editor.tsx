@@ -17,7 +17,7 @@ import { PainelDeLimites } from './painel-de-limites'
 import { PainelDeExecucoes } from './painel-de-execucoes'
 import { validarGrafo, ROTULOS, type ProblemaDoGrafo } from '@/lib/automacoes/validar'
 import { novoIdDeNo, configPadrao } from '@/lib/automacoes/ids'
-import { nomePadraoDoPasso } from '@/lib/automacoes/passos'
+import { nomePadraoDoPasso, renomearPasso } from '@/lib/automacoes/passos'
 import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor } from '@/actions/automacoes'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 import type { AutomacaoCompleta } from '@/actions/automacoes'
@@ -126,19 +126,16 @@ export function EditorDeAutomacao({
   }
 
   /**
-   * Renomear o passo muda a chave por onde os seguintes o leem.
+   * Renomear o passo muda a chave por onde os seguintes o leem — e por isso
+   * `renomearPasso` reescreve junto quem o citava.
    *
-   * Quem já escreveu `{{passos.nome_antigo.campo}}` num texto fica apontando
-   * para o vazio — e como variável sem valor vira string vazia, isso sairia na
-   * mensagem do cliente sem nada explicar. Por isso a validação antes de ativar
-   * confere as referências: é lá que o problema aparece com nome e sobrenome.
+   * A troca acontece quando o campo perde o foco, não a cada tecla: renomeando
+   * letra a letra, o nome passa por "" no meio do caminho, a chave some e as
+   * referências ficariam apontando para um nome pela metade.
    */
   function renomearNo(nome: string) {
     if (!noSelecionado) return
-    mudarGrafo({
-      ...grafo,
-      nos: grafo.nos.map(n => (n.id === noSelecionado.id ? { ...n, nome } : n)),
-    })
+    mudarGrafo(renomearPasso(grafo, noSelecionado.id, nome))
   }
 
   function excluirNo() {

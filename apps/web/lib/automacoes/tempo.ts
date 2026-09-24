@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { partsInTZ, startOfDayTZ } from '@/lib/datetime'
-import { lerCaminho } from './condicoes'
+import { valorDoCampo } from './condicoes'
 import type {
   ConfigEsperaDuracao, ConfigEsperaAte, ConfigGatilhoAgenda, ConfigBuscarClientes,
 } from '@estetica-os/types'
@@ -41,7 +41,8 @@ export function quandoChegarEm(
   contexto: ContextoDaExecucao,
   agora = new Date(),
 ): { data: Date | null; motivo?: string } {
-  const bruto = lerCaminho(contexto, cfg.campo ?? '')
+  // Campo ou expressão — 'espera até' aceita as duas coisas, como o IF.
+  const bruto = valorDoCampo(contexto, cfg.campo ?? '')
   if (bruto === null || bruto === undefined || bruto === '') {
     return { data: null, motivo: `O campo "${cfg.campo}" está vazio: não há data para esperar.` }
   }

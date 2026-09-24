@@ -1,4 +1,7 @@
 import type { GrupoDeCondicao, RegraDeCondicao, OperadorDeCondicao } from '@estetica-os/types'
+import {
+  avaliarExpressao, caminhosDaExpressao, ehCaminhoSimples, lerDoContexto,
+} from './expressao'
 
 /**
  * A avaliação de condições — o que decide para onde o fluxo vai.
@@ -16,13 +19,28 @@ import type { GrupoDeCondicao, RegraDeCondicao, OperadorDeCondicao } from '@este
  * `vazio` responder certo pelo motivo errado.
  */
 export function lerCaminho(contexto: Record<string, unknown>, caminho: string): unknown {
-  let atual: unknown = contexto
-  for (const parte of caminho.split('.')) {
-    if (atual === null || atual === undefined) return undefined
-    if (typeof atual !== 'object') return undefined
-    atual = (atual as Record<string, unknown>)[parte]
-  }
-  return atual
+  return lerDoContexto(contexto, caminho)
+}
+
+/**
+ * O valor de um campo de regra — que hoje pode ser um caminho OU uma expressão.
+ *
+ * O caminho simples continua sendo o caminho rápido, sem passar pelo
+ * analisador: é o que 95% das regras usam, e é o que a lista da tela produz.
+ */
+export function valorDoCampo(contexto: Record<string, unknown>, campo: string): unknown {
+  const texto = (campo ?? '').trim()
+  if (!texto) return undefined
+  return ehCaminhoSimples(texto)
+    ? lerDoContexto(contexto, texto)
+    : avaliarExpressao(texto, contexto)
+}
+
+/** O que este campo precisa que esteja hidratado antes de ser avaliado. */
+export function caminhosDoCampo(campo: string): string[] {
+  const texto = (campo ?? '').trim()
+  if (!texto) return []
+  return ehCaminhoSimples(texto) ? [texto] : caminhosDaExpressao(texto)
 }
 
 /** Texto comparável: minúsculo, sem acento e aparado. */
@@ -63,7 +81,7 @@ export function avaliarRegra(
   contexto: Record<string, unknown>,
   regra: RegraDeCondicao,
 ): boolean {
-  const atual = lerCaminho(contexto, regra.campo)
+  const atual = valorDoCampo(contexto, regra.campo)
 
   // Ausente e vazio contam a mesma história para quem pergunta na tela: "o
   // cliente não tem e-mail". Aqui os dois convergem, de propósito — a
@@ -135,7 +153,7 @@ export function escolherSaida(
   campo: string,
   casos: { chave: string; valor: string }[],
 ): string {
-  const atual = normalizar(lerCaminho(contexto, campo))
+  const atual = normalizar(valorDoCampo(contexto, campo))
   const achado = casos.find(c => normalizar(c.valor) === atual)
   return achado?.chave ?? 'padrao'
 }

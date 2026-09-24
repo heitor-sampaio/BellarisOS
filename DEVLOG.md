@@ -1161,6 +1161,50 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
+### 2026-09-24 — Automações: renomear sem quebrar, e expressões nos campos
+
+Os dois primeiros itens que tinham ficado fora de escopo, retomados a pedido do
+Heitor.
+
+**Renomear um passo agora reescreve quem o citava.** O nome é a chave, então
+trocá-lo deixava toda referência apontando para o vazio — e variável sem valor
+vira string vazia: a frase sairia pela metade para o cliente. O validador
+avisava, mas avisar é o segundo melhor. A troca é por segmento inteiro
+(`passos.<chave>.`), nunca por prefixo: renomear "Mandar mensagem" não pode
+mexer no que cita "Mandar mensagem 2". E acontece quando o campo perde o foco,
+não a cada tecla — renomeando letra a letra o nome passa por "" no meio, e as
+referências seriam reescritas para um nome pela metade.
+
+**O campo de condição passou a aceitar expressão.** Isso abre a decisão de
+produto original ("condição é construtor, não linguagem"), e a troca foi feita
+com ela na mesa: a lista de campos continua sendo o caminho normal da tela, e a
+expressão é a saída para o que ela não cobre — o item "outro campo ou
+expressão…", conferido enquanto se digita.
+
+O que existe: caminhos, aritmética, comparação, lógica, `??`, ternário e uma
+lista fechada de funções em pt-BR (`contem`, `maiusculo`, `tamanho`, `moeda`,
+`dias`, `escolher`…). O que não existe, de propósito: atribuição, laço,
+definição de função e qualquer forma de alcançar o ambiente.
+
+**Sem `eval` e sem `new Function`** — o ponto que mais importa aqui. O texto vem
+do banco e é avaliado no servidor, dentro do motor: ali um `new Function` seria
+execução remota de código a um `update` de distância. Daí um analisador próprio
+(tokenizador + descendente recursivo, ~380 linhas), com teto de tamanho e de
+aninhamento, e `__proto__`/`constructor`/`prototype` fora do alcance da
+navegação de caminho — trava que também passou a valer para o `lerCaminho` de
+sempre.
+
+**Expressão quebrada devolve vazio em vez de explodir**: parar um fluxo no meio
+dos efeitos por causa de um erro de digitação seria pior que uma frase com
+buraco. O preço é o erro ficar mudo na execução, então o validador passou a
+recusar a ativação — e o painel marca o campo em vermelho enquanto se escreve.
+
+O que tornou tudo isso invisível de quebrar, e por isso está em CLAUDE.md §9.9:
+**toda leitura de campo passa por `valorDoCampo` e toda hidratação por
+`caminhosDoCampo`**. Ler à mão com `lerCaminho` volta a ignorar expressões, e
+`{{maiusculo(cliente.nome)}}` sairia vazio porque ninguém saberia que era
+preciso buscar o cliente.
+
 ### 2026-09-24 — Automações: as variáveis se propagam de node em node
 
 Relatado montando um fluxo: **o IF não conseguia validar a mensagem recebida**.

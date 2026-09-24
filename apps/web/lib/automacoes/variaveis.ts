@@ -1,4 +1,4 @@
-import { lerCaminho } from './condicoes'
+import { valorDoCampo, caminhosDoCampo } from './condicoes'
 
 /**
  * As variáveis dos textos: `Olá {{cliente.nome}}, seu horário é {{agendamento.data}}`.
@@ -7,14 +7,23 @@ import { lerCaminho } from './condicoes'
  * propósito: a clínica já escreve `{{assim}}` ali, e dois formatos diferentes
  * para a mesma ideia é armadilha garantida. A diferença é que aqui o nome é um
  * CAMINHO no contexto, e não uma variável posicional.
+ *
+ * Dentro das chaves também cabe uma EXPRESSÃO — `{{cliente.nome ?? 'tudo bem'}}`,
+ * `{{moeda(agendamento.valor)}}`. O caminho puro continua sendo o caminho
+ * rápido e nada do que já estava escrito mudou de sentido.
  */
 
-const RE_VARIAVEL = /\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g
+// Qualquer coisa até o `}}`. A gramática das expressões não tem chaves, então
+// não há ambiguidade — e restringir a `[a-zA-Z0-9_.]` como antes cortaria toda
+// expressão fora, em silêncio: o texto sairia com `{{...}}` cru para o cliente.
+const RE_VARIAVEL = /\{\{([^}]*)\}\}/g
 
 /** Os caminhos citados num texto — é o que o motor precisa hidratar antes. */
 export function caminhosDoTexto(texto: string): string[] {
   const achados = new Set<string>()
-  for (const m of (texto ?? '').matchAll(RE_VARIAVEL)) achados.add(m[1]!)
+  for (const m of (texto ?? '').matchAll(RE_VARIAVEL)) {
+    for (const caminho of caminhosDoCampo(m[1]!)) achados.add(caminho)
+  }
   return [...achados]
 }
 
@@ -27,8 +36,8 @@ export function caminhosDoTexto(texto: string): string[] {
  * condição antes — que é justamente para isso que o IF serve.
  */
 export function interpolarTexto(texto: string, contexto: Record<string, unknown>): string {
-  return (texto ?? '').replace(RE_VARIAVEL, (_, caminho: string) => {
-    const v = lerCaminho(contexto, caminho)
+  return (texto ?? '').replace(RE_VARIAVEL, (_, dentro: string) => {
+    const v = valorDoCampo(contexto, dentro)
     if (v === null || v === undefined) return ''
     if (v instanceof Date) return formatarData(v.toISOString())
     if (Array.isArray(v)) return v.join(', ')
