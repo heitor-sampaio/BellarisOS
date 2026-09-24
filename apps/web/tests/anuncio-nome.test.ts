@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { nomeDoAnuncio, type RotulavelComoAnuncio } from '@/lib/ads/rotulo'
+import { nomeDoAnuncio, legendaDoAnuncio, type RotulavelComoAnuncio } from '@/lib/ads/rotulo'
 
 /**
  * Como o selo chama o anúncio.
@@ -52,5 +52,40 @@ describe('nomeDoAnuncio', () => {
     // O id é o último fio para achar o anúncio no gerenciador; inventar um
     // nome seria pior.
     expect(nomeDoAnuncio({ ...base, body: '   ' })).toBeNull()
+  })
+})
+
+describe('legendaDoAnuncio', () => {
+  const criativo = 'SEU 4X4 FOI FEITO PARA MAIS!\n\nDe 10 a 12 de outubro...\n✅ Roteiro completo'
+
+  it('NÃO repete a linha que já virou o nome', () => {
+    // Sem a Meta conectada, o nome É a primeira linha. Mostrá-la de novo logo
+    // abaixo faria o selo dizer a mesma coisa duas vezes.
+    const legenda = legendaDoAnuncio({ ...base, body: criativo })!
+    expect(legenda.startsWith('SEU 4X4')).toBe(false)
+    expect(legenda).toContain('De 10 a 12 de outubro')
+    expect(legenda).toContain('✅ Roteiro completo')
+  })
+
+  it('com nome vindo da Meta, mostra a legenda INTEIRA', () => {
+    // Aí nada foi repetido: o nome é outro texto.
+    const legenda = legendaDoAnuncio({ ...base, adName: 'Coxilha out/26', body: criativo })!
+    expect(legenda.startsWith('SEU 4X4')).toBe(true)
+  })
+
+  it('o mesmo vale para o nome do criativo', () => {
+    const legenda = legendaDoAnuncio({ ...base, creativeName: 'Peça A', body: criativo })!
+    expect(legenda.startsWith('SEU 4X4')).toBe(true)
+  })
+
+  it('criativo de uma linha só não deixa legenda — ela seria vazia', () => {
+    // A linha virou o nome e não sobrou nada. Um bloco vazio abaixo do nome
+    // seria uma borda sem conteúdo.
+    expect(legendaDoAnuncio({ ...base, body: 'Promoção de setembro' })).toBeNull()
+  })
+
+  it('sem texto de criativo, não há legenda', () => {
+    expect(legendaDoAnuncio(base)).toBeNull()
+    expect(legendaDoAnuncio({ ...base, body: '  \n \n ' })).toBeNull()
   })
 })

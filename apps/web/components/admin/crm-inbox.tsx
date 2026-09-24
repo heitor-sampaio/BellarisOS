@@ -21,7 +21,7 @@ import {
   type ReplyPreview, type AnuncioDaMensagem,
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
-import { nomeDoAnuncio } from '@/lib/ads/rotulo'
+import { nomeDoAnuncio, legendaDoAnuncio } from '@/lib/ads/rotulo'
 import {
   InboxFiltros, ChipsDeFiltro, passaNosFiltros, contarFiltros,
   FILTROS_VAZIOS, type FiltrosInbox,
@@ -234,6 +234,8 @@ function SeloDeAnuncio({ anuncio }: { anuncio: AnuncioDaMensagem }) {
   const nome = nomeDoAnuncio(anuncio)
   if (nome) linhas.push({ rotulo: 'Anúncio', valor: nome })
 
+  const legenda = legendaDoAnuncio(anuncio)
+
   // O botão e o conjunto ficam no rodapé: contexto, não identidade.
   const rodape = [
     anuncio.plataforma,
@@ -295,6 +297,59 @@ function SeloDeAnuncio({ anuncio }: { anuncio: AnuncioDaMensagem }) {
           )}
         </div>
       </div>
+
+      {legenda && <LegendaDoCriativo texto={legenda} />}
+    </div>
+  )
+}
+
+/**
+ * A legenda do criativo, dobrada.
+ *
+ * É o texto que promete o desconto, a data, a condição — e é sobre isso que o
+ * cliente vai falar na primeira frase. Mas são parágrafos: aberta por padrão,
+ * ela empurraria a conversa inteira para baixo e o selo passaria a atrapalhar
+ * justamente quem quer ler as mensagens.
+ *
+ * Fica fora da coluna da imagem, e não ao lado dela: um parágrafo espremido em
+ * 44px a menos de largura ganha uma quebra por linha.
+ */
+function LegendaDoCriativo({ texto }: { texto: string }) {
+  const [aberta, setAberta] = useState(false)
+
+  // Três linhas já mostram a promessa principal; o resto costuma ser lista de
+  // itens e link.
+  const curta = texto.length <= 150 && !texto.includes('\n')
+
+  return (
+    <div style={{ marginTop: 5, paddingTop: 5, borderTop: '1px solid var(--brand-soft-border)' }}>
+      <div style={{
+        color: 'var(--text-soft)', fontSize: 11, lineHeight: 1.45,
+        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+        ...(aberta ? {
+          // Teto com rolagem: alguns criativos passam de mil caracteres, e a
+          // bolha não pode virar uma página.
+          maxHeight: 190, overflowY: 'auto',
+        } : {
+          display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }),
+      }}>
+        {texto}
+      </div>
+
+      {!curta && (
+        <button
+          type="button"
+          onClick={() => setAberta(v => !v)}
+          style={{
+            background: 'none', border: 'none', padding: '2px 0 0', cursor: 'pointer',
+            color: 'var(--brand)', fontSize: 10.5, fontWeight: 700,
+          }}
+        >
+          {aberta ? 'ver menos' : 'ver o anúncio todo'}
+        </button>
+      )}
     </div>
   )
 }

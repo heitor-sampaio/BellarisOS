@@ -90,7 +90,7 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 251 unitários (Vitest) + 50 E2E (Playwright) rodando contra o banco
+- **Testes:** 256 unitários (Vitest) + 50 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
   (campanhas e LGPD) e a cada 5 minutos (fila das automações).
@@ -1151,6 +1151,15 @@ base64 não veio.
 A função que escolhe o nome saiu do componente para `lib/ads/rotulo.ts`: é
 regra pura, e importá-la do inbox arrastava a árvore inteira do servidor para
 dentro do teste.
+
+**E a legenda do criativo entrou junto**, dobrada em três linhas com "ver o
+anúncio todo". É o texto que promete o desconto, a data, a condição — e é
+sobre isso que o cliente fala na primeira frase. Aberta por padrão empurraria a
+conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
+
+**A legenda não repete o que já virou nome.** Sem a integração Meta Ads o nome
+É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
+mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
 ---
 
