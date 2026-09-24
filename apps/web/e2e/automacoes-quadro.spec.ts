@@ -12,15 +12,30 @@ import { banco, nomeDeTeste } from './apoio/banco'
 
 const nome = nomeDeTeste('Quadro')
 let automationId: string | null = null
+/** Tudo que a suíte criar pela tela — limpo de uma vez no fim. */
+const criadas: string[] = []
 
 test.afterAll(async () => {
   const db = banco()
-  if (!automationId) return
-  const { data: runs } = await db.from('automation_runs').select('id').eq('automation_id', automationId)
-  for (const r of runs ?? []) await db.from('automation_run_steps').delete().eq('run_id', r.id as string)
-  await db.from('automation_runs').delete().eq('automation_id', automationId)
-  await db.from('automations').delete().eq('id', automationId)
+  for (const id of [automationId, ...criadas].filter(Boolean) as string[]) {
+    const { data: runs } = await db.from('automation_runs').select('id').eq('automation_id', id)
+    for (const r of runs ?? []) await db.from('automation_run_steps').delete().eq('run_id', r.id as string)
+    await db.from('automation_runs').delete().eq('automation_id', id)
+    await db.from('automations').delete().eq('id', id)
+  }
 })
+
+/** Cria uma automação pela tela e devolve o id, já anotado para a limpeza. */
+async function novaAutomacao(page: import('@playwright/test').Page, comNome: string): Promise<string> {
+  await page.goto('/admin/automacoes')
+  await page.getByRole('button', { name: 'Nova automação' }).click()
+  await page.getByPlaceholder('Nome da automação').fill(comNome)
+  await page.getByRole('button', { name: 'Criar', exact: true }).click()
+  await page.waitForURL(/\/admin\/automacoes\/[0-9a-f-]{36}/)
+  const id = page.url().split('/').pop()!
+  criadas.push(id)
+  return id
+}
 
 test('monta o fluxo no quadro, só liga quando fica válido, e o grafo salvo é o do motor', async ({ page }) => {
   const db = banco()
@@ -49,12 +64,15 @@ test('monta o fluxo no quadro, só liga quando fica válido, e o grafo salvo é 
   await expect(ligar).toBeDisabled()
 
   const painel = page.getByLabel('Configuração do node')
-  await painel.locator('select').first().selectOption('cliente.dados_alterados')
+  await painel.getByLabel('Quando acontecer').selectOption('cliente.dados_alterados')
 
   // -- Ação ------------------------------------------------------------------
+  // Pelo rótulo, não por índice: o painel tem vários campos de texto (o nome do
+  // passo vem antes), e "o primeiro input" preenchia o campo errado sem que o
+  // teste percebesse.
   await page.getByRole('button', { name: 'Avisar a equipe' }).click()
-  await painel.locator('input').first().fill(`${nome} · {{cliente.nome}}`)
-  await painel.locator('textarea').first().fill('Conferir o cadastro.')
+  await painel.getByLabel('Título').fill(`${nome} · {{cliente.nome}}`)
+  await painel.getByLabel('Mensagem').fill('Conferir o cadastro.')
 
   // Ainda desligado: o node existe mas não está ligado ao gatilho.
   await expect(ligar, 'node solto não deveria deixar ligar').toBeDisabled()
@@ -112,4 +130,48 @@ test('monta o fluxo no quadro, só liga quando fica válido, e o grafo salvo é 
   const grafo = salva!.grafo as { nos: { tipo: string }[]; ligacoes: unknown[] }
   expect(grafo.nos.map(n => n.tipo)).toEqual(['gatilho.evento', 'acao.notificar_equipe'])
   expect(grafo.ligacoes).toHaveLength(1)
+})
+
+/**
+ * O painel oferece o que existe NAQUELE ponto do fluxo.
+ *
+ * Era a falta que o Heitor relatou: com gatilho de mensagem recebida, o IF não
+ * tinha como perguntar pelo texto da mensagem — a lista de campos era fixa e
+ * não continha nada do evento. Aqui se confere pela tela que o payload do
+ * gatilho e o resultado do passo anterior aparecem para escolher.
+ */
+test('o seletor de campos mostra o payload do gatilho', async ({ page }) => {
+  await novaAutomacao(page, nomeDeTeste('Variaveis'))
+  const painel = page.getByLabel('Configuração do node')
+
+  await page.getByRole('button', { name: 'Quando acontecer' }).click()
+  await painel.getByLabel('Quando acontecer').selectOption('conversa.mensagem_recebida')
+
+  // Todo passo nasce com nome — é a chave por onde os seguintes o leem.
+  await expect(painel.getByLabel('Nome do passo')).toHaveValue('Quando acontecer')
+
+  await page.getByRole('button', { name: 'Se', exact: true }).click()
+  await expect(painel.getByLabel('Nome do passo')).toHaveValue('Se')
+
+  // A regra é onde se escolhe o campo; sem ela o IF não mostra lista nenhuma.
+  await painel.getByRole('button', { name: '+ Adicionar regra' }).click()
+
+  const campo = painel.locator('select').filter({ hasText: 'Escolha o campo…' }).first()
+
+  // O caso que motivou a frente: perguntar pelo texto da mensagem recebida.
+  await expect(
+    campo.locator('option[value="evento.dados.texto"]'),
+    'o payload do gatilho tem de estar na lista',
+  ).toBeAttached()
+
+  // O grupo existe e é o primeiro — o que chegou no gatilho vem antes das
+  // entidades, porque é o que a pessoa foi ali procurar.
+  await expect(campo.locator('optgroup').first()).toHaveAttribute('label', 'O que chegou no gatilho')
+
+  // A saída para o que nenhuma lista previu.
+  await expect(campo.locator('option[value="__outro__"]')).toBeAttached()
+
+  // O "Avisar a equipe" nem existe ainda; quando existir, só aparece se estiver
+  // LIGADO antes deste IF. Passo que talvez não rode não entra na lista.
+  await expect(campo.locator('option', { hasText: 'Quantas pessoas avisou' })).toHaveCount(0)
 })

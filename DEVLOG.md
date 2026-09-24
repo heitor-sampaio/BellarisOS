@@ -1161,6 +1161,59 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
+### 2026-09-24 — Automações: as variáveis se propagam de node em node
+
+Relatado montando um fluxo: **o IF não conseguia validar a mensagem recebida**.
+E não conseguia mesmo — mas não por falta de motor. `lerCaminho` sempre soube
+ler qualquer caminho do contexto, e `evento.dados.texto` sempre esteve lá; a
+tela é que oferecia **22 campos fixos**, nenhum vindo do evento que dispara. O
+dado estava no contexto e era inalcançável pelo painel.
+
+A segunda falta era irmã da primeira: **a saída de um node morria no passo**.
+Cada ação já devolvia um resumo (`{ enviada: true, conversaId }`), que ia para
+`automation_run_steps` e parava ali — nenhum node conseguia reagir ao que o
+anterior fez.
+
+**O que cada node deixa agora vai para o contexto**, em `passos.<nome do
+passo>`. A chave é o NOME, não o id: o caminho aparece dentro do texto de uma
+mensagem que alguém relê seis meses depois, e `passos.n_7a3f.enviada` não diz
+nada. Todo node nasce nomeado ("Mandar mensagem 2", numerado a partir dos que já
+existem) e o nome é editável. É a escolha do n8n, que o Heitor citou como
+referência.
+
+**A lista de campos passou a depender de onde o node está.** `variaveisDisponiveis`
+junta três fontes: o payload do gatilho, as entidades que o motor hidrata, e o
+que cada passo **anterior** deixou — só os anteriores, porque um node do outro
+ramo do IF pode não ter rodado, e oferecê-lo seria prometer valor que não chega.
+O payload do gatilho é exceção: aparece mesmo com o node ainda solto, já que o
+fluxo tem um gatilho só e é no meio da montagem que a lista precisa estar cheia.
+
+**Os campos de cada evento são declarados E descobertos.** `CAMPOS_DO_EVENTO`
+(nos types) dá o rótulo em português dos 42 eventos e funciona num banco sem
+nenhum fato gravado; `amostraDoEvento` lê o **último fato real** daquele nome e
+mostra o que de fato chegou, com um exemplo ao lado. `DadosDeEvento` tem índice
+livre — nenhum catálogo cobre tudo, e o exemplo é o que responde "é este campo
+mesmo?" sem abrir o banco. Fecha a lista um **"outro campo…"** para o caminho
+escrito à mão; continua sendo um caminho, não uma expressão.
+
+Os textos ganharam **"inserir variável"**, que escreve `{{…}}` na posição do
+cursor: antes era preciso decorar o caminho, e um `{{cliete.nome}}` com erro de
+digitação vira string vazia na mensagem do cliente, sem nada avisar.
+
+**A validação cobre as duas formas novas de quebrar em silêncio**: citar um
+passo que não acontece antes, e dois passos com o mesmo nome (a chave seria a
+mesma, e o segundo apagaria o que o primeiro deixou).
+
+Dois achados de caminho:
+
+- o `Campo` do painel era um `<p>` sobre o controle — virou `<label>` de
+  verdade. Clicar no rótulo foca o campo, e o E2E do quadro **passava pelo
+  motivo errado**: ele preenchia "o primeiro input", que depois desta frente
+  passou a ser o nome do passo, e o título do aviso (não obrigatório) ficava
+  vazio sem ninguém notar;
+- no ensaio, a saída de um passo é o que ele *faria* — uma condição sobre
+  `passos.x.enviada` dá falso ali, e isso é honesto: nada foi enviado.
+
 ### 2026-09-24 — Conversa nova não aparecia no inbox sem recarregar
 
 Relatado pelo Heitor assim: o inbox parecia estar em tempo real **só para

@@ -96,6 +96,87 @@ describe('validarGrafo', () => {
   })
 })
 
+describe('referências entre passos', () => {
+  // Um passo lê o que outro deixou por `{{passos.<nome>.campo}}`. As duas
+  // formas de quebrar isso são mudas em produção: variável sem valor vira
+  // string vazia, e a frase sai pela metade para o cliente.
+
+  const mensagem: NoDoGrafo = {
+    id: 'm1', tipo: 'acao.mensagem', pos: { x: 200, y: 0 },
+    nome: 'Mandar mensagem', config: { canal: 'whatsapp', texto: 'oi' },
+  }
+
+  it('citar o resultado de um passo anterior é válido', () => {
+    const g = grafo({
+      nos: [gatilho, mensagem, {
+        ...acao, config: { texto: 'Enviada: {{passos.mandar_mensagem.enviada}}' },
+      }],
+      ligacoes: [
+        { id: 'l1', de: 'g1', para: 'm1' },
+        { id: 'l2', de: 'm1', para: 'a1' },
+      ],
+    })
+    expect(validarGrafo(g)).toEqual([])
+  })
+
+  it('citar um passo que vem DEPOIS não liga', () => {
+    // No disparo o valor não existe; a mensagem sairia com um buraco.
+    const g = grafo({
+      nos: [gatilho, { ...acao, config: { texto: '{{passos.mandar_mensagem.enviada}}' } }, mensagem],
+      ligacoes: [
+        { id: 'l1', de: 'g1', para: 'a1' },
+        { id: 'l2', de: 'a1', para: 'm1' },
+      ],
+    })
+    expect(podeAtivar(g)).toBe(false)
+    expect(validarGrafo(g).some(p => p.mensagem.includes('não acontece antes dele'))).toBe(true)
+  })
+
+  it('o passo do outro ramo da condição também não vale', () => {
+    const se: NoDoGrafo = { id: 'c1', tipo: 'condicao.se', pos: { x: 100, y: 0 }, nome: 'Se', config: {} }
+    const g = grafo({
+      nos: [gatilho, se, mensagem, {
+        ...acao, config: { texto: '{{passos.mandar_mensagem.conversaId}}' },
+      }],
+      ligacoes: [
+        { id: 'l1', de: 'g1', para: 'c1' },
+        { id: 'l2', de: 'c1', para: 'm1', saida: 'sim' },
+        { id: 'l3', de: 'c1', para: 'a1', saida: 'nao' },
+      ],
+    })
+    expect(validarGrafo(g).some(p => p.mensagem.includes('não acontece antes dele'))).toBe(true)
+  })
+
+  it('dois passos com o mesmo nome não ligam', () => {
+    // A chave é a mesma: o segundo sobrescreveria o que o primeiro deixou.
+    const g = grafo({
+      nos: [gatilho, mensagem, { ...mensagem, id: 'm2' }],
+      ligacoes: [
+        { id: 'l1', de: 'g1', para: 'm1' },
+        { id: 'l2', de: 'm1', para: 'm2' },
+      ],
+    })
+    expect(podeAtivar(g)).toBe(false)
+    expect(validarGrafo(g).some(p => p.mensagem.includes('dois passos chamados'))).toBe(true)
+  })
+
+  it('a regra de um IF também é conferida, não só os textos', () => {
+    const se: NoDoGrafo = {
+      id: 'c1', tipo: 'condicao.se', pos: { x: 100, y: 0 }, nome: 'Se',
+      config: { grupo: { juncao: 'e', regras: [{ campo: 'passos.fantasma.enviada', operador: 'preenchido' }] } },
+    }
+    const g = grafo({
+      nos: [gatilho, se, acao],
+      ligacoes: [
+        { id: 'l1', de: 'g1', para: 'c1' },
+        { id: 'l2', de: 'c1', para: 'a1', saida: 'sim' },
+        { id: 'l3', de: 'c1', para: 'a1', saida: 'nao' },
+      ],
+    })
+    expect(validarGrafo(g).some(p => p.mensagem.includes('"fantasma"'))).toBe(true)
+  })
+})
+
 describe('gatilhosDoGrafo', () => {
   it('extrai os nomes de evento, sem repetir', () => {
     const g = grafo({ nos: [gatilho, { ...gatilho, id: 'g2' }] })

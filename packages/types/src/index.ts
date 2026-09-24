@@ -14,6 +14,8 @@ export type {
   DadosDeProcedimento, DadosDeMembro, DadosDeCargo, DadosDeIntegracao,
 } from './eventos'
 export { EVENTOS } from './eventos'
+export type { CampoDeEvento } from './eventos-campos'
+export { CAMPOS_DO_EVENTO, CAMPOS_DO_FATO } from './eventos-campos'
 export type {
   TipoDeNo, OperadorDeCondicao, RegraDeCondicao, GrupoDeCondicao,
   ConfigGatilhoEvento, ConfigGatilhoAgenda, ConfigBuscarClientes,
@@ -23,8 +25,9 @@ export type {
   ConfigAcaoDesfecho, ConfigAcaoTagCliente, ConfigAcaoAtribuir,
   ConfigAcaoAnotar, ConfigDeNo,
   NoDoGrafo, LigacaoDoGrafo, GrafoDeAutomacao,
-  LimitesDaAutomacao, StatusDaAutomacao, StatusDaExecucao,
+  LimitesDaAutomacao, StatusDaAutomacao, StatusDaExecucao, DadoDoPasso,
 } from './automacoes'
 export {
-  NODES, TIPOS_DE_GATILHO, SAIDAS_DE, LIMITES_PADRAO, PROFUNDIDADE_MAXIMA,
+  NODES, TIPOS_DE_GATILHO, SAIDAS_DE, DADOS_DO_NO, ROTULOS_DE_NO,
+  LIMITES_PADRAO, PROFUNDIDADE_MAXIMA,
 } from './automacoes'

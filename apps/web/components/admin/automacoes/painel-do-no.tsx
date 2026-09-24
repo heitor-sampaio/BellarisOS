@@ -1,11 +1,19 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { Trash2, X } from 'lucide-react'
 import { EVENTOS, NODES } from '@estetica-os/types'
 import type {
-  NoDoGrafo, TipoDeNo, GrupoDeCondicao, RegraDeCondicao, OperadorDeCondicao,
+  NoDoGrafo, GrafoDeAutomacao, TipoDeNo,
+  GrupoDeCondicao, RegraDeCondicao, OperadorDeCondicao,
 } from '@estetica-os/types'
 import { ROTULOS } from '@/lib/automacoes/validar'
+import {
+  variaveisDisponiveis, eventoDoGatilhoDe,
+  type GrupoDeVariaveis, type CampoVisto,
+} from '@/lib/automacoes/disponiveis'
+import { nomeDoPasso, chaveDoPasso } from '@/lib/automacoes/passos'
+import { amostraDoEvento } from '@/actions/automacoes'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 
 /**
@@ -27,60 +35,51 @@ const OPERADORES: { valor: OperadorDeCondicao; rotulo: string; semValor?: boolea
   { valor: 'vazio',      rotulo: 'está vazio',      semValor: true },
 ]
 
-/**
- * Os caminhos que a pessoa pode escolher, em português.
- *
- * Lista curada, não "todos os campos do banco": quem monta o fluxo escolhe de
- * uma lista de perguntas que fazem sentido no dia a dia da clínica, e não de um
- * dicionário de colunas.
- */
-const CAMPOS: { grupo: string; itens: { caminho: string; rotulo: string }[] }[] = [
-  { grupo: 'Cliente', itens: [
-    { caminho: 'cliente.nome',      rotulo: 'Nome' },
-    { caminho: 'cliente.telefone',  rotulo: 'Telefone' },
-    { caminho: 'cliente.email',     rotulo: 'E-mail' },
-    { caminho: 'cliente.tags',      rotulo: 'Tags' },
-    { caminho: 'cliente.genero',    rotulo: 'Gênero' },
-    { caminho: 'cliente.aniversarioHoje', rotulo: 'Faz aniversário hoje' },
-    { caminho: 'cliente.ativo',     rotulo: 'Está ativo' },
-  ] },
-  { grupo: 'Agendamento', itens: [
-    { caminho: 'agendamento.status',       rotulo: 'Situação' },
-    { caminho: 'agendamento.valor',        rotulo: 'Valor' },
-    { caminho: 'agendamento.procedimento', rotulo: 'Procedimento' },
-    { caminho: 'agendamento.profissional', rotulo: 'Profissional' },
-    { caminho: 'agendamento.data',         rotulo: 'Data e hora' },
-  ] },
-  { grupo: 'Oportunidade', itens: [
-    { caminho: 'lead.etapa',    rotulo: 'Etapa do funil' },
-    { caminho: 'lead.origem',   rotulo: 'Origem' },
-    { caminho: 'lead.valor',    rotulo: 'Valor' },
-    { caminho: 'lead.tags',     rotulo: 'Tags' },
-  ] },
-  { grupo: 'Conversa', itens: [
-    { caminho: 'conversa.canal',  rotulo: 'Canal' },
-    { caminho: 'conversa.status', rotulo: 'Situação' },
-  ] },
-  { grupo: 'O fato', itens: [
-    { caminho: 'evento.nome',     rotulo: 'Nome do evento' },
-    { caminho: 'evento.origem',   rotulo: 'Origem (app, webhook…)' },
-    { caminho: 'evento.atorTipo', rotulo: 'Quem fez (usuário, sistema…)' },
-  ] },
-]
-
 interface Props {
   no:       NoDoGrafo
+  /** O grafo inteiro: a lista de campos depende de ONDE o node está. */
+  grafo:    GrafoDeAutomacao
   /** Etapas, cargos, pessoas e tags da rede — carregadas uma vez pelo editor. */
   opcoes:   OpcoesDoEditor | null
   onChange: (config: Record<string, unknown>) => void
+  onRenomear: (nome: string) => void
   onExcluir: () => void
   onFechar:  () => void
   somenteLeitura?: boolean
 }
 
-export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteLeitura }: Props) {
+export function PainelDoNo({
+  no, grafo, opcoes, onChange, onRenomear, onExcluir, onFechar, somenteLeitura,
+}: Props) {
   const c = (no.config ?? {}) as Record<string, unknown>
   const set = (patch: Record<string, unknown>) => onChange({ ...c, ...patch })
+
+  /**
+   * O que o último fato real daquele evento trouxe.
+   *
+   * O catálogo declara o que o evento deveria carregar; isto mostra o que ELE
+   * de fato carregou, com um exemplo ao lado. É a diferença entre oferecer uma
+   * lista teórica e oferecer o dado que chega — e é o que responde "é este
+   * campo mesmo?" sem abrir o banco.
+   */
+  const evento = eventoDoGatilhoDe(grafo, no.id)
+  // Guardada COM o evento a que pertence, e usada só quando os dois batem.
+  // Gatilho trocado no meio do caminho não pode deixar a amostra antiga na
+  // tela: seriam campos de outro evento, oferecidos como se fossem deste.
+  const [amostra, setAmostra] = useState<{ evento: string; campos: CampoVisto[] } | null>(null)
+
+  useEffect(() => {
+    if (!evento) return
+    let valeu = true
+    amostraDoEvento(evento)
+      .then(campos => { if (valeu) setAmostra({ evento, campos }) })
+      .catch(() => {})
+    return () => { valeu = false }
+  }, [evento])
+
+  const vistos = amostra?.evento === evento ? amostra.campos : []
+
+  const variaveis = variaveisDisponiveis(grafo, no.id, { vistos })
 
   return (
     <aside
@@ -104,6 +103,21 @@ export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteL
       </div>
 
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
+        {/* O nome vem primeiro porque é por ele que os passos seguintes leem o
+            que este deixou — é identidade, não enfeite. */}
+        <Campo rotulo="Nome do passo">
+          <input
+            className="field" value={nomeDoPasso(no, grafo)}
+            disabled={somenteLeitura}
+            onChange={e => onRenomear(e.target.value)}
+            placeholder={ROTULOS[no.tipo as TipoDeNo]}
+          />
+          <Dica>
+            Os passos seguintes leem o que este produziu por{' '}
+            <code>{`{{passos.${chaveDoPasso(no, grafo)}.…}}`}</code>.
+          </Dica>
+        </Campo>
+
         {no.tipo === NODES.GATILHO_EVENTO && (
           <Campo rotulo="Quando acontecer">
             <select
@@ -128,6 +142,7 @@ export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteL
         {no.tipo === NODES.CONDICAO_SE && (
           <EditorDeGrupo
             grupo={(c.grupo as GrupoDeCondicao) ?? { juncao: 'e', regras: [] }}
+            variaveis={variaveis}
             onChange={g => set({ grupo: g })}
             somenteLeitura={somenteLeitura}
           />
@@ -138,6 +153,7 @@ export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteL
             <Campo rotulo="Comparar o campo">
               <SelectDeCampo
                 valor={(c.campo as string) ?? ''}
+                grupos={variaveis}
                 onChange={v => set({ campo: v })}
                 somenteLeitura={somenteLeitura}
               />
@@ -192,16 +208,17 @@ export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteL
               />
             </Campo>
             <Campo rotulo="Mensagem">
-              <textarea
-                className="field" rows={3} value={(c.corpo as string) ?? ''}
-                disabled={somenteLeitura}
-                onChange={e => set({ corpo: e.target.value })}
+              <TextoComVariaveis
+                valor={(c.corpo as string) ?? ''}
+                grupos={variaveis}
+                onChange={v => set({ corpo: v })}
+                somenteLeitura={somenteLeitura}
                 placeholder="Telefone {{cliente.telefone}}"
               />
               <Dica>
-                Use <code>{'{{cliente.nome}}'}</code>, <code>{'{{agendamento.data}}'}</code> e
-                outros campos entre chaves duplas — eles viram o valor de verdade
-                no disparo.
+                A lista acima insere a variável no lugar do cursor. Ela traz o
+                que este ponto do fluxo tem: o que chegou no gatilho, o cliente
+                e o que os passos anteriores deixaram.
               </Dica>
             </Campo>
           </>
@@ -209,11 +226,12 @@ export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteL
 
         {no.tipo === NODES.ACAO_ANOTAR && (
           <Campo rotulo="Texto da anotação">
-            <textarea
-              className="field" rows={3} value={(c.texto as string) ?? ''}
-              disabled={somenteLeitura}
-              onChange={e => set({ texto: e.target.value })}
-              placeholder="Cliente voltou pelo anúncio de {{evento.dados.campanha}}"
+            <TextoComVariaveis
+              valor={(c.texto as string) ?? ''}
+              grupos={variaveis}
+              onChange={v => set({ texto: v })}
+              somenteLeitura={somenteLeitura}
+              placeholder="Cliente voltou pelo anúncio de {{evento.dados.campanhaNome}}"
             />
             <Dica>A anotação entra na linha do tempo da oportunidade, com o nome da automação.</Dica>
           </Campo>
@@ -233,10 +251,12 @@ export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteL
               </select>
             </Campo>
             <Campo rotulo="Mensagem">
-              <textarea
-                className="field" rows={4} value={(c.texto as string) ?? ''}
-                disabled={somenteLeitura}
-                onChange={e => set({ texto: e.target.value })}
+              <TextoComVariaveis
+                valor={(c.texto as string) ?? ''}
+                grupos={variaveis}
+                onChange={v => set({ texto: v })}
+                linhas={4}
+                somenteLeitura={somenteLeitura}
                 placeholder="Oi {{cliente.nome}}, tudo bem?"
               />
               <Dica>
@@ -458,15 +478,15 @@ export function PainelDoNo({ no, opcoes, onChange, onExcluir, onFechar, somenteL
         {no.tipo === NODES.ESPERA_ATE && (
           <>
             <Campo rotulo="Esperar até a data em">
-              <select
-                className="field" value={(c.campo as string) ?? ''}
-                disabled={somenteLeitura}
-                onChange={e => set({ campo: e.target.value })}
-              >
-                <option value="">Escolha o campo…</option>
-                <option value="agendamento.data">Agendamento · data e hora</option>
-                <option value="cliente.nascimento">Cliente · data de nascimento</option>
-              </select>
+              {/* Contextual como o resto: a data que interessa muitas vezes é a
+                  que veio no próprio gatilho (`evento.dados.agendadoPara`), e
+                  antes a lista tinha duas opções fixas que não a incluíam. */}
+              <SelectDeCampo
+                valor={(c.campo as string) ?? ''}
+                grupos={variaveis}
+                onChange={v => set({ campo: v })}
+                somenteLeitura={somenteLeitura}
+              />
             </Campo>
             <Campo rotulo="Com deslocamento">
               <select
@@ -525,17 +545,26 @@ const NODES_SEM_EDITOR: TipoDeNo[] = []
 
 // ─── Peças ──────────────────────────────────────────────────────────────────
 
+/**
+ * Rótulo + controle.
+ *
+ * `<label>` de verdade, e não um `<p>` por cima: clicar no rótulo passa a focar
+ * o campo, e cada controle deste painel passa a ter nome — que é o que permite
+ * procurá-lo por "Título" em vez de "o terceiro input", tanto para quem usa
+ * leitor de tela quanto para o teste.
+ */
 function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
-    <div>
-      <p style={{
+    <label style={{ display: 'block' }}>
+      <span style={{
+        display: 'block',
         fontSize: 11, fontWeight: 'var(--weight-bold)', color: 'var(--text-soft)',
         marginBottom: 5,
       }}>
         {rotulo}
-      </p>
+      </span>
       {children}
-    </div>
+    </label>
   )
 }
 
@@ -547,24 +576,157 @@ function Dica({ children }: { children: React.ReactNode }) {
   )
 }
 
+/** Valor do item que abre o campo escrito à mão. */
+const OUTRO = '__outro__'
+
+/**
+ * A escolha do campo a comparar.
+ *
+ * A lista é montada a partir de onde o node está no grafo: o payload do evento
+ * que dispara, as entidades e o que cada passo anterior deixou. O exemplo ao
+ * lado vem do último fato real — é ele que dá a certeza de estar pegando o
+ * campo certo antes de a automação rodar.
+ *
+ * **"Outro campo…"** existe porque nenhuma lista cobre tudo: `dados` aceita
+ * campo que ninguém declarou, e sem esta saída a automação ficaria bloqueada
+ * esperando alguém mexer no código. Continua sendo um CAMINHO, não expressão —
+ * quem monta isto é a recepção da clínica.
+ */
 function SelectDeCampo({
-  valor, onChange, somenteLeitura,
-}: { valor: string; onChange: (v: string) => void; somenteLeitura?: boolean }) {
+  valor, grupos, onChange, somenteLeitura,
+}: {
+  valor:   string
+  grupos:  GrupoDeVariaveis[]
+  onChange: (v: string) => void
+  somenteLeitura?: boolean
+}) {
+  const naLista = grupos.some(g => g.itens.some(i => i.caminho === valor))
+  // Campo escrito à mão (ou herdado de um grafo antigo) abre já no modo livre:
+  // cair na lista mostraria "Escolha o campo…" com um valor salvo por baixo.
+  const [livre, setLivre] = useState(!!valor && !naLista)
+
+  if (livre) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+        <input
+          className="field" value={valor} disabled={somenteLeitura}
+          onChange={e => onChange(e.target.value)}
+          placeholder="evento.dados.algumCampo"
+        />
+        {!somenteLeitura && (
+          <button
+            type="button" className="btn-ghost"
+            style={{ alignSelf: 'flex-start', fontSize: 11, color: 'var(--text-muted)' }}
+            onClick={() => { setLivre(false); onChange('') }}
+          >
+            Voltar para a lista
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <select className="field" value={valor} disabled={somenteLeitura} onChange={e => onChange(e.target.value)}>
+    <select
+      className="field" value={valor} disabled={somenteLeitura}
+      onChange={e => {
+        if (e.target.value === OUTRO) { setLivre(true); return }
+        onChange(e.target.value)
+      }}
+    >
       <option value="">Escolha o campo…</option>
-      {CAMPOS.map(g => (
+      {grupos.map(g => (
         <optgroup key={g.grupo} label={g.grupo}>
-          {g.itens.map(i => <option key={i.caminho} value={i.caminho}>{i.rotulo}</option>)}
+          {g.itens.map(i => (
+            <option key={i.caminho} value={i.caminho}>
+              {i.exemplo ? `${i.rotulo} — ${i.exemplo}` : i.rotulo}
+            </option>
+          ))}
         </optgroup>
       ))}
+      <option value={OUTRO}>Outro campo…</option>
     </select>
   )
 }
 
+/**
+ * Um texto que aceita variáveis, com a lista ao lado.
+ *
+ * Sem isto, usar uma variável exigia decorar o caminho e digitar as chaves
+ * duplas na mão — e um `{{cliete.nome}}` com erro de digitação vira string
+ * vazia na mensagem do cliente, sem nada avisar. Aqui a variável é escolhida e
+ * escrita na posição do cursor.
+ */
+function TextoComVariaveis({
+  valor, grupos, onChange, linhas, placeholder, somenteLeitura,
+}: {
+  valor:  string
+  grupos: GrupoDeVariaveis[]
+  onChange: (v: string) => void
+  linhas?: number
+  placeholder?: string
+  somenteLeitura?: boolean
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null)
+
+  function inserir(caminho: string) {
+    if (!caminho) return
+    const trecho = `{{${caminho}}}`
+    const campo = ref.current
+    // Sem o campo montado (ou sem cursor), vai para o fim: melhor um texto
+    // para ajeitar do que um clique que não faz nada.
+    const corte = campo?.selectionStart ?? valor.length
+    const fim   = campo?.selectionEnd   ?? valor.length
+    const novo  = `${valor.slice(0, corte)}${trecho}${valor.slice(fim)}`
+    onChange(novo)
+    requestAnimationFrame(() => {
+      if (!campo) return
+      campo.focus()
+      const posicao = corte + trecho.length
+      campo.setSelectionRange(posicao, posicao)
+    })
+  }
+
+  return (
+    <>
+      <textarea
+        ref={ref}
+        className="field" rows={linhas ?? 3} value={valor}
+        disabled={somenteLeitura}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+      {!somenteLeitura && (
+        <select
+          className="field"
+          style={{ marginTop: 6, fontSize: 11 }}
+          value=""
+          onChange={e => { inserir(e.target.value); e.target.value = '' }}
+        >
+          <option value="">Inserir variável…</option>
+          {grupos.map(g => (
+            <optgroup key={g.grupo} label={g.grupo}>
+              {g.itens.map(i => (
+                <option key={i.caminho} value={i.caminho}>
+                  {i.exemplo ? `${i.rotulo} — ${i.exemplo}` : i.rotulo}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      )}
+    </>
+  )
+}
+
 function EditorDeGrupo({
-  grupo, onChange, somenteLeitura,
-}: { grupo: GrupoDeCondicao; onChange: (g: GrupoDeCondicao) => void; somenteLeitura?: boolean }) {
+  grupo, variaveis, onChange, somenteLeitura,
+}: {
+  grupo: GrupoDeCondicao
+  variaveis: GrupoDeVariaveis[]
+  onChange: (g: GrupoDeCondicao) => void
+  somenteLeitura?: boolean
+}) {
   const regras = grupo.regras ?? []
 
   const mudarRegra = (i: number, patch: Partial<RegraDeCondicao>) => {
@@ -588,7 +750,7 @@ function EditorDeGrupo({
         return (
           <div key={i} className="card-sm" style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
             <SelectDeCampo
-              valor={r.campo} somenteLeitura={somenteLeitura}
+              valor={r.campo} grupos={variaveis} somenteLeitura={somenteLeitura}
               onChange={v => mudarRegra(i, { campo: v })}
             />
             <select
@@ -620,9 +782,15 @@ function EditorDeGrupo({
       {!somenteLeitura && (
         <button
           type="button" className="btn-secondary" style={{ fontSize: 'var(--text-xs-sz)' }}
+          // Nasce com o primeiro campo do gatilho, não com `cliente.nome`
+          // fixo: num fluxo de estoque não existe cliente nenhum, e a regra
+          // apareceria perguntando por um campo que nunca terá valor.
           onClick={() => onChange({
             ...grupo,
-            regras: [...regras, { campo: 'cliente.nome', operador: 'preenchido' }],
+            regras: [...regras, {
+              campo: variaveis[0]?.itens[0]?.caminho ?? '',
+              operador: 'preenchido',
+            }],
           })}
         >
           + Adicionar regra

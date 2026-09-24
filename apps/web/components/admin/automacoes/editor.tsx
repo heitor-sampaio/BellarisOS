@@ -17,6 +17,7 @@ import { PainelDeLimites } from './painel-de-limites'
 import { PainelDeExecucoes } from './painel-de-execucoes'
 import { validarGrafo, ROTULOS, type ProblemaDoGrafo } from '@/lib/automacoes/validar'
 import { novoIdDeNo, configPadrao } from '@/lib/automacoes/ids'
+import { nomePadraoDoPasso } from '@/lib/automacoes/passos'
 import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor } from '@/actions/automacoes'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 import type { AutomacaoCompleta } from '@/actions/automacoes'
@@ -99,7 +100,16 @@ export function EditorDeAutomacao({
       // Com os padrões do tipo: um node que nasce vazio mostra "A unidade do
       // fato" no painel e grava `alvo: undefined` — a tela dizendo uma coisa e
       // o banco guardando outra.
-      nos: [...grafo.nos, { id, tipo, pos, config: configPadrao(tipo) }],
+      //
+      // E com nome: é por ele que os nodes seguintes leem o que este deixou
+      // (`{{passos.mandar_mensagem.enviada}}`). Numerado a partir dos que já
+      // existem, senão dois passos do mesmo tipo disputariam a mesma chave e o
+      // segundo apagaria em silêncio o que o primeiro produziu.
+      nos: [...grafo.nos, {
+        id, tipo, pos,
+        nome:   nomePadraoDoPasso(tipo, grafo),
+        config: configPadrao(tipo),
+      }],
     })
     setSel(id)
     // Reenquadra: o node novo nasce à direita e cairia fora da área visível
@@ -112,6 +122,22 @@ export function EditorDeAutomacao({
     mudarGrafo({
       ...grafo,
       nos: grafo.nos.map(n => (n.id === noSelecionado.id ? { ...n, config } : n)),
+    })
+  }
+
+  /**
+   * Renomear o passo muda a chave por onde os seguintes o leem.
+   *
+   * Quem já escreveu `{{passos.nome_antigo.campo}}` num texto fica apontando
+   * para o vazio — e como variável sem valor vira string vazia, isso sairia na
+   * mensagem do cliente sem nada explicar. Por isso a validação antes de ativar
+   * confere as referências: é lá que o problema aparece com nome e sobrenome.
+   */
+  function renomearNo(nome: string) {
+    if (!noSelecionado) return
+    mudarGrafo({
+      ...grafo,
+      nos: grafo.nos.map(n => (n.id === noSelecionado.id ? { ...n, nome } : n)),
     })
   }
 
@@ -284,9 +310,18 @@ export function EditorDeAutomacao({
             duas coisas se configuram em momentos diferentes. */}
         {noSelecionado ? (
           <PainelDoNo
+            // Remonta ao trocar de node: o painel guarda estado próprio (o
+            // campo escrito à mão, a amostra do evento), e reaproveitá-lo
+            // mostraria o do node anterior no formulário do novo.
+            key={noSelecionado.id}
             no={noSelecionado}
+            // O grafo inteiro porque a lista de campos depende de ONDE o node
+            // está: o payload do gatilho que o alimenta e o que os passos
+            // anteriores a ele deixaram.
+            grafo={grafo}
             opcoes={opcoes}
             onChange={configurar}
+            onRenomear={renomearNo}
             onExcluir={excluirNo}
             onFechar={() => setSel(null)}
             somenteLeitura={!podeEditar}

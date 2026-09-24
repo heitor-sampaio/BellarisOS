@@ -53,6 +53,123 @@ export const SAIDAS_DE: Partial<Record<TipoDeNo, readonly string[]>> = {
   [NODES.CONDICAO_ESCOLHA]: [],
 }
 
+/**
+ * Nome de cada node em pt-BR.
+ *
+ * Aqui e não na tela porque o executor também precisa: é daqui que sai o nome
+ * padrão do passo ("Mandar mensagem 1"), e o nome do passo é a chave por onde
+ * os nodes seguintes leem o que ele deixou.
+ */
+export const ROTULOS_DE_NO: Record<TipoDeNo, string> = {
+  [NODES.GATILHO_EVENTO]:        'Quando acontecer',
+  [NODES.GATILHO_AGENDA]:        'Todo dia, no horário',
+  [NODES.BUSCAR_CLIENTES]:       'Buscar clientes',
+  [NODES.CONDICAO_SE]:           'Se',
+  [NODES.CONDICAO_ESCOLHA]:      'Escolher por',
+  [NODES.ESPERA_DURACAO]:        'Esperar',
+  [NODES.ESPERA_ATE]:            'Esperar até',
+  [NODES.ACAO_MENSAGEM]:         'Mandar mensagem',
+  [NODES.ACAO_NOTIFICAR_EQUIPE]: 'Avisar a equipe',
+  [NODES.ACAO_MOVER_ETAPA]:      'Mover de etapa',
+  [NODES.ACAO_DESFECHO]:         'Marcar ganho ou perdido',
+  [NODES.ACAO_TAG_CLIENTE]:      'Marcar com tag',
+  [NODES.ACAO_ATRIBUIR]:         'Definir responsável',
+  [NODES.ACAO_ANOTAR]:           'Anotar na oportunidade',
+}
+
+/**
+ * O que cada node DEIXA para os seguintes, em `passos.<nome do passo>`.
+ *
+ * Toda ação já devolvia um resumo — `{ enviada: true, conversaId }`,
+ * `{ avisados: 3 }` — que ia para o histórico do run e morria ali. Agora ele
+ * também entra no contexto, e é isto que diz à tela o que existe para escolher
+ * sem precisar rodar o fluxo antes.
+ *
+ * **`motivo` aparece em quase todo mundo de propósito.** É o campo que explica
+ * o que NÃO aconteceu ("o cliente já tinha esta tag", "não há conversa aberta"),
+ * e é justamente o que um IF depois da ação quer ler para tomar o outro caminho.
+ *
+ * ⚠️ No ENSAIO a ação não roda, e o passo deixa `{ ensaio: true, faria }` em vez
+ * destes campos. Uma condição sobre `passos.x.enviada` dá falso ali — e isso é
+ * honesto: nada foi enviado.
+ */
+export interface DadoDoPasso {
+  campo:  string
+  rotulo: string
+  tipo:   'texto' | 'numero' | 'booleano' | 'data'
+}
+
+const MOTIVO: DadoDoPasso = { campo: 'motivo', rotulo: 'Motivo (quando não fez)', tipo: 'texto' }
+
+export const DADOS_DO_NO: Record<TipoDeNo, readonly DadoDoPasso[]> = {
+  [NODES.GATILHO_EVENTO]: [
+    { campo: 'gatilho', rotulo: 'Evento que disparou', tipo: 'texto' },
+  ],
+  [NODES.GATILHO_AGENDA]: [
+    { campo: 'gatilho', rotulo: 'Gatilho', tipo: 'texto' },
+  ],
+  [NODES.BUSCAR_CLIENTES]: [
+    { campo: 'encontrados', rotulo: 'Quantos clientes achou', tipo: 'numero' },
+    MOTIVO,
+  ],
+  [NODES.CONDICAO_SE]: [
+    { campo: 'resultado', rotulo: 'Resultado (sim ou não)', tipo: 'texto' },
+  ],
+  [NODES.CONDICAO_ESCOLHA]: [
+    { campo: 'campo', rotulo: 'Campo comparado', tipo: 'texto' },
+    { campo: 'saida', rotulo: 'Caminho escolhido', tipo: 'texto' },
+  ],
+  [NODES.ESPERA_DURACAO]: [
+    { campo: 'esperando', rotulo: 'Quanto esperou', tipo: 'texto' },
+    { campo: 'ate',       rotulo: 'Até quando',    tipo: 'data'  },
+  ],
+  [NODES.ESPERA_ATE]: [
+    { campo: 'campo', rotulo: 'Data usada',  tipo: 'texto' },
+    { campo: 'ate',   rotulo: 'Até quando',  tipo: 'data'  },
+    MOTIVO,
+  ],
+  [NODES.ACAO_MENSAGEM]: [
+    { campo: 'enviada',    rotulo: 'Foi enviada',           tipo: 'booleano' },
+    { campo: 'canal',      rotulo: 'Canal',                 tipo: 'texto' },
+    { campo: 'conversaId', rotulo: 'Id da conversa',        tipo: 'texto' },
+    { campo: 'texto',      rotulo: 'Texto que o cliente recebeu', tipo: 'texto' },
+    MOTIVO,
+  ],
+  [NODES.ACAO_NOTIFICAR_EQUIPE]: [
+    { campo: 'avisados', rotulo: 'Quantas pessoas avisou', tipo: 'numero' },
+    { campo: 'alvo',     rotulo: 'Alvo do aviso',          tipo: 'texto' },
+    MOTIVO,
+  ],
+  [NODES.ACAO_MOVER_ETAPA]: [
+    { campo: 'movido', rotulo: 'Mudou de etapa', tipo: 'booleano' },
+    { campo: 'de',     rotulo: 'Etapa anterior', tipo: 'texto' },
+    { campo: 'para',   rotulo: 'Etapa nova',     tipo: 'texto' },
+    MOTIVO,
+  ],
+  [NODES.ACAO_DESFECHO]: [
+    { campo: 'movido',   rotulo: 'Marcou',          tipo: 'booleano' },
+    { campo: 'desfecho', rotulo: 'Ganho ou perdido', tipo: 'texto' },
+    { campo: 'para',     rotulo: 'Etapa de destino', tipo: 'texto' },
+    MOTIVO,
+  ],
+  [NODES.ACAO_TAG_CLIENTE]: [
+    { campo: 'alterado', rotulo: 'Mudou a tag',            tipo: 'booleano' },
+    { campo: 'tag',      rotulo: 'Tag',                    tipo: 'texto' },
+    { campo: 'modo',     rotulo: 'Adicionou ou removeu',   tipo: 'texto' },
+    MOTIVO,
+  ],
+  [NODES.ACAO_ATRIBUIR]: [
+    { campo: 'atribuido',   rotulo: 'Definiu responsável', tipo: 'booleano' },
+    { campo: 'responsavel', rotulo: 'Quem ficou',          tipo: 'texto' },
+    MOTIVO,
+  ],
+  [NODES.ACAO_ANOTAR]: [
+    { campo: 'anotado', rotulo: 'Anotou', tipo: 'booleano' },
+    { campo: 'leadId',  rotulo: 'Id da oportunidade', tipo: 'texto' },
+    MOTIVO,
+  ],
+}
+
 // ─── Condições ──────────────────────────────────────────────────────────────
 
 /**
@@ -194,6 +311,18 @@ export interface NoDoGrafo {
   /** Posição no quadro. Só a tela usa; o executor ignora. */
   pos:    { x: number; y: number }
   config: Partial<ConfigDeNo>
+  /**
+   * Como este passo se chama — e, em forma de slug, a chave por onde os nodes
+   * seguintes leem o que ele deixou: `{{passos.mandar_mensagem_1.conversaId}}`.
+   *
+   * Nasce automático a partir do tipo ("Mandar mensagem 1") e é editável. O id
+   * serviria de chave e seria estável, mas `{{passos.n_7a3f.enviada}}` dentro
+   * do texto de uma mensagem é ilegível para quem reler o fluxo depois.
+   *
+   * Opcional porque os grafos salvos antes disto não têm o campo — quem lê cai
+   * no nome derivado do tipo (`nomeDoPasso`, em `lib/automacoes/passos.ts`).
+   */
+  nome?:  string
 }
 
 export interface LigacaoDoGrafo {

@@ -8,6 +8,7 @@ import type {
   GrafoDeAutomacao, StatusDaAutomacao, LimitesDaAutomacao, StatusDaExecucao,
 } from '@estetica-os/types'
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
+import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
 import { CLIENT_TAGS, isUnitTag } from '@estetica-os/utils'
 
 /**
@@ -331,6 +332,45 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
     tags:     [...tags].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     unidades: (unidades.data ?? []).map(b => ({ id: b.id as string, nome: b.name as string })),
   }
+}
+
+/**
+ * O que o ÚLTIMO fato real daquele evento carregava.
+ *
+ * O catálogo (`CAMPOS_DO_EVENTO`) declara o que cada evento deveria trazer, com
+ * rótulo em português. Isto aqui é o complemento honesto: `DadosDeEvento` tem
+ * índice livre, um emissor pode acrescentar campo sem passar pelo catálogo, e
+ * quem monta o fluxo precisa enxergar o que **de fato** chega — com um exemplo
+ * ao lado, que é o que responde "é este campo mesmo?" sem abrir o banco.
+ *
+ * Uma linha, uma consulta, e só quando o gatilho muda. O índice
+ * `domain_events_nome_idx (tenant_id, nome, ocorrido_em desc)` já existe.
+ *
+ * ⚠️ O exemplo é dado real de cliente — vem truncado, exige `automations: VIEW`
+ * e **não é gravado no grafo**: existe só enquanto o painel está aberto.
+ */
+export async function amostraDoEvento(nome: string): Promise<CampoVisto[]> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'automations', 'VIEW')
+  if (!nome) return []
+
+  const { data, error } = await createAdminClient()
+    .from('domain_events')
+    .select('dados')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('nome', nome)
+    .order('ocorrido_em', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  // Sem fato nenhum não é erro: evento que ainda não aconteceu é o caso comum
+  // numa rede nova, e a lista declarada continua servindo.
+  if (error) {
+    console.error('[amostraDoEvento]', error.message)
+    return []
+  }
+
+  return achatarDados(data?.dados ?? null)
 }
 
 // ─── Histórico e ensaio ─────────────────────────────────────────────────────

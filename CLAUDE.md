@@ -485,6 +485,19 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   de 3, e índice único `(automation_id, evento_id)`. Ação de automação que
   emite evento **passa a profundidade adiante** — sem isso, um grafo em anel
   manda mensagem ao cliente em laço.
+- **Tudo se propaga.** O contexto da execução carrega o payload do gatilho
+  (`evento.dados.*`) e **o que cada passo deixou** (`passos.<nome do passo>.*`);
+  qualquer node à frente lê os dois, em condição ou em `{{variável}}`.
+  - O **nome do passo** (`NoDoGrafo.nome`) é a chave — por isso ele é único no
+    grafo e a validação recusa nome repetido ou referência a passo que não é
+    antecessor. Renomear depois de citar quebra a referência, e é o validador
+    que avisa.
+  - **O que cada node produz se declara em `DADOS_DO_NO`**, e o que cada evento
+    carrega em `CAMPOS_DO_EVENTO` (`packages/types`). Node ou evento sem
+    entrada ali funciona, mas fica invisível para quem monta o fluxo — que é o
+    mesmo erro mudo do gatilho que nunca dispara.
+  - A tela soma a essas listas os campos **vistos no último fato real**
+    (`amostraDoEvento`): `dados` tem índice livre e nenhum catálogo cobre tudo.
 
 ---
 

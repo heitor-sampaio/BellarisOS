@@ -1,5 +1,10 @@
-import { NODES, TIPOS_DE_GATILHO } from '@estetica-os/types'
-import type { GrafoDeAutomacao, NoDoGrafo, TipoDeNo } from '@estetica-os/types'
+import { NODES, TIPOS_DE_GATILHO, ROTULOS_DE_NO } from '@estetica-os/types'
+import type {
+  GrafoDeAutomacao, NoDoGrafo, TipoDeNo, GrupoDeCondicao,
+} from '@estetica-os/types'
+import { caminhosDoTexto } from './variaveis'
+import { antecessoresDe } from './disponiveis'
+import { chaveDoPasso, nomeDoPasso } from './passos'
 
 /**
  * A conferência do grafo antes de ativar.
@@ -124,7 +129,82 @@ export function validarGrafo(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
     }
   }
 
+  problemas.push(...conferirReferencias(grafo))
+
   return problemas
+}
+
+/**
+ * As referências a outros passos (`{{passos.x.campo}}`) apontam para algo que
+ * de fato acontece antes?
+ *
+ * Duas formas de quebrar, as duas mudas em produção:
+ *
+ *  - **citar um passo que não é antecessor** — o do outro ramo do IF, ou um que
+ *    vem depois. No disparo o valor não existe, e variável sem valor vira
+ *    string vazia: a frase sai pela metade para o cliente sem nada avisar;
+ *  - **dois passos com o mesmo nome** — a chave é a mesma, e o segundo
+ *    sobrescreve o que o primeiro deixou.
+ *
+ * Renomear um passo depois de citá-lo cai no primeiro caso — que é
+ * exatamente o motivo de esta conferência existir.
+ */
+function conferirReferencias(grafo: GrafoDeAutomacao): ProblemaDoGrafo[] {
+  const problemas: ProblemaDoGrafo[] = []
+  const nos = grafo?.nos ?? []
+
+  const vistas = new Map<string, string>()
+  for (const no of nos) {
+    const chave = chaveDoPasso(no, grafo)
+    const dono = vistas.get(chave)
+    if (dono) {
+      problemas.push({
+        grau: 'erro', noId: no.id,
+        mensagem: `Há dois passos chamados "${nomeDoPasso(no, grafo)}". `
+          + 'O nome é a chave por onde os seguintes leem o resultado — dê outro a um deles.',
+      })
+    } else {
+      vistas.set(chave, no.id)
+    }
+  }
+
+  for (const no of nos) {
+    const antes = new Set(antecessoresDe(grafo, no.id).map(a => chaveDoPasso(a, grafo)))
+    for (const caminho of caminhosCitados(no)) {
+      if (!caminho.startsWith('passos.')) continue
+      const chave = caminho.split('.')[1] ?? ''
+      if (!chave || antes.has(chave)) continue
+      problemas.push({
+        grau: 'erro', noId: no.id,
+        mensagem: `"${rotuloCurto(no)}" usa o resultado do passo "${chave}", `
+          + 'que não acontece antes dele.',
+      })
+    }
+  }
+
+  return problemas
+}
+
+/** Todo caminho de contexto que este node cita — em texto ou em condição. */
+function caminhosCitados(no: NoDoGrafo): string[] {
+  const c = (no.config ?? {}) as Record<string, unknown>
+  const achados: string[] = []
+
+  for (const chave of ['titulo', 'corpo', 'texto']) {
+    const v = c[chave]
+    if (typeof v === 'string') achados.push(...caminhosDoTexto(v))
+  }
+
+  if (typeof c.campo === 'string' && c.campo) achados.push(c.campo)
+
+  // `grupo` é o IF; `filtro` é a condição do próprio gatilho.
+  for (const chave of ['grupo', 'filtro']) {
+    for (const r of (c[chave] as GrupoDeCondicao | undefined)?.regras ?? []) {
+      if (r.campo) achados.push(r.campo)
+    }
+  }
+
+  return achados
 }
 
 /** Só os erros impedem ativar; avisos ficam na tela. */
@@ -198,23 +278,14 @@ function acharCiclo(grafo: GrafoDeAutomacao): string | null {
 }
 
 function rotuloCurto(no: NoDoGrafo): string {
-  return ROTULOS[no.tipo as TipoDeNo] ?? no.tipo
+  return ROTULOS_DE_NO[no.tipo as TipoDeNo] ?? no.tipo
 }
 
-/** Nome de cada node em pt-BR — usado na validação e na paleta do quadro. */
-export const ROTULOS: Record<TipoDeNo, string> = {
-  [NODES.GATILHO_EVENTO]:        'Quando acontecer',
-  [NODES.GATILHO_AGENDA]:        'Todo dia, no horário',
-  [NODES.BUSCAR_CLIENTES]:       'Buscar clientes',
-  [NODES.CONDICAO_SE]:           'Se',
-  [NODES.CONDICAO_ESCOLHA]:      'Escolher por',
-  [NODES.ESPERA_DURACAO]:        'Esperar',
-  [NODES.ESPERA_ATE]:            'Esperar até',
-  [NODES.ACAO_MENSAGEM]:         'Mandar mensagem',
-  [NODES.ACAO_NOTIFICAR_EQUIPE]: 'Avisar a equipe',
-  [NODES.ACAO_MOVER_ETAPA]:      'Mover de etapa',
-  [NODES.ACAO_DESFECHO]:         'Marcar ganho ou perdido',
-  [NODES.ACAO_TAG_CLIENTE]:      'Marcar com tag',
-  [NODES.ACAO_ATRIBUIR]:         'Definir responsável',
-  [NODES.ACAO_ANOTAR]:           'Anotar na oportunidade',
-}
+/**
+ * Nome de cada node em pt-BR.
+ *
+ * Mora no catálogo (`@estetica-os/types`) desde que o executor passou a
+ * precisar dele para nomear o passo: deixá-lo aqui faria `passos.ts` importar
+ * o validador, e o validador importar `passos.ts` de volta.
+ */
+export { ROTULOS_DE_NO as ROTULOS } from '@estetica-os/types'

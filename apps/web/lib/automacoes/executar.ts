@@ -22,6 +22,7 @@ import { mandarMensagem } from './acoes-mensagem'
 import { podeFalarCom, limitesDe } from './limites'
 import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
 import { resumoDoNo } from './resumo'
+import { chaveDoPasso } from './passos'
 
 /**
  * O executor: um passo por vez, dirigido por `automation_runs`.
@@ -255,6 +256,8 @@ export async function executarRun(
       return await encerrar(run.id, 'falhou', `${atual.tipo}: ${(e as Error).message}`, contexto, atual.id)
     }
 
+    guardarSaida(contexto, atual, automacao.grafo, resultado.resumo)
+
     if (resultado.esperarAte) {
       await gravarPasso(run.id, ordem++, atual, 'esperando', resultado.resumo ?? {}, Date.now() - comecou)
 
@@ -291,6 +294,30 @@ export async function executarRun(
   }
 
   return await encerrar(run.id, 'ok', null, contexto, null)
+}
+
+/**
+ * O que este passo deixa para os seguintes, em `passos.<nome do passo>`.
+ *
+ * O resumo da ação já existia e já era guardado — mas só no histórico do run,
+ * onde nenhum node consegue lê-lo. Guardá-lo TAMBÉM no contexto é o que permite
+ * um IF depois da mensagem perguntar `passos.mandar_mensagem.enviada`, ou o
+ * texto do aviso citar `{{passos.mover_de_etapa.para}}`.
+ *
+ * Vai no contexto que é persistido no run, então atravessa espera e retomada
+ * pelo cron — e também as execuções filhas da busca de clientes, que nascem
+ * com uma cópia dele.
+ */
+function guardarSaida(
+  contexto: ContextoDaExecucao,
+  no:       NoDoGrafo,
+  grafo:    GrafoDeAutomacao,
+  resumo:   Record<string, unknown> | undefined,
+): void {
+  if (!resumo) return
+  const passos = (contexto.passos ?? {}) as Record<string, unknown>
+  passos[chaveDoPasso(no, grafo)] = resumo
+  contexto.passos = passos
 }
 
 /**
