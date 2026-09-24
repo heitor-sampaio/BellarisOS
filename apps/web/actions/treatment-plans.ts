@@ -7,6 +7,7 @@ import { EVENTOS } from '@estetica-os/types'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { gravar, tentar, mensagemDoErro } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
@@ -103,7 +104,7 @@ async function gravarSessoes(
   sessions: PlanSessionInput[],
 ): Promise<{ error?: string }> {
   // Apaga as antigas (cascade leva os procedimentos junto)
-  await admin.from('treatment_plan_sessions').delete().eq('plan_id', planId)
+  await gravar(admin.from('treatment_plan_sessions').delete().eq('plan_id', planId), 'limpar as sessões do plano')
 
   for (let i = 0; i < sessions.length; i++) {
     const sess = sessions[i]!
@@ -150,7 +151,25 @@ async function planoDoTenant(
 
 // -- Salvar rascunho do plano (profissional) -----------------------------------
 
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function saveTreatmentPlan(
+  ...args: Parameters<typeof saveTreatmentPlanInterno>
+): ReturnType<typeof saveTreatmentPlanInterno> {
+  try {
+    return await saveTreatmentPlanInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function saveTreatmentPlanInterno(
   appointmentId: string,
   sessions: PlanSessionInput[],
   notes: string,
@@ -569,8 +588,26 @@ export async function getPlanoParaEditar(planId: string): Promise<{
   }
 }
 
-/** Salva sessões e observações de um plano que já existe. */
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function salvarPlanoDoCliente(
+  ...args: Parameters<typeof salvarPlanoDoClienteInterno>
+): ReturnType<typeof salvarPlanoDoClienteInterno> {
+  try {
+    return await salvarPlanoDoClienteInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/** Salva sessões e observações de um plano que já existe. */
+async function salvarPlanoDoClienteInterno(
   planId: string,
   sessions: PlanSessionInput[],
   notes: string,
@@ -780,13 +817,13 @@ export async function cancelCheckout(
   if (error) return { error: error.message }
 
   if (plan.evaluation_appointment_id) {
-    await admin.from('appointment_history').insert({
+    await tentar(admin.from('appointment_history').insert({
       appointment_id:  plan.evaluation_appointment_id,
       changed_by_id:   ctx.internalUserId,
       changed_by_name: ctx.userName || ctx.roleLabel || 'Recepção',
       action:          'CHECKOUT_CANCELLED',
       description:     reason.trim() ? `Checkout cancelado: ${reason.trim()}` : 'Checkout cancelado pela recepção',
-    })
+    }), 'registrar no histórico do agendamento')
   }
 
   revalidatePath(`/${slug}/agenda`)
@@ -796,7 +833,25 @@ export async function cancelCheckout(
 
 // -- Cancelar tratamento em andamento (ACCEPTED → CANCELLED) ------------------
 
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function cancelTreatmentPlan(
+  ...args: Parameters<typeof cancelTreatmentPlanInterno>
+): ReturnType<typeof cancelTreatmentPlanInterno> {
+  try {
+    return await cancelTreatmentPlanInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function cancelTreatmentPlanInterno(
   planId: string,
   reason: string,
   slug:   string,
@@ -852,17 +907,17 @@ export async function cancelTreatmentPlan(
   if (futureAppts && futureAppts.length > 0) {
     const apptIds = futureAppts.map(a => a.id)
 
-    await admin
+    await gravar(admin
       .from('appointments')
       .update({
         status:              'CANCELLED',
         cancelled_at:        cancelledAt,
         cancellation_reason: cancelReason,
       })
-      .in('id', apptIds)
+      .in('id', apptIds), 'cancelar os agendamentos do plano')
 
     // Registra histórico em cada agendamento cancelado
-    await admin.from('appointment_history').insert(
+    await tentar(admin.from('appointment_history').insert(
       apptIds.map(apptId => ({
         appointment_id:  apptId,
         changed_by_id:   ctx.internalUserId,
@@ -870,29 +925,29 @@ export async function cancelTreatmentPlan(
         action:          'CANCELLED',
         description:     cancelReason,
       }))
-    )
+    ), 'registrar o cancelamento no histórico')
 
     // Emite crédito interno pelo valor das sessões não realizadas (plano já estava pago)
     const totalCredit = futureAppts.reduce((s, a) => s + Number(a.price ?? 0), 0)
     if (totalCredit > 0 && plan.client_id) {
-      await admin.from('internal_credits').insert({
+      await gravar(admin.from('internal_credits').insert({
         client_id:   plan.client_id,
         branch_id:   plan.branch_id,
         amount:      totalCredit,
         description: `Cancelamento de plano — ${futureAppts.length} sessão(ões) não realizada(s)`,
         created_at:  new Date().toISOString(),
-      })
+      }), 'gerar o crédito do cancelamento')
     }
   }
 
   if (plan.evaluation_appointment_id) {
-    await admin.from('appointment_history').insert({
+    await tentar(admin.from('appointment_history').insert({
       appointment_id:  plan.evaluation_appointment_id,
       changed_by_id:   ctx.internalUserId,
       changed_by_name: ctx.userName || ctx.roleLabel || 'Equipe',
       action:          'TREATMENT_CANCELLED',
       description:     cancelReason,
-    })
+    }), 'registrar no histórico do agendamento')
   }
 
   revalidatePath(`/${slug}/clients`)
@@ -901,7 +956,25 @@ export async function cancelTreatmentPlan(
 
 // -- Gerar plano completo de uma só vez (avaliação) ----------------------------
 
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function generateEvaluationPlan(
+  ...args: Parameters<typeof generateEvaluationPlanInterno>
+): ReturnType<typeof generateEvaluationPlanInterno> {
+  try {
+    return await generateEvaluationPlanInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function generateEvaluationPlanInterno(
   appointmentId:         string,
   complaints:            string,
   anamnesis:             AnamnesisData,
@@ -926,13 +999,13 @@ export async function generateEvaluationPlan(
   if (!appt) return { error: 'Agendamento não encontrado.' }
 
   // 1. Queixas do cliente → appointment.notes
-  await admin.from('appointments').update({ notes: complaints.trim() }).eq('id', appointmentId)
+  await gravar(admin.from('appointments').update({ notes: complaints.trim() }).eq('id', appointmentId), 'salvar as queixas do cliente')
 
   // 2. Anamnese → medical_records.general_anamnesis
-  await admin.from('medical_records').upsert(
+  await gravar(admin.from('medical_records').upsert(
     { client_id: appt.client_id, general_anamnesis: { ...anamnesis, updatedAt: new Date().toISOString(), updatedBy: ctx.internalUserId } },
     { onConflict: 'client_id' },
-  )
+  ), 'salvar a anamnese')
 
   // 3. Upsert plano + salvar sessões enviadas pelo editor → PROPOSED
   const { data: plan, error: planErr } = await admin
@@ -951,7 +1024,7 @@ export async function generateEvaluationPlan(
   if (planErr || !plan) return { error: `Erro ao gerar plano: ${planErr?.message}` }
 
   // Salva as sessões do editor (sobrescreve o que havia no banco)
-  await admin.from('treatment_plan_sessions').delete().eq('plan_id', plan.id)
+  await gravar(admin.from('treatment_plan_sessions').delete().eq('plan_id', plan.id), 'limpar as sessões do plano')
   for (let i = 0; i < sessions.length; i++) {
     const sess = sessions[i]!
     const { data: newSess, error: sessErr } = await admin
@@ -960,7 +1033,7 @@ export async function generateEvaluationPlan(
       .select('id').single()
     if (sessErr || !newSess) return { error: `Erro ao salvar sessão ${i + 1}: ${sessErr?.message}` }
     if (sess.procedures.length > 0) {
-      await admin.from('treatment_plan_session_procedures').insert(
+      await gravar(admin.from('treatment_plan_session_procedures').insert(
         sess.procedures.map((p, j) => ({
           session_id:   newSess.id,
           procedure_id: p.procedureId,
@@ -970,7 +1043,7 @@ export async function generateEvaluationPlan(
             product_id: pr.productId, name: pr.name, unit: pr.unit, quantity: pr.quantity,
           })),
         })),
-      )
+      ), 'salvar os procedimentos da sessão')
     }
   }
   const count = sessions.length
@@ -984,24 +1057,24 @@ export async function generateEvaluationPlan(
       medRecord = newRec
     }
     if (medRecord) {
-      await admin.from('medical_record_entries').upsert({
+      await gravar(admin.from('medical_record_entries').upsert({
         medical_record_id: medRecord.id,
         appointment_id:    appointmentId,
         professional_id:   appt.professional_id,
         notes:             sessionNotes.trim() || null,
         intercurrences:    sessionIntercurrences.trim() || null,
-      }, { onConflict: 'appointment_id' })
+      }, { onConflict: 'appointment_id' }), 'salvar as observações do atendimento')
     }
   }
 
   // 5. Log
-  await admin.from('appointment_history').insert({
+  await tentar(admin.from('appointment_history').insert({
     appointment_id:  appointmentId,
     changed_by_id:   ctx.internalUserId,
     changed_by_name: ctx.userName || ctx.roleLabel || 'Profissional',
     action:          'PLAN_PROPOSED',
     description:     `Plano de tratamento enviado para recepção — ${count} sessão(ões)`,
-  })
+  }), 'registrar no histórico do agendamento')
 
   revalidatePath(`/${slug}/agenda`)
   revalidatePath(`/${slug}/agenda/${appointmentId}`)
@@ -1258,7 +1331,25 @@ function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
   return `${entrada}${p.parcelas}x em ${p.metodo}`
 }
 
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function checkoutTreatmentPlan(
+  ...args: Parameters<typeof checkoutTreatmentPlanInterno>
+): ReturnType<typeof checkoutTreatmentPlanInterno> {
+  try {
+    return await checkoutTreatmentPlanInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function checkoutTreatmentPlanInterno(
   planId:           string,
   /**
    * Como foi pago. `null` = **nada agora**: o plano é aceito e o valor fica em
@@ -1437,30 +1528,30 @@ export async function checkoutTreatmentPlan(
     }
 
     // Atualiza treatment_plan_sessions.appointment_id
-    await admin
+    await gravar(admin
       .from('treatment_plan_sessions')
       .update({ appointment_id: appointmentId })
-      .eq('id', sess.id)
+      .eq('id', sess.id), 'vincular a sessão ao agendamento')
   }
 
   // 3. Marcar plano como ACCEPTED
-  await admin
+  await gravar(admin
     .from('treatment_plans')
     .update({ status: 'ACCEPTED', updated_at: new Date().toISOString() })
-    .eq('id', planId)
+    .eq('id', planId), 'marcar o plano como aceito')
 
   // Plano aceito é o fato comercial mais forte do sistema: virou venda.
   await planoAceito(planId, ctx)
 
   // 4. Log no appointment de avaliação
   if (plan.evaluation_appointment_id) {
-    await admin.from('appointment_history').insert({
+    await tentar(admin.from('appointment_history').insert({
       appointment_id:    plan.evaluation_appointment_id,
       changed_by_id:     ctx.internalUserId,
       changed_by_name:   ctx.userName || ctx.roleLabel || 'Recepção',
       action:            'CHECKOUT_COMPLETED',
       description:       `Checkout concluído — R$ ${total.toFixed(2).replace('.', ',')} — ${rotuloDoPagamento(pagamento)}`,
-    })
+    }), 'registrar o checkout no histórico')
   }
 
   if (slug) {
@@ -1496,6 +1587,24 @@ export type RecebimentoDoPlano =
   | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string }
 
 /**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
+export async function receberDoPlano(
+  ...args: Parameters<typeof receberDoPlanoInterno>
+): ReturnType<typeof receberDoPlanoInterno> {
+  try {
+    return await receberDoPlanoInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
  * Recebe o saldo em aberto de um plano, no balcão.
  *
  * O gesto é o do check-in: a pessoa chega para a primeira sessão, paga, e segue
@@ -1503,7 +1612,7 @@ export type RecebimentoDoPlano =
  * de checkout — a fila era uma tarefa que ninguém tinha, esperando uma decisão
  * que já tinha sido tomada quando o plano foi aceito.
  */
-export async function receberDoPlano(
+async function receberDoPlanoInterno(
   planId:        string,
   recebimento:   RecebimentoDoPlano,
   appointmentId: string | null,
@@ -1543,9 +1652,9 @@ export async function receberDoPlano(
       .in('id', saldo.pendentes)
     if (error) return { error: `Erro ao registrar o recebimento: ${error.message}` }
 
-    await admin.from('installments')
+    await gravar(admin.from('installments')
       .update({ is_paid: true, paid_at: agora })
-      .in('transaction_id', saldo.pendentes)
+      .in('transaction_id', saldo.pendentes), 'marcar as parcelas como pagas')
 
   } else {
     const entrada = Math.max(0, Math.min(recebimento.entrada, saldo.emAberto))
@@ -1567,7 +1676,7 @@ export async function receberDoPlano(
       .in('id', saldo.pendentes)
     if (zerarErr) return { error: `Erro ao atualizar o saldo do plano: ${zerarErr.message}` }
 
-    await admin.from('installments').delete().in('transaction_id', saldo.pendentes)
+    await gravar(admin.from('installments').delete().in('transaction_id', saldo.pendentes), 'apagar as parcelas do saldo anterior')
 
     const base = {
       branch_id:         plan.branch_id,
@@ -1623,7 +1732,7 @@ export async function receberDoPlano(
   }
 
   if (appointmentId) {
-    await admin.from('appointment_history').insert({
+    await tentar(admin.from('appointment_history').insert({
       appointment_id:  appointmentId,
       changed_by_id:   ctx.internalUserId,
       changed_by_name: ctx.userName || ctx.roleLabel || 'Recepção',
@@ -1633,7 +1742,7 @@ export async function receberDoPlano(
           ? `${recebimento.metodo} à vista`
           : `entrada + ${recebimento.parcelas}x em ${recebimento.metodo}`
       }`,
-    })
+    }), 'registrar no histórico do agendamento')
   }
 
   if (slug) {

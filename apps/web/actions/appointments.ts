@@ -7,6 +7,7 @@ import { ptBR } from 'date-fns/locale'
 import { getTenantContext, assertClient, assertPermission, isOwnScope } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { gravar, tentar, mensagemDoErro } from '@/lib/db'
 import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
@@ -35,14 +36,14 @@ async function logHistory(
   metadata?: Record<string, unknown>,
 ): Promise<void> {
   if (!internalUserId) return
-  await admin.from('appointment_history').insert({
+  await tentar(admin.from('appointment_history').insert({
     appointment_id:  appointmentId,
     changed_by_id:   internalUserId,
     changed_by_name: userName,
     action,
     description,
     metadata: metadata ?? null,
-  })
+  }), 'registrar no histórico do agendamento')
 }
 
 // ─── Notificações de eventos de agendamento ───────────────────────────────────
@@ -369,13 +370,13 @@ async function completeAppointment(
   const now = new Date().toISOString()
 
   // 1. Atualiza status
-  await admin.from('appointments').update({ status: 'COMPLETED', completed_at: now }).eq('id', appointmentId)
+  await gravar(admin.from('appointments').update({ status: 'COMPLETED', completed_at: now }).eq('id', appointmentId), 'concluir o agendamento')
 
   // 2. Cria entrada de prontuário (se não existir)
-  await admin.from('medical_record_entries').upsert(
+  await gravar(admin.from('medical_record_entries').upsert(
     { appointment_id: appointmentId, professional_id: appt.professional_id, anamnesis_data: {} },
     { onConflict: 'appointment_id', ignoreDuplicates: true }
-  )
+  ), 'abrir a entrada no prontuário')
 
   await emitirEventoClinico(EVENTOS.PRONTUARIO_ENTRADA_CRIADA, appointmentId, ctx, {
     clientId:      appt.client_id as string | null,
@@ -424,7 +425,25 @@ async function completeAppointment(
 }
 
 // --- Check-in do cliente (SCHEDULED → CONFIRMED) -----------------
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function checkinAppointment(
+  ...args: Parameters<typeof checkinAppointmentInterno>
+): ReturnType<typeof checkinAppointmentInterno> {
+  try {
+    return await checkinAppointmentInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function checkinAppointmentInterno(
   appointmentId: string,
   slug: string,
 ): Promise<{ error?: string }> {
@@ -443,10 +462,10 @@ export async function checkinAppointment(
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'SCHEDULED') return { error: 'Check-in só é possível em agendamentos com status Agendado.' }
 
-    await admin
+    await gravar(admin
       .from('appointments')
       .update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() })
-      .eq('id', appointmentId)
+      .eq('id', appointmentId), 'registrar a chegada do cliente')
 
     const userName = await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'CHECKIN', 'Check-in realizado — cliente chegou')
@@ -462,7 +481,25 @@ export async function checkinAppointment(
 }
 
 // --- Iniciar atendimento (CONFIRMED → IN_PROGRESS) ---------------
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function startAppointment(
+  ...args: Parameters<typeof startAppointmentInterno>
+): ReturnType<typeof startAppointmentInterno> {
+  try {
+    return await startAppointmentInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function startAppointmentInterno(
   appointmentId: string,
   slug: string,
 ): Promise<{ error?: string }> {
@@ -485,10 +522,10 @@ export async function startAppointment(
       return { error: 'Apenas o profissional responsável pode iniciar este atendimento.' }
     }
 
-    await admin
+    await gravar(admin
       .from('appointments')
       .update({ status: 'IN_PROGRESS', started_at: new Date().toISOString() })
-      .eq('id', appointmentId)
+      .eq('id', appointmentId), 'iniciar o atendimento')
 
     const userName = await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'STARTED', 'Atendimento iniciado')
@@ -503,7 +540,25 @@ export async function startAppointment(
 }
 
 // --- Reatribuir profissional --------------------------------------
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function reassignProfessional(
+  ...args: Parameters<typeof reassignProfessionalInterno>
+): ReturnType<typeof reassignProfessionalInterno> {
+  try {
+    return await reassignProfessionalInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function reassignProfessionalInterno(
   appointmentId: string,
   professionalId: string,
   slug: string,
@@ -527,10 +582,10 @@ export async function reassignProfessional(
 
     const oldProfId = (appt.professional_id ?? null) as string | null
     const { data: newProf } = await admin.from('users').select('name').eq('id', professionalId).single()
-    await admin
+    await gravar(admin
       .from('appointments')
       .update({ professional_id: professionalId })
-      .eq('id', appointmentId)
+      .eq('id', appointmentId), 'trocar o profissional do agendamento')
 
     const userName = await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'REASSIGNED',
@@ -564,7 +619,25 @@ export async function reassignProfessional(
 }
 
 // --- Cancelar atendimento -----------------------------------------
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function cancelAppointmentSession(
+  ...args: Parameters<typeof cancelAppointmentSessionInterno>
+): ReturnType<typeof cancelAppointmentSessionInterno> {
+  try {
+    return await cancelAppointmentSessionInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function cancelAppointmentSessionInterno(
   _prev: { error?: string } | null,
   formData: FormData,
 ): Promise<{ error?: string }> {
@@ -589,11 +662,11 @@ export async function cancelAppointmentSession(
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)) return { error: 'Agendamento já finalizado.' }
 
-    await admin.from('appointments').update({
+    await gravar(admin.from('appointments').update({
       status:               'CANCELLED',
       cancelled_at:         new Date().toISOString(),
       cancellation_reason:  cancellationReason,
-    }).eq('id', appointmentId)
+    }).eq('id', appointmentId), 'cancelar a sessão')
 
     const userName = await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'CANCELLED',
@@ -614,7 +687,25 @@ export async function cancelAppointmentSession(
 // -- Profissional finaliza o atendimento (clínico) -----------------------------
 // Cria prontuário, baixa estoque, registra comissão e pontos.
 // NÃO cria transação financeira — isso é responsabilidade de confirmPayment.
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function finishSession(
+  ...args: Parameters<typeof finishSessionInterno>
+): ReturnType<typeof finishSessionInterno> {
+  try {
+    return await finishSessionInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function finishSessionInterno(
   _prev: { error?: string } | null,
   formData: FormData,
 ): Promise<{ error?: string }> {
@@ -647,10 +738,10 @@ export async function finishSession(
     const now = new Date().toISOString()
 
     // 1. Marca como concluído
-    await admin.from('appointments').update({
+    await gravar(admin.from('appointments').update({
       status:       'COMPLETED',
       completed_at: now,
-    }).eq('id', appointmentId)
+    }).eq('id', appointmentId), 'concluir o atendimento')
 
     // 2. Prontuário
     let { data: medRecord } = await admin
@@ -669,13 +760,13 @@ export async function finishSession(
     }
 
     if (medRecord) {
-      await admin.from('medical_record_entries').upsert({
+      await gravar(admin.from('medical_record_entries').upsert({
         medical_record_id: medRecord.id,
         appointment_id:    appointmentId,
         professional_id:   appt.professional_id,
         notes,
         intercurrences,
-      }, { onConflict: 'appointment_id' })
+      }, { onConflict: 'appointment_id' }), 'salvar a entrada do prontuário')
     }
 
     // 3. Comissão — regra específica do procedimento tem precedência sobre a geral.
@@ -744,13 +835,13 @@ export async function finishSession(
           .eq('client_id', appt.client_id)
           .maybeSingle()
         if (loyaltyAcc) {
-          await admin.from('loyalty_accounts').update({ balance: (loyaltyAcc.balance ?? 0) + points }).eq('id', loyaltyAcc.id)
-          await admin.from('loyalty_transactions').insert({
+          await gravar(admin.from('loyalty_accounts').update({ balance: (loyaltyAcc.balance ?? 0) + points }).eq('id', loyaltyAcc.id), 'atualizar o saldo de pontos')
+          await gravar(admin.from('loyalty_transactions').insert({
             loyalty_account_id: loyaltyAcc.id,
             points,
             description:        'Atendimento concluído',
             appointment_id:     appointmentId,
-          })
+          }), 'lançar os pontos de fidelidade')
         }
       }
     }
@@ -834,10 +925,10 @@ export async function finishSession(
       .maybeSingle()
 
     if (pkgSession) {
-      await admin
+      await gravar(admin
         .from('package_sessions')
         .update({ status: 'USED', used_at: now })
-        .eq('id', pkgSession.id)
+        .eq('id', pkgSession.id), 'marcar a sessão do pacote como usada')
 
       const { data: pkg } = await admin
         .from('client_packages')
@@ -846,10 +937,10 @@ export async function finishSession(
         .single()
 
       if (pkg) {
-        await admin
+        await gravar(admin
           .from('client_packages')
           .update({ used_sessions: Number(pkg.used_sessions) + 1 })
-          .eq('id', pkgSession.client_package_id)
+          .eq('id', pkgSession.client_package_id), 'atualizar o pacote do cliente')
       }
 
       // DEPOIS do incremento, para `restantes` já refletir esta sessão — é
@@ -955,7 +1046,25 @@ export async function confirmPayment(
 }
 
 // --- Salvar rascunho de notas (sem concluir) ---------------------
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function saveDraftNotes(
+  ...args: Parameters<typeof saveDraftNotesInterno>
+): ReturnType<typeof saveDraftNotesInterno> {
+  try {
+    return await saveDraftNotesInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function saveDraftNotesInterno(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData,
 ): Promise<{ error?: string; success?: boolean }> {
@@ -999,13 +1108,13 @@ export async function saveDraftNotes(
     }
 
     if (medRecord) {
-      await admin.from('medical_record_entries').upsert({
+      await gravar(admin.from('medical_record_entries').upsert({
         medical_record_id: medRecord.id,
         appointment_id:    appointmentId,
         professional_id:   appt.professional_id,
         notes,
         intercurrences,
-      }, { onConflict: 'appointment_id' })
+      }, { onConflict: 'appointment_id' }), 'salvar o rascunho do prontuário')
     }
 
     // Log quando admin edita pós-conclusão
@@ -1042,7 +1151,25 @@ export async function saveEvaluationComplaints(
 }
 
 // --- Salvar anotações da sessão (anamnese) ------------------------
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function saveSessionNotes(
+  ...args: Parameters<typeof saveSessionNotesInterno>
+): ReturnType<typeof saveSessionNotesInterno> {
+  try {
+    return await saveSessionNotesInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function saveSessionNotesInterno(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
 ) {
@@ -1064,7 +1191,7 @@ export async function saveSessionNotes(
     const branch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || branch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
 
-    await admin
+    await gravar(admin
       .from('medical_record_entries')
       .upsert(
         {
@@ -1073,7 +1200,7 @@ export async function saveSessionNotes(
           anamnesis_data:  { notes },
         },
         { onConflict: 'appointment_id' },
-      )
+      ), 'salvar as observações do atendimento')
 
     return { success: true }
   } catch (e) {
@@ -1282,7 +1409,25 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
   }
 }
 
-export async function schedulePackageSession(params: {
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
+export async function schedulePackageSession(
+  ...args: Parameters<typeof schedulePackageSessionInterno>
+): ReturnType<typeof schedulePackageSessionInterno> {
+  try {
+    return await schedulePackageSessionInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function schedulePackageSessionInterno(params: {
   packageSessionId: string
   branchId:         string
   professionalId:   string
@@ -1328,10 +1473,10 @@ export async function schedulePackageSession(params: {
   if (apptErr || !appt) return { error: `Erro ao criar agendamento: ${apptErr?.message}` }
 
   // Vincula sessão ao appointment
-  await admin
+  await gravar(admin
     .from('package_sessions')
     .update({ appointment_id: appt.id, status: 'SCHEDULED' })
-    .eq('id', params.packageSessionId)
+    .eq('id', params.packageSessionId), 'vincular a sessão do pacote ao agendamento')
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
@@ -1339,7 +1484,25 @@ export async function schedulePackageSession(params: {
   return { appointmentId: appt.id }
 }
 
-export async function schedulePlanSession(params: {
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
+export async function schedulePlanSession(
+  ...args: Parameters<typeof schedulePlanSessionInterno>
+): ReturnType<typeof schedulePlanSessionInterno> {
+  try {
+    return await schedulePlanSessionInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function schedulePlanSessionInterno(params: {
   planId:         string
   sessionId:      string
   branchId:       string
@@ -1382,10 +1545,10 @@ export async function schedulePlanSession(params: {
   if (apptErr || !appt) return { error: `Erro ao criar agendamento: ${apptErr?.message}` }
 
   // Vincula o agendamento à sessão — necessário para getPlannedSessionAppointments exibir corretamente
-  await admin
+  await gravar(admin
     .from('treatment_plan_sessions')
     .update({ appointment_id: appt.id })
-    .eq('id', params.sessionId)
+    .eq('id', params.sessionId), 'vincular a sessão do plano ao agendamento')
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
