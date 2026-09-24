@@ -21,6 +21,7 @@ import {
   type ReplyPreview, type AnuncioDaMensagem,
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
+import { nomeDoAnuncio } from '@/lib/ads/rotulo'
 import {
   InboxFiltros, ChipsDeFiltro, passaNosFiltros, contarFiltros,
   FILTROS_VAZIOS, type FiltrosInbox,
@@ -220,20 +221,25 @@ function resumoDaCitada(preview: ReplyPreview): string {
 /**
  * Selo de "veio de anúncio" dentro da bolha.
  *
- * O que sempre existe: o título e o texto do criativo, que chegam no próprio
- * aviso do WhatsApp. Campanha e conjunto só aparecem com a integração Meta Ads
- * conectada — o aviso não os traz. Sem eles o selo continua valendo: saber que
- * a pessoa veio de um anúncio já muda a resposta, mesmo sem o nome da campanha.
+ * A **imagem** vem sempre que o aviso a trouxe — ela é guardada em base64
+ * porque a URL que a Meta manda expira em quatro dias. Campanha e nome do
+ * anúncio só aparecem com a integração Meta Ads conectada; sem ela o selo
+ * continua valendo, porque saber que a pessoa veio de um anúncio já muda a
+ * resposta, e o texto do criativo diz qual.
  */
 function SeloDeAnuncio({ anuncio }: { anuncio: AnuncioDaMensagem }) {
   const linhas: { rotulo: string; valor: string }[] = []
   if (anuncio.campaignName) linhas.push({ rotulo: 'Campanha', valor: anuncio.campaignName })
-  if (anuncio.adName)       linhas.push({ rotulo: 'Anúncio',  valor: anuncio.adName })
-  // Sem o nome do anúncio, o título do criativo faz o papel: é o que a pessoa
-  // leu antes de clicar, e é o que a recepção reconhece.
-  else if (anuncio.headline) linhas.push({ rotulo: 'Anúncio', valor: anuncio.headline })
 
-  const rodape = [anuncio.plataforma, anuncio.adsetName].filter(Boolean).join(' · ')
+  const nome = nomeDoAnuncio(anuncio)
+  if (nome) linhas.push({ rotulo: 'Anúncio', valor: nome })
+
+  // O botão e o conjunto ficam no rodapé: contexto, não identidade.
+  const rodape = [
+    anuncio.plataforma,
+    anuncio.adsetName,
+    anuncio.headline ? `botão "${anuncio.headline}"` : null,
+  ].filter(Boolean).join(' · ')
 
   return (
     <div style={{
@@ -245,26 +251,50 @@ function SeloDeAnuncio({ anuncio }: { anuncio: AnuncioDaMensagem }) {
       <div style={{
         display: 'flex', alignItems: 'center', gap: 4,
         fontSize: 10, fontWeight: 800, letterSpacing: '0.06em',
-        textTransform: 'uppercase', color: 'var(--brand)', marginBottom: 2,
+        textTransform: 'uppercase', color: 'var(--brand)', marginBottom: 3,
       }}>
         <Megaphone size={11} /> Veio de anúncio
       </div>
-      {linhas.map(l => (
-        <div key={l.rotulo} style={{ display: 'flex', gap: 5, minWidth: 0 }}>
-          <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>{l.rotulo}:</span>
-          <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {l.valor}
-          </span>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        {anuncio.imagem && (
+          // A peça que a pessoa viu. Reconhecer a imagem é mais rápido que ler
+          // o nome da campanha — quem atende sabe de cara de qual anúncio veio.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={anuncio.imagem}
+            alt="Criativo do anúncio"
+            style={{
+              width: 44, height: 44, objectFit: 'cover', flexShrink: 0,
+              borderRadius: 6, border: '1px solid var(--brand-soft-border)',
+            }}
+          />
+        )}
+
+        <div style={{ minWidth: 0, flex: 1 }}>
+          {linhas.map(l => (
+            <div key={l.rotulo} style={{ display: 'flex', gap: 5, minWidth: 0 }}>
+              <span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>{l.rotulo}:</span>
+              <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {l.valor}
+              </span>
+            </div>
+          ))}
+          {rodape && (
+            <div style={{
+              color: 'var(--text-muted)', fontSize: 10.5, marginTop: 1,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {rodape}
+            </div>
+          )}
+          {/* Sem campanha nem texto não sobra nome nenhum: o id é o único fio
+              que resta para achar o anúncio no gerenciador. */}
+          {linhas.length === 0 && anuncio.adId && (
+            <div style={{ color: 'var(--text-muted)', fontSize: 10.5 }}>id {anuncio.adId}</div>
+          )}
         </div>
-      ))}
-      {rodape && (
-        <div style={{ color: 'var(--text-muted)', fontSize: 10.5, marginTop: 1 }}>{rodape}</div>
-      )}
-      {/* Sem campanha nem título não sobra texto nenhum: o id é o único fio
-          que resta para achar o anúncio no gerenciador. */}
-      {linhas.length === 0 && anuncio.adId && (
-        <div style={{ color: 'var(--text-muted)', fontSize: 10.5 }}>id {anuncio.adId}</div>
-      )}
+      </div>
     </div>
   )
 }

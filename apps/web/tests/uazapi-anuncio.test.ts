@@ -45,6 +45,7 @@ function webhookDeAnuncio(ad: Record<string, unknown> = {}) {
               body:         'Texto do criativo do anúncio',
               mediaType:    1,
               thumbnailURL: 'https://scontent.example/thumb.jpg',
+              thumbnail:    '/9j/4AAQSkZJRgABAQAAAQABAAD',
               originalImageURL: 'https://scontent.example/full.jpg',
               greetingMessageBody: 'Olá! Diga como podemos ajudar você.',
               showAdAttribution: true,
@@ -130,6 +131,21 @@ describe('lerAnuncio — contra o payload real', () => {
     const r = provider.parseInbound(outra)!.referral!
     expect(r.sourceId).toBe('ABC')
     expect(r.sourceUrl).toBe('https://fb.me/x')
+  })
+
+  it('guarda a imagem em base64, nao a URL que expira', () => {
+    // A `thumbnailURL` da Meta expira em quatro dias (o `oe=` e um timestamp,
+    // medido no trafego). Guardar so ela daria um selo com imagem na semana em
+    // que a mensagem chegou e sem imagem depois, sem nada explicar.
+    const r = provider.parseInbound(webhookDeAnuncio())!.referral!
+    expect(r.thumbnailData).toBe('/9j/4AAQSkZJRgABAQAAAQABAAD')
+    expect(r.thumbnailUrl, 'a URL continua guardada, so nao e a fonte').toBeTruthy()
+  })
+
+  it('miniatura absurdamente grande nao entra no jsonb da mensagem', () => {
+    // O campo vem do protocolo e nao ha contrato de tamanho; o medido e ~2,2 KB.
+    const gigante = webhookDeAnuncio({ thumbnail: 'A'.repeat(70 * 1024) })
+    expect(provider.parseInbound(gigante)!.referral!.thumbnailData).toBeUndefined()
   })
 
   it('mensagem sem anúncio não inventa referral', () => {

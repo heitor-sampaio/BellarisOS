@@ -11,6 +11,16 @@ export interface NomesDoAnuncio {
   adsetName?:    string | null
   campaignId?:   string | null
   campaignName?: string | null
+  /**
+   * O CRIATIVO — o que a pessoa viu antes de clicar.
+   *
+   * Separado de `adName` porque são coisas diferentes: o anúncio tem o nome
+   * que o gestor deu na campanha, e o criativo é a peça, que pode ser reusada
+   * em vários anúncios.
+   */
+  creativeName?:  string | null
+  creativeThumb?: string | null
+  creativeBody?:  string | null
 }
 
 /**
@@ -39,7 +49,7 @@ export async function nomesDoAnuncio(
 
   const { data: cache } = await admin
     .from('meta_ad_cache')
-    .select('ad_id, ad_name, adset_id, adset_name, campaign_id, campaign_name, erro')
+    .select('ad_id, ad_name, adset_id, adset_name, campaign_id, campaign_name, creative_name, creative_thumb_url, creative_body, erro')
     .eq('tenant_id', tenantId)
     .eq('ad_id', adId)
     .maybeSingle()
@@ -55,6 +65,9 @@ export async function nomesDoAnuncio(
       adsetName:    cache.adset_name,
       campaignId:   cache.campaign_id,
       campaignName: cache.campaign_name,
+      creativeName:  cache.creative_name,
+      creativeThumb: cache.creative_thumb_url,
+      creativeBody:  cache.creative_body,
     }
   }
 
@@ -67,7 +80,11 @@ export async function nomesDoAnuncio(
   let nomes: NomesDoAnuncio | null = null
   let erro: string | null = null
   try {
-    const campos = 'id,name,adset{id,name},campaign{id,name}'
+    // `thumbnail_url` do criativo é hospedada pela Meta e NÃO expira como a
+    // do aviso do WhatsApp — é ela que serve para o selo a longo prazo.
+    const campos =
+      'id,name,adset{id,name},campaign{id,name},' +
+      'creative{id,name,thumbnail_url,body,title}'
     const url =
       `https://graph.facebook.com/${GRAPH_API_VERSION}/${encodeURIComponent(adId)}` +
       `?fields=${encodeURIComponent(campos)}&access_token=${encodeURIComponent(config.accessToken)}`
@@ -84,6 +101,9 @@ export async function nomesDoAnuncio(
         adsetName:    body?.adset?.name ?? null,
         campaignId:   body?.campaign?.id ?? null,
         campaignName: body?.campaign?.name ?? null,
+        creativeName:  body?.creative?.name  ?? null,
+        creativeThumb: body?.creative?.thumbnail_url ?? null,
+        creativeBody:  body?.creative?.body  ?? null,
       }
     }
   } catch (e) {
@@ -98,6 +118,9 @@ export async function nomesDoAnuncio(
     adset_name:    nomes?.adsetName ?? null,
     campaign_id:   nomes?.campaignId ?? null,
     campaign_name: nomes?.campaignName ?? null,
+    creative_name:       nomes?.creativeName  ?? null,
+    creative_thumb_url:  nomes?.creativeThumb ?? null,
+    creative_body:       nomes?.creativeBody  ?? null,
     erro,
     fetched_at:    new Date().toISOString(),
   }, { onConflict: 'tenant_id,ad_id' })
@@ -123,7 +146,7 @@ export async function nomesDeAnuncios(
   const admin = createAdminClient()
   const { data: linhas } = await admin
     .from('meta_ad_cache')
-    .select('ad_id, ad_name, adset_id, adset_name, campaign_id, campaign_name, erro')
+    .select('ad_id, ad_name, adset_id, adset_name, campaign_id, campaign_name, creative_name, creative_thumb_url, creative_body, erro')
     .eq('tenant_id', tenantId)
     .in('ad_id', unicos)
 
@@ -138,6 +161,9 @@ export async function nomesDeAnuncios(
       adsetName:    l.adset_name,
       campaignId:   l.campaign_id,
       campaignName: l.campaign_name,
+      creativeName:  l.creative_name,
+      creativeThumb: l.creative_thumb_url,
+      creativeBody:  l.creative_body,
     })
   }
 

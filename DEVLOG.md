@@ -90,7 +90,7 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 242 unitários (Vitest) + 50 E2E (Playwright) rodando contra o banco
+- **Testes:** 251 unitários (Vitest) + 50 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
   (campanhas e LGPD) e a cada 5 minutos (fila das automações).
@@ -1121,7 +1121,36 @@ o primeiro deles falharia com o parser antigo.
 **Tamanho do estrago:** só 4 conversas gravadas perderam a atribuição — o
 webhook é recente. Mas **26% das mensagens recebidas naquela instância vêm de
 anúncio** (264 de 1000 no histórico), então o que se corrigiu vale para todas as
-próximas.
+próximas. As 4 foram refeitas a partir do payload que a uazapi ainda tinha.
+
+### 2026-09-24 — O selo do anúncio passa a dizer QUAL anúncio
+
+O selo mostrava **"Anúncio: Fale conosco"**. Aquilo é o texto do BOTÃO — vem
+igual em 109 de 109 mensagens reais — e não identifica nada: dois criativos da
+mesma campanha têm o mesmo botão. O que quem atende precisa é saber de qual
+peça a pessoa veio.
+
+**A imagem do criativo vem de graça no aviso, em base64**, e é ela que fica
+guardada. A URL que a Meta manda junto **expira em quatro dias** (o parâmetro
+`oe=` é um timestamp — medido no tráfego): guardar a URL daria um selo com
+imagem na semana em que a mensagem chegou e sem imagem depois, sem nada
+explicar. São ~2,2 KB, que cabem no jsonb da mensagem, com teto de 64 KB porque
+o campo vem do protocolo e não há contrato de tamanho.
+
+**O nome do anúncio agora tem hierarquia:** o nome que o gestor deu → o nome do
+criativo → **a primeira linha do texto do criativo**, que é o que a pessoa leu
+antes de clicar. Os dois primeiros dependem da integração Meta Ads; o terceiro
+funciona hoje, sem ela. O botão desceu para o rodapé, junto da plataforma e do
+conjunto: contexto, não identidade.
+
+**O lookup passou a pedir o criativo à Graph API** (`creative{name,
+thumbnail_url,body,title}`), guardado em `meta_ad_cache`. A miniatura de lá é
+hospedada pela Meta e não expira como a do aviso — é o reforço para quando o
+base64 não veio.
+
+A função que escolhe o nome saiu do componente para `lib/ads/rotulo.ts`: é
+regra pura, e importá-la do inbox arrastava a árvore inteira do servidor para
+dentro do teste.
 
 ---
 

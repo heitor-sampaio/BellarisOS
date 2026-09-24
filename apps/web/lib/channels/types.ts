@@ -36,6 +36,16 @@ export interface InboundReferral {
   body?:       string   // texto de apoio do anúncio
   mediaType?:  string   // 'IMAGE' | 'VIDEO' — formato do criativo
   thumbnailUrl?: string // miniatura do criativo, quando o provedor manda
+  /**
+   * A miniatura EM BASE64, do próprio aviso.
+   *
+   * É ela que se guarda, e não a `thumbnailUrl`: a URL que a Meta manda
+   * **expira em quatro dias** (o parâmetro `oe=` é um timestamp — medido no
+   * tráfego real). Guardar a URL daria um selo que funciona na semana em que a
+   * mensagem chegou e some depois, sem nada explicar. São ~2,2 KB, que cabem
+   * no jsonb da mensagem.
+   */
+  thumbnailData?: string
 }
 
 /**

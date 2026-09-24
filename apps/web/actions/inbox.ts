@@ -2,7 +2,7 @@
 
 import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { nomesDeAnuncios } from '@/lib/ads/ad-lookup'
+import { nomesDeAnuncios, type NomesDoAnuncio } from '@/lib/ads/ad-lookup'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { emitirEventoDeLead, eventoDoDesfecho } from '@/lib/events/lead'
 import { EVENTOS } from '@estetica-os/types'
@@ -118,6 +118,15 @@ export interface AnuncioDaMensagem {
   adName:        string | null
   adsetName:     string | null
   campaignName:  string | null
+  /** Nome do criativo na Meta — a peça, não o anúncio. */
+  creativeName:  string | null
+  /**
+   * A imagem do criativo, pronta para o `src` de um `img`.
+   *
+   * Vem do base64 guardado no aviso do WhatsApp, ou da miniatura hospedada
+   * pela Meta. Nunca da URL que o aviso manda: aquela expira em quatro dias.
+   */
+  imagem:        string | null
 }
 
 /** Resumo da mensagem citada — só o que a citação precisa mostrar. */
@@ -430,7 +439,9 @@ async function anexarAnuncios(mensagens: any[], tenantId: string): Promise<any[]
 
   // A busca de nomes nunca derruba a leitura da conversa: sem integração, sem
   // permissão ou com a Graph API fora do ar, o mapa volta vazio.
-  let nomes = new Map<string, { adName?: string | null; adsetName?: string | null; campaignName?: string | null }>()
+  // O tipo vem de `lib/ads/ad-lookup`: repetir os campos aqui foi o que fez o
+  // criativo novo não aparecer até o typecheck reclamar.
+  let nomes = new Map<string, NomesDoAnuncio>()
   if (ids.length > 0) {
     try {
       nomes = await nomesDeAnuncios(tenantId, ids)
@@ -449,10 +460,17 @@ async function anexarAnuncios(mensagens: any[], tenantId: string): Promise<any[]
       headline:     ref.headline ?? null,
       body:         ref.body ?? null,
       sourceUrl:    ref.source_url ?? null,
-      plataforma:   plataformaDoLink(ref.source_url),
+      // O provedor diz a plataforma quando sabe; o link é o palpite de reserva.
+      plataforma:   (ref.source_app as string | null) ?? plataformaDoLink(ref.source_url),
       adName:       n?.adName ?? null,
       adsetName:    n?.adsetName ?? null,
       campaignName: n?.campaignName ?? null,
+      creativeName: n?.creativeName ?? null,
+      // O base64 do aviso primeiro: é local, não expira e não depende de rede.
+      // A miniatura da Meta é o reforço para quando ele não veio.
+      imagem: ref.thumbnail_data
+        ? `data:image/jpeg;base64,${ref.thumbnail_data}`
+        : (n?.creativeThumb ?? null),
     }
     return { ...m, anuncio }
   })

@@ -393,6 +393,13 @@ export async function insertInboundMessage(
       body:          msg.referral.body         ?? null,
       media_type:    msg.referral.mediaType    ?? null,
       thumbnail_url: msg.referral.thumbnailUrl ?? null,
+      // A plataforma dita pelo provedor, quando ele diz. Poupa adivinhar pelo
+      // link — que erra com os encurtadores do próprio Facebook.
+      source_app:    msg.referral.sourceApp    ?? null,
+      // A imagem do criativo em base64 (~2,2 KB). Guardada porque a
+      // `thumbnail_url` acima EXPIRA em quatro dias: sem isto, o selo teria
+      // imagem na semana em que a mensagem chegou e ficaria sem depois.
+      thumbnail_data: msg.referral.thumbnailData ?? null,
     } : null,
   })
 

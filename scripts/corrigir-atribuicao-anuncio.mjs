@@ -69,7 +69,10 @@ const { data: nossas, error } = await db
 
 if (error) { console.error('Erro ao ler mensagens:', error.message); process.exit(1) }
 
-const aCorrigir = (nossas ?? []).filter(m => !m.ad_referral)
+// Sem referral nenhum, ou com um referral incompleto: a imagem do criativo e
+// a plataforma passaram a ser capturadas depois da primeira correcao, e quem
+// ja foi corrigido merece o resto.
+const aCorrigir = (nossas ?? []).filter(m => !m.ad_referral || !m.ad_referral.thumbnail_data)
 console.log(`no banco: ${(nossas ?? []).length} dessas · ${aCorrigir.length} sem atribuição\n`)
 
 if (!aCorrigir.length) { console.log('Nada a corrigir.'); process.exit(0) }
@@ -87,6 +90,8 @@ function referralDe(ad) {
   if (ad.sourceApp)  r.source_app  = String(ad.sourceApp).toLowerCase()
   if (ad.mediaType !== undefined) r.media_type = MIDIA[Number(ad.mediaType)] ?? String(ad.mediaType)
   if (ad.thumbnailURL) r.thumbnail_url = String(ad.thumbnailURL)
+  // A imagem em base64: a URL acima expira em quatro dias.
+  if (typeof ad.thumbnail === 'string' && ad.thumbnail.length <= 64 * 1024) r.thumbnail_data = ad.thumbnail
   return r
 }
 

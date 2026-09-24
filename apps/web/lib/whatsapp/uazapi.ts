@@ -133,6 +133,17 @@ function lerAnuncio(m: any, raiz: any): InboundReferral | undefined {
   const thumb = primeiro(ad.thumbnailURL, ad.thumbnailUrl)
   if (thumb) ref.thumbnailUrl = String(thumb)
 
+  // A imagem do criativo vem DE GRAÇA no aviso, em base64. É ela que fica
+  // guardada, e não a URL acima: aquela expira em quatro dias (o `oe=` é um
+  // timestamp), e um selo que some depois de uma semana é pior que um selo sem
+  // imagem — ninguém entende por que mudou.
+  //
+  // Teto de 64 KB por garantia: o medido é ~2,2 KB, mas o campo vem do
+  // protocolo e não há contrato sobre o tamanho.
+  if (typeof ad.thumbnail === 'string' && ad.thumbnail.length <= 64 * 1024) {
+    ref.thumbnailData = ad.thumbnail
+  }
+
   // `sourceApp` diz a plataforma de graça ("instagram" | "facebook"), sem
   // precisar adivinhar pela URL — que é o que a inferência fazia, e erra
   // quando o anúncio usa um encurtador (`fb.me`, `ig.me`).
