@@ -4,6 +4,7 @@ import './globals.css'
 import { CapacitorSessionSync }  from '@/components/capacitor-session-sync'
 import { NavigationProgress }    from '@/components/shared/navigation-progress'
 import { NativeShell }           from '@/components/native-shell'
+import { Toaster }               from 'sonner'
 
 // Garante renderização dinâmica em todas as páginas para que as env vars de
 // runtime (NEXT_PUBLIC_SUPABASE_URL, etc.) sejam lidas no servidor a cada
@@ -93,6 +94,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Barra de progresso de navegação — aparece ao clicar em qualquer NavItem */}
         <NavigationProgress />
         {children}
+        {/* Sem isto, todo `toast()` do sistema é uma chamada que não faz nada:
+            o sonner só desenha onde o Toaster está montado, e ele não estava em
+            lugar nenhum. Quatro telas avisavam de erro e sucesso no vazio.
+            Fica no layout raiz porque os avisos nascem nos três portais. */}
+        <Toaster
+          position="top-center"
+          richColors
+          toastOptions={{ style: { fontFamily: 'var(--font-sans)' } }}
+        />
         <Script
           id="facebook-jssdk"
           src="https://connect.facebook.net/en_US/sdk.js"

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
+import { gravar, mensagemDoErro } from '@/lib/db'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -245,42 +246,38 @@ export async function markTransactionPaid(transactionId: string, slug: string) {
   }
 }
 
-export async function reverseTransaction(transactionId: string, branchId: string, slug: string) {
+/**
+ * Estorna um lançamento.
+ *
+ * As duas gravações — a contra-transação e a marca na original — moram na
+ * função `estornar_transacao` do banco, onde são UMA transação. Soltas, como
+ * estavam aqui, falhar no meio deixava o estorno pela metade; e como os
+ * indicadores leem os dois lados (CLAUDE.md §13.1), a metade que sobra faz o
+ * estorno bater duas vezes no resultado.
+ *
+ * A filial saiu da assinatura: ela vem do registro estornado. Recebê-la do
+ * cliente permitia estornar o lançamento de uma unidade e jogar a despesa em
+ * outra.
+ */
+export async function reverseTransaction(transactionId: string, slug: string) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'financial', 'MANAGE')
 
-    const supabase = await createSupabase()
-    const { data: tx } = await supabase
-      .from('financial_transactions')
-      .select('amount, description, type')
-      .eq('id', transactionId)
-      .single()
-
-    if (!tx) return { error: 'Transação não encontrada.' }
-
     const admin = createAdminClient()
-
-    await admin.from('financial_transactions').insert({
-      branch_id:   branchId,
-      type:        tx.type === 'INCOME' ? 'EXPENSE' : 'INCOME',
-      category:    'Estorno',
-      description: `Estorno: ${tx.description}`,
-      amount:      tx.amount,
-      is_paid:     true,
-      paid_at:     new Date().toISOString(),
-      created_by:  ctx.internalUserId,
-    })
-
-    await admin.from('financial_transactions').update({
-      notes:      'Estornada',
-      updated_at: new Date().toISOString(),
-    }).eq('id', transactionId)
+    await gravar(
+      admin.rpc('estornar_transacao', {
+        p_transacao: transactionId,
+        p_tenant:    ctx.tenantId!,
+        p_ator:      ctx.internalUserId,
+      }),
+      'estornar o lançamento',
+    )
 
     if (slug) revalidatePath(`/${slug}/financeiro`)
     revalidatePath('/admin/financeiro')
     return { success: true }
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    return { error: mensagemDoErro(e) }
   }
 }

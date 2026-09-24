@@ -20,6 +20,13 @@ export default defineConfig({
     env: { TZ: 'UTC' },
   },
   resolve: {
-    alias: { '@': path.resolve(__dirname) },
+    alias: {
+      '@': path.resolve(__dirname),
+      // 'server-only' só existe dentro do bundler do Next: é um pacote que
+      // QUEBRA de propósito se alguém importar do cliente. No Vitest ele não
+      // resolve, e sem este atalho todo módulo de servidor ficaria fora de
+      // teste -- que é o oposto do que se quer para quem fala com o banco.
+      'server-only': path.resolve(__dirname, 'tests/vazio.ts'),
+    },
   },
 })

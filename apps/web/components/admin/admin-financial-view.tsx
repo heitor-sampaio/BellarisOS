@@ -11,6 +11,7 @@ import { FinancialTransactionModal } from '@/components/branch/financial-transac
 import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { SegSelect } from '@/components/shared/seg-select'
+import { toast } from 'sonner'
 
 // --- Types -------------------------------------------------------------------
 
@@ -178,11 +179,23 @@ export function AdminFinancialView({
   const creditModalRef = useRef<ClientCreditModalHandle>(null)
 
   // A unidade da ação vem da própria transação — não há o que perguntar.
+  // O resultado das actions não pode ser descartado: as duas falham devolvendo
+  // `{ error }`, e engolir isso deixava a tela dar um refresh e mostrar a linha
+  // exatamente como estava — indistinguível de "ainda não atualizou".
   function marcarPago(id: string, slug: string) {
-    startT(async () => { await markTransactionPaid(id, slug); router.refresh() })
+    startT(async () => {
+      const r = await markTransactionPaid(id, slug)
+      if (r?.error) toast.error(r.error)
+      else router.refresh()
+    })
   }
-  function estornar(id: string, branchId: string, slug: string) {
-    startT(async () => { await reverseTransaction(id, branchId, slug); router.refresh() })
+  function estornar(id: string, slug: string) {
+    startT(async () => {
+      const r = await reverseTransaction(id, slug)
+      if (r?.error) { toast.error(r.error); return }
+      toast.success('Lançamento estornado.')
+      router.refresh()
+    })
   }
   const [filterBranch, setFilterBranch] = useState<string>(unidadeInicial || 'all')
   const [customF, setCustomF] = useState(customFrom ?? '')
@@ -530,7 +543,7 @@ export function AdminFinancialView({
                           </button>
                         )}
                         {t.is_paid && !estornada && canReverse && (
-                          <button type="button" onClick={() => estornar(t.id, t.branch_id, slugDaTx)} title="Estornar" style={{
+                          <button type="button" onClick={() => estornar(t.id, slugDaTx)} title="Estornar" style={{
                             width: 30, height: 30, borderRadius: 7,
                             border: '1px solid var(--border)', background: 'var(--surface)',
                             color: 'var(--text-faint)', cursor: 'pointer',

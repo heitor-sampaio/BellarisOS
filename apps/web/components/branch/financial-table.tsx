@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { markTransactionPaid, reverseTransaction } from '@/actions/financial'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 export interface Transaction {
   id:             string
@@ -69,16 +70,22 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
   const router        = useRouter()
   const [_p, startTx] = useTransition()
 
+  // As actions devolvem `{ error }` quando não conseguem — descartar isso
+  // fazia a tela recarregar e mostrar a linha igual, que é o mesmo que a
+  // pessoa veria se a operação simplesmente não tivesse efeito ainda.
   function handleMarkPaid(id: string) {
     startTx(async () => {
-      await markTransactionPaid(id, slug)
-      router.refresh()
+      const r = await markTransactionPaid(id, slug)
+      if (r?.error) toast.error(r.error)
+      else router.refresh()
     })
   }
 
   function handleReverse(id: string) {
     startTx(async () => {
-      await reverseTransaction(id, branchId, slug)
+      const r = await reverseTransaction(id, slug)
+      if (r?.error) { toast.error(r.error); return }
+      toast.success('Lançamento estornado.')
       router.refresh()
     })
   }
