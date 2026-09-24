@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import { LoginSchema, RegisterSchema } from '@estetica-os/validators'
 import type { JwtClaims } from '@estetica-os/types'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 function toSlug(name: string): string {
   return name
@@ -65,12 +65,12 @@ export async function registerAction(
   if (tenantError || !tenant) return { error: 'Erro ao configurar conta. Tente novamente.' }
 
   // O cargo-sistema NETWORK_ADMIN é semeado pela trigger after-insert em tenants.
-  const { data: adminRole } = await admin
+  const adminRole = await ler(admin
     .from('tenant_roles')
     .select('id')
     .eq('tenant_id', tenant.id)
     .eq('key', 'NETWORK_ADMIN')
-    .single()
+    .single(), 'buscar o cargo de administrador')
 
   await gravar(admin.from('users').insert({
     auth_id:   authUser.id,
@@ -118,13 +118,13 @@ export async function loginAction(
       const admin  = createAdminClient()
 
       if (claims.client_id) {
-        const { data: cl } = await admin.from('clients').select('branch_id').eq('id', claims.client_id).single()
+        const cl = await ler(admin.from('clients').select('branch_id').eq('id', claims.client_id).single(), 'buscar o cliente')
         if (cl?.branch_id) {
-          const { data: br } = await admin.from('branches').select('slug').eq('id', cl.branch_id).single()
+          const br = await ler(admin.from('branches').select('slug').eq('id', cl.branch_id).single(), 'buscar a unidade')
           if (br?.slug) dest = `/${br.slug}/cliente`
         }
       } else if (claims.branch_id) {
-        const { data: br } = await admin.from('branches').select('slug').eq('id', claims.branch_id).single()
+        const br = await ler(admin.from('branches').select('slug').eq('id', claims.branch_id).single(), 'buscar a unidade')
         dest = getRedirectPath(claims.role, br?.slug ?? null)
       } else {
         dest = getRedirectPath(claims.role, null)

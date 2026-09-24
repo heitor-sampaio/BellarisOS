@@ -8,6 +8,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { filiaisAtivas } from '@/lib/branches'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
 import { startOfMonthTZ, addDaysTZ } from '@/lib/datetime'
+import { ler } from '@/lib/db'
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -24,12 +25,12 @@ export default async function BranchStockPage({
 
   const admin = createAdminClient()
 
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('id, name, slug, tenant_id')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a unidade')
   if (!branch) notFound()
 
   const branchId = branch.id

@@ -4,6 +4,7 @@ import { CalendarDays, Users, TrendingUp } from 'lucide-react'
 import { getTenantContext, getRedirectPath } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthRedirect } from '@/components/auth-redirect'
+import { ler } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,16 +32,16 @@ export default async function LandingPage() {
     const admin = createAdminClient()
 
     if (ctx.isClient && ctx.clientId) {
-      const { data: client } = await admin
-        .from('clients').select('branch_id').eq('id', ctx.clientId).single()
+      const client = await ler(admin
+        .from('clients').select('branch_id').eq('id', ctx.clientId).single(), 'buscar o cliente')
       if (client?.branch_id) {
-        const { data: br } = await admin
-          .from('branches').select('slug').eq('id', client.branch_id).single()
+        const br = await ler(admin
+          .from('branches').select('slug').eq('id', client.branch_id).single(), 'buscar a unidade')
         if (br?.slug) redirect(`/${br.slug}/cliente`)
       }
     } else if (ctx.branchId) {
-      const { data: br } = await admin
-        .from('branches').select('slug').eq('id', ctx.branchId).single()
+      const br = await ler(admin
+        .from('branches').select('slug').eq('id', ctx.branchId).single(), 'buscar a unidade')
       redirect(getRedirectPath(ctx.role, br?.slug ?? null))
     } else {
       redirect(getRedirectPath(ctx.role, null))

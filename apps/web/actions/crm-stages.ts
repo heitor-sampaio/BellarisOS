@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isStageOutcome, type StageOutcome } from '@/lib/crm'
+import { ler } from '@/lib/db'
 
 // Os tipos e o seed dos funis vivem em `lib/crm.ts` e `actions/crm-funnels.ts`:
 // arquivo `'use server'` só exporta função assíncrona.
@@ -44,14 +45,14 @@ export async function createStage(
 
     // Posição é por funil: contar no tenant inteiro jogaria a etapa nova para o
     // fim de uma numeração que não é a deste quadro.
-    const { data: ultima } = await admin
+    const ultima = await ler(admin
       .from('crm_stages')
       .select('position')
       .eq('tenant_id', ctx.tenantId!)
       .eq('funnel_id', funnelId)
       .order('position', { ascending: false })
       .limit(1)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a etapa')
 
     const { error } = await admin.from('crm_stages').insert({
       tenant_id: ctx.tenantId!,

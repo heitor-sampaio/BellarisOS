@@ -8,6 +8,7 @@ import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { CRMInbox } from '@/components/admin/crm-inbox'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { TravaRolagem } from '@/components/shared/trava-rolagem'
+import { ler } from '@/lib/db'
 
 /** Nome da unidade marcada no lead, se houver. */
 function unidadeDoLead(tags: unknown): string | null {
@@ -31,9 +32,9 @@ export default async function BranchInboxPage({
 
   const supabase = await createSupabase()
 
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches').select('id, name')
-    .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single()
+    .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single(), 'buscar a unidade')
   if (!branch) notFound()
 
   // ⚠️ Sem recorte por unidade, igual ao quadro de Oportunidades: lead e
@@ -47,12 +48,12 @@ export default async function BranchInboxPage({
 
   const admin = createAdminClient()
 
-  const { data: branchesRaw } = await admin
+  const branchesRaw = await ler(admin
     .from('branches')
     .select('id, name, slug')
     .eq('tenant_id', ctx.tenantId!)
     .eq('is_active', true)
-    .order('name')
+    .order('name'), 'carregar as unidades')
   const branches = (branchesRaw ?? []) as { id: string; name: string; slug: string }[]
 
   const leadOwner = ownerFilter(ctx, 'crm')

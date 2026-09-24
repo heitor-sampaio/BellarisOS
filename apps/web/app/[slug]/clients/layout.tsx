@@ -5,6 +5,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ClientsSidebar } from '@/components/branch/clients-sidebar'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { getCachedBranchClients, getCachedBranchCompletedAppointments } from '@/lib/cached-queries'
+import { ler } from '@/lib/db'
 
 export default async function ClientsLayout({
   children,
@@ -18,12 +19,12 @@ export default async function ClientsLayout({
   assertPermission(ctx, 'clients', 'VIEW')
 
   const supabase = await createSupabase()
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches')
     .select('id')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a unidade')
   if (!branch) notFound()
 
   const [rawClients, recentAppts] = await Promise.all([

@@ -282,11 +282,11 @@ export async function criarPlanoDoCliente(
   let filial = branchId
 
   if (clientId) {
-    const { data: cliente } = await admin
+    const cliente = await ler(admin
       .from('clients')
       .select('id, tenant_id, branch_id')
       .eq('id', clientId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o cliente')
     if (!cliente || cliente.tenant_id !== ctx.tenantId) return { error: 'Cliente não encontrado.' }
     // A filial do plano é a de onde ele está sendo feito; sem ela, a de cadastro
     // do cliente. É o que o aceite usa depois para o caixa e os agendamentos.
@@ -331,11 +331,11 @@ export async function vincularClienteAoPlano(
   const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
   if (!plan) return { error: 'Plano não encontrado.' }
 
-  const { data: cliente } = await admin
+  const cliente = await ler(admin
     .from('clients')
     .select('id, tenant_id')
     .eq('id', clientId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o cliente')
   if (!cliente || cliente.tenant_id !== ctx.tenantId) return { error: 'Cliente não encontrado.' }
 
   const { error } = await admin
@@ -367,7 +367,7 @@ export async function buscarClientesParaPlano(termo: string): Promise<{
   const admin = createAdminClient()
   const digitos = busca.replace(/\D/g, '')
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('clients')
     .select('id, name, phone, document')
     .eq('tenant_id', ctx.tenantId!)
@@ -378,7 +378,7 @@ export async function buscarClientesParaPlano(termo: string): Promise<{
         : `name.ilike.%${busca}%`,
     )
     .order('name')
-    .limit(8)
+    .limit(8), 'carregar os clientes')
 
   return { clientes: (data ?? []) as { id: string; name: string; phone: string | null; document: string | null }[] }
 }
@@ -471,10 +471,10 @@ export async function listarPlanejamentos(opcoes?: {
   const admin = createAdminClient()
 
   // `treatment_plans` não tem tenant_id: o recorte é pela filial.
-  const { data: filiais } = await admin
+  const filiais = await ler(admin
     .from('branches')
     .select('id, name')
-    .eq('tenant_id', ctx.tenantId!)
+    .eq('tenant_id', ctx.tenantId!), 'carregar as unidades')
   const doTenant = (filiais ?? []) as { id: string; name: string }[]
   const alcance  = opcoes?.branchId
     ? doTenant.filter(b => b.id === opcoes.branchId)
@@ -658,21 +658,21 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
     .maybeSingle(), 'buscar o plano')
   if (!plan) return { sessions: [], total: 0 }
 
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('tenant_id')
     .eq('id', plan.branch_id)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   if (branch?.tenant_id !== ctx.tenantId) return { sessions: [], total: 0 }
 
-  const { data: rawSessions } = await admin
+  const rawSessions = await ler(admin
     .from('treatment_plan_sessions')
     .select(`
       id, sort_order, appointment_id,
       treatment_plan_session_procedures(procedure_id, price, sort_order, products, procedures(name, duration_min))
     `)
     .eq('plan_id', planId)
-    .order('sort_order')
+    .order('sort_order'), 'carregar as sessões do plano')
 
   type RawProcProduct = { product_id: string; name: string; unit: string; quantity: number }
   type RawProc = { procedure_id: string; price: number; sort_order: number; products: RawProcProduct[]; procedures: { name: string; duration_min: number } | null }
@@ -739,11 +739,11 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
 
   // 3. Dores do cliente (appointment.notes)
   if (plan.evaluation_appointment_id) {
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('notes')
       .eq('id', plan.evaluation_appointment_id)
-      .single()
+      .single(), 'buscar o agendamento')
     if (!appt?.notes?.trim()) {
       return { error: 'Registre as dores/queixas do cliente antes de enviar.' }
     }
@@ -801,11 +801,11 @@ export async function cancelCheckout(
     .maybeSingle(), 'buscar o plano')
   if (!plan) return { error: 'Plano não encontrado.' }
 
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('tenant_id')
     .eq('id', plan.branch_id)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   if (branch?.tenant_id !== ctx.tenantId) return { error: 'Acesso negado.' }
 
   if (plan.status === 'ACCEPTED') return { error: 'Plano já foi aprovado e não pode ser cancelado.' }
@@ -867,11 +867,11 @@ async function cancelTreatmentPlanInterno(
     .maybeSingle(), 'buscar o plano')
   if (!plan) return { error: 'Plano não encontrado.' }
 
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('tenant_id')
     .eq('id', plan.branch_id)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   if (branch?.tenant_id !== ctx.tenantId) return { error: 'Acesso negado.' }
 
   if (plan.status !== 'ACCEPTED') return { error: 'Apenas tratamentos ativos (aceitos) podem ser cancelados.' }
@@ -898,11 +898,11 @@ async function cancelTreatmentPlanInterno(
   const cancelledAt  = new Date().toISOString()
   const cancelReason = reason.trim() ? `Tratamento cancelado: ${reason.trim()}` : 'Tratamento cancelado'
 
-  const { data: futureAppts } = await admin
+  const futureAppts = await ler(admin
     .from('appointments')
     .select('id, price')
     .eq('treatment_plan_id', planId)
-    .in('status', ['SCHEDULED', 'CONFIRMED'])
+    .in('status', ['SCHEDULED', 'CONFIRMED']), 'carregar os agendamentos')
 
   if (futureAppts && futureAppts.length > 0) {
     const apptIds = futureAppts.map(a => a.id)
@@ -991,11 +991,11 @@ async function generateEvaluationPlanInterno(
   if (!complaints.trim()) return { error: 'Registre as dores/queixas do cliente.' }
   if (sessions.length === 0) return { error: 'Adicione ao menos uma sessão ao plano antes de enviar.' }
 
-  const { data: appt } = await admin
+  const appt = await ler(admin
     .from('appointments')
     .select('id, branch_id, client_id, professional_id')
     .eq('id', appointmentId)
-    .single()
+    .single(), 'buscar o agendamento')
   if (!appt) return { error: 'Agendamento não encontrado.' }
 
   // 1. Queixas do cliente → appointment.notes
@@ -1507,7 +1507,7 @@ async function checkoutTreatmentPlanInterno(
     let appointmentId: string | null = null
 
     if (sched && sess.mainProcedureId) {
-      const { data: appt } = await admin
+      const appt = await ler(admin
         .from('appointments')
         .insert({
           branch_id:         sched.branchId,
@@ -1522,7 +1522,7 @@ async function checkoutTreatmentPlanInterno(
           treatment_plan_id: planId,
         })
         .select('id')
-        .single()
+        .single(), 'carregar os agendamentos')
       appointmentId = appt?.id ?? null
       if (!newAppointmentId) newAppointmentId = appointmentId
     }

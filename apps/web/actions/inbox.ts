@@ -19,7 +19,7 @@ import { registrarEventoLead } from '@/lib/lead-events'
 import {
   extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
 } from '@/lib/templates/core'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
@@ -392,13 +392,13 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
   const ctx   = await getTenantContext()
   const admin = createAdminClient()
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('messages')
     .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at, media_type, media_path, external_id, reply_to_external_id, edited_at, ad_referral')
     .eq('conversation_id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: true })
-    .limit(500)
+    .limit(500), 'carregar as mensagens')
 
   const linhas = (data ?? []) as any[]
 
@@ -667,7 +667,7 @@ async function buscarOportunidades(
   const ownerIds = [...new Set(linhas.map(l => l.owner_id).filter(Boolean))] as string[]
   const donos = new Map<string, string>()
   if (ownerIds.length > 0) {
-    const { data: users } = await admin.from('users').select('id, name').in('id', ownerIds)
+    const users = await ler(admin.from('users').select('id, name').in('id', ownerIds), 'carregar a equipe')
     for (const u of (users ?? []) as any[]) donos.set(u.id, u.name)
   }
 
@@ -732,13 +732,13 @@ export async function criarOportunidade(
   if (!confirmarDuplicata) {
     const abertasNoFunil = doFunil.filter(s => s.outcome === 'OPEN').map(s => s.id)
     if (abertasNoFunil.length > 0) {
-      const { data: existente } = await admin
+      const existente = await ler(admin
         .from('leads')
         .select('id')
         .eq('tenant_id', ctx.tenantId!)
         .eq('conversation_id', conversationId)
         .in('crm_stage_id', abertasNoFunil)
-        .limit(1)
+        .limit(1), 'carregar as oportunidades')
       if (existente && existente.length > 0) {
         return { ok: false, jaExisteAberta: existente[0]!.id as string }
       }
@@ -1028,13 +1028,13 @@ export async function openLeadConversation(
   // Já existe conversa para este telefone/canal, ligada a outro lead ou a
   // nenhum: é dela que a pessoa precisa.
   if (erroInsert?.code === '23505' && contactPhone) {
-    const { data: doTelefone } = await admin
+    const doTelefone = await ler(admin
       .from('conversations')
       .select('id')
       .eq('tenant_id', ctx.tenantId!)
       .eq('channel', channel)
       .eq('contact_phone', contactPhone)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a conversa')
     if (doTelefone) return { conversationId: (doTelefone as { id: string }).id }
   }
 
@@ -1089,8 +1089,8 @@ export async function sendMessage(
 
   revalidarInbox()
 
-  const { data: msg } = await admin
-    .from('messages').select('*').eq('id', r.mensagemId!).single()
+  const msg = await ler(admin
+    .from('messages').select('*').eq('id', r.mensagemId!).single(), 'buscar a mensagem')
 
   return r.ok
     ? { ok: true, message: msg as unknown as Message }
@@ -1214,22 +1214,22 @@ export async function createConversationForLead(
   const admin = createAdminClient()
 
   // Return existing conversation if any
-  const { data: existing } = await admin
+  const existing = await ler(admin
     .from('conversations')
     .select('id')
     .eq('lead_id', leadId)
     .eq('channel', channel)
     .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a conversa')
 
   if (existing) return { conversationId: existing.id }
 
-  const { data: lead } = await admin
+  const lead = await ler(admin
     .from('leads')
     .select('id, name, phone, branch_id')
     .eq('id', leadId)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a oportunidade')
 
   if (!lead) return { error: 'Lead não encontrado' }
 

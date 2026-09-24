@@ -6,6 +6,7 @@ import type { TenantContext, AppModule } from '@estetica-os/types'
 import { getTenantContextFromToken } from '@/lib/auth'
 import { hasLevel, isScoped } from '@/lib/permissions'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 
 // Acesso da extensao: usuario operacional (nao-cliente) COM a permissao do modulo
 // que a rota usa. A abrangencia (filial fixa vs rede) e derivada de branch_id no
@@ -106,13 +107,13 @@ export async function resolveExtBranch(
   if (!branchId) return { res: jsonCors(req, { error: 'Selecione a unidade.' }, 400) }
 
   const admin = createAdminClient()
-  const { data } = await admin
+  const data = await ler(admin
     .from('branches')
     .select('id')
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId)
     .eq('is_active', true)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   if (!data) return { res: jsonCors(req, { error: 'Unidade inválida.' }, 403) }
 
   return { branchId }

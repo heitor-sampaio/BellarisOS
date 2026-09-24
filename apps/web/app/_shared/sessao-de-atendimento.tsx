@@ -8,6 +8,7 @@ import { normalizeFormSchema, type AnamnesisRow } from '@/lib/anamnesis'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { ler } from '@/lib/db'
 
 /**
  * Tela de um atendimento — a mesma nos dois portais.
@@ -375,12 +376,12 @@ export async function SessaoDeAtendimento({
   let anamnesisForm: { name: string; rows: AnamnesisRow[] } | null = null
   let anamnesisAnswers: Record<string, unknown> = {}
   if (procedureFormId) {
-    const { data: formRow } = await admin
+    const formRow = await ler(admin
       .from('anamnesis_forms')
       .select('name, schema')
       .eq('id', procedureFormId)
       .eq('tenant_id', ctx.tenantId!)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o modelo de anamnese')
     if (formRow) {
       anamnesisForm = { name: formRow.name as string, rows: normalizeFormSchema(formRow.schema).rows }
       const cf = (mreRaw?.anamnesis_data as { customForm?: { answers?: Record<string, unknown> } } | null)?.customForm
@@ -391,12 +392,12 @@ export async function SessaoDeAtendimento({
   let attendanceForm: { name: string; rows: AnamnesisRow[] } | null = null
   let attendanceAnswers: Record<string, unknown> = {}
   if (attendanceFormId) {
-    const { data: formRow } = await admin
+    const formRow = await ler(admin
       .from('attendance_forms')
       .select('name, schema')
       .eq('id', attendanceFormId)
       .eq('tenant_id', ctx.tenantId!)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o modelo de atendimento')
     if (formRow) {
       attendanceForm = { name: formRow.name as string, rows: normalizeFormSchema(formRow.schema).rows }
       const af = (mreRaw?.attendance_data as { attendanceForm?: { answers?: Record<string, unknown> } } | null)?.attendanceForm

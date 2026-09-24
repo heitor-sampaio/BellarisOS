@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTenantContext } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ListaDeInjetaveis } from '@/app/_shared/lista-de-injetaveis'
+import { ler } from '@/lib/db'
 
 export default async function BranchInjetaveisLayout({
   children,
@@ -14,12 +15,12 @@ export default async function BranchInjetaveisLayout({
   const ctx = await getTenantContext()
 
   const supabase = await createSupabase()
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches')
     .select('id')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a unidade')
   if (!branch) notFound()
 
   return (

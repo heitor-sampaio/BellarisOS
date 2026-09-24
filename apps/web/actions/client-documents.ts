@@ -5,7 +5,7 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 const BUCKET        = CLIENT_DOCS_BUCKET
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -31,12 +31,12 @@ export async function uploadClientDocument(
 
   // Ensure client belongs to this tenant
   const supabase = await createSupabase()
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches')
     .select('id')
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a unidade')
   if (!branch) return { error: 'Filial não encontrada.' }
 
   const admin = createAdminClient()
@@ -90,11 +90,11 @@ export async function deleteClientDocument(
   const admin = createAdminClient()
 
   // Verify ownership via branch → tenant
-  const { data: doc } = await admin
+  const doc = await ler(admin
     .from('client_documents')
     .select('id, file_path, branch_id, branches!inner(tenant_id)')
     .eq('id', documentId)
-    .single()
+    .single(), 'buscar o documento')
 
   if (!doc) return { error: 'Documento não encontrado.' }
 

@@ -13,7 +13,7 @@ import { enviarEventoCapi } from '@/lib/ads/capi'
 import { cliqueDoCliente, contatoDoCliente } from '@/lib/ads/atribuicao'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { EVENTOS } from '@estetica-os/types'
-import { tentar } from '@/lib/db'
+import { ler, tentar } from '@/lib/db'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -73,7 +73,7 @@ export async function createAppointmentCore(
 
   // Conflito de SALA (quando há sala + duração)
   if (input.roomId && procedure) {
-    const { data: conflict } = await admin
+    const conflict = await ler(admin
       .from('appointments')
       .select('id')
       .eq('branch_id', input.branchId)
@@ -81,13 +81,13 @@ export async function createAppointmentCore(
       .not('status', 'in', IGNORED_STATUS)
       .lt('scheduled_at', windowEnd)
       .gt('scheduled_at', windowStart)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o agendamento')
     if (conflict) return { error: 'Esta sala já está ocupada nesse horário.' }
   }
 
   // Conflito de PROFISSIONAL (sempre) — impede duplo-agendamento do mesmo profissional
   {
-    const { data: conflict } = await admin
+    const conflict = await ler(admin
       .from('appointments')
       .select('id')
       .eq('branch_id', input.branchId)
@@ -95,7 +95,7 @@ export async function createAppointmentCore(
       .not('status', 'in', IGNORED_STATUS)
       .lt('scheduled_at', windowEnd)
       .gt('scheduled_at', windowStart)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o agendamento')
     if (conflict) return { error: 'Este profissional já tem agendamento nesse horário.' }
   }
 
@@ -169,14 +169,14 @@ export async function computeAvailableSlots(
   const dayStart = new Date(`${date}T08:00:00-03:00`).toISOString()
   const dayEnd   = new Date(`${date}T20:00:00-03:00`).toISOString()
 
-  const { data: booked } = await admin
+  const booked = await ler(admin
     .from('appointments')
     .select('scheduled_at, duration_min')
     .eq('branch_id', branchId)
     .eq('professional_id', professionalId)
     .gte('scheduled_at', dayStart)
     .lt('scheduled_at', dayEnd)
-    .not('status', 'in', IGNORED_STATUS)
+    .not('status', 'in', IGNORED_STATUS), 'carregar os agendamentos')
 
   const allSlots: string[] = []
   for (let h = 8; h < 20; h++) {
@@ -205,11 +205,11 @@ export async function computeAvailableSlots(
 export function notifyAppointmentCreated(appointmentId: string): void {
   after(async () => {
     const admin = createAdminClient()
-    const { data } = await admin
+    const data = await ler(admin
       .from('appointments')
       .select('client_id, professional_id, scheduled_at, clients(name), procedures(name)')
       .eq('id', appointmentId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o agendamento')
     if (!data) return
 
     const clientId       = data.client_id as string
@@ -235,7 +235,7 @@ export function notifyAppointmentCreated(appointmentId: string): void {
 
 // ─── helpers ──────────────────────────────────────────────────────
 export async function getUserName(admin: Admin, authId: string): Promise<string> {
-  const { data } = await admin.from('users').select('name').eq('auth_id', authId).maybeSingle()
+  const data = await ler(admin.from('users').select('name').eq('auth_id', authId).maybeSingle(), 'buscar o usuário')
   return data?.name ?? 'Usuário'
 }
 

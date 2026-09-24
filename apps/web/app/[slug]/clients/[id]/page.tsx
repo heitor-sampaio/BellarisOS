@@ -13,6 +13,7 @@ import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, P
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
+import { ler } from '@/lib/db'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS']
 
@@ -32,12 +33,12 @@ export default async function ClientProfilePage({
 
   // Cliente pertence à REDE: abre qualquer cliente do tenant a partir de qualquer
   // portal de filial (a unidade é apenas uma TAG, não um lock de acesso).
-  const { data: raw } = await admin
+  const raw = await ler(admin
     .from('clients')
     .select('*')
     .eq('id', id)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar o cliente')
   if (!raw) notFound()
 
   const client: ProfileClient = {

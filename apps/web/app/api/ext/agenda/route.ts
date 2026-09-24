@@ -1,6 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { preflight, jsonCors, requireExtAccess, resolveExtBranch } from '@/lib/ext/http'
+import { ler } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,14 +27,14 @@ export async function GET(req: NextRequest) {
   const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
   const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('appointments')
     .select('id, scheduled_at, duration_min, status, professional_id, room_id, is_evaluation, clients(name), procedures(name)')
     .eq('branch_id', branchId)
     .gte('scheduled_at', dayStart)
     .lte('scheduled_at', dayEnd)
     .not('status', 'in', '("CANCELLED","NO_SHOW")')
-    .order('scheduled_at')
+    .order('scheduled_at'), 'carregar os agendamentos')
 
   const appointments = (data ?? []).map((a: Record<string, unknown>) => ({
     id:             a.id,

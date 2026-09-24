@@ -12,7 +12,7 @@ import {
 import {
   criarTemplateNaMeta, editarTemplateNaMeta, apagarTemplateNaMeta, listarTemplatesDaMeta,
 } from '@/lib/templates/meta-api'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 export interface MessageTemplate {
   id:          string
@@ -381,8 +381,8 @@ function limparExemplos(input: TemplateInput): Record<string, string> {
 
 async function membroId(ctx: Awaited<ReturnType<typeof getTenantContext>>): Promise<string | null> {
   if (ctx.internalUserId) return ctx.internalUserId
-  const { data } = await createAdminClient()
-    .from('users').select('id').eq('auth_id', ctx.userId).maybeSingle()
+  const data = await ler(createAdminClient()
+    .from('users').select('id').eq('auth_id', ctx.userId).maybeSingle(), 'buscar o usuário')
   return (data as { id: string } | null)?.id ?? null
 }
 

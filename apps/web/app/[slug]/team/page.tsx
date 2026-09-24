@@ -5,6 +5,7 @@ import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
 import { UserMinus, UserCheck } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { ler } from '@/lib/db'
 
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(' ')
@@ -36,12 +37,12 @@ export default async function TeamPage({
   assertPermission(ctx, 'team', 'VIEW')
   const supabase = await createClient()
 
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches')
     .select('id, name')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a unidade')
 
   const branchId = branch?.id ?? ctx.branchId!
 

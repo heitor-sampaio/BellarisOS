@@ -84,11 +84,11 @@ async function clienteDoTenant(
   clientId: string,
   tenantId: string,
 ) {
-  const { data } = await admin
+  const data = await ler(admin
     .from('clients')
     .select('id, tenant_id, branch_id')
     .eq('id', clientId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o cliente')
   return data && data.tenant_id === tenantId ? data : null
 }
 

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ProceduresClient } from '@/components/branch/procedures-client'
 import type { ProcedureItem } from '@/components/branch/procedures-client'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { ler } from '@/lib/db'
 
 export default async function BranchProceduresPage({
   params,
@@ -18,12 +19,12 @@ export default async function BranchProceduresPage({
   const supabase = await createSupabase()
   const admin    = createAdminClient()
 
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches')
     .select('id, name')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a unidade')
   if (!branch) notFound()
 
   const [{ data: allProcs }, { data: apptCounts }] = await Promise.all([

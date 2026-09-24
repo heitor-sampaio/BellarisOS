@@ -28,9 +28,9 @@ export default async function FinancialPage({
 
   const supabase = await createSupabase()
 
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches').select('id, name')
-    .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single()
+    .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single(), 'buscar a unidade')
   if (!branch) notFound()
 
   const transactions = await ler(supabase

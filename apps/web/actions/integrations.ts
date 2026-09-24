@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
+import { ler } from '@/lib/db'
 
 export interface IntegrationConfig {
   id:         string
@@ -51,12 +52,12 @@ export async function saveWhatsAppConfig(
   // é usado para corrigir uma credencial com a integração já no ar, e emitir
   // "conectada" a cada salvamento faria a corrente contar uma reconexão que não
   // houve.
-  const { data: anterior } = await admin
+  const anterior = await ler(admin
     .from('integration_configs')
     .select('is_active')
     .eq('tenant_id', ctx.tenantId!)
     .eq('provider', provider)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a integração')
 
   const { error } = await admin
     .from('integration_configs')
@@ -162,12 +163,12 @@ export async function confirmMetaAdsSelection(
 
   const admin = createAdminClient()
 
-  const { data: existing } = await admin
+  const existing = await ler(admin
     .from('integration_configs')
     .select('config')
     .eq('tenant_id', ctx.tenantId!)
     .eq('provider', 'meta_ads')
-    .single()
+    .single(), 'buscar a integração')
 
   if (!existing?.config) return { ok: false, error: 'Reconecte com o Facebook primeiro' }
 
@@ -211,12 +212,12 @@ export async function fetchMetaAdAccounts(): Promise<{
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()
-  const { data } = await admin
+  const data = await ler(admin
     .from('integration_configs')
     .select('config')
     .eq('tenant_id', ctx.tenantId!)
     .eq('provider', 'meta_ads')
-    .single()
+    .single(), 'buscar a integração')
 
   const token = (data?.config as Record<string, unknown>)?.access_token as string | undefined
   if (!token) return { ok: false, error: 'Token não encontrado. Reconecte com o Facebook.' }
@@ -341,12 +342,12 @@ export async function confirmMetaPageSelection(
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()
-  const { data: existing } = await admin
+  const existing = await ler(admin
     .from('integration_configs')
     .select('config')
     .eq('tenant_id', ctx.tenantId!)
     .eq('provider', 'meta_messaging')
-    .maybeSingle()
+    .maybeSingle(), 'buscar a integração')
 
   if (!existing?.config) return { ok: false, error: 'Reconecte com o Facebook primeiro' }
 

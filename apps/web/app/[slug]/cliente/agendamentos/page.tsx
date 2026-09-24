@@ -2,6 +2,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { CalendarDays, Clock3, User, Plus } from 'lucide-react'
+import { ler } from '@/lib/db'
 
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED:   'Agendado',
@@ -37,11 +38,11 @@ export default async function ClientAgendaPage({ params }: { params: Promise<{ s
   assertClient(ctx)
 
   const admin = createAdminClient()
-  const { data } = await admin
+  const data = await ler(admin
     .from('appointments')
     .select('id, scheduled_at, status, price, duration_min, procedures(name), professionals:users!professional_id(name)')
     .eq('client_id', ctx.clientId!)
-    .order('scheduled_at', { ascending: false })
+    .order('scheduled_at', { ascending: false }), 'carregar os agendamentos')
 
   const appointments = (data ?? []) as unknown as Appt[]
   const upcoming = appointments.filter(a => ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'].includes(a.status))

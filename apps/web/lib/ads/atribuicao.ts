@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 
 /** O clique de anúncio que trouxe esta pessoa, e o anúncio. */
 export interface CliqueDeAnuncio {
@@ -23,12 +24,12 @@ export async function cliqueDoCliente(
 ): Promise<CliqueDeAnuncio | null> {
   const admin = createAdminClient()
 
-  const { data: cliente } = await admin
+  const cliente = await ler(admin
     .from('clients')
     .select('ctwa_clid')
     .eq('id', clientId)
     .eq('tenant_id', tenantId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o cliente')
 
   if (cliente?.ctwa_clid) {
     // O anúncio vem da conversa; o clique sozinho já basta para atribuir.
@@ -38,14 +39,14 @@ export async function cliqueDoCliente(
 
   // Sem carimbo: a conversa do contato ainda pode saber. Acontece com quem
   // virou cliente antes de esta coluna existir.
-  const { data: conv } = await admin
+  const conv = await ler(admin
     .from('conversations')
     .select('attribution')
     .eq('tenant_id', tenantId)
     .eq('client_id', clientId)
     .order('last_message_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a conversa')
 
   const atr = (conv?.attribution ?? {}) as Record<string, string | undefined>
   if (atr.ctwa_clid) return { ctwaClid: atr.ctwa_clid, adId: atr.ad_id ?? null }
@@ -56,14 +57,14 @@ export async function cliqueDoCliente(
 /** O anúncio da conversa deste cliente, quando houver. */
 async function adDaConversaDoCliente(tenantId: string, clientId: string): Promise<string | null> {
   const admin = createAdminClient()
-  const { data } = await admin
+  const data = await ler(admin
     .from('conversations')
     .select('attribution')
     .eq('tenant_id', tenantId)
     .eq('client_id', clientId)
     .order('last_message_at', { ascending: false })
     .limit(1)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a conversa')
   const atr = (data?.attribution ?? {}) as Record<string, string | undefined>
   return atr.ad_id ?? null
 }
@@ -80,11 +81,11 @@ export async function contatoDoCliente(
   clientId: string,
 ): Promise<{ phone: string | null; email: string | null }> {
   const admin = createAdminClient()
-  const { data } = await admin
+  const data = await ler(admin
     .from('clients')
     .select('phone, email')
     .eq('id', clientId)
     .eq('tenant_id', tenantId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o cliente')
   return { phone: data?.phone ?? null, email: data?.email ?? null }
 }

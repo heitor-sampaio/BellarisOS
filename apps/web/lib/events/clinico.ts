@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEvento, atorDoContexto, ATOR_SISTEMA } from './emitir'
 import type { NomeDeEvento, DadosClinicos } from '@estetica-os/types'
+import { ler } from '@/lib/db'
 
 type Ctx = { tenantId?: string | null; internalUserId?: string | null; userName?: string | null }
 
@@ -36,9 +37,9 @@ export async function emitirEventoClinico(
 
     let nomeCliente: string | null = null
     if (dados.clientId) {
-      const { data } = await createAdminClient()
+      const data = await ler(createAdminClient()
         .from('clients').select('name')
-        .eq('id', dados.clientId).eq('tenant_id', ctx.tenantId).maybeSingle()
+        .eq('id', dados.clientId).eq('tenant_id', ctx.tenantId).maybeSingle(), 'buscar o cliente')
       nomeCliente = (data?.name as string) ?? null
     }
 

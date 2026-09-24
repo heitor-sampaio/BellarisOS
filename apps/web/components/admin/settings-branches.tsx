@@ -5,19 +5,20 @@ import { toggleBranchStatus } from '@/actions/branches'
 import { MapPin, Mail, Phone, Power, PowerOff, ChevronRight } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import Link from 'next/link'
+import { ler } from '@/lib/db'
 
 export async function SettingsBranches() {
   const ctx = await getTenantContext()
   const supabase = await createClient()
 
-  const { data: branches } = await supabase
+  const branches = await ler(supabase
     .from('branches')
     .select(`
       id, name, slug, email, phone, city, state, is_active, created_at,
       users(id)
     `)
     .eq('tenant_id', ctx.tenantId!)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: true }), 'carregar as unidades')
 
   const total    = branches?.length ?? 0
   const active   = branches?.filter(b => b.is_active).length ?? 0

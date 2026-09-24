@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEvento, atorDoContexto, ATOR_SISTEMA } from './emitir'
 import { EVENTOS } from '@estetica-os/types'
 import type { NomeDeEvento, AtorDoEvento, OrigemDeEvento, DadosDeLead } from '@estetica-os/types'
+import { ler } from '@/lib/db'
 
 /**
  * Emite um evento do funil com o retrato do card.
@@ -94,12 +95,12 @@ export async function etapaDeCrm(
 ): Promise<{ nome: string | null; desfecho: string | null }> {
   if (!stageId) return { nome: null, desfecho: null }
   try {
-    const { data } = await createAdminClient()
+    const data = await ler(createAdminClient()
       .from('crm_stages')
       .select('name, outcome')
       .eq('id', stageId)
       .eq('tenant_id', tenantId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a etapa')
     return { nome: (data?.name as string) ?? null, desfecho: (data?.outcome as string) ?? null }
   } catch {
     return { nome: null, desfecho: null }

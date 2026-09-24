@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cadastro'
 
 /**
@@ -163,12 +163,12 @@ async function updateProcedureInterno(
   const procedureId = formData.get('_procedureId') as string
 
   const supabase = await createSupabase()
-  const { data: existing } = await supabase
+  const existing = await ler(supabase
     .from('procedures')
     .select('id, price')
     .eq('id', procedureId)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar o procedimento')
   if (!existing) return { error: 'Procedimento não encontrado.' }
 
   const name        = (formData.get('name') as string)?.trim()

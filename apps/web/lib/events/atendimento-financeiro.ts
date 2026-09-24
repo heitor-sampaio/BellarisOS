@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEvento, atorDoContexto, ATOR_SISTEMA } from './emitir'
 import { EVENTOS } from '@estetica-os/types'
 import type { DadosDePacote, DadosDeComissao } from '@estetica-os/types'
+import { ler } from '@/lib/db'
 
 type Ctx = { tenantId?: string | null; internalUserId?: string | null; userName?: string | null }
 
@@ -82,8 +83,8 @@ export async function emitirComissaoGerada(
 
     let nomeProf: string | null = null
     if (professionalId) {
-      const { data } = await createAdminClient()
-        .from('users').select('name').eq('id', professionalId).maybeSingle()
+      const data = await ler(createAdminClient()
+        .from('users').select('name').eq('id', professionalId).maybeSingle(), 'buscar o usuário')
       nomeProf = (data?.name as string) ?? null
     }
 

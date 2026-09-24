@@ -2,7 +2,7 @@ import { createHash } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig } from './factory'
 import type { MetaAdsConfig } from './types'
-import { tentar } from '@/lib/db'
+import { ler, tentar } from '@/lib/db'
 
 const GRAPH_API_VERSION = 'v25.0'
 
@@ -264,8 +264,8 @@ export async function reenviarEventosPendentes(limite = 50): Promise<{
       .update({ tentativas: antes + 1 })
       .eq('id', l.id as string), 'atualizar o evento da Meta')
 
-    const { data: agora } = await admin
-      .from('meta_capi_events').select('status').eq('id', l.id as string).maybeSingle()
+    const agora = await ler(admin
+      .from('meta_capi_events').select('status').eq('id', l.id as string).maybeSingle(), 'buscar o evento da Meta')
     if (agora?.status === 'enviado') enviados++
     else if (agora?.status === 'descartado') descartados++
     else falharam++

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dispatchCampaignInline } from '@/actions/notification-campaigns'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 function getWebPush() {
   webpush.setVapidDetails(
@@ -188,11 +188,11 @@ async function processBirthdayCampaign(
   const todayStart = new Date()
   todayStart.setHours(0, 0, 0, 0)
 
-  const { data: existing } = await admin
+  const existing = await ler(admin
     .from('campaign_dispatches')
     .select('client_id')
     .eq('campaign_id', camp.id)
-    .gte('sent_at', todayStart.toISOString())
+    .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
   const alreadySent = new Set((existing ?? []).map((d: any) => d.client_id))
   const toSend = birthdayClients.filter((c: any) => !alreadySent.has(c.id))
@@ -211,13 +211,13 @@ async function processVisitCampaign(
   const dayStart = new Date(targetDate); dayStart.setHours(0, 0, 0, 0)
   const dayEnd   = new Date(targetDate); dayEnd.setHours(23, 59, 59, 999)
 
-  const { data: appts } = await admin
+  const appts = await ler(admin
     .from('appointments')
     .select('client_id, clients!inner(id, name), branches!inner(tenant_id)')
     .eq('branches.tenant_id', camp.tenant_id)
     .eq('status', 'COMPLETED')
     .gte('completed_at', dayStart.toISOString())
-    .lte('completed_at', dayEnd.toISOString())
+    .lte('completed_at', dayEnd.toISOString()), 'carregar os agendamentos')
 
   const seen = new Set<string>()
   const clients: { id: string; name: string }[] = []
@@ -232,11 +232,11 @@ async function processVisitCampaign(
 
   // Idempotency
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
-  const { data: existing } = await admin
+  const existing = await ler(admin
     .from('campaign_dispatches')
     .select('client_id')
     .eq('campaign_id', camp.id)
-    .gte('sent_at', todayStart.toISOString())
+    .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
   const alreadySent = new Set((existing ?? []).map((d: any) => d.client_id))
   const toSend = clients.filter(c => !alreadySent.has(c.id))
@@ -254,12 +254,12 @@ async function processExpiryCampaign(
   const dayStart = new Date(targetDate); dayStart.setHours(0, 0, 0, 0)
   const dayEnd   = new Date(targetDate); dayEnd.setHours(23, 59, 59, 999)
 
-  const { data: pkgs } = await admin
+  const pkgs = await ler(admin
     .from('client_packages')
     .select('client_id, clients!inner(id, name, tenant_id)')
     .eq('clients.tenant_id', camp.tenant_id)
     .gte('expires_at', dayStart.toISOString())
-    .lte('expires_at', dayEnd.toISOString())
+    .lte('expires_at', dayEnd.toISOString()), 'carregar os pacotes do cliente')
 
   const seen = new Set<string>()
   const clients: { id: string; name: string }[] = []
@@ -273,11 +273,11 @@ async function processExpiryCampaign(
   if (!clients.length) return 0
 
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
-  const { data: existing } = await admin
+  const existing = await ler(admin
     .from('campaign_dispatches')
     .select('client_id')
     .eq('campaign_id', camp.id)
-    .gte('sent_at', todayStart.toISOString())
+    .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
   const alreadySent = new Set((existing ?? []).map((d: any) => d.client_id))
   const toSend = clients.filter(c => !alreadySent.has(c.id))
@@ -294,13 +294,13 @@ async function processAppointmentReminderCampaign(
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
   // Busca agendamentos cujo scheduled_at cai dentro da janela
-  const { data: appts } = await admin
+  const appts = await ler(admin
     .from('appointments')
     .select('client_id, scheduled_at, clients!inner(id, name), branches!inner(tenant_id)')
     .eq('branches.tenant_id', camp.tenant_id)
     .in('status', ['SCHEDULED', 'CONFIRMED'])
     .gte('scheduled_at', windowStart.toISOString())
-    .lt('scheduled_at', windowEnd.toISOString())
+    .lt('scheduled_at', windowEnd.toISOString()), 'carregar os agendamentos')
 
   if (!appts?.length) return 0
 
@@ -316,11 +316,11 @@ async function processAppointmentReminderCampaign(
 
   // Idempotência: não enviar mais de um lembrete desta campanha ao mesmo cliente hoje
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
-  const { data: existing } = await admin
+  const existing = await ler(admin
     .from('campaign_dispatches')
     .select('client_id')
     .eq('campaign_id', camp.id)
-    .gte('sent_at', todayStart.toISOString())
+    .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
   const alreadySent = new Set((existing ?? []).map((d: any) => d.client_id))
   const toSend = clients.filter(c => !alreadySent.has(c.id))
@@ -351,10 +351,10 @@ async function sendBatch(
       is_read:   false,
     }))
 
-    const { data: inserted } = await admin
+    const inserted = await ler(admin
       .from('client_notifications')
       .insert(notifications)
-      .select('id, client_id')
+      .select('id, client_id'), 'carregar as notificações')
 
     if (inserted?.length) {
       await gravar(admin.from('campaign_dispatches').insert(
@@ -383,10 +383,10 @@ async function sendWebPushBatch(
   bodyTpl: string,
   admin: ReturnType<typeof createAdminClient>,
 ) {
-  const { data: subs } = await admin
+  const subs = await ler(admin
     .from('web_push_subscriptions')
     .select('client_id, endpoint, keys')
-    .in('client_id', clients.map(c => c.id))
+    .in('client_id', clients.map(c => c.id)), 'carregar as inscrições de notificações')
 
   if (!subs?.length) return
 
@@ -438,10 +438,10 @@ async function sendFcmBatch(
   bodyTpl: string,
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<void> {
-  const { data: rows } = await admin
+  const rows = await ler(admin
     .from('push_tokens')
     .select('token, client_id')
-    .in('client_id', clients.map(c => c.id))
+    .in('client_id', clients.map(c => c.id)), 'carregar os aparelhos')
 
   if (!rows?.length) return
 

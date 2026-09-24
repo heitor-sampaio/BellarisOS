@@ -7,6 +7,7 @@ import {
   DEFAULT_FUNNEL_NAME, DEFAULT_STAGES, NEW_FUNNEL_STAGES,
   type CRMFunnel, type CRMStage,
 } from '@/lib/crm'
+import { ler } from '@/lib/db'
 
 const FUNNEL_COLS = 'id, name, is_default, position, archived_at'
 const STAGE_COLS  = 'id, funnel_id, name, color, position, outcome'
@@ -55,11 +56,11 @@ export async function seedDefaultFunnel(tenantId: string): Promise<CRMFunnel[]> 
   // Dois primeiros acessos simultâneos: o índice único parcial de padrão por
   // rede derruba o segundo insert. Nesse caso o funil do vencedor já existe.
   if (erroFunil) {
-    const { data: recarregado } = await admin
+    const recarregado = await ler(admin
       .from('crm_funnels')
       .select(FUNNEL_COLS)
       .eq('tenant_id', tenantId)
-      .order('position')
+      .order('position'), 'carregar os funis')
     if (recarregado && recarregado.length > 0) return recarregado as CRMFunnel[]
     throw new Error(`Falha ao criar o funil padrão: ${erroFunil.message}`)
   }
@@ -116,13 +117,13 @@ export async function createFunnel(
 
     const admin = createAdminClient()
 
-    const { data: ultimo } = await admin
+    const ultimo = await ler(admin
       .from('crm_funnels')
       .select('position')
       .eq('tenant_id', ctx.tenantId!)
       .order('position', { ascending: false })
       .limit(1)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o funil')
 
     const { data: funil, error } = await admin
       .from('crm_funnels')

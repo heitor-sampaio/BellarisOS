@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig } from './factory'
-import { tentar } from '@/lib/db'
+import { ler, tentar } from '@/lib/db'
 
 const GRAPH_API_VERSION = 'v25.0'
 
@@ -48,12 +48,12 @@ export async function nomesDoAnuncio(
   if (!adId) return null
   const admin = createAdminClient()
 
-  const { data: cache } = await admin
+  const cache = await ler(admin
     .from('meta_ad_cache')
     .select('ad_id, ad_name, adset_id, adset_name, campaign_id, campaign_name, creative_name, creative_thumb_url, creative_body, erro')
     .eq('tenant_id', tenantId)
     .eq('ad_id', adId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o anúncio')
 
   // Busca que já falhou não se repete: anúncio de outra conta de anúncios
   // nunca vai resolver, e insistir a cada mensagem só queima o rate limit.
@@ -145,11 +145,11 @@ export async function nomesDeAnuncios(
   if (unicos.length === 0) return saida
 
   const admin = createAdminClient()
-  const { data: linhas } = await admin
+  const linhas = await ler(admin
     .from('meta_ad_cache')
     .select('ad_id, ad_name, adset_id, adset_name, campaign_id, campaign_name, creative_name, creative_thumb_url, creative_body, erro')
     .eq('tenant_id', tenantId)
-    .in('ad_id', unicos)
+    .in('ad_id', unicos), 'carregar os anúncios')
 
   const emCache = new Set<string>()
   for (const l of linhas ?? []) {

@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 function toSlug(name: string): string {
   return name
@@ -41,12 +41,12 @@ export async function createBranch(
   const supabase = createAdminClient()
 
   // Verifica unicidade do slug no tenant
-  const { data: existing } = await supabase
+  const existing = await ler(supabase
     .from('branches')
     .select('id')
     .eq('tenant_id', ctx.tenantId!)
     .eq('slug', slug)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
 
   if (existing) return { error: `O slug "${slug}" já está em uso. Escolha outro nome.` }
 

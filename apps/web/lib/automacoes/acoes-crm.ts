@@ -5,6 +5,7 @@ import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { EVENTOS } from '@estetica-os/types'
 import type { OrigemDeEvento, AtorDoEvento } from '@estetica-os/types'
 import type { ContextoDaExecucao } from './contexto'
+import { ler } from '@/lib/db'
 
 /**
  * As ações que mexem no CRM.
@@ -65,8 +66,8 @@ export async function moverDeEtapa(
   const admin = createAdminClient()
 
   // Antes do update: é a única chance de saber de onde o card saiu.
-  const { data: antes } = await admin
-    .from('leads').select('crm_stage_id').eq('id', leadId).eq('tenant_id', ator.tenantId).maybeSingle()
+  const antes = await ler(admin
+    .from('leads').select('crm_stage_id').eq('id', leadId).eq('tenant_id', ator.tenantId).maybeSingle(), 'buscar a oportunidade')
   const etapaAnterior = (antes?.crm_stage_id as string | null) ?? null
 
   if (etapaAnterior === etapaId) {
@@ -125,19 +126,19 @@ export async function marcarDesfecho(
 
   const admin = createAdminClient()
 
-  const { data: lead } = await admin
-    .from('leads').select('crm_stage_id').eq('id', leadId).eq('tenant_id', ator.tenantId).maybeSingle()
+  const lead = await ler(admin
+    .from('leads').select('crm_stage_id').eq('id', leadId).eq('tenant_id', ator.tenantId).maybeSingle(), 'buscar a oportunidade')
 
-  const { data: atual } = await admin
-    .from('crm_stages').select('funnel_id').eq('id', lead?.crm_stage_id ?? '').maybeSingle()
+  const atual = await ler(admin
+    .from('crm_stages').select('funnel_id').eq('id', lead?.crm_stage_id ?? '').maybeSingle(), 'buscar a etapa')
 
   if (!atual) return { marcado: false, motivo: 'A oportunidade não está em nenhum funil.' }
 
-  const { data: etapas } = await admin
+  const etapas = await ler(admin
     .from('crm_stages').select('id, name, outcome')
     .eq('funnel_id', atual.funnel_id)
     .eq('outcome', desfecho)
-    .limit(1)
+    .limit(1), 'carregar as etapas')
 
   const destino = etapas?.[0]
   if (!destino) {
@@ -162,8 +163,8 @@ export async function mudarTagDoCliente(
   if (!limpa) throw new Error('Nenhuma tag escolhida.')
 
   const admin = createAdminClient()
-  const { data: cliente } = await admin
-    .from('clients').select('tags').eq('id', clienteId).eq('tenant_id', ator.tenantId).maybeSingle()
+  const cliente = await ler(admin
+    .from('clients').select('tags').eq('id', clienteId).eq('tenant_id', ator.tenantId).maybeSingle(), 'buscar o cliente')
 
   if (!cliente) return { alterado: false, motivo: 'Cliente não encontrado.' }
 
@@ -205,8 +206,8 @@ export async function definirResponsavel(
   if (usuarioId) {
     // O responsável tem de ser da REDE. Sem esta conferência, um id de outra
     // clínica viraria dono de um card que essa pessoa nunca vai ver.
-    const { data: membro } = await admin
-      .from('users').select('id, name').eq('id', usuarioId).eq('tenant_id', ator.tenantId).maybeSingle()
+    const membro = await ler(admin
+      .from('users').select('id, name').eq('id', usuarioId).eq('tenant_id', ator.tenantId).maybeSingle(), 'buscar o usuário')
     if (!membro) return { atribuido: false, motivo: 'Pessoa não encontrada nesta rede.' }
     nome = membro.name as string
   }

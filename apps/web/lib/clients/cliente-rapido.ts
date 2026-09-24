@@ -15,7 +15,7 @@ import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { EVENTOS } from '@estetica-os/types'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -80,12 +80,12 @@ export async function garantirClienteRapido(
   if (digitos.length < 10)      return { error: 'Informe um telefone com DDD.' }
   if (!input.branchId)          return { error: 'Filial não identificada.' }
 
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('id, name')
     .eq('id', input.branchId)
     .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   if (!branch) return { error: 'Filial inválida.' }
 
   // A comparação é feita no banco, sobre os dígitos (`cliente_por_telefone`).
@@ -149,10 +149,10 @@ export async function clienteRapidoDoTelefone(
   const digitos = digitosDoTelefone(telefone)
   if (digitos.length < 10) return null
 
-  const { data } = await admin.rpc('cliente_por_telefone', {
+  const data = await ler(admin.rpc('cliente_por_telefone', {
     p_tenant:  tenantId,
     p_digitos: digitos,
     p_sem_cpf: true,
-  })
+  }), 'carregar o cliente pelo telefone')
   return data ? { id: data as string } : null
 }

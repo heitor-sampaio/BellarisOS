@@ -3,6 +3,7 @@ import { OfficialAPIProvider } from '@/lib/whatsapp/official'
 import { getTenantByPhoneNumberId, getWhatsAppConfig } from '@/lib/whatsapp/factory'
 import { resolveConversation, insertInboundMessage, updateMessageStatus } from '@/lib/inbox/resolve-conversation'
 import type { OfficialConfig } from '@/lib/whatsapp/types'
+import { ler } from '@/lib/db'
 
 // -- GET: Meta webhook subscription verification ------------------------------
 export async function GET(req: NextRequest) {
@@ -12,11 +13,11 @@ export async function GET(req: NextRequest) {
   const { createAdminClient } = await import('@/lib/supabase/admin')
   const admin = createAdminClient()
 
-  const { data: configs } = await admin
+  const configs = await ler(admin
     .from('integration_configs')
     .select('config')
     .eq('provider', 'official')
-    .eq('is_active', true)
+    .eq('is_active', true), 'carregar as integrações')
 
   for (const row of (configs ?? [])) {
     const config = row.config as OfficialConfig

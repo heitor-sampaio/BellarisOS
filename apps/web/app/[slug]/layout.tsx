@@ -6,6 +6,7 @@ import { BranchSidebar } from '@/components/branch/sidebar'
 import { Topbar } from '@/components/shared/topbar'
 import { SidebarProvider } from '@/components/shared/sidebar-context'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
+import { ler } from '@/lib/db'
 
 export default async function BranchLayout({
   children,
@@ -21,11 +22,11 @@ export default async function BranchLayout({
   // 1 query com join (antes eram 2 sequenciais: clients → branches).
   if (ctx.isClient) {
     const adminClient = createAdminClient()
-    const { data: clientData } = await adminClient
+    const clientData = await ler(adminClient
       .from('clients')
       .select('branch_id, branches!inner(slug)')
       .eq('id', ctx.clientId!)
-      .single()
+      .single(), 'buscar o cliente')
     const clientBranch = clientData?.branches as unknown as { slug: string } | null
     if (!clientData?.branch_id || clientBranch?.slug !== slug) redirect('/login')
     return <>{children}</>
@@ -41,11 +42,11 @@ export default async function BranchLayout({
 
   // Usuário de filial só pode acessar a própria filial
   if (ctx.branchId && ctx.branchId !== branch.id) {
-    const { data: userBranch } = await supabase
+    const userBranch = await ler(supabase
       .from('branches')
       .select('slug')
       .eq('id', ctx.branchId)
-      .single()
+      .single(), 'buscar a unidade')
     redirect(`/${userBranch?.slug ?? ''}/dashboard`)
   }
 

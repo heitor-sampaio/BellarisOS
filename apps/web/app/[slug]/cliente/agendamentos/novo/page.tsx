@@ -3,6 +3,7 @@ import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { NewAppointmentWizard } from '@/components/client-portal/new-appointment-wizard'
+import { ler } from '@/lib/db'
 
 export default async function NewClientAppointmentPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -13,19 +14,19 @@ export default async function NewClientAppointmentPage({ params }: { params: Pro
 
   // Querying by slug alone matches duplicates across tenants (.single() returns null).
   // Use the client's own branch_id instead — it's a UUID and globally unique.
-  const { data: clientRecord } = await admin
+  const clientRecord = await ler(admin
     .from('clients')
     .select('branch_id')
     .eq('id', ctx.clientId!)
-    .single()
+    .single(), 'buscar o cliente')
 
   if (!clientRecord?.branch_id) notFound()
 
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('id, name, tenant_id, slug')
     .eq('id', clientRecord.branch_id)
-    .single()
+    .single(), 'buscar a unidade')
 
   if (!branch || (branch as { slug: string }).slug !== slug) notFound()
 

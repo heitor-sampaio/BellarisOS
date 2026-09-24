@@ -6,6 +6,7 @@ import type {
   ConfigEsperaDuracao, ConfigEsperaAte, ConfigGatilhoAgenda, ConfigBuscarClientes,
 } from '@estetica-os/types'
 import type { ContextoDaExecucao } from './contexto'
+import { ler } from '@/lib/db'
 
 /**
  * O tempo — esperas, agenda e busca.
@@ -205,12 +206,12 @@ export async function buscarClientes(
     // Quem TEVE atendimento depois do corte sai da lista. A pergunta é sobre
     // ausência, e ausência não se consulta direto: consulta-se a presença e
     // tira-se o resto.
-    const { data: recentes } = await admin
+    const recentes = await ler(admin
       .from('appointments')
       .select('client_id')
       .in('client_id', ids)
       .eq('status', 'COMPLETED')
-      .gte('scheduled_at', corte)
+      .gte('scheduled_at', corte), 'carregar os agendamentos')
 
     const voltaram = new Set((recentes ?? []).map(a => a.client_id as string))
     linhas = linhas.filter(c => !voltaram.has(c.id as string))

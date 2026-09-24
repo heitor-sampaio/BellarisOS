@@ -4,6 +4,7 @@ import { EVENTOS } from '@estetica-os/types'
 import type {
   NomeDeEvento, DadosDeProcedimento, DadosDeMembro, DadosDeCargo,
 } from '@estetica-os/types'
+import { ler } from '@/lib/db'
 
 type Ctx = { tenantId?: string | null; internalUserId?: string | null; userName?: string | null }
 
@@ -184,12 +185,12 @@ export async function emitirCargoPermissoesAlteradas(
     const mudancas = diferencaDaMatriz(antes, depois)
     if (mudancas.length === 0) return
 
-    const { data } = await createAdminClient()
+    const data = await ler(createAdminClient()
       .from('tenant_roles')
       .select('label')
       .eq('id', roleId)
       .eq('tenant_id', ctx.tenantId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o cargo')
 
     const dados: DadosDeCargo = {
       nome: (data?.label as string) ?? null,

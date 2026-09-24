@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 
 /**
  * Respostas rápidas: os textos que o atendimento repete o dia inteiro.
@@ -111,8 +112,8 @@ function traduzir(error: { code?: string; message: string }): string {
 
 async function membroId(ctx: Awaited<ReturnType<typeof getTenantContext>>): Promise<string | null> {
   if (ctx.internalUserId) return ctx.internalUserId
-  const { data } = await createAdminClient()
-    .from('users').select('id').eq('auth_id', ctx.userId).maybeSingle()
+  const data = await ler(createAdminClient()
+    .from('users').select('id').eq('auth_id', ctx.userId).maybeSingle(), 'buscar o usuário')
   return (data as { id: string } | null)?.id ?? null
 }
 

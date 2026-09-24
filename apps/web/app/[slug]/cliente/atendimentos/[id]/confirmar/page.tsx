@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ConfirmAppointmentForm } from '@/components/client-portal/confirm-appointment-form'
+import { ler } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,11 +18,11 @@ export default async function ConfirmAppointmentPage({
   assertClient(ctx)
 
   const admin = createAdminClient()
-  const { data: appt } = await admin
+  const appt = await ler(admin
     .from('appointments')
     .select('id, client_id, status, client_confirmed_at, scheduled_at, procedures(name), professionals:users!professional_id(name)')
     .eq('id', id)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o agendamento')
 
   // Só o dono, concluído e ainda não confirmado.
   if (

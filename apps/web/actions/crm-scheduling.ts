@@ -20,7 +20,7 @@ import {
   getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 
 export interface CrmSchedProcedure { id: string; name: string; duration_min: number; price: number }
@@ -34,12 +34,12 @@ export interface CrmSchedulingData {
 
 async function assertBranchInTenant(branchId: string, tenantId: string): Promise<boolean> {
   const admin = createAdminClient()
-  const { data } = await admin
+  const data = await ler(admin
     .from('branches')
     .select('id')
     .eq('id', branchId)
     .eq('tenant_id', tenantId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   return !!data
 }
 
@@ -82,24 +82,24 @@ async function contatoDaConversa(
   leadId: string,
 ): Promise<{ nome: string; telefone: string } | null> {
   if (conversationId) {
-    const { data } = await admin
+    const data = await ler(admin
       .from('conversations')
       .select('contact_name, contact_phone')
       .eq('id', conversationId)
       .eq('tenant_id', tenantId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a conversa')
     const nome     = (data?.contact_name  as string | null)?.trim()
     const telefone = (data?.contact_phone as string | null)?.trim()
     if (nome && telefone) return { nome, telefone }
   }
 
   if (leadId) {
-    const { data } = await admin
+    const data = await ler(admin
       .from('leads')
       .select('name, phone')
       .eq('id', leadId)
       .eq('tenant_id', tenantId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a oportunidade')
     const nome     = (data?.name  as string | null)?.trim()
     const telefone = (data?.phone as string | null)?.trim()
     if (nome && telefone) return { nome, telefone }
@@ -170,12 +170,12 @@ export async function createCrmAppointment(
   let clientId = (leadRow as { client_id: string | null } | null)?.client_id ?? null
 
   if (!clientId && conversationId) {
-    const { data: conversa } = await admin
+    const conversa = await ler(admin
       .from('conversations')
       .select('client_id')
       .eq('id', conversationId)
       .eq('tenant_id', ctx.tenantId!)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a conversa')
     clientId = (conversa as { client_id: string | null } | null)?.client_id ?? null
   }
 

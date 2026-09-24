@@ -8,6 +8,7 @@ import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { UserPlus } from 'lucide-react'
+import { ler } from '@/lib/db'
 
 export default async function BranchOportunidadesPage({
   params, searchParams,
@@ -22,9 +23,9 @@ export default async function BranchOportunidadesPage({
 
   const supabase = await createSupabase()
 
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches').select('id, name')
-    .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single()
+    .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single(), 'buscar a unidade')
   if (!branch) notFound()
 
   // Funis da rede (seed automático no primeiro acesso) e o funil aberto.
@@ -42,12 +43,12 @@ export default async function BranchOportunidadesPage({
   const stageIds  = stages.map(s => s.id)
 
   // Procedimentos disponíveis nesta filial
-  const { data: allProcs } = await supabase
+  const allProcs = await ler(supabase
     .from('procedures')
     .select('id, name, procedure_branch_availability(branch_id)')
     .eq('tenant_id', ctx.tenantId!)
     .eq('is_active', true)
-    .order('name')
+    .order('name'), 'carregar os procedimentos')
 
   const procedures = (allProcs ?? [])
     .filter(p => {

@@ -1,7 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendFcmToTokens, sendWebPushToSubs } from '@/lib/notifications/push'
-import { tentar } from '@/lib/db'
+import { ler, tentar } from '@/lib/db'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -59,7 +59,7 @@ export async function notifyUser(admin: Admin, userId: string, p: NotifyPayload)
       data:    p.data ?? null,
     }), 'registrar a notificação da equipe')
 
-    const { data: tokens } = await admin.from('push_tokens').select('token').eq('user_id', userId)
+    const tokens = await ler(admin.from('push_tokens').select('token').eq('user_id', userId), 'carregar os aparelhos')
     await sendFcmToTokens((tokens ?? []).map(t => t.token as string), p.title, p.body, admin, p.data)
   } catch (e) {
     console.error('[notifyUser]', e)

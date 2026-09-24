@@ -12,17 +12,17 @@ import { camposAlterados } from '@/lib/events/emitir'
 import { EVENTOS } from '@estetica-os/types'
 import { registrarEventoLead } from '@/lib/lead-events'
 import { garantirClienteRapido, ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
   const supabase = await createSupabase()
-  const { data } = await supabase
+  const data = await ler(supabase
     .from('branches')
     .select('id, slug, name')
     .eq('id', branchId)
     .eq('tenant_id', tenantId)
-    .single()
+    .single(), 'buscar a unidade')
   return data
 }
 
@@ -96,12 +96,12 @@ export async function addClient(
   const admin = createAdminClient()
 
   // CPF único por rede. Na conversão (leadId), se o CPF já é de um cliente, liga o lead a ele (dedupe).
-  const { data: existing } = await admin
+  const existing = await ler(admin
     .from('clients')
     .select('id')
     .eq('tenant_id', ctx.tenantId!)
     .eq('document', document)
-    .maybeSingle()
+    .maybeSingle(), 'conferir se o CPF já está cadastrado')
   if (existing) {
     if (conversationId) await ligarContatoAoCliente(admin, ctx.tenantId!, conversationId, existing.id as string)
     if (leadId) {
@@ -186,8 +186,8 @@ export async function addClient(
 
   // 5) Conversão de lead: liga o lead e dispara Meta CAPI (CompleteRegistration)
   if (leadId) {
-    const { data: leadRow } = await admin
-      .from('leads').select('ctwa_clid').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle()
+    const leadRow = await ler(admin
+      .from('leads').select('ctwa_clid').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a oportunidade')
     await gravar(admin.from('leads').update({ client_id: client.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!), 'vincular a oportunidade ao cliente')
     await registrarEventoLead({
       tenantId:    ctx.tenantId!,
@@ -255,12 +255,12 @@ export async function grantInternalCredit(
 
   // Verify client belongs to this tenant's branch
   const supabase = await createSupabase()
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches')
     .select('id')
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a unidade')
   if (!branch) return { error: 'Filial não encontrada.' }
 
   const admin = createAdminClient()
@@ -324,23 +324,23 @@ export async function updateClientContactData(
   // Verifica duplicidade de CPF no tenant (exceto o próprio cliente)
   if (data.document) {
     const cpfDigits = data.document.replace(/\D/g, '')
-    const { data: dup } = await admin
+    const dup = await ler(admin
       .from('clients')
       .select('id, name')
       .eq('tenant_id', ctx.tenantId!)
       .eq('document', cpfDigits)
       .neq('id', clientId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o cliente')
     if (dup) return { error: `CPF já cadastrado para ${dup.name}.` }
   }
 
   // O estado ANTERIOR, para o evento poder dizer O QUE mudou. Sem isto a
   // automação só saberia que "o cliente mudou", e não que foi o telefone — que
   // é a pergunta que ela realmente faz.
-  const { data: antes } = await admin
+  const antes = await ler(admin
     .from('clients')
     .select('name, phone, email, birth_date, document, tags, gender, notes, city')
-    .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle()
+    .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente')
 
   const { error } = await admin
     .from('clients')
@@ -369,10 +369,10 @@ export async function updateClientContactData(
 
   if (error) return { error: error.message }
 
-  const { data: depois } = await admin
+  const depois = await ler(admin
     .from('clients')
     .select('name, phone, email, birth_date, document, tags, gender, notes, city')
-    .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle()
+    .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente')
 
   const alterou = camposAlterados(antes ?? {}, depois ?? {})
   // Salvar sem mexer em nada é comum — abriu a aba, clicou em salvar. Emitir
@@ -398,12 +398,12 @@ export async function lookupClientByCpf(
   const digits = cpf.replace(/\D/g, '')
   if (digits.length !== 11) return { found: false, isSelf: false }
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('clients')
     .select('id, name')
     .eq('tenant_id', ctx.tenantId!)
     .eq('document', digits)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o cliente')
 
   if (!data) return { found: false, isSelf: false }
   const isSelf = data.id === currentClientId

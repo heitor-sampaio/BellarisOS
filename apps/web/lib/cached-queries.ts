@@ -25,11 +25,11 @@ export function getCachedMember(authId: string) {
   return unstable_cache(
     async (): Promise<CachedMember | null> => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('users')
         .select('id, name, role_id, branch_id, provides_services, tenant_roles(label)')
         .eq('auth_id', authId)
-        .maybeSingle()
+        .maybeSingle(), 'buscar o usuário')
       if (!data) return null
       const roleRef = data.tenant_roles as unknown as { label: string } | null
       return {
@@ -52,19 +52,19 @@ export function getCachedBranchClients(branchId: string, tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data: branch } = await admin
+      const branch = await ler(admin
         .from('branches')
         .select('name')
         .eq('id', branchId)
         .eq('tenant_id', tenantId)
-        .maybeSingle()
+        .maybeSingle(), 'buscar a unidade')
       if (!branch?.name) return []
-      const { data } = await admin
+      const data = await ler(admin
         .from('clients')
         .select('id, name, phone, tags, is_active, created_at')
         .eq('tenant_id', tenantId)
         .contains('tags', [unitTag(branch.name)])
-        .order('name')
+        .order('name'), 'carregar os clientes')
       return data ?? []
     },
     [`branch-clients-${branchId}`],
@@ -77,13 +77,13 @@ export function getCachedBranchCompletedAppointments(branchId: string, tenantId:
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('appointments')
         .select('client_id, scheduled_at')
         .eq('branch_id', branchId)
         .eq('status', 'COMPLETED')
         .order('scheduled_at', { ascending: false })
-        .limit(800)
+        .limit(800), 'carregar os agendamentos')
       return data ?? []
     },
     [`branch-appointments-completed-${branchId}`],
@@ -96,11 +96,11 @@ export function getCachedNetworkClients(tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('clients')
         .select('id, name, phone, tags, is_active, created_at, branch_id, branches!branch_id(id, name)')
         .eq('tenant_id', tenantId)
-        .order('name')
+        .order('name'), 'carregar os clientes')
       return data ?? []
     },
     [`network-clients-${tenantId}`],
@@ -113,13 +113,21 @@ export function getCachedNetworkCompletedAppointments(tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data } = await admin
+      // ⚠️ `appointments` NÃO tem `tenant_id` — a rede vem pela unidade.
+      //
+      // O filtro era `.eq('tenant_id', tenantId)`, e o Postgres respondia
+      // 42703 (coluna não existe) em toda chamada. Com o erro descartado, a
+      // lista voltava vazia e a coluna "última visita" da barra lateral de
+      // clientes do /admin ficava em branco para TODO MUNDO — que é
+      // exatamente o que se vê num cliente que nunca veio. Ninguém tinha
+      // como desconfiar.
+      const data = await ler(admin
         .from('appointments')
-        .select('client_id, scheduled_at')
-        .eq('tenant_id', tenantId)
+        .select('client_id, scheduled_at, branches!inner(tenant_id)')
+        .eq('branches.tenant_id', tenantId)
         .eq('status', 'COMPLETED')
         .order('scheduled_at', { ascending: false })
-        .limit(2000)
+        .limit(2000), 'carregar os agendamentos')
       return data ?? []
     },
     [`network-appointments-completed-${tenantId}`],
@@ -132,12 +140,12 @@ export function getCachedNetworkBranches(tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('branches')
         .select('id, name')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .order('name')
+        .order('name'), 'carregar as unidades')
       return data ?? []
     },
     [`network-branches-${tenantId}`],
@@ -150,13 +158,13 @@ export function getCachedBranchBySlug(slug: string, tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('branches')
         .select('id, name, slug')
         .eq('slug', slug)
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .maybeSingle()
+        .maybeSingle(), 'buscar a unidade')
       return data
     },
     [`branch-by-slug-${tenantId}-${slug}`],
@@ -177,11 +185,11 @@ export function getCachedRolePermissions(tenantId: string, roleId: string) {
   return unstable_cache(
     async (): Promise<CachedRolePermission[]> => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('role_permissions')
         .select('module, level, scope')
         .eq('tenant_id', tenantId)
-        .eq('role_id', roleId)
+        .eq('role_id', roleId), 'carregar as permissões dos cargos')
       return (data ?? []) as CachedRolePermission[]
     },
     [`role-permissions-${tenantId}-${roleId}`],
@@ -196,11 +204,11 @@ export function getCachedRoleReportTabs(tenantId: string, roleId: string) {
   return unstable_cache(
     async (): Promise<{ tab: string }[]> => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('role_report_tabs')
         .select('tab')
         .eq('tenant_id', tenantId)
-        .eq('role_id', roleId)
+        .eq('role_id', roleId), 'carregar as abas de relatório')
       return (data ?? []) as { tab: string }[]
     },
     [`role-report-tabs-${tenantId}-${roleId}`],
@@ -213,13 +221,13 @@ export function getCachedBranchProcedures(branchId: string, tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('procedures')
         .select('id, name, category, duration_min, price, is_evaluation')
         .eq('tenant_id', tenantId)
         .or(`branch_id.is.null,branch_id.eq.${branchId}`)
         .eq('is_active', true)
-        .order('name')
+        .order('name'), 'carregar os procedimentos')
       return data ?? []
     },
     [`branch-procedures-${branchId}`],
@@ -232,12 +240,12 @@ export function getCachedNetworkProcedures(tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('procedures')
         .select('id, name, category')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .order('name')
+        .order('name'), 'carregar os procedimentos')
       return data ?? []
     },
     [`network-procedures-${tenantId}`],
@@ -250,13 +258,13 @@ export function getCachedBranchProfessionals(branchId: string, tenantId: string)
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('users')
         .select('id, name')
         .eq('branch_id', branchId)
         .eq('provides_services', true)
         .eq('is_active', true)
-        .order('name')
+        .order('name'), 'carregar a equipe')
       return data ?? []
     },
     [`branch-professionals-${branchId}`],
@@ -269,11 +277,11 @@ export function getCachedRoomsByBranch(branchId: string, tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('rooms')
         .select('id, name')
         .eq('branch_id', branchId)
-        .eq('is_active', true)
+        .eq('is_active', true), 'carregar as salas')
       return data ?? []
     },
     [`branch-rooms-${branchId}`],

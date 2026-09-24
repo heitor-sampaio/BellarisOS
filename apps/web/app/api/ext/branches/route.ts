@@ -2,6 +2,7 @@ import { type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedNetworkBranches } from '@/lib/cached-queries'
 import { preflight, jsonCors, requireExtAccess } from '@/lib/ext/http'
+import { ler } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,11 +19,11 @@ export async function GET(req: NextRequest) {
 
   if (ctx.branchId) {
     const admin = createAdminClient()
-    const { data } = await admin
+    const data = await ler(admin
       .from('branches')
       .select('id, name')
       .eq('id', ctx.branchId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a unidade')
     return jsonCors(req, { mode: 'branch', branches: data ? [data] : [] })
   }
 

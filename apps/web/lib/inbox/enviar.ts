@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { resolverCanal } from '@/lib/channels/factory'
 import { estadoDaJanela } from '@/lib/channels/window'
 import type { ChannelKind } from '@/lib/channels/types'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 /**
  * O envio de uma mensagem numa conversa — o núcleo, sem tela e sem usuário.
@@ -42,12 +42,12 @@ export async function enviarNaConversa(
 ): Promise<ResultadoDoEnvio> {
   const admin = createAdminClient()
 
-  const { data: conv } = await admin
+  const conv = await ler(admin
     .from('conversations')
     .select('id, channel, tenant_id, status, contact_phone, contact_external_id, last_inbound_at')
     .eq('id', conversationId)
     .eq('tenant_id', tenantId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a conversa')
 
   if (!conv) return { ok: false, error: 'Conversa não encontrada' }
   if (conv.status === 'closed') return { ok: false, error: 'Conversa encerrada' }

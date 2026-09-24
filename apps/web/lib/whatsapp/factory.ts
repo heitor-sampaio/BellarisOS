@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'crypto'
 import type { WhatsAppProvider, WhatsAppConfig, UazapiConfig } from './types'
 import { UazapiProvider } from './uazapi'
 import { OfficialAPIProvider } from './official'
+import { ler } from '@/lib/db'
 
 export function resolveProvider(config: WhatsAppConfig): WhatsAppProvider {
   if (config.provider === 'uazapi')   return new UazapiProvider(config)
@@ -91,11 +92,11 @@ export async function getTenantByPhoneNumberId(phoneNumberId: string): Promise<s
   const { createAdminClient } = await import('@/lib/supabase/admin')
   const admin = createAdminClient()
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('integration_configs')
     .select('tenant_id, config')
     .eq('provider', 'official')
-    .eq('is_active', true)
+    .eq('is_active', true), 'carregar as integrações')
 
   type ConfigRow = { tenant_id: string; config: Record<string, unknown> | null }
   const match = (data ?? []).find((r: ConfigRow) => (r.config as any)?.phoneNumberId === phoneNumberId) as ConfigRow | undefined

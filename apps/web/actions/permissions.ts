@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ALL_MODULES, MODULE_LEVELS, isScoped, ALL_REPORT_TABS } from '@/lib/permissions'
 import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/cadastro'
 import type { PermissionLevel, PermissionScope } from '@estetica-os/types'
+import { ler } from '@/lib/db'
 
 const VALID_SCOPES: PermissionScope[] = ['OWN', 'ALL']
 
@@ -26,12 +27,12 @@ export async function saveRolePermissions(
   const supabase = await createClient()
 
   // Valida que o cargo pertence à rede
-  const { data: role } = await supabase
+  const role = await ler(supabase
     .from('tenant_roles')
     .select('is_system')
     .eq('id', roleId)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar o cargo')
   if (!role) return { error: 'Cargo não encontrado.' }
   if (role.is_system) return { error: 'Cargos do sistema têm acesso total e não são editáveis.' }
 

@@ -4,6 +4,7 @@ import { guardarMidia } from '@/lib/inbox/media'
 import { resolveLeadSource } from '@estetica-os/utils'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
+import { ler } from '@/lib/db'
 
 interface ResolveResult {
   conversationId: string
@@ -239,11 +240,11 @@ async function marcarAnuncioNaConversa(
   conversationId: string,
   referral: NonNullable<InboundMsg['referral']>,
 ) {
-  const { data } = await admin
+  const data = await ler(admin
     .from('conversations')
     .select('attribution')
     .eq('id', conversationId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a conversa')
 
   const atual = (data?.attribution ?? {}) as Record<string, unknown>
   const novo: Record<string, unknown> = { ...atual, ad_id: referral.sourceId }
@@ -309,8 +310,8 @@ async function completarIdentidade(
   const patchLead: Record<string, unknown> = {}
   if (ganhaFone) patchLead.phone = phone
   if (nomeNovo) {
-    const { data: lead } = await admin
-      .from('leads').select('name').eq('id', conversa.lead_id).maybeSingle()
+    const lead = await ler(admin
+      .from('leads').select('name').eq('id', conversa.lead_id).maybeSingle(), 'buscar a oportunidade')
     if (ehIdentificador(lead?.name as string | null, aliases)) patchLead.name = nomeNovo
   }
   if (Object.keys(patchLead).length === 0) return
@@ -348,12 +349,12 @@ export async function insertInboundMessage(
   const admin = createAdminClient()
 
   // Dedup por id do provedor: reentrega do webhook não duplica a mensagem.
-  const { data: existing } = await admin
+  const existing = await ler(admin
     .from('messages')
     .select('id')
     .eq('external_id', msg.externalId)
     .eq('conversation_id', conversationId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a mensagem')
 
   if (existing) return
 

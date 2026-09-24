@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 function toKey(label: string): string {
   return label
@@ -60,12 +60,12 @@ export async function updateRole(
   const supabase = await createClient()
 
   // Não permite renomear cargo de sistema
-  const { data: role } = await supabase
+  const role = await ler(supabase
     .from('tenant_roles')
     .select('is_system')
     .eq('id', roleId)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar o cargo')
   if (!role) return { error: 'Cargo não encontrado.' }
   if (role.is_system) return { error: 'Cargos do sistema não podem ser renomeados.' }
 
@@ -87,12 +87,12 @@ export async function deleteRole(roleId: string): Promise<{ error: string } | { 
 
   const supabase = await createClient()
 
-  const { data: role } = await supabase
+  const role = await ler(supabase
     .from('tenant_roles')
     .select('is_system')
     .eq('id', roleId)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar o cargo')
 
   if (!role) return { error: 'Cargo não encontrado.' }
   if (role.is_system) return { error: 'Cargos do sistema não podem ser excluídos.' }

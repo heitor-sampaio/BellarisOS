@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import type { JwtClaims } from '@estetica-os/types'
+import { ler } from '@/lib/db'
 
 // Recebe tokens do armazenamento nativo (Capacitor Preferences),
 // valida com Supabase, grava cookies de sessão e retorna o destino
@@ -47,16 +48,16 @@ export async function POST(req: NextRequest) {
   let redirectTo = '/auth/redirect'  // fallback seguro
   try {
     if (claims.client_id) {
-      const { data: cl } = await admin
-        .from('clients').select('branch_id').eq('id', claims.client_id).single()
+      const cl = await ler(admin
+        .from('clients').select('branch_id').eq('id', claims.client_id).single(), 'buscar o cliente')
       if (cl?.branch_id) {
-        const { data: br } = await admin
-          .from('branches').select('slug').eq('id', cl.branch_id).single()
+        const br = await ler(admin
+          .from('branches').select('slug').eq('id', cl.branch_id).single(), 'buscar a unidade')
         if (br?.slug) redirectTo = `/${br.slug}/cliente`
       }
     } else if (claims.branch_id) {
-      const { data: br } = await admin
-        .from('branches').select('slug').eq('id', claims.branch_id).single()
+      const br = await ler(admin
+        .from('branches').select('slug').eq('id', claims.branch_id).single(), 'buscar a unidade')
       redirectTo = getRedirectPath(claims.role, br?.slug ?? null)
     } else {
       redirectTo = getRedirectPath(claims.role, null)

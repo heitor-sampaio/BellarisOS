@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { membroCriado, membroDesativado, membroReativado } from '@/lib/events/cadastro'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 // Resolve a abrangência (branch_id) de um membro a partir do form.
 // Apenas NETWORK_ADMIN pode criar membros de rede (branch_id null); gerentes de
@@ -38,12 +38,12 @@ async function assertRoleInTenant(
   tenantId: string,
   roleId: string,
 ): Promise<{ error: string } | { ok: true }> {
-  const { data: role } = await admin
+  const role = await ler(admin
     .from('tenant_roles')
     .select('is_system')
     .eq('id', roleId)
     .eq('tenant_id', tenantId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o cargo')
   if (!role) return { error: 'Cargo inválido.' }
   if (role.is_system) return { error: 'Esse cargo não pode ser atribuído pela equipe.' }
   return { ok: true }
@@ -149,12 +149,12 @@ export async function updateTeamMember(
   if ('error' in scoped) return scoped
   const effectiveBranchId = scoped.branchId
 
-  const { data: member } = await admin
+  const member = await ler(admin
     .from('users')
     .select('auth_id')
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o usuário')
   if (!member) return { error: 'Membro não encontrado.' }
 
   const { error } = await admin

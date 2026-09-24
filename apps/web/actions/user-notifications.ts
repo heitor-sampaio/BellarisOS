@@ -2,7 +2,7 @@
 
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { tentar } from '@/lib/db'
+import { ler, tentar } from '@/lib/db'
 
 export type UserNotification = {
   id:          string
@@ -19,13 +19,13 @@ export async function getUserNotifications(): Promise<{ notifications: UserNotif
   if (ctx.isClient || !ctx.internalUserId) return { notifications: [] }
 
   const admin = createAdminClient()
-  const { data } = await admin
+  const data = await ler(admin
     .from('user_notifications')
     .select('id, title, body, type, is_read, is_received, created_at')
     .eq('user_id', ctx.internalUserId)
     .eq('is_read', false)
     .order('created_at', { ascending: false })
-    .limit(40)
+    .limit(40), 'carregar as notificações')
 
   return { notifications: (data ?? []) as UserNotification[] }
 }

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dayKeyTZ } from '@/lib/datetime'
+import { ler } from '@/lib/db'
 
 /**
  * O contexto de uma execução: o que as condições leem e o que as variáveis
@@ -85,10 +86,10 @@ export async function hidratar(
 
   try {
     if (alvo === 'cliente') {
-      const { data } = await admin
+      const data = await ler(admin
         .from('clients')
         .select('id, name, phone, email, birth_date, gender, tags, is_active, branch_id')
-        .eq('id', id).eq('tenant_id', tenantId).maybeSingle()
+        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o cliente')
       contexto.cliente = data && {
         id:        data.id,
         nome:      data.name,
@@ -107,10 +108,10 @@ export async function hidratar(
     }
 
     if (alvo === 'agendamento') {
-      const { data } = await admin
+      const data = await ler(admin
         .from('appointments')
         .select('id, scheduled_at, status, price, client_id, branch_id, professional_id, procedures(name), users(name)')
-        .eq('id', id).maybeSingle()
+        .eq('id', id).maybeSingle(), 'buscar o agendamento')
       contexto.agendamento = data && {
         id:           data.id,
         data:         data.scheduled_at,
@@ -125,10 +126,10 @@ export async function hidratar(
     }
 
     if (alvo === 'lead') {
-      const { data } = await admin
+      const data = await ler(admin
         .from('leads')
         .select('id, name, phone, email, source, owner_id, crm_stage_id, client_id, tags, value, crm_stages(name)')
-        .eq('id', id).eq('tenant_id', tenantId).maybeSingle()
+        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar a oportunidade')
       contexto.lead = data && {
         id:            data.id,
         nome:          data.name,
@@ -146,10 +147,10 @@ export async function hidratar(
     }
 
     if (alvo === 'conversa') {
-      const { data } = await admin
+      const data = await ler(admin
         .from('conversations')
         .select('id, channel, status, last_inbound_at, client_id, lead_id, provider')
-        .eq('id', id).eq('tenant_id', tenantId).maybeSingle()
+        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar a conversa')
       contexto.conversa = data && {
         id:            data.id,
         canal:         data.channel,
@@ -163,10 +164,10 @@ export async function hidratar(
     }
 
     if (alvo === 'plano') {
-      const { data } = await admin
+      const data = await ler(admin
         .from('treatment_plans')
         .select('id, name, status, client_id, branch_id')
-        .eq('id', id).maybeSingle()
+        .eq('id', id).maybeSingle(), 'buscar o plano')
       contexto.plano = data && {
         id: data.id, nome: data.name, status: data.status,
         clienteId: data.client_id, unidadeId: data.branch_id,
@@ -175,19 +176,19 @@ export async function hidratar(
     }
 
     if (alvo === 'produto') {
-      const { data } = await admin
+      const data = await ler(admin
         .from('products')
         .select('id, name, unit, tenant_id')
-        .eq('id', id).eq('tenant_id', tenantId).maybeSingle()
+        .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o produto')
       contexto.produto = data && { id: data.id, nome: data.name, unidade: data.unit }
       return contexto
     }
 
     // membro
-    const { data } = await admin
+    const data = await ler(admin
       .from('users')
       .select('id, name, email, branch_id, tenant_roles(label)')
-      .eq('id', id).eq('tenant_id', tenantId).maybeSingle()
+      .eq('id', id).eq('tenant_id', tenantId).maybeSingle(), 'buscar o usuário')
     contexto.membro = data && {
       id: data.id, nome: data.name, email: data.email,
       unidadeId: data.branch_id,

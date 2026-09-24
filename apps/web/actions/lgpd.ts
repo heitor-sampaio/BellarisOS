@@ -6,7 +6,7 @@ import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSignedUrl } from '@/lib/storage'
 import { buildClientExport, LGPD_BUCKET } from '@/lib/lgpd/export'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 /**
  * Pedido de acesso aos dados pessoais (LGPD art. 18).
@@ -39,13 +39,13 @@ export async function processExportRequest(requestId: string): Promise<void> {
 
   // Só sai de 'pending' quem ainda está em 'pending': se o cron e o after()
   // caírem no mesmo pedido, apenas um segue adiante.
-  const { data: claimed } = await admin
+  const claimed = await ler(admin
     .from('lgpd_requests')
     .update({ status: 'processing', updated_at: new Date().toISOString() })
     .eq('id', requestId)
     .eq('status', 'pending')
     .select('id, client_id, include_medical, medical_status')
-    .maybeSingle()
+    .maybeSingle(), 'conferir se já há pedido em aberto')
 
   if (!claimed) return
 
@@ -90,8 +90,8 @@ export async function requestDataExport(
     const includeMedical = formData.get('include_medical') === 'on'
     const admin = createAdminClient()
 
-    const { data: client } = await admin
-      .from('clients').select('tenant_id').eq('id', ctx.clientId).single()
+    const client = await ler(admin
+      .from('clients').select('tenant_id').eq('id', ctx.clientId).single(), 'buscar o cliente')
     if (!client) return { error: 'Cliente não encontrado.' }
 
     const { data: created, error } = await admin.from('lgpd_requests').insert({
@@ -127,13 +127,13 @@ export async function getMyDataRequests(): Promise<LgpdRequestRow[]> {
   const ctx = await getTenantContext()
   if (!ctx.isClient || !ctx.clientId) return []
 
-  const { data } = await createAdminClient()
+  const data = await ler(createAdminClient()
     .from('lgpd_requests')
     .select('id, type, status, requested_at, completed_at, include_medical, medical_status, expires_at, error_message, export_pdf_path')
     .eq('client_id', ctx.clientId)
     .eq('type', 'export')
     .order('requested_at', { ascending: false })
-    .limit(10)
+    .limit(10), 'carregar os pedidos de LGPD')
 
   return (data ?? []).map(r => ({
     id: r.id, type: r.type, status: r.status,
@@ -152,11 +152,11 @@ export async function getExportDownloadUrls(
   assertClient(ctx)
   if (!ctx.clientId) return { error: 'Cliente não identificado.' }
 
-  const { data: row } = await createAdminClient()
+  const row = await ler(createAdminClient()
     .from('lgpd_requests')
     .select('client_id, status, expires_at, export_json_path, export_pdf_path')
     .eq('id', requestId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o pedido de LGPD')
 
   if (!row || row.client_id !== ctx.clientId) return { error: 'Solicitação não encontrada.' }
   if (row.status !== 'completed')            return { error: 'A solicitação ainda está sendo processada.' }
@@ -185,12 +185,12 @@ export async function listDataRequests(): Promise<LgpdAdminRow[]> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'clients', 'VIEW')
 
-  const { data } = await createAdminClient()
+  const data = await ler(createAdminClient()
     .from('lgpd_requests')
     .select('id, type, status, requested_at, completed_at, include_medical, medical_status, expires_at, error_message, export_pdf_path, requested_via, client_id, clients(name)')
     .eq('tenant_id', ctx.tenantId!)
     .order('requested_at', { ascending: false })
-    .limit(100)
+    .limit(100), 'carregar os pedidos de LGPD')
 
   return (data ?? []).map(r => ({
     id: r.id, type: r.type, status: r.status,
@@ -223,11 +223,11 @@ export async function reviewMedicalData(
     }
 
     const admin = createAdminClient()
-    const { data: row } = await admin
+    const row = await ler(admin
       .from('lgpd_requests')
       .select('id, tenant_id, medical_status')
       .eq('id', requestId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o pedido de LGPD')
 
     if (!row || row.tenant_id !== ctx.tenantId) return { error: 'Solicitação não encontrada.' }
     if (row.medical_status !== 'pending')       return { error: 'Esta solicitação já foi avaliada.' }

@@ -10,7 +10,7 @@ import type {
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
 import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
 import { CLIENT_TAGS, isUnitTag } from '@estetica-os/utils'
-import { tentar } from '@/lib/db'
+import { ler, tentar } from '@/lib/db'
 
 /**
  * As automações, pela tela.
@@ -176,9 +176,9 @@ export async function salvarAutomacao(input: {
   assertPermission(ctx, 'automations', 'MANAGE')
   const admin = createAdminClient()
 
-  const { data: atual } = await admin
+  const atual = await ler(admin
     .from('automations').select('id, tenant_id, status, versao')
-    .eq('id', input.id).maybeSingle()
+    .eq('id', input.id).maybeSingle(), 'buscar a automação')
 
   if (!atual || atual.tenant_id !== ctx.tenantId) return { error: 'Automação não encontrada.' }
 
@@ -267,12 +267,12 @@ async function guardarVersao(v: {
     return
   }
 
-  const { data: antigas } = await admin
+  const antigas = await ler(admin
     .from('automation_versions')
     .select('id')
     .eq('automation_id', v.automacaoId)
     .order('versao', { ascending: false })
-    .range(MAX_VERSOES, MAX_VERSOES + 200)
+    .range(MAX_VERSOES, MAX_VERSOES + 200), 'listar as versões antigas')
 
   if (antigas?.length) {
     await tentar(admin.from('automation_versions').delete().in('id', antigas.map(a => a.id as string)), 'podar as versões antigas')
@@ -297,8 +297,8 @@ export async function versoesDaAutomacao(automacaoId: string): Promise<VersaoNaL
   assertPermission(ctx, 'automations', 'VIEW')
   const admin = createAdminClient()
 
-  const { data: auto } = await admin
-    .from('automations').select('tenant_id, versao').eq('id', automacaoId).maybeSingle()
+  const auto = await ler(admin
+    .from('automations').select('tenant_id, versao').eq('id', automacaoId).maybeSingle(), 'buscar a automação')
   if (!auto || auto.tenant_id !== ctx.tenantId) return []
 
   const { data, error } = await admin
@@ -397,9 +397,9 @@ export async function excluirAutomacao(id: string): Promise<{ error?: string }> 
   assertPermission(ctx, 'automations', 'MANAGE')
   const admin = createAdminClient()
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('automations').select('id, tenant_id, status')
-    .eq('id', id).maybeSingle()
+    .eq('id', id).maybeSingle(), 'buscar a automação')
 
   if (!data || data.tenant_id !== ctx.tenantId) return { error: 'Automação não encontrada.' }
 
@@ -608,8 +608,8 @@ export async function passosDaExecucao(runId: string): Promise<{
   // A execução tem de ser da rede de quem pergunta. O passo a passo carrega
   // nome de cliente e texto de mensagem; um id de outra clínica não pode
   // devolver isso.
-  const { data: run } = await admin
-    .from('automation_runs').select('id, tenant_id').eq('id', runId).maybeSingle()
+  const run = await ler(admin
+    .from('automation_runs').select('id, tenant_id').eq('id', runId).maybeSingle(), 'buscar a execução')
   if (!run || run.tenant_id !== ctx.tenantId) return { passos: [], error: 'Execução não encontrada.' }
 
   const { data, error } = await admin
@@ -650,9 +650,9 @@ export async function ensaiarAutomacao(automationId: string): Promise<{
   assertPermission(ctx, 'automations', 'MANAGE')
   const admin = createAdminClient()
 
-  const { data: auto } = await admin
+  const auto = await ler(admin
     .from('automations').select('id, tenant_id, grafo, gatilhos')
-    .eq('id', automationId).maybeSingle()
+    .eq('id', automationId).maybeSingle(), 'buscar a automação')
 
   if (!auto || auto.tenant_id !== ctx.tenantId) return { error: 'Automação não encontrada.' }
 
@@ -668,14 +668,14 @@ export async function ensaiarAutomacao(automationId: string): Promise<{
   // O fato mais recente daquele tipo. Sem nenhum, o ensaio não tem o que
   // repetir — e dizer isso é mais útil que inventar um evento de mentira:
   // significa que o gatilho ainda não aconteceu nesta rede.
-  const { data: evento } = await admin
+  const evento = await ler(admin
     .from('domain_events')
     .select('id, nome, entidade, entidade_id, dados, ator_nome, ator_tipo, origem, ocorrido_em, branch_id')
     .eq('tenant_id', ctx.tenantId!)
     .eq('nome', nome)
     .order('ocorrido_em', { ascending: false })
     .limit(1)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o evento')
 
   if (!evento) {
     return { error: `"${nome}" ainda não aconteceu nesta rede — não há fato para ensaiar. Veja em Configurações → Eventos.` }

@@ -26,12 +26,12 @@ export async function saveGeneralAnamnesis(
 
   // Verify client belongs to this tenant's branch
   const supabase = await createSupabase()
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches')
     .select('id')
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a unidade')
   if (!branch) return { error: 'Filial não encontrada.' }
 
   const anamnesis = {
@@ -97,11 +97,11 @@ export async function uploadAnamnesisPhoto(
     // O agendamento é quem carrega o cliente e a unidade — o upload só conhece
     // o id dele. Sem o agendamento, o evento não sai: retrato incompleto não
     // serve de gatilho.
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('client_id, branch_id, branches!inner(tenant_id)')
       .eq('id', appointmentId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o agendamento')
 
     if ((appt?.branches as unknown as { tenant_id?: string } | null)?.tenant_id === ctx.tenantId) {
       await emitirEventoClinico(EVENTOS.FOTO_ENVIADA, appointmentId, ctx, {
@@ -153,11 +153,11 @@ async function saveProcedureForm(params: {
     assertPermission(ctx, 'medical_records', 'MANAGE')
 
     const admin = createAdminClient()
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('id, status, client_id, professional_id, procedure_id, branches!inner(tenant_id)')
       .eq('id', params.appointmentId)
-      .single()
+      .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
@@ -167,11 +167,11 @@ async function saveProcedureForm(params: {
     if (isFinalised && !isAdmin) return { error: 'Registro finalizado. Apenas gerentes podem editar.' }
 
     // Ficha vinculada ao procedimento (para snapshot dos campos)
-    const { data: proc } = await admin
+    const proc = await ler(admin
       .from('procedures')
       .select(params.formIdField)
       .eq('id', appt.procedure_id)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o procedimento')
     const formId = ((proc as Record<string, unknown> | null)?.[params.formIdField] as string | null) ?? null
     if (!formId) return { error: params.notLinkedMsg }
 

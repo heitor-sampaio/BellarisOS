@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ClientForm } from '@/components/branch/client-form'
+import { ler } from '@/lib/db'
 
 export default async function NewClientPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -11,12 +12,12 @@ export default async function NewClientPage({ params }: { params: Promise<{ slug
   assertPermission(ctx, 'clients', 'MANAGE')
 
   const supabase = await createSupabase()
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches')
     .select('id, name')
     .eq('slug', slug)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a unidade')
   if (!branch) notFound()
 
   return (

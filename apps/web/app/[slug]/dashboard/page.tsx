@@ -17,6 +17,7 @@ import {
   getCore, getSeries, getTopProcedures, EMPTY_CORE,
 } from '@/lib/metrics'
 import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
+import { ler } from '@/lib/db'
 
 // --- Avatar colorido determinístico ------------------------------
 const PALETTE = [
@@ -254,11 +255,11 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     // 60 primeiros eram consultados, e como os não consultados ficavam com
     // daysSince null — ordenados na frente — a lista mostrava justamente
     // quem não tinha sido medido.
-    const { data: lastAppts } = await admin
+    const lastAppts = await ler(admin
       .from('appointments').select('client_id, scheduled_at')
       .in('client_id', inactiveClients.map(c => c.id))
       .eq('status', 'COMPLETED')
-      .order('scheduled_at', { ascending: false })
+      .order('scheduled_at', { ascending: false }), 'carregar os agendamentos')
 
     const lastMap = new Map<string, string>()
     for (const a of (lastAppts ?? [])) {

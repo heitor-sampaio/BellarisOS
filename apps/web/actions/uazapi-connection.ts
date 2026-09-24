@@ -12,7 +12,7 @@ import {
 import { telefoneDoJid } from '@/lib/whatsapp/uazapi'
 import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 /**
  * Conexão de WhatsApp gerenciada pelo BellarisOS.
@@ -187,8 +187,8 @@ export async function criarConexaoUazapi(): Promise<{ ok: boolean; error?: strin
 
   // O nome aparece no painel da uazapi. Com o tenant nele, achar de quem é uma
   // instância na hora de remover deixa de ser adivinhação.
-  const { data: tenant } = await admin
-    .from('tenants').select('name').eq('id', ctx.tenantId!).maybeSingle()
+  const tenant = await ler(admin
+    .from('tenants').select('name').eq('id', ctx.tenantId!).maybeSingle(), 'buscar a rede')
   const nome = `${(tenant as { name: string } | null)?.name ?? 'Rede'}-${ctx.tenantId!.slice(0, 8)}`
     .replace(/[^a-zA-Z0-9-]+/g, '-').toLowerCase()
 
@@ -355,12 +355,12 @@ async function marcarConectada(
   // Estado antes de escrever: esta função é chamada tanto na transição quanto
   // quando só o número mudou, e o evento tem de sair apenas na TRAVESSIA. Sem
   // isso, o polling do pareamento emitiria "conectada" em cada volta.
-  const { data: antes } = await admin
+  const antes = await ler(admin
     .from('integration_configs')
     .select('is_active')
     .eq('tenant_id', tenantId)
     .eq('provider', 'uazapi')
-    .maybeSingle()
+    .maybeSingle(), 'buscar a integração')
 
   // `provider` mora na coluna, não no jsonb. Removido explicitamente em vez de
   // gravar `undefined` e confiar no acaso da serialização.

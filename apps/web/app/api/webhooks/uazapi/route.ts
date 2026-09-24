@@ -6,6 +6,7 @@ import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
 import {
   resolveConversation, insertInboundMessage, updateMessageStatus, applyMessageEdit,
 } from '@/lib/inbox/resolve-conversation'
+import { ler } from '@/lib/db'
 
 /**
  * Webhook da uazapi.
@@ -101,12 +102,12 @@ async function tratarConexao(
   if (!conectado && !desconectado) return
 
   const admin = createAdminClient()
-  const { data } = await admin
+  const data = await ler(admin
     .from('integration_configs')
     .select('config')
     .eq('tenant_id', tenantId)
     .eq('provider', 'uazapi')
-    .maybeSingle()
+    .maybeSingle(), 'buscar a integração')
 
   const atual = (data?.config ?? {}) as Record<string, unknown>
   const jid   = raiz?.status?.jid ?? corpo?.instance?.owner ?? null

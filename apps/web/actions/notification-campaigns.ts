@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 function getWebPush() {
   webpush.setVapidDetails(
@@ -175,11 +175,11 @@ export async function updateCampaign(
   const admin = createAdminClient()
 
   // Only allow editing DRAFT or PAUSED campaigns
-  const { data: existing } = await admin
+  const existing = await ler(admin
     .from('notification_campaigns')
     .select('status, tenant_id')
     .eq('id', id)
-    .single()
+    .single(), 'buscar a campanha')
 
   if (!existing || existing.tenant_id !== ctx.tenantId!) return { error: 'Não encontrado' }
   if (!['DRAFT', 'PAUSED'].includes(existing.status))
@@ -215,12 +215,12 @@ export async function activateCampaign(id: string): Promise<{ error?: string }> 
   assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
-  const { data: camp } = await admin
+  const camp = await ler(admin
     .from('notification_campaigns')
     .select('*')
     .eq('id', id)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a campanha')
 
   if (!camp) return { error: 'Campanha não encontrada' }
   if (!['DRAFT', 'PAUSED'].includes(camp.status)) return { error: 'Campanha já está ativa ou arquivada' }
@@ -287,12 +287,12 @@ export async function deleteCampaign(id: string): Promise<{ error?: string }> {
   const admin = createAdminClient()
 
   // Only DRAFT or ARCHIVED campaigns can be deleted
-  const { data: campaign } = await admin
+  const campaign = await ler(admin
     .from('notification_campaigns')
     .select('status')
     .eq('id', id)
     .eq('tenant_id', ctx.tenantId!)
-    .single()
+    .single(), 'buscar a campanha')
 
   if (!campaign) return { error: 'Campanha não encontrada' }
   if (!['DRAFT', 'ARCHIVED'].includes(campaign.status)) {
@@ -344,12 +344,12 @@ export async function previewAudienceCount(
 
   // procedure_ids filter: clientes com appointments nesses procedimentos
   if (rules.procedure_ids?.length) {
-    const { data: apptClients } = await admin
+    const apptClients = await ler(admin
       .from('appointments')
       .select('client_id, branches!inner(tenant_id)')
       .eq('branches.tenant_id', ctx.tenantId!)
       .in('procedure_id', rules.procedure_ids)
-      .eq('status', 'COMPLETED')
+      .eq('status', 'COMPLETED'), 'carregar os agendamentos')
 
     const clientsWithProc = new Set((apptClients ?? []).map((a: any) => a.client_id))
     // This is an over-approximation without a subquery; use count from the base query
@@ -396,12 +396,12 @@ export async function dispatchCampaignInline(
 
   // Filter by procedure history if needed
   if (rules.procedure_ids?.length) {
-    const { data: apptClients } = await admin
+    const apptClients = await ler(admin
       .from('appointments')
       .select('client_id, branches!inner(tenant_id)')
       .eq('branches.tenant_id', tenantId)
       .in('procedure_id', rules.procedure_ids)
-      .eq('status', 'COMPLETED')
+      .eq('status', 'COMPLETED'), 'carregar os agendamentos')
 
     const set = new Set((apptClients ?? []).map((a: any) => a.client_id))
     eligibleClients = eligibleClients.filter((c: any) => set.has(c.id))
@@ -425,10 +425,10 @@ export async function dispatchCampaignInline(
       is_read:   false,
     }))
 
-    const { data: inserted } = await admin
+    const inserted = await ler(admin
       .from('client_notifications')
       .insert(notifications)
-      .select('id, client_id')
+      .select('id, client_id'), 'carregar as notificações')
 
     if (inserted?.length) {
       const dispatches = inserted.map((n: any) => ({
@@ -456,10 +456,10 @@ async function sendWebPush(
   bodyTpl: string,
   admin: ReturnType<typeof createAdminClient>,
 ) {
-  const { data: subs } = await admin
+  const subs = await ler(admin
     .from('web_push_subscriptions')
     .select('client_id, endpoint, keys')
-    .in('client_id', clients.map(c => c.id))
+    .in('client_id', clients.map(c => c.id)), 'carregar as inscrições de notificações')
 
   if (!subs?.length) return
 
@@ -549,10 +549,10 @@ async function sendFcmBatch(
   bodyTpl: string,
   adminClient: ReturnType<typeof createAdminClient>,
 ): Promise<void> {
-  const { data: rows } = await adminClient
+  const rows = await ler(adminClient
     .from('push_tokens')
     .select('token, client_id')
-    .in('client_id', clients.map(c => c.id))
+    .in('client_id', clients.map(c => c.id)), 'carregar os aparelhos')
 
   if (!rows?.length) return
 

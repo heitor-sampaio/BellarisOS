@@ -23,7 +23,7 @@ import { podeFalarCom, limitesDe } from './limites'
 import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
 import { resumoDoNo } from './resumo'
 import { chaveDoPasso } from './passos'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 /**
  * O executor: um passo por vez, dirigido por `automation_runs`.
@@ -200,11 +200,11 @@ export async function executarRun(
   if (error || !runRow) { console.error('[executarRun] run não encontrado', runId); return 'falhou' }
   const run = runRow as unknown as Run
 
-  const { data: autoRow } = await admin
+  const autoRow = await ler(admin
     .from('automations')
     .select('id, nome, grafo, limites, status')
     .eq('id', run.automation_id)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a automação')
 
   if (!autoRow) return await encerrar(run.id, 'falhou', 'Automação não encontrada.')
   const automacao = autoRow as unknown as Automacao

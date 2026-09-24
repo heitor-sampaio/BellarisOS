@@ -4,6 +4,7 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { EVENTOS } from '@estetica-os/types'
 import type { NomeDeEvento, OrigemDeEvento, TipoDeAtor } from '@estetica-os/types'
+import { ler } from '@/lib/db'
 
 /**
  * Leitura da corrente de eventos, para o painel de conferência.
@@ -140,13 +141,13 @@ export async function resumoDoCatalogo(): Promise<{
     }
   })
 
-  const { data: maisAntigo } = await createAdminClient()
+  const maisAntigo = await ler(createAdminClient()
     .from('domain_events')
     .select('ocorrido_em')
     .eq('tenant_id', ctx.tenantId!)
     .order('ocorrido_em', { ascending: true })
     .limit(1)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o evento')
 
   return { linhas, desdeQuando: (maisAntigo?.ocorrido_em as string) ?? null }
 }

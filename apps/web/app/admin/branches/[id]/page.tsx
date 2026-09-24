@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { toggleBranchStatus } from '@/actions/branches'
 import { BranchEditForm } from '@/components/admin/branch-edit-form'
 import { ArrowLeft, Power, PowerOff, Users } from 'lucide-react'
+import { ler } from '@/lib/db'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -17,7 +18,7 @@ export default async function BranchDetailPage({ params }: Props) {
 
   const supabase = await createClient()
 
-  const { data: branch } = await supabase
+  const branch = await ler(supabase
     .from('branches')
     .select(`
       id, name, slug, document, state_registration,
@@ -27,7 +28,7 @@ export default async function BranchDetailPage({ params }: Props) {
     `)
     .eq('id', id)
     .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle()
+    .maybeSingle(), 'carregar as unidades')
 
   if (!branch) notFound()
 

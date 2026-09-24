@@ -5,6 +5,7 @@ import { EditProfileForm } from '@/components/client-portal/edit-profile-form'
 import { DataRequestCard } from '@/components/client-portal/data-request-card'
 import { getMyDataRequests } from '@/actions/lgpd'
 import { LogOut } from 'lucide-react'
+import { ler } from '@/lib/db'
 
 function maskCpf(cpf: string | null) {
   if (!cpf) return '—'
@@ -18,11 +19,11 @@ export default async function ClientProfilePage({ params: _params }: { params: P
   assertClient(ctx)
 
   const admin = createAdminClient()
-  const { data } = await admin
+  const data = await ler(admin
     .from('clients')
     .select('name, email, phone, document, birth_date, gender, zip_code, address, address_number, address_complement, neighborhood, city, state')
     .eq('id', ctx.clientId!)
-    .single()
+    .single(), 'buscar o cliente')
 
   type ClientRow = {
     name:               string

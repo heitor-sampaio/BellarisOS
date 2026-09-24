@@ -22,7 +22,7 @@ import { periodRef } from '@/lib/datetime'
 
 // --- Helpers internos ---------------------------------------------
 async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
-  const { data } = await admin.from('users').select('name').eq('auth_id', authId).maybeSingle()
+  const data = await ler(admin.from('users').select('name').eq('auth_id', authId).maybeSingle(), 'buscar o usuário')
   return data?.name ?? 'Usuário'
 }
 
@@ -63,11 +63,11 @@ async function loadApptCtx(
   admin: ReturnType<typeof createAdminClient>,
   appointmentId: string,
 ): Promise<ApptCtx | null> {
-  const { data } = await admin
+  const data = await ler(admin
     .from('appointments')
     .select('client_id, professional_id, scheduled_at, clients(name), procedures(name), branches(slug)')
     .eq('id', appointmentId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o agendamento')
   if (!data) return null
   return {
     clientId:       data.client_id as string,
@@ -328,11 +328,11 @@ export async function updateAppointmentStatus(
 
 // Resolve o branchId pelo appointmentId (para validar acesso)
 async function resolveBranchId(supabase: Awaited<ReturnType<typeof createSupabase>>, appointmentId: string, tenantId: string) {
-  const { data } = await supabase
+  const data = await ler(supabase
     .from('appointments')
     .select('branch_id, branches!inner(tenant_id)')
     .eq('id', appointmentId)
-    .single()
+    .single(), 'buscar o agendamento')
 
   const branch = data?.branches as unknown as { tenant_id: string } | null
   if (!branch || branch.tenant_id !== tenantId) throw new Error('Acesso negado.')
@@ -348,11 +348,11 @@ async function completeAppointment(
   // Nota: idealmente em prisma.$transaction — aqui sequencial via Supabase
   const admin = createAdminClient()
 
-  const { data: appt } = await admin
+  const appt = await ler(admin
     .from('appointments')
     .select('id, branch_id, client_id, procedure_id, professional_id, price, treatment_plan_id')
     .eq('id', appointmentId)
-    .single()
+    .single(), 'buscar o agendamento')
 
   if (!appt) throw new Error('Agendamento não encontrado.')
 
@@ -452,11 +452,11 @@ async function checkinAppointmentInterno(
     assertPermission(ctx, 'agenda', 'MANAGE')
 
     const admin = createAdminClient()
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('id, status, branches!inner(tenant_id)')
       .eq('id', appointmentId)
-      .single()
+      .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
@@ -508,11 +508,11 @@ async function startAppointmentInterno(
     assertPermission(ctx, 'agenda', 'VIEW')
 
     const admin = createAdminClient()
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('id, status, professional_id, branches!inner(tenant_id)')
       .eq('id', appointmentId)
-      .single()
+      .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
@@ -568,11 +568,11 @@ async function reassignProfessionalInterno(
     assertPermission(ctx, 'agenda', 'MANAGE')
 
     const admin = createAdminClient()
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('id, status, professional_id, branches!inner(tenant_id)')
       .eq('id', appointmentId)
-      .single()
+      .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
@@ -581,7 +581,7 @@ async function reassignProfessionalInterno(
     }
 
     const oldProfId = (appt.professional_id ?? null) as string | null
-    const { data: newProf } = await admin.from('users').select('name').eq('id', professionalId).single()
+    const newProf = await ler(admin.from('users').select('name').eq('id', professionalId).single(), 'buscar o usuário')
     await gravar(admin
       .from('appointments')
       .update({ professional_id: professionalId })
@@ -652,11 +652,11 @@ async function cancelAppointmentSessionInterno(
     if (!cancellationReason) return { error: 'Informe o motivo do cancelamento.' }
 
     const admin = createAdminClient()
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('id, status, branches!inner(tenant_id)')
       .eq('id', appointmentId)
-      .single()
+      .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
@@ -720,11 +720,11 @@ async function finishSessionInterno(
 
     const admin = createAdminClient()
 
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('id, status, branch_id, client_id, procedure_id, professional_id, price, branches!inner(tenant_id)')
       .eq('id', appointmentId)
-      .single()
+      .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
@@ -820,20 +820,20 @@ async function finishSessionInterno(
     }
 
     // 4. Pontos de fidelidade
-    const { data: loyaltyConfig } = await admin
+    const loyaltyConfig = await ler(admin
       .from('loyalty_configs')
       .select('points_per_real')
       .eq('tenant_id', apptBranch!.tenant_id)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a regra de fidelidade')
 
     if (loyaltyConfig) {
       const points = Math.floor(parseFloat(String(appt.price)) * parseFloat(String(loyaltyConfig.points_per_real ?? 0)))
       if (points > 0) {
-        const { data: loyaltyAcc } = await admin
+        const loyaltyAcc = await ler(admin
           .from('loyalty_accounts')
           .select('id, balance')
           .eq('client_id', appt.client_id)
-          .maybeSingle()
+          .maybeSingle(), 'buscar a conta de fidelidade')
         if (loyaltyAcc) {
           await gravar(admin.from('loyalty_accounts').update({ balance: (loyaltyAcc.balance ?? 0) + points }).eq('id', loyaltyAcc.id), 'atualizar o saldo de pontos')
           await gravar(admin.from('loyalty_transactions').insert({
@@ -930,11 +930,11 @@ async function finishSessionInterno(
         .update({ status: 'USED', used_at: now })
         .eq('id', pkgSession.id), 'marcar a sessão do pacote como usada')
 
-      const { data: pkg } = await admin
+      const pkg = await ler(admin
         .from('client_packages')
         .select('used_sessions')
         .eq('id', pkgSession.client_package_id)
-        .single()
+        .single(), 'buscar o pacote do cliente')
 
       if (pkg) {
         await gravar(admin
@@ -984,11 +984,11 @@ export async function confirmPayment(
 
     const admin = createAdminClient()
 
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('id, status, branch_id, client_id, price, branches!inner(tenant_id)')
       .eq('id', appointmentId)
-      .single()
+      .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
@@ -1077,11 +1077,11 @@ async function saveDraftNotesInterno(
     const intercurrences = (formData.get('intercurrences') as string)?.trim() || null
 
     const admin = createAdminClient()
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('id, status, client_id, professional_id, branches!inner(tenant_id)')
       .eq('id', appointmentId)
-      .single()
+      .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
@@ -1182,11 +1182,11 @@ async function saveSessionNotesInterno(
 
     const admin = createAdminClient()
 
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('id, professional_id, branches!inner(tenant_id)')
       .eq('id', appointmentId)
-      .single()
+      .single(), 'buscar o agendamento')
 
     const branch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || branch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
@@ -1227,13 +1227,13 @@ export async function rescheduleAppointment(
     const admin = createAdminClient()
 
     // Verifica que o agendamento pertence ao tenant antes de atualizar
-    const { data: existing } = await admin
+    const existing = await ler(admin
       .from('appointments')
       // `scheduled_at` entra aqui para o evento poder dizer DE QUANDO para
       // quando: uma automação de remarcação quase sempre quer comparar os dois.
       .select('id, branch_id, scheduled_at, branches!inner(tenant_id)')
       .eq('id', appointmentId)
-      .single()
+      .single(), 'buscar o agendamento')
 
     const branch = existing?.branches as unknown as { tenant_id: string } | null
     if (!existing || branch?.tenant_id !== ctx.tenantId) {
@@ -1279,12 +1279,12 @@ export async function getSchedulingBranchProfessionals(
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('id')
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   if (!branch) return { professionals: [] }
 
   const data = await getCachedBranchProfessionals(branchId, ctx.tenantId!)
@@ -1318,15 +1318,15 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
     .maybeSingle(), 'buscar o plano de tratamento')
   if (!plan) return { sessions: [] }
 
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('tenant_id')
     .eq('id', (plan as any).branch_id)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   if ((branch as any)?.tenant_id !== ctx.tenantId) return { sessions: [] }
 
   // Busca treatment_plan_sessions com appointment vinculado
-  const { data: rawSessions } = await admin
+  const rawSessions = await ler(admin
     .from('treatment_plan_sessions')
     .select(`
       id, sort_order, appointment_id,
@@ -1334,7 +1334,7 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
       appointments:appointment_id(id, status, scheduled_at, professional:users!professional_id(name))
     `)
     .eq('plan_id', planId)
-    .order('sort_order')
+    .order('sort_order'), 'carregar as sessões do plano')
 
   type RawSessProc = { procedure_id: string; sort_order: number; procedures: { name: string } | null }
   type RawAppt = { id: string; status: string; scheduled_at: string; professional: { name: string } | null } | null
@@ -1381,11 +1381,11 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
   const admin = createAdminClient()
 
   // Valida que o client_package pertence ao tenant
-  const { data: pkg } = await admin
+  const pkg = await ler(admin
     .from('client_packages')
     .select('id, branch_id, branches!inner(tenant_id)')
     .eq('id', clientPackageId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o pacote do cliente')
   if (!pkg) return { sessions: [] }
   const branch = (pkg as unknown as { branches: { tenant_id: string } | null }).branches
   if (branch?.tenant_id !== ctx.tenantId) return { sessions: [] }
@@ -1568,11 +1568,11 @@ export async function getClientAvailableSlots(
 
   const admin = createAdminClient()
 
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('id')
     .eq('id', branchId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   if (!branch) return { slots: [] }
 
   const slots = await computeAvailableSlots(admin, branchId, professionalId, date, durationMin)
@@ -1593,19 +1593,19 @@ export async function createClientAppointment(params: {
 
     const admin = createAdminClient()
 
-    const { data: branch } = await admin
+    const branch = await ler(admin
       .from('branches')
       .select('tenant_id')
       .eq('id', params.branchId)
-      .single()
+      .single(), 'buscar a unidade')
     if (!branch) return { error: 'Filial não encontrada.' }
 
-    const { data: procedure } = await admin
+    const procedure = await ler(admin
       .from('procedures')
       .select('id, price, duration_min, visible_on_client_app')
       .eq('id', params.procedureId)
       .eq('tenant_id', branch.tenant_id as string)
-      .single()
+      .single(), 'buscar o procedimento')
     if (!procedure || !(procedure.visible_on_client_app as boolean)) {
       return { error: 'Procedimento não disponível.' }
     }
@@ -1629,7 +1629,7 @@ export async function createClientAppointment(params: {
     const durationMs = Number(procedure.duration_min) * 60000
     const start = new Date(params.scheduledAt).getTime()
     const end   = start + durationMs
-    const { data: conflict } = await admin
+    const conflict = await ler(admin
       .from('appointments')
       .select('id')
       .eq('branch_id', params.branchId)
@@ -1637,7 +1637,7 @@ export async function createClientAppointment(params: {
       .not('status', 'in', '("CANCELLED","NO_SHOW")')
       .lt('scheduled_at', new Date(end).toISOString())
       .gt('scheduled_at', new Date(start - durationMs).toISOString())
-      .maybeSingle()
+      .maybeSingle(), 'buscar o agendamento')
     if (conflict) return { error: 'Este horário não está mais disponível. Escolha outro.' }
 
     const { data: appt, error } = await admin
@@ -1675,19 +1675,19 @@ export async function getSchedulingDaySlots(
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('id')
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   if (!branch) return { slots: [] }
 
   // Brazil UTC-3
   const dayStart = new Date(`${date}T00:00:00-03:00`).toISOString()
   const dayEnd   = new Date(`${date}T23:59:59-03:00`).toISOString()
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('appointments')
     .select('scheduled_at, duration_min, clients(name)')
     .eq('branch_id', branchId)
@@ -1695,7 +1695,7 @@ export async function getSchedulingDaySlots(
     .gte('scheduled_at', dayStart)
     .lte('scheduled_at', dayEnd)
     .not('status', 'in', '("CANCELLED","NO_SHOW")')
-    .order('scheduled_at')
+    .order('scheduled_at'), 'carregar os agendamentos')
 
   return {
     slots: (data ?? []).map((d: any) => ({
@@ -1720,11 +1720,11 @@ export async function confirmAndRateAppointment(params: {
 
     const admin = createAdminClient()
 
-    const { data: appt } = await admin
+    const appt = await ler(admin
       .from('appointments')
       .select('id, client_id, professional_id, status, client_confirmed_at, procedures(name)')
       .eq('id', params.appointmentId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o agendamento')
 
     if (!appt || appt.client_id !== ctx.clientId) return { error: 'Atendimento não encontrado.' }
     if (appt.status !== 'COMPLETED')               return { error: 'Este atendimento ainda não foi concluído.' }
@@ -1800,12 +1800,12 @@ export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgend
   if (!branchId) return vazio
 
   const admin = createAdminClient()
-  const { data: branch } = await admin
+  const branch = await ler(admin
     .from('branches')
     .select('id, slug')
     .eq('id', branchId)
     .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a unidade')
   if (!branch) return vazio
 
   const [procedures, professionals, rooms] = await Promise.all([
