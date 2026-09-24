@@ -665,6 +665,10 @@ Princípios inegociáveis:
 - **Ícones** — Lucide, linha, `currentColor`. O `✦` é motivo de marca, não ícone funcional.
 - **Sombras apenas em elementos de marca** — botão primário, KPI hero, nav ativo. Superfícies neutras usam borda, nunca sombra. O que **flutua** sobre a página é a exceção e tem token: `--shadow-overlay` (modal, drawer) e `--shadow-popover` (dropdown, tooltip).
 - **Sem gradientes de fundo** — único gradiente permitido é o card "Pacote ativo" (`--brand` → `--brand-deep`).
+- **Campo de busca tem fundo branco** (`.campo-busca`), diferente dos demais
+  campos, que usam `--bg-app`. A busca vive numa barra de filtros sobre o fundo
+  do app; com o mesmo tom do fundo ela sumia na superfície em vez de convidar
+  a digitar. O critério do que é busca é o ÍCONE DE LUPA, não o placeholder.
 - **Copy em pt-BR**, sentence case, moeda no formato `R$ 1.240`, percentuais com vírgula (`12,4%`).
 
 ### Bibliotecas de UI (integração com o design system)

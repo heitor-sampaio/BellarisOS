@@ -89,7 +89,7 @@ export function InjetaveisLista({
         }} />
         <input
           type="text"
-          className="field"
+          className="field campo-busca"
           style={{ paddingLeft: 32 }}
           placeholder="Buscar por nome do planejamento ou cliente…"
           value={busca}

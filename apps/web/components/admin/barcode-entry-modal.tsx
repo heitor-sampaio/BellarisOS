@@ -276,7 +276,7 @@ export function BarcodeEntryModal({ allBranches, defaultBranchId, onClose }: Pro
                 <input
                   ref={searchRef}
                   type="text"
-                  className="field"
+                  className="field campo-busca"
                   value={searchQuery}
                   onChange={e => { setSearchQuery(e.target.value); setSelectedProd(null) }}
                   placeholder="Nome do produto…"

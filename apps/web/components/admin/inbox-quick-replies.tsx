@@ -139,7 +139,7 @@ export function InboxQuickReplies({
                   value={filtro}
                   onChange={e => setFiltro(e.target.value)}
                   placeholder="Buscar…"
-                  className="field"
+                  className="field campo-busca"
                   style={{ fontSize: 'var(--text-base-sz)', paddingLeft: 30, width: '100%' }}
                   autoFocus
                 />

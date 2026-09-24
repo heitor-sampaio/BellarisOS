@@ -337,7 +337,7 @@ function BuscaDeCliente({ onEscolher }: { onEscolher: (id: string, nome: string)
           color: 'var(--text-faint)', pointerEvents: 'none',
         }} />
         <input
-          type="text" autoFocus className="field" style={{ paddingLeft: 30, background: 'var(--surface)' }}
+          type="text" autoFocus className="field campo-busca" style={{ paddingLeft: 30, background: 'var(--surface)' }}
           placeholder="Buscar cliente por nome, telefone ou CPF…"
           value={termo}
           onChange={e => setTermo(e.target.value)}

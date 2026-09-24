@@ -81,7 +81,7 @@ export function TeamFilters({
           value={search}
           onChange={e => handleSearch(e.target.value)}
           placeholder="Buscar por nome ou e-mail…"
-          className="field"
+          className="field campo-busca"
           style={{ paddingLeft: 32, height: 38 }}
         />
       </div>

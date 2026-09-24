@@ -100,7 +100,7 @@ export function PickerCompacto({
                 />
                 <input
                   ref={campoRef}
-                  className="field"
+                  className="field campo-busca"
                   value={busca}
                   onChange={e => setBusca(e.target.value)}
                   placeholder="Buscar…"

@@ -61,7 +61,7 @@ function SupplierCombobox({ suppliers, defaultValue }: { suppliers: string[]; de
         <input
           name="supplier"
           type="text"
-          className="field"
+          className="field campo-busca"
           value={value}
           placeholder="Buscar ou digitar fornecedor…"
           autoComplete="off"

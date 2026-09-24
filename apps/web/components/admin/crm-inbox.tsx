@@ -1384,7 +1384,7 @@ export function CRMInbox({
                 <input
                   type="text" placeholder="Pesquisar…" value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="field" style={{ paddingLeft: 28, fontSize: 'var(--text-sm-sz)' }}
+                  className="field campo-busca" style={{ paddingLeft: 28, fontSize: 'var(--text-sm-sz)' }}
                 />
               </div>
               <InboxFiltros

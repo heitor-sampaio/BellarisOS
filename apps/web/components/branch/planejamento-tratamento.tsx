@@ -304,7 +304,7 @@ export function PlanejamentoTratamento({
           ) : ligando ? (
             <>
               <input
-                className="field"
+                className="field campo-busca"
                 autoFocus
                 placeholder="Buscar por nome, telefone ou CPF…"
                 value={termoCliente}

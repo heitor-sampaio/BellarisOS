@@ -126,7 +126,7 @@ export function PlanejamentosClient({
         <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 380, minWidth: 0, width: '100%' }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)' }} />
           <input
-            className="field"
+            className="field campo-busca"
             style={{ paddingLeft: 32 }}
             placeholder="Nome do plano, cliente, CPF ou telefone…"
             value={busca}

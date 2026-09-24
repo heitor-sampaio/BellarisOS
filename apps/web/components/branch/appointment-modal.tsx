@@ -228,7 +228,7 @@ export function AppointmentModal({
                   <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-faint)', pointerEvents: 'none' }} />
                   <input
                     type="text"
-                    className="field"
+                    className="field campo-busca"
                     style={{ paddingLeft: 30 }}
                     placeholder="Buscar cliente por nome ou telefone…"
                     value={clientSearch}

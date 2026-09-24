@@ -1347,3 +1347,14 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   color: var(--brand);
   box-shadow: var(--shadow-popover);
 }
+
+/* Campo de BUSCA: fundo branco.
+   `.field` pinta o fundo com `--bg-app` — o que funciona para um formulário
+   dentro de um card branco, onde o campo precisa se recortar do papel. A
+   busca é o contrário: mora numa barra de filtros sobre o fundo do app, e ali
+   o cinza a fazia sumir na superfície em vez de convidar a digitar.
+   Decisão do Heitor em 2026-09-24. */
+.campo-busca,
+input[type="search"].field {
+  background: var(--surface);
+}
