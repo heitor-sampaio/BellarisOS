@@ -93,7 +93,7 @@ unidade.
   negócio resolvido em `lib/datetime.ts`.
 - **Erro de banco nunca é descartado:** `lib/db.ts` (`gravar`/`ler`/`tentar`)
   cobre as 399 consultas que antes falhavam em silêncio.
-- **Testes:** 359 unitários (Vitest) + 62 E2E (Playwright) rodando contra o banco
+- **Testes:** 361 unitários (Vitest) + 62 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
   (campanhas e LGPD) e a cada 5 minutos (fila das automações).
@@ -1163,6 +1163,38 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 **A legenda não repete o que já virou nome.** Sem a integração Meta Ads o nome
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
+
+### 2026-09-24 — Automações: a lista diz o que o fluxo faz
+
+Relatado: "não gosto muito do visual geral da página de automações". As duas
+telas estavam mesmo fora do padrão do resto do sistema.
+
+**A lista tinha o card mais vazio do produto**: ~100px de altura para quatro
+dados, com uns 800px de vão entre o nome e "0 execuções em 7 dias". E dizia por
+onde o fluxo **começa** sem dizer o que ele **faz**, com o nome técnico do
+evento. Agora cabe numa linha e conta o caminho:
+
+    ● Move para follow-up
+      Mensagem recebida › Se › Mover de etapa      0 execuções · 7 dias
+
+O ponto à esquerda é a hierarquia por preenchimento na escala de um controle:
+rosé = no ar, anel vazado = rascunho. O caminho segue as **ligações** a partir
+do gatilho, não a ordem de criação — node solto não entra.
+
+**`ROTULOS_DE_EVENTO`**: os 42 eventos ganharam nome em pt-BR no catálogo. A
+tela inteira mostrava `entidade.acao`, inclusive o seletor onde se escolhe o
+gatilho. O nome cru também esconde a diferença que mais importa:
+`agendamento.cancelado` e `agendamento.nao_compareceu` estão a um underline de
+distância e são duas conversas diferentes com o cliente.
+
+**No editor**, quatro coisas: a paleta era texto puro enquanto o card que nasce
+dela tem ícone (agora usam o mesmo, exportado de um lugar só); os pontos do
+canvas estavam em `--border` sobre o fundo nude, dois tons quase iguais, e a
+superfície lia como lisa; os problemas do fluxo eram texto solto onde se lê por
+que o "Ligar" está apagado, e viraram faixa com fundo e borda na cor do pior
+grau presente; e a barra tinha seis controles do mesmo peso — Execuções,
+Versões e Limites viraram um segmento de consulta, Salvar e Ligar ficaram
+separados, e "Salvo" deixou de ser botão desabilitado para ser estado.
 
 ### 2026-09-24 — O dashboard encaixa: linhas que fecham, colunas que terminam juntas
 
