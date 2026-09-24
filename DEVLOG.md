@@ -1161,6 +1161,47 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
+### 2026-09-24 — Conversa nova não aparecia no inbox sem recarregar
+
+Relatado pelo Heitor assim: o inbox parecia estar em tempo real **só para
+mensagens novas**. Era isso mesmo — e a causa não estava onde a suspeita
+naturalmente cai.
+
+O banco estava certo: `conversations` na publicação `supabase_realtime`, as
+policies iguais às de `messages`. Uma sonda com sessão de verdade (magic link
+pela service role, como o `global-setup` do E2E já fazia) confirmou que o
+INSERT chega ao navegador normalmente.
+
+**O defeito estava na ordem dos fatos.** `resolveConversation` cria o contato
+primeiro e a mensagem depois, e `getConversations` descarta quem não tem
+`last_message_at` — contato sem mensagem nenhuma não é conversa, é cadastro.
+Então:
+
+1. INSERT da conversa, ainda muda → a lista fazia o acréscimo otimista e
+   recarregava do servidor, **que devolvia a lista sem ela**;
+2. INSERT da mensagem → o trigger `on_new_message` preenche `last_message_at`
+   → chega um UPDATE, que é o instante em que ela vira conversa;
+3. o handler de UPDATE só sabia mesclar o que já estava na lista — e ela não
+   estava. Fim: só com F5.
+
+O mesmo buraco atingia o contato criado pelo quadro do CRM, que nasce mudo e
+nunca aparecia ao receber a primeira mensagem.
+
+A decisão dos três caminhos (`atualizar`, `recarregar`, `ignorar`) virou
+`lib/inbox/lista.ts`, fora do componente: é regra pura e é o tipo de coisa que
+quebra em silêncio — ninguém percebe um evento que deixou de chegar. Por isso
+também o `.subscribe()` ganhou retorno: canal que não conecta agora deixa
+rastro no console em vez de simplesmente parar de atualizar.
+
+Para não pedir a lista inteira a cada mensagem de conversa que o servidor não
+devolve (outro dono, com o escopo "só os meus" do CRM), os ids recusados ficam
+marcados. O Realtime entrega o evento — a RLS é por rede —, mas a lista não os
+recebe.
+
+O E2E `inbox-realtime.spec.ts` reproduz a ordem do webhook: primeiro o contato,
+depois a mensagem. Numa gravação só o defeito não apareceria — foi conferido
+que ele falha sem a correção.
+
 ---
 
 ## 4. Decisões de produto

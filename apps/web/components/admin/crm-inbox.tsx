@@ -22,6 +22,7 @@ import {
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
 import { nomeDoAnuncio, legendaDoAnuncio } from '@/lib/ads/rotulo'
+import { destinoDoEvento } from '@/lib/inbox/lista'
 import {
   InboxFiltros, ChipsDeFiltro, passaNosFiltros, contarFiltros,
   FILTROS_VAZIOS, type FiltrosInbox,
@@ -860,6 +861,16 @@ export function CRMInbox({
   provedorWhatsApp = null, telaCheia = false,
 }: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)
+  // A assinatura do Realtime é montada uma vez só (deps `[]`), então os
+  // handlers não enxergam o estado por closure — enxergam por aqui.
+  const conversasRef = useRef(conversations)
+  /**
+   * Ids que o servidor já se recusou a devolver — conversa de outro dono, com
+   * o escopo "só os meus" do CRM. O Realtime entrega o evento (a RLS é por
+   * rede), e sem esta marca cada mensagem trocada nelas pediria a lista
+   * inteira de novo.
+   */
+  const pedidosSemResposta = useRef<Set<string>>(new Set())
   const [selectedId,    setSelectedId]    = useState<string | null>(initialSelectedId)
   const [messages,      setMessages]      = useState<Message[]>([])
   const [loadingMsgs,   setLoadingMsgs]   = useState(false)
@@ -1003,45 +1014,79 @@ export function CRMInbox({
     return () => { supabase.removeChannel(channel) }
   }, [selectedId, assinarMidiaSeFaltar])
 
+  // Escrever a ref no efeito, e não durante o render, porque render tem de ser
+  // puro — é o que o React Compiler cobra.
+  useEffect(() => { conversasRef.current = conversations }, [conversations])
+
   // Subscribe to conversation list changes (new convs from inbound, unread updates)
   useEffect(() => {
     const supabase = createClient()
+
+    /** Uma consulta de cada vez, por mais eventos que cheguem em rajada. */
+    let recarregando = false
+    function recarregar() {
+      if (recarregando) return
+      recarregando = true
+      getConversations_client()
+        .then(convs => {
+          setConversations(convs)
+          const vieram = new Set(convs.map(c => c.id))
+          for (const id of pedidosSemResposta.current) {
+            if (vieram.has(id)) pedidosSemResposta.current.delete(id)
+          }
+        })
+        .catch(err => console.error('[inbox] recarregar conversas', err))
+        .finally(() => { recarregando = false })
+    }
+
+    /**
+     * Um evento de conversa chegou. O `destinoDoEvento` explica os três
+     * caminhos — e o do meio é o que fazia falta: a conversa só passa a
+     * pertencer à lista no UPDATE que lhe dá a primeira mensagem, não no
+     * INSERT que cria o contato.
+     */
+    function aoMudarConversa(linha: Conversation) {
+      const naLista = conversasRef.current.some(c => c.id === linha.id)
+      switch (destinoDoEvento(linha, naLista, pedidosSemResposta.current)) {
+        case 'atualizar':
+          // Reordenar aqui, e não só no servidor: a lista vem ordenada por
+          // `last_message_at`, e sem refazer a ordem a conversa que acabou de
+          // receber mensagem continuava no mesmo lugar do meio da lista.
+          setConversations(prev => ordenarPorUltimaMensagem(
+            prev.map(c => c.id === linha.id ? { ...c, ...linha } : c),
+          ))
+          return
+        case 'recarregar':
+          // Tags, dono, etapa e funil vêm de outras tabelas e não estão na
+          // linha do Realtime: só o servidor monta o card inteiro, e sem ele a
+          // conversa nova ficaria fora de qualquer filtro.
+          pedidosSemResposta.current.add(linha.id)
+          recarregar()
+          return
+        case 'ignorar':
+          return
+      }
+    }
+
     const channel = supabase
       .channel('inbox-conversations')
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'conversations',
-      }, (payload) => {
-        const newConv = payload.new as Conversation
-        // Tags, dono, etapa e funil vêm de outra tabela e não estão na linha do
-        // realtime. Entram vazios para a conversa aparecer NA HORA, e a leitura
-        // seguinte traz o que falta — conversa nova é evento raro, então a
-        // consulta extra não pesa, e sem ela a conversa recém-criada ficaria
-        // fora de qualquer filtro por card.
-        setConversations(prev =>
-          prev.some(c => c.id === newConv.id)
-            ? prev
-            : [{ ...newConv, lead_tags: newConv.lead_tags ?? [] }, ...prev],
-        )
-        getConversations_client()
-          .then(convs => setConversations(convs))
-          .catch(err => console.error('[inbox] recarregar conversas', err))
-      })
+      }, payload => aoMudarConversa(payload.new as Conversation))
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'conversations',
-      }, (payload) => {
-        const updated = payload.new as Conversation
-        // Reordenar aqui, e não só no servidor: a lista vem ordenada por
-        // `last_message_at`, e sem refazer a ordem a conversa que acabou de
-        // receber mensagem continuava no mesmo lugar do meio da lista.
-        setConversations(prev => ordenarPorUltimaMensagem(
-          prev.map(c => c.id === updated.id ? { ...c, ...updated } : c),
-        ))
+      }, payload => aoMudarConversa(payload.new as Conversation))
+      // Sem este retorno, canal que não conecta não deixa rastro nenhum: a
+      // lista simplesmente para de atualizar e a suspeita recai sobre o banco.
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('[inbox] canal de conversas:', status, err?.message ?? '')
+        }
       })
-      .subscribe()
 
     return () => { supabase.removeChannel(channel) }
   }, [])
