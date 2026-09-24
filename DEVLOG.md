@@ -1164,6 +1164,33 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
+### 2026-09-24 — O dashboard encaixa: linhas que fecham, colunas que terminam juntas
+
+Relatado: "espaços sobrando, colunas em branco, a coisa não tá bem encaixada",
+no desktop. Olhado em retrato de página inteira a 1280, 1440 e 1920 — em 1920 os
+buracos são o dobro, e é lá que eles se explicam.
+
+Quatro causas, nenhuma visível lendo o código:
+
+1. **Procedimentos tinha seis cards numa grade de quatro colunas.** A segunda
+   linha nascia com metade vazia; em 1920, meia tela de branco. Os dois de
+   avaliação saíram para uma grade de duas, que fecha — e a largura dobrada cai
+   bem num card que mostra nome, nota e número de avaliações.
+2. **Profissionais tinha cinco em quatro colunas**: o quinto sozinho, com três
+   quartos de branco ao lado. Virou 3 (rankings) + 2 (avaliação).
+3. **`align-items: start`** dava a cada card a altura do próprio conteúdo, e as
+   bordas de baixo da mesma fileira ficavam desencontradas. Em `stretch` a
+   fileira fecha reta: o respiro sobra **dentro** do card, não entre eles — a
+   diferença entre "sobrou espaço" e "tem espaço".
+4. **A coluna da direita do topo terminava ~200px antes da esquerda.** Gráfico e
+   ranking de filiais somam bem mais que dois cards. O card de estoque passou a
+   ocupar o que resta, e as duas colunas terminam juntas.
+
+De caminho: o vazio de "Hoje na rede" era um bloco centralizado com a altura de
+quatro filiais listadas e virou uma linha com o ícone ao lado do texto; e as
+grades de KPI estavam em `gap: 14` contra os 16px que o DS fixa — um fio mais
+apertadas que tudo abaixo delas.
+
 ### 2026-09-24 — Dois faturamentos na mesma tela
 
 Achado durante o alinhamento de design e corrigido a pedido do Heitor: "isso
