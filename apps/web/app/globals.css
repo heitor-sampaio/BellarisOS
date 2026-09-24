@@ -41,8 +41,15 @@
     --brand-2: #dd7f96;
     --brand-3: #eeb0bf;
 
-    /* --- Surfaces & neutrals (warm nude) ------------ */
-    --bg-app: #faf5f3;
+    /* --- Surfaces & neutrals ------------------------
+       O fundo era nude rosado (#faf5f3) e virou off-white neutro em
+       2026-09-24, a pedido do Heitor. O trabalho dele é um só — separar o
+       card branco do resto —, e o rosa ali competia com o acento da marca,
+       que já aparece preenchido no KPI, no nav ativo e nos botões.
+
+       O calor não sumiu: ficou nos detalhes (borda, divisória, trilha),
+       que continuam nude. */
+    --bg-app: #f7f7f7;
     --surface: #ffffff;
     --border: #f0e6e3;
     --hairline: #f4ebe8;

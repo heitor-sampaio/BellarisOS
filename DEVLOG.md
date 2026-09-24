@@ -1164,6 +1164,36 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
+### 2026-09-24 — O fundo deixa de ser rosé
+
+"Não sei se tô gostando do rosé leve de background." Em vez de discutir, as
+opções foram geradas na tela real — a variável sobrescrita no navegador, sem
+tocar no código — e comparadas lado a lado com um card branco em cima.
+
+O que a comparação mostrou: **o fundo tem um trabalho só, separar o card
+branco do resto**. Por isso branco puro não serve (os cards somem) e por isso
+a escolha é de matiz, não de claridade.
+
+`--bg-app` passou de `#faf5f3` (nude rosado) para **`#f7f7f7`** (off-white
+neutro), a pedido do Heitor: "um off-white, um cinza beeem leve, só pra dar uma
+quebrada".
+
+A decisão tem uma razão de design além do gosto: **o rosa do fundo competia com
+o acento**. O rosé já aparece preenchido no KPI hero, no item de nav ativo, nos
+botões primários, nas barras dos gráficos e agora no ponto de status da lista
+de automações — repetir o matiz na superfície inteira tirava força justamente
+de onde ele significa alguma coisa.
+
+**O calor não sumiu, mudou de lugar**: borda (`--border`), divisória
+(`--hairline`) e trilha (`--track`) seguem nude. É a identidade nos detalhes,
+que a 1px continua legível e não disputa com nada.
+
+Testada também a borda neutralizada junto com o fundo: a 1px a diferença é
+imperceptível, e neutralizar tiraria o último traço quente sem ganho nenhum.
+
+CLAUDE.md §13 e o readme da skill foram atualizados — a linguagem não é mais
+"fundo nude quente".
+
 ### 2026-09-24 — Automações: a lista diz o que o fluxo faz
 
 Relatado: "não gosto muito do visual geral da página de automações". As duas
