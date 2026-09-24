@@ -1174,7 +1174,7 @@ O que a comparação mostrou: **o fundo tem um trabalho só, separar o card
 branco do resto**. Por isso branco puro não serve (os cards somem) e por isso
 a escolha é de matiz, não de claridade.
 
-`--bg-app` passou de `#faf5f3` (nude rosado) para **`#f7f7f7`** (off-white
+`--bg-app` passou de `#faf5f3` (nude rosado) para **`#f8f8f8`** (off-white
 neutro), a pedido do Heitor: "um off-white, um cinza beeem leve, só pra dar uma
 quebrada".
 
