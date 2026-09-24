@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { gravar, mensagemDoErro } from '@/lib/db'
 import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cadastro'
 
 /**
@@ -26,7 +27,25 @@ function assertRede(ctx: { branchId: string | null }) {
 }
 
 // --- Criar procedimento (rede) -------------------------------------
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function addProcedure(
+  ...args: Parameters<typeof addProcedureInterno>
+): ReturnType<typeof addProcedureInterno> {
+  try {
+    return await addProcedureInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function addProcedureInterno(
   _prev: { error?: string; success?: boolean; procedureId?: string } | undefined,
   formData: FormData,
 ) {
@@ -85,23 +104,23 @@ export async function addProcedure(
 
   // Disponibilidade por filial (vazio = todas)
   if (branchIds.length > 0) {
-    await admin.from('procedure_branch_availability').insert(
+    await gravar(admin.from('procedure_branch_availability').insert(
       branchIds.map(bid => ({ procedure_id: procedure.id, branch_id: bid }))
-    )
+    ), 'definir em quais unidades o procedimento aparece')
   }
 
   // Insumos
   if (products.length > 0) {
-    await admin.from('procedure_products').insert(
+    await gravar(admin.from('procedure_products').insert(
       products.map(p => ({ procedure_id: procedure.id, product_id: p.product_id, quantity: p.quantity, unit_cost: p.unit_cost ?? 0 }))
-    )
+    ), 'salvar os insumos do procedimento')
   }
 
   // Overrides de preço/custo por filial
   if (branchPricing.length > 0) {
-    await admin.from('procedure_branch_pricing').insert(
+    await gravar(admin.from('procedure_branch_pricing').insert(
       branchPricing.map(bp => ({ procedure_id: procedure.id, branch_id: bp.branch_id, price: bp.price, labor_cost: bp.labor_cost }))
-    )
+    ), 'salvar os preços por unidade')
   }
 
   // Emitido DEPOIS dos insumos e da disponibilidade: o retrato de um
@@ -115,7 +134,25 @@ export async function addProcedure(
 }
 
 // --- Atualizar procedimento (rede) ---------------------------------
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function updateProcedure(
+  ...args: Parameters<typeof updateProcedureInterno>
+): ReturnType<typeof updateProcedureInterno> {
+  try {
+    return await updateProcedureInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function updateProcedureInterno(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
 ) {
@@ -163,11 +200,11 @@ export async function updateProcedure(
   const precoAnterior = parseFloat(String(existing.price))
   const precoMudou    = price !== precoAnterior
   if (precoMudou) {
-    await admin.from('procedure_price_history').insert({
+    await gravar(admin.from('procedure_price_history').insert({
       procedure_id: procedureId,
       price:        existing.price,
       changed_by:   changedBy,
-    })
+    }), 'registrar o histórico de preço')
   }
 
   // Atualiza dados básicos
@@ -180,27 +217,27 @@ export async function updateProcedure(
   if (error) return { error: 'Erro ao atualizar procedimento.' }
 
   // Substitui disponibilidade por filial (delete + insert)
-  await admin.from('procedure_branch_availability').delete().eq('procedure_id', procedureId)
+  await gravar(admin.from('procedure_branch_availability').delete().eq('procedure_id', procedureId), 'limpar as unidades do procedimento')
   if (branchIds.length > 0) {
-    await admin.from('procedure_branch_availability').insert(
+    await gravar(admin.from('procedure_branch_availability').insert(
       branchIds.map(bid => ({ procedure_id: procedureId, branch_id: bid }))
-    )
+    ), 'definir em quais unidades o procedimento aparece')
   }
 
   // Substitui insumos (delete + insert)
-  await admin.from('procedure_products').delete().eq('procedure_id', procedureId)
+  await gravar(admin.from('procedure_products').delete().eq('procedure_id', procedureId), 'limpar os insumos do procedimento')
   if (products.length > 0) {
-    await admin.from('procedure_products').insert(
+    await gravar(admin.from('procedure_products').insert(
       products.map(p => ({ procedure_id: procedureId, product_id: p.product_id, quantity: p.quantity, unit_cost: p.unit_cost ?? 0 }))
-    )
+    ), 'salvar os insumos do procedimento')
   }
 
   // Substitui overrides de preço/custo por filial (delete + insert)
-  await admin.from('procedure_branch_pricing').delete().eq('procedure_id', procedureId)
+  await gravar(admin.from('procedure_branch_pricing').delete().eq('procedure_id', procedureId), 'limpar os preços por unidade')
   if (branchPricing.length > 0) {
-    await admin.from('procedure_branch_pricing').insert(
+    await gravar(admin.from('procedure_branch_pricing').insert(
       branchPricing.map(bp => ({ procedure_id: procedureId, branch_id: bp.branch_id, price: bp.price, labor_cost: bp.labor_cost }))
-    )
+    ), 'salvar os preços por unidade')
   }
 
   // Só quando o preço mudou de verdade. Editar a descrição e salvar é o uso
@@ -213,17 +250,36 @@ export async function updateProcedure(
 }
 
 // --- Ativar / desativar (rede) -------------------------------------
-export async function toggleProcedureStatus(procedureId: string, isActive: boolean) {
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
+export async function toggleProcedureStatus(
+  ...args: Parameters<typeof toggleProcedureStatusInterno>
+): Promise<{ error?: string }> {
+  try {
+    await toggleProcedureStatusInterno(...args)
+    return {}
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function toggleProcedureStatusInterno(procedureId: string, isActive: boolean) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'procedures', 'MANAGE')
   assertRede(ctx)
 
   const admin = createAdminClient()
-  await admin
+  await gravar(admin
     .from('procedures')
     .update({ is_active: isActive })
     .eq('id', procedureId)
-    .eq('tenant_id', ctx.tenantId!)
+    .eq('tenant_id', ctx.tenantId!), 'mudar a situação do procedimento')
 
   revalidatePath('/admin/procedures')
   revalidateTag(`procedures:${ctx.tenantId!}`, 'max')

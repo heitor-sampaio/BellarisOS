@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { gravar, mensagemDoErro } from '@/lib/db'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -56,7 +57,25 @@ async function getUpp(admin: ReturnType<typeof createAdminClient>, productId: st
 
 // --- Catálogo de produtos ------------------------------------------
 
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function createProduct(
+  ...args: Parameters<typeof createProductInterno>
+): ReturnType<typeof createProductInterno> {
+  try {
+    return await createProductInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function createProductInterno(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
 ) {
@@ -117,7 +136,7 @@ export async function createProduct(
     }
 
     if (initialQty && initialQty > 0 && filialEstoque && newProduct) {
-      await admin.from('stock_movements').insert({
+      await gravar(admin.from('stock_movements').insert({
         branch_id:     filialEstoque,
         product_id:    newProduct.id,
         type:          'PURCHASE',
@@ -125,32 +144,32 @@ export async function createProduct(
         balance_after: initialQty,
         notes:         str(formData, 'initial_notes') ?? 'Estoque inicial',
         created_by:    ctx.internalUserId,
-      })
+      }), 'registrar a movimentação de estoque')
 
-      await admin.from('branch_product_stock').upsert({
+      await gravar(admin.from('branch_product_stock').upsert({
         product_id:    newProduct.id,
         branch_id:     filialEstoque,
         current_stock: initialQty,
         min_stock:     minStock,
         updated_at:    new Date().toISOString(),
-      }, { onConflict: 'product_id,branch_id' })
+      }, { onConflict: 'product_id,branch_id' }), 'atualizar o saldo da unidade')
 
       const initialBatch   = str(formData, 'initial_batch')
       const initialExpires = str(formData, 'initial_expires_at')
       if (initialBatch) {
-        await admin.from('product_batches').insert({
+        await gravar(admin.from('product_batches').insert({
           product_id:   newProduct.id,
           batch_number: initialBatch,
           expires_at:   initialExpires ?? null,
           quantity:     initialQty,
-        })
+        }), 'registrar o lote do produto')
       }
 
       // Atualiza custo do produto e registra despesa financeira
       if (initialCost && initialCost > 0) {
-        await admin.from('products').update({ cost_price: initialCost }).eq('id', newProduct.id)
+        await gravar(admin.from('products').update({ cost_price: initialCost }).eq('id', newProduct.id), 'atualizar o custo do produto')
 
-        await admin.from('financial_transactions').insert({
+        await gravar(admin.from('financial_transactions').insert({
           branch_id:   filialEstoque,
           type:        'EXPENSE',
           category:    'Estoque',
@@ -160,7 +179,7 @@ export async function createProduct(
           paid_at:     new Date().toISOString(),
           notes:       str(formData, 'initial_notes') ?? 'Estoque inicial',
           created_by:  ctx.internalUserId,
-        })
+        }), 'lançar a despesa da compra')
       }
     }
 
@@ -257,16 +276,34 @@ export async function findProductByBarcode(barcode: string) {
   }
 }
 
-export async function toggleProductActive(productId: string, isActive: boolean) {
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
+export async function toggleProductActive(
+  ...args: Parameters<typeof toggleProductActiveInterno>
+): ReturnType<typeof toggleProductActiveInterno> {
+  try {
+    return await toggleProductActiveInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function toggleProductActiveInterno(productId: string, isActive: boolean) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
 
     const admin = createAdminClient()
-    await admin.from('products')
+    await gravar(admin.from('products')
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
       .eq('id', productId)
-      .eq('tenant_id', ctx.tenantId!)
+      .eq('tenant_id', ctx.tenantId!), 'mudar a situação do produto')
 
     revalidatePath('/admin/produtos')
     revalidateTag(`products:${ctx.tenantId!}`, 'max')
@@ -337,7 +374,25 @@ export async function deleteCategory(categoryId: string) {
 // portais usam. Ficaram sem chamador quando a filial adotou esse modal, e
 // todo export de um arquivo `use server` é um endpoint público.
 
-export async function adminUpdateMinStock(productId: string, branchId: string, minStock: number) {
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
+export async function adminUpdateMinStock(
+  ...args: Parameters<typeof adminUpdateMinStockInterno>
+): ReturnType<typeof adminUpdateMinStockInterno> {
+  try {
+    return await adminUpdateMinStockInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function adminUpdateMinStockInterno(productId: string, branchId: string, minStock: number) {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
@@ -345,12 +400,12 @@ export async function adminUpdateMinStock(productId: string, branchId: string, m
       return { error: 'Operação não permitida fora da sua filial.' }
 
     const admin = createAdminClient()
-    await admin.from('branch_product_stock').upsert({
+    await gravar(admin.from('branch_product_stock').upsert({
       product_id: productId,
       branch_id:  branchId,
       min_stock:  minStock,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'product_id,branch_id' })
+    }, { onConflict: 'product_id,branch_id' }), 'salvar o estoque mínimo')
 
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
@@ -362,7 +417,25 @@ export async function adminUpdateMinStock(productId: string, branchId: string, m
 
 // --- Gestão de estoque (NETWORK_ADMIN) ---------------------------
 
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function adminAddStock(
+  ...args: Parameters<typeof adminAddStockInterno>
+): ReturnType<typeof adminAddStockInterno> {
+  try {
+    return await adminAddStockInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function adminAddStockInterno(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
 ) {
@@ -404,7 +477,7 @@ export async function adminAddStock(
     const currentRendimento = bps?.current_rendimento != null ? Number(bps.current_rendimento) : (upp ? currentStock * upp : null)
     const newRendimento     = upp && currentRendimento != null ? currentRendimento + qty * upp : null
 
-    await admin.from('stock_movements').insert({
+    await gravar(admin.from('stock_movements').insert({
       branch_id:     branchId,
       product_id:    productId,
       type:          'PURCHASE',
@@ -413,33 +486,33 @@ export async function adminAddStock(
       unit_cost:     unitCost,
       notes,
       created_by:    ctx.internalUserId,
-    })
+    }), 'registrar a entrada de estoque')
 
-    await admin.from('branch_product_stock').upsert({
+    await gravar(admin.from('branch_product_stock').upsert({
       product_id:         productId,
       branch_id:          branchId,
       current_stock:      balanceAfter,
       current_rendimento: newRendimento,
       min_stock:          Number(bps?.min_stock ?? 0),
       updated_at:         new Date().toISOString(),
-    }, { onConflict: 'product_id,branch_id' })
+    }, { onConflict: 'product_id,branch_id' }), 'atualizar o saldo da unidade')
 
     if (batchNumber) {
-      await admin.from('product_batches').insert({
+      await gravar(admin.from('product_batches').insert({
         product_id:   productId,
         branch_id:    branchId,
         batch_number: batchNumber,
         expires_at:   expiresAt ?? null,
         quantity:     qty,
-      })
+      }), 'registrar o lote do produto')
     }
 
     // Atualiza o cost_price do produto com o custo desta compra (preço da última entrada)
     if (unitCost && unitCost > 0) {
-      await admin
+      await gravar(admin
         .from('products')
         .update({ cost_price: unitCost, updated_at: new Date().toISOString() })
-        .eq('id', productId)
+        .eq('id', productId), 'atualizar o custo do produto')
     }
 
     revalidatePath('/admin/estoque')
@@ -450,7 +523,25 @@ export async function adminAddStock(
   }
 }
 
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function adminTransferStock(
+  ...args: Parameters<typeof adminTransferStockInterno>
+): ReturnType<typeof adminTransferStockInterno> {
+  try {
+    return await adminTransferStockInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function adminTransferStockInterno(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
 ) {
@@ -495,7 +586,7 @@ export async function adminTransferStock(
     const fromRendimentoAfter = upp && fromRendimento != null ? Math.max(0, fromRendimento - qty * upp) : null
     const toRendimentoAfter   = upp && toRendimento   != null ? toRendimento + qty * upp                : null
 
-    await admin.from('stock_movements').insert([
+    await gravar(admin.from('stock_movements').insert([
       {
         branch_id:     fromBranchId,
         product_id:    productId,
@@ -518,9 +609,9 @@ export async function adminTransferStock(
         created_by:    ctx.internalUserId,
         created_at:    now,
       },
-    ])
+    ]), 'registrar a transferência')
 
-    await admin.from('branch_product_stock').upsert([
+    await gravar(admin.from('branch_product_stock').upsert([
       {
         product_id:         productId,
         branch_id:          fromBranchId,
@@ -537,7 +628,7 @@ export async function adminTransferStock(
         min_stock:          Number(toBps?.min_stock ?? 0),
         updated_at:         now,
       },
-    ], { onConflict: 'product_id,branch_id' })
+    ], { onConflict: 'product_id,branch_id' }), 'atualizar os saldos das unidades')
 
     revalidatePath('/admin/estoque')
     return { success: true }
@@ -546,7 +637,25 @@ export async function adminTransferStock(
   }
 }
 
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
 export async function adminAdjustStock(
+  ...args: Parameters<typeof adminAdjustStockInterno>
+): ReturnType<typeof adminAdjustStockInterno> {
+  try {
+    return await adminAdjustStockInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function adminAdjustStockInterno(
   _prev: { error?: string; success?: boolean } | undefined,
   formData: FormData,
 ) {
@@ -591,7 +700,7 @@ export async function adminAdjustStock(
       newRendimento         = Math.max(0, newTotal - consumed)
     }
 
-    await admin.from('stock_movements').insert({
+    await gravar(admin.from('stock_movements').insert({
       branch_id:     branchId,
       product_id:    productId,
       type:          'MANUAL_ADJUSTMENT',
@@ -599,16 +708,16 @@ export async function adminAdjustStock(
       balance_after: newQty,
       notes:         reason,
       created_by:    ctx.internalUserId,
-    })
+    }), 'registrar o ajuste de estoque')
 
-    await admin.from('branch_product_stock').upsert({
+    await gravar(admin.from('branch_product_stock').upsert({
       product_id:         productId,
       branch_id:          branchId,
       current_stock:      newQty,
       current_rendimento: newRendimento,
       min_stock:          Number(bps?.min_stock ?? 0),
       updated_at:         new Date().toISOString(),
-    }, { onConflict: 'product_id,branch_id' })
+    }, { onConflict: 'product_id,branch_id' }), 'atualizar o saldo da unidade')
 
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
@@ -675,7 +784,25 @@ export async function getProductMovements(
   }))
 }
 
-export async function saveBarcodeToProduct(productId: string, barcode: string) {
+/**
+ * Erro de banco vira mensagem na tela, e não uma exceção nua.
+ *
+ * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
+ * captura a exceção subiria até o cliente como rejeição sem tratamento: o
+ * log teria o motivo e a tela não mostraria nada — que é o silêncio de
+ * novo, só que mais caro de achar.
+ */
+export async function saveBarcodeToProduct(
+  ...args: Parameters<typeof saveBarcodeToProductInterno>
+): ReturnType<typeof saveBarcodeToProductInterno> {
+  try {
+    return await saveBarcodeToProductInterno(...args)
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+async function saveBarcodeToProductInterno(productId: string, barcode: string) {
   try {
     const ctx   = await getTenantContext()
     assertPermission(ctx, 'stock', 'MANAGE')
@@ -700,10 +827,10 @@ export async function saveBarcodeToProduct(productId: string, barcode: string) {
     if (conflict)
       return { error: `Código já vinculado ao produto "${conflict.name}".` }
 
-    await admin
+    await gravar(admin
       .from('products')
       .update({ barcode: code, updated_at: new Date().toISOString() })
-      .eq('id', productId)
+      .eq('id', productId), 'salvar o código de barras')
 
     revalidatePath('/admin/estoque')
     return { success: true }
