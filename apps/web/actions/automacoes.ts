@@ -10,6 +10,7 @@ import type {
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
 import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
 import { CLIENT_TAGS, isUnitTag } from '@estetica-os/utils'
+import { tentar } from '@/lib/db'
 
 /**
  * As automações, pela tela.
@@ -274,7 +275,7 @@ async function guardarVersao(v: {
     .range(MAX_VERSOES, MAX_VERSOES + 200)
 
   if (antigas?.length) {
-    await admin.from('automation_versions').delete().in('id', antigas.map(a => a.id as string))
+    await tentar(admin.from('automation_versions').delete().in('id', antigas.map(a => a.id as string)), 'podar as versões antigas')
   }
 }
 

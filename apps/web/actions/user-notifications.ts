@@ -2,6 +2,7 @@
 
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { tentar } from '@/lib/db'
 
 export type UserNotification = {
   id:          string
@@ -35,11 +36,11 @@ export async function markAllUserNotificationsReceived(): Promise<void> {
   if (ctx.isClient || !ctx.internalUserId) return
 
   const admin = createAdminClient()
-  await admin
+  await tentar(admin
     .from('user_notifications')
     .update({ is_received: true })
     .eq('user_id', ctx.internalUserId)
-    .eq('is_received', false)
+    .eq('is_received', false), 'marcar as notificações como recebidas')
 }
 
 // Notificação aberta: remove da lista
@@ -48,9 +49,9 @@ export async function markUserNotificationRead(id: string): Promise<void> {
   if (ctx.isClient || !ctx.internalUserId) return
 
   const admin = createAdminClient()
-  await admin
+  await tentar(admin
     .from('user_notifications')
     .update({ is_read: true, is_received: true })
     .eq('id', id)
-    .eq('user_id', ctx.internalUserId)
+    .eq('user_id', ctx.internalUserId), 'marcar a notificação como lida')
 }

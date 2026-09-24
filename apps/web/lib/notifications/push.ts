@@ -2,6 +2,7 @@ import 'server-only'
 import webpush from 'web-push'
 import { GoogleAuth } from 'google-auth-library'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { tentar } from '@/lib/db'
 
 type Admin = ReturnType<typeof createAdminClient>
 type PushData = Record<string, unknown> | undefined
@@ -120,7 +121,7 @@ export async function sendFcmToTokens(
         const errBody = await res.text()
         console.error(`[FCM] send failed token=...${token.slice(-8)} status=${res.status}:`, errBody)
         if (res.status === 404 || errBody.includes('UNREGISTERED') || errBody.includes('NOT_FOUND')) {
-          await admin.from('push_tokens').delete().eq('token', token)
+          await tentar(admin.from('push_tokens').delete().eq('token', token), 'apagar o token de aparelho que não existe mais')
         }
       }
     }),

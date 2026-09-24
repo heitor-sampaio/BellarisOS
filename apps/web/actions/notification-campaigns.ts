@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { gravar } from '@/lib/db'
 
 function getWebPush() {
   webpush.setVapidDetails(
@@ -229,15 +230,15 @@ export async function activateCampaign(id: string): Promise<{ error?: string }> 
     const result = await dispatchCampaignInline(camp as NotificationCampaign, ctx.tenantId!)
     if (result.error) return { error: result.error }
 
-    await admin
+    await gravar(admin
       .from('notification_campaigns')
       .update({ status: 'COMPLETED', last_run_at: new Date().toISOString(), total_sent: result.sent })
-      .eq('id', id)
+      .eq('id', id), 'salvar a campanha')
   } else {
-    await admin
+    await gravar(admin
       .from('notification_campaigns')
       .update({ status: 'ACTIVE' })
-      .eq('id', id)
+      .eq('id', id), 'salvar a campanha')
   }
 
   revalidatePath('/admin/notificacoes')
@@ -436,7 +437,7 @@ export async function dispatchCampaignInline(
         notification_id: n.id,
         status:          'SENT',
       }))
-      await admin.from('campaign_dispatches').insert(dispatches)
+      await gravar(admin.from('campaign_dispatches').insert(dispatches), 'registrar os disparos da campanha')
       sent += inserted.length
     }
 

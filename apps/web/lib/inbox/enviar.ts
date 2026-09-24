@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { resolverCanal } from '@/lib/channels/factory'
 import { estadoDaJanela } from '@/lib/channels/window'
 import type { ChannelKind } from '@/lib/channels/types'
+import { gravar } from '@/lib/db'
 
 /**
  * O envio de uma mensagem numa conversa — o núcleo, sem tela e sem usuário.
@@ -91,7 +92,7 @@ export async function enviarNaConversa(
 
   if (!canal) {
     // `manual`: nota interna, não tem para onde enviar. Fica registrada.
-    await admin.from('messages').update({ status: 'sent' }).eq('id', mensagemId)
+    await gravar(admin.from('messages').update({ status: 'sent' }).eq('id', mensagemId), 'marcar a mensagem como enviada')
     return { ok: true, mensagemId }
   }
 
@@ -101,7 +102,7 @@ export async function enviarNaConversa(
   // estável dos dois lados.
   const destino = (conv.contact_phone as string | null) ?? (conv.contact_external_id as string | null)
   if (!destino) {
-    await admin.from('messages').update({ status: 'failed' }).eq('id', mensagemId)
+    await gravar(admin.from('messages').update({ status: 'failed' }).eq('id', mensagemId), 'marcar a mensagem como falhada')
     return { ok: false, error: 'Esta conversa não tem um destinatário identificado.', mensagemId }
   }
 
@@ -109,15 +110,15 @@ export async function enviarNaConversa(
     const { externalId } = await canal.provider.send(destino, texto.trim(), {
       replyToExternalId: opcoes?.replyToExternalId ?? undefined,
     })
-    await admin
+    await gravar(admin
       .from('messages')
       .update({ status: 'sent', external_id: externalId, provider: canal.nome })
-      .eq('id', mensagemId)
+      .eq('id', mensagemId), 'registrar a resposta do provedor')
     return { ok: true, mensagemId, externalId, provedor: canal.nome }
   } catch (e) {
     // A falha fica visível na conversa em vez de virar um "enviado" mentiroso.
     console.error('[enviarNaConversa]', e)
-    await admin.from('messages').update({ status: 'failed' }).eq('id', mensagemId)
+    await gravar(admin.from('messages').update({ status: 'failed' }).eq('id', mensagemId), 'marcar a mensagem como falhada')
     return { ok: false, error: (e as Error).message, mensagemId }
   }
 }

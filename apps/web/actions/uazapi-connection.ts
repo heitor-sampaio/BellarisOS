@@ -12,6 +12,7 @@ import {
 import { telefoneDoJid } from '@/lib/whatsapp/uazapi'
 import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
+import { gravar } from '@/lib/db'
 
 /**
  * Conexão de WhatsApp gerenciada pelo BellarisOS.
@@ -231,9 +232,9 @@ export async function criarConexaoUazapi(): Promise<{ ok: boolean; error?: strin
   // "conectado" e nenhuma mensagem chega.
   try {
     await configurarWebhook(base, criada.token, `${appUrl}/api/webhooks/uazapi`)
-    await admin.from('integration_configs')
+    await gravar(admin.from('integration_configs')
       .update({ config: { ...config, webhookAppliedAt: new Date().toISOString() } })
-      .eq('tenant_id', ctx.tenantId!).eq('provider', 'uazapi')
+      .eq('tenant_id', ctx.tenantId!).eq('provider', 'uazapi'), 'salvar a conexão do WhatsApp')
   } catch (e) {
     console.error('[criarConexaoUazapi] webhook:', e)
     return { ok: false, error: 'Instância criada, mas o webhook falhou. Use "Reparar conexão".' }
@@ -249,9 +250,9 @@ export async function criarConexaoUazapi(): Promise<{ ok: boolean; error?: strin
   if (proxyUrl) {
     try {
       await definirProxy(base, criada.token, proxyUrl)
-      await admin.from('integration_configs')
+      await gravar(admin.from('integration_configs')
         .update({ config: { ...config, proxyUrl, proxyAppliedAt: new Date().toISOString() } })
-        .eq('tenant_id', ctx.tenantId!).eq('provider', 'uazapi')
+        .eq('tenant_id', ctx.tenantId!).eq('provider', 'uazapi'), 'salvar a conexão do WhatsApp')
     } catch (e) {
       console.error('[criarConexaoUazapi] proxy:', e)
     }

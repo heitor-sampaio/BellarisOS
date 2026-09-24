@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendFcmToTokens, sendWebPushToSubs } from '@/lib/notifications/push'
+import { tentar } from '@/lib/db'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -18,13 +19,13 @@ export type NotifyPayload = {
  */
 export async function notifyClient(admin: Admin, clientId: string, p: NotifyPayload): Promise<void> {
   try {
-    await admin.from('client_notifications').insert({
+    await tentar(admin.from('client_notifications').insert({
       client_id: clientId,
       title:     p.title,
       body:      p.body,
       type:      p.type,
       data:      p.data ?? null,
-    })
+    }), 'registrar a notificação do cliente')
 
     const [{ data: tokens }, { data: subs }] = await Promise.all([
       admin.from('push_tokens').select('token').eq('client_id', clientId),
@@ -50,13 +51,13 @@ export async function notifyClient(admin: Admin, clientId: string, p: NotifyPayl
  */
 export async function notifyUser(admin: Admin, userId: string, p: NotifyPayload): Promise<void> {
   try {
-    await admin.from('user_notifications').insert({
+    await tentar(admin.from('user_notifications').insert({
       user_id: userId,
       title:   p.title,
       body:    p.body,
       type:    p.type,
       data:    p.data ?? null,
-    })
+    }), 'registrar a notificação da equipe')
 
     const { data: tokens } = await admin.from('push_tokens').select('token').eq('user_id', userId)
     await sendFcmToTokens((tokens ?? []).map(t => t.token as string), p.title, p.body, admin, p.data)

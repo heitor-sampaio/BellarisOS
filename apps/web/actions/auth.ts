@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import { LoginSchema, RegisterSchema } from '@estetica-os/validators'
 import type { JwtClaims } from '@estetica-os/types'
+import { gravar } from '@/lib/db'
 
 function toSlug(name: string): string {
   return name
@@ -71,14 +72,14 @@ export async function registerAction(
     .eq('key', 'NETWORK_ADMIN')
     .single()
 
-  await admin.from('users').insert({
+  await gravar(admin.from('users').insert({
     auth_id:   authUser.id,
     tenant_id: tenant.id,
     branch_id: null,
     name:      email,
     email:     email,
     role_id:   adminRole?.id ?? null,
-  })
+  }), 'criar o usuário da rede')
 
   await admin.rpc('set_user_claims', {
     p_auth_id:   authUser.id,

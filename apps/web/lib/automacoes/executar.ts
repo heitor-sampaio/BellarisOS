@@ -23,6 +23,7 @@ import { podeFalarCom, limitesDe } from './limites'
 import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
 import { resumoDoNo } from './resumo'
 import { chaveDoPasso } from './passos'
+import { gravar } from '@/lib/db'
 
 /**
  * O executor: um passo por vez, dirigido por `automation_runs`.
@@ -216,10 +217,10 @@ export async function executarRun(
     return await encerrar(run.id, 'parado', 'Automação não está ativa.')
   }
 
-  await admin.from('automation_runs').update({
+  await gravar(admin.from('automation_runs').update({
     status:      'rodando',
     iniciado_em: new Date().toISOString(),
-  }).eq('id', run.id)
+  }).eq('id', run.id), 'marcar a execução como em andamento')
 
   const evento = (run.contexto.evento ?? {}) as Record<string, unknown>
   const eventoDoGatilho: EventoDoGatilho = {
@@ -274,12 +275,12 @@ export async function executarRun(
         return await encerrar(run.id, 'ok', null, contexto, null)
       }
 
-      await admin.from('automation_runs').update({
+      await gravar(admin.from('automation_runs').update({
         status:     'esperando',
         contexto,
         no_atual:   depois,
         rodar_apos: resultado.esperarAte.toISOString(),
-      }).eq('id', run.id)
+      }).eq('id', run.id), 'guardar a espera da execução')
       return 'esperando'
     }
 

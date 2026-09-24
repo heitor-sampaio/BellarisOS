@@ -1,5 +1,4 @@
 import 'server-only'
-import type { PostgrestError } from '@supabase/supabase-js'
 
 /**
  * As três formas de terminar uma consulta ao banco — e nenhuma delas é o
@@ -21,11 +20,25 @@ import type { PostgrestError } from '@supabase/supabase-js'
  * este sistema escreve.
  */
 
+/**
+ * A falha, como o supabase-js a entrega.
+ *
+ * Tipada à mão em vez de importar `PostgrestError`: o Storage devolve
+ * `StorageError`, que não tem `code`, e apagar um arquivo falha em silêncio
+ * exatamente como um `update`. Um helper que só servisse ao Postgres deixaria
+ * metade das gravações de fora.
+ */
+export interface FalhaDoSupabase {
+  message: string
+  code?:   string
+  details?: string
+}
+
 /** Falha de banco com o que se tentava fazer, em português, junto. */
 export class ErroDeBanco extends Error {
   constructor(
     readonly oQue: string,
-    readonly causa: PostgrestError,
+    readonly causa: FalhaDoSupabase,
   ) {
     super(`Não consegui ${oQue}.`)
     this.name = 'ErroDeBanco'
@@ -33,11 +46,11 @@ export class ErroDeBanco extends Error {
 }
 
 /**
- * O que o supabase-js devolve. Tipado à mão e não importado do pacote porque
- * o builder é *thenable*, não `Promise`: aceitar `PromiseLike` é o que deixa
- * passar a consulta direto, sem `await` antes.
+ * O que uma consulta devolve. O builder do supabase-js é *thenable*, não
+ * `Promise`: aceitar `PromiseLike` é o que permite passar a consulta direto,
+ * sem `await` antes.
  */
-type Resposta<T> = { data: T; error: PostgrestError | null }
+type Resposta<T> = { data: T; error: FalhaDoSupabase | null }
 
 /**
  * Escreve — e para o fluxo se não escrever.
@@ -99,7 +112,7 @@ const CODIGOS_DE_REGRA = new Set([
  */
 export function mensagemDoErro(e: unknown): string {
   if (e instanceof ErroDeBanco) {
-    return CODIGOS_DE_REGRA.has(e.causa.code) && e.causa.message
+    return CODIGOS_DE_REGRA.has(e.causa.code ?? '') && e.causa.message
       ? e.causa.message
       : e.message
   }
@@ -107,7 +120,7 @@ export function mensagemDoErro(e: unknown): string {
   return 'Não consegui completar a operação.'
 }
 
-function registrar(oQue: string, error: PostgrestError): ErroDeBanco {
+function registrar(oQue: string, error: FalhaDoSupabase): ErroDeBanco {
   // `code` na frente porque é ele que identifica a classe do problema — 42703
   // é coluna que não existe, 23505 é violação de único —, e é a primeira coisa
   // que se procura no log.

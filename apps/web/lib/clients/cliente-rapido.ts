@@ -15,6 +15,7 @@ import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { EVENTOS } from '@estetica-os/types'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { gravar } from '@/lib/db'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -119,7 +120,7 @@ export async function garantirClienteRapido(
 
   if (error || !cliente) return { error: `Erro ao cadastrar o cliente: ${error?.message ?? 'desconhecido'}` }
 
-  await admin.from('loyalty_accounts').insert({ client_id: cliente.id })
+  await gravar(admin.from('loyalty_accounts').insert({ client_id: cliente.id }), 'abrir a conta de fidelidade')
 
   // A corrente de eventos. Sai daqui, e não das actions, pelo mesmo motivo do
   // agendamento: cliente nasce por três caminhos (cadastro rápido no agendar,

@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { gravar } from '@/lib/db'
 
 function toSlug(name: string): string {
   return name
@@ -120,11 +121,11 @@ export async function toggleBranchStatus(branchId: string, isActive: boolean) {
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const supabase = createAdminClient()
-  await supabase
+  await gravar(supabase
     .from('branches')
     .update({ is_active: isActive })
     .eq('id', branchId)
-    .eq('tenant_id', ctx.tenantId!)
+    .eq('tenant_id', ctx.tenantId!), 'salvar a unidade')
 
   revalidatePath('/admin/branches')
   revalidatePath(`/admin/branches/${branchId}`)

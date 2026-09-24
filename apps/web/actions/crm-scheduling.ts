@@ -20,6 +20,7 @@ import {
   getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
 import { revalidatePath, revalidateTag } from 'next/cache'
+import { gravar } from '@/lib/db'
 
 
 export interface CrmSchedProcedure { id: string; name: string; duration_min: number; price: number }
@@ -192,7 +193,7 @@ export async function createCrmAppointment(
     clientId = novo.clientId
 
     if (input.leadId) {
-      await admin.from('leads').update({ client_id: clientId }).eq('id', input.leadId).eq('tenant_id', ctx.tenantId!)
+      await gravar(admin.from('leads').update({ client_id: clientId }).eq('id', input.leadId).eq('tenant_id', ctx.tenantId!), 'vincular a oportunidade ao cliente')
     }
     revalidateTag(`clients:${ctx.tenantId!}`, 'max')
     revalidatePath('/admin/inbox')

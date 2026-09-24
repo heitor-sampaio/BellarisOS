@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { dispatchCampaignInline } from '@/actions/notification-campaigns'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
+import { gravar } from '@/lib/db'
 
 function getWebPush() {
   webpush.setVapidDetails(
@@ -55,10 +56,10 @@ export async function GET(req: NextRequest) {
       if (camp.last_run_at) { results.push({ id: camp.id, type: 'SCHEDULED', sent: 0, skipped: true }); continue }
 
       const { sent, error: dispErr } = await dispatchCampaignInline(camp, camp.tenant_id)
-      await admin
+      await gravar(admin
         .from('notification_campaigns')
         .update({ status: 'COMPLETED', last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id)
+        .eq('id', camp.id), 'atualizar a campanha')
 
       results.push({ id: camp.id, type: 'SCHEDULED', sent, skipped: false })
       if (dispErr) console.error(`[cron] SCHEDULED ${camp.id}`, dispErr)
@@ -71,10 +72,10 @@ export async function GET(req: NextRequest) {
     // -- BIRTHDAY ---------------------------------------------
     if (camp.trigger_type === 'BIRTHDAY') {
       const sent = await processBirthdayCampaign(camp, today, admin)
-      await admin
+      await gravar(admin
         .from('notification_campaigns')
         .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id)
+        .eq('id', camp.id), 'atualizar a campanha')
       results.push({ id: camp.id, type: 'BIRTHDAY', sent, skipped: false })
       continue
     }
@@ -92,10 +93,10 @@ export async function GET(req: NextRequest) {
       }
 
       const { sent } = await dispatchCampaignInline(camp, camp.tenant_id)
-      await admin
+      await gravar(admin
         .from('notification_campaigns')
         .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id)
+        .eq('id', camp.id), 'atualizar a campanha')
       results.push({ id: camp.id, type: 'ANNUAL_DATE', sent, skipped: false })
       continue
     }
@@ -108,10 +109,10 @@ export async function GET(req: NextRequest) {
       const targetDate = new Date(now)
       targetDate.setDate(targetDate.getDate() - cfg.days)
       const sent = await processVisitCampaign(camp, targetDate, admin)
-      await admin
+      await gravar(admin
         .from('notification_campaigns')
         .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id)
+        .eq('id', camp.id), 'atualizar a campanha')
       results.push({ id: camp.id, type: 'DAYS_AFTER_VISIT', sent, skipped: false })
       continue
     }
@@ -124,10 +125,10 @@ export async function GET(req: NextRequest) {
       const targetDate = new Date(now)
       targetDate.setDate(targetDate.getDate() + cfg.days)
       const sent = await processExpiryCampaign(camp, targetDate, admin)
-      await admin
+      await gravar(admin
         .from('notification_campaigns')
         .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id)
+        .eq('id', camp.id), 'atualizar a campanha')
       results.push({ id: camp.id, type: 'DAYS_BEFORE_EXPIRY', sent, skipped: false })
       continue
     }
@@ -140,10 +141,10 @@ export async function GET(req: NextRequest) {
       const windowStart = new Date(now.getTime() + hours * 3_600_000)
       const windowEnd   = new Date(windowStart.getTime() + 3_600_000) // janela de 1h
       const sent = await processAppointmentReminderCampaign(camp, windowStart, windowEnd, admin)
-      await admin
+      await gravar(admin
         .from('notification_campaigns')
         .update({ last_run_at: now.toISOString(), total_sent: camp.total_sent + sent })
-        .eq('id', camp.id)
+        .eq('id', camp.id), 'atualizar a campanha')
       results.push({ id: camp.id, type: 'BEFORE_APPOINTMENT', sent, skipped: false })
       continue
     }
@@ -356,14 +357,14 @@ async function sendBatch(
       .select('id, client_id')
 
     if (inserted?.length) {
-      await admin.from('campaign_dispatches').insert(
+      await gravar(admin.from('campaign_dispatches').insert(
         inserted.map((n: any) => ({
           campaign_id:     camp.id,
           client_id:       n.client_id,
           notification_id: n.id,
           status:          'SENT',
         })),
-      )
+      ), 'registrar os disparos da campanha')
       sent += inserted.length
     }
 

@@ -4,6 +4,7 @@ import type { GrafoDeAutomacao, ConfigGatilhoAgenda } from '@estetica-os/types'
 import { executarRun } from './executar'
 import { estaNaHora } from './tempo'
 import { partsInTZ } from '@/lib/datetime'
+import { gravar } from '@/lib/db'
 
 /**
  * O que o cron faz a cada cinco minutos.
@@ -64,17 +65,26 @@ async function retomarPendentes(): Promise<{ retomadas: number; erros: number }>
   let erros = 0
 
   for (const run of data ?? []) {
-    // A tentativa é contada ANTES de rodar. Contar depois faria um run que
-    // derruba o processo no meio ser tentado para sempre — e um run que
-    // derruba o processo é exatamente o que mais precisa parar de voltar.
-    await admin
-      .from('automation_runs')
-      .update({ tentativas: ((run.tentativas as number) ?? 0) + 1 })
-      .eq('id', run.id as string)
+    // Um run não pode derrubar a passagem inteira. As gravações do motor agora
+    // falham alto — que é o certo para o run —, mas deixar a exceção subir daqui
+    // faria um registro problemático impedir que TODOS os outros rodassem, e o
+    // sintoma seria uma fila que para de andar sem nada explicando.
+    try {
+      // A tentativa é contada ANTES de rodar. Contar depois faria um run que
+      // derruba o processo no meio ser tentado para sempre — e um run que
+      // derruba o processo é exatamente o que mais precisa parar de voltar.
+      await gravar(admin
+        .from('automation_runs')
+        .update({ tentativas: ((run.tentativas as number) ?? 0) + 1 })
+        .eq('id', run.id as string), 'contar a tentativa da execução')
 
-    const status = await executarRun(run.id as string)
-    if (status === 'falhou') erros += 1
-    retomadas += 1
+      const status = await executarRun(run.id as string)
+      if (status === 'falhou') erros += 1
+      retomadas += 1
+    } catch (e) {
+      console.error(`[cron automacoes] run ${run.id}:`, e)
+      erros += 1
+    }
   }
 
   return { retomadas, erros }

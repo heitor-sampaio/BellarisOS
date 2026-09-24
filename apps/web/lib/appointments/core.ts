@@ -13,6 +13,7 @@ import { enviarEventoCapi } from '@/lib/ads/capi'
 import { cliqueDoCliente, contatoDoCliente } from '@/lib/ads/atribuicao'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { EVENTOS } from '@estetica-os/types'
+import { tentar } from '@/lib/db'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -247,12 +248,12 @@ async function logAppointmentHistory(
   description: string,
 ): Promise<void> {
   if (!internalUserId) return
-  await admin.from('appointment_history').insert({
+  await tentar(admin.from('appointment_history').insert({
     appointment_id:  appointmentId,
     changed_by_id:   internalUserId,
     changed_by_name: userName,
     action,
     description,
     metadata: null,
-  })
+  }), 'registrar no histórico do agendamento')
 }

@@ -12,6 +12,7 @@ import {
 import {
   criarTemplateNaMeta, editarTemplateNaMeta, apagarTemplateNaMeta, listarTemplatesDaMeta,
 } from '@/lib/templates/meta-api'
+import { gravar } from '@/lib/db'
 
 export interface MessageTemplate {
   id:          string
@@ -172,10 +173,10 @@ export async function saveTemplate(
         rascunho,
       )
       // Toda edição reabre a análise.
-      await admin
+      await gravar(admin
         .from('message_templates')
         .update({ status: 'PENDING', rejection_reason: null })
-        .eq('id', input.id)
+        .eq('id', input.id), 'salvar o modelo de mensagem')
     } catch (e) {
       return { ok: false, error: `Salvo aqui, mas a Meta recusou a edição: ${msg(e)}` }
     }
@@ -338,9 +339,9 @@ export async function syncTemplates(): Promise<{ ok: boolean; atualizados?: numb
       // Sumiu de lá (apagado pelo painel). Vira rascunho de novo em vez de
       // continuar oferecido no inbox como se desse para enviar.
       if (local.meta_template_id) {
-        await admin.from('message_templates')
+        await gravar(admin.from('message_templates')
           .update({ status: 'DRAFT', meta_template_id: null })
-          .eq('id', local.id)
+          .eq('id', local.id), 'salvar o modelo de mensagem')
         atualizados++
       }
       continue

@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { membroCriado, membroDesativado, membroReativado } from '@/lib/events/cadastro'
+import { gravar } from '@/lib/db'
 
 // Resolve a abrangência (branch_id) de um membro a partir do form.
 // Apenas NETWORK_ADMIN pode criar membros de rede (branch_id null); gerentes de
@@ -184,7 +185,7 @@ export async function deactivateTeamMember(userId: string, redirectPath: string 
   assertPermission(ctx, 'team', 'MANAGE')
 
   const admin = createAdminClient()
-  await admin.from('users').update({ is_active: false }).eq('id', userId).eq('tenant_id', ctx.tenantId!)
+  await gravar(admin.from('users').update({ is_active: false }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'desativar o membro')
 
   // O retrato leva o cargo e a abrangência que a pessoa tinha — é o que uma
   // automação de "revogar o que ela ainda alcança" precisa saber, e depois de
@@ -200,7 +201,7 @@ export async function reactivateTeamMember(userId: string, redirectPath: string 
   assertPermission(ctx, 'team', 'MANAGE')
 
   const admin = createAdminClient()
-  await admin.from('users').update({ is_active: true }).eq('id', userId).eq('tenant_id', ctx.tenantId!)
+  await gravar(admin.from('users').update({ is_active: true }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'reativar o membro')
 
   await membroReativado(userId, ctx)
 

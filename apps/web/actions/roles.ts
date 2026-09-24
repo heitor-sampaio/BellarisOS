@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { gravar } from '@/lib/db'
 
 function toKey(label: string): string {
   return label
@@ -108,8 +109,8 @@ export async function deleteRole(roleId: string): Promise<{ error: string } | { 
   }
 
   // Remove as permissões associadas e o cargo (role_permissions cascateia por FK)
-  await supabase.from('role_permissions').delete().eq('tenant_id', ctx.tenantId!).eq('role_id', roleId)
-  await supabase.from('tenant_roles').delete().eq('id', roleId).eq('tenant_id', ctx.tenantId!)
+  await gravar(supabase.from('role_permissions').delete().eq('tenant_id', ctx.tenantId!).eq('role_id', roleId), 'apagar as permissões do cargo')
+  await gravar(supabase.from('tenant_roles').delete().eq('id', roleId).eq('tenant_id', ctx.tenantId!), 'apagar o cargo')
 
   revalidatePath('/admin/settings')
   return { success: true }

@@ -5,6 +5,7 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
+import { gravar } from '@/lib/db'
 
 const BUCKET        = CLIENT_DOCS_BUCKET
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -101,10 +102,10 @@ export async function deleteClientDocument(
   if (tenantId !== ctx.tenantId) return { error: 'Acesso negado.' }
 
   if (doc.file_path) {
-    await admin.storage.from(BUCKET).remove([doc.file_path])
+    await gravar(admin.storage.from(BUCKET).remove([doc.file_path]), 'apagar o arquivo do documento')
   }
 
-  await admin.from('client_documents').delete().eq('id', documentId)
+  await gravar(admin.from('client_documents').delete().eq('id', documentId), 'apagar o documento')
 
   revalidatePath(`/${slug}/clients/${clientId}`)
   return {}

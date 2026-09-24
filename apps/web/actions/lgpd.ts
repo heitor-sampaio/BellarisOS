@@ -6,6 +6,7 @@ import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSignedUrl } from '@/lib/storage'
 import { buildClientExport, LGPD_BUCKET } from '@/lib/lgpd/export'
+import { gravar } from '@/lib/db'
 
 /**
  * Pedido de acesso aos dados pessoais (LGPD art. 18).
@@ -55,7 +56,7 @@ export async function processExportRequest(requestId: string): Promise<void> {
       claimed.id, claimed.client_id, includeMedical,
     )
 
-    await admin.from('lgpd_requests').update({
+    await gravar(admin.from('lgpd_requests').update({
       status:           'completed',
       completed_at:     new Date().toISOString(),
       export_json_path: jsonPath,
@@ -63,14 +64,14 @@ export async function processExportRequest(requestId: string): Promise<void> {
       expires_at:       expiresAt.toISOString(),
       error_message:    null,
       updated_at:       new Date().toISOString(),
-    }).eq('id', claimed.id)
+    }).eq('id', claimed.id), 'atualizar o pedido de LGPD')
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Erro inesperado'
-    await admin.from('lgpd_requests').update({
+    await gravar(admin.from('lgpd_requests').update({
       status:        'failed',
       error_message: message,
       updated_at:    new Date().toISOString(),
-    }).eq('id', claimed.id)
+    }).eq('id', claimed.id), 'atualizar o pedido de LGPD')
   }
 }
 

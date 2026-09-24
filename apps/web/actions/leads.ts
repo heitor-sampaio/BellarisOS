@@ -12,6 +12,7 @@ import {
 import { emitirEventoDeLead, eventoDoDesfecho, etapaDeCrm } from '@/lib/events/lead'
 import { EVENTOS } from '@estetica-os/types'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
+import { gravar } from '@/lib/db'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -78,11 +79,11 @@ async function saveProcedures(
   leadId: string,
   procedureIds: string[],
 ) {
-  await admin.from('lead_procedures').delete().eq('lead_id', leadId)
+  await gravar(admin.from('lead_procedures').delete().eq('lead_id', leadId), 'limpar os procedimentos de interesse')
   if (procedureIds.length > 0) {
-    await admin.from('lead_procedures').insert(
+    await gravar(admin.from('lead_procedures').insert(
       procedureIds.map(pid => ({ lead_id: leadId, procedure_id: pid })),
-    )
+    ), 'salvar os procedimentos de interesse')
   }
 }
 

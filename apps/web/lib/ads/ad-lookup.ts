@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig } from './factory'
+import { tentar } from '@/lib/db'
 
 const GRAPH_API_VERSION = 'v25.0'
 
@@ -110,7 +111,7 @@ export async function nomesDoAnuncio(
     erro = (e as Error).message
   }
 
-  await admin.from('meta_ad_cache').upsert({
+  await tentar(admin.from('meta_ad_cache').upsert({
     tenant_id:     tenantId,
     ad_id:         adId,
     ad_name:       nomes?.adName ?? null,
@@ -123,7 +124,7 @@ export async function nomesDoAnuncio(
     creative_body:       nomes?.creativeBody  ?? null,
     erro,
     fetched_at:    new Date().toISOString(),
-  }, { onConflict: 'tenant_id,ad_id' })
+  }, { onConflict: 'tenant_id,ad_id' }), 'guardar o anúncio no cache')
 
   return nomes
 }

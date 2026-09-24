@@ -19,6 +19,7 @@ import { registrarEventoLead } from '@/lib/lead-events'
 import {
   extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
 } from '@/lib/templates/core'
+import { gravar } from '@/lib/db'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
@@ -786,7 +787,7 @@ export async function criarOportunidade(
   // `conversations.lead_id` é a oportunidade PRINCIPAL: é por ela que o card do
   // quadro volta para a conversa certa. A primeira criada assume o posto.
   if (!c.lead_id) {
-    await admin.from('conversations').update({ lead_id: leadId }).eq('id', conversationId)
+    await gravar(admin.from('conversations').update({ lead_id: leadId }).eq('id', conversationId), 'vincular a conversa à oportunidade')
   }
 
   revalidarInbox()
@@ -1195,11 +1196,11 @@ export async function setConversationStatus(conversationId: string, status: Conv
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
 
-  await admin
+  await gravar(admin
     .from('conversations')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', conversationId)
-    .eq('tenant_id', ctx.tenantId!)
+    .eq('tenant_id', ctx.tenantId!), 'atualizar a conversa')
 
   revalidarInbox()
 }
@@ -1466,14 +1467,14 @@ export async function sendTemplateMessage(
       language:   t.language,
       components: montarParametrosEnvio(t, valores),
     })
-    await admin
+    await gravar(admin
       .from('messages')
       .update({ status: 'sent', external_id: externalId, provider: canal.nome })
-      .eq('id', criada.id)
+      .eq('id', criada.id), 'registrar a mensagem enviada')
     criada.status = 'sent'
   } catch (sendErr) {
     console.error('[sendTemplateMessage]', sendErr)
-    await admin.from('messages').update({ status: 'failed' }).eq('id', criada.id)
+    await gravar(admin.from('messages').update({ status: 'failed' }).eq('id', criada.id), 'marcar a mensagem como falhada')
     criada.status = 'failed'
     return { ok: false, error: mensagemDeFalha(sendErr) }
   }
@@ -1582,7 +1583,7 @@ export async function sendMediaMessage(
 
   if (!canal) {
     // `manual`: nota interna com anexo. Fica registrada e pronto.
-    await admin.from('messages').update({ status: 'sent' }).eq('id', criada.id)
+    await gravar(admin.from('messages').update({ status: 'sent' }).eq('id', criada.id), 'marcar a mensagem como enviada')
     criada.status = 'sent'
     revalidarInbox()
     return { ok: true, message: await comUrl(msgRow as unknown as Message, guardado.path) }
@@ -1604,10 +1605,10 @@ export async function sendMediaMessage(
       filename: arquivo.name || `arquivo.${kind}`,
       caption:  caption || undefined,
     })
-    await admin
+    await gravar(admin
       .from('messages')
       .update({ status: 'sent', external_id: externalId, provider: canal.nome })
-      .eq('id', criada.id)
+      .eq('id', criada.id), 'registrar a mensagem enviada')
     criada.status = 'sent'
   } catch (sendErr) {
     console.error('[sendMediaMessage]', sendErr)
@@ -1633,7 +1634,7 @@ async function falhaComAnexo(
   path: string,
   error: string,
 ): Promise<{ ok: false; message: Message; error: string }> {
-  await admin.from('messages').update({ status: 'failed' }).eq('id', messageId)
+  await gravar(admin.from('messages').update({ status: 'failed' }).eq('id', messageId), 'marcar a mensagem como falhada')
   return { ok: false, error, message: { ...(await comUrl(msg, path)), status: 'failed' } }
 }
 

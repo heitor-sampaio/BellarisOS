@@ -12,6 +12,7 @@ import { camposAlterados } from '@/lib/events/emitir'
 import { EVENTOS } from '@estetica-os/types'
 import { registrarEventoLead } from '@/lib/lead-events'
 import { garantirClienteRapido, ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
+import { gravar } from '@/lib/db'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
@@ -104,7 +105,7 @@ export async function addClient(
   if (existing) {
     if (conversationId) await ligarContatoAoCliente(admin, ctx.tenantId!, conversationId, existing.id as string)
     if (leadId) {
-      await admin.from('leads').update({ client_id: existing.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
+      await gravar(admin.from('leads').update({ client_id: existing.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!), 'vincular a oportunidade ao cliente')
       await registrarEventoLead({
         tenantId:    ctx.tenantId!,
         leadId,
@@ -167,7 +168,7 @@ export async function addClient(
   }
 
   // 3) Claims do cliente + conta de fidelidade
-  await admin.rpc('set_client_claims', { p_auth_id: authId, p_client_id: client.id })
+  await gravar(admin.rpc('set_client_claims', { p_auth_id: authId, p_client_id: client.id }), 'gravar os dados de acesso do cliente')
   if (!jaExiste) await admin.from('loyalty_accounts').insert({ client_id: client.id })
 
   // A ficha completa não passa por `garantirClienteRapido` quando o cliente
@@ -187,7 +188,7 @@ export async function addClient(
   if (leadId) {
     const { data: leadRow } = await admin
       .from('leads').select('ctwa_clid').eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle()
-    await admin.from('leads').update({ client_id: client.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!)
+    await gravar(admin.from('leads').update({ client_id: client.id }).eq('id', leadId).eq('tenant_id', ctx.tenantId!), 'vincular a oportunidade ao cliente')
     await registrarEventoLead({
       tenantId:    ctx.tenantId!,
       leadId,
@@ -201,9 +202,9 @@ export async function addClient(
     // teria de percorrer conversa e mensagens para achar o mesmo dado.
     const clique = (leadRow as { ctwa_clid?: string | null } | null)?.ctwa_clid ?? null
     if (clique) {
-      await admin.from('clients')
+      await gravar(admin.from('clients')
         .update({ ctwa_clid: clique })
-        .eq('id', client.id).eq('tenant_id', ctx.tenantId!)
+        .eq('id', client.id).eq('tenant_id', ctx.tenantId!), 'atualizar o cliente')
     }
 
     // Antes este envio saía como `action_source: 'website'` e mandava só o

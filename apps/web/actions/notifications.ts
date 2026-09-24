@@ -2,6 +2,7 @@
 
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { tentar } from '@/lib/db'
 
 export type ClientNotification = {
   id:          string
@@ -36,11 +37,11 @@ export async function markAllNotificationsReceived(): Promise<void> {
   if (!ctx.isClient) return
 
   const admin = createAdminClient()
-  await admin
+  await tentar(admin
     .from('client_notifications')
     .update({ is_received: true })
     .eq('client_id', ctx.clientId!)
-    .eq('is_received', false)
+    .eq('is_received', false), 'marcar a notificação como lida')
 }
 
 // Notification modal opened: removes from list + updates campaign read metrics

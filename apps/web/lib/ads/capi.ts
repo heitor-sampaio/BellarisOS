@@ -2,6 +2,7 @@ import { createHash } from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig } from './factory'
 import type { MetaAdsConfig } from './types'
+import { tentar } from '@/lib/db'
 
 const GRAPH_API_VERSION = 'v25.0'
 
@@ -155,24 +156,24 @@ async function despachar(
   // os dois manda a pessoa procurar no lugar errado — o pixel some quando ele
   // pertence ao Business Manager e não ao perfil.
   if (!config?.accessToken) {
-    await admin.from('meta_capi_events')
+    await tentar(admin.from('meta_capi_events')
       .update({ erro: 'Integração Meta Ads não conectada' })
-      .eq('id', linhaId)
+      .eq('id', linhaId), 'atualizar o evento da Meta')
     return
   }
   if (!config.pixelId) {
-    await admin.from('meta_capi_events')
+    await tentar(admin.from('meta_capi_events')
       .update({ erro: 'Meta Ads conectada, mas sem pixel escolhido em Configurações → Integrações' })
-      .eq('id', linhaId)
+      .eq('id', linhaId), 'atualizar o evento da Meta')
     return
   }
 
   // Sem click id não há atribuição possível a click-to-WhatsApp. Mandar assim
   // mesmo só suja o dataset com evento que a Meta não consegue casar.
   if (!input.ctwaClid) {
-    await admin.from('meta_capi_events')
+    await tentar(admin.from('meta_capi_events')
       .update({ status: 'descartado', erro: 'sem ctwa_clid' })
-      .eq('id', linhaId)
+      .eq('id', linhaId), 'atualizar o evento da Meta')
     return
   }
 
@@ -196,13 +197,13 @@ async function despachar(
     erro = (e as Error).message
   }
 
-  await admin.from('meta_capi_events').update({
+  await tentar(admin.from('meta_capi_events').update({
     status:     erro ? 'falhou' : 'enviado',
     erro,
     payload,
     tentativas: 1,
     enviado_em: erro ? null : new Date().toISOString(),
-  }).eq('id', linhaId)
+  }).eq('id', linhaId), 'atualizar o evento da Meta')
 
   if (erro) console.error('[capi]', input.event, input.eventId, erro)
 }
@@ -242,9 +243,9 @@ export async function reenviarEventosPendentes(limite = 50): Promise<{
 
   for (const l of linhas ?? []) {
     if ((l.ocorrido_em as string) < seteDiasAtras) {
-      await admin.from('meta_capi_events')
+      await tentar(admin.from('meta_capi_events')
         .update({ status: 'descartado', erro: 'mais de 7 dias — a Meta não aceita' })
-        .eq('id', l.id as string)
+        .eq('id', l.id as string), 'atualizar o evento da Meta')
       descartados++
       continue
     }
@@ -259,9 +260,9 @@ export async function reenviarEventosPendentes(limite = 50): Promise<{
       valor:      l.valor as number | null,
       ocorridoEm: new Date(l.ocorrido_em as string),
     })
-    await admin.from('meta_capi_events')
+    await tentar(admin.from('meta_capi_events')
       .update({ tentativas: antes + 1 })
-      .eq('id', l.id as string)
+      .eq('id', l.id as string), 'atualizar o evento da Meta')
 
     const { data: agora } = await admin
       .from('meta_capi_events').select('status').eq('id', l.id as string).maybeSingle()

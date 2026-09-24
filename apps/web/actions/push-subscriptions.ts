@@ -2,6 +2,7 @@
 
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { gravar } from '@/lib/db'
 
 export async function savePushToken({
   token,
@@ -12,7 +13,7 @@ export async function savePushToken({
 }): Promise<void> {
   const ctx = await getTenantContext()
   const admin = createAdminClient()
-  await admin.from('push_tokens').upsert(
+  await gravar(admin.from('push_tokens').upsert(
     {
       token,
       platform,
@@ -22,7 +23,7 @@ export async function savePushToken({
       user_id:   ctx.isClient ? null : ctx.internalUserId,
     },
     { onConflict: 'token' },
-  )
+  ), 'registrar o aparelho para notificações')
 }
 
 export async function saveWebPushSubscription(sub: {
@@ -33,10 +34,10 @@ export async function saveWebPushSubscription(sub: {
   if (!ctx.isClient) throw new Error('Forbidden')
 
   const admin = createAdminClient()
-  await admin.from('web_push_subscriptions').upsert(
+  await gravar(admin.from('web_push_subscriptions').upsert(
     { client_id: ctx.clientId!, endpoint: sub.endpoint, keys: sub.keys },
     { onConflict: 'client_id,endpoint' },
-  )
+  ), 'registrar o navegador para notificações')
 }
 
 export async function removeWebPushSubscription(endpoint: string): Promise<void> {
@@ -44,9 +45,9 @@ export async function removeWebPushSubscription(endpoint: string): Promise<void>
   if (!ctx.isClient) throw new Error('Forbidden')
 
   const admin = createAdminClient()
-  await admin
+  await gravar(admin
     .from('web_push_subscriptions')
     .delete()
     .eq('client_id', ctx.clientId!)
-    .eq('endpoint', endpoint)
+    .eq('endpoint', endpoint), 'remover a inscrição de notificações')
 }
