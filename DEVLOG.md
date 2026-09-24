@@ -1164,6 +1164,45 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
+### 2026-09-24 — Uma forma de seletor para cada função
+
+Relatado: "tem páginas onde as opções ficam num box com pílula no selecionado,
+outras com uma pílula para cada opção, outras com dropdown, umas com ícone,
+outras sem".
+
+Mapeado antes de mexer: **12 `<SegSelect>`, 110 `<select>` nativos e 33 grupos
+de botões-pílula** — e 50 lugares onde um grupo de opções exclusivas era
+desenhado à mão, cada um com seu raio, sua altura e sua fonte.
+
+A padronização é **por função**, não por aparência:
+
+| Situação | Forma |
+|---|---|
+| exclusiva, 2 a 5 opções curtas e fixas | `<SegSelect>` |
+| opções vindas de dados, ou mais de 5 | `.filtro-select` |
+| liga/desliga de um filtro só | `.filtro-toggle` |
+| filtro que acumula (tag) | `.chip` |
+
+O SegSelect **já existia** e já resolvia o caso difícil: segmentado no desktop,
+dropdown no celular. Três telas o tinham reimplementado à mão.
+
+**A barra de clientes era o caso que mais enganava**: Todos/VIP/Novos/Inativos
+eram pílulas soltas, e pílula solta é o desenho de filtro que acumula. A tela
+prometia que dava para marcar VIP e Novos ao mesmo tempo — e não dava.
+
+Os 12 dropdowns de filtro perderam o `style` inline (que vencia a classe e
+mantinha cada um do seu jeito) e ganharam **o chevron do sistema** em vez do
+nativo, que muda de desenho em cada navegador e não acompanha a cor do texto.
+Dois arquivos definiam um `selectStyle` local — um com altura 38 e fundo cinza,
+outro com raio 8 e fundo branco.
+
+**Ícone:** seletor de texto não leva. O rótulo já diz o que é, e o ícone
+repetido cinco vezes na mesma barra vira ruído. O toggle pode levar — ali o
+ícone é o próprio assunto que se liga.
+
+**Fora de escopo, de propósito:** escolha de item em lista mestre-detalhe e
+passo de wizard não são seletores, ainda que pintem o selecionado de rosé.
+
 ### 2026-09-24 — O fundo deixa de ser rosé
 
 "Não sei se tô gostando do rosé leve de background." Em vez de discutir, as
