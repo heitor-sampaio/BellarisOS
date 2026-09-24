@@ -377,3 +377,84 @@ export interface DadosDeComissao extends DadosDeEvento {
   valor:            number | null
   periodo:          string | null   // 'YYYY-MM'
 }
+
+/**
+ * Como cada evento se chama para quem monta a automação.
+ *
+ * A tela mostrava o nome técnico — `conversa.mensagem_recebida` no seletor do
+ * editor e no card da lista. Quem opera a clínica não tem por que ler ponto e
+ * underline, e o nome cru também esconde a diferença que mais importa aqui:
+ * `agendamento.cancelado` e `agendamento.nao_compareceu` são o mesmo UPDATE
+ * para o banco e duas conversas diferentes com o cliente.
+ *
+ * O rótulo carrega o SUJEITO, porque a lista mistura entidades: "Criado"
+ * sozinho não diz se é cliente, plano ou procedimento.
+ *
+ * ⚠️ Evento novo sem rótulo aqui quebra o teste do catálogo, de propósito —
+ * pela mesma razão que um nome sem emissor quebra: a automação é montada e a
+ * tela fica dizendo `entidade.acao_qualquer` para sempre.
+ */
+export const ROTULOS_DE_EVENTO: Record<NomeDeEvento, string> = {
+  // Agenda
+  'agendamento.criado':          'Agendamento criado',
+  'agendamento.confirmado':      'Agendamento confirmado',
+  'agendamento.check_in':        'Cliente chegou',
+  'agendamento.iniciado':        'Atendimento iniciado',
+  'agendamento.concluido':       'Atendimento concluído',
+  'agendamento.cancelado':       'Agendamento cancelado',
+  'agendamento.nao_compareceu':  'Cliente não compareceu',
+  'agendamento.remarcado':       'Agendamento remarcado',
+
+  // Clientes
+  'cliente.criado':          'Cliente cadastrado',
+  'cliente.dados_alterados': 'Cadastro do cliente alterado',
+  'cliente.desativado':      'Cliente desativado',
+  'cliente.reativado':       'Cliente reativado',
+
+  // CRM
+  'lead.criado':      'Oportunidade criada',
+  'lead.etapa_mudou': 'Oportunidade mudou de etapa',
+  'lead.ganho':       'Oportunidade ganha',
+  'lead.perdido':     'Oportunidade perdida',
+
+  // Inbox
+  'conversa.iniciada':           'Conversa iniciada',
+  'conversa.mensagem_recebida':  'Mensagem recebida',
+  'conversa.mensagem_enviada':   'Mensagem enviada',
+  'conversa.veio_de_anuncio':    'Conversa veio de anúncio',
+
+  // Dinheiro
+  'pagamento.recebido':  'Pagamento recebido',
+  'pagamento.estornado': 'Pagamento estornado',
+  'plano.criado':        'Plano criado',
+  'plano.proposto':      'Plano proposto',
+  'plano.aceito':        'Plano aceito',
+  'pacote.sessao_usada': 'Sessão de pacote usada',
+  'comissao.gerada':     'Comissão gerada',
+
+  // Clínico
+  'prontuario.entrada_criada': 'Ficha do atendimento criada',
+  'anamnese.respondida':       'Anamnese respondida',
+  'termo.assinado':            'Termo assinado',
+  'injetavel.aplicado':        'Injetável aplicado',
+  'foto.enviada':              'Foto enviada',
+
+  // Estoque
+  'estoque.movimentado':      'Estoque movimentado',
+  'estoque.abaixo_do_minimo': 'Estoque abaixo do mínimo',
+
+  // Cadastro e configuração
+  'procedimento.criado':         'Procedimento criado',
+  'procedimento.preco_alterado': 'Preço de procedimento alterado',
+  'membro.criado':               'Membro da equipe criado',
+  'membro.desativado':           'Membro da equipe desativado',
+  'membro.reativado':            'Membro da equipe reativado',
+  'cargo.permissoes_alteradas':  'Permissões de cargo alteradas',
+  'integracao.conectada':        'Integração conectada',
+  'integracao.desconectada':     'Integração desconectada',
+}
+
+/** O rótulo do evento, com o nome técnico como último recurso. */
+export function rotuloDoEvento(nome: string): string {
+  return ROTULOS_DE_EVENTO[nome as NomeDeEvento] ?? nome
+}

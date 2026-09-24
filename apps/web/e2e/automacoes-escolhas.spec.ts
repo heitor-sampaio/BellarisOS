@@ -89,7 +89,7 @@ test('com mais de um funil, escolhe-se o funil e depois a etapa', async ({ page 
   // O mesmo botão diz "Salvar" e, depois de gravar, "Salvo" — é ele que marca
   // o fim da ida ao servidor.
   await page.getByRole('button', { name: 'Salvar' }).click()
-  await expect(page.getByRole('button', { name: 'Salvo' })).toBeVisible()
+  await expect(page.getByText('Salvo', { exact: true })).toBeVisible()
 
   // O que ficou gravado é o ID da etapa — o funil é só o caminho até ela.
   const { data: salva } = await db.from('automations').select('grafo').eq('id', id).single()
@@ -133,7 +133,7 @@ test('o gatilho de tempo aceita de quanto em quanto, não só um horário', asyn
   // O mesmo botão diz "Salvar" e, depois de gravar, "Salvo" — é ele que marca
   // o fim da ida ao servidor.
   await page.getByRole('button', { name: 'Salvar' }).click()
-  await expect(page.getByRole('button', { name: 'Salvo' })).toBeVisible()
+  await expect(page.getByText('Salvo', { exact: true })).toBeVisible()
 
   const { data: salva } = await db.from('automations').select('grafo').eq('id', id).single()
   const no = (salva!.grafo as { nos: { tipo: string; config: Record<string, unknown> }[] })

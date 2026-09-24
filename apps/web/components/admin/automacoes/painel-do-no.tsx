@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Trash2, X } from 'lucide-react'
-import { EVENTOS, NODES, INTERVALO_MINIMO_MIN } from '@estetica-os/types'
+import { EVENTOS, NODES, INTERVALO_MINIMO_MIN, rotuloDoEvento } from '@estetica-os/types'
 import type {
   NoDoGrafo, GrafoDeAutomacao, TipoDeNo,
   GrupoDeCondicao, RegraDeCondicao, OperadorDeCondicao,
@@ -145,7 +145,7 @@ export function PainelDoNo({
               <option value="">Escolha o evento…</option>
               {agruparEventos().map(([entidade, nomes]) => (
                 <optgroup key={entidade} label={entidade}>
-                  {nomes.map(n => <option key={n} value={n}>{n}</option>)}
+                  {nomes.map(n => <option key={n} value={n}>{rotuloDoEvento(n)}</option>)}
                 </optgroup>
               ))}
             </select>

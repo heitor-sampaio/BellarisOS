@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Workflow, Plus, Zap, AlertCircle } from 'lucide-react'
+import { Workflow, Plus, Zap, AlertCircle, ChevronRight } from 'lucide-react'
 import { criarAutomacao, type AutomacaoNaLista } from '@/actions/automacoes'
 
 /**
@@ -102,56 +102,87 @@ export function ListaDeAutomacoes({
             <Link
               key={a.id} href={`/admin/automacoes/${a.id}`}
               className="card card-hover"
-              style={{ textDecoration: 'none', display: 'block' }}
+              style={{ textDecoration: 'none', display: 'block', padding: '14px 18px' }}
             >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{
-                      fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)',
-                    }}>
-                      {a.nome}
-                    </span>
-                    <span className={
-                      a.status === 'ATIVA' ? 'chip chip-success'
-                      : a.status === 'PAUSADA' ? 'chip chip-muted'
-                      : 'chip chip-warning'
-                    }>
-                      {a.status === 'ATIVA' ? 'Ligada' : a.status === 'PAUSADA' ? 'Desligada' : 'Rascunho'}
-                    </span>
-                  </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
 
-                  {a.gatilhos.length > 0 ? (
+                {/* No ar ou não, à esquerda e antes do nome.
+                    O chip dizia "Ligada" no meio da linha, do mesmo tamanho de
+                    tudo; e o que se quer saber varrendo a lista é uma coisa
+                    só — o que está rodando agora. Ponto preenchido em rosé
+                    para quem está no ar, anel vazado para o resto: dá para ler
+                    a coluna inteira sem ler uma palavra. */}
+                <span
+                  title={
+                    a.status === 'ATIVA' ? 'No ar'
+                    : a.status === 'PAUSADA' ? 'Desligada' : 'Rascunho'
+                  }
+                  style={{
+                    width: 9, height: 9, borderRadius: 'var(--radius-full)', flexShrink: 0,
+                    background: a.status === 'ATIVA' ? 'var(--brand)' : 'transparent',
+                    border: a.status === 'ATIVA' ? 'none' : '1.5px solid var(--border)',
+                    boxShadow: a.status === 'ATIVA'
+                      ? '0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent)'
+                      : 'none',
+                  }}
+                />
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{
+                    fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)',
+                  }}>
+                    {a.nome}
+                  </span>
+
+                  {/* O FLUXO, em uma linha. Antes era o nome técnico do evento
+                      (`conversa.mensagem_recebida`) e mais nada — o card dizia
+                      por onde começa e escondia o que faz. */}
+                  {a.passos.length > 0 ? (
                     <p style={{
-                      fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 4,
-                      display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
+                      fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 3,
+                      display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
                     }}>
-                      <Zap size={12} /> {a.gatilhos.join(', ')}
+                      <Zap size={11} style={{ color: 'var(--brand)', flexShrink: 0 }} />
+                      {a.passos.map((passo, i) => (
+                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          {i > 0 && <ChevronRight size={11} style={{ color: 'var(--text-faint)' }} />}
+                          {passo}
+                        </span>
+                      ))}
+                      {a.passos.length === 4 && <span style={{ color: 'var(--text-faint)' }}>…</span>}
                     </p>
                   ) : (
                     <p style={{
-                      fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 4,
+                      fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', marginTop: 3,
                       display: 'flex', alignItems: 'center', gap: 5,
                     }}>
-                      <AlertCircle size={12} /> sem gatilho — nada a inicia
+                      <AlertCircle size={11} /> sem gatilho — nada o inicia
                     </p>
                   )}
                 </div>
 
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <p style={{
+                {/* Execuções: o número e o período na MESMA linha. Empilhados,
+                    duas linhas de rótulo para um dígito esticavam o card à
+                    altura de um parágrafo que não existe. */}
+                <div style={{
+                  display: 'flex', alignItems: 'baseline', gap: 5, flexShrink: 0,
+                  fontSize: 'var(--text-overline)', color: 'var(--text-muted)',
+                }}>
+                  <span style={{
                     fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-extrabold)',
                     color: a.execucoes ? 'var(--text)' : 'var(--text-faint)',
                   }}>
                     {a.execucoes}
-                  </p>
-                  <p style={{ fontSize: 'var(--text-overline)', color: 'var(--text-muted)' }}>
-                    {a.execucoes === 1 ? 'execução em 7 dias' : 'execuções em 7 dias'}
-                  </p>
+                  </span>
+                  {a.execucoes === 1 ? 'execução · 7 dias' : 'execuções · 7 dias'}
                   {a.falhas > 0 && (
-                    <p style={{ fontSize: 'var(--text-overline)', color: 'var(--danger)', fontWeight: 'var(--weight-bold)', marginTop: 2 }}>
+                    <span style={{
+                      color: 'var(--danger)', fontWeight: 'var(--weight-bold)',
+                      background: 'var(--danger-soft)', borderRadius: 'var(--radius-chip)',
+                      padding: '2px 7px', marginLeft: 3,
+                    }}>
                       {a.falhas} {a.falhas === 1 ? 'falhou' : 'falharam'}
-                    </p>
+                    </span>
                   )}
                 </div>
               </div>

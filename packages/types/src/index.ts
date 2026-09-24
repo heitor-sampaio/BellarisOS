@@ -13,7 +13,7 @@ export type {
   DadosClinicos, DadosDeEstoque,
   DadosDeProcedimento, DadosDeMembro, DadosDeCargo, DadosDeIntegracao,
 } from './eventos'
-export { EVENTOS } from './eventos'
+export { EVENTOS, ROTULOS_DE_EVENTO, rotuloDoEvento } from './eventos'
 export type { CampoDeEvento } from './eventos-campos'
 export { CAMPOS_DO_EVENTO, CAMPOS_DO_FATO } from './eventos-campos'
 export type {

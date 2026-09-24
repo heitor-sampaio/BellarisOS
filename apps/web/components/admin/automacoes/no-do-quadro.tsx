@@ -22,7 +22,7 @@ import { ROTULOS } from '@/lib/automacoes/validar'
  * clicar em cada um.
  */
 
-const ICONE: Record<TipoDeNo, LucideIcon> = {
+export const ICONE_DO_NO: Record<TipoDeNo, LucideIcon> = {
   [NODES.GATILHO_EVENTO]:        Zap,
   [NODES.GATILHO_AGENDA]:        Clock,
   [NODES.BUSCAR_CLIENTES]:       Users,
@@ -57,7 +57,7 @@ const ALCA = {
 function NoDoQuadroBase({ data, selected }: NodeProps) {
   const d = data as DadosDoNo
   const ehGatilho = d.tipo === NODES.GATILHO_EVENTO || d.tipo === NODES.GATILHO_AGENDA
-  const Icone = ICONE[d.tipo] ?? Zap
+  const Icone = ICONE_DO_NO[d.tipo] ?? Zap
 
   return (
     <div

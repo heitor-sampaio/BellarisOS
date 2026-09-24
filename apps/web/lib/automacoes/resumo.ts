@@ -1,4 +1,4 @@
-import { NODES } from '@estetica-os/types'
+import { NODES, rotuloDoEvento } from '@estetica-os/types'
 import type { TipoDeNo, GrupoDeCondicao, OperadorDeCondicao } from '@estetica-os/types'
 
 /**
@@ -46,7 +46,11 @@ export function resumoDoNo(tipo: TipoDeNo, config: Record<string, unknown>): str
 
   switch (tipo as TipoDeNo) {
     case NODES.GATILHO_EVENTO: {
-      const evento = (c.evento as string) ?? 'escolha o evento'
+      // O card mostrava `conversa.mensagem_recebida`. Quem opera a clínica
+      // não tem por que ler ponto e underline — e o rótulo ainda distingue
+      // "Cliente não compareceu" de "Agendamento cancelado", que no nome
+      // técnico ficam a um underline de distância.
+      const evento = c.evento ? rotuloDoEvento(c.evento as string) : 'escolha o evento'
       const filtro = c.filtro as GrupoDeCondicao | undefined
       return filtro?.regras?.length ? `${evento} · ${descreverGrupo(filtro)}` : evento
     }

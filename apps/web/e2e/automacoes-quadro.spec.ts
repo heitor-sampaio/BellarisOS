@@ -193,13 +193,13 @@ test('cada salvamento vira versão, e voltar para uma anterior é explícito', a
   await page.getByRole('button', { name: 'Quando acontecer' }).click()
   await painel.getByLabel('Quando acontecer').selectOption('cliente.criado')
   await page.getByRole('button', { name: 'Salvar' }).click()
-  await expect(page.getByRole('button', { name: 'Salvo' })).toBeVisible()
+  await expect(page.getByText('Salvo', { exact: true })).toBeVisible()
 
   // -- Segundo: com uma ação junto -------------------------------------------
   await page.getByRole('button', { name: 'Avisar a equipe' }).click()
   await painel.getByLabel('Mensagem').fill('Conferir o cadastro.')
   await page.getByRole('button', { name: 'Salvar' }).click()
-  await expect(page.getByRole('button', { name: 'Salvo' })).toBeVisible()
+  await expect(page.getByText('Salvo', { exact: true })).toBeVisible()
 
   // -- O histórico -----------------------------------------------------------
   await page.getByRole('button', { name: 'Versões' }).click()

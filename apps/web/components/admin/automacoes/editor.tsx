@@ -14,6 +14,7 @@ import {
   type GrafoDeAutomacao, type TipoDeNo, type StatusDaAutomacao, type LimitesDaAutomacao,
 } from '@estetica-os/types'
 import { Quadro } from './quadro'
+import { ICONE_DO_NO } from './no-do-quadro'
 import { PainelDoNo } from './painel-do-no'
 import { PainelDeLimites } from './painel-de-limites'
 import { PainelDeExecucoes } from './painel-de-execucoes'
@@ -253,37 +254,58 @@ export function EditorDeAutomacao({
             >
               <Plus size={14} /> Passo
             </button>
-            <button
-              type="button" className="btn-ghost"
-              onClick={() => { setGaveta(g => (g === 'execucoes' ? null : 'execucoes')); setSel(null) }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
-              title="Histórico e ensaio" aria-label="Execuções"
-            >
-              <History size={14} /> <span className="auto-rotulo">Execuções</span>
-            </button>
-            <button
-              type="button" className="btn-ghost"
-              onClick={() => { setGaveta(g => (g === 'versoes' ? null : 'versoes')); setSel(null) }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
-              title="Histórico do fluxo — e voltar para uma versão anterior" aria-label="Versões"
-            >
-              <GitBranch size={14} /> <span className="auto-rotulo">Versões</span>
-            </button>
-            <button
-              type="button" className="btn-ghost"
-              onClick={() => { setGaveta(g => (g === 'limites' ? null : 'limites')); setSel(null) }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
-              title="Silêncio noturno e teto por cliente" aria-label="Limites"
-            >
-              <ShieldCheck size={14} /> <span className="auto-rotulo">Limites</span>
-            </button>
-            <button
-              type="button" className="btn-secondary" onClick={aoSalvar}
-              disabled={salvando || !sujo}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              <Save size={14} /> {sujo ? 'Salvar' : 'Salvo'}
-            </button>
+            {/* Consultar e agir eram seis botões do mesmo tamanho em fila:
+                Execuções, Versões e Limites ABREM uma gaveta; Salvar e Ligar
+                MUDAM a automação. Os três primeiros viram um segmento só —
+                juntos, com o fundo do app e divisórias —, que é como o sistema
+                já trata escolha de período no dashboard. A separação é o que
+                faz "Ligar" parecer o que é. */}
+            <div className="auto-segmento">
+              <button
+                type="button"
+                className={gaveta === 'execucoes' ? 'auto-segmento__item is-ativo' : 'auto-segmento__item'}
+                onClick={() => { setGaveta(g => (g === 'execucoes' ? null : 'execucoes')); setSel(null) }}
+                title="Histórico e ensaio" aria-label="Execuções"
+              >
+                <History size={14} /> <span className="auto-rotulo">Execuções</span>
+              </button>
+              <button
+                type="button"
+                className={gaveta === 'versoes' ? 'auto-segmento__item is-ativo' : 'auto-segmento__item'}
+                onClick={() => { setGaveta(g => (g === 'versoes' ? null : 'versoes')); setSel(null) }}
+                title="Histórico do fluxo — e voltar para uma versão anterior" aria-label="Versões"
+              >
+                <GitBranch size={14} /> <span className="auto-rotulo">Versões</span>
+              </button>
+              <button
+                type="button"
+                className={gaveta === 'limites' ? 'auto-segmento__item is-ativo' : 'auto-segmento__item'}
+                onClick={() => { setGaveta(g => (g === 'limites' ? null : 'limites')); setSel(null) }}
+                title="Silêncio noturno e teto por cliente" aria-label="Limites"
+              >
+                <ShieldCheck size={14} /> <span className="auto-rotulo">Limites</span>
+              </button>
+            </div>
+
+            {/* Salvo sem alteração nenhuma não é botão, é estado: como botão
+                desabilitado, ele ocupava o peso de uma ação que não existe. */}
+            {sujo ? (
+              <button
+                type="button" className="btn-secondary" onClick={aoSalvar}
+                disabled={salvando}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Save size={14} /> Salvar
+              </button>
+            ) : (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)',
+                padding: '0 4px', whiteSpace: 'nowrap',
+              }}>
+                <CheckCircle2 size={13} /> <span className="auto-rotulo">Salvo</span>
+              </span>
+            )}
             <button
               type="button" className="btn-primary" onClick={alternarStatus}
               disabled={salvando || (status !== 'ATIVA' && erros.length > 0)}
@@ -326,30 +348,37 @@ export function EditorDeAutomacao({
               </button>
             </div>
 
+            {/* A paleta era uma lista de "+ rótulo" em texto puro — e o card
+                que nasce dela TEM ícone. Nada ligava o que se escolhe ao que
+                aparece no quadro. Agora cada item mostra o mesmo ícone do
+                node, no mesmo quadrado arredondado, e a paleta lê como uma
+                prateleira de peças em vez de um índice. */}
             {PALETA.map(g => (
-              <div key={g.grupo} style={{ marginTop: 14 }}>
-                <p className="overline" style={{ marginBottom: 6 }}>{g.grupo}</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {g.tipos.map(t => (
-                    <button
-                      key={t} type="button"
-                      // No celular a paleta cobre o quadro: deixá-la aberta
-                      // depois de escolher esconderia justamente o node que
-                      // acabou de nascer, e o toque pareceria não ter feito
-                      // nada — o mesmo sintoma que o reenquadramento resolveu.
-                      onClick={() => { adicionar(t); setPaleta(false) }}
-                      className="btn-ghost"
-                      style={{
-                        justifyContent: 'flex-start', textAlign: 'left',
-                        fontSize: 'var(--text-xs-sz)', padding: '6px 8px',
-                        opacity: EXECUTAVEIS.includes(t) ? 1 : 0.55,
-                      }}
-                      title={EXECUTAVEIS.includes(t) ? undefined : 'Ainda não executável'}
-                    >
-                      <Plus size={12} style={{ flexShrink: 0 }} />
-                      {ROTULOS[t]}
-                    </button>
-                  ))}
+              <div key={g.grupo} style={{ marginTop: 16 }}>
+                <p className="overline" style={{ marginBottom: 7 }}>{g.grupo}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {g.tipos.map(t => {
+                    const Icone = ICONE_DO_NO[t] ?? Plus
+                    const executavel = EXECUTAVEIS.includes(t)
+                    return (
+                      <button
+                        key={t} type="button"
+                        // No celular a paleta cobre o quadro: deixá-la aberta
+                        // depois de escolher esconderia justamente o node que
+                        // acabou de nascer, e o toque pareceria não ter feito
+                        // nada — o mesmo sintoma que o reenquadramento resolveu.
+                        onClick={() => { adicionar(t); setPaleta(false) }}
+                        className="item-da-paleta"
+                        style={{ opacity: executavel ? 1 : 0.5 }}
+                        title={executavel ? undefined : 'Ainda não executável'}
+                      >
+                        <span className="item-da-paleta__icone">
+                          <Icone size={13} />
+                        </span>
+                        {ROTULOS[t]}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -425,12 +454,24 @@ function ListaDeProblemas({
   const erros  = problemas.filter(p => p.grau === 'erro')
   const avisos = problemas.filter(p => p.grau === 'aviso')
 
+  // O rodapé era texto solto sobre o fundo do quadro, sem superfície — e é o
+  // lugar onde se lê por que o botão "Ligar" está apagado. Agora é uma faixa
+  // com fundo e borda, no mesmo padrão de alerta que o dashboard usa: a cor
+  // vem do pior grau presente, porque um erro no meio de três avisos não pode
+  // ler como aviso.
+  const grau = erros.length ? 'erro' : avisos.length ? 'aviso' : 'ok'
+  const paleta = {
+    erro:  { fundo: 'var(--danger-soft)',  borda: 'var(--danger-border)' },
+    aviso: { fundo: 'var(--warning-soft)', borda: 'var(--warning-border)' },
+    ok:    { fundo: 'var(--success-bg)',   borda: 'var(--success-border)' },
+  }[grau]
+
   if (!problemas.length && !naoExecutaveis) {
     return (
       <div className="auto-rodape" style={{
-        padding: '9px 14px', borderTop: '1px solid var(--hairline)',
+        padding: '10px 14px', borderTop: `1px solid ${paleta.borda}`, background: paleta.fundo,
         display: 'flex', alignItems: 'center', gap: 7,
-        fontSize: 'var(--text-xs-sz)', color: 'var(--success)',
+        fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)', color: 'var(--success)',
       }}>
         <CheckCircle2 size={14} /> O fluxo está pronto para ligar.
       </div>
@@ -439,22 +480,28 @@ function ListaDeProblemas({
 
   return (
     <div className="auto-rodape" style={{
-      padding: '9px 14px', borderTop: '1px solid var(--hairline)',
+      padding: '10px 14px', borderTop: `1px solid ${paleta.borda}`, background: paleta.fundo,
       maxHeight: 108, overflowY: 'auto',
-      display: 'flex', flexDirection: 'column', gap: 5,
+      display: 'flex', flexDirection: 'column', gap: 6,
     }}>
       {erros.map((p, i) => (
-        <p key={`e${i}`} style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', display: 'flex', gap: 6 }}>
+        <p key={`e${i}`} style={{
+          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+          color: 'var(--danger)', display: 'flex', gap: 6,
+        }}>
           <AlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} /> {p.mensagem}
         </p>
       ))}
       {avisos.map((p, i) => (
-        <p key={`a${i}`} style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', display: 'flex', gap: 6 }}>
+        <p key={`a${i}`} style={{
+          fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-semibold)',
+          color: 'var(--warning)', display: 'flex', gap: 6,
+        }}>
           <AlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} /> {p.mensagem}
         </p>
       ))}
       {naoExecutaveis > 0 && (
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)' }}>
           {naoExecutaveis === 1
             ? 'Um node do fluxo ainda não é executável: a automação vai parar nele.'
             : `${naoExecutaveis} nodes do fluxo ainda não são executáveis: a automação vai parar no primeiro deles.`}

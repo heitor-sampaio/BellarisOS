@@ -1253,3 +1253,90 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
     page-break-after: auto;
   }
 }
+
+/* ============================================================
+   EDITOR DE AUTOMAÇÕES
+   ============================================================ */
+
+/* Item da paleta.
+   Era um `btn-ghost` com um "+" e o rótulo em texto puro — treze linhas que
+   liam como índice, não como prateleira de peças. Agora cada item traz o
+   MESMO ícone que o card vai mostrar no quadro, no mesmo quadrado
+   arredondado: é o que liga o que se escolhe ao que aparece. */
+.item-da-paleta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-field-token);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-xs-sz);
+  font-weight: var(--weight-semibold);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.item-da-paleta:hover {
+  background: var(--brand-soft);
+}
+.item-da-paleta__icone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+/* No hover o ícone vira o que ele é no quadro: a peça de marca. */
+.item-da-paleta:hover .item-da-paleta__icone {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+}
+
+/* Segmento de consulta da barra do editor (Execuções · Versões · Limites).
+   Três botões soltos ao lado de Salvar e Ligar davam a impressão de cinco
+   ações do mesmo peso. Agrupados num só bloco, lêem como o que são: abas de
+   consulta. Mesmo tratamento do seletor de período do dashboard. */
+.auto-segmento {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  padding: 3px;
+  gap: 2px;
+}
+.auto-segmento__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-xs-sz);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+}
+.auto-segmento__item:hover { color: var(--text); }
+/* Gaveta aberta = item preenchido. É a mesma hierarquia por preenchimento do
+   resto do sistema, na escala de um controle. */
+.auto-segmento__item.is-ativo {
+  background: var(--surface);
+  color: var(--brand);
+  box-shadow: var(--shadow-popover);
+}

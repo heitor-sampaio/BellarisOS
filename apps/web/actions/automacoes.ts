@@ -3,9 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { LIMITES_PADRAO } from '@estetica-os/types'
+import { LIMITES_PADRAO, TIPOS_DE_GATILHO, ROTULOS_DE_NO, rotuloDoEvento } from '@estetica-os/types'
 import type {
   GrafoDeAutomacao, StatusDaAutomacao, LimitesDaAutomacao, StatusDaExecucao,
+  NoDoGrafo, TipoDeNo,
 } from '@estetica-os/types'
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
 import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
@@ -34,6 +35,15 @@ export interface AutomacaoNaLista {
   /** Execuções nos últimos 7 dias, e quantas delas falharam. */
   execucoes:   number
   falhas:      number
+  /**
+   * O fluxo em palavras: `['Mensagem recebida', 'Se', 'Mover de etapa']`.
+   *
+   * O card mostrava só o gatilho, e com o nome técnico do evento. Quem abre a
+   * lista quer saber o que a automação FAZ — e "o que ela faz" é o caminho,
+   * não o ponto de partida. Montado no servidor porque o grafo não precisa
+   * atravessar a rede inteiro só para virar três palavras.
+   */
+  passos:      string[]
 }
 
 export interface AutomacaoCompleta {
@@ -55,7 +65,7 @@ export async function listarAutomacoes(): Promise<{
 
   const { data, error } = await admin
     .from('automations')
-    .select('id, nome, descricao, status, gatilhos, updated_at')
+    .select('id, nome, descricao, status, gatilhos, updated_at, grafo')
     .eq('tenant_id', ctx.tenantId!)
     .order('updated_at', { ascending: false })
 
@@ -76,8 +86,46 @@ export async function listarAutomacoes(): Promise<{
       atualizadoEm: a.updated_at as string,
       execucoes:    resumo.get(a.id as string)?.total ?? 0,
       falhas:       resumo.get(a.id as string)?.falhas ?? 0,
+      passos:       caminhoDoFluxo(a.grafo as GrafoDeAutomacao | null),
     })),
   }
+}
+
+/**
+ * O caminho do fluxo, do gatilho para a frente.
+ *
+ * Segue as ligações a partir do gatilho em vez de listar os nodes na ordem em
+ * que foram criados: node solto não entra, e quem montou o fluxo de trás para
+ * a frente vê a mesma frase de quem montou na ordem. Na bifurcação segue o
+ * primeiro ramo — o card resume, não desenha.
+ */
+function caminhoDoFluxo(grafo: GrafoDeAutomacao | null): string[] {
+  const nos = grafo?.nos ?? []
+  if (nos.length === 0) return []
+
+  const inicio = nos.find(n => (TIPOS_DE_GATILHO as readonly string[]).includes(n.tipo))
+  if (!inicio) return []
+
+  const nome = (no: NoDoGrafo): string => {
+    // No gatilho de evento, o evento diz mais que o rótulo do node: entre
+    // "Quando acontecer" e "Mensagem recebida", a segunda é a informação.
+    const evento = (no.config as { evento?: string } | null)?.evento
+    if (evento) return rotuloDoEvento(evento)
+    return no.nome?.trim() || ROTULOS_DE_NO[no.tipo as TipoDeNo] || no.tipo
+  }
+
+  const caminho: string[] = []
+  const vistos = new Set<string>()
+  let atual: NoDoGrafo | undefined = inicio
+
+  // Teto de 4: o card tem uma linha, e "…" já diz que o fluxo continua.
+  while (atual && caminho.length < 4 && !vistos.has(atual.id)) {
+    vistos.add(atual.id)
+    caminho.push(nome(atual))
+    const proxima = (grafo?.ligacoes ?? []).find(l => l.de === atual!.id)
+    atual = proxima ? nos.find(n => n.id === proxima.para) : undefined
+  }
+  return caminho
 }
 
 /** Execuções dos últimos 7 dias por automação. */

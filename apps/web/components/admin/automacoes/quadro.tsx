@@ -227,7 +227,13 @@ function QuadroInterno({
         defaultEdgeOptions={{ type: 'smoothstep' }}
         style={{ background: 'var(--bg-app)' }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="var(--border)" />
+        {/* Os pontos estavam em `--border` (#f0e6e3) sobre o fundo nude
+            (#faf5f3): dois tons quase iguais, e a superfície ficava lisa —
+            nada dizia que ali se arrasta e se dá zoom. */}
+        <Background
+          variant={BackgroundVariant.Dots} gap={18} size={1.4}
+          color="color-mix(in srgb, var(--text-faint) 55%, transparent)"
+        />
         {/* Sem minimapa: um fluxo de clínica tem meia dúzia de nodes e cabe
             na tela. O mapa custaria um canto do quadro para resumir o que já
             está à vista. */}
