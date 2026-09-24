@@ -91,7 +91,9 @@ unidade.
   (`role_report_tabs`).
 - **Indicadores:** fonte única em `lib/metrics/`, agregação no Postgres, fuso do
   negócio resolvido em `lib/datetime.ts`.
-- **Testes:** 345 unitários (Vitest) + 57 E2E (Playwright) rodando contra o banco
+- **Erro de banco nunca é descartado:** `lib/db.ts` (`gravar`/`ler`/`tentar`)
+  cobre as 399 consultas que antes falhavam em silêncio.
+- **Testes:** 359 unitários (Vitest) + 59 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
   (campanhas e LGPD) e a cada 5 minutos (fila das automações).
@@ -1162,6 +1164,65 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
+### 2026-09-24 — Varredura de falha silenciosa: 399 pontos, e um defeito no ar
+
+Frente aberta por uma pergunta do Heitor: "toda vez que você mexe, acha
+problema — não estou seguro de que o sistema é funcional". A resposta foi
+medir, não argumentar.
+
+**O que os defeitos das últimas frentes tinham em comum:** nenhum quebra a
+tela. Todos calam. Parser de anúncio que não casava, realtime que não
+atualizava, `.eq(coluna, null)` que nunca casa, campo que a tela não oferecia,
+`0 || undefined` virando "Indisponível". O sistema não falha alto — ele
+devolve vazio e segue.
+
+**A varredura achou 399 pontos** em que o erro do banco era descartado:
+
+| Classe | O que era | Quantos |
+|---|---|---|
+| Escrita muda | `await admin.from(x).update(…)`, retorno para lugar nenhum | 129 |
+| Escrita anulada | erro vira `data = null` | 5 |
+| Leitura | falha vira lista vazia — o "zero silencioso" | 265 |
+
+**`lib/db.ts` dá três jeitos de terminar uma consulta, e nenhum é o silêncio:**
+`gravar`, `ler` e `tentar`. Escolher obriga a decidir o que fazer quando
+falhar; seguir em frente virou escolha escrita, com o motivo ao lado, em vez do
+que sobra quando ninguém olhou. Hoje são 106 `gravar`, 262 `ler` e 23
+`tentar`.
+
+**O estorno era o pior caso e virou uma transação de verdade.** Eram duas
+escritas soltas — a contra-transação e a marca na original — e os indicadores
+leem os dois lados: a metade que sobrava fazia o estorno bater duas vezes no
+resultado. Agora é a função `estornar_transacao`, que de caminho corrigiu dois
+defeitos: a filial da contra-transação vinha do CLIENTE (dava para lançar a
+despesa em outra unidade) e estornar duas vezes gerava duas contra-transações.
+
+**O `<Toaster />` não existia.** Quatro componentes chamavam `toast()` — o
+editor de automações inclusive — e o sonner só desenha onde o Toaster está
+montado. Todos avisavam no vazio.
+
+**E a varredura achou um defeito que estava no ar há meses.** Com as leituras
+falhando alto, a suíte E2E derrubou cinco testes de uma vez. A causa:
+
+> `getCachedNetworkCompletedAppointments` filtrava `.eq('tenant_id', …)` em
+> `appointments` — **coluna que não existe**. O Postgres respondia 42703 em
+> toda chamada, o erro era descartado, e a coluna "última visita" da barra
+> lateral de clientes do `/admin` ficava em branco para todo mundo.
+
+Ninguém tinha como desconfiar: cliente sem última visita é exatamente o que se
+vê num cliente que nunca veio. É a armadilha nº 1 do CLAUDE.md pela quinta vez
+registrada — e a primeira em que alguma coisa a pegou.
+
+**O que a varredura NÃO resolve, e continua valendo:** o sistema segue sem
+transação em nenhum outro fluxo. A conclusão de atendimento faz sete gravações
+em sequência (status, prontuário, estoque, financeiro, comissão, pacote,
+fidelidade) e o CLAUDE.md §10 a descreve como atômica. Agora cada uma falha
+alto, mas se a quarta falhar as três primeiras ficam. É a próxima frente.
+
+Sete ocorrências ficaram na varredura, conferidas uma a uma: cinco leituras
+dentro de blocos que já tratam a ausência, um `.catch(() => {})` deliberado no
+rollback do login, e uma linha de comentário que casa com o padrão.
+
 ### 2026-09-24 — Automações: o funil antes da etapa, e o relógio em minutos
 
 Dois pedidos do Heitor sobre as escolhas que o painel oferece.
@@ -1470,13 +1531,29 @@ verdade. O que vale:
 - `metrics_core.new_clients` ignora o filtro de filial.
 - `product_batches` nunca é decrementado.
 - Apagar um lead leva junto o histórico dele (`lead_events` em cascata).
+- **Não há transação em nenhum fluxo além do estorno.** A conclusão de
+  atendimento faz sete gravações em sequência — status, prontuário, estoque,
+  financeiro, comissão, pacote, fidelidade — e o CLAUDE.md §10 a descreve como
+  atômica. Hoje cada uma falha alto, mas falhar a quarta deixa as três
+  primeiras gravadas.
+- **O sistema nunca foi usado por uma clínica de verdade.** Nenhuma sessão de
+  celular, um navegador logado, clientes demo, nenhum número pareado no
+  WhatsApp oficial. Tudo que se sabe vem de testes escritos por quem escreveu o
+  código — e teste só prova o que alguém pensou em perguntar.
 
 ### Próxima frente candidata
 
-**Fidelidade.** Hoje só existe saldo read-only no portal do cliente. Falta
-configurar regras (`loyalty_configs`), creditar e debitar pontos, extrato e
-resgate como desconto no pagamento. O módulo foi removido do catálogo de
-permissões em `4511b5c` por não ter gate nenhum — volta quando existir.
+**A conclusão de atendimento em uma transação só.** É o que sobrou da varredura
+de falha silenciosa: as sete gravações precisam valer juntas. O desenho que
+funcionou no estorno serve aqui — o TypeScript calcula (pontos, comissão,
+insumos) e uma função do Postgres grava tudo dentro de uma transação, sem
+duplicar regra de negócio no banco.
+
+Depois dela, **fidelidade**: hoje só existe saldo read-only no portal do
+cliente. Falta configurar regras (`loyalty_configs`), creditar e debitar
+pontos, extrato e resgate como desconto no pagamento. O módulo foi removido do
+catálogo de permissões em `4511b5c` por não ter gate nenhum — volta quando
+existir.
 
 ---
 

@@ -728,8 +728,19 @@ Princípios inegociáveis:
 - **Receita e despesa simétricas**: se a receita exige `is_paid`, a despesa
   também. Senão o "lucro" mistura caixa de um lado com competência do outro.
 - **Percentual de percentual não existe**: variação de margem é em **p.p.**
-- Erro de query nunca é descartado (`const { data } = await …`). Sem checar
-  `error`, drift de schema vira "R$ 0,00" silencioso em vez de falha visível.
+- **Erro de query nunca é descartado — e isso vale no sistema inteiro, não só
+  aqui.** `lib/db.ts` dá os três jeitos de terminar uma consulta, e nenhum é o
+  silêncio: `gravar` (escreve, ou para o fluxo), `ler` (lê, ou para o fluxo) e
+  `tentar` (registra e segue — só para o que é acessório, com o motivo escrito
+  ao lado). `await admin.from(x).update(…)` solto não entra mais: ali o erro
+  não chega nem a existir para o código.
+  - Quem chama uma action que grava **tem de olhar o `{ error }`**. Fazer a
+    gravação falhar alto e a tela engolir o resultado troca um silêncio por
+    outro, mais caro de achar.
+  - Sem checar `error`, drift de schema vira "R$ 0,00" silencioso em vez de
+    falha visível. Foi assim que a lista de clientes do `/admin` passou meses
+    com "última visita" em branco: `appointments` não tem `tenant_id`, o
+    Postgres respondia 42703 e ninguém via.
 
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
 (idempotente; os valores esperados estão no cabeçalho do arquivo).
@@ -756,7 +767,9 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Somar/contar indicador na tela em vez de usar lib/metrics (trunca em 1000 linhas)
 ❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
 ❌ Comparar período parcial com período anterior inteiro
-❌ Descartar o error de uma query (vira R$ 0,00 silencioso)
+❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar
+❌ Chamar action que grava e ignorar o { error } que ela devolve
+❌ Escrever no banco fora de transação quando duas gravações precisam valer juntas
 ❌ Introduzir cores, fontes ou sombras fora dos tokens da skill /lumiere-design
 ❌ Encerrar uma entrega sem atualizar o DEVLOG e a memória (§16)
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
