@@ -706,6 +706,19 @@ Princípios inegociáveis:
   delta nascer negativo.
 - **Sem base de comparação, sem delta.** `delta()` retorna `null`; a UI mostra
   "sem dados anteriores". Nunca "▲ 100%" a partir do zero.
+- **Nenhuma tela soma dinheiro.** Receita, despesa, ticket e as séries dos
+  gráficos vêm de `getCore` / `getSeries` (`lib/metrics/`). Repetir a
+  definição num `filter().reduce()` cria uma segunda cópia da regra, e duas
+  cópias divergem — é questão de quando. Foi assim que a tela de relatórios
+  mostrou **R$ 5.200 no cartão e R$ 5.450 na legenda do gráfico logo abaixo**:
+  o KPI excluía o estorno e o gráfico, não.
+  - O eixo do caixa é `paid_at`, nunca `created_at`. Filtrar a lista por
+    `created_at` e somar dali põe a parcela criada em agosto e paga em
+    setembro no mês errado — e o checkout de plano cria exatamente isso.
+  - **O rótulo acompanha a conta.** "Ticket médio" é `serviceRevenue ÷
+    atendimentos concluídos` em toda tela; se a conta for outra, o nome tem
+    de ser outro. `e2e/relatorios-coerencia.spec.ts` compara tela, gráfico e
+    banco para que a divergência não volte em silêncio.
 - **Definições canônicas** (uma só por indicador):
   - `revenueCash` — recebido (INCOME pago, eixo em `paid_at`)
   - `revenuePending` — a receber

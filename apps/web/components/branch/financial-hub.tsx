@@ -25,7 +25,29 @@ interface CommissionEntry {
   createdAt:        string
 }
 
+/** O que `metrics_core` devolve e esta tela consome. */
+interface TotaisDoPeriodo {
+  revenueCash:           number
+  revenuePending:        number
+  expensesCash:          number
+  serviceRevenue:        number
+  appointmentsCompleted: number
+}
+
 interface Props {
+  /**
+   * Receita, despesa e ticket do período — agregados no Postgres.
+   *
+   * Vinham de uma soma sobre `transactions` aqui dentro, e isso dava DOIS
+   * problemas que só apareceriam com a clínica em uso: a lista chega filtrada
+   * por `created_at` (uma parcela criada em agosto e paga em setembro cairia
+   * no mês errado) e o ticket médio era `receita ÷ nº de lançamentos`, que é
+   * outra definição da que o dashboard usa — `serviceRevenue ÷ atendimentos
+   * concluídos`, do CLAUDE.md §13.1. Dois números com o mesmo rótulo em telas
+   * vizinhas é o defeito que mais custa confiança.
+   */
+  totais:           TotaisDoPeriodo
+  totaisAnteriores: TotaisDoPeriodo
   branchId:         string
   branchName:       string
   slug:             string
@@ -512,6 +534,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
 // --- Main Hub -----------------------------------------------------
 
 export function FinancialHub({
+  totais, totaisAnteriores,
   branchId, branchName, slug,
   period, periodLabel, periodStart,
   customFrom, customTo,
@@ -539,29 +562,35 @@ export function FinancialHub({
   const notReversal = (t: { notes?: string | null; category?: string | null }) =>
     t.notes !== 'Estornada' && t.category !== 'Estorno'
 
-  const { income, expense, pendingIncome, pendingExpense, avgTicket } = useMemo(() => {
-    const paid      = transactions.filter(t => t.is_paid && notReversal(t))
-    const unpaid    = transactions.filter(t => !t.is_paid && notReversal(t))
-    const income    = paid.filter(t => t.type === 'INCOME').reduce((s, t)  => s + Number(t.amount), 0)
-    const expense   = paid.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0)
-    const pendingIncome  = unpaid.filter(t => t.type === 'INCOME').reduce((s, t)  => s + Number(t.amount), 0)
-    const pendingExpense = unpaid.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0)
-    const incomeTxs = paid.filter(t => t.type === 'INCOME')
-    return { income, expense, pendingIncome, pendingExpense, avgTicket: incomeTxs.length > 0 ? income / incomeTxs.length : 0 }
-  }, [transactions])
+  // Nada disto é somado aqui: vem de `metrics_core`, a mesma conta que o
+  // dashboard e os relatórios usam. O que a tela fazia à mão tinha a regra de
+  // estorno certa, mas media sobre a LISTA — filtrada por `created_at` — e
+  // chamava de "ticket médio" uma divisão diferente da canônica.
+  const income         = totais.revenueCash
+  const expense        = totais.expensesCash
+  const pendingIncome  = totais.revenuePending
+  const prevIncome     = totaisAnteriores.revenueCash
+  const prevExpense    = totaisAnteriores.expensesCash
+  const prevPendingIncome = totaisAnteriores.revenuePending
 
-  const { prevIncome, prevExpense, prevPendingIncome, prevPendingExpense } = useMemo(() => {
-    // Mesmo tratamento de estorno do período atual — sem isso os dois lados
-    // do delta mediam coisas diferentes.
-    const paid   = prevTransactions.filter(t => t.is_paid && notReversal(t))
-    const unpaid = prevTransactions.filter(t => !t.is_paid && notReversal(t))
-    return {
-      prevIncome:         paid.filter(t => t.type === 'INCOME').reduce((s, t)  => s + Number(t.amount), 0),
-      prevExpense:        paid.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0),
-      prevPendingIncome:  unpaid.filter(t => t.type === 'INCOME').reduce((s, t)  => s + Number(t.amount), 0),
-      prevPendingExpense: unpaid.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0),
-    }
-  }, [prevTransactions])
+  // Ticket médio, na definição do §13.1: preço dos atendimentos concluídos
+  // dividido pelos atendimentos concluídos — numerador e denominador do mesmo
+  // conjunto. Antes era receita ÷ nº de lançamentos, que sobe quando alguém
+  // paga em duas parcelas e desce quando paga numa.
+  const avgTicket = totais.appointmentsCompleted > 0
+    ? totais.serviceRevenue / totais.appointmentsCompleted
+    : 0
+
+  // A despesa pendente não está no núcleo e continua saindo da lista — é o
+  // total a pagar dos lançamentos do período, não uma medida de caixa.
+  const { pendingExpense, prevPendingExpense } = useMemo(() => ({
+    pendingExpense: transactions
+      .filter(t => !t.is_paid && notReversal(t) && t.type === 'EXPENSE')
+      .reduce((s, t) => s + Number(t.amount), 0),
+    prevPendingExpense: prevTransactions
+      .filter(t => !t.is_paid && notReversal(t) && t.type === 'EXPENSE')
+      .reduce((s, t) => s + Number(t.amount), 0),
+  }), [transactions, prevTransactions])
 
   const saldo     = income - expense
   const prevSaldo = prevIncome - prevExpense
@@ -696,7 +725,12 @@ export function FinancialHub({
             "Ticket médio" por atendimento é o do dashboard, e o mesmo nome
             para as duas contas fazia parecer que uma delas estava errada. */}
         <KpiCardFull
-          label="Receita por lançamento"
+          // O rótulo mudou junto com a conta: era "Receita por lançamento"
+          // (receita ÷ nº de lançamentos) e passou a ser o ticket médio do
+          // §13.1, o mesmo que a rede mostra. Deixar o nome antigo sobre a
+          // conta nova seria trocar a divergência de número por uma de
+          // vocabulário — dois nomes para a mesma coisa em telas vizinhas.
+          label="Ticket médio"
           curr={avgTicket} prev={0}
           icon={<BarChart2 size={13} style={{ color: 'var(--info)' }} />}
           iconBg="var(--info-soft)"

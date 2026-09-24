@@ -4,7 +4,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 
 import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCommissionsDetail } from '@/lib/metrics'
+import { resolvePeriod, getCommissionsDetail, getCore } from '@/lib/metrics'
 import { ler } from '@/lib/db'
 
 export default async function FinancialPage({
@@ -32,6 +32,17 @@ export default async function FinancialPage({
     .from('branches').select('id, name')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single(), 'buscar a unidade')
   if (!branch) notFound()
+
+  // Os totais do período vêm do MESMO lugar que alimenta o dashboard e os
+  // relatórios: agregados no Postgres, eixo em `paid_at`, estorno fora dos dois
+  // lados. Somar a lista abaixo daria outro número assim que existisse uma
+  // parcela criada num mês e paga no outro — e o checkout de plano cria
+  // exatamente isso.
+  const argsDoNucleo = { tenantId: ctx.tenantId!, branchIds: [branch.id as string] }
+  const [totais, totaisAnteriores] = await Promise.all([
+    getCore({ ...argsDoNucleo, from: start,     to: end }),
+    getCore({ ...argsDoNucleo, from: prevStart, to: prevEnd }),
+  ])
 
   const transactions = await ler(supabase
     .from('financial_transactions')
@@ -92,6 +103,8 @@ export default async function FinancialPage({
       <RealtimeRefresher tables={['financial_transactions', 'commissions']} />
 
       <FinancialHub
+        totais={totais}
+        totaisAnteriores={totaisAnteriores}
         branchId={branch.id}
         branchName={branch.name}
         slug={slug}

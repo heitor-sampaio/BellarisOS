@@ -89,6 +89,13 @@ export interface ReportsBiProps {
   retention: { clientsServed: number; returningClients: number; firstTimeClients: number }
   newClientsSeries: { bucket: string; count: number }[]
   evolutionData: ChartPoint[]
+  /**
+   * O dinheiro do período, agregado no Postgres — a mesma conta que alimenta
+   * o gráfico. Some daqui e a tela volta a ter duas definições de faturamento:
+   * era isso que punha R$ 5.200 no cartão e R$ 5.450 na legenda logo abaixo.
+   */
+  core:     { revenueCash: number; expensesCash: number }
+  corePrev: { revenueCash: number; expensesCash: number }
   /** Só vem preenchido quando a aba Comercial está aberta. */
   comercial?: DadosComerciais
 }
@@ -226,27 +233,19 @@ const PAY_LABELS: Record<string, string> = {
   DEBIT_CARD: 'Débito', CREDIT_CARD: 'Crédito', INTERNAL_CREDIT: 'Crédito Interno',
 }
 
-/**
- * Somas de caixa, com a mesma regra usada nas funções de métrica do banco:
- * só transações pagas, e o par estorno/estornada fora dos dois lados — antes
- * a receita original continuava contando E a contra-transação entrava como
- * despesa, então um estorno impactava o resultado duas vezes.
+/*
+ * `sumRevenue` e `sumExpenses` viviam aqui e foram removidas em 2026-09-24.
+ *
+ * Elas repetiam, em JavaScript, a definição que `metrics_core` já faz no
+ * banco — e uma definição repetida diverge: o gráfico desta mesma tela somava
+ * o mesmo array SEM excluir o estorno, e a legenda dizia R$ 5.450 embaixo de
+ * um cartão escrito R$ 5.200. Nenhum dos dois números estava errado por
+ * descuido de conta; erradas eram as duas cópias da regra.
+ *
+ * Receita e despesa do período chegam prontas em `core` / `corePrev`. Se
+ * precisar de um recorte que o núcleo não tem, o lugar de acrescentá-lo é
+ * `lib/metrics/` — nunca uma soma nova aqui.
  */
-type MoneyRow = { type: string; amount: number | string; is_paid?: boolean; category?: string | null; notes?: string | null }
-
-const isReversal = (t: MoneyRow) => t.notes === 'Estornada' || t.category === 'Estorno'
-
-export function sumRevenue(rows: MoneyRow[]): number {
-  return rows
-    .filter(t => t.type === 'INCOME' && t.is_paid && !isReversal(t))
-    .reduce((s, t) => s + Number(t.amount), 0)
-}
-
-export function sumExpenses(rows: MoneyRow[]): number {
-  return rows
-    .filter(t => t.type === 'EXPENSE' && t.is_paid && !isReversal(t))
-    .reduce((s, t) => s + Number(t.amount), 0)
-}
 
 const SRC_LABELS: Record<string, string> = {
   INTERNAL: 'Interno', ONLINE: 'Online', CLIENT_APP: 'App do Cliente', COMMERCIAL: 'Comercial',
@@ -264,13 +263,13 @@ function TabOverview(p: ReportsBiProps) {
   const { txsCurr, txsPrev, apptsCurr, apptsPrevCount, clientsCurr, clientsPrevCount,
     allAppts, branches, evolutionData, granularity } = p
 
-  const revenue      = sumRevenue(txsCurr)
-  const prevRevenue  = sumRevenue(txsPrev)
+  const revenue      = p.core.revenueCash
+  const prevRevenue  = p.corePrev.revenueCash
   // Despesa simétrica à receita: só o que foi pago. Antes a receita exigia
   // is_paid e a despesa não, então uma conta com vencimento futuro derrubava
   // o lucro do mês corrente — e esta tela discordava de /admin/financeiro.
-  const expenses     = sumExpenses(txsCurr)
-  const prevExpenses = sumExpenses(txsPrev)
+  const expenses     = p.core.expensesCash
+  const prevExpenses = p.corePrev.expensesCash
   const profit       = revenue - expenses
   const prevProfit   = prevRevenue - prevExpenses
   // Ticket médio: receita dos ATENDIMENTOS ÷ atendimentos. Antes era o caixa
@@ -365,15 +364,15 @@ function TabOverview(p: ReportsBiProps) {
 function TabFinanceiro(p: ReportsBiProps) {
   const { txsCurr, txsPrev, stockMoves, branches, installments } = p
 
-  const revenue     = sumRevenue(txsCurr)
-  const prevRevenue = sumRevenue(txsPrev)
+  const revenue     = p.core.revenueCash
+  const prevRevenue = p.corePrev.revenueCash
   // Consumo de insumos é indicador gerencial, exibido à parte. NÃO entra no
   // resultado: a compra do insumo já foi lançada como despesa (categoria
   // "Estoque"), e somar o consumo de novo contava o mesmo custo duas vezes.
   const stockCOGS   = stockMoves.reduce(
     (s, m) => s + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? m.products?.cost_price ?? 0), 0)
-  const opEx        = sumExpenses(txsCurr)
-  const prevOpEx    = sumExpenses(txsPrev)
+  const opEx        = p.core.expensesCash
+  const prevOpEx    = p.corePrev.expensesCash
   const profit      = revenue - opEx
   const prevProfit  = prevRevenue - prevOpEx
   const margin      = revenue > 0 ? (profit / revenue) * 100 : 0

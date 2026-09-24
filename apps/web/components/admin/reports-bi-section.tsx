@@ -3,8 +3,11 @@ import { getTenantContext } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
-import { addDaysTZ, startOfDayTZ } from '@/lib/datetime'
-import { resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, percent } from '@/lib/metrics'
+import { addDaysTZ, startOfDayTZ, dayKeyTZ, partsInTZ } from '@/lib/datetime'
+import {
+  resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, percent,
+  getCore, getSeries,
+} from '@/lib/metrics'
 import { seedDefaultFunnel } from '@/actions/crm-funnels'
 import type { DadosComerciais } from '@/components/admin/reports-bi-view'
 
@@ -102,6 +105,9 @@ export async function ReportsBiSection({
     { data: procedureCostsRaw },
     retention,
     newClientsSeries,
+    core,
+    corePrev,
+    seriesData,
   ] = await Promise.all([
 
     // 0 — Transações do período (ricas: todas as colunas usadas nos tabs).
@@ -244,6 +250,25 @@ export async function ReportsBiSection({
           granularity: period === 'all' ? 'month' : 'day',
         })
       : Promise.resolve([]),
+
+    // 16, 17 e 18 — O DINHEIRO, agregado no Postgres.
+    //
+    // Estes três existem porque a tela tinha DOIS faturamentos: o KPI somava
+    // `txsCurr` em JS excluindo o estorno, e o gráfico somava o mesmo array
+    // sem excluir — R$ 5.200 no cartão e R$ 5.450 na legenda, na mesma tela.
+    // Somar à mão o resultado de um select repete a definição do indicador em
+    // cada lugar que precisa dele, e duas cópias de uma definição divergem;
+    // é só questão de quando.
+    //
+    // `metrics_core` e `metrics_series` são a mesma conta, feita uma vez, no
+    // banco: só pago, estorno fora dos dois lados, eixo em `paid_at` e fuso do
+    // negócio. É o que o dashboard já fazia desde 2026-09-09.
+    getCore({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate }),
+    getCore({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd }),
+    getSeries({
+      tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
+      granularity: period === 'today' ? 'hour' : 'day',
+    }),
   ])
 
   // -- Cast + filter -------------------------------------------------
@@ -271,37 +296,49 @@ export async function ReportsBiSection({
   // -- Gráfico de evolução (mesmo padrão do dashboard) ---------------
   const granularity = period === 'today' ? 'hour' : 'day'
 
-  function buildSlice(sliceStart: number, sliceEnd: number, idx: number): ChartPoint {
-    const inSlice = (ts: number) => ts >= sliceStart && ts <= sliceEnd
-    const dayRevenue = txsCurr
-      .filter(t => inSlice(new Date(t.created_at).getTime()) && t.type === 'INCOME' && t.is_paid)
-      .reduce((s: number, t: any) => s + Number(t.amount), 0)
-    const opEx = txsCurr
-      .filter(t => inSlice(new Date(t.created_at).getTime()) && t.type === 'EXPENSE')
-      .reduce((s: number, t: any) => s + Number(t.amount), 0)
-    const supplyCost = stockMoves
-      .filter((m: any) => inSlice(new Date(m.created_at).getTime()))
-      .reduce((s: number, m: any) => s + Math.abs(Number(m.quantity)) * Number(m.products?.cost_price ?? 0), 0)
-    const dayCost = opEx + supplyCost
-    return { day: idx, revenue: dayRevenue, cost: dayCost, profit: dayRevenue - dayCost }
+  // Os buckets vêm prontos do Postgres, com a MESMA regra do KPI: só pago,
+  // estorno fora dos dois lados, eixo em `paid_at`, fuso do negócio. Remontar
+  // as fatias aqui era o que fazia a legenda do gráfico dizer R$ 5.450 embaixo
+  // de um cartão escrito R$ 5.200 — a soma à mão não excluía o estorno.
+  //
+  // O custo do gráfico soma o consumo de insumos à despesa do período, que é a
+  // leitura de "custo" desta tela e não existe no núcleo. O que vinha do banco
+  // não se recalcula; só se acrescenta.
+  const seriesPorBucket = new Map(
+    seriesData.map(ponto => [
+      granularity === 'hour'
+        ? String(partsInTZ(new Date(ponto.bucket)).hour)
+        : dayKeyTZ(ponto.bucket),
+      ponto,
+    ]),
+  )
+
+  const insumosNaFatia = (inicio: number, fim: number) => stockMoves
+    .filter((m: any) => {
+      const ts = new Date(m.created_at).getTime()
+      return ts >= inicio && ts <= fim
+    })
+    .reduce((s: number, m: any) => s + Math.abs(Number(m.quantity)) * Number(m.products?.cost_price ?? 0), 0)
+
+  function pontoDoGrafico(chave: string, idx: number, inicio: number, fim: number): ChartPoint {
+    const ponto   = seriesPorBucket.get(chave)
+    const revenue = ponto?.revenue ?? 0
+    const cost    = (ponto?.expenses ?? 0) + insumosNaFatia(inicio, fim)
+    return { day: idx, revenue, cost, profit: revenue - cost }
   }
 
   const evolutionData: ChartPoint[] =
     granularity === 'hour'
       ? Array.from({ length: 24 }, (_, i) => {
-          // Fatias horárias a partir do início do dia no fuso do negócio.
-          const s = startDate.getTime() + i * 3_600_000
-          return buildSlice(s, s + 3_600_000 - 1, i)
+          const inicio = startDate.getTime() + i * 3_600_000
+          return pontoDoGrafico(String(i), i, inicio, inicio + 3_600_000 - 1)
         })
       : (() => {
           const MS_DAY = 86_400_000
           const days = Math.max(1, Math.floor((endDate.getTime() - startDate.getTime()) / MS_DAY) + 1)
           return Array.from({ length: days }, (_, i) => {
-            // addDaysTZ respeita o calendário local; setHours() usava o fuso do
-            // processo e deslocava as barras em 3h, fazendo a soma do gráfico
-            // divergir do KPI do período.
             const base = startOfDayTZ(addDaysTZ(startDate, i))
-            return buildSlice(base.getTime(), base.getTime() + MS_DAY - 1, i + 1)
+            return pontoDoGrafico(dayKeyTZ(base), i + 1, base.getTime(), base.getTime() + MS_DAY - 1)
           })
         })()
 
@@ -350,6 +387,8 @@ export async function ReportsBiSection({
         retention={retention}
         newClientsSeries={newClientsSeries}
         evolutionData={evolutionData}
+        core={core}
+        corePrev={corePrev}
         comercial={comercial}
       />
     </>

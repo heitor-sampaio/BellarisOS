@@ -93,7 +93,7 @@ unidade.
   negócio resolvido em `lib/datetime.ts`.
 - **Erro de banco nunca é descartado:** `lib/db.ts` (`gravar`/`ler`/`tentar`)
   cobre as 399 consultas que antes falhavam em silêncio.
-- **Testes:** 359 unitários (Vitest) + 59 E2E (Playwright) rodando contra o banco
+- **Testes:** 359 unitários (Vitest) + 62 E2E (Playwright) rodando contra o banco
   de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
   (campanhas e LGPD) e a cada 5 minutos (fila das automações).
@@ -1163,6 +1163,51 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 **A legenda não repete o que já virou nome.** Sem a integração Meta Ads o nome
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
+
+### 2026-09-24 — Dois faturamentos na mesma tela
+
+Achado durante o alinhamento de design e corrigido a pedido do Heitor: "isso
+não pode em hipótese alguma ser divergente — o dado tem que ser real e
+confiável".
+
+Em `/admin/reports`, o cartão dizia **R$ 5.200,00** e a legenda do gráfico
+logo abaixo, **R$ 5.450,00**. Conferido no banco: o cartão estava certo. A
+diferença de R$ 250 era uma receita **estornada** que o gráfico contava.
+
+**Não era erro de conta. Eram duas cópias da definição do indicador.** O KPI
+somava `txsCurr` em JavaScript excluindo o estorno; o gráfico somava o mesmo
+array sem excluir. Duas cópias de uma regra divergem — é questão de quando.
+
+O mais irônico: `metrics_series` já existia e faz tudo certo (só pago, estorno
+fora dos dois lados, eixo em `paid_at`, agregado no Postgres, no fuso do
+negócio). O dashboard já a usava desde 2026-09-09, com um comentário no código
+dizendo exatamente por quê. **A tela de relatórios ficou de fora daquela
+correção.**
+
+Três defeitos no mesmo bloco de dez linhas, além do estorno: a despesa do
+gráfico não exigia `is_paid` (o §13.1 pede simetria) e o eixo era
+`created_at`, não `paid_at`.
+
+**A correção foi tirar a conta da tela.** `getCore` e `getSeries` alimentam
+KPI e gráfico; `sumRevenue`/`sumExpenses` foram **removidas** — deixar a função
+lá era deixar o convite para a próxima divergência.
+
+**Duas divergências que ainda não apareciam**, encontradas ao varrer o resto:
+
+- o financeiro da **unidade** somava sobre a lista, filtrada por `created_at`.
+  Enquanto tudo é criado e pago no mesmo dia, bate; a primeira parcela criada
+  num mês e paga no outro cairia em dois lugares diferentes — e o checkout de
+  plano cria exatamente isso;
+- o card "Receita por lançamento" da unidade era `receita ÷ nº de lançamentos`,
+  enquanto o "Ticket médio" da rede é `serviceRevenue ÷ atendimentos
+  concluídos`. Duas contas, dois rótulos, nenhuma forma de comparar as telas.
+  Agora é a conta canônica nas duas, e o rótulo mudou junto.
+
+`e2e/relatorios-coerencia.spec.ts` fixa isso em três testes: cartão × legenda ×
+banco, estorno que não pode inflar a série, e o financeiro da unidade contra o
+núcleo. **⚠️ Dois detalhes que custaram tempo no teste:** o rótulo está em
+maiúsculas por CSS (no DOM é "Faturamento") e o número do KPI é animado — ler
+de primeira pega o meio da contagem.
 
 ### 2026-09-24 — A paleta fecha, e 2.882 desvios de design somem
 
