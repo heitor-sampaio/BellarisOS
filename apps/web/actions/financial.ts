@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
-import { gravar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -220,11 +220,11 @@ export async function markTransactionPaid(transactionId: string, slug: string) {
 
     // Confere a filial antes de escrever: sem isso o id sozinho bastava para
     // marcar como paga a transação de outra rede.
-    const { data: tx } = await admin
+    const tx = await ler(admin
       .from('financial_transactions')
       .select('branch_id, branches!inner(tenant_id)')
       .eq('id', transactionId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o lançamento')
     const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
     if (!tx || txTenant !== ctx.tenantId) return { error: 'Lançamento não encontrado.' }
 

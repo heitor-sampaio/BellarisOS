@@ -7,7 +7,7 @@ import { ptBR } from 'date-fns/locale'
 import { getTenantContext, assertClient, assertPermission, isOwnScope } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, tentar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
@@ -357,11 +357,11 @@ async function completeAppointment(
   if (!appt) throw new Error('Agendamento não encontrado.')
 
   // Garante que finishSession() foi chamado antes (cria prontuário + debita estoque)
-  const { data: existingEntry } = await admin
+  const existingEntry = await ler(admin
     .from('medical_record_entries')
     .select('id')
     .eq('appointment_id', appointmentId)
-    .maybeSingle()
+    .maybeSingle(), 'conferir a entrada do prontuário')
 
   if (!existingEntry) {
     throw new Error('O atendimento deve ser finalizado pelo profissional antes de ser concluído. Use a opção "Finalizar Sessão".')
@@ -390,19 +390,19 @@ async function completeAppointment(
   //    foram gravados por finishSession (obrigatório antes daqui) — repetir
   //    aqui duplicaria. Sessão de plano ou de pacote também não gera receita:
   //    já foi cobrada na venda.
-  const { data: pkgSession } = await admin
+  const pkgSession = await ler(admin
     .from('package_sessions')
     .select('id')
     .eq('appointment_id', appointmentId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a sessão do pacote')
 
   const alreadyCharged = Boolean(appt.treatment_plan_id) || Boolean(pkgSession)
 
-  const { data: existingTx } = await admin
+  const existingTx = await ler(admin
     .from('financial_transactions')
     .select('id')
     .eq('appointment_id', appointmentId)
-    .maybeSingle()
+    .maybeSingle(), 'conferir se o atendimento já foi lançado')
 
   if (!existingTx && !alreadyCharged) {
     const { error: txErr } = await admin.from('financial_transactions').insert({
@@ -751,11 +751,11 @@ async function finishSessionInterno(
       .maybeSingle()
 
     if (!medRecord) {
-      const { data: newRecord } = await admin
+      const newRecord = await ler(admin
         .from('medical_records')
         .insert({ client_id: appt.client_id })
         .select('id')
-        .single()
+        .single(), 'abrir o prontuário do cliente')
       medRecord = newRecord
     }
 
@@ -783,17 +783,17 @@ async function finishSessionInterno(
       ? ruleQuery.or(`procedure_id.eq.${appt.procedure_id},procedure_id.is.null`)
       : ruleQuery.is('procedure_id', null)
 
-    const { data: rule } = await ruleQuery
+    const rule = await ler(ruleQuery
       .order('procedure_id', { nullsFirst: false })
       .limit(1)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a regra de comissão')
 
     if (rule) {
-      const { data: existingComm } = await admin
+      const existingComm = await ler(admin
         .from('commissions')
         .select('id')
         .eq('appointment_id', appointmentId)
-        .maybeSingle()
+        .maybeSingle(), 'conferir a comissão já lançada')
 
       if (!existingComm) {
         const ruleValue = parseFloat(String(rule.value))
@@ -918,11 +918,11 @@ async function finishSessionInterno(
     }
 
     // 6. Atualiza sessão de pacote (se este agendamento pertencer a um)
-    const { data: pkgSession } = await admin
+    const pkgSession = await ler(admin
       .from('package_sessions')
       .select('id, client_package_id')
       .eq('appointment_id', appointmentId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a sessão do pacote')
 
     if (pkgSession) {
       await gravar(admin
@@ -996,11 +996,11 @@ export async function confirmPayment(
 
     // A conclusão do atendimento já lançou a receita como conta a receber.
     // Confirmar pagamento é dar baixa nela — não criar uma segunda transação.
-    const { data: existing } = await admin
+    const existing = await ler(admin
       .from('financial_transactions')
       .select('id, is_paid')
       .eq('appointment_id', appointmentId)
-      .maybeSingle()
+      .maybeSingle(), 'conferir se o atendimento já foi lançado')
 
     if (existing?.is_paid) return { error: 'Pagamento já registrado para este atendimento.' }
 
@@ -1099,11 +1099,11 @@ async function saveDraftNotesInterno(
       .maybeSingle()
 
     if (!medRecord) {
-      const { data: newRecord } = await admin
+      const newRecord = await ler(admin
         .from('medical_records')
         .insert({ client_id: appt.client_id })
         .select('id')
-        .single()
+        .single(), 'abrir o prontuário do cliente')
       medRecord = newRecord
     }
 
@@ -1311,11 +1311,11 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
-  const { data: plan } = await admin
+  const plan = await ler(admin
     .from('treatment_plans')
     .select('branch_id')
     .eq('id', planId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o plano de tratamento')
   if (!plan) return { sessions: [] }
 
   const { data: branch } = await admin
@@ -1390,11 +1390,11 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
   const branch = (pkg as unknown as { branches: { tenant_id: string } | null }).branches
   if (branch?.tenant_id !== ctx.tenantId) return { sessions: [] }
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('package_sessions')
     .select('id, session_number, status, appointment_id, appointments(status, scheduled_at, professional:users!professional_id(name))')
     .eq('client_package_id', clientPackageId)
-    .order('session_number')
+    .order('session_number'), 'buscar as sessões do pacote')
 
   return {
     sessions: (data ?? []).map((s: any) => ({
@@ -1443,11 +1443,11 @@ async function schedulePackageSessionInterno(params: {
   const admin = createAdminClient()
 
   // Valida sessão pertence ao tenant
-  const { data: sess } = await admin
+  const sess = await ler(admin
     .from('package_sessions')
     .select('id, appointment_id, client_package_id, client_packages!inner(branch_id, branches!inner(tenant_id))')
     .eq('id', params.packageSessionId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar a sessão do plano')
   if (!sess) return { error: 'Sessão não encontrada.' }
   type SessWithJoins = { appointment_id: string | null; client_packages: { branch_id: string; branches: { tenant_id: string } | null } | null }
   const typedSess = sess as unknown as SessWithJoins
@@ -1518,11 +1518,11 @@ async function schedulePlanSessionInterno(params: {
   assertPermission(ctx, 'agenda', 'MANAGE')
   const admin = createAdminClient()
 
-  const { data: plan } = await admin
+  const plan = await ler(admin
     .from('treatment_plans')
     .select('id, branch_id, branches!inner(tenant_id)')
     .eq('id', params.planId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o plano de tratamento')
   if (!plan) return { error: 'Plano não encontrado.' }
   if ((plan as unknown as { branches: { tenant_id: string } | null }).branches?.tenant_id !== ctx.tenantId) return { error: 'Sem permissão.' }
 

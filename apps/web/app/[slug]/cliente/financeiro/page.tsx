@@ -1,5 +1,6 @@
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 
 type TxRow = {
   id:             string
@@ -27,7 +28,7 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
 
   const admin = createAdminClient()
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('financial_transactions')
     .select(`
       id, description, amount, payment_method, is_paid, paid_at, created_at,
@@ -38,7 +39,7 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
     `)
     .eq('appointments.client_id', ctx.clientId!)
     .eq('type', 'INCOME')
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }), 'carregar os lançamentos do cliente')
 
   const rows: TxRow[] = (data ?? []).map((r: any) => ({
     id:             r.id as string,

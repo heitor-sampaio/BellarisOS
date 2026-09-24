@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -23,11 +23,11 @@ async function nextSku(tenantId: string, category: string | null): Promise<strin
   const admin  = createAdminClient()
   const prefix = skuPrefix(category)
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('products')
     .select('sku')
     .eq('tenant_id', tenantId)
-    .like('sku', `${prefix}-%`)
+    .like('sku', `${prefix}-%`), 'carregar os produtos')
 
   const maxNum = (data ?? []).reduce((max, p) => {
     const seq = parseInt((p.sku ?? '').split('-').pop() ?? '0', 10)
@@ -46,11 +46,11 @@ function num(fd: FormData, key: string): number | null {
 
 // Busca units_per_package do produto para cálculo de rendimento
 async function getUpp(admin: ReturnType<typeof createAdminClient>, productId: string): Promise<number | null> {
-  const { data } = await admin
+  const data = await ler(admin
     .from('products')
     .select('units_per_package, consumption_unit')
     .eq('id', productId)
-    .maybeSingle()
+    .maybeSingle(), 'carregar os produtos')
   if (!data?.units_per_package || !data?.consumption_unit) return null
   return Number(data.units_per_package)
 }
@@ -94,7 +94,7 @@ async function createProductInterno(
     // Resolve o nome da categoria para geração do SKU e campo denormalizado
     let categoryName: string | null = null
     if (categoryId) {
-      const { data: cat } = await admin.from('product_categories').select('name').eq('id', categoryId).single()
+      const cat = await ler(admin.from('product_categories').select('name').eq('id', categoryId).single(), 'buscar a categoria')
       categoryName = cat?.name ?? null
     }
 
@@ -214,12 +214,12 @@ export async function updateProduct(
 
     let categoryName: string | null = null
     if (categoryId) {
-      const { data: cat } = await admin.from('product_categories').select('name').eq('id', categoryId).single()
+      const cat = await ler(admin.from('product_categories').select('name').eq('id', categoryId).single(), 'buscar a categoria')
       categoryName = cat?.name ?? null
     }
 
     // Preserva SKU existente; gera novo somente se ainda não tem e uma categoria foi definida
-    const { data: current } = await admin.from('products').select('sku').eq('id', productId).single()
+    const current = await ler(admin.from('products').select('sku').eq('id', productId).single(), 'buscar o produto')
     let sku = current?.sku ?? null
     if (!sku && categoryName) {
       sku = await nextSku(ctx.tenantId!, categoryName)
@@ -261,13 +261,13 @@ export async function findProductByBarcode(barcode: string) {
     const ctx = await getTenantContext()
     const admin = createAdminClient()
 
-    const { data } = await admin
+    const data = await ler(admin
       .from('products')
       .select('id, name, unit, cost_price, consumption_unit, units_per_package, sku, category, barcode')
       .eq('tenant_id', ctx.tenantId!)
       .eq('barcode', barcode.trim())
       .eq('is_active', true)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o produto')
 
     if (!data) return { error: 'Nenhum produto encontrado com este código.' }
     return { product: data }
@@ -808,22 +808,22 @@ async function saveBarcodeToProductInterno(productId: string, barcode: string) {
     assertPermission(ctx, 'stock', 'MANAGE')
     const admin = createAdminClient()
 
-    const { data: prod } = await admin
+    const prod = await ler(admin
       .from('products')
       .select('tenant_id')
       .eq('id', productId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o produto')
     if (!prod || prod.tenant_id !== ctx.tenantId)
       return { error: 'Produto não encontrado.' }
 
     const code = barcode.trim()
-    const { data: conflict } = await admin
+    const conflict = await ler(admin
       .from('products')
       .select('id, name')
       .eq('tenant_id', ctx.tenantId!)
       .eq('barcode', code)
       .neq('id', productId)
-      .maybeSingle()
+      .maybeSingle(), 'conferir o código de barras')
     if (conflict)
       return { error: `Código já vinculado ao produto "${conflict.name}".` }
 
@@ -845,14 +845,14 @@ export async function searchProducts(query: string) {
     assertPermission(ctx, 'stock', 'MANAGE')
     const admin = createAdminClient()
 
-    const { data } = await admin
+    const data = await ler(admin
       .from('products')
       .select('id, name, sku, unit, barcode')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
       .ilike('name', `%${query.trim()}%`)
       .order('name')
-      .limit(20)
+      .limit(20), 'buscar o produto')
 
     return { products: (data ?? []) as { id: string; name: string; sku: string | null; unit: string; barcode: string | null }[] }
   } catch (e) {

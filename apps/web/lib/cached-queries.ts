@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { unitTag } from '@estetica-os/utils'
+import { ler } from '@/lib/db'
 
 // ─── Membro por auth_id (usado no getTenantContext) ───────────────────────────
 // Traz id interno + cargo dinâmico + flag de profissional. Fonte de fallback dos
@@ -285,12 +286,12 @@ export function getCachedProductsReference(tenantId: string) {
   return unstable_cache(
     async () => {
       const admin = createAdminClient()
-      const { data } = await admin
+      const data = await ler(admin
         .from('products')
         .select('id, name, unit, branch_id, consumption_unit, units_per_package, cost_price')
         .eq('tenant_id', tenantId)
         .eq('is_active', true)
-        .order('name')
+        .order('name'), 'carregar os produtos')
       return data ?? []
     },
     [`products-reference-${tenantId}`],

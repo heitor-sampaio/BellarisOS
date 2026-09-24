@@ -8,6 +8,7 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import { ANAMNESIS_BUCKET, ensurePrivateBucket, getSignedUrl, getSignedUrls } from '@/lib/storage'
+import { ler } from '@/lib/db'
 
 
 export async function saveGeneralAnamnesis(
@@ -188,18 +189,18 @@ async function saveProcedureForm(params: {
     let { data: medRecord } = await admin
       .from('medical_records').select('id').eq('client_id', appt.client_id).maybeSingle()
     if (!medRecord) {
-      const { data: created } = await admin
-        .from('medical_records').insert({ client_id: appt.client_id }).select('id').single()
+      const created = await ler(admin
+        .from('medical_records').insert({ client_id: appt.client_id }).select('id').single(), 'abrir o prontuário do cliente')
       medRecord = created
     }
     if (!medRecord) return { error: 'Erro ao abrir o prontuário.' }
 
     // Merge preservando o restante da coluna jsonb existente
-    const { data: entry } = await admin
+    const entry = await ler(admin
       .from('medical_record_entries')
       .select(params.dataColumn)
       .eq('appointment_id', params.appointmentId)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a entrada do prontuário')
     const existing = ((entry as Record<string, unknown> | null)?.[params.dataColumn] as Record<string, unknown> | null) ?? {}
 
     const merged = {

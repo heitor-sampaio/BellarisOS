@@ -7,7 +7,7 @@ import { EVENTOS } from '@estetica-os/types'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, tentar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
@@ -139,11 +139,11 @@ async function planoDoTenant(
   planId: string,
   tenantId: string,
 ) {
-  const { data } = await admin
+  const data = await ler(admin
     .from('treatment_plans')
     .select('id, status, client_id, branch_id, evaluation_appointment_id, branches!branch_id(slug, tenant_id)')
     .eq('id', planId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o plano')
   const branch = data?.branches as unknown as { slug: string; tenant_id: string } | null
   if (!data || branch?.tenant_id !== tenantId) return null
   return { ...data, slug: branch!.slug }
@@ -226,7 +226,7 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('treatment_plans')
     .select(`
       id, status, professional_notes, created_at, evaluation_appointment_id,
@@ -234,7 +234,7 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
       treatment_plan_sessions(treatment_plan_session_procedures(price))
     `)
     .eq('client_id', clientId)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }), 'carregar os planos do cliente')
 
   type RawSess = { treatment_plan_session_procedures: { price: number }[] }
 
@@ -549,14 +549,14 @@ export async function getPlanoParaEditar(planId: string): Promise<{
   const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
   if (!plan) return { error: 'Plano não encontrado.' }
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('treatment_plans')
     .select(`
       id, status, professional_notes,
       treatment_plan_sessions(sort_order, treatment_plan_session_procedures(procedure_id, price, sort_order, products, procedures(name)))
     `)
     .eq('id', planId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o plano')
   if (!data) return { error: 'Plano não encontrado.' }
 
   type RawProd = { product_id: string; name: string; unit: string; quantity: number }
@@ -651,11 +651,11 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
-  const { data: plan } = await admin
+  const plan = await ler(admin
     .from('treatment_plans')
     .select('branch_id')
     .eq('id', planId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o plano')
   if (!plan) return { sessions: [], total: 0 }
 
   const { data: branch } = await admin
@@ -714,11 +714,11 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
 
   const admin = createAdminClient()
 
-  const { data: plan } = await admin
+  const plan = await ler(admin
     .from('treatment_plans')
     .select('id, status, evaluation_appointment_id, branch_id, professional_notes, client_id')
     .eq('id', planId)
-    .single()
+    .single(), 'buscar o plano')
 
   if (!plan)               return { error: 'Plano não encontrado.' }
   if (plan.status !== 'DRAFT') return { error: 'Apenas planos em rascunho podem ser enviados.' }
@@ -757,11 +757,11 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
   // cliente ainda. O que protege a venda em si é o termo de consentimento, que
   // o aceite colhe de qualquer jeito.
   if (plan.evaluation_appointment_id) {
-    const { data: medRecord } = await admin
+    const medRecord = await ler(admin
       .from('medical_records')
       .select('general_anamnesis')
       .eq('client_id', plan.client_id)
-      .maybeSingle()
+      .maybeSingle(), 'abrir o prontuário do cliente')
     if (!medRecord?.general_anamnesis) {
       return { error: 'Preencha a anamnese do cliente antes de enviar.' }
     }
@@ -794,11 +794,11 @@ export async function cancelCheckout(
   assertPodeFecharPlano(ctx)
   const admin = createAdminClient()
 
-  const { data: plan } = await admin
+  const plan = await ler(admin
     .from('treatment_plans')
     .select('id, status, branch_id, evaluation_appointment_id')
     .eq('id', planId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o plano')
   if (!plan) return { error: 'Plano não encontrado.' }
 
   const { data: branch } = await admin
@@ -860,11 +860,11 @@ async function cancelTreatmentPlanInterno(
   assertPermission(ctx, 'agenda', 'MANAGE')
   const admin = createAdminClient()
 
-  const { data: plan } = await admin
+  const plan = await ler(admin
     .from('treatment_plans')
     .select('id, status, branch_id, client_id, evaluation_appointment_id')
     .eq('id', planId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o plano')
   if (!plan) return { error: 'Plano não encontrado.' }
 
   const { data: branch } = await admin
@@ -1053,7 +1053,7 @@ async function generateEvaluationPlanInterno(
     let { data: medRecord } = await admin
       .from('medical_records').select('id').eq('client_id', appt.client_id).maybeSingle()
     if (!medRecord) {
-      const { data: newRec } = await admin.from('medical_records').insert({ client_id: appt.client_id }).select('id').single()
+      const newRec = await ler(admin.from('medical_records').insert({ client_id: appt.client_id }).select('id').single(), 'abrir o prontuário do cliente')
       medRecord = newRec
     }
     if (medRecord) {
@@ -1155,11 +1155,11 @@ export async function getCheckoutPlan(planId: string): Promise<{ plan?: Checkout
   assertPodeFecharPlano(ctx)
 
   const admin = createAdminClient()
-  const { data: plan } = await admin
+  const plan = await ler(admin
     .from('treatment_plans')
     .select('branch_id, branches!branch_id(name, tenant_id)')
     .eq('id', planId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o plano')
 
   const branch = plan?.branches as unknown as { name: string; tenant_id: string } | null
   if (!plan?.branch_id || !branch || branch.tenant_id !== ctx.tenantId) {
@@ -1223,11 +1223,11 @@ export async function createCheckoutConsentTerms(
   // checkout abandonado deixava dois termos PENDING soltos no prontuário. Como
   // agora eles carregam `treatment_plan_id`, dá para reencontrá-los — inclusive
   // já assinados, quando alguém volta ao checkout depois de assinar.
-  const { data: existentes } = await admin
+  const existentes = await ler(admin
     .from('consent_terms')
     .select('id, title, content, status, signed_via')
     .eq('treatment_plan_id', planId)
-    .order('created_at')
+    .order('created_at'), 'conferir os termos já criados')
 
   if (existentes && existentes.length > 0) return { terms: existentes }
 
@@ -1367,11 +1367,11 @@ async function checkoutTreatmentPlanInterno(
   else           assertPodeFecharPlano(ctx)
   const admin = createAdminClient()
 
-  const { data: plan } = await admin
+  const plan = await ler(admin
     .from('treatment_plans')
     .select('id, status, client_id, branch_id, evaluation_appointment_id')
     .eq('id', planId)
-    .single()
+    .single(), 'buscar o plano')
 
   if (!plan)                      return { error: 'Plano não encontrado.' }
   if (plan.status !== 'PROPOSED') return { error: 'Apenas planos enviados para recepção podem ser finalizados.' }
@@ -1624,11 +1624,11 @@ async function receberDoPlanoInterno(
   const admin = createAdminClient()
 
   // Confere a rede antes de escrever: o id sozinho não pode bastar.
-  const { data: plan } = await admin
+  const plan = await ler(admin
     .from('treatment_plans')
     .select('id, branch_id, client_id, branches!inner(tenant_id)')
     .eq('id', planId)
-    .maybeSingle()
+    .maybeSingle(), 'buscar o plano')
 
   const planTenant = (plan?.branches as unknown as { tenant_id: string } | null)?.tenant_id
   if (!plan || planTenant !== ctx.tenantId) return { error: 'Plano não encontrado.' }

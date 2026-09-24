@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
 import { injectableTotals, emptyInjectableMap, type InjectableMapValue } from '@/lib/anamnesis'
+import { ler } from '@/lib/db'
 
 /**
  * Planejamento de injetáveis.
@@ -69,11 +70,11 @@ async function mapaDoTenant(
   mapId: string,
   tenantId: string,
 ) {
-  const { data } = await admin
+  const data = await ler(admin
     .from('injectable_maps')
     .select('id, tenant_id, client_id, branch_id, name')
     .eq('id', mapId)
-    .maybeSingle()
+    .maybeSingle(), 'carregar o planejamento')
   return data && data.tenant_id === tenantId ? data : null
 }
 
@@ -183,11 +184,11 @@ async function aplicacoesDoCliente(
   admin: ReturnType<typeof createAdminClient>,
   clientId: string,
 ): Promise<AplicacaoInjetavel[]> {
-  const { data } = await admin
+  const data = await ler(admin
     .from('injectable_applications')
     .select('id, appointment_id, applied_at, notes, view, points, totals, users(name)')
     .eq('client_id', clientId)
-    .order('applied_at', { ascending: false })
+    .order('applied_at', { ascending: false }), 'carregar as aplicações')
 
   return (data ?? []).map((a: any) => ({
     id:            a.id as string,
@@ -437,11 +438,11 @@ async function contarAplicacoes(
   const porCliente: ResumoAplicacoes = new Map()
   if (clientIds.length === 0) return porCliente
 
-  const { data } = await admin
+  const data = await ler(admin
     .from('injectable_applications')
     .select('client_id, applied_at')
     .in('client_id', clientIds)
-    .order('applied_at', { ascending: false })
+    .order('applied_at', { ascending: false }), 'carregar as aplicações')
 
   for (const a of (data ?? []) as { client_id: string; applied_at: string }[]) {
     const atual = porCliente.get(a.client_id)

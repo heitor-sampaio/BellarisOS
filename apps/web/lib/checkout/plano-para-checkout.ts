@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { getTreatmentPlanSessions } from '@/actions/treatment-plans'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
+import { ler } from '@/lib/db'
 
 /**
  * Monta o que o `CheckoutWizard` precisa para um plano.
@@ -21,12 +22,12 @@ export async function montarCheckoutPlan(
 ): Promise<{ plan?: CheckoutPlan; clientId?: string; error?: string }> {
   const admin = createAdminClient()
 
-  const { data: planRaw } = await admin
+  const planRaw = await ler(admin
     .from('treatment_plans')
     .select('id, status, professional_notes, client_id, branch_id, clients(name, document, phone)')
     .eq('id', planId)
     .eq('branch_id', branchId)
-    .maybeSingle()
+    .maybeSingle(), 'carregar o plano do checkout')
 
   if (!planRaw) return { error: 'Plano não encontrado.' }
   if (planRaw.status === 'ACCEPTED' || planRaw.status === 'COMPLETED') {

@@ -5,6 +5,7 @@ import { createClient as createSupabase } from '@/lib/supabase/server'
 import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCommissionsDetail } from '@/lib/metrics'
+import { ler } from '@/lib/db'
 
 export default async function FinancialPage({
   params,
@@ -32,21 +33,21 @@ export default async function FinancialPage({
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).single()
   if (!branch) notFound()
 
-  const { data: transactions } = await supabase
+  const transactions = await ler(supabase
     .from('financial_transactions')
     .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, notes, created_at, appointment_id')
     .eq('branch_id', branch.id)
     .gte('created_at', start.toISOString())
     .lte('created_at', end.toISOString())
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false }), 'carregar os lançamentos')
 
 
-  const { data: prevTxs } = await supabase
+  const prevTxs = await ler(supabase
     .from('financial_transactions')
     .select('type, amount, is_paid, notes, category')
     .eq('branch_id', branch.id)
     .gte('created_at', prevStart.toISOString())
-    .lte('created_at', prevEnd.toISOString())
+    .lte('created_at', prevEnd.toISOString()), 'carregar os lançamentos do período anterior')
 
   // Comissões do período (registros individuais).
   // `commissions` não tem `created_at` nem `is_paid` — a consulta anterior
