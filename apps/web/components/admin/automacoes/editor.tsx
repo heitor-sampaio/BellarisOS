@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   ChevronLeft, Play, Pause, Save, Plus, AlertCircle, CheckCircle2, ShieldCheck, History,
+  GitBranch,
 } from 'lucide-react'
 import {
   NODES,
@@ -15,6 +16,7 @@ import { Quadro } from './quadro'
 import { PainelDoNo } from './painel-do-no'
 import { PainelDeLimites } from './painel-de-limites'
 import { PainelDeExecucoes } from './painel-de-execucoes'
+import { PainelDeVersoes } from './painel-de-versoes'
 import { validarGrafo, ROTULOS, type ProblemaDoGrafo } from '@/lib/automacoes/validar'
 import { novoIdDeNo, configPadrao } from '@/lib/automacoes/ids'
 import { nomePadraoDoPasso, renomearPasso } from '@/lib/automacoes/passos'
@@ -66,7 +68,7 @@ export function EditorDeAutomacao({
   const [opcoes, setOpcoes]       = useState<OpcoesDoEditor | null>(null)
   const [limites, setLimites]     = useState<LimitesDaAutomacao>(automacao.limites)
   // Um painel por vez: 'no' vem da seleção no quadro; os outros dois, da barra.
-  const [gaveta, setGaveta] = useState<'limites' | 'execucoes' | null>(null)
+  const [gaveta, setGaveta] = useState<'limites' | 'execucoes' | 'versoes' | null>(null)
   const [salvando, salvar]      = useTransition()
 
   // Etapas, cargos, pessoas e tags: uma consulta ao abrir. Pedi-las por node
@@ -136,6 +138,25 @@ export function EditorDeAutomacao({
   function renomearNo(nome: string) {
     if (!noSelecionado) return
     mudarGrafo(renomearPasso(grafo, noSelecionado.id, nome))
+  }
+
+  /**
+   * Carrega uma versão antiga NA TELA — e só.
+   *
+   * Nada é gravado aqui: a versão entra como rascunho e vira realidade quando
+   * a pessoa salvar, que é a regra do editor inteiro. Restaurar por engano não
+   * pode trocar em silêncio um fluxo que está no ar; e como o salvamento grava
+   * um retrato novo, voltar também não apaga a versão de onde se veio.
+   */
+  function restaurarVersao(v: {
+    nome: string; grafo: GrafoDeAutomacao; limites: LimitesDaAutomacao
+  }) {
+    setNome(v.nome)
+    setGrafo(v.grafo)
+    setLimites(v.limites)
+    setSel(null)
+    setSujo(true)
+    setEnquadrar(n => n + 1)
   }
 
   function excluirNo() {
@@ -225,6 +246,14 @@ export function EditorDeAutomacao({
               title="Histórico e ensaio"
             >
               <History size={14} /> Execuções
+            </button>
+            <button
+              type="button" className="btn-ghost"
+              onClick={() => { setGaveta(g => (g === 'versoes' ? null : 'versoes')); setSel(null) }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)' }}
+              title="Histórico do fluxo — e voltar para uma versão anterior"
+            >
+              <GitBranch size={14} /> Versões
             </button>
             <button
               type="button" className="btn-ghost"
@@ -329,6 +358,13 @@ export function EditorDeAutomacao({
             onChange={l => { setLimites(l); setSujo(true) }}
             onFechar={() => setGaveta(null)}
             somenteLeitura={!podeEditar}
+          />
+        ) : gaveta === 'versoes' ? (
+          <PainelDeVersoes
+            automacaoId={automacao.id}
+            podeEditar={podeEditar}
+            onFechar={() => setGaveta(null)}
+            onRestaurar={restaurarVersao}
           />
         ) : gaveta === 'execucoes' ? (
           <PainelDeExecucoes

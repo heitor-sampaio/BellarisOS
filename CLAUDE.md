@@ -481,6 +481,10 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - **A fila do motor é `automation_runs`**, no Postgres — não há broker no
   projeto. O disparo é imediato (`after()`); o cron recolhe o que espera, o que
   falhou e o que é de tempo.
+- **Cada salvamento deixa um retrato em `automation_versions`** (os últimos 30).
+  Voltar para uma versão **carrega** o fluxo dela no editor e não grava nada —
+  salvar continua sendo explícito, e o retrato de onde se veio permanece. O
+  histórico é append-only: restaurar gera a versão seguinte, nunca apaga.
 - **Três travas contra o anel**: origem `'automacao'`, `profundidade` com teto
   de 3, e índice único `(automation_id, evento_id)`. Ação de automação que
   emite evento **passa a profundidade adiante** — sem isso, um grafo em anel

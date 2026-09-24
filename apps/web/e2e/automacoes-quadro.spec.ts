@@ -175,3 +175,58 @@ test('o seletor de campos mostra o payload do gatilho', async ({ page }) => {
   // LIGADO antes deste IF. Passo que talvez não rode não entra na lista.
   await expect(campo.locator('option', { hasText: 'Quantas pessoas avisou' })).toHaveCount(0)
 })
+
+/**
+ * O histórico do grafo.
+ *
+ * `automations.versao` só contava desde a Fase 1 — um número que ninguém
+ * conseguia consultar. O buraco aparece no dia em que alguém mexe num fluxo
+ * que estava funcionando, e "estava funcionando" era justamente o que se
+ * perdia.
+ */
+test('cada salvamento vira versão, e voltar para uma anterior é explícito', async ({ page }) => {
+  const db = banco()
+  const id = await novaAutomacao(page, nomeDeTeste('Versoes'))
+  const painel = page.getByLabel('Configuração do node')
+
+  // -- Primeiro salvamento: só o gatilho -------------------------------------
+  await page.getByRole('button', { name: 'Quando acontecer' }).click()
+  await painel.getByLabel('Quando acontecer').selectOption('cliente.criado')
+  await page.getByRole('button', { name: 'Salvar' }).click()
+  await expect(page.getByRole('button', { name: 'Salvo' })).toBeVisible()
+
+  // -- Segundo: com uma ação junto -------------------------------------------
+  await page.getByRole('button', { name: 'Avisar a equipe' }).click()
+  await painel.getByLabel('Mensagem').fill('Conferir o cadastro.')
+  await page.getByRole('button', { name: 'Salvar' }).click()
+  await expect(page.getByRole('button', { name: 'Salvo' })).toBeVisible()
+
+  // -- O histórico -----------------------------------------------------------
+  await page.getByRole('button', { name: 'Versões' }).click()
+  const gaveta = page.getByLabel('Versões da automação')
+  await expect(gaveta.getByText(/Versão 3/)).toBeVisible()
+  await expect(gaveta.getByText(/Versão 2/)).toBeVisible()
+  // A que está no ar é a única sem "voltar para esta".
+  await expect(gaveta.getByText('no ar')).toHaveCount(1)
+
+  const { data: versoes } = await db
+    .from('automation_versions').select('versao, grafo')
+    .eq('automation_id', id).order('versao')
+
+  expect(versoes, 'cada salvamento deixa um retrato').toHaveLength(2)
+  const nosPorVersao = (versoes ?? []).map(v => (v.grafo as { nos: unknown[] }).nos.length)
+  expect(nosPorVersao).toEqual([1, 2])
+
+  // -- Voltar carrega, mas NÃO salva -----------------------------------------
+  await gaveta.getByRole('button', { name: 'Voltar para esta' }).first().click()
+  await expect(page.locator('.react-flow__node')).toHaveCount(1)
+  // Fica sujo, esperando a decisão de quem está montando.
+  await expect(page.getByRole('button', { name: 'Salvar' })).toBeEnabled()
+
+  const { data: aindaNoBanco } = await db
+    .from('automations').select('grafo').eq('id', id).single()
+  expect(
+    (aindaNoBanco!.grafo as { nos: unknown[] }).nos,
+    'restaurar não pode trocar em silêncio o que está no ar',
+  ).toHaveLength(2)
+})

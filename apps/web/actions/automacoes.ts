@@ -212,9 +212,146 @@ export async function salvarAutomacao(input: {
 
   if (error) return { error: `Erro ao salvar: ${error.message}` }
 
+  await guardarVersao({
+    tenantId:  ctx.tenantId!,
+    automacaoId: input.id,
+    versao:    ((atual.versao as number) ?? 1) + 1,
+    nome:      input.nome.trim(),
+    grafo:     input.grafo,
+    limites:   input.limites ?? LIMITES_PADRAO,
+    porId:     ctx.internalUserId ?? null,
+    porNome:   ctx.userName ?? null,
+  })
+
   revalidatePath('/admin/automacoes')
   revalidatePath(`/admin/automacoes/${input.id}`)
   return {}
+}
+
+/** Quantos retratos guardar por automação. */
+const MAX_VERSOES = 30
+
+/**
+ * Grava o retrato do grafo recém-salvo.
+ *
+ * **Nunca derruba o salvamento.** O grafo já está no banco quando isto roda; se
+ * o histórico falhar, o que a clínica acabou de montar não pode se perder por
+ * causa dele. O erro vai para o log, e é lá que se descobre.
+ *
+ * Poda em `MAX_VERSOES`: um fluxo editado a tarde inteira geraria dezenas de
+ * retratos, e ninguém volta trinta salvamentos. Isto é configuração, não
+ * registro financeiro nem de prontuário — o que não se apaga é outra coisa.
+ */
+async function guardarVersao(v: {
+  tenantId: string; automacaoId: string; versao: number
+  nome: string; grafo: GrafoDeAutomacao; limites: LimitesDaAutomacao
+  porId: string | null; porNome: string | null
+}): Promise<void> {
+  const admin = createAdminClient()
+
+  const { error } = await admin.from('automation_versions').insert({
+    tenant_id:       v.tenantId,
+    automation_id:   v.automacaoId,
+    versao:          v.versao,
+    nome:            v.nome,
+    grafo:           v.grafo,
+    limites:         v.limites,
+    criado_por:      v.porId,
+    criado_por_nome: v.porNome,
+  })
+
+  // 23505 = já existe retrato desta versão. Entrega repetida, não falha.
+  if (error && error.code !== '23505') {
+    console.error('[guardarVersao]', error.message)
+    return
+  }
+
+  const { data: antigas } = await admin
+    .from('automation_versions')
+    .select('id')
+    .eq('automation_id', v.automacaoId)
+    .order('versao', { ascending: false })
+    .range(MAX_VERSOES, MAX_VERSOES + 200)
+
+  if (antigas?.length) {
+    await admin.from('automation_versions').delete().in('id', antigas.map(a => a.id as string))
+  }
+}
+
+export interface VersaoNaLista {
+  id:      string
+  versao:  number
+  nome:    string
+  por:     string | null
+  quando:  string
+  /** Quantos nodes e ligações tinha — o resumo que cabe na lista. */
+  nos:     number
+  ligacoes: number
+  /** É o que está no ar agora? */
+  atual:   boolean
+}
+
+export async function versoesDaAutomacao(automacaoId: string): Promise<VersaoNaLista[]> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'automations', 'VIEW')
+  const admin = createAdminClient()
+
+  const { data: auto } = await admin
+    .from('automations').select('tenant_id, versao').eq('id', automacaoId).maybeSingle()
+  if (!auto || auto.tenant_id !== ctx.tenantId) return []
+
+  const { data, error } = await admin
+    .from('automation_versions')
+    .select('id, versao, nome, criado_por_nome, created_at, grafo')
+    .eq('automation_id', automacaoId)
+    .order('versao', { ascending: false })
+    .limit(MAX_VERSOES)
+
+  if (error) { console.error('[versoesDaAutomacao]', error.message); return [] }
+
+  return (data ?? []).map(v => {
+    const grafo = (v.grafo as GrafoDeAutomacao) ?? GRAFO_VAZIO
+    return {
+      id:       v.id as string,
+      versao:   v.versao as number,
+      nome:     v.nome as string,
+      por:      (v.criado_por_nome as string) ?? null,
+      quando:   v.created_at as string,
+      nos:      grafo.nos?.length ?? 0,
+      ligacoes: grafo.ligacoes?.length ?? 0,
+      atual:    (v.versao as number) === (auto.versao as number),
+    }
+  })
+}
+
+/**
+ * O conteúdo de uma versão, para o editor carregar.
+ *
+ * **Não salva nada.** A versão antiga entra na tela como rascunho e só vira
+ * realidade quando a pessoa salvar — a mesma regra do resto do editor, onde
+ * salvar é explícito. Restaurar por engano não pode trocar em silêncio um
+ * fluxo que está no ar.
+ */
+export async function lerVersao(versaoId: string): Promise<{
+  nome: string; grafo: GrafoDeAutomacao; limites: LimitesDaAutomacao
+} | null> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'automations', 'MANAGE')
+
+  const { data, error } = await createAdminClient()
+    .from('automation_versions')
+    .select('nome, grafo, limites, tenant_id')
+    .eq('id', versaoId)
+    .maybeSingle()
+
+  if (error) { console.error('[lerVersao]', error.message); return null }
+  if (!data || data.tenant_id !== ctx.tenantId) return null
+
+  return {
+    nome:    data.nome as string,
+    grafo:   (data.grafo as GrafoDeAutomacao) ?? GRAFO_VAZIO,
+    limites: (data.limites as LimitesDaAutomacao) ?? LIMITES_PADRAO,
+  }
 }
 
 export async function mudarStatusDaAutomacao(

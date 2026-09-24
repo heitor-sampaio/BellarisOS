@@ -1161,6 +1161,32 @@ conversa para baixo, e o selo passaria a atrapalhar quem quer ler as mensagens.
 É a primeira linha dela; mostrá-la de novo logo abaixo faria o selo dizer a
 mesma coisa duas vezes. Com `adName` vindo da Meta, aparece inteira.
 
+### 2026-09-24 — Automações: o histórico do fluxo
+
+O terceiro item fora de escopo. `automations.versao` existia desde a Fase 1 e só
+**contava**: cada salvamento incrementava um número que ninguém conseguia
+consultar. O buraco aparece no dia em que alguém mexe num fluxo que estava
+funcionando — e "estava funcionando" era justamente o que se perdia.
+
+`automation_versions` guarda nome, grafo e limites a cada salvamento. Os três
+juntos porque restaurar só o desenho traria o fluxo certo com a régua de
+silêncio de outro dia.
+
+**Voltar para uma versão carrega, não salva.** Ela entra no editor como
+rascunho e vira realidade quando a pessoa salvar — a mesma regra do resto do
+editor, onde salvar é explícito. Um clique por engano não pode trocar em
+silêncio um fluxo que está no ar. E como o salvamento grava um retrato novo, o
+histórico é append-only: restaurar gera a versão seguinte, nunca apaga a de
+onde se veio.
+
+Guarda os **últimos 30** salvamentos. Um fluxo editado a tarde inteira geraria
+dezenas de retratos e ninguém volta trinta salvamentos; isto é configuração, não
+registro financeiro nem de prontuário — o que não se apaga é outra coisa.
+
+Gravar a versão **nunca derruba o salvamento**: o grafo já está no banco quando
+o retrato é escrito, e perder o que a clínica acabou de montar por causa do
+histórico seria a troca errada.
+
 ### 2026-09-24 — Automações: renomear sem quebrar, e expressões nos campos
 
 Os dois primeiros itens que tinham ficado fora de escopo, retomados a pedido do
