@@ -652,11 +652,63 @@ html.trava-rolagem body {
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
   }
 
+  /* Cabeçalho da conversa CONDENSADO no celular (pedido do Heitor,
+     2026-09-24). Ele ocupava 163px de uma tela de 844 — 19% só para dizer com
+     quem se está falando, antes da primeira mensagem aparecer.
+
+     Duas causas. A primeira: com `flex-wrap`, o seletor de situação não cabia
+     ao lado da identidade e caía numa SEGUNDA LINHA sozinho, gastando uma
+     faixa inteira para uma pílula. A segunda: nome, canal/telefone e métricas
+     eram três linhas empilhadas, cada uma com sua margem.
+
+     Aqui o cabeçalho volta a ser uma linha só — voltar, avatar, identidade,
+     situação e o botão do card —, e tudo que é detalhe do contato vira UMA
+     fileira que flui embaixo do nome. Nada de informação sai: o telefone, a
+     unidade, a última interação, a primeira resposta e o "aguardando há"
+     continuam ali, em corpo menor e dividindo linha. Fica em torno de 80px. */
+  .inbox-root .inbox-cabecalho {
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    padding: 9px 12px !important;
+  }
+  .inbox-root .inbox-cabecalho .inbox-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    border-width: 1.5px !important;
+    font-size: var(--text-sm-sz) !important;
+  }
+
+  /* `display: contents` nas duas fileiras de detalhe: os filhos delas sobem
+     para este flex e passam a dividir as mesmas linhas, em vez de cada fileira
+     reservar a sua. É o que junta canal, telefone, unidade e métricas. */
+  .inbox-root .inbox-identidade {
+    display: flex;
+    flex: 1 1 auto !important;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 6px;
+    row-gap: 2px;
+  }
+  .inbox-root .inbox-identidade .inbox-nome {
+    flex: 1 0 100%;
+    min-width: 0;
+    font-size: var(--text-sm-sz);
+  }
+  .inbox-root .inbox-meta,
+  .inbox-root .inbox-metricas {
+    display: contents;
+  }
+  .inbox-root .inbox-metricas > span { font-size: var(--text-overline); }
+  .inbox-root .inbox-aguardando { padding: 0 6px !important; }
+
   /* O card do contato vira folha sobre a conversa, não terceira coluna. */
   .inbox-root[data-painel='1'] .inbox-painel {
     display: block !important;
     position: fixed;
-    inset: 0;
+    top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+    right: 0;
+    bottom: 0;
+    left: 0;
     z-index: 60;
     width: 100% !important;
     border-left: none !important;

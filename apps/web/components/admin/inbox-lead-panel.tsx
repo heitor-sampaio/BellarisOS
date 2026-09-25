@@ -6,7 +6,10 @@ import { rotaCliente, rotaOportunidades } from '@/lib/rotas'
 import {
   UserCheck, ExternalLink, CalendarPlus, X, Check, Compass, Plus, ChevronDown, Package,
 } from 'lucide-react'
-import { LEAD_SOURCES, sourceStyle } from '@estetica-os/utils'
+import {
+  LEAD_SOURCES, sourceStyle,
+  secondsSince, formatDurationShort, formatDurationLong,
+} from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { TagPicker } from '@/components/shared/tag-picker'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
@@ -96,6 +99,15 @@ export function InboxLeadPanel({
   const pendenteRef = useRef<{ nome: string; telefone: string; tags: string[] } | null>(null)
   const [salvando,   setSalvando]   = useState(false)
   const [salvoEm,    setSalvoEm]    = useState<number | null>(null)
+
+  // Relógio dos tempos de atendimento. Começa nulo e só vira número depois de
+  // montar: "há 4min" no servidor e "há 5min" no cliente derruba a hidratação.
+  const [agora, setAgora] = useState<number | null>(null)
+  useEffect(() => {
+    setAgora(Date.now())
+    const id = setInterval(() => setAgora(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [])
 
   const recarregar = useCallback(async () => {
     const res = await getConversationCard(conversation.id)
@@ -240,6 +252,19 @@ export function InboxLeadPanel({
             disabled={disabled}
             onChange={setTags}
           />
+        </div>
+
+        {/* Tempos do atendimento. Só no celular: no desktop eles estão no
+            cabeçalho da conversa, a dois centímetros daqui, e repetir seria
+            ocupar espaço para dizer a mesma coisa duas vezes. No celular o
+            cabeçalho foi condensado (2026-09-24) e este é o lugar deles. */}
+        <div className="show-mobile" style={{ flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+            {agora != null && <>Última interação há {formatDurationShort(secondsSince(conversation.last_message_at, agora))}</>}
+            {conversation.first_response_seconds != null && (
+              <>{agora != null && ' · '}1ª resposta em {formatDurationLong(conversation.first_response_seconds)}</>
+            )}
+          </span>
         </div>
 
         {/* Ações da PESSOA, discretas e lado a lado. Ficha de cliente é

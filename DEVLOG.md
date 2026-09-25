@@ -1252,6 +1252,37 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-24 — O cabeçalho da conversa encolhe no celular
+
+"Na versão mobile da conversa no inbox, dá uma condensada na parte superior
+onde tem os dados do contato." Ele ocupava **163px de uma tela de 844** — 19%
+para dizer com quem se está falando, antes da primeira mensagem aparecer.
+
+Duas causas. Com `flex-wrap`, o seletor de situação não cabia ao lado da
+identidade e caía numa **segunda linha sozinho**, gastando uma faixa inteira
+para uma pílula. E nome, canal/telefone e métricas eram três linhas empilhadas,
+cada uma com a sua margem.
+
+Agora o cabeçalho é uma linha só — voltar, avatar, identidade, situação e o
+botão do card — e o detalhe flui embaixo do nome, com `display: contents` nas
+duas fileiras para que elas dividam as mesmas linhas em vez de reservar cada
+uma a sua. **163px → 92px.**
+
+**Nada de informação sumiu, mudou de lugar.** O telefone já era campo do card
+do contato; "última interação" e "1ª resposta" passaram a aparecer lá também,
+só no celular (no desktop estão no cabeçalho, a dois centímetros — repetir
+seria gastar espaço para dizer duas vezes). A pílula de espera fica: é o sinal
+de urgência de quem atende, e só perde a palavra "resposta".
+
+**Achado no caminho:** a folha do contato no celular abria em `inset: 0`, ou
+seja, colada no topo do documento — e a topbar do app desenha por cima dos
+primeiros 68px. O que ficava escondido ali era justamente a barra "Contato ✕":
+não havia como fechar o card a não ser pelo voltar do aparelho.
+
+`e2e/inbox-cabecalho-mobile.spec.ts` trava as três coisas: a altura no celular,
+o trato de que o que saiu do cabeçalho está alcançável no card, e o desktop
+inteiro como era.
+
 ### 2026-09-24 — O quadro de oportunidades perde as barras de rolagem
 
 "No funil, não quero que apareça barra de rolagem nas colunas." Eram cinco

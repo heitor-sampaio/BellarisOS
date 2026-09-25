@@ -116,6 +116,7 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
   return (
     <button
       type="button"
+      className="inbox-conversa"
       onClick={onClick}
       style={{
         width: '100%', textAlign: 'left', cursor: 'pointer',
@@ -1512,7 +1513,7 @@ export function CRMInbox({
               {/* `flexWrap`: sem ele, o seletor de status e os botões não
                   encolhem e espremem a identidade — no celular o telefone da
                   cliente saía cortado no meio do número. */}
-              <div style={{
+              <div className="inbox-cabecalho" style={{
                 padding: '13px 20px', borderBottom: '1px solid var(--hairline)',
                 display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, flexWrap: 'wrap',
               }}>
@@ -1533,7 +1534,7 @@ export function CRMInbox({
                   <ArrowLeft size={18} />
                 </button>
 
-                <div style={{
+                <div className="inbox-avatar" style={{
                   width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
                   background: 'var(--brand-soft)', border: '2px solid var(--brand-soft-border)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1542,17 +1543,17 @@ export function CRMInbox({
                   {(selectedConv.contact_name ?? '?')[0]!.toUpperCase()}
                 </div>
 
-                <div style={{ flex: '1 1 170px', minWidth: 0 }}>
-                  <p style={{
+                <div className="inbox-identidade" style={{ flex: '1 1 170px', minWidth: 0 }}>
+                  <p className="inbox-nome" style={{
                     fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', margin: 0,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
                     {selectedConv.contact_name ?? 'Sem nome'}
                   </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
+                  <div className="inbox-meta" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
                     <ChannelBadge ch={selectedConv.channel} />
                     {selectedConv.contact_phone && (
-                      <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
+                      <span className="hide-mobile" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
                         {selectedConv.contact_phone}
                       </span>
                     )}
@@ -1564,8 +1565,8 @@ export function CRMInbox({
                   </div>
 
                   {/* Service metrics */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                  <div className="inbox-metricas" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                    <span className="hide-mobile" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
                       {nowMs != null && <>Última interação há {formatDurationShort(secondsSince(selectedConv.last_message_at, nowMs))}</>}
                       {selectedConv.first_response_seconds != null && (
                         <>{nowMs != null && ' · '}1ª resposta em {formatDurationLong(selectedConv.first_response_seconds)}</>
@@ -1575,12 +1576,12 @@ export function CRMInbox({
                       const s = secondsSince(selectedConv.awaiting_since, nowMs)
                       const st = AGING_STYLE[agingLevel(s, AWAITING_THRESHOLDS)]
                       return (
-                        <span style={{
+                        <span className="inbox-aguardando" style={{
                           fontSize: 'var(--text-2xs)', fontWeight: 700,
                           padding: '1px 8px', borderRadius: 99,
                           background: st.bg, color: st.color, whiteSpace: 'nowrap',
                         }}>
-                          Aguardando resposta há {formatDurationShort(s)}
+                          Aguardando<span className="hide-mobile"> resposta</span> há {formatDurationShort(s)}
                         </span>
                       )
                     })()}
