@@ -11,6 +11,7 @@ export type {
 } from '@/lib/channels/types'
 
 import type { InboundMsg, StatusUpdate, SendProvider } from '@/lib/channels/types'
+import type { ModoOficial } from './modo-oficial'
 
 export type WhatsAppProviderType = 'uazapi' | 'official'
 
@@ -73,6 +74,16 @@ export interface OfficialConfig {
    * pelo outro dá 404 sem explicação.
    */
   wabaId?:       string
+  /**
+   * Como o numero chegou a API: com o aplicativo do celular continuando a
+   * funcionar (coexistencia) ou migrando de vez (cloud_api).
+   *
+   * Guardado porque a escolha tem consequencia que a tela precisa lembrar:
+   * quem migrou nao tem mais o aplicativo atendendo por aquele numero, e
+   * oferecer o caminho de volta como se fosse um botao seria mentira.
+   * Ver `lib/whatsapp/modo-oficial.ts`.
+   */
+  modo?:         ModoOficial
 }
 
 export type WhatsAppConfig = UazapiConfig | OfficialConfig

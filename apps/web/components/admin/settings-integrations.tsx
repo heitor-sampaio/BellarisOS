@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone, CheckCircle2, AlertCircle, Loader2, ChevronDown, ExternalLink, Megaphone,
-  Instagram, Mail,
+  Instagram, Mail, AlertTriangle,
 } from 'lucide-react'
 import {
   saveWhatsAppConfig, testWhatsAppConnection,
@@ -16,6 +16,7 @@ import type { IntegrationConfig } from '@/actions/integrations'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { UazapiConnect } from '@/components/admin/uazapi-connect'
 import { SegSelect } from '@/components/shared/seg-select'
+import { MODOS_OFICIAIS, modoDaConfig, type ModoOficial } from '@/lib/whatsapp/modo-oficial'
 
 /**
  * Origem do site, resolvida só depois de montar.
@@ -193,6 +194,91 @@ function UazapiForm({ initial }: { initial?: IntegrationConfig }) {
 
 // --- WhatsApp Oficial form ----------------------------------------------------
 
+/**
+ * A escolha de como o número chega à API oficial.
+ *
+ * O texto é a parte que importa: quem lê é quem opera a clínica, e a decisão
+ * tem uma consequência que não dá para desfazer sozinho — no modo Cloud API o
+ * aplicativo do celular deixa de atender por aquele número. Por isso o
+ * "atenção" de cada modo fica em destaque, e não escondido num link.
+ */
+function EscolhaDoModoOficial({ modo, onEscolher }: {
+  modo: ModoOficial
+  onEscolher: (m: ModoOficial) => void
+}) {
+  const escolhido = MODOS_OFICIAIS[modo]
+  const ehMigracao = modo === 'cloud_api'
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <p style={{
+          fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
+          letterSpacing: '0.04em', marginBottom: 4,
+        }}>
+          COMO CONECTAR O NÚMERO
+        </p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 10 }}>
+          Os dois usam a API oficial da Meta. O que muda é o que acontece com o
+          aplicativo que está no celular hoje.
+        </p>
+        <SegSelect
+          options={Object.values(MODOS_OFICIAIS).map(m => ({ key: m.chave, label: m.rotulo }))}
+          value={modo}
+          onSelect={m => onEscolher(m as ModoOficial)}
+          ariaLabel="Como conectar o número à API oficial"
+        />
+      </div>
+
+      <div className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
+          {escolhido.resumo}
+        </p>
+
+        <ListaDoModo titulo="Como fica o atendimento" itens={escolhido.comoFica} />
+        <ListaDoModo titulo="O que precisa ter antes" itens={escolhido.exige} />
+
+        <p style={{
+          display: 'flex', gap: 8, alignItems: 'flex-start',
+          fontSize: 'var(--text-sm-sz)', lineHeight: 'var(--leading-normal)',
+          fontWeight: ehMigracao ? 600 : 400,
+          color: ehMigracao ? 'var(--danger)' : 'var(--text-muted)',
+          background: ehMigracao ? 'var(--danger-soft)' : 'transparent',
+          border: ehMigracao ? '1px solid var(--danger-border)' : 'none',
+          borderRadius: 8,
+          padding: ehMigracao ? '9px 11px' : 0,
+        }}>
+          {ehMigracao && <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} />}
+          <span>{escolhido.atencao}</span>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function ListaDoModo({ titulo, itens }: { titulo: string; itens: readonly string[] }) {
+  return (
+    <div>
+      <p className="overline" style={{ marginBottom: 5 }}>{titulo}</p>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
+        {itens.map(t => (
+          <li key={t} style={{
+            display: 'flex', gap: 8, alignItems: 'flex-start',
+            fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)',
+            lineHeight: 'var(--leading-snug)',
+          }}>
+            <span aria-hidden style={{
+              flexShrink: 0, width: 4, height: 4, borderRadius: '50%',
+              background: 'var(--brand)', marginTop: 7,
+            }} />
+            <span>{t}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   const origem = useOrigem()
   const existing = (initial?.config ?? {}) as Record<string, string>
@@ -201,6 +287,9 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   const [verifyToken,   setVerifyToken]   = useState(existing.verifyToken ?? '')
   const [appSecret,     setAppSecret]     = useState(existing.appSecret ?? '')
   const [wabaId,        setWabaId]        = useState(existing.wabaId ?? '')
+  // Como o número chega à API: com o aplicativo continuando a funcionar
+  // (coexistência) ou migrando de vez (Cloud API). Ver `lib/whatsapp/modo-oficial`.
+  const [modo,          setModo]          = useState<ModoOficial>(modoDaConfig(existing))
   const [isActive,      setIsActive]      = useState(initial?.is_active ?? false)
   const [testResult,    setTestResult]    = useState<{ ok: boolean; detail?: string } | null>(null)
   const [isPending,     startTransition]  = useTransition()
@@ -210,7 +299,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   function handleSave() {
     setSaved(false)
     startTransition(async () => {
-      const res = await saveWhatsAppConfig('official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId }, isActive)
+      const res = await saveWhatsAppConfig('official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, isActive)
       if (res.ok) setSaved(true)
     })
   }
@@ -218,7 +307,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   function handleTest() {
     setTestResult(null)
     startTest(async () => {
-      await saveWhatsAppConfig('official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId }, true)
+      await saveWhatsAppConfig('official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, true)
       const res = await testWhatsAppConnection('official')
       setTestResult(res)
     })
@@ -226,6 +315,11 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* A escolha vem antes dos campos porque ela decide o que acontece com o
+          aplicativo que está no celular da clínica hoje — e isso precisa ser
+          sabido antes de alguém começar a colar credencial. */}
+      <EscolhaDoModoOficial modo={modo} onEscolher={setModo} />
+
       <Field
         label="WhatsApp Business Account ID (WABA)"
         name="wabaId"

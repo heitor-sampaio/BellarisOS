@@ -510,6 +510,31 @@ const procedures = await ler(
 - Notificações para cliente: confirmação, lembrete 24h antes, promoções
 - Fallback de notificação WhatsApp para quando push falhar (uazapi ou API oficial, conforme o que a rede tiver conectado)
 
+### 9.8.1 WhatsApp oficial: coexistência × Cloud API
+
+São dois jeitos de ligar o MESMO número à API da Meta, e a escolha é da
+clínica porque a consequência é dela. Guardada em
+`integration_configs.config.modo`; os textos moram em
+`lib/whatsapp/modo-oficial.ts`, fora do componente, porque a explicação é
+o que importa e precisa sobreviver a refação de tela.
+
+- **Coexistência** — o aplicativo WhatsApp Business continua atendendo no
+  celular e o sistema usa o mesmo número ao lado dele. As conversas e os
+  contatos já existentes são trazidos na conexão. É o caminho de quem já atende
+  pelo celular: nada para de funcionar no dia da conexão.
+- **Cloud API** — o número migra para a API. O aplicativo **para** de funcionar
+  com ele, e o histórico dele não vem junto. Voltar atrás exige desfazer a
+  migração na Meta.
+
+**O aviso da Cloud API fica na tela, em vermelho, antes de a pessoa escolher** —
+não atrás de um link. É decisão que não se desfaz clicando.
+
+⚠️ **O que ainda não existe:** o Embedded Signup da Meta, onde essa escolha
+vira parâmetro da API (`featureType` no fluxo de onboarding). Hoje a
+conexão oficial é credencial colada à mão no formulário, e o modo registra a
+decisão e diz à clínica o que esperar. Quando o app da Meta existir (ver §5 de
+"Em aberto" no DEVLOG), é aqui que o parâmetro entra.
+
 ---
 
 ### 9.9 Eventos de domínio e automações

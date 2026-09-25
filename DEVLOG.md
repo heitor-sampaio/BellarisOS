@@ -1260,6 +1260,41 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-25 — WhatsApp oficial: a clínica escolhe como o número chega
+
+Pedido do Heitor: "o cliente possa escolher se quer conectar com coexistência
+(explicando o que significa) ou pela Cloud API (explicando o que significa)".
+
+São dois caminhos para o mesmo número, e o que os separa não é técnico para
+quem opera — é **o que acontece com o aplicativo que está no celular hoje**:
+
+| | Coexistência | Cloud API |
+|---|---|---|
+| Aplicativo no celular | continua atendendo pelo mesmo número | **para** de funcionar com ele |
+| Conversas que já existem | vêm para o sistema na conexão | ficam no aplicativo |
+| Quem atende | equipe no celular **e** no Inbox | só o Inbox |
+| Voltar atrás | nada mudou, nada a desfazer | exige desfazer a migração na Meta |
+
+A escolha fica **antes dos campos de credencial**, porque decide o que a pessoa
+vai perder antes de ela começar a colar token. E o "atenção" da Cloud API está
+em vermelho, na tela — não atrás de um link: é decisão que não se desfaz
+clicando.
+
+Os textos moram em `lib/whatsapp/modo-oficial.ts`, fora do componente. O
+que importa nesse ajuste é a explicação, e ela precisa sobreviver a qualquer
+refação da tela de integrações.
+
+**O que este ajuste NÃO faz, e é honesto dizer:** o Embedded Signup da Meta —
+onde a escolha vira parâmetro do onboarding — não existe ainda, porque o app da
+Meta não existe (está em "Em aberto" desde sempre). Hoje a conexão oficial é
+credencial colada à mão, e o modo registra a decisão e diz à clínica o que
+esperar. Quando o app existir, é neste ponto que o parâmetro entra.
+
+`e2e/whatsapp-modo-oficial.spec.ts` confere as três coisas: os dois modos
+aparecem com a explicação de cada um, a escolha sobrevive ao salvamento (senão
+é enfeite) e quem já configurou reabre no modo que escolheu. Ele mexe na
+configuração real da rede e devolve o estado anterior no `finally`.
+
 ### 2026-09-25 — Política de privacidade, pública
 
 Pedido do Heitor. Em `/privacidade`, sem sessão.
