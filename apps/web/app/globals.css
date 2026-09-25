@@ -1603,9 +1603,40 @@ input[type="search"].field {
   color: var(--brand);
 }
 
-/* Num painel estreito (o de filtros do inbox tem 288px) o segmentado quebraria
-   em duas linhas, e segmentado em duas linhas deixa de ler como um controle
-   só. Ali a escolha exclusiva vira dropdown de largura cheia. */
+/* Painel de filtros do inbox. */
+.painel-de-filtros {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  z-index: 41;
+  width: 288px;
+  max-height: 64vh;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  /* Flutua sobre a lista: elevação é de quem flutua, borda é de quem está no
+     plano da página. Faltava, e o painel lia como um pedaço da lista. */
+  box-shadow: var(--shadow-popover);
+}
+
+/* O gatilho fica no fim da barra de busca. Abaixo de 1024px a lista ocupa a
+   tela inteira, então o gatilho encosta na borda direita — e um painel de
+   288px ancorado à ESQUERDA dele nascia metade fora da tela, com a coluna da
+   direita cortada. Ancorado à direita ele cresce para dentro. O teto de
+   largura é para o telefone estreito de verdade. */
+@media (max-width: 1023px) {
+  .painel-de-filtros {
+    left: auto;
+    right: 0;
+    width: min(288px, calc(100vw - 24px));
+  }
+}
+
+/* Num painel estreito (este tem 288px) o segmentado quebraria em duas linhas,
+   e segmentado em duas linhas deixa de ler como um controle só. Ali a escolha
+   exclusiva vira dropdown de largura cheia. */
 .painel-de-filtros .filtro-select,
 .painel-de-filtros .filtro-toggle { width: 100%; }
 .painel-de-filtros .filtro-toggle { justify-content: flex-start; }

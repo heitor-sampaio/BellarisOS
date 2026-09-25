@@ -270,12 +270,7 @@ export function InboxFiltros({
           {/* Clique fora fecha. */}
           <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setAberto(false)} />
 
-          <div className="painel-de-filtros" style={{
-            position: 'absolute', top: 40, left: 0, zIndex: 41,
-            width: 288, maxHeight: '64vh', overflowY: 'auto',
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-field-token)', padding: 12,
-          }}>
+          <div className="painel-de-filtros">
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               marginBottom: 10,

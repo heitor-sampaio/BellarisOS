@@ -1252,6 +1252,30 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-25 — O painel de filtros do inbox cabia fora da tela
+
+Sobra da padronização dos seletores da véspera, achada ao fotografar o inbox no
+celular: o painel nasce ancorado à ESQUERDA do gatilho, e o gatilho fica no fim
+da barra de busca.
+
+No desktop isso é inofensivo — o painel avança sobre a coluna da conversa, que
+é o que um popover faz. Abaixo de 1024px a lista ocupa a tela inteira, o
+gatilho encosta na borda direita, e 288px de painel começavam **metade fora da
+tela**: a coluna da direita ficava cortada, sem rolagem que a alcançasse. Valia
+do telefone ao tablet.
+
+Ancorado à direita ele cresce para dentro, com teto de
+`min(288px, calc(100vw - 24px))` para a tela estreita de verdade. A
+ancoragem saiu do `style` inline e foi para o CSS pelo motivo de sempre:
+ela depende da largura da tela, e isso é mídia — coisa que inline não sabe
+fazer. Ganhou também o `--shadow-popover` que lhe faltava: ele flutua
+sobre a lista, e elevação é de quem flutua.
+
+`e2e/inbox-painel-filtros.spec.ts` mede a caixa do painel em quatro
+larguras (360, 390, 820, 1440) e exige que ela caiba na viewport. Conferido que
+o teste pega o defeito: com a regra antiga, falha em 360, 390 e 820 e passa no
+desktop — exatamente onde o problema existia.
+
 ### 2026-09-24 — O cabeçalho da conversa encolhe no celular
 
 "Na versão mobile da conversa no inbox, dá uma condensada na parte superior
