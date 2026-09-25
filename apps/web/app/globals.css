@@ -922,6 +922,31 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   overflow: hidden;
 }
 
+/* Barra de rolagem some do quadro — a rolagem fica.
+   Pedido do Heitor em 2026-09-24: "no funil, não quero que apareça barra de
+   rolagem nas colunas". São cinco barras cinza atravessando o quadro, uma por
+   etapa, e elas competem com os cards — que é o que se está lendo ali.
+
+   O que diz que há mais para baixo passa a ser o próprio card cortado na borda
+   da coluna, mesmo raciocínio da barra de abas. Vale também para a rolagem
+   lateral do quadro: a coluna cortada na direita já avisa que há outras.
+
+   `overflow` e `overscroll-behavior` moram aqui, e não no `style` inline, pela
+   mesma razão dos seletores — no inline, a próxima tela reinventa o seu. */
+.crm-board-cols {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.crm-coluna-cards {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.crm-board-cols::-webkit-scrollbar,
+.crm-coluna-cards::-webkit-scrollbar { display: none; }
+
 /* Card do quadro no celular: mesma informação, menos espaço em volta.
    A coluna ocupa 86% da tela, então cada card é largo — o que sobra é altura, e
    é a altura que decide quantos leads cabem sem rolar. Só respiro e escala

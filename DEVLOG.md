@@ -1252,6 +1252,21 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-24 — O quadro de oportunidades perde as barras de rolagem
+
+"No funil, não quero que apareça barra de rolagem nas colunas." Eram cinco
+barras cinza atravessando o quadro, uma por etapa, competindo com os cards —
+que é o que se lê ali.
+
+A rolagem continua; só a barra some (`scrollbar-width: none` + o equivalente
+WebKit). O que avisa que há mais passa a ser o próprio card cortado na borda da
+coluna — mesmo raciocínio que a barra de abas já usava. A rolagem LATERAL do
+quadro entrou junto, pelo mesmo motivo: uma barra horizontal sozinha embaixo de
+cinco colunas limpas é o degrau que se acabou de tirar.
+
+`overflow` e `overscroll-behavior` saíram do `style` inline e viraram
+`.crm-board-cols` / `.crm-coluna-cards` no CSS.
+
 ### 2026-09-24 — O fundo deixa de ser rosé
 
 "Não sei se tô gostando do rosé leve de background." Em vez de discutir, as

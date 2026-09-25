@@ -1055,7 +1055,6 @@ export function CRMBoard({
         coluna — que é onde os cards estão. */}
     <div className="crm-board-cols" style={{
       display: 'flex', gap: 12,
-      overflowX: 'auto', overflowY: 'hidden',
       flex: 1, minHeight: 0,
       paddingBottom: 4, marginTop: 12,
     }}>
@@ -1130,10 +1129,9 @@ export function CRMBoard({
             </div>
 
             {/* Cards */}
-            <div style={{
+            <div className="crm-coluna-cards" style={{
               display: 'flex', flexDirection: 'column', gap: 8,
-              flex: 1, overflowY: 'auto', overscrollBehavior: 'contain',
-              padding: '0 2px 4px', minHeight: 0,
+              flex: 1, padding: '0 2px 4px', minHeight: 0,
             }}>
               {stageLeads.map(lead => (
                 <LeadCard
