@@ -246,6 +246,17 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   card “Abrir unidade” no dashboard, onde entrar nela é a intenção.
 - **Toda `page.tsx` chama `assertPermission` por si**, mesmo com o layout já
   conferindo: o layout protege a navegação, não a URL.
+- **Rota PÚBLICA se declara em `lib/supabase/middleware.ts`**, não só deixando
+  de chamar `getTenantContext`. O proxy manda para `/login` tudo que
+  não estiver na lista — a página pode não pedir sessão e mesmo assim nunca ser
+  vista. Hoje são: `/`, `/privacidade`, `/schedule*` e
+  `/api/*`, mais as telas de autenticação.
+  - Quem precisa disso: o que é lido por quem **ainda não entrou** ou **nunca
+    vai entrar**. A política de privacidade é o caso típico — e loja de
+    aplicativo exige uma URL pública para publicar o app.
+  - `e2e/privacidade-publica.spec.ts` confere sem sessão
+    (`storageState` vazio), que é o único jeito de a regressão aparecer:
+    logado, a página abre de qualquer forma.
 
 ### Mobile
 

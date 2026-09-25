@@ -195,7 +195,10 @@ export default async function LandingPage() {
         textAlign: 'center',
       }}>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-          © 2026 BellarisOS · Todos os direitos reservados
+          © 2026 BellarisOS · Todos os direitos reservados ·{' '}
+          <Link href="/privacidade" style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-semibold)' }}>
+            Política de Privacidade
+          </Link>
         </p>
       </footer>
     </div>

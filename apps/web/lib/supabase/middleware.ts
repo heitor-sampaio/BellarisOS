@@ -34,7 +34,19 @@ export async function updateSession(request: NextRequest) {
     const pathname = request.nextUrl.pathname
     const isAuthRoute = pathname === '/login' || pathname === '/register'
       || pathname === '/reset-password' || pathname === '/update-password'
-    const isPublicRoute = pathname.startsWith('/schedule') || pathname.startsWith('/api/')
+    // Abre SEM sessão. É aqui que "página pública" se decide de verdade: a
+    // página pode não chamar `getTenantContext` e ainda assim nunca ser vista,
+    // porque o proxy manda para o login antes de ela renderizar.
+    //
+    // `/privacidade` precisa disso porque é lida por quem ainda não entrou, por
+    // quem nunca vai entrar (o cliente da clínica) e por quem avalia o app na
+    // loja — loja de aplicativo exige uma URL pública para publicar.
+    // `/` é a landing, que já decide sozinha se redireciona.
+    const PUBLICAS = ['/privacidade']
+    const isPublicRoute = pathname === '/'
+      || PUBLICAS.includes(pathname)
+      || pathname.startsWith('/schedule')
+      || pathname.startsWith('/api/')
 
     if (!user && !isAuthRoute && !isPublicRoute) {
       const url = request.nextUrl.clone()

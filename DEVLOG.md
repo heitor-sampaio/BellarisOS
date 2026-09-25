@@ -1260,6 +1260,37 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-25 — Política de privacidade, pública
+
+Pedido do Heitor. Em `/privacidade`, sem sessão.
+
+**O texto descreve o que o sistema FAZ, e cada afirmação foi conferida no
+código** — os quatro buckets privados, os terceiros que realmente recebem dado,
+o que o pedido de LGPD entrega, o que a retenção apaga. Numa política de
+privacidade, frase confortável e falsa custa caro, e a tentação de escrever
+"seus dados são totalmente seguros" é grande.
+
+O que ele precisa saber que ficou de fora: **razão social, CNPJ, endereço e o
+e-mail do encarregado**. São fatos do mundo, não do código — inventar qualquer
+um tornaria o documento falso. Ficaram isolados em
+`app/privacidade/dados-do-controlador.ts`, e enquanto estiverem vazios a
+página **mostra um aviso** em vez de fingir que a informação existe.
+
+O eixo do texto é a distinção **controlador × operador**: a clínica controla os
+dados de quem ela atende, o BellarisOS opera por conta dela, e somos
+controladores só dos dados de conta de quem usa o sistema para trabalhar. É o
+que decide a quem o titular pede o quê, então vem antes de tudo. Dado de saúde
+ganhou seção própria (art. 5º, II), com o que o sistema faz de diferente: bucket
+privado, link temporário, permissão específica, e o aviso que não carrega
+conteúdo clínico.
+
+**O teste achou o defeito que eu não tinha visto.** A página não chama
+`getTenantContext` — e mesmo assim redirecionava para `/login` com
+307. A causa: `lib/supabase/middleware.ts` manda para o login tudo que não
+está numa lista de rotas públicas, e `/privacidade` não estava.
+`/` também não estava: a landing só não caía porque decide sozinha.
+"Não pedir sessão" não torna uma página pública neste projeto.
+
 ### 2026-09-25 — O sino passa a tocar para quem tem interesse
 
 "Todos que forem partes interessadas no evento devem receber a notificação."

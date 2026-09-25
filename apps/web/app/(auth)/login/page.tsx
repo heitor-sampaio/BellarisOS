@@ -93,6 +93,18 @@ export default function LoginPage() {
         >
           {pending ? 'Entrando…' : 'Entrar'}
         </button>
+
+        {/* Onde quem ainda não entrou consegue achar: a política tem de ser
+            alcançável SEM sessão. */}
+        <Link
+          href="/privacidade"
+          style={{
+            fontSize: 'var(--text-2xs)', color: 'var(--text-faint)',
+            textAlign: 'center', marginTop: 4,
+          }}
+        >
+          Política de Privacidade
+        </Link>
       </form>
     </div>
   )
