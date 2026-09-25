@@ -1634,6 +1634,15 @@ input[type="search"].field {
   gap: 5px;
 }
 
+/* Formulário em duas colunas que vira uma no celular. Campo de formulário
+   esticado em 1200px fica com 40 caracteres de largura para um telefone — e
+   empilhado em 390px é a única coisa que cabe. */
+.grade-de-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
 /* Filtro que ACUMULA (tag, dono, marcador). É o único seletor em que a pílula
    solta é a forma certa: não há "uma escolha" para um segmento representar —
    marcam-se várias, ou nenhuma. Ligada em `brand-soft`, nunca em `--brand`

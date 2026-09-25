@@ -17,6 +17,8 @@ import { SettingsEventos } from '@/components/admin/settings-eventos'
 import { listarEventosDeDominio, resumoDoCatalogo } from '@/actions/eventos'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { SegSelect } from '@/components/shared/seg-select'
+import { SettingsGeral } from '@/components/admin/settings-geral'
+import { lerDadosDaRede } from '@/actions/rede'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -159,6 +161,9 @@ export async function Configuracoes({
 
   // Só carrega quando a aba está aberta: a lista não é usada nas outras.
   const lgpdRequests = activeTab === 'lgpd' ? await listDataRequests() : []
+
+  // Idem para os dados da própria rede.
+  const dadosDaRede = activeTab === 'general' ? await lerDadosDaRede() : null
 
   // A corrente de eventos, idem. São duas consultas (o resumo agregado e as
   // últimas linhas) e nenhuma outra aba as usa.
@@ -322,11 +327,15 @@ export async function Configuracoes({
       )}
 
       {activeTab === 'general' && (
-        <div className="card">
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-            Em breve: configurações gerais da rede (nome, logo, plano).
-          </p>
-        </div>
+        dadosDaRede
+          ? <SettingsGeral rede={dadosDaRede} podeEditar={can(ctx, 'settings', 'MANAGE')} />
+          : (
+            <div className="card">
+              <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+                Não foi possível carregar os dados da rede agora.
+              </p>
+            </div>
+          )
       )}
     </div>
   )
