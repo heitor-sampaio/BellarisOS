@@ -300,15 +300,13 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
           {branches.map(b => {
             const on = selectedBranches.includes(b.id)
             return (
-              <button key={b.id} type="button" onClick={() => toggleBranch(b.id)} style={{
-                padding: '5px 12px',
-                background: on ? 'var(--brand-soft)' : 'var(--bg-app)',
-                border: `1.5px solid ${on ? 'var(--brand-soft-border)' : 'var(--border)'}`,
-                borderRadius: 'var(--radius-chip-token)',
-                fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)',
-                color: on ? 'var(--brand)' : 'var(--text-muted)',
-                cursor: 'pointer',
-              }}>
+              <button
+                key={b.id}
+                type="button"
+                className={on ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                aria-pressed={on}
+                onClick={() => toggleBranch(b.id)}
+              >
                 {b.name}
               </button>
             )

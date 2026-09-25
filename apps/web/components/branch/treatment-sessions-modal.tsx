@@ -148,19 +148,14 @@ function SessionScheduler({
       {branches.length > 1 && (
         <div style={{ marginBottom: 12 }}>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 8 }}>FILIAL</p>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {branches.map(b => (
-              <button key={b.id} type="button" onClick={() => setBranchId(b.id)}
-                style={{
-                  padding: '6px 12px', borderRadius: 8, fontSize: 'var(--text-sm-sz)', fontWeight: 700, cursor: 'pointer',
-                  background: branchId === b.id ? 'var(--brand)' : 'var(--surface)',
-                  color: branchId === b.id ? 'var(--on-brand)' : 'var(--text-muted)',
-                  border: `1px solid ${branchId === b.id ? 'var(--brand)' : 'var(--border)'}`,
-                }}>
-                {b.name}
-              </button>
-            ))}
-          </div>
+          <select
+            className="filtro-select"
+            aria-label="Filial da sessão"
+            value={branchId ?? ''}
+            onChange={e => setBranchId(e.target.value)}
+          >
+            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
         </div>
       )}
 

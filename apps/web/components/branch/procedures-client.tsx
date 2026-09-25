@@ -131,26 +131,18 @@ export function ProceduresClient({ procedures, categories, totalCount, ticketMed
         </div>
       </div>
 
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
-        {tabs.map(tab => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            style={{
-              fontSize: 'var(--text-base-sz)', fontWeight: 600,
-              padding: '6px 16px', borderRadius: 999,
-              border: '1.5px solid',
-              cursor: 'pointer', transition: 'all 0.15s',
-              background:  tab === activeTab ? 'var(--brand)' : 'var(--surface)',
-              color:       tab === activeTab ? 'var(--on-brand)'         : 'var(--text)',
-              borderColor: tab === activeTab ? 'var(--brand)' : 'var(--border)',
-            }}
-          >
-            {tab}
-          </button>
-        ))}
+      {/* Filtro por categoria. As opções vêm do catálogo da rede — são dado,
+          sem número fixo —, e por isso é dropdown e não segmentado.
+          Ver §13 do CLAUDE.md. */}
+      <div style={{ marginBottom: 24 }}>
+        <select
+          className="filtro-select"
+          aria-label="Filtrar por categoria"
+          value={activeTab}
+          onChange={e => setActiveTab(e.target.value)}
+        >
+          {tabs.map(tab => <option key={tab} value={tab}>{tab}</option>)}
+        </select>
       </div>
 
       {/* Grid */}

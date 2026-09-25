@@ -19,18 +19,14 @@ interface Props {
   paramName?:   string
   extraParams?: Record<string, string>
   ariaLabel?:   string
-  /**
-   * Altura reduzida, para conviver com os gatilhos de filtro.
-   *
-   * O tamanho padrão é de seletor solto no topo de uma tela; ao lado de um
-   * filtro de 27px ele fica visivelmente mais alto, e dois controles quase
-   * iguais com alturas diferentes é o que faz uma barra parecer desalinhada.
-   */
-  compacto?:    boolean
 }
 
 /**
- * Seletor segmentado responsivo:
+ * Seletor segmentado responsivo. A aparência TODA mora em `.seg-desktop` /
+ * `.seg-chip` / `.seg-mobile` no globals.css — não existe variante de tamanho,
+ * e a tela que usa não escolhe altura. Ver §13 do CLAUDE.md.
+ *
+ * Comportamento:
  *  - Desktop (≥640px): barra de chips (segmentado).
  *  - Mobile (<640px): botão único com a opção atual que abre um menu dropdown.
  *
@@ -38,7 +34,7 @@ interface Props {
  * (`basePath` + `paramName` + `extraParams`), para uso em Server Components.
  */
 export function SegSelect({
-  options, value, onSelect, compacto = false,
+  options, value, onSelect,
   basePath, paramName = 'period', extraParams,
   ariaLabel,
 }: Props) {
@@ -74,15 +70,11 @@ export function SegSelect({
     return `${basePath}?${q.toString()}`
   }
 
-  const chipStyle: React.CSSProperties = compacto
-    ? { fontSize: 'var(--text-sm-sz)', padding: '3px 9px', whiteSpace: 'nowrap' }
-    : { fontSize: 'var(--text-xs-sz)', padding: '6px 12px', whiteSpace: 'nowrap' }
-
   const renderChip = (o: SegOption) => {
-    const cls = o.key === value ? 'btn-primary' : 'btn-ghost'
+    const cls = o.key === value ? 'seg-chip is-ativo' : 'seg-chip'
     return basePath
-      ? <Link key={o.key} href={hrefFor(o.key)} className={cls} style={chipStyle}>{o.label}</Link>
-      : <button key={o.key} type="button" className={cls} style={chipStyle} onClick={() => onSelect?.(o.key)}>{o.label}</button>
+      ? <Link key={o.key} href={hrefFor(o.key)} className={cls} aria-current={o.key === value}>{o.label}</Link>
+      : <button key={o.key} type="button" className={cls} aria-pressed={o.key === value} onClick={() => onSelect?.(o.key)}>{o.label}</button>
   }
 
   const menuItemStyle = (active: boolean): React.CSSProperties => ({
@@ -114,21 +106,7 @@ export function SegSelect({
   return (
     <div ref={ref} className="seg-root" style={{ position: 'relative' }}>
       {/* Desktop — segmentado */}
-      <div
-        className="seg-desktop"
-        style={{
-          display: 'inline-flex', flexWrap: 'wrap', background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          // Raio concêntrico: o invólucro é o raio do botão MAIS o respiro até
-          // ele. Com 8 ao redor de botões de 10, o canto do botão estourava o
-          // do invólucro — some quando os dois seguem a mesma conta.
-          ...(compacto
-            ? { gap: 2, borderRadius: 'calc(var(--radius-field-token) + 2px)', padding: 2 }
-            : { gap: 4, borderRadius: 'calc(var(--radius-field-token) + 4px)', padding: 4 }),
-        }}
-      >
-        {options.map(renderChip)}
-      </div>
+      <div className="seg-desktop">{options.map(renderChip)}</div>
 
       {/* Mobile — botão dropdown (fundo branco) */}
       <button
@@ -138,15 +116,6 @@ export function SegSelect({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={toggle}
-        style={{
-          alignItems: 'center',
-          border: '1px solid var(--border)', background: 'var(--surface)',
-          color: 'var(--text)', fontWeight: 700,
-          fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
-          ...(compacto
-            ? { gap: 5, padding: '4px 9px', borderRadius: 8, fontSize: 'var(--text-sm-sz)' }
-            : { gap: 8, padding: '8px 14px', borderRadius: 10, fontSize: 'var(--text-sm-sz)' }),
-        }}
       >
         {current?.label}
         <ChevronDown size={15} style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 150ms', flexShrink: 0 }} />

@@ -6,6 +6,7 @@ import { PlanejamentoTratamento } from '@/components/branch/planejamento-tratame
 import { PlanejamentoInjetaveis } from '@/components/branch/planejamento-injetaveis'
 import type { TreatmentProcedure, AvailableProduct } from '@/components/branch/treatment-plan-editor'
 import { rotaComParams } from '@/lib/query-params'
+import { SegSelect } from '@/components/shared/seg-select'
 
 type Aba = 'tratamento' | 'injetaveis'
 
@@ -73,20 +74,15 @@ export function PainelPlanejamento({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 6 }}>
-        {([
-          ['tratamento', 'Plano de tratamento'],
-          ['injetaveis', 'Injetáveis'],
-        ] as const).map(([k, label]) => (
-          <button key={k} type="button" onClick={() => trocarAba(k)}
-            style={{
-              padding: '7px 14px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, cursor: 'pointer',
-              border:     aba === k ? '2px solid var(--brand)' : '1.5px solid var(--border)',
-              background: aba === k ? 'var(--brand)'           : 'var(--surface)',
-              color:      aba === k ? 'var(--on-brand)'                   : 'var(--text)',
-            }}>
-            {label}
-          </button>
-        ))}
+        <SegSelect
+          options={[
+            { key: 'tratamento', label: 'Plano de tratamento' },
+            { key: 'injetaveis', label: 'Injetáveis' },
+          ]}
+          value={aba}
+          onSelect={k => trocarAba(k as Aba)}
+          ariaLabel="Seção do planejamento"
+        />
       </div>
 
       {aba === 'tratamento' ? (

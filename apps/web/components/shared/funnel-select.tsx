@@ -16,12 +16,10 @@ import type { CRMFunnel } from '@/lib/crm'
  * Com um funil só o seletor não aparece: não há escolha a oferecer.
  */
 export function FunnelSelect({
-  funnels, activeId, compacto = false,
+  funnels, activeId,
 }: {
   funnels:  Pick<CRMFunnel, 'id' | 'name'>[]
   activeId: string
-  /** Altura reduzida, para a barra de filtros do quadro. */
-  compacto?: boolean
 }) {
   const router = useRouter()
   const params = useSearchParams()
@@ -34,7 +32,6 @@ export function FunnelSelect({
       value={activeId}
       onSelect={id => router.push(mesclarParams(params, { funil: id }))}
       ariaLabel="Selecionar funil"
-      compacto={compacto}
     />
   )
 }

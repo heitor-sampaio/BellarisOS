@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Search, Plus, ClipboardList, Loader2, User } from 'lucide-react'
 import { listarPlanejamentos, criarPlanoDoCliente } from '@/actions/treatment-plans'
+import { SegSelect } from '@/components/shared/seg-select'
 import type { TreatmentProcedure, AvailableProduct } from '@/components/branch/treatment-plan-editor'
 
 /**
@@ -133,21 +134,18 @@ export function PlanejamentosClient({
             onChange={e => setBusca(e.target.value)}
           />
         </div>
-        {/* Fila de chips: rola na horizontal no celular em vez de quebrar em
-            tres linhas. Ver `.chips-bar` no globals.css. */}
-        <div className="chips-bar" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 }}>
-        {FILTROS.map(f => (
-          <button key={f.key} type="button" onClick={() => setStatus(f.key)}
-            style={{
-              padding: '7px 14px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-sm-sz)', fontWeight: 700, cursor: 'pointer',
-              border:     status === f.key ? '2px solid var(--brand)' : '1.5px solid var(--border)',
-              background: status === f.key ? 'var(--brand)'           : 'var(--surface)',
-              color:      status === f.key ? 'var(--on-brand)'                   : 'var(--text)',
-            }}>
-            {f.label}
-          </button>
-        ))}
-        {buscando && <Loader2 size={14} className="animate-spin" style={{ color: 'var(--text-faint)' }} />}
+        {/* Escolha exclusiva entre cinco estados fixos: é um segmentado, não
+            cinco pílulas soltas. Eram pílulas com raio, borda e altura
+            próprias — a mesma escolha desenhada de um jeito diferente do
+            resto do sistema. Ver §13 do CLAUDE.md. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <SegSelect
+            options={FILTROS}
+            value={status}
+            onSelect={setStatus}
+            ariaLabel="Filtrar por situação do plano"
+          />
+          {buscando && <Loader2 size={14} className="animate-spin" style={{ color: 'var(--text-faint)' }} />}
         </div>
       </div>
 

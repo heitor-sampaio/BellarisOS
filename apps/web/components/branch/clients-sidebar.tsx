@@ -178,7 +178,6 @@ export function ClientsSidebar({
             para filtro que acumula (tag), e usá-la aqui prometia que dava
             para marcar VIP e Novos ao mesmo tempo. */}
         <SegSelect
-          compacto
           ariaLabel="Filtrar clientes"
           value={filter}
           onSelect={k => setFilter(k as typeof filter)}

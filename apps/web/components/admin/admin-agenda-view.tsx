@@ -523,7 +523,6 @@ export function AdminAgendaView({
               da rede, que antes saía do portal. */}
           {todasUnidades.length > 1 && (
             <SegSelect
-              compacto
               options={[
                 { key: '', label: 'Toda a rede' },
                 ...todasUnidades.map(b => ({ key: b.id, label: b.name })),
@@ -536,7 +535,6 @@ export function AdminAgendaView({
 
           {/* Toggle de view */}
           <SegSelect
-            compacto
             options={[{ key: 'day', label: 'Dia' }, { key: 'week', label: 'Semana' }]}
             value={view}
             onSelect={(k) => navigate(selectedDate, k as AgendaView)}

@@ -223,7 +223,6 @@ export function AdminStockView({ products, branches, categories, productCategori
             segmento. Era o SegSelect reimplementado à mão, com raio e altura
             próprios. */}
         <SegSelect
-          compacto
           ariaLabel="Como ver o estoque"
           value={view}
           onSelect={v => setView(v as ViewMode)}

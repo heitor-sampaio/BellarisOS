@@ -179,6 +179,13 @@
     --card-pad: 24px;
     --card-pad-sm: 20px;
     --row-pad: 12px;
+
+    /* Altura única de TODO controle de filtro: segmentado, dropdown,
+       liga/desliga e campo de busca. Era o que fazia a barra do dashboard
+       parecer desalinhada em relação à da agenda — o mesmo seletor com duas
+       alturas, porque cada tela escolhia o padding no inline style.
+       Decisão do Heitor em 2026-09-24: "preciso que tudo seja padronizado". */
+    --altura-controle: 34px;
   }
 
   * {
@@ -895,23 +902,6 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 .tabs-bar::-webkit-scrollbar { display: none; }
 .tabs-bar > * { flex-shrink: 0; white-space: nowrap; }
 
-/* Fila de chips mutuamente exclusivos (Todos / Rascunho / Aceitos…). Mesmo
-   raciocínio da barra de abas, e não o da barra de filtros: são opções de UMA
-   pergunta, lidas da esquerda para a direita, e a primeira é a mais usada — o
-   que fica fora da tela é o fim da fila, não um filtro inteiro. Cinco chips
-   gastavam três linhas em 390px. */
-@media (max-width: 639px) {
-  .chips-bar {
-    flex-wrap: nowrap !important;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 2px;
-  }
-  .chips-bar::-webkit-scrollbar { display: none; }
-  .chips-bar > * { flex-shrink: 0; white-space: nowrap; }
-}
-
 /* Tabelas do admin no celular: o respiro lateral de 20px vira 12px. Em 390px de
    largura, 40px só de padding por linha saem do nome de quem se está
    procurando. */
@@ -1377,11 +1367,12 @@ input[type="search"].field {
    ruído repetido cinco vezes na mesma barra. O toggle pode levar — ali o
    ícone é o próprio assunto que se liga. */
 
-/* Dropdown de filtro. Mesma altura e raio do SegSelect compacto, para os dois
+/* Dropdown de filtro. Mesma altura e raio do segmentado, para os dois
    conviverem na mesma barra sem degrau. */
 .filtro-select {
   appearance: none;
-  padding: 6px 30px 6px 11px;
+  height: var(--altura-controle);
+  padding: 0 30px 0 11px;
   background: var(--surface);
   /* A seta é do sistema, não do sistema operacional: o chevron nativo muda de
      desenho em cada navegador e não acompanha a cor do texto. */
@@ -1407,7 +1398,8 @@ input[type="search"].field {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 11px;
+  height: var(--altura-controle);
+  padding: 0 11px;
   border: 1px solid var(--border);
   border-radius: var(--radius-field-token);
   background: var(--surface);
@@ -1420,8 +1412,123 @@ input[type="search"].field {
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 .filtro-toggle:hover { color: var(--text); }
+/* Só de ícone (o gatilho do painel de filtros do inbox): quadrado, não pílula
+   larga com um ícone perdido no meio. */
+.filtro-toggle.so-icone {
+  width: var(--altura-controle);
+  padding: 0;
+  justify-content: center;
+}
 .filtro-toggle.is-ativo {
   background: var(--brand-soft);
   border-color: var(--brand-soft-border);
   color: var(--brand);
 }
+
+/* Segmentado (<SegSelect>). A aparência morava em inline style dentro do
+   componente, em duas variantes ("compacto" ou não) que cada tela escolhia —
+   e era isso que deixava o seletor de período do dashboard mais alto que o de
+   unidade da agenda. Agora existe UMA forma, aqui, e a tela não opina.
+
+   Os chips não são mais `btn-primary`/`btn-ghost`: botão de ação carrega
+   sombra de marca e padding de ação, e dentro de um seletor essa sombra fazia
+   a opção escolhida parecer um botão de salvar. */
+.seg-desktop {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 2px;
+  min-height: var(--altura-controle);
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  /* Raio concêntrico: o invólucro é o raio do chip MAIS o respiro até ele.
+     Sem isso o canto do chip estoura o canto do invólucro. */
+  border-radius: calc(var(--radius-field-token) + 3px);
+}
+
+.seg-chip {
+  display: inline-flex;
+  align-items: center;
+  /* 34 menos os 3px de respiro e 1px de borda de cada lado do invólucro. */
+  height: calc(var(--altura-controle) - 8px);
+  padding: 0 11px;
+  border: none;
+  border-radius: var(--radius-field-token);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: var(--text-sm-sz);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease;
+}
+.seg-chip:hover { color: var(--brand); background: var(--brand-soft); }
+.seg-chip.is-ativo,
+.seg-chip.is-ativo:hover {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+/* Gatilho do segmentado no celular — mesma altura dos outros controles. */
+.seg-mobile {
+  align-items: center;
+  gap: 6px;
+  height: var(--altura-controle);
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--text-sm-sz);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* O campo de busca de uma barra de filtros segue a mesma altura: ele fica
+   lado a lado com os seletores, e 35px contra 34px é degrau visível. Em
+   formulário o `.field` continua com a altura dele. */
+.campo-busca,
+.filtro-largo { height: var(--altura-controle); }
+.filtro-largo > input { height: 100%; }
+
+/* Filtro que ACUMULA (tag, dono, marcador). É o único seletor em que a pílula
+   solta é a forma certa: não há "uma escolha" para um segmento representar —
+   marcam-se várias, ou nenhuma. Ligada em `brand-soft`, nunca em `--brand`
+   cheio: preenchimento cheio é do item escolhido de um segmento, e duas
+   ênfases iguais na mesma barra desfazem a hierarquia. */
+.chip-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip-token);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: var(--text-xs-sz);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.chip-filtro:hover { color: var(--text); }
+.chip-filtro.is-ativo {
+  background: var(--brand-soft);
+  border-color: var(--brand-soft-border);
+  color: var(--brand);
+}
+
+/* Num painel estreito (o de filtros do inbox tem 288px) o segmentado quebraria
+   em duas linhas, e segmentado em duas linhas deixa de ler como um controle
+   só. Ali a escolha exclusiva vira dropdown de largura cheia. */
+.painel-de-filtros .filtro-select,
+.painel-de-filtros .filtro-toggle { width: 100%; }
+.painel-de-filtros .filtro-toggle { justify-content: flex-start; }

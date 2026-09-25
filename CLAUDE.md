@@ -670,13 +670,26 @@ Princípios inegociáveis:
     dropdown sozinho no celular);
   - opções vindas de **dados**, ou mais de 5, ou longas → `.filtro-select`;
   - **liga/desliga** de um filtro só → `.filtro-toggle` + `aria-pressed`;
-  - filtro que **acumula** (tag, marcador) → `.chip`. Se é exclusivo, não é
-    chip: a pílula solta promete que dá para marcar duas.
+  - filtro que **acumula** (tag, marcador) → `.chip-filtro` + `aria-pressed`.
+    Se é exclusivo, não é chip: a pílula solta promete que dá para marcar duas.
   - **Seletor de texto não leva ícone** — o rótulo já diz, e o ícone repetido
     cinco vezes na mesma barra vira ruído. O toggle pode levar: ali o ícone é
     o assunto que se liga.
-  - Lista mestre-detalhe e passo de wizard **não são seletores** e seguem as
-    próprias regras.
+  - Lista mestre-detalhe — tela com a lista de um lado e o detalhe do item
+    escolhido do outro, como o Inbox e Clientes — e passo de wizard **não são
+    seletores** e seguem as próprias regras.
+- **Seletor tem UMA altura: `--altura-controle` (34px).** Vale para
+  `<SegSelect>`, `.filtro-select`, `.filtro-toggle` e o campo de busca de uma
+  barra de filtros, para que a barra feche numa linha só. O `<SegSelect>` tinha
+  uma variante `compacto` que cada tela escolhia, e era por isso que o seletor
+  de período do dashboard era mais alto que o de unidade da agenda. **A tela não
+  escolhe tamanho de seletor** — se precisar de outro, o problema é a tela.
+- **A aparência do seletor mora no CSS, não no `style` inline.** Foi o inline
+  que permitiu quatro desenhos da mesma coisa: `style` vence classe, então um
+  padding esquecido ali desfaz a padronização inteira sem erro nenhum.
+- Em **painel estreito** (o de filtros do inbox tem 288px) o segmentado
+  quebraria em duas linhas e deixaria de ler como um controle só: ali a escolha
+  exclusiva vira `.filtro-select` de largura cheia (`.painel-de-filtros`).
 - **Campo de busca tem fundo branco** (`.campo-busca`), diferente dos demais
   campos, que usam `--bg-app`. A busca vive numa barra de filtros sobre o fundo
   do app; com o mesmo tom do fundo ela sumia na superfície em vez de convidar

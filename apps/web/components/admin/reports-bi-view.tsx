@@ -1247,8 +1247,8 @@ export function ReportsBiView(props: ReportsBiProps) {
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <span className="overline">Recorte</span>
             <select
-              className="field"
-              style={{ width: 'auto', minWidth: 160, padding: '7px 10px' }}
+              className="filtro-select"
+              style={{ minWidth: 160 }}
               value={props.selectedBranchId ?? ''}
               onChange={e => switchBranch(e.target.value)}
             >

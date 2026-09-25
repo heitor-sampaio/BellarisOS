@@ -162,20 +162,39 @@ const SITUACOES: { key: ConvStatus | 'todos'; label: string }[] = [
   { key: 'closed',  label: 'Encerradas' },
 ]
 
+/**
+ * Pílula de filtro que ACUMULA — dono, tag. Ver `.chip-filtro` no globals.css.
+ *
+ * Era a forma de TODO filtro deste painel: escolha exclusiva, liga/desliga e
+ * marcador acumulável, os três desenhados igual. Três funções com a mesma
+ * aparência é o que fazia ninguém saber, de olhar, se marcar "Abertas"
+ * desmarcava "Pendentes".
+ */
 function Pastilha({
   ativa, children, onClick,
 }: { ativa: boolean; children: React.ReactNode; onClick: () => void }) {
   return (
     <button
       type="button"
+      className={ativa ? 'chip-filtro is-ativo' : 'chip-filtro'}
+      aria-pressed={ativa}
       onClick={onClick}
-      style={{
-        fontSize: 'var(--text-overline)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-        cursor: 'pointer', transition: 'all 100ms',
-        border:     ativa ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
-        background: ativa ? 'var(--brand-soft)' : 'var(--bg-app)',
-        color:      ativa ? 'var(--brand)' : 'var(--text-muted)',
-      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** Liga/desliga de um filtro só. Ver `.filtro-toggle`. */
+function Chave({
+  ativa, children, onClick,
+}: { ativa: boolean; children: React.ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className={ativa ? 'filtro-toggle is-ativo' : 'filtro-toggle'}
+      aria-pressed={ativa}
+      onClick={onClick}
     >
       {children}
     </button>
@@ -225,15 +244,12 @@ export function InboxFiltros({
     <div style={{ position: 'relative' }}>
       <button
         type="button"
+        className={ativos > 0 ? 'filtro-toggle so-icone is-ativo' : 'filtro-toggle so-icone'}
+        aria-pressed={ativos > 0}
+        aria-expanded={aberto}
         onClick={() => setAberto(a => !a)}
         title="Filtrar conversas"
-        style={{
-          width: 34, height: 34, borderRadius: 8, flexShrink: 0, position: 'relative',
-          border: ativos > 0 ? '1px solid var(--brand)' : '1px solid var(--border)',
-          background: ativos > 0 ? 'var(--brand-soft)' : 'var(--bg-app)',
-          color: ativos > 0 ? 'var(--brand)' : 'var(--text-muted)',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
+        style={{ flexShrink: 0, position: 'relative' }}
       >
         <SlidersHorizontal size={15} />
         {ativos > 0 && (
@@ -254,7 +270,7 @@ export function InboxFiltros({
           {/* Clique fora fecha. */}
           <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setAberto(false)} />
 
-          <div style={{
+          <div className="painel-de-filtros" style={{
             position: 'absolute', top: 40, left: 0, zIndex: 41,
             width: 288, maxHeight: '64vh', overflowY: 'auto',
             background: 'var(--surface)', border: '1px solid var(--border)',
@@ -294,78 +310,64 @@ export function InboxFiltros({
                 espera achá-lo no topo, onde as pastilhas ficavam. */}
             {opcoes.canais.length > 1 && (
               <Secao titulo="Origem">
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  <Pastilha
-                    ativa={filtros.canal === 'all'}
-                    onClick={() => onChange({ ...filtros, canal: 'all' })}
-                  >
-                    Todas
-                  </Pastilha>
+                <select
+                  className="filtro-select"
+                  value={filtros.canal}
+                  onChange={e => onChange({ ...filtros, canal: e.target.value as FiltrosInbox['canal'] })}
+                >
+                  <option value="all">Todas as origens</option>
                   {opcoes.canais.map(ch => (
-                    <Pastilha
-                      key={ch}
-                      ativa={filtros.canal === ch}
-                      onClick={() => onChange({ ...filtros, canal: ch })}
-                    >
-                      {ROTULO_CANAL[ch]}
-                    </Pastilha>
+                    <option key={ch} value={ch}>{ROTULO_CANAL[ch]}</option>
                   ))}
-                </div>
+                </select>
               </Secao>
             )}
 
             <Secao titulo="Situação">
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              <select
+                className="filtro-select"
+                value={filtros.status}
+                onChange={e => onChange({ ...filtros, status: e.target.value as FiltrosInbox['status'] })}
+              >
                 {SITUACOES.map(s => (
-                  <Pastilha
-                    key={s.key}
-                    ativa={filtros.status === s.key}
-                    onClick={() => onChange({ ...filtros, status: s.key })}
-                  >
-                    {s.label}
-                  </Pastilha>
+                  <option key={s.key} value={s.key}>{s.label}</option>
                 ))}
-              </div>
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 5 }}>
-                <Pastilha
+              </select>
+              {/* Estes três não são a mesma escolha: cada um liga por conta. */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 6 }}>
+                <Chave
                   ativa={filtros.naoLidas}
                   onClick={() => onChange({ ...filtros, naoLidas: !filtros.naoLidas })}
                 >
                   Não lidas
-                </Pastilha>
-                <Pastilha
+                </Chave>
+                <Chave
                   ativa={filtros.aguardando}
                   onClick={() => onChange({ ...filtros, aguardando: !filtros.aguardando })}
                 >
                   Aguardando resposta
-                </Pastilha>
-                <Pastilha
+                </Chave>
+                <Chave
                   ativa={filtros.comOportunidade}
                   onClick={() => onChange({ ...filtros, comOportunidade: !filtros.comOportunidade })}
                 >
                   Com oportunidade aberta
-                </Pastilha>
+                </Chave>
               </div>
             </Secao>
 
             {/* Cliente é da PESSOA, não do negócio: quem já é cliente costuma
                 receber outro tratamento no atendimento. */}
             <Secao titulo="Cliente">
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                {([
-                  { key: 'todos', label: 'Todos' },
-                  { key: 'sim',   label: 'É cliente' },
-                  { key: 'nao',   label: 'Ainda não' },
-                ] as const).map(o => (
-                  <Pastilha
-                    key={o.key}
-                    ativa={filtros.cliente === o.key}
-                    onClick={() => onChange({ ...filtros, cliente: o.key })}
-                  >
-                    {o.label}
-                  </Pastilha>
-                ))}
-              </div>
+              <select
+                className="filtro-select"
+                value={filtros.cliente}
+                onChange={e => onChange({ ...filtros, cliente: e.target.value as FiltrosInbox['cliente'] })}
+              >
+                <option value="todos">Todos</option>
+                <option value="sim">É cliente</option>
+                <option value="nao">Ainda não</option>
+              </select>
             </Secao>
 
             {opcoes.donos.length > 1 && (
@@ -387,10 +389,9 @@ export function InboxFiltros({
             {opcoes.funis.length > 0 && (
               <Secao titulo="Funil">
                 <select
-                  className="field"
+                  className="filtro-select"
                   value={filtros.funil}
                   onChange={e => onChange({ ...filtros, funil: e.target.value, etapa: 'todas' })}
-                  style={{ fontSize: 'var(--text-sm-sz)', padding: '7px 9px' }}
                 >
                   <option value="todos">Todos os funis</option>
                   {opcoes.funis.map(f => (
@@ -403,10 +404,9 @@ export function InboxFiltros({
             {etapasVisiveis.length > 0 && (
               <Secao titulo="Etapa">
                 <select
-                  className="field"
+                  className="filtro-select"
                   value={filtros.etapa}
                   onChange={e => onChange({ ...filtros, etapa: e.target.value })}
-                  style={{ fontSize: 'var(--text-sm-sz)', padding: '7px 9px' }}
                 >
                   <option value="todas">Todas as etapas</option>
                   {etapasVisiveis.map(e => (
@@ -435,10 +435,9 @@ export function InboxFiltros({
             {opcoes.unidades.length > 1 && (
               <Secao titulo="Unidade">
                 <select
-                  className="field"
+                  className="filtro-select"
                   value={filtros.unidade}
                   onChange={e => onChange({ ...filtros, unidade: e.target.value })}
-                  style={{ fontSize: 'var(--text-sm-sz)', padding: '7px 9px' }}
                 >
                   <option value="todas">Todas as unidades</option>
                   {opcoes.unidades.map(u => (
@@ -532,11 +531,8 @@ export function ChipsDeFiltro({
       {chips.map((chip, i) => (
         <span
           key={`${chip.rotulo}-${i}`}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            fontSize: 'var(--text-overline)', fontWeight: 700, padding: '2px 5px 2px 8px',
-            borderRadius: 99, background: 'var(--brand-soft)', color: 'var(--brand)',
-          }}
+          className="chip-filtro is-ativo"
+          style={{ cursor: 'default', paddingRight: 6 }}
         >
           {chip.rotulo}
           <button

@@ -55,9 +55,11 @@ test('a sub-aba de planejamento e o que está aberto também moram na URL', asyn
   test.skip(!clientId, 'a rede de teste não tem cliente')
   await page.goto(`/admin/clients/${clientId}?aba=planejamento`)
 
-  // Pelo par de botões da aba, não pelo menu lateral, que tem o mesmo rótulo.
-  const parDeAbas = page.getByRole('button', { name: 'Plano de tratamento', exact: true }).locator('..')
-  await parDeAbas.getByRole('button', { name: 'Injetáveis', exact: true }).click()
+  // O seletor de seção é um <SegSelect>: no celular ele é um botão só que abre
+  // o menu, e é por ele que se troca de aba. Pelo aria-label, não pelo rótulo —
+  // o rótulo do gatilho é a opção ATUAL, e o menu lateral repete os dois nomes.
+  await page.getByRole('button', { name: 'Seção do planejamento' }).click()
+  await page.getByRole('menu').getByText('Injetáveis', { exact: true }).click()
   await expect(page).toHaveURL(/planejamento=injetaveis/)
 
   // Um planejamento novo já abre, e abrir entra como `aberto=<id>`. Criar aqui

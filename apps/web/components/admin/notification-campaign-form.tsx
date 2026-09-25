@@ -422,7 +422,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
             <SectionLabel>Tags do CRM</SectionLabel>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
               {tags.map(t => (
-                <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 99, background: 'var(--brand-soft)', color: 'var(--brand)', fontSize: 'var(--text-sm-sz)', fontWeight: 700 }}>
+                <span key={t} className="chip-filtro is-ativo" style={{ cursor: 'default', paddingRight: 6 }}>
                   {t}
                   <button type="button" onClick={() => setTags(tags.filter(x => x !== t))} style={{ border: 'none', background: 'none', cursor: 'pointer', padding: 0, color: 'inherit' }}>×</button>
                 </span>

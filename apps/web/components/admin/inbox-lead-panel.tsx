@@ -27,6 +27,7 @@ import {
   createCrmAppointment,
   type CrmSchedulingData,
 } from '@/actions/crm-scheduling'
+import { SegSelect } from '@/components/shared/seg-select'
 
 export interface PanelBranch { id: string; name: string; slug: string }
 
@@ -693,29 +694,16 @@ function OportunidadeItem({
                   Situação
                 </span>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  {([
-                    { key: 'OPEN', label: 'Em aberto' },
-                    { key: 'WON',  label: 'Ganha' },
-                    { key: 'LOST', label: 'Perdida' },
-                  ] as const).map(s => {
-                    const ativa = o.outcome === s.key
-                    return (
-                      <button
-                        key={s.key}
-                        type="button"
-                        onClick={() => { if (!ativa) onConcluir(s.key) }}
-                        style={{
-                          fontSize: 'var(--text-overline)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
-                          cursor: ativa ? 'default' : 'pointer', transition: 'all 100ms',
-                          border:     ativa ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
-                          background: ativa ? 'var(--brand-soft)' : 'var(--bg-app)',
-                          color:      ativa ? 'var(--brand)' : 'var(--text-muted)',
-                        }}
-                      >
-                        {s.label}
-                      </button>
-                    )
-                  })}
+                  <SegSelect
+                    options={[
+                      { key: 'OPEN', label: 'Em aberto' },
+                      { key: 'WON',  label: 'Ganha' },
+                      { key: 'LOST', label: 'Perdida' },
+                    ]}
+                    value={o.outcome}
+                    onSelect={k => { if (k !== o.outcome) onConcluir(k as 'OPEN' | 'WON' | 'LOST') }}
+                    ariaLabel="Desfecho da oportunidade"
+                  />
                 </div>
               </div>
 

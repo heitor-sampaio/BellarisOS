@@ -157,7 +157,7 @@ function FiltersBar({
           ele, "Vendas" pareceria mais um filtro entre outros. */}
       {funnels.length > 1 && (
         <>
-          <FunnelSelect funnels={funnels} activeId={funnelId} compacto />
+          <FunnelSelect funnels={funnels} activeId={funnelId} />
           <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
         </>
       )}

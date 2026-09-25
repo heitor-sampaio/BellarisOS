@@ -1181,7 +1181,7 @@ A padronização é **por função**, não por aparência:
 | exclusiva, 2 a 5 opções curtas e fixas | `<SegSelect>` |
 | opções vindas de dados, ou mais de 5 | `.filtro-select` |
 | liga/desliga de um filtro só | `.filtro-toggle` |
-| filtro que acumula (tag) | `.chip` |
+| filtro que acumula (tag) | `.chip-filtro` |
 
 O SegSelect **já existia** e já resolvia o caso difícil: segmentado no desktop,
 dropdown no celular. Três telas o tinham reimplementado à mão.
@@ -1202,6 +1202,55 @@ repetido cinco vezes na mesma barra vira ruído. O toggle pode levar — ali o
 
 **Fora de escopo, de propósito:** escolha de item em lista mestre-detalhe e
 passo de wizard não são seletores, ainda que pintem o selecionado de rosé.
+
+### 2026-09-24 — Seletor passa a ter UMA altura, e a tela não opina
+
+A primeira passada padronizou a FORMA e deixou o TAMANHO de fora. O Heitor
+voltou com o que sobrou, e com razão: "na página de tratamento temos pílulas
+separadas, no dashboard o seletor de período é maior do que o seletor de
+unidade na agenda. Preciso que tudo seja padronizado."
+
+A causa era uma prop: `<SegSelect compacto>`. Duas variantes de tamanho — 34px
+e 27px — e **cada tela escolhia a sua**. O dashboard pegou a grande, a agenda a
+pequena, e as duas estavam "certas". A prop saiu inteira; a aparência do
+segmentado saiu do `style` inline e virou `.seg-desktop` / `.seg-chip` /
+`.seg-mobile` no CSS, com `--altura-controle: 34px` valendo também para
+`.filtro-select`, `.filtro-toggle` e o campo de busca de barra de filtros.
+
+Os chips do segmentado deixaram de ser `btn-primary`/`btn-ghost`: botão de ação
+carrega sombra de marca, e dentro de um seletor essa sombra fazia a opção
+escolhida parecer um botão de salvar.
+
+**O que ainda estava fora do padrão, e entrou:**
+
+| Onde | Era | Virou |
+|---|---|---|
+| Tratamentos | 5 pílulas soltas (a reclamação original) | `<SegSelect>` |
+| Painel de filtros do inbox | a mesma pílula para as três funções — exclusiva, liga/desliga e acumulável | dropdown, `.filtro-toggle` e `.chip-filtro` |
+| Catálogo de procedimentos | pílula por categoria (que vem de dado) | `.filtro-select` |
+| Checkout: forma de pagamento | 4 pílulas | `<SegSelect>` |
+| Checkout: filial e profissional | pílula com ícone de mapa | `.filtro-select` |
+| Planejamento: as duas seções | 2 pílulas | `<SegSelect>` |
+| Integrações: como conectar o WhatsApp | 2 pílulas | `<SegSelect>` |
+| Desfecho da oportunidade | 3 pílulas | `<SegSelect>` |
+| Abrangência do membro (`ScopeChip`) | segmentado reimplementado, em 2 arquivos | `<SegSelect>` |
+| Tags, filiais e procedimentos escolhidos | 4 desenhos de pílula acumulável | `.chip-filtro` |
+
+`.chips-bar` saiu do CSS: ela existia para a fila de pílulas de Tratamentos
+rolar na horizontal em 390px. Com a fila virando segmentado, o celular já
+recebe um botão só que abre menu — o problema deixou de existir.
+
+**Painel estreito é a exceção declarada.** No painel de filtros do inbox (288px)
+um segmentado quebraria em duas linhas e deixaria de ler como um controle só;
+ali a escolha exclusiva vira dropdown de largura cheia. Está na regra, não no
+gosto de quem escreveu a tela.
+
+**Amarrado em teste** (`e2e/seletores-padronizados.spec.ts`, 12 casos): em 11
+telas, todo seletor visível mede exatamente `--altura-controle` — lido do
+próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo ou
+borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
+`style` vence classe, então um padding esquecido desfaz a padronização inteira
+sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
 ### 2026-09-24 — O fundo deixa de ser rosé
 

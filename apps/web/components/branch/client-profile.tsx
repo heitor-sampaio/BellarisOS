@@ -654,16 +654,11 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
               <button
                 key={tag}
                 type="button"
+                className={active ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                aria-pressed={active}
                 onClick={() => {
                   setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
                   setSaved(false)
-                }}
-                style={{
-                  padding: '5px 12px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-sm-sz)', fontWeight: 600,
-                  cursor: 'pointer', border: active ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-                  background: active ? 'var(--brand-soft)' : 'var(--surface)',
-                  color: active ? 'var(--brand)' : 'var(--text-muted)',
-                  transition: 'all 0.12s',
                 }}
               >
                 {tag}

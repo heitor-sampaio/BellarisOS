@@ -15,6 +15,7 @@ import {
 import type { IntegrationConfig } from '@/actions/integrations'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { UazapiConnect } from '@/components/admin/uazapi-connect'
+import { SegSelect } from '@/components/shared/seg-select'
 
 /**
  * Origem do site, resolvida só depois de montar.
@@ -1170,25 +1171,15 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
             {/* Dois caminhos para o mesmo provedor: conectar por aqui (instância
                 na nossa conta de integrador) ou usar uma conta própria. */}
             <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-              {([
-                ['gerenciada', 'Conectar por aqui'],
-                ['propria',    'Já tenho conta uazapi'],
-              ] as const).map(([modo, rotulo]) => (
-                <button
-                  key={modo}
-                  type="button"
-                  onClick={() => setUazapiModo(modo)}
-                  style={{
-                    padding: '7px 12px', borderRadius: 99, cursor: 'pointer',
-                    fontSize: 'var(--text-sm-sz)', fontWeight: 700,
-                    border: uazapiModo === modo ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
-                    background: uazapiModo === modo ? 'var(--brand-soft)' : 'var(--bg-app)',
-                    color: uazapiModo === modo ? 'var(--brand)' : 'var(--text-muted)',
-                  }}
-                >
-                  {rotulo}
-                </button>
-              ))}
+              <SegSelect
+                options={[
+                  { key: 'gerenciada', label: 'Conectar por aqui' },
+                  { key: 'propria',    label: 'Já tenho conta uazapi' },
+                ]}
+                value={uazapiModo}
+                onSelect={m => setUazapiModo(m as 'gerenciada' | 'propria')}
+                ariaLabel="Como conectar o WhatsApp"
+              />
             </div>
             {uazapiModo === 'gerenciada'
               ? <UazapiConnect />

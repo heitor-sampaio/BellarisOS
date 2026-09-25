@@ -11,6 +11,7 @@ import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actio
 import { rotaCliente } from '@/lib/rotas'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { SegSelect } from '@/components/shared/seg-select'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -582,22 +583,17 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
           Como vai ser pago
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-          {([
-            ['NADA_AGORA', 'Receber no atendimento'],
-            ['AVISTA',     'À vista'],
-            ['PARCELADO',  'Entrada + parcelas'],
-            ['A_RECEBER',  'A receber'],
-          ] as const).filter(([k]) => podeCobrar || k === 'NADA_AGORA').map(([k, label]) => (
-            <button key={k} type="button" onClick={() => setFormaPgto(k)}
-              style={{
-                padding: '10px 16px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-base-sz)', fontWeight: 700, cursor: 'pointer',
-                border:     formaPgto === k ? '2px solid var(--brand)' : '1.5px solid var(--border)',
-                background: formaPgto === k ? 'var(--brand)'           : 'var(--surface)',
-                color:      formaPgto === k ? 'var(--on-brand)'                   : 'var(--text)',
-              }}>
-              {label}
-            </button>
-          ))}
+          <SegSelect
+            options={[
+              { key: 'NADA_AGORA', label: 'Receber no atendimento' },
+              { key: 'AVISTA',     label: 'À vista' },
+              { key: 'PARCELADO',  label: 'Entrada + parcelas' },
+              { key: 'A_RECEBER',  label: 'A receber' },
+            ].filter(o => podeCobrar || o.key === 'NADA_AGORA')}
+            value={formaPgto}
+            onSelect={k => setFormaPgto(k as typeof formaPgto)}
+            ariaLabel="Como vai ser pago"
+          />
         </div>
 
         {formaPgto === 'PARCELADO' && (
@@ -715,23 +711,19 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
         {/* Filial */}
         {plan.branches.length > 1 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
-            {plan.branches.map(b => {
-              const isSel = b.id === schedBranchId
-              return (
-                <button key={b.id} type="button" onClick={() => setSchedBranchId(b.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 'var(--radius-chip-token)', cursor: 'pointer',
-                    border:     isSel ? '2px solid var(--brand)' : '1.5px solid var(--border)',
-                    background: isSel ? 'var(--brand-soft)'      : 'var(--surface)',
-                    color:      isSel ? 'var(--brand)'           : 'var(--text)',
-                    fontWeight: 700, fontSize: 'var(--text-base-sz)',
-                  }}>
-                  <MapPin size={13} /> {b.name}
-                  {b.id === plan.currentBranchId && <span style={{ fontSize: 'var(--text-overline)', opacity: 0.6 }}>(atual)</span>}
-                </button>
-              )
-            })}
+          <div style={{ marginBottom: 14 }}>
+            <select
+              className="filtro-select"
+              aria-label="Filial do agendamento"
+              value={schedBranchId ?? ''}
+              onChange={e => setSchedBranchId(e.target.value)}
+            >
+              {plan.branches.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.name}{b.id === plan.currentBranchId ? ' (atual)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -741,22 +733,15 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         ) : schedProfs.length === 0 ? (
           <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>Nenhum profissional nesta filial.</p>
         ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {schedProfs.map(p => {
-              const sel = p.id === schedProfId
-              return (
-                <button key={p.id} type="button" onClick={() => setProfId(p.id)}
-                  style={{
-                    padding: '8px 16px', borderRadius: 'var(--radius-chip-token)', fontSize: 'var(--text-base-sz)', fontWeight: 700, cursor: 'pointer',
-                    border:     sel ? '2px solid var(--brand)' : '1.5px solid var(--border)',
-                    background: sel ? 'var(--brand)'           : 'var(--surface)',
-                    color:      sel ? 'var(--on-brand)'                   : 'var(--text)',
-                  }}>
-                  {p.name}
-                </button>
-              )
-            })}
-          </div>
+          <select
+            className="filtro-select"
+            aria-label="Profissional do agendamento"
+            value={schedProfId ?? ''}
+            onChange={e => setProfId(e.target.value)}
+          >
+            <option value="">Escolher profissional</option>
+            {schedProfs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
         )}
       </div>
 

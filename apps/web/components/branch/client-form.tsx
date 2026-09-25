@@ -172,16 +172,9 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
             return (
               <button
                 key={tag} type="button"
+                className={active ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                aria-pressed={active}
                 onClick={() => toggleTag(tag)}
-                style={{
-                  padding: '4px 10px',
-                  background: active ? 'var(--brand-soft)' : 'var(--bg-app)',
-                  border: `1.5px solid ${active ? 'var(--brand-soft-border)' : 'var(--border)'}`,
-                  borderRadius: 'var(--radius-chip-token)',
-                  fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)',
-                  color: active ? 'var(--brand)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                }}
               >
                 {tag}
               </button>

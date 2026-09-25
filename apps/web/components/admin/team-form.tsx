@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
+import { SegSelect } from '@/components/shared/seg-select'
 
 interface Branch { id: string; name: string }
 interface Role   { id: string; label: string }
@@ -85,10 +86,15 @@ export function AdminTeamForm({ branches, roles, isNetworkAdmin }: AdminTeamForm
                 {isNetworkAdmin && (
                   <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <label className="overline">Abrangência</label>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <ScopeChip active={scope === 'branch'} onClick={() => setScope('branch')} label="Uma filial" />
-                      <ScopeChip active={scope === 'network'} onClick={() => setScope('network')} label="Rede inteira" />
-                    </div>
+                    <SegSelect
+                      options={[
+                        { key: 'branch',  label: 'Uma filial' },
+                        { key: 'network', label: 'Rede inteira' },
+                      ]}
+                      value={scope}
+                      onSelect={k => setScope(k as 'branch' | 'network')}
+                      ariaLabel="Abrangência do membro"
+                    />
                   </div>
                 )}
 
@@ -144,25 +150,5 @@ export function AdminTeamForm({ branches, roles, isNetworkAdmin }: AdminTeamForm
         </div>
       )}
     </>
-  )
-}
-
-function ScopeChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        flex: 1, padding: '8px 12px', cursor: 'pointer',
-        borderRadius: 'var(--radius-field-token)',
-        border: `1.5px solid ${active ? 'var(--brand)' : 'var(--border)'}`,
-        background: active ? 'var(--brand)' : 'var(--surface)',
-        color: active ? 'var(--on-brand)' : 'var(--text-muted)',
-        fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)',
-        transition: 'background 120ms, border 120ms',
-      }}
-    >
-      {label}
-    </button>
   )
 }

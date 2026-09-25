@@ -359,14 +359,13 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                       {procedures.map(p => {
                         const selected = selectedProcs.includes(p.id)
                         return (
-                          <button key={p.id} type="button" onClick={() => toggleProc(p.id)} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                            fontSize: 'var(--text-sm-sz)', fontWeight: 600, padding: '5px 10px', borderRadius: 99, cursor: 'pointer',
-                            border: selected ? '1.5px solid var(--brand)' : '1.5px solid var(--border)',
-                            background: selected ? 'var(--brand-soft)' : 'var(--bg-app)',
-                            color: selected ? 'var(--brand)' : 'var(--text-muted)',
-                            transition: 'all 120ms',
-                          }}>
+                          <button
+                            key={p.id}
+                            type="button"
+                            className={selected ? 'chip-filtro is-ativo' : 'chip-filtro'}
+                            aria-pressed={selected}
+                            onClick={() => toggleProc(p.id)}
+                          >
                             {selected && <Check size={11} strokeWidth={3} />}
                             {p.name}
                           </button>

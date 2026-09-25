@@ -146,7 +146,6 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
             sistema é o SegSelect. Estava reimplementado à mão aqui, com outro
             raio, outra altura e uma sombra que superfície neutra não usa. */}
         <SegSelect
-          compacto
           ariaLabel="Tipo de lançamento"
           value={filterType}
           onSelect={v => setFilterType(v as FilterType)}
