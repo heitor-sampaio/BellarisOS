@@ -151,17 +151,36 @@ export interface CanaisDaRede {
    * conversa, e é por isso que ele agora viaja na própria conversa.
    */
   numeros: CaixaDaRede[]
+  /**
+   * A caixa DESTE usuário, quando ele tem uma.
+   *
+   * Resolvida no servidor de propósito: a tela precisa saber por onde ELE vai
+   * falar, não de quem é cada caixa da rede. Mandar os vínculos todos para o
+   * navegador seria expor a estrutura da equipe para responder uma pergunta
+   * sobre uma pessoa só.
+   */
+  numeroDoUsuario: CaixaDaRede | null
 }
 
-export async function canaisConectados(tenantId: string): Promise<CanaisDaRede> {
+export async function canaisConectados(
+  tenantId: string,
+  /** `users.id` de quem está na tela — não o do auth. */
+  userId?: string | null,
+): Promise<CanaisDaRede> {
   const [numeros, meta] = await Promise.all([
     import('@/lib/whatsapp/factory').then(m => m.getNumerosDaRede(tenantId)),
     getMetaMessagingConfig(tenantId),
   ])
 
-  const ativos = numeros.filter(n => n.isActive).map(n => ({
+  const paraTela = (n: { id: string; label: string; provider: string; isDefault: boolean }) => ({
     id: n.id, label: n.label, provider: n.provider, isDefault: n.isDefault,
-  }))
+  })
+
+  const ativos = numeros.filter(n => n.isActive).map(paraTela)
+
+  const doUsuario = userId
+    ? numeros.find(n => n.isActive && n.userId === userId)
+    : undefined
 
   const canais: ChannelKind[] = []
   if (ativos.length > 0) canais.push('whatsapp')
@@ -171,5 +190,9 @@ export async function canaisConectados(tenantId: string): Promise<CanaisDaRede> 
     canais.push('messenger')
     if (page.igUserId) canais.push('instagram')
   }
-  return { canais, numeros: ativos }
+  return {
+    canais,
+    numeros: ativos,
+    numeroDoUsuario: doUsuario ? paraTela(doUsuario) : null,
+  }
 }

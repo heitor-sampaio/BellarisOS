@@ -128,9 +128,19 @@ export async function saveTemplate(
   if (erros.length > 0) return { ok: false, erros }
 
   if (!input.id) {
+    // O template nasce DENTRO de uma WABA. Sem carimbar aqui, ele ficaria com
+    // `waba_id` nulo e a conversa nunca o ofereceria — o filtro por WABA é
+    // estrito de propósito, e template invisível é pior que template recusado.
+    const config = await configOficial(ctx.tenantId!)
+
     const { data, error } = await admin
       .from('message_templates')
-      .insert({ ...rascunho, tenant_id: ctx.tenantId!, created_by: await membroId(ctx) })
+      .insert({
+        ...rascunho,
+        tenant_id:  ctx.tenantId!,
+        waba_id:    config?.wabaId ?? null,
+        created_by: await membroId(ctx),
+      })
       .select('id')
       .single()
 

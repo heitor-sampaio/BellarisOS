@@ -33,7 +33,7 @@ export default async function AdminInboxPage({
   // `convParam` entra aqui: a conversa vinda de um card do funil pode não ter
   // mensagem nenhuma, e sem isso ela não estaria na lista para ser aberta.
   const conversations = await getConversations(convParam)
-  const canais = await canaisConectados(ctx.tenantId!)
+  const canais = await canaisConectados(ctx.tenantId!, ctx.internalUserId)
 
   // Lista para o seletor de "nova conversa". Não passa por etapa nem funil: a
   // caixa de entrada é de contatos, não do funil.
@@ -76,6 +76,7 @@ export default async function AdminInboxPage({
         initialSelectedId={convParam ?? null}
         canaisConectados={canais.canais}
         numerosDaRede={canais.numeros}
+        numeroDoUsuario={canais.numeroDoUsuario}
       />
     </div>
   )

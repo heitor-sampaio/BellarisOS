@@ -1260,6 +1260,69 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-26 — Vários números de WhatsApp: a tela, a escapatória e os templates
+
+Fecha o que a fundação (entrada abaixo) tinha deixado em aberto.
+
+**O passo irreversível foi dado.** Os dois índices únicos antigos de
+`conversations` saíram, e os quatro parciais por caixa ficaram sozinhos. É o que
+destrava a coisa que o sistema não sabia fazer: o **mesmo telefone falando com
+duas caixas são duas conversas**. E são duas porque **do lado do cliente são
+duas** — dois contatos no celular dele, dois históricos, duas janelas de 24h.
+Juntar aqui o que está separado lá é o tipo de simplificação que só aparece no
+atendimento. `e2e/whatsapp-duas-caixas-entrada.spec.ts` é o teste central da
+frente, e ele só podia existir depois do drop.
+
+**A tela.** O cartão de integrações deixou de ser um formulário e virou uma
+lista: rótulo, telefone, provedor, estado, quem fala por ela e a unidade. Cada
+linha diz o que precisa ser decidido ali, e o selo de **padrão** é o único
+preenchido em `--brand` — hierarquia por preenchimento, no tamanho certo para
+uma lista. O formulário de conexão só aparece para quem ainda não tem nada ou
+clicou em "adicionar número"; sem essa distinção, "adicionar" reabriria o
+formulário da primeira caixa preenchido e salvar sobrescreveria ela.
+
+Rede com número no ar e **nenhum padrão** ganha um aviso explícito, porque é
+estado que ela precisa resolver: `escolherNumeroDeSaida` devolve `null` em vez
+de chutar, e tudo que o sistema inicia para de sair. Eleger um sozinho ali seria
+o `data[0]` de volta com outro nome.
+
+**A escapatória, que é a parte honesta da decisão "sempre o do usuário".** O
+aviso aparece no composer **antes de digitar**, em vermelho, nomeando os dois
+números: "você fala pelo Comercial, e este atendimento veio pelo Recepção; o
+cliente nunca falou com o seu". Ao lado dele, um clique para responder pela
+caixa da conversa. Não é um recuo da regra — o padrão continua sendo o número do
+usuário —, é o que impede a decisão de virar uma parede: sem isso, quem tem
+número próprio ficaria impedido de responder qualquer conversa que não tenha
+nascido nele. A escolha viaja até `enviarNaConversa` (`pelaCaixaDaConversa`) e
+**zera ao trocar de conversa**, senão a próxima sairia pela caixa errada sem
+ninguém ter pedido e sem o aviso, que some quando ela está ligada.
+
+Quem é a caixa do usuário é resolvido no SERVIDOR (`canaisConectados` ganhou
+`numeroDoUsuario`): a tela precisa saber por onde ELE fala, não de quem é cada
+caixa da rede. Mandar os vínculos todos para o navegador seria expor a estrutura
+da equipe para responder uma pergunta sobre uma pessoa só.
+
+**Templates por WABA.** `message_templates` ganhou `waba_id`, com backfill
+**antes** de trocar a constraint — com a coluna nula, `unique (tenant, waba_id,
+name, language)` não restringe nada (NULL nunca é igual a NULL) e a garantia de
+nome único se perderia em silêncio. O escopo é por WABA e **não por número**:
+dois números podem compartilhar a mesma conta de negócio, e escopar por número
+duplicaria o catálogo aqui e faria submeter o mesmo nome duas vezes à Meta, que
+recusa por colisão.
+
+O filtro é **estrito**: oferecer um template que não existe na conta que vai
+enviar dá 404 na Meta, no clique, sem explicar nada — lista vazia é melhor
+resposta que erro no clique. E `sendTemplateMessage` confere a WABA por conta
+própria, porque é um export `'use server'`: a tela filtra, mas o endpoint é
+público.
+
+**O que sobra, e por quê:** `delete from integration_configs where provider in
+('uazapi','official')`. Nada mais lê aquelas linhas, mas elas são a única cópia
+das credenciais fora da tabela nova — e apagá-las agora tiraria a rede de
+segurança exatamente no momento em que ela é mais provável de ser necessária. O
+plano já condicionava esse passo a um período de uso; é o único item que
+continua esperando por isso.
+
 ### 2026-09-26 — Vários números de WhatsApp: a fundação (fases 1 a 3)
 
 Pedido do Heitor: "quero poder adicionar mais números de whatsapp".

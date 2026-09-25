@@ -12,7 +12,8 @@ import {
   confirmMetaAdsSelection, disconnectMetaAds, fetchMetaAdAccounts,
   confirmMetaPageSelection, disconnectMetaMessaging,
 } from '@/actions/integrations'
-import type { IntegrationConfig, NumeroNaTela } from '@/actions/integrations'
+import type { IntegrationConfig, NumeroNaTela, OpcoesDeVinculo } from '@/actions/integrations'
+import { ListaDeNumeros } from '@/components/admin/lista-de-numeros'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { UazapiConnect } from '@/components/admin/uazapi-connect'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -1130,6 +1131,8 @@ interface SettingsIntegrationsProps {
   initialConfigs:   IntegrationConfig[]
   /** As caixas de WhatsApp — vêm de `whatsapp_numbers`, não de `integration_configs`. */
   numeros:          NumeroNaTela[]
+  /** Unidades e pessoas, para os vínculos de cada caixa. */
+  opcoesDeVinculo:  OpcoesDeVinculo
   metaStep?:        string
   metaError?:       boolean
   metaErrorReason?: string
@@ -1137,7 +1140,7 @@ interface SettingsIntegrationsProps {
 
 type Section = 'whatsapp' | 'meta_messaging' | 'meta_ads' | 'google_ads' | null
 
-export function SettingsIntegrations({ initialConfigs, numeros, metaStep, metaError, metaErrorReason }: SettingsIntegrationsProps) {
+export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo, metaStep, metaError, metaErrorReason }: SettingsIntegrationsProps) {
   const [section,    setSection]    = useState<Section>(
     metaStep === 'select_page' ? 'meta_messaging' : 'whatsapp',
   )
@@ -1154,6 +1157,31 @@ export function SettingsIntegrations({ initialConfigs, numeros, metaStep, metaEr
   const [wpProvider, setWpProvider] = useState<ProviderType>(
     () => (numeros[0]?.provider as ProviderType) ?? 'uazapi',
   )
+  // Qual caixa o formulário de conexão está editando.
+  //
+  // `null`     = fechado (a rede vê só a lista)
+  // `'novo'`   = criando uma caixa
+  // `<id>`     = mexendo na credencial daquela
+  //
+  // A distinção entre 'novo' e um id não é detalhe: sem ela, "adicionar número"
+  // reabriria o formulário da primeira caixa já preenchido, e salvar
+  // sobrescreveria ela em vez de criar a segunda.
+  const [emEdicao, setEmEdicao] = useState<string | null>(
+    () => (numeros.length === 0 ? 'novo' : null),
+  )
+  const adicionando = emEdicao === 'novo'
+  const caixaEmEdicao = adicionando ? undefined : numeros.find(n => n.id === emEdicao)
+
+  function configurar(numeroId: string) {
+    const alvo = numeros.find(n => n.id === numeroId)
+    // O formulário é por provedor: abrir o da uazapi para uma caixa oficial
+    // mostraria campos que não existem nela.
+    if (alvo) {
+      setWpProvider(alvo.provider as ProviderType)
+      setUazapiModo(alvo.managed ? 'gerenciada' : 'propria')
+    }
+    setEmEdicao(numeroId)
+  }
 
   // Uma caixa por provedor enquanto a tela é esta. A lista de números (com
   // vários por provedor) é a próxima fase; aqui o que importa é a tela ler e
@@ -1240,6 +1268,39 @@ export function SettingsIntegrations({ initialConfigs, numeros, metaStep, metaEr
         subtitle={hasWhatsApp ? `Conectado via ${uazapiNumero?.isActive ? 'uazapi' : 'WhatsApp Oficial'}` : 'Não configurado'}
         isActive={!!hasWhatsApp}
       >
+        {/*
+          A LISTA vem antes do formulário. Enquanto a rede tinha um número, o
+          cartão podia ser só o formulário; com dois, ele não conseguia nem
+          dizer qual conexão estava no ar.
+        */}
+        {numeros.length > 0 && (
+          <ListaDeNumeros
+            numeros={numeros}
+            opcoes={opcoesDeVinculo}
+            onAdicionar={() => setEmEdicao("novo")}
+            onConfigurar={configurar}
+          />
+        )}
+
+        {/* O formulário aparece para quem ainda não tem nada, ou para quem
+            clicou em "adicionar número". Fora isso, ele só polui a lista. */}
+        {emEdicao !== null && (
+        <>
+        {numeros.length > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 8, marginBottom: 14, paddingBottom: 10,
+            borderBottom: '1px solid var(--border)',
+          }}>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
+              {adicionando ? 'Novo número' : `Conexão · ${caixaEmEdicao?.label ?? ''}`}
+            </p>
+            <button type="button" className="btn-ghost" onClick={() => setEmEdicao(null)}>
+              Cancelar
+            </button>
+          </div>
+        )}
+
         {/* Provider selector */}
         <div style={{ marginBottom: 20 }}>
           <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 10 }}>
@@ -1285,10 +1346,12 @@ export function SettingsIntegrations({ initialConfigs, numeros, metaStep, metaEr
             </div>
             {uazapiModo === 'gerenciada'
               ? <UazapiConnect />
-              : <UazapiForm numero={uazapiNumero} />}
+              : <UazapiForm numero={caixaEmEdicao} />}
           </>
         ) : (
-          <OfficialForm numero={officialNumero} />
+          <OfficialForm numero={caixaEmEdicao} />
+        )}
+        </>
         )}
       </SectionCard>
 

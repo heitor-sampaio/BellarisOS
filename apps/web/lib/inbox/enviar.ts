@@ -1,8 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolverCanal, type EscolhaDeCaixa } from '@/lib/channels/factory'
 import { estadoDaJanela } from '@/lib/channels/window'
+import { avisoDeCaixaDiferente } from '@/lib/whatsapp/escolha'
 import type { ChannelKind } from '@/lib/channels/types'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, tentar } from '@/lib/db'
 
 /**
  * Quando o contato falou pela última vez NESTA caixa.
@@ -81,7 +82,19 @@ export async function enviarNaConversa(
   conversationId: string,
   texto: string,
   remetente: Remetente,
-  opcoes?: { replyToExternalId?: string | null },
+  opcoes?: {
+    replyToExternalId?: string | null
+    /**
+     * Sai pela caixa DA CONVERSA, ignorando o número próprio do remetente.
+     *
+     * A regra é "o usuário fala pelo número dele" (decisão do Heitor,
+     * 2026-09-25), e ela vale por padrão. Isto é a escapatória de um clique que
+     * a tela oferece junto com o aviso: sem ela, quem tem número próprio ficaria
+     * impedido de responder qualquer conversa que não tenha nascido nele — a
+     * decisão viraria uma parede.
+     */
+    pelaCaixaDaConversa?: boolean
+  },
 ): Promise<ResultadoDoEnvio> {
   const admin = createAdminClient()
 
@@ -106,7 +119,12 @@ export async function enviarNaConversa(
   // falando". Quem tem número próprio vence — decisão do Heitor, e o custo dela
   // está tratado logo abaixo, na janela.
   const escolha: EscolhaDeCaixa = {
-    tipo: 'conversa', numeroId: caixaDaConversa, userId: remetente.id,
+    tipo: 'conversa',
+    numeroId: caixaDaConversa,
+    // `userId: null` desliga a precedência do usuário — é o que a escapatória
+    // da tela pede quando quem atende prefere manter a conversa no número que
+    // o cliente conhece.
+    userId: opcoes?.pelaCaixaDaConversa ? null : remetente.id,
   }
   const canal = await resolverCanal(tenantId, channel, escolha)
 
@@ -146,6 +164,15 @@ export async function enviarNaConversa(
         : (janela.motivo ?? 'Janela de resposta fechada.'),
     }
   }
+
+  // O rótulo da caixa da conversa é buscado AQUI, antes do envio, e não junto
+  // com o aviso lá embaixo. Aquele trecho roda dentro do `try` que trata a
+  // falha do provedor: uma consulta que lança ali marcaria como FALHADA uma
+  // mensagem que o cliente já recebeu — e quem atende reenviaria. Aviso é
+  // cosmético e não pode decidir o destino do envio.
+  const rotuloDaConversa = caixaDiferente && caixaDaConversa
+    ? await rotuloDaCaixa(admin, caixaDaConversa)
+    : null
 
   const { data: msg, error } = await admin
     .from('messages')
@@ -201,8 +228,14 @@ export async function enviarNaConversa(
     // ⚠️ NUNCA sobrescreve. Se a conversa já tem caixa e o usuário respondeu
     // pela dele, a conversa continua sendo da caixa original: é por ela que o
     // cliente conhece este atendimento, e é nela que a resposta dele vai cair.
+    //
+    // `tentar` e não `gravar`, de propósito: isto roda DEPOIS de a mensagem ter
+    // saído de verdade. Um `gravar` que lança aqui cairia no `catch` abaixo e
+    // marcaria como FALHADA uma mensagem que o cliente já recebeu — e quem
+    // atende reenviaria. O carimbo é recuperável (o próximo envio bem-sucedido
+    // o faz); dar a mensagem por perdida, não.
     if (!caixaDaConversa && canal.numeroId) {
-      await gravar(admin
+      await tentar(admin
         .from('conversations')
         .update({ whatsapp_number_id: canal.numeroId, provider: canal.nome })
         .eq('id', conversationId)
@@ -210,13 +243,13 @@ export async function enviarNaConversa(
     }
 
     // O aviso volta junto com o sucesso — não para pedir permissão (a tela já
-    // avisou antes de digitar, na fase da UI), mas para quem chamou por fora do
-    // inbox poder registrar que a mensagem saiu por outra caixa.
-    const { avisoDeCaixaDiferente } = await import('@/lib/whatsapp/escolha')
-    const aviso = caixaDiferente
+    // avisou antes de digitar), mas para quem chamou por fora do inbox poder
+    // registrar que a mensagem saiu por outra caixa. Puro: nada de consulta
+    // aqui dentro, pelo motivo explicado em `rotuloDaConversa`.
+    const aviso = caixaDiferente && rotuloDaConversa
       ? avisoDeCaixaDiferente(
           { id: canal.numeroId!, label: canal.rotulo ?? 'seu número' },
-          { id: caixaDaConversa!, label: await rotuloDaCaixa(admin, caixaDaConversa!) },
+          { id: caixaDaConversa!, label: rotuloDaConversa },
         )
       : null
 

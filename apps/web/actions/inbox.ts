@@ -1081,6 +1081,8 @@ export async function sendMessage(
   content: string,
   /** `external_id` da mensagem sendo respondida, quando é uma resposta. */
   replyToExternalId?: string | null,
+  /** A escapatória do aviso: sai pela caixa da conversa, não pela do usuário. */
+  pelaCaixaDaConversa?: boolean,
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
@@ -1107,7 +1109,7 @@ export async function sendMessage(
   const r = await enviarNaConversa(
     ctx.tenantId!, conversationId, content,
     { id: profile?.id ?? ctx.internalUserId ?? null, nome: profile?.name ?? null },
-    { replyToExternalId },
+    { replyToExternalId, pelaCaixaDaConversa },
   )
 
   if (!r.ok && !r.mensagemId) return { ok: false, error: r.error }
@@ -1388,10 +1390,18 @@ export async function getTemplatesParaConversa(
   })
   if (!canal || canal.nome !== 'official') return []
 
+  // O catálogo é da WABA da caixa que vai enviar, não da rede. Oferecer um
+  // template de OUTRA conta de negócio dá 404 na Meta no clique, sem explicar
+  // nada — lista vazia é melhor resposta que erro no clique.
+  const { getNumero } = await import('@/lib/whatsapp/factory')
+  const numero = canal.numeroId ? await getNumero(canal.numeroId) : null
+  if (!numero?.wabaId) return []
+
   const { data, error } = await admin
     .from('message_templates')
     .select('id, name, category, language, header_text, body_text, footer_text')
     .eq('tenant_id', ctx.tenantId!)
+    .eq('waba_id', numero.wabaId)
     .eq('status', 'APPROVED')
     .order('name')
 
@@ -1453,7 +1463,7 @@ export async function sendTemplateMessage(
 
   const { data: tpl, error: erroTpl } = await admin
     .from('message_templates')
-    .select('id, name, language, status, header_text, body_text, footer_text')
+    .select('id, name, language, status, header_text, body_text, footer_text, waba_id')
     .eq('id', templateId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -1486,6 +1496,19 @@ export async function sendTemplateMessage(
   })
   if (!canal?.provider.sendTemplate) {
     return { ok: false, error: 'Templates exigem o WhatsApp Oficial conectado.' }
+  }
+
+  // O template tem de ser da WABA que vai enviar. A tela já filtra, mas isto é
+  // um export `'use server'` — endpoint público — e um `templateId` de outra
+  // conta de negócio daria 404 na Meta com a mensagem já gravada aqui.
+  const { getNumero } = await import('@/lib/whatsapp/factory')
+  const numeroDeSaida = canal.numeroId ? await getNumero(canal.numeroId) : null
+  const wabaDoTemplate = (tpl as { waba_id?: string | null }).waba_id ?? null
+  if (!numeroDeSaida?.wabaId || wabaDoTemplate !== numeroDeSaida.wabaId) {
+    return {
+      ok: false,
+      error: `Este template não existe na conta do número ${canal.rotulo ?? 'de saída'}.`,
+    }
   }
 
   const destino = (conv as { contact_phone: string | null }).contact_phone

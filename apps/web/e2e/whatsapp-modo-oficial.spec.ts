@@ -55,13 +55,29 @@ async function restaurar(antes: Linha | null) {
   }
 }
 
+/**
+ * Abre o formulário da caixa OFICIAL.
+ *
+ * Desde que a rede passou a ter vários números, o cartão mostra a LISTA e o
+ * formulário de credencial fica atrás do botão "Conexão" da linha — antes ele
+ * era a primeira coisa do cartão. Não é detalhe de teste: é o fluxo real, e foi
+ * a falta desse botão que quebrou estas três specs quando a lista entrou.
+ */
 async function abrirOficial(page: import('@playwright/test').Page) {
+  const caixa = await caixaOficial()
   await page.goto(TAB)
   await page.waitForLoadState('networkidle')
 
   // O cartão do WhatsApp abre por clique no cabeçalho.
   const cartao = page.locator('#whatsapp')
   if (await cartao.count()) await cartao.first().click()
+
+  if (caixa) {
+    // Pela linha daquela caixa — não por texto solto, que casa com as `div`
+    // de dentro e não tem os botões.
+    await page.locator(`[data-numero="${caixa.id}"]`)
+      .getByRole('button', { name: /Conexão/ }).click()
+  }
 
   // O provedor oficial é o segundo botão do seletor de provedor.
   await page.getByRole('button', { name: /WhatsApp Oficial/ }).first().click()

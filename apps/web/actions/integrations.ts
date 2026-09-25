@@ -511,3 +511,117 @@ export async function disconnectMetaMessaging(): Promise<{ ok: boolean; error?: 
   revalidatePath('/admin/inbox')
   return { ok: true }
 }
+
+/**
+ * Rótulo e vínculos de uma caixa.
+ *
+ * Separado de `salvarNumeroWhatsApp` porque são coisas de naturezas diferentes:
+ * lá se mexe em CREDENCIAL, aqui em como a rede organiza a caixa. Juntar faria
+ * quem quer só renomear ter de reenviar o token.
+ *
+ * `branchId` é RÓTULO (decisão do Heitor, 2026-09-25): serve para a tela
+ * agrupar e para relatório. Não entra em RLS nem na escolha de por onde sai, e
+ * a conversa continua nascendo com `branch_id` nulo.
+ */
+export async function atualizarVinculosDoNumero(
+  numeroId: string,
+  dados: { rotulo?: string; branchId?: string | null; userId?: string | null },
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'settings', 'MANAGE')
+  const admin = createAdminClient()
+
+  const alvo = await ler(admin
+    .from('whatsapp_numbers').select('id')
+    .eq('id', numeroId).eq('tenant_id', ctx.tenantId!)
+    .maybeSingle(), 'buscar a caixa de WhatsApp')
+  if (!alvo) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
+
+  const rotulo = dados.rotulo?.trim()
+  if (dados.rotulo !== undefined && !rotulo) {
+    return { ok: false, error: 'O nome da conexão não pode ficar vazio.' }
+  }
+
+  const { error } = await admin
+    .from('whatsapp_numbers')
+    .update({
+      ...(rotulo ? { label: rotulo } : {}),
+      ...(dados.branchId !== undefined ? { branch_id: dados.branchId } : {}),
+      ...(dados.userId   !== undefined ? { user_id:   dados.userId   } : {}),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', numeroId)
+
+  if (error) {
+    // O índice único parcial recusa dois números para o mesmo usuário. Dizer
+    // isso é melhor que repassar "duplicate key value violates...".
+    if (error.code === '23505') {
+      return { ok: false, error: 'Esse usuário já fala por outro número. Um usuário tem uma caixa só.' }
+    }
+    return { ok: false, error: error.message }
+  }
+
+  revalidatePath('/admin/settings')
+  return { ok: true }
+}
+
+/**
+ * Remove uma caixa que NÃO é gerenciada por nós.
+ *
+ * Instância gerenciada sai por `removerConexaoUazapi`, que apaga na uazapi
+ * primeiro — apagar a linha aqui deixaria uma instância paga sem dono e sem
+ * ninguém que consiga vê-la.
+ */
+export async function removerNumeroWhatsApp(
+  numeroId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'settings', 'MANAGE')
+  const admin = createAdminClient()
+
+  const alvo = await ler(admin
+    .from('whatsapp_numbers').select('id, managed, is_default')
+    .eq('id', numeroId).eq('tenant_id', ctx.tenantId!)
+    .maybeSingle(), 'buscar a caixa de WhatsApp')
+  if (!alvo) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
+
+  if (alvo.managed) {
+    return {
+      ok: false,
+      error: 'Esta conexão é gerenciada: use "Remover conexão", que também apaga a instância.',
+    }
+  }
+
+  const { error } = await admin.from('whatsapp_numbers').delete().eq('id', numeroId)
+  if (error) return { ok: false, error: error.message }
+
+  // Ficar sem padrão é estado que a rede precisa resolver, e o sistema avisa em
+  // vez de eleger um sozinho — eleger seria o `data[0]` de novo, com outro nome.
+  revalidatePath('/admin/settings')
+  revalidatePath('/admin/inbox')
+  return { ok: true }
+}
+
+/** Unidades e pessoas, para os selects de vínculo da caixa. */
+export interface OpcoesDeVinculo {
+  unidades: { id: string; nome: string }[]
+  pessoas:  { id: string; nome: string }[]
+}
+
+export async function opcoesDeVinculoDoNumero(): Promise<OpcoesDeVinculo> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'settings', 'MANAGE')
+  const admin = createAdminClient()
+
+  const [{ data: branches }, { data: users }] = await Promise.all([
+    admin.from('branches').select('id, name')
+      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
+    admin.from('users').select('id, name')
+      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
+  ])
+
+  return {
+    unidades: (branches ?? []).map(b => ({ id: b.id as string, nome: b.name as string })),
+    pessoas:  (users    ?? []).map(u => ({ id: u.id as string, nome: u.name as string })),
+  }
+}

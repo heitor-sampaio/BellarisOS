@@ -44,7 +44,7 @@ export default async function BranchInboxPage({
   // `convParam` é o deep-link do card de Oportunidades: a conversa apontada pelo
   // card pode não ter mensagem nenhuma e, sem essa exceção, não estaria na lista.
   const conversations = await getConversations(convParam)
-  const canais = await canaisConectados(ctx.tenantId!)
+  const canais = await canaisConectados(ctx.tenantId!, ctx.internalUserId)
 
   const admin = createAdminClient()
 
@@ -92,6 +92,7 @@ export default async function BranchInboxPage({
         initialSelectedId={convParam ?? null}
         canaisConectados={canais.canais}
         numerosDaRede={canais.numeros}
+        numeroDoUsuario={canais.numeroDoUsuario}
       />
     </div>
   )

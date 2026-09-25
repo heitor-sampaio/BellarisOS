@@ -5,7 +5,7 @@ import {
 } from 'react'
 import {
   Search, MessageSquare, Phone, Mail, AtSign,
-  Send, ChevronDown, CheckCheck, AlertCircle, Plus, X, Paperclip, FileText, Zap, UserCheck,
+  Send, ChevronDown, CheckCheck, AlertCircle, AlertTriangle, Plus, X, Paperclip, FileText, Zap, UserCheck,
   Mic, Square,
   ArrowLeft,
   Megaphone,
@@ -794,6 +794,15 @@ interface CRMInboxProps {
    * recebiam a mesma resposta — e uma das duas estava errada.
    */
   numerosDaRede?:       { id: string; label: string; provider: string; isDefault: boolean }[]
+  /**
+   * A caixa DESTE usuário, quando ele tem uma.
+   *
+   * Decisão do Heitor (2026-09-25): quem tem número próprio responde por ele,
+   * inclusive numa conversa que chegou por outro. Isto está aqui para o AVISO —
+   * quem atende precisa saber, antes de digitar, que o cliente vai receber de
+   * um número que não conhece, numa conversa nova do lado dele.
+   */
+  numeroDoUsuario?:     { id: string; label: string; provider: string } | null
   /** conversa pré-selecionada (deep-link ?c= vindo do card do funil) */
   initialSelectedId?:   string | null
   /**
@@ -867,7 +876,7 @@ function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
 export function CRMInbox({
   initialConversations, leads, canEdit, branches,
   slug = '', initialSelectedId = null, canaisConectados = [],
-  numerosDaRede = [], telaCheia = false,
+  numerosDaRede = [], numeroDoUsuario = null, telaCheia = false,
 }: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)
   // A assinatura do Realtime é montada uma vez só (deps `[]`), então os
@@ -954,6 +963,37 @@ export function CRMInbox({
   // (onde editar dá erro) e sumir em conversa da uazapi.
   const provedorDaConversa = selectedConv?.numero_provider ?? selectedConv?.provider ?? null
 
+  // ── Por qual caixa ESTA resposta vai sair ──────────────────────────────────
+  //
+  // O usuário com número próprio fala por ele, mesmo respondendo uma conversa
+  // que chegou por outro. Quando as duas divergem, três coisas acontecem do
+  // lado do cliente: ele recebe de um número que não conhece, abre-se uma
+  // thread nova no celular dele, e a resposta dele volta como conversa nova
+  // aqui. Nada disso pode ser descoberto depois de mandar.
+  //
+  // `respondendoPelaOutra` é `null` quando não há o que avisar, que é o caso
+  // comum — rede com um número só nunca vê este aviso.
+  const [ignorarCaixaPropria, setIgnorarCaixaPropria] = useState(false)
+
+  const caixaDaConversa = selectedConv?.whatsapp_number_id ?? null
+  const caixaQueVaiSair = !ignorarCaixaPropria && numeroDoUsuario
+    ? numeroDoUsuario
+    : null
+
+  const respondendoPelaOutra =
+    selectedConv?.channel === 'whatsapp'
+    && caixaQueVaiSair
+    && caixaDaConversa
+    && caixaQueVaiSair.id !== caixaDaConversa
+      ? caixaQueVaiSair
+      : null
+
+  // A janela de 24h é da caixa que VAI ENVIAR. Como o cliente nunca falou com
+  // o número do usuário nesta conversa, ela está fechada por construção — e o
+  // servidor recusa pelo mesmo motivo (`ultimoInboundNaCaixa`). Dizer aqui
+  // poupa a viagem e o erro genérico.
+  const janelaFechadaNaCaixaPropria = !!respondendoPelaOutra
+
   const canalEdita = selectedConv?.channel === 'manual'
     || (selectedConv?.channel === 'whatsapp' && provedorDaConversa === 'uazapi')
 
@@ -976,6 +1016,10 @@ export function CRMInbox({
   useEffect(() => {
     setSendError(null)   // erro é da conversa anterior
     setPainelAberto(false)   // no celular, o card da conversa anterior sai junto
+    // A escapatória "responder pelo número da conversa" vale para UMA conversa.
+    // Deixar ligada ao trocar faria a pessoa mandar pela caixa errada sem ter
+    // pedido — e sem o aviso, porque ele some quando a escapatória está ativa.
+    setIgnorarCaixaPropria(false)
     if (!selectedId) { setMessages([]); return }
     setLoadingMsgs(true)
     getMessages(selectedId).then(msgs => {
@@ -1208,7 +1252,7 @@ export function CRMInbox({
 
     setSendError(null)
     startTransition(async () => {
-      const res = await sendMessage(selectedId, text, citada?.external_id ?? null)
+      const res = await sendMessage(selectedId, text, citada?.external_id ?? null, ignorarCaixaPropria)
       if (res.ok && res.message) {
         // Mesclar, não substituir por id: o realtime pode ter chegado primeiro e
         // já consumido a bolha otimista.
@@ -1316,7 +1360,7 @@ export function CRMInbox({
     && !canaisConectados.includes(selectedConv.channel)
 
   // Escrever sem poder enviar só gera a frustração de ver o erro depois.
-  const bloqueado = integrationRequired || !janela.aberta
+  const bloqueado = integrationRequired || !janela.aberta || janelaFechadaNaCaixaPropria
 
   // Template só existe no WhatsApp pela API oficial.
   const podeTemplate = canEdit
@@ -1696,9 +1740,45 @@ export function CRMInbox({
                 </div>
               )}
 
+              {/* Você responde pelo SEU número, e este cliente não conhece ele.
+                  O aviso vem ANTES de digitar porque depois é tarde: a mensagem
+                  chegaria de um número estranho, numa conversa nova do lado
+                  dele, e a resposta voltaria como outra conversa aqui. */}
+              {respondendoPelaOutra && (
+                <div style={{
+                  margin: '0 16px 8px',
+                  padding: '9px 12px', borderRadius: 8,
+                  background: 'var(--danger-soft)', border: '1px solid var(--danger-border)',
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                  fontSize: 'var(--text-sm-sz)', color: 'var(--danger)',
+                }}>
+                  <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontWeight: 600 }}>
+                      Você fala pelo <strong>{respondendoPelaOutra.label}</strong>, e este
+                      atendimento veio pelo <strong>{selectedConv.numero_label ?? 'outro número'}</strong>.
+                      O cliente nunca falou com o seu — não há janela de 24h, e
+                      o texto livre seria recusado.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIgnorarCaixaPropria(true)}
+                      style={{
+                        display: 'block', marginTop: 6, padding: 0, border: 'none',
+                        background: 'none', cursor: 'pointer',
+                        fontSize: 'var(--text-sm-sz)', fontWeight: 700,
+                        color: 'var(--danger)', textDecoration: 'underline',
+                      }}
+                    >
+                      Responder pelo {selectedConv.numero_label ?? 'número da conversa'} →
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Janela de 24h da Meta. Sem isto a pessoa escreve, vê "enviado"
                   e a mensagem nunca chega — a API recusa fora da janela. */}
-              {!janela.aberta && (
+              {!janela.aberta && !respondendoPelaOutra && (
                 <div style={{
                   margin: '0 16px 8px',
                   padding: '8px 12px', borderRadius: 8,

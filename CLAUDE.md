@@ -575,6 +575,26 @@ teste feliz: sob concorrência, a mensagem entra na thread errada.
 o botão de editar; com dois provedores convivendo, mentia em metade das
 conversas. A conversa carrega `numero_provider`.
 
+**O aviso e a escapatória são parte da regra, não enfeite.** Quando a caixa do
+usuário difere da conversa, o composer avisa ANTES de digitar, nomeando os dois
+números, e oferece um clique para responder pela caixa da conversa
+(`pelaCaixaDaConversa`). O padrão continua sendo o número do usuário; a
+escapatória existe para a decisão não virar parede — sem ela, quem tem número
+próprio não responderia nenhuma conversa que não tenha nascido nele. Ela **zera
+ao trocar de conversa**: deixar ligada mandaria a próxima pela caixa errada, sem
+pedido e sem aviso (ele some quando ela está ativa).
+
+**Quem é a caixa do usuário sai do SERVIDOR** (`canaisConectados(tenantId,
+userId)` → `numeroDoUsuario`). A tela precisa saber por onde ELE fala, não de
+quem é cada caixa da rede: mandar os vínculos todos ao navegador exporia a
+estrutura da equipe para responder uma pergunta sobre uma pessoa só.
+
+**Template pertence a uma WABA**, e o filtro é estrito. Dois números podem
+compartilhar a mesma conta de negócio — por isso o escopo é a WABA, não o
+número: escopar por número duplicaria o catálogo e faria submeter o mesmo nome
+duas vezes à Meta, que recusa por colisão. Oferecer um template de outra conta
+dá 404 no clique; lista vazia é melhor resposta.
+
 ⚠️ Os exports de `actions/uazapi-connection.ts` são **endpoints públicos**, e
 recebem `numeroId`. Toda uma delas passa por `numeroDaRede()`, que confirma a
 posse — sem isso, um id de outra rede entrega o QR code, desconecta e apaga a
