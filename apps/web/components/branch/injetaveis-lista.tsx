@@ -48,7 +48,7 @@ export function InjetaveisLista({
   return (
     // A largura da coluna mora aqui, como em `clients-sidebar`: no celular o
     // CSS de `.lista-detalhe` a devolve para 100%.
-    <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="tela-de-lista" style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
         <h1 style={{
           fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)',
@@ -109,7 +109,7 @@ export function InjetaveisLista({
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="rolagem-da-lista" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {visiveis.map(m => (
           <Link
             key={m.id}

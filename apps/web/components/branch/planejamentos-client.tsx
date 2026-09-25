@@ -104,7 +104,7 @@ export function PlanejamentosClient({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="tela-de-lista" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
@@ -167,7 +167,7 @@ export function PlanejamentosClient({
           </p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="rolagem-da-lista" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {planos.map(p => {
             const st = STATUS[p.status] ?? STATUS.DRAFT!
             return (

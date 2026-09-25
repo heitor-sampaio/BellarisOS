@@ -110,16 +110,15 @@ export function ClientsSidebar({
   const temFiltroDeUnidade = !!availableBranches && availableBranches.length > 1
 
   /** Mesmo desenho dos campos da coluna; rosé quando o filtro está valendo. */
-  function estiloFiltro(ativo: boolean): React.CSSProperties {
-    return {
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '4px 9px', borderRadius: 'var(--radius-chip-token)',
-      cursor: 'pointer', transition: 'all 120ms',
-      border: ativo ? '1.5px solid var(--brand)' : '1px solid var(--border)',
-      background: ativo ? 'var(--brand-soft)' : 'var(--bg-app)',
-      color: ativo ? 'var(--brand)' : 'var(--text-muted)',
-    }
+  /**
+   * Gatilho de filtro que abre uma lista. Da barra, é um liga/desliga — ou o
+   * filtro está valendo, ou não —, então usa a classe do sistema.
+   */
+  function classeGatilho(ativo: boolean) {
+    return ativo ? 'filtro-toggle is-ativo' : 'filtro-toggle'
   }
+  // Aqui o estilo local tinha 25px de altura e raio de pílula — num controle
+  // que não é pílula, ao lado de um segmentado de 34.
 
   return (
     <div className="clients-master-list" style={{
@@ -192,14 +191,12 @@ export function ClientsSidebar({
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
             {temFiltroDeUnidade && (
               <PickerCompacto
-                icone={<Building2 size={12} />}
                 rotuloBotao={selectedBranchName ?? 'Unidade'}
                 opcoes={availableBranches!.map(b => ({ valor: b.id, rotulo: b.name }))}
                 selecionadas={selectedBranchId ? [selectedBranchId] : []}
                 textoListaVazia="Nenhuma unidade."
                 larguraPainel={220}
-                classeBotao=""
-                estiloBotao={estiloFiltro(!!selectedBranchId)}
+                classeBotao={classeGatilho(!!selectedBranchId)}
                 // Escolher a que já está marcada limpa: é como desmarcar um
                 // rádio, e sem isso a única saída seria recarregar a página.
                 onEscolher={id => setSelectedBranchId(prev => (prev === id ? '' : id))}
@@ -208,15 +205,13 @@ export function ClientsSidebar({
 
             {tagsDisponiveis.length > 0 && (
               <PickerCompacto
-                icone={<TagIcon size={12} />}
                 rotuloBotao={tagsEscolhidas.length > 0 ? `Tags · ${tagsEscolhidas.length}` : 'Tags'}
                 opcoes={tagsDisponiveis.map(t => ({ valor: t, rotulo: t }))}
                 selecionadas={tagsEscolhidas}
                 multiplo
                 textoListaVazia="Nenhuma tag nos clientes."
                 larguraPainel={220}
-                classeBotao=""
-                estiloBotao={estiloFiltro(tagsEscolhidas.length > 0)}
+                classeBotao={classeGatilho(tagsEscolhidas.length > 0)}
                 onEscolher={t => setTagsEscolhidas(prev =>
                   prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
               />

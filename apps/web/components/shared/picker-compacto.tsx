@@ -27,7 +27,10 @@ export function PickerCompacto({
   classeBotao = 'btn-ghost', estiloBotao, onEscolher,
 }: {
   rotuloBotao:      string
-  icone:            React.ReactNode
+  /** Opcional: em barra de FILTRO o rótulo já diz o que é, e quatro ícones
+   *  diferentes na mesma linha viram ruído (§13). Fica para onde o ícone é o
+   *  próprio assunto — a tag no card do contato, por exemplo. */
+  icone?:           React.ReactNode
   opcoes:           OpcaoPicker[]
   selecionadas:     string[]
   /** Múltiplo mantém o painel aberto e sobe o que já está marcado. */
@@ -72,8 +75,8 @@ export function PickerCompacto({
           setBusca('')
           setTimeout(() => campoRef.current?.focus(), 0)
         }}
-        className={classeBotao}
-        style={estiloBotao ?? { fontSize: 'var(--text-xs-sz)', padding: '4px 8px', gap: 5 }}
+        className={classeBotao === 'btn-ghost' ? 'btn-ghost picker-gatilho' : classeBotao}
+        style={estiloBotao}
       >
         {icone}
         {rotuloBotao}

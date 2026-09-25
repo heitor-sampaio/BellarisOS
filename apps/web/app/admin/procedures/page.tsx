@@ -200,7 +200,7 @@ export default async function AdminProceduresPage() {
                       <td data-label="Preço" data-par style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
                         <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: 'var(--text)' }}>{formatBRL(p.price)}</span>
                       </td>
-                      <td data-label="Unidades" style={{ padding: '13px 16px' }}>
+                      <td data-label="Unidades" data-par style={{ padding: '13px 16px' }}>
                         <span style={{
                           fontSize: 'var(--text-2xs)', fontWeight: 700,
                           color: branchCount === 0 ? 'var(--brand)' : 'var(--text-soft)',

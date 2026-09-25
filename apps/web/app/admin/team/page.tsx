@@ -191,8 +191,12 @@ export default async function AdminTeamPage({
                           <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 1 }}>
                             {m.email}
                           </p>
-                          {/* O que as colunas escondidas diriam, na linha de
-                              baixo — só no celular. */}
+                          {/* Cargo, filial e "atende" moram AQUI no celular,
+                              numa linha só. As colunas próprias existem, mas
+                              saem com .so-desktop: repetidas no card elas diziam
+                              a mesma coisa duas vezes, e o chip do cargo não
+                              cabia em meia largura — quebrava e deixava o card
+                              torto. */}
                           <p className="show-mobile" style={{
                             fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)',
                             marginTop: 3, gap: 5, flexWrap: 'wrap',
@@ -206,13 +210,13 @@ export default async function AdminTeamPage({
                       </div>
                     </td>
 
-                    <td data-label="Filial" data-par style={{ padding: '14px 20px' }}>
+                    <td data-label="Filial" className="so-desktop" style={{ padding: '14px 20px' }}>
                       <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)' }}>
                         {branchName}
                       </span>
                     </td>
 
-                    <td data-label="Cargo" style={{ padding: '14px 20px' }}>
+                    <td data-label="Cargo" className="so-desktop" style={{ padding: '14px 20px' }}>
                       <span className="chip chip-brand">{label}</span>
                       {m.provides_services && (
                         <span className="chip chip-success" style={{ marginLeft: 6 }}>Atende</span>

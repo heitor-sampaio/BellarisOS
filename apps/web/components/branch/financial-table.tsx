@@ -247,7 +247,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
                       </td>
 
                       {/* Categoria */}
-                      <td data-label="Categoria" style={{ padding: '13px 16px' }}>
+                      <td data-label="Categoria" data-par style={{ padding: '13px 16px' }}>
                         <span style={{
                           fontSize: 'var(--text-xs-sz)', fontWeight: 700, padding: '3px 9px', borderRadius: 99,
                           background: tx.category === 'Estorno' ? 'var(--danger-soft)' : 'var(--bg-app)',

@@ -127,20 +127,16 @@ function FiltersBar({
    * Herdava do `selectStyle` local, que saiu quando os selects da barra
    * passaram a usar a classe do sistema.
    */
-  function estiloGatilho(ativo: boolean): React.CSSProperties {
-    return {
-      fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)',
-      color: 'var(--text-muted)', background: 'var(--surface)',
-      border: '1px solid var(--border)', borderRadius: 'var(--radius-field-token)',
-      padding: '6px 11px', cursor: 'pointer', outline: 'none',
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      ...(ativo && {
-        border: '1.5px solid var(--brand)',
-        background: 'var(--brand-soft)',
-        color: 'var(--brand)',
-      }),
-    }
+  /**
+   * Gatilho de filtro que abre uma lista. Da barra, é um liga/desliga — ou o
+   * filtro está valendo, ou não —, então usa a classe do sistema.
+   */
+  function classeGatilho(ativo: boolean) {
+    return ativo ? 'filtro-toggle is-ativo' : 'filtro-toggle'
   }
+  // Era um estilo local: 33px de altura ao lado de seletores de 34, e a borda
+  // engordando meio pixel de cada lado ao ficar ativo — o que fazia a barra
+  // inteira mexer justamente quando se filtrava.
 
   /** "Tags · 2" — o que está escolhido cabe no próprio rótulo. */
   function rotuloFiltro(nome: string, quantos: number): string {
@@ -170,35 +166,30 @@ function FiltersBar({
           aparece no próprio rótulo. */}
       {availableSources.length > 0 && (
         <PickerCompacto
-          icone={<Compass size={12} />}
           rotuloBotao={rotuloFiltro('Origem', filters.sources.length)}
           opcoes={availableSources.map(s => ({ valor: s, rotulo: s }))}
           selecionadas={filters.sources}
           multiplo
           textoListaVazia="Nenhuma origem nos leads carregados."
-          classeBotao=""
-          estiloBotao={estiloGatilho(filters.sources.length > 0)}
+          classeBotao={classeGatilho(filters.sources.length > 0)}
           onEscolher={toggleSource}
         />
       )}
 
       {availableTags.length > 0 && (
         <PickerCompacto
-          icone={<TagIcon size={12} />}
           rotuloBotao={rotuloFiltro('Tags', filters.tags.length)}
           opcoes={availableTags.map(t => ({ valor: t, rotulo: t }))}
           selecionadas={filters.tags}
           multiplo
           textoListaVazia="Nenhuma tag nos leads carregados."
-          classeBotao=""
-          estiloBotao={estiloGatilho(filters.tags.length > 0)}
+          classeBotao={classeGatilho(filters.tags.length > 0)}
           onEscolher={toggleTag}
         />
       )}
 
       {availableOwners.length > 0 && (
         <PickerCompacto
-          icone={<UserCog size={12} />}
           rotuloBotao={rotuloFiltro('Dono', filters.owners.length)}
           opcoes={availableOwners.map(n => ({
             valor: n, rotulo: n === SEM_DONO ? 'Sem dono' : n,
@@ -206,22 +197,19 @@ function FiltersBar({
           selecionadas={filters.owners}
           multiplo
           textoListaVazia="Nenhum dono nos leads carregados."
-          classeBotao=""
-          estiloBotao={estiloGatilho(filters.owners.length > 0)}
+          classeBotao={classeGatilho(filters.owners.length > 0)}
           onEscolher={toggleOwner}
         />
       )}
 
       {availableProcs.length > 0 && (
         <PickerCompacto
-          icone={<Package size={12} />}
           rotuloBotao={rotuloFiltro('Procedimento', filters.procedureIds.length)}
           opcoes={availableProcs.map(p => ({ valor: p.id, rotulo: p.name }))}
           selecionadas={filters.procedureIds}
           multiplo
           textoListaVazia="Nenhum procedimento nos leads carregados."
-          classeBotao=""
-          estiloBotao={estiloGatilho(filters.procedureIds.length > 0)}
+          classeBotao={classeGatilho(filters.procedureIds.length > 0)}
           onEscolher={toggleProcedure}
         />
       )}
@@ -253,7 +241,8 @@ function FiltersBar({
 
       {/* Ordenação */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <select value={sort} onChange={e => onSortChange(e.target.value as SortOrder)}>
+        <select className="filtro-select" aria-label="Ordenar os leads"
+          value={sort} onChange={e => onSortChange(e.target.value as SortOrder)}>
           <option value="newest">Mais recente</option>
           <option value="oldest">Mais antigo</option>
           <option value="name_asc">Nome A → Z</option>

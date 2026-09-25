@@ -354,7 +354,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                             {p.category ?? '—'}
                           </span>
                         </td>
-                        <td data-label="Total rede" style={{ padding: '13px 16px' }}>
+                        <td data-label="Total rede" data-par style={{ padding: '13px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>
                               {p.totalStock.toLocaleString('pt-BR')}
@@ -502,7 +502,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                           {row.branch.branchName}
                         </span>
                       </td>
-                      <td data-label="Estoque" style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <td data-label="Estoque" data-par style={{ padding: '12px 16px', textAlign: 'right' }}>
                         <span style={{
                           fontSize: 'var(--text-base-sz)', fontWeight: 800, letterSpacing: '-0.01em',
                           color: isZero ? 'var(--danger)' : isBaixo ? 'var(--warning)' : 'var(--text)',

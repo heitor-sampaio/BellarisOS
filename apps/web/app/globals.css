@@ -999,6 +999,38 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 .crm-board-cols::-webkit-scrollbar,
 .crm-coluna-cards::-webkit-scrollbar { display: none; }
 
+/* Lista que rola POR DENTRO no celular: título, contagem e barra de busca
+   ficam parados, e só a lista anda. Pedido do Heitor em 2026-09-25 para
+   Planejamentos e Injetáveis — "scroll apenas na lista".
+
+   O motivo é o mesmo do inbox e do quadro de oportunidades: rolando a página
+   inteira, procurar um item no fim da lista leva embora a busca e o filtro,
+   que é justamente o que se usa para achá-lo. No desktop não vale a pena — lá
+   a barra de busca cabe na tela de qualquer jeito.
+
+   `.tela-de-lista` é o invólucro em coluna e `.rolagem-da-lista` é
+   o filho que rola. Os dois juntos, senão o `flex: 1` não tem de quem
+   descontar. */
+@media (max-width: 1023px) {
+  .tela-de-lista {
+    height: calc(100dvh - var(--topbar-h) - 2 * var(--content-pad-y) - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+    overflow: hidden;
+  }
+  .tela-de-lista .rolagem-da-lista {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    /* O último card não encosta na borda de baixo. */
+    padding-bottom: 8px;
+    /* Barra de rolagem em área de conteúdo é ruído (§13). */
+    scrollbar-width: none;
+  }
+  .tela-de-lista .rolagem-da-lista::-webkit-scrollbar { display: none; }
+}
+
 /* Card do quadro no celular: mesma informação, menos espaço em volta.
    A coluna ocupa 86% da tela, então cada card é largo — o que sobra é altura, e
    é a altura que decide quantos leads cabem sem rolar. Só respiro e escala
@@ -1105,16 +1137,26 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   table.cards-mobile tr {
     border: 1px solid var(--border);
     border-radius: var(--radius-row);
-    padding: 6px 12px;
-    margin-bottom: 10px;
+    padding: 7px 11px;
+    margin-bottom: 8px;
     background: var(--surface);
   }
+  /* O PADDING PRECISA DE !important.
+     Cada célula carrega o respiro da TABELA no style inline ("13px 16px"), que
+     é o certo em tabela e é demais em card: inline vence classe, então a regra
+     de baixo nunca valeu e cada linha do card gastava 26px só de folga
+     vertical. Com cinco linhas por card, eram 130px por item — o que fazia o
+     Heitor pedir, em 2026-09-25, para condensar os cards de quatro telas de
+     uma vez. Aqui é o único lugar em que dá para vencer o inline.
+
+     Mesma história do lado horizontal: o card já tem o seu, e o da tabela
+     empurrava o valor para longe do rótulo. */
   table.cards-mobile td {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 8px 0;
+    gap: 10px;
+    padding: 4px 0 !important;
     border: none !important;
     border-bottom: 1px solid var(--hairline) !important;
     text-align: right;
@@ -1123,7 +1165,7 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   table.cards-mobile td::before {
     content: attr(data-label);
     font-weight: 700;
-    font-size: 11px;
+    font-size: var(--text-overline);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--text-muted);
@@ -1150,7 +1192,11 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
      Uma linha inteira para três palavras era o que fazia cinco procedimentos
      ocuparem 2300px de rolagem. Opt-in por `data-par` porque só quem escreve a
      tabela sabe se o valor cabe em meia largura. */
-  table.cards-mobile tr { display: flex; flex-wrap: wrap; }
+  /* O vao entre as duas colunas do par. Vinha, por acidente, do padding
+     horizontal que cada celula herdava da tabela; sem ele o valor da esquerda
+     encostava no rotulo da direita ("60 minPRECO"). Sao os mesmos 12px que o
+     calc(50% - 6px) abaixo ja descontava. */
+  table.cards-mobile tr { display: flex; flex-wrap: wrap; column-gap: 12px; }
   table.cards-mobile td { flex: 1 1 100%; }
   table.cards-mobile td[data-par] {
     flex: 1 1 calc(50% - 6px);
@@ -1573,6 +1619,20 @@ input[type="search"].field {
 .campo-busca,
 .filtro-largo { height: var(--altura-controle); }
 .filtro-largo > input { height: 100%; }
+
+/* Gatilho do <PickerCompacto> quando ele vive DENTRO de um card (a tag do
+   contato, a origem do lead) e não numa barra de filtros. Menor que um filtro
+   de barra de propósito: ali ele é uma ação discreta no meio do conteúdo, não
+   um controle da tela.
+
+   Era um objeto de estilo inline embutido no componente, e ele vencia a classe
+   que a barra de filtros passava: o gatilho recebia a classe .filtro-toggle e
+   continuava com o tamanho de dentro do card. */
+.picker-gatilho {
+  font-size: var(--text-xs-sz);
+  padding: 4px 8px;
+  gap: 5px;
+}
 
 /* Filtro que ACUMULA (tag, dono, marcador). É o único seletor em que a pílula
    solta é a forma certa: não há "uma escolha" para um segmento representar —
