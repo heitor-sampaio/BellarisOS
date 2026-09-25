@@ -48,6 +48,20 @@ const HOUR_H     = 72   // px por hora
 const HOURS      = Array.from({ length: GRID_END - GRID_START }, (_, i) => i + GRID_START)
 const GRID_H     = HOURS.length * HOUR_H
 
+/**
+ * Posição vertical do clique → 'YYYY-MM-DDTHH:mm' local, em passos de 15 min.
+ * Preso à faixa da grade: clique meio pixel abaixo do fim não pode virar 21:07.
+ */
+function horarioNoY(dia: string, y: number): string {
+  const minutosDoTopo = (y / HOUR_H) * 60
+  const passo = Math.round(minutosDoTopo / 15) * 15
+  const limite = (GRID_END - GRID_START) * 60 - 15
+  const min = Math.min(Math.max(passo, 0), limite)
+  const hh = String(GRID_START + Math.floor(min / 60)).padStart(2, '0')
+  const mm = String(min % 60).padStart(2, '0')
+  return `${dia}T${hh}:${mm}`
+}
+
 const STATUS_STYLE: Record<string, { bg: string; border: string; text: string; label: string }> = {
   SCHEDULED:   { bg: 'var(--info-soft)', border: 'var(--info-border)', text: 'var(--info)', label: 'Agendado'      },
   CONFIRMED:   { bg: 'var(--success-bg)', border: 'var(--cat-4-soft)', text: 'var(--cat-4)', label: 'Confirmado'     },
@@ -108,7 +122,26 @@ function apptHeight(a: Appointment): number {
 }
 
 // -- View Dia -----------------------------------------------------------------
-function DayGrid({ branches, appointments, onSelecionar }: { branches: Branch[]; appointments: Appointment[]; onSelecionar: (a: Appointment) => void }) {
+/**
+ * Clicar num horário vazio abre o agendamento naquele horário e naquela
+ * unidade. Antes só o agendamento JÁ EXISTENTE era clicável: a grade da rede
+ * mostrava os buracos do dia e não deixava preencher nenhum — para marcar era
+ * preciso achar o botão "Agendar" no topo e redigitar dia, hora e unidade que
+ * já estavam na ponta do dedo. Pedido do Heitor em 2026-09-25.
+ *
+ * O minuto sai da posição vertical do clique, arredondado para 15 — meia hora
+ * é grosseiro demais para uma agenda de estética, e o minuto exato do pixel
+ * não significa nada.
+ */
+function DayGrid({ branches, appointments, dia, onSelecionar, onHorarioVazio }: {
+  branches: Branch[]
+  appointments: Appointment[]
+  /** 'YYYY-MM-DD' do dia mostrado. */
+  dia: string
+  onSelecionar: (a: Appointment) => void
+  /** Nulo quando quem olha não pode agendar. */
+  onHorarioVazio: ((branchId: string, quando: string) => void) | null
+}) {
   const byBranch: Record<string, Appointment[]> = {}
   for (const b of branches) byBranch[b.id] = []
   for (const a of appointments) {
@@ -198,11 +231,24 @@ function DayGrid({ branches, appointments, onSelecionar }: { branches: Branch[];
             }
 
             return (
-              <div key={b.id} style={{
-                position: 'relative',
-                height: GRID_H,
-                borderLeft: '1px solid var(--hairline)',
-              }}>
+              <div
+                key={b.id}
+                className="agenda-coluna"
+                data-unidade={b.id}
+                onClick={onHorarioVazio ? e => {
+                  // Só o fundo: o clique num agendamento sobe até aqui, e sem
+                  // esta guarda abrir uma ficha marcaria um horário novo junto.
+                  if (e.target !== e.currentTarget) return
+                  const y = e.clientY - e.currentTarget.getBoundingClientRect().top
+                  onHorarioVazio(b.id, horarioNoY(dia, y))
+                } : undefined}
+                style={{
+                  position: 'relative',
+                  height: GRID_H,
+                  borderLeft: '1px solid var(--hairline)',
+                  cursor: onHorarioVazio ? 'copy' : undefined,
+                }}
+              >
                 {/* Linhas de hora */}
                 {HOURS.map((_, i) => (
                   <div key={i} style={{
@@ -425,7 +471,9 @@ export function AdminAgendaView({
   view, selectedDate, todayStr, branches, todasUnidades, unidadeId, appointments, podeAgendar, escopoProprio,
 }: Props) {
   const router = useRouter()
-  const [agendando, setAgendando] = useState(false)
+  // `true` = veio do botão "Agendar" (sem hora nem unidade);
+  // objeto = veio de um horário vazio da grade.
+  const [agendando, setAgendando] = useState<true | { branchId: string; quando: string } | null>(null)
   const [selecionado, setSelecionado] = useState<Appointment | null>(null)
 
   const mondayStr = getMondayOf(selectedDate)
@@ -577,7 +625,13 @@ export function AdminAgendaView({
 
       {/* Grade principal */}
       {view === 'day' ? (
-        <DayGrid branches={branches} appointments={appointments} onSelecionar={setSelecionado} />
+        <DayGrid
+          branches={branches}
+          appointments={appointments}
+          dia={selectedDate}
+          onSelecionar={setSelecionado}
+          onHorarioVazio={podeAgendar ? (branchId, quando) => setAgendando({ branchId, quando }) : null}
+        />
       ) : (
         <WeekGrid
           mondayStr={mondayStr}
@@ -615,14 +669,18 @@ export function AdminAgendaView({
 
       {agendando && (
         <AppointmentModal
-          branchId={unidadeId}
+          // Vindo da grade, a unidade é a COLUNA em que se clicou, não a do
+          // filtro: com "Toda a rede" escolhido, `unidadeId` é vazio e o modal
+          // abriria pedindo de novo o que o clique já disse.
+          branchId={agendando === true ? unidadeId : agendando.branchId}
+          defaultDate={agendando === true ? undefined : agendando.quando}
           slug=""
           procedures={[]}
           professionals={[]}
           rooms={[]}
           unidades={todasUnidades}
-          onClose={() => setAgendando(false)}
-          onSuccess={() => { setAgendando(false); router.refresh() }}
+          onClose={() => setAgendando(null)}
+          onSuccess={() => { setAgendando(null); router.refresh() }}
         />
       )}
 

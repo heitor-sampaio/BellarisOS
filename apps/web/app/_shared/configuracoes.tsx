@@ -16,6 +16,7 @@ import { listDataRequests } from '@/actions/lgpd'
 import { SettingsEventos } from '@/components/admin/settings-eventos'
 import { listarEventosDeDominio, resumoDoCatalogo } from '@/actions/eventos'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { SegSelect } from '@/components/shared/seg-select'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -237,26 +238,23 @@ export async function Configuracoes({
         </div>
       )}
 
-      {/* Tabs — `tabs-bar` rola na horizontal quando as sete não cabem. */}
-      <div className="tabs-bar" style={{ marginBottom: 28 }}>
-        {tabs.map(tab => {
-          const isActive = tab.key === activeTab
-          return (
-            <Link
-              key={tab.key}
-              href={`${basePath}?tab=${tab.key}`}
-              style={{
-                padding: '8px 16px',
-                fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)',
-                color: isActive ? 'var(--brand)' : 'var(--text-muted)',
-                borderBottom: isActive ? '2px solid var(--brand)' : '2px solid transparent',
-                textDecoration: 'none', transition: 'color 120ms', marginBottom: -1,
-              }}
-            >
-              {tab.label}
-            </Link>
-          )
-        })}
+      {/* Escolher o assunto da tela é escolha exclusiva, e no sistema isso é
+          `<SegSelect>` — é o que Relatórios já usa para as abas dele. Aqui eram
+          abas sublinhadas, com outra altura e outro jeito de mostrar o
+          escolhido: a mesma pergunta com duas caras. Pedido do Heitor em
+          2026-09-25.
+
+          Em modo LINK (`basePath` + `paramName`), porque esta tela é Server
+          Component e a aba mora na URL. E no celular o segmentado vira um
+          botão que abre menu — melhor que a fila de abas rolando de lado. */}
+      <div style={{ marginBottom: 28 }}>
+        <SegSelect
+          options={tabs.map(t => ({ key: t.key, label: t.label }))}
+          value={activeTab}
+          basePath={basePath}
+          paramName="tab"
+          ariaLabel="Assunto das configurações"
+        />
       </div>
 
       {activeTab === 'unidades' && (
