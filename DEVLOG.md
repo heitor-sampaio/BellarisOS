@@ -1260,6 +1260,53 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-25 — O sino passa a tocar para quem tem interesse
+
+"Todos que forem partes interessadas no evento devem receber a notificação."
+
+O sino funcionava — realtime, contagem, painel — e estava permanentemente
+vazio para admin e gerente. A causa: `notifyUser` só era chamado para o
+**profissional do agendamento**. No banco de desenvolvimento, as 108
+notificações de equipe eram todas de uma única profissional demo.
+
+**"Parte interessada" não virou uma lista escrita à mão por evento.** Ela sai
+de dois eixos que o sistema já conhece, em
+`lib/notifications/interessados.ts`:
+
+- **envolvido direto** — a pessoa de quem o fato É (o profissional recebe
+  porque a agenda é dele, com permissão ou sem);
+- **responsável** — quem tem `MANAGE` no módulo que governa o fato e
+  alcança a unidade onde aconteceu. É a abrangência do §11, não uma regra nova.
+
+Duas decisões que valem registrar. **`VIEW` não entra**: ver o módulo é
+poder consultar, não responder pelo que acontece nele — quem só olha não
+precisa ser interrompido. E **quem causou o fato sai da lista**: sino avisando
+a pessoa do que ela acabou de fazer é ruído, e ruído treina a ignorar o sino.
+O check-in é a exceção declarada: ali a parte interessada é uma, quem vai
+atender; avisar a gerência de cada chegada seria um sino tocando o dia inteiro.
+
+**Um alerta que o sistema prometia e nunca entregou.** O §9.8 listava "estoque
+mínimo" entre as notificações operacionais desde sempre. O fato existia —
+`estoque.abaixo_do_minimo` é emitido por gatilho no banco desde
+2026-09-23, na travessia do mínimo — e **morria ali**: ninguém era avisado.
+Agora um job de hora em hora (`/api/cron/estoque-minimo`) recolhe os
+eventos da janela e notifica quem responde pelo estoque da unidade.
+
+Por que cron e não a ação que mexe no saldo: ele cai em cinco ou seis lugares
+(atendimento, entrada, ajuste, transferência, código de barras), e foi
+exatamente por isso que o evento virou gatilho no banco. Instrumentar cada
+caminho de novo seria repetir o erro que o gatilho resolveu. E sem estado
+próprio de "onde parei": a janela tem folga (90 min para um ritmo de 60) e a
+repetição é evitada perguntando se já existe notificação com o id daquele
+evento — guardar um ponteiro seria mais uma coisa a dessincronizar quando o
+job falhasse no meio.
+
+`e2e/notificacoes-interessados.spec.ts` prova a regra pelo caminho real,
+por HTTP: cria cargos com `MANAGE` e com `VIEW`, gente na unidade,
+na rede e em outra unidade, insere o evento, chama o job e confere quem
+recebeu. Conferido ao contrário: fazendo `VIEW` contar, o teste falha na
+asserção certa.
+
 ### 2026-09-25 — Uma ficha só, e a avaliação vira procedimento
 
 "Não precisamos de criação de ficha específica de anamnese, isso pode ser feito
@@ -2059,16 +2106,11 @@ verdade. O que vale:
   WhatsApp oficial. Tudo que se sabe vem de testes escritos por quem escreveu o
   código — e teste só prova o que alguém pensou em perguntar.
 
-### Esperando decisão do Heitor
+### Decidido, e registrado para não voltar à discussão
 
-- **Quem recebe notificação no sino?** Hoje `notifyUser` só é chamado para o
-  PROFISSIONAL do agendamento e pela ação "avisar equipe" de uma automação. No
-  banco de desenvolvimento, as 108 notificações de equipe são todas de uma
-  profissional demo: para admin e gerente o sino é permanentemente vazio, que é
-  o que o Heitor relatou. Falta a regra de destinatário, e ela é de produto.
-- ~~Botão de ação tem 38px e seletor tem 34px.~~ **Decidido em 2026-09-25:
-  fica.** "Pode manter, dá um destaque leve, eu gosto." A diferença é
-  hierarquia — a ação enfatizada é mais alta que o filtro —, não descuido.
+- **Botão de ação tem 38px e seletor tem 34px, e fica assim** (2026-09-25):
+  "pode manter, dá um destaque leve, eu gosto". A diferença é hierarquia — a
+  ação enfatizada é mais alta que o filtro —, não descuido.
 
 ### Próxima frente candidata
 

@@ -26,7 +26,7 @@
  * notificação e a exportação de LGPD varrem a base inteira. De hora em hora é
  * de propósito.
  */
-const PADRAO = ['notification-campaigns', 'lgpd-exports', 'meta-capi', 'eventos-expirados']
+const PADRAO = ['notification-campaigns', 'lgpd-exports', 'meta-capi', 'eventos-expirados', 'estoque-minimo']
 
 const JOBS = (process.env.CRON_JOBS ?? '')
   .split(',')

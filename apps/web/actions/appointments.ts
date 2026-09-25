@@ -19,6 +19,7 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { periodRef } from '@/lib/datetime'
+import { notificarInteressados } from '@/lib/notifications/interessados'
 
 // --- Helpers internos ---------------------------------------------
 async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
@@ -55,6 +56,8 @@ function fmtDateTime(iso: string): string {
 
 type ApptCtx = {
   clientId: string; professionalId: string | null
+  /** Unidade onde o fato aconteceu — e ela que define quem e responsavel. */
+  branchId: string | null
   clientName: string; procedureName: string; scheduledAt: string
   slug: string
 }
@@ -65,13 +68,14 @@ async function loadApptCtx(
 ): Promise<ApptCtx | null> {
   const data = await ler(admin
     .from('appointments')
-    .select('client_id, professional_id, scheduled_at, clients(name), procedures(name), branches(slug)')
+    .select('client_id, professional_id, branch_id, scheduled_at, clients(name), procedures(name), branches(slug)')
     .eq('id', appointmentId)
     .maybeSingle(), 'buscar o agendamento')
   if (!data) return null
   return {
     clientId:       data.client_id as string,
     professionalId: (data.professional_id ?? null) as string | null,
+    branchId:       (data.branch_id ?? null) as string | null,
     clientName:     ((data.clients as unknown as { name?: string } | null)?.name ?? 'Cliente'),
     procedureName:  ((data.procedures as unknown as { name?: string } | null)?.name ?? 'Atendimento'),
     scheduledAt:    data.scheduled_at as string,
@@ -79,8 +83,14 @@ async function loadApptCtx(
   }
 }
 
-/** Novo agendamento → cliente ('confirmado') + profissional ('novo'). */
-function notifyNewAppointment(appointmentId: string): void {
+/**
+ * Novo agendamento → cliente ('confirmado') + as partes interessadas.
+ *
+ * "Interessadas" não é mais só o profissional: quem gerencia a agenda da
+ * unidade também precisa saber que entrou horário novo. Quem MARCOU sai da
+ * lista — ver `interessadosNoFato`. Pedido do Heitor em 2026-09-25.
+ */
+function notifyNewAppointment(appointmentId: string, ator?: string | null): void {
   after(async () => {
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
@@ -91,17 +101,17 @@ function notifyNewAppointment(appointmentId: string): void {
       type: 'appointment_confirmed', title: 'Agendamento confirmado',
       body: `${c.procedureName} em ${when}.`, data,
     })
-    if (c.professionalId) {
-      await notifyUser(admin, c.professionalId, {
+    await notificarInteressados(admin,
+      { modulo: 'agenda', branchId: c.branchId, envolvidos: [c.professionalId], ator },
+      {
         type: 'appointment_new', title: 'Novo agendamento',
         body: `${c.clientName} — ${c.procedureName} em ${when}.`, data,
       })
-    }
   })
 }
 
-/** Cancelamento → cliente + profissional. */
-function notifyCancelledAppointment(appointmentId: string, reason?: string | null): void {
+/** Cancelamento → cliente + as partes interessadas. */
+function notifyCancelledAppointment(appointmentId: string, reason?: string | null, ator?: string | null): void {
   after(async () => {
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
@@ -113,17 +123,17 @@ function notifyCancelledAppointment(appointmentId: string, reason?: string | nul
       type: 'appointment_cancelled', title: 'Agendamento cancelado',
       body: `${c.procedureName} de ${when} foi cancelado.${motivo}`, data,
     })
-    if (c.professionalId) {
-      await notifyUser(admin, c.professionalId, {
+    await notificarInteressados(admin,
+      { modulo: 'agenda', branchId: c.branchId, envolvidos: [c.professionalId], ator },
+      {
         type: 'appointment_cancelled', title: 'Agendamento cancelado',
         body: `${c.clientName} — ${c.procedureName} de ${when} foi cancelado.${motivo}`, data,
       })
-    }
   })
 }
 
-/** Remarcação → cliente + profissional com o novo horário. */
-function notifyRescheduledAppointment(appointmentId: string): void {
+/** Remarcação → cliente + as partes interessadas, com o novo horário. */
+function notifyRescheduledAppointment(appointmentId: string, ator?: string | null): void {
   after(async () => {
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
@@ -134,16 +144,22 @@ function notifyRescheduledAppointment(appointmentId: string): void {
       type: 'appointment_rescheduled', title: 'Agendamento remarcado',
       body: `Novo horário: ${c.procedureName} em ${when}.`, data,
     })
-    if (c.professionalId) {
-      await notifyUser(admin, c.professionalId, {
+    await notificarInteressados(admin,
+      { modulo: 'agenda', branchId: c.branchId, envolvidos: [c.professionalId], ator },
+      {
         type: 'appointment_rescheduled', title: 'Agendamento remarcado',
         body: `${c.clientName} — novo horário: ${when}.`, data,
       })
-    }
   })
 }
 
-/** Check-in → profissional ('cliente chegou'). */
+/**
+ * Check-in → profissional, e só ele.
+ *
+ * Aqui a parte interessada é uma: quem vai atender precisa saber que a pessoa
+ * chegou. Avisar a gerência de cada chegada seria um sino tocando o dia
+ * inteiro — e sino que toca sempre deixa de ser lido.
+ */
 function notifyCheckin(appointmentId: string): void {
   after(async () => {
     const admin = createAdminClient()
@@ -234,7 +250,7 @@ export async function addAppointment(
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/dashboard`)
-    notifyNewAppointment(result.id)
+    notifyNewAppointment(result.id, ctx.internalUserId)
     return { success: true, id: result.id }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -323,7 +339,7 @@ export async function updateAppointmentStatus(
   revalidatePath('/admin/agenda')
   revalidatePath(`/admin/agenda/${appointmentId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
-  if (status === 'CANCELLED') notifyCancelledAppointment(appointmentId, cancellationReason)
+  if (status === 'CANCELLED') notifyCancelledAppointment(appointmentId, cancellationReason, ctx.internalUserId)
 }
 
 // Resolve o branchId pelo appointmentId (para validar acesso)
@@ -676,7 +692,7 @@ async function cancelAppointmentSessionInterno(
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
     revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
-    notifyCancelledAppointment(appointmentId, cancellationReason)
+    notifyCancelledAppointment(appointmentId, cancellationReason, ctx.internalUserId)
     return {}
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -1266,7 +1282,7 @@ export async function rescheduleAppointment(
     if (slug) revalidatePath(`/${slug}/agenda`)
     revalidatePath('/admin/agenda')
     revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
-    notifyRescheduledAppointment(appointmentId)
+    notifyRescheduledAppointment(appointmentId, ctx.internalUserId)
     return { success: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
@@ -1483,7 +1499,7 @@ async function schedulePackageSessionInterno(params: {
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
-  notifyNewAppointment(appt.id)
+  notifyNewAppointment(appt.id, ctx.internalUserId)
   return { appointmentId: appt.id }
 }
 
@@ -1555,7 +1571,7 @@ async function schedulePlanSessionInterno(params: {
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
-  notifyNewAppointment(appt.id)
+  notifyNewAppointment(appt.id, ctx.internalUserId)
   return { appointmentId: appt.id }
 }
 
@@ -1662,6 +1678,7 @@ export async function createClientAppointment(params: {
     if (error || !appt) return { error: `Erro ao criar agendamento: ${error?.message}` }
 
     revalidatePath(`/${params.slug}/cliente/agendamentos`)
+    // Marcado pelo proprio cliente no portal: nao ha ator da equipe a excluir.
     notifyNewAppointment(appt.id as string)
     return { id: appt.id as string }
   } catch (e) {

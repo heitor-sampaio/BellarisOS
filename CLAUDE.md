@@ -478,7 +478,24 @@ const procedures = await ler(
 ### 9.8 Push Notifications (mobile)
 - `PushToken` armazena o token Expo do dispositivo com `platform: "ios" | "android"`
 - Pode estar vinculado a `userId` (usuário operacional) ou `clientId` (cliente final) — nunca aos dois ao mesmo tempo
-- Notificações operacionais: novo agendamento, cancelamento, estoque mínimo
+- **Quem recebe uma notificação operacional são as PARTES INTERESSADAS no
+  fato**, e a lista não é escrita à mão por evento: sai de
+  `lib/notifications/interessados.ts`, por dois eixos que o sistema já
+  conhece.
+  - **Envolvido direto** — a pessoa de quem o fato é. O profissional do
+    agendamento recebe porque a agenda é dele, com permissão ou sem.
+  - **Responsável** — quem tem `MANAGE` no módulo que governa o fato e
+    alcança a unidade onde ele aconteceu (a própria, ou a rede com
+    `branch_id` nulo). É a abrangência do §11, não uma regra nova.
+  - `VIEW` **não entra**: ver o módulo é poder consultar, não responder
+    pelo que acontece nele. Quem só olha não precisa ser interrompido.
+  - **Quem causou o fato sai da lista.** Sino avisando a pessoa do que ela
+    acabou de fazer é ruído, e ruído treina a ignorar o sino.
+  - A exceção é o **check-in**: ali a parte interessada é uma só, quem vai
+    atender. Avisar a gerência de cada chegada seria um sino tocando o dia
+    inteiro.
+- Notificações operacionais: novo agendamento, cancelamento, remarcação,
+  check-in e estoque abaixo do mínimo
 - Notificações para cliente: confirmação, lembrete 24h antes, promoções
 - Fallback de notificação WhatsApp para quando push falhar (uazapi ou API oficial, conforme o que a rede tiver conectado)
 
@@ -884,7 +901,7 @@ assim a execução aparece vermelha no painel em vez de falhar em silêncio.
 
 | Serviço | Ritmo | `CRON_JOBS` |
 |---|---|---|
-| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`) |
+| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`) |
 | **Automations Cron** | `*/5 * * * *` (5 min) | `automacoes` |
 
 O segundo existe porque **granularidade de uma hora não serve a automação**:
