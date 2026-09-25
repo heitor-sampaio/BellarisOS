@@ -18,7 +18,7 @@ export default async function FinancialPage({
   const sp       = await searchParams
   const period   = sp.period ?? 'month'
   // Janela no fuso do negócio e período anterior de mesma duração decorrida.
-  const { from: start, to: end, prevFrom: prevStart, prevTo: prevEnd, label } =
+  const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, label } =
     resolvePeriod(period, sp.from, sp.to)
 
   const ctx = await getTenantContext()
@@ -49,7 +49,10 @@ export default async function FinancialPage({
     .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, notes, created_at, appointment_id')
     .eq('branch_id', branch.id)
     .gte('created_at', start.toISOString())
-    .lte('created_at', end.toISOString())
+    // Fim do PERÍODO, não "agora" — ver o mesmo comentário no financeiro da
+    // rede. O relógio do Postgres está à frente do relógio do app, e um
+    // lançamento feito neste segundo sumia da tela que acabou de criá-lo.
+    .lte('created_at', fimDoPeriodo.toISOString())
     .order('created_at', { ascending: false }), 'carregar os lançamentos')
 
 

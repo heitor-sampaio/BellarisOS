@@ -34,7 +34,7 @@ import { InboxQuickReplies } from '@/components/admin/inbox-quick-replies'
 import { useAnexos, PainelDeAnexo, BotoesDeAnexo } from '@/components/admin/inbox-anexos'
 import {
   secondsSince, agingLevel, AGING_STYLE, AWAITING_THRESHOLDS,
-  formatDurationShort, formatDurationLong,
+  formatDurationShort, formatDurationLong, iniciaisDoNome,
 } from '@estetica-os/utils'
 
 // --- Channel meta ------------------------------------------------------------
@@ -137,7 +137,7 @@ function ConvItem({ conv, selected, onClick, nowMs }: { conv: Conversation; sele
           fontSize: 'var(--text-base-sz)', fontWeight: 800,
           color: selected ? 'var(--on-brand)' : 'var(--text-muted)',
         }}>
-          {(conv.contact_name ?? '?')[0]!.toUpperCase()}
+          {iniciaisDoNome(conv.contact_name, 1)}
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1540,7 +1540,7 @@ export function CRMInbox({
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--brand)',
                 }}>
-                  {(selectedConv.contact_name ?? '?')[0]!.toUpperCase()}
+                  {iniciaisDoNome(selectedConv.contact_name, 1)}
                 </div>
 
                 <div className="inbox-identidade" style={{ flex: '1 1 170px', minWidth: 0 }}>

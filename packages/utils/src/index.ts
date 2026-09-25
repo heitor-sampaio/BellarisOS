@@ -1,4 +1,5 @@
 export { formatBRL, formatDate, formatDateTime, formatTime, formatPercent, maskCPF, maskPhone, maskCNPJ } from './format'
+export { iniciaisDoNome } from './iniciais'
 export {
   CLIENT_TAGS,
   UNIT_TAG_PREFIX,

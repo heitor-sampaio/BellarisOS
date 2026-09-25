@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Check, Calendar, Clock, User, Sparkles } from 'lucide-react'
 import { getClientAvailableSlots, createClientAppointment } from '@/actions/appointments'
+import { iniciaisDoNome } from '@estetica-os/utils'
 
 interface Procedure {
   id:           string
@@ -262,7 +263,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
                   background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: 'var(--brand)', fontWeight: 800, fontSize: 'var(--text-base-sz)', flexShrink: 0,
                 }}>
-                  {p.name.charAt(0).toUpperCase()}
+                  {iniciaisDoNome(p.name, 1)}
                 </div>
                 <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
                   {p.name}

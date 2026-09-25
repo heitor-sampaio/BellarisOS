@@ -1260,6 +1260,55 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-25 — Três defeitos meus, e o que cada um ensinou
+
+O Heitor cortou uma justificativa minha que não se sustentava: eu vinha
+marcando achados como "anteriores ao meu trabalho", e o sistema inteiro é meu.
+Não existe defeito de outra pessoa aqui. Os três foram resolvidos, cada um com
+um teste que falha se voltar.
+
+**1. A hidratação do inbox caía, e a tela mais pesada do sistema era redesenhada
+inteira no cliente.** A inicial do avatar saía de `nome[0]` — que pega a
+primeira unidade **UTF-16**, não o primeiro caractere. Um contato chamado
+"👁️‍🗨️" (o nome vem do WhatsApp, quem escolhe é o contato) devolvia **metade de
+um par substituto**, que não é UTF-8 válido: o servidor serializa como U+FFFD,
+o cliente calcula o substituto solto, os textos não batem e o React descarta a
+árvore.
+
+O mesmo erro estava escrito de **seis jeitos diferentes** em cinco arquivos
+(`[0]`, `charAt(0)`, `split(' ').map(n => n[0])`). Virou
+`iniciaisDoNome` em `packages/utils`, com `Array.from`, que
+itera por code point e dá o mesmo resultado no Node e no navegador — que é o
+que a hidratação exige. `Intl.Segmenter` daria o emoji inteiro em vez de
+só o olho, mas depende do ICU de cada lado, e ICU diferente é a mesma falha por
+outro caminho.
+
+**2. Chave de lista faltando no estoque.** O `map` devolvia um fragmento
+`<>` **sem chave**, com a `key` no `<tr>` de dentro — que não
+é o filho da lista. O React deixa de casar as linhas de um render para o outro,
+e expandir um produto podia mexer no pedaço de DOM de outro. Fragmento com
+chave exige a forma longa (`<Fragment key={…}>`).
+
+**3. O lançamento sumia da tela que acabou de criá-lo.** A lista de
+movimentações fechava em `created_at <= to`, e o `to` do
+`resolvePeriod` é a janela **decorrida** — "agora", no relógio do app. O
+`created_at` vem do relógio do Postgres, que está **0,2s à frente**
+(medido contra o Supabase). Lançamento feito neste segundo nascia no futuro e
+não entrava na lista. A janela decorrida existe para o delta comparar períodos
+de mesmo tamanho; numa lista ela não tem função. Trocada por `fullTo` nos
+três lugares que a usavam assim (financeiro da rede, da unidade, e o giro de
+estoque do dashboard).
+
+Esse terceiro tinha me enganado antes: o sintoma era
+`financeiro-estorno.spec.ts` passar sozinho e falhar depois de
+`fase1-dinheiro`. Parecia ordem de teste; era o intervalo entre gravar e
+abrir a tela. Conferido ao contrário: com o código antigo, 2 de 3 rodadas do
+teste novo falham.
+
+**A guarda que faltava** é `e2e/render-limpo.spec.ts`: 19 telas, e falha
+se alguma relatar hidratação divergente ou chave de lista. Os dois avisos saem
+no console e eu vinha tratando console sujo como ruído de fundo.
+
 ### 2026-09-25 — Lista do celular: dez ajustes de uma vez
 
 O Heitor mandou treze itens numa mensagem só. Dez entraram; três dependem de
@@ -1944,20 +1993,9 @@ verdade. O que vale:
   última regra por nome de cargo no banco; não é exposição hoje porque o app lê
   pelo cliente de serviço.
 - `metrics_core.new_clients` ignora o filtro de filial.
-- **Hidratação falha em `/admin/inbox`**: "the server rendered text didn't
-  match the client", e o React descarta a árvore e redesenha tudo no cliente.
-  Conferido que é anterior a 2026-09-24 (aparece em `f2a51ce`). Custa uma
-  renderização inteira da tela mais pesada do sistema.
-- **`financeiro-estorno.spec.ts` depende da ordem**: passa sozinho e falha
-  depois de `fase1-dinheiro`, no estado commitado tanto quanto com mudanças.
-  O lançamento existe (o KPI o soma) e não aparece na lista de movimentações —
-  cheira a cache de rota do Next servindo a página anterior ao insert.
-- **Chave duplicada no estoque da rede** (`BranchPills`, em
-  `admin-stock-view.tsx`): o React avisa que o mesmo `branchId`
-  aparece duas vezes na lista de um produto. Chave repetida não é só ruído no
-  console — faz o React reaproveitar o nó errado e uma linha pode mostrar o
-  estado de outra. A correção é onde a lista é montada, não no `key`.
-  Achado em 2026-09-24 e ainda não investigado.
+- ~~Hidratação em `/admin/inbox`, chave de lista no estoque, e o
+  lançamento que sumia da lista.~~ **Resolvidos em 2026-09-25** — ver a entrada
+  da linha do tempo.
 - `product_batches` nunca é decrementado.
 - Apagar um lead leva junto o histórico dele (`lead_events` em cascata).
 - **Não há transação em nenhum fluxo além do estorno.** A conclusão de
@@ -1986,8 +2024,9 @@ verdade. O que vale:
   banco de desenvolvimento, as 108 notificações de equipe são todas de uma
   profissional demo: para admin e gerente o sino é permanentemente vazio, que é
   o que o Heitor relatou. Falta a regra de destinatário, e ela é de produto.
-- **Botão de ação tem 38px e seletor tem 34px.** Contei em 2026-09-24 e ele não
-  respondeu — não é esquecimento meu, é decisão pendente dele.
+- ~~Botão de ação tem 38px e seletor tem 34px.~~ **Decidido em 2026-09-25:
+  fica.** "Pode manter, dá um destaque leve, eu gosto." A diferença é
+  hierarquia — a ação enfatizada é mais alta que o filtro —, não descuido.
 
 ### O que a migração de fichas precisa decidir
 

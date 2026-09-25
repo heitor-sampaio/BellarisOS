@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { Fragment, useState, useMemo, useRef, useEffect } from 'react'
 import { Search, X, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, PackageX, Settings, Barcode, Pencil } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { AdminStockManageModal } from './admin-stock-manage-modal'
@@ -335,9 +335,8 @@ export function AdminStockView({ products, branches, categories, productCategori
                   const totalZero  = p.branches.filter(b => b.currentStock === 0).length
 
                   return (
-                    <>
+                    <Fragment key={p.id}>
                       <tr
-                        key={p.id}
                         style={{
                           borderBottom: isExpanded ? 'none' : (i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none'),
                           background: i % 2 === 0 ? 'var(--surface)' : 'transparent',
@@ -425,7 +424,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                         </td>
                       </tr>
                       {isExpanded && (
-                        <tr key={`${p.id}-detail`} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
+                        <tr style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
                           <td data-label="" colSpan={readOnly ? 6 : 8} style={{ padding: '0 16px 14px 40px', background: 'var(--bg-app)' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                               {p.branches.map(b => (
@@ -451,7 +450,7 @@ export function AdminStockView({ products, branches, categories, productCategori
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   )
                 })}
               </tbody>

@@ -15,7 +15,7 @@ export default async function AdminFinanceiroPage({
   // período anterior de mesma duração. A resolução local antes montava "custom"
   // com o início em UTC e o fim no fuso do processo — duas convenções na mesma
   // função — e comparava o mês parcial com uma janela de tamanho diferente.
-  const { from: start, to: end, prevFrom: prevStart, prevTo: prevEnd, label } =
+  const { from: start, to: end, fullTo: fimDoPeriodo, prevFrom: prevStart, prevTo: prevEnd, label } =
     resolvePeriod(period, sp.from, sp.to)
 
   const ctx = await getTenantContext()
@@ -83,7 +83,12 @@ export default async function AdminFinanceiroPage({
       .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id, notes')
       .in('branch_id', branchIds)
       .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString())
+    // Fim do PERÍODO, não "agora": o `to` do resolvePeriod é a janela
+    // DECORRIDA, que existe para o delta comparar coisas de mesmo tamanho. Numa
+    // LISTA ele vira um bug de corrida — o relógio do Postgres está à frente do
+    // relógio do app (medi 0,2s), então um lançamento feito neste segundo nasce
+    // com `created_at` no futuro e some da tela que acabou de criá-lo.
+      .lte('created_at', fimDoPeriodo.toISOString())
       .order('created_at', { ascending: false })
       .limit(500),
 

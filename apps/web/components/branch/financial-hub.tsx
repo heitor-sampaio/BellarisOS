@@ -11,6 +11,7 @@ import { FinancialTransactionModal }                        from './financial-tr
 import { ClientCreditModal, ClientCreditModalHandle }       from './client-credit-modal'
 import { FinancialTable, Transaction }                      from './financial-table'
 import { SegSelect }                                        from '@/components/shared/seg-select'
+import { iniciaisDoNome } from '@estetica-os/utils'
 
 // --- Types --------------------------------------------------------
 
@@ -474,7 +475,7 @@ function CommissionsCard({ entries }: { entries: CommissionEntry[] }) {
         <div style={{ overflowY: 'auto', flex: 1, maxHeight: 280 }}>
           {groups.map((group, gi) => {
             const groupTotal = group.items.reduce((s, i) => s + i.amount, 0)
-            const initials   = group.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+            const initials   = iniciaisDoNome(group.name)
             return (
               <div key={group.id} style={{ marginBottom: gi < groups.length - 1 ? 12 : 0 }}>
                 {/* Profissional header */}

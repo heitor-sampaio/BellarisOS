@@ -6,6 +6,7 @@ import { DataRequestCard } from '@/components/client-portal/data-request-card'
 import { getMyDataRequests } from '@/actions/lgpd'
 import { LogOut } from 'lucide-react'
 import { ler } from '@/lib/db'
+import { iniciaisDoNome } from '@estetica-os/utils'
 
 function maskCpf(cpf: string | null) {
   if (!cpf) return '—'
@@ -66,7 +67,7 @@ export default async function ClientProfilePage({ params: _params }: { params: P
           color:          'var(--brand)',
           flexShrink:     0,
         }}>
-          {client.name.charAt(0).toUpperCase()}
+          {iniciaisDoNome(client.name, 1)}
         </div>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>

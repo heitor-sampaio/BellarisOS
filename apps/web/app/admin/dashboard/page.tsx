@@ -164,13 +164,15 @@ export default async function AdminDashboardPage({
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true),
 
-    // Giro do período: consumo em procedimentos, ao custo do movimento
+    // Giro do período: consumo em procedimentos, ao custo do movimento.
+    // Fim do PERÍODO e não "agora": o consumo que acabou de ser baixado nasce
+    // com o relógio do Postgres, que está à frente do relógio do app.
     admin.from('stock_movements')
       .select('quantity, unit_cost, created_at, products(cost_price)')
       .in('branch_id', branchIds)
       .eq('type', 'PROCEDURE_USAGE')
       .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString()),
+      .lte('created_at', periodInfo.fullTo.toISOString()),
 
     // Demografia — todos os clientes da rede
     admin.from('clients')

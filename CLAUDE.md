@@ -790,6 +790,14 @@ Princípios inegociáveis:
 - **Receita e despesa simétricas**: se a receita exige `is_paid`, a despesa
   também. Senão o "lucro" mistura caixa de um lado com competência do outro.
 - **Percentual de percentual não existe**: variação de margem é em **p.p.**
+- **Janela DECORRIDA é do delta; LISTA usa o fim do período.**
+  `resolvePeriod` devolve `to` (o quanto do período já passou, para
+  comparar com o anterior de mesmo tamanho) e `fullTo` (o fim do período).
+  Fechar uma lista em `to` é corrida de relógio: o `created_at` vem
+  do Postgres, que está **à frente** do relógio do app — medi 0,2s contra o
+  Supabase —, então o lançamento feito neste segundo nasce no futuro e some da
+  tela que acabou de criá-lo. Preso em
+  `e2e/financeiro-lancamento-aparece.spec.ts`.
 - **Erro de query nunca é descartado — e isso vale no sistema inteiro, não só
   aqui.** `lib/db.ts` dá os três jeitos de terminar uma consulta, e nenhum é o
   silêncio: `gravar` (escreve, ou para o fluxo), `ler` (lê, ou para o fluxo) e
@@ -830,6 +838,9 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
 ❌ Comparar período parcial com período anterior inteiro
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar
+❌ Fechar LISTA de período em "agora" (resolvePeriod.to) — use fullTo, o fim do período
+❌ Tirar inicial de nome com nome[0] ou charAt(0) — use iniciaisDoNome (quebra em emoji)
+❌ map() que devolve <> sem chave (a key no filho de dentro não conta)
 ❌ Chamar action que grava e ignorar o { error } que ela devolve
 ❌ Escrever no banco fora de transação quando duas gravações precisam valer juntas
 ❌ Introduzir cores, fontes ou sombras fora dos tokens da skill /lumiere-design

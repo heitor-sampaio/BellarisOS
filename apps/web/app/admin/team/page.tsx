@@ -6,12 +6,10 @@ import { TeamFilters } from '@/components/admin/team-filters'
 import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
 import { UserMinus, UserCheck } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { iniciaisDoNome } from '@estetica-os/utils'
 
 function Initials({ name }: { name: string }) {
-  const parts = name.trim().split(' ')
-  const letters = parts.length >= 2
-    ? parts[0]![0]! + parts[parts.length - 1]![0]!
-    : parts[0]!.substring(0, 2)
+  const letters = iniciaisDoNome(name)
   return (
     <div style={{
       width: 36, height: 36, borderRadius: '50%',
@@ -20,7 +18,7 @@ function Initials({ name }: { name: string }) {
       fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--brand)',
       flexShrink: 0,
     }}>
-      {letters.toUpperCase()}
+      {letters}
     </div>
   )
 }
