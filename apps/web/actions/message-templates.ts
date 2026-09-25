@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getWhatsAppConfig } from '@/lib/whatsapp/factory'
+import { getNumerosDaRede } from '@/lib/whatsapp/factory'
 import type { OfficialConfig } from '@/lib/whatsapp/types'
 import {
   validarTemplate, normalizarNome, extrairVariaveis,
@@ -55,8 +55,20 @@ const CAMPOS = `id, name, category, language, header_text, body_text, footer_tex
  * oferecer um recurso que não vai funcionar.
  */
 async function configOficial(tenantId: string): Promise<OfficialConfig | null> {
-  const config = await getWhatsAppConfig(tenantId)
-  return config?.provider === 'official' ? config : null
+  const oficiais = (await getNumerosDaRede(tenantId))
+    .filter(n => n.isActive && n.provider === 'official')
+
+  if (oficiais.length === 0) return null
+
+  // Com UMA caixa oficial não há ambiguidade. Com mais de uma, vale o padrão —
+  // e se nem ele for oficial, esta função não adivinha: o catálogo pertence a
+  // uma WABA, e servir a lista da WABA errada faz o envio dar 404 na Meta sem
+  // explicação. O seletor de WABA na tela é o que resolve isso de fato.
+  const escolhida = oficiais.length === 1
+    ? oficiais[0]!
+    : oficiais.find(n => n.isDefault)
+
+  return (escolhida?.config as OfficialConfig | undefined) ?? null
 }
 
 export async function listTemplates(): Promise<MessageTemplate[]> {

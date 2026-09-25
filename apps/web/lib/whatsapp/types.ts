@@ -87,3 +87,36 @@ export interface OfficialConfig {
 }
 
 export type WhatsAppConfig = UazapiConfig | OfficialConfig
+
+/**
+ * Uma CAIXA de WhatsApp da rede — uma linha de `whatsapp_numbers`.
+ *
+ * Substitui a pergunta "qual o WhatsApp desta rede?", que era a forma de
+ * `getWhatsAppConfig(tenantId)` e que só tinha resposta enquanto houvesse um
+ * número só. A partir daqui a pergunta é sempre "qual DESTES", e quem chama
+ * precisa dizer por quê: a caixa que recebeu, a do usuário, ou a padrão.
+ *
+ * `config` continua no formato antigo (com `provider` dentro) porque é o que
+ * `resolveProvider` consome — os provedores não precisam saber que existe uma
+ * tabela nova.
+ */
+export interface NumeroDeWhatsApp {
+  id:       string
+  tenantId: string
+  provider: WhatsAppProviderType
+  /** Como a rede reconhece esta caixa. Vai para a tela e para os eventos. */
+  label:    string
+  phone:    string | null
+  phoneNumberId: string | null
+  /** Dono do catálogo de templates. Dois números podem compartilhar uma WABA. */
+  wabaId:   string | null
+  /** RÓTULO, não escopo: não entra em RLS nem na escolha de por onde sai. */
+  branchId: string | null
+  /** Quando preenchido, este usuário fala sempre por esta caixa. */
+  userId:   string | null
+  isDefault: boolean
+  isActive:  boolean
+  /** Instância criada e paga por nós na uazapi. */
+  managed:   boolean
+  config:    WhatsAppConfig
+}

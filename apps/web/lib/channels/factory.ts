@@ -6,7 +6,27 @@ export interface CanalResolvido {
   provider: SendProvider
   /** Qual provedor atendeu — entra em `messages.provider` e decide a janela. */
   nome:     string
+  /** `whatsapp_numbers.id`. Nulo nos canais sem caixa própria. */
+  numeroId: string | null
+  /** Como a rede chama esta caixa. É o que aparece no aviso e nos eventos. */
+  rotulo:   string | null
 }
+
+/**
+ * De onde sai a mensagem.
+ *
+ * União discriminada, e o parâmetro é OBRIGATÓRIO: não existe mais "a caixa da
+ * rede", então cada chamador tem de escrever por que está saindo por aquela
+ * linha. Um default significaria `'padrao'` em silêncio — que é como a rede
+ * inteira falava por `data[0]` sem ninguém ter decidido isso.
+ */
+export type EscolhaDeCaixa =
+  /** A caixa DESTA conversa. O usuário com número próprio ainda vence. */
+  | { tipo: 'conversa'; numeroId: string | null; userId: string | null }
+  /** Quem iniciou. Sem número próprio, cai no padrão. */
+  | { tipo: 'usuario';  userId: string | null }
+  /** O SISTEMA iniciou: automação, campanha, notificação. */
+  | { tipo: 'padrao' }
 
 /**
  * Como enviar neste canal, para esta rede.
@@ -21,12 +41,23 @@ export interface CanalResolvido {
 export async function resolverCanal(
   tenantId: string,
   channel: ChannelKind,
+  caixa: EscolhaDeCaixa,
 ): Promise<CanalResolvido | null> {
   if (channel === 'whatsapp') {
-    const { getWhatsAppConfig, resolveProvider } = await import('@/lib/whatsapp/factory')
-    const config = await getWhatsAppConfig(tenantId)
-    if (!config) return null
-    return { provider: resolveProvider(config), nome: config.provider }
+    const { resolverNumeroDeSaida, resolveProvider } = await import('@/lib/whatsapp/factory')
+
+    const userId   = caixa.tipo === 'padrao' ? null : caixa.userId
+    const daConversa = caixa.tipo === 'conversa' ? caixa.numeroId : null
+
+    const numero = await resolverNumeroDeSaida(tenantId, userId, daConversa)
+    if (!numero) return null
+
+    return {
+      provider: resolveProvider(numero.config),
+      nome:     numero.provider,
+      numeroId: numero.id,
+      rotulo:   numero.label,
+    }
   }
 
   if (channel === 'instagram' || channel === 'messenger') {
@@ -37,7 +68,12 @@ export async function resolverCanal(
     // Instagram só responde se a página tiver conta profissional ligada.
     if (channel === 'instagram' && !page.igUserId) return null
 
-    return { provider: new MetaMessagingProvider(page, channel), nome: 'meta_messaging' }
+    return {
+      provider: new MetaMessagingProvider(page, channel),
+      nome:     'meta_messaging',
+      numeroId: null,
+      rotulo:   null,
+    }
   }
 
   // `manual` e `email` não têm para onde enviar: a mensagem fica só registrada.
@@ -95,32 +131,45 @@ export async function getTenantPorPagina(
  * com o WhatsApp funcionando, e dizia que a mensagem seria "salva
  * internamente" — o que deixou de ser verdade: hoje o envio falha com erro.
  */
+/** Uma caixa de WhatsApp, do jeito que a tela precisa dela. */
+export interface CaixaDaRede {
+  id:        string
+  label:     string
+  provider:  string
+  isDefault: boolean
+}
+
 export interface CanaisDaRede {
   canais: ChannelKind[]
   /**
-   * Provedor de WhatsApp ATIVO agora — `official` ou `uazapi`.
+   * As caixas de WhatsApp ATIVAS da rede.
    *
-   * A tela precisa dele para decidir a janela de 24h. Usar
-   * `conversations.provider` não serve: essa coluna só é preenchida depois de
-   * um envio bem-sucedido, então conversa que nunca foi respondida parecia
-   * estar sempre dentro da janela — e o aviso nunca aparecia.
+   * Substitui `provedorWhatsApp: string | null`, que era um escalar de REDE e
+   * sobrepunha a conversa na hora de decidir a janela de 24h e o botão de
+   * editar. Com uazapi e oficial convivendo, esse escalar faria os dois
+   * mentirem em metade das conversas — o provedor certo é o da CAIXA daquela
+   * conversa, e é por isso que ele agora viaja na própria conversa.
    */
-  provedorWhatsApp: string | null
+  numeros: CaixaDaRede[]
 }
 
 export async function canaisConectados(tenantId: string): Promise<CanaisDaRede> {
-  const [whatsapp, meta] = await Promise.all([
-    import('@/lib/whatsapp/factory').then(m => m.getWhatsAppConfig(tenantId)),
+  const [numeros, meta] = await Promise.all([
+    import('@/lib/whatsapp/factory').then(m => m.getNumerosDaRede(tenantId)),
     getMetaMessagingConfig(tenantId),
   ])
 
+  const ativos = numeros.filter(n => n.isActive).map(n => ({
+    id: n.id, label: n.label, provider: n.provider, isDefault: n.isDefault,
+  }))
+
   const canais: ChannelKind[] = []
-  if (whatsapp) canais.push('whatsapp')
+  if (ativos.length > 0) canais.push('whatsapp')
 
   const page = meta?.pages.find(p => p.pageId === meta.activePageId)
   if (page) {
     canais.push('messenger')
     if (page.igUserId) canais.push('instagram')
   }
-  return { canais, provedorWhatsApp: whatsapp?.provider ?? null }
+  return { canais, numeros: ativos }
 }

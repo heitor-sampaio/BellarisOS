@@ -3,7 +3,7 @@
 Registro do desenvolvimento: o que existe hoje, como chegamos aqui e o que está
 em aberto. Documento único.
 
-**Última atualização: 2026-09-23.**
+**Última atualização: 2026-09-26.**
 
 > **Este arquivo se atualiza a cada entrega** — feature nova ou edição do que já
 > existe (CLAUDE.md §16). Não é para acumular até o fim de uma frente: foi assim
@@ -1259,6 +1259,121 @@ próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo o
 borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
+
+### 2026-09-26 — Vários números de WhatsApp: a fundação (fases 1 a 3)
+
+Pedido do Heitor: "quero poder adicionar mais números de whatsapp".
+
+A rede tinha UM número, e isso não era configuração — estava soldado em
+`integration_configs.unique (tenant_id, provider)`. Todo o sistema perguntava
+"qual o WhatsApp desta rede?" em vez de "qual DESTES", e `getWhatsAppConfig`
+desempatava com `order by updated_at desc` + `data[0]`.
+
+**Três defeitos que já existiam** e que ninguém via porque só havia um número:
+
+| Onde | O que acontecia com dois números |
+|---|---|
+| `webhooks/whatsapp/route.ts` | extraía o `phone_number_id`, descobria a rede por ele e **jogava o número fora** para recarregar "a config da rede" — o HMAC era conferido com o `appSecret` de outra caixa, e toda entrega do segundo app cairia em 401 |
+| `webhooks/uazapi` → `tratarConexao` | atualizava por `(tenant_id, provider)`: o evento de conexão de uma caixa reescrevia `is_active` e `connectedPhone` da OUTRA |
+| `uazapi-connection.ts` | `upsert` com `onConflict: 'tenant_id,provider'` — criar a segunda instância APAGAVA a primeira do banco enquanto ela seguia sendo cobrada |
+
+**A modelagem.** Tabela nova `whatsapp_numbers`, não relaxamento da constraint
+antiga: `meta_ads`, `google_ads` e `meta_messaging` são legitimamente um por
+rede, e é aquela `unique` que os protege. Duas garantias moram em índice único
+parcial, porque garantia de app vale enquanto todo mundo passar pela action:
+**um padrão por rede** e **um número por usuário**. As duas existem para matar a
+mesma coisa — a escolha silenciosa.
+
+A migração elege como padrão exatamente a linha que o desempate antigo
+escolhia (`is_active desc, updated_at desc`). Eleger outra faria a rede passar a
+falar por um número diferente no dia da migração, sem ninguém ter pedido.
+
+**As decisões do Heitor, que são as travas do desenho:**
+
+1. Unidade no número é **rótulo**, não escopo: `conversations.branch_id` continua
+   nascendo nulo, e a unidade vira tag depois. Não entra em RLS nem na escolha
+   de por onde sai.
+2. **Cada número tem seu provedor.** uazapi e oficial convivem, e
+   `desativarOutroProvedorWhatsApp` — que derrubava um para ativar o outro —
+   foi deletado junto com `lib/whatsapp/ativacao.ts`.
+3. **Um padrão por rede**, por onde sai tudo que o sistema inicia. As automações
+   não mudaram uma linha: elas já chamavam com `remetente.id = null`, e isso
+   agora cai no padrão por construção.
+4. **O usuário com número próprio fala SEMPRE por ele** — inclusive respondendo
+   uma conversa que chegou por outra caixa.
+
+**A decisão 4 tem um custo real, e o trabalho foi fazê-lo aparecer.** O cliente
+recebe de um número que não conhece, abre-se uma thread nova no celular dele, a
+resposta volta como conversa nova, e a janela de 24h daquela conversa não vale
+para a caixa nova. Então:
+
+- **a janela é medida contra a caixa que VAI ENVIAR**, nunca contra a conversa
+  (`ultimoInboundNaCaixa`). Usar `conv.last_inbound_at` ali faria o sistema achar
+  que pode mandar texto livre, gravar a mensagem, e só então a Meta recusar com
+  um 400 genérico — o "enviado" mentiroso que `enviarNaConversa` existe para não
+  produzir;
+- a falha **diz por quê**: "Janela fechada no seu número (Ana comercial): este
+  contato nunca falou com ele";
+- `messages` ganhou `whatsapp_number_id` próprio, senão o histórico afirmaria que
+  tudo saiu pela caixa da conversa — mentira exatamente no caso que mais importa
+  auditar;
+- `conversations.whatsapp_number_id` **nunca é sobrescrito**: a conversa só
+  adquire caixa no primeiro envio bem-sucedido, se ainda não tiver uma.
+
+**A exceção à regra 4 é a edição de mensagem**, que sai obrigatoriamente pela
+caixa que enviou: editar por outra linha é 404 no provedor.
+
+**O escalar morreu.** `canaisConectados` devolvia `provedorWhatsApp: string|null`
+— um valor de REDE que a tela usava para decidir a janela de 24h e o botão de
+editar de CADA conversa. Com dois provedores convivendo, ele faria os dois
+mentirem em metade delas. Virou `numeros[]`, e a conversa passou a carregar
+`numero_provider` (resolvido em segunda consulta mapeada em memória, nunca por
+embed do PostgREST, pelo motivo que `actions/inbox.ts` já documenta).
+
+**O ponto mais perigoso da frente**: as seis funções de `uazapi-connection.ts`
+são exports de um arquivo `'use server'` — endpoints públicos. Eram seguras por
+acidente (o tenant vinha da sessão, a linha era achada por tenant); passando a
+receber um `numeroId`, o id é controlado por quem chama. Todas agora passam por
+`numeroDaRede()`, que confirma a posse. Sem isso, qualquer usuário autenticado
+de qualquer rede puxaria o QR code — e desconectaria, e apagaria a instância
+paga — de outra clínica.
+
+O guard "uma conexão gerenciada por rede" saiu (é a trava que a decisão 2
+remove), mas ele também servia de idempotência: sem nada no lugar, cada clique
+em "criar" nasce uma instância **cobrada**. Entrou `UAZAPI_MAX_POR_REDE`
+(padrão 5). E a ordem de criação foi invertida — linha primeiro, instância
+depois, credencial por último —, o que faz falha no meio deixar uma linha
+identificável em vez de uma instância órfã anônima.
+
+**O que ficou em aberto, e é deliberado:** os dois índices únicos antigos de
+`conversations` (`uniq_conversations_tenant_channel_external` e
+`..._phone`) **continuam de pé**. Os quatro novos, parciais por caixa, já estão
+criados ao lado. Dropar os antigos é o único passo irreversível da frente —
+depois que existirem duplicatas legítimas por caixa, recriá-los exige fundir
+conversas à mão — e é o que falta para o mesmo telefone poder ter duas conversas
+em duas caixas. Até lá o comportamento é bit a bit o de hoje, que é o critério de
+aceite destas fases: **118 de 119 testes E2E passam sem alteração**, e o único
+vermelho é `automacoes-anel`, que estoura o orçamento dele sob carga da suíte e
+passa isolado em 34s.
+
+Também faltam a tela de lista de números e os templates por WABA.
+
+`e2e/whatsapp-numeros-modelagem.spec.ts` confere no BANCO que dois padrões e
+dois números para o mesmo usuário são recusados — garantia de app vale enquanto
+todo mundo passar pela action; um `update` direto fura.
+`e2e/whatsapp-caixa-na-entrada.spec.ts` prova o carimbo ponta a ponta.
+`tests/numero-de-saida.test.ts` tranca a precedência como função pura, e a
+asserção que mais importa ali é "duas caixas ativas e nenhum padrão devolvem
+`null` e não escolhem uma" — é ela que impede alguém de "consertar" um bug
+futuro reintroduzindo o `data[0]`.
+
+**Uma regressão que precisou ser MIGRADA, não consertada:**
+`e2e/whatsapp-modo-oficial.spec.ts` lia e restaurava `integration_configs`. A
+correção preguiçosa seria reapontar para a tabela velha; o certo era apontar
+para `whatsapp_numbers`. Ele chegou a deixar valores `[e2e]` na caixa oficial
+real justamente porque o `finally` restaurava a tabela errada — restaurar a
+errada é pior que falhar, porque a asserção quebra e a configuração real fica
+suja sem ninguém ver.
 
 ### 2026-09-25 — WhatsApp oficial: a clínica escolhe como o número chega
 

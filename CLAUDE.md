@@ -510,11 +510,81 @@ const procedures = await ler(
 - Notificações para cliente: confirmação, lembrete 24h antes, promoções
 - Fallback de notificação WhatsApp para quando push falhar (uazapi ou API oficial, conforme o que a rede tiver conectado)
 
+### 9.8.0 Os números de WhatsApp da rede
+
+**A rede tem VÁRIOS números, e cada um é uma linha de `whatsapp_numbers`.** Não
+existe mais "o WhatsApp desta rede": toda pergunta é "qual DESTES", e quem
+pergunta tem de dizer por quê. `getWhatsAppConfig(tenantId)` foi deletada em vez
+de virar atalho — um atalho que escolhe uma linha em silêncio é o defeito que a
+tabela veio remover.
+
+- **Tabela própria, não `integration_configs`.** Lá `meta_ads`, `google_ads` e
+  `meta_messaging` são legitimamente um por rede, e é a `unique (tenant_id,
+  provider)` que os protege. Relaxá-la desprotegeria os três que estão certos.
+- **Duas garantias moram em índice único parcial**, não em disciplina do app:
+  no máximo um `is_default` por rede, e no máximo um número por `user_id`. Um
+  `update` direto ou um script de migração furam a garantia de app; as duas
+  existem para matar a mesma coisa, que é a escolha silenciosa.
+- **`branch_id` no número é RÓTULO**, não escopo (decisão do Heitor,
+  2026-09-25). Não entra em RLS, não entra em `ownerFilter`, e a conversa
+  continua nascendo com `branch_id` nulo — a unidade vira tag depois.
+- **Cada número tem seu provedor.** uazapi e oficial convivem na mesma rede.
+  Nada derruba a conexão vizinha para ativar a sua.
+
+**Por onde a mensagem sai** — a regra é `escolherNumeroDeSaida`
+(`lib/whatsapp/escolha.ts`), pura de propósito, nesta ordem:
+
+1. o número **do usuário**, sempre que ele tiver um — inclusive respondendo uma
+   conversa que chegou por outra caixa;
+2. a caixa **da conversa**;
+3. o **padrão da rede** — é por ele que sai tudo que o SISTEMA inicia.
+
+**Sem fallback para "a primeira ativa".** Rede com caixas ativas e nenhum padrão
+devolve `null` e a tela avisa: o índice garante NO MÁXIMO um padrão, não PELO
+MENOS um, e resolver a falta com um chute ressuscita o `data[0]`.
+
+**O item 1 tem um custo, e ele não pode ser silencioso.** O cliente recebe de um
+número que não conhece, abre-se uma thread nova no celular dele, a resposta volta
+como conversa nova, e a janela de 24h daquela conversa não vale ali. Por isso:
+
+- **a janela de 24h é da CAIXA QUE VAI ENVIAR**, nunca da conversa
+  (`ultimoInboundNaCaixa`). Medir na conversa faz o sistema gravar a mensagem e
+  só então a Meta recusar com 400 genérico;
+- a mensagem de erro nomeia a caixa e o motivo;
+- **`messages.whatsapp_number_id` existe** separado do da conversa, senão o
+  histórico afirma que tudo saiu pela caixa dela;
+- **`conversations.whatsapp_number_id` nunca é sobrescrito** — a conversa só
+  adquire caixa no primeiro envio bem-sucedido, se ainda não tiver uma.
+- **Exceção: editar mensagem** sai pela caixa que ENVIOU (o id da mensagem só
+  existe lá; por outra linha é 404).
+
+**Na entrada, o webhook nunca descarta a caixa.** `CaixaReceptora` é parâmetro
+posicional e obrigatório de `resolveConversation`, antes do `provider` opcional —
+um default deixaria um webhook novo voltar a jogar o número fora em silêncio. O
+`appSecret` do HMAC vem da caixa que recebeu, não de "a config oficial da rede".
+
+**O dedup usa DOIS índices parciais**, não um total: num índice único direto,
+`NULL` nunca colide, e Instagram, Messenger e manual ficariam sem dedup nenhum
+sem erro nenhum. O ramo `IS NULL` preserva a garantia antiga; o ramo
+`IS NOT NULL` acrescenta a garantia por caixa. **E a releitura depois do 23505
+leva o mesmo filtro de caixa** — é o único ponto onde esquecê-lo não aparece em
+teste feliz: sob concorrência, a mensagem entra na thread errada.
+
+**Nunca use um escalar de rede para decidir algo de uma conversa.**
+`canaisConectados.provedorWhatsApp` fazia exatamente isso com a janela de 24h e
+o botão de editar; com dois provedores convivendo, mentia em metade das
+conversas. A conversa carrega `numero_provider`.
+
+⚠️ Os exports de `actions/uazapi-connection.ts` são **endpoints públicos**, e
+recebem `numeroId`. Toda uma delas passa por `numeroDaRede()`, que confirma a
+posse — sem isso, um id de outra rede entrega o QR code, desconecta e apaga a
+instância paga de outra clínica.
+
 ### 9.8.1 WhatsApp oficial: coexistência × Cloud API
 
 São dois jeitos de ligar o MESMO número à API da Meta, e a escolha é da
 clínica porque a consequência é dela. Guardada em
-`integration_configs.config.modo`; os textos moram em
+`whatsapp_numbers.config.modo`; os textos moram em
 `lib/whatsapp/modo-oficial.ts`, fora do componente, porque a explicação é
 o que importa e precisa sobreviver a refação de tela.
 
@@ -709,7 +779,8 @@ PAGARME_API_KEY=
 # cada rede ficam em integration_configs.
 UAZAPI_BASE_URL=https://bellarisos.uazapi.com
 UAZAPI_ADMIN_TOKEN=
-UAZAPI_MAX_INSTANCIAS=0            # 0 = sem teto
+UAZAPI_MAX_INSTANCIAS=0            # 0 = sem teto (toda a instalação)
+UAZAPI_MAX_POR_REDE=5              # teto por rede; cada instância é COBRADA
 UAZAPI_PROXY_TEMPLATE=             # vazio = proxy gerenciado pela própria uazapi
 
 # App
@@ -908,6 +979,10 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
 ❌ Comparar período parcial com período anterior inteiro
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar
+❌ Perguntar "qual o WhatsApp desta rede?" — a pergunta é qual DESTES, e por quê
+❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
+❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
+❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão
 ❌ Fechar LISTA de período em "agora" (resolvePeriod.to) — use fullTo, o fim do período
 ❌ Tirar inicial de nome com nome[0] ou charAt(0) — use iniciaisDoNome (quebra em emoji)
 ❌ map() que devolve <> sem chave (a key no filho de dentro não conta)

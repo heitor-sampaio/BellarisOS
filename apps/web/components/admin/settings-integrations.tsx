@@ -7,12 +7,12 @@ import {
   Instagram, Mail, AlertTriangle,
 } from 'lucide-react'
 import {
-  saveWhatsAppConfig, testWhatsAppConnection,
+  salvarNumeroWhatsApp, testWhatsAppConnection,
   saveAdsConfig, testAdsConnection,
   confirmMetaAdsSelection, disconnectMetaAds, fetchMetaAdAccounts,
   confirmMetaPageSelection, disconnectMetaMessaging,
 } from '@/actions/integrations'
-import type { IntegrationConfig } from '@/actions/integrations'
+import type { IntegrationConfig, NumeroNaTela } from '@/actions/integrations'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { UazapiConnect } from '@/components/admin/uazapi-connect'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -82,12 +82,12 @@ function ConnectionStatus({ ok, detail }: { ok: boolean; detail?: string }) {
 
 // --- uazapi: conta própria (formulário manual) --------------------------------------------------------
 
-function UazapiForm({ initial }: { initial?: IntegrationConfig }) {
+function UazapiForm({ numero }: { numero?: NumeroNaTela }) {
   const origem = useOrigem()
-  const existing = (initial?.config ?? {}) as Record<string, string>
+  const existing = (numero?.config ?? {}) as Record<string, string>
   const [token,      setToken]      = useState(existing.token ?? '')
   const [baseUrl,    setBaseUrl]    = useState(existing.baseUrl ?? '')
-  const [isActive,   setIsActive]   = useState(initial?.is_active ?? false)
+  const [isActive,   setIsActive]   = useState(numero?.isActive ?? false)
   const [testResult, setTestResult] = useState<{ ok: boolean; detail?: string } | null>(null)
   const [isPending,  startTransition] = useTransition()
   const [isTesting,  startTest]       = useTransition()
@@ -96,7 +96,7 @@ function UazapiForm({ initial }: { initial?: IntegrationConfig }) {
   function handleSave() {
     setSaved(false)
     startTransition(async () => {
-      const res = await saveWhatsAppConfig('uazapi', { token, baseUrl }, isActive)
+      const res = await salvarNumeroWhatsApp(numero?.id ?? null, 'uazapi', { token, baseUrl }, isActive)
       if (res.ok) setSaved(true)
     })
   }
@@ -105,7 +105,7 @@ function UazapiForm({ initial }: { initial?: IntegrationConfig }) {
     setTestResult(null)
     startTest(async () => {
       // Save first, then test
-      await saveWhatsAppConfig('uazapi', { token, baseUrl }, true)
+      await salvarNumeroWhatsApp(numero?.id ?? null, 'uazapi', { token, baseUrl }, true)
       const res = await testWhatsAppConnection('uazapi')
       setTestResult(res)
     })
@@ -279,9 +279,9 @@ function ListaDoModo({ titulo, itens }: { titulo: string; itens: readonly string
   )
 }
 
-function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
+function OfficialForm({ numero }: { numero?: NumeroNaTela }) {
   const origem = useOrigem()
-  const existing = (initial?.config ?? {}) as Record<string, string>
+  const existing = (numero?.config ?? {}) as Record<string, string>
   const [phoneNumberId, setPhoneNumberId] = useState(existing.phoneNumberId ?? '')
   const [accessToken,   setAccessToken]   = useState(existing.accessToken ?? '')
   const [verifyToken,   setVerifyToken]   = useState(existing.verifyToken ?? '')
@@ -290,7 +290,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   // Como o número chega à API: com o aplicativo continuando a funcionar
   // (coexistência) ou migrando de vez (Cloud API). Ver `lib/whatsapp/modo-oficial`.
   const [modo,          setModo]          = useState<ModoOficial>(modoDaConfig(existing))
-  const [isActive,      setIsActive]      = useState(initial?.is_active ?? false)
+  const [isActive,      setIsActive]      = useState(numero?.isActive ?? false)
   const [testResult,    setTestResult]    = useState<{ ok: boolean; detail?: string } | null>(null)
   const [isPending,     startTransition]  = useTransition()
   const [isTesting,     startTest]        = useTransition()
@@ -299,7 +299,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   function handleSave() {
     setSaved(false)
     startTransition(async () => {
-      const res = await saveWhatsAppConfig('official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, isActive)
+      const res = await salvarNumeroWhatsApp(numero?.id ?? null, 'official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, isActive)
       if (res.ok) setSaved(true)
     })
   }
@@ -307,7 +307,7 @@ function OfficialForm({ initial }: { initial?: IntegrationConfig }) {
   function handleTest() {
     setTestResult(null)
     startTest(async () => {
-      await saveWhatsAppConfig('official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, true)
+      await salvarNumeroWhatsApp(numero?.id ?? null, 'official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, true)
       const res = await testWhatsAppConnection('official')
       setTestResult(res)
     })
@@ -1128,6 +1128,8 @@ function ErroBox({ texto }: { texto: string }) {
 
 interface SettingsIntegrationsProps {
   initialConfigs:   IntegrationConfig[]
+  /** As caixas de WhatsApp — vêm de `whatsapp_numbers`, não de `integration_configs`. */
+  numeros:          NumeroNaTela[]
   metaStep?:        string
   metaError?:       boolean
   metaErrorReason?: string
@@ -1135,29 +1137,35 @@ interface SettingsIntegrationsProps {
 
 type Section = 'whatsapp' | 'meta_messaging' | 'meta_ads' | 'google_ads' | null
 
-export function SettingsIntegrations({ initialConfigs, metaStep, metaError, metaErrorReason }: SettingsIntegrationsProps) {
+export function SettingsIntegrations({ initialConfigs, numeros, metaStep, metaError, metaErrorReason }: SettingsIntegrationsProps) {
   const [section,    setSection]    = useState<Section>(
     metaStep === 'select_page' ? 'meta_messaging' : 'whatsapp',
   )
   // Quem já configurou à mão cai direto na aba do formulário; quem não tem
   // nada vê primeiro o caminho fácil.
   const [uazapiModo, setUazapiModo] = useState<'gerenciada' | 'propria'>(() => {
-    const uazapi = initialConfigs.find(c => c.provider === 'uazapi')
-    if (!uazapi?.config) return 'gerenciada'
-    return (uazapi.config as Record<string, unknown>).managed === true ? 'gerenciada' : 'propria'
+    const uazapi = numeros.find(n => n.provider === 'uazapi')
+    if (!uazapi) return 'gerenciada'
+    // `managed` virou COLUNA. Ler do jsonb aqui continuaria funcionando por
+    // enquanto, e pararia de funcionar em silêncio na primeira caixa criada
+    // pela ordem nova, que grava a coluna antes da credencial.
+    return uazapi.managed ? 'gerenciada' : 'propria'
   })
-  const [wpProvider, setWpProvider] = useState<ProviderType>(() => {
-    const existing = initialConfigs.find(c => c.provider === 'uazapi' || c.provider === 'official')
-    return (existing?.provider as ProviderType) ?? 'uazapi'
-  })
+  const [wpProvider, setWpProvider] = useState<ProviderType>(
+    () => (numeros[0]?.provider as ProviderType) ?? 'uazapi',
+  )
 
-  const uazapiConfig     = initialConfigs.find(c => c.provider === 'uazapi')
-  const officialConfig = initialConfigs.find(c => c.provider === 'official')
+  // Uma caixa por provedor enquanto a tela é esta. A lista de números (com
+  // vários por provedor) é a próxima fase; aqui o que importa é a tela ler e
+  // gravar na MESMA tabela — antes ela lia de `integration_configs` e, depois
+  // do salvamento, reabria mostrando o valor antigo.
+  const uazapiNumero   = numeros.find(n => n.provider === 'uazapi')
+  const officialNumero = numeros.find(n => n.provider === 'official')
   const metaAdsConfig  = initialConfigs.find(c => c.provider === 'meta_ads')
   const metaMsgConfig  = initialConfigs.find(c => c.provider === 'meta_messaging')
   const googleAdsConfig = initialConfigs.find(c => c.provider === 'google_ads')
 
-  const hasWhatsApp  = uazapiConfig?.is_active || officialConfig?.is_active
+  const hasWhatsApp  = uazapiNumero?.isActive || officialNumero?.isActive
   const hasMetaAds   = metaAdsConfig?.is_active
   const hasMetaMsg   = metaMsgConfig?.is_active
   const hasGoogleAds = googleAdsConfig?.is_active
@@ -1229,7 +1237,7 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
         icon={<Phone size={18} color="#25D366" />}
         iconBg="#25D36615" iconColor="#25D366"
         title="WhatsApp"
-        subtitle={hasWhatsApp ? `Conectado via ${uazapiConfig?.is_active ? 'uazapi' : 'WhatsApp Oficial'}` : 'Não configurado'}
+        subtitle={hasWhatsApp ? `Conectado via ${uazapiNumero?.isActive ? 'uazapi' : 'WhatsApp Oficial'}` : 'Não configurado'}
         isActive={!!hasWhatsApp}
       >
         {/* Provider selector */}
@@ -1277,10 +1285,10 @@ export function SettingsIntegrations({ initialConfigs, metaStep, metaError, meta
             </div>
             {uazapiModo === 'gerenciada'
               ? <UazapiConnect />
-              : <UazapiForm initial={uazapiConfig} />}
+              : <UazapiForm numero={uazapiNumero} />}
           </>
         ) : (
-          <OfficialForm initial={officialConfig} />
+          <OfficialForm numero={officialNumero} />
         )}
       </SectionCard>
 

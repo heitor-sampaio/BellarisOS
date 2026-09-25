@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { InboundMsg, ChannelKind, SendProvider } from '@/lib/channels/types'
+import type { InboundMsg, ChannelKind, SendProvider, CaixaReceptora } from '@/lib/channels/types'
 import { guardarMidia } from '@/lib/inbox/media'
 import { resolveLeadSource } from '@estetica-os/utils'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
@@ -32,6 +32,10 @@ function normalizePhone(raw: string): string {
  * Instagram e no Messenger o contato é um PSID/IGSID e telefone não existe.
  * Antes isto era `contact_phone`, o que travava o inbox em um canal só.
  *
+ * ⚠️ E a identidade inclui a CAIXA. O mesmo telefone falando com a Recepção e
+ * com o Comercial são duas conversas, porque do lado do cliente são duas
+ * conversas — cada uma com a sua janela de 24h e o seu histórico.
+ *
  * Concorrência: o insert é a trava (23505), senão duas mensagens quase
  * simultâneas geram dois contatos para a mesma pessoa.
  */
@@ -39,6 +43,15 @@ export async function resolveConversation(
   tenantId: string,
   msg:      InboundMsg,
   channel:  ChannelKind,
+  /**
+   * Por qual caixa esta mensagem entrou. `null` nos canais que ainda não têm
+   * caixa própria (Instagram, Messenger).
+   *
+   * Posicional e OBRIGATÓRIO, antes do `provider` opcional: um parâmetro com
+   * default deixaria um webhook novo continuar descartando o número em silêncio,
+   * que é exatamente o defeito que esta frente veio consertar.
+   */
+  caixa:    CaixaReceptora | null,
   /** Só para perguntar o nome do contato quando o webhook não o trouxer. */
   provider?: SendProvider,
 ): Promise<ResolveResult | null> {
@@ -58,7 +71,7 @@ export async function resolveConversation(
   //
   // Casar só por `contact_external_id` fazia a mesma pessoa virar uma segunda
   // conversa assim que o WhatsApp trocava o identificador dela.
-  const { data: existentes, error: erroExistente } = await admin
+  let busca = admin
     .from('conversations')
     // ⚠️ Sem embed de `leads` aqui. Desde que `leads.conversation_id` existe, há
     // DUAS relações entre as tabelas e o PostgREST recusa o embed por
@@ -69,6 +82,14 @@ export async function resolveConversation(
     .eq('channel', channel)
     .overlaps('contact_aliases', aliases)
     .limit(1)
+
+  // A caixa entra na identidade. Sem isto, a segunda caixa da rede devolveria a
+  // conversa da primeira e a mensagem entraria na thread errada.
+  busca = caixa
+    ? busca.eq('whatsapp_number_id', caixa.id)
+    : busca.is('whatsapp_number_id', null)
+
+  const { data: existentes, error: erroExistente } = await busca
 
   if (erroExistente) {
     console.error('[resolveConversation] buscar por alias:', erroExistente.message)
@@ -153,6 +174,7 @@ export async function resolveConversation(
       contact_phone:       phone,
       contact_external_id: msg.externalUserId,
       contact_aliases:     aliases,
+      whatsapp_number_id:  caixa?.id ?? null,
       // De onde a pessoa veio, guardado no CONTATO. Antes isto ia para o lead
       // que nascia junto; sem ele, o rastro do anúncio se perderia entre a
       // mensagem e a oportunidade criada depois — e é esse rastro que liga a
@@ -169,13 +191,24 @@ export async function resolveConversation(
       return null
     }
     // Outra entrega criou primeiro — é dela que precisamos.
-    const { data: convRows, error: erroBusca } = await admin
+    //
+    // ⚠️ O filtro da caixa é OBRIGATÓRIO aqui, e este é o único ponto da frente
+    // onde esquecê-lo não aparece em teste feliz: sob concorrência, a releitura
+    // sem ele recupera a conversa da OUTRA caixa e a mensagem do cliente entra
+    // na thread errada — sem erro, sem log, sem nada.
+    let releitura = admin
       .from('conversations')
       .select('id, branch_id, lead_id, contact_phone, contact_aliases')
       .eq('tenant_id', tenantId)
       .eq('channel', channel)
       .eq('contact_external_id', msg.externalUserId)
       .limit(1)
+
+    releitura = caixa
+      ? releitura.eq('whatsapp_number_id', caixa.id)
+      : releitura.is('whatsapp_number_id', null)
+
+    const { data: convRows, error: erroBusca } = await releitura
     if (erroBusca) {
       console.error('[resolveConversation] conversa existente:', erroBusca.message)
       return null
@@ -345,6 +378,15 @@ export async function insertInboundMessage(
   channel:        ChannelKind,
   /** Necessário para baixar a mídia: cada provedor autentica do seu jeito. */
   provider?:      SendProvider,
+  /**
+   * Por qual caixa esta mensagem entrou.
+   *
+   * Fica na MENSAGEM, e não só na conversa, porque as duas podem divergir: o
+   * usuário com número próprio responde sempre pelo dele, inclusive numa
+   * conversa que chegou por outro. Sem esta coluna o histórico afirmaria que
+   * tudo passou pela caixa da conversa.
+   */
+  caixa?:         CaixaReceptora | null,
 ) {
   const admin = createAdminClient()
 
@@ -380,6 +422,7 @@ export async function insertInboundMessage(
     created_at:      msg.timestamp,
     media_type:      msg.media?.kind ?? null,
     media_path:      mediaPath,
+    whatsapp_number_id: caixa?.id ?? null,
     reply_to_external_id: msg.replyToExternalId ?? null,
     // Anúncio de origem NA MENSAGEM. `conversations.attribution` só é escrita
     // quando a conversa nasce; quem já é conhecido e volta clicando em outro

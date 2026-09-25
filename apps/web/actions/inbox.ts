@@ -10,7 +10,7 @@ import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { revalidatePath } from 'next/cache'
 import { resolverCanal } from '@/lib/channels/factory'
 import { estadoDaJanela } from '@/lib/channels/window'
-import { enviarNaConversa } from '@/lib/inbox/enviar'
+import { enviarNaConversa, ultimoInboundNaCaixa } from '@/lib/inbox/enviar'
 import {
   urlDaMidia, guardarUpload, classificarArquivo, validarArquivo,
 } from '@/lib/inbox/media'
@@ -37,6 +37,20 @@ export interface Conversation {
   contact_phone:   string | null
   /** Provedor que atende a conversa — decide se a janela de 24h vale. */
   provider:        string | null
+  /** A caixa de WhatsApp por onde esta conversa acontece. */
+  whatsapp_number_id: string | null
+  /**
+   * Provedor DA CAIXA desta conversa.
+   *
+   * Substitui o escalar de rede `provedorWhatsApp`, que valia para todas as
+   * conversas: com uazapi e oficial convivendo na mesma rede, ele faz a janela
+   * de 24h e o botão de editar mentirem em metade delas. Diferente de
+   * `provider`, que só é preenchido depois de um envio bem-sucedido, este vem
+   * da caixa e vale desde a primeira mensagem recebida.
+   */
+  numero_provider: string | null
+  /** Como a rede chama essa caixa. Aparece quando há mais de uma. */
+  numero_label:    string | null
   branch_id:       string | null
   branch_name:     string | null
   created_at:      string
@@ -173,7 +187,7 @@ export async function getConversations(
 
   let query = admin
     .from('conversations')
-    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, tags, attribution, branches(name)')
+    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, whatsapp_number_id, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, tags, attribution, branches(name)')
     .eq('tenant_id', ctx.tenantId!)
   // Contato sem nenhuma mensagem não é conversa. A conversa é também o registro
   // do contato, e contato criado pelo quadro (ou pelo backfill que deu dono às
@@ -220,15 +234,35 @@ export async function getConversations(
  * sem o campo em vez de estourar — o filtro não acharia nada, em silêncio.
  */
 async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Conversation[]> {
-  const base = (c: any): Conversation => ({
-    ...c,
-    branch_name: c.branches?.name ?? null,
-    lead_tags:   (c.tags as string[]) ?? [],
-    eh_cliente:  !!c.client_id,
-    veio_de_anuncio: !!(c.attribution as Record<string, unknown> | null)?.ad_id,
-    owner_ids: [], owner_names: [], stage_ids: [], stage_names: [],
-    funnel_ids: [], funnel_names: [], abertas: 0,
-  })
+  // As caixas da rede, uma consulta só, mapeadas em memória — a rede tem
+  // punhado delas, e um embed do PostgREST aqui repetiria o erro que este
+  // arquivo já documenta: relacionamento ambíguo volta sem o campo, em silêncio.
+  const caixas = new Map<string, { provider: string; label: string }>()
+  if (conversas.length > 0) {
+    const { data, error } = await createAdminClient()
+      .from('whatsapp_numbers')
+      .select('id, provider, label')
+      .eq('tenant_id', tenantId)
+    if (error) console.error('[getConversations] caixas:', error.message)
+    for (const n of (data ?? []) as { id: string; provider: string; label: string }[]) {
+      caixas.set(n.id, { provider: n.provider, label: n.label })
+    }
+  }
+
+  const base = (c: any): Conversation => {
+    const caixa = c.whatsapp_number_id ? caixas.get(c.whatsapp_number_id) : undefined
+    return {
+      ...c,
+      branch_name: c.branches?.name ?? null,
+      lead_tags:   (c.tags as string[]) ?? [],
+      eh_cliente:  !!c.client_id,
+      veio_de_anuncio: !!(c.attribution as Record<string, unknown> | null)?.ad_id,
+      numero_provider: caixa?.provider ?? null,
+      numero_label:    caixa?.label    ?? null,
+      owner_ids: [], owner_names: [], stage_ids: [], stage_names: [],
+      funnel_ids: [], funnel_names: [], abertas: 0,
+    }
+  }
 
   if (conversas.length === 0) return []
 
@@ -1121,7 +1155,7 @@ export async function editMessage(
 
   const { data: msg, error } = await admin
     .from('messages')
-    .select('id, conversation_id, direction, status, channel, external_id, content, created_at, media_type')
+    .select('id, conversation_id, direction, status, channel, external_id, content, created_at, media_type, whatsapp_number_id')
     .eq('id', messageId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -1138,7 +1172,15 @@ export async function editMessage(
     return { ok: false, error: 'O WhatsApp só permite editar nos primeiros 15 minutos.' }
   }
 
-  const canal = await resolverCanal(ctx.tenantId!, msg.channel as ChannelKind)
+  // ⚠️ A edição é a ÚNICA exceção à regra "o usuário fala pelo número dele":
+  // ela sai obrigatoriamente pela caixa que ENVIOU a mensagem. Editar por outra
+  // linha é 404 no provedor — o id da mensagem só existe lá. Daí `userId: null`,
+  // que desliga a precedência do usuário.
+  const canal = await resolverCanal(ctx.tenantId!, msg.channel as ChannelKind, {
+    tipo: 'conversa',
+    numeroId: (msg.whatsapp_number_id as string | null) ?? null,
+    userId: null,
+  })
 
   const patch: Record<string, unknown> = {
     content: novo, edited_at: new Date().toISOString(),
@@ -1326,7 +1368,7 @@ export async function getTemplatesParaConversa(
     // `leads!conversations_lead_id_fkey`: com `leads.conversation_id` existindo,
     // há duas relações entre as tabelas e o embed sem nome é recusado. Esta é a
     // oportunidade principal — que é de onde sai o nome para o template.
-    .select('channel, contact_name, leads!conversations_lead_id_fkey(name)')
+    .select('channel, contact_name, whatsapp_number_id, leads!conversations_lead_id_fkey(name)')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -1335,7 +1377,15 @@ export async function getTemplatesParaConversa(
   if (!conv || (conv as { channel: string }).channel !== 'whatsapp') return []
 
   // Template é da API oficial. Com a uazapi não há janela para contornar.
-  const canal = await resolverCanal(ctx.tenantId!, 'whatsapp')
+  //
+  // A pergunta é sobre a caixa que VAI ENVIAR, não sobre a conversa: quem tem
+  // número próprio manda por ele, e é justamente aí que o template costuma ser
+  // necessário — a janela de 24h da conversa não vale para a caixa nova.
+  const canal = await resolverCanal(ctx.tenantId!, 'whatsapp', {
+    tipo: 'conversa',
+    numeroId: (conv as { whatsapp_number_id: string | null }).whatsapp_number_id,
+    userId: ctx.internalUserId,
+  })
   if (!canal || canal.nome !== 'official') return []
 
   const { data, error } = await admin
@@ -1390,7 +1440,7 @@ export async function sendTemplateMessage(
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
-    .select('id, channel, status, contact_phone, contact_external_id')
+    .select('id, channel, status, contact_phone, contact_external_id, whatsapp_number_id')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -1427,7 +1477,13 @@ export async function sendTemplateMessage(
     return { ok: false, error: `Preencha: ${faltando.map(v => `{{${v}}}`).join(', ')}` }
   }
 
-  const canal = await resolverCanal(ctx.tenantId!, 'whatsapp')
+  // Mesma caixa que a lista de templates usou para decidir o que oferecer —
+  // senão a tela mostra o catálogo de uma WABA e o envio tenta por outra.
+  const canal = await resolverCanal(ctx.tenantId!, 'whatsapp', {
+    tipo: 'conversa',
+    numeroId: (conv as { whatsapp_number_id: string | null }).whatsapp_number_id,
+    userId: ctx.internalUserId,
+  })
   if (!canal?.provider.sendTemplate) {
     return { ok: false, error: 'Templates exigem o WhatsApp Oficial conectado.' }
   }
@@ -1512,7 +1568,7 @@ export async function sendMediaMessage(
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
-    .select('id, channel, status, contact_phone, contact_external_id, last_inbound_at')
+    .select('id, channel, status, contact_phone, contact_external_id, last_inbound_at, whatsapp_number_id')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -1530,7 +1586,11 @@ export async function sendMediaMessage(
   const problema = validarArquivo(kind, mimeType, arquivo.size)
   if (problema) return { ok: false, error: problema }
 
-  const canal = await resolverCanal(ctx.tenantId!, channel)
+  const caixaDaConversa = (conv as { whatsapp_number_id: string | null }).whatsapp_number_id
+
+  const canal = await resolverCanal(ctx.tenantId!, channel, {
+    tipo: 'conversa', numeroId: caixaDaConversa, userId: ctx.internalUserId,
+  })
   if (!canal && channel !== 'manual') {
     return { ok: false, error: `Canal ${channel} não está conectado. Configure em Configurações → Integrações.` }
   }
@@ -1538,9 +1598,31 @@ export async function sendMediaMessage(
     return { ok: false, error: 'Este canal não aceita anexo pela integração atual.' }
   }
 
-  // Anexo obedece à janela de 24h igual a texto — a Meta não abre exceção.
-  const janela = estadoDaJanela(channel, (conv as { last_inbound_at: string | null }).last_inbound_at, canal?.nome)
-  if (!janela.aberta) return { ok: false, error: janela.motivo ?? 'Janela de resposta fechada.' }
+  // Anexo obedece à janela de 24h igual a texto — a Meta não abre exceção. E,
+  // igual a texto, a janela é da CAIXA QUE VAI ENVIAR: respondendo pelo número
+  // do usuário, a conversa pode estar dentro da janela e a caixa dele fora.
+  // Medir aqui de um jeito diferente de `enviarNaConversa` criaria duas regras
+  // para a mesma coisa, e duas cópias divergem.
+  const caixaDiferente = !!canal?.numeroId && !!caixaDaConversa
+    && canal.numeroId !== caixaDaConversa
+
+  const ultimoInbound = caixaDiferente
+    ? await ultimoInboundNaCaixa(
+        admin, ctx.tenantId!, channel, canal!.numeroId!,
+        (conv as { contact_external_id: string }).contact_external_id,
+      )
+    : (conv as { last_inbound_at: string | null }).last_inbound_at
+
+  const janela = estadoDaJanela(channel, ultimoInbound, canal?.nome)
+  if (!janela.aberta) {
+    return {
+      ok: false,
+      error: caixaDiferente
+        ? `Janela fechada no seu número (${canal!.rotulo}): este contato nunca falou `
+          + `com ele. Responda pelo número da conversa para enviar este arquivo.`
+        : (janela.motivo ?? 'Janela de resposta fechada.'),
+    }
+  }
 
   const perfil = await admin
     .from('users').select('id, name').eq('auth_id', ctx.userId).maybeSingle()

@@ -14,11 +14,46 @@ import { banco } from './apoio/banco'
  * por isso o aviso da Cloud API precisa estar VISÍVEL antes de alguém escolher,
  * não escondido atrás de um link.
  *
+ * ⚠️ **A tabela é `whatsapp_numbers`, não `integration_configs`.** Quando a rede
+ * passou a poder ter vários números, a credencial mudou de casa — e esta spec
+ * ficou vermelha porque lia e restaurava a tabela antiga. Restaurar a errada é
+ * pior que falhar: a asserção quebra e a configuração real fica com os valores
+ * de teste dentro, sem ninguém ver.
+ *
  * Este teste mexe na configuração real da rede, então guarda o estado anterior
  * e devolve no `finally` — a regra é não alterar o que eu não criei.
  */
 
 const TAB = '/admin/settings?tab=integrations'
+
+type Linha = {
+  id: string; config: Record<string, unknown>; is_active: boolean
+  label: string; phone_number_id: string | null; waba_id: string | null
+}
+
+const CAMPOS = 'id, config, is_active, label, phone_number_id, waba_id'
+
+async function caixaOficial(): Promise<Linha | null> {
+  const { data } = await banco().from('whatsapp_numbers')
+    .select(CAMPOS).eq('provider', 'official').maybeSingle<Linha>()
+  return data ?? null
+}
+
+/** Devolve a linha exatamente como estava — inclusive a ausência dela. */
+async function restaurar(antes: Linha | null) {
+  const db = banco()
+  if (antes) {
+    await db.from('whatsapp_numbers').update({
+      config:          antes.config,
+      is_active:       antes.is_active,
+      label:           antes.label,
+      phone_number_id: antes.phone_number_id,
+      waba_id:         antes.waba_id,
+    }).eq('id', antes.id)
+  } else {
+    await db.from('whatsapp_numbers').delete().eq('provider', 'official')
+  }
+}
 
 async function abrirOficial(page: import('@playwright/test').Page) {
   await page.goto(TAB)
@@ -52,16 +87,14 @@ test('os dois modos aparecem, e cada um explica o que significa', async ({ page 
 })
 
 test('o modo escolhido é gravado junto com a credencial', async ({ page }) => {
-  const db = banco()
-  const { data: antes } = await db.from('integration_configs')
-    .select('id, config, is_active').eq('provider', 'official').maybeSingle()
+  const antes = await caixaOficial()
 
   try {
     await abrirOficial(page)
 
     await page.getByRole('button', { name: 'Cloud API', exact: true }).click()
 
-    // O formulário só salva com as quatro credenciais preenchidas.
+    // O formulário só salva com as credenciais preenchidas.
     await page.locator('input[name="wabaId"]').fill('[e2e] waba')
     await page.locator('input[name="phoneNumberId"]').fill('[e2e] phone')
     await page.locator('input[name="accessToken"]').fill('[e2e] token')
@@ -71,39 +104,34 @@ test('o modo escolhido é gravado junto com a credencial', async ({ page }) => {
     await page.getByRole('button', { name: 'Salvar', exact: true }).click()
     await expect(page.getByText('Configuração salva.')).toBeVisible()
 
-    const { data: depois } = await db.from('integration_configs')
-      .select('config').eq('provider', 'official').maybeSingle()
-    expect((depois?.config as Record<string, unknown>)?.modo,
+    const depois = await caixaOficial()
+    expect(depois?.config?.modo,
       'a escolha tem de sobreviver ao salvamento, senão é enfeite').toBe('cloud_api')
+
+    // E o roteamento tem de acompanhar: é por `phone_number_id` que o webhook
+    // acha a caixa. Gravar só no jsonb deixaria a entrega sem dono.
+    expect(depois?.phone_number_id,
+      'o id do número é a chave de roteamento, não um detalhe do formulário',
+    ).toBe('[e2e] phone')
   } finally {
-    // Devolve exatamente o que estava lá — inclusive a ausência da linha.
-    if (antes) {
-      await db.from('integration_configs')
-        .update({ config: antes.config, is_active: antes.is_active })
-        .eq('id', antes.id as string)
-    } else {
-      await db.from('integration_configs').delete().eq('provider', 'official')
-    }
+    await restaurar(antes)
   }
 })
 
 test('quem já tem configuração volta no modo que escolheu', async ({ page }) => {
-  const db = banco()
-  const { data: antes } = await db.from('integration_configs')
-    .select('id, config').eq('provider', 'official').maybeSingle()
-  test.skip(!antes, 'a rede não tem configuração oficial para reabrir')
+  const antes = await caixaOficial()
+  test.skip(!antes, 'a rede não tem caixa oficial para reabrir')
 
   try {
-    await db.from('integration_configs')
-      .update({ config: { ...(antes!.config as object), modo: 'cloud_api' } })
-      .eq('id', antes!.id as string)
+    await banco().from('whatsapp_numbers')
+      .update({ config: { ...antes!.config, modo: 'cloud_api' } })
+      .eq('id', antes!.id)
 
     await abrirOficial(page)
 
     // Reabriu no modo gravado, não no padrão.
     await expect(page.getByText(/número passa a viver só no sistema/i)).toBeVisible()
   } finally {
-    await db.from('integration_configs')
-      .update({ config: antes!.config }).eq('id', antes!.id as string)
+    await restaurar(antes)
   }
 })

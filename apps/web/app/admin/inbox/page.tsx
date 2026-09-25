@@ -75,7 +75,7 @@ export default async function AdminInboxPage({
         branches={branches}
         initialSelectedId={convParam ?? null}
         canaisConectados={canais.canais}
-        provedorWhatsApp={canais.provedorWhatsApp}
+        numerosDaRede={canais.numeros}
       />
     </div>
   )

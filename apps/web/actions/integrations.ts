@@ -4,7 +4,6 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
-import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
 import { ler } from '@/lib/db'
 
@@ -33,11 +32,23 @@ export async function getIntegrations(): Promise<IntegrationConfig[]> {
   return (data ?? []) as IntegrationConfig[]
 }
 
-export async function saveWhatsAppConfig(
+/**
+ * Salva UMA caixa de WhatsApp.
+ *
+ * Substituiu `saveWhatsAppConfig(provider, config, isActive)`, que escrevia em
+ * `integration_configs` com `onConflict: 'tenant_id,provider'` — ou seja, o
+ * segundo número oficial da rede APAGAVA o primeiro.
+ *
+ * `numeroId` nulo cria uma caixa; preenchido, atualiza aquela linha (conferindo
+ * que ela é desta rede, pelo mesmo motivo de `uazapi-connection.ts`).
+ */
+export async function salvarNumeroWhatsApp(
+  numeroId:  string | null,
   provider:  WhatsAppConfig['provider'],
   config:    Record<string, string>,
   isActive:  boolean,
-): Promise<{ ok: boolean; error?: string }> {
+  extras?:   { rotulo?: string; branchId?: string | null; userId?: string | null },
+): Promise<{ ok: boolean; numeroId?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
@@ -52,38 +63,130 @@ export async function saveWhatsAppConfig(
   // é usado para corrigir uma credencial com a integração já no ar, e emitir
   // "conectada" a cada salvamento faria a corrente contar uma reconexão que não
   // houve.
-  const anterior = await ler(admin
-    .from('integration_configs')
-    .select('is_active')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('provider', provider)
-    .maybeSingle(), 'buscar a integração')
+  const anterior = numeroId
+    ? await ler(admin
+        .from('whatsapp_numbers')
+        .select('id, is_active, label')
+        .eq('id', numeroId)
+        .eq('tenant_id', ctx.tenantId!)
+        .maybeSingle(), 'buscar a caixa de WhatsApp')
+    : null
 
-  const { error } = await admin
-    .from('integration_configs')
-    .upsert({
-      tenant_id:  ctx.tenantId!,
-      provider,
-      config:     cleanConfig,
-      is_active:  isActive,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'tenant_id,provider' })
+  if (numeroId && !anterior) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
+
+  const rotulo = extras?.rotulo?.trim()
+    || (anterior?.label as string | undefined)
+    || cleanConfig.phoneNumberId
+    || (provider === 'uazapi' ? 'WhatsApp' : 'WhatsApp Oficial')
+
+  const campos = {
+    tenant_id:       ctx.tenantId!,
+    provider,
+    label:           rotulo,
+    config:          cleanConfig,
+    phone_number_id: cleanConfig.phoneNumberId ?? null,
+    waba_id:         cleanConfig.wabaId ?? null,
+    is_active:       isActive,
+    ...(extras?.branchId !== undefined ? { branch_id: extras.branchId } : {}),
+    ...(extras?.userId   !== undefined ? { user_id:   extras.userId   } : {}),
+    updated_at:      new Date().toISOString(),
+  }
+
+  const { data, error } = anterior
+    ? await admin.from('whatsapp_numbers').update(campos)
+        .eq('id', anterior.id as string).select('id').single()
+    : await admin.from('whatsapp_numbers').insert(campos).select('id').single()
 
   if (error) return { ok: false, error: error.message }
+  const id = data!.id as string
 
-  // Ativar um provedor de WhatsApp desativa o outro. A regra mora num lugar só
-  // porque há três caminhos que ativam: este formulário, o pareamento e o evento
-  // de conexão do webhook — e por um tempo só este aqui cumpria.
-  if (isActive) await desativarOutroProvedorWhatsApp(ctx.tenantId!, provider)
+  // Aqui havia um `desativarOutroProvedorWhatsApp`: ativar um provedor derrubava
+  // o outro, porque duas conexões ativas eram estado inválido quando a rede só
+  // podia ter um número. Agora é o normal.
 
   // Na API oficial, guardar as credenciais com `is_active` É conectar — não há
-  // pareamento nem handshake depois disso. O rótulo é o id do número (nunca o
-  // token): é por ele que se reconhece qual linha está no ar.
+  // pareamento nem handshake depois disso.
   if (isActive !== (anterior?.is_active ?? false)) {
     await (isActive
-      ? integracaoConectada(provider, ctx, cleanConfig.phoneNumberId ?? null)
-      : integracaoDesconectada(provider, ctx, 'pedido'))
+      ? integracaoConectada(provider, ctx, rotulo, id)
+      : integracaoDesconectada(provider, ctx, 'pedido', rotulo, id))
   }
+
+  revalidatePath('/admin/settings')
+  return { ok: true, numeroId: id }
+}
+
+/**
+ * As caixas de WhatsApp da rede, para a tela de integrações.
+ *
+ * ⚠️ `config` vai junto, com token e `accessToken` dentro, porque é o que o
+ * formulário reexibe hoje — `getIntegrations` já fazia exatamente isto para
+ * estes provedores, e tirar aqui faria o campo abrir vazio e o salvamento
+ * apagar a credencial. **Não é um bom lugar para a credencial estar**, e a tela
+ * de números é onde isso deve ser resolvido (campo mascarado + gravação por
+ * merge). Trocar agora seria consertar uma coisa quebrando outra.
+ */
+export interface NumeroNaTela {
+  id:        string
+  provider:  string
+  label:     string
+  phone:     string | null
+  isActive:  boolean
+  isDefault: boolean
+  managed:   boolean
+  branchId:  string | null
+  userId:    string | null
+  wabaId:        string | null
+  phoneNumberId: string | null
+  config:    Record<string, unknown>
+}
+
+export async function listarNumerosWhatsApp(): Promise<NumeroNaTela[]> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'settings', 'MANAGE')
+
+  const { getNumerosDaRede } = await import('@/lib/whatsapp/factory')
+  return (await getNumerosDaRede(ctx.tenantId!)).map(n => ({
+    id: n.id, provider: n.provider, label: n.label, phone: n.phone,
+    isActive: n.isActive, isDefault: n.isDefault, managed: n.managed,
+    branchId: n.branchId, userId: n.userId,
+    wabaId: n.wabaId, phoneNumberId: n.phoneNumberId,
+    config: n.config as unknown as Record<string, unknown>,
+  }))
+}
+
+/**
+ * Define o padrão da rede.
+ *
+ * Duas escritas que precisam valer juntas, e o banco tem um índice único parcial
+ * que RECUSA dois padrões — então tirar o antigo vem primeiro, senão o `update`
+ * do novo falha com 23505 e a rede fica sem padrão nenhum.
+ */
+export async function definirNumeroPadrao(
+  numeroId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'settings', 'MANAGE')
+  const admin = createAdminClient()
+
+  const alvo = await ler(admin
+    .from('whatsapp_numbers').select('id')
+    .eq('id', numeroId).eq('tenant_id', ctx.tenantId!)
+    .maybeSingle(), 'buscar a caixa de WhatsApp')
+  if (!alvo) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
+
+  const { error: erroLimpa } = await admin
+    .from('whatsapp_numbers')
+    .update({ is_default: false })
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('is_default', true)
+  if (erroLimpa) return { ok: false, error: erroLimpa.message }
+
+  const { error } = await admin
+    .from('whatsapp_numbers')
+    .update({ is_default: true, updated_at: new Date().toISOString() })
+    .eq('id', numeroId)
+  if (error) return { ok: false, error: error.message }
 
   revalidatePath('/admin/settings')
   return { ok: true }
@@ -95,14 +198,19 @@ export async function testWhatsAppConnection(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
-  const { getWhatsAppConfig, resolveProvider } = await import('@/lib/whatsapp/factory')
-  const config = await getWhatsAppConfig(ctx.tenantId!)
+  const { getNumerosDaRede, resolveProvider } = await import('@/lib/whatsapp/factory')
+  const candidatos = (await getNumerosDaRede(ctx.tenantId!))
+    .filter(n => n.isActive && n.provider === provider)
 
-  if (!config) return { ok: false, detail: 'Configuração não encontrada ou não ativa' }
-  if (config.provider !== provider) return { ok: false, detail: 'Provedor ativo diferente' }
+  if (candidatos.length === 0) {
+    return { ok: false, detail: 'Configuração não encontrada ou não ativa' }
+  }
+  // Com mais de uma caixa do mesmo provedor, testar "a da rede" não quer dizer
+  // nada. O padrão é a única resposta defensável aqui; a tela de números (que
+  // testa UMA linha) é quem resolve isso de verdade.
+  const numero = candidatos.find(n => n.isDefault) ?? candidatos[0]!
 
-  const prov = resolveProvider(config)
-  return prov.testConnection()
+  return resolveProvider(numero.config).testConnection()
 }
 
 // --- Ads integrations ---------------------------------------------------------

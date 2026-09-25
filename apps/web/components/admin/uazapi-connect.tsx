@@ -61,6 +61,12 @@ export function UazapiConnect() {
   const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tentativasRef = useRef(0)
 
+  // QUAL caixa esta tela opera. Vem do estado porque é o servidor que resolve
+  // "a conexão gerenciada desta rede" — e, quando houver mais de uma, é ele que
+  // se recusa a adivinhar. Todas as ações abaixo mandam este id, e o servidor
+  // confere que ele é mesmo desta rede: são endpoints públicos.
+  const caixaId = estado?.numeroId ?? null
+
   const carregarEstado = useCallback(async () => {
     try { setEstado(await getEstadoConexaoUazapi()) }
     catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao consultar a conexão') }
@@ -84,7 +90,7 @@ export function UazapiConnect() {
       if (!vivo) return
       if (tentativasRef.current >= MAX_TENTATIVAS) { setPausado(true); return }
 
-      const res = await getQrCodeUazapi()
+      const res = await getQrCodeUazapi(caixaId!)
       if (!vivo) return
       if (!res.ok) { setErro(res.error ?? 'Falha ao obter o QR code'); setPausado(true); return }
       if (res.conectada) { setQr(null); await carregarEstado(); router.refresh(); return }
@@ -99,7 +105,7 @@ export function UazapiConnect() {
       vivo = false
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [estado?.gerenciada, estado?.conectada, pausado, modoCodigo, carregarEstado, router])
+  }, [estado?.gerenciada, estado?.conectada, caixaId, pausado, modoCodigo, carregarEstado, router])
 
   function recomecarQr() {
     tentativasRef.current = 0
@@ -120,7 +126,7 @@ export function UazapiConnect() {
   function pedirCodigo() {
     setErro(null); setCodigo(null)
     startTransition(async () => {
-      const res = await getCodigoPareamentoUazapi(telefone)
+      const res = await getCodigoPareamentoUazapi(caixaId!, telefone)
       if (!res.ok) { setErro(res.error ?? 'Falha ao gerar o código'); return }
       setCodigo(res.code ?? null)
     })
@@ -131,7 +137,7 @@ export function UazapiConnect() {
       'Remover a conexão? A instância é apagada na uazapi de forma permanente e '
       + 'imediata. Para voltar, será preciso parear de novo.',
     )) return
-    comAcao(removerConexaoUazapi, () => setQr(null))
+    comAcao(() => removerConexaoUazapi(caixaId!), () => setQr(null))
   }
 
   if (!estado) {
@@ -210,12 +216,12 @@ export function UazapiConnect() {
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={14} /> Atualizar
           </button>
-          <button type="button" onClick={() => comAcao(repararConexaoUazapi)}
+          <button type="button" onClick={() => comAcao(() => repararConexaoUazapi(caixaId!))}
             disabled={isPending} className="btn-ghost"
             title="Reaplica webhook, ritmo e proxy — use se as mensagens pararem de chegar">
             Reparar conexão
           </button>
-          <button type="button" onClick={() => comAcao(desconectarUazapi, recomecarQr)}
+          <button type="button" onClick={() => comAcao(() => desconectarUazapi(caixaId!), recomecarQr)}
             disabled={isPending} className="btn-ghost"
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <Unplug size={14} /> Desconectar número

@@ -784,8 +784,16 @@ interface CRMInboxProps {
   slug?:                string
   /** Canais que a rede realmente conectou — decide o aviso de integração. */
   canaisConectados?:    InboxChannel[]
-  /** Provedor de WhatsApp ativo agora — decide se a janela de 24h vale. */
-  provedorWhatsApp?:    string | null
+  /**
+   * As caixas de WhatsApp ATIVAS da rede.
+   *
+   * Serve para saber se a rede tem mais de uma — e então mostrar de qual delas
+   * é cada conversa. **Não** serve para decidir a janela de 24h nem o botão de
+   * editar: isso é por CONVERSA, e vem de `numero_provider`. Enquanto isto era
+   * o escalar `provedorWhatsApp`, uma conversa da uazapi e uma da API oficial
+   * recebiam a mesma resposta — e uma das duas estava errada.
+   */
+  numerosDaRede?:       { id: string; label: string; provider: string; isDefault: boolean }[]
   /** conversa pré-selecionada (deep-link ?c= vindo do card do funil) */
   initialSelectedId?:   string | null
   /**
@@ -859,7 +867,7 @@ function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
 export function CRMInbox({
   initialConversations, leads, canEdit, branches,
   slug = '', initialSelectedId = null, canaisConectados = [],
-  provedorWhatsApp = null, telaCheia = false,
+  numerosDaRede = [], telaCheia = false,
 }: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)
   // A assinatura do Realtime é montada uma vez só (deps `[]`), então os
@@ -940,8 +948,14 @@ export function CRMInbox({
   // mensagem é imutável depois de entregue. Nota interna nunca saiu daqui, então
   // sempre pode ser corrigida. Sem este corte o botão apareceria em todo canal e
   // só daria erro ao salvar.
+  //
+  // O provedor vem da CAIXA desta conversa, não da rede: com uazapi e oficial
+  // convivendo, o escalar de rede fazia o botão aparecer em conversa oficial
+  // (onde editar dá erro) e sumir em conversa da uazapi.
+  const provedorDaConversa = selectedConv?.numero_provider ?? selectedConv?.provider ?? null
+
   const canalEdita = selectedConv?.channel === 'manual'
-    || (selectedConv?.channel === 'whatsapp' && provedorWhatsApp === 'uazapi')
+    || (selectedConv?.channel === 'whatsapp' && provedorDaConversa === 'uazapi')
 
   // Regra da Meta: só dá para responder livremente até 24h da última mensagem
   // do contato. Vale para Instagram, Messenger e WhatsApp pela API oficial —
@@ -950,9 +964,11 @@ export function CRMInbox({
     ? estadoDaJanela(
         selectedConv.channel,
         selectedConv.last_inbound_at,
-        // O provedor ATIVO manda: se a rede migrou da uazapi para a API oficial,
-        // a janela passa a valer mesmo nas conversas antigas.
-        provedorWhatsApp ?? selectedConv.provider,
+        // O provedor DESTA CAIXA manda. Era o provedor ativo da rede, e a
+        // justificativa ("se a rede migrou, a janela passa a valer nas conversas
+        // antigas") só fazia sentido com um número por rede: agora migrar é ter
+        // uma caixa a mais, e a conversa antiga continua na caixa antiga.
+        provedorDaConversa,
       )
     : { aberta: true, fechaEm: null, motivo: null }
 
@@ -1305,7 +1321,7 @@ export function CRMInbox({
   // Template só existe no WhatsApp pela API oficial.
   const podeTemplate = canEdit
     && selectedConv?.channel === 'whatsapp'
-    && provedorWhatsApp === 'official'
+    && provedorDaConversa === 'official'
 
   // Awaiting-response counter (aging over the visible/filtered conversations)
   const awaitingConvs = filtered.filter(c => c.awaiting_since != null)
@@ -1695,7 +1711,7 @@ export function CRMInbox({
                     <span>{janela.motivo}</span>
                     {/* Template é a única saída daqui: a Meta recusa texto livre
                         fora da janela, mas entrega template aprovado sempre. */}
-                    {selectedConv.channel === 'whatsapp' && provedorWhatsApp === 'official' && (
+                    {selectedConv.channel === 'whatsapp' && provedorDaConversa === 'official' && (
                       <button
                         type="button"
                         onClick={() => setShowTemplates(true)}

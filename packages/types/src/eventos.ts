@@ -365,6 +365,15 @@ export interface DadosDeCargo extends DadosDeEvento {
 export interface DadosDeIntegracao extends DadosDeEvento {
   provedor: string
   rotulo:   string | null
+  /**
+   * Qual CAIXA de WhatsApp, quando é uma (`whatsapp_numbers.id`).
+   *
+   * Nulo nos provedores que continuam sendo um por rede (`meta_ads`,
+   * `google_ads`, `meta_messaging`). Sem este campo, "a integração caiu" numa
+   * rede com três números não diz qual caiu — e é justamente isso que a
+   * automação de aviso precisa saber.
+   */
+  numeroId?: string | null
   /** Por que desconectou, quando se sabe: 'pedido' | 'removida'. */
   motivo?:  string | null
 }

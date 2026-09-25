@@ -99,6 +99,27 @@ export interface StatusUpdate {
 }
 
 /**
+ * A caixa que RECEBEU a mensagem — ou por onde ela vai sair.
+ *
+ * Deliberadamente fora de `InboundMsg`: aquela interface é o que o provedor
+ * extraiu do CORPO da mensagem, e a caixa receptora não está no corpo, está no
+ * roteamento. Pôr aqui obrigaria cada `parseInbound` a saber de qual linha ele
+ * é, o que ele não sabe.
+ *
+ * O webhook sempre teve esta informação e a jogava fora: ele lia o
+ * `metadata.phone_number_id`, descobria o tenant por ele, e então recarregava
+ * "a config da rede" — caindo em qualquer config ativa que vencesse o
+ * desempate, inclusive para validar o HMAC.
+ */
+export interface CaixaReceptora {
+  /** `whatsapp_numbers.id`. */
+  id:       string
+  channel:  ChannelKind
+  /** 'uazapi' | 'official' | 'meta_messaging' — é ele que decide a janela. */
+  provider: string
+}
+
+/**
  * Recibo de entrega/leitura do Messenger e do Instagram.
  *
  * Diferente do WhatsApp, que nomeia a mensagem, aqui o normal é uma MARCA

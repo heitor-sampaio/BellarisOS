@@ -114,8 +114,11 @@ async function processarEntrada(entrada: any, channel: ChannelKind) {
 
   // O provider vai junto para a conversa que já existe poder perguntar o nome
   // quando ainda estiver com o id do canal no lugar dele.
-  const result = await resolveConversation(tenantId, inbound, channel, provider)
+  // `null` de caixa, e explícito: Instagram e Messenger continuam com a página
+  // única em `integration_configs.meta_messaging`. Generalizar isso é outra
+  // frente — e quando ela chegar, é este `null` que o compilador vai apontar.
+  const result = await resolveConversation(tenantId, inbound, channel, null, provider)
   if (!result) return
 
-  await insertInboundMessage(result.conversationId, tenantId, inbound, channel, provider)
+  await insertInboundMessage(result.conversationId, tenantId, inbound, channel, provider, null)
 }

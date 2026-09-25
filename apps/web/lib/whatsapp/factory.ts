@@ -1,5 +1,7 @@
 import { timingSafeEqual } from 'crypto'
-import type { WhatsAppProvider, WhatsAppConfig, UazapiConfig } from './types'
+import type {
+  WhatsAppProvider, WhatsAppConfig, UazapiConfig, NumeroDeWhatsApp, WhatsAppProviderType,
+} from './types'
 import { UazapiProvider } from './uazapi'
 import { OfficialAPIProvider } from './official'
 import { ler } from '@/lib/db'
@@ -10,36 +12,136 @@ export function resolveProvider(config: WhatsAppConfig): WhatsAppProvider {
   throw new Error(`Unknown WhatsApp provider: ${(config as any).provider}`)
 }
 
-export async function getWhatsAppConfig(tenantId: string): Promise<WhatsAppConfig | null> {
+/** As colunas que compõem uma `NumeroDeWhatsApp`. Uma lista só, para não divergirem. */
+const COLUNAS_DO_NUMERO =
+  'id, tenant_id, provider, label, phone_e164, phone_number_id, waba_id, ' +
+  'config, is_active, is_default, managed, branch_id, user_id'
+
+/**
+ * O cliente do Supabase aqui é sem tipos gerados, e `select()` por CONSTANTE
+ * (em vez de literal) perde a inferência e vira `GenericStringError[]`. A
+ * constante existe para as colunas não divergirem entre as quatro buscas, então
+ * a conversão fica num ponto só, aqui, em vez de espalhada.
+ */
+function linhas(data: unknown): LinhaDoNumero[] {
+  return (data ?? []) as LinhaDoNumero[]
+}
+
+type LinhaDoNumero = {
+  id: string; tenant_id: string; provider: string; label: string
+  phone_e164: string | null; phone_number_id: string | null; waba_id: string | null
+  config: Record<string, unknown> | null
+  is_active: boolean; is_default: boolean; managed: boolean
+  branch_id: string | null; user_id: string | null
+}
+
+/**
+ * Linha do banco → caixa.
+ *
+ * O `provider` volta para DENTRO de `config` porque é dali que `resolveProvider`
+ * o lê. A coluna é a verdade; o campo no jsonb é conveniência para os provedores,
+ * que não precisam saber que existe uma tabela nova.
+ */
+function numeroDaLinha(l: LinhaDoNumero): NumeroDeWhatsApp {
+  return {
+    id:       l.id,
+    tenantId: l.tenant_id,
+    provider: l.provider as WhatsAppProviderType,
+    label:    l.label,
+    phone:    l.phone_e164,
+    phoneNumberId: l.phone_number_id,
+    wabaId:   l.waba_id,
+    branchId: l.branch_id,
+    userId:   l.user_id,
+    isDefault: l.is_default,
+    isActive:  l.is_active,
+    managed:   l.managed,
+    config: { ...(l.config as object), provider: l.provider } as WhatsAppConfig,
+  }
+}
+
+/**
+ * A caixa, por id.
+ *
+ * Sem filtro `is_active` de propósito: quem chama é que decide se aceita uma
+ * caixa fora do ar. O inbox, por exemplo, precisa mostrar a linha de uma
+ * conversa antiga mesmo depois de a conexão cair.
+ */
+export async function getNumero(numeroId: string): Promise<NumeroDeWhatsApp | null> {
+  if (!numeroId) return null
   const { createAdminClient } = await import('@/lib/supabase/admin')
-  const admin = createAdminClient()
 
-  // ⚠️ Aqui havia um `.maybeSingle()`, que LANÇA quando vem mais de uma linha.
-  // Duas configs de WhatsApp ativas no mesmo tenant é estado inválido, mas
-  // acontece: nada no banco impede. O resultado era o inbox inteiro cair com
-  // erro de PostgREST em vez de simplesmente atender por um dos provedores.
-  const { data, error } = await admin
-    .from('integration_configs')
-    .select('provider, config, updated_at')
+  const { data, error } = await createAdminClient()
+    .from('whatsapp_numbers')
+    .select(COLUNAS_DO_NUMERO)
+    .eq('id', numeroId)
+    .maybeSingle<LinhaDoNumero>()
+
+  if (error) { console.error('[getNumero]', error.message); return null }
+  return data ? numeroDaLinha(data) : null
+}
+
+/** Todas as caixas da rede, padrão primeiro. Base de toda escolha de saída. */
+export async function getNumerosDaRede(tenantId: string): Promise<NumeroDeWhatsApp[]> {
+  const { createAdminClient } = await import('@/lib/supabase/admin')
+
+  const { data, error } = await createAdminClient()
+    .from('whatsapp_numbers')
+    .select(COLUNAS_DO_NUMERO)
     .eq('tenant_id', tenantId)
-    .in('provider', ['uazapi', 'official'])
-    .eq('is_active', true)
-    .order('updated_at', { ascending: false })
+    .order('is_default', { ascending: false })
+    .order('label')
 
-  if (error) { console.error('[getWhatsAppConfig]', error.message); return null }
-  if (!data || data.length === 0) return null
+  if (error) { console.error('[getNumerosDaRede]', error.message); return [] }
+  return linhas(data).map(numeroDaLinha)
+}
 
-  // Desempate: vence a conexão mexida por último.
-  //
-  // Antes era "a oficial sempre ganha", e isso mandava o envio para o provedor
-  // errado exatamente quando mais doía: a rede parear a uazapi hoje não tirava
-  // do ar uma config `official` de meses atrás, e toda mensagem ia tentar sair
-  // por lá. `desativarOutroProvedorWhatsApp` já impede o empate na origem — isto
-  // aqui é a segunda linha de defesa, e ela precisa apontar para a conexão que
-  // a rede acabou de estabelecer.
-  const linha = data[0]!
+/**
+ * Por qual caixa da Cloud API esta entrega chegou?
+ *
+ * Devolve a LINHA, não o tenant. Antes isto devolvia `string | null` e quem
+ * chamava jogava o número fora para recarregar "a config da rede" — o que
+ * fazia, entre outras coisas, o HMAC ser validado com o `appSecret` de outra
+ * caixa. Com dois apps na Meta, toda entrega cairia em 401.
+ *
+ * ⚠️ Sem filtro `is_active`: o handshake de verificação acontece no momento da
+ * configuração, antes de a linha estar no ar.
+ */
+export async function getNumeroPorPhoneNumberId(
+  phoneNumberId: string,
+): Promise<NumeroDeWhatsApp | null> {
+  if (!phoneNumberId) return null
+  const { createAdminClient } = await import('@/lib/supabase/admin')
 
-  return { provider: linha.provider as WhatsAppConfig['provider'], ...(linha.config as object) } as WhatsAppConfig
+  // Índice único global em `phone_number_id`: é busca, não varredura.
+  const { data, error } = await createAdminClient()
+    .from('whatsapp_numbers')
+    .select(COLUNAS_DO_NUMERO)
+    .eq('provider', 'official')
+    .eq('phone_number_id', phoneNumberId)
+    .maybeSingle<LinhaDoNumero>()
+
+  if (error) { console.error('[getNumeroPorPhoneNumberId]', error.message); return null }
+  return data ? numeroDaLinha(data) : null
+}
+
+/**
+ * Por qual caixa sai o que começa AQUI.
+ *
+ * Substitui `getWhatsAppConfig(tenantId)`, que foi deletada em vez de virar um
+ * atalho: um atalho que escolhe uma linha em silêncio é exatamente o defeito
+ * que esta frente removeu, e um `shim` só adiaria o problema para quem viesse
+ * depois. A regra mora em `escolherNumeroDeSaida`, que é pura e testada.
+ */
+export async function resolverNumeroDeSaida(
+  tenantId: string,
+  userId: string | null,
+  numeroDaConversa: string | null,
+): Promise<NumeroDeWhatsApp | null> {
+  const { escolherNumeroDeSaida } = await import('./escolha')
+  return escolherNumeroDeSaida(
+    await getNumerosDaRede(tenantId), userId, numeroDaConversa,
+  )
 }
 
 /**
@@ -54,51 +156,34 @@ export async function getWhatsAppConfig(tenantId: string): Promise<WhatsAppConfi
  * ⚠️ Sem filtro `is_active` de propósito: é o evento `connection` que ativa a
  * config, e filtrar aqui descartaria justamente a mensagem que deveria ativá-la.
  */
-export async function getTenantByUazapiToken(
+export async function getNumeroPorTokenUazapi(
   token: string,
-): Promise<{ tenantId: string; config: UazapiConfig } | null> {
+): Promise<NumeroDeWhatsApp | null> {
   if (!token) return null
 
   const { createAdminClient } = await import('@/lib/supabase/admin')
   const admin = createAdminClient()
 
   const { data, error } = await admin
-    .from('integration_configs')
-    .select('tenant_id, config')
+    .from('whatsapp_numbers')
+    .select(COLUNAS_DO_NUMERO)
     .eq('provider', 'uazapi')
 
-  if (error) { console.error('[getTenantByUazapiToken]', error.message); return null }
+  if (error) { console.error('[getNumeroPorTokenUazapi]', error.message); return null }
 
   const recebido = Buffer.from(token)
-  for (const linha of (data ?? []) as { tenant_id: string; config: Record<string, unknown> | null }[]) {
+  for (const linha of linhas(data)) {
     const guardado = linha.config?.token
     if (typeof guardado !== 'string' || !guardado) continue
 
     // Comparação em tempo constante: o token é credencial, não identificador.
+    // É por isso que esta busca é uma varredura e não um `.eq('config->>token')`
+    // — o índice tornaria a comparação dependente do valor.
     const esperado = Buffer.from(guardado)
     if (esperado.length !== recebido.length) continue
     if (!timingSafeEqual(esperado, recebido)) continue
 
-    return {
-      tenantId: linha.tenant_id,
-      config:   { provider: 'uazapi', ...(linha.config as object) } as UazapiConfig,
-    }
+    return numeroDaLinha(linha)
   }
   return null
-}
-
-// Lookup tenant by Official WhatsApp phoneNumberId
-export async function getTenantByPhoneNumberId(phoneNumberId: string): Promise<string | null> {
-  const { createAdminClient } = await import('@/lib/supabase/admin')
-  const admin = createAdminClient()
-
-  const data = await ler(admin
-    .from('integration_configs')
-    .select('tenant_id, config')
-    .eq('provider', 'official')
-    .eq('is_active', true), 'carregar as integrações')
-
-  type ConfigRow = { tenant_id: string; config: Record<string, unknown> | null }
-  const match = (data ?? []).find((r: ConfigRow) => (r.config as any)?.phoneNumberId === phoneNumberId) as ConfigRow | undefined
-  return match?.tenant_id ?? null
 }

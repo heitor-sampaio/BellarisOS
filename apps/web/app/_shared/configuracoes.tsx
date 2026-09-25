@@ -10,6 +10,7 @@ import { SettingsBranches } from '@/components/admin/settings-branches'
 import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import type { IntegrationConfig } from '@/actions/integrations'
+import { listarNumerosWhatsApp } from '@/actions/integrations'
 import { SettingsLgpd } from '@/components/admin/settings-lgpd'
 import { listDataRequests } from '@/actions/lgpd'
 import { SettingsEventos } from '@/components/admin/settings-eventos'
@@ -163,6 +164,14 @@ export async function Configuracoes({
     : [null, null]
 
   const integrationConfigs = (integrationRows ?? []) as IntegrationConfig[]
+
+  // As caixas de WhatsApp vêm da própria tabela delas, não de
+  // `integration_configs`. Ler de um lugar e gravar no outro faria o formulário
+  // reabrir com o valor antigo depois de salvar — e é exatamente o tipo de
+  // divergência que não dá erro nenhum.
+  const numerosDeWhatsApp = activeTab === 'integrations'
+    ? await listarNumerosWhatsApp()
+    : []
   const fichas: ItemDeFicha[] = (formRows ?? []).map((r: any) => ({
     id:       r.id as string,
     name:     r.name as string,
@@ -279,6 +288,7 @@ export async function Configuracoes({
       {activeTab === 'integrations' && (
         <SettingsIntegrations
           initialConfigs={integrationConfigs}
+          numeros={numerosDeWhatsApp}
           metaStep={metaStep}
           metaError={metaError === '1'}
           metaErrorReason={metaErrorReason}

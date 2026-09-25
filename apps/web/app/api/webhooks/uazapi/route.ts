@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { UazapiProvider, telefoneDoJid } from '@/lib/whatsapp/uazapi'
-import { getTenantByUazapiToken } from '@/lib/whatsapp/factory'
-import { desativarOutroProvedorWhatsApp } from '@/lib/whatsapp/ativacao'
+import { getNumeroPorTokenUazapi } from '@/lib/whatsapp/factory'
+import type { UazapiConfig } from '@/lib/whatsapp/types'
 import {
   resolveConversation, insertInboundMessage, updateMessageStatus, applyMessageEdit,
 } from '@/lib/inbox/resolve-conversation'
@@ -31,16 +31,18 @@ export async function POST(req: NextRequest) {
   const token = corpo?.token ?? raiz?.token ?? corpo?.instance?.token
   if (typeof token !== 'string' || !token) return NextResponse.json({ ok: true })
 
-  const encontrado = await getTenantByUazapiToken(token)
-  if (!encontrado) return NextResponse.json({ ok: true })
+  // A CAIXA que recebeu — o token identifica a linha, não a rede.
+  const numero = await getNumeroPorTokenUazapi(token)
+  if (!numero) return NextResponse.json({ ok: true })
 
-  const { tenantId, config } = encontrado
+  const tenantId = numero.tenantId
+  const config   = numero.config as UazapiConfig
 
   try {
     // Evento de conexão: é o que faz a tela contar a verdade quando a clínica
     // conecta ou desliga pelo celular, sem polling.
     if (!raiz?.message) {
-      await tratarConexao(tenantId, config.token, raiz, corpo)
+      await tratarConexao(numero.id, raiz, corpo)
       return NextResponse.json({ ok: true })
     }
 
@@ -66,11 +68,18 @@ export async function POST(req: NextRequest) {
 
     // O provider vai junto para o caso de o webhook não trazer o nome do
     // contato — aí a conversa pergunta, em vez de fixar o telefone como nome.
-    const resultado = await resolveConversation(tenantId, inbound, 'whatsapp', provider)
+    const resultado = await resolveConversation(
+      tenantId, inbound, 'whatsapp',
+      { id: numero.id, channel: 'whatsapp', provider: numero.provider },
+      provider,
+    )
     if (!resultado) return NextResponse.json({ ok: true })
 
     // O provider vai junto: é ele que sabe baixar a mídia.
-    await insertInboundMessage(resultado.conversationId, tenantId, inbound, 'whatsapp', provider)
+    await insertInboundMessage(
+      resultado.conversationId, tenantId, inbound, 'whatsapp', provider,
+      { id: numero.id, channel: 'whatsapp', provider: numero.provider },
+    )
   } catch (err) {
     // Uma entrega com problema não pode virar 4xx e derrubar a assinatura.
     console.error('[webhook/uazapi]', err)
@@ -84,9 +93,14 @@ export async function POST(req: NextRequest) {
  *
  * Só desativa quando a uazapi diz explicitamente que desconectou — payload que
  * não fala de conexão nenhuma não deve mexer em `is_active`.
+ *
+ * **Atualiza a LINHA, por id.** Até aqui atualizava por `(tenant_id, provider)`,
+ * o que com duas caixas uazapi na mesma rede fazia o evento de conexão de uma
+ * reescrever `is_active` e `connectedPhone` da OUTRA — a segunda caixa a
+ * conectar derrubaria a primeira, em silêncio.
  */
 async function tratarConexao(
-  tenantId: string, token: string, raiz: any, corpo: any,
+  numeroId: string, raiz: any, corpo: any,
 ): Promise<void> {
   const estado = raiz?.status ?? corpo?.status ?? raiz?.instance?.status ?? corpo?.instance?.status
   if (estado === undefined || estado === null) return
@@ -103,30 +117,31 @@ async function tratarConexao(
 
   const admin = createAdminClient()
   const data = await ler(admin
-    .from('integration_configs')
+    .from('whatsapp_numbers')
     .select('config')
-    .eq('tenant_id', tenantId)
-    .eq('provider', 'uazapi')
-    .maybeSingle(), 'buscar a integração')
+    .eq('id', numeroId)
+    .maybeSingle(), 'buscar a caixa de WhatsApp')
 
   const atual = (data?.config ?? {}) as Record<string, unknown>
   const jid   = raiz?.status?.jid ?? corpo?.instance?.owner ?? null
   const phone = telefoneDoJid(jid)
 
   const { error } = await admin
-    .from('integration_configs')
+    .from('whatsapp_numbers')
     .update({
-      is_active: conectado,
-      config: conectado && phone ? { ...atual, connectedPhone: phone } : atual,
+      is_active:  conectado,
+      config:     conectado && phone ? { ...atual, connectedPhone: phone } : atual,
+      // A coluna é a verdade para quem lê; o campo no jsonb sobrevive porque é
+      // o que a tela de configuração ainda mostra.
+      ...(conectado && phone ? { phone_e164: phone } : {}),
       updated_at: new Date().toISOString(),
     })
-    .eq('tenant_id', tenantId)
-    .eq('provider', 'uazapi')
+    .eq('id', numeroId)
 
-  if (error) { console.error('[webhook/uazapi] conexão:', error.message); return }
+  if (error) { console.error('[webhook/uazapi] conexão:', error.message) }
 
-  // Duas configs de WhatsApp ativas é estado inválido, e era assim que a rede
-  // ficava: este evento ativava a uazapi e a `official` continuava de pé, então
-  // o envio saía pela oficial e falhava com a mensagem já gravada.
-  if (conectado) await desativarOutroProvedorWhatsApp(tenantId, 'uazapi')
+  // Aqui havia um `desativarOutroProvedorWhatsApp`: com um número por rede,
+  // duas conexões ativas eram estado inválido e uma tinha de derrubar a outra.
+  // Com caixas próprias isso deixou de ser verdade — uazapi e oficial convivem,
+  // cada uma com seu provedor, e derrubar a vizinha passaria a ser o bug.
 }

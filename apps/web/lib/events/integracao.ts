@@ -25,7 +25,7 @@ export async function emitirEventoDeIntegracao(
   conectada: boolean,
   provedor: string,
   ctx: Ctx,
-  extras?: { rotulo?: string | null; motivo?: string | null },
+  extras?: { rotulo?: string | null; motivo?: string | null; numeroId?: string | null },
 ): Promise<void> {
   try {
     if (!ctx.tenantId) return
@@ -34,15 +34,20 @@ export async function emitirEventoDeIntegracao(
       provedor,
       rotulo: extras?.rotulo ?? null,
     }
-    if (extras?.motivo) dados.motivo = extras.motivo
+    if (extras?.numeroId) dados.numeroId = extras.numeroId
+    if (extras?.motivo)   dados.motivo   = extras.motivo
 
     await emitirEvento(
       conectada ? EVENTOS.INTEGRACAO_CONECTADA : EVENTOS.INTEGRACAO_DESCONECTADA,
       {
         tenantId:   ctx.tenantId,
-        // Integração é da REDE: uma conexão de WhatsApp serve todas as unidades.
+        // Integração continua sendo da REDE: a caixa serve todas as unidades, e
+        // o `branch_id` de uma linha de `whatsapp_numbers` é RÓTULO, não escopo.
         branchId:   null,
-        entidadeId: null,
+        // A entidade passa a ser a CAIXA, quando há uma. Antes era sempre nulo
+        // porque a integração se confundia com o provedor; com três números na
+        // rede, "a integração caiu" sem dizer qual não serve para nada.
+        entidadeId: extras?.numeroId ?? null,
         dados,
         ator:       ctx.internalUserId ? atorDoContexto(ctx) : ATOR_SISTEMA,
       },
@@ -53,9 +58,10 @@ export async function emitirEventoDeIntegracao(
 }
 
 export const integracaoConectada = (
-  provedor: string, ctx: Ctx, rotulo?: string | null,
-) => emitirEventoDeIntegracao(true, provedor, ctx, { rotulo })
+  provedor: string, ctx: Ctx, rotulo?: string | null, numeroId?: string | null,
+) => emitirEventoDeIntegracao(true, provedor, ctx, { rotulo, numeroId })
 
 export const integracaoDesconectada = (
   provedor: string, ctx: Ctx, motivo?: string | null,
-) => emitirEventoDeIntegracao(false, provedor, ctx, { motivo })
+  rotulo?: string | null, numeroId?: string | null,
+) => emitirEventoDeIntegracao(false, provedor, ctx, { motivo, rotulo, numeroId })
