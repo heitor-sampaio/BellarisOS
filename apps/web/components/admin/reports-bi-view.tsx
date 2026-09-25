@@ -40,11 +40,10 @@ export interface DadosComerciais {
   totalLeads:  number
   convertidos: number
   conversao:   number
-  evalAgendadas:    number
-  evalConsideradas: number
-  evalRealizadas:   number
-  comparecimento:   number
-  agendamentosComerciais: number
+  comerciaisAgendados:    number
+  comerciaisConsiderados: number
+  comerciaisRealizados:   number
+  comparecimento:         number
   ranking: { id: string; name: string; leads: number; convertidos: number; agendamentos: number }[]
 }
 
@@ -1139,15 +1138,14 @@ function TabComercial(p: ReportsBiProps) {
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
         <KpiCard label="Conversão de leads"    value={c.conversao} format="pct" />
         <KpiCard label="Leads recebidos"       value={c.totalLeads} format="int" accent="var(--text)" />
-        <KpiCard label="Avaliações agendadas"  value={c.evalAgendadas} format="int" accent="var(--text)" />
-        <KpiCard label="Comparecimento"        value={c.comparecimento} format="pct" accent="var(--text)" />
-        <KpiCard label="Agend. comerciais"     value={c.agendamentosComerciais} format="int" accent="var(--text)" />
+        <KpiCard label="Agendados pelo comercial" value={c.comerciaisAgendados} format="int" accent="var(--text)" />
+        <KpiCard label="Comparecimento"           value={c.comparecimento} format="pct" accent="var(--text)" />
       </div>
 
       <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', margin: 0 }}>
         {fmtInt(c.convertidos)} de {fmtInt(c.totalLeads)} leads viraram cliente ·
-        {' '}{fmtInt(c.evalRealizadas)} de {fmtInt(c.evalConsideradas)} avaliações não canceladas
-        aconteceram · agendamentos comerciais são os gerados pelo time comercial.
+        {' '}{fmtInt(c.comerciaisRealizados)} de {fmtInt(c.comerciaisConsiderados)} agendamentos
+        do comercial não cancelados aconteceram.
       </p>
 
       <div className="rg-2" style={{ gap: 16 }}>

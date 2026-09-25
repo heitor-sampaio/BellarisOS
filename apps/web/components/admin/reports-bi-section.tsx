@@ -436,7 +436,7 @@ async function painelComercial({
       .gte('created_at', fromISO).lte('created_at', toISO),
 
     admin.from('appointments')
-      .select('id, status, source, is_evaluation, created_by_id')
+      .select('id, status, source, created_by_id')
       .in('branch_id', branchIds)
       .gte('scheduled_at', fromISO).lte('scheduled_at', toISO),
 
@@ -444,19 +444,24 @@ async function painelComercial({
   ])
 
   const leads = (leadsRaw ?? []) as { client_id: string | null; owner_id: string | null }[]
-  const appts = (apptsRaw ?? []) as { status: string; source: string; is_evaluation: boolean; created_by_id: string | null }[]
+  const appts = (apptsRaw ?? []) as { status: string; source: string; created_by_id: string | null }[]
   const nomeDe = new Map((usersRaw ?? []).map((u: { id: string; name: string }) => [u.id, u.name]))
 
   const totalLeads  = leads.length
   const convertidos = leads.filter(l => l.client_id).length
 
+  const comerciais = appts.filter(a => a.source === 'COMMERCIAL')
+
   // Comparecimento exclui as canceladas do denominador: com elas dentro a
   // métrica misturava "não cancelou" com "compareceu" e ficava sempre baixa.
-  const evals            = appts.filter(a => a.is_evaluation)
-  const evalConsideradas = evals.filter(a => a.status !== 'CANCELLED').length
-  const evalRealizadas   = evals.filter(a => a.status === 'COMPLETED').length
-
-  const comerciais = appts.filter(a => a.source === 'COMMERCIAL')
+  //
+  // A base eram as AVALIAÇÕES (`is_evaluation`), que deixaram de existir em
+  // 2026-09-25 — a avaliação virou um procedimento como outro qualquer e não
+  // há mais o que a distinga na tabela. O que a métrica sempre quis saber é do
+  // funil do time comercial: quantos primeiros atendimentos foram marcados e
+  // quantos aconteceram. Isso o `source` responde, e o rótulo mudou junto.
+  const comerciaisConsiderados = comerciais.filter(a => a.status !== 'CANCELLED').length
+  const comerciaisRealizados   = comerciais.filter(a => a.status === 'COMPLETED').length
 
   // Leads sem dono entram numa linha própria em vez de sumirem: antes o
   // ranking somava menos leads que o KPI de leads recebidos, sem explicação.
@@ -490,11 +495,10 @@ async function painelComercial({
     totalLeads,
     convertidos,
     conversao:      percent(convertidos, totalLeads) ?? 0,
-    evalAgendadas:  evals.length,
-    evalConsideradas,
-    evalRealizadas,
-    comparecimento: percent(evalRealizadas, evalConsideradas) ?? 0,
-    agendamentosComerciais: comerciais.length,
+    comerciaisAgendados: comerciais.length,
+    comerciaisConsiderados,
+    comerciaisRealizados,
+    comparecimento: percent(comerciaisRealizados, comerciaisConsiderados) ?? 0,
     ranking: [...vendedores.values()]
       .sort((a, b) => (b.leads + b.agendamentos) - (a.leads + a.agendamentos)),
   }

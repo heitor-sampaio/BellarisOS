@@ -36,7 +36,6 @@ export async function POST(req: NextRequest) {
     scheduledAt:    String(body.scheduledAt ?? ''),
     roomId:         body.roomId ? String(body.roomId) : null,
     notes:          body.notes ? String(body.notes) : null,
-    isEvaluation:   body.isEvaluation === true,
     // Carimba origem comercial quando criado por um cargo comercial (KPIs)
     source:         !ctx.branchId ? 'COMMERCIAL' : 'INTERNAL',
   })

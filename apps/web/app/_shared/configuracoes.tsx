@@ -7,8 +7,7 @@ import type { AppModule, PermissionLevel, PermissionScope, ReportTab } from '@es
 import type { RoleModulePermission } from '@/components/admin/roles-editor'
 import { SettingsIntegrations } from '@/components/admin/settings-integrations'
 import { SettingsBranches } from '@/components/admin/settings-branches'
-import { SettingsAnamnesis, type AdminAnamnesisForm } from '@/components/admin/settings-anamnesis'
-import { SettingsAttendance, type AdminAttendanceForm } from '@/components/admin/settings-attendance'
+import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import type { IntegrationConfig } from '@/actions/integrations'
 import { SettingsLgpd } from '@/components/admin/settings-lgpd'
@@ -39,8 +38,7 @@ import { lerDadosDaRede } from '@/actions/rede'
 const TABS = [
   { key: 'unidades',      label: 'Unidades',     module: 'settings' },
   { key: 'permissions',   label: 'Cargos',       module: 'roles'    },
-  { key: 'anamnese',      label: 'Anamnese',     module: 'forms'    },
-  { key: 'atendimento',   label: 'Atendimento',  module: 'forms'    },
+  { key: 'fichas',        label: 'Fichas',       module: 'forms'    },
   { key: 'integrations',  label: 'Integrações',  module: 'settings' },
   { key: 'lgpd',          label: 'LGPD',         module: 'settings' },
   { key: 'eventos',       label: 'Eventos',      module: 'settings' },
@@ -57,7 +55,7 @@ export const ABAS_DA_REDE: readonly ChaveDeAba[] =
 
 /** O que a unidade governa sem sair do próprio portal nem ver outra unidade. */
 export const ABAS_DA_UNIDADE: readonly ChaveDeAba[] =
-  ['permissions', 'anamnese', 'atendimento', 'integrations', 'general']
+  ['permissions', 'fichas', 'integrations', 'general']
 
 interface Props {
   /** Prefixo dos links de aba: `/admin/settings` ou `/${slug}/settings`. */
@@ -113,7 +111,7 @@ export async function Configuracoes({
   const wantsRoles = activeTab === 'permissions'
   const wantsForms = activeModule === 'forms'
 
-  const [{ data: allRoles, error: rolesError }, { data: overrides }, { data: abasDeRelatorio }, { data: integrationRows }, { data: anamnesisRows }, { data: attendanceRows }] = await Promise.all([
+  const [{ data: allRoles, error: rolesError }, { data: overrides }, { data: abasDeRelatorio }, { data: integrationRows }, { data: formRows }] = await Promise.all([
     // Admin client de propósito: a policy de SELECT em `users` limita quem não
     // é da rede à própria unidade, e a contagem sairia menor do que a real —
     // "0 pessoas" num cargo que tem gente em outra unidade é pior que nada.
@@ -145,14 +143,7 @@ export async function Configuracoes({
       : { data: [] },
     wantsForms
       ? admin
-          .from('anamnesis_forms')
-          .select('id, name, schema, is_active')
-          .eq('tenant_id', ctx.tenantId!)
-          .order('created_at')
-      : { data: [] },
-    wantsForms
-      ? admin
-          .from('attendance_forms')
+          .from('forms')
           .select('id, name, schema, is_active')
           .eq('tenant_id', ctx.tenantId!)
           .order('created_at')
@@ -172,13 +163,7 @@ export async function Configuracoes({
     : [null, null]
 
   const integrationConfigs = (integrationRows ?? []) as IntegrationConfig[]
-  const anamnesisForms: AdminAnamnesisForm[] = (anamnesisRows ?? []).map((r: any) => ({
-    id:       r.id as string,
-    name:     r.name as string,
-    rows:     normalizeFormSchema(r.schema).rows,
-    isActive: !!r.is_active,
-  }))
-  const attendanceForms: AdminAttendanceForm[] = (attendanceRows ?? []).map((r: any) => ({
+  const fichas: ItemDeFicha[] = (formRows ?? []).map((r: any) => ({
     id:       r.id as string,
     name:     r.name as string,
     rows:     normalizeFormSchema(r.schema).rows,
@@ -287,12 +272,8 @@ export async function Configuracoes({
         </div>
       )}
 
-      {activeTab === 'anamnese' && (
-        <SettingsAnamnesis forms={anamnesisForms} />
-      )}
-
-      {activeTab === 'atendimento' && (
-        <SettingsAttendance forms={attendanceForms} />
+      {activeTab === 'fichas' && (
+        <SettingsFichas forms={fichas} />
       )}
 
       {activeTab === 'integrations' && (

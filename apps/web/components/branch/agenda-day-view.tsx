@@ -180,7 +180,7 @@ function ProfColumn({
             )}
             {height > 64 && (
               <div style={{ fontSize: 'var(--text-overline)', color: isProgress ? 'var(--brand)' : isConfirmed ? 'var(--success)' : 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {ev.isEvaluation ? 'Avaliação' : ev.procedureName}
+                {ev.procedureName}
               </div>
             )}
           </div>

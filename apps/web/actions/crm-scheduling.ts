@@ -132,7 +132,6 @@ export interface CreateCrmAppointmentInput {
   procedureId:    string | null
   scheduledAt:    string           // ISO UTC
   roomId?:        string | null
-  isEvaluation?:  boolean
   notes?:         string | null
   /** Nome e telefone confirmados na tela, quando o contato ainda não é cliente. */
   contato?:       { nome: string; telefone: string } | null
@@ -208,7 +207,6 @@ export async function createCrmAppointment(
     scheduledAt:    input.scheduledAt,
     roomId:         input.roomId ?? null,
     notes:          input.notes ?? null,
-    isEvaluation:   input.isEvaluation ?? false,
     source:         isComercial ? 'COMMERCIAL' : 'INTERNAL',
   })
 

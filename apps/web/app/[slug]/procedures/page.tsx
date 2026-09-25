@@ -33,7 +33,7 @@ export default async function BranchProceduresPage({
       .from('procedures')
       .select(`
         id, name, category, description, duration_min, price,
-        visible_on_client_app, is_evaluation, branch_id,
+        visible_on_client_app, branch_id,
         procedure_branch_availability(branch_id)
       `)
       .eq('tenant_id', ctx.tenantId!)

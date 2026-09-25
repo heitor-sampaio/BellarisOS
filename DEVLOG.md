@@ -1260,6 +1260,57 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-25 — Uma ficha só, e a avaliação vira procedimento
+
+"Não precisamos de criação de ficha específica de anamnese, isso pode ser feito
+pelo construtor universal de fichas. A entidade avaliação deixou de existir e
+passou a poder ser criada como um procedimento."
+
+Ele tinha razão sobre o diagnóstico: eram **dois construtores com o mesmo
+código e dois nomes**. `settings-anamnesis.tsx` e `settings-attendance.tsx`
+eram casca fina em volta do mesmo `settings-forms.tsx`, diferindo só nos
+rótulos; `anamnesis-forms.ts` e `attendance-forms.ts`, idem. Quem cadastrava um
+procedimento escolhia em qual das duas fichas pôr cada pergunta, e a escolha
+não mudava nada — nem os campos, nem o momento de preencher.
+
+**O banco** (migração `20260925000001_ficha_unica.sql`, em uma transação):
+`attendance_forms` → `forms`, `procedures.attendance_form_id` → `form_id`,
+`medical_record_entries.attendance_data` → `form_data`; saem
+`anamnesis_forms`, `procedures.anamnesis_form_id` e o `is_evaluation` dos dois
+lados. Conferido ANTES de rodar: 0 agendamentos sem procedimento, 0 fichas
+preenchidas nas 21 entradas, e os 2 agendamentos marcados como avaliação já
+apontavam para o procedimento "Avaliação". Nada de prontuário se perdeu.
+
+`medical_records.general_anamnesis` **fica**: é o questionário de saúde do
+cliente, preenchido uma vez, que alimenta o termo de consentimento e o
+planejamento. Outra coisa da ficha por procedimento — e a confusão entre as
+duas é o que fazia a coluna `anamnesis_data` guardar, num caminho, as
+observações do atendimento, que têm coluna própria (`notes`) ao lado.
+
+**O que a avaliação governava, e onde foi parar:**
+
+| Governava | Agora |
+|---|---|
+| agendar SEM procedimento | não existe: procedimento é obrigatório |
+| o checkbox "Consulta de avaliação" no CRM | a lista de procedimentos, como qualquer outro |
+| excluir a avaliação dos itens de um plano | escolha de quem monta o plano |
+| "Avaliação" no lugar do nome, na agenda | o nome do procedimento, que já é "Avaliação" |
+| o fluxo de montar plano durante o atendimento | **qualquer** atendimento que ainda não pertença a um plano |
+| a métrica "avaliações agendadas × comparecimento" | o funil do comercial (`source = COMMERCIAL`) |
+
+A última é a que exigiu decisão, e é a regra do §13.1 aplicada: o rótulo
+acompanha a conta. A métrica media quantos primeiros atendimentos o time
+comercial marcou e quantos aconteceram; sem a flag, `source` responde a mesma
+pergunta — mas então o KPI não pode continuar escrito "Avaliações agendadas".
+Virou "Agendados pelo comercial".
+
+A quinta também: o fluxo de montar plano era exclusivo da avaliação. A condição
+que sobrou é a que sempre importou — não se propõe plano novo dentro de uma
+sessão que já pertence a um plano.
+
+Preso em `e2e/ficha-unica.spec.ts`, que confere as três frentes: uma aba de
+fichas, um seletor no cadastro de procedimento, e as colunas fora do banco.
+
 ### 2026-09-25 — Três defeitos meus, e o que cada um ensinou
 
 O Heitor cortou uma justificativa minha que não se sustentava: eu vinha
@@ -2010,15 +2061,6 @@ verdade. O que vale:
 
 ### Esperando decisão do Heitor
 
-- **Anamnese vira ficha comum?** Ele pediu, em 2026-09-25: "eliminar anamnese,
-  modificar atendimento para fichas, com a avaliação virando um procedimento —
-  não precisamos de criação de ficha específica de anamnese, isso pode ser
-  feito pelo construtor universal de fichas". Faz sentido: os dois construtores
-  são o mesmo código com dois nomes. Mas é migração, não ajuste — duas tabelas
-  (`anamnesis_forms`, `attendance_forms`), duas colunas em `procedures`, o
-  `is_evaluation`, **103 referências em 25 arquivos** e 21 entradas de
-  prontuário com `anamnesis_data` já gravado. O que precisa ser decidido está
-  abaixo, em "O que a migração de fichas precisa decidir".
 - **Quem recebe notificação no sino?** Hoje `notifyUser` só é chamado para o
   PROFISSIONAL do agendamento e pela ação "avisar equipe" de uma automação. No
   banco de desenvolvimento, as 108 notificações de equipe são todas de uma
@@ -2027,28 +2069,6 @@ verdade. O que vale:
 - ~~Botão de ação tem 38px e seletor tem 34px.~~ **Decidido em 2026-09-25:
   fica.** "Pode manter, dá um destaque leve, eu gosto." A diferença é
   hierarquia — a ação enfatizada é mais alta que o filtro —, não descuido.
-
-### O que a migração de fichas precisa decidir
-
-1. **Uma tabela ou duas?** Fundir em `forms` com um campo de momento
-   (`antes` / `durante`) é o alvo, mas exige migrar as duas e reapontar
-   `procedures`. Manter as duas tabelas e só unificar a TELA é metade do ganho
-   por um décimo do risco.
-2. **O que acontece com `is_evaluation`?** Hoje é flag em `procedures` e
-   governa o agendamento sem procedimento escolhido (CRM) e o preço zero. Se a
-   avaliação "vira um procedimento", ou a flag continua (e nada muda no banco),
-   ou sai — e aí todo lugar que hoje pergunta "é avaliação?" passa a comparar
-   com um id de procedimento, que é dado da rede e pode ser apagado.
-3. **As 21 entradas de prontuário existentes.** `anamnesis_data` é JSON livre
-   por entrada; o conteúdo clínico não se apaga (§14). Ou a coluna fica onde
-   está e só o cadastro muda, ou a migração precisa reescrever prontuário — o
-   que é o tipo de coisa que não se desfaz.
-
-- **Botão de ação é 4px mais alto que os seletores** (38px contra 34px). Os
-  seletores foram unificados em `--altura-controle`; `.btn-primary`
-  ficou fora de propósito, porque ação enfatizada mais alta que filtro é
-  hierarquia e não descuido. Mas os dois convivem na mesma barra (o "+ Agendar"
-  ao lado do seletor de unidade), e o degrau aparece. Igualar é uma linha.
 
 ### Próxima frente candidata
 

@@ -836,7 +836,6 @@ function ScheduleModal({
   const [branchId,   setBranchId]   = useState(branches[0]?.id ?? '')
   const [data,       setData]       = useState<CrmSchedulingData | null>(null)
   const [loadingData, setLoadingData] = useState(false)
-  const [isEvaluation, setIsEvaluation] = useState(false)
   const [procedureId, setProcedureId] = useState('')
   const [professionalId, setProfessionalId] = useState('')
   const [roomId,     setRoomId]     = useState('')
@@ -847,9 +846,7 @@ function ScheduleModal({
   const [saving,     startSave]     = useTransition()
   const [error,      setError]      = useState<string | null>(null)
 
-  const durationMin = isEvaluation
-    ? 60
-    : (data?.procedures.find(p => p.id === procedureId)?.duration_min ?? 60)
+  const durationMin = data?.procedures.find(p => p.id === procedureId)?.duration_min ?? 60
 
   // Carrega profissionais/procedimentos/salas da filial
   useEffect(() => {
@@ -863,19 +860,19 @@ function ScheduleModal({
 
   // Carrega horários livres
   useEffect(() => {
-    const ready = branchId && professionalId && date && (isEvaluation || procedureId)
+    const ready = branchId && professionalId && date && procedureId
     if (!ready) { setSlots([]); return }
     let active = true
     setLoadingSlots(true); setSlot('')
     getCrmSlots(branchId, professionalId, date, durationMin).then(s => { if (active) { setSlots(s); setLoadingSlots(false) } })
     return () => { active = false }
-  }, [branchId, professionalId, date, procedureId, isEvaluation, durationMin])
+  }, [branchId, professionalId, date, procedureId, durationMin])
 
   function handleSubmit() {
     setError(null)
     if (!branchId)                        { setError('Selecione a unidade.'); return }
     if (!professionalId)                  { setError('Selecione o profissional.'); return }
-    if (!isEvaluation && !procedureId)    { setError('Selecione o procedimento.'); return }
+    if (!procedureId)                     { setError('Selecione o procedimento.'); return }
     if (!slot)                            { setError('Selecione um horário.'); return }
     if (!clienteLigado) {
       if (nome.trim().length < 2)                   { setError('Informe o nome de quem será atendido.'); return }
@@ -889,10 +886,9 @@ function ScheduleModal({
         conversationId,
         branchId,
         professionalId,
-        procedureId: isEvaluation ? null : procedureId,
+        procedureId,
         scheduledAt,
         roomId: roomId || null,
-        isEvaluation,
         contato: clienteLigado ? null : { nome: nome.trim(), telefone: telefone.trim() },
       })
       if (res.error) { setError(res.error); return }
@@ -954,22 +950,17 @@ function ScheduleModal({
             </select>
           </label>
 
-          {/* Avaliação */}
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-            <input type="checkbox" checked={isEvaluation} onChange={e => setIsEvaluation(e.target.checked)} />
-            <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)' }}>Consulta de avaliação</span>
+          {/* Procedimento. Havia um checkbox "Consulta de avaliação" acima que
+              escondia esta lista e marcava o agendamento SEM procedimento — a
+              avaliação virou um procedimento como outro qualquer, e escolhê-la
+              é escolhê-la aqui (2026-09-25). */}
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <span style={labelStyle}>Procedimento</span>
+            <select className="field" value={procedureId} disabled={loadingData} onChange={e => setProcedureId(e.target.value)} style={selectStyle}>
+              <option value="">{loadingData ? 'Carregando…' : 'Selecione…'}</option>
+              {data?.procedures.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
           </label>
-
-          {/* Procedimento */}
-          {!isEvaluation && (
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <span style={labelStyle}>Procedimento</span>
-              <select className="field" value={procedureId} disabled={loadingData} onChange={e => setProcedureId(e.target.value)} style={selectStyle}>
-                <option value="">{loadingData ? 'Carregando…' : 'Selecione…'}</option>
-                {data?.procedures.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </label>
-          )}
 
           {/* Profissional */}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -1004,7 +995,7 @@ function ScheduleModal({
               <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>Carregando horários…</span>
             ) : slots.length === 0 ? (
               <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)' }}>
-                {professionalId && (isEvaluation || procedureId) ? 'Sem horários livres neste dia.' : 'Escolha profissional e procedimento.'}
+                {professionalId && procedureId ? 'Sem horários livres neste dia.' : 'Escolha profissional e procedimento.'}
               </span>
             ) : (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>

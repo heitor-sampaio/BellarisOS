@@ -5,11 +5,13 @@ import { FileText } from 'lucide-react'
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
-// Ficha de atendimento = documento único com 4 seções:
-//   1. Dados do cliente (identificação + anamnese geral)
+// Documento único do atendimento, em 3 seções:
+//   1. Dados do cliente (identificação + a anamnese GERAL do cliente, que é o
+//      questionário de saúde preenchido uma vez, não a ficha do procedimento)
 //   2. Dados do procedimento (com insumos — baixa automática)
-//   3. Ficha de anamnese (construtor / padrão)
-//   4. Ficha de atendimento (construtor / padrão)
+//   3. A ficha do procedimento (construtor)
+// Eram 4: a ficha vinha dividida em "de anamnese" e "de atendimento", que
+// eram a mesma coisa com dois nomes (2026-09-25).
 // Usado tanto na tela de atendimento (editável) quanto no prontuário (leitura).
 
 interface CardClient {
@@ -30,8 +32,9 @@ interface Props {
   generalAnamnesis: React.ReactNode        // AnamnesisTab embedded
   procedureNode?:   React.ReactNode | null // bloco "Dados do procedimento" (com reassign, horários…)
   insumos?:         React.ReactNode | null // InsumoCard embedded
-  anamnesis?:       FormSection | null
-  attendance?:      FormSection | null
+  /** A ficha do procedimento. Eram duas seções — "de anamnese" e "de
+   *  atendimento" —, que eram a mesma coisa com dois nomes (2026-09-25). */
+  ficha?:           FormSection | null
 }
 
 function maskCPF(doc: string | null): string | null {
@@ -67,7 +70,7 @@ function SectionOverline({ label, subtitle }: { label: string; subtitle?: string
   )
 }
 
-export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, procedureNode, insumos, anamnesis, attendance }: Props) {
+export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, procedureNode, insumos, ficha }: Props) {
   const age = client.birthDate ? differenceInYears(new Date(), new Date(client.birthDate)) : null
   const birth = client.birthDate ? format(new Date(client.birthDate), 'dd/MM/yyyy', { locale: ptBR }) : null
 
@@ -109,19 +112,11 @@ export function AttendanceRecordCard({ client, subtitle, generalAnamnesis, proce
           </div>
         )}
 
-        {/* Seção 3 — Ficha de anamnese (construtor) */}
-        {anamnesis && (
+        {/* Seção 3 — A ficha do procedimento (construtor) */}
+        {ficha && (
           <div style={sectionDivider}>
-            <SectionOverline label="Ficha de anamnese" subtitle={anamnesis.name} />
-            {anamnesis.node}
-          </div>
-        )}
-
-        {/* Seção 4 — Ficha de atendimento (construtor) */}
-        {attendance && (
-          <div style={sectionDivider}>
-            <SectionOverline label="Ficha de atendimento" subtitle={attendance.name} />
-            {attendance.node}
+            <SectionOverline label="Ficha do procedimento" subtitle={ficha.name} />
+            {ficha.node}
           </div>
         )}
       </div>

@@ -137,8 +137,8 @@ export interface ProfileRecordEntry {
   appointmentId: string
   createdAt:     string
   procedureName: string | null
-  anamnesis:     ProfileFormSnapshot | null
-  attendance:    ProfileFormSnapshot | null
+  /** A ficha do procedimento — uma so desde 2026-09-25. */
+  ficha:         ProfileFormSnapshot | null
 }
 
 interface Props {
@@ -1539,23 +1539,13 @@ export function ClientProfile({
                 generalAnamnesis={
                   <AnamnesisTab embedded anamnesis={generalAnamnesis} clientId={client.id} branchId={branchId} slug={slug} canEdit={false} />
                 }
-                anamnesis={entry.anamnesis && entry.anamnesis.rows.length > 0 ? {
-                  name: entry.anamnesis.name,
+                ficha={entry.ficha && entry.ficha.rows.length > 0 ? {
+                  name: entry.ficha.name,
                   node: (
                     <AnamnesisFormRenderer
                       appointmentId={entry.appointmentId} slug={slug}
-                      formName={entry.anamnesis.name} rows={entry.anamnesis.rows}
-                      initial={entry.anamnesis.answers as AnamnesisAnswers} canEdit={false}
-                    />
-                  ),
-                } : null}
-                attendance={entry.attendance && entry.attendance.rows.length > 0 ? {
-                  name: entry.attendance.name,
-                  node: (
-                    <AnamnesisFormRenderer
-                      appointmentId={entry.appointmentId} slug={slug}
-                      formName={entry.attendance.name} rows={entry.attendance.rows}
-                      initial={entry.attendance.answers as AnamnesisAnswers} canEdit={false}
+                      formName={entry.ficha.name} rows={entry.ficha.rows}
+                      initial={entry.ficha.answers as AnamnesisAnswers} canEdit={false}
                     />
                   ),
                 } : null}

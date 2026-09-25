@@ -34,28 +34,23 @@ export default async function AdminProceduresPage() {
     { data: branches },
     { data: procedures, error: proceduresError },
     products,
-    { data: anamnesisFormRows },
-    { data: attendanceFormRows },
+    { data: fichaRows },
   ] = await Promise.all([
     admin.from('branches').select('id, name')
       .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
 
     admin.from('procedures')
-      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_evaluation, is_active, created_at, anamnesis_form_id, attendance_form_id')
+      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id')
       .eq('tenant_id', ctx.tenantId!).is('branch_id', null)
       .order('category').order('name'),
 
     getCachedProductsReference(ctx.tenantId!),
 
-    admin.from('anamnesis_forms').select('id, name')
-      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
-
-    admin.from('attendance_forms').select('id, name')
+    admin.from('forms').select('id, name')
       .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
   ])
 
-  const anamnesisFormList = (anamnesisFormRows ?? []) as { id: string; name: string }[]
-  const attendanceFormList = (attendanceFormRows ?? []) as { id: string; name: string }[]
+  const fichas = (fichaRows ?? []) as { id: string; name: string }[]
 
   if (proceduresError) console.error('[AdminProcedures]', proceduresError.message)
 
@@ -122,7 +117,7 @@ export default async function AdminProceduresPage() {
             {totalActive} ativos · {totalInactive} inativos · catálogo da rede
           </p>
         </div>
-        {canEdit && <ProcedureModal branches={branchList} products={productList} anamnesisForms={anamnesisFormList} attendanceForms={attendanceFormList} />}
+        {canEdit && <ProcedureModal branches={branchList} products={productList} fichas={fichas} />}
       </div>
 
       {/* Lista agrupada por categoria */}
@@ -177,8 +172,7 @@ export default async function AdminProceduresPage() {
                     branch_ids:           (availability ?? []).map(a => a.branch_id),
                     procedure_products:   (p.procedure_products   as { product_id: string; quantity: number; unit_cost: number }[]              | null) ?? [],
                     branch_pricing:       (p.procedure_branch_pricing as { branch_id: string; price: number | null; labor_cost: number | null }[] | null) ?? [],
-                    anamnesis_form_id:    (p.anamnesis_form_id as string | null) ?? null,
-                    attendance_form_id:   (p.attendance_form_id as string | null) ?? null,
+                    form_id:              (p.form_id as string | null) ?? null,
                   }
 
                   return (
@@ -227,8 +221,7 @@ export default async function AdminProceduresPage() {
                             <ProcedureModal
                               branches={branchList}
                               products={productList}
-                              anamnesisForms={anamnesisFormList}
-                              attendanceForms={attendanceFormList}
+                              fichas={fichas}
                               existing={existingForEdit}
                               trigger={
                                 <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -257,7 +250,7 @@ export default async function AdminProceduresPage() {
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 16 }}>
             Nenhum procedimento cadastrado na rede ainda.
           </p>
-          <ProcedureModal branches={branchList} products={productList} anamnesisForms={anamnesisFormList} attendanceForms={attendanceFormList} />
+          <ProcedureModal branches={branchList} products={productList} fichas={fichas} />
         </div>
       )}
     </div>

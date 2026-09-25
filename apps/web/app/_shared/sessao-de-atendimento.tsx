@@ -41,9 +41,9 @@ export async function SessaoDeAtendimento({
       .select(`
         id, status, scheduled_at, started_at, completed_at, cancelled_at,
         cancellation_reason, price, duration_min, client_notes, notes, procedure_id, professional_id,
-        is_evaluation, treatment_plan_id,
+        treatment_plan_id,
         client_confirmed_at, client_rating, procedure_rating, client_feedback,
-        procedures(id, name, category, duration_min, anamnesis_form_id, attendance_form_id),
+        procedures(id, name, category, duration_min, form_id),
         professional:users!professional_id(id, name),
         room:rooms(id, name),
         client:clients(id, name, phone, birth_date, tags, notes, document)
@@ -54,7 +54,7 @@ export async function SessaoDeAtendimento({
 
     admin
       .from('medical_record_entries')
-      .select('notes, intercurrences, anamnesis_data, attendance_data')
+      .select('notes, intercurrences, form_data')
       .eq('appointment_id', id)
       .maybeSingle(),
   ])
@@ -76,7 +76,10 @@ export async function SessaoDeAtendimento({
 
   // 2ª rodada: anamnese + insumos + produtos + profissionais + histórico + pagamento + plano de tratamento
   const treatmentPlanId = (apptRaw as any).treatment_plan_id as string | null
-  const isPartOfPlan    = !!treatmentPlanId && !apptRaw.is_evaluation
+  // Era `&& !apptRaw.is_evaluation`: a avaliação nunca contava como sessão do
+  // plano. Com ela virando procedimento comum (2026-09-25), quem decide se o
+  // atendimento é do plano é o proprio vinculo ao plano, e mais nada.
+  const isPartOfPlan    = !!treatmentPlanId
 
   const [
     { data: medRecord }, { data: procProductsRaw }, branchProductsRaw,
@@ -314,7 +317,6 @@ export async function SessaoDeAtendimento({
     roomName:            room?.name ?? null,
     savedNotes:          mreRaw?.notes ?? null,
     savedIntercurrences: mreRaw?.intercurrences ?? null,
-    isEvaluation:        Boolean((apptRaw as any).is_evaluation),
     complaints:          (apptRaw as any).notes ?? null,
     clientConfirmedAt:   (apptRaw as any).client_confirmed_at ?? null,
     clientRating:        (apptRaw as any).client_rating ?? null,
@@ -368,40 +370,25 @@ export async function SessaoDeAtendimento({
     ? { id: paymentRawTyped.id, paymentMethod: paymentRawTyped.payment_method, amount: Number(paymentRawTyped.amount) }
     : null
 
-  // Fichas vinculadas ao procedimento (construtor) + respostas já salvas
-  const procForm = apptRaw.procedures as unknown as { anamnesis_form_id?: string | null; attendance_form_id?: string | null } | null
-  const procedureFormId  = canViewRecords ? (procForm?.anamnesis_form_id ?? null) : null
-  const attendanceFormId = canViewRecords ? (procForm?.attendance_form_id ?? null) : null
+  // A ficha do procedimento (construtor) + as respostas já salvas.
+  // Eram DUAS consultas, para dois modelos que eram a mesma coisa com nomes
+  // diferentes — "de anamnese" e "de atendimento" (2026-09-25).
+  const procForm = apptRaw.procedures as unknown as { form_id?: string | null } | null
+  const fichaId = canViewRecords ? (procForm?.form_id ?? null) : null
 
-  let anamnesisForm: { name: string; rows: AnamnesisRow[] } | null = null
-  let anamnesisAnswers: Record<string, unknown> = {}
-  if (procedureFormId) {
+  let ficha: { name: string; rows: AnamnesisRow[] } | null = null
+  let respostasDaFicha: Record<string, unknown> = {}
+  if (fichaId) {
     const formRow = await ler(admin
-      .from('anamnesis_forms')
+      .from('forms')
       .select('name, schema')
-      .eq('id', procedureFormId)
+      .eq('id', fichaId)
       .eq('tenant_id', ctx.tenantId!)
-      .maybeSingle(), 'buscar o modelo de anamnese')
+      .maybeSingle(), 'buscar a ficha do procedimento')
     if (formRow) {
-      anamnesisForm = { name: formRow.name as string, rows: normalizeFormSchema(formRow.schema).rows }
-      const cf = (mreRaw?.anamnesis_data as { customForm?: { answers?: Record<string, unknown> } } | null)?.customForm
-      if (cf?.answers && typeof cf.answers === 'object') anamnesisAnswers = cf.answers
-    }
-  }
-
-  let attendanceForm: { name: string; rows: AnamnesisRow[] } | null = null
-  let attendanceAnswers: Record<string, unknown> = {}
-  if (attendanceFormId) {
-    const formRow = await ler(admin
-      .from('attendance_forms')
-      .select('name, schema')
-      .eq('id', attendanceFormId)
-      .eq('tenant_id', ctx.tenantId!)
-      .maybeSingle(), 'buscar o modelo de atendimento')
-    if (formRow) {
-      attendanceForm = { name: formRow.name as string, rows: normalizeFormSchema(formRow.schema).rows }
-      const af = (mreRaw?.attendance_data as { attendanceForm?: { answers?: Record<string, unknown> } } | null)?.attendanceForm
-      if (af?.answers && typeof af.answers === 'object') attendanceAnswers = af.answers
+      ficha = { name: formRow.name as string, rows: normalizeFormSchema(formRow.schema).rows }
+      const salvas = (mreRaw?.form_data as { ficha?: { answers?: Record<string, unknown> } } | null)?.ficha
+      if (salvas?.answers && typeof salvas.answers === 'object') respostasDaFicha = salvas.answers
     }
   }
 
@@ -413,10 +400,8 @@ export async function SessaoDeAtendimento({
         client={client}
         anamnesis={anamnesis}
         canEditRecords={canEditRecords}
-        anamnesisForm={anamnesisForm}
-        anamnesisAnswers={anamnesisAnswers}
-        attendanceForm={attendanceForm}
-        attendanceAnswers={attendanceAnswers}
+        ficha={ficha}
+        respostasDaFicha={respostasDaFicha}
         products={products}
         availableProducts={availableProducts}
         professionals={professionals}

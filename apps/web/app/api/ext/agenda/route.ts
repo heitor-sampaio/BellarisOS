@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const data = await ler(admin
     .from('appointments')
-    .select('id, scheduled_at, duration_min, status, professional_id, room_id, is_evaluation, clients(name), procedures(name)')
+    .select('id, scheduled_at, duration_min, status, professional_id, room_id, clients(name), procedures(name)')
     .eq('branch_id', branchId)
     .gte('scheduled_at', dayStart)
     .lte('scheduled_at', dayEnd)
@@ -43,7 +43,6 @@ export async function GET(req: NextRequest) {
     status:         a.status,
     professionalId: a.professional_id,
     roomId:         a.room_id,
-    isEvaluation:   a.is_evaluation,
     clientName:     (a.clients as { name?: string } | null)?.name ?? null,
     procedureName:  (a.procedures as { name?: string } | null)?.name ?? null,
   }))

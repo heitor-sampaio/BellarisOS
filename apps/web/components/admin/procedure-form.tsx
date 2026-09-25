@@ -42,15 +42,13 @@ interface ExistingProcedure {
   branch_ids: string[]
   procedure_products: { product_id: string; quantity: number; unit_cost?: number | null }[]
   branch_pricing?: BranchPricingOverride[]
-  anamnesis_form_id?: string | null
-  attendance_form_id?: string | null
+  form_id?: string | null
 }
 
 interface ProcedureFormProps {
   branches: Branch[]
   products: Product[]
-  anamnesisForms?: { id: string; name: string }[]
-  attendanceForms?: { id: string; name: string }[]
+  fichas?: { id: string; name: string }[]
   existing?: ExistingProcedure
   onSuccess?: () => void
   onCancel?: () => void
@@ -90,7 +88,7 @@ export function ProcedureForm(props: ProcedureFormProps) {
   return props.existing ? <EditProcedureForm {...props} /> : <CreateProcedureForm {...props} />
 }
 
-function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanceForms = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending }: InnerProps) {
+function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending }: InnerProps) {
 
   const [selectedBranches, setSelectedBranches] = useState<string[]>(existing?.branch_ids ?? [])
   const [insumos, setInsumos] = useState<{ product_id: string; quantity: number; unit_cost: number }[]>(
@@ -260,20 +258,15 @@ function ProcedureFormInner({ branches, products, anamnesisForms = [], attendanc
           </label>
         </Field>
 
+        {/* UMA ficha. Eram duas — "de anamnese" e "de atendimento" —, com os
+            mesmos campos possíveis e o mesmo momento de preenchimento: quem
+            cadastrava um procedimento tinha de escolher em qual das duas pôr
+            cada pergunta, e a escolha não mudava nada (2026-09-25). */}
         <div style={{ gridColumn: '1 / -1' }}>
-          <Field label="Ficha de anamnese" hint="Opcional — preenchida pelo profissional durante o atendimento">
-            <select name="anamnesis_form_id" className="field" defaultValue={existing?.anamnesis_form_id ?? ''}>
+          <Field label="Ficha" hint="Opcional — preenchida pelo profissional durante o atendimento. Se o procedimento for uma avaliação, os campos são os da avaliação.">
+            <select name="form_id" className="field" defaultValue={existing?.form_id ?? ''}>
               <option value="">Nenhuma</option>
-              {anamnesisForms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-            </select>
-          </Field>
-        </div>
-
-        <div style={{ gridColumn: '1 / -1' }}>
-          <Field label="Ficha de atendimento" hint="Opcional — preenchida pelo profissional durante o atendimento">
-            <select name="attendance_form_id" className="field" defaultValue={existing?.attendance_form_id ?? ''}>
-              <option value="">Nenhuma</option>
-              {attendanceForms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+              {fichas.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </Field>
         </div>

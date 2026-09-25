@@ -13,7 +13,6 @@ export interface CalendarEvent {
   status:          string
   clientName:      string
   procedureName:   string
-  isEvaluation:    boolean
   professionalId:  string
   professionalName: string
   price:           string

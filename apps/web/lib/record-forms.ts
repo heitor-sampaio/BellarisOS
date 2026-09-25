@@ -1,5 +1,8 @@
-// Helper neutro para montar as fichas (anamnese + atendimento) preenchidas por atendimento,
-// a partir das entries do prontuário. Usado nos perfis de cliente (staff/admin).
+// Helper neutro para montar a ficha preenchida em cada atendimento, a partir
+// das entries do prontuário. Usado nos perfis de cliente (staff/admin).
+//
+// Eram DUAS fichas por entrada — "de anamnese" e "de atendimento" —, que eram a
+// mesma coisa com dois nomes. Viraram uma em 2026-09-25.
 
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import type { ProfileRecordEntry, ProfileFormSnapshot } from '@/components/branch/client-profile'
@@ -11,11 +14,10 @@ interface FormBlob {
 }
 
 export interface RawMreEntry {
-  appointment_id?:  string | null
-  notes?:           string | null
-  anamnesis_data?:  { customForm?: FormBlob } | null
-  attendance_data?: { attendanceForm?: FormBlob } | null
-  created_at?:      string
+  appointment_id?: string | null
+  notes?:          string | null
+  form_data?:      { ficha?: FormBlob } | null
+  created_at?:     string
 }
 
 function toSnapshot(blob: FormBlob | undefined | null): ProfileFormSnapshot | null {
@@ -35,19 +37,18 @@ export function buildRecordForms(
   procedureNameById: Map<string, string>,
 ): ProfileRecordEntry[] {
   return entries
-    .map(e => {
-      const anamnesis  = toSnapshot(e.anamnesis_data?.customForm)
-      const attendance = toSnapshot(e.attendance_data?.attendanceForm)
-      if (!anamnesis && !attendance) return null
+    // flatMap em vez de map+filter: com uma ficha só, a entrada sem ficha
+    // simplesmente não produz item, e o tipo sai certo sem predicado.
+    .flatMap<ProfileRecordEntry>(e => {
+      const ficha = toSnapshot(e.form_data?.ficha)
+      if (!ficha) return []
       const appointmentId = e.appointment_id ?? ''
-      return {
+      return [{
         appointmentId,
         createdAt:     e.created_at ?? '',
         procedureName: procedureNameById.get(appointmentId) ?? null,
-        anamnesis,
-        attendance,
-      } satisfies ProfileRecordEntry
+        ficha,
+      }]
     })
-    .filter((x): x is ProfileRecordEntry => x !== null)
     .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
 }

@@ -238,7 +238,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
                   {heroEvent.ev.clientName}
                 </p>
                 <p style={{ fontSize: 'var(--text-xs-sz)', color: 'rgba(255,255,255,0.75)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {format(parseISO(heroEvent.ev.start), 'HH:mm')} · {heroEvent.ev.isEvaluation ? 'Avaliação' : heroEvent.ev.procedureName}
+                  {format(parseISO(heroEvent.ev.start), 'HH:mm')} · {heroEvent.ev.procedureName}
                 </p>
               </>
             ) : (
@@ -413,7 +413,7 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
                             {ev.clientName}
                           </p>
                           <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>
-                            {ev.isEvaluation ? 'Avaliação' : ev.procedureName}
+                            {ev.procedureName}
                           </p>
                         </div>
                       </div>

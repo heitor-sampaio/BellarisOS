@@ -5,7 +5,7 @@ import { addAppointment, dadosParaAgendar, buscarClientesParaAgendar } from '@/a
 import { X, Calendar, Search, UserPlus, Loader2 } from 'lucide-react'
 
 interface Client      { id: string; name: string; phone: string }
-interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number; is_evaluation?: boolean }
+interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number }
 interface Professional { id: string; name: string }
 interface Room        { id: string; name: string }
 interface Unidade     { id: string; name: string; slug: string }
@@ -308,7 +308,7 @@ export function AppointmentModal({
               <option value="">{carregandoUnidade ? 'Carregando…' : 'Selecione o procedimento…'}</option>
               {dados.procedures.map(p => (
                 <option key={p.id} value={p.id}>
-                  {p.is_evaluation ? '★ ' : ''}{p.name} — {p.duration_min}min — R$ {parseFloat(String(p.price)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  {p.name} — {p.duration_min}min — R$ {parseFloat(String(p.price)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </option>
               ))}
             </select>

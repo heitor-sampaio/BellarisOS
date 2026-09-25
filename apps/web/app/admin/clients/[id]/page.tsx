@@ -78,7 +78,7 @@ export default async function AdminClientProfilePage({
   ] = await Promise.all([
     admin
       .from('appointments')
-      .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, is_evaluation, professional_id, procedures(name), professional:users!professional_id(name)')
+      .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, professional_id, procedures(name), professional:users!professional_id(name)')
       .eq('client_id', id)
       .order('scheduled_at', { ascending: false })
       .limit(60),
@@ -91,7 +91,7 @@ export default async function AdminClientProfilePage({
 
     admin
       .from('medical_records')
-      .select('id, general_anamnesis, consent_terms(id, title, signed_at, signed_via), entries:medical_record_entries(appointment_id, notes, anamnesis_data, attendance_data, created_at)')
+      .select('id, general_anamnesis, consent_terms(id, title, signed_at, signed_via), entries:medical_record_entries(appointment_id, notes, form_data, created_at)')
       .eq('client_id', id)
       .maybeSingle(),
 
@@ -339,8 +339,7 @@ export default async function AdminClientProfilePage({
   for (const a of (appts ?? [])) {
     const proc   = (a.procedures as { name?: string } | null)?.name ?? '—'
     const prof   = (a.professional as { name?: string } | null)?.name ?? '—'
-    const isEval = Boolean((a as any).is_evaluation)
-    const label  = isEval ? 'Avaliação' : proc
+    const label  = proc
 
     if (a.status === 'COMPLETED' && (a as any).completed_at) {
       history.push({ id: uid('ac'), date: (a as any).completed_at, type: 'APPOINTMENT_COMPLETED', title: `Atendimento: ${label}`, subtitle: `com ${prof}`, amount: parseFloat(String(a.price ?? 0)), link: `/admin/agenda/${a.id}` })

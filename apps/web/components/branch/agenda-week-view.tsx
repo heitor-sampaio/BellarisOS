@@ -69,7 +69,7 @@ function EventCard({ ev, onClick }: { ev: CalendarEvent; onClick: () => void }) 
         {shortName(ev.clientName)}
       </div>
       <div style={{ fontSize: 'var(--text-overline)', color: isProgress ? 'var(--brand)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {ev.isEvaluation ? 'Avaliação' : ev.procedureName}
+        {ev.procedureName}
       </div>
     </div>
   )

@@ -107,7 +107,7 @@ export async function buildClientExport(
     // ser embutido aqui — é resolvido depois, por consulta separada.
     const recordRes = await admin
       .from('medical_records')
-      .select('created_at, general_anamnesis, medical_record_entries(created_at, notes, intercurrences, products_used, anamnesis_data, attendance_data, appointment_id, users(name), record_photos(created_at, type, source)), consent_terms(title, status, signed_at, signed_via, procedure_id)')
+      .select('created_at, general_anamnesis, medical_record_entries(created_at, notes, intercurrences, products_used, form_data, appointment_id, users(name), record_photos(created_at, type, source)), consent_terms(title, status, signed_at, signed_via, procedure_id)')
       .eq('client_id', clientId)
       .maybeSingle()
 

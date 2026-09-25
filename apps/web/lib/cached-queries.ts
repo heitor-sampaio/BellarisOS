@@ -223,7 +223,7 @@ export function getCachedBranchProcedures(branchId: string, tenantId: string) {
       const admin = createAdminClient()
       const data = await ler(admin
         .from('procedures')
-        .select('id, name, category, duration_min, price, is_evaluation')
+        .select('id, name, category, duration_min, price')
         .eq('tenant_id', tenantId)
         .or(`branch_id.is.null,branch_id.eq.${branchId}`)
         .eq('is_active', true)
@@ -321,7 +321,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
       ] = await Promise.all([
         admin
           .from('appointments')
-          .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, is_evaluation, professional_id, procedures(name), professional:users!professional_id(name)')
+          .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, professional_id, procedures(name), professional:users!professional_id(name)')
           .eq('client_id', clientId)
           .order('scheduled_at', { ascending: false })
           .limit(60),
@@ -332,7 +332,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
           .maybeSingle(),
         admin
           .from('medical_records')
-          .select('id, general_anamnesis, consent_terms(id, title, signed_at, signed_via), entries:medical_record_entries(appointment_id, notes, anamnesis_data, attendance_data, created_at)')
+          .select('id, general_anamnesis, consent_terms(id, title, signed_at, signed_via), entries:medical_record_entries(appointment_id, notes, form_data, created_at)')
           .eq('client_id', clientId)
           .maybeSingle(),
         admin

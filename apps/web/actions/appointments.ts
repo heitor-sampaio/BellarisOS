@@ -226,7 +226,7 @@ export async function addAppointment(
       scheduledAt:    formData.get('scheduled_at') as string,
       roomId:         (formData.get('room_id') as string) || null,
       notes:          (formData.get('notes') as string)?.trim() || null,
-      isEvaluation:   formData.get('is_evaluation') === 'true',
+
       source:         'INTERNAL',
     })
 
@@ -374,7 +374,7 @@ async function completeAppointment(
 
   // 2. Cria entrada de prontuário (se não existir)
   await gravar(admin.from('medical_record_entries').upsert(
-    { appointment_id: appointmentId, professional_id: appt.professional_id, anamnesis_data: {} },
+    { appointment_id: appointmentId, professional_id: appt.professional_id },
     { onConflict: 'appointment_id', ignoreDuplicates: true }
   ), 'abrir a entrada no prontuário')
 
@@ -1197,7 +1197,10 @@ async function saveSessionNotesInterno(
         {
           appointment_id:  appointmentId,
           professional_id: appt.professional_id,
-          anamnesis_data:  { notes },
+          // `notes` tem coluna própria. Isto gravava as observações dentro de
+          // `anamnesis_data`, a coluna das respostas da ficha — e o prontuário
+          // ficava com a observação onde ninguém a lia.
+          notes,
         },
         { onConflict: 'appointment_id' },
       ), 'salvar as observações do atendimento')
@@ -1786,7 +1789,7 @@ export async function confirmAndRateAppointment(params: {
 // sob demanda, em vez de virem prontos da página como no portal da unidade.
 
 export interface DadosParaAgendar {
-  procedures:    { id: string; name: string; category: string; duration_min: number; price: number; is_evaluation: boolean }[]
+  procedures:    { id: string; name: string; category: string; duration_min: number; price: number }[]
   professionals: { id: string; name: string }[]
   rooms:         { id: string; name: string }[]
   slug:          string
@@ -1814,12 +1817,11 @@ export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgend
     getCachedRoomsByBranch(branchId, ctx.tenantId!),
   ])
 
-  type Proc = { id: string; name: string; category: string; duration_min: number; price: number; is_evaluation?: boolean }
+  type Proc = { id: string; name: string; category: string; duration_min: number; price: number }
   return {
     procedures: (procedures as Proc[]).map(p => ({
       id: p.id, name: p.name, category: p.category,
       duration_min: p.duration_min, price: Number(p.price),
-      is_evaluation: Boolean(p.is_evaluation),
     })),
     professionals: (professionals as { id: string; name: string }[]).map(p => ({ id: p.id, name: p.name })),
     rooms:         (rooms as { id: string; name: string }[]).map(r => ({ id: r.id, name: r.name })),

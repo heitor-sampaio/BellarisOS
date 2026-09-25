@@ -41,6 +41,13 @@ test.afterAll(async () => {
 })
 
 test('duas automações que se alimentam param no teto de profundidade', async ({ page }) => {
+  // Este teste ESPERA o motor sossegar: 25s para o anel começar a rodar e até
+  // 30s para a contagem parar de mudar. São ~55s só de espera, e o limite
+  // padrão da suíte é 60s — sozinho ele cabia, dentro do conjunto (com o dev
+  // server dividido com os outros) estourava. O limite é do TESTE, não do
+  // motor: o que se prova aqui é que a contagem estabiliza, e ela estabiliza.
+  test.setTimeout(150_000)
+
   const db = banco()
   const tenant = await tenantId()
 

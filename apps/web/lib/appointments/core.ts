@@ -25,7 +25,6 @@ export interface CreateAppointmentInput {
   scheduledAt:    string                 // ISO UTC
   roomId?:        string | null
   notes?:         string | null
-  isEvaluation?:  boolean
   source?:        'INTERNAL' | 'ONLINE' | 'CLIENT_APP' | 'COMMERCIAL'
 }
 
@@ -43,28 +42,24 @@ export async function createAppointmentCore(
 ): Promise<{ id: string } | { error: string }> {
   if (!input.branchId)                              return { error: 'Filial não identificada.' }
   if (!input.clientId)                              return { error: 'Selecione um cliente.' }
-  if (!input.isEvaluation && !input.procedureId)    return { error: 'Selecione um procedimento.' }
+  // Não há mais agendamento sem procedimento. A avaliação era a exceção que
+  // permitia isso — e virou um procedimento como outro qualquer (2026-09-25).
+  if (!input.procedureId)                          return { error: 'Selecione um procedimento.' }
   if (!input.professionalId)                        return { error: 'Selecione um profissional.' }
   if (!input.scheduledAt)                           return { error: 'Informe data e hora.' }
 
   // Preço/duração do procedimento (quando houver)
-  let procedure: { price: number; duration_min: number; is_evaluation: boolean } | null = null
+  let procedure: { price: number; duration_min: number } | null = null
   if (input.procedureId) {
     const { data, error } = await admin
       .from('procedures')
-      .select('price, duration_min, is_evaluation')
+      .select('price, duration_min')
       .eq('id', input.procedureId)
       .eq('tenant_id', ctx.tenantId!)
       .single()
     if (error || !data) return { error: 'Procedimento não encontrado.' }
     procedure = data
   }
-
-  // Avaliação é atributo do PROCEDIMENTO: era um checkbox no agendamento que
-  // fixava R$ 0 e 60 minutos e criava o atendimento sem procedimento nenhum.
-  // O `input.isEvaluation` sobrevive para quem ainda manda a flag (extensão,
-  // chamadas antigas), mas quem manda um procedimento marcado não precisa dela.
-  const ehAvaliacao = procedure?.is_evaluation ?? input.isEvaluation ?? false
 
   const durationMin = procedure?.duration_min ?? 60
   const start       = new Date(input.scheduledAt)
@@ -113,7 +108,6 @@ export async function createAppointmentCore(
       notes:           input.notes ?? null,
       status:          'SCHEDULED',
       source:          input.source ?? 'INTERNAL',
-      is_evaluation:   ehAvaliacao,
       created_by_id:   ctx.internalUserId,
     })
     .select('id')

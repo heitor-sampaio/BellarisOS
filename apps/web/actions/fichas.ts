@@ -1,5 +1,15 @@
 'use server'
 
+/**
+ * Fichas do procedimento — o construtor é UM só.
+ *
+ * Este arquivo era `attendance-forms.ts`, e existia um gêmeo
+ * `anamnesis-forms.ts` com o mesmo código e outro nome. Quem montava uma ficha
+ * tinha de decidir antes se ela era "de anamnese" ou "de atendimento", e a
+ * escolha não mudava nada — nem os campos, nem quando a ficha aparece.
+ * Decisão do Heitor em 2026-09-25.
+ */
+
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -13,7 +23,7 @@ function revalidate() {
   revalidatePath('/[slug]/settings', 'page')
 }
 
-export async function createAttendanceForm(input: { name: string; schema: unknown }): Promise<Result> {
+export async function criarFicha(input: { name: string; schema: unknown }): Promise<Result> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
@@ -27,7 +37,7 @@ export async function createAttendanceForm(input: { name: string; schema: unknow
 
     const admin = createAdminClient()
     const { data, error } = await admin
-      .from('attendance_forms')
+      .from('forms')
       .insert({ tenant_id: ctx.tenantId!, name, schema })
       .select('id')
       .single()
@@ -40,7 +50,7 @@ export async function createAttendanceForm(input: { name: string; schema: unknow
   }
 }
 
-export async function updateAttendanceForm(input: {
+export async function atualizarFicha(input: {
   id: string; name: string; schema: unknown; isActive?: boolean
 }): Promise<Result> {
   try {
@@ -59,7 +69,7 @@ export async function updateAttendanceForm(input: {
     if (typeof input.isActive === 'boolean') patch.is_active = input.isActive
 
     const { error } = await admin
-      .from('attendance_forms')
+      .from('forms')
       .update(patch)
       .eq('id', input.id)
       .eq('tenant_id', ctx.tenantId!)
@@ -72,13 +82,13 @@ export async function updateAttendanceForm(input: {
   }
 }
 
-export async function setAttendanceFormActive(id: string, isActive: boolean): Promise<Result> {
+export async function definirFichaAtiva(id: string, isActive: boolean): Promise<Result> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     const admin = createAdminClient()
     const { error } = await admin
-      .from('attendance_forms')
+      .from('forms')
       .update({ is_active: isActive, updated_at: new Date().toISOString() })
       .eq('id', id)
       .eq('tenant_id', ctx.tenantId!)
@@ -90,14 +100,14 @@ export async function setAttendanceFormActive(id: string, isActive: boolean): Pr
   }
 }
 
-export async function deleteAttendanceForm(id: string): Promise<Result> {
+export async function apagarFicha(id: string): Promise<Result> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
     const admin = createAdminClient()
-    // FK procedures.attendance_form_id é ON DELETE SET NULL — remoção é segura.
+    // FK procedures.form_id é ON DELETE SET NULL — remoção é segura.
     const { error } = await admin
-      .from('attendance_forms')
+      .from('forms')
       .delete()
       .eq('id', id)
       .eq('tenant_id', ctx.tenantId!)

@@ -18,7 +18,9 @@ export async function procedimentosParaPlano(tenantId: string) {
       .select('id, name, category, duration_min, price, procedure_products(product_id, quantity, products(id, name, unit))')
       .eq('tenant_id', tenantId)
       .eq('is_active', true)
-      .eq('is_evaluation', false)
+      // A avaliação deixou de ser uma entidade e não precisa mais ser
+      // excluída à mão: se ela vale como item de plano é escolha de quem monta
+      // o plano, como qualquer outro procedimento (2026-09-25).
       .order('name'),
     admin
       .from('products')

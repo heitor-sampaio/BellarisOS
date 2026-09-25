@@ -28,7 +28,7 @@ import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { AnamnesisTab } from '@/components/branch/anamnesis-tab'
 import { AnamnesisFormRenderer, type AnamnesisAnswers, type AnamnesisFormHandle } from '@/components/branch/anamnesis-form-renderer'
 import { AttendanceRecordCard } from '@/components/branch/attendance-record-card'
-import { saveProcedureAttendance } from '@/actions/anamnesis'
+import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { rotaAgenda } from '@/lib/rotas'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
@@ -54,7 +54,6 @@ export interface SessionAppointment {
   roomName:            string | null
   savedNotes:          string | null
   savedIntercurrences: string | null
-  isEvaluation:        boolean
   complaints:          string | null
   clientConfirmedAt:   string | null
   clientRating:        number | null
@@ -102,10 +101,9 @@ interface Props {
   appointment:        SessionAppointment
   client:             SessionClient
   anamnesis:          GeneralAnamnesis | null
-  anamnesisForm:      { name: string; rows: AnamnesisRow[] } | null
-  anamnesisAnswers:   Record<string, unknown>
-  attendanceForm:     { name: string; rows: AnamnesisRow[] } | null
-  attendanceAnswers:  Record<string, unknown>
+  /** A ficha do procedimento — uma só desde 2026-09-25. */
+  ficha:              { name: string; rows: AnamnesisRow[] } | null
+  respostasDaFicha:   Record<string, unknown>
   products:           SessionProduct[]
   availableProducts:  AvailableProduct[]
   professionals:      SessionProfessional[]
@@ -650,7 +648,9 @@ function DorasCard({ value, onChange, readonly }: {
   )
 }
 
-// -- Anamnese inline para avaliação (sempre em modo edição, controlado) ---------
+// -- Anamnese GERAL do cliente, inline (sempre em modo edição, controlado) -----
+// Este é o questionário de saúde da pessoa, preenchido uma vez e reaproveitado:
+// outra coisa da ficha do procedimento.
 
 const EVAL_SKIN_TYPES = [
   { value: '',         label: 'Não informado' },
@@ -740,7 +740,7 @@ function EvaluationAnamnesisFields({
 // -- Main component ------------------------------------------------------------
 
 export function AppointmentSession({
-  appointment, client, anamnesis, anamnesisForm, anamnesisAnswers, attendanceForm, attendanceAnswers, products, availableProducts,
+  appointment, client, anamnesis, ficha, respostasDaFicha, products, availableProducts,
   professionals, history, branchId, slug,
   canCheckin, canManage, canEditRecords, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
@@ -853,8 +853,7 @@ export function AppointmentSession({
   // Observações (controladas) + salvar unificado da ficha
   const [notes,          setNotes]          = useState(appointment.savedNotes ?? '')
   const [intercurrences, setIntercurrences] = useState(appointment.savedIntercurrences ?? '')
-  const anamnesisFormRef  = useRef<AnamnesisFormHandle>(null)
-  const attendanceFormRef = useRef<AnamnesisFormHandle>(null)
+  const fichaRef = useRef<AnamnesisFormHandle>(null)
   const [savingAll,   setSavingAll]   = useState(false)
   const [saveAllError, setSaveAllError] = useState<string | null>(null)
   const [savedAllAt,  setSavedAllAt]  = useState<number | null>(null)
@@ -866,8 +865,7 @@ export function AppointmentSession({
     fd.set('notes', notes)
     fd.set('intercurrences', intercurrences)
     const results = await Promise.all([
-      anamnesisFormRef.current?.save() ?? Promise.resolve({ error: undefined }),
-      attendanceFormRef.current?.save() ?? Promise.resolve({ error: undefined }),
+      fichaRef.current?.save() ?? Promise.resolve({ error: undefined }),
       saveDraftNotes(null, fd),
     ])
     setSavingAll(false)
@@ -1007,10 +1005,14 @@ export function AppointmentSession({
     </div>
   )
 
-  // Ficha de atendimento = documento único (4 seções): Dados do cliente (+ anamnese geral),
-  // Dados do procedimento (com insumos), Ficha de anamnese (construtor), Ficha de atendimento (construtor).
-  // insumosNode só é passado no fluxo de atendimento normal (avaliações não consomem insumos).
-  // unified = botão único "Salvar" externo salva as fichas (oculta os botões internos e usa refs).
+  // Documento único: Dados do cliente (+ anamnese geral do cliente), Dados do
+  // procedimento (com insumos) e a Ficha do procedimento (construtor).
+  //
+  // A "anamnese geral" aqui é o questionário de saúde do CLIENTE, preenchido
+  // uma vez — outra coisa da ficha por procedimento, que era duplicada em
+  // "anamnese" e "atendimento" até 2026-09-25.
+  //
+  // unified = botão único "Salvar" externo salva a ficha (oculta o interno).
   const renderFichaCard = (insumosNode?: ReactNode, unified = false) => (
     <AttendanceRecordCard
       client={{ name: client.name, document: client.document, birthDate: client.birthDate, phone: client.phone }}
@@ -1019,27 +1021,15 @@ export function AppointmentSession({
       }
       procedureNode={procedureNode}
       insumos={insumosNode ?? null}
-      anamnesis={anamnesisForm && anamnesisForm.rows.length > 0 ? {
-        name: anamnesisForm.name,
+      ficha={ficha && ficha.rows.length > 0 ? {
+        name: ficha.name,
         node: (
           <AnamnesisFormRenderer
-            ref={unified ? anamnesisFormRef : null}
+            ref={unified ? fichaRef : null}
             appointmentId={appointment.id} slug={slug}
-            formName={anamnesisForm.name} rows={anamnesisForm.rows}
-            initial={anamnesisAnswers as AnamnesisAnswers} canEdit={canEditRecords}
-            hideSaveButton={unified}
-          />
-        ),
-      } : null}
-      attendance={attendanceForm && attendanceForm.rows.length > 0 ? {
-        name: attendanceForm.name,
-        node: (
-          <AnamnesisFormRenderer
-            ref={unified ? attendanceFormRef : null}
-            appointmentId={appointment.id} slug={slug}
-            formName={attendanceForm.name} rows={attendanceForm.rows}
-            initial={attendanceAnswers as AnamnesisAnswers} canEdit={canEditRecords}
-            saveAction={saveProcedureAttendance}
+            formName={ficha.name} rows={ficha.rows}
+            initial={respostasDaFicha as AnamnesisAnswers} canEdit={canEditRecords}
+            saveAction={salvarFichaDoProcedimento}
             hideSaveButton={unified}
           />
         ),
@@ -1220,9 +1210,7 @@ export function AppointmentSession({
               <button type="button" onClick={() => setShowPayment(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
                 <CheckCircle2 size={14} />
-                {appointment.isEvaluation
-                  ? `Confirmar pagamento da avaliação (${fmtBRL(appointment.price)})`
-                  : 'Confirmar pagamento'}
+                Confirmar pagamento
               </button>
             )}
 
@@ -1418,7 +1406,12 @@ export function AppointmentSession({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
 
-            {appointment.isEvaluation ? (() => {
+            {/* Montar plano de tratamento durante o atendimento.
+                Era o fluxo EXCLUSIVO da avaliação, que deixou de existir como
+                entidade em 2026-09-25. A condição que sobrou é a que sempre
+                importou de verdade: não se propõe um plano novo dentro de uma
+                sessão que já pertence a um plano. */}
+            {!isPartOfPlan ? (() => {
               // Plano já gerado e enviado para recepção → modo leitura
               const planGenerated = ['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')
               if (planGenerated) return (

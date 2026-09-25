@@ -34,7 +34,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
   let appointmentsQuery = supabase
     .from('appointments')
     .select(`
-      id, scheduled_at, duration_min, status, price, professional_id, is_evaluation,
+      id, scheduled_at, duration_min, status, price, professional_id,
       clients(name),
       procedures(name),
       users!professional_id(name)

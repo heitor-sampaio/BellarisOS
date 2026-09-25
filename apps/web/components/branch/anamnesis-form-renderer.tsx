@@ -6,7 +6,7 @@ import {
   flattenFields, isInjectableMap, emptyInjectableMap,
   type AnamnesisField, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
-import { saveProcedureAnamnesis, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
+import { salvarFichaDoProcedimento, uploadAnamnesisPhoto, signAnamnesisPhotos } from '@/actions/anamnesis'
 import { InjectableMapField } from '@/components/branch/injectable-map-field'
 
 // O planejador de injetáveis é o primeiro campo com valor estruturado — até
@@ -26,7 +26,7 @@ interface Props {
   rows:          AnamnesisRow[]
   initial:       AnamnesisAnswers
   canEdit:       boolean
-  // Ação de persistência injetável — default: ficha de anamnese.
+  // Ação de persistência injetável — default: a ficha do procedimento.
   saveAction?:   (args: SaveArgs) => Promise<{ error?: string; ok?: true }>
   // Oculta o botão de salvar interno (quando um botão externo salva tudo).
   hideSaveButton?: boolean
@@ -35,7 +35,7 @@ interface Props {
 export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(function AnamnesisFormRenderer(
   { appointmentId, slug, formName, rows, initial, canEdit, saveAction, hideSaveButton }, ref,
 ) {
-  const doSave = saveAction ?? saveProcedureAnamnesis
+  const doSave = saveAction ?? salvarFichaDoProcedimento
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
   const [saving, setSaving]   = useState(false)
   const [savedAt, setSavedAt] = useState<number | null>(null)

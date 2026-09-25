@@ -374,6 +374,13 @@ const clients = await admin.from('clients').select('*')
 - Status: `SCHEDULED → CONFIRMED → IN_PROGRESS → COMPLETED → CANCELLED | NO_SHOW`
 - Campos de timestamp por transição: `confirmedAt`, `startedAt`, `completedAt`, `cancelledAt`
 - Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (extensão do time comercial). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
+- **Todo agendamento tem procedimento.** A "avaliação" era a exceção que
+  permitia marcar sem escolher um — ela deixou de ser entidade em 2026-09-25 e
+  virou um procedimento como outro qualquer, com a ficha que precisar. Não há
+  mais `is_evaluation` em lugar nenhum: se o atendimento é uma avaliação,
+  isso está no procedimento escolhido.
+- O funil comercial passou a ser medido por `source = COMMERCIAL`, que é
+  o que a métrica de "avaliações agendadas × comparecimento" sempre quis saber.
 - `clientNotes`: observações que o cliente envia ao agendar pelo app
 - `roomId`: sala/cabine opcional — uma sala não pode ter dois agendamentos simultâneos (validar no action)
 - `cancellationReason`: obrigatório ao cancelar para rastreabilidade
@@ -423,7 +430,17 @@ const procedures = await ler(
 ### 9.4 Prontuário
 - `MedicalRecord`: 1 por cliente
 - `MedicalRecordEntry`: 1 por `Appointment` concluído (`appointmentId @unique`)
-- `AnamnesisData`: JSON livre por entrada — a estrutura do formulário varia por categoria de procedimento
+- **A ficha do procedimento é UMA**, montada no construtor
+  (Configurações → Fichas, tabela `forms`) e ligada ao procedimento por
+  `procedures.form_id`. As respostas ficam em
+  `medical_record_entries.form_data`.
+  - Eram DUAS — "de anamnese" e "de atendimento" —, com o mesmo construtor, os
+    mesmos campos possíveis e o mesmo momento de preenchimento. Quem cadastrava
+    um procedimento tinha de escolher em qual das duas pôr cada pergunta, e a
+    escolha não mudava nada. Unificadas em 2026-09-25.
+  - **Não confundir com `medical_records.general_anamnesis`**: aquilo é o
+    questionário de saúde do CLIENTE, preenchido uma vez, que alimenta o termo
+    de consentimento e o planejamento. Esse continua existindo e é outra coisa.
 - `RecordPhoto.source`: `"web"` ou `"mobile"` — rastrear de onde veio o upload
 - `RecordPhoto.type`: `"before"`, `"after"`, ou `"during"`
 - `ConsentTerm.signedVia`: `"web"` ou `"mobile"`
@@ -841,6 +858,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Fechar LISTA de período em "agora" (resolvePeriod.to) — use fullTo, o fim do período
 ❌ Tirar inicial de nome com nome[0] ou charAt(0) — use iniciaisDoNome (quebra em emoji)
 ❌ map() que devolve <> sem chave (a key no filho de dentro não conta)
+❌ Criar agendamento sem procedure_id (a avaliação era a exceção e não existe mais)
+❌ Confundir a ficha do PROCEDIMENTO (forms/form_data) com a anamnese GERAL do cliente
 ❌ Chamar action que grava e ignorar o { error } que ela devolve
 ❌ Escrever no banco fora de transação quando duas gravações precisam valer juntas
 ❌ Introduzir cores, fontes ou sombras fora dos tokens da skill /lumiere-design
