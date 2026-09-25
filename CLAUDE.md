@@ -31,20 +31,20 @@ unidade impossível.
 
 | Camada | Tecnologia |
 |---|---|
-| Web Framework | Next.js 14 (App Router) |
+| Web Framework | Next.js 16 (App Router) |
 | Mobile Framework | Expo (React Native) |
 | Linguagem | TypeScript (strict) em todos os packages |
 | Estilo Web | Tailwind CSS + shadcn/ui |
 | Estilo Mobile | NativeWind + componentes customizados |
 | Banco | PostgreSQL via Supabase |
-| ORM | Prisma |
+| Acesso ao banco | Cliente Supabase (PostgREST) + `lib/db.ts` |
 | Auth | Supabase Auth (JWT + RLS) |
 | Storage | Supabase Storage (fotos de prontuário) |
 | Cache / Filas | Upstash Redis + BullMQ |
 | Pagamentos | Pagar.me (assinaturas da rede) |
 | WhatsApp | uazapi (não oficial) + Cloud API da Meta (oficial) |
 | Push Notifications | Expo Push Notifications |
-| Deploy Web | Vercel |
+| Deploy Web | Railway (Docker) |
 | Deploy Mobile | EAS Build (Expo Application Services) |
 | Monorepo | Turborepo |
 
@@ -79,7 +79,7 @@ estetica-os/                          (raiz do monorepo)
 │   │   │   └── branch/               exclusivos do portal de filial
 │   │   ├── lib/
 │   │   │   ├── supabase/             clients (server, client, middleware)
-│   │   │   ├── prisma.ts             singleton do Prisma client
+│   │   │   ├── db.ts                 gravar / ler / tentar (§13.1)
 │   │   │   ├── auth.ts               helpers de autenticação e permissão
 │   │   │   └── utils.ts
 │   │   ├── hooks/
@@ -106,7 +106,7 @@ estetica-os/                          (raiz do monorepo)
 │           └── auth.ts
 │
 ├── packages/
-│   ├── db/                           schema Prisma + migrations
+│   ├── db/                           schema Prisma — LEGADO, ninguém importa
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma
 │   │   │   └── migrations/
@@ -140,7 +140,7 @@ estetica-os/                          (raiz do monorepo)
 1. Usuário autentica via Supabase Auth
 2. JWT contém claims customizados: `tenant_id`, `branch_id`, `role`, `client_id`
 3. Middleware do Next.js (web) ou contexto do app (mobile) lê esses claims
-4. Prisma **sempre** recebe `tenantId` e/ou `branchId` como filtro obrigatório
+4. Toda query **sempre** filtra por `tenant_id` e/ou `branch_id`
 5. RLS do Postgres é a segunda linha de defesa
 
 ### Claims do JWT
@@ -312,45 +312,58 @@ Variáveis/funções: camelCase
 
 ```typescript
 'use server'
-import { getTenantContext } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { getTenantContext, assertPermission } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { gravar } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
 import { CreateAppointmentSchema } from '@estetica-os/validators'
 
 export async function createAppointment(input: unknown) {
   const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'MANAGE')
   const data = CreateAppointmentSchema.parse(input)
 
-  // branchId SEMPRE vem do contexto — nunca do input do cliente
-  const appointment = await prisma.appointment.create({
-    data: { ...data, branchId: ctx.branchId! },
-  })
+  const admin = createAdminClient()
+
+  // branch_id SEMPRE vem do contexto — nunca do input do cliente.
+  // `gravar` devolve a linha ou PARA o fluxo: não existe escrita que
+  // falha em silêncio (ver §13.1).
+  const appointment = await gravar(
+    admin.from('appointments')
+      .insert({ ...data, tenant_id: ctx.tenantId, branch_id: ctx.branchId })
+      .select()
+      .single(),
+    'criar o agendamento',
+  )
 
   revalidatePath(`/${ctx.branch?.slug}/agenda`)
   return appointment
 }
 ```
 
-### Queries Prisma — filtro obrigatório
+### Queries — filtro obrigatório
 
 ```typescript
-// ✅ Usuário operacional — filtrar por branchId
-const clients = await prisma.client.findMany({
-  where: { branchId: ctx.branchId },
-})
+// ✅ Usuário operacional — filtrar por branch_id
+const clients = await ler(
+  admin.from('clients').select('*').eq('branch_id', ctx.branchId),
+  'listar os clientes da unidade',
+)
 
-// ✅ Network Admin — filtrar por tenantId
-const branches = await prisma.branch.findMany({
-  where: { tenantId: ctx.tenantId },
-})
+// ✅ Network Admin — filtrar por tenant_id
+const branches = await ler(
+  admin.from('branches').select('*').eq('tenant_id', ctx.tenantId),
+  'listar as unidades da rede',
+)
 
-// ✅ Cliente final — filtrar por clientId
-const appointments = await prisma.appointment.findMany({
-  where: { clientId: ctx.clientId },
-})
+// ✅ Cliente final — filtrar por client_id
+const appointments = await ler(
+  admin.from('appointments').select('*').eq('client_id', ctx.clientId),
+  'listar os agendamentos do cliente',
+)
 
 // ❌ NUNCA — sem filtro
-const clients = await prisma.client.findMany()
+const clients = await admin.from('clients').select('*')
 ```
 
 ---
@@ -364,7 +377,7 @@ const clients = await prisma.client.findMany()
 - `clientNotes`: observações que o cliente envia ao agendar pelo app
 - `roomId`: sala/cabine opcional — uma sala não pode ter dois agendamentos simultâneos (validar no action)
 - `cancellationReason`: obrigatório ao cancelar para rastreabilidade
-- Ao marcar `COMPLETED`: disparar consumo de estoque + `FinancialTransaction` + `Commission` + pontos de fidelidade (tudo em `prisma.$transaction`)
+- Ao marcar `COMPLETED`: disparar consumo de estoque + transação financeira + comissão + pontos de fidelidade. **Hoje isso é sequencial e deveria ser atômico** — ver §10.
 
 ### 9.2 Clientes / CRM
 - CPF (`document`) único por `tenantId` — constraint `@@unique([tenantId, document])`
@@ -394,18 +407,17 @@ const clients = await prisma.client.findMany()
 - `ProcedurePriceHistory`: criada automaticamente ao alterar `price` de um procedimento
 - `ProcedureProduct`: insumos consumidos por execução — base do consumo automático de estoque
 
-Query correta para buscar procedimentos de uma filial:
+Query correta para buscar procedimentos de uma filial — o catálogo base da
+rede (`branch_id` nulo) MAIS o que é local da unidade:
 ```typescript
-const procedures = await prisma.procedure.findMany({
-  where: {
-    tenantId: ctx.tenantId,
-    isActive: true,
-    OR: [
-      { branchId: null },           // catálogo base da rede
-      { branchId: ctx.branchId },   // procedimentos locais da filial
-    ],
-  },
-})
+const procedures = await ler(
+  admin.from('procedures')
+    .select('*')
+    .eq('tenant_id', ctx.tenantId)
+    .eq('is_active', true)
+    .or(`branch_id.is.null,branch_id.eq.${ctx.branchId}`),
+  'listar os procedimentos da unidade',
+)
 ```
 
 ### 9.4 Prontuário
@@ -532,37 +544,28 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 
 ## 10. Fluxo de conclusão de atendimento
 
-Executar em `prisma.$transaction`:
+> **Atenção:** este é o desenho ALVO, não o que está no código. Hoje as sete
+> gravações acontecem em sequência (cada uma falha alto, mas falhar a quarta
+> deixa as três primeiras gravadas). O caminho já provado no estorno é o mesmo
+> que serve aqui: o TypeScript calcula (pontos, comissão, insumos) e **uma
+> função do Postgres grava tudo dentro de uma transação**, sem duplicar regra
+> de negócio no banco. É a próxima frente candidata (DEVLOG §5).
 
-```typescript
-await prisma.$transaction(async (tx) => {
-  // 1. Atualizar status do agendamento
-  await tx.appointment.update({ where: { id }, data: { status: 'COMPLETED', completedAt: new Date() } })
+Os sete passos, na ordem, e o que cada um precisa deixar gravado:
 
-  // 2. Criar entrada no prontuário
-  await tx.medicalRecordEntry.create({ data: { ... } })
+| # | O que grava | Onde |
+|---|---|---|
+| 1 | status `COMPLETED` + `completed_at` | `appointments` |
+| 2 | entrada do prontuário (1 por atendimento, `appointment_id` único) | `medical_record_entries` |
+| 3 | baixa de cada insumo do procedimento, com `balance_after` | `stock_movements` + `products` |
+| 4 | a receita do atendimento | `financial_transactions` |
+| 5 | a comissão do profissional | `commissions` |
+| 6 | a sessão do pacote, se houver | `package_sessions` |
+| 7 | os pontos de fidelidade | `loyalty_transactions` |
 
-  // 3. Baixar estoque
-  for (const item of procedure.products) {
-    await tx.stockMovement.create({ data: { type: 'PROCEDURE_USAGE', quantity: -item.quantity, ... } })
-    await tx.product.update({ where: { id: item.productId }, data: { currentStock: { decrement: item.quantity } } })
-  }
-
-  // 4. Criar transação financeira
-  await tx.financialTransaction.create({ data: { type: 'INCOME', ... } })
-
-  // 5. Criar comissão
-  await tx.commission.create({ data: { ... } })
-
-  // 6. Atualizar sessão de pacote (se aplicável)
-  if (packageSessionId) {
-    await tx.packageSession.update({ where: { id: packageSessionId }, data: { status: 'USED', usedAt: new Date() } })
-  }
-
-  // 7. Creditar pontos de fidelidade
-  await tx.loyaltyTransaction.create({ data: { points: calcPoints(price), ... } })
-})
-```
+A ordem importa: o estoque baixa antes do financeiro porque insumo faltando é
+motivo para o atendimento não fechar, e descobrir isso depois de lançar a
+receita deixa dinheiro registrado para um atendimento que não aconteceu.
 
 ---
 
@@ -690,6 +693,22 @@ Princípios inegociáveis:
 - Em **painel estreito** (o de filtros do inbox tem 288px) o segmentado
   quebraria em duas linhas e deixaria de ler como um controle só: ali a escolha
   exclusiva vira `.filtro-select` de largura cheia (`.painel-de-filtros`).
+- **Barra de rolagem em área de CONTEÚDO é ruído** — some, a rolagem fica
+  (`scrollbar-width: none` mais `::-webkit-scrollbar`). O que avisa
+  que há mais é o conteúdo cortado na borda: o card pela metade no fim da
+  coluna, a aba cortada na lateral. Vale para as colunas do funil
+  (`.crm-coluna-cards`), a rolagem lateral do quadro e as barras de aba.
+  A exceção é o modal (`.modal-body`), onde a barra é fina e rosé.
+- **Sobreposição no celular começa EMBAIXO da topbar**, nunca em
+  `inset: 0`: `top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px))`.
+  A topbar desenha por cima dos primeiros 68px do documento, e o que costuma
+  ficar escondido ali é o cabeçalho da folha — que é onde mora o botão de
+  fechar. Foi o que deixou o card do contato do inbox sem saída no celular.
+- **Popover ancorado num gatilho que fica à direita vira o lado no celular.**
+  `left: 0` de um gatilho encostado na borda direita nasce metade fora da
+  tela, e o que fica de fora não tem rolagem que o alcance. O `<SegSelect>`
+  já decide o lado sozinho (mede o gatilho); painel escrito à mão precisa de
+  `left: auto; right: 0` e um teto de largura em `vw`.
 - **Campo de busca tem fundo branco** (`.campo-busca`), diferente dos demais
   campos, que usam `--bg-app`. A busca vive numa barra de filtros sobre o fundo
   do app; com o mesmo tom do fundo ela sumia na superfície em vez de convidar
@@ -793,7 +812,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ## 14. O que nunca fazer
 
 ```
-❌ Query Prisma sem filtro de tenantId, branchId ou clientId
+❌ Query sem filtro de tenant_id, branch_id ou client_id
 ❌ Expor SUPABASE_SERVICE_ROLE_KEY no client-side ou no mobile
 ❌ Atualizar currentStock diretamente sem criar StockMovement
 ❌ Criar FinancialTransaction fora de um Appointment concluído sem justificativa
@@ -815,6 +834,10 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Escrever no banco fora de transação quando duas gravações precisam valer juntas
 ❌ Introduzir cores, fontes ou sombras fora dos tokens da skill /lumiere-design
 ❌ Escrever cor/sombra/raio/tamanho de fonte à mão em vez de var(--token)
+❌ Escolher o tamanho de um seletor na tela (a altura é --altura-controle, e só)
+❌ Pôr aparência de seletor no style inline — ele vence a classe e desfaz o padrão
+❌ Abrir folha/overlay no celular em inset: 0 (fica atrás da topbar, sem fechar)
+❌ Deixar barra de rolagem à mostra em área de conteúdo (só o modal a tem)
 ❌ Usar a paleta do Tailwind (red-600, green-600…) — o sistema tem a sua
 ❌ Encerrar uma entrega sem atualizar o DEVLOG e a memória (§16)
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
@@ -872,7 +895,7 @@ pnpm dev --filter=mobile            # só o mobile (Expo)
 
 # Banco
 pnpm db:migrate                     # roda migrations pendentes
-pnpm db:studio                      # Prisma Studio
+pnpm db:studio                      # Prisma Studio (só leitura do schema legado)
 pnpm db:seed                        # popula banco com dados de dev
 pnpm db:reset                       # reseta banco (dev only)
 
@@ -924,4 +947,4 @@ morre por memória nesta máquina" é memória.
 
 ---
 
-*BellarisOS — CLAUDE.md v1.4 | Setembro 2026*
+*BellarisOS — CLAUDE.md v1.5 | 25 de setembro de 2026*

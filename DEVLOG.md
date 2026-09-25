@@ -34,7 +34,7 @@ unidade.
 
 ---
 
-## 2. Estado atual (2026-09-18)
+## 2. Estado atual (2026-09-25)
 
 ### Operação
 
@@ -93,8 +93,16 @@ unidade.
   negócio resolvido em `lib/datetime.ts`.
 - **Erro de banco nunca é descartado:** `lib/db.ts` (`gravar`/`ler`/`tentar`)
   cobre as 399 consultas que antes falhavam em silêncio.
-- **Testes:** 361 unitários (Vitest) + 62 E2E (Playwright) rodando contra o banco
-  de desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
+- **Design system fechado e conferido na tela renderizada.** A paleta não tem
+  mais lacuna (erro, informação, escala categórica, elevação de overlay), o
+  fundo é off-white neutro, e **seletor tem uma forma por função e UMA altura**
+  (`--altura-controle`). O que o olho vê é conferido por E2E, não por
+  revisão de código: `seletores-padronizados.spec.ts` mede a altura de
+  todo seletor visível em 11 telas e recusa aparência escrita em `style`
+  inline.
+- **Testes:** 416 unitários (361 no web + 37 em `utils` + 18 em
+  `validators`, Vitest) + 81 E2E (Playwright) rodando contra o banco de
+  desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
   (campanhas e LGPD) e a cada 5 minutos (fila das automações).
 
@@ -1874,15 +1882,26 @@ verdade. O que vale:
 ### Dívida técnica conhecida
 
 - **`estetica-os-prd.md` desatualizado**: descreve "SaaS para redes de 2–5
-  filiais" e caixa com abertura/fechamento diário.
-- **Prisma está morto**: `apps/web/lib/prisma.ts` re-exporta o client e ninguém
-  importa; o `postinstall` roda `prisma generate` para nada, e o CLAUDE.md §2/§8
-  ainda o descreve como ORM. Ou sai do repo, ou o doc para de descrevê-lo.
+  filiais" e caixa com abertura/fechamento diário. É o único documento do repo
+  que ainda não foi conferido contra o sistema.
+- **Prisma está morto — metade resolvida em 2026-09-25.** O CLAUDE.md parou de
+  descrevê-lo: a tabela de stack, o exemplo de Server Action, as queries e o
+  fluxo de conclusão passaram a mostrar o que o código de fato faz (cliente
+  Supabase + `lib/db.ts`). **Falta a outra metade:** `apps/web/lib/prisma.ts`
+  re-exporta um client que ninguém importa e o `postinstall` roda
+  `prisma generate` para nada. Tirar isso é mexer em código e ficou para
+  quando o Heitor decidir.
 - **RLS de `integration_configs` decide por nome de cargo**
   (`jwt_claim('role') = 'NETWORK_ADMIN'`), o que o CLAUDE.md §11 proíbe. É a
   última regra por nome de cargo no banco; não é exposição hoje porque o app lê
   pelo cliente de serviço.
 - `metrics_core.new_clients` ignora o filtro de filial.
+- **Chave duplicada no estoque da rede** (`BranchPills`, em
+  `admin-stock-view.tsx`): o React avisa que o mesmo `branchId`
+  aparece duas vezes na lista de um produto. Chave repetida não é só ruído no
+  console — faz o React reaproveitar o nó errado e uma linha pode mostrar o
+  estado de outra. A correção é onde a lista é montada, não no `key`.
+  Achado em 2026-09-24 e ainda não investigado.
 - `product_batches` nunca é decrementado.
 - Apagar um lead leva junto o histórico dele (`lead_events` em cascata).
 - **Não há transação em nenhum fluxo além do estorno.** A conclusão de
@@ -1894,6 +1913,14 @@ verdade. O que vale:
   celular, um navegador logado, clientes demo, nenhum número pareado no
   WhatsApp oficial. Tudo que se sabe vem de testes escritos por quem escreveu o
   código — e teste só prova o que alguém pensou em perguntar.
+
+### Esperando decisão do Heitor
+
+- **Botão de ação é 4px mais alto que os seletores** (38px contra 34px). Os
+  seletores foram unificados em `--altura-controle`; `.btn-primary`
+  ficou fora de propósito, porque ação enfatizada mais alta que filtro é
+  hierarquia e não descuido. Mas os dois convivem na mesma barra (o "+ Agendar"
+  ao lado do seletor de unidade), e o degrau aparece. Igualar é uma linha.
 
 ### Próxima frente candidata
 
