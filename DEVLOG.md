@@ -1260,6 +1260,54 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-25 — Lista do celular: dez ajustes de uma vez
+
+O Heitor mandou treze itens numa mensagem só. Dez entraram; três dependem de
+decisão dele e estão em "Em aberto".
+
+**Rolagem só na lista** (Planejamentos, Injetáveis). Mesmo raciocínio do inbox
+e do quadro: rolando a página inteira, procurar um item no fim da lista leva
+embora a busca e o filtro — que é o que se usa para achá-lo. Virou o par
+`.tela-de-lista` + `.rolagem-da-lista`, só abaixo de 1024px.
+
+**Cards condensados** (financeiro, estoque, equipe, procedimentos). A causa era
+a de sempre: cada célula carrega o respiro da TABELA no `style` inline, e
+inline vence classe — a regra que a tabela-virada-card tinha para o celular
+**nunca valeu**. Com cinco linhas por card eram 130px só de folga vertical por
+item. Altura do documento em 390px, antes → depois:
+
+| Tela | Antes | Depois |
+|---|---|---|
+| Financeiro | 11.980px | 8.587px |
+| Estoque | 2.806px | 1.970px |
+| Equipe | 2.536px | 1.415px |
+| Procedimentos | 1.873px | 1.418px |
+
+Na equipe, FILIAL e CARGO saíram do card: a linha de cima do próprio card já
+dizia "Cargo · Atende · Filial". O comentário no código já chamava essas
+colunas de "escondidas" — ninguém as tinha escondido.
+
+**Filtros do quadro de oportunidades.** `estiloGatilho` era estilo local com
+33px ao lado de seletores de 34, e a borda engordando meio pixel de cada lado
+ao ficar ativo: a barra inteira mexia quando se filtrava. A ordenação era um
+`<select>` cru. E, dentro do `PickerCompacto`, o `estiloBotao` PADRÃO vencia a
+classe que a barra passava — quem achou foi o próprio
+`seletores-padronizados.spec.ts`.
+
+**Abas de Configurações → `<SegSelect>`**, como Relatórios já fazia. Eram abas
+sublinhadas: a mesma pergunta com duas caras.
+
+**Agenda da rede: clicar num horário vazio marca ali.** A grade mostrava os
+buracos do dia e não deixava preencher nenhum — só o agendamento já existente
+era clicável. O minuto sai da posição do clique, arredondado para 15, e a
+unidade é a COLUNA clicada, não a do filtro do topo. `defaultDate` já existia
+no modal e nunca tinha sido usado por esta tela.
+
+**Configurações → Geral** deixou de dizer "em breve". O que não se edita está
+na tela em cinza, com o porquê: o `slug` é o endereço do portal (está em link
+já mandado e em QR Code impresso) e o plano vem da assinatura. O documento é
+gravado só com os dígitos.
+
 ### 2026-09-25 — O painel de filtros do inbox cabia fora da tela
 
 Sobra da padronização dos seletores da véspera, achada ao fotografar o inbox no
@@ -1896,6 +1944,14 @@ verdade. O que vale:
   última regra por nome de cargo no banco; não é exposição hoje porque o app lê
   pelo cliente de serviço.
 - `metrics_core.new_clients` ignora o filtro de filial.
+- **Hidratação falha em `/admin/inbox`**: "the server rendered text didn't
+  match the client", e o React descarta a árvore e redesenha tudo no cliente.
+  Conferido que é anterior a 2026-09-24 (aparece em `f2a51ce`). Custa uma
+  renderização inteira da tela mais pesada do sistema.
+- **`financeiro-estorno.spec.ts` depende da ordem**: passa sozinho e falha
+  depois de `fase1-dinheiro`, no estado commitado tanto quanto com mudanças.
+  O lançamento existe (o KPI o soma) e não aparece na lista de movimentações —
+  cheira a cache de rota do Next servindo a página anterior ao insert.
 - **Chave duplicada no estoque da rede** (`BranchPills`, em
   `admin-stock-view.tsx`): o React avisa que o mesmo `branchId`
   aparece duas vezes na lista de um produto. Chave repetida não é só ruído no
@@ -1915,6 +1971,39 @@ verdade. O que vale:
   código — e teste só prova o que alguém pensou em perguntar.
 
 ### Esperando decisão do Heitor
+
+- **Anamnese vira ficha comum?** Ele pediu, em 2026-09-25: "eliminar anamnese,
+  modificar atendimento para fichas, com a avaliação virando um procedimento —
+  não precisamos de criação de ficha específica de anamnese, isso pode ser
+  feito pelo construtor universal de fichas". Faz sentido: os dois construtores
+  são o mesmo código com dois nomes. Mas é migração, não ajuste — duas tabelas
+  (`anamnesis_forms`, `attendance_forms`), duas colunas em `procedures`, o
+  `is_evaluation`, **103 referências em 25 arquivos** e 21 entradas de
+  prontuário com `anamnesis_data` já gravado. O que precisa ser decidido está
+  abaixo, em "O que a migração de fichas precisa decidir".
+- **Quem recebe notificação no sino?** Hoje `notifyUser` só é chamado para o
+  PROFISSIONAL do agendamento e pela ação "avisar equipe" de uma automação. No
+  banco de desenvolvimento, as 108 notificações de equipe são todas de uma
+  profissional demo: para admin e gerente o sino é permanentemente vazio, que é
+  o que o Heitor relatou. Falta a regra de destinatário, e ela é de produto.
+- **Botão de ação tem 38px e seletor tem 34px.** Contei em 2026-09-24 e ele não
+  respondeu — não é esquecimento meu, é decisão pendente dele.
+
+### O que a migração de fichas precisa decidir
+
+1. **Uma tabela ou duas?** Fundir em `forms` com um campo de momento
+   (`antes` / `durante`) é o alvo, mas exige migrar as duas e reapontar
+   `procedures`. Manter as duas tabelas e só unificar a TELA é metade do ganho
+   por um décimo do risco.
+2. **O que acontece com `is_evaluation`?** Hoje é flag em `procedures` e
+   governa o agendamento sem procedimento escolhido (CRM) e o preço zero. Se a
+   avaliação "vira um procedimento", ou a flag continua (e nada muda no banco),
+   ou sai — e aí todo lugar que hoje pergunta "é avaliação?" passa a comparar
+   com um id de procedimento, que é dado da rede e pode ser apagado.
+3. **As 21 entradas de prontuário existentes.** `anamnesis_data` é JSON livre
+   por entrada; o conteúdo clínico não se apaga (§14). Ou a coluna fica onde
+   está e só o cadastro muda, ou a migração precisa reescrever prontuário — o
+   que é o tipo de coisa que não se desfaz.
 
 - **Botão de ação é 4px mais alto que os seletores** (38px contra 34px). Os
   seletores foram unificados em `--altura-controle`; `.btn-primary`
