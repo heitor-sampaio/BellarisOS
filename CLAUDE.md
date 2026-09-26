@@ -467,10 +467,21 @@ duas conversas.
   contatos com identificador em comum — nenhum índice proíbe sobreposição de
   array, então a trava é `e2e/contato-espinha.spec.ts`.
 
-**Estado atual: só a espinha.** A conversa **ainda carrega** nome, telefone,
-identificadores e tags, e é dela que a tela lê. Cada campo sai de lá um por vez,
-e só quando já houver quem leia do contato. Em teste, limpar conversa é
-`apagarConversas()` de `e2e/apoio/banco.ts`, que tira o contato junto.
+**O cruzamento é o que conserta o handoff.** `getConversationCard` devolve
+`outrasThreads` — as outras conversas da mesma pessoa —, e o painel do inbox as
+mostra na seção do CONTATO (não na das oportunidades: é sobre a pessoa). Clicar
+abre aquela thread. **Respeita o `ownerFilter` do CRM**, igual à lista: abrir
+exceção ali seria furar, por uma tela, a regra que vale na tela ao lado — rede
+que quer o handoff funcionando usa escopo ALL, que é o padrão. Thread sem
+oportunidade aparece para todos, pela mesma razão da lista.
+
+**Estado atual: espinha + cruzamento.** A conversa **ainda carrega** nome,
+telefone, identificadores e tags, e é dela que a tela lê. Cada campo sai de lá um
+por vez, e só quando já houver quem leia do contato. O que falta, na ordem:
+lista por pessoa → mover tags e atribuição → `leads` apontando para o contato.
+
+Em teste, limpar conversa é `apagarConversas()` de `e2e/apoio/banco.ts`, que tira
+o contato junto.
 
 ### 9.3 Procedimentos
 - `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)

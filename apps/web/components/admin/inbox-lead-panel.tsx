@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { rotaCliente, rotaOportunidades } from '@/lib/rotas'
 import {
   UserCheck, ExternalLink, CalendarPlus, X, Check, Compass, Plus, ChevronDown, Package,
+  ArrowRight,
 } from 'lucide-react'
 import {
   LEAD_SOURCES, sourceStyle,
@@ -21,6 +22,7 @@ import {
   type ConversationCard,
   type Oportunidade,
   type InboxStage,
+  type ThreadDoContato,
 } from '@/actions/inbox'
 import { updateLead, updateLeadStage } from '@/actions/leads'
 import { ClientForm } from '@/components/branch/client-form'
@@ -50,13 +52,102 @@ function fmtBRL(v: number): string {
 }
 
 /**
+ * As outras conversas desta mesma pessoa.
+ *
+ * A conversa é a THREAD, não a pessoa (§9.2.1). O mesmo telefone falando com
+ * duas caixas são duas threads, porque no celular do cliente também são — e o
+ * handoff (lead entra pelo número de marketing, a unidade assume por outro) é
+ * exatamente o que produz isso.
+ *
+ * Sem este bloco, quem assume o atendimento abre a conversa nova e não vê nada
+ * do que foi apurado antes. É o momento em que ler o histórico é o que mais
+ * importa, e era justamente ali que ele ficava partido.
+ *
+ * Não aparece quando a pessoa tem uma thread só, que é a maioria.
+ */
+function OutrasConversas({ threads, onAbrir }: {
+  threads: ThreadDoContato[]
+  onAbrir?: (id: string) => void
+}) {
+  if (threads.length === 0) return null
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 2 }}>
+      <span style={labelStyle}>
+        Também falou {threads.length > 1 ? `em ${threads.length} lugares` : 'aqui'}
+      </span>
+
+      {threads.map(t => {
+        // O rótulo da caixa quando há um; senão o canal. Para quem atende, "veio
+        // pelo Marketing" e "veio pelo Instagram" respondem a mesma pergunta.
+        const onde = t.numero_label ?? CANAL[t.channel] ?? t.channel
+        const quando = t.last_message_at
+          ? new Date(t.last_message_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+          : null
+
+        return (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => onAbrir?.(t.id)}
+            disabled={!onAbrir}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, width: '100%',
+              padding: '6px 8px', borderRadius: 'var(--radius-row)',
+              border: '1px solid var(--border)', background: 'var(--bg-app)',
+              cursor: onAbrir ? 'pointer' : 'default', textAlign: 'left',
+            }}
+          >
+            <span style={{
+              flex: 1, minWidth: 0, fontSize: 'var(--text-sm-sz)', fontWeight: 600,
+              color: 'var(--text)', overflow: 'hidden',
+              textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {onde}
+            </span>
+
+            {t.status === 'closed' && (
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                encerrada
+              </span>
+            )}
+            {quando && (
+              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                {quando}
+              </span>
+            )}
+            {t.unread_count > 0 && (
+              <span style={{
+                minWidth: 16, padding: '0 4px', borderRadius: 'var(--radius-full)',
+                background: 'var(--brand)', color: '#fff',
+                fontSize: 'var(--text-2xs)', fontWeight: 700, textAlign: 'center',
+              }}>
+                {t.unread_count}
+              </span>
+            )}
+            <ArrowRight size={12} color="var(--text-faint)" style={{ flexShrink: 0 }} />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** Nome do canal para quem atende. O rótulo da caixa, quando existe, vem antes. */
+const CANAL: Record<string, string> = {
+  whatsapp: 'WhatsApp', instagram: 'Instagram', messenger: 'Messenger',
+  email: 'E-mail', manual: 'Nota interna',
+}
+
+/**
  * Painel lateral do inbox: contato, oportunidades e cliente.
  *
  * Antes era um bloco só, "Card do lead", porque `leads` era a pessoa, o negócio
  * e o vínculo com o cliente ao mesmo tempo. Agora são coisas distintas na tela
- * porque são distintas no modelo: a pessoa é a conversa, o negócio é a
- * oportunidade (podem ser várias, uma por funil) e a ficha de cliente é um
- * estado da pessoa — não um estágio do negócio.
+ * porque são distintas no modelo: a pessoa é o CONTATO (`contacts`, §9.2.1) — a
+ * conversa é só uma das threads dela —, o negócio é a oportunidade (podem ser
+ * várias, uma por funil) e a ficha de cliente é um estado da pessoa, não um
+ * estágio do negócio.
  */
 export function InboxLeadPanel({
   conversation,
@@ -64,6 +155,7 @@ export function InboxLeadPanel({
   branches,
   slug,
   onLeadChanged,
+  onAbrirConversa,
 }: {
   conversation:   Conversation
   canEdit:        boolean
@@ -77,6 +169,8 @@ export function InboxLeadPanel({
    */
   slug:           string
   onLeadChanged?: () => void
+  /** Abre outra thread da MESMA pessoa — o cruzamento do handoff. */
+  onAbrirConversa?: (conversationId: string) => void
 }) {
   const pathname = usePathname()
   const [card,    setCard]    = useState<ConversationCard | null>(null)
@@ -253,6 +347,10 @@ export function InboxLeadPanel({
             onChange={setTags}
           />
         </div>
+
+        {/* Fica na seção do CONTATO, e não na das oportunidades, porque é sobre
+            a pessoa: são as outras threads dela. */}
+        <OutrasConversas threads={card.outrasThreads} onAbrir={onAbrirConversa} />
 
         {/* Tempos do atendimento. Só no celular: no desktop eles estão no
             cabeçalho da conversa, a dois centímetros daqui, e repetir seria

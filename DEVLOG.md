@@ -1260,6 +1260,37 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-26 — O cruzamento: quem assume o atendimento alcança a outra thread
+
+Segundo passo do contato separado da conversa, e o primeiro que se vê na tela.
+
+O cenário é o que o Heitor descreveu: o lead entra pelo número de marketing,
+alguém qualifica e agenda numa unidade, a unidade assume por **outro** número. Do
+lado do cliente são duas conversas — então aqui também são —, e quem abria a
+segunda não via nada da primeira. Exatamente no momento em que ler o histórico é
+o que mais importa.
+
+`getConversationCard` passou a devolver `outrasThreads`, e o painel do inbox as
+mostra na seção do **contato**, não na das oportunidades: é sobre a pessoa. Cada
+linha diz onde foi (o rótulo da caixa, ou o canal quando não há caixa), quando
+foi, se está encerrada e quantas não lidas — a contagem é o único elemento
+preenchido em `--brand`, que é hierarquia por preenchimento no tamanho de uma
+lista. Clicar abre aquela thread, e de lá o atalho aponta de volta: é cruzamento,
+não link de mão única.
+
+**Respeita o `ownerFilter` do CRM**, igual à lista do inbox. Com escopo OWN, a
+thread de um lead de outra pessoa continua invisível — abrir exceção ali seria
+furar, por uma tela, a regra que vale na tela ao lado. Rede que quer o handoff
+funcionando usa escopo ALL, que é o padrão. Thread sem oportunidade aparece para
+todo mundo, pela mesma razão que a lista já usa: "contato que ainda não virou
+card fica no bolo comum".
+
+E o bloco **não aparece** quando a pessoa tem uma thread só, que é a maioria:
+seção vazia com título ocupa espaço para não dizer nada. `contato-cruza-threads`
+confere as duas coisas — o atalho no handoff e a ausência dele no caso comum.
+
+131 de 131 E2E e 371 unitários.
+
 ### 2026-09-26 — A conversa deixa de ser o registro do contato (espinha)
 
 Saiu de uma conversa em que o Heitor foi reformulando o desenho, e eu errei duas

@@ -584,6 +584,29 @@ export interface ConversationCard {
    * filtro por tag deixa de servir para qualquer coisa.
    */
   tagsDaRede: string[]
+  /**
+   * As OUTRAS conversas desta mesma pessoa.
+   *
+   * A conversa é a thread, não a pessoa (§9.2.1): o mesmo telefone falando com
+   * duas caixas são duas threads, porque no celular do cliente também são. Sem
+   * isto, quem assume o atendimento no handoff — lead entra pelo número de
+   * marketing, a unidade assume por outro — abre a conversa nova e não vê nada
+   * do que foi apurado antes.
+   *
+   * Vazio no caso comum: pessoa com uma thread só, que é a maioria.
+   */
+  outrasThreads: ThreadDoContato[]
+}
+
+/** Uma outra conversa da mesma pessoa, do jeito que o painel precisa dela. */
+export interface ThreadDoContato {
+  id:              string
+  channel:         InboxChannel
+  status:          ConvStatus
+  unread_count:    number
+  last_message_at: string | null
+  /** Como a rede chama a caixa de WhatsApp desta thread. */
+  numero_label:    string | null
 }
 
 
@@ -603,7 +626,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
-    .select('id, contact_name, contact_phone, tags, client_id, channel')
+    .select('id, contact_name, contact_phone, tags, client_id, channel, contato_id')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -638,9 +661,10 @@ export async function getConversationCard(conversationId: string): Promise<Conve
     id: p.id as string, name: p.name as string, price: Number(p.price ?? 0),
   }))
 
-  const [cliente, oportunidades] = await Promise.all([
+  const [cliente, oportunidades, outrasThreads] = await Promise.all([
     clientId ? buscarCliente(admin, ctx.tenantId!, clientId) : Promise.resolve(null),
     buscarOportunidades(admin, ctx.tenantId!, conversationId, clientId, stages),
+    buscarOutrasThreads(admin, ctx, conversationId, c.contato_id as string | null),
   ])
 
   const abertas    = oportunidades.filter(o => o.outcome === 'OPEN')
@@ -655,7 +679,84 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       canal:    c.channel as InboxChannel,
     },
     cliente, abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
+    outrasThreads,
   }
+}
+
+/**
+ * As outras conversas da mesma pessoa.
+ *
+ * O cruzamento é o que conserta o handoff: quem assume o atendimento numa caixa
+ * nova precisa chegar ao que foi dito na anterior. Sem ele, o histórico fica
+ * partido justamente no momento em que importa.
+ *
+ * ⚠️ Respeita o `ownerFilter` do CRM, igual à lista do inbox. Com escopo OWN, a
+ * thread de um lead de outra pessoa continua invisível — abrir uma exceção aqui
+ * seria furar, por uma tela, a regra que vale na tela ao lado. Rede que quer o
+ * handoff funcionando usa escopo ALL, que é o padrão.
+ *
+ * Thread SEM oportunidade aparece para todo mundo, pela mesma razão da lista:
+ * "contato que ainda não virou card fica no bolo comum".
+ */
+async function buscarOutrasThreads(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+  conversationId: string,
+  contatoId: string | null,
+): Promise<ThreadDoContato[]> {
+  if (!contatoId) return []
+
+  const { data, error } = await admin
+    .from('conversations')
+    .select('id, channel, status, unread_count, last_message_at, whatsapp_number_id, lead_id')
+    .eq('tenant_id', ctx.tenantId!)
+    .eq('contato_id', contatoId)
+    .neq('id', conversationId)
+    .order('last_message_at', { ascending: false, nullsFirst: false })
+    .limit(10)
+
+  if (error) { console.error('[getConversationCard] outras threads:', error.message); return [] }
+
+  type Linha = {
+    id: string; channel: string; status: string; unread_count: number
+    last_message_at: string | null; whatsapp_number_id: string | null; lead_id: string | null
+  }
+  let linhas = (data ?? []) as Linha[]
+  if (linhas.length === 0) return []
+
+  const owner = ownerFilter(ctx, 'crm')
+  if (owner) {
+    const comLead = linhas.map(l => l.lead_id).filter(Boolean) as string[]
+    const meus = new Set<string>()
+    if (comLead.length > 0) {
+      const { data: leads } = await admin
+        .from('leads').select('id')
+        .eq('tenant_id', ctx.tenantId!)
+        .eq('owner_id', owner)
+        .in('id', comLead)
+      for (const l of (leads ?? []) as { id: string }[]) meus.add(l.id)
+    }
+    linhas = linhas.filter(l => !l.lead_id || meus.has(l.lead_id))
+  }
+
+  // O rótulo da caixa numa consulta só, mapeada em memória — nunca por embed do
+  // PostgREST, pelo motivo que este arquivo já documenta.
+  const caixaIds = [...new Set(linhas.map(l => l.whatsapp_number_id).filter(Boolean))] as string[]
+  const rotulos = new Map<string, string>()
+  if (caixaIds.length > 0) {
+    const { data: caixas } = await admin
+      .from('whatsapp_numbers').select('id, label').in('id', caixaIds)
+    for (const n of (caixas ?? []) as { id: string; label: string }[]) rotulos.set(n.id, n.label)
+  }
+
+  return linhas.map(l => ({
+    id:              l.id,
+    channel:         l.channel as InboxChannel,
+    status:          l.status as ConvStatus,
+    unread_count:    l.unread_count ?? 0,
+    last_message_at: l.last_message_at,
+    numero_label:    l.whatsapp_number_id ? rotulos.get(l.whatsapp_number_id) ?? null : null,
+  }))
 }
 
 async function buscarCliente(

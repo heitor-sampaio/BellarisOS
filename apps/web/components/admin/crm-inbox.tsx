@@ -1997,6 +1997,8 @@ export function CRMInbox({
               branches={branches}
               slug={slug}
               onLeadChanged={() => { getConversations_client().then(setConversations) }}
+              // O cruzamento do handoff: abrir outra thread da mesma pessoa.
+              onAbrirConversa={setSelectedId}
             />
           </div>
         )}
