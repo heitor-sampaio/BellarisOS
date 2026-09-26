@@ -5,6 +5,7 @@ import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { funnelStats } from '@/lib/crm'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
+import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
@@ -62,8 +63,7 @@ export default async function AdminOportunidadesPage({
       .select(`
         id, name, phone, email, social_media, source,
         crm_stage_id, notes, client_id, created_at, tags,
-        owner_id, users(name),
-        conversations!leads_conversation_id_fkey(last_message_at, awaiting_since),
+        owner_id, users(name), contato_id,
         lead_procedures(procedure_id, procedures(name, price))
       `)
       .eq('tenant_id', ctx.tenantId!)
@@ -75,23 +75,20 @@ export default async function AdminOportunidadesPage({
     leadsRaw = data ?? []
   }
 
+  // A atividade da PESSOA dona de cada lead — de todas as threads dela, não só
+  // da que a oportunidade nasceu (ver `atividadeDasPessoas`).
+  const atividade = await atividadeDasPessoas(
+    ctx.tenantId!, leadsRaw.map((l: any) => l.contato_id as string),
+  )
   const leads = leadsRaw.map((l: any) => {
-    const { conversations, users: _dono, ...rest } = l
-    // Uma conversa só: é o CONTATO dono da oportunidade (`leads.conversation_id`).
-    // Antes isto era uma lista — as conversas que apontavam para o lead — e
-    // deixou de servir quando a mesma pessoa passou a ter várias oportunidades:
-    // só a principal ficava com `conversations.lead_id`, e as demais apareciam
-    // sem atividade nenhuma no quadro.
-    const conv = (conversations ?? null) as
-      { last_message_at: string | null; awaiting_since: string | null } | null
-    const lastInteractionAt = conv?.last_message_at ?? null
-    const awaitingSince     = conv?.awaiting_since ?? null
+    const { users: _dono, contato_id: _pessoa, ...rest } = l
+    const ativ = atividade.get(l.contato_id as string)
     return {
       ...rest,
       tags:                l.tags ?? [],
       owner_name:          l.users?.name ?? null,
-      last_interaction_at: lastInteractionAt,
-      awaiting_since:      awaitingSince,
+      last_interaction_at: ativ?.last_interaction_at ?? null,
+      awaiting_since:      ativ?.awaiting_since ?? null,
       // O badge da unidade sai da TAG, não de branch_id: o lead é da rede e a
       // coluna é sempre nula, então o badge nunca aparecia.
       branch_name:         unidadeDoLead(l.tags),

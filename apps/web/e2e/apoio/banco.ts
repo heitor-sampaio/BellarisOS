@@ -102,6 +102,14 @@ export async function apagarConversas(ids: string[]): Promise<void> {
       .from('conversations')
       .select('id', { count: 'exact', head: true })
       .eq('contato_id', contatoId)
-    if ((count ?? 0) === 0) await db.from('contacts').delete().eq('id', contatoId)
+    // Pessoa com oportunidade fica: `leads.contato_id` é `on delete restrict`,
+    // e apagar o card é decisão do teste que o criou.
+    const { count: comCard } = await db
+      .from('leads')
+      .select('id', { count: 'exact', head: true })
+      .eq('contato_id', contatoId)
+    if ((count ?? 0) === 0 && (comCard ?? 0) === 0) {
+      await db.from('contacts').delete().eq('id', contatoId)
+    }
   }
 }

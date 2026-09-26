@@ -1260,6 +1260,46 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-26 — A oportunidade é da pessoa (e o cadastro manual ganha uma)
+
+Quinto e último passo da ordem combinada para o contato separado da conversa.
+
+`leads.conversation_id` é singular, e prendia o card na thread onde ele NASCEU.
+No handoff — o lead entra pelo número do marketing, a unidade assume por outro —,
+quem abria a thread da unidade via "nenhuma oportunidade" para a pessoa que
+estava atendendo, o filtro de funil do inbox não a achava pela conversa viva, e
+o card do quadro mostrava a atividade da conversa que já tinha parado.
+
+Agora a dona é `leads.contato_id` (NOT NULL). `conversation_id` fica, com o
+sentido que sempre teve na prática: a thread de origem. Passaram a ler pela
+pessoa a lista do inbox (dono, etapa e funil), o card do contato, o histórico,
+a checagem de duplicata ao abrir oportunidade e a propagação de nome e telefone.
+O card do quadro mostra a última mensagem em QUALQUER thread da pessoa e a
+espera mais antiga entre elas (`lib/crm/atividade-da-pessoa.ts`), e o clique
+nele abre a thread mais recente da pessoa, não a de origem.
+
+**E um furo que não tinha aparecido:** `createLead`, o cadastro manual em
+Oportunidades, nunca gravou `conversation_id`. Desde 2026-09-17 todo lead
+criado por lá nasceria sem pessoa — fora do card do contato, fora dos filtros
+do inbox. Só não aconteceu porque ninguém criou lead por lá desde então (0 de 25
+sem conversa, medido antes).
+
+Por isso o dono vem de **gatilho** (`trg_oportunidade_ganha_contato`), como a
+pessoa da conversa: a da thread de origem, senão a do telefone (só dígitos, o
+formato do webhook), senão uma nova. Quando essa pessoa escreve depois pelo
+WhatsApp, a thread cai nela. O gatilho da conversa também passou a somar os
+aliases quando a thread nasce com dono definido — `openLeadConversation` agora
+cria assim, e sem isso a invariante `contact_aliases ⊆ identifiers` quebraria.
+
+`on delete restrict`: pessoa com oportunidade não se apaga.
+
+**O que ficou de fora, de propósito:** com escopo OWN, a visibilidade das threads
+no inbox continua sendo por `conversations.lead_id` (a thread), não pela pessoa.
+Mudar isso muda quem vê o quê — é decisão de produto, não consequência técnica.
+
+`oportunidade-da-pessoa` confere os dois casos: o card do marketing aparece na
+thread da unidade, e o lead sem conversa ganha pessoa que o webhook reencontra.
+
 ### 2026-09-26 — As tags vão para a pessoa; a atribuição fica (e por quê)
 
 Quarto passo do contato separado da conversa — o primeiro em que um campo de fato

@@ -501,10 +501,24 @@ exceção ali seria furar, por uma tela, a regra que vale na tela ao lado — re
 que quer o handoff funcionando usa escopo ALL, que é o padrão. Thread sem
 oportunidade aparece para todos, pela mesma razão da lista.
 
-**Estado atual: espinha + cruzamento.** A conversa **ainda carrega** nome,
-telefone, identificadores e tags, e é dela que a tela lê. Cada campo sai de lá um
-por vez, e só quando já houver quem leia do contato. O que falta, na ordem:
-lista por pessoa → mover tags e atribuição → `leads` apontando para o contato.
+**A oportunidade é da PESSOA** (`leads.contato_id`, NOT NULL). `leads.conversation_id`
+continua existindo com outro sentido: a thread onde a oportunidade **nasceu**.
+Ninguém pergunta mais "as oportunidades desta conversa" — lista do inbox, card
+do contato, histórico, checagem de duplicata e propagação de nome leem por
+`contato_id`, e o card do quadro mostra a atividade de todas as threads da
+pessoa (`lib/crm/atividade-da-pessoa.ts`).
+- ⚠️ **O dono é posto por GATILHO** (`trg_oportunidade_ganha_contato`): a
+  pessoa da conversa de origem, senão a do telefone (só dígitos, o formato do
+  webhook), senão uma nova. O cadastro manual (`createLead`) nunca gravou
+  `conversation_id`, e o lead nascia sem pessoa — o motivo de não ser código.
+- `on delete restrict`: pessoa com oportunidade não se apaga.
+- **A visibilidade do inbox com escopo OWN ainda é por `conversations.lead_id`**
+  (a thread), não pela pessoa. Mudar isso muda quem vê o quê, e é decisão de
+  produto.
+
+**Estado atual:** a conversa **ainda carrega** nome e telefone, e é dela que a
+tela lê. Sai numa frente própria, junto com a limpeza de `conversations.tags`
+depois do soak.
 
 Em teste, limpar conversa é `apagarConversas()` de `e2e/apoio/banco.ts`, que tira
 o contato junto.
@@ -1098,6 +1112,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Comparar período parcial com período anterior inteiro
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar
 ❌ Tratar a conversa como a pessoa — a pessoa é contacts, a conversa é uma thread
+❌ Buscar oportunidades por leads.conversation_id (é a thread de ORIGEM; a dona é contato_id)
 ❌ Listar o inbox por thread — a fila é de PESSOAS (a mesma aparecia duas vezes)
 ❌ Ler tags de conversations.tags (é semente; a fonte é contacts.tags)
 ❌ Declarar variável plpgsql com nome de coluna (42702 dentro do gatilho, insert descartado)

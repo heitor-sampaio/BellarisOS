@@ -9,6 +9,7 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { UserPlus } from 'lucide-react'
 import { ler } from '@/lib/db'
+import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
 
 export default async function BranchOportunidadesPage({
   params, searchParams,
@@ -89,8 +90,7 @@ export default async function BranchOportunidadesPage({
       .select(`
         id, name, phone, email, social_media, source,
         crm_stage_id, notes, client_id, created_at, tags,
-        owner_id, users(name),
-        conversations!leads_conversation_id_fkey(last_message_at, awaiting_since),
+        owner_id, users(name), contato_id,
         lead_procedures(procedure_id, procedures(name, price))
       `)
       .eq('tenant_id', ctx.tenantId!)
@@ -109,22 +109,20 @@ export default async function BranchOportunidadesPage({
     stages,
   )
 
-  // Métricas de atendimento derivadas das conversas de cada lead.
+  // Métricas de atendimento da PESSOA dona de cada lead — de todas as threads
+  // dela, não só da que a oportunidade nasceu (ver `atividadeDasPessoas`).
+  const atividade = await atividadeDasPessoas(
+    ctx.tenantId!, leads.map((l: any) => l.contato_id as string),
+  )
   const leadsData = leads.map((l: any) => {
-    const { conversations, users: _dono, ...rest } = l
-    // Uma conversa só: é o CONTATO dono da oportunidade (`leads.conversation_id`).
-    // Antes era a lista das conversas que apontavam para o lead, o que deixou de
-    // servir quando a mesma pessoa passou a ter várias oportunidades.
-    const conv = (conversations ?? null) as
-      { last_message_at: string | null; awaiting_since: string | null } | null
-    const lastInteractionAt = conv?.last_message_at ?? null
-    const awaitingSince     = conv?.awaiting_since ?? null
+    const { users: _dono, contato_id: _pessoa, ...rest } = l
+    const ativ = atividade.get(l.contato_id as string)
     return {
       ...rest,
       tags:                l.tags ?? [],
       owner_name:          l.users?.name ?? null,
-      last_interaction_at: lastInteractionAt,
-      awaiting_since:      awaitingSince,
+      last_interaction_at: ativ?.last_interaction_at ?? null,
+      awaiting_since:      ativ?.awaiting_since ?? null,
     }
   })
 

@@ -103,11 +103,25 @@ export async function getContactEvents(conversationId: string): Promise<LeadEven
   // O alcance do cargo vale aqui como no histórico de um card: sem isto, "só os
   // próprios leads" leria pelo id da conversa o que não pode ver na lista.
   const owner = ownerFilter(ctx, 'crm')
+
+  // O histórico é da PESSOA: as oportunidades de todas as threads dela, não só
+  // as que nasceram nesta. Senão, na thread da unidade que assumiu, o histórico
+  // do que o marketing fez antes some — o handoff de novo (§9.2.1).
+  const { data: conv, error: erroConv } = await admin
+    .from('conversations')
+    .select('contato_id')
+    .eq('id', conversationId)
+    .eq('tenant_id', ctx.tenantId!)
+    .maybeSingle()
+  if (erroConv) throw new Error(`Falha ao carregar o contato: ${erroConv.message}`)
+  const contatoId = (conv as { contato_id: string | null } | null)?.contato_id
+  if (!contatoId) return []
+
   let q = admin
     .from('leads')
     .select('id, crm_stage_id')
     .eq('tenant_id', ctx.tenantId!)
-    .eq('conversation_id', conversationId)
+    .eq('contato_id', contatoId)
   if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
 
   const { data: leads, error: erroLeads } = await q

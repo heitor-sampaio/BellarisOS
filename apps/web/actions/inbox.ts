@@ -294,14 +294,19 @@ async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Co
 
   if (conversas.length === 0) return []
 
-  const admin = createAdminClient()
-  const convIds = conversas.map(c => c.id as string)
+  if (contatoIds.length === 0) return conversas.map(base)
 
+  const admin = createAdminClient()
+
+  // As oportunidades da PESSOA, não da thread (§9.2.1). Por `conversation_id`,
+  // a thread da unidade que assumiu o atendimento saía sem dono nem etapa — o
+  // negócio continuava preso na thread do marketing, onde nasceu — e o filtro
+  // por funil não achava a pessoa pela conversa que está viva.
   const { data: leads, error: erroLeads } = await admin
     .from('leads')
-    .select('conversation_id, owner_id, crm_stage_id')
+    .select('contato_id, owner_id, crm_stage_id')
     .eq('tenant_id', tenantId)
-    .in('conversation_id', convIds)
+    .in('contato_id', contatoIds)
 
   if (erroLeads) {
     // Sem as oportunidades os filtros de funil ficam vazios, mas a caixa de
@@ -336,15 +341,15 @@ async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Co
   if (erroFunis) console.error('[getConversations] funis:', erroFunis.message)
   const porFunil = new Map((funis ?? []).map((f: any) => [f.id as string, f.name as string]))
 
-  const porConversa = new Map<string, any[]>()
+  const porContato = new Map<string, any[]>()
   for (const l of linhas) {
-    const id = l.conversation_id as string
-    if (!porConversa.has(id)) porConversa.set(id, [])
-    porConversa.get(id)!.push(l)
+    const id = l.contato_id as string
+    if (!porContato.has(id)) porContato.set(id, [])
+    porContato.get(id)!.push(l)
   }
 
   return conversas.map(c => {
-    const minhas = porConversa.get(c.id as string) ?? []
+    const minhas = c.contato_id ? porContato.get(c.contato_id as string) ?? [] : []
     const agregado = base(c)
 
     for (const l of minhas) {
@@ -693,7 +698,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
 
   const [cliente, oportunidades, outrasThreads, tagsDaPessoa] = await Promise.all([
     clientId ? buscarCliente(admin, ctx.tenantId!, clientId) : Promise.resolve(null),
-    buscarOportunidades(admin, ctx.tenantId!, conversationId, clientId, stages),
+    buscarOportunidades(admin, ctx.tenantId!, contatoId, clientId, stages),
     buscarOutrasThreads(admin, ctx, conversationId, contatoId),
     // As tags vêm da PESSOA, não da thread (§9.2.1). `conversations.tags` é
     // semente: lida dali, a tag marcada numa thread não apareceria na outra.
@@ -820,12 +825,18 @@ async function buscarCliente(
 
 async function buscarOportunidades(
   admin: ReturnType<typeof createAdminClient>,
-  tenantId: string, conversationId: string, clientId: string | null,
+  tenantId: string, contatoId: string | null, clientId: string | null,
   stages: InboxStage[],
 ): Promise<Oportunidade[]> {
-  const filtro = clientId
-    ? `conversation_id.eq.${conversationId},client_id.eq.${clientId}`
-    : `conversation_id.eq.${conversationId}`
+  // As da PESSOA — de qualquer thread dela — e as do mesmo cliente. Pela
+  // conversa, quem atende pela caixa da unidade não via o negócio que nasceu na
+  // do marketing, que é justamente o handoff (§9.2.1).
+  const condicoes = [
+    contatoId ? `contato_id.eq.${contatoId}` : null,
+    clientId  ? `client_id.eq.${clientId}`   : null,
+  ].filter(Boolean)
+  if (condicoes.length === 0) return []
+  const filtro = condicoes.join(',')
 
   const { data, error } = await admin
     .from('leads')
@@ -895,7 +906,7 @@ export async function criarOportunidade(
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
-    .select('id, contact_name, contact_phone, contact_external_id, client_id, branch_id, channel, attribution, lead_id')
+    .select('id, contact_name, contact_phone, contact_external_id, client_id, branch_id, channel, attribution, lead_id, contato_id')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -903,6 +914,9 @@ export async function criarOportunidade(
   if (erroConv) return { ok: false, error: erroConv.message }
   if (!conv)    return { ok: false, error: 'Conversa não encontrada.' }
   const c = conv as any
+  // O gatilho dá pessoa a toda conversa; sem ela, a oportunidade nasceria sem
+  // dono (`leads.contato_id` é NOT NULL) — melhor dizer do que chutar.
+  if (!c.contato_id) return { ok: false, error: 'Esta conversa ainda não está ligada a um contato.' }
 
   const stages = (await listAllStages(ctx.tenantId!)) as InboxStage[]
   const doFunil = stages.filter(s => s.funnel_id === funnelId).sort((a, b) => a.position - b.position)
@@ -916,7 +930,8 @@ export async function criarOportunidade(
         .from('leads')
         .select('id')
         .eq('tenant_id', ctx.tenantId!)
-        .eq('conversation_id', conversationId)
+        // Da PESSOA: a oportunidade aberta pode ter nascido em outra thread dela.
+        .eq('contato_id', c.contato_id)
         .in('crm_stage_id', abertasNoFunil)
         .limit(1), 'carregar as oportunidades')
       if (existente && existente.length > 0) {
@@ -929,7 +944,9 @@ export async function criarOportunidade(
   const insert: Record<string, unknown> = {
     tenant_id:       ctx.tenantId!,
     branch_id:       c.branch_id ?? null,
+    // A thread onde nasceu. A dona é a pessoa (`contato_id`).
     conversation_id: conversationId,
+    contato_id:      c.contato_id,
     client_id:       c.client_id ?? null,
     name:            c.contact_name || c.contact_phone || 'Sem nome',
     phone:           c.contact_phone ?? null,
@@ -1010,8 +1027,8 @@ export async function atualizarContato(
   // semente do nascimento da thread: gravar ali faria a tag valer numa thread e
   // não na outra — marcar "botox" atendendo pela recepção não apareceria para
   // quem abre a do marketing, que é a mesma pessoa.
+  const contatoId = (atualizada as { contato_id: string | null } | null)?.contato_id ?? null
   if (dados.tags !== undefined) {
-    const contatoId = (atualizada as { contato_id: string | null } | null)?.contato_id
     if (contatoId) {
       const { error: erroTags } = await admin
         .from('contacts')
@@ -1024,8 +1041,8 @@ export async function atualizarContato(
 
   const mudouNome = patch.contact_name !== undefined
   const mudouFone = patch.contact_phone !== undefined
-  if (mudouNome || mudouFone) {
-    await propagarParaOportunidades(admin, ctx, conversationId, {
+  if ((mudouNome || mudouFone) && contatoId) {
+    await propagarParaOportunidades(admin, ctx, contatoId, {
       name:  mudouNome ? (patch.contact_name as string | null) : undefined,
       phone: mudouFone ? (patch.contact_phone as string | null) : undefined,
     })
@@ -1038,14 +1055,17 @@ export async function atualizarContato(
 async function propagarParaOportunidades(
   admin: ReturnType<typeof createAdminClient>,
   ctx: Awaited<ReturnType<typeof getTenantContext>>,
-  conversationId: string,
+  contatoId: string,
   novos: { name?: string | null; phone?: string | null },
 ): Promise<void> {
+  // Todas as oportunidades da PESSOA, não só as que nasceram nesta thread:
+  // corrigir o nome atendendo pela unidade tem de chegar ao card que nasceu no
+  // marketing.
   const { data, error } = await admin
     .from('leads')
     .select('id, name, phone')
     .eq('tenant_id', ctx.tenantId!)
-    .eq('conversation_id', conversationId)
+    .eq('contato_id', contatoId)
 
   if (error) { console.error('[atualizarContato] oportunidades:', error.message); return }
 
@@ -1157,24 +1177,9 @@ export async function openLeadConversation(
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
 
-  // Conversa existente para este lead (qualquer canal), mais recente primeiro
-  const { data: existing, error: erroExisting } = await admin
-    .from('conversations')
-    .select('id')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('lead_id', leadId)
-    .order('last_message_at', { ascending: false, nullsFirst: false })
-    .limit(1)
-  if (erroExisting) {
-    console.error('[openLeadConversation] conversa existente:', erroExisting.message)
-    return { conversationId: null, error: 'Não foi possível abrir a conversa deste lead.' }
-  }
-  if (existing && existing.length > 0) return { conversationId: existing[0]!.id }
-
-  // Cria uma conversa a partir do lead (whatsapp se tem telefone; senão manual)
   const { data: leadRow, error: erroLead } = await admin
     .from('leads')
-    .select('name, phone, branch_id')
+    .select('name, phone, branch_id, contato_id')
     .eq('id', leadId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -1184,7 +1189,26 @@ export async function openLeadConversation(
   }
   if (!leadRow) return { conversationId: null, error: 'Lead não encontrado.' }
 
-  const l = leadRow as { name: string; phone: string | null; branch_id: string | null }
+  const l = leadRow as { name: string; phone: string | null; branch_id: string | null; contato_id: string }
+
+  // A thread mais recente da PESSOA, em qualquer canal ou caixa — não a que
+  // tem `lead_id` apontando para este card. No handoff o card nasce na thread
+  // do marketing e o atendimento continua em outra; abrir a de origem levaria
+  // quem clica para a conversa que já parou.
+  const { data: existing, error: erroExisting } = await admin
+    .from('conversations')
+    .select('id')
+    .eq('tenant_id', ctx.tenantId!)
+    .or(`contato_id.eq.${l.contato_id},lead_id.eq.${leadId}`)
+    .order('last_message_at', { ascending: false, nullsFirst: false })
+    .limit(1)
+  if (erroExisting) {
+    console.error('[openLeadConversation] conversa existente:', erroExisting.message)
+    return { conversationId: null, error: 'Não foi possível abrir a conversa deste lead.' }
+  }
+  if (existing && existing.length > 0) return { conversationId: existing[0]!.id }
+
+  // Cria uma conversa a partir do lead (whatsapp se tem telefone; senão manual)
   const contactPhone = l.phone ? l.phone.replace(/\D/g, '') : null
   const channel: InboxChannel = contactPhone ? 'whatsapp' : 'manual'
 
@@ -1205,6 +1229,9 @@ export async function openLeadConversation(
       tenant_id:     ctx.tenantId!,
       branch_id:     l.branch_id,
       lead_id:       leadId,
+      // Já nasce da pessoa do card. O gatilho soma os aliases desta thread aos
+      // identificadores dela, e a invariante do §9.2.1 continua de pé.
+      contato_id:    l.contato_id,
       channel,
       status:        'open',
       contact_name:  l.name,
