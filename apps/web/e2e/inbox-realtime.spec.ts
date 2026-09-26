@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, tenantId, nomeDeTeste } from './apoio/banco'
+import { banco, tenantId, nomeDeTeste, apagarConversas } from './apoio/banco'
 
 /**
  * Conversa NOVA tem de aparecer no inbox sozinha — sem recarregar a página.
@@ -22,8 +22,7 @@ let convId: string | null = null
 test.afterAll(async () => {
   const db = banco()
   if (convId) {
-    await db.from('messages').delete().eq('conversation_id', convId)
-    await db.from('conversations').delete().eq('id', convId)
+    await apagarConversas([convId])
   }
 })
 

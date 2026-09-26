@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco } from './apoio/banco'
+import { banco, apagarConversas } from './apoio/banco'
 
 /**
  * A mensagem que entra carrega POR QUAL CAIXA entrou.
@@ -28,9 +28,7 @@ let convId: string | null = null
 test.afterAll(async () => {
   const db = banco()
   if (convId) {
-    await db.from('domain_events').delete().eq('entidade_id', convId)
-    await db.from('messages').delete().eq('conversation_id', convId)
-    await db.from('conversations').delete().eq('id', convId)
+    await apagarConversas([convId])
   }
 })
 

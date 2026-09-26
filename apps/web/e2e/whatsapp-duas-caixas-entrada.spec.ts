@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, tenantId, PREFIXO } from './apoio/banco'
+import { banco, tenantId, PREFIXO, apagarConversas } from './apoio/banco'
 
 /**
  * O MESMO telefone falando com duas caixas são DUAS conversas.
@@ -95,12 +95,10 @@ test('o mesmo telefone em duas caixas vira duas conversas', async ({ request }) 
     expect(caixas, 'cada conversa aponta para a caixa que de fato recebeu')
       .toEqual([idA, idB].sort())
   } finally {
-    // `conversations` primeiro: as caixas são referenciadas por elas.
-    if (convIds.length) {
-      await db.from('domain_events').delete().in('entidade_id', convIds)
-      await db.from('messages').delete().in('conversation_id', convIds)
-      await db.from('conversations').delete().in('id', convIds)
-    }
+    // `conversations` primeiro: as caixas são referenciadas por elas. E por
+    // `apagarConversas`, que também tira o contato que o gatilho criou junto —
+    // limpar isso à mão em cada spec é como os órfãos apareceram.
+    await apagarConversas(convIds)
     if (criadas.length) await db.from('whatsapp_numbers').delete().in('id', criadas)
   }
 })

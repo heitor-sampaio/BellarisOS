@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, nomeDeTeste, tenantId } from './apoio/banco'
+import { banco, nomeDeTeste, tenantId, apagarConversas } from './apoio/banco'
 
 /**
  * O fluxo que o Heitor pediu e que **não era montável**: decidir pelo texto da
@@ -82,9 +82,7 @@ test.afterAll(async () => {
   }
   await db.from('user_notifications').delete().eq('title', TITULO)
   if (convId) {
-    await db.from('domain_events').delete().eq('entidade_id', convId)
-    await db.from('messages').delete().eq('conversation_id', convId)
-    await db.from('conversations').delete().eq('id', convId)
+    await apagarConversas([convId])
   }
 })
 

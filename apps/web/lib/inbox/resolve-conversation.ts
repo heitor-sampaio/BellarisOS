@@ -19,9 +19,16 @@ function normalizePhone(raw: string): string {
 /**
  * Resolve (ou cria) a conversa de um inbound.
  *
- * A conversa É o contato: guarda nome, telefone, os identificadores do canal,
- * as tags da pessoa e de onde ela veio. **Não cria oportunidade** — isso é
- * decisão de quem atende, ou de automação, e um dia foi feito aqui.
+ * A conversa é a THREAD, não a pessoa. Quem é a pessoa mora em `contacts`, e a
+ * conversa aponta para ela por `contato_id` — a mesma pessoa tem uma thread por
+ * caixa e por canal, porque no celular dela também são conversas separadas.
+ *
+ * ⚠️ Nesta fase a conversa **ainda carrega** nome, telefone, identificadores e
+ * tags, e é dela que a tela lê. A espinha existe para a pessoa ser joinável; os
+ * campos saem daqui um a um, e cada um só quando já houver quem leia do contato.
+ *
+ * **Não cria oportunidade** — isso é decisão de quem atende, ou de automação, e
+ * um dia foi feito aqui.
  *
  * Regras:
  * - contato nasce na REDE (`branch_id` null); a unidade vira tag depois

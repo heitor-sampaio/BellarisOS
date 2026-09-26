@@ -419,6 +419,59 @@ const clients = await admin.from('clients').select('*')
   LGPD de `/admin/settings`. Aprovar recoloca o pedido em `pending` e o pacote
   é regerado com a parte clínica.
 
+### 9.2.1 Contato, conversa, oportunidade e cliente — quem é quem
+
+São quatro entidades e é fácil confundi-las. A regra é:
+
+| | O que é | Cardinalidade |
+|---|---|---|
+| **`contacts`** | a **PESSOA** | uma por rede |
+| **`conversations`** | a **THREAD** — um canal, uma caixa | várias por pessoa |
+| **`leads`** | a **OPORTUNIDADE** no funil | várias por pessoa |
+| **`clients`** | a **FICHA** na clínica (CPF, prontuário, financeiro) | no máximo uma por pessoa |
+
+**A conversa NÃO é a pessoa.** Ela era, e isso funcionava enquanto cada pessoa
+tinha uma conversa só. Deixou de funcionar com vários números: o dedup inclui a
+caixa — de propósito, porque no celular do cliente são duas conversas mesmo —,
+então a mesma pessoa falando com duas caixas virava duas fichas de contato, com
+dois nomes, duas listas de tags e duas atribuições de anúncio. E
+`leads.conversation_id` é singular, então o card ficava preso numa delas
+enquanto o atendimento acontecia na outra.
+
+O buraco aparecia exatamente no **handoff** — lead entra pelo número de
+marketing, a SDR qualifica e agenda, a unidade assume por outro número —, que é
+o momento em que ler o histórico é o que mais importa. E já acontecia antes dos
+múltiplos números, entre Instagram e WhatsApp: ali a mesma pessoa sempre foram
+duas conversas.
+
+- **Contato não vira `clients` automaticamente.** Quem pergunta "abrem sábado?"
+  não pode entrar na base clínica e financeira — e `LoyaltyAccount` nasce junto
+  no cadastro (§9.2).
+- **A identidade é `contacts.identifiers`** — telefone, @lid, BSUID, PSID,
+  IGSID, todos na mesma lista. A invariante é: `contact_aliases` de cada conversa
+  é **subconjunto** de `identifiers` do contato dela. Se um alias novo ficar só
+  na conversa, a próxima mensagem que chegar por ele não acha a pessoa e nasce um
+  segundo contato — em silêncio.
+- ⚠️ **A ligação é feita por GATILHO no banco**
+  (`trg_conversa_ganha_contato`, `trg_contato_aprende`), não no TypeScript. Há
+  três pontos que criam conversa e vão existir mais; instrumentar um a um é
+  garantir esquecer o próximo — mesmo argumento de `pagamento.*` e `estoque.*`
+  (§9.9). Quem lê o código não vê isso acontecer, e
+  `lib/inbox/resolve-conversation.ts` diz onde olhar. De brinde, o contato criado
+  pelo gatilho é desfeito junto quando o insert da conversa colide no `23505`.
+- **A busca do contato não tem recorte de canal nem de caixa** — é justamente o
+  cruzamento que interessa. Com filtro, cada caixa criaria o seu contato e o
+  problema voltaria com outro nome.
+- **Contato órfão (sem thread) não é defeito.** Em produção conversa não se
+  apaga. O que é defeito é a mesma pessoa cadastrada duas vezes, ou seja, dois
+  contatos com identificador em comum — nenhum índice proíbe sobreposição de
+  array, então a trava é `e2e/contato-espinha.spec.ts`.
+
+**Estado atual: só a espinha.** A conversa **ainda carrega** nome, telefone,
+identificadores e tags, e é dela que a tela lê. Cada campo sai de lá um por vez,
+e só quando já houver quem leia do contato. Em teste, limpar conversa é
+`apagarConversas()` de `e2e/apoio/banco.ts`, que tira o contato junto.
+
 ### 9.3 Procedimentos
 - `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)
 - `visibleOnClientApp`: controla se o procedimento aparece para o cliente agendar pelo app
@@ -999,6 +1052,9 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
 ❌ Comparar período parcial com período anterior inteiro
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar
+❌ Tratar a conversa como a pessoa — a pessoa é contacts, a conversa é uma thread
+❌ Ligar conversa a contato no TypeScript (é gatilho; senão o próximo ponto esquece)
+❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Perguntar "qual o WhatsApp desta rede?" — a pergunta é qual DESTES, e por quê
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa

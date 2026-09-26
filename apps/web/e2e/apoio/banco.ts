@@ -67,3 +67,41 @@ export async function filiaisAtivas(): Promise<Filial[]> {
   if (error) throw new Error(`Não consegui listar as filiais: ${error.message}`)
   return (data ?? []) as Filial[]
 }
+
+/**
+ * Apaga uma conversa e tudo que só existe por causa dela.
+ *
+ * Existe porque cada spec limpava à mão, e a lista do que precisa sair cresceu:
+ * eventos, mensagens, a conversa — e, desde que a PESSOA virou registro próprio,
+ * o contato que o gatilho `trg_conversa_ganha_contato` criou junto.
+ *
+ * Sem um lugar só, cada spec novo precisa lembrar do item novo. Foi o que
+ * aconteceu: o gatilho entrou e cinco specs passaram a deixar um contato órfão
+ * por rodada, porque nenhum deles sabia que a tabela existia.
+ *
+ * ⚠️ O contato só é apagado se **não sobrou outra conversa** nele. Em produção
+ * conversa não se apaga, então isto é higiene de teste — não é o comportamento
+ * do sistema.
+ */
+export async function apagarConversas(ids: string[]): Promise<void> {
+  if (ids.length === 0) return
+  const db = banco()
+
+  const { data: convs } = await db
+    .from('conversations').select('contato_id').in('id', ids)
+  const contatos = [...new Set(
+    (convs ?? []).map(c => c.contato_id as string | null).filter(Boolean) as string[],
+  )]
+
+  await db.from('domain_events').delete().in('entidade_id', ids)
+  await db.from('messages').delete().in('conversation_id', ids)
+  await db.from('conversations').delete().in('id', ids)
+
+  for (const contatoId of contatos) {
+    const { count } = await db
+      .from('conversations')
+      .select('id', { count: 'exact', head: true })
+      .eq('contato_id', contatoId)
+    if ((count ?? 0) === 0) await db.from('contacts').delete().eq('id', contatoId)
+  }
+}

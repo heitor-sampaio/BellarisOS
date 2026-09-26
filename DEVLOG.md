@@ -1260,6 +1260,72 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-26 — A conversa deixa de ser o registro do contato (espinha)
+
+Saiu de uma conversa em que o Heitor foi reformulando o desenho, e eu errei duas
+vezes antes de chegar: primeiro propus número por pessoa (`user_id` na caixa),
+depois propus compartimentar o acesso por caixa e por unidade. As duas estavam
+erradas pelo mesmo motivo — eu estava desenhando o fluxo de **uma** clínica
+dentro de um produto multitenant. Ele cortou: *"não é uma questão de caixa, é uma
+questão de liberdade"*, e depois apontou a saída: *"conversa deixa de ser o
+registro do contato. Um contato, do mesmo jeito que pode ter mais de uma
+oportunidade, pode ter mais de uma conversa."*
+
+**O problema que nenhuma das minhas propostas resolvia.** `conversations` era as
+duas coisas — a THREAD e a PESSOA. Com vários números o dedup passou a incluir a
+caixa (de propósito: no celular do cliente são duas conversas mesmo), então a
+mesma pessoa falando com duas caixas virava **duas fichas de contato**: dois
+nomes, duas listas de tags, duas atribuições de anúncio. E
+`leads.conversation_id` é singular, logo o card ficava preso numa delas enquanto
+o atendimento acontecia na outra.
+
+O buraco aparece exatamente no cenário que ele descreveu: lead entra pelo número
+de marketing, a SDR qualifica e agenda numa unidade, a unidade assume por outro
+número. É o momento em que ler o histórico é o que mais importa. **E já
+acontecia antes** — entre Instagram e WhatsApp a mesma pessoa sempre foram duas
+conversas. Os múltiplos números só transformaram um caso raro em rotina.
+
+**O momento era agora, e não se repete.** Medido antes de escrever qualquer
+coisa: 61 conversas, 61 pessoas distintas, **zero** pares com identificador em
+comum. A migração é 1:1, sem uma única decisão de fusão. Isso acabaria no
+primeiro handoff com dois números no ar, quando migrar passaria a exigir
+julgamento caso a caso.
+
+A migration **para** se a premissa não valer, em vez de adivinhar: um bloco que
+levanta exceção se houver conversas com alias cruzado. Escrever a lógica de
+agrupamento agora seria pior — código não exercitado rodando numa migration.
+
+**A ligação é feita por GATILHO, e isso foi uma correção de rumo no meio.** A
+primeira versão ligava no TypeScript, em cada um dos três pontos que criam
+conversa. Escrevi o módulo, liguei os três, e percebi o vão: os dois pontos do
+CRM não são exercitados por nenhum teste, então um deles desligado passaria em
+branco e a coluna nasceria certa e apodreceria. Movi para
+`trg_conversa_ganha_contato` (+ `trg_contato_aprende`), pelo mesmo argumento que
+já pôs `pagamento.*` e `estoque.*` em gatilho: *"esses fatos nascem em cinco ou
+seis lugares do código e instrumentar um a um é garantir esquecer o próximo"*.
+
+O módulo TypeScript foi apagado inteiro, e o código de aplicação ficou com
+**uma** mudança: um comentário que estava errado. De brinde, o gatilho é mais
+seguro que a versão em código — confirmei empiricamente que o contato criado por
+ele é desfeito junto quando o insert da conversa colide no `23505`, enquanto a
+versão em TypeScript exigia cuidado manual com a ordem.
+
+**Nenhum leitor mudou.** Nome, telefone e tags continuam saindo da conversa,
+exatamente como antes. A espinha existe para a pessoa ser joinável; os campos
+saem de lá um por vez, e cada um só quando já houver quem leia do contato.
+
+**Uma asserção minha estava errada e a suíte provou.** `contato-espinha` tinha
+uma quarta verificação — "nenhuma pessoa sem thread" — que passava isolada e
+reprovava na suíte inteira. Não era invariante: cinco specs apagavam a conversa
+que criaram sem saber que o gatilho havia criado um contato. Higiene de teste
+disfarçada de invariante. A asserção saiu (em produção conversa não se apaga, e
+órfão não faz mal; o que faz mal é pessoa duplicada, que é outra asserção), e a
+higiene virou `apagarConversas()` em `e2e/apoio/banco.ts` — um lugar só, para o
+próximo spec não precisar lembrar do próximo item.
+
+128 de 129 E2E e 371 unitários. O vermelho é `automacoes-anel`, que estoura o
+orçamento dele sob carga da suíte e passa isolado em 35s.
+
 ### 2026-09-26 — Vários números de WhatsApp: a tela, a escapatória e os templates
 
 Fecha o que a fundação (entrada abaixo) tinha deixado em aberto.
