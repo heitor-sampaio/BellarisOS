@@ -717,6 +717,14 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - **A fila do motor é `automation_runs`**, no Postgres — não há broker no
   projeto. O disparo é imediato (`after()`); o cron recolhe o que espera, o que
   falhou e o que é de tempo.
+  - ⚠️ **Tirar trabalho da fila exige REIVINDICAR a linha**, não só selecionar.
+    `retomarPendentes` faz isso com um compare-and-swap em `tentativas`
+    (`.eq('tentativas', lido)`), e `dispararAgendas` com um em
+    `ultimo_disparo_agenda`: quem escreve primeiro leva, e quem não muda linha
+    nenhuma passa adiante. Sem isso, duas passagens concorrentes do cron —
+    normal, porque o serviço roda de 5 em 5 minutos e uma fila grande passa
+    disso — executam o MESMO run duas vezes. Num aviso é ruído; numa ação de
+    mensagem é o cliente recebendo a mesma coisa duas vezes.
 - **O gatilho de tempo tem duas famílias**: intervalo (`minutos`, `horas`, conta
   a partir do último disparo) e relógio (`diaria`/`semanal`/`mensal`, num
   horário do dia). Cada uma usa o seu campo — `intervalo` ou `hora` — e o outro
@@ -1064,6 +1072,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Comparar período parcial com período anterior inteiro
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar
 ❌ Tratar a conversa como a pessoa — a pessoa é contacts, a conversa é uma thread
+❌ Listar o inbox por thread — a fila é de PESSOAS (a mesma aparecia duas vezes)
+❌ Pegar trabalho de uma fila sem reivindicar a linha (duas passagens executam duas vezes)
 ❌ Ligar conversa a contato no TypeScript (é gatilho; senão o próximo ponto esquece)
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Perguntar "qual o WhatsApp desta rede?" — a pergunta é qual DESTES, e por quê

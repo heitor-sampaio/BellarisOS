@@ -73,10 +73,28 @@ async function retomarPendentes(): Promise<{ retomadas: number; erros: number }>
       // A tentativa é contada ANTES de rodar. Contar depois faria um run que
       // derruba o processo no meio ser tentado para sempre — e um run que
       // derruba o processo é exatamente o que mais precisa parar de voltar.
-      await gravar(admin
+      //
+      // ⚠️ E a contagem é também a REIVINDICAÇÃO da execução. O `.eq('tentativas',
+      // …)` faz dela um compare-and-swap: quem escreve primeiro leva, e o segundo
+      // não acha linha para atualizar. Sem isso, duas passagens concorrentes do
+      // cron selecionam o mesmo run e executam os passos dele DUAS VEZES — num
+      // `notificar_equipe` é um aviso duplicado; numa ação de mensagem, é o
+      // cliente recebendo a mesma coisa duas vezes.
+      //
+      // Concorrer é normal: o serviço roda de 5 em 5 minutos e uma passagem com
+      // fila grande passa disso. Mesmo idioma de `ultimo_disparo_agenda` (§9.9):
+      // a marca vai antes de executar, e o que decide é quantas linhas mudaram.
+      const tentativas = (run.tentativas as number) ?? 0
+      const reivindicado = await gravar(admin
         .from('automation_runs')
-        .update({ tentativas: ((run.tentativas as number) ?? 0) + 1 })
-        .eq('id', run.id as string), 'contar a tentativa da execução')
+        .update({ tentativas: tentativas + 1 })
+        .eq('id', run.id as string)
+        .eq('tentativas', tentativas)
+        .select('id'), 'reivindicar a execução')
+
+      // Zero linhas não é erro: é outra passagem que chegou primeiro. Seguir
+      // daqui executaria o mesmo fluxo de novo.
+      if (!reivindicado || (reivindicado as unknown[]).length === 0) continue
 
       const status = await executarRun(run.id as string)
       if (status === 'falhou') erros += 1

@@ -46,7 +46,18 @@ test('duas automações que se alimentam param no teto de profundidade', async (
   // padrão da suíte é 60s — sozinho ele cabia, dentro do conjunto (com o dev
   // server dividido com os outros) estourava. O limite é do TESTE, não do
   // motor: o que se prova aqui é que a contagem estabiliza, e ela estabiliza.
-  test.setTimeout(150_000)
+  //
+  // 150s não bastou: com a suíte em 133 testes ele reprovou em 3 de 5 rodadas
+  // completas, sempre no MESMO lugar — o `fill` do formulário do cliente, que é
+  // trabalho de TELA, não de motor. Sozinho o teste inteiro leva 35s; sob carga,
+  // o dev server (compilando sob demanda e disputando o banco) multiplica isso
+  // por 3 ou 4.
+  //
+  // A causa real é este teste montar DUAS automações pelo editor gráfico antes
+  // de chegar ao que ele mede. Montá-las direto no banco cortaria a maior parte
+  // do tempo, mas duplicaria aqui o formato do grafo que o editor produz — troca
+  // uma fragilidade por outra pior. Enquanto isso não muda, o orçamento é este.
+  test.setTimeout(300_000)
 
   const db = banco()
   const tenant = await tenantId()

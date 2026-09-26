@@ -51,6 +51,14 @@ export interface Conversation {
   numero_provider: string | null
   /** Como a rede chama essa caixa. Aparece quando há mais de uma. */
   numero_label:    string | null
+  /**
+   * A PESSOA desta thread (`contacts.id`).
+   *
+   * É por ele que a lista do inbox agrupa: a conversa é a thread, não a pessoa
+   * (§9.2.1), e sem isto o mesmo telefone falando com duas caixas aparecia duas
+   * vezes na fila — a mesma pessoa, duas linhas.
+   */
+  contato_id:      string | null
   branch_id:       string | null
   branch_name:     string | null
   created_at:      string
@@ -187,7 +195,7 @@ export async function getConversations(
 
   let query = admin
     .from('conversations')
-    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, whatsapp_number_id, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, tags, attribution, branches(name)')
+    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, whatsapp_number_id, contato_id, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, tags, attribution, branches(name)')
     .eq('tenant_id', ctx.tenantId!)
   // Contato sem nenhuma mensagem não é conversa. A conversa é também o registro
   // do contato, e contato criado pelo quadro (ou pelo backfill que deu dono às

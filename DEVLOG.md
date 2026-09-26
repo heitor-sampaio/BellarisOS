@@ -1260,6 +1260,58 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-26 — A fila do inbox é de PESSOAS (e um defeito real no motor)
+
+Terceiro passo do contato separado da conversa.
+
+A mesma pessoa falando com duas caixas ocupava **duas linhas** na fila,
+competindo consigo mesma por atenção. Agora é uma linha: as não lidas somam, a
+espera mostrada é a **mais antiga** das threads (a que dói — a mais recente
+esconderia o atendimento parado há dois dias), os ícones de canal aparecem um
+por canal distinto, e um "2 conversas" avisa que há histórico em outro lugar
+antes de abrir. Clicar abre a thread de atividade mais recente; se alguma já
+estiver aberta, fica nela.
+
+**Mudei de ideia sobre uma coisa que eu tinha prometido.** Eu havia descrito a
+lista por pessoa com as mensagens INTERCALADAS das threads. Não fiz, e acho que
+o intercalado está errado: as threads são separadas de verdade no celular do
+cliente, com notificação e janela de 24h próprias. Um histórico misturado
+mostraria uma conversa que não existe do lado dele — e responder "como
+combinamos ontem" na thread errada é pior que um clique a mais. Ficou **pessoa
+como unidade de navegação, thread como unidade de conversa**.
+
+O agrupamento é função pura em `lib/inbox/lista.ts`, com 10 testes de unidade:
+os erros dele (somar não lidas errado, esconder a espera mais antiga, fundir
+pessoas diferentes) não dão erro nenhum na tela, só um número errado. O filtro
+continua por thread e o agrupamento vem depois — inverter esconderia a pessoa
+cuja thread relevante passou no filtro só porque a principal dela não passou.
+
+**E o defeito de verdade, que apareceu de lado.** Depois de eu subir o orçamento
+de `automacoes-anel`, a suíte acusou `automacoes-tempo` com
+`acao.notificar_equipe` **duas vezes** no traço — e ele passava sozinho. Não era
+lentidão: `retomarPendentes` selecionava os runs prontos e executava **sem
+reivindicar a linha**. Duas passagens concorrentes do cron pegavam o mesmo run e
+rodavam os passos dele duas vezes. Num aviso é ruído; numa ação de mensagem é o
+**cliente recebendo a mesma coisa duas vezes**.
+
+E isso é alcançável em produção: o serviço roda de 5 em 5 minutos, e uma
+passagem com fila grande passa disso.
+
+A correção é um compare-and-swap em `tentativas`, que já era incrementado antes
+de executar — quem escreve primeiro leva. É o mesmo idioma que `dispararAgendas`,
+vinte linhas abaixo, já usava para `ultimo_disparo_agenda`: só `retomarPendentes`
+estava sem. `automacoes-cron-concorrente` dispara duas passagens em paralelo e
+confere o traço; conferi que ele reprova com a trava removida.
+
+Duas coisas que esse teste ensinou, e ficaram nos comentários dele: contar
+notificações não mede execução (`notificar_equipe` cria uma por destinatário —
+oito avisos eram uma execução com oito interessados), e um grafo escrito à mão
+com `proximos` em vez de `ligacoes` faz o motor quebrar e o teste passar mesmo
+assim, medindo um motor parado.
+
+134 de 134 E2E e 381 unitários — a suíte inteira verde pela primeira vez nesta
+sequência.
+
 ### 2026-09-26 — O cruzamento: quem assume o atendimento alcança a outra thread
 
 Segundo passo do contato separado da conversa, e o primeiro que se vê na tela.
