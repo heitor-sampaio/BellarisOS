@@ -195,7 +195,7 @@ export async function getConversations(
 
   let query = admin
     .from('conversations')
-    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, whatsapp_number_id, contato_id, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, tags, attribution, branches(name)')
+    .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, whatsapp_number_id, contato_id, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, attribution, branches(name)')
     .eq('tenant_id', ctx.tenantId!)
   // Contato sem nenhuma mensagem não é conversa. A conversa é também o registro
   // do contato, e contato criado pelo quadro (ou pelo backfill que deu dono às
@@ -257,12 +257,32 @@ async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Co
     }
   }
 
+  // As tags da PESSOA, para as threads dela mostrarem as mesmas. Consulta
+  // separada, mapeada em memória — nunca embed do PostgREST, pelo motivo que
+  // este arquivo já documenta.
+  //
+  // Ler `conversations.tags` aqui (que ainda existe, como semente) faria o
+  // filtro por tag achar a pessoa numa thread e não na outra — e a lista é por
+  // pessoa, então o filtro precisa concordar com ela.
+  const tagsPorContato = new Map<string, string[]>()
+  const contatoIds = [...new Set(
+    conversas.map(c => c.contato_id as string | null).filter(Boolean) as string[],
+  )]
+  if (contatoIds.length > 0) {
+    const { data, error } = await createAdminClient()
+      .from('contacts').select('id, tags').in('id', contatoIds)
+    if (error) console.error('[getConversations] tags da pessoa:', error.message)
+    for (const k of (data ?? []) as { id: string; tags: string[] | null }[]) {
+      tagsPorContato.set(k.id, k.tags ?? [])
+    }
+  }
+
   const base = (c: any): Conversation => {
     const caixa = c.whatsapp_number_id ? caixas.get(c.whatsapp_number_id) : undefined
     return {
       ...c,
       branch_name: c.branches?.name ?? null,
-      lead_tags:   (c.tags as string[]) ?? [],
+      lead_tags:   (c.contato_id ? tagsPorContato.get(c.contato_id) : null) ?? [],
       eh_cliente:  !!c.client_id,
       veio_de_anuncio: !!(c.attribution as Record<string, unknown> | null)?.ad_id,
       numero_provider: caixa?.provider ?? null,
@@ -634,7 +654,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
-    .select('id, contact_name, contact_phone, tags, client_id, channel, contato_id')
+    .select('id, contact_name, contact_phone, client_id, channel, contato_id')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -669,10 +689,15 @@ export async function getConversationCard(conversationId: string): Promise<Conve
     id: p.id as string, name: p.name as string, price: Number(p.price ?? 0),
   }))
 
-  const [cliente, oportunidades, outrasThreads] = await Promise.all([
+  const contatoId = c.contato_id as string | null
+
+  const [cliente, oportunidades, outrasThreads, tagsDaPessoa] = await Promise.all([
     clientId ? buscarCliente(admin, ctx.tenantId!, clientId) : Promise.resolve(null),
     buscarOportunidades(admin, ctx.tenantId!, conversationId, clientId, stages),
-    buscarOutrasThreads(admin, ctx, conversationId, c.contato_id as string | null),
+    buscarOutrasThreads(admin, ctx, conversationId, contatoId),
+    // As tags vêm da PESSOA, não da thread (§9.2.1). `conversations.tags` é
+    // semente: lida dali, a tag marcada numa thread não apareceria na outra.
+    buscarTagsDoContato(admin, contatoId),
   ])
 
   const abertas    = oportunidades.filter(o => o.outcome === 'OPEN')
@@ -683,12 +708,24 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       conversationId,
       nome:     c.contact_name ?? null,
       telefone: c.contact_phone ?? null,
-      tags:     (c.tags ?? []) as string[],
+      tags:     tagsDaPessoa,
       canal:    c.channel as InboxChannel,
     },
     cliente, abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
     outrasThreads,
   }
+}
+
+/** As tags da PESSOA. Vazio quando a thread ainda não tem contato. */
+async function buscarTagsDoContato(
+  admin: ReturnType<typeof createAdminClient>,
+  contatoId: string | null,
+): Promise<string[]> {
+  if (!contatoId) return []
+  const { data, error } = await admin
+    .from('contacts').select('tags').eq('id', contatoId).maybeSingle()
+  if (error) { console.error('[getConversationCard] tags da pessoa:', error.message); return [] }
+  return ((data?.tags ?? []) as string[])
 }
 
 /**
@@ -958,15 +995,32 @@ export async function atualizarContato(
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (dados.nome     !== undefined) patch.contact_name  = dados.nome.trim() || null
   if (dados.telefone !== undefined) patch.contact_phone = dados.telefone.replace(/\D/g, '') || null
-  if (dados.tags     !== undefined) patch.tags          = dados.tags
 
-  const { error } = await admin
+  const { data: atualizada, error } = await admin
     .from('conversations')
     .update(patch)
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
+    .select('contato_id')
+    .maybeSingle()
 
   if (error) return { ok: false, error: error.message }
+
+  // As TAGS são da pessoa, e vão para ela (§9.2.1). `conversations.tags` é só a
+  // semente do nascimento da thread: gravar ali faria a tag valer numa thread e
+  // não na outra — marcar "botox" atendendo pela recepção não apareceria para
+  // quem abre a do marketing, que é a mesma pessoa.
+  if (dados.tags !== undefined) {
+    const contatoId = (atualizada as { contato_id: string | null } | null)?.contato_id
+    if (contatoId) {
+      const { error: erroTags } = await admin
+        .from('contacts')
+        .update({ tags: dados.tags, updated_at: new Date().toISOString() })
+        .eq('id', contatoId)
+        .eq('tenant_id', ctx.tenantId!)
+      if (erroTags) return { ok: false, error: erroTags.message }
+    }
+  }
 
   const mudouNome = patch.contact_name !== undefined
   const mudouFone = patch.contact_phone !== undefined

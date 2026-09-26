@@ -1260,6 +1260,58 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-26 — As tags vão para a pessoa; a atribuição fica (e por quê)
+
+Quarto passo do contato separado da conversa — o primeiro em que um campo de fato
+sai de `conversations`.
+
+**As tags moraram no lugar errado desde sempre**, e o próprio código dizia:
+`conversations.tags` tinha o comentário "Tags do CONTATO: descrevem a pessoa, não
+o negócio". Ficavam ali por falta de lugar. Com vários números deixou de ser só
+feio — a mesma pessoa tinha DUAS listas, e marcar "botox" atendendo pela recepção
+não aparecia para quem abria a thread do marketing.
+
+Agora são de `contacts`. `conversations.tags` sobrevive como **semente**: escrita
+uma vez no nascimento da thread (é de onde vêm as tags derivadas da origem), lida
+pelo gatilho que a leva à pessoa, nunca lida pelo app. Sai numa migration própria
+depois do soak, como as linhas de `integration_configs`.
+
+**A atribuição do anúncio NÃO mudou de casa**, e o plano dizia que mudaria. Ao
+olhar o que o dado significa, ela é da THREAD: `marcarAnuncioNaConversa` a
+reescreve quando a pessoa volta por outro anúncio, ou seja, ela aponta para o
+último anúncio *daquele* retorno. O que seria do contato é a PRIMEIRA origem — e
+isso é um dado novo, não uma mudança de casa. Coluna que ninguém lê apodrece, e
+por isso não entrou.
+
+**Mas a atribuição tinha um defeito que os múltiplos números criaram.** Três
+lugares procuravam "o anúncio deste cliente" na conversa MAIS RECENTE dele — dois
+gatilhos do banco e `lib/ads/atribuicao.ts`. Com uma conversa por pessoa dava no
+mesmo; com várias, a mais recente é a do atendimento, que não tem anúncio nenhum.
+Resultado: `on_transaction_paid` mandava a compra para a API de Conversões da Meta
+com `ad_id` nulo — **ROI da campanha menor do que é, e nada no sistema acusando**.
+Passou a procurar a mais recente QUE TENHA anúncio, o que é melhor também no caso
+de uma thread só.
+
+**E um defeito meu, grave, que só o teste pegou.** A primeira versão do gatilho
+declarava uma variável plpgsql chamada `tags` — e `contacts.tags` é coluna. No
+`update`, a referência ficava ambígua (`42702`), o gatilho levantava, **o INSERT
+da conversa falhava e a mensagem do cliente era descartada**. E só no ramo de
+quem já tem contato, que é exatamente o caso que esta frente existe para
+suportar. Sem efeito real: com uma caixa ativa, quem escreve de novo encontra a
+conversa existente e nunca chega a esse ramo. As colunas do `update` agora são
+qualificadas (`c.tags`) para isso não poder voltar calado.
+
+`contato-tags-da-pessoa` confere as duas coisas: a tag marcada vale nas duas
+threads, e a busca por tag encontra a pessoa.
+
+**E a suíte voltou a caber.** `automacoes-anel` reprovava em toda rodada completa
+e consumiu até os 300s que eu havia lhe dado. O diagnóstico anterior estava
+errado: as automações já eram montadas no banco. A causa é que ele é o primeiro
+teste (ordem alfabética) a abrir `/admin/clients/[id]`, e pagava a primeira
+compilação de uma página pesada **dentro** do próprio limite, com o dev server
+disputado. O preparo e o aquecimento da rota foram para `beforeAll`, que tem
+orçamento próprio. A suíte caiu de 12,3 para 7,4 minutos, e 136 de 136 passam.
+
 ### 2026-09-26 — A fila do inbox é de PESSOAS (e um defeito real no motor)
 
 Terceiro passo do contato separado da conversa.

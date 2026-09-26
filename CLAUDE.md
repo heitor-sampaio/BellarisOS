@@ -467,6 +467,32 @@ duas conversas.
   contatos com identificador em comum — nenhum índice proíbe sobreposição de
   array, então a trava é `e2e/contato-espinha.spec.ts`.
 
+**As TAGS são da pessoa** (`contacts.tags`), e sempre eram — o comentário em
+`conversations.tags` já dizia "Tags do CONTATO: descrevem a pessoa, não o
+negócio". `conversations.tags` sobrevive como **semente**: escrita uma vez no
+nascimento da thread (é de onde vêm as tags derivadas da origem), lida pelo
+gatilho que a leva para a pessoa, e **nunca lida pelo app**. Sai numa migration
+própria depois do soak.
+
+⚠️ **Variável de plpgsql não pode se chamar como uma coluna.** `declare tags
+text[]` num gatilho de `contacts` fez a referência ficar ambígua (`42702`)
+dentro do `update`, o INSERT da conversa falhar e a mensagem do cliente ser
+DESCARTADA — e só no caso de quem já tem contato, que é o que esta frente existe
+para suportar. As colunas no `update` do gatilho são qualificadas (`c.tags`) para
+isso não voltar em silêncio.
+
+**A atribuição do anúncio NÃO mudou de casa, e é deliberado.**
+`conversations.attribution` aponta para o último anúncio *daquele* retorno
+(`marcarAnuncioNaConversa` a reescreve quando a pessoa volta por outro) — é
+informação da THREAD. O que seria do contato é a PRIMEIRA origem, e isso é um
+dado novo, não uma mudança de casa: não entra antes de alguém precisar dele.
+- ⚠️ Mas quem procura "o anúncio deste cliente" tem de procurar a conversa mais
+  recente **que tenha anúncio**, não simplesmente a mais recente: com várias
+  threads, a última a receber mensagem costuma ser a do atendimento, não a que
+  veio da campanha. `on_transaction_paid` fazia isso errado e mandava a compra
+  para a API de Conversões da Meta com `ad_id` nulo — ROI menor do que é, sem
+  nada acusando.
+
 **O cruzamento é o que conserta o handoff.** `getConversationCard` devolve
 `outrasThreads` — as outras conversas da mesma pessoa —, e o painel do inbox as
 mostra na seção do CONTATO (não na das oportunidades: é sobre a pessoa). Clicar
@@ -1073,6 +1099,9 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar
 ❌ Tratar a conversa como a pessoa — a pessoa é contacts, a conversa é uma thread
 ❌ Listar o inbox por thread — a fila é de PESSOAS (a mesma aparecia duas vezes)
+❌ Ler tags de conversations.tags (é semente; a fonte é contacts.tags)
+❌ Declarar variável plpgsql com nome de coluna (42702 dentro do gatilho, insert descartado)
+❌ Procurar "o anúncio do cliente" na conversa mais recente em vez da mais recente COM anúncio
 ❌ Pegar trabalho de uma fila sem reivindicar a linha (duas passagens executam duas vezes)
 ❌ Ligar conversa a contato no TypeScript (é gatilho; senão o próximo ponto esquece)
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)

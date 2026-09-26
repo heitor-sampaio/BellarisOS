@@ -40,24 +40,20 @@ test.afterAll(async () => {
   }
 })
 
-test('duas automações que se alimentam param no teto de profundidade', async ({ page }) => {
-  // Este teste ESPERA o motor sossegar: 25s para o anel começar a rodar e até
-  // 30s para a contagem parar de mudar. São ~55s só de espera, e o limite
-  // padrão da suíte é 60s — sozinho ele cabia, dentro do conjunto (com o dev
-  // server dividido com os outros) estourava. O limite é do TESTE, não do
-  // motor: o que se prova aqui é que a contagem estabiliza, e ela estabiliza.
-  //
-  // 150s não bastou: com a suíte em 133 testes ele reprovou em 3 de 5 rodadas
-  // completas, sempre no MESMO lugar — o `fill` do formulário do cliente, que é
-  // trabalho de TELA, não de motor. Sozinho o teste inteiro leva 35s; sob carga,
-  // o dev server (compilando sob demanda e disputando o banco) multiplica isso
-  // por 3 ou 4.
-  //
-  // A causa real é este teste montar DUAS automações pelo editor gráfico antes
-  // de chegar ao que ele mede. Montá-las direto no banco cortaria a maior parte
-  // do tempo, mas duplicaria aqui o formato do grafo que o editor produz — troca
-  // uma fragilidade por outra pior. Enquanto isso não muda, o orçamento é este.
-  test.setTimeout(300_000)
+/**
+ * O preparo fica FORA do teste, e isso não é organização — é orçamento.
+ *
+ * Este é o primeiro teste da suíte (ordem alfabética) a abrir
+ * `/admin/clients/[id]`, uma página pesada. Ele pagava a primeira compilação
+ * dela pelo Turbopack **dentro** do próprio limite de tempo, com o dev server
+ * disputado por todo o resto: sozinho o teste leva 33s, e dentro da suíte
+ * estourou 150s e depois 300s, sempre no `fill` do formulário.
+ *
+ * `beforeAll` tem orçamento próprio. Compilar a rota aqui tira o custo de onde
+ * ele não pertence — o que o teste mede é o motor parar, não o Next compilar.
+ */
+test.beforeAll(async ({ browser }) => {
+  test.setTimeout(240_000)
 
   const db = banco()
   const tenant = await tenantId()
@@ -90,6 +86,34 @@ test('duas automações que se alimentam param no teto de profundidade', async (
     }).select('id').single()
     ids.push(data!.id as string)
   }
+
+  // A compilação da rota, paga aqui. Sem `waitForLoadState`: o que interessa é
+  // o servidor ter compilado, não a página estar interativa.
+  const contexto = await browser.newContext()
+  const aquecer = await contexto.newPage()
+  await aquecer.goto(`/admin/clients/${clientId}?tab=dados`, { waitUntil: 'commit' })
+  await contexto.close()
+})
+
+test('duas automações que se alimentam param no teto de profundidade', async ({ page }) => {
+  // Este teste ESPERA o motor sossegar: 25s para o anel começar a rodar e até
+  // 30s para a contagem parar de mudar. São ~55s só de espera, e o limite
+  // padrão da suíte é 60s — sozinho ele cabia, dentro do conjunto (com o dev
+  // server dividido com os outros) estourava. O limite é do TESTE, não do
+  // motor: o que se prova aqui é que a contagem estabiliza, e ela estabiliza.
+  //
+  // 150s não bastou: com a suíte em 133 testes ele reprovou em 3 de 5 rodadas
+  // completas, sempre no MESMO lugar — o `fill` do formulário do cliente, que é
+  // trabalho de TELA, não de motor. Sozinho o teste inteiro leva 35s; sob carga,
+  // o dev server (compilando sob demanda e disputando o banco) multiplica isso
+  // por 3 ou 4.
+  //
+  // O preparo (cliente, automações e a COMPILAÇÃO da rota) mudou para o
+  // `beforeAll`, que tem orçamento próprio — ver o comentário lá. Aqui sobrou o
+  // que o teste de fato mede.
+  test.setTimeout(150_000)
+
+  const db = banco()
 
   // -- O pavio: uma edição de verdade, pela tela ------------------------------
   // Tem de passar pelo app: é o emissor que despacha para o motor, e alterar o
