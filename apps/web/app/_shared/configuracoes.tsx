@@ -18,7 +18,8 @@ import { listarEventosDeDominio, resumoDoCatalogo } from '@/actions/eventos'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { SegSelect } from '@/components/shared/seg-select'
 import { SettingsGeral } from '@/components/admin/settings-geral'
-import { lerDadosDaRede } from '@/actions/rede'
+import { lerDadosDaRede, lerVisibilidadeDoInbox } from '@/actions/rede'
+import { SettingsVisibilidadeInbox } from '@/components/admin/settings-visibilidade-inbox'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -156,6 +157,7 @@ export async function Configuracoes({
 
   // Idem para os dados da própria rede.
   const dadosDaRede = activeTab === 'general' ? await lerDadosDaRede() : null
+  const visibilidadeDoInbox = wantsRoles ? await lerVisibilidadeDoInbox() : null
 
   // A corrente de eventos, idem. São duas consultas (o resumo agregado e as
   // últimas linhas) e nenhuma outra aba as usa.
@@ -278,6 +280,13 @@ export async function Configuracoes({
             tabsByRole={tabsByRole}
             canSeeTeam={atalhoParaEquipe && can(ctx, 'team', 'MANAGE')}
           />
+          {/* Depois da matriz: refina o escopo "só os meus" que se escolhe nela. */}
+          {visibilidadeDoInbox && (
+            <SettingsVisibilidadeInbox
+              inicial={visibilidadeDoInbox}
+              podeEditar={can(ctx, 'roles', 'MANAGE')}
+            />
+          )}
         </div>
       )}
 

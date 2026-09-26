@@ -512,9 +512,19 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   webhook), senão uma nova. O cadastro manual (`createLead`) nunca gravou
   `conversation_id`, e o lead nascia sem pessoa — o motivo de não ser código.
 - `on delete restrict`: pessoa com oportunidade não se apaga.
-- **A visibilidade do inbox com escopo OWN ainda é por `conversations.lead_id`**
-  (a thread), não pela pessoa. Mudar isso muda quem vê o quê, e é decisão de
-  produto.
+- **Com escopo OWN, o inbox segue a pessoa OU a conversa — escolha da clínica**
+  (`tenants.inbox_visibilidade`, Configurações → Cargos, pede `roles: MANAGE`).
+  Decisão do Heitor em 2026-09-26: "pessoa" é o padrão, mas configurável.
+  - **Pela pessoa:** tem oportunidade sua → você vê todas as threads dela; só
+    de outros donos → nenhuma; nenhuma oportunidade → todo mundo vê.
+  - **Pela conversa:** cada thread pela oportunidade ligada a ELA
+    (`conversations.lead_id`); thread sem oportunidade fica no bolo comum —
+    inclusive a thread nova de quem é de outro dono.
+  - A regra mora em UM lugar (`alcanceDoDono`, em `actions/inbox.ts`), usado
+    pela lista e pelos atalhos das outras threads. Quem esconde quem é conta
+    do banco (`contatos_ocultos_do_dono`, só `service_role`), que devolve um
+    array só — ler os leads com dono no app bateria no teto de 1000 linhas.
+  - Erro ao ler o alcance mostra NADA, nunca tudo.
 
 **Estado atual:** a conversa **ainda carrega** nome e telefone, e é dela que a
 tela lê. Sai numa frente própria, junto com a limpeza de `conversations.tags`
@@ -885,6 +895,11 @@ Regras:
   Filtrar só na renderização deixa o registro acessível pelo id.
 - `provides_services` significa apenas: aparece como profissional na agenda e
   recebe comissão. Não é permissão e não deriva escopo.
+- **O OWN do CRM, no inbox, tem um refino por rede** — pela pessoa ou pela
+  conversa (§9.2.1). Fica na aba Cargos, logo abaixo da matriz.
+- Teste de regra de alcance precisa de um membro com escopo OWN de verdade:
+  `membroComEscopoProprio` (`e2e/apoio/sessao.ts`). Como admin a tela abre de
+  qualquer jeito, e o teste não prova nada.
 
 ---
 

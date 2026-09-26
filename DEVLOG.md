@@ -1260,6 +1260,37 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-26 — Com "só os próprios leads", o inbox segue a pessoa (ou a conversa)
+
+Fecha o que ficou de fora na entrada abaixo. Com escopo OWN no CRM, cada thread
+aparecia conforme a oportunidade ligada a ELA — e com várias threads por pessoa
+isso vazava e escondia ao mesmo tempo: a thread nova da unidade, sem
+oportunidade, aparecia para qualquer SDR, mesmo a pessoa sendo de outro; e se
+outro SDR abrisse negócio nela, sumia para quem já negociava com a pessoa.
+
+A recomendação foi seguir a pessoa. O Heitor aprovou e pediu que fosse
+**configurável pela clínica**: `tenants.inbox_visibilidade`, na aba Cargos
+(logo abaixo da matriz, porque refina o escopo "só os meus" que se escolhe
+nela), com `roles: MANAGE`. O padrão é "pela pessoa".
+
+- **Pela pessoa:** tem oportunidade sua → todas as threads dela; só de outros
+  donos → nenhuma; nenhuma oportunidade → todo mundo. Com isso o handoff
+  funciona também para cargos OWN, o que antes exigia escopo ALL.
+- **Pela conversa:** o comportamento de antes, intacto.
+
+A regra mora num lugar só (`alcanceDoDono`), para a lista e os atalhos das
+outras threads não divergirem. Quem fica escondido é conta do banco
+(`contatos_ocultos_do_dono`, executável só pela service role), porque a versão
+em JavaScript precisava ler todos os leads com dono — e a partir de 1000 a
+pessoa de outro SDR voltaria a aparecer em silêncio.
+
+**O teste é o primeiro da suíte que entra como alguém que NÃO é admin.**
+`e2e/apoio/sessao.ts` cria um cargo com CRM em OWN, um membro e a sessão dele
+pelo mesmo magic link do setup. Sem isso nenhuma regra de alcance pode ser
+provada: como admin, a tela abre de qualquer jeito. `inbox-visibilidade` confere
+os dois modos, com uma pessoa sem oportunidade como controle, e a tela gravando
+a escolha.
+
 ### 2026-09-26 — A oportunidade é da pessoa (e o cadastro manual ganha uma)
 
 Quinto e último passo da ordem combinada para o contato separado da conversa.
@@ -1294,8 +1325,8 @@ cria assim, e sem isso a invariante `contact_aliases ⊆ identifiers` quebraria.
 `on delete restrict`: pessoa com oportunidade não se apaga.
 
 **O que ficou de fora, de propósito:** com escopo OWN, a visibilidade das threads
-no inbox continua sendo por `conversations.lead_id` (a thread), não pela pessoa.
-Mudar isso muda quem vê o quê — é decisão de produto, não consequência técnica.
+no inbox continuava sendo por `conversations.lead_id` (a thread). Mudar isso
+muda quem vê o quê — foi levado ao Heitor e resolvido na entrada acima.
 
 `oportunidade-da-pessoa` confere os dois casos: o card do marketing aparece na
 thread da unidade, e o lead sem conversa ganha pessoa que o webhook reencontra.

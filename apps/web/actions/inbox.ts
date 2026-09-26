@@ -20,6 +20,7 @@ import {
   extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
 } from '@/lib/templates/core'
 import { gravar, ler } from '@/lib/db'
+import { lerVisibilidade } from '@/lib/inbox/visibilidade'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
@@ -161,6 +162,51 @@ export interface ReplyPreview {
   id:         string | null
 }
 
+type AlcanceDoDono =
+  | { modo: 'conversa'; meusLeads: string[] }
+  | { modo: 'pessoa';   ocultas: string[] }
+
+/**
+ * O que um cargo de escopo OWN enxerga no inbox, conforme a clínica escolheu
+ * em Configurações → Cargos (`tenants.inbox_visibilidade`, ver
+ * `lib/inbox/visibilidade.ts`).
+ *
+ * Um lugar só para a lista e para os atalhos das outras threads: se cada um
+ * lesse a escolha por conta própria, bastaria um esquecer para a tela ao lado
+ * mostrar o que esta esconde.
+ *
+ * Erro de leitura LANÇA: quem chama decide, e decidir "mostra tudo" aqui seria
+ * vazar em silêncio.
+ */
+async function alcanceDoDono(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  owner: string,
+): Promise<AlcanceDoDono> {
+  const rede = await ler(
+    admin.from('tenants').select('inbox_visibilidade').eq('id', tenantId).maybeSingle(),
+    'ler a visibilidade do inbox',
+  )
+  const modo = lerVisibilidade((rede as { inbox_visibilidade?: string } | null)?.inbox_visibilidade)
+
+  if (modo === 'conversa') {
+    const meus = await ler(
+      admin.from('leads').select('id').eq('tenant_id', tenantId).eq('owner_id', owner),
+      'carregar os leads do dono',
+    )
+    return { modo, meusLeads: ((meus ?? []) as { id: string }[]).map(l => l.id) }
+  }
+
+  // No banco, e num array só: ler os leads com dono para contar aqui bateria
+  // no teto de 1000 linhas do PostgREST (§13.1), e a pessoa de outro SDR
+  // voltaria a aparecer sem nada acusar.
+  const ocultas = await ler(
+    admin.rpc('contatos_ocultos_do_dono', { p_tenant: tenantId, p_owner: owner }),
+    'calcular quem é de outro dono',
+  )
+  return { modo, ocultas: (ocultas ?? []) as string[] }
+}
+
 export async function getConversations(
   /**
    * Conversa que deve entrar na lista mesmo sem mensagem nenhuma.
@@ -179,18 +225,15 @@ export async function getConversations(
   // O alcance do CRM filtrava o funil e não filtrava aqui: com "só os próprios
   // leads", a pessoa ainda lia o WhatsApp da clínica inteira.
   const owner = ownerFilter(ctx, 'crm')
-  let ownLeadIds: string[] | null = null
+  let alcance: AlcanceDoDono | null = null
   if (owner) {
-    const { data: mine, error } = await admin
-      .from('leads')
-      .select('id')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('owner_id', owner)
-    if (error) {
-      console.error('[getConversations] leads do dono:', error.message)
+    try {
+      alcance = await alcanceDoDono(admin, ctx.tenantId!, owner)
+    } catch (e) {
+      // Sem saber o alcance, não se mostra nada: mostrar tudo seria vazar.
+      console.error('[getConversations] alcance do dono:', e instanceof Error ? e.message : e)
       return []
     }
-    ownLeadIds = (mine ?? []).map(l => l.id as string)
   }
 
   let query = admin
@@ -207,12 +250,15 @@ export async function getConversations(
     ? query.or(`last_message_at.not.is.null,id.eq.${incluirId}`)
     : query.not('last_message_at', 'is', null)
 
-  if (ownLeadIds) {
+  if (alcance?.modo === 'conversa') {
     // Conversa sem lead é contato que ainda não virou card: fica no bolo comum,
     // visível para todo mundo, senão ninguém atende.
-    query = ownLeadIds.length > 0
-      ? query.or(`lead_id.is.null,lead_id.in.(${ownLeadIds.join(',')})`)
+    query = alcance.meusLeads.length > 0
+      ? query.or(`lead_id.is.null,lead_id.in.(${alcance.meusLeads.join(',')})`)
       : query.is('lead_id', null)
+  } else if (alcance?.modo === 'pessoa' && alcance.ocultas.length > 0) {
+    // Pessoa sem oportunidade continua no bolo comum; some só quem é de outro.
+    query = query.or(`contato_id.is.null,contato_id.not.in.(${alcance.ocultas.join(',')})`)
   }
 
   const { data, error } = await query
@@ -740,13 +786,12 @@ async function buscarTagsDoContato(
  * nova precisa chegar ao que foi dito na anterior. Sem ele, o histórico fica
  * partido justamente no momento em que importa.
  *
- * ⚠️ Respeita o `ownerFilter` do CRM, igual à lista do inbox. Com escopo OWN, a
- * thread de um lead de outra pessoa continua invisível — abrir uma exceção aqui
- * seria furar, por uma tela, a regra que vale na tela ao lado. Rede que quer o
- * handoff funcionando usa escopo ALL, que é o padrão.
- *
- * Thread SEM oportunidade aparece para todo mundo, pela mesma razão da lista:
- * "contato que ainda não virou card fica no bolo comum".
+ * ⚠️ Respeita o `ownerFilter` do CRM pela MESMA regra da lista do inbox
+ * (`alcanceDoDono`) — abrir uma exceção aqui seria furar, por uma tela, a regra
+ * que vale na tela ao lado. Pela pessoa (o padrão), quem negocia com ela
+ * alcança todas as threads, e o handoff funciona mesmo com escopo OWN. Pela
+ * conversa, cada thread vale pela oportunidade ligada a ela, e thread SEM
+ * oportunidade fica no bolo comum.
  */
 async function buscarOutrasThreads(
   admin: ReturnType<typeof createAdminClient>,
@@ -776,17 +821,22 @@ async function buscarOutrasThreads(
 
   const owner = ownerFilter(ctx, 'crm')
   if (owner) {
-    const comLead = linhas.map(l => l.lead_id).filter(Boolean) as string[]
-    const meus = new Set<string>()
-    if (comLead.length > 0) {
-      const { data: leads } = await admin
-        .from('leads').select('id')
-        .eq('tenant_id', ctx.tenantId!)
-        .eq('owner_id', owner)
-        .in('id', comLead)
-      for (const l of (leads ?? []) as { id: string }[]) meus.add(l.id)
+    let alcance: AlcanceDoDono
+    try {
+      alcance = await alcanceDoDono(admin, ctx.tenantId!, owner)
+    } catch (e) {
+      console.error('[getConversationCard] alcance do dono:', e instanceof Error ? e.message : e)
+      return []
     }
-    linhas = linhas.filter(l => !l.lead_id || meus.has(l.lead_id))
+
+    if (alcance.modo === 'pessoa') {
+      // As threads da mesma pessoa aparecem ou somem JUNTAS: é o que "pela
+      // pessoa" quer dizer.
+      if (alcance.ocultas.includes(contatoId)) return []
+    } else {
+      const meus = new Set(alcance.meusLeads)
+      linhas = linhas.filter(l => !l.lead_id || meus.has(l.lead_id))
+    }
   }
 
   // O rótulo da caixa numa consulta só, mapeada em memória — nunca por embed do
