@@ -1260,6 +1260,71 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Varredura de cobertura, e a RLS do prontuário que não conferia a rede
+
+O Heitor pediu uma varredura completa do que não é coberto por teste. O mapa
+inteiro (actions, lib, telas, rotas, banco, pacotes) e o plano em frentes estão
+em `C:\Users\heito\.claude\plans\blz-agora-faz-uma-fluffy-blanket.md`; o resumo
+é:
+
+- **Vitest** (25 arquivos, 378 testes) cobre `lib/` puro; nenhum importa
+  `actions/` nem handler de `app/api`.
+- **E2E** (~55 specs) roda quase sempre como admin da rede. Zero cobertura em:
+  checkout de plano, fechamento de atendimento e comissão, prontuário/LGPD,
+  portal do cliente final, envio de mensagem (toda saída), webhooks oficial e
+  Meta, três crons, portal da filial, `/api/ext/*`, extensão e app nativo.
+- **Nenhum teste falava com o banco como usuário** — todos com `service_role`,
+  que passa por cima da RLS. Sem CI; o E2E roda contra o banco da produção
+  (decisão do Heitor: continuar assim, com varredura de sobras — frente 2).
+
+Ordem decidida: **segurança primeiro**, depois os testes em frentes (dinheiro,
+prontuário/LGPD, autorização, portal do cliente, mensagens, CRM, resto).
+
+**Frente 1 — o que a varredura achou no banco, e foi corrigido:**
+
+- As policies de `medical_records`, `medical_record_entries`,
+  `anamnesis_data`, `consent_terms`, `record_photos`, `loyalty_accounts` (as
+  quatro) e `loyalty_transactions` só exigiam `role <> 'CLIENT'`. **Funcionário
+  logado de qualquer rede lia e escrevia o prontuário e os pontos de todas**,
+  direto no PostgREST com a anon key. Uma rede só no banco hoje, então sem
+  vítima — seria vazamento no dia da segunda clínica. As tabelas não têm
+  `tenant_id`; a rede sai da cadeia até o cliente, por quatro helpers em
+  `private` (em função, e não em subquery, para não reaplicar a RLS de
+  `clients` a cada linha). `USING` e `WITH CHECK`.
+- `lead_tags_da_rede`, `eventos_resumo_do_catalogo` e `mark_notification_read`
+  eram SECURITY DEFINER e executáveis por `anon` — sem login, lia-se as tags de
+  leads e a contagem de eventos de qualquer rede pelo id. Revogadas; os
+  chamadores já usavam o cliente de serviço.
+- `grant usage on schema private to authenticated`: várias policies já chamavam
+  `private.*` sem esse USAGE, e só funcionavam porque a regra permissiva ao
+  lado bastava.
+
+**Provado como o atacante faria:** `e2e/rls-isolamento.spec.ts` cria uma
+SEGUNDA rede `[e2e]` inteira (unidade, profissional, cliente, atendimento,
+prontuário, ficha, foto, termo, pontos) e tenta ler, alterar, apagar e plantar
+com o **token de um membro da rede real**. Rodou antes da migration e falhou
+(leu o prontuário da outra rede); depois, passa. Controle: o mesmo membro lê o
+prontuário `[e2e]` da própria rede. A alteração tentada é sempre válida (coluna
+certa, tipo certo) e o teste exige `error` nulo nela — senão "0 linhas" poderia
+ser só um erro de coluna.
+
+Conferido e **não** era problema: `set_claim`, `set_client_claims`,
+`set_user_claims`, `buscar_clientes`, `cliente_por_telefone` (EXECUTE já
+revogado); nenhuma tabela pública com RLS desligada.
+
+**Avisos que sobraram no advisor do Supabase** (não mexidos): funções de
+gatilho marcadas como executáveis (não são chamáveis fora de gatilho),
+`search_path` mutável nas `metrics_*` e em `estornar_transacao`, proteção
+contra senha vazada desligada no Auth, e `client_documents`/`forms` com RLS sem
+policy (só o cliente de serviço as lê — intencional).
+
+**Sobra de teste achada:** 78 clientes `[e2e] Cliente agenda …` desde
+2026-09-18, deixados pelo `fase2-agenda` — entra na varredura de sobras da
+frente 2.
+
+Migration `20260927000004`, aplicada pelo MCP. Regressão: 83 E2E das telas que
+leem prontuário, fidelidade, eventos e tags.
+
 ### 2026-09-27 — A oportunidade de outro dono também não se mexe pelo id
 
 Continuação da entrada abaixo, pelo outro lado. O funil já recusava mover o

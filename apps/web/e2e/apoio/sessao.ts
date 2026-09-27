@@ -19,6 +19,8 @@ import { banco, tenantId, PREFIXO } from './banco'
 export interface MembroDeTeste {
   userId: string
   roleId: string
+  /** Token da sessão, para falar com o PostgREST COMO o membro — é o que prova a RLS. */
+  accessToken: string
   estado: string
   limpar: () => Promise<void>
 }
@@ -99,7 +101,7 @@ export async function membroComEscopoProprio(
     await ctx.storageState({ path: estado })
     await ctx.dispose()
 
-    return { userId, roleId: roleId!, estado, limpar }
+    return { userId, roleId: roleId!, accessToken: sessao.session.access_token, estado, limpar }
   } catch (e) {
     await limpar()
     throw e

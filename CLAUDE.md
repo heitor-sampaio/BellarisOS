@@ -143,6 +143,21 @@ estetica-os/                          (raiz do monorepo)
 4. Toda query **sempre** filtra por `tenant_id` e/ou `branch_id`
 5. RLS do Postgres é a segunda linha de defesa
 
+⚠️ **A RLS só vale se conferir a REDE.** A anon key está no bundle do
+navegador: qualquer funcionário logado fala direto com o PostgREST, sem passar
+pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
+`role <> 'CLIENT'` — funcionário de qualquer rede lia e escrevia os de todas.
+- Tabela sem `tenant_id` confere a rede pela cadeia até o cliente, com os
+  helpers `private.cliente_da_minha_rede`, `prontuario_da_minha_rede`,
+  `entrada_da_minha_rede`, `conta_de_pontos_da_minha_rede`
+  (migration `20260927000004`). Policy nova usa `USING` **e** `WITH CHECK` —
+  sem o CHECK dá para plantar linha no cliente de outra rede.
+- Função `security definer` em `public` que recebe a rede por parâmetro é
+  endpoint aberto: `revoke execute … from public, anon, authenticated` e
+  `grant … to service_role`.
+- A prova é `e2e/rls-isolamento.spec.ts`, que fala com o banco **com o token de
+  um membro**. Teste com `service_role` não prova RLS nenhuma.
+
 ### Claims do JWT
 
 ```typescript
@@ -1171,6 +1186,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Update pela sessão sem conferir a linha devolvida (sem policy de UPDATE, atinge zero linhas sem erro)
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
 ❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)
+❌ Policy RLS que confere só o cargo (role <> 'CLIENT') sem conferir a REDE
+❌ Função security definer em public que recebe tenant por parâmetro e fica aberta a anon/authenticated
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão
