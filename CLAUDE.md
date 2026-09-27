@@ -493,13 +493,18 @@ dado novo, não uma mudança de casa: não entra antes de alguém precisar dele.
   para a API de Conversões da Meta com `ad_id` nulo — ROI menor do que é, sem
   nada acusando.
 
+**A fila do inbox é de CONVERSAS** — a mesma pessoa em duas caixas são duas
+linhas, cada uma com o nome da caixa quando a rede tem mais de uma. Foi por
+pessoa por um dia (2026-09-25/26) e voltou por decisão do Heitor, vendo um caso
+real: a linha única escondia em qual conversa o clique cairia, e alternar entre
+as threads ficou confuso. **A pessoa une as conversas no PAINEL, não na fila.**
+
 **O cruzamento é o que conserta o handoff.** `getConversationCard` devolve
 `outrasThreads` — as outras conversas da mesma pessoa —, e o painel do inbox as
 mostra na seção do CONTATO (não na das oportunidades: é sobre a pessoa). Clicar
-abre aquela thread. **Respeita o `ownerFilter` do CRM**, igual à lista: abrir
-exceção ali seria furar, por uma tela, a regra que vale na tela ao lado — rede
-que quer o handoff funcionando usa escopo ALL, que é o padrão. Thread sem
-oportunidade aparece para todos, pela mesma razão da lista.
+abre aquela thread. **Respeita o alcance do CRM pela mesma regra da lista**
+(`alcanceDoDono`, ver abaixo): abrir exceção ali seria furar, por uma tela, a
+regra que vale na tela ao lado.
 
 **A oportunidade é da PESSOA** (`leads.contato_id`, NOT NULL). `leads.conversation_id`
 continua existindo com outro sentido: a thread onde a oportunidade **nasceu**.
@@ -1128,7 +1133,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar
 ❌ Tratar a conversa como a pessoa — a pessoa é contacts, a conversa é uma thread
 ❌ Buscar oportunidades por leads.conversation_id (é a thread de ORIGEM; a dona é contato_id)
-❌ Listar o inbox por thread — a fila é de PESSOAS (a mesma aparecia duas vezes)
+❌ Agrupar a fila do inbox por pessoa — é uma linha por conversa (decisão de 2026-09-26)
 ❌ Ler tags de conversations.tags (é semente; a fonte é contacts.tags)
 ❌ Declarar variável plpgsql com nome de coluna (42702 dentro do gatilho, insert descartado)
 ❌ Procurar "o anúncio do cliente" na conversa mais recente em vez da mais recente COM anúncio

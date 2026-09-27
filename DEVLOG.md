@@ -1260,6 +1260,29 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-26 — A fila volta a ser de conversas
+
+A fila por pessoa (entrada "A fila do inbox é de PESSOAS", abaixo) durou um dia.
+O Heitor abriu um caso real — a mesma pessoa no WhatsApp e no Instagram — e
+achou confuso: a linha única escondia em qual conversa o clique cairia, e chegar
+à outra dependia do atalho do painel. "Prefiro que cada conversa apareça na
+fila."
+
+Voltou a ser uma linha por conversa: não lidas, espera e canal de cada uma. O
+que se acrescentou foi o **nome da caixa na linha**, quando a rede fala por mais
+de um número — sem ele, a mesma pessoa em duas caixas do WhatsApp seriam duas
+linhas idênticas.
+
+**O resto da frente fica**, porque não depende da fila: a oportunidade, as tags e
+o histórico continuam sendo da pessoa, o painel continua mostrando as outras
+conversas dela, e a visibilidade com escopo OWN continua seguindo a pessoa. A
+pessoa une as conversas no PAINEL, não na fila.
+
+Saíram `agruparPorPessoa`/`canaisDaLinha` e os testes deles.
+`inbox-lista-por-conversa` confere as duas linhas, a caixa em cada uma e que o
+clique abre a conversa daquela linha — olhando só a área de mensagens, porque a
+prévia da lista tem o mesmo texto e passaria com a conversa errada aberta.
+
 ### 2026-09-26 — Com "só os próprios leads", o inbox segue a pessoa (ou a conversa)
 
 Fecha o que ficou de fora na entrada abaixo. Com escopo OWN no CRM, cada thread
@@ -1384,6 +1407,9 @@ disputado. O preparo e o aquecimento da rota foram para `beforeAll`, que tem
 orçamento próprio. A suíte caiu de 12,3 para 7,4 minutos, e 136 de 136 passam.
 
 ### 2026-09-26 — A fila do inbox é de PESSOAS (e um defeito real no motor)
+
+> **Desfeito no mesmo dia** — ver "A fila volta a ser de conversas", acima. A
+> correção do motor, no fim desta entrada, continua valendo.
 
 Terceiro passo do contato separado da conversa.
 

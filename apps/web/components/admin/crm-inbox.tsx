@@ -22,9 +22,7 @@ import {
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
 import { nomeDoAnuncio, legendaDoAnuncio } from '@/lib/ads/rotulo'
-import {
-  destinoDoEvento, agruparPorPessoa, canaisDaLinha, type LinhaDaLista,
-} from '@/lib/inbox/lista'
+import { destinoDoEvento } from '@/lib/inbox/lista'
 import {
   InboxFiltros, ChipsDeFiltro, passaNosFiltros, contarFiltros,
   FILTROS_VAZIOS, type FiltrosInbox,
@@ -112,26 +110,24 @@ const STATUS_META: Record<ConvStatus, { label: string; color: string; bg: string
 // --- Left: conversation list item --------------------------------------------
 
 /**
- * Uma linha da lista: uma PESSOA.
+ * Uma linha da lista: uma CONVERSA.
  *
- * A conversa é a thread, não a pessoa (§9.2.1). O mesmo telefone falando com
- * duas caixas são duas conversas — e eram duas linhas na fila, para a mesma
- * pessoa. Agora a linha é dela, e mostra as threads somadas: as não lidas de
- * todas, e a espera MAIS ANTIGA, que é a que dói.
+ * A fila foi por pessoa entre 2026-09-25 e 2026-09-26 — a mesma pessoa em duas
+ * caixas virava uma linha só, e o clique escolhia a thread. O Heitor olhou com
+ * um caso real e achou confuso: não dava para saber em qual conversa se ia
+ * cair, nem alcançar a outra sem passar pelo painel. Voltou a ser uma linha por
+ * conversa, e o que liga as duas é a PESSOA no painel do contato (as
+ * oportunidades dela, as tags, o atalho "Também falou").
  *
- * Clicar abre a thread de atividade mais recente. As mensagens **não** são
- * intercaladas: as threads são separadas de verdade no celular do cliente, e um
- * histórico misturado mostraria uma conversa que não existe do lado dele. Para
- * ir à outra, o painel do contato tem o atalho.
+ * `caixa` aparece quando a rede tem mais de uma: é o que distingue as duas
+ * linhas da mesma pessoa no WhatsApp.
  */
-function ConvItem({ linha, selected, onClick, nowMs }: {
-  linha: LinhaDaLista<Conversation>; selected: boolean; onClick: () => void; nowMs: number | null
+function ConvItem({ conv, caixa, selected, onClick, nowMs }: {
+  conv: Conversation; caixa: string | null; selected: boolean; onClick: () => void; nowMs: number | null
 }) {
-  const conv = linha.principal
-  const canais = canaisDaLinha(linha)
   // `nowMs` só existe depois de montar: 'há 4min' no servidor e 'há 5min' no
   // cliente é o bastante para o React descartar a árvore inteira na hidratação.
-  const awaitingSecs = nowMs == null ? null : secondsSince(linha.aguardandoDesde, nowMs)
+  const awaitingSecs = nowMs == null ? null : secondsSince(conv.awaiting_since, nowMs)
   return (
     <button
       type="button"
@@ -163,7 +159,7 @@ function ConvItem({ linha, selected, onClick, nowMs }: {
           {/* Name + time */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
             <span style={{
-              fontSize: 'var(--text-base-sz)', fontWeight: linha.naoLidas > 0 ? 800 : 600,
+              fontSize: 'var(--text-base-sz)', fontWeight: conv.unread_count > 0 ? 800 : 600,
               color: selected ? 'var(--brand)' : 'var(--text)',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
             }}>
@@ -187,42 +183,35 @@ function ConvItem({ linha, selected, onClick, nowMs }: {
 
           {/* Channel + preview + unread */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3 }}>
-            {/* Um ícone por canal DISTINTO: quem também escreve no Instagram é
-                informação de fila, não detalhe. Duas caixas do mesmo canal não
-                rendem dois ícones — quem diz isso é a contagem abaixo. */}
-            {canais.slice(0, 3).map(ch => (
-              <ChannelIcon key={ch} ch={ch as InboxChannel} />
-            ))}
+            <ChannelIcon ch={conv.channel} />
             <span style={{
               fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', flex: 1,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
               {conv.last_message ?? 'Nenhuma mensagem'}
             </span>
-            {linha.naoLidas > 0 && (
+            {conv.unread_count > 0 && (
               <span style={{
                 background: 'var(--brand)', color: 'var(--surface)',
                 borderRadius: 99, fontSize: 'var(--text-overline)', fontWeight: 800,
                 padding: '1px 6px', flexShrink: 0,
               }}>
-                {linha.naoLidas}
+                {conv.unread_count}
               </span>
             )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-            {linha.aguardandoDesde && awaitingSecs != null && (
+            {conv.awaiting_since && awaitingSecs != null && (
               <TagBadge
                 size="xs"
                 label={`Aguardando ${formatDurationShort(awaitingSecs)}`}
                 style={AGING_STYLE[agingLevel(awaitingSecs, AWAITING_THRESHOLDS)]}
               />
             )}
-            {/* Mais de uma thread: quem escolhe a próxima conversa precisa saber
-                que esta pessoa tem histórico em outro lugar antes de abrir. */}
-            {linha.threads.length > 1 && (
+            {caixa && (
               <span style={{ fontSize: 'var(--text-overline)', color: 'var(--text-faint)' }}>
-                {linha.threads.length} conversas
+                {caixa}
               </span>
             )}
             {conv.branch_name && (
@@ -1194,24 +1183,11 @@ export function CRMInbox({
     return () => clearInterval(id)
   }, [])
 
-  /**
-   * Clique na linha da PESSOA.
-   *
-   * Abre a thread de atividade mais recente — mas se alguma thread dela já está
-   * aberta, fica nela: clicar na linha da pessoa que você já está atendendo não
-   * pode te jogar para outra conversa.
-   */
-  const handleSelect = useCallback((linha: LinhaDaLista<Conversation>) => {
-    setSelectedId(anterior => {
-      const jaAberta = linha.threads.find(t => t.id === anterior)
-      return (jaAberta ?? linha.principal).id
-    })
-
-    // A não lida zera só na thread que abriu: as outras continuam com as delas,
-    // e a soma da linha cai junto por consequência.
-    setConversations(prev => prev.map(c =>
-      c.id === linha.principal.id && c.unread_count > 0 ? { ...c, unread_count: 0 } : c,
-    ))
+  const handleSelect = useCallback((conv: Conversation) => {
+    setSelectedId(conv.id)
+    if (conv.unread_count > 0) {
+      setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread_count: 0 } : c))
+    }
   }, [])
 
   function iniciarResposta(m: Message) {
@@ -1412,20 +1388,17 @@ export function CRMInbox({
     && provedorDaConversa === 'official'
 
   // Awaiting-response counter (aging over the visible/filtered conversations)
-  // A lista é por PESSOA. O filtro continua por thread — a pessoa aparece se
-  // QUALQUER thread dela passar —, e o agrupamento vem depois, sobre o que
-  // sobrou. Inverter a ordem esconderia a pessoa cuja thread relevante passou
-  // no filtro só porque a thread principal dela não passou.
-  const agrupadas = agruparPorPessoa(filtered)
-
-  // Conta PESSOAS aguardando, não threads: o rótulo fica em cima de uma lista
-  // de pessoas, e um número que não corresponde ao que está na tela é pior que
-  // número nenhum.
-  const awaitingConvs = agrupadas.filter(l => l.aguardandoDesde != null)
+  // Conta CONVERSAS aguardando: é o que a lista mostra, uma linha por conversa.
+  const awaitingConvs = filtered.filter(c => c.awaiting_since != null)
   const awaitingCount = awaitingConvs.length
   const hasAwaitingAlert = awaitingConvs.some(
-    l => nowMs != null && agingLevel(secondsSince(l.aguardandoDesde, nowMs), AWAITING_THRESHOLDS) === 'alert'
+    c => nowMs != null && agingLevel(secondsSince(c.awaiting_since, nowMs), AWAITING_THRESHOLDS) === 'alert'
   )
+
+  // O rótulo da caixa só entra na linha quando a rede fala por mais de uma —
+  // é ele que distingue as duas conversas da mesma pessoa no WhatsApp. Com uma
+  // caixa só, repetir o mesmo nome em toda linha seria ruído.
+  const variasCaixas = new Set(conversations.map(c => c.numero_label).filter(Boolean)).size > 1
 
   return (
     <>
@@ -1588,15 +1561,13 @@ export function CRMInbox({
                 )}
               </div>
             ) : (
-              agrupadas.map(l => (
+              filtered.map(c => (
                 <ConvItem
-                  key={l.chave}
-                  linha={l}
-                  // A linha fica marcada quando QUALQUER thread dela está aberta:
-                  // pular da thread do marketing para a da recepção pelo atalho
-                  // do painel não deve fazer a seleção sair da lista.
-                  selected={l.threads.some(t => t.id === selectedId)}
-                  onClick={() => handleSelect(l)}
+                  key={c.id}
+                  conv={c}
+                  caixa={variasCaixas ? c.numero_label : null}
+                  selected={c.id === selectedId}
+                  onClick={() => handleSelect(c)}
                   nowMs={nowMs}
                 />
               ))

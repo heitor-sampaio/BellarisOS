@@ -90,7 +90,9 @@ test('o painel mostra a outra thread da mesma pessoa, e o clique leva até ela',
 
     // O painel precisa dizer que esta pessoa também falou no Marketing.
     await expect(page.getByText(/Também falou/i)).toBeVisible()
-    const atalho = page.getByRole('button', { name: rotuloMkt })
+    // No PAINEL: a linha da fila também mostra o nome da caixa.
+    const painel = page.locator('.inbox-painel')
+    const atalho = painel.getByRole('button', { name: rotuloMkt })
     await expect(atalho,
       'sem este atalho, o histórico do marketing fica inalcançável no handoff',
     ).toBeVisible()
@@ -101,7 +103,7 @@ test('o painel mostra a outra thread da mesma pessoa, e o clique leva até ela',
 
     // Estando na do marketing, o atalho aponta para o outro lado — é cruzamento,
     // não um link de mão única.
-    await expect(page.getByRole('button', { name: rotuloRec })).toBeVisible()
+    await expect(painel.getByRole('button', { name: rotuloRec })).toBeVisible()
   } finally {
     await apagarConversas(convIds)
     if (caixas.length) await db.from('whatsapp_numbers').delete().in('id', caixas)
