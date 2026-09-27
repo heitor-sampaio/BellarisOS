@@ -701,8 +701,13 @@ html.trava-rolagem body {
   .inbox-root .inbox-metricas > span { font-size: var(--text-overline); }
   .inbox-root .inbox-aguardando { padding: 0 6px !important; }
 
-  /* O card do contato vira folha sobre a conversa, não terceira coluna. */
-  .inbox-root[data-painel='1'] .inbox-painel {
+  /* O card do contato vira folha sobre a conversa, não terceira coluna.
+     Abre puxando o cabeçalho da conversa para baixo (2026-09-27): enquanto o
+     dedo arrasta (`puxando`), a folha se revela de cima para baixo até onde
+     ele está, e ao soltar completa ou volta. É `clip-path`, não `translate`:
+     transladada para cima ela passaria por cima da topbar. */
+  .inbox-root[data-painel='1'] .inbox-painel,
+  .inbox-root[data-painel='puxando'] .inbox-painel {
     display: block !important;
     position: fixed;
     top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
@@ -715,7 +720,25 @@ html.trava-rolagem body {
     overflow-y: auto;
     /* Rolagem que termina na barra de gestos esconde o fim do card. */
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 200ms ease-out;
   }
+  .inbox-root[data-painel='puxando'] .inbox-painel {
+    clip-path: inset(0 0 calc(100% - var(--puxado, 0px)) 0);
+    transition: none;
+    overflow: hidden;
+  }
+  /* Aberta pelo toque na seta, a folha também desce — sem isto ela só
+     aparece, e o gesto e o botão pareceriam coisas diferentes. */
+  @starting-style {
+    .inbox-root[data-painel='1'] .inbox-painel { clip-path: inset(0 0 100% 0); }
+  }
+
+  /* O cabeçalho e a barra da folha são alças de arrasto. Sem `touch-action`
+     o navegador toma o gesto para si — puxar para baixo no topo da página é
+     "atualizar" no Chrome do Android. */
+  .inbox-root .inbox-cabecalho,
+  .inbox-root .inbox-painel-barra { touch-action: none; }
 
   /* A lista também termina na borda de baixo: sem isto, a última conversa fica
      debaixo da barra do sistema e parece que a lista acabou antes. */

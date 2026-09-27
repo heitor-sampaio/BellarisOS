@@ -5,7 +5,7 @@ import {
 } from 'react'
 import {
   Search, MessageSquare, Phone, Mail, AtSign,
-  Send, ChevronDown, CheckCheck, AlertCircle, AlertTriangle, Plus, X, Paperclip, FileText, Zap, UserCheck,
+  Send, ChevronDown, ChevronUp, CheckCheck, AlertCircle, AlertTriangle, Plus, X, Paperclip, FileText, Zap, UserCheck,
   Mic, Square,
   ArrowLeft,
   Megaphone,
@@ -36,6 +36,56 @@ import {
   secondsSince, agingLevel, AGING_STYLE, AWAITING_THRESHOLDS,
   formatDurationShort, formatDurationLong, iniciaisDoNome,
 } from '@estetica-os/utils'
+
+// --- Gesto de puxar (só no celular) ---------------------------------------------
+
+/** Mesmo corte do CSS: abaixo dele o card do contato é folha, não coluna. */
+const CELULAR = '(max-width: 1023px)'
+/** Menos que isto é toque, não arrasto — o botão de voltar continua clicável. */
+const FOLGA_DO_TOQUE = 8
+/** A partir daqui soltar o dedo completa o gesto; antes disso, desiste. */
+const PUXAO_QUE_ABRE = 64
+
+/**
+ * Arrasto vertical num elemento que não rola, para abrir ou fechar a folha do
+ * contato. Devolve os handlers e o quanto o dedo já andou na direção pedida
+ * (`null` fora de um arrasto) — é esse número que desenha a folha seguindo o
+ * dedo. O `touch-action: none` do elemento fica no CSS: sem ele o navegador
+ * lê o mesmo gesto como "puxar para atualizar" e recarrega a página.
+ */
+function usePuxao(direcao: 'baixo' | 'cima', ativo: boolean, aoCompletar: () => void) {
+  const inicio = useRef<number | null>(null)
+  const andado = useRef(0)
+  const [deslocamento, setDeslocamento] = useState<number | null>(null)
+
+  const encerrar = (completou: boolean) => {
+    if (inicio.current == null) return
+    inicio.current = null
+    setDeslocamento(null)
+    if (completou && andado.current >= PUXAO_QUE_ABRE) aoCompletar()
+  }
+
+  return {
+    deslocamento,
+    handlers: {
+      onTouchStart: (e: React.TouchEvent) => {
+        const dedo = e.touches[0]
+        if (!ativo || !dedo || e.touches.length !== 1 || !window.matchMedia(CELULAR).matches) return
+        inicio.current = dedo.clientY
+        andado.current = 0
+      },
+      onTouchMove: (e: React.TouchEvent) => {
+        const dedo = e.touches[0]
+        if (inicio.current == null || !dedo) return
+        const dy = dedo.clientY - inicio.current
+        andado.current = direcao === 'baixo' ? dy : -dy
+        setDeslocamento(andado.current > FOLGA_DO_TOQUE ? andado.current : null)
+      },
+      onTouchEnd: () => encerrar(true),
+      onTouchCancel: () => encerrar(false),
+    },
+  }
+}
 
 // --- Channel meta ------------------------------------------------------------
 
@@ -930,6 +980,10 @@ export function CRMInbox({
   const [editando,     setEditando]     = useState<Message | null>(null)
   /** Só no celular: o card do contato vira folha sobre a conversa. */
   const [painelAberto, setPainelAberto] = useState(false)
+  /** Puxar o cabeçalho da conversa para baixo abre a folha; puxar a barra
+   *  dela para cima fecha (pedido do Heitor, 2026-09-27). */
+  const puxaoAbre  = usePuxao('baixo', !painelAberto, () => setPainelAberto(true))
+  const puxaoFecha = usePuxao('cima',  painelAberto,  () => setPainelAberto(false))
   const bottomRef  = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   /** Mídias já pedidas ao servidor, para não assinar a mesma duas vezes. */
@@ -1447,8 +1501,10 @@ export function CRMInbox({
         /* No celular o CSS decide qual painel ocupa a tela; estes dois estados
            são a única coisa que ele precisa saber do React. */
         data-aberta={selectedId ? '1' : '0'}
-        data-painel={painelAberto ? '1' : '0'}
+        data-painel={painelAberto ? '1' : puxaoAbre.deslocamento != null ? 'puxando' : '0'}
         style={{
+        // Quanto da folha já desceu, enquanto o dedo arrasta o cabeçalho.
+        ['--puxado' as string]: `${puxaoAbre.deslocamento ?? 0}px`,
         display: 'flex', overflow: 'hidden', padding: 0,
         background: 'var(--surface)',
         ...(telaCheia
@@ -1606,7 +1662,7 @@ export function CRMInbox({
               {/* `flexWrap`: sem ele, o seletor de status e os botões não
                   encolhem e espremem a identidade — no celular o telefone da
                   cliente saía cortado no meio do número. */}
-              <div className="inbox-cabecalho" style={{
+              <div className="inbox-cabecalho" {...puxaoAbre.handlers} style={{
                 padding: '13px 20px', borderBottom: '1px solid var(--hairline)',
                 display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, flexWrap: 'wrap',
               }}>
@@ -1682,20 +1738,23 @@ export function CRMInbox({
                 </div>
 
                 {/* Card do contato. No desktop ele é a terceira coluna, sempre
-                    visível; no celular vira folha por cima, aberta por aqui. */}
+                    visível; no celular vira folha por cima, aberta puxando o
+                    cabeçalho para baixo. A seta é o que avisa que o gesto
+                    existe — e continua sendo botão, para quem só toca. */}
                 <button
                   type="button"
                   className="show-mobile"
                   onClick={() => setPainelAberto(true)}
                   title="Contato e oportunidades"
+                  aria-expanded={painelAberto}
                   style={{
-                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                    border: '1px solid var(--border)', background: 'var(--bg-app)',
+                    width: 28, height: 32, flexShrink: 0,
+                    border: 'none', background: 'none', padding: 0,
                     cursor: 'pointer', alignItems: 'center', justifyContent: 'center',
                     color: 'var(--text-muted)',
                   }}
                 >
-                  <UserCheck size={15} />
+                  <ChevronDown size={18} />
                 </button>
 
                 {/* Status dropdown */}
@@ -2001,7 +2060,10 @@ export function CRMInbox({
             {/* Fechar existe só no celular: no desktop o painel é coluna fixa e
                 não há o que fechar. */}
             <div
-              className="show-mobile"
+              className="show-mobile inbox-painel-barra"
+              // Puxar esta barra para cima fecha — o caminho de volta do gesto
+              // que abriu.
+              {...puxaoFecha.handlers}
               style={{
                 position: 'sticky', top: 0, zIndex: 1,
                 padding: '10px 14px', background: 'var(--surface)',
@@ -2013,14 +2075,15 @@ export function CRMInbox({
               <button
                 type="button"
                 onClick={() => setPainelAberto(false)}
+                title="Recolher"
                 style={{
-                  width: 28, height: 28, borderRadius: 8,
-                  border: '1px solid var(--border)', background: 'var(--bg-app)',
+                  width: 28, height: 28, padding: 0,
+                  border: 'none', background: 'none',
                   cursor: 'pointer', display: 'flex', alignItems: 'center',
                   justifyContent: 'center', color: 'var(--text-muted)',
                 }}
               >
-                <X size={14} />
+                <ChevronUp size={18} />
               </button>
             </div>
 

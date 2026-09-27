@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page, type Locator } from '@playwright/test'
 
 /**
  * Cabeçalho da conversa no celular: condensado, sem perder informação.
@@ -22,6 +22,14 @@ async function abrirPrimeiraConversa(page: Page) {
   // seja ela quem for, em vez de fixar um nome que some quando o dado muda.
   await page.locator('.inbox-conversa').first().click()
   await expect(page.locator('.inbox-cabecalho')).toBeVisible()
+}
+
+/** Arrasto vertical de um dedo, em eventos de toque de verdade. */
+async function arrastar(alvo: Locator, x: number, de: number, ate: number) {
+  const toque = (y: number) => ({ touches: [{ identifier: 1, clientX: x, clientY: y }] })
+  await alvo.dispatchEvent('touchstart', toque(de))
+  for (let i = 1; i <= 4; i++) await alvo.dispatchEvent('touchmove', toque(de + ((ate - de) * i) / 4))
+  await alvo.dispatchEvent('touchend', { touches: [] })
 }
 
 test.describe('cabeçalho da conversa', () => {
@@ -53,6 +61,29 @@ test.describe('cabeçalho da conversa', () => {
     // E dá para fechar: a folha abria colada no topo do documento, com a barra
     // "Contato ✕" escondida atrás da topbar do app.
     await expect(painel.getByRole('button').first()).toBeInViewport()
+  })
+
+  test('puxar o cabeçalho para baixo abre o card; puxar a barra para cima fecha', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await abrirPrimeiraConversa(page)
+
+    const cab = page.locator('.inbox-cabecalho')
+    const painel = page.locator('.inbox-painel')
+    const caixa = (await cab.boundingBox())!
+    const x = caixa.x + caixa.width / 2
+    const y = caixa.y + caixa.height / 2
+
+    // Puxão curto: é toque, não gesto — o card não abre.
+    await arrastar(cab, x, y, y + 30)
+    await expect(painel).toBeHidden()
+
+    await arrastar(cab, x, y, y + 160)
+    await expect(painel.getByText(/Última interação há/)).toBeVisible()
+
+    const barra = page.locator('.inbox-painel-barra')
+    const b = (await barra.boundingBox())!
+    await arrastar(barra, b.x + b.width / 2, b.y + b.height / 2, b.y - 120)
+    await expect(painel).toBeHidden()
   })
 
   test('no desktop o cabeçalho continua completo', async ({ page }) => {

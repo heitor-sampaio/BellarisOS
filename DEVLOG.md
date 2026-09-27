@@ -1260,6 +1260,28 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — No celular, o card do contato abre puxando o cabeçalho
+
+"Em uma conversa do inbox, em vez de clicar no ícone, arrastar a parte superior
+para baixo abre as opções. Coloque uma setinha para indicar que pode ser
+expandido." O botão com o ícone de pessoa saiu; no lugar dele, uma seta para
+baixo ao lado da situação.
+
+- **Puxar o cabeçalho para baixo** revela a folha de cima para baixo, seguindo
+  o dedo; soltar depois de 64px completa, antes disso ela volta. Menos de 8px é
+  toque — o voltar e a situação continuam clicáveis.
+- **Puxar a barra "Contato" para cima fecha**, e o ✕ dela virou uma seta para
+  cima: o caminho de volta tem de parecer o mesmo gesto ao contrário.
+- **A seta continua sendo botão.** O gesto é atalho; quem só toca (ou usa
+  leitor de tela, que ganhou `aria-expanded`) abre do mesmo jeito, e a folha
+  desce igual (`@starting-style`).
+- É `clip-path`, não `translate`: transladada para cima a folha passaria por
+  cima da topbar. E o cabeçalho leva `touch-action: none` — sem isso o Chrome
+  do Android lê "puxar para baixo no topo" como atualizar a página.
+
+`e2e/inbox-cabecalho-mobile.spec.ts` ganhou o caso: puxão curto não abre,
+puxão longo abre, puxar a barra para cima fecha.
+
 ### 2026-09-26 — A fila volta a ser de conversas
 
 A fila por pessoa (entrada "A fila do inbox é de PESSOAS", abaixo) durou um dia.
