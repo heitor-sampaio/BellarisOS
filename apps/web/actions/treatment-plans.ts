@@ -1683,6 +1683,23 @@ async function receberDoPlanoInterno(
   const planTenant = (plan?.branches as unknown as { tenant_id: string } | null)?.tenant_id
   if (!plan || planTenant !== ctx.tenantId) return { error: 'Plano não encontrado.' }
 
+  // O agendamento só serve para registrar o recebimento no histórico dele — e
+  // tem de ser DESTE plano (uma sessão dele ou a avaliação que o gerou). Antes
+  // qualquer id servia, e o histórico de um atendimento de outra rede ganhava
+  // a linha "Plano de tratamento recebido".
+  if (appointmentId) {
+    const doPlano = await ler(admin
+      .from('appointments').select('id')
+      .eq('id', appointmentId)
+      .eq('treatment_plan_id', planId)
+      .maybeSingle(), 'conferir o agendamento do recebimento')
+    const avaliacao = doPlano ? null : await ler(admin
+      .from('treatment_plans').select('id')
+      .eq('id', planId).eq('evaluation_appointment_id', appointmentId)
+      .maybeSingle(), 'conferir a avaliação do plano')
+    if (!doPlano && !avaliacao) return { error: 'Agendamento não pertence a este plano.' }
+  }
+
   const saldo = await emAbertoDoPlano(planId)
   if (!saldo || saldo.emAberto <= 0) return { error: 'Não há valor em aberto neste plano.' }
 

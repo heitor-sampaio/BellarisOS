@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useActionState, useRef, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, X, Upload, FileText, FileImage, File, FileSpreadsheet,
@@ -91,11 +91,14 @@ function UploadForm({
     setFileName(f?.name ?? null)
   }
 
-  // Close on success
-  if (state !== null && !state?.error && !pending) {
-    onClose()
-    return null
-  }
+  // Fecha ao dar certo — num efeito, não durante a renderização. Chamado no
+  // meio do render, o `onClose` atualizava o componente pai enquanto este
+  // renderizava (o React recusa, e o Next mostrava "1 Issue"), e o
+  // `router.refresh()` dele se perdia: o documento anexado só aparecia
+  // recarregando a página. Visto no E2E de prontuário, 2026-09-27.
+  const deuCerto = state !== null && !state?.error && !pending
+  useEffect(() => { if (deuCerto) onClose() }, [deuCerto, onClose])
+  if (deuCerto) return null
 
   return (
     <form
@@ -272,7 +275,12 @@ function DocumentRow({
 export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Props) {
   const router = useRouter()
   const [showForm, setShowForm]   = useState(false)
-  const [localDocs, setLocalDocs] = useState(documents)
+  // A lista vem das PROPS a cada render; localmente só se guarda o que acabou
+  // de ser apagado (para sumir na hora). Era `useState(documents)`: copiava a
+  // lista uma vez e nunca mais olhava a nova — o documento anexado só aparecia
+  // recarregando a página. Visto no E2E de prontuário, 2026-09-27.
+  const [removidos, setRemovidos] = useState<Set<string>>(() => new Set())
+  const localDocs = documents.filter(d => !removidos.has(d.id))
 
   // Group by category
   const grouped = CATEGORIES.reduce<Record<string, ClientDocumentItem[]>>((acc, cat) => {
@@ -284,7 +292,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Prop
   if (otherDocs.length) grouped['outro'] = [...(grouped['outro'] ?? []), ...otherDocs]
 
   function handleDelete(id: string) {
-    setLocalDocs(prev => prev.filter(d => d.id !== id))
+    setRemovidos(prev => new Set(prev).add(id))
     router.refresh()
   }
 

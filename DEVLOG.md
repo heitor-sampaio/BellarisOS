@@ -1260,6 +1260,57 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Frente 4: prontuário e LGPD; e os pendentes da frente 3
+
+"Faz tudo, o que ficou pendente desta frente e da próxima."
+
+**Indicadores com cenário conhecido** (`e2e/indicadores-cenario.spec.ts`).
+Uma unidade `[e2e]` na rede real e uma janela em março de 2021 — antes de
+qualquer dado real —, onde cada número tem valor escrito à mão: caixa, pendente,
+despesa, serviço, agenda, clientes novos, comissões, séries por mês e por dia,
+por unidade, rankings, comissões em detalhe, retenção, clientes novos no tempo e
+funil. `relatorios-coerencia` só provava que tela e RPC concordam; este prova que
+estão certos.
+- **Achado:** `metrics_core.new_clients` ignorava o filtro de unidade — na
+  visão de uma unidade, contava os clientes novos da REDE, enquanto o gráfico ao
+  lado e a quebra por unidade contavam os da unidade. Corrigido (migration
+  `20260927000008`, a mesma regra da série; `search_path` fixo junto).
+
+**Receber o plano no atendimento** (`e2e/plano-recebimento.spec.ts`): R$ 300
+em aberto → entrada de R$ 100 + 2× (o lançamento antigo zera, parcelas nascem)
+→ o saldo à vista (as parcelas saem pagas). **Furo:** o agendamento enviado
+junto só serve para o histórico, e qualquer um servia — o histórico de um
+atendimento de outra rede ganhava "Plano recebido". Agora tem de ser uma sessão
+do plano ou a avaliação que o gerou; provado com o código antigo.
+
+**Prontuário** (`e2e/prontuario.spec.ts`): anamnese geral e ficha do
+procedimento (com foto no bucket privado) pela tela do atendimento; documentos
+do cliente — anexar, baixar por link assinado, excluir (linha e arquivo).
+- **Três furos entre redes**, provados com o código antigo: a anamnese geral
+  conferia a unidade e não o cliente (gravava a anamnese de saúde de um
+  cliente de outra rede); o documento, idem; a foto subia ANTES de conferir o
+  agendamento. Com arquivo no corpo o Playwright não expõe a requisição para
+  reenvio — o ataque foi feito como no DevTools: `FormData.append` e o campo
+  escondido adulterados na página.
+- **Dois defeitos de tela**: o documento anexado **nunca aparecia** sem
+  recarregar — a aba copiava a lista para `useState` uma vez e nunca mais olhava
+  a nova; e o formulário se fechava chamando `onClose` DURANTE a renderização
+  (o "1 Issue" do Next). E o upload só revalidava o portal da unidade, não o
+  `/admin`.
+
+**LGPD** (`e2e/lgpd-exportacao.spec.ts`): o cliente pede pelo portal
+incluindo o prontuário → o pacote sai na hora SEM a parte clínica (30 dias,
+PDF + JSON) → um pedido aberto por cliente, pelo índice → a clínica libera em
+Configurações e o pacote é regerado COM o prontuário → o cliente baixa por
+link assinado, e outro cliente, reenviando a mesma chamada, não recebe o link
+→ o cron recolhe o pedido parado, e responde 401 sem o segredo.
+- **Achado:** liberar o prontuário reabre o pedido; se o cliente já tinha outro
+  aberto, a tela mostrava o "duplicate key" cru. Agora diz o motivo.
+
+**Apoio:** `acao.ts` trata o corpo como bytes (latin1) — com arquivo, o
+`postData()` vinha vazio; a limpeza de cliente apaga também os ARQUIVOS no
+Storage (documentos e pacotes LGPD), não só as linhas.
+
 ### 2026-09-27 — Frente 3b/3c: as regras decididas e os fluxos de dinheiro testados
 
 **3b — as três regras que o Heitor decidiu:**

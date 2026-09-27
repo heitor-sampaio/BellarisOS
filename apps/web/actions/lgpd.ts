@@ -203,7 +203,15 @@ export async function reviewMedicalData(
       updated_at: new Date().toISOString(),
     }).eq('id', requestId)
 
-    if (error) return { error: error.message }
+    if (error) {
+      // Aprovar reabre o pedido (volta a `pending`); se o cliente já abriu
+      // OUTRO pedido nesse meio-tempo, o índice de "um pedido aberto por
+      // cliente" recusa — e a tela mostrava o "duplicate key" cru.
+      if (error.code === '23505') {
+        return { error: 'O cliente já tem outra solicitação em andamento. Libere o prontuário depois que ela terminar.' }
+      }
+      return { error: error.message }
+    }
 
     if (decision === 'approved') after(() => processExportRequest(requestId))
 

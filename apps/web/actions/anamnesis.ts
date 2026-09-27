@@ -34,6 +34,14 @@ export async function saveGeneralAnamnesis(
     .single(), 'buscar a unidade')
   if (!branch) return { error: 'Filial não encontrada.' }
 
+  // O comentário acima prometia conferir o cliente e conferia só a filial: com
+  // a própria filial e o id de um cliente de OUTRA rede, gravava a anamnese de
+  // saúde dele. Achado na varredura de 2026-09-27.
+  const cliente = await ler(createAdminClient()
+    .from('clients').select('id').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+    'conferir o cliente da anamnese')
+  if (!cliente) return { error: 'Cliente não encontrado.' }
+
   const anamnesis = {
     skinType:                   (formData.get('skinType')                   as string) || '',
     allergies:                  ((formData.get('allergies')                 as string) || '').trim(),
@@ -60,6 +68,7 @@ export async function saveGeneralAnamnesis(
   if (error) return { error: `Erro ao salvar: ${error.message}` }
 
   revalidatePath(`/${slug}/clients/${clientId}`)
+  revalidatePath(`/admin/clients/${clientId}`)
   return {}
 }
 
@@ -84,6 +93,19 @@ export async function uploadAnamnesisPhoto(
     if (file.size > 15 * 1024 * 1024)    return { error: 'Imagem deve ter no máximo 15 MB.' }
 
     const admin = createAdminClient()
+
+    // O agendamento ANTES do upload: a conferência era feita depois, e só
+    // decidia se o evento saía — a foto de um agendamento de outra rede subia
+    // do mesmo jeito. Agendamento que não é desta rede não recebe foto.
+    const appt = await ler(admin
+      .from('appointments')
+      .select('client_id, branch_id, branches!inner(tenant_id)')
+      .eq('id', appointmentId)
+      .maybeSingle(), 'buscar o agendamento')
+    if ((appt?.branches as unknown as { tenant_id?: string } | null)?.tenant_id !== ctx.tenantId) {
+      return { error: 'Agendamento não encontrado.' }
+    }
+
     await ensurePrivateBucket(ANAMNESIS_BUCKET)
 
     const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`
@@ -94,26 +116,16 @@ export async function uploadAnamnesisPhoto(
       .upload(path, buffer, { contentType: file.type, upsert: false })
     if (upErr) return { error: `Falha no upload: ${upErr.message}` }
 
-    // O agendamento é quem carrega o cliente e a unidade — o upload só conhece
-    // o id dele. Sem o agendamento, o evento não sai: retrato incompleto não
-    // serve de gatilho.
-    const appt = await ler(admin
-      .from('appointments')
-      .select('client_id, branch_id, branches!inner(tenant_id)')
-      .eq('id', appointmentId)
-      .maybeSingle(), 'buscar o agendamento')
-
-    if ((appt?.branches as unknown as { tenant_id?: string } | null)?.tenant_id === ctx.tenantId) {
-      await emitirEventoClinico(EVENTOS.FOTO_ENVIADA, appointmentId, ctx, {
-        clientId:      (appt!.client_id as string | null) ?? null,
-        agendamentoId: appointmentId,
-        referencia:    file.name,
-        branchId:      (appt!.branch_id as string | null) ?? null,
-        // O path é único por upload — reenvio do mesmo arquivo gera outro path
-        // (tem timestamp no nome) e é, de fato, outro envio.
-        chave:         `foto.enviada:${path}`,
-      })
-    }
+    // O agendamento (já conferido acima) carrega o cliente e a unidade do evento.
+    await emitirEventoClinico(EVENTOS.FOTO_ENVIADA, appointmentId, ctx, {
+      clientId:      (appt!.client_id as string | null) ?? null,
+      agendamentoId: appointmentId,
+      referencia:    file.name,
+      branchId:      (appt!.branch_id as string | null) ?? null,
+      // O path é único por upload — reenvio do mesmo arquivo gera outro path
+      // (tem timestamp no nome) e é, de fato, outro envio.
+      chave:         `foto.enviada:${path}`,
+    })
 
     const url = await getSignedUrl(ANAMNESIS_BUCKET, path)
     return { path, url: url ?? undefined }
@@ -230,6 +242,7 @@ export async function salvarFichaDoProcedimento(params: {
     })
 
     revalidatePath(`/${params.slug}/agenda/${params.appointmentId}`)
+    revalidatePath(`/admin/agenda/${params.appointmentId}`)
     return { ok: true }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }

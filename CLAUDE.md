@@ -1173,6 +1173,13 @@ Princípios inegociáveis:
     com "última visita" em branco: `appointments` não tem `tenant_id`, o
     Postgres respondia 42703 e ninguém via.
 
+**Todo indicador tem valor esperado escrito à mão** em
+`e2e/indicadores-cenario.spec.ts` (unidade `[e2e]` + janela em 2021, antes de
+qualquer dado real). `relatorios-coerencia` prova que tela e RPC concordam;
+aquele prova que estão CERTOS. Mexeu numa `metrics_*`, o cenário tem de continuar
+batendo — ou mudar junto, com o porquê. `new_clients` respeita a unidade como a
+série (a unidade escolhida mais os clientes sem unidade).
+
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
 (idempotente; os valores esperados estão no cabeçalho do arquivo).
 
@@ -1327,6 +1334,9 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   `filiaisAtivas()` filtram a rede de verdade — antes pegavam "a primeira".
 - Limpeza que apaga no teste **olha o erro** (`expect(falhas).toEqual([])`):
   foi um `delete` calado que acumulou 78 clientes `[e2e]` na produção.
+- Upload com arquivo não se reenvia (o Playwright não expõe o corpo
+  multipart): o ataque se faz NA PÁGINA — `FormData.append` ou o input
+  escondido adulterados antes de enviar (`e2e/prontuario.spec.ts`).
 
 ---
 

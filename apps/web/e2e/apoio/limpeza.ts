@@ -118,6 +118,22 @@ export async function apagarClientes(clientes: string[], falhas: Falha[] = []): 
   }
 
   await passo(falhas, 'créditos internos', db.from('internal_credits').delete().in('client_id', clientes))
+
+  // Arquivos no Storage: a linha some em cascata (documento) ou aqui (LGPD),
+  // mas o ARQUIVO ficaria — dado pessoal de teste esquecido num bucket.
+  const { data: docs } = await db.from('client_documents').select('file_path').in('client_id', clientes)
+  const caminhosDocs = (docs ?? []).map(d => d.file_path as string).filter(Boolean)
+  if (caminhosDocs.length) {
+    const { error } = await db.storage.from('client-documents').remove(caminhosDocs)
+    if (error) falhas.push({ o_que: 'arquivos de documentos', erro: error.message })
+  }
+  await passo(falhas, 'documentos', db.from('client_documents').delete().in('client_id', clientes))
+  const { data: pedidos } = await db.from('lgpd_requests').select('export_json_path, export_pdf_path').in('client_id', clientes)
+  const caminhosLgpd = (pedidos ?? []).flatMap(p => [p.export_json_path, p.export_pdf_path]).filter(Boolean) as string[]
+  if (caminhosLgpd.length) {
+    const { error } = await db.storage.from('lgpd-exports').remove(caminhosLgpd)
+    if (error) falhas.push({ o_que: 'arquivos de LGPD', erro: error.message })
+  }
   await passo(falhas, 'pedidos de LGPD', db.from('lgpd_requests').delete().in('client_id', clientes))
   await passo(falhas, 'pacotes', db.from('client_packages').delete().in('client_id', clientes))
   // A oportunidade é da PESSOA, não do cliente: perde o vínculo, não some.

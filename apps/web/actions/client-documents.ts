@@ -41,6 +41,14 @@ export async function uploadClientDocument(
 
   const admin = createAdminClient()
 
+  // A filial era conferida; o cliente, não — com a própria filial e o id de um
+  // cliente de outra rede, o documento ia para a ficha dele. Achado em
+  // 2026-09-27. Antes do upload, para nada subir para quem não é desta rede.
+  const cliente = await ler(admin
+    .from('clients').select('id').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+    'conferir o cliente do documento')
+  if (!cliente) return { error: 'Cliente não encontrado.' }
+
   // Bucket PRIVADO (LGPD) — nunca público. Guardamos o path; servimos por signed URL.
   await ensurePrivateBucket(BUCKET)
 
@@ -75,7 +83,10 @@ export async function uploadClientDocument(
     return { error: `Erro ao salvar: ${dbError.message}` }
   }
 
+  // Os dois portais mostram a mesma ficha: só o da unidade era revalidado, e
+  // no /admin o documento anexado não aparecia até recarregar a página.
   revalidatePath(`/${slug}/clients/${clientId}`)
+  revalidatePath(`/admin/clients/${clientId}`)
   return {}
 }
 
@@ -108,5 +119,6 @@ export async function deleteClientDocument(
   await gravar(admin.from('client_documents').delete().eq('id', documentId), 'apagar o documento')
 
   revalidatePath(`/${slug}/clients/${clientId}`)
+  revalidatePath(`/admin/clients/${clientId}`)
   return {}
 }
