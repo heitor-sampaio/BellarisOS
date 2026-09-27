@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
+import { getTenantContext, can } from '@/lib/auth'
 
 /**
  * Início do OAuth da Meta.
@@ -28,6 +29,14 @@ export async function GET(req: NextRequest) {
   const appId = process.env.META_APP_ID
   if (!appId) {
     return new NextResponse('META_APP_ID não configurado', { status: 500 })
+  }
+
+  // Quem conecta é quem mexe nas integrações — o mesmo gate das actions de
+  // Configurações. `/api/*` é público no proxy, então a sessão também é daqui.
+  const ctx = await getTenantContext().catch(() => null)
+  if (!ctx) return new NextResponse('Entre no sistema para conectar.', { status: 401 })
+  if (!can(ctx, 'settings', 'MANAGE')) {
+    return new NextResponse('Sem permissão para conectar integrações.', { status: 403 })
   }
 
   const bruto   = req.nextUrl.searchParams.get('produto')

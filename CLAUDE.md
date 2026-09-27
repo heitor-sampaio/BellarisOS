@@ -278,6 +278,12 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   - `e2e/privacidade-publica.spec.ts` confere sem sessão
     (`storageState` vazio), que é o único jeito de a regressão aparecer:
     logado, a página abre de qualquer forma.
+- ⚠️ **Por isso toda rota de `/api/*` se defende sozinha** — o proxy não barra
+  nenhuma. Cron pelo `CRON_SECRET`, webhook pela assinatura ou token do
+  provedor, extensão pelo Bearer + módulo (`requireExtAccess`), e o resto por
+  sessão **e permissão** (`getTenantContext` + `can`). Foi o que faltou no
+  `/api/geocode` (proxy aberto) e no OAuth da Meta (qualquer membro trocava a
+  conta ligada à rede). Rota nova entra em `e2e/api-sem-credencial.spec.ts`.
 
 ### Mobile
 
@@ -973,6 +979,11 @@ Regras:
 - Teste de regra de alcance precisa de um membro com escopo OWN de verdade:
   `membroComEscopoProprio` (`e2e/apoio/sessao.ts`). Como admin a tela abre de
   qualquer jeito, e o teste não prova nada.
+- **A trava da action é a única**: a RLS recorta por rede, não por módulo — sem
+  o `assertPermission`, um membro sem o módulo grava pela action (provado em
+  2026-09-27). `e2e/permissoes-acoes.spec.ts` chama uma action por módulo
+  direto pelo id (`e2e/apoio/acao-direta.ts`) como membro sem nada e como
+  membro que só vê, e confere o banco; cada caso tem o admin como controle.
 
 ---
 
@@ -1202,6 +1213,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Construir componente visual sem invocar /lumiere-design primeiro
 ❌ Usar o slug do registro para decidir portal (é lib/rotas quem decide)
 ❌ page.tsx sem assertPermission próprio, confiando no layout
+❌ Rota de /api/* sem defesa própria (segredo, assinatura ou sessão + permissão) — o proxy não barra
 ❌ Somar/contar indicador na tela em vez de usar lib/metrics (trunca em 1000 linhas)
 ❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
 ❌ Comparar período parcial com período anterior inteiro

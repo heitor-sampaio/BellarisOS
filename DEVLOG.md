@@ -1260,6 +1260,50 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Frente 5: autorização — cada action e cada rota de API por si
+
+"Faz a regressão e segue." Regressão da frente 4 verde (196 E2E, 378 Vitest,
+banco sem sobra `[e2e]`); esta frente é o P3 da varredura.
+
+**Matriz de permissões nas actions** (`e2e/permissoes-acoes.spec.ts`). Uma
+action por módulo que escreve — procedimentos, equipe, automações, marketing,
+fichas, clientes, configurações (número padrão e unidade), agenda, caixa,
+estoque, CRM, prontuário, cargos —, chamada DIRETO pelo id, sem a tela, por
+dois membros: um sem módulo nenhum e um que só VÊ tudo. O que se confere é o
+banco: o registro alvo não muda.
+- **Cada caso tem controle**: o admin faz a mesma chamada no fim e ela tem de
+  gravar. Sem isso, dois casos passavam à toa — o status da automação era em
+  maiúsculas e a ficha sem campo é recusada pela validação; os dois "não
+  mudavam nada" por argumento errado, não pela permissão. O número padrão é o
+  único sem controle: torná-lo padrão tiraria o padrão da caixa real.
+- Provado tirando o `assertPermission` de `toggleClientStatus`: o membro sem
+  módulo desativou o cliente. **A RLS não segurou** — ela recorta por rede, não
+  por módulo. A trava da action é a única.
+- Novo apoio `e2e/apoio/acao-direta.ts`: acha o id da action no manifesto do
+  `next dev` e posta como a pessoa logada. Só argumentos JSON; action de
+  `FormData` continua por `apoio/acao.ts` (capturar e reenviar).
+
+**Rotas de API sem credencial** (`e2e/api-sem-credencial.spec.ts`). `/api/*`
+é público no proxy, então cada rota se defende sozinha: os seis crons recusam
+sem o `CRON_SECRET` e com um errado; as seis rotas da extensão recusam sem
+Bearer, com Bearer falso e sem o módulo; o webhook da Meta recusa verify token
+e assinatura errados; o oficial do WhatsApp confere o HMAC com o segredo DA
+CAIXA — assinatura de outro segredo dá 401 e não cria conversa, a certa cria
+(controle).
+- **Furo: o OAuth da Meta não conferia permissão.** Qualquer membro logado
+  (uma recepcionista) começava a conexão e o callback regravava
+  `integration_configs` da rede com a conta Meta DELA e `is_active: false` —
+  derrubando a integração de anúncios ou de mensagens em uso. Agora início e
+  callback pedem `settings: MANAGE`, o mesmo das actions de Configurações; o
+  callback confere antes de trocar o código.
+- **Furo: `/api/geocode` era proxy aberto.** Sem sessão, qualquer um fazia o
+  servidor disparar listas sem limite contra o Nominatim, que bane o IP acima
+  de 1 consulta/s — e o IP é o do mapa de calor de toda clínica. Agora pede
+  usuário operacional e aceita até 2000 itens.
+- Os dois provados com o código antigo.
+- Conferido e sem mudança: push, notificações do cliente e do usuário são
+  recortadas pela própria pessoa da sessão e não precisam de módulo.
+
 ### 2026-09-27 — Frente 4: prontuário e LGPD; e os pendentes da frente 3
 
 "Faz tudo, o que ficou pendente desta frente e da próxima."

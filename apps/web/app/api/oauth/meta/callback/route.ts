@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { MetaMessagingPage } from '@/lib/meta/messaging'
 
@@ -35,6 +35,14 @@ export async function GET(req: NextRequest) {
   if (!savedState)         return NextResponse.redirect(makeErrUrl('no_cookie'))
   if (state !== savedState) return NextResponse.redirect(makeErrUrl('state_mismatch'))
 
+  // O mesmo gate do início, conferido de novo AQUI, que é onde se grava: o
+  // upsert abaixo troca a conta ligada à rede e a deixa inativa. Sem isto,
+  // qualquer membro logado derrubava a integração em uso e punha a conta
+  // Meta dele no lugar.
+  const ctx = await getTenantContext().catch(() => null)
+  if (!ctx) return NextResponse.redirect(makeErrUrl('sem_sessao'))
+  if (!can(ctx, 'settings', 'MANAGE')) return NextResponse.redirect(makeErrUrl('sem_permissao'))
+
   try {
     const origin      = req.nextUrl.origin
     const appId       = process.env.META_APP_ID!
@@ -66,7 +74,6 @@ export async function GET(req: NextRequest) {
     const meRes  = await fetch(`${GRAPH}/me?fields=name&access_token=${token}`)
     const meData = await meRes.json() as { name?: string }
 
-    const ctx   = await getTenantContext()
     const admin = createAdminClient()
 
     const config = produto === 'mensagens'
