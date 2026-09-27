@@ -20,7 +20,7 @@ import {
   extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
 } from '@/lib/templates/core'
 import { gravar, ler } from '@/lib/db'
-import { lerVisibilidade } from '@/lib/inbox/visibilidade'
+import { lerVisibilidade, lerCaixas, passaNasCaixas } from '@/lib/inbox/visibilidade'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
@@ -207,6 +207,41 @@ async function alcanceDoDono(
   return { modo, ocultas: (ocultas ?? []) as string[] }
 }
 
+/**
+ * As caixas de WhatsApp que quem está na tela enxerga, ou `null` para todas.
+ *
+ * Escolha do CARGO (`tenant_roles.inbox_caixas`, Configurações → Cargos, na
+ * linha do CRM). Com "só as da pessoa", são os números a que ela está ligada
+ * em `whatsapp_number_users` — e nenhum, se ela não estiver ligada a nenhum.
+ *
+ * Um lugar só para a lista e para os atalhos das outras threads, pelo mesmo
+ * motivo de `alcanceDoDono`. Erro de leitura LANÇA: "todas" por falha seria
+ * vazar em silêncio.
+ */
+async function caixasDoAlcance(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+): Promise<string[] | null> {
+  // Quem não tem cargo editável (admin da rede, cargo de sistema) vê tudo, como
+  // em todo o resto da matriz.
+  if (ctx.isNetworkAdmin || !ctx.roleId) return null
+
+  const cargo = await ler(
+    admin.from('tenant_roles').select('inbox_caixas, is_system')
+      .eq('id', ctx.roleId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+    'ler as caixas que o cargo enxerga',
+  ) as { inbox_caixas?: string; is_system?: boolean } | null
+  if (!cargo || cargo.is_system || lerCaixas(cargo.inbox_caixas) === 'todas') return null
+
+  if (!ctx.internalUserId) return []
+  const vinculos = await ler(
+    admin.from('whatsapp_number_users').select('whatsapp_number_id')
+      .eq('tenant_id', ctx.tenantId!).eq('user_id', ctx.internalUserId),
+    'ler os números da pessoa',
+  )
+  return ((vinculos ?? []) as { whatsapp_number_id: string }[]).map(v => v.whatsapp_number_id)
+}
+
 export async function getConversations(
   /**
    * Conversa que deve entrar na lista mesmo sem mensagem nenhuma.
@@ -236,6 +271,14 @@ export async function getConversations(
     }
   }
 
+  let minhasCaixas: string[] | null
+  try {
+    minhasCaixas = await caixasDoAlcance(admin, ctx)
+  } catch (e) {
+    console.error('[getConversations] caixas do cargo:', e instanceof Error ? e.message : e)
+    return []
+  }
+
   let query = admin
     .from('conversations')
     .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, whatsapp_number_id, contato_id, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, attribution, branches(name)')
@@ -259,6 +302,14 @@ export async function getConversations(
   } else if (alcance?.modo === 'pessoa' && alcance.ocultas.length > 0) {
     // Pessoa sem oportunidade continua no bolo comum; some só quem é de outro.
     query = query.or(`contato_id.is.null,contato_id.not.in.(${alcance.ocultas.join(',')})`)
+  }
+
+  // Caixas do cargo. Soma-se ao filtro acima (dois `or` viram AND no
+  // PostgREST). Conversa sem caixa passa — ver `passaNasCaixas`.
+  if (minhasCaixas !== null) {
+    query = minhasCaixas.length > 0
+      ? query.or(`whatsapp_number_id.is.null,whatsapp_number_id.in.(${minhasCaixas.join(',')})`)
+      : query.is('whatsapp_number_id', null)
   }
 
   const { data, error } = await query
@@ -838,6 +889,18 @@ async function buscarOutrasThreads(
       linhas = linhas.filter(l => !l.lead_id || meus.has(l.lead_id))
     }
   }
+
+  // E as caixas do cargo: o atalho não pode abrir a thread de um número que a
+  // lista ao lado esconde.
+  let minhasCaixas: string[] | null
+  try {
+    minhasCaixas = await caixasDoAlcance(admin, ctx)
+  } catch (e) {
+    console.error('[getConversationCard] caixas do cargo:', e instanceof Error ? e.message : e)
+    return []
+  }
+  linhas = linhas.filter(l => passaNasCaixas(l.whatsapp_number_id, minhasCaixas))
+  if (linhas.length === 0) return []
 
   // O rótulo da caixa numa consulta só, mapeada em memória — nunca por embed do
   // PostgREST, pelo motivo que este arquivo já documenta.

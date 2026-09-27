@@ -20,6 +20,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { SettingsGeral } from '@/components/admin/settings-geral'
 import { lerDadosDaRede, lerVisibilidadeDoInbox } from '@/actions/rede'
 import { SettingsVisibilidadeInbox } from '@/components/admin/settings-visibilidade-inbox'
+import { lerCaixas } from '@/lib/inbox/visibilidade'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -120,7 +121,7 @@ export async function Configuracoes({
     wantsRoles
       ? admin
           .from('tenant_roles')
-          .select('id, key, label, is_system, users(count)')
+          .select('id, key, label, is_system, inbox_caixas, users(count)')
           .eq('tenant_id', ctx.tenantId!)
           .order('is_system', { ascending: false })
           .order('created_at')
@@ -186,7 +187,7 @@ export async function Configuracoes({
   if (rolesError) console.error('[configuracoes] tenant_roles:', rolesError.message)
 
   type RawRole = {
-    id: string; key: string; label: string; is_system: boolean
+    id: string; key: string; label: string; is_system: boolean; inbox_caixas?: string
     users?: { count: number }[] | null
   }
   const editorRoles = ((allRoles ?? []) as RawRole[]).map(r => ({
@@ -195,6 +196,7 @@ export async function Configuracoes({
     label:       r.label,
     is_system:   r.is_system,
     memberCount: r.users?.[0]?.count ?? 0,
+    inboxCaixas: lerCaixas(r.inbox_caixas),
   }))
 
   // Mapa cargo → abas de Relatórios. Cargo ausente fica sem nenhuma: é a

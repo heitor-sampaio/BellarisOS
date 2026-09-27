@@ -15,6 +15,8 @@ import {
   NETWORK_ONLY, NETWORK_ONLY_NOTE,
 } from '@/lib/permissions-copy'
 import { ADMIN_MENU, BRANCH_MENU, menuLabelsFor } from '@/lib/menu'
+import { OPCOES_DE_CAIXAS, type CaixasDoCargo } from '@/lib/inbox/visibilidade'
+import { SegSelect } from '@/components/shared/seg-select'
 import type {
   AppModule, PermissionLevel, PermissionScope, ScopedModule, ResolvedPermissions, ReportTab,
 } from '@estetica-os/types'
@@ -25,6 +27,8 @@ export interface EditorRole {
   label:        string
   is_system:    boolean
   memberCount?: number
+  /** Quais caixas de WhatsApp o cargo enxerga no inbox. */
+  inboxCaixas:  CaixasDoCargo
 }
 
 /** O que um cargo tem em um módulo: até onde mexe (nível) e em quais registros (escopo). */
@@ -354,26 +358,40 @@ function RenameCard({ role, onDone }: { role: EditorRole; onDone: () => void }) 
   useEffect(() => {
     if (state && 'success' in state && state.success) onDone()
   }, [state, onDone])
+  // O erro precisa aparecer: sem ele, uma falha deixava o campo aberto sem
+  // dizer nada, e antes disso a falha nem chegava a existir (ver `updateRole`).
+  const erro = state && 'error' in state ? state.error : null
   return (
-    <form
-      action={action}
-      style={{
-        padding: '10px 12px', background: 'var(--surface)',
-        border: '1.5px solid var(--brand-soft-border)', borderRadius: 'var(--radius-row)',
-        display: 'flex', alignItems: 'center', gap: 4,
-      }}
-    >
-      <input type="hidden" name="roleId" value={role.id} />
-      <input
-        name="label" defaultValue={role.label} autoFocus required
+    <div>
+      <form
+        action={action}
         style={{
-          flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
-          fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)',
+          padding: '10px 12px', background: 'var(--surface)',
+          border: '1.5px solid var(--brand-soft-border)', borderRadius: 'var(--radius-row)',
+          display: 'flex', alignItems: 'center', gap: 4,
         }}
-      />
-      <button type="submit" disabled={pending} title="Salvar" style={iconBtn()}><Check size={13} /></button>
-      <button type="button" onClick={onDone} title="Cancelar" style={iconBtn()}><X size={13} /></button>
-    </form>
+      >
+        <input type="hidden" name="roleId" value={role.id} />
+        <input
+          name="label" defaultValue={role.label} autoFocus required
+          aria-label="Nome do cargo"
+          style={{
+            flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
+            fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)',
+          }}
+        />
+        <button type="submit" disabled={pending} title="Salvar" style={iconBtn()}><Check size={13} /></button>
+        <button type="button" onClick={onDone} title="Cancelar" style={iconBtn()}><X size={13} /></button>
+      </form>
+      {erro && (
+        <p role="alert" style={{
+          fontSize: 'var(--text-2xs)', color: 'var(--danger)',
+          fontWeight: 'var(--weight-semibold)', marginTop: 4,
+        }}>
+          {erro}
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -409,8 +427,10 @@ function PermissionMatrix({
   const [levels, setLevels] = useState<Levels>(() => buildLevels(perms))
   const [scopes, setScopes] = useState<Scopes>(() => buildScopes(perms))
   const [reportTabs, setReportTabs] = useState<ReportTab[]>(() => [...tabs])
+  const [caixas, setCaixas] = useState<CaixasDoCargo>(role.inboxCaixas)
   const [baseline, setBaseline] = useState(() => ({
     levels: buildLevels(perms), scopes: buildScopes(perms), reportTabs: [...tabs],
+    caixas: role.inboxCaixas,
   }))
   const [dismissed, setDismissed] = useState(false)
 
@@ -419,8 +439,9 @@ function PermissionMatrix({
       levels[m] !== baseline.levels[m] ||
       (isScoped(m) && levels[m] !== 'NONE' && scopes[m] !== baseline.scopes[m]),
     ) || reportTabs.length !== baseline.reportTabs.length
-      || reportTabs.some(t => !baseline.reportTabs.includes(t)),
-    [levels, scopes, reportTabs, baseline],
+      || reportTabs.some(t => !baseline.reportTabs.includes(t))
+      || caixas !== baseline.caixas,
+    [levels, scopes, reportTabs, caixas, baseline],
   )
 
   useEffect(() => { onDirtyChange(dirty) }, [dirty, onDirtyChange])
@@ -429,7 +450,7 @@ function PermissionMatrix({
   // mensagem de sucesso volta a valer.
   useEffect(() => {
     if (state?.success) {
-      setBaseline({ levels, scopes, reportTabs })
+      setBaseline({ levels, scopes, reportTabs, caixas })
       setDismissed(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -466,6 +487,7 @@ function PermissionMatrix({
       {levels.reports !== 'NONE' && reportTabs.map(t => (
         <input key={t} type="hidden" name={`report:${t}`} value="on" />
       ))}
+      <input type="hidden" name="inbox_caixas" value={caixas} />
 
       <div style={{ marginBottom: 20 }}>
         <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
@@ -507,9 +529,11 @@ function PermissionMatrix({
                   scope={scopes[module]}
                   last={i === group.modules.length - 1}
                   reportTabs={reportTabs}
+                  caixas={caixas}
                   onLevel={v => setLevel(module, v)}
                   onScope={v => setScope(module, v)}
                   onReportTab={toggleReportTab}
+                  onCaixas={v => { setCaixas(v); setDismissed(true) }}
                 />
               ))}
             </div>
@@ -554,16 +578,18 @@ function PermissionMatrix({
 }
 
 function ModuleRow({
-  module, level, scope, last, reportTabs, onLevel, onScope, onReportTab,
+  module, level, scope, last, reportTabs, caixas, onLevel, onScope, onReportTab, onCaixas,
 }: {
   module: AppModule
   level: PermissionLevel
   scope: PermissionScope
   last: boolean
   reportTabs: ReportTab[]
+  caixas: CaixasDoCargo
   onLevel: (v: PermissionLevel) => void
   onScope: (v: PermissionScope) => void
   onReportTab: (t: ReportTab) => void
+  onCaixas: (v: CaixasDoCargo) => void
 }) {
   const scoped      = isScoped(module)
   const enabled     = level !== 'NONE'
@@ -650,6 +676,45 @@ function ModuleRow({
       {module === 'reports' && enabled && (
         <AbasDeRelatorio marcadas={reportTabs} onToggle={onReportTab} />
       )}
+
+      {/* O inbox é do CRM. Ligar a pessoa a um número decide por onde ela
+          envia; isto decide o que ela vê (2026-09-27). */}
+      {module === 'crm' && enabled && (
+        <CaixasDoInbox valor={caixas} onChange={onCaixas} />
+      )}
+    </div>
+  )
+}
+
+function CaixasDoInbox({
+  valor, onChange,
+}: {
+  valor: CaixasDoCargo
+  onChange: (v: CaixasDoCargo) => void
+}) {
+  const atual = OPCOES_DE_CAIXAS.find(o => o.key === valor) ?? OPCOES_DE_CAIXAS[0]!
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap',
+      }}>
+        <span className="overline">WhatsApp no inbox</span>
+        <SegSelect
+          options={OPCOES_DE_CAIXAS.map(o => ({ key: o.key, label: o.label }))}
+          value={valor}
+          onSelect={k => onChange(k as CaixasDoCargo)}
+          ariaLabel="Quais números de WhatsApp o cargo vê no inbox"
+        />
+      </div>
+      <p
+        data-testid="explicacao-caixas"
+        style={{
+          fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 5,
+          textAlign: 'right', lineHeight: 'var(--leading-snug)',
+        }}
+      >
+        {atual.explicacao}
+      </p>
     </div>
   )
 }

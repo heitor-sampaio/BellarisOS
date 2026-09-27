@@ -1260,6 +1260,43 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — O cargo escolhe quais números vê no inbox (e o renomear que não gravava)
+
+Ligar SDRs a um número decidia por onde elas enviavam, não o que viam. Sobre
+restringir a visão ao número de cada uma: "não deve ser fixo, pode ser uma
+configuração feita nos cargos".
+
+- **`tenant_roles.inbox_caixas`**: `todas` (padrão — nenhum cargo mudou de
+  visão na migração) ou `minhas`. Fica na **linha do CRM da matriz**, porque o
+  inbox é do CRM, e salva com "Salvar acessos" como o resto do cargo.
+- **"Só as da pessoa"** mostra as conversas dos números a que ela está ligada.
+  Sem número ligado, nenhuma de WhatsApp — o erro na outra direção seria o
+  vazamento. Instagram e Messenger não têm caixa e passam sempre.
+- **Por cargo, não por rede** (como `inbox_visibilidade`): na mesma clínica a
+  recepção vê tudo e a SDR vê o número dela.
+- **Soma-se ao escopo do CRM.** Com "só os meus leads", as duas regras valem.
+- Um helper só, `caixasDoAlcance`, para a lista e para o atalho das outras
+  threads — o atalho não pode abrir a thread de um número que a lista esconde.
+  Erro ao ler o cargo mostra nada.
+
+**Achado no caminho: renomear cargo nunca gravou.** `tenant_roles` não tinha
+policy de UPDATE; pela sessão o `update` atingia zero linhas sem erro, e a tela
+fechava o campo como se tivesse salvo. Apareceu porque gravar `inbox_caixas`
+confere a linha devolvida. Policy nova no molde da de DELETE (rede, própria
+rede, nunca cargo de sistema), `updateRole` passou a conferir a linha e o
+cartão de renomear passou a mostrar o erro.
+
+⚠️ **Em aberto, e anterior a isto:** as regras de alcance do inbox (dono do
+CRM e agora caixas) filtram a LISTA e os atalhos, não a leitura por id —
+`getMessages(conversationId)` devolve as mensagens de qualquer conversa da
+rede. É o mesmo buraco que o §11 descreve ("filtrar só na renderização deixa o
+registro acessível pelo id"), e vale fechar para as duas regras juntas.
+
+Migrations `20260927000002` (coluna) e `20260927000003` (policy), aplicadas
+pelo MCP. E2E `inbox-caixas-do-cargo.spec.ts`: número dela sim, o outro não e
+Instagram sempre; sem número, nenhum WhatsApp; "todas" vê tudo; a escolha
+grava pela tela; renomear grava.
+
 ### 2026-09-27 — Um número de WhatsApp, várias pessoas falando por ele
 
 "Hoje um número já pode ser atribuído a alguém da equipe, mas quero que possa

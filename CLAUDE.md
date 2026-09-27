@@ -909,6 +909,14 @@ Regras:
   recebe comissão. Não é permissão e não deriva escopo.
 - **O OWN do CRM, no inbox, tem um refino por rede** — pela pessoa ou pela
   conversa (§9.2.1). Fica na aba Cargos, logo abaixo da matriz.
+- **Quais números de WhatsApp o cargo vê no inbox é do CARGO**
+  (`tenant_roles.inbox_caixas`, na linha do CRM da matriz): `todas` (padrão)
+  ou `minhas` — só as caixas a que a pessoa está ligada em
+  `whatsapp_number_users`. Sem número ligado, nenhum WhatsApp; conversa sem
+  caixa (Instagram, Messenger) passa sempre. Soma-se ao escopo do CRM. Ligar a
+  pessoa ao número decide por onde ela ENVIA; isto decide o que ela VÊ. A regra
+  mora em `caixasDoAlcance` (`actions/inbox.ts`), usada pela lista e pelas
+  outras threads, como `alcanceDoDono`.
 - Teste de regra de alcance precisa de um membro com escopo OWN de verdade:
   `membroComEscopoProprio` (`e2e/apoio/sessao.ts`). Como admin a tela abre de
   qualquer jeito, e o teste não prova nada.
@@ -1149,6 +1157,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Perguntar "qual o WhatsApp desta rede?" — a pergunta é qual DESTES, e por quê
 ❌ Ler ou gravar whatsapp_numbers.user_id (legado — quem fala pelo número é whatsapp_number_users)
+❌ Update pela sessão sem conferir a linha devolvida (sem policy de UPDATE, atinge zero linhas sem erro)
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão

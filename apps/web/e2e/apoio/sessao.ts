@@ -18,11 +18,17 @@ import { banco, tenantId, PREFIXO } from './banco'
  */
 export interface MembroDeTeste {
   userId: string
+  roleId: string
   estado: string
   limpar: () => Promise<void>
 }
 
-export async function membroComEscopoProprio(marca: string): Promise<MembroDeTeste> {
+export async function membroComEscopoProprio(
+  marca: string,
+  /** Por padrão, CRM "só os meus" e todas as caixas — o que o nome promete.
+   *  O teste de caixas do cargo usa escopo ALL para isolar a regra dele. */
+  opcoes: { escopo?: 'OWN' | 'ALL'; inboxCaixas?: 'todas' | 'minhas' } = {},
+): Promise<MembroDeTeste> {
   const db     = banco()
   const tenant = await tenantId()
   const email  = `e2e-sdr-${marca}@bellaris.invalid`
@@ -44,13 +50,16 @@ export async function membroComEscopoProprio(marca: string): Promise<MembroDeTes
 
   try {
     const { data: cargo, error: erroCargo } = await db.from('tenant_roles')
-      .insert({ tenant_id: tenant, key: `E2E_SDR_${marca}`, label: `${PREFIXO} SDR ${marca}` })
+      .insert({
+        tenant_id: tenant, key: `E2E_SDR_${marca}`, label: `${PREFIXO} SDR ${marca}`,
+        inbox_caixas: opcoes.inboxCaixas ?? 'todas',
+      })
       .select('id').single<{ id: string }>()
     if (erroCargo) throw new Error(`criar o cargo: ${erroCargo.message}`)
     roleId = cargo!.id
 
     const { error: erroPerm } = await db.from('role_permissions').insert({
-      tenant_id: tenant, role_id: roleId, module: 'crm', level: 'MANAGE', scope: 'OWN',
+      tenant_id: tenant, role_id: roleId, module: 'crm', level: 'MANAGE', scope: opcoes.escopo ?? 'OWN',
     })
     if (erroPerm) throw new Error(`dar o CRM ao cargo: ${erroPerm.message}`)
 
@@ -90,7 +99,7 @@ export async function membroComEscopoProprio(marca: string): Promise<MembroDeTes
     await ctx.storageState({ path: estado })
     await ctx.dispose()
 
-    return { userId, estado, limpar }
+    return { userId, roleId: roleId!, estado, limpar }
   } catch (e) {
     await limpar()
     throw e

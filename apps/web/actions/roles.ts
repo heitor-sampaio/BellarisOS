@@ -69,13 +69,21 @@ export async function updateRole(
   if (!role) return { error: 'Cargo não encontrado.' }
   if (role.is_system) return { error: 'Cargos do sistema não podem ser renomeados.' }
 
+  // `.select().single()`: sem policy de UPDATE a gravação atingia zero linhas
+  // sem erro, e a tela dizia "renomeado" com o nome antigo lá. Conferir a
+  // linha devolvida é o que faz esse silêncio virar erro.
   const { error } = await supabase
     .from('tenant_roles')
     .update({ label })
     .eq('id', roleId)
     .eq('tenant_id', ctx.tenantId!)
+    .select('id')
+    .single()
 
-  if (error) return { error: 'Erro ao renomear cargo.' }
+  if (error) {
+    if (error.code === '23505') return { error: 'Já existe um cargo com esse nome.' }
+    return { error: 'Erro ao renomear cargo.' }
+  }
 
   revalidatePath('/admin/settings')
   return { success: true }

@@ -7,6 +7,7 @@ import { ALL_MODULES, MODULE_LEVELS, isScoped, ALL_REPORT_TABS } from '@/lib/per
 import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/cadastro'
 import type { PermissionLevel, PermissionScope } from '@estetica-os/types'
 import { ler } from '@/lib/db'
+import { lerCaixas } from '@/lib/inbox/visibilidade'
 
 const VALID_SCOPES: PermissionScope[] = ['OWN', 'ALL']
 
@@ -63,6 +64,18 @@ export async function saveRolePermissions(
     .upsert(rows, { onConflict: 'role_id,module' })
 
   if (error) return { error: 'Erro ao salvar permissões. Tente novamente.' }
+
+  // -- Caixas de WhatsApp no inbox -------------------------------------------
+  // Mesmo formulário, mesmo gesto. Valor fora da lista vira o padrão, não erro:
+  // é o que `lerCaixas` faria na leitura de qualquer jeito.
+  const { error: caixasErro } = await supabase
+    .from('tenant_roles')
+    .update({ inbox_caixas: lerCaixas(formData.get('inbox_caixas')) })
+    .eq('id', roleId)
+    .eq('tenant_id', ctx.tenantId!)
+    .select('id')
+    .single()
+  if (caixasErro) return { error: 'Erro ao salvar quais números o cargo vê. Tente novamente.' }
 
   // -- Abas de Relatórios ------------------------------------------------
   // Vêm no mesmo formulário porque são o mesmo gesto: "o que este cargo
