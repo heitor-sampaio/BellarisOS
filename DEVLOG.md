@@ -1260,6 +1260,64 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Frente 3b/3c: as regras decididas e os fluxos de dinheiro testados
+
+**3b — as três regras que o Heitor decidiu:**
+
+- **Crédito interno desconta e trava** (migration `20260927000006`). Gatilho
+  `trg_credito_interno_uso`: receita que vira paga com `INTERNAL_CREDIT` trava
+  o saldo do cliente (lock), recusa sem saldo — o pagamento inteiro falha — e
+  grava o uso como linha NEGATIVA com o `transaction_id`. Gatilho, e não código,
+  porque receita paga nasce em cinco lugares. Estornar um pagamento feito com
+  crédito devolve o crédito. A ficha mostra o sinal de cada linha.
+- **Insumo faltando avisa e deixa concluir**: o saldo fica NEGATIVO (era travado
+  em 0 e a falta sumia) e o modal de finalizar mostra o que faltou antes de
+  fechar. De brinde, `finishSession` passou a conferir que o insumo recebido do
+  navegador é da rede.
+- **Sessão de pacote não é cobrada de novo**: `confirmPayment` recusa sessão de
+  pacote e de plano no SERVIDOR (antes só a tela escondia o botão, e só para
+  plano), e a tela esconde o botão para pacote também.
+
+**Dois defeitos achados escrevendo os testes:**
+
+- **Estornar o pagamento de um atendimento falhava sempre.** A contra-transação
+  copiava `appointment_id`, e `financial_transactions` tem UNIQUE nele (23505).
+  Ela não leva mais o agendamento.
+- **A transferência de estoque nunca funcionou**: gravava a coluna `reference`,
+  que não existia (PGRST204, "Não consegui registrar a transferência."). Coluna
+  criada (migration `20260927000007`).
+
+**3c — os fluxos, pela tela, pela primeira vez:**
+
+- `atendimento-fechamento.spec.ts`: check-in → iniciar → finalizar (prontuário,
+  comissão pela regra específica do procedimento, baixa com saldo −1 e o aviso)
+  → pagamento (crédito sem saldo recusado na tela; Pix lança a receita e o
+  `pagamento.recebido`) → e a mesma chamada reenviada para uma sessão de pacote
+  não cobra.
+- `checkout-de-plano.spec.ts`: "Confirmar plano" → termos em papel → entrada
+  de R$ 100 + 3× → concluir: plano ACCEPTED, termos SIGNED, entrada paga, saldo
+  com 3 parcelas, `plano.aceito` e `pagamento.recebido`. E três reenvios para um
+  plano de outra rede. Rodado contra o código de antes da 3a: **criar termos**
+  (plantava termos no prontuário alheio) e **assinar termo** (assinava termo
+  alheio) falharam — eram furos reais. O **checkout** alheio já era recusado
+  por acaso (a leitura das sessões conferia a rede); a conferência nova é trava
+  a mais, não conserto.
+- `estoque-movimentos.spec.ts`: transferência e ajuste pela tela, 4 eventos
+  `estoque.movimentado`, e `estoque.abaixo_do_minimo` disparando na travessia e
+  uma vez só — a primeira vez que esse gatilho roda num teste.
+- `credito-interno.spec.ts`: desconto, recusa, desconto único, devolução no
+  estorno, e o estorno de atendimento funcionando.
+- Apoio: `apagarClientes` leva os lançamentos SEM agendamento (os do plano) e
+  os planos — senão ficariam órfãos, sem `[e2e]`, contando no faturamento.
+
+**Lacuna de produto registrada, não mexida:** nenhuma rede tem
+`loyalty_configs` e não há tela que a crie — o fechamento não dá ponto nenhum.
+A fidelidade está, na prática, desligada.
+
+**Ficou para depois nesta frente:** métricas sem teste (despesas, comissões,
+retenção, funil, top N), `receberDoPlano` pela tela do atendimento, e os
+formatos de payload de `pagamento.*`/`estoque.*`.
+
 ### 2026-09-27 — Frente 3a: dinheiro — furos entre redes, estorno e a tela de atendimento
 
 Ao mapear checkout, fechamento de atendimento, crédito e estoque para testá-los,

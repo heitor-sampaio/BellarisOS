@@ -123,6 +123,8 @@ interface Props {
   existingPlan:          ExistingPlan | null
   procedureProductsMap:  Record<string, { productId: string; name: string; unit: string; quantity: number }[]>
   isPartOfPlan?:         boolean
+  /** Sessão de pacote: já paga na venda do pacote — não se cobra de novo (2026-09-27). */
+  isPackageSession?:     boolean
   /**
    * Pode receber (caixa ou financeiro) — quem fecha a venda da avaliação sem
    * mandar o cliente para a recepção. O mesmo critério de "Confirmar pagamento".
@@ -223,7 +225,37 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
 }) {
   const router = useRouter()
   const [state, action, pending] = useActionState(finishSession, null)
-  if (state !== null && !state?.error && !pending) { onClose(); router.refresh(); return null }
+  // Concluiu, mas faltou insumo (o saldo ficou negativo): o modal não some
+  // calado — mostra o que faltou e a pessoa fecha. Decisão de 2026-09-27:
+  // avisar e deixar concluir.
+  const avisos = state !== null && !state?.error ? state.avisos ?? [] : []
+  if (state !== null && !state?.error && !pending && avisos.length === 0) { onClose(); router.refresh(); return null }
+  if (avisos.length > 0 && !pending) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div className="card" role="alertdialog" aria-labelledby="titulo-falta-insumo"
+          style={{ width: '100%', maxWidth: 500, display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-overlay)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <AlertTriangle size={16} style={{ color: 'var(--warning)' }} />
+            <h2 id="titulo-falta-insumo" style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
+              Atendimento concluído — faltou insumo
+            </h2>
+          </div>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            O estoque da unidade não cobria o que foi usado. O saldo ficou negativo para a falta aparecer no estoque:
+          </p>
+          <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {avisos.map(a => (
+              <li key={a} style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{a}</li>
+            ))}
+          </ul>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn-primary" onClick={() => { onClose(); router.refresh() }}>Entendi</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -744,7 +776,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, canEditRecords, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, podeReceber = false, planoEmAberto = null,
+  isPartOfPlan = false, isPackageSession = false, podeReceber = false, planoEmAberto = null,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1205,7 +1237,7 @@ export function AppointmentSession({
                 mesmo em avaliação de R$ 0,00. E quando há plano fechado, o
                 rótulo diz de QUE valor se trata — o do plano já foi pago no
                 checkout, este é o do atendimento. */}
-            {status === 'COMPLETED' && !paymentTransaction && canPayment && !isPartOfPlan
+            {status === 'COMPLETED' && !paymentTransaction && canPayment && !isPartOfPlan && !isPackageSession
               && appointment.price > 0 && (
               <button type="button" onClick={() => setShowPayment(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
@@ -1358,6 +1390,10 @@ export function AppointmentSession({
                 ) : isPartOfPlan ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
                     Pagamento realizado no checkout do plano de tratamento.
+                  </p>
+                ) : isPackageSession ? (
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
+                    Sessão de pacote — paga na venda do pacote.
                   </p>
                 ) : (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>

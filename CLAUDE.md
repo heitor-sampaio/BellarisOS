@@ -425,7 +425,7 @@ const clients = await admin.from('clients').select('*')
 - `firstAppLoginBonus` em `LoyaltyConfig`: pontos creditados no primeiro login do cliente no app
 - `LoyaltyConfig.scopePerBranch`: `false` = pontos consolidados em toda a rede
 - Tags como `String[]` — constantes em `packages/utils/client-tags.ts`
-- `InternalCredit`: saldo de crédito do cliente na filial (gerado por estorno); usado como método de pagamento `INTERNAL_CREDIT`
+- `InternalCredit`: saldo de crédito do cliente (concessão manual, cancelamento de plano pago, estorno de um pagamento feito com crédito); usado como método de pagamento `INTERNAL_CREDIT`, que o desconta (§9.6)
 - `LgpdRequest`: pedido de acesso aos dados pelo titular. Só `type: "export"`
   está implementado — a exclusão continua fora de escopo por conflitar com a
   guarda legal de prontuário e de registros fiscais. Fluxo: o cliente solicita
@@ -630,7 +630,16 @@ const procedures = await ler(
 - `FinancialTransaction` criada automaticamente ao concluir `Appointment`
 - `Installment`: parcelas de uma transação (ex: parcelamento no cartão) — rastrear `isPaid` + `paidAt` por parcela
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
-- Estorno: cancelar a receita e gerar `InternalCredit` ao cliente (nunca deletar a transação)
+- **Pagar com `INTERNAL_CREDIT` desconta do saldo e recusa sem saldo**
+  (2026-09-27). É GATILHO (`trg_credito_interno_uso`), pelo argumento do §9.9:
+  receita paga nasce em cinco lugares. O saldo é a soma de
+  `internal_credits.amount` — concessão positiva, uso NEGATIVO com o
+  `transaction_id` que o consumiu. Estornar um pagamento feito com crédito
+  devolve o crédito.
+- Estorno (`estornar_transacao`, uma transação): contra-transação + a original
+  marcada `notes='Estornada'` (nunca deletar). Recusa lançamento **não pago**
+  e o **próprio estorno**. A contra-transação não leva `appointment_id` (há
+  UNIQUE nele — levar fazia todo estorno de atendimento falhar).
 
 ### 9.7 Comissões
 - Buscar `CommissionRule` específica (profissional + procedimento); fallback para regra geral (`procedureId: null`)
@@ -889,9 +898,21 @@ Os sete passos, na ordem, e o que cada um precisa deixar gravado:
 | 6 | a sessão do pacote, se houver | `package_sessions` |
 | 7 | os pontos de fidelidade | `loyalty_transactions` |
 
-A ordem importa: o estoque baixa antes do financeiro porque insumo faltando é
-motivo para o atendimento não fechar, e descobrir isso depois de lançar a
-receita deixa dinheiro registrado para um atendimento que não aconteceu.
+**Como é hoje, de fato** (mapeado e testado em 2026-09-27,
+`e2e/atendimento-fechamento.spec.ts`):
+- `finishSession` grava status → prontuário → comissão → pontos → estoque →
+  pacote. A **receita não nasce no fechamento**: é `confirmPayment`, na
+  recepção, que a lança já paga.
+- O saldo do insumo mora em `branch_product_stock` (por unidade), não em
+  `products`.
+- **Insumo faltando NÃO impede o fechamento** — a cliente já foi atendida
+  (decisão do Heitor, 2026-09-27; o texto antigo dizia o contrário). O saldo
+  fica **negativo**, para a falta aparecer no estoque, e a tela mostra o que
+  faltou antes de fechar o modal.
+- Sessão de **plano** e de **pacote** já foi paga em outro lugar:
+  `confirmPayment` recusa as duas no servidor, e a tela esconde o botão.
+- Pontos: só com `loyalty_configs` da rede — e **nenhuma rede tem**, nem há
+  tela que a crie. Na prática a fidelidade está desligada.
 
 ---
 

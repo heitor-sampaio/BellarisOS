@@ -1001,8 +1001,13 @@ function FinanceiroTab({
                   {format(new Date(c.createdAt), "dd/MM/yyyy", { locale: ptBR })}
                 </p>
               </div>
-              <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--success)', flexShrink: 0 }}>
-                +{fmtBRL(c.amount)}
+              {/* Desde 2026-09-27 o USO do crédito entra negativo (o gatilho
+                  desconta quando ele paga algo): cada linha mostra o seu sinal. */}
+              <span style={{
+                fontSize: 'var(--text-base-sz)', fontWeight: 800, flexShrink: 0,
+                color: c.amount < 0 ? 'var(--text-muted)' : 'var(--success)',
+              }}>
+                {c.amount < 0 ? `−${fmtBRL(-c.amount)}` : `+${fmtBRL(c.amount)}`}
               </span>
             </div>
           ))

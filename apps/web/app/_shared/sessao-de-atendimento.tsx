@@ -85,7 +85,7 @@ export async function SessaoDeAtendimento({
     { data: medRecord }, { data: procProductsRaw }, branchProductsRaw,
     professionalsRaw, { data: historyRaw }, { data: paymentRaw },
     { data: allProceduresRaw }, { data: packagesRaw }, { data: planRaw },
-    { data: planSessionRaw },
+    { data: planSessionRaw }, sessaoDePacote,
   ] = await Promise.all([
     admin
       .from('medical_records')
@@ -162,6 +162,11 @@ export async function SessaoDeAtendimento({
           .eq('appointment_id', id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+
+    // Sessão de pacote: já paga na venda do pacote, não se cobra de novo
+    // (2026-09-27). O servidor recusa em `confirmPayment`; aqui é o botão.
+    ler(admin.from('package_sessions').select('id').eq('appointment_id', id).maybeSingle(),
+      'conferir se é sessão de pacote'),
 
   ])
 
@@ -423,6 +428,7 @@ export async function SessaoDeAtendimento({
         existingPlan={existingPlan}
         procedureProductsMap={procedureProductsMap}
         isPartOfPlan={isPartOfPlan}
+        isPackageSession={!!sessaoDePacote}
         podeReceber={podeReceber(ctx)}
         planoEmAberto={planoEmAberto}
       />

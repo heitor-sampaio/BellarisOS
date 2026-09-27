@@ -23,6 +23,9 @@ export interface OutraRede {
   criarCliente(rotulo: string): Promise<string>
   /** Produto da outra rede, com saldo na unidade dela. */
   criarProduto(rotulo: string, saldo?: number): Promise<string>
+  /** Plano PROPOSTO de um cliente da outra rede — pronto para checkout —, com
+   *  o prontuário do cliente e um termo PENDENTE. Alvo dos reenvios do checkout. */
+  criarPlanoProposto(rotulo: string, opcoes?: { semTermo?: boolean }): Promise<{ planId: string; recordId: string; termId: string | null; clientId: string }>
   limpar(): Promise<void>
 }
 
@@ -70,6 +73,29 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
       await db.from('branch_product_stock').insert({ product_id: data!.id, branch_id: b!.id, current_stock: saldo, min_stock: 0 })
       produtos.push(data!.id)
       return data!.id
+    },
+
+    async criarPlanoProposto(rotulo, opcoes = {}) {
+      const clientId = await rede.criarCliente(`Cliente ${rotulo}`)
+      const { data: rec, error: eRec } = await db.from('medical_records')
+        .upsert({ client_id: clientId }, { onConflict: 'client_id' }).select('id').single<{ id: string }>()
+      expect(eRec, 'prontuário do cliente da outra rede').toBeNull()
+      const { data: plano, error: ePl } = await db.from('treatment_plans')
+        .insert({ branch_id: b!.id, professional_id: prof!.id, client_id: clientId, status: 'PROPOSED', name: `${PREFIXO} Plano ${rotulo} ${marca}` })
+        .select('id').single<{ id: string }>()
+      expect(ePl, 'plano da outra rede').toBeNull()
+      const { data: sessao } = await db.from('treatment_plan_sessions')
+        .insert({ plan_id: plano!.id, sort_order: 0 }).select('id').single<{ id: string }>()
+      await db.from('treatment_plan_session_procedures')
+        .insert({ session_id: sessao!.id, procedure_id: pr!.id, price: 50 })
+      // Sem termo: é o alvo de "criar termos", que REAPROVEITA os existentes —
+      // com um termo já lá, o reenvio não criaria nada nem com o furo aberto.
+      if (opcoes.semTermo) return { planId: plano!.id, recordId: rec!.id, termId: null, clientId }
+      const { data: termo, error: eT } = await db.from('consent_terms')
+        .insert({ medical_record_id: rec!.id, treatment_plan_id: plano!.id, title: `${PREFIXO} termo alheio`, content: 'e2e', status: 'PENDING' })
+        .select('id').single<{ id: string }>()
+      expect(eT, 'termo da outra rede').toBeNull()
+      return { planId: plano!.id, recordId: rec!.id, termId: termo!.id, clientId }
     },
 
     async limpar() {

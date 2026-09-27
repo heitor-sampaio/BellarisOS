@@ -722,9 +722,9 @@ export async function finishSession(
 }
 
 async function finishSessionInterno(
-  _prev: { error?: string } | null,
+  _prev: { error?: string; avisos?: string[] } | null,
   formData: FormData,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; /** Insumos que ficaram com saldo negativo — conclui mesmo assim. */ avisos?: string[] }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'VIEW')
@@ -863,6 +863,13 @@ async function finishSessionInterno(
     }
 
     // 5. Baixar estoque
+    //
+    // Insumo faltando NÃO impede o fechamento — a cliente já foi atendida
+    // (decisão do Heitor, 2026-09-27). Mas também não some: o saldo fica
+    // NEGATIVO (antes era travado em 0, e a falta desaparecia do estoque) e a
+    // tela recebe `avisos` dizendo o que faltou. O mínimo cruzado dispara
+    // `estoque.abaixo_do_minimo` pelo gatilho, como qualquer saída.
+    const avisos: string[] = []
     let productsUsed: { productId: string; quantity: number }[] = []
     try {
       productsUsed = JSON.parse((formData.get('products_used') as string | null) ?? '[]')
@@ -877,11 +884,15 @@ async function finishSessionInterno(
           .eq('product_id', item.productId)
           .eq('branch_id', appt.branch_id)
           .maybeSingle(),
+        // Da rede: o id vem do navegador (`products_used`), e um produto de
+        // outra rede ganharia saldo e movimento nesta unidade.
         admin.from('products')
-          .select('units_per_package, consumption_unit, cost_price')
+          .select('name, unit, units_per_package, consumption_unit, cost_price')
           .eq('id', item.productId)
+          .eq('tenant_id', ctx.tenantId!)
           .maybeSingle(),
       ])
+      if (!prod) continue
 
       const currentStock = Number(bps?.current_stock ?? 0)
       const minStock     = Number(bps?.min_stock ?? 0)
@@ -898,14 +909,16 @@ async function finishSessionInterno(
           ? Number(bps.current_rendimento)
           : currentStock * upp  // fallback: assume embalagens cheias
 
-        newRendimento = Math.max(0, currentRendimento - item.quantity)
-        newPackages   = newRendimento === 0 ? 0 : Math.ceil(newRendimento / upp)
+        newRendimento = currentRendimento - item.quantity
+        // Arredonda PARA LONGE do zero: sobra parcial ainda ocupa uma
+        // embalagem aberta; falta parcial já é uma embalagem devida.
+        newPackages   = newRendimento >= 0 ? Math.ceil(newRendimento / upp) : Math.floor(newRendimento / upp)
         movQty        = -item.quantity
         movBalance    = newRendimento  // balance em unidades de consumo
       } else {
         // Produto sem unidade de consumo: item.quantity = embalagens
         newRendimento = null
-        newPackages   = Math.max(0, currentStock - item.quantity)
+        newPackages   = currentStock - item.quantity
         movQty        = -item.quantity
         movBalance    = newPackages
       }
@@ -931,6 +944,12 @@ async function finishSessionInterno(
         updated_at:         now,
       }, { onConflict: 'product_id,branch_id' })
       if (bpsErr) return { error: `Erro ao atualizar estoque: ${bpsErr.message}` }
+
+      if (movBalance < 0) {
+        const unidade = upp ? (prod.consumption_unit as string) : (prod.unit as string)
+        const falta = (-movBalance).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+        avisos.push(`${prod.name as string}: faltaram ${falta} ${unidade} no estoque da unidade`)
+      }
     }
 
     // 6. Atualiza sessão de pacote (se este agendamento pertencer a um)
@@ -977,7 +996,7 @@ async function finishSessionInterno(
     revalidatePath(`/${slug}/estoque`)
     revalidateTag(`appointments:${apptBranch!.tenant_id}`, 'max')
     notifyCompleted(appointmentId)
-    return {}
+    return { avisos }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }
@@ -1002,13 +1021,27 @@ export async function confirmPayment(
 
     const appt = await ler(admin
       .from('appointments')
-      .select('id, status, branch_id, client_id, price, branches!inner(tenant_id)')
+      .select('id, status, branch_id, client_id, price, treatment_plan_id, branches!inner(tenant_id)')
       .eq('id', appointmentId)
       .single(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
     if (appt.status !== 'COMPLETED') return { error: 'O atendimento precisa estar concluído para confirmar pagamento.' }
+
+    // Sessão já paga em outro lugar não se cobra de novo. A tela escondia o
+    // botão só para sessão de PLANO; a de PACOTE mostrava, e confirmar lançava
+    // a receita uma segunda vez (decisão do Heitor, 2026-09-27: não cobrar).
+    // E a trava fica aqui, não só na tela: o botão escondido não tranca a action.
+    if (appt.treatment_plan_id) {
+      return { error: 'Sessão de plano de tratamento: o pagamento é recebido no plano, não no atendimento.' }
+    }
+    const sessaoDePacote = await ler(admin
+      .from('package_sessions').select('id').eq('appointment_id', appointmentId).maybeSingle(),
+      'conferir se é sessão de pacote')
+    if (sessaoDePacote) {
+      return { error: 'Sessão de pacote: já foi paga na venda do pacote.' }
+    }
 
     // A conclusão do atendimento já lançou a receita como conta a receber.
     // Confirmar pagamento é dar baixa nela — não criar uma segunda transação.

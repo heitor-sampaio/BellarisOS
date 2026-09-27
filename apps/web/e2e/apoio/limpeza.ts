@@ -49,6 +49,9 @@ export async function apagarAgendamentos(agendamentos: string[], falhas: Falha[]
 
   const lancamentos = await ids(db.from('financial_transactions').select('id').in('appointment_id', agendamentos))
   if (lancamentos.length) {
+    // O `pagamento.recebido` do gatilho aponta a TRANSAÇÃO, não o agendamento.
+    await passo(falhas, 'eventos do pagamento', db.from('domain_events').delete().in('entidade_id', lancamentos))
+    await passo(falhas, 'uso de crédito do pagamento', db.from('internal_credits').delete().in('transaction_id', lancamentos))
     await passo(falhas, 'parcelas', db.from('installments').delete().in('transaction_id', lancamentos))
     await passo(falhas, 'lançamentos do atendimento', db.from('financial_transactions').delete().in('id', lancamentos))
   }
@@ -72,7 +75,28 @@ export async function apagarClientes(clientes: string[], falhas: Falha[] = []): 
   if (clientes.length === 0) return falhas
   const db = banco()
 
+  // Lançamentos do cliente SEM agendamento — os do checkout de plano, do crédito
+  // usado, de lançamento manual. Com o cliente apagado eles ficariam órfãos
+  // (`client_id` vira nulo) e sem o prefixo `[e2e]` na descrição: a varredura
+  // nunca mais os acharia, e eles contariam no faturamento de verdade.
+  const lancamentos = await ids(db.from('financial_transactions').select('id').in('client_id', clientes).is('appointment_id', null))
+  if (lancamentos.length) {
+    await passo(falhas, 'eventos dos lançamentos do cliente', db.from('domain_events').delete().in('entidade_id', lancamentos))
+    await passo(falhas, 'crédito ligado a lançamento', db.from('internal_credits').delete().in('transaction_id', lancamentos))
+    await passo(falhas, 'parcelas do cliente', db.from('installments').delete().in('transaction_id', lancamentos))
+    await passo(falhas, 'lançamentos do cliente', db.from('financial_transactions').delete().in('id', lancamentos))
+  }
+
+  // Planos: os termos apontam o plano (e o prontuário), e os eventos do plano
+  // usam o id DELE. As sessões saem em cascata com o plano.
+  const planos = await ids(db.from('treatment_plans').select('id').in('client_id', clientes))
+  if (planos.length) {
+    await passo(falhas, 'termos dos planos', db.from('consent_terms').delete().in('treatment_plan_id', planos))
+    await passo(falhas, 'eventos dos planos', db.from('domain_events').delete().in('entidade_id', planos))
+  }
+
   await apagarAgendamentos(await ids(db.from('appointments').select('id').in('client_id', clientes)), falhas)
+  if (planos.length) await passo(falhas, 'planos', db.from('treatment_plans').delete().in('id', planos))
 
   // A conta de fidelidade nasce JUNTO com o cliente — era ela que travava.
   const contas = await ids(db.from('loyalty_accounts').select('id').in('client_id', clientes))
