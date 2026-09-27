@@ -32,15 +32,15 @@ export default async function NewClientAppointmentPage({ params }: { params: Pro
 
   const branchTyped = branch as { id: string; name: string; tenant_id: string }
 
-  const [{ data: rawProcedures }, rawProfessionals] = await Promise.all([
-    admin
+  const [rawProcedures, rawProfessionals] = await Promise.all([
+    ler(admin
       .from('procedures')
       .select('id, name, price, duration_min')
       .eq('tenant_id', branchTyped.tenant_id)
       .or(`branch_id.is.null,branch_id.eq.${branchTyped.id}`)
       .eq('is_active', true)
       .eq('visible_on_client_app', true)
-      .order('name'),
+      .order('name'), 'listar os procedimentos'),
     // Filtrava por `users.role`, coluna removida na migração de cargos: a lista
     // vinha vazia e o cliente não tinha profissional para escolher.
     getCachedBranchProfessionals(branchTyped.id, branchTyped.tenant_id as string),

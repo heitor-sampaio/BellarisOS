@@ -1,5 +1,6 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import Link from 'next/link'
 import { CalendarDays, Star, ChevronRight, Sparkles } from 'lucide-react'
 
@@ -53,47 +54,47 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const admin = createAdminClient()
 
   const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, loyaltyRes] = await Promise.all([
-    admin.from('clients').select('name').eq('id', ctx.clientId!).single(),
-    admin.from('appointments')
+    ler(admin.from('clients').select('name').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
+    ler(admin.from('appointments')
       .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       .in('status', ['SCHEDULED', 'CONFIRMED'])
       .gte('scheduled_at', new Date().toISOString())
       .order('scheduled_at')
       .limit(1)
-      .maybeSingle(),
-    admin.from('appointments')
+      .maybeSingle(), 'buscar o próximo agendamento'),
+    ler(admin.from('appointments')
       .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       .eq('status', 'COMPLETED')
       .is('client_confirmed_at', null)
       .order('scheduled_at', { ascending: false })
-      .limit(5),
-    admin.from('client_packages')
+      .limit(5), 'buscar os atendimentos a confirmar'),
+    ler(admin.from('client_packages')
       .select('id, total_sessions, used_sessions, expires_at, service_packages(name)')
       .eq('client_id', ctx.clientId!)
       .order('purchased_at', { ascending: false })
-      .limit(5),
-    admin.from('treatment_plans')
+      .limit(5), 'buscar os pacotes'),
+    ler(admin.from('treatment_plans')
       .select('id, status, created_at, treatment_plan_sessions(treatment_plan_session_procedures(procedures(name)))')
       .eq('client_id', ctx.clientId!)
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
-      .limit(3),
-    admin.from('loyalty_accounts')
+      .limit(3), 'buscar os planos'),
+    ler(admin.from('loyalty_accounts')
       .select('balance')
       .eq('client_id', ctx.clientId!)
-      .maybeSingle(),
+      .maybeSingle(), 'buscar os pontos'),
   ])
 
-  const clientName   = (clientRes.data as { name: string } | null)?.name ?? 'você'
+  const clientName   = (clientRes as { name: string } | null)?.name ?? 'você'
   const firstName    = clientName.split(' ')[0] ?? clientName
-  const nextAppt     = nextApptRes.data as NextAppt | null
-  const pendingConfirm = (pendingConfirmRes.data ?? []) as unknown as NextAppt[]
-  const allPackages  = (packagesRes.data ?? []) as unknown as ActivePackage[]
+  const nextAppt     = nextApptRes as NextAppt | null
+  const pendingConfirm = (pendingConfirmRes ?? []) as unknown as NextAppt[]
+  const allPackages  = (packagesRes ?? []) as unknown as ActivePackage[]
   const activePkgs   = allPackages.filter(p => Number(p.used_sessions) < Number(p.total_sessions))
-  const activePlans  = (plansRes.data ?? []) as unknown as ActivePlan[]
-  const points       = Number((loyaltyRes.data as { balance: number } | null)?.balance ?? 0)
+  const activePlans  = (plansRes ?? []) as unknown as ActivePlan[]
+  const points       = Number((loyaltyRes as { balance: number } | null)?.balance ?? 0)
 
   const hasActiveTreatments = activePkgs.length > 0 || activePlans.length > 0
 

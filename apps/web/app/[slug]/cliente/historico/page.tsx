@@ -1,5 +1,6 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
 
@@ -47,42 +48,44 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
 
   const [procedimentosRes, pagamentosRes, docsRes, consentRes] = await Promise.all([
     // Procedimentos = appointments concluídos
-    admin.from('appointments')
+    ler(admin.from('appointments')
       .select('id, scheduled_at, client_confirmed_at, procedure_rating, client_rating, procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
       .eq('status', 'COMPLETED')
       .order('scheduled_at', { ascending: false })
-      .limit(50),
+      .limit(50), 'carregar os atendimentos'),
 
     // Pagamentos = transações financeiras ligadas ao cliente
-    admin.from('financial_transactions')
+    ler(admin.from('financial_transactions')
       .select(`
         id, description, amount, payment_method, is_paid, paid_at,
-        appointments!inner(client_id, procedures(name))
+        appointments(procedures(name))
       `)
-      .eq('appointments.client_id', ctx.clientId!)
+      // Pela ficha, não pelo agendamento: o pagamento de um plano não tem
+      // agendamento, e ficava fora da lista do próprio cliente.
+      .eq('client_id', ctx.clientId!)
       .eq('type', 'INCOME')
       .order('created_at', { ascending: false })
-      .limit(50),
+      .limit(50), 'carregar os pagamentos'),
 
     // Documentos = arquivos enviados pela clínica para o cliente
-    admin.from('client_documents')
+    ler(admin.from('client_documents')
       .select('id, name, category, file_path, created_at')
       .eq('client_id', ctx.clientId!)
       .order('created_at', { ascending: false })
-      .limit(30),
+      .limit(30), 'carregar os documentos'),
 
     // Termos de consentimento assinados (via prontuário)
-    admin.from('consent_terms')
+    ler(admin.from('consent_terms')
       .select('id, title, signed_at, signed_via, medical_records!inner(client_id)')
       .eq('medical_records.client_id', ctx.clientId!)
       .not('signed_at', 'is', null)
       .order('signed_at', { ascending: false })
-      .limit(20),
+      .limit(20), 'carregar os termos assinados'),
   ])
 
   // -- Procedimentos ----------------------------------------------
-  const procedimentos: ProcedimentoItem[] = (procedimentosRes.data ?? []).map((r: any) => ({
+  const procedimentos: ProcedimentoItem[] = (procedimentosRes ?? []).map((r: any) => ({
     id:                  r.id as string,
     scheduled_at:        r.scheduled_at as string,
     procedure_name:      (r.procedures as { name: string } | null)?.name ?? 'Procedimento',
@@ -93,7 +96,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   }))
 
   // -- Pagamentos -------------------------------------------------
-  const pagamentos: PagamentoItem[] = (pagamentosRes.data ?? []).map((r: any) => ({
+  const pagamentos: PagamentoItem[] = (pagamentosRes ?? []).map((r: any) => ({
     id:             r.id as string,
     description:    r.description as string,
     amount:         Number(r.amount),
@@ -104,7 +107,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   }))
 
   // -- Documentos -------------------------------------------------
-  const rawDocs = (docsRes.data ?? []) as any[]
+  const rawDocs = (docsRes ?? []) as any[]
   const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(r => r.file_path as string))
   const clientDocs = rawDocs.map((r: any) => ({
     id:         r.id as string,
@@ -114,7 +117,7 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     created_at: r.created_at as string,
   }))
 
-  const consentDocs = (consentRes.data ?? []).map((r: any) => ({
+  const consentDocs = (consentRes ?? []).map((r: any) => ({
     id:         r.id as string,
     title:      r.title as string,
     signed_at:  r.signed_at as string,

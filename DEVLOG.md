@@ -1260,6 +1260,34 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Frente 6: o portal do cliente, entrando como cliente
+
+Até aqui nenhum teste entrava no portal como o cliente final
+(`e2e/portal-cliente.spec.ts`, 5 casos). O profissional do teste é um membro
+`[e2e]`, para o horário não cair na agenda de ninguém de verdade.
+
+**Agendar sozinho tinha quatro furos**, todos provados com o código antigo.
+`createClientAppointment` é endpoint público e confiava no que chegava:
+- **unidade de outra rede**: o cliente marcava na agenda de outra clínica (a
+  action vizinha, a dos horários livres, já conferia a rede — esta não);
+- **procedimento inativo** (e de outra unidade da rede) aceito;
+- **qualquer instante**: no passado, de madrugada, fora da grade de 30 min. A
+  única guarda era o conflito com outro agendamento.
+Agora a action confere o mesmo que a tela oferece: a rede é a da ficha do
+cliente, o procedimento é ativo, do app e do catálogo da unidade, e o horário
+tem de ser futuro e estar entre os livres de `computeAvailableSlots` — que já
+desconta os ocupados. E o agendamento nasce `CLIENT_APP`: gravava `ONLINE`, o
+valor do agendamento público descartado (§9.1).
+
+**O pagamento do plano não aparecia para o cliente.** Financeiro e histórico
+do portal filtravam pelo cliente do AGENDAMENTO; o checkout de plano grava sem
+agendamento (6 lançamentos assim no banco hoje). Passaram a filtrar pela ficha.
+As consultas de início e histórico descartavam o `error` — agora `ler`.
+
+Coberto também: confirmar e avaliar o atendimento pela tela (uma vez só, e
+outro cliente não confirma o alheio, nem pela tela nem pela action) e o perfil
+gravando.
+
 ### 2026-09-27 — Frente 5: autorização — cada action e cada rota de API por si
 
 "Faz a regressão e segue." Regressão da frente 4 verde (196 E2E, 378 Vitest,

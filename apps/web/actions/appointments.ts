@@ -18,7 +18,7 @@ import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/at
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
-import { periodRef } from '@/lib/datetime'
+import { periodRef, dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { notificarInteressados } from '@/lib/notifications/interessados'
 
 // --- Helpers internos ---------------------------------------------
@@ -1630,22 +1630,37 @@ export async function createClientAppointment(params: {
 
     const admin = createAdminClient()
 
+    // A action confere o MESMO que a tela oferece — ela é endpoint público e o
+    // cliente pode chamá-la com o que quiser. Até 2026-09-27 ela aceitava
+    // unidade de outra rede, procedimento inativo ou de outra unidade, e
+    // qualquer instante: no passado, de madrugada, fora da grade.
+    //
+    // O cliente final não tem rede no JWT (§5): a rede é a da ficha dele.
+    const cliente = await ler(admin
+      .from('clients').select('tenant_id').eq('id', ctx.clientId!).maybeSingle(), 'buscar o cliente')
+    if (!cliente) return { error: 'Cadastro não encontrado.' }
+
     const branch = await ler(admin
       .from('branches')
       .select('tenant_id')
       .eq('id', params.branchId)
-      .single(), 'buscar a unidade')
+      .eq('tenant_id', cliente.tenant_id as string)
+      .eq('is_active', true)
+      .maybeSingle(), 'buscar a unidade')
     if (!branch) return { error: 'Filial não encontrada.' }
 
+    // Catálogo da rede (branch_id nulo) ou local da unidade, ativo e marcado
+    // para o app — a mesma consulta da página.
     const procedure = await ler(admin
       .from('procedures')
-      .select('id, price, duration_min, visible_on_client_app')
+      .select('id, price, duration_min')
       .eq('id', params.procedureId)
       .eq('tenant_id', branch.tenant_id as string)
-      .single(), 'buscar o procedimento')
-    if (!procedure || !(procedure.visible_on_client_app as boolean)) {
-      return { error: 'Procedimento não disponível.' }
-    }
+      .eq('is_active', true)
+      .eq('visible_on_client_app', true)
+      .or(`branch_id.is.null,branch_id.eq.${params.branchId}`)
+      .maybeSingle(), 'buscar o procedimento')
+    if (!procedure) return { error: 'Procedimento não disponível.' }
 
     // Quem atende é marcado por `provides_services`. A validação antiga filtrava
     // por `users.role`, coluna removida na migração de cargos dinâmicos: a query
@@ -1662,20 +1677,21 @@ export async function createClientAppointment(params: {
     if (profErr) return { error: `Erro ao validar o profissional: ${profErr.message}` }
     if (!prof)   return { error: 'Profissional não disponível.' }
 
-    // Verifica conflito de horário (race condition guard)
-    const durationMs = Number(procedure.duration_min) * 60000
-    const start = new Date(params.scheduledAt).getTime()
-    const end   = start + durationMs
-    const conflict = await ler(admin
-      .from('appointments')
-      .select('id')
-      .eq('branch_id', params.branchId)
-      .eq('professional_id', params.professionalId)
-      .not('status', 'in', '("CANCELLED","NO_SHOW")')
-      .lt('scheduled_at', new Date(end).toISOString())
-      .gt('scheduled_at', new Date(start - durationMs).toISOString())
-      .maybeSingle(), 'buscar o agendamento')
-    if (conflict) return { error: 'Este horário não está mais disponível. Escolha outro.' }
+    // O horário tem de ser um dos que a tela ofereceu: futuro e livre na grade
+    // de `computeAvailableSlots` — que já desconta os agendamentos existentes,
+    // e por isso também é a guarda contra dois clientes no mesmo horário.
+    const inicio = new Date(params.scheduledAt)
+    if (Number.isNaN(inicio.getTime()) || inicio.getTime() <= Date.now()) {
+      return { error: 'Escolha um horário a partir de agora.' }
+    }
+    const p = partsInTZ(inicio)
+    const hora = `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`
+    const livres = await computeAvailableSlots(
+      admin, params.branchId, params.professionalId, dayKeyTZ(inicio), Number(procedure.duration_min),
+    )
+    if (p.second !== 0 || !livres.includes(hora)) {
+      return { error: 'Este horário não está mais disponível. Escolha outro.' }
+    }
 
     const { data: appt, error } = await admin
       .from('appointments')
@@ -1688,7 +1704,9 @@ export async function createClientAppointment(params: {
         duration_min:    procedure.duration_min,
         price:           procedure.price,
         status:          'SCHEDULED',
-        source:          'ONLINE',
+        // CLIENT_APP é o cliente pelo portal/app; ONLINE era o agendamento
+        // público, que foi descartado (§9.1).
+        source:          'CLIENT_APP',
       })
       .select('id')
       .single()

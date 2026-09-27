@@ -32,12 +32,11 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
     .from('financial_transactions')
     .select(`
       id, description, amount, payment_method, is_paid, paid_at, created_at,
-      appointments!inner(
-        client_id,
-        procedures(name)
-      )
+      appointments(procedures(name))
     `)
-    .eq('appointments.client_id', ctx.clientId!)
+    // Pela ficha, não pelo agendamento: o pagamento de um plano não tem
+    // agendamento, e ficava fora da lista do próprio cliente.
+    .eq('client_id', ctx.clientId!)
     .eq('type', 'INCOME')
     .order('created_at', { ascending: false }), 'carregar os lançamentos do cliente')
 
