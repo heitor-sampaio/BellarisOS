@@ -2618,6 +2618,19 @@ verdade. O que vale:
 
 ### Dívida técnica conhecida
 
+- **Contato separado da conversa — o que sobrou** (a ordem combinada terminou
+  em 2026-09-26):
+  - `conversations.tags` é só semente e sai numa migration própria depois do
+    soak;
+  - nome e telefone ainda são lidos da conversa, não de `contacts` — editar
+    numa thread não muda o nome exibido na outra;
+  - com escopo OWN no modo "pela conversa", a lista de leads do dono ainda vem
+    num `in.(...)` sem teto (o modo "pela pessoa", que é o padrão, já é conta
+    do banco).
+- **Dado de demonstração em produção:** "Carla Mendes (demo)" (2 conversas, 1
+  oportunidade, telefone DDD 00), criado em 2026-09-26 para o Heitor ver o
+  inbox com duas conversas da mesma pessoa. Apagar quando ele liberar.
+
 - **`estetica-os-prd.md` desatualizado**: descreve "SaaS para redes de 2–5
   filiais" e caixa com abertura/fechamento diário. É o único documento do repo
   que ainda não foi conferido contra o sistema.
