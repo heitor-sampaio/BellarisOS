@@ -14,7 +14,7 @@ import type { NumeroDeWhatsApp } from '@/lib/whatsapp/types'
 function caixa(over: Partial<NumeroDeWhatsApp> & { id: string }): NumeroDeWhatsApp {
   return {
     tenantId: 't1', provider: 'uazapi', label: over.id, phone: null,
-    phoneNumberId: null, wabaId: null, branchId: null, userId: null,
+    phoneNumberId: null, wabaId: null, branchId: null, userIds: [],
     isDefault: false, isActive: true, managed: false,
     config: { provider: 'uazapi', token: 'x' },
     ...over,
@@ -26,18 +26,33 @@ describe('escolherNumeroDeSaida', () => {
     const numeros = [
       caixa({ id: 'padrao',   isDefault: true }),
       caixa({ id: 'conversa' }),
-      caixa({ id: 'do-ana',   userId: 'ana' }),
+      caixa({ id: 'do-ana',   userIds: ['ana'] }),
     ]
     // Decisão do Heitor, reafirmada depois de eu explicar o custo: quem tem
     // número próprio fala por ele, inclusive respondendo conversa alheia.
     expect(escolherNumeroDeSaida(numeros, 'ana', 'conversa')?.id).toBe('do-ana')
   })
 
+  it('três pessoas dividindo um número falam as três por ele', () => {
+    // O caso que motivou a junção (2026-09-27): um número de atendimento e
+    // três SDRs respondendo por ele.
+    const numeros = [
+      caixa({ id: 'padrao',      isDefault: true }),
+      caixa({ id: 'conversa' }),
+      caixa({ id: 'atendimento', userIds: ['ana', 'bia', 'caio'] }),
+    ]
+    for (const sdr of ['ana', 'bia', 'caio']) {
+      expect(escolherNumeroDeSaida(numeros, sdr, 'conversa')?.id).toBe('atendimento')
+    }
+    // E quem não está na lista continua pela conversa.
+    expect(escolherNumeroDeSaida(numeros, 'duda', 'conversa')?.id).toBe('conversa')
+  })
+
   it('usuário com número INATIVO cai na caixa da conversa, não na dele', () => {
     const numeros = [
       caixa({ id: 'padrao',   isDefault: true }),
       caixa({ id: 'conversa' }),
-      caixa({ id: 'do-ana',   userId: 'ana', isActive: false }),
+      caixa({ id: 'do-ana',   userIds: ['ana'], isActive: false }),
     ]
     expect(escolherNumeroDeSaida(numeros, 'ana', 'conversa')?.id).toBe('conversa')
   })

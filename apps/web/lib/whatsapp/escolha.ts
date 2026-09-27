@@ -34,7 +34,7 @@ export function escolherNumeroDeSaida(
   const ativos = numeros.filter(n => n.isActive)
 
   if (userId) {
-    const doUsuario = ativos.find(n => n.userId === userId)
+    const doUsuario = ativos.find(n => n.userIds.includes(userId))
     if (doUsuario) return doUsuario
   }
 

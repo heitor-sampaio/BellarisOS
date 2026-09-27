@@ -100,3 +100,56 @@ test('o banco recusa dois padrões, mesmo que a tela tente', async () => {
     if (criada) await db.from('whatsapp_numbers').delete().eq('id', criada)
   }
 })
+
+test('um número pode ter várias pessoas falando por ele', async ({ page }) => {
+  // O caso que pediu a mudança (2026-09-27): um número de atendimento e as
+  // SDRs todas respondendo por ele.
+  const db     = banco()
+  const tenant = await tenantId()
+
+  const { data: ocupados } = await db.from('whatsapp_number_users').select('user_id')
+  const fora = (ocupados ?? []).map(o => o.user_id as string)
+  const { data: gente } = await db.from('users')
+    .select('id, name').eq('tenant_id', tenant).eq('is_active', true).order('name')
+  const livres = (gente ?? []).filter(u => !fora.includes(u.id as string)).slice(0, 2)
+  test.skip(livres.length < 2, 'a rede de dev não tem duas pessoas livres')
+
+  let criada: string | null = null
+  try {
+    const { data } = await db.from('whatsapp_numbers')
+      .insert({
+        tenant_id: tenant, provider: 'uazapi', label: `${PREFIXO} Atendimento ${marca}`,
+        is_active: true, config: { token: `e2e-pessoas-${marca}` },
+      })
+      .select('id').single<Linha>()
+    criada = data!.id
+
+    await page.goto(TAB)
+    await page.waitForLoadState('networkidle')
+    const cartao = page.locator('#whatsapp')
+    if (await cartao.count()) await cartao.first().click()
+
+    const linha = page.locator(`[data-numero="${criada}"]`)
+    await linha.getByRole('button', { name: /Nome e vínculos/ }).click()
+    await linha.getByRole('button', { name: /Escolher pessoas/ }).click()
+    for (const p of livres) {
+      await linha.getByRole('button', { name: p.name as string, exact: true }).click()
+    }
+    if (process.env.PRINT_DIR) await page.screenshot({ path: `${process.env.PRINT_DIR}/pessoas.png`, fullPage: true })
+    // Fecha o seletor: o clique fora cai no fundo transparente dele.
+    const gatilho = (await linha.getByRole('button', { name: /^Editar$/ }).boundingBox())!
+    await page.mouse.click(gatilho.x + gatilho.width / 2, gatilho.y + gatilho.height / 2)
+    await linha.getByRole('button', { name: 'Salvar' }).click()
+
+    await expect.poll(async () => {
+      const { data: v } = await db.from('whatsapp_number_users')
+        .select('user_id').eq('whatsapp_number_id', criada!)
+      return (v ?? []).map(x => x.user_id as string).sort()
+    }, { message: 'as duas pessoas ficam gravadas no número' })
+      .toEqual(livres.map(p => p.id as string).sort())
+
+    await expect(linha.getByText(/Falam por aqui/)).toBeVisible()
+  } finally {
+    if (criada) await db.from('whatsapp_numbers').delete().eq('id', criada)
+  }
+})

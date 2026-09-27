@@ -640,10 +640,17 @@ tabela veio remover.
 - **Tabela própria, não `integration_configs`.** Lá `meta_ads`, `google_ads` e
   `meta_messaging` são legitimamente um por rede, e é a `unique (tenant_id,
   provider)` que os protege. Relaxá-la desprotegeria os três que estão certos.
-- **Duas garantias moram em índice único parcial**, não em disciplina do app:
-  no máximo um `is_default` por rede, e no máximo um número por `user_id`. Um
+- **Duas garantias moram em índice único**, não em disciplina do app: no
+  máximo um `is_default` por rede, e no máximo um número por PESSOA. Um
   `update` direto ou um script de migração furam a garantia de app; as duas
   existem para matar a mesma coisa, que é a escolha silenciosa.
+- **Um número, várias pessoas** (2026-09-27): quem fala por cada número mora em
+  `whatsapp_number_users` — o caso típico é UM número de atendimento e três
+  SDRs respondendo por ele. O contrário continua proibido (`unique (user_id)`).
+  As chaves são compostas com `tenant_id`, então número de uma rede não liga
+  pessoa de outra. A única escrita é `definir_vinculos_do_numero` (nome,
+  unidade e pessoas numa transação). `whatsapp_numbers.user_id` é legado: não
+  ler nem escrever.
 - **`branch_id` no número é RÓTULO**, não escopo (decisão do Heitor,
   2026-09-25). Não entra em RLS, não entra em `ownerFilter`, e a conversa
   continua nascendo com `branch_id` nulo — a unidade vira tag depois.
@@ -1141,6 +1148,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Ligar conversa a contato no TypeScript (é gatilho; senão o próximo ponto esquece)
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Perguntar "qual o WhatsApp desta rede?" — a pergunta é qual DESTES, e por quê
+❌ Ler ou gravar whatsapp_numbers.user_id (legado — quem fala pelo número é whatsapp_number_users)
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão

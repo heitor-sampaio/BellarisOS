@@ -47,7 +47,9 @@ export async function salvarNumeroWhatsApp(
   provider:  WhatsAppConfig['provider'],
   config:    Record<string, string>,
   isActive:  boolean,
-  extras?:   { rotulo?: string; branchId?: string | null; userId?: string | null },
+  // Quem fala pelo número NÃO entra aqui: é `atualizarVinculosDoNumero`, a
+  // única escrita em `whatsapp_number_users`.
+  extras?:   { rotulo?: string; branchId?: string | null },
 ): Promise<{ ok: boolean; numeroId?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
@@ -88,7 +90,6 @@ export async function salvarNumeroWhatsApp(
     waba_id:         cleanConfig.wabaId ?? null,
     is_active:       isActive,
     ...(extras?.branchId !== undefined ? { branch_id: extras.branchId } : {}),
-    ...(extras?.userId   !== undefined ? { user_id:   extras.userId   } : {}),
     updated_at:      new Date().toISOString(),
   }
 
@@ -135,7 +136,7 @@ export interface NumeroNaTela {
   isDefault: boolean
   managed:   boolean
   branchId:  string | null
-  userId:    string | null
+  userIds:   string[]
   wabaId:        string | null
   phoneNumberId: string | null
   config:    Record<string, unknown>
@@ -149,7 +150,7 @@ export async function listarNumerosWhatsApp(): Promise<NumeroNaTela[]> {
   return (await getNumerosDaRede(ctx.tenantId!)).map(n => ({
     id: n.id, provider: n.provider, label: n.label, phone: n.phone,
     isActive: n.isActive, isDefault: n.isDefault, managed: n.managed,
-    branchId: n.branchId, userId: n.userId,
+    branchId: n.branchId, userIds: n.userIds,
     wabaId: n.wabaId, phoneNumberId: n.phoneNumberId,
     config: n.config as unknown as Record<string, unknown>,
   }))
@@ -522,42 +523,63 @@ export async function disconnectMetaMessaging(): Promise<{ ok: boolean; error?: 
  * `branchId` é RÓTULO (decisão do Heitor, 2026-09-25): serve para a tela
  * agrupar e para relatório. Não entra em RLS nem na escolha de por onde sai, e
  * a conversa continua nascendo com `branch_id` nulo.
+ *
+ * `userIds` é a lista INTEIRA de quem fala pelo número (2026-09-27: um número
+ * de atendimento, três SDRs). Quem não está nela sai. Cada pessoa continua
+ * tendo no máximo um número — senão "por onde ela responde" viraria desempate.
+ * Tudo grava numa transação só (`definir_vinculos_do_numero`): são duas
+ * tabelas, e salvar o nome sem as pessoas deixaria a tela dizendo "erro" com
+ * metade salva.
  */
 export async function atualizarVinculosDoNumero(
   numeroId: string,
-  dados: { rotulo?: string; branchId?: string | null; userId?: string | null },
+  dados: { rotulo: string; branchId: string | null; userIds: string[] },
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   const admin = createAdminClient()
 
-  const alvo = await ler(admin
-    .from('whatsapp_numbers').select('id')
-    .eq('id', numeroId).eq('tenant_id', ctx.tenantId!)
-    .maybeSingle(), 'buscar a caixa de WhatsApp')
-  if (!alvo) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
+  const rotulo = dados.rotulo.trim()
+  if (!rotulo) return { ok: false, error: 'O nome da conexão não pode ficar vazio.' }
+  const userIds = [...new Set(dados.userIds)]
 
-  const rotulo = dados.rotulo?.trim()
-  if (dados.rotulo !== undefined && !rotulo) {
-    return { ok: false, error: 'O nome da conexão não pode ficar vazio.' }
+  // Quem já fala por OUTRO número, dito pelo nome. O índice único recusaria de
+  // qualquer jeito (e continua sendo a trava), mas com "duplicate key" a
+  // pessoa não saberia quem tirar de onde.
+  if (userIds.length) {
+    const ocupados = await ler(admin
+      .from('whatsapp_number_users')
+      .select('users(name), whatsapp_numbers(label)')
+      .eq('tenant_id', ctx.tenantId!)
+      .in('user_id', userIds)
+      .neq('whatsapp_number_id', numeroId), 'conferir quem já fala por outro número')
+    const primeiro = (ocupados ?? [])[0] as unknown as
+      { users: { name: string } | null; whatsapp_numbers: { label: string } | null } | undefined
+    if (primeiro) {
+      return {
+        ok: false,
+        error: `${primeiro.users?.name ?? 'Essa pessoa'} já fala por "${primeiro.whatsapp_numbers?.label ?? 'outro número'}". `
+          + 'Cada pessoa responde por um número só — tire-a de lá primeiro.',
+      }
+    }
   }
 
-  const { error } = await admin
-    .from('whatsapp_numbers')
-    .update({
-      ...(rotulo ? { label: rotulo } : {}),
-      ...(dados.branchId !== undefined ? { branch_id: dados.branchId } : {}),
-      ...(dados.userId   !== undefined ? { user_id:   dados.userId   } : {}),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', numeroId)
+  // Número, unidade e pessoas são conferidos contra a rede DENTRO da função
+  // (chaves compostas com `tenant_id`): id de outra rede não passa.
+  const { error } = await admin.rpc('definir_vinculos_do_numero', {
+    p_numero:   numeroId,
+    p_tenant:   ctx.tenantId!,
+    p_label:    rotulo,
+    p_branch:   dados.branchId,
+    p_usuarios: userIds,
+  })
 
   if (error) {
-    // O índice único parcial recusa dois números para o mesmo usuário. Dizer
-    // isso é melhor que repassar "duplicate key value violates...".
+    if (error.code === 'P0002') return { ok: false, error: 'Conexão não encontrada nesta rede.' }
     if (error.code === '23505') {
-      return { ok: false, error: 'Esse usuário já fala por outro número. Um usuário tem uma caixa só.' }
+      return { ok: false, error: 'Alguém da lista já fala por outro número. Cada pessoa responde por um número só.' }
     }
+    if (error.code === '23503') return { ok: false, error: 'Pessoa ou unidade fora desta rede.' }
     return { ok: false, error: error.message }
   }
 

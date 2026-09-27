@@ -15,7 +15,9 @@ export function resolveProvider(config: WhatsAppConfig): WhatsAppProvider {
 /** As colunas que compõem uma `NumeroDeWhatsApp`. Uma lista só, para não divergirem. */
 const COLUNAS_DO_NUMERO =
   'id, tenant_id, provider, label, phone_e164, phone_number_id, waba_id, ' +
-  'config, is_active, is_default, managed, branch_id, user_id'
+  'config, is_active, is_default, managed, branch_id, ' +
+  // Quem fala por ela — várias pessoas podem dividir o número.
+  'whatsapp_number_users(user_id)'
 
 /**
  * O cliente do Supabase aqui é sem tipos gerados, e `select()` por CONSTANTE
@@ -32,7 +34,8 @@ type LinhaDoNumero = {
   phone_e164: string | null; phone_number_id: string | null; waba_id: string | null
   config: Record<string, unknown> | null
   is_active: boolean; is_default: boolean; managed: boolean
-  branch_id: string | null; user_id: string | null
+  branch_id: string | null
+  whatsapp_number_users: { user_id: string }[] | null
 }
 
 /**
@@ -52,7 +55,7 @@ function numeroDaLinha(l: LinhaDoNumero): NumeroDeWhatsApp {
     phoneNumberId: l.phone_number_id,
     wabaId:   l.waba_id,
     branchId: l.branch_id,
-    userId:   l.user_id,
+    userIds:  (l.whatsapp_number_users ?? []).map(v => v.user_id),
     isDefault: l.is_default,
     isActive:  l.is_active,
     managed:   l.managed,

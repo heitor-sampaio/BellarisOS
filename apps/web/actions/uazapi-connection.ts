@@ -212,7 +212,8 @@ export async function getEstadoConexaoUazapi(
  * deixava só um `console.error` e uma instância órfã anônima.
  */
 export async function criarConexaoUazapi(
-  dados?: { rotulo?: string; branchId?: string | null; userId?: string | null },
+  // Quem fala pelo número se define depois, em `atualizarVinculosDoNumero`.
+  dados?: { rotulo?: string; branchId?: string | null },
 ): Promise<{ ok: boolean; numeroId?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
@@ -248,7 +249,6 @@ export async function criarConexaoUazapi(
       provider:  'uazapi',
       label:     dados?.rotulo?.trim() || 'WhatsApp',
       branch_id: dados?.branchId ?? null,
-      user_id:   dados?.userId   ?? null,
       managed:   true,
       is_active: false,
       config:    {},

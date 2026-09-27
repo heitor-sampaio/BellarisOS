@@ -179,7 +179,7 @@ export async function canaisConectados(
   const ativos = numeros.filter(n => n.isActive).map(paraTela)
 
   const doUsuario = userId
-    ? numeros.find(n => n.isActive && n.userId === userId)
+    ? numeros.find(n => n.isActive && n.userIds.includes(userId))
     : undefined
 
   const canais: ChannelKind[] = []

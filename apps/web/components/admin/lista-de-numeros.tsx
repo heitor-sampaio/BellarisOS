@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Star, Link2, Trash2, Loader2, AlertCircle, Plus, Check, Settings2 } from 'lucide-react'
+import { Star, Link2, Trash2, Loader2, AlertCircle, Plus, Check, Settings2, UserPlus } from 'lucide-react'
+import { PickerCompacto } from '@/components/shared/picker-compacto'
+import { TagBadge } from '@/components/shared/tag-badge'
 import {
   definirNumeroPadrao, atualizarVinculosDoNumero, removerNumeroWhatsApp,
   type NumeroNaTela, type OpcoesDeVinculo,
@@ -23,7 +25,9 @@ import {
  * - **padrão** — por onde sai tudo que o SISTEMA inicia (automação, campanha,
  *   notificação). Hierarquia por preenchimento: é o único selo em `--brand`;
  * - **o provedor** — decide a janela de 24h e se dá para editar mensagem;
- * - **quem fala por ela** — o usuário vinculado manda SEMPRE por este número;
+ * - **quem fala por ela** — as pessoas vinculadas mandam SEMPRE por este
+ *   número. Podem ser várias (um número de atendimento, três SDRs); cada
+ *   pessoa, porém, fala por um número só;
  * - **a unidade** — RÓTULO, e o texto diz isso na cara: quem lê precisa saber
  *   que marcar uma unidade aqui não restringe acesso nenhum.
  */
@@ -67,9 +71,11 @@ function Campo({ rotulo, children, dica }: {
   )
 }
 
-function LinhaDoNumero({ numero, opcoes, onMudou, onConfigurar }: {
+function LinhaDoNumero({ numero, opcoes, ocupadas, onMudou, onConfigurar }: {
   numero:  NumeroNaTela
   opcoes:  OpcoesDeVinculo
+  /** Quem já fala por OUTRO número, e por qual — para a lista avisar antes. */
+  ocupadas: Map<string, string>
   onMudou: () => void
   /** Abre o formulário de CREDENCIAL desta caixa. */
   onConfigurar: () => void
@@ -77,12 +83,13 @@ function LinhaDoNumero({ numero, opcoes, onMudou, onConfigurar }: {
   const [aberto,   setAberto]   = useState(false)
   const [rotulo,   setRotulo]   = useState(numero.label)
   const [branchId, setBranchId] = useState(numero.branchId ?? '')
-  const [userId,   setUserId]   = useState(numero.userId ?? '')
+  const [userIds,  setUserIds]  = useState<string[]>(numero.userIds)
   const [erro,     setErro]     = useState<string | null>(null)
   const [salvo,    setSalvo]    = useState(false)
   const [isPending, startTransition] = useTransition()
 
-  const pessoa  = opcoes.pessoas.find(p => p.id === numero.userId)
+  const nomeDe  = (id: string) => opcoes.pessoas.find(p => p.id === id)?.nome
+  const pessoas = numero.userIds.map(nomeDe).filter((n): n is string => !!n)
   const unidade = opcoes.unidades.find(u => u.id === numero.branchId)
 
   function acao(fn: () => Promise<{ ok: boolean; error?: string }>, depois?: () => void) {
@@ -133,10 +140,12 @@ function LinhaDoNumero({ numero, opcoes, onMudou, onConfigurar }: {
             {numero.managed ? ' · gerenciada por nós' : ''}
           </p>
 
-          {(pessoa || unidade) && (
+          {(pessoas.length > 0 || unidade) && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', marginTop: 3 }}>
-              {pessoa  && <>Fala por aqui: <strong>{pessoa.nome}</strong></>}
-              {pessoa && unidade && ' · '}
+              {pessoas.length > 0 && (
+                <>{pessoas.length === 1 ? 'Fala por aqui' : 'Falam por aqui'}: <strong>{pessoas.join(', ')}</strong></>
+              )}
+              {pessoas.length > 0 && unidade && ' · '}
               {unidade && <>Unidade: {unidade.nome}</>}
             </p>
           )}
@@ -204,18 +213,35 @@ function LinhaDoNumero({ numero, opcoes, onMudou, onConfigurar }: {
             />
           </Campo>
 
-          <Campo rotulo="QUEM FALA POR ELE" dica="Esta pessoa responde sempre por este número.">
-            <select
-              className="field"
-              value={userId}
-              onChange={e => setUserId(e.target.value)}
-              style={{ fontSize: 'var(--text-base-sz)' }}
-            >
-              <option value="">Ninguém em especial</option>
-              {opcoes.pessoas.map(p => (
-                <option key={p.id} value={p.id}>{p.nome}</option>
+          <Campo
+            rotulo="QUEM FALA POR ELE"
+            dica="Essas pessoas respondem sempre por este número. Cada pessoa fala por um número só."
+          >
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', minHeight: 'var(--altura-controle)' }}>
+              {userIds.map(id => (
+                <TagBadge
+                  key={id}
+                  label={nomeDe(id) ?? 'Pessoa inativa'}
+                  onRemove={() => setUserIds(prev => prev.filter(x => x !== id))}
+                />
               ))}
-            </select>
+              <PickerCompacto
+                icone={<UserPlus size={12} />}
+                rotuloBotao={userIds.length ? 'Editar' : 'Escolher pessoas'}
+                opcoes={opcoes.pessoas.map(p => ({
+                  valor: p.id,
+                  // Quem já fala por outro número aparece com o nome dele:
+                  // salvar assim é recusado, e é melhor saber antes.
+                  rotulo: ocupadas.has(p.id) ? `${p.nome} · em ${ocupadas.get(p.id)}` : p.nome,
+                }))}
+                selecionadas={userIds}
+                multiplo
+                larguraPainel={260}
+                textoListaVazia="Ninguém ativo na equipe."
+                onEscolher={id => setUserIds(prev =>
+                  prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+              />
+            </div>
           </Campo>
 
           <Campo rotulo="UNIDADE" dica="Só rótulo: não restringe quem vê nem por onde sai.">
@@ -241,7 +267,7 @@ function LinhaDoNumero({ numero, opcoes, onMudou, onConfigurar }: {
                 () => atualizarVinculosDoNumero(numero.id, {
                   rotulo,
                   branchId: branchId || null,
-                  userId:   userId   || null,
+                  userIds,
                 }),
                 () => setSalvo(true),
               )}
@@ -294,6 +320,9 @@ export function ListaDeNumeros({ numeros, opcoes, onAdicionar, onConfigurar }: {
         numeros.map(n => (
           <LinhaDoNumero
             key={n.id} numero={n} opcoes={opcoes}
+            ocupadas={new Map(numeros
+              .filter(o => o.id !== n.id)
+              .flatMap(o => o.userIds.map(u => [u, o.label] as const)))}
             onMudou={() => router.refresh()}
             onConfigurar={() => onConfigurar(n.id)}
           />

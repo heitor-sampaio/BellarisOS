@@ -1260,6 +1260,38 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Um número de WhatsApp, várias pessoas falando por ele
+
+"Hoje um número já pode ser atribuído a alguém da equipe, mas quero que possa
+ser atribuído a várias pessoas. A clínica pode ter apenas um número de
+atendimento, mas ligar ele a 3 SDRs e as 3 atenderem por ele." Era exatamente o
+caso da clínica única que o modelo não cobria: `whatsapp_numbers.user_id` dava
+uma pessoa por número.
+
+- **Tabela de junção `whatsapp_number_users`**, não um `uuid[]` no número:
+  continua valendo **uma pessoa, um número** (`unique (user_id)`), e índice
+  nenhum proíbe o mesmo id em dois arrays. Sem essa trava, "por onde ela
+  responde" viraria desempate de novo.
+- **Mesma rede garantida pelo banco:** as duas chaves estrangeiras são
+  compostas com `tenant_id`. Antes a action gravava o `user_id` que recebesse,
+  sem conferir se a pessoa era da rede — endpoint público, id de fora (§9.8.0).
+- **Uma transação só** (`definir_vinculos_do_numero`): nome, unidade e pessoas
+  são duas tabelas, e falhar nas pessoas depois de gravar o nome deixaria a tela
+  dizendo "erro" com metade salva. O E2E confere que o nome NÃO fica.
+- **A escolha de saída não mudou de regra**, só de pergunta: "o número dele" é
+  o número cuja lista o contém (`userIds.includes`).
+- **Na tela**, "Quem fala por ele" virou selos removíveis + o seletor múltiplo
+  de sempre. Quem já fala por outro número aparece com o nome dele ("· em
+  Comercial"), e salvar assim é recusado dizendo quem e onde.
+- `whatsapp_numbers.user_id` fica no banco como LEGADO (ninguém lê nem escreve;
+  não havia nenhum vínculo gravado). Sai numa migration própria, junto com a
+  limpeza de `conversations.tags`.
+
+Migration `20260927000001`, aplicada pelo MCP. E2E: três casos novos em
+`whatsapp-numeros-modelagem.spec.ts` (várias pessoas; uma pessoa, um número, sem
+salvar metade; pessoa de outra rede — este pula no dev, que tem uma rede só) e
+um em `whatsapp-numeros-tela.spec.ts` (escolher duas pessoas pela tela).
+
 ### 2026-09-27 — No celular, o card do contato abre puxando o cabeçalho
 
 "Em uma conversa do inbox, em vez de clicar no ícone, arrastar a parte superior

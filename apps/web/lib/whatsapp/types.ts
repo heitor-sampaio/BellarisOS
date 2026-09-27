@@ -112,8 +112,9 @@ export interface NumeroDeWhatsApp {
   wabaId:   string | null
   /** RÓTULO, não escopo: não entra em RLS nem na escolha de por onde sai. */
   branchId: string | null
-  /** Quando preenchido, este usuário fala sempre por esta caixa. */
-  userId:   string | null
+  /** Quem fala sempre por esta caixa (`users.id`). Várias pessoas podem
+   *  dividir um número; cada pessoa tem no máximo um (`whatsapp_number_users`). */
+  userIds:  string[]
   isDefault: boolean
   isActive:  boolean
   /** Instância criada e paga por nós na uazapi. */
