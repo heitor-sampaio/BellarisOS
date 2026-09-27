@@ -19,8 +19,23 @@ import { ler } from '@/lib/db'
  * Responde 200 SEMPRE, inclusive para token desconhecido e JSON inválido: 4xx
  * enche o registro de erros da uazapi e pode fazer ela desativar a entrega.
  */
+/** Estado da instância como a uazapi manda: texto, ou objeto com `connected`. */
+type EstadoDaInstancia = string | { connected?: boolean; jid?: string }
+
+/**
+ * O pedaço da entrega que ESTA rota lê — token e estado da conexão. A
+ * mensagem em si vai inteira para o provedor, que tem o próprio parser.
+ */
+interface EntregaUazapi {
+  token?:    unknown
+  data?:     EntregaUazapi
+  message?:  unknown
+  status?:   EstadoDaInstancia
+  instance?: { token?: unknown; status?: EstadoDaInstancia; owner?: string }
+}
+
 export async function POST(req: NextRequest) {
-  let corpo: any
+  let corpo: EntregaUazapi
   try {
     corpo = JSON.parse(await req.text())
   } catch {
@@ -100,7 +115,7 @@ export async function POST(req: NextRequest) {
  * conectar derrubaria a primeira, em silêncio.
  */
 async function tratarConexao(
-  numeroId: string, raiz: any, corpo: any,
+  numeroId: string, raiz: EntregaUazapi, corpo: EntregaUazapi,
 ): Promise<void> {
   const estado = raiz?.status ?? corpo?.status ?? raiz?.instance?.status ?? corpo?.instance?.status
   if (estado === undefined || estado === null) return
@@ -123,7 +138,7 @@ async function tratarConexao(
     .maybeSingle(), 'buscar a caixa de WhatsApp')
 
   const atual = (data?.config ?? {}) as Record<string, unknown>
-  const jid   = raiz?.status?.jid ?? corpo?.instance?.owner ?? null
+  const jid   = (typeof raiz?.status === 'object' ? raiz.status.jid : undefined) ?? corpo?.instance?.owner ?? null
   const phone = telefoneDoJid(jid)
 
   const { error } = await admin

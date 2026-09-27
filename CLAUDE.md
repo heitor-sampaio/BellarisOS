@@ -880,6 +880,16 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   - Toda leitura de campo passa por `valorDoCampo`, e toda hidratação por
     `caminhosDoCampo`: ler à mão com `lerCaminho` volta a ignorar expressões, e
     o texto sai vazio sem nada explicar.
+- **A oportunidade de um fato de CONVERSA vem da conversa** (`contexto.ts`,
+  `oportunidadeDaConversa`): os eventos de conversa não carregam `leadId`, então
+  o motor usa a ligada à thread (`conversations.lead_id`) e, sem ela, a aberta
+  mais recente da PESSOA. Até 2026-09-27 mover etapa, desfecho, responsável e
+  anotar num fluxo de "mensagem recebida" terminavam sempre em "sem
+  oportunidade" — e o editor oferecia os quatro.
+- O node guarda o desfecho em português (`ganho`/`perdido`); a etapa, no
+  código do banco (`WON`/`LOST`). Comparar os dois direto nunca acha etapa.
+- Prova de ponta a ponta: `e2e/mensagens-saida.spec.ts` — webhook real →
+  automação → resposta pela caixa falsa + os quatro efeitos no card.
 
 ---
 
@@ -1344,6 +1354,15 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   profissional, procedimento, e sob pedido cliente e produto), alvo dos
   testes de "uma rede não grava na outra". Com ela no banco, `tenantId()` e
   `filiaisAtivas()` filtram a rede de verdade — antes pegavam "a primeira".
+- `uazapi-falsa.ts` — `subirUazapiFalsa`: uma uazapi em `127.0.0.1` que
+  registra cada chamada e responde como a de verdade (ou 500, com
+  `modo = 'erro'`). Caixa `[e2e]` com `config.baseUrl` apontando para ela faz o
+  envio rodar INTEIRO — sucesso incluído — sem mensagem chegar a ninguém.
+  `https://e2e.invalido` só serve para quando o teste não envia nada.
+- `acao-direta.ts` — `chamarAcao`: chama uma server action pelo id do
+  manifesto do `next dev`, como a pessoa logada, sem montar a tela. Só
+  argumentos JSON (FormData, por `acao.ts`). Toda recusa testada assim tem o
+  admin como CONTROLE: argumento errado também "não muda nada".
 - Limpeza que apaga no teste **olha o erro** (`expect(falhas).toEqual([])`):
   foi um `delete` calado que acumulou 78 clientes `[e2e]` na produção.
 - Upload com arquivo não se reenvia (o Playwright não expõe o corpo

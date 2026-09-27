@@ -134,10 +134,14 @@ export async function marcarDesfecho(
 
   if (!atual) return { marcado: false, motivo: 'A oportunidade não está em nenhum funil.' }
 
+  // O node guarda o desfecho em português; a etapa, no código do banco
+  // (`OPEN`/`WON`/`LOST`, pelo CHECK de `crm_stages`). Comparar um com o outro
+  // direto nunca achava etapa: até 2026-09-27 "marcar como ganho" terminava
+  // SEMPRE em "este funil não tem etapa de ganho", sem erro nenhum.
   const etapas = await ler(admin
     .from('crm_stages').select('id, name, outcome')
     .eq('funnel_id', atual.funnel_id)
-    .eq('outcome', desfecho)
+    .eq('outcome', desfecho === 'ganho' ? 'WON' : 'LOST')
     .limit(1), 'carregar as etapas')
 
   const destino = etapas?.[0]

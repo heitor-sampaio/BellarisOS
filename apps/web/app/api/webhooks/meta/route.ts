@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 // -- POST: mensagens recebidas ------------------------------------------------
 export async function POST(req: NextRequest) {
   let rawText: string
-  let body: any
+  let body: { object?: string; entry?: unknown[] }
 
   try {
     rawText = await req.text()
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
-  const objeto: string = body?.object
+  const objeto = body?.object
   const channel: ChannelKind | null =
       objeto === 'instagram' ? 'instagram'
     : objeto === 'page'      ? 'messenger'
@@ -77,10 +77,10 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true })
 }
 
-async function processarEntrada(entrada: any, channel: ChannelKind) {
+async function processarEntrada(entrada: unknown, channel: ChannelKind) {
   // `entry.id` é o id da página no Messenger e o da conta IG no Instagram —
   // `getTenantPorPagina` aceita os dois.
-  const contaId: string | undefined = entrada?.id
+  const contaId = (entrada as { id?: string } | null)?.id
   if (!contaId) return
 
   const encontrado = await getTenantPorPagina(contaId)

@@ -64,6 +64,44 @@ function idDaEntidade(evento: EventoDoGatilho, alvo: Entidade): string | null {
 }
 
 /**
+ * A oportunidade de um fato que só conhece a CONVERSA.
+ *
+ * Os eventos de conversa (`conversa.mensagem_recebida`, o gatilho mais comum
+ * de CRM: "respondeu → mover para Em contato") não carregam `leadId`. Sem este
+ * caminho, mover etapa, marcar desfecho, definir responsável e anotar
+ * terminavam SEMPRE em "este fluxo não tem oportunidade" — e o editor
+ * oferecia as quatro para esse gatilho.
+ *
+ * A oportunidade ligada à conversa, senão a aberta mais recente da PESSOA: a
+ * oportunidade é da pessoa (§9.2.1), e a conversa em que ela escreveu pode não
+ * ser a de origem do card.
+ */
+async function oportunidadeDaConversa(
+  admin: ReturnType<typeof createAdminClient>,
+  evento: EventoDoGatilho,
+  tenantId: string,
+): Promise<string | null> {
+  const conversaId = idDaEntidade(evento, 'conversa')
+  if (!conversaId) return null
+
+  const conv = await ler(admin
+    .from('conversations').select('lead_id, contato_id')
+    .eq('id', conversaId).eq('tenant_id', tenantId).maybeSingle(), 'buscar a conversa do fato')
+  if (!conv) return null
+  if (conv.lead_id) return conv.lead_id as string
+  if (!conv.contato_id) return null
+
+  const abertas = await ler(admin
+    .from('leads').select('id, crm_stages!inner(outcome)')
+    .eq('tenant_id', tenantId)
+    .eq('contato_id', conv.contato_id as string)
+    .eq('crm_stages.outcome', 'OPEN')
+    .order('created_at', { ascending: false })
+    .limit(1), 'buscar a oportunidade aberta da pessoa')
+  return (abertas?.[0]?.id as string | undefined) ?? null
+}
+
+/**
  * Garante que `contexto[alvo]` existe, buscando no banco se preciso.
  *
  * Devolve o próprio contexto, mutado. Quando não há id para a entidade, grava
@@ -79,10 +117,11 @@ export async function hidratar(
 ): Promise<ContextoDaExecucao> {
   if (alvo in contexto) return contexto
 
-  const id = idDaEntidade(evento, alvo)
-  if (!id) { contexto[alvo] = null; return contexto }
-
   const admin = createAdminClient()
+
+  const id = idDaEntidade(evento, alvo)
+    ?? (alvo === 'lead' ? await oportunidadeDaConversa(admin, evento, tenantId) : null)
+  if (!id) { contexto[alvo] = null; return contexto }
 
   try {
     if (alvo === 'cliente') {

@@ -1260,6 +1260,50 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Frente 7: a mensagem que sai, e três ações que nunca funcionaram
+
+"Corrige os erros de lint e segue para P5." Os 10 erros de lint da frente 6
+foram corrigidos antes (`33f2f5f`).
+
+**Uma uazapi falsa para o envio rodar inteiro** (`e2e/apoio/uazapi-falsa.ts`).
+A caixa de teste apontava para `https://e2e.invalido`: todo envio falhava na
+rede, e o caminho de SUCESSO nunca tinha rodado num teste. Agora a caixa
+`[e2e]` aponta para um servidor em `127.0.0.1`, o app faz tudo de verdade e o
+teste lê o que teria saído. Nada chega a ninguém.
+
+**Inbox** (`e2e/mensagens-saida.spec.ts`): envio pela caixa da conversa com o
+token dela e o id do provedor gravado; falha do provedor fica `failed` na
+conversa; edição sai pela caixa que enviou e troca o id; conversa encerrada e
+janela de 24h fechada (oficial) recusam antes de gravar e de chamar o provedor.
+
+**Automação** — uma mensagem chega pelo webhook de verdade, e a automação
+responde pela caixa falsa, move o card, define o responsável, anota e marca
+ganho. As quatro ações de CRM nunca tinham rodado num teste, e **duas estavam
+quebradas**, provadas com o código antigo:
+- **Nenhuma ação de CRM funcionava num fluxo de "mensagem recebida"** — o
+  gatilho mais comum de CRM. O evento de conversa não carrega `leadId`, e o
+  contexto só procurava a oportunidade no evento: mover etapa, desfecho,
+  responsável e anotar terminavam sempre em "este fluxo não tem oportunidade",
+  sem erro. O editor oferecia as quatro. Agora a oportunidade vem da conversa
+  (a ligada a ela, senão a aberta mais recente da pessoa).
+- **"Marcar como ganho/perdido" nunca achou etapa**: o node guarda `ganho` e o
+  banco, `WON`. Terminava sempre em `Este funil não tem etapa de "ganho"`.
+
+**Campanha de aniversário nunca enviou** (`e2e/campanha-aniversario.spec.ts`,
+pelo cron de verdade). Tipar o cron (lint) expôs: o select não trazia
+`birth_date` e a lista de aniversariantes saía sempre vazia; com a coluna,
+`new Date('1990-09-27')` em São Paulo é dia 26 — iria na véspera. Corrigido,
+com as janelas de dia pelos helpers de fuso e o erro da consulta não mais
+descartado. Nenhuma campanha automática existe no banco hoje, então nada muda
+em produção até alguém criar uma. Isolado numa unidade `[e2e]`.
+
+**Lint**: os 19 erros de `any` dos três webhooks e do cron de campanhas
+viraram tipos do que cada rota lê.
+
+**Fica para depois**: envio de template e de mídia (a mídia vai por FormData),
+entrada pelo webhook da Meta (Instagram/Messenger), crons `eventos-expirados` e
+`meta-capi` (este envia para a Meta de verdade).
+
 ### 2026-09-27 — Frente 6: o portal do cliente, entrando como cliente
 
 Até aqui nenhum teste entrava no portal como o cliente final

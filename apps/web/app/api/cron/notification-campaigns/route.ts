@@ -5,6 +5,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { dispatchCampaignInline } from '@/actions/notification-campaigns'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { gravar, ler } from '@/lib/db'
+import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/datetime'
+
+/** Cliente de uma campanha: quem recebe, e o nome para o {{first_name}}. */
+type Destinatario = { id: string; name: string }
 
 function getWebPush() {
   webpush.setVapidDetails(
@@ -28,7 +32,8 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient()
   const now   = new Date()
-  const today = { month: now.getMonth() + 1, day: now.getDate() }
+  const hoje  = partsInTZ(now)
+  const today = { month: hoje.month, day: hoje.day }
 
   // Fetch all active automated campaigns + scheduled ones due now
   const { data: campaigns, error } = await admin
@@ -106,8 +111,7 @@ export async function GET(req: NextRequest) {
       const cfg = camp.trigger_config as { days?: number } | null
       if (!cfg?.days) continue
 
-      const targetDate = new Date(now)
-      targetDate.setDate(targetDate.getDate() - cfg.days)
+      const targetDate = addDaysTZ(now, -cfg.days)
       const sent = await processVisitCampaign(camp, targetDate, admin)
       await gravar(admin
         .from('notification_campaigns')
@@ -122,8 +126,7 @@ export async function GET(req: NextRequest) {
       const cfg = camp.trigger_config as { days?: number } | null
       if (!cfg?.days) continue
 
-      const targetDate = new Date(now)
-      targetDate.setDate(targetDate.getDate() + cfg.days)
+      const targetDate = addDaysTZ(now, cfg.days)
       const sent = await processExpiryCampaign(camp, targetDate, admin)
       await gravar(admin
         .from('notification_campaigns')
@@ -162,31 +165,38 @@ async function processBirthdayCampaign(
 ): Promise<number> {
   const rules = camp.audience_rules
 
+  // `birth_date` TEM de vir no select: o filtro abaixo é por ela. Sem ela, a
+  // lista de aniversariantes saía sempre vazia e a campanha de aniversário
+  // nunca mandou nada — o `any` do filtro escondia (2026-09-27).
   let query = admin
     .from('clients')
-    .select('id, name')
+    .select('id, name, birth_date, auth_id')
     .eq('tenant_id', camp.tenant_id)
     .eq('is_active', true)
     .not('birth_date', 'is', null)
 
   if (rules.branch_ids?.length) query = query.in('branch_id', rules.branch_ids)
-  // cast quebra a instanciação de tipo excessivamente profunda do builder do Supabase
-  if (rules.has_app_account)    query = (query as any).not('auth_id', 'is', null)
 
-  const { data: allClients } = await query.limit(5000)
+  const allClients = await ler(query.limit(5000), 'carregar os clientes com aniversário')
 
-  // Filter by birth month/day in JS (Supabase doesn't expose EXTRACT easily via REST)
-  const birthdayClients = (allClients ?? []).filter((c: any) => {
-    if (!c.birth_date) return false
-    const d = new Date(c.birth_date)
-    return d.getMonth() + 1 === today.month && d.getDate() === today.day
-  })
+  // Mês e dia lidos do TEXTO da data ('1990-09-27'). `new Date('1990-09-27')` é
+  // meia-noite em UTC, que em São Paulo ainda é o dia 26 — a campanha sairia
+  // na véspera.
+  //
+  // "Só quem tem o app" também é filtrado aqui: o `.not('auth_id', …)`
+  // condicional no builder estoura a inferência de tipo do Supabase (TS2589).
+  const birthdayClients: Destinatario[] = ((allClients ?? []) as { id: string; name: string; birth_date: string | null; auth_id: string | null }[])
+    .filter(c => {
+      if (!c.birth_date) return false
+      if (rules.has_app_account && !c.auth_id) return false
+      return Number(c.birth_date.slice(5, 7)) === today.month && Number(c.birth_date.slice(8, 10)) === today.day
+    })
+    .map(c => ({ id: c.id, name: c.name }))
 
   if (!birthdayClients.length) return 0
 
   // Idempotency: exclude clients already dispatched today
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
+  const todayStart = startOfDayTZ(new Date())
 
   const existing = await ler(admin
     .from('campaign_dispatches')
@@ -194,8 +204,8 @@ async function processBirthdayCampaign(
     .eq('campaign_id', camp.id)
     .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
-  const alreadySent = new Set((existing ?? []).map((d: any) => d.client_id))
-  const toSend = birthdayClients.filter((c: any) => !alreadySent.has(c.id))
+  const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
+  const toSend = birthdayClients.filter(c => !alreadySent.has(c.id))
 
   if (!toSend.length) return 0
   return sendBatch(camp, toSend, admin)
@@ -208,8 +218,8 @@ async function processVisitCampaign(
   targetDate: Date,
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
-  const dayStart = new Date(targetDate); dayStart.setHours(0, 0, 0, 0)
-  const dayEnd   = new Date(targetDate); dayEnd.setHours(23, 59, 59, 999)
+  const dayStart = startOfDayTZ(targetDate)
+  const dayEnd   = endOfDayTZ(targetDate)
 
   const appts = await ler(admin
     .from('appointments')
@@ -220,9 +230,9 @@ async function processVisitCampaign(
     .lte('completed_at', dayEnd.toISOString()), 'carregar os agendamentos')
 
   const seen = new Set<string>()
-  const clients: { id: string; name: string }[] = []
+  const clients: Destinatario[] = []
 
-  for (const a of (appts ?? []) as any[]) {
+  for (const a of (appts ?? []) as unknown as { client_id: string; clients: { name: string } | null }[]) {
     if (a.clients && !seen.has(a.client_id)) {
       seen.add(a.client_id)
       clients.push({ id: a.client_id, name: a.clients.name })
@@ -231,14 +241,14 @@ async function processVisitCampaign(
   if (!clients.length) return 0
 
   // Idempotency
-  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+  const todayStart = startOfDayTZ(new Date())
   const existing = await ler(admin
     .from('campaign_dispatches')
     .select('client_id')
     .eq('campaign_id', camp.id)
     .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
-  const alreadySent = new Set((existing ?? []).map((d: any) => d.client_id))
+  const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
   const toSend = clients.filter(c => !alreadySent.has(c.id))
   if (!toSend.length) return 0
   return sendBatch(camp, toSend, admin)
@@ -251,8 +261,8 @@ async function processExpiryCampaign(
   targetDate: Date,
   admin: ReturnType<typeof createAdminClient>,
 ): Promise<number> {
-  const dayStart = new Date(targetDate); dayStart.setHours(0, 0, 0, 0)
-  const dayEnd   = new Date(targetDate); dayEnd.setHours(23, 59, 59, 999)
+  const dayStart = startOfDayTZ(targetDate)
+  const dayEnd   = endOfDayTZ(targetDate)
 
   const pkgs = await ler(admin
     .from('client_packages')
@@ -262,9 +272,9 @@ async function processExpiryCampaign(
     .lte('expires_at', dayEnd.toISOString()), 'carregar os pacotes do cliente')
 
   const seen = new Set<string>()
-  const clients: { id: string; name: string }[] = []
+  const clients: Destinatario[] = []
 
-  for (const p of (pkgs ?? []) as any[]) {
+  for (const p of (pkgs ?? []) as unknown as { client_id: string; clients: { name: string } | null }[]) {
     if (p.clients && !seen.has(p.client_id)) {
       seen.add(p.client_id)
       clients.push({ id: p.client_id, name: p.clients.name })
@@ -272,14 +282,14 @@ async function processExpiryCampaign(
   }
   if (!clients.length) return 0
 
-  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+  const todayStart = startOfDayTZ(new Date())
   const existing = await ler(admin
     .from('campaign_dispatches')
     .select('client_id')
     .eq('campaign_id', camp.id)
     .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
-  const alreadySent = new Set((existing ?? []).map((d: any) => d.client_id))
+  const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
   const toSend = clients.filter(c => !alreadySent.has(c.id))
   if (!toSend.length) return 0
   return sendBatch(camp, toSend, admin)
@@ -307,7 +317,7 @@ async function processAppointmentReminderCampaign(
   // Dedup: um lembrete por cliente por execução do cron (mesmo que tenha 2 agendamentos na janela)
   const seen = new Set<string>()
   const clients: { id: string; name: string; scheduled_at: string }[] = []
-  for (const a of appts as any[]) {
+  for (const a of appts as unknown as { client_id: string; scheduled_at: string; clients: { name: string } | null }[]) {
     if (a.clients && !seen.has(a.client_id)) {
       seen.add(a.client_id)
       clients.push({ id: a.client_id, name: a.clients.name, scheduled_at: a.scheduled_at })
@@ -315,14 +325,14 @@ async function processAppointmentReminderCampaign(
   }
 
   // Idempotência: não enviar mais de um lembrete desta campanha ao mesmo cliente hoje
-  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+  const todayStart = startOfDayTZ(new Date())
   const existing = await ler(admin
     .from('campaign_dispatches')
     .select('client_id')
     .eq('campaign_id', camp.id)
     .gte('sent_at', todayStart.toISOString()), 'carregar os disparos')
 
-  const alreadySent = new Set((existing ?? []).map((d: any) => d.client_id))
+  const alreadySent = new Set(((existing ?? []) as { client_id: string }[]).map(d => d.client_id))
   const toSend = clients.filter(c => !alreadySent.has(c.id))
   if (!toSend.length) return 0
 
@@ -358,7 +368,7 @@ async function sendBatch(
 
     if (inserted?.length) {
       await gravar(admin.from('campaign_dispatches').insert(
-        inserted.map((n: any) => ({
+        (inserted as { id: string; client_id: string }[]).map(n => ({
           campaign_id:     camp.id,
           client_id:       n.client_id,
           notification_id: n.id,
@@ -391,7 +401,7 @@ async function sendWebPushBatch(
   if (!subs?.length) return
 
   await Promise.allSettled(
-    subs.map((sub: any) => {
+    (subs as { client_id: string; endpoint: string; keys: { p256dh: string; auth: string } }[]).map(sub => {
       const client = clients.find(c => c.id === sub.client_id)
       if (!client) return Promise.resolve()
       return getWebPush().sendNotification(
@@ -454,7 +464,7 @@ async function sendFcmBatch(
   const endpoint = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
 
   await Promise.allSettled(
-    rows.map((r: any) => {
+    (rows as { token: string; client_id: string }[]).map(r => {
       const client = clients.find(c => c.id === r.client_id)
       if (!client) return Promise.resolve()
       return fetch(endpoint, {
@@ -479,8 +489,7 @@ async function sendFcmBatch(
   )
 }
 
+/** Mesmo dia no fuso da clínica — o do processo não entra na conta. */
 function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear()
-    && a.getMonth()      === b.getMonth()
-    && a.getDate()       === b.getDate()
+  return dayKeyTZ(a) === dayKeyTZ(b)
 }

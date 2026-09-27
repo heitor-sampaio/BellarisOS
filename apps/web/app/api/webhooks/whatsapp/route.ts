@@ -46,10 +46,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const p = body as any
+  const p = body as {
+    entry?: { changes?: { value?: { metadata?: { phone_number_id?: string } } }[] }[]
+  } | null
 
   // Extract phoneNumberId from payload to identify tenant
-  const phoneNumberId = p?.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id as string | undefined
+  const phoneNumberId = p?.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id
   if (!phoneNumberId) return NextResponse.json({ ok: true })
 
   // A CAIXA que recebeu, não "a config da rede".
