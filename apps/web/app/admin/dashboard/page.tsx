@@ -1,4 +1,5 @@
 ﻿import { getTenantContext } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
 import type { DatePreset } from '@/lib/ads/types'
@@ -26,6 +27,15 @@ export default async function AdminDashboardPage({
   const { period: rawPeriod, from: rawFrom, to: rawTo, funil: rawFunil } = await searchParams
 
   const ctx   = await getTenantContext()
+
+  // A mesma trava do `admin/layout.tsx`, repetida DE PROPÓSITO: layout e página
+  // renderizam em paralelo, e o `redirect` do layout decide a resposta mas não
+  // impede esta página de rodar as consultas dela. O dashboard é a única tela
+  // da rede sem `assertPermission` (toda a equipe da rede o vê), então é ele
+  // que precisa mandar embora quem não é da rede. Visto no E2E de portais: o
+  // cliente final fazia esta página consultar o banco com `tenantId` nulo.
+  if (ctx.isClient) redirect('/login')
+  if (ctx.branchId !== null && !ctx.isNetworkAdmin) redirect('/')
 
   const perm = ctx.permissions
   const canFinancial  = perm.financial  !== 'NONE'

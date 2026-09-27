@@ -1260,6 +1260,45 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Frente 2: apoio de teste, varredura de sobras e portais isolados
+
+Segunda frente do plano da varredura de cobertura: dar à suíte o que faltava
+para testar alguém que não seja o admin da rede, e parar de sujar a produção.
+
+- **Logins de teste** (`e2e/apoio/sessao.ts`): `criarMembro` com a matriz de
+  cargo que o teste descrever, de rede ou de UNIDADE; `clienteComSessao`, o
+  cliente final no portal; o SDR de antes virou um caso de `criarMembro`. Cada
+  um devolve os cookies, o token (para o PostgREST) e o destino do login.
+- **Reenvio de server action** (`e2e/apoio/acao.ts`), extraído do teste de
+  oportunidade: capturar a chamada legítima e reenviá-la com outro id.
+- **Varredura de sobras** (`e2e/apoio/limpeza.ts`, no `global-setup`). Na
+  primeira rodada apagou **78 clientes `[e2e]`** (desde 18/09) e **366
+  notificações** que falavam deles no sino da equipe de verdade — provável
+  parte das "notificações frequentes e pouco claras" que o Heitor relatou. A
+  causa: o `fase2-agenda` fazia `delete` no cliente sem olhar o erro, e a conta
+  de fidelidade que nasce junto travava a FK; e apagava de
+  `appointment_status_history`, tabela que não existe. Agora a exclusão de
+  cliente/agendamento mora num lugar só, na ordem das FKs, e o teste exige
+  `falhas = []`. O aviso de cancelamento sai em `after()` e chegava DEPOIS da
+  limpeza — o teste agora espera por ele, o que virou também a prova de que
+  cancelar avisa a equipe. Nunca toca `automations`.
+
+**Portais isolados** (`e2e/portais-isolamento.spec.ts`, 12 casos): rota
+privada sem sessão vai para o login; gente de unidade entra na própria, não na
+rede nem em outra unidade, e módulo fora do cargo não abre pela URL; cargo de
+rede sem módulos não abre seis telas pela URL; cliente final entra no portal
+dele e não em tela nenhuma da equipe.
+
+**Dois achados, corrigidos:**
+- O dashboard da UNIDADE era a única tela de `[slug]` sem `assertPermission`
+  (de propósito — toda a equipe o vê), e o layout de `[slug]` deixa o cliente
+  passar: o cliente final chegava nele e a página quebrava no `tenantId` nulo.
+  Não vazava nada, por acidente. Agora manda o cliente para o portal dele.
+- **Layout e página renderizam em paralelo**: o `redirect` do layout de
+  `/admin` decidia a resposta, mas o dashboard da rede rodava as consultas dele
+  mesmo assim, para quem estava sendo mandado embora. Recebeu a mesma trava do
+  layout. Regra registrada no CLAUDE.md §6.
+
 ### 2026-09-27 — Varredura de cobertura, e a RLS do prontuário que não conferia a rede
 
 O Heitor pediu uma varredura completa do que não é coberto por teste. O mapa

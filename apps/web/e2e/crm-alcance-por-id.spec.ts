@@ -1,4 +1,5 @@
-import { test, expect, type Request } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import { capturarAcao, reenviarAcao } from './apoio/acao'
 import { banco, tenantId, PREFIXO, apagarConversas } from './apoio/banco'
 import { membroComEscopoProprio, type MembroDeTeste } from './apoio/sessao'
 
@@ -102,25 +103,14 @@ test.describe.serial('oportunidade de outro dono, pelo id', () => {
       // O card da oportunidade se identifica pelo funil e pela etapa, não pelo
       // nome da pessoa (que é o cabeçalho do painel).
       await painel.getByRole('button', { name: /Funil de vendas/ }).first().click()
-      const capturada: Promise<Request> = page.waitForRequest(r =>
-        r.method() === 'POST' && !!r.headers()['next-action'] && (r.postData() ?? '').includes(c!.meuLead))
+      const capturada = capturarAcao(page, corpo => corpo.includes(c!.meuLead))
       await painel.getByRole('button', { name: 'Ganha' }).click()
       const req = await capturada
 
       await expect.poll(() => outcomeDo(c!.meuLead), { message: 'o controle: a dela virou ganha' }).toBe('WON')
 
       // O ataque: a mesma chamada, com o id da oportunidade do admin.
-      const corpo = req.postData()!.replaceAll(c!.meuLead, c!.alheioLead)
-      const h = req.headers()
-      await page.request.post(req.url(), {
-        headers: {
-          'next-action': h['next-action']!,
-          'next-router-state-tree': h['next-router-state-tree'] ?? '',
-          'content-type': h['content-type'] ?? 'text/plain;charset=UTF-8',
-          accept: h['accept'] ?? 'text/x-component',
-        },
-        data: corpo,
-      })
+      await reenviarAcao(page, req, [[c!.meuLead, c!.alheioLead]])
 
       expect(await outcomeDo(c!.alheioLead), 'a oportunidade de outro dono não pode mudar pelo id')
         .toBe('OPEN')

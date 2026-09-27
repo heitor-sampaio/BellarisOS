@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { banco, unidadeQueAtende, nomeDeTeste, PREFIXO } from './apoio/banco'
+import { apagarAgendamentos, apagarClientes } from './apoio/limpeza'
 
 /**
  * Agendar e conduzir o atendimento sem sair do `/admin`.
@@ -33,13 +34,11 @@ function diaDeTeste() {
 }
 
 test.afterAll(async () => {
-  const db = banco()
-  if (appointmentId) {
-    await db.from('appointment_status_history').delete().eq('appointment_id', appointmentId)
-    await db.from('domain_events').delete().eq('entidade_id', appointmentId)
-    await db.from('appointments').delete().eq('id', appointmentId)
-  }
-  if (clientId) await db.from('clients').delete().eq('id', clientId)
+  // Pela limpeza central: aqui o `delete` do cliente falhava calado (a conta de
+  // fidelidade que nasce junto travava a FK) e deixou 78 clientes `[e2e]`.
+  const falhas = appointmentId ? await apagarAgendamentos([appointmentId]) : []
+  if (clientId) await apagarClientes([clientId], falhas)
+  expect(falhas, 'a limpeza do teste tem de apagar tudo que ele criou').toEqual([])
 })
 
 test('agenda pela rede: marcar com nome e telefone, confirmar, remarcar e cancelar', async ({ page }) => {
@@ -170,4 +169,15 @@ test('agenda pela rede: marcar com nome e telefone, confirmar, remarcar e cancel
   // avisar o cliente do que mudou.
   expect((porNome.get('agendamento.remarcado')!.dados as Record<string, unknown>).deAgendadoPara)
     .toBeTruthy()
+
+  // Cancelar avisa a equipe (§9.8). O aviso sai em `after()`, DEPOIS da
+  // resposta — esperar por ele aqui é também o que impede a limpeza de rodar
+  // antes e deixar o aviso órfão no sino de gente de verdade.
+  await expect.poll(async () => {
+    const { count } = await db.from('user_notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('type', 'appointment_cancelled')
+      .eq('data->>appointment_id', appointmentId!)
+    return count ?? 0
+  }, { message: 'cancelar deveria avisar a equipe' }).toBeGreaterThan(0)
 })

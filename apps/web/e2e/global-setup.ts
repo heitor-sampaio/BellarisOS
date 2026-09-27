@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { ARQUIVO_DE_SESSAO } from '../playwright.config'
+import { varrerSobras } from './apoio/limpeza'
 
 /**
  * Sessão do admin da rede, sem senha em lugar nenhum.
@@ -34,6 +35,13 @@ export default async function globalSetup() {
       'São as mesmas que o app já usa — nenhuma chave nova.',
     )
   }
+
+  // Sobras `[e2e]` de rodadas anteriores — de teste que estourou o tempo ou de
+  // limpeza que falhou calada. Ver `apoio/limpeza.ts`. Não para a suíte, mas
+  // não se cala: o que não saiu aparece aqui, na saída do Playwright.
+  const { apagou, falhas } = await varrerSobras()
+  if (Object.keys(apagou).length) console.log('[e2e] varredura de sobras apagou:', apagou)
+  for (const f of falhas) console.warn(`[e2e] varredura NÃO apagou ${f.o_que}: ${f.erro}`)
 
   const admin = createClient(url!, serviceKey!, { auth: { persistSession: false } })
 

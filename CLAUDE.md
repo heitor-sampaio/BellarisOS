@@ -260,7 +260,13 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   rede, não link para o portal da filial. A única saída de portal que sobra é o
   card “Abrir unidade” no dashboard, onde entrar nela é a intenção.
 - **Toda `page.tsx` chama `assertPermission` por si**, mesmo com o layout já
-  conferindo: o layout protege a navegação, não a URL.
+  conferindo: o layout protege a navegação, não a URL. E mais: **layout e
+  página renderizam em PARALELO** — o `redirect` do layout decide a resposta,
+  mas o código da página roda mesmo assim, com as consultas dela. Página sem
+  módulo (os dashboards) repete a trava do layout.
+- O layout de `[slug]` deixa o CLIENTE passar (é por ele que se chega a
+  `/[slug]/cliente`): tela de equipe em `[slug]` sem `assertPermission` é tela
+  aberta ao cliente final. Prova em `e2e/portais-isolamento.spec.ts`.
 - **Rota PÚBLICA se declara em `lib/supabase/middleware.ts`**, não só deixando
   de chamar `getTenantContext`. O proxy manda para `/login` tudo que
   não estiver na lista — a página pode não pedir sessão e mesmo assim nunca ser
@@ -1281,6 +1287,21 @@ pnpm typecheck                      # tsc --noEmit em todos os packages
 pnpm test                           # Vitest
 pnpm --filter web test:e2e          # Playwright (sobe o dev sozinho)
 ```
+
+**Apoio do E2E** (`apps/web/e2e/apoio/`). O E2E roda contra o banco da
+produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
+- `sessao.ts` — `criarMembro` (cargo com a matriz que o teste descrever, de
+  rede ou de unidade), `membroComEscopoProprio` (o SDR) e `clienteComSessao`
+  (cliente final no portal). Todos devolvem `estado` (cookies), `accessToken`
+  (para falar com o PostgREST como a pessoa) e `destino` do login.
+- `limpeza.ts` — `apagarClientes` / `apagarAgendamentos` na ordem das FKs, e
+  `varrerSobras`, que o `global-setup` roda antes de cada rodada e que imprime o
+  que não conseguiu apagar. Nunca toca `automations`.
+- `acao.ts` — `capturarAcao` / `reenviarAcao`: pega uma server action feita
+  pela tela e a reenvia trocando o id. É o teste de "o endpoint recusa", que a
+  tela sozinha não prova.
+- Limpeza que apaga no teste **olha o erro** (`expect(falhas).toEqual([])`):
+  foi um `delete` calado que acumulou 78 clientes `[e2e]` na produção.
 
 ---
 

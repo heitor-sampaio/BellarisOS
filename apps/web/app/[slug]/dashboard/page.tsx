@@ -1,5 +1,5 @@
 ﻿import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getTenantContext, isOwnScope, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
@@ -83,6 +83,13 @@ function formatBRL(v: number) {
 export default async function BranchDashboardPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const ctx      = await getTenantContext()
+
+  // O dashboard é a única tela da unidade sem `assertPermission` — de
+  // propósito: toda a equipe o vê, até o cargo que não abre mais nada. Mas o
+  // layout de `[slug]` deixa o CLIENTE passar (é por ele que se chega ao
+  // portal do cliente), e aqui o cliente chegava: a página quebrava no
+  // `tenantId` nulo em vez de mandá-lo embora. Não vazava nada — por acidente.
+  if (ctx.isClient) redirect(`/${slug}/cliente`)
 
   const branch = await getCachedBranchBySlug(slug, ctx.tenantId!)
   if (!branch) notFound()

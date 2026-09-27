@@ -1,0 +1,196 @@
+import { banco, PREFIXO } from './banco'
+import { apagarConversas } from './banco'
+
+/**
+ * Limpeza do que a suíte cria, e a VARREDURA de sobras antes de cada rodada.
+ *
+ * Por que existe: o E2E roda contra o banco da produção (decisão do Heitor,
+ * 2026-09-27), isolado só pelo prefixo `[e2e]` e pela limpeza no `finally` de
+ * cada spec. Isso falha de dois jeitos, e os dois aconteceram:
+ *
+ * - **o teste estoura o tempo** e o `finally` não roda inteiro;
+ * - **a limpeza falha calada**: o `fase2-agenda` fazia `delete` no cliente sem
+ *   olhar o erro, e a conta de fidelidade que nasce junto travava a exclusão
+ *   pela chave estrangeira. Eram 78 clientes `[e2e]` acumulados desde 18/09 — e
+ *   366 notificações falando deles no sino da equipe de verdade.
+ *
+ * Por isso a exclusão de cada coisa mora AQUI, na ordem das chaves
+ * estrangeiras (conferida no banco), e a varredura roda no `global-setup`.
+ *
+ * ⚠️ A varredura só toca as categorias listadas em `varrerSobras`. Nada de
+ * `automations`: já houve automação `[e2e]` deixada de propósito no banco, e
+ * apagar isso é decisão do Heitor.
+ */
+
+type Falha = { o_que: string; erro: string }
+
+/** Roda uma exclusão e ANOTA a falha em vez de engolir. */
+async function passo(falhas: Falha[], o_que: string, q: PromiseLike<{ error: { message: string } | null }>) {
+  const { error } = await q
+  if (error) falhas.push({ o_que, erro: error.message })
+}
+
+async function ids(q: PromiseLike<{ data: { id: string }[] | null }>): Promise<string[]> {
+  const { data } = await q
+  return (data ?? []).map(r => r.id)
+}
+
+/** Agendamentos e o que pende deles. Dado de TESTE: aqui se apaga até lançamento. */
+export async function apagarAgendamentos(agendamentos: string[], falhas: Falha[] = []): Promise<Falha[]> {
+  if (agendamentos.length === 0) return falhas
+  const db = banco()
+
+  const entradas = await ids(db.from('medical_record_entries').select('id').in('appointment_id', agendamentos))
+  if (entradas.length) {
+    await passo(falhas, 'fotos do atendimento', db.from('record_photos').delete().in('entry_id', entradas))
+    await passo(falhas, 'fichas do atendimento', db.from('anamnesis_data').delete().in('entry_id', entradas))
+    await passo(falhas, 'entradas do prontuário', db.from('medical_record_entries').delete().in('id', entradas))
+  }
+
+  const lancamentos = await ids(db.from('financial_transactions').select('id').in('appointment_id', agendamentos))
+  if (lancamentos.length) {
+    await passo(falhas, 'parcelas', db.from('installments').delete().in('transaction_id', lancamentos))
+    await passo(falhas, 'lançamentos do atendimento', db.from('financial_transactions').delete().in('id', lancamentos))
+  }
+
+  await passo(falhas, 'sessões de pacote', db.from('package_sessions').delete().in('appointment_id', agendamentos))
+  await passo(falhas, 'avaliação do plano', db.from('treatment_plans')
+    .update({ evaluation_appointment_id: null }).in('evaluation_appointment_id', agendamentos))
+  // `appointment_history` sai em cascata. (`appointment_status_history`, que o
+  // fase2-agenda apagava, não existe — o erro era descartado.)
+  await passo(falhas, 'eventos do agendamento', db.from('domain_events').delete().in('entidade_id', agendamentos))
+  // O aviso de "novo agendamento" vai para o sino de gente de VERDADE (o
+  // profissional e a gerência): sem isto, cada rodada deixava uns doze lá.
+  await passo(falhas, 'notificações do agendamento', db.from('user_notifications').delete()
+    .in('data->>appointment_id', agendamentos))
+  await passo(falhas, 'agendamentos', db.from('appointments').delete().in('id', agendamentos))
+  return falhas
+}
+
+/** Clientes e tudo que só existe por causa deles. */
+export async function apagarClientes(clientes: string[], falhas: Falha[] = []): Promise<Falha[]> {
+  if (clientes.length === 0) return falhas
+  const db = banco()
+
+  await apagarAgendamentos(await ids(db.from('appointments').select('id').in('client_id', clientes)), falhas)
+
+  // A conta de fidelidade nasce JUNTO com o cliente — era ela que travava.
+  const contas = await ids(db.from('loyalty_accounts').select('id').in('client_id', clientes))
+  if (contas.length) {
+    await passo(falhas, 'pontos', db.from('loyalty_transactions').delete().in('loyalty_account_id', contas))
+    await passo(falhas, 'contas de fidelidade', db.from('loyalty_accounts').delete().in('id', contas))
+  }
+
+  const prontuarios = await ids(db.from('medical_records').select('id').in('client_id', clientes))
+  if (prontuarios.length) {
+    const entradas = await ids(db.from('medical_record_entries').select('id').in('medical_record_id', prontuarios))
+    if (entradas.length) {
+      await passo(falhas, 'fotos', db.from('record_photos').delete().in('entry_id', entradas))
+      await passo(falhas, 'fichas', db.from('anamnesis_data').delete().in('entry_id', entradas))
+      await passo(falhas, 'entradas', db.from('medical_record_entries').delete().in('id', entradas))
+    }
+    await passo(falhas, 'termos', db.from('consent_terms').delete().in('medical_record_id', prontuarios))
+    await passo(falhas, 'prontuários', db.from('medical_records').delete().in('id', prontuarios))
+  }
+
+  await passo(falhas, 'créditos internos', db.from('internal_credits').delete().in('client_id', clientes))
+  await passo(falhas, 'pedidos de LGPD', db.from('lgpd_requests').delete().in('client_id', clientes))
+  await passo(falhas, 'pacotes', db.from('client_packages').delete().in('client_id', clientes))
+  // A oportunidade é da PESSOA, não do cliente: perde o vínculo, não some.
+  await passo(falhas, 'vínculo da oportunidade', db.from('leads').update({ client_id: null }).in('client_id', clientes))
+  await passo(falhas, 'eventos do cliente', db.from('domain_events').delete().in('entidade_id', clientes))
+  await passo(falhas, 'clientes', db.from('clients').delete().in('id', clientes))
+  return falhas
+}
+
+/**
+ * Apaga as sobras `[e2e]` de rodadas anteriores. Roda no `global-setup`.
+ *
+ * Devolve o que apagou e o que NÃO conseguiu — quem chama imprime. Não lança:
+ * é higiene, e uma sobra teimosa não pode impedir a suíte de rodar. Mas também
+ * não se cala.
+ */
+export async function varrerSobras(): Promise<{ apagou: Record<string, number>; falhas: Falha[] }> {
+  const db = banco()
+  const falhas: Falha[] = []
+  const apagou: Record<string, number> = {}
+  const like = `${PREFIXO}%`
+
+  // 1. Notificações da equipe que falam de dado de teste: aparecem no sino de
+  //    gente de verdade.
+  const notifs = await ids(db.from('user_notifications').select('id')
+    .or(`title.like.*${PREFIXO}*,body.like.*${PREFIXO}*`))
+  if (notifs.length) {
+    await passo(falhas, 'notificações da equipe', db.from('user_notifications').delete().in('id', notifs))
+    apagou.notificacoes = notifs.length
+  }
+
+  // 2. Oportunidades (antes das conversas: a pessoa com card não se apaga).
+  const leads = await ids(db.from('leads').select('id').like('name', like))
+  if (leads.length) {
+    await passo(falhas, 'oportunidades', db.from('leads').delete().in('id', leads))
+    apagou.oportunidades = leads.length
+  }
+
+  // 3. Conversas, com mensagens, eventos e a pessoa que o gatilho criou.
+  const convs = await ids(db.from('conversations').select('id').like('contact_name', like))
+  if (convs.length) { await apagarConversas(convs); apagou.conversas = convs.length }
+
+  // 4. Clientes.
+  const clientes = await ids(db.from('clients').select('id').like('name', like))
+  if (clientes.length) { await apagarClientes(clientes, falhas); apagou.clientes = clientes.length }
+
+  // 5. Caixas de WhatsApp de teste (os vínculos saem em cascata).
+  const caixas = await ids(db.from('whatsapp_numbers').select('id').like('label', like))
+  if (caixas.length) {
+    await passo(falhas, 'caixas de WhatsApp', db.from('whatsapp_numbers').delete().in('id', caixas))
+    apagou.caixas = caixas.length
+  }
+
+  // 6. Membros e cargos de teste, e os logins deles.
+  const { data: membros } = await db.from('users').select('id, auth_id').like('name', like)
+  for (const m of (membros ?? []) as { id: string; auth_id: string | null }[]) {
+    await passo(falhas, 'membro', db.from('users').delete().eq('id', m.id))
+    if (m.auth_id) {
+      const { error } = await db.auth.admin.deleteUser(m.auth_id)
+      if (error) falhas.push({ o_que: 'login do membro', erro: error.message })
+    }
+  }
+  if (membros?.length) apagou.membros = membros.length
+  const cargos = await ids(db.from('tenant_roles').select('id').like('label', like))
+  if (cargos.length) {
+    await passo(falhas, 'cargos', db.from('tenant_roles').delete().in('id', cargos))
+    apagou.cargos = cargos.length
+  }
+
+  // 7. Redes inteiras de teste (a "outra rede" do teste de RLS).
+  const redes = await ids(db.from('tenants').select('id').like('name', like))
+  for (const rede of redes) {
+    await passo(falhas, 'procedimentos da rede de teste', db.from('procedures').delete().eq('tenant_id', rede))
+    await passo(falhas, 'unidades da rede de teste', db.from('branches').delete().eq('tenant_id', rede))
+    await passo(falhas, 'cargos da rede de teste', db.from('tenant_roles').delete().eq('tenant_id', rede))
+    await passo(falhas, 'eventos da rede de teste', db.from('domain_events').delete().eq('tenant_id', rede))
+    await passo(falhas, 'rede de teste', db.from('tenants').delete().eq('id', rede))
+  }
+  if (redes.length) apagou.redes = redes.length
+
+  // 8. Logins de teste que sobraram sem dono (o do cliente final não passa por
+  //    `users`, e o de um membro cujo `limpar()` não rodou fica aqui também).
+  //    Critério estreito: e-mail `e2e-…@bellaris.invalid` — domínio que não
+  //    existe, então nunca é de gente de verdade.
+  let logins = 0
+  for (let pagina = 1; pagina < 50; pagina++) {
+    const { data, error } = await db.auth.admin.listUsers({ page: pagina, perPage: 200 })
+    if (error) { falhas.push({ o_que: 'listar logins', erro: error.message }); break }
+    const deTeste = data.users.filter(u => /^e2e-.*@bellaris\.invalid$/.test(u.email ?? ''))
+    for (const u of deTeste) {
+      const { error: e } = await db.auth.admin.deleteUser(u.id)
+      if (e) falhas.push({ o_que: `login ${u.email}`, erro: e.message })
+      else logins++
+    }
+    if (data.users.length < 200) break
+  }
+  if (logins) apagou.logins = logins
+
+  return { apagou, falhas }
+}
