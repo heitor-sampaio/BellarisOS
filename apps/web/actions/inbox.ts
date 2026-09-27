@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { nomesDeAnuncios, type NomesDoAnuncio } from '@/lib/ads/ad-lookup'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
@@ -19,8 +19,9 @@ import { registrarEventoLead } from '@/lib/lead-events'
 import {
   extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
 } from '@/lib/templates/core'
-import { gravar, ler } from '@/lib/db'
-import { lerVisibilidade, lerCaixas, passaNasCaixas } from '@/lib/inbox/visibilidade'
+import { gravar, ler, tentar } from '@/lib/db'
+import { passaNasCaixas, passaNoAlcanceDoDono, type AlcanceDoDono } from '@/lib/inbox/visibilidade'
+import { alcanceDoDono, caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
@@ -162,86 +163,6 @@ export interface ReplyPreview {
   id:         string | null
 }
 
-type AlcanceDoDono =
-  | { modo: 'conversa'; meusLeads: string[] }
-  | { modo: 'pessoa';   ocultas: string[] }
-
-/**
- * O que um cargo de escopo OWN enxerga no inbox, conforme a clínica escolheu
- * em Configurações → Cargos (`tenants.inbox_visibilidade`, ver
- * `lib/inbox/visibilidade.ts`).
- *
- * Um lugar só para a lista e para os atalhos das outras threads: se cada um
- * lesse a escolha por conta própria, bastaria um esquecer para a tela ao lado
- * mostrar o que esta esconde.
- *
- * Erro de leitura LANÇA: quem chama decide, e decidir "mostra tudo" aqui seria
- * vazar em silêncio.
- */
-async function alcanceDoDono(
-  admin: ReturnType<typeof createAdminClient>,
-  tenantId: string,
-  owner: string,
-): Promise<AlcanceDoDono> {
-  const rede = await ler(
-    admin.from('tenants').select('inbox_visibilidade').eq('id', tenantId).maybeSingle(),
-    'ler a visibilidade do inbox',
-  )
-  const modo = lerVisibilidade((rede as { inbox_visibilidade?: string } | null)?.inbox_visibilidade)
-
-  if (modo === 'conversa') {
-    const meus = await ler(
-      admin.from('leads').select('id').eq('tenant_id', tenantId).eq('owner_id', owner),
-      'carregar os leads do dono',
-    )
-    return { modo, meusLeads: ((meus ?? []) as { id: string }[]).map(l => l.id) }
-  }
-
-  // No banco, e num array só: ler os leads com dono para contar aqui bateria
-  // no teto de 1000 linhas do PostgREST (§13.1), e a pessoa de outro SDR
-  // voltaria a aparecer sem nada acusar.
-  const ocultas = await ler(
-    admin.rpc('contatos_ocultos_do_dono', { p_tenant: tenantId, p_owner: owner }),
-    'calcular quem é de outro dono',
-  )
-  return { modo, ocultas: (ocultas ?? []) as string[] }
-}
-
-/**
- * As caixas de WhatsApp que quem está na tela enxerga, ou `null` para todas.
- *
- * Escolha do CARGO (`tenant_roles.inbox_caixas`, Configurações → Cargos, na
- * linha do CRM). Com "só as da pessoa", são os números a que ela está ligada
- * em `whatsapp_number_users` — e nenhum, se ela não estiver ligada a nenhum.
- *
- * Um lugar só para a lista e para os atalhos das outras threads, pelo mesmo
- * motivo de `alcanceDoDono`. Erro de leitura LANÇA: "todas" por falha seria
- * vazar em silêncio.
- */
-async function caixasDoAlcance(
-  admin: ReturnType<typeof createAdminClient>,
-  ctx: Awaited<ReturnType<typeof getTenantContext>>,
-): Promise<string[] | null> {
-  // Quem não tem cargo editável (admin da rede, cargo de sistema) vê tudo, como
-  // em todo o resto da matriz.
-  if (ctx.isNetworkAdmin || !ctx.roleId) return null
-
-  const cargo = await ler(
-    admin.from('tenant_roles').select('inbox_caixas, is_system')
-      .eq('id', ctx.roleId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
-    'ler as caixas que o cargo enxerga',
-  ) as { inbox_caixas?: string; is_system?: boolean } | null
-  if (!cargo || cargo.is_system || lerCaixas(cargo.inbox_caixas) === 'todas') return null
-
-  if (!ctx.internalUserId) return []
-  const vinculos = await ler(
-    admin.from('whatsapp_number_users').select('whatsapp_number_id')
-      .eq('tenant_id', ctx.tenantId!).eq('user_id', ctx.internalUserId),
-    'ler os números da pessoa',
-  )
-  return ((vinculos ?? []) as { whatsapp_number_id: string }[]).map(v => v.whatsapp_number_id)
-}
-
 export async function getConversations(
   /**
    * Conversa que deve entrar na lista mesmo sem mensagem nenhuma.
@@ -259,23 +180,14 @@ export async function getConversations(
 
   // O alcance do CRM filtrava o funil e não filtrava aqui: com "só os próprios
   // leads", a pessoa ainda lia o WhatsApp da clínica inteira.
-  const owner = ownerFilter(ctx, 'crm')
-  let alcance: AlcanceDoDono | null = null
-  if (owner) {
-    try {
-      alcance = await alcanceDoDono(admin, ctx.tenantId!, owner)
-    } catch (e) {
-      // Sem saber o alcance, não se mostra nada: mostrar tudo seria vazar.
-      console.error('[getConversations] alcance do dono:', e instanceof Error ? e.message : e)
-      return []
-    }
-  }
-
+  // A regra mora em `lib/inbox/alcance.ts`, a mesma que confere a abertura por id.
+  let alcance: AlcanceDoDono | null
   let minhasCaixas: string[] | null
   try {
-    minhasCaixas = await caixasDoAlcance(admin, ctx)
+    [alcance, minhasCaixas] = await Promise.all([alcanceDoDono(admin, ctx), caixasDoAlcance(admin, ctx)])
   } catch (e) {
-    console.error('[getConversations] caixas do cargo:', e instanceof Error ? e.message : e)
+    // Sem saber o alcance, não se mostra nada: mostrar tudo seria vazar.
+    console.error('[getConversations] alcance:', e instanceof Error ? e.message : e)
     return []
   }
 
@@ -538,6 +450,9 @@ async function anexarCitacoes(
  */
 export async function getMessageMediaUrl(messageId: string): Promise<string | null> {
   const ctx = await getTenantContext()
+  assertPermission(ctx, 'crm', 'VIEW')
+  // A foto de uma cliente vale o alcance da conversa dela, não só a rede.
+  if (!(await mensagemAoAlcance(createAdminClient(), ctx, messageId))) return null
 
   const { data, error } = await createAdminClient()
     .from('messages')
@@ -554,7 +469,12 @@ export async function getMessageMediaUrl(messageId: string): Promise<string | nu
 
 export async function getMessages(conversationId: string): Promise<Message[]> {
   const ctx   = await getTenantContext()
+  assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
+
+  // Esconder da lista não basta: sem isto, quem tivesse o id lia a conversa
+  // que a lista não mostra. Fora do alcance responde como inexistente.
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return []
 
   const data = await ler(admin
     .from('messages')
@@ -753,6 +673,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return null
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
@@ -870,36 +791,20 @@ async function buscarOutrasThreads(
   let linhas = (data ?? []) as Linha[]
   if (linhas.length === 0) return []
 
-  const owner = ownerFilter(ctx, 'crm')
-  if (owner) {
-    let alcance: AlcanceDoDono
-    try {
-      alcance = await alcanceDoDono(admin, ctx.tenantId!, owner)
-    } catch (e) {
-      console.error('[getConversationCard] alcance do dono:', e instanceof Error ? e.message : e)
-      return []
-    }
-
-    if (alcance.modo === 'pessoa') {
-      // As threads da mesma pessoa aparecem ou somem JUNTAS: é o que "pela
-      // pessoa" quer dizer.
-      if (alcance.ocultas.includes(contatoId)) return []
-    } else {
-      const meus = new Set(alcance.meusLeads)
-      linhas = linhas.filter(l => !l.lead_id || meus.has(l.lead_id))
-    }
-  }
-
-  // E as caixas do cargo: o atalho não pode abrir a thread de um número que a
-  // lista ao lado esconde.
+  // As duas regras da lista, nas linhas já lidas. Pela pessoa, as threads dela
+  // aparecem ou somem JUNTAS (todas têm o mesmo `contato_id`); o atalho também
+  // não pode abrir a thread de um número que a lista ao lado esconde.
+  let alcance: AlcanceDoDono | null
   let minhasCaixas: string[] | null
   try {
-    minhasCaixas = await caixasDoAlcance(admin, ctx)
+    [alcance, minhasCaixas] = await Promise.all([alcanceDoDono(admin, ctx), caixasDoAlcance(admin, ctx)])
   } catch (e) {
-    console.error('[getConversationCard] caixas do cargo:', e instanceof Error ? e.message : e)
+    console.error('[getConversationCard] alcance:', e instanceof Error ? e.message : e)
     return []
   }
-  linhas = linhas.filter(l => passaNasCaixas(l.whatsapp_number_id, minhasCaixas))
+  linhas = linhas.filter(l =>
+    passaNoAlcanceDoDono({ lead_id: l.lead_id, contato_id: contatoId }, alcance)
+    && passaNasCaixas(l.whatsapp_number_id, minhasCaixas))
   if (linhas.length === 0) return []
 
   // O rótulo da caixa numa consulta só, mapeada em memória — nunca por embed do
@@ -1016,6 +921,7 @@ export async function criarOportunidade(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada.' }
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
@@ -1121,6 +1027,7 @@ export async function atualizarContato(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada.' }
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (dados.nome     !== undefined) patch.contact_name  = dados.nome.trim() || null
@@ -1390,6 +1297,7 @@ export async function sendMessage(
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada.' }
 
   // Quem está respondendo.
   //
@@ -1457,6 +1365,7 @@ export async function editMessage(
 
   const novo = texto.trim()
   if (!novo) return { ok: false, error: 'A mensagem não pode ficar vazia.' }
+  if (!(await mensagemAoAlcance(admin, ctx, messageId))) return { ok: false, error: 'Mensagem não encontrada.' }
 
   const { data: msg, error } = await admin
     .from('messages')
@@ -1524,17 +1433,23 @@ export async function editMessage(
 
 export async function markConversationRead(conversationId: string) {
   const ctx   = await getTenantContext()
+  assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return
 
+  // Acessório: falhar em zerar o contador não pode derrubar a abertura da
+  // conversa. As mensagens levam `tenant_id` também — antes iam só pelo id da
+  // conversa, e um id de outra rede marcava como lidas as mensagens de lá.
   await Promise.all([
-    admin.from('conversations')
+    tentar(admin.from('conversations')
       .update({ unread_count: 0 })
       .eq('id', conversationId)
-      .eq('tenant_id', ctx.tenantId!),
-    admin.from('messages')
+      .eq('tenant_id', ctx.tenantId!), 'zerar as não lidas da conversa'),
+    tentar(admin.from('messages')
       .update({ is_read: true })
       .eq('conversation_id', conversationId)
-      .eq('is_read', false),
+      .eq('tenant_id', ctx.tenantId!)
+      .eq('is_read', false), 'marcar as mensagens como lidas'),
   ])
 }
 
@@ -1542,6 +1457,7 @@ export async function setConversationStatus(conversationId: string, status: Conv
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) throw new Error('Conversa não encontrada.')
 
   await gravar(admin
     .from('conversations')
@@ -1667,6 +1583,7 @@ export async function getTemplatesParaConversa(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return []
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
@@ -1750,6 +1667,7 @@ export async function sendTemplateMessage(
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada' }
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
@@ -1891,6 +1809,7 @@ export async function sendMediaMessage(
   if (typeof conversationId !== 'string' || !(arquivo instanceof File)) {
     return { ok: false, error: 'Requisição inválida.' }
   }
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada' }
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')

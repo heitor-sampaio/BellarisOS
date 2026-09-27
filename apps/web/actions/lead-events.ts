@@ -3,6 +3,7 @@
 import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { LEAD_EVENT_COLS, type LeadEvent } from '@/lib/lead-events'
+import { conversaAoAlcance } from '@/lib/inbox/alcance'
 
 /**
  * Linha do tempo de um card, do mais recente para o mais antigo.
@@ -99,6 +100,10 @@ export async function getContactEvents(conversationId: string): Promise<LeadEven
   assertPermission(ctx, 'crm', 'VIEW')
 
   const admin = createAdminClient()
+
+  // A conversa inteira fora do alcance (dono ou caixas do cargo) não tem
+  // histórico para quem pede — a mesma regra que tranca abrir as mensagens.
+  if (!(await conversaAoAlcance(admin, ctx, conversationId))) return []
 
   // O alcance do cargo vale aqui como no histórico de um card: sem isto, "só os
   // próprios leads" leria pelo id da conversa o que não pode ver na lista.

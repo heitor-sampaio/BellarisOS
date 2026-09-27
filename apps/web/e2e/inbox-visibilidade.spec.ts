@@ -162,6 +162,37 @@ test.describe.serial('inbox com "só os próprios leads"', () => {
     }
   })
 
+  test('pela pessoa: a thread escondida também não abre pelo id', async ({ browser }) => {
+    // Até 2026-09-27 a regra do dono filtrava só a lista: `/admin/inbox?c=<id>`
+    // chamava `getMessages` e a conversa da Ana saía inteira.
+    await modo('pessoa')
+    const db = banco()
+    const texto = `segredo-ana-${marca}`
+    const { error } = await db.from('messages').insert({
+      conversation_id: cenario!.threadMkt, tenant_id: await tenantId(), direction: 'inbound',
+      content: texto, channel: 'manual', status: 'delivered',
+    })
+    expect(error, 'criar a mensagem da Ana').toBeNull()
+
+    const ctx  = await browser.newContext({ storageState: sdr!.estado })
+    const page = await ctx.newPage()
+    const corpos: Promise<string>[] = []
+    page.on('response', r => {
+      if (r.request().method() === 'POST' && r.request().headers()['next-action']) {
+        corpos.push(r.text().catch(() => ''))
+      }
+    })
+    try {
+      await page.goto(`/admin/inbox?c=${cenario!.threadMkt}`)
+      await page.waitForLoadState('networkidle')
+      expect(corpos.length, 'a tela tem de ter pedido as mensagens').toBeGreaterThan(0)
+      expect((await Promise.all(corpos)).join('\n'), 'a thread de outro dono não pode sair pelo id')
+        .not.toContain(texto)
+    } finally {
+      await ctx.close()
+    }
+  })
+
   test('pela conversa: a thread sem oportunidade fica no bolo comum', async ({ browser }) => {
     await modo('conversa')
     const { ctx, page } = await inboxDoSdr(browser, sdr!)

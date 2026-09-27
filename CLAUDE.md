@@ -525,11 +525,17 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   - **Pela conversa:** cada thread pela oportunidade ligada a ELA
     (`conversations.lead_id`); thread sem oportunidade fica no bolo comum —
     inclusive a thread nova de quem é de outro dono.
-  - A regra mora em UM lugar (`alcanceDoDono`, em `actions/inbox.ts`), usado
+  - A regra mora em UM lugar (`lib/inbox/alcance.ts`: `alcanceDoDono`), usado
     pela lista e pelos atalhos das outras threads. Quem esconde quem é conta
     do banco (`contatos_ocultos_do_dono`, só `service_role`), que devolve um
     array só — ler os leads com dono no app bateria no teto de 1000 linhas.
   - Erro ao ler o alcance mostra NADA, nunca tudo.
+  - ⚠️ **Esconder da lista não basta: a abertura por id é trancada.** Toda
+    action que recebe o id de uma conversa ou de uma mensagem passa por
+    `conversaAoAlcance` / `mensagemAoAlcance` (dono + caixas do cargo) e, fora
+    do alcance, responde como se a conversa não existisse. Até 2026-09-27
+    `/admin/inbox?c=<id>` entregava as mensagens de qualquer conversa da rede.
+    Action nova de conversa sem esse portão é o furo de volta.
 
 **Estado atual:** a conversa **ainda carrega** nome e telefone, e é dela que a
 tela lê. Sai numa frente própria, junto com a limpeza de `conversations.tags`
@@ -915,8 +921,8 @@ Regras:
   `whatsapp_number_users`. Sem número ligado, nenhum WhatsApp; conversa sem
   caixa (Instagram, Messenger) passa sempre. Soma-se ao escopo do CRM. Ligar a
   pessoa ao número decide por onde ela ENVIA; isto decide o que ela VÊ. A regra
-  mora em `caixasDoAlcance` (`actions/inbox.ts`), usada pela lista e pelas
-  outras threads, como `alcanceDoDono`.
+  mora em `caixasDoAlcance` (`lib/inbox/alcance.ts`), usada pela lista, pelas
+  outras threads e pela abertura por id, como `alcanceDoDono`.
 - Teste de regra de alcance precisa de um membro com escopo OWN de verdade:
   `membroComEscopoProprio` (`e2e/apoio/sessao.ts`). Como admin a tela abre de
   qualquer jeito, e o teste não prova nada.
@@ -1158,6 +1164,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Perguntar "qual o WhatsApp desta rede?" — a pergunta é qual DESTES, e por quê
 ❌ Ler ou gravar whatsapp_numbers.user_id (legado — quem fala pelo número é whatsapp_number_users)
 ❌ Update pela sessão sem conferir a linha devolvida (sem policy de UPDATE, atinge zero linhas sem erro)
+❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão

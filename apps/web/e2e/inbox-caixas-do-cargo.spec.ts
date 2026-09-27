@@ -24,6 +24,32 @@ const DO_INSTAGRAM   = `${PREFIXO} Cx Insta ${marca}`
 
 interface Cenario { caixas: string[]; convIds: string[] }
 
+const segredo = (nome: string) => `segredo-${nome.replace(/\W+/g, '-')}`
+
+/**
+ * Abre `/admin/inbox?c=<id>` e devolve tudo que as server actions responderam.
+ *
+ * O link põe a conversa como selecionada mesmo quando ela não está na lista, e
+ * a tela chama `getMessages(id)` na hora — era exatamente por aqui que a
+ * conversa escondida vazava. Olhar a RESPOSTA, e não a tela, é o que prova: a
+ * tela não desenha a conversa que não está na lista, com ou sem o furo.
+ */
+async function respostasAoAbrir(browser: Browser, membro: MembroDeTeste, conversationId: string) {
+  const ctx  = await browser.newContext({ storageState: membro.estado })
+  const page = await ctx.newPage()
+  const corpos: Promise<string>[] = []
+  page.on('response', r => {
+    if (r.request().method() === 'POST' && r.request().headers()['next-action']) {
+      corpos.push(r.text().catch(() => ''))
+    }
+  })
+  await page.goto(`/admin/inbox?c=${conversationId}`)
+  await page.waitForLoadState('networkidle')
+  const tudo = (await Promise.all(corpos)).join('\n')
+  await ctx.close()
+  return { tudo, chamadas: corpos.length }
+}
+
 async function montar(): Promise<Cenario> {
   const db     = banco()
   const tenant = await tenantId()
@@ -55,6 +81,14 @@ async function montar(): Promise<Cenario> {
       .select('id').single<{ id: string }>()
     expect(error, `criar a conversa ${nome}`).toBeNull()
     c.convIds.push(data!.id)
+
+    // Um texto que só existe nesta conversa: é por ele que o teste da abertura
+    // por id sabe se o servidor entregou as mensagens.
+    const { error: erroMsg } = await db.from('messages').insert({
+      conversation_id: data!.id, tenant_id: tenant, direction: 'inbound',
+      content: segredo(nome), channel: 'manual', status: 'delivered',
+    })
+    expect(erroMsg, `criar a mensagem de ${nome}`).toBeNull()
   }
 
   await conversa(DO_ATENDIMENTO, c.caixas[0]!, 41)
@@ -114,6 +148,22 @@ test.describe.serial('caixas que o cargo vê no inbox', () => {
     } finally {
       await ctx.close()
     }
+  })
+
+  test('abrir pelo id a conversa escondida não entrega as mensagens', async ({ browser }) => {
+    await ligar(sdr!, cenario!.caixas[0]!)
+
+    // O controle: a conversa do número dela, pelo mesmo caminho, entrega o
+    // texto. Sem isto, "não achou o segredo" poderia ser o teste que não olha.
+    const permitida = await respostasAoAbrir(browser, sdr!, cenario!.convIds[0]!)
+    expect(permitida.tudo, 'a conversa do número dela abre pelo link')
+      .toContain(segredo(DO_ATENDIMENTO))
+
+    const escondida = await respostasAoAbrir(browser, sdr!, cenario!.convIds[1]!)
+    expect(escondida.chamadas, 'a tela tem de ter pedido as mensagens, senão o teste não prova nada')
+      .toBeGreaterThan(0)
+    expect(escondida.tudo, 'a conversa de outro número não pode sair pelo id')
+      .not.toContain(segredo(DO_COMERCIAL))
   })
 
   test('"só as da pessoa" sem número ligado: nenhum WhatsApp', async ({ browser }) => {

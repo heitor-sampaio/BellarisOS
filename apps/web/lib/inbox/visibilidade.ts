@@ -93,3 +93,33 @@ export function passaNasCaixas(
   if (minhasCaixas === null || whatsappNumberId === null) return true
   return minhasCaixas.includes(whatsappNumberId)
 }
+
+// --- Alcance do dono (escopo OWN do CRM) -------------------------------------
+
+/** O que um cargo de escopo OWN enxerga, já lido do banco (`lib/inbox/alcance.ts`). */
+export type AlcanceDoDono =
+  | { modo: 'conversa'; meusLeads: string[] }
+  | { modo: 'pessoa';   ocultas: string[] }
+
+/**
+ * A conversa passa pela regra do dono?
+ *
+ * Mesma regra do filtro que vai para a query em `getConversations`, para quem
+ * já tem a linha na mão — o atalho das outras threads e a abertura por id.
+ * `alcance` nulo = o cargo vê tudo no CRM.
+ *
+ * - pela pessoa: some só quem tem oportunidade de outro dono e nenhuma sua
+ *   (conversa sem pessoa fica no bolo comum);
+ * - pela conversa: thread sem oportunidade fica no bolo comum; com
+ *   oportunidade, só se for sua.
+ */
+export function passaNoAlcanceDoDono(
+  conv: { lead_id: string | null; contato_id: string | null },
+  alcance: AlcanceDoDono | null,
+): boolean {
+  if (!alcance) return true
+  if (alcance.modo === 'pessoa') {
+    return conv.contato_id === null || !alcance.ocultas.includes(conv.contato_id)
+  }
+  return conv.lead_id === null || alcance.meusLeads.includes(conv.lead_id)
+}

@@ -1260,6 +1260,39 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — A conversa escondida da lista também não abre pelo id
+
+As regras de alcance do inbox — o dono do CRM ("só os meus") e as caixas do
+cargo — escondiam a conversa da LISTA, mas abrir por id só conferia a rede.
+`/admin/inbox?c=<id>` põe a conversa como selecionada mesmo fora da lista, e a
+tela chama `getMessages` na hora: a porta estava escondida, não trancada. É o
+defeito que o §11 descreve ("filtrar só na renderização deixa o registro
+acessível pelo id").
+
+- **`lib/inbox/alcance.ts`**: `alcanceDoDono` e `caixasDoAlcance` saíram de
+  `actions/inbox.ts` para cá, junto com o portão `conversaAoAlcance` /
+  `mensagemAoAlcance`. Fora do `'use server'` de propósito: exportado de lá, o
+  portão seria ele mesmo um endpoint dizendo "existe e você não pode ver".
+- **Todas as actions que recebem id de conversa ou mensagem passam pelo
+  portão** — ler mensagens e mídia, o card, criar oportunidade, editar o
+  contato, responder (texto, anexo, template), editar mensagem, marcar como
+  lida, mudar a situação, listar templates e o histórico do contato
+  (`getContactEvents`). Fora do alcance, a resposta é a de conversa inexistente.
+- A regra que confere uma linha já lida (`passaNoAlcanceDoDono`,
+  `passaNasCaixas`) é pura, em `lib/inbox/visibilidade.ts`, e a mesma serve o
+  atalho das outras threads — antes eram duas cópias.
+- **Achados no caminho:** `getMessages` e `getMessageMediaUrl` não pediam nem
+  `crm: VIEW`; e `markConversationRead` marcava as mensagens como lidas só pelo
+  id da conversa, sem `tenant_id` — um id de outra rede mexia nas mensagens de
+  lá. Os três corrigidos.
+
+**Provado que o teste pega o furo:** com o portão desligado, o E2E novo falha
+com o texto da conversa escondida na resposta da server action; com ele, passa.
+O teste olha a RESPOSTA, não a tela — a tela não desenha conversa fora da lista,
+com ou sem o furo. Casos em `inbox-caixas-do-cargo.spec.ts` (caixas, com o
+controle de que a permitida abre) e `inbox-visibilidade.spec.ts` (dono, pela
+pessoa). Vitest `tests/inbox-alcance.test.ts` para a regra pura.
+
 ### 2026-09-27 — O cargo escolhe quais números vê no inbox (e o renomear que não gravava)
 
 Ligar SDRs a um número decidia por onde elas enviavam, não o que viam. Sobre
@@ -1286,11 +1319,8 @@ confere a linha devolvida. Policy nova no molde da de DELETE (rede, própria
 rede, nunca cargo de sistema), `updateRole` passou a conferir a linha e o
 cartão de renomear passou a mostrar o erro.
 
-⚠️ **Em aberto, e anterior a isto:** as regras de alcance do inbox (dono do
-CRM e agora caixas) filtram a LISTA e os atalhos, não a leitura por id —
-`getMessages(conversationId)` devolve as mensagens de qualquer conversa da
-rede. É o mesmo buraco que o §11 descreve ("filtrar só na renderização deixa o
-registro acessível pelo id"), e vale fechar para as duas regras juntas.
+~~Em aberto: as regras de alcance filtravam só a LISTA, não a leitura por id.~~
+Fechado na entrada seguinte.
 
 Migrations `20260927000002` (coluna) e `20260927000003` (policy), aplicadas
 pelo MCP. E2E `inbox-caixas-do-cargo.spec.ts`: número dela sim, o outro não e
