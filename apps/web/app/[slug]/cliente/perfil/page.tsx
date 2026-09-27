@@ -15,7 +15,7 @@ function maskCpf(cpf: string | null) {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9, 11)}`
 }
 
-export default async function ClientProfilePage({ params: _params }: { params: Promise<{ slug: string }> }) {
+export default async function ClientProfilePage() {
   const ctx = await getTenantContext()
   assertClient(ctx)
 

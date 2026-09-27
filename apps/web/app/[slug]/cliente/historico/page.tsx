@@ -39,6 +39,20 @@ export type DocumentoItem = {
   kind:       'consent'
 }
 
+// -- Linhas como os selects as pedem ------------------------------
+type AtendimentoLido = {
+  id: string; scheduled_at: string; client_confirmed_at: string | null
+  procedure_rating: number | null; client_rating: number | null
+  procedures: { name: string } | null; professionals: { name: string } | null
+}
+type PagamentoLido = {
+  id: string; description: string; amount: number | string; payment_method: string | null
+  is_paid: boolean; paid_at: string | null
+  appointments: { procedures: { name: string } | null } | null
+}
+type DocumentoLido = { id: string; name: string; category: string; file_path: string; created_at: string }
+type TermoLido     = { id: string; title: string; signed_at: string; signed_via: string | null }
+
 export default async function HistoricoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const ctx = await getTenantContext()
@@ -85,43 +99,43 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
   ])
 
   // -- Procedimentos ----------------------------------------------
-  const procedimentos: ProcedimentoItem[] = (procedimentosRes ?? []).map((r: any) => ({
-    id:                  r.id as string,
-    scheduled_at:        r.scheduled_at as string,
-    procedure_name:      (r.procedures as { name: string } | null)?.name ?? 'Procedimento',
-    professional_name:   (r.professionals as { name: string } | null)?.name ?? null,
+  const procedimentos: ProcedimentoItem[] = ((procedimentosRes ?? []) as unknown as AtendimentoLido[]).map(r => ({
+    id:                  r.id,
+    scheduled_at:        r.scheduled_at,
+    procedure_name:      r.procedures?.name ?? 'Procedimento',
+    professional_name:   r.professionals?.name ?? null,
     confirmed:           r.client_confirmed_at != null,
     procedure_rating:    r.procedure_rating != null ? Number(r.procedure_rating) : null,
     professional_rating: r.client_rating != null ? Number(r.client_rating) : null,
   }))
 
   // -- Pagamentos -------------------------------------------------
-  const pagamentos: PagamentoItem[] = (pagamentosRes ?? []).map((r: any) => ({
-    id:             r.id as string,
-    description:    r.description as string,
+  const pagamentos: PagamentoItem[] = ((pagamentosRes ?? []) as unknown as PagamentoLido[]).map(r => ({
+    id:             r.id,
+    description:    r.description,
     amount:         Number(r.amount),
-    payment_method: r.payment_method as string | null,
+    payment_method: r.payment_method,
     is_paid:        Boolean(r.is_paid),
-    paid_at:        r.paid_at as string | null,
-    procedure_name: (r.appointments?.procedures as { name: string } | null)?.name ?? null,
+    paid_at:        r.paid_at,
+    procedure_name: r.appointments?.procedures?.name ?? null,
   }))
 
   // -- Documentos -------------------------------------------------
-  const rawDocs = (docsRes ?? []) as any[]
-  const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(r => r.file_path as string))
-  const clientDocs = rawDocs.map((r: any) => ({
-    id:         r.id as string,
-    name:       r.name as string,
-    category:   r.category as string,
-    file_url:   docUrlMap[r.file_path as string] ?? '',
-    created_at: r.created_at as string,
+  const rawDocs = (docsRes ?? []) as unknown as DocumentoLido[]
+  const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(r => r.file_path))
+  const clientDocs = rawDocs.map(r => ({
+    id:         r.id,
+    name:       r.name,
+    category:   r.category,
+    file_url:   docUrlMap[r.file_path] ?? '',
+    created_at: r.created_at,
   }))
 
-  const consentDocs = (consentRes ?? []).map((r: any) => ({
-    id:         r.id as string,
-    title:      r.title as string,
-    signed_at:  r.signed_at as string,
-    signed_via: r.signed_via as string | null,
+  const consentDocs = ((consentRes ?? []) as unknown as TermoLido[]).map(r => ({
+    id:         r.id,
+    title:      r.title,
+    signed_at:  r.signed_at,
+    signed_via: r.signed_via,
     kind:       'consent' as const,
   }))
 

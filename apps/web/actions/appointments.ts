@@ -1353,9 +1353,9 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
   const branch = await ler(admin
     .from('branches')
     .select('tenant_id')
-    .eq('id', (plan as any).branch_id)
+    .eq('id', (plan as { branch_id: string }).branch_id)
     .maybeSingle(), 'buscar a unidade')
-  if ((branch as any)?.tenant_id !== ctx.tenantId) return { sessions: [] }
+  if ((branch as { tenant_id: string } | null)?.tenant_id !== ctx.tenantId) return { sessions: [] }
 
   // Busca treatment_plan_sessions com appointment vinculado
   const rawSessions = await ler(admin
@@ -1397,6 +1397,15 @@ export async function getPlannedSessionAppointments(planId: string): Promise<{
   return { sessions }
 }
 
+/** Linha de `package_sessions` com o agendamento embutido, como o select a pede. */
+interface SessaoDePacoteLida {
+  id: string
+  session_number: number
+  status: string
+  appointment_id: string | null
+  appointments: { status: string; scheduled_at: string; professional: { name: string } | null } | null
+}
+
 export async function getClientPackageSessions(clientPackageId: string): Promise<{
   sessions: Array<{
     id:             string
@@ -1429,11 +1438,11 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
     .order('session_number'), 'buscar as sessões do pacote')
 
   return {
-    sessions: (data ?? []).map((s: any) => ({
-      id:              s.id as string,
-      sessionNumber:   s.session_number as number,
-      status:          s.status as string,
-      appointmentId:   s.appointment_id as string | null,
+    sessions: ((data ?? []) as unknown as SessaoDePacoteLida[]).map(s => ({
+      id:              s.id,
+      sessionNumber:   s.session_number,
+      status:          s.status,
+      appointmentId:   s.appointment_id,
       scheduledAt:     s.appointments?.scheduled_at ?? null,
       apptStatus:      s.appointments?.status ?? null,
       professionalName: s.appointments?.professional?.name ?? null,
@@ -1754,10 +1763,10 @@ export async function getSchedulingDaySlots(
     .order('scheduled_at'), 'carregar os agendamentos')
 
   return {
-    slots: (data ?? []).map((d: any) => ({
-      scheduledAt: d.scheduled_at as string,
-      durationMin: d.duration_min as number,
-      clientName:  (d.clients as unknown as { name: string } | null)?.name ?? null,
+    slots: ((data ?? []) as unknown as { scheduled_at: string; duration_min: number; clients: { name: string } | null }[]).map(d => ({
+      scheduledAt: d.scheduled_at,
+      durationMin: d.duration_min,
+      clientName:  d.clients?.name ?? null,
     })),
   }
 }

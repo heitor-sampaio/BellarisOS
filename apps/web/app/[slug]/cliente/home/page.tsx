@@ -5,10 +5,6 @@ import Link from 'next/link'
 import { CalendarDays, Star, ChevronRight, Sparkles } from 'lucide-react'
 
 // -- Helpers --------------------------------------------------------
-function fmtBRL(v: number) {
-  return `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-}
-
 function fmtDateTime(iso: string) {
   const d = new Date(iso)
   return {

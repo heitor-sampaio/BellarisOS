@@ -21,8 +21,14 @@ const METHOD_LABEL: Record<string, string> = {
   INTERNAL_CREDIT: 'Crédito interno',
 }
 
-export default async function ClientFinancialPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug: _slug } = await params
+/** Lançamento como o select pede, com o procedimento do agendamento (se houver). */
+type LancamentoLido = {
+  id: string; description: string; amount: number | string; payment_method: string | null
+  is_paid: boolean; paid_at: string | null; created_at: string
+  appointments: { procedures: { name: string } | null } | null
+}
+
+export default async function ClientFinancialPage() {
   const ctx = await getTenantContext()
   assertClient(ctx)
 
@@ -40,15 +46,15 @@ export default async function ClientFinancialPage({ params }: { params: Promise<
     .eq('type', 'INCOME')
     .order('created_at', { ascending: false }), 'carregar os lançamentos do cliente')
 
-  const rows: TxRow[] = (data ?? []).map((r: any) => ({
-    id:             r.id as string,
-    description:    r.description as string,
+  const rows: TxRow[] = ((data ?? []) as unknown as LancamentoLido[]).map(r => ({
+    id:             r.id,
+    description:    r.description,
     amount:         Number(r.amount),
-    payment_method: r.payment_method as string | null,
+    payment_method: r.payment_method,
     is_paid:        Boolean(r.is_paid),
-    paid_at:        r.paid_at as string | null,
-    created_at:     r.created_at as string,
-    procedure_name: (r.appointments?.procedures as { name: string } | null)?.name ?? null,
+    paid_at:        r.paid_at,
+    created_at:     r.created_at,
+    procedure_name: r.appointments?.procedures?.name ?? null,
   }))
 
   const total = rows.filter(r => r.is_paid).reduce((s, r) => s + r.amount, 0)
