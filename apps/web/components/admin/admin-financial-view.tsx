@@ -542,7 +542,9 @@ export function AdminFinancialView({
                             <CheckCircle2 size={12} /> Pagar
                           </button>
                         )}
-                        {t.is_paid && !estornada && canReverse && (
+                        {/* Estorno não se estorna (o banco também recusa): desfazer é
+                            coisa do financeiro, não um segundo clique. */}
+                        {t.is_paid && !estornada && t.category !== 'Estorno' && canReverse && (
                           <button type="button" onClick={() => estornar(t.id, slugDaTx)} title="Estornar" style={{
                             width: 30, height: 30, borderRadius: 7,
                             border: '1px solid var(--border)', background: 'var(--surface)',

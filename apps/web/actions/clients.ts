@@ -281,6 +281,14 @@ export async function grantInternalCredit(
   if (!branch) return { error: 'Filial não encontrada.' }
 
   const admin = createAdminClient()
+
+  // O comentário acima prometia conferir o cliente e conferia só a filial: com
+  // o id de um cliente de outra rede, o crédito ia para ele.
+  const cliente = await ler(admin
+    .from('clients').select('id').eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+    'conferir o cliente do crédito')
+  if (!cliente) return { error: 'Cliente não encontrado.' }
+
   const { error: dbErr } = await admin.from('internal_credits').insert({
     client_id:   clientId,
     branch_id:   branchId,

@@ -1146,26 +1146,6 @@ async function saveDraftNotesInterno(
   }
 }
 
-// --- Salvar queixas do cliente na avaliação ----------------------
-export async function saveEvaluationComplaints(
-  appointmentId: string,
-  complaints: string,
-): Promise<{ error?: string }> {
-  try {
-    const ctx   = await getTenantContext()
-    assertPermission(ctx, 'agenda', 'VIEW')
-    const admin = createAdminClient()
-    const { error } = await admin
-      .from('appointments')
-      .update({ notes: complaints || null })
-      .eq('id', appointmentId)
-    if (error) return { error: error.message }
-    return {}
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
-  }
-}
-
 // --- Salvar anotações da sessão (anamnese) ------------------------
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1587,10 +1567,15 @@ export async function getClientAvailableSlots(
 
   const admin = createAdminClient()
 
+  // O cliente final não tem rede no JWT (§5): a rede é a da ficha dele. Sem
+  // isto, a agenda ocupada de qualquer unidade de qualquer rede respondia.
+  const cliente = await ler(admin
+    .from('clients').select('tenant_id').eq('id', ctx.clientId!).maybeSingle(), 'buscar o cliente')
   const branch = await ler(admin
     .from('branches')
     .select('id')
     .eq('id', branchId)
+    .eq('tenant_id', cliente?.tenant_id ?? '00000000-0000-0000-0000-000000000000')
     .maybeSingle(), 'buscar a unidade')
   if (!branch) return { slots: [] }
 

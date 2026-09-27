@@ -120,6 +120,8 @@ export async function getCrmSlots(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
   if (!branchId || !professionalId || !date) return []
+  // A agenda ocupada de uma unidade de outra rede não é assunto desta.
+  if (!(await assertBranchInTenant(branchId, ctx.tenantId!))) return []
   const admin = createAdminClient()
   return computeAvailableSlots(admin, branchId, professionalId, date, durationMin || 60)
 }

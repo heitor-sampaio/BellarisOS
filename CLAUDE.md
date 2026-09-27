@@ -1300,6 +1300,10 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 - `acao.ts` — `capturarAcao` / `reenviarAcao`: pega uma server action feita
   pela tela e a reenvia trocando o id. É o teste de "o endpoint recusa", que a
   tela sozinha não prova.
+- `outra-rede.ts` — `criarOutraRede`: uma SEGUNDA rede `[e2e]` inteira (unidade,
+  profissional, procedimento, e sob pedido cliente e produto), alvo dos
+  testes de "uma rede não grava na outra". Com ela no banco, `tenantId()` e
+  `filiaisAtivas()` filtram a rede de verdade — antes pegavam "a primeira".
 - Limpeza que apaga no teste **olha o erro** (`expect(falhas).toEqual([])`):
   foi um `delete` calado que acumulou 78 clientes `[e2e]` na produção.
 

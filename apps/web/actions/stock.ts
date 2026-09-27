@@ -19,6 +19,28 @@ function skuPrefix(category: string | null): string {
     .slice(0, 3) || 'OUT'
 }
 
+/**
+ * O produto e as unidades vieram do formulário: são desta rede?
+ *
+ * Sem isto, quem é da rede (`ctx.branchId` nulo — a trava de "fora da sua
+ * filial" não o alcança) dava entrada, transferia e ajustava estoque de
+ * produto e unidade de QUALQUER rede. Achado em 2026-09-27.
+ */
+async function produtoEUnidadesDaRede(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  productId: string,
+  branchIds: string[],
+): Promise<boolean> {
+  const [produto, unidades] = await Promise.all([
+    ler(admin.from('products').select('id').eq('id', productId).eq('tenant_id', tenantId).maybeSingle(),
+      'conferir o produto'),
+    ler(admin.from('branches').select('id').in('id', branchIds).eq('tenant_id', tenantId),
+      'conferir as unidades'),
+  ])
+  return !!produto && (unidades ?? []).length === new Set(branchIds).size
+}
+
 async function nextSku(tenantId: string, category: string | null): Promise<string> {
   const admin  = createAdminClient()
   const prefix = skuPrefix(category)
@@ -400,6 +422,8 @@ async function adminUpdateMinStockInterno(productId: string, branchId: string, m
       return { error: 'Operação não permitida fora da sua filial.' }
 
     const admin = createAdminClient()
+    if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
+      return { error: 'Produto ou filial não encontrado.' }
     await gravar(admin.from('branch_product_stock').upsert({
       product_id: productId,
       branch_id:  branchId,
@@ -461,6 +485,8 @@ async function adminAddStockInterno(
     const expiresAt   = str(formData, 'expires_at')
 
     const admin = createAdminClient()
+    if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
+      return { error: 'Produto ou filial não encontrado.' }
 
     const [{ data: bps }, upp] = await Promise.all([
       admin
@@ -563,7 +589,11 @@ async function adminTransferStockInterno(
     if (isNaN(qty) || qty <= 0) return { error: 'Quantidade deve ser maior que zero.' }
 
     const notes = str(formData, 'notes')
+    if (ctx.branchId !== null && fromBranchId !== ctx.branchId)
+      return { error: 'Operação não permitida fora da sua filial.' }
     const admin = createAdminClient()
+    if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [fromBranchId, toBranchId])))
+      return { error: 'Produto ou filial não encontrado.' }
 
     const [{ data: fromBps }, { data: toBps }, upp] = await Promise.all([
       admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', fromBranchId).single(),
@@ -679,6 +709,8 @@ async function adminAdjustStockInterno(
     if (isNaN(newQty) || newQty < 0) return { error: 'Novo estoque não pode ser negativo.' }
 
     const admin = createAdminClient()
+    if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
+      return { error: 'Produto ou filial não encontrado.' }
 
     const [{ data: bps }, upp] = await Promise.all([
       admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', branchId).single(),

@@ -1260,6 +1260,61 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Frente 3a: dinheiro — furos entre redes, estorno e a tela de atendimento
+
+Ao mapear checkout, fechamento de atendimento, crédito e estoque para testá-los,
+a varredura achou o furo de sempre — action que recebe um id do navegador e
+grava sem conferir de que rede ele é — em mais de dez lugares. Corrigidos:
+
+- **Financeiro:** `createTransactionAdvanced` (o "Novo lançamento") gravava na
+  unidade que viesse no formulário, de qualquer rede; e quem é de unidade lançava
+  na vizinha. `createTransaction`, sem chamador e sem conferência, saiu.
+- **Estoque:** `adminAddStock`, `adminTransferStock`, `adminAdjustStock` e
+  `adminUpdateMinStock` — para quem é da rede, produto e unidade de qualquer
+  rede passavam (a trava de "fora da sua filial" só alcança gente de unidade).
+  Helper `produtoEUnidadesDaRede`; e gente de unidade só transfere a partir da
+  própria.
+- **Crédito interno:** conferia a unidade e não o cliente.
+- **Plano e checkout** (`treatment-plans.ts`): `checkoutTreatmentPlan`,
+  `proposeTreatmentPlan`, `createCheckoutConsentTerms` (que também recebia o
+  prontuário do navegador — agora tem de ser do cliente do plano),
+  `signConsentTerm`, `marcarTermoAssinadoEmPapel`, `saveTreatmentPlan`,
+  `generateEvaluationPlan` (este gravava anamnese e prontuário do cliente do
+  agendamento recebido) e `getTreatmentPlanDetails`. Helpers `termoDoTenant` e
+  `agendamentoDoTenant`, ao lado do `planoDoTenant` que já existia.
+- **LGPD:** `processExportRequest` era export de `actions/` — endpoint público
+  **sem login** que disparava a montagem do pacote de qualquer pedido. Mudou
+  para `lib/lgpd/processar.ts`; só `after()` e o cron o chamam.
+- **Agenda:** `getCrmSlots` e `getClientAvailableSlots` respondiam a agenda
+  ocupada de qualquer unidade. `saveEvaluationComplaints`, morta e aberta, saiu.
+
+**Estorno** (migration `20260927000005`): `estornar_transacao` passou a
+recusar lançamento **não pago** (criava uma contra-transação PAGA — dinheiro
+saindo por uma receita que nunca entrou) e o **próprio estorno** (a tela
+oferecia "Estornar" na linha do estorno). A tela esconde o botão ali. Junto,
+`search_path` fixo e EXECUTE só para o servidor.
+
+**Tela de atendimento:** a lista de procedimentos do editor de plano filtrava
+por `is_evaluation`, coluna removida em 25/09. A consulta respondia 42703, o
+erro era descartado e o editor ficava **sem procedimento para escolher**. Agora
+passa pelo `ler`.
+
+**Provado com o ataque real** (`e2e/acoes-entre-redes.spec.ts`, com a nova
+`apoio/outra-rede.ts`): lançamento, entrada de estoque e crédito, cada um feito
+pela tela e reenviado apontando para a outra rede. Sem as correções, os três
+falharam com o dado gravado lá; com elas, passam. Estorno em
+`financeiro-estorno.spec.ts` (+2 recusas e o botão ausente). Os furos de plano e
+checkout ganham o mesmo teste na frente 3c, junto com o fluxo de checkout.
+
+**Achado no apoio de teste:** com uma segunda rede no banco, `tenantId()`
+(`limit(1)` sem critério) e `filiaisAtivas()` (sem filtro de rede) passavam a
+poder devolver a rede de teste. Corrigidos.
+
+**Decisões do Heitor para a 3b:** crédito interno como forma de pagamento
+**desconta do saldo e recusa sem saldo**; insumo faltando **avisa e deixa
+concluir**, com saldo negativo em vez de zerado; sessão de **pacote não é
+cobrada** de novo.
+
 ### 2026-09-27 — Frente 2: apoio de teste, varredura de sobras e portais isolados
 
 Segunda frente do plano da varredura de cobertura: dar à suíte o que faltava

@@ -102,6 +102,21 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
     .select('id', { count: 'exact', head: true })
     .eq('description', `Estorno: ${descricao}`)
   expect(count, 'não pode nascer uma segunda contra-transação').toBe(1)
+
+  // O estorno não se estorna (2026-09-27). Ele nasce pago e sem `notes`, então
+  // a tela mostrava o botão "Estornar" nele e o banco aceitava: "Estorno:
+  // Estorno: …", ruído contábil.
+  const { data: contraRow } = await db.from('financial_transactions')
+    .select('id').eq('description', `Estorno: ${descricao}`).single()
+  const { error: estornoDoEstorno } = await db.rpc('estornar_transacao', {
+    p_transacao: contraRow!.id, p_tenant: tenant, p_ator: 'e2e',
+  })
+  expect(estornoDoEstorno?.message ?? '', 'o banco tem de recusar estornar um estorno').toContain('não se estorna')
+
+  await page.goto('/admin/financeiro')
+  const linhaDoEstorno = page.locator('tr').filter({ hasText: `Estorno: ${descricao}` }).first()
+  await expect(linhaDoEstorno).toBeVisible()
+  await expect(linhaDoEstorno.getByTitle('Estornar'), 'a linha do estorno não oferece estornar').toHaveCount(0)
 })
 
 test('estorno de outra rede não encontra o lançamento', async ({ page: _page }) => {
@@ -136,5 +151,33 @@ test('estorno de outra rede não encontra o lançamento', async ({ page: _page }
 
   const { data: depois } = await db
     .from('financial_transactions').select('notes').eq('id', alvo!.id).single()
+  expect(depois?.notes ?? null, 'nada pode ter sido marcado').toBeNull()
+})
+
+test('lançamento não pago não se estorna', async () => {
+  // Estornar uma receita que nunca entrou criava uma contra-transação PAGA:
+  // dinheiro saindo do caixa por nada. Pendente se cancela, não se estorna.
+  const db = banco()
+  const tenant = await tenantId()
+  const unidade = (await filiaisAtivas())[0]!
+  const { data: pendente, error } = await db.from('financial_transactions')
+    .insert({
+      branch_id: unidade.id, type: 'INCOME', category: 'Serviço',
+      description: nomeDeTeste('receita pendente a estornar'), amount: 40,
+      is_paid: false, created_by: 'e2e',
+    })
+    .select('id, description').single()
+  if (error) throw new Error(error.message)
+  criadas.push(pendente!.id as string)
+
+  const { error: recusa } = await db.rpc('estornar_transacao', {
+    p_transacao: pendente!.id, p_tenant: tenant, p_ator: 'e2e',
+  })
+  expect(recusa?.message ?? '', 'o banco tem de recusar estornar o que não foi pago').toContain('não pago')
+
+  const { count } = await db.from('financial_transactions')
+    .select('id', { count: 'exact', head: true }).eq('description', `Estorno: ${pendente!.description}`)
+  expect(count, 'nenhuma contra-transação pode nascer').toBe(0)
+  const { data: depois } = await db.from('financial_transactions').select('notes').eq('id', pendente!.id).single()
   expect(depois?.notes ?? null, 'nada pode ter sido marcado').toBeNull()
 })

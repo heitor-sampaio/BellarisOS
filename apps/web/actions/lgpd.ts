@@ -5,8 +5,9 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSignedUrl } from '@/lib/storage'
-import { buildClientExport, LGPD_BUCKET } from '@/lib/lgpd/export'
-import { gravar, ler } from '@/lib/db'
+import { LGPD_BUCKET } from '@/lib/lgpd/export'
+import { processExportRequest } from '@/lib/lgpd/processar'
+import { ler } from '@/lib/db'
 
 /**
  * Pedido de acesso aos dados pessoais (LGPD art. 18).
@@ -33,47 +34,6 @@ export type LgpdRequestRow = {
   has_files:       boolean
 }
 
-/** Processa um pedido: monta o pacote, sobe os arquivos e fecha o registro. */
-export async function processExportRequest(requestId: string): Promise<void> {
-  const admin = createAdminClient()
-
-  // Só sai de 'pending' quem ainda está em 'pending': se o cron e o after()
-  // caírem no mesmo pedido, apenas um segue adiante.
-  const claimed = await ler(admin
-    .from('lgpd_requests')
-    .update({ status: 'processing', updated_at: new Date().toISOString() })
-    .eq('id', requestId)
-    .eq('status', 'pending')
-    .select('id, client_id, include_medical, medical_status')
-    .maybeSingle(), 'conferir se já há pedido em aberto')
-
-  if (!claimed) return
-
-  try {
-    // Clínico só entra com aprovação explícita da equipe.
-    const includeMedical = claimed.include_medical && claimed.medical_status === 'approved'
-    const { jsonPath, pdfPath, expiresAt } = await buildClientExport(
-      claimed.id, claimed.client_id, includeMedical,
-    )
-
-    await gravar(admin.from('lgpd_requests').update({
-      status:           'completed',
-      completed_at:     new Date().toISOString(),
-      export_json_path: jsonPath,
-      export_pdf_path:  pdfPath,
-      expires_at:       expiresAt.toISOString(),
-      error_message:    null,
-      updated_at:       new Date().toISOString(),
-    }).eq('id', claimed.id), 'atualizar o pedido de LGPD')
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Erro inesperado'
-    await gravar(admin.from('lgpd_requests').update({
-      status:        'failed',
-      error_message: message,
-      updated_at:    new Date().toISOString(),
-    }).eq('id', claimed.id), 'atualizar o pedido de LGPD')
-  }
-}
 
 // ─── Cliente ─────────────────────────────────────────────────────────────────
 

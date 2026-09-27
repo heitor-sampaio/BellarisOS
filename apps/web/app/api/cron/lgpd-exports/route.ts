@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { processExportRequest } from '@/actions/lgpd'
+import { processExportRequest } from '@/lib/lgpd/processar'
 
 /**
  * Rede de segurança das solicitações de dados (LGPD).

@@ -25,8 +25,19 @@ export function nomeDeTeste(o_que: string): string {
   return `${PREFIXO} ${o_que} ${Date.now().toString(36)}`
 }
 
+/**
+ * A rede de verdade do banco de dev.
+ *
+ * Era `limit(1)` sem critério — funcionava porque só existia uma rede. Desde
+ * que os testes de isolamento criam uma SEGUNDA (`apoio/outra-rede.ts`), a
+ * resposta passou a poder ser a de teste. Nunca uma rede `[e2e]`, e a mais
+ * antiga entre as outras.
+ */
 export async function tenantId(): Promise<string> {
-  const { data, error } = await banco().from('tenants').select('id').limit(1).single()
+  const { data, error } = await banco().from('tenants').select('id')
+    .not('name', 'like', `${PREFIXO}%`)
+    .order('created_at', { ascending: true })
+    .limit(1).single()
   if (error) throw new Error(`Não achei o tenant: ${error.message}`)
   return data.id as string
 }
@@ -46,6 +57,7 @@ export async function unidadeQueAtende(): Promise<Filial | null> {
   const { data, error } = await db
     .from('users')
     .select('branch_id, branches!inner(id, name, slug, is_active)')
+    .eq('tenant_id', await tenantId())
     .eq('provides_services', true)
     .eq('is_active', true)
     .not('branch_id', 'is', null)
@@ -59,9 +71,12 @@ export async function unidadeQueAtende(): Promise<Filial | null> {
 }
 
 export async function filiaisAtivas(): Promise<Filial[]> {
+  // Só da rede de verdade: sem o filtro, a unidade `[e2e]` da segunda rede de
+  // teste vinha primeiro na ordem alfabética (o `[` vem antes das letras).
   const { data, error } = await banco()
     .from('branches')
     .select('id, name, slug')
+    .eq('tenant_id', await tenantId())
     .eq('is_active', true)
     .order('name')
   if (error) throw new Error(`Não consegui listar as filiais: ${error.message}`)

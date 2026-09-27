@@ -16,61 +16,10 @@ function num(fd: FormData, key: string): number | null {
   return isNaN(n) ? null : n
 }
 
-export async function createTransaction(
-  _prev: { error?: string; success?: boolean } | undefined,
-  formData: FormData,
-) {
-  try {
-    const ctx = await getTenantContext()
-    assertPermission(ctx, 'financial', 'MANAGE')
-
-    const branchId      = str(formData, '_branchId')
-    const slug          = str(formData, '_slug') ?? ''
-    if (!branchId) return { error: 'Filial não identificada.' }
-
-    const type          = str(formData, 'type') as 'INCOME' | 'EXPENSE' | null
-    const category      = str(formData, 'category')
-    const description   = str(formData, 'description')
-    const amount        = num(formData, 'amount')
-    const paymentMethod = str(formData, 'payment_method') || null
-    const dueDate       = str(formData, 'due_date') || null
-    const notes         = str(formData, 'notes')
-    const isPaid        = str(formData, 'is_paid') === 'true'
-
-    if (!type)              return { error: 'Tipo é obrigatório.' }
-    if (!category)          return { error: 'Categoria é obrigatória.' }
-    if (!description)       return { error: 'Descrição é obrigatória.' }
-    if (!amount || amount <= 0) return { error: 'Valor deve ser maior que zero.' }
-
-    const admin = createAdminClient()
-    const { error } = await admin.from('financial_transactions').insert({
-      branch_id:      branchId,
-      type,
-      category,
-      description,
-      amount,
-      payment_method: paymentMethod,
-      due_date:       dueDate,
-      is_paid:        isPaid,
-      paid_at:        isPaid ? new Date().toISOString() : null,
-      // Só o que já nasce pago entra no fechamento do caixa.
-      notes,
-      created_by:     ctx.internalUserId,
-    })
-
-    if (error) return { error: error.message }
-
-    // Os dois portais mostram o mesmo lançamento: quem recebe pela rede precisa ver o
-    // estado mudar lá, não só na tela da unidade.
-    if (slug) revalidatePath(`/${slug}/financeiro`)
-    revalidatePath('/admin/financeiro')
-    return { success: true }
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
-  }
-}
-
 // --- Nova movimentação com suporte a parcelas e recorrência -------
+//
+// (Aqui havia um `createTransaction` sem conferência de unidade e sem nenhum
+// chamador: endpoint aberto que lançava em qualquer rede. Saiu em 2026-09-27.)
 
 type RecurringFreq = 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'yearly'
 
@@ -98,6 +47,14 @@ export async function createTransactionAdvanced(
     const branchId      = str(formData, '_branchId')
     const slug          = str(formData, '_slug') ?? ''
     if (!branchId) return { error: 'Filial não identificada.' }
+
+    // A unidade vem do formulário. Sem conferir, o lançamento caía na unidade
+    // de QUALQUER rede — e quem é de unidade lançava na unidade vizinha.
+    if (ctx.branchId !== null && branchId !== ctx.branchId) return { error: 'Filial não identificada.' }
+    const unidade = await ler(createAdminClient()
+      .from('branches').select('id').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(),
+      'conferir a unidade do lançamento')
+    if (!unidade) return { error: 'Filial não identificada.' }
 
     const type          = str(formData, 'type') as 'INCOME' | 'EXPENSE' | null
     const category      = str(formData, 'category')

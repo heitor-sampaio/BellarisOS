@@ -149,6 +149,42 @@ async function planoDoTenant(
   return { ...data, slug: branch!.slug }
 }
 
+/**
+ * O termo é de um cliente desta rede? Termo → prontuário → cliente → rede.
+ *
+ * Todo export deste arquivo é endpoint público (§9.9): sem esta conferência,
+ * assinar recebia o id de um termo de QUALQUER rede e o marcava assinado.
+ */
+async function termoDoTenant(
+  admin: ReturnType<typeof createAdminClient>,
+  consentId: string,
+  tenantId: string,
+): Promise<boolean> {
+  const data = await ler(admin
+    .from('consent_terms')
+    .select('id, medical_records!inner(clients!inner(tenant_id))')
+    .eq('id', consentId)
+    .maybeSingle(), 'buscar o termo')
+  const rede = (data?.medical_records as unknown as { clients: { tenant_id: string } } | null)?.clients?.tenant_id
+  return !!data && rede === tenantId
+}
+
+/** O agendamento é desta rede? Devolve o essencial dele, ou null. */
+async function agendamentoDoTenant(
+  admin: ReturnType<typeof createAdminClient>,
+  appointmentId: string,
+  tenantId: string,
+) {
+  const data = await ler(admin
+    .from('appointments')
+    .select('id, branch_id, client_id, professional_id, branches!inner(tenant_id)')
+    .eq('id', appointmentId)
+    .maybeSingle(), 'buscar o agendamento')
+  const rede = (data?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+  if (!data || rede !== tenantId) return null
+  return { id: data.id as string, branch_id: data.branch_id as string, client_id: data.client_id as string, professional_id: data.professional_id as string }
+}
+
 // -- Salvar rascunho do plano (profissional) -----------------------------------
 
 /**
@@ -179,12 +215,10 @@ async function saveTreatmentPlanInterno(
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
-  const { data: appt, error: apptErr } = await admin
-    .from('appointments')
-    .select('id, branch_id, client_id')
-    .eq('id', appointmentId)
-    .single()
-  if (apptErr || !appt) return { error: 'Agendamento não encontrado.' }
+  // Agendamento de outra rede responde como inexistente — senão o plano
+  // nasceria no cliente e na unidade de lá.
+  const appt = await agendamentoDoTenant(admin, appointmentId, ctx.tenantId!)
+  if (!appt) return { error: 'Agendamento não encontrado.' }
 
   const { data: plan, error: planErr } = await admin
     .from('treatment_plans')
@@ -714,6 +748,8 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
 
   const admin = createAdminClient()
 
+  if (!(await planoDoTenant(admin, planId, ctx.tenantId!))) return { error: 'Plano não encontrado.' }
+
   const plan = await ler(admin
     .from('treatment_plans')
     .select('id, status, evaluation_appointment_id, branch_id, professional_notes, client_id')
@@ -991,11 +1027,9 @@ async function generateEvaluationPlanInterno(
   if (!complaints.trim()) return { error: 'Registre as dores/queixas do cliente.' }
   if (sessions.length === 0) return { error: 'Adicione ao menos uma sessão ao plano antes de enviar.' }
 
-  const appt = await ler(admin
-    .from('appointments')
-    .select('id, branch_id, client_id, professional_id')
-    .eq('id', appointmentId)
-    .single(), 'buscar o agendamento')
+  // Grava anamnese e prontuário do cliente DESTE agendamento: de outra rede,
+  // seria escrever no prontuário de uma clínica alheia.
+  const appt = await agendamentoDoTenant(admin, appointmentId, ctx.tenantId!)
   if (!appt) return { error: 'Agendamento não encontrado.' }
 
   // 1. Queixas do cliente → appointment.notes
@@ -1124,6 +1158,7 @@ export async function signConsentTerm(consentId: string, signatureDataUrl: strin
   assertPodeFecharPlano(ctx)
 
   const admin = createAdminClient()
+  if (!(await termoDoTenant(admin, consentId, ctx.tenantId!))) return { error: 'Termo não encontrado.' }
 
   const { error } = await admin
     .from('consent_terms')
@@ -1185,6 +1220,7 @@ export async function marcarTermoAssinadoEmPapel(consentId: string, slug: string
   assertPodeFecharPlano(ctx)
 
   const admin = createAdminClient()
+  if (!(await termoDoTenant(admin, consentId, ctx.tenantId!))) return { error: 'Termo não encontrado.' }
   const { error } = await admin
     .from('consent_terms')
     .update({
@@ -1216,6 +1252,16 @@ export async function createCheckoutConsentTerms(
   assertPodeFecharPlano(ctx)
 
   const admin  = createAdminClient()
+
+  // Plano e prontuário vêm do navegador. O plano tem de ser desta rede, e o
+  // prontuário tem de ser do CLIENTE do plano — senão os termos (com o
+  // contrato e o valor) seriam plantados no prontuário de outra pessoa.
+  const plano = await planoDoTenant(admin, planId, ctx.tenantId!)
+  if (!plano) return { error: 'Plano não encontrado.' }
+  const prontuario = await ler(admin
+    .from('medical_records').select('client_id').eq('id', medicalRecordId).maybeSingle(),
+    'conferir o prontuário do plano')
+  if (!prontuario || prontuario.client_id !== plano.client_id) return { error: 'Prontuário não encontrado para este cliente.' }
 
   // Os termos deste plano já existem? Reaproveita.
   //
@@ -1366,6 +1412,10 @@ async function checkoutTreatmentPlanInterno(
   if (pagamento) assertPodeReceber(ctx)
   else           assertPodeFecharPlano(ctx)
   const admin = createAdminClient()
+
+  // Aceitar o plano lança receita, cria agendamentos e muda o status: com o id
+  // de um plano de outra rede, tudo isso acontecia lá.
+  if (!(await planoDoTenant(admin, planId, ctx.tenantId!))) return { error: 'Plano não encontrado.' }
 
   const plan = await ler(admin
     .from('treatment_plans')
@@ -1794,6 +1844,7 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
     assertPermission(ctx, 'agenda', 'VIEW')
 
     const admin = createAdminClient()
+    if (!(await planoDoTenant(admin, planId, ctx.tenantId!))) return { error: 'Plano não encontrado.' }
 
     // 1. Busca o plano (sem joins — evita erro de FK alias no PostgREST)
     const { data: plan, error: planErr } = await admin

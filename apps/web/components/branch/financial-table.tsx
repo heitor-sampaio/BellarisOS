@@ -326,7 +326,8 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
                               Pagar
                             </button>
                           )}
-                          {tx.is_paid && !isReversed && canReverse && (
+                          {/* Estorno não se estorna — o banco também recusa. */}
+                          {tx.is_paid && !isReversed && tx.category !== 'Estorno' && canReverse && (
                             <button type="button" onClick={() => handleReverse(tx.id)} title="Estornar" style={{
                               width: 30, height: 30, borderRadius: 7,
                               border: '1px solid var(--border)', background: 'var(--surface)',
