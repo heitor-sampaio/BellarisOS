@@ -9,6 +9,8 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarEventoLead } from '@/lib/lead-events'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
+import { leadAoAlcance } from '@/lib/crm/alcance'
+import { conversaAoAlcance } from '@/lib/inbox/alcance'
 import {
   createAppointmentCore,
   computeAvailableSlots,
@@ -144,6 +146,15 @@ export async function createCrmAppointment(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
+
+  // Os dois ids vêm do navegador, e os dois gravam: o cliente vai para a
+  // oportunidade e para a conversa. Fora do alcance, como inexistentes.
+  if (input.leadId && !(await leadAoAlcance(admin, ctx, input.leadId))) {
+    return { error: 'Oportunidade não encontrada.' }
+  }
+  if (input.conversationId && !(await conversaAoAlcance(admin, ctx, input.conversationId))) {
+    return { error: 'Conversa não encontrada.' }
+  }
 
   const leadRow = input.leadId
     ? (await admin

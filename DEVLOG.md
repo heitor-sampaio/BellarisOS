@@ -1260,6 +1260,35 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — A oportunidade de outro dono também não se mexe pelo id
+
+Continuação da entrada abaixo, pelo outro lado. O funil já recusava mover o
+card alheio (`updateLead`, `updateLeadStage`, `deleteLead` filtram pelo dono),
+mas cinco actions recebiam o id de uma oportunidade sem conferir de quem era:
+
+- `definirSituacaoOportunidade` — marcar ganha/perdida/reaberta pelo inbox;
+- `openLeadConversation` e `createConversationForLead` — abrir, e até CRIAR,
+  a conversa do card;
+- `createCrmAppointment` — agendar a partir dele (grava o cliente no card);
+- `addClient` com `_leadId` — cadastrar cliente a partir dele.
+
+E duas gravavam numa **conversa** recebida pelo id, fora de `actions/inbox.ts`
+e por isso fora da rodada anterior: `createCrmAppointment`
+(`input.conversationId`) e `addClient` / `cadastrarClienteRapido`
+(`_conversationId`). Todas passam agora por `leadAoAlcance`
+(`lib/crm/alcance.ts`, a regra do funil: sua ou sem dono) e `conversaAoAlcance`.
+
+Os dois portões passaram a exigir `crm: VIEW`: `addClient` pede
+`clients: MANAGE`, e sem isso quem cadastra cliente mexeria em card e conversa
+sem ter CRM nenhum.
+
+**Provado com o ataque de verdade:** a SDR marca a oportunidade dela como ganha
+pelo painel; o teste captura essa chamada e a reenvia trocando o id pelo da
+oportunidade do admin. Com o portão desligado, a do admin vira ganha; com ele,
+continua em aberto — e a dela, o controle, vira ganha nos dois casos
+(`e2e/crm-alcance-por-id.spec.ts`). Nenhuma rota de `app/api` além dos webhooks
+e do cron lê oportunidade ou conversa.
+
 ### 2026-09-27 — A conversa escondida da lista também não abre pelo id
 
 As regras de alcance do inbox — o dono do CRM ("só os meus") e as caixas do

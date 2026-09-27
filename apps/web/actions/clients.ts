@@ -4,6 +4,8 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertClient, assertPermission, assertAnyPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { leadAoAlcance } from '@/lib/crm/alcance'
+import { conversaAoAlcance } from '@/lib/inbox/alcance'
 import { unitTag } from '@estetica-os/utils'
 import { after } from 'next/server'
 import { enviarEventoCapi } from '@/lib/ads/capi'
@@ -45,6 +47,11 @@ export async function cadastrarClienteRapido(input: {
   assertAnyPermission(ctx, ['clients', 'agenda'], 'MANAGE')
 
   const admin = createAdminClient()
+  // A conversa é opcional; vindo, o cliente é ligado a ela — então ela tem de
+  // estar ao alcance de quem cadastra.
+  if (input.conversationId && !(await conversaAoAlcance(admin, ctx, input.conversationId))) {
+    return { error: 'Conversa não encontrada.' }
+  }
   const res   = await garantirClienteRapido(admin, ctx, input)
   if (res.error) return res
 
@@ -69,6 +76,16 @@ export async function addClient(
   // amarrar isso à oportunidade fazia a mesma pessoa converter duas vezes
   // quando negociava em dois funis.
   const conversationId = (formData.get('_conversationId') as string | null)?.trim() || null
+
+  // Os dois ids vêm do formulário e os dois gravam: o cliente é ligado à
+  // oportunidade e ao contato. `clients: MANAGE` não é passe para mexer no
+  // card ou na conversa de outro dono, nem para quem não tem CRM nenhum.
+  {
+    const admin = createAdminClient()
+    if (leadId && !(await leadAoAlcance(admin, ctx, leadId))) return { error: 'Oportunidade não encontrada.' }
+    if (conversationId && !(await conversaAoAlcance(admin, ctx, conversationId))) return { error: 'Conversa não encontrada.' }
+  }
+
   const branch   = await resolveBranch(ctx.tenantId!, branchId)
   if (!branch) return { error: 'Filial inválida.' }
 

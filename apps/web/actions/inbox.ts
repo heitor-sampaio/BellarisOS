@@ -22,6 +22,7 @@ import {
 import { gravar, ler, tentar } from '@/lib/db'
 import { passaNasCaixas, passaNoAlcanceDoDono, type AlcanceDoDono } from '@/lib/inbox/visibilidade'
 import { alcanceDoDono, caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
+import { leadAoAlcance } from '@/lib/crm/alcance'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
@@ -1138,6 +1139,9 @@ export async function definirSituacaoOportunidade(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
+  // Marcar ganho/perdido na oportunidade de outro dono: o funil recusa mover
+  // o card dele, e este botão faz o mesmo movimento por outro caminho.
+  if (!(await leadAoAlcance(admin, ctx, leadId))) return { ok: false, error: 'Oportunidade não encontrada.' }
 
   const { data: lead, error: erroLead } = await admin
     .from('leads')
@@ -1196,6 +1200,8 @@ export async function openLeadConversation(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
+  // Sem isto, o card de outro dono abria (e até CRIAVA) a conversa da pessoa.
+  if (!(await leadAoAlcance(admin, ctx, leadId))) return { conversationId: null, error: 'Lead não encontrado.' }
 
   const { data: leadRow, error: erroLead } = await admin
     .from('leads')
@@ -1475,6 +1481,7 @@ export async function createConversationForLead(
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
+  if (!(await leadAoAlcance(admin, ctx, leadId))) return { error: 'Lead não encontrado' }
 
   // Return existing conversation if any
   const existing = await ler(admin

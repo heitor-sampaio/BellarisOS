@@ -536,6 +536,11 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
     do alcance, responde como se a conversa não existisse. Até 2026-09-27
     `/admin/inbox?c=<id>` entregava as mensagens de qualquer conversa da rede.
     Action nova de conversa sem esse portão é o furo de volta.
+  - O mesmo vale para a **oportunidade**: `leadAoAlcance` (`lib/crm/alcance.ts`)
+    aplica a regra do funil (sua ou sem dono) a toda action que recebe o id de
+    uma — inclusive fora do inbox (`createCrmAppointment`, `addClient` com
+    `_leadId`). Os dois portões exigem `crm: VIEW`: `clients: MANAGE` não é
+    passe para mexer em card nem em conversa.
 
 **Estado atual:** a conversa **ainda carrega** nome e telefone, e é dela que a
 tela lê. Sai numa frente própria, junto com a limpeza de `conversations.tags`
@@ -1165,6 +1170,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Ler ou gravar whatsapp_numbers.user_id (legado — quem fala pelo número é whatsapp_number_users)
 ❌ Update pela sessão sem conferir a linha devolvida (sem policy de UPDATE, atinge zero linhas sem erro)
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
+❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão
