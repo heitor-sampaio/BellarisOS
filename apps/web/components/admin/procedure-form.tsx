@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useActionState, useState, useEffect, useRef } from 'react'
+import { useActionState, useState, useEffect, useEffectEvent } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
 
@@ -101,7 +101,9 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
   const [laborCost,  setLaborCost]  = useState(existing?.labor_cost  ? formatPrice(existing.labor_cost)  : '')
   const [otherCosts, setOtherCosts] = useState(existing?.other_costs ? formatPrice(existing.other_costs) : '')
   const [marginPct,  setMarginPct]  = useState('')  // % — vinculado ao preço (bidirecional)
-  const lastAnchor = useRef<'margin' | 'price'>('price')
+  // Qual dos dois a pessoa digitou por último — é ele que fica fixo quando o
+  // custo muda. Estado (e não ref): é lido no render, logo abaixo.
+  const [ancora, setAncora] = useState<'margin' | 'price'>('price')
 
   type BranchOverrideState = { branch_id: string; price: string; labor_cost: string }
   const [branchPricing, setBranchPricing] = useState<BranchOverrideState[]>(
@@ -149,7 +151,6 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
   const laborCostNum  = parseBRL(laborCost)
   const otherCostsNum = parseBRL(otherCosts)
   const totalCost     = laborCostNum + otherCostsNum + productsCostCalc
-  const priceNum      = parseBRL(price)
 
   const fmtMargin = (pct: number) => pct.toFixed(1).replace('.', ',')
   const priceFromMargin = (m: number) => (m < 100 ? totalCost / (1 - m / 100) : 0)
@@ -157,20 +158,25 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
 
   // Quando o custo muda (mão de obra, insumos, outros), reprojeta mantendo a
   // última intenção do usuário: margem fixa → recalcula preço; preço fixo → recalcula margem.
-  useEffect(() => {
-    if (lastAnchor.current === 'margin') {
+  //
+  // No render, com o custo anterior guardado. Começa em `null` para rodar
+  // também na primeira vez — é o que preenche a margem de um procedimento que
+  // já tem preço.
+  const [custoAnterior, setCustoAnterior] = useState<number | null>(null)
+  if (custoAnterior !== totalCost) {
+    setCustoAnterior(totalCost)
+    if (ancora === 'margin') {
       const m = parseFloat(marginPct.replace(',', '.')) || 0
       if (m < 100) setPrice(formatPrice(priceFromMargin(m)))
     } else {
       const p = parseBRL(price)
       setMarginPct(p > 0 ? fmtMargin(marginFromPrice(p)) : '')
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalCost])
+  }
 
   function handleMarginInput(e: React.ChangeEvent<HTMLInputElement>) {
     const cleaned = e.target.value.replace(/[^\d.,]/g, '').replace('.', ',')
-    lastAnchor.current = 'margin'
+    setAncora('margin')
     setMarginPct(cleaned)
     const m = parseFloat(cleaned.replace(',', '.')) || 0
     setPrice(m > 0 && m < 100 ? formatPrice(priceFromMargin(m)) : (m <= 0 ? formatPrice(totalCost) : ''))
@@ -178,14 +184,16 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
   function handlePriceCalcInput(e: React.ChangeEvent<HTMLInputElement>) {
     const digits = e.target.value.replace(/\D/g, '')
     const num    = parseInt(digits || '0', 10) / 100
-    lastAnchor.current = 'price'
+    setAncora('price')
     setPrice(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
     setMarginPct(num > 0 ? fmtMargin(marginFromPrice(num)) : '')
   }
 
+  // Avisa o pai UMA vez por sucesso: `onSuccess` costuma vir inline, e nas
+  // dependências o efeito rodaria a cada render do pai.
+  const aoSalvar = useEffectEvent(() => onSuccess?.())
   useEffect(() => {
-    if (state?.success) onSuccess?.()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (state?.success) aoSalvar()
   }, [state?.success])
 
   function toggleBranch(id: string) {
@@ -332,7 +340,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
 
         {insumos.length === 0 && products.length > 0 && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', padding: '8px 0' }}>
-            Nenhum insumo adicionado. Clique em "Adicionar insumo" para vincular produtos do estoque.
+            Nenhum insumo adicionado. Clique em “Adicionar insumo” para vincular produtos do estoque.
           </p>
         )}
 

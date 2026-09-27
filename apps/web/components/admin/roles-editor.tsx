@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useActionState, useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import React, { useActionState, useEffect, useEffectEvent, useMemo, useRef, useState, useTransition } from 'react'
 import { Plus, Lock, Trash2, Pencil, Check, X, CheckCircle2, AlertTriangle, Users } from 'lucide-react'
 import Link from 'next/link'
 import { createRole, updateRole, deleteRole } from '@/actions/roles'
@@ -147,12 +147,19 @@ function RoleListPanel({
 
   // Só reage quando o resultado da action muda (não a cada render) — senão
   // reabrir o form seria fechado na hora enquanto createState.success persiste.
+  // Fechar o form é estado daqui: no render, com o resultado anterior guardado.
+  const [resultadoVisto, setResultadoVisto] = useState(createState)
+  if (resultadoVisto !== createState) {
+    setResultadoVisto(createState)
+    if (createState && 'success' in createState && createState.success) setShowForm(false)
+  }
+  // Selecionar o cargo novo é estado do PAI: esse fica no efeito.
+  const selecionarCriado = useEffectEvent((id: string) => onSelect(id))
   useEffect(() => {
-    if (createState && 'success' in createState && createState.success) {
-      setShowForm(false)
-      if (createState.role) onSelect(createState.role.id)
+    if (createState && 'success' in createState && createState.success && createState.role) {
+      selecionarCriado(createState.role.id)
     }
-  }, [createState, onSelect])
+  }, [createState])
 
   function confirmDelete() {
     const role = toDelete
@@ -448,13 +455,15 @@ function PermissionMatrix({
 
   // Salvou: a partir daqui o estado atual é o novo ponto de comparação, e a
   // mensagem de sucesso volta a valer.
-  useEffect(() => {
+  // No render, quando chega um resultado novo da action — e não num efeito.
+  const [salvamentoVisto, setSalvamentoVisto] = useState(state)
+  if (salvamentoVisto !== state) {
+    setSalvamentoVisto(state)
     if (state?.success) {
       setBaseline({ levels, scopes, reportTabs, caixas })
       setDismissed(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state])
+  }
 
   function setLevel(module: AppModule, v: PermissionLevel) {
     setLevels(prev => ({ ...prev, [module]: v }))

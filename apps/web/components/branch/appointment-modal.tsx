@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState, useMemo, useRef } from 'react'
+import { useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
 import { addAppointment, dadosParaAgendar, buscarClientesParaAgendar } from '@/actions/appointments'
 import { X, Calendar, Search, UserPlus, Loader2 } from 'lucide-react'
 
@@ -62,12 +62,18 @@ export function AppointmentModal({
   const escolheUnidade = (unidades?.length ?? 0) > 0
   const [unidadeId, setUnidadeId] = useState(branchId || unidades?.[0]?.id || '')
   const [dados, setDados] = useState({ procedures, professionals, rooms, slug })
-  const [carregandoUnidade, setCarregandoUnidade] = useState(false)
+  // Nasce carregando quando há unidade a carregar; cada troca liga de novo no
+  // handler do seletor, e o efeito só desliga quando os dados chegam.
+  const [carregandoUnidade, setCarregandoUnidade] = useState(escolheUnidade && !!unidadeId)
+
+  function trocarUnidade(id: string) {
+    setUnidadeId(id)
+    if (escolheUnidade && id) setCarregandoUnidade(true)
+  }
 
   useEffect(() => {
     if (!escolheUnidade || !unidadeId) return
     let vivo = true
-    setCarregandoUnidade(true)
     dadosParaAgendar(unidadeId).then(d => {
       if (!vivo) return
       setDados(d)
@@ -76,22 +82,35 @@ export function AppointmentModal({
     return () => { vivo = false }
   }, [escolheUnidade, unidadeId])
 
-  useEffect(() => { if (state?.success) { onSuccess(); onClose() } }, [state?.success])
+  const aoAgendar = useEffectEvent(() => { onSuccess(); onClose() })
+  useEffect(() => { if (state?.success) aoAgendar() }, [state?.success])
 
   // -- Busca de cliente -------------------------------------------------------
   // No servidor, e não sobre uma lista carregada na tela: o telefone precisa ser
   // comparado por dígitos ("(47) 99123-4567" contra "47991234567"), e trazer a
   // rede inteira para filtrar aqui para de funcionar quando a base cresce.
-  const [achados, setAchados] = useState<Client[]>([])
-  const [buscando, setBuscando] = useState(false)
+  const [resultados, setAchados] = useState<Client[]>([])
+  const [procurando, setBuscando] = useState(false)
   const termoRef = useRef('')
+
+  // Termo curto não busca: a lista some e o "buscando" também, derivados do
+  // próprio termo em vez de zerados dentro do efeito.
+  const termoCurto = clientSearch.trim().length < 2
+  const achados  = termoCurto ? [] : resultados
+  const buscando = !termoCurto && procurando
+
+  /** Toda digitação passa por aqui: é onde a busca começa a "buscar". */
+  function mudarBusca(texto: string) {
+    setClientSearch(texto)
+    if (texto.trim().length >= 2) setBuscando(true)
+    else setAchados([])
+  }
 
   useEffect(() => {
     const termo = clientSearch.trim()
     termoRef.current = termo
-    if (termo.length < 2) { setAchados([]); setBuscando(false); return }
+    if (termo.length < 2) return
 
-    setBuscando(true)
     const t = setTimeout(async () => {
       const res = await buscarClientesParaAgendar(termo)
       // Resposta atrasada não pode sobrescrever a busca atual: sem esta guarda,
@@ -118,19 +137,27 @@ export function AppointmentModal({
     setClientSearch('')
   }
 
+  // "Agora", lido uma vez quando o modal abre — o render não pode ler o relógio.
+  const [agora] = useState(() => Date.now())
+
   // Data/hora padrão em horário local (não UTC)
   const defaultDT = useMemo(() => {
     if (defaultDate) return defaultDate.substring(0, 16)  // já vem como local de agenda-calendar
-    const rounded = new Date(Math.ceil(Date.now() / 1800000) * 1800000)
+    const rounded = new Date(Math.ceil(agora / 1800000) * 1800000)
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${rounded.getFullYear()}-${pad(rounded.getMonth()+1)}-${pad(rounded.getDate())}T${pad(rounded.getHours())}:${pad(rounded.getMinutes())}`
-  }, [defaultDate])
+  }, [defaultDate, agora])
 
   // Controla o valor do input (exibe local) e o hidden UTC para envio
   const [localDT, setLocalDT] = useState(defaultDT)
 
-  // Ao mudar o defaultDate (novo clique no calendário), reseta
-  useEffect(() => { setLocalDT(defaultDT) }, [defaultDT])
+  // Ao mudar o defaultDate (novo clique no calendário), reseta — ajustado
+  // durante o render, guardando o padrão anterior.
+  const [dtAnterior, setDtAnterior] = useState(defaultDT)
+  if (dtAnterior !== defaultDT) {
+    setDtAnterior(defaultDT)
+    setLocalDT(defaultDT)
+  }
 
   const scheduledAtUTC = useMemo(
     () => localDT ? new Date(localDT).toISOString() : '',
@@ -138,10 +165,10 @@ export function AppointmentModal({
   )
 
   const minDT = useMemo(() => {
-    const now = new Date()
+    const now = new Date(agora)
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
-  }, [])
+  }, [agora])
 
   return (
     <div style={{
@@ -172,7 +199,7 @@ export function AppointmentModal({
               tem a sala, a profissional e a agenda. */}
           {escolheUnidade && (
             <Field label="Unidade *">
-              <select className="field" value={unidadeId} onChange={e => setUnidadeId(e.target.value)}>
+              <select className="field" value={unidadeId} onChange={e => trocarUnidade(e.target.value)}>
                 {unidades!.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             </Field>
@@ -232,7 +259,7 @@ export function AppointmentModal({
                     style={{ paddingLeft: 30 }}
                     placeholder="Buscar cliente por nome ou telefone…"
                     value={clientSearch}
-                    onChange={e => { setClientSearch(e.target.value); setShowClientList(true) }}
+                    onChange={e => { mudarBusca(e.target.value); setShowClientList(true) }}
                     onFocus={() => setShowClientList(true)}
                   />
                   {showClientList && clientSearch.length > 0 && (
@@ -267,7 +294,7 @@ export function AppointmentModal({
                       ) : (
                         <div style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-                            Nenhum resultado para "{clientSearch}".
+                            Nenhum resultado para “{clientSearch}”.
                           </span>
                           <button
                             type="button"

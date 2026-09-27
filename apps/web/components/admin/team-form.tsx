@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -20,9 +20,13 @@ export function AdminTeamForm({ branches, roles, isNetworkAdmin }: AdminTeamForm
   const [state, action, pending] = useActionState(createTeamMember, undefined)
   const stateError = state && 'error' in state ? state.error : null
 
-  useEffect(() => {
+  // Fecha quando chega um resultado NOVO de sucesso — no render, com o
+  // resultado anterior guardado, e não num efeito.
+  const [resultadoVisto, setResultadoVisto] = useState(state)
+  if (resultadoVisto !== state) {
+    setResultadoVisto(state)
     if (state && 'success' in state && state.success) setOpen(false)
-  }, [state])
+  }
 
   return (
     <>

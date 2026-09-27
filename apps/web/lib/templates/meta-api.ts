@@ -23,7 +23,21 @@ export interface TemplateNaMeta {
 
 interface ErroMeta { error?: { message?: string; error_user_msg?: string; code?: number } }
 
-async function chamar(url: string, init: RequestInit): Promise<any> {
+/** O template como a listagem da Graph API devolve. */
+interface TemplateCru {
+  id?: string | number; name: string; status?: string; category: string; language: string
+  rejected_reason?: string | null
+}
+
+/** O que as chamadas deste arquivo leem da resposta — cada uma, um pedaço. */
+interface RespostaGraph {
+  id?: string | number
+  status?: string
+  data?: TemplateCru[]
+  paging?: { next?: string }
+}
+
+async function chamar(url: string, init: RequestInit): Promise<RespostaGraph> {
   const res  = await fetch(url, init)
   const body = await res.json().catch(() => null) as (ErroMeta & Record<string, unknown>) | null
 
@@ -35,7 +49,7 @@ async function chamar(url: string, init: RequestInit): Promise<any> {
       ?? `HTTP ${res.status}`
     throw new Error(msg)
   }
-  return body
+  return body as RespostaGraph
 }
 
 function auth(config: OfficialConfig) {
@@ -146,7 +160,7 @@ export async function listarTemplatesDaMeta(
   // Paginação por cursor: uma rede com muitos templates não cabe numa página, e
   // ler só a primeira faria os demais aparecerem como "some da Meta".
   while (url) {
-    const body: any = await chamar(url, { method: 'GET', headers: auth(config) })
+    const body = await chamar(url, { method: 'GET', headers: auth(config) })
     for (const t of (body.data ?? [])) {
       todos.push({
         id:       String(t.id),

@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  useRef, useCallback, useActionState, useEffect, useMemo,
+  useRef, useCallback, useActionState, useEffect, useEffectEvent, useMemo,
   useState, forwardRef, useImperativeHandle,
 } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
@@ -83,7 +83,7 @@ function Label({ children }: { children: React.ReactNode }) {
 export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
   function CRMLeadModal(
     {
-      branchId, slug, branchName, branches, unidades, stages, funnels, funnelId, procedures,
+      slug, branchName, branches, unidades, stages, funnels, funnelId, procedures,
       initialStageId, existing, trigger, onLeadCreated,
     },
     ref,
@@ -139,6 +139,11 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     // revalidar; a action revalida /admin/oportunidades de qualquer jeito.
     const activeBranchSlug = networkMode ? '' : (slug ?? '')
 
+    // --- Ir para a conversa ---------------------------------------
+    // Declarados antes de `open`, que zera o erro ao abrir.
+    const [abrindoConversa, setAbrindoConversa] = useState(false)
+    const [erroConversa,    setErroConversa]    = useState<string | null>(null)
+
     const open = useCallback(() => {
       setPhone(existing?.phone ?? '')
       setSelectedProcs(existing?.lead_procedures?.map(lp => lp.procedure_id) ?? [])
@@ -156,10 +161,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
     const close = useCallback(() => dialogRef.current?.close(), [])
 
-    // --- Ir para a conversa ---------------------------------------
-    const [abrindoConversa, setAbrindoConversa] = useState(false)
-    const [erroConversa,    setErroConversa]    = useState<string | null>(null)
-
     async function irParaConversa() {
       if (!existing) return
       setErroConversa(null)
@@ -176,7 +177,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
 
     useImperativeHandle(ref, () => ({ open }), [open])
 
-    useEffect(() => {
+    const aoSalvar = useEffectEvent(() => {
       if (!state?.success) return
       close()
       if (!isEdit && 'leadId' in state && onLeadCreated) {
@@ -190,7 +191,7 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
           notes:        (dialogRef.current?.querySelector<HTMLTextAreaElement>('[name="notes"]')?.value ?? '').trim() || null,
           crm_stage_id: stageId || null,
           client_id:    null,
-          created_at:   ((state as any).createdAt as string) ?? new Date().toISOString(),
+          created_at:   (state as { createdAt?: string }).createdAt ?? new Date().toISOString(),
           tags,
           lead_procedures: selectedProcs.map(pid => ({
             procedure_id: pid,
@@ -203,7 +204,8 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       } else {
         router.refresh()
       }
-    }, [state?.success])
+    })
+    useEffect(() => { if (state?.success) aoSalvar() }, [state?.success])
 
     function toggleProc(id: string) {
       setSelectedProcs(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])

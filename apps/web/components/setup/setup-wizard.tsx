@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Loader2 } from 'lucide-react'
 import { updateTenantProfile, completeOnboarding } from '@/actions/setup'
@@ -206,8 +206,10 @@ function StepNetwork({
 
 function StepBranch({ onNext }: { onNext: () => void }) {
   const [name,       setName]       = useState('')
-  const [slug,       setSlug]       = useState('')
+  const [slugDigitado, setSlug]     = useState('')
   const [slugTouched,setSlugTouched]= useState(false)
+  // Até a pessoa mexer no endereço, ele acompanha o nome — derivado, não copiado.
+  const slug = slugTouched ? slugDigitado : toSlug(name)
   const [phone,      setPhone]      = useState('')
   const [email,      setEmail]      = useState('')
   const [zipCode,    setZipCode]    = useState('')
@@ -218,10 +220,6 @@ function StepBranch({ onNext }: { onNext: () => void }) {
   const [cepError,   setCepError]   = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
   const [pending,    startTransition] = useTransition()
-
-  useEffect(() => {
-    if (!slugTouched) setSlug(toSlug(name))
-  }, [name, slugTouched])
 
   async function handleCepBlur() {
     const digits = zipCode.replace(/\D/g, '')

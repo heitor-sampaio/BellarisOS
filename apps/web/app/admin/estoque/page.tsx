@@ -5,6 +5,20 @@ import { ProductCategoryModal } from '@/components/admin/product-category-modal'
 import { StockProductModal } from '@/components/branch/stock-product-modal'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
 import { startOfMonthTZ, addDaysTZ } from '@/lib/datetime'
+import { ler } from '@/lib/db'
+
+/** Produto como o select pede, com o saldo por unidade embutido. */
+type ProdutoLido = {
+  id: string; name: string; sku: string | null; barcode: string | null
+  category: string | null; category_id: string | null; unit: string; supplier: string | null
+  cost_price: number | string | null; sale_price: number | string | null
+  consumption_unit: string | null; units_per_package: number | string | null; is_active: boolean
+  branch_product_stock: {
+    current_stock: number; min_stock: number; current_rendimento: number | null
+    branches: { id: string; name: string; slug: string } | null
+  }[] | null
+}
+type MovimentoLido = { product_id: string; quantity: number | string; unit_cost: number | string | null }
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -59,12 +73,11 @@ export default async function AdminEstoquePage({
   if (filiaisErr)  throw new Error(`Não foi possível carregar as unidades: ${filiaisErr.message}`)
 
   // Normaliza produtos
-  const products = (raw ?? []).map((p: any) => {
-    const bps: { current_stock: number; min_stock: number; current_rendimento: number | null; branches: { id: string; name: string; slug: string } }[] =
-      p.branch_product_stock ?? []
+  const products = ((raw ?? []) as unknown as ProdutoLido[]).map(p => {
+    const bps = p.branch_product_stock ?? []
 
     const branchStocks = bps
-      .filter(b => b.branches)
+      .flatMap(b => (b.branches ? [{ ...b, branches: b.branches }] : []))
       .map(b => ({
         branchId:          b.branches.id,
         branchName:        b.branches.name,
@@ -82,17 +95,17 @@ export default async function AdminEstoquePage({
       : null
 
     return {
-      id:               p.id as string,
-      name:             p.name as string,
-      sku:              p.sku as string | null,
-      barcode:          p.barcode as string | null,
-      category:         p.category as string | null,
-      categoryId:       p.category_id as string | null,
-      unit:             p.unit as string,
-      supplier:         p.supplier as string | null,
+      id:               p.id,
+      name:             p.name,
+      sku:              p.sku,
+      barcode:          p.barcode,
+      category:         p.category,
+      categoryId:       p.category_id,
+      unit:             p.unit,
+      supplier:         p.supplier,
       costPrice:        Number(p.cost_price ?? 0),
       salePrice:        p.sale_price != null ? Number(p.sale_price) : null,
-      consumptionUnit:  p.consumption_unit as string | null,
+      consumptionUnit:  p.consumption_unit,
       unitsPerPackage:  upp,
       totalStock,
       totalRendimento,
@@ -121,13 +134,15 @@ export default async function AdminEstoquePage({
   const in30Days  = addDaysTZ(now, 30)
   const monthStart = startOfMonthTZ(now)
 
-  const [{ data: movementsRaw }, { data: batchesRaw }] = productIds.length > 0
+  // Por `ler`: sem checar o erro, uma falha virava giro zero e nenhum lote
+  // vencendo — os dois alertas quietos exatamente quando não deviam.
+  const [movementsRaw, batchesRaw] = productIds.length > 0
     ? await Promise.all([
         // Giro = consumo em procedimentos no mês, a mesma definição usada na
         // tela da filial. Antes a rede somava QUALQUER saída dos últimos 30
         // dias — incluindo transferência entre unidades da própria rede, que
         // não é consumo — e por isso a soma das filiais nunca fechava com ela.
-        (unidadeId
+        ler(unidadeId
           ? admin
               .from('stock_movements')
               .select('product_id, quantity, unit_cost')
@@ -140,17 +155,17 @@ export default async function AdminEstoquePage({
               .select('product_id, quantity, unit_cost')
               .in('product_id', productIds)
               .eq('type', 'PROCEDURE_USAGE')
-              .gte('created_at', monthStart.toISOString())),
+              .gte('created_at', monthStart.toISOString()), 'carregar o giro do mês'),
 
         // Lotes com saldo vencendo em até 30 dias (inclui os já vencidos)
-        admin
+        ler(admin
           .from('product_batches')
           .select('product_id, expires_at')
           .in('product_id', productIds)
           .gt('quantity', 0)
-          .lte('expires_at', in30Days.toISOString()),
+          .lte('expires_at', in30Days.toISOString()), 'carregar os lotes vencendo'),
       ])
-    : [{ data: [] as any }, { data: [] as any }]
+    : [[], []]
 
   // -- KPIs ------------------------------------------------------------
   const valorEstoque = products.reduce(
@@ -159,8 +174,8 @@ export default async function AdminEstoquePage({
   )
 
   const costMap = Object.fromEntries(products.map(p => [p.id, p.costPrice]))
-  const valorGiro = (movementsRaw ?? []).reduce(
-    (sum: number, m: any) =>
+  const valorGiro = ((movementsRaw ?? []) as MovimentoLido[]).reduce(
+    (sum: number, m) =>
       sum + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? costMap[m.product_id] ?? 0),
     0,
   )

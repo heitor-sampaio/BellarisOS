@@ -19,6 +19,25 @@ import {
 } from '@/lib/metrics'
 import { seedDefaultFunnel } from '@/actions/crm-funnels'
 
+// -- Linhas como os selects as pedem ---------------------------------
+type Num = number | string | null
+type AgendamentoDeHoje = { id: string; status: string; branch_id: string }
+type PlanoPendente = {
+  id: string; branch_id: string; created_at: string
+  clients: { name: string } | null; branches: { name: string; slug: string } | null
+}
+type SaldoLido = {
+  current_stock: Num; min_stock: Num; branch_id: string
+  products: { name: string; is_active: boolean } | null
+  branches: { name: string; slug: string } | null
+}
+type ProcedimentoLido = {
+  id: string; name: string; price: Num; labor_cost: Num; other_costs: Num
+  procedure_products: { quantity: Num; products: { cost_price: Num } | null }[] | null
+}
+type MovimentoLido = { quantity: Num; unit_cost: Num; created_at: string; products: { cost_price: Num } | null }
+type ClienteLido = { id: string; name: string; birth_date: string | null; city: string | null; zip_code: string | null }
+
 export default async function AdminDashboardPage({
   searchParams,
 }: {
@@ -195,7 +214,7 @@ export default async function AdminDashboardPage({
     { data: [] }, { data: [] },
   ]
 
-  const todayAppts = (todayApptsRaw ?? []) as any[]
+  const todayAppts = (todayApptsRaw ?? []) as AgendamentoDeHoje[]
 
   // -- KPIs consolidados ---------------------------------------------
   const totalRevenue      = core.revenueCash
@@ -241,7 +260,7 @@ export default async function AdminDashboardPage({
     .filter(Boolean) as TodayBranchStat[]
 
   // -- Alertas -------------------------------------------------------
-  const pendingPlans: AlertPendingPlan[] = (pendingPlansRaw ?? []).map((p: any) => ({
+  const pendingPlans: AlertPendingPlan[] = ((pendingPlansRaw ?? []) as unknown as PlanoPendente[]).map(p => ({
     id:         p.id,
     clientName: p.clients?.name ?? 'Cliente',
     branchName: p.branches?.name ?? '—',
@@ -249,7 +268,7 @@ export default async function AdminDashboardPage({
     createdAt:  p.created_at,
   }))
 
-  const allBps = (bpsRaw ?? []) as any[]
+  const allBps = (bpsRaw ?? []) as unknown as SaldoLido[]
 
   const lowStockItems: AlertLowStock[] = allBps
     .filter(b => Number(b.current_stock) <= Number(b.min_stock) && Number(b.min_stock) > 0)
@@ -276,7 +295,7 @@ export default async function AdminDashboardPage({
   // Giro ao custo do MOVIMENTO (unit_cost), não ao custo atual do produto —
   // a coluna existe e antes nem era selecionada, então o giro era recalculado
   // toda vez que o preço de compra mudava.
-  const stockTurnover = ((stockMovementsRaw ?? []) as any[])
+  const stockTurnover = ((stockMovementsRaw ?? []) as unknown as MovimentoLido[])
     .reduce((s, m) => s + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? m.products?.cost_price ?? 0), 0)
 
   // Despesas do período. Simétrico à receita: só o que foi efetivamente pago
@@ -373,14 +392,14 @@ export default async function AdminDashboardPage({
 
   // 3. Margem por procedimento — inclui mão de obra e outros custos, que já
   // existem no cadastro e ficavam de fora (a margem saía sempre otimista).
-  const procedureMargins = ((proceduresRaw ?? []) as any[])
+  const procedureMargins = ((proceduresRaw ?? []) as unknown as ProcedimentoLido[])
     .map(proc => {
-      const inputs = ((proc.procedure_products as any[]) ?? []).reduce((s: number, pp: any) =>
+      const inputs = (proc.procedure_products ?? []).reduce((s: number, pp) =>
         s + (Number(pp.quantity) * Number(pp.products?.cost_price ?? 0)), 0)
       const cost      = inputs + Number(proc.labor_cost ?? 0) + Number(proc.other_costs ?? 0)
       const price     = Number(proc.price ?? 0)
       const marginPct = price > 0 ? ((price - cost) / price) * 100 : 0
-      return { name: proc.name as string, price, cost, marginPct }
+      return { name: proc.name, price, cost, marginPct }
     })
     .filter(p => p.price > 0)
     .sort((a, b) => b.marginPct - a.marginPct)
@@ -417,7 +436,7 @@ export default async function AdminDashboardPage({
   }))
 
   // 8. Distribuição de clientes por faixa etária
-  const clientsDemo = (clientsDemoRaw ?? []) as any[]
+  const clientsDemo = (clientsDemoRaw ?? []) as ClienteLido[]
   const now2        = new Date()
   const ageBuckets: Record<string, number> = { '< 18': 0, '18–25': 0, '26–35': 0, '36–45': 0, '46–55': 0, '55+': 0 }
   for (const c of clientsDemo) {

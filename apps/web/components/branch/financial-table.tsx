@@ -62,14 +62,14 @@ function fmtDatetime(iso: string) {
 type FilterType = 'all' | 'INCOME' | 'EXPENSE'
 type SortDir    = 'asc' | 'desc'
 
-export function FinancialTable({ transactions, branchId, slug, canReverse, canPay }: Props) {
+export function FinancialTable({ transactions, slug, canReverse, canPay }: Props) {
   const [search,     setSearch]     = useState('')
   const [filterType, setFilterType] = useState<FilterType>('all')
   const [filterPaid, setFilterPaid] = useState<'all' | 'paid' | 'pending'>('all')
   const [sortDir,    setSortDir]    = useState<SortDir>('desc')
 
   const router        = useRouter()
-  const [_p, startTx] = useTransition()
+  const [, startTx] = useTransition()
 
   // As actions devolvem `{ error }` quando não conseguem — descartar isso
   // fazia a tela recarregar e mostrar a linha igual, que é o mesmo que a
@@ -157,7 +157,7 @@ export function FinancialTable({ transactions, branchId, slug, canReverse, canPa
         />
 
         {/* Status */}
-        <select value={filterPaid} onChange={e => setFilterPaid(e.target.value as any)} className="filtro-select">
+        <select value={filterPaid} onChange={e => setFilterPaid(e.target.value as 'all' | 'paid' | 'pending')} className="filtro-select">
           <option value="all">Todos os status</option>
           <option value="paid">Pago</option>
           <option value="pending">Pendente</option>

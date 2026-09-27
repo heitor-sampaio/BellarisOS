@@ -65,7 +65,7 @@ function sha256(v: string): string {
  * O `ctwa_clid` vai em `user_data`, ao lado dos identificadores da pessoa; é
  * ele que liga o evento ao clique.
  */
-export function montarPayload(input: CapiInput, pixelId: string) {
+export function montarPayload(input: CapiInput) {
   const quando = Math.floor((input.ocorridoEm ?? new Date()).getTime() / 1000)
 
   const userData: Record<string, unknown> = {}
@@ -177,7 +177,7 @@ async function despachar(
     return
   }
 
-  const payload = montarPayload(input, config.pixelId)
+  const payload = montarPayload(input)
   let erro: string | null = null
 
   try {
@@ -190,7 +190,7 @@ async function despachar(
       },
     )
     if (!res.ok) {
-      const corpo = await res.json().catch(() => ({})) as any
+      const corpo = await res.json().catch(() => ({})) as { error?: { message?: string } }
       erro = corpo?.error?.message ?? `Graph API ${res.status}`
     }
   } catch (e) {

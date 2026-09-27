@@ -1,4 +1,3 @@
-import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference } from '@/lib/cached-queries'

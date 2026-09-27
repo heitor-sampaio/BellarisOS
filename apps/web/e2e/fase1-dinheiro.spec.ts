@@ -81,15 +81,16 @@ test('lançar receita na unidade escolhida e dar baixa — tudo pelo /admin', as
 
 async function esperarTransacao(descricao: string) {
   const db = banco()
-  let achada: any = null
+  type Transacao = { id: string; is_paid: boolean; paid_at: string | null; branch_id: string }
+  let achada: Transacao | null = null
   await expect.poll(async () => {
     const { data } = await db
       .from('financial_transactions')
       .select('id, is_paid, paid_at, branch_id')
       .eq('description', descricao)
       .maybeSingle()
-    achada = data
+    achada = data as Transacao | null
     return data?.id ?? null
   }, { message: `a transação "${descricao}" deveria ter sido gravada` }).not.toBeNull()
-  return achada as { id: string; is_paid: boolean; paid_at: string | null; branch_id: string }
+  return achada as unknown as Transacao
 }

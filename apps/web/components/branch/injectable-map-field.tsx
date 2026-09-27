@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Trash2, Check, Syringe, Plus, Minus, Maximize2 } from 'lucide-react'
 import { InjectableOutline, MAP_VIEWBOX, viewDe, partesDaView } from '@/components/shared/injectable-outline'
 import {
@@ -167,30 +167,33 @@ export function InjectableMapField({ value, products, canEdit, onChange }: Props
    * mínimo afastando), o evento passa adiante e a página rola normalmente. Sem
    * isso o componente viraria uma armadilha no meio de um formulário longo.
    */
+  // Evento de efeito: lê o zoom e o enquadramento ATUAIS sem precisar
+  // recadastrar o listener a cada mudança deles.
+  const aoRolar = useEffectEvent((e: WheelEvent) => {
+    const el = svgRef.current
+    if (!el) return
+    const aproximando = e.deltaY < 0
+    if ((aproximando && zoom >= ZOOM_MAX) || (!aproximando && zoom <= ZOOM_MIN)) return
+    e.preventDefault()
+
+    const rect = el.getBoundingClientRect()
+    if (!rect.width) return
+    const fx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const fy = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+
+    // Passo proporcional ao delta: trackpad manda eventos pequenos e
+    // contínuos, mouse manda saltos de ~100.
+    const fator = Math.exp(-e.deltaY * 0.0015)
+    aplicarZoomEm(zoom * Math.min(2, Math.max(0.5, fator)), fx, fy)
+  })
+
   useEffect(() => {
     const el = svgRef.current
     if (!el) return
-
-    function aoRolar(e: WheelEvent) {
-      const aproximando = e.deltaY < 0
-      if ((aproximando && zoom >= ZOOM_MAX) || (!aproximando && zoom <= ZOOM_MIN)) return
-      e.preventDefault()
-
-      const rect = el!.getBoundingClientRect()
-      if (!rect.width) return
-      const fx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
-      const fy = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
-
-      // Passo proporcional ao delta: trackpad manda eventos pequenos e
-      // contínuos, mouse manda saltos de ~100.
-      const fator = Math.exp(-e.deltaY * 0.0015)
-      aplicarZoomEm(zoom * Math.min(2, Math.max(0.5, fator)), fx, fy)
-    }
-
-    el.addEventListener('wheel', aoRolar, { passive: false })
-    return () => el.removeEventListener('wheel', aoRolar)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom, pan.x, pan.y])
+    const ouvinte = (e: WheelEvent) => aoRolar(e)
+    el.addEventListener('wheel', ouvinte, { passive: false })
+    return () => el.removeEventListener('wheel', ouvinte)
+  }, [])
 
   /**
    * Registra todo ponteiro que encosta na ilustração — inclusive o que começa

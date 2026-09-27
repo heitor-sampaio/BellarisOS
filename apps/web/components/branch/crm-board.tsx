@@ -1,10 +1,10 @@
 ﻿'use client'
 
-import { useState, useTransition, useRef, useEffect, useMemo } from 'react'
+import { useState, useTransition, useRef, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
   Plus, ArrowRight, ArrowRightLeft, Trash2, Phone, Mail, X, AlertTriangle,
-  MoreHorizontal, Compass, Tag as TagIcon, UserCog, Package,
+  MoreHorizontal,
 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
 import { updateLeadStage, deleteLead } from '@/actions/leads'
@@ -900,6 +900,20 @@ function LeadCard({
   )
 }
 
+// --- Relógio do quadro -------------------------------------------
+// Um "agora" que anda de minuto em minuto, lido por `useSyncExternalStore`.
+// Fora do componente porque é uma fonte externa: o render só LÊ o valor.
+let agoraDoRelogio: number | null = null
+
+function assinarRelogio(avisar: () => void): () => void {
+  agoraDoRelogio = Date.now()
+  avisar()
+  const id = setInterval(() => { agoraDoRelogio = Date.now(); avisar() }, 60000)
+  return () => clearInterval(id)
+}
+const lerRelogio = () => agoraDoRelogio
+const semRelogio = () => null
+
 // --- Board principal ---------------------------------------------
 export function CRMBoard({
   initialLeads, stages, allStages, funnels, funnelId, unidades,
@@ -908,7 +922,7 @@ export function CRMBoard({
   const [leads, setLeads]     = useState<Lead[]>(initialLeads)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [overStage,  setOverStage]  = useState<string | null>(null)
-  const [_pending,   startTransition] = useTransition()
+  const [, startTransition] = useTransition()
   const enterCounts = useRef<Record<string, number>>({})
 
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS)
@@ -916,19 +930,21 @@ export function CRMBoard({
 
   // "Agora" compartilhado para as métricas de aging; atualiza a cada minuto.
   //
-  // Começa NULO de propósito: calcular no servidor dá 'há 4min' e na hidratação
-  // 'há 5min', e o React descarta a árvore inteira por causa disso.
-  const [nowMs, setNowMs] = useState<number | null>(null)
-  useEffect(() => {
-    setNowMs(Date.now())
-    const id = setInterval(() => setNowMs(Date.now()), 60000)
-    return () => clearInterval(id)
-  }, [])
+  // NULO no servidor e na hidratação, de propósito: calcular no servidor dá
+  // 'há 4min' e na hidratação 'há 5min', e o React descarta a árvore inteira
+  // por causa disso. É o `getServerSnapshot` que garante isso.
+  const nowMs = useSyncExternalStore(assinarRelogio, lerRelogio, semRelogio)
+  // Base do filtro de período antes de o relógio começar a andar.
+  const [montadoEm] = useState(() => Date.now())
 
-  // Sincroniza quando o servidor revalida (ex: "Novo lead" do header da página)
-  useEffect(() => {
+  // Sincroniza quando o servidor revalida (ex: "Novo lead" do header da página).
+  // Ajustado durante o render, guardando a lista anterior; durante um arraste a
+  // lista nova é marcada como vista mas não aplicada, como antes.
+  const [leadsDoServidor, setLeadsDoServidor] = useState(initialLeads)
+  if (leadsDoServidor !== initialLeads) {
+    setLeadsDoServidor(initialLeads)
     if (!draggingId) setLeads(initialLeads)
-  }, [initialLeads])
+  }
 
   // Leads filtrados e ordenados (apenas para exibição; DnD usa `leads` completo)
   const visibleLeads = useMemo(() => {
@@ -957,7 +973,7 @@ export function CRMBoard({
 
     if (filters.period !== 'all') {
       const days   = filters.period === '7d' ? 7 : filters.period === '30d' ? 30 : 90
-      const cutoff = new Date(Date.now() - days * 864e5)
+      const cutoff = new Date((nowMs ?? montadoEm) - days * 864e5)
       result = result.filter(l => new Date(l.created_at) >= cutoff)
     }
 
@@ -968,7 +984,7 @@ export function CRMBoard({
       if (sort === 'name_desc') return b.name.localeCompare(a.name, 'pt-BR')
       return 0
     })
-  }, [leads, filters, sort])
+  }, [leads, filters, sort, nowMs, montadoEm])
 
   function handleLeadCreated(lead: Lead) {
     setLeads(prev => [lead, ...prev])

@@ -1,5 +1,6 @@
 ﻿import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { ComponentProps } from 'react'
 import { AdminAgendaView } from '@/components/admin/admin-agenda-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { dayKeyTZ, weekdayTZ, addDaysTZ, startOfDayTZ, endOfDayTZ } from '@/lib/datetime'
@@ -102,7 +103,7 @@ export default async function AdminAgendaPage({
 
   if (apptsError) console.error('[admin/agenda] appointments:', apptsError.message)
 
-  const appointments = (apptsRaw ?? []) as any[]
+  const appointments = (apptsRaw ?? []) as unknown as ComponentProps<typeof AdminAgendaView>['appointments']
 
   return (
     <>

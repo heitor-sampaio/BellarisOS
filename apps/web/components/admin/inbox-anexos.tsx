@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { Paperclip, Mic, Square, X, Send, AlertCircle, FileText } from 'lucide-react'
 
 /**
@@ -58,7 +59,12 @@ export interface Anexos {
   alternarGravacao:  () => void
   descartar:         () => void
   confirmar:         () => void
-  inputRef:   React.RefObject<HTMLInputElement | null>
+  /**
+   * Callback ref do input de arquivo. Não é o objeto ref: com um ref dentro de
+   * `Anexos`, o React Compiler trata o objeto inteiro como ref e recusa ler
+   * qualquer campo dele no render.
+   */
+  definirInput: (el: HTMLInputElement | null) => void
   aoEscolher: (e: React.ChangeEvent<HTMLInputElement>) => void
 }
 
@@ -74,27 +80,33 @@ export function useAnexos(onEnviar: (file: File, caption: string) => void): Anex
   const chunksRef   = useRef<Blob[]>([])
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const inputRef    = useRef<HTMLInputElement | null>(null)
+  const urlRef      = useRef<string | null>(null)
 
-  // Object URL vira memória vazada se não for revogado ao trocar de arquivo.
-  useEffect(() => {
-    if (!pendente) { setPreviewUrl(null); return }
-    const url = URL.createObjectURL(pendente)
-    setPreviewUrl(url)
-    return () => URL.revokeObjectURL(url)
-  }, [pendente])
+  const definirInput = useCallback((el: HTMLInputElement | null) => { inputRef.current = el }, [])
 
-  // Sair da tela gravando deixaria o microfone ligado.
+  // Trocar o arquivo troca a pré-visualização junto — no handler, não num
+  // efeito. Object URL vira memória vazada se não for revogado ao trocar.
+  const trocarPendente = useCallback((f: File | null) => {
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current)
+    urlRef.current = f ? URL.createObjectURL(f) : null
+    setPendente(f)
+    setPreviewUrl(urlRef.current)
+  }, [])
+
+  // Sair da tela gravando deixaria o microfone ligado; e a pré-visualização
+  // aberta, a memória presa.
   useEffect(() => () => {
     if (timerRef.current) clearInterval(timerRef.current)
     recorderRef.current?.stream.getTracks().forEach(t => t.stop())
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current)
   }, [])
 
   const aoEscolher = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     e.target.value = ''   // permite reescolher o mesmo arquivo depois
     if (!f) return
-    setErro(null); setCaption(''); setPendente(f)
-  }, [])
+    setErro(null); setCaption(''); trocarPendente(f)
+  }, [trocarPendente])
 
   const abrirSeletor = useCallback(() => {
     setErro(null)
@@ -131,7 +143,7 @@ export function useAnexos(onEnviar: (file: File, caption: string) => void): Anex
         // A extensão do nome importa em três lugares: vira o `docName` da
         // uazapi, define o caminho do arquivo no bucket, e o `type` decide o
         // `media_type` gravado na mensagem.
-        setPendente(new File([blob], `audio-${Date.now()}.${formato.ext}`, { type: tipo }))
+        trocarPendente(new File([blob], `audio-${Date.now()}.${formato.ext}`, { type: tipo }))
         setCaption('')
       }
 
@@ -143,44 +155,50 @@ export function useAnexos(onEnviar: (file: File, caption: string) => void): Anex
     } catch {
       setErro('Não foi possível usar o microfone. Confira a permissão no navegador.')
     }
-  }, [gravando, pararGravacao])
+  }, [gravando, pararGravacao, trocarPendente])
 
   const descartar = useCallback(() => {
-    setPendente(null); setCaption(''); setErro(null)
-  }, [])
+    trocarPendente(null); setCaption(''); setErro(null)
+  }, [trocarPendente])
 
   const confirmar = useCallback(() => {
     if (!pendente) return
     onEnviar(pendente, caption.trim())
-    setPendente(null); setCaption(''); setErro(null)
-  }, [pendente, caption, onEnviar])
+    trocarPendente(null); setCaption(''); setErro(null)
+  }, [pendente, caption, onEnviar, trocarPendente])
 
   return {
     pendente, previewUrl, caption, setCaption,
     gravando, segundos, erro,
     abrirSeletor, alternarGravacao, descartar, confirmar,
-    inputRef, aoEscolher,
+    definirInput, aoEscolher,
   }
 }
 
 // -- Painel de pré-envio (acima da linha do compositor) -----------------------
 
 export function PainelDeAnexo({ a, enviando }: { a: Anexos; enviando: boolean }) {
-  const ehImagem = a.pendente?.type.startsWith('image/')
-  const ehAudio  = a.pendente?.type.startsWith('audio/')
-  const ehVideo  = a.pendente?.type.startsWith('video/')
+  // Desestruturado de propósito: o callback ref vai no atributo `ref`, e o
+  // React Compiler passaria a tratar o objeto `a` inteiro como ref.
+  const {
+    pendente, previewUrl, caption, setCaption, gravando, segundos, erro,
+    alternarGravacao, descartar, confirmar, definirInput, aoEscolher,
+  } = a
+  const ehImagem = pendente?.type.startsWith('image/')
+  const ehAudio  = pendente?.type.startsWith('audio/')
+  const ehVideo  = pendente?.type.startsWith('video/')
 
   return (
     <>
       <input
-        ref={a.inputRef}
+        ref={definirInput}
         type="file"
-        onChange={a.aoEscolher}
+        onChange={aoEscolher}
         style={{ display: 'none' }}
         accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip"
       />
 
-      {a.gravando && (
+      {gravando && (
         <div style={{
           margin: '0 16px 8px', padding: '9px 12px', borderRadius: 10,
           border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)', background: 'var(--danger-soft)',
@@ -188,33 +206,33 @@ export function PainelDeAnexo({ a, enviando }: { a: Anexos; enviando: boolean })
         }}>
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--danger)', flexShrink: 0 }} />
           <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--danger)' }}>
-            Gravando · {duracaoLegivel(a.segundos)}
+            Gravando · {duracaoLegivel(segundos)}
           </span>
-          <button type="button" onClick={a.alternarGravacao} className="btn-primary"
+          <button type="button" onClick={alternarGravacao} className="btn-primary"
             style={{ marginLeft: 'auto', height: 30, padding: '0 12px', display: 'flex', alignItems: 'center', gap: 5 }}>
             <Square size={12} /> Parar
           </button>
         </div>
       )}
 
-      {(a.pendente || a.erro) && (
+      {(pendente || erro) && (
         <div style={{
           margin: '0 16px 8px', padding: 10, borderRadius: 10,
           border: '1px solid var(--border)', background: 'var(--bg-app)',
           display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          {a.erro && (
+          {erro && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 600 }}>
               <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-              <span>{a.erro}</span>
+              <span>{erro}</span>
             </div>
           )}
 
-          {a.pendente && (
+          {pendente && (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                {ehImagem && a.previewUrl ? (
-                  <img src={a.previewUrl} alt="" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                {ehImagem && previewUrl ? (
+                  <Image unoptimized src={previewUrl} alt="" width={52} height={52} style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
                 ) : (
                   <div style={{
                     width: 52, height: 52, borderRadius: 8, flexShrink: 0,
@@ -230,16 +248,16 @@ export function PainelDeAnexo({ a, enviando }: { a: Anexos; enviando: boolean })
                     margin: 0, fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>
-                    {a.pendente.name}
+                    {pendente.name}
                   </p>
                   <p style={{ margin: '2px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                    {tamanhoLegivel(a.pendente.size)}
+                    {tamanhoLegivel(pendente.size)}
                   </p>
-                  {ehAudio && a.previewUrl && <audio controls src={a.previewUrl} style={{ width: '100%', height: 30, marginTop: 5 }} />}
-                  {ehVideo && a.previewUrl && <video controls src={a.previewUrl} style={{ width: '100%', maxHeight: 120, marginTop: 5, borderRadius: 6 }} />}
+                  {ehAudio && previewUrl && <audio controls src={previewUrl} style={{ width: '100%', height: 30, marginTop: 5 }} />}
+                  {ehVideo && previewUrl && <video controls src={previewUrl} style={{ width: '100%', maxHeight: 120, marginTop: 5, borderRadius: 6 }} />}
                 </div>
 
-                <button type="button" onClick={a.descartar} className="btn-ghost"
+                <button type="button" onClick={descartar} className="btn-ghost"
                   style={{ height: 30, padding: '0 8px', flexShrink: 0 }}>
                   <X size={14} />
                 </button>
@@ -249,9 +267,9 @@ export function PainelDeAnexo({ a, enviando }: { a: Anexos; enviando: boolean })
                 {/* Áudio não tem legenda em lugar nenhum do WhatsApp. */}
                 {!ehAudio && (
                   <input
-                    value={a.caption}
-                    onChange={e => a.setCaption(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); a.confirmar() } }}
+                    value={caption}
+                    onChange={e => setCaption(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); confirmar() } }}
                     placeholder="Legenda (opcional)"
                     className="field"
                     style={{ flex: 1, fontSize: 'var(--text-sm-sz)' }}
@@ -260,7 +278,7 @@ export function PainelDeAnexo({ a, enviando }: { a: Anexos; enviando: boolean })
                 )}
                 <button
                   type="button"
-                  onClick={a.confirmar}
+                  onClick={confirmar}
                   disabled={enviando}
                   className="btn-primary"
                   style={{ marginLeft: ehAudio ? 'auto' : 0, display: 'flex', alignItems: 'center', gap: 6 }}

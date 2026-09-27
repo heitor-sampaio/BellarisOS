@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { savePushToken } from '@/actions/push-subscriptions'
 
 // Static import forces the wizard module into this chunk so it lands in the
@@ -10,11 +10,7 @@ import { savePushToken } from '@/actions/push-subscriptions'
 import '@/components/client-portal/new-appointment-wizard'
 
 export function CapacitorNavFix() {
-  const [layoutMounted, setLayoutMounted] = useState(false)
-
   useEffect(() => {
-    setLayoutMounted(true)
-
     let navCleanup: (() => void) | undefined
 
     import('@capacitor/core')
@@ -81,23 +77,7 @@ export function CapacitorNavFix() {
     return () => { navCleanup?.() }
   }, [])
 
-  return (
-    <div
-      style={{
-        position:      'fixed',
-        bottom:        84,
-        left:          8,
-        fontSize: 'var(--text-overline)',
-        color:         'var(--on-brand)',
-        background:    layoutMounted ? 'var(--success)' : 'var(--danger)',
-        padding:       '2px 7px',
-        borderRadius:  4,
-        zIndex:        9999,
-        pointerEvents: 'none',
-        fontFamily:    'monospace',
-      }}
-    >
-      {layoutMounted ? 'React ✓' : 'React ○'}
-    </div>
-  )
+  // Só efeito: a etiqueta "React ✓" que ficava fixa no canto da tela era
+  // diagnóstico de julho e aparecia para o cliente final.
+  return null
 }

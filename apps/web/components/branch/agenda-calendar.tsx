@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   format, addDays, subDays, addWeeks, subWeeks, addMonths, subMonths,
-  startOfWeek, endOfWeek, startOfMonth, endOfMonth, isSameDay,
+  startOfWeek, startOfMonth, endOfMonth, isSameDay,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -108,14 +108,14 @@ function navigate(view: ViewMode, date: Date, dir: 1 | -1): Date {
   return dir === 1 ? addMonths(date, 1) : subMonths(date, 1)
 }
 
-function todayDate(view: ViewMode): Date {
+function todayDate(): Date {
   return new Date()
 }
 
 // -- Component ----------------------------------------------------------------
 
 export function AgendaCalendar({
-  branchId, branchName, slug, events, procedures, professionals, rooms, canWrite, userRole,
+  branchId, slug, events, procedures, professionals, rooms, canWrite, userRole,
 }: AgendaCalendarProps) {
   const router = useRouter()
 
@@ -146,7 +146,7 @@ export function AgendaCalendar({
   }, [slug, router])
 
   // -- Slot click (open create modal) ----------------------------------------
-  function handleSlotClick(date: Date, _profId?: string) {
+  function handleSlotClick(date: Date) {
     if (!canWrite) return
     setDefaultDate(toLocalDT(date))
     setShowCreate(true)
@@ -243,7 +243,7 @@ export function AgendaCalendar({
             {!isCurrent(view, currentDate) && (
               <button
                 type="button"
-                onClick={() => setCurrentDate(todayDate(view))}
+                onClick={() => setCurrentDate(todayDate())}
                 style={{
                   fontSize: 'var(--text-xs-sz)', fontWeight: 700,
                   padding: '4px 10px', borderRadius: 'var(--radius-chip-token)',

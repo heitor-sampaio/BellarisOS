@@ -87,9 +87,8 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
       status:           a.status,
       clientName:       client?.name ?? '—',
       procedureName:    procedure?.name ?? '—',
-      isEvaluation:     Boolean((a as any).is_evaluation),
       professionalName: professional?.name ?? '—',
-      professionalId:   (a as any).professional_id as string ?? '',
+      professionalId:   a.professional_id ?? '',
       price:            String(a.price),
     }
   })

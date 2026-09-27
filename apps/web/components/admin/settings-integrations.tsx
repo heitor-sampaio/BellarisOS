@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import { useState, useTransition, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Phone, CheckCircle2, AlertCircle, Loader2, ChevronDown, ExternalLink, Megaphone,
@@ -27,10 +27,11 @@ import { MODOS_OFICIAIS, modoDaConfig, type ModoOficial } from '@/lib/whatsapp/m
  * tela de integrações inteira. Vazio no primeiro render, real logo depois.
  */
 function useOrigem(): string {
-  const [origem, setOrigem] = useState('')
-  useEffect(() => { setOrigem(window.location.origin) }, [])
-  return origem
+  // `useSyncExternalStore` com o valor do servidor vazio: é o jeito do React de
+  // ler algo do navegador sem divergir na hidratação (nem setState em efeito).
+  return useSyncExternalStore(semAssinatura, () => window.location.origin, () => '')
 }
+const semAssinatura = () => () => {}
 type ProviderType = WhatsAppConfig['provider']
 
 function Field({
@@ -419,7 +420,7 @@ function OfficialForm({ numero }: { numero?: NumeroNaTela }) {
 // --- Meta Ads — OAuth Connect -------------------------------------------------
 
 function MetaAdsConnect({
-  initial, metaStep, metaError, metaErrorReason,
+  initial, metaError, metaErrorReason,
 }: {
   initial?:          IntegrationConfig
   metaStep?:         string
@@ -1140,6 +1141,67 @@ interface SettingsIntegrationsProps {
 
 type Section = 'whatsapp' | 'meta_messaging' | 'meta_ads' | 'google_ads' | null
 
+/**
+ * Seção sanfona da tela. No módulo, e não dentro de `SettingsIntegrations`:
+ * declarada lá, virava um componente NOVO a cada render do pai, e o formulário
+ * aberto dentro dela remontava — perdendo o que estava digitado.
+ */
+function SectionCard({
+  id, section, setSection, icon, iconBg, iconColor, title, subtitle, isActive, children,
+}: {
+  id: Section; section: Section; setSection: (s: Section) => void
+  icon: React.ReactNode; iconBg: string; iconColor: string
+  title: string; subtitle: string; isActive: boolean; children: React.ReactNode
+}) {
+  const open = section === id
+  return (
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <button
+        type="button"
+        onClick={() => setSection(open ? null : id)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px 20px', border: 'none', cursor: 'pointer',
+          background: 'transparent', textAlign: 'left',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 10,
+            background: iconBg, border: `1.5px solid ${iconColor}33`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {icon}
+          </div>
+          <div>
+            <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', margin: 0 }}>{title}</p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', margin: 0, marginTop: 2 }}>{subtitle}</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isActive && (
+            <span style={{
+              fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+              background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)',
+            }}>
+              Ativo
+            </span>
+          )}
+          <ChevronDown
+            size={16} color="var(--text-faint)"
+            style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
+          />
+        </div>
+      </button>
+      {open && (
+        <div style={{ borderTop: '1px solid var(--hairline)', padding: '20px 24px' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo, metaStep, metaError, metaErrorReason }: SettingsIntegrationsProps) {
   const [section,    setSection]    = useState<Section>(
     metaStep === 'select_page' ? 'meta_messaging' : 'whatsapp',
@@ -1198,61 +1260,6 @@ export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo,
   const hasMetaMsg   = metaMsgConfig?.is_active
   const hasGoogleAds = googleAdsConfig?.is_active
 
-  function SectionCard({
-    id, icon, iconBg, iconColor, title, subtitle, isActive, children,
-  }: {
-    id: Section; icon: React.ReactNode; iconBg: string; iconColor: string
-    title: string; subtitle: string; isActive: boolean; children: React.ReactNode
-  }) {
-    const open = section === id
-    return (
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <button
-          type="button"
-          onClick={() => setSection(open ? null : id)}
-          style={{
-            width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '16px 20px', border: 'none', cursor: 'pointer',
-            background: 'transparent', textAlign: 'left',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: 10,
-              background: iconBg, border: `1.5px solid ${iconColor}33`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {icon}
-            </div>
-            <div>
-              <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)', margin: 0 }}>{title}</p>
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', margin: 0, marginTop: 2 }}>{subtitle}</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {isActive && (
-              <span style={{
-                fontSize: 'var(--text-2xs)', fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-                background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)',
-              }}>
-                Ativo
-              </span>
-            )}
-            <ChevronDown
-              size={16} color="var(--text-faint)"
-              style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
-            />
-          </div>
-        </button>
-        {open && (
-          <div style={{ borderTop: '1px solid var(--hairline)', padding: '20px 24px' }}>
-            {children}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 640 }}>
       {/* -- Seção: Comunicação ---------------------------------------------- */}
@@ -1261,7 +1268,7 @@ export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo,
       </p>
 
       <SectionCard
-        id="whatsapp"
+        id="whatsapp" section={section} setSection={setSection}
         icon={<Phone size={18} color="#25D366" />}
         iconBg="#25D36615" iconColor="#25D366"
         title="WhatsApp"
@@ -1356,7 +1363,7 @@ export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo,
       </SectionCard>
 
       <SectionCard
-        id="meta_messaging"
+        id="meta_messaging" section={section} setSection={setSection}
         icon={<Instagram size={18} color="#E1306C" />}
         iconBg="#E1306C15" iconColor="#E1306C"
         title="Instagram e Messenger"
@@ -1407,7 +1414,7 @@ export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo,
       </p>
 
       <SectionCard
-        id="meta_ads"
+        id="meta_ads" section={section} setSection={setSection}
         icon={<Megaphone size={18} color="#1877F2" />}
         iconBg="#1877F215" iconColor="#1877F2"
         title="Meta Ads"
@@ -1418,7 +1425,7 @@ export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo,
       </SectionCard>
 
       <SectionCard
-        id="google_ads"
+        id="google_ads" section={section} setSection={setSection}
         icon={<Megaphone size={18} color="#34A853" />}
         iconBg="#34A85315" iconColor="#34A853"
         title="Google Ads"

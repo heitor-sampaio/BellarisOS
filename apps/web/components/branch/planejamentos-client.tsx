@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { Search, Plus, ClipboardList, Loader2, User } from 'lucide-react'
 import { listarPlanejamentos, criarPlanoDoCliente } from '@/actions/treatment-plans'
 import { SegSelect } from '@/components/shared/seg-select'
-import type { TreatmentProcedure, AvailableProduct } from '@/components/branch/treatment-plan-editor'
 
 /**
  * Tela de planejamentos: lista, busca e criação.

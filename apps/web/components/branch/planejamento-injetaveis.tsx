@@ -39,14 +39,23 @@ export function PlanejamentoInjetaveis({
   const [criando, setCriando] = useState(false)
   const [erro,   setErro]   = useState<string | null>(null)
 
-  const carregar = useCallback(async () => {
-    const res = await listarPlanejamentosDoCliente(clientId)
+  const aplicar = useCallback((res: Awaited<ReturnType<typeof listarPlanejamentosDoCliente>>) => {
     if (res.error) { setErro(res.error); return }
     setErro(null)
     setMapas(res.mapas)
-  }, [clientId])
+  }, [])
 
-  useEffect(() => { void carregar() }, [carregar])
+  const carregar = useCallback(async () => {
+    aplicar(await listarPlanejamentosDoCliente(clientId))
+  }, [clientId, aplicar])
+
+  // A busca inicial aplica no `.then`: o efeito só dispara, quem grava estado é
+  // a resposta.
+  useEffect(() => {
+    let vivo = true
+    listarPlanejamentosDoCliente(clientId).then(res => { if (vivo) aplicar(res) })
+    return () => { vivo = false }
+  }, [clientId, aplicar])
 
   const controlado = typeof onAbrir === 'function'
   const aberto     = controlado ? (abertoId ?? null) : abertoLocal

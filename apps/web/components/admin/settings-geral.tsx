@@ -24,13 +24,18 @@ export function SettingsGeral({ rede, podeEditar }: { rede: DadosDaRede; podeEdi
 
   // O "salvo" é um aviso, não um estado: ele some sozinho, senão fica na tela
   // dizendo que algo acabou de acontecer muito depois de ter acontecido.
+  // Acender o aviso é no render, quando chega um resultado novo; o efeito só
+  // cuida de apagá-lo (e recomeça a contagem a cada salvamento).
+  const [estadoVisto, setEstadoVisto] = useState(estado)
+  if (estadoVisto !== estado) {
+    setEstadoVisto(estado)
+    if (estado && 'success' in estado) setSalvo(true)
+  }
   useEffect(() => {
-    if (estado && 'success' in estado) {
-      setSalvo(true)
-      const id = setTimeout(() => setSalvo(false), 4000)
-      return () => clearTimeout(id)
-    }
-  }, [estado])
+    if (!salvo) return
+    const id = setTimeout(() => setSalvo(false), 4000)
+    return () => clearTimeout(id)
+  }, [salvo, estado])
 
   const erro = estado && 'error' in estado ? estado.error : null
 

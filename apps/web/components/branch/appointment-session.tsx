@@ -1076,7 +1076,7 @@ export function AppointmentSession({
       available={availableProducts}
       checkedIds={checkedIds}
       readonly={isDone}
-      onToggle={id => setCheckedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })}
+      onToggle={id => setCheckedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })}
       onChangeQty={(id, qty) => setInsumos(prev => prev.map(i => i.productId === id ? { ...i, quantity: qty } : i))}
       onAdd={p => setInsumos(prev => [...prev, { productId: p.id, name: p.name, unit: p.unit, quantity: 1 }])}
       onRemove={id => { setInsumos(prev => prev.filter(i => i.productId !== id)); setCheckedIds(prev => { const n = new Set(prev); n.delete(id); return n }) }}

@@ -3,9 +3,8 @@
 import React, { useActionState, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Star, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck } from 'lucide-react'
+import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Star, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus } from '@/actions/clients'
-import { TreatmentSessionsModal } from './treatment-sessions-modal'
 import { TreatmentFileModal } from './treatment-file-modal'
 import { ClientDocumentsTab } from './client-documents-tab'
 import type { ClientDocumentItem } from './client-documents-tab'
@@ -272,10 +271,6 @@ function fmtBRL(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function maskCPF(doc: string) {
-  return doc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-}
-
 // -- Sub-components -----------------------------------------------------------
 
 const STATUS_LABEL: Record<string, string> = {
@@ -317,8 +312,7 @@ const PAYMENT_LABEL: Record<string, string> = {
 type HistoryCfg = {
   dotColor: string
   bgColor:  string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Icon:     React.FC<any>
+  Icon:     LucideIcon
 }
 const HISTORY_CONFIG: Record<ClientHistoryEvent['type'], HistoryCfg> = {
   CLIENT_CREATED:        { dotColor: 'var(--brand)', bgColor: 'var(--brand-soft)', Icon: UserPlus },
@@ -345,7 +339,7 @@ function fmtHistoryDate(dateStr: string): string {
   return format(date, "dd 'de' MMM 'de' yyyy", { locale: ptBR })
 }
 
-function HistoryEventRow({ ev, isLast, slug }: { ev: ClientHistoryEvent; isLast: boolean; slug: string }) {
+function HistoryEventRow({ ev, isLast }: { ev: ClientHistoryEvent; isLast: boolean }) {
   const cfg = HISTORY_CONFIG[ev.type]
 
   const content = (
@@ -1019,16 +1013,9 @@ function FinanceiroTab({
 
 // -- Main component ------------------------------------------------------------
 
-const STATUS_ICON: Record<string, React.ReactNode> = {
-  SCHEDULED:   <Clock size={11} />,
-  CONFIRMED:   <Clock size={11} />,
-  IN_PROGRESS: <Clock size={11} />,
-  COMPLETED:   <CheckCircle2 size={11} />,
-}
-
 export function ClientProfile({
-  client, branchId, stats, upcomingAppointments, recentAppointments, allAppointments,
-  loyaltyBalance, activePackage, sessionNotes,
+  client, branchId, stats, upcomingAppointments, recentAppointments,
+  loyaltyBalance, activePackage,
   transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false,
 }: Props) {
@@ -1433,7 +1420,6 @@ export function ClientProfile({
                   key={ev.id}
                   ev={ev}
                   isLast={i === clientHistory.length - 1}
-                  slug={slug}
                 />
               ))}
             </div>

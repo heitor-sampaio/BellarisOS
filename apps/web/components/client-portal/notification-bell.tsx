@@ -187,7 +187,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
       active = false
       supabase.removeChannel(channel)
     }
-  }, [clientId])
+  }, [clientId, router])
 
   // Registra o token de push na montagem — silencioso se a permissão já foi
   // concedida. Cobre o caso da migração: quem já autorizou re-registra o token

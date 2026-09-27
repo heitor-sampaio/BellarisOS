@@ -190,7 +190,11 @@ async function aplicacoesDoCliente(
     .eq('client_id', clientId)
     .order('applied_at', { ascending: false }), 'carregar as aplicações')
 
-  return (data ?? []).map((a: any) => ({
+  type AplicacaoLida = {
+    id: string; appointment_id: string | null; applied_at: string; notes: string | null
+    view: unknown; points: unknown; totals: unknown; users: { name?: string } | null
+  }
+  return ((data ?? []) as unknown as AplicacaoLida[]).map(a => ({
     id:            a.id as string,
     appointmentId: (a.appointment_id as string | null) ?? null,
     appliedAt:     a.applied_at as string,
@@ -392,7 +396,7 @@ export async function listarPlanejamentosDoCliente(clientId: string): Promise<{
   if (error) return { mapas: [], error: `Não foi possível carregar: ${error.message}` }
 
   const aplicacoes = await contarAplicacoes(admin, [clientId])
-  return { mapas: (data ?? []).map(l => linhaDaLista(l as any, aplicacoes)) }
+  return { mapas: ((data ?? []) as unknown as MapaLido[]).map(l => linhaDaLista(l, aplicacoes)) }
 }
 
 /**
@@ -422,7 +426,7 @@ export async function listarMapasDeInjetaveis({ branchId }: { branchId: string |
   const { data, error } = await q
   if (error) return { mapas: [], error: `Não foi possível carregar os planejamentos: ${error.message}` }
 
-  const linhas = (data ?? []) as any[]
+  const linhas = (data ?? []) as unknown as MapaLido[]
   const ids = linhas.map(l => l.client_id).filter(Boolean) as string[]
   const aplicacoes = await contarAplicacoes(admin, ids)
 
@@ -454,7 +458,13 @@ async function contarAplicacoes(
   return porCliente
 }
 
-function linhaDaLista(l: any, aplicacoes: ResumoAplicacoes): MapaNaLista {
+/** A linha de `injectable_maps` como as duas listagens a pedem. */
+type MapaLido = {
+  id: string; name: string | null; client_id: string | null; points: unknown; updated_at: string | null
+  clients: { name?: string; phone?: string } | null; branches: { name?: string } | null
+}
+
+function linhaDaLista(l: MapaLido, aplicacoes: ResumoAplicacoes): MapaNaLista {
   const pontos = (l.points as InjectableMapValue['points']) ?? []
   const produtos = [...new Set(pontos.map(p => p.product?.trim()).filter(Boolean) as string[])]
   const clientId = (l.client_id as string | null) ?? null

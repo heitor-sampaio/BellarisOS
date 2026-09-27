@@ -54,13 +54,13 @@ export default async function AdminClientProfilePage({
     notes:             raw.notes ?? null,
     isActive:          raw.is_active,
     createdAt:         raw.created_at,
-    zipCode:           (raw as any).zip_code ?? null,
-    address:           (raw as any).address ?? null,
-    addressNumber:     (raw as any).address_number ?? null,
-    addressComplement: (raw as any).address_complement ?? null,
-    neighborhood:      (raw as any).neighborhood ?? null,
-    city:              (raw as any).city ?? null,
-    state:             (raw as any).state ?? null,
+    zipCode:           raw.zip_code ?? null,
+    address:           raw.address ?? null,
+    addressNumber:     raw.address_number ?? null,
+    addressComplement: raw.address_complement ?? null,
+    neighborhood:      raw.neighborhood ?? null,
+    city:              raw.city ?? null,
+    state:             raw.state ?? null,
   }
 
   const [
@@ -227,7 +227,7 @@ export default async function AdminClientProfilePage({
     const sessions   = plan.treatment_plan_sessions ?? []
     const totalSess  = sessions.length
     const completedSess = (appts ?? []).filter(
-      (a: { status: string }) => a.status === 'COMPLETED' && (a as any).treatment_plan_id === plan.id
+      (a: { status: string; treatment_plan_id: string | null }) => a.status === 'COMPLETED' && a.treatment_plan_id === plan.id
     ).length
     const firstProc  = sessions[0]?.treatment_plan_session_procedures?.[0] ?? null
     const allProcNames = [...new Set(sessions.flatMap(s =>
@@ -321,7 +321,7 @@ export default async function AdminClientProfilePage({
     CREDIT_CARD: 'Crédito', INTERNAL_CREDIT: 'Crédito interno',
   }
 
-  const appAccountCreatedAt = (raw as any).app_account_created_at as string | null
+  const appAccountCreatedAt = raw.app_account_created_at as string | null
 
   type RawHistoryPlan  = { id: string; status: string; created_at: string; updated_at: string | null }
   type RawConsentTerm  = { id: string; title: string; signed_at: string | null; signed_via: string | null }
@@ -341,14 +341,14 @@ export default async function AdminClientProfilePage({
     const prof   = (a.professional as { name?: string } | null)?.name ?? '—'
     const label  = proc
 
-    if (a.status === 'COMPLETED' && (a as any).completed_at) {
-      history.push({ id: uid('ac'), date: (a as any).completed_at, type: 'APPOINTMENT_COMPLETED', title: `Atendimento: ${label}`, subtitle: `com ${prof}`, amount: parseFloat(String(a.price ?? 0)), link: `/admin/agenda/${a.id}` })
-    } else if (a.status === 'CANCELLED' && (a as any).cancelled_at) {
-      history.push({ id: uid('ax'), date: (a as any).cancelled_at, type: 'APPOINTMENT_CANCELLED', title: `Cancelado: ${label}`, subtitle: null, amount: null, link: `/admin/agenda/${a.id}` })
+    if (a.status === 'COMPLETED' && a.completed_at) {
+      history.push({ id: uid('ac'), date: a.completed_at, type: 'APPOINTMENT_COMPLETED', title: `Atendimento: ${label}`, subtitle: `com ${prof}`, amount: parseFloat(String(a.price ?? 0)), link: `/admin/agenda/${a.id}` })
+    } else if (a.status === 'CANCELLED' && a.cancelled_at) {
+      history.push({ id: uid('ax'), date: a.cancelled_at, type: 'APPOINTMENT_CANCELLED', title: `Cancelado: ${label}`, subtitle: null, amount: null, link: `/admin/agenda/${a.id}` })
     } else if (a.status === 'NO_SHOW') {
       history.push({ id: uid('an'), date: a.scheduled_at, type: 'APPOINTMENT_NO_SHOW', title: `Não compareceu: ${label}`, subtitle: null, amount: null, link: `/admin/agenda/${a.id}` })
     } else {
-      history.push({ id: uid('as'), date: (a as any).created_at ?? a.scheduled_at, type: 'APPOINTMENT_SCHEDULED', title: `Agendamento: ${label}`, subtitle: `${format(new Date(a.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} · ${prof}`, amount: null, link: `/admin/agenda/${a.id}` })
+      history.push({ id: uid('as'), date: a.created_at ?? a.scheduled_at, type: 'APPOINTMENT_SCHEDULED', title: `Agendamento: ${label}`, subtitle: `${format(new Date(a.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} · ${prof}`, amount: null, link: `/admin/agenda/${a.id}` })
     }
   }
 
@@ -370,13 +370,14 @@ export default async function AdminClientProfilePage({
 
   for (const pkg of pkgsArray) {
     const sp      = pkg.service_packages as { name?: string; price?: number } | null
-    const pkgDate = (pkg as any).purchased_at ?? (pkg as any).created_at as string | undefined
+    const pkgDate = (pkg as { purchased_at?: string | null; created_at?: string | null }).purchased_at
+      ?? (pkg as { created_at?: string | null }).created_at ?? undefined
     if (pkgDate) {
       history.push({ id: uid('pkg'), date: pkgDate, type: 'PACKAGE_PURCHASED', title: `Pacote adquirido: ${sp?.name ?? 'Pacote'}`, subtitle: `${pkg.total_sessions} sessões`, amount: Number(sp?.price ?? 0), link: null })
     }
   }
 
-  const consentTerms = (medRecord as any)?.consent_terms as RawConsentTerm[] | null
+  const consentTerms = (medRecord as { consent_terms?: RawConsentTerm[] | null } | null)?.consent_terms ?? null
   for (const term of (consentTerms ?? [])) {
     if (term.signed_at) {
       history.push({ id: uid('ct'), date: term.signed_at, type: 'CONSENT_SIGNED', title: `Assinado: ${term.title}`, subtitle: term.signed_via === 'web' ? 'Na recepção' : term.signed_via === 'mobile' ? 'No app' : null, amount: null, link: null })

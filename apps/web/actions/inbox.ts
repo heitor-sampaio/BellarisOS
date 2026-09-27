@@ -4,7 +4,7 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { nomesDeAnuncios, type NomesDoAnuncio } from '@/lib/ads/ad-lookup'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
-import { emitirEventoDeLead, eventoDoDesfecho } from '@/lib/events/lead'
+import { emitirEventoDeLead } from '@/lib/events/lead'
 import { EVENTOS } from '@estetica-os/types'
 import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { revalidatePath } from 'next/cache'
@@ -164,6 +164,28 @@ export interface ReplyPreview {
   id:         string | null
 }
 
+// -- As linhas como as consultas deste arquivo as pedem ------------------------
+
+/** A conversa crua: o que `anexarDadosDoCard` completa para virar `Conversation`. */
+type LinhaDeConversa = Omit<Conversation,
+  | 'branch_name' | 'lead_tags' | 'eh_cliente' | 'veio_de_anuncio' | 'numero_provider' | 'numero_label'
+  | 'owner_ids' | 'owner_names' | 'stage_ids' | 'stage_names' | 'funnel_ids' | 'funnel_names' | 'abertas'
+> & {
+  branches?:    { name?: string } | null
+  attribution?: Record<string, unknown> | null
+}
+
+/** O aviso de anúncio como fica gravado em `messages.ad_referral`. */
+interface ReferenciaDoAnuncio {
+  source_id?: string | null; source_url?: string | null; source_app?: string | null
+  headline?: string | null; body?: string | null; thumbnail_data?: string | null
+}
+
+/** A mensagem crua mais o que a leitura lhe acrescenta. */
+type MensagemLida = Message & { ad_referral?: ReferenciaDoAnuncio | null }
+
+type EtapaLida = { id: string; name: string; funnel_id: string | null; outcome: string | null }
+
 export async function getConversations(
   /**
    * Conversa que deve entrar na lista mesmo sem mensagem nenhuma.
@@ -234,7 +256,7 @@ export async function getConversations(
     return []
   }
 
-  return anexarDadosDoCard((data ?? []) as any[], ctx.tenantId!)
+  return anexarDadosDoCard((data ?? []) as unknown as LinhaDeConversa[], ctx.tenantId!)
 }
 
 
@@ -251,7 +273,7 @@ export async function getConversations(
  * relacionamento seja inferido sem ambiguidade, e quando ele falha o retorno vem
  * sem o campo em vez de estourar — o filtro não acharia nada, em silêncio.
  */
-async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Conversation[]> {
+async function anexarDadosDoCard(conversas: LinhaDeConversa[], tenantId: string): Promise<Conversation[]> {
   // As caixas da rede, uma consulta só, mapeadas em memória — a rede tem
   // punhado delas, e um embed do PostgREST aqui repetiria o erro que este
   // arquivo já documenta: relacionamento ambíguo volta sem o campo, em silêncio.
@@ -287,14 +309,14 @@ async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Co
     }
   }
 
-  const base = (c: any): Conversation => {
+  const base = (c: LinhaDeConversa): Conversation => {
     const caixa = c.whatsapp_number_id ? caixas.get(c.whatsapp_number_id) : undefined
     return {
       ...c,
       branch_name: c.branches?.name ?? null,
       lead_tags:   (c.contato_id ? tagsPorContato.get(c.contato_id) : null) ?? [],
       eh_cliente:  !!c.client_id,
-      veio_de_anuncio: !!(c.attribution as Record<string, unknown> | null)?.ad_id,
+      veio_de_anuncio: !!c.attribution?.ad_id,
       numero_provider: caixa?.provider ?? null,
       numero_label:    caixa?.label    ?? null,
       owner_ids: [], owner_names: [], stage_ids: [], stage_names: [],
@@ -325,7 +347,8 @@ async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Co
     return conversas.map(base)
   }
 
-  const linhas = (leads ?? []) as any[]
+  type LeadDaPessoa = { contato_id: string; owner_id: string | null; crm_stage_id: string | null }
+  const linhas = (leads ?? []) as LeadDaPessoa[]
   const stageIds = [...new Set(linhas.map(l => l.crm_stage_id).filter(Boolean))] as string[]
   const ownerIds = [...new Set(linhas.map(l => l.owner_id).filter(Boolean))] as string[]
 
@@ -341,25 +364,26 @@ async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Co
   if (stagesRes.error) console.error('[getConversations] etapas:', stagesRes.error.message)
   if (ownersRes.error) console.error('[getConversations] donos:', ownersRes.error.message)
 
-  const porStage = new Map((stagesRes.data ?? []).map((s: any) => [s.id as string, s]))
-  const porOwner = new Map((ownersRes.data ?? []).map((u: any) => [u.id as string, u.name as string]))
+  const etapas   = (stagesRes.data ?? []) as EtapaLida[]
+  const porStage = new Map(etapas.map(s => [s.id, s]))
+  const porOwner = new Map(((ownersRes.data ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
 
-  const funnelIds = [...new Set((stagesRes.data ?? []).map((s: any) => s.funnel_id).filter(Boolean))] as string[]
+  const funnelIds = [...new Set(etapas.map(s => s.funnel_id).filter(Boolean))] as string[]
   const { data: funis, error: erroFunis } = funnelIds.length > 0
     ? await admin.from('crm_funnels').select('id, name').in('id', funnelIds)
     : { data: [], error: null }
   if (erroFunis) console.error('[getConversations] funis:', erroFunis.message)
-  const porFunil = new Map((funis ?? []).map((f: any) => [f.id as string, f.name as string]))
+  const porFunil = new Map(((funis ?? []) as { id: string; name: string }[]).map(f => [f.id, f.name]))
 
-  const porContato = new Map<string, any[]>()
+  const porContato = new Map<string, LeadDaPessoa[]>()
   for (const l of linhas) {
-    const id = l.contato_id as string
+    const id = l.contato_id
     if (!porContato.has(id)) porContato.set(id, [])
     porContato.get(id)!.push(l)
   }
 
   return conversas.map(c => {
-    const minhas = c.contato_id ? porContato.get(c.contato_id as string) ?? [] : []
+    const minhas = c.contato_id ? porContato.get(c.contato_id) ?? [] : []
     const agregado = base(c)
 
     for (const l of minhas) {
@@ -397,16 +421,17 @@ async function anexarDadosDoCard(conversas: any[], tenantId: string): Promise<Co
  * mais ficam com prévia nula — a citação some, a resposta permanece.
  */
 async function anexarCitacoes(
-  mensagens: any[], conversationId: string, tenantId: string,
-): Promise<any[]> {
+  mensagens: MensagemLida[], conversationId: string, tenantId: string,
+): Promise<MensagemLida[]> {
   const citados = new Set(
     mensagens.map(m => m.reply_to_external_id).filter(Boolean) as string[],
   )
   if (citados.size === 0) return mensagens
 
-  const porExternalId = new Map<string, any>()
+  type Citada = Pick<Message, 'content' | 'direction' | 'media_type'> & { id: string | null; external_id?: string | null }
+  const porExternalId = new Map<string, Citada>()
   for (const m of mensagens) {
-    if (m.external_id) porExternalId.set(m.external_id as string, m)
+    if (m.external_id) porExternalId.set(m.external_id, m)
   }
 
   const faltantes = [...citados].filter(id => !porExternalId.has(id))
@@ -418,12 +443,12 @@ async function anexarCitacoes(
       .eq('tenant_id', tenantId)
       .in('external_id', faltantes)
     if (error) console.error('[anexarCitacoes]', error.message)
-    for (const m of (data ?? []) as any[]) porExternalId.set(m.external_id as string, m)
+    for (const m of (data ?? []) as (Citada & { external_id: string })[]) porExternalId.set(m.external_id, m)
   }
 
   return mensagens.map(m => {
     if (!m.reply_to_external_id) return m
-    const citada = porExternalId.get(m.reply_to_external_id as string)
+    const citada = porExternalId.get(m.reply_to_external_id)
     return {
       ...m,
       reply_preview: citada
@@ -485,11 +510,11 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
     .order('created_at', { ascending: true })
     .limit(500), 'carregar as mensagens')
 
-  const linhas = (data ?? []) as any[]
+  const linhas = (data ?? []) as unknown as Omit<MensagemLida, 'media_url'>[]
 
   // O bucket é privado: a foto de uma cliente não pode ficar acessível por
   // URL adivinhável. Cada mídia vira um link assinado na leitura.
-  const mensagens = await Promise.all(linhas.map(async (m: any) => ({
+  const mensagens: MensagemLida[] = await Promise.all(linhas.map(async m => ({
     ...m,
     media_url: m.media_path ? await urlDaMidia(m.media_path) : null,
   })))
@@ -515,7 +540,7 @@ function plataformaDoLink(url: string | null | undefined): string | null {
  * vinda de anúncio — saber que veio já muda o atendimento, mesmo sem o nome
  * da campanha.
  */
-async function anexarAnuncios(mensagens: any[], tenantId: string): Promise<any[]> {
+async function anexarAnuncios(mensagens: MensagemLida[], tenantId: string): Promise<MensagemLida[]> {
   const comRef = mensagens.filter(m => m.ad_referral)
   if (comRef.length === 0) return mensagens
 
@@ -547,7 +572,7 @@ async function anexarAnuncios(mensagens: any[], tenantId: string): Promise<any[]
       body:         ref.body ?? null,
       sourceUrl:    ref.source_url ?? null,
       // O provedor diz a plataforma quando sabe; o link é o palpite de reserva.
-      plataforma:   (ref.source_app as string | null) ?? plataformaDoLink(ref.source_url),
+      plataforma:   ref.source_app ?? plataformaDoLink(ref.source_url),
       adName:       n?.adName ?? null,
       adsetName:    n?.adsetName ?? null,
       campaignName: n?.campaignName ?? null,
@@ -686,8 +711,8 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   if (erroConv) { console.error('[getConversationCard]', erroConv.message); return null }
   if (!conv) return null
 
-  const c = conv as any
-  const clientId = c.client_id as string | null
+  const c = conv as { contact_name: string | null; contact_phone: string | null; client_id: string | null; channel: string; contato_id: string | null }
+  const clientId = c.client_id
 
   const funis  = await seedDefaultFunnel(ctx.tenantId!)
   const stages = (await listAllStages(ctx.tenantId!)) as InboxStage[]
@@ -709,11 +734,11 @@ export async function getConversationCard(conversationId: string): Promise<Conve
     .eq('is_active', true)
     .order('name')
   if (erroProc) console.error('[getConversationCard] procedimentos:', erroProc.message)
-  const procedimentos = ((procRows ?? []) as any[]).map(p => ({
-    id: p.id as string, name: p.name as string, price: Number(p.price ?? 0),
+  const procedimentos = ((procRows ?? []) as { id: string; name: string; price: number | string | null }[]).map(p => ({
+    id: p.id, name: p.name, price: Number(p.price ?? 0),
   }))
 
-  const contatoId = c.contato_id as string | null
+  const contatoId = c.contato_id
 
   const [cliente, oportunidades, outrasThreads, tagsDaPessoa] = await Promise.all([
     clientId ? buscarCliente(admin, ctx.tenantId!, clientId) : Promise.resolve(null),
@@ -865,20 +890,26 @@ async function buscarOportunidades(
     .order('created_at', { ascending: false })
 
   if (error) { console.error('[getConversationCard] oportunidades:', error.message); return [] }
-  const linhas = (data ?? []) as any[]
+  type LeadLido = {
+    id: string; name: string; phone: string | null; email: string | null; social_media: string | null
+    source: string | null; notes: string | null; crm_stage_id: string | null; tags: string[] | null
+    branch_id: string | null; client_id: string | null; owner_id: string | null; created_at: string
+    value: number | string | null; lead_procedures: { procedure_id: string }[] | null
+  }
+  const linhas = (data ?? []) as unknown as LeadLido[]
   if (linhas.length === 0) return []
 
   const porEtapa = new Map(stages.map(s => [s.id, s]))
   const funis = new Map(
     (await admin.from('crm_funnels').select('id, name').eq('tenant_id', tenantId)).data
-      ?.map((f: any) => [f.id as string, f.name as string]) ?? [],
+      ?.map(f => [f.id as string, f.name as string] as const) ?? [],
   )
 
   const ownerIds = [...new Set(linhas.map(l => l.owner_id).filter(Boolean))] as string[]
   const donos = new Map<string, string>()
   if (ownerIds.length > 0) {
     const users = await ler(admin.from('users').select('id, name').in('id', ownerIds), 'carregar a equipe')
-    for (const u of (users ?? []) as any[]) donos.set(u.id, u.name)
+    for (const u of (users ?? []) as { id: string; name: string }[]) donos.set(u.id, u.name)
   }
 
   return linhas.map(l => {
@@ -886,9 +917,9 @@ async function buscarOportunidades(
     return {
       id: l.id, name: l.name, phone: l.phone, email: l.email,
       social_media: l.social_media, source: l.source, notes: l.notes,
-      crm_stage_id: l.crm_stage_id, tags: (l.tags ?? []) as string[],
+      crm_stage_id: l.crm_stage_id, tags: l.tags ?? [],
       branch_id: l.branch_id, client_id: l.client_id,
-      procedure_ids: ((l.lead_procedures ?? []) as { procedure_id: string }[]).map(p => p.procedure_id),
+      procedure_ids: (l.lead_procedures ?? []).map(p => p.procedure_id),
       value:       l.value === null || l.value === undefined ? null : Number(l.value),
       stage_name:  etapa?.name ?? null,
       funnel_id:   etapa?.funnel_id ?? null,
@@ -933,7 +964,11 @@ export async function criarOportunidade(
 
   if (erroConv) return { ok: false, error: erroConv.message }
   if (!conv)    return { ok: false, error: 'Conversa não encontrada.' }
-  const c = conv as any
+  const c = conv as {
+    contact_name: string | null; contact_phone: string | null; contact_external_id: string | null
+    client_id: string | null; branch_id: string | null; channel: string
+    attribution: Record<string, string | undefined> | null; lead_id: string | null; contato_id: string | null
+  }
   // O gatilho dá pessoa a toda conversa; sem ela, a oportunidade nasceria sem
   // dono (`leads.contato_id` é NOT NULL) — melhor dizer do que chutar.
   if (!c.contato_id) return { ok: false, error: 'Esta conversa ainda não está ligada a um contato.' }
@@ -1090,7 +1125,7 @@ async function propagarParaOportunidades(
 
   if (error) { console.error('[atualizarContato] oportunidades:', error.message); return }
 
-  for (const lead of (data ?? []) as any[]) {
+  for (const lead of (data ?? []) as { id: string; name: string | null; phone: string | null }[]) {
     const patch: Record<string, unknown> = {}
     const changes: { campo: string; de: string | null; para: string | null }[] = []
 
@@ -1154,7 +1189,7 @@ export async function definirSituacaoOportunidade(
   if (!lead)    return { ok: false, error: 'Oportunidade não encontrada.' }
 
   const stages = (await listAllStages(ctx.tenantId!)) as InboxStage[]
-  const atual  = stages.find(s => s.id === (lead as any).crm_stage_id)
+  const atual  = stages.find(s => s.id === (lead as { crm_stage_id: string | null }).crm_stage_id)
   if (!atual) return { ok: false, error: 'Oportunidade sem etapa. Escolha um funil antes de concluir.' }
 
   // Reabrir volta para a PRIMEIRA etapa em aberto do funil, não para onde a

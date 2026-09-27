@@ -7,6 +7,26 @@ import type {
 const GRAPH = 'https://graph.facebook.com/v25.0'
 
 /**
+ * Uma entrada do webhook de Messenger/Instagram — só o que este arquivo lê,
+ * tudo opcional. Recibo e mensagem chegam no mesmo `messaging[]`.
+ */
+interface EntradaMeta {
+  messaging?: {
+    sender?: { id?: string }
+    timestamp?: number | string
+    delivery?: ReciboMeta
+    read?: ReciboMeta
+    message?: {
+      mid?: string; text?: string; is_echo?: boolean
+      attachments?: { type?: string; payload?: { url?: string } }[]
+      reply_to?: { mid?: string }
+    }
+  }[]
+}
+
+interface ReciboMeta { mids?: unknown; mid?: string; watermark?: number | string }
+
+/**
  * Instagram Direct e Facebook Messenger.
  *
  * Um provedor só porque é a mesma API: `POST /{page-id}/messages` com
@@ -143,7 +163,7 @@ export class MetaMessagingProvider implements SendProvider {
    * webhook, e tratar só um deixaria metade das mensagens paradas em um tique.
    */
   parseStatus(entrada: unknown): StatusRecibo | null {
-    const e = entrada as any
+    const e = entrada as EntradaMeta | null
     const m = e?.messaging?.[0]
     if (!m) return null
 
@@ -155,7 +175,7 @@ export class MetaMessagingProvider implements SendProvider {
     if (!bruto) return null
 
     const ids: string[] = [
-      ...(Array.isArray(bruto.mids) ? bruto.mids : []),
+      ...(Array.isArray(bruto.mids) ? (bruto.mids as unknown[]) : []),
       ...(bruto.mid ? [bruto.mid] : []),
     ].map(String).filter(Boolean)
 
@@ -170,7 +190,7 @@ export class MetaMessagingProvider implements SendProvider {
   }
 
   parseInbound(entrada: unknown): InboundMsg | null {
-    const e = entrada as any
+    const e = entrada as EntradaMeta | null
     const m = e?.messaging?.[0]
     if (!m?.message) return null
 

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { toggleBranchStatus } from '@/actions/branches'
+import type { ComponentProps } from 'react'
 import { BranchEditForm } from '@/components/admin/branch-edit-form'
 import { ArrowLeft, Power, PowerOff, Users } from 'lucide-react'
 import { ler } from '@/lib/db'
@@ -24,16 +25,19 @@ export default async function BranchDetailPage({ params }: Props) {
       id, name, slug, document, state_registration,
       email, phone, address, city, state, zip_code,
       is_active, created_at,
-      users(id, name, role, is_active)
+      users(id, name, is_active)
     `)
     .eq('id', id)
     .eq('tenant_id', ctx.tenantId!)
-    .maybeSingle(), 'carregar as unidades')
+    .maybeSingle(), 'carregar a unidade')
+  // `users.role` saía no embed acima e a coluna não existe desde os cargos
+  // dinâmicos: o PostgREST respondia 42703, o `ler` parava e esta tela quebrava
+  // para toda unidade. Ninguém aqui lia o cargo — saiu do select (2026-09-27).
 
   if (!branch) notFound()
 
-  const members = Array.isArray(branch.users) ? branch.users : []
-  const activeMembers = members.filter((u: any) => u.is_active).length
+  const members = (Array.isArray(branch.users) ? branch.users : []) as { id: string; name: string; is_active: boolean }[]
+  const activeMembers = members.filter(u => u.is_active).length
 
   return (
     <div style={{ maxWidth: 760 }}>
@@ -107,7 +111,7 @@ export default async function BranchDetailPage({ params }: Props) {
       </div>
 
       {/* Formulário de edição */}
-      <BranchEditForm branch={branch as any} />
+      <BranchEditForm branch={branch as unknown as ComponentProps<typeof BranchEditForm>['branch']} />
 
     </div>
   )

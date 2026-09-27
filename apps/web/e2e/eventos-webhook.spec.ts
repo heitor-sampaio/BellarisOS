@@ -11,7 +11,6 @@ const telefone = '5548' + String(Date.now()).slice(-9)
 let convId: string | null = null
 
 test.afterAll(async () => {
-  const db = banco()
   if (convId) {
     await apagarConversas([convId])
   }

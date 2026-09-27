@@ -10,6 +10,19 @@ import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-reac
 import { startOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 import { ler } from '@/lib/db'
 
+/** Produto como o select pede, com o saldo por unidade embutido. */
+type ProdutoLido = {
+  id: string; name: string; sku: string | null; barcode: string | null
+  category: string | null; category_id: string | null; unit: string; supplier: string | null
+  cost_price: number | string | null; sale_price: number | string | null
+  consumption_unit: string | null; units_per_package: number | string | null; is_active: boolean
+  branch_product_stock: {
+    current_stock: number; min_stock: number; current_rendimento: number | null
+    branches: { id: string; name: string; slug: string } | null
+  }[] | null
+}
+type MovimentoLido = { product_id: string; quantity: number | string; unit_cost: number | string | null }
+
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -36,8 +49,9 @@ export default async function BranchStockPage({
   const branchId = branch.id
 
   // Produtos e categorias em paralelo
-  const [{ data: raw }, { data: categoriesRaw }] = await Promise.all([
-    admin
+  // Por `ler`: consulta que falha PARA, em vez de virar um estoque vazio.
+  const [raw, categoriesRaw] = await Promise.all([
+    ler(admin
       .from('products')
       .select(`
         id, name, sku, barcode, category, category_id, unit, supplier,
@@ -49,29 +63,28 @@ export default async function BranchStockPage({
       `)
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
-      .order('name'),
+      .order('name'), 'carregar os produtos'),
 
-    admin
+    ler(admin
       .from('product_categories')
       .select('id, name')
       .eq('tenant_id', ctx.tenantId!)
-      .order('name'),
+      .order('name'), 'carregar as categorias'),
   ])
 
   // Normaliza — filtra estoque apenas desta filial
-  const products = (raw ?? []).map((p: any) => {
-    const bps: { current_stock: number; min_stock: number; branches: { id: string; name: string; slug: string } }[] =
-      p.branch_product_stock ?? []
+  const products = ((raw ?? []) as unknown as ProdutoLido[]).map(p => {
+    const bps = p.branch_product_stock ?? []
 
     const branchStocks = bps
-      .filter(b => b.branches && b.branches.id === branchId)
+      .flatMap(b => (b.branches && b.branches.id === branchId ? [{ ...b, branches: b.branches }] : []))
       .map(b => ({
         branchId:          b.branches.id,
         branchName:        b.branches.name,
         branchSlug:        b.branches.slug,
         currentStock:      Number(b.current_stock),
         minStock:          Number(b.min_stock),
-        currentRendimento: (b as any).current_rendimento != null ? Number((b as any).current_rendimento) : null,
+        currentRendimento: b.current_rendimento != null ? Number(b.current_rendimento) : null,
       }))
 
     const totalStock = branchStocks.reduce((s, b) => s + b.currentStock, 0)
@@ -83,17 +96,17 @@ export default async function BranchStockPage({
       : null
 
     return {
-      id:               p.id as string,
-      name:             p.name as string,
-      sku:              p.sku as string | null,
-      barcode:          p.barcode as string | null,
-      category:         p.category as string | null,
-      categoryId:       p.category_id as string | null,
-      unit:             p.unit as string,
-      supplier:         p.supplier as string | null,
+      id:               p.id,
+      name:             p.name,
+      sku:              p.sku,
+      barcode:          p.barcode,
+      category:         p.category,
+      categoryId:       p.category_id,
+      unit:             p.unit,
+      supplier:         p.supplier,
       costPrice:        Number(p.cost_price ?? 0),
       salePrice:        p.sale_price != null ? Number(p.sale_price) : null,
-      consumptionUnit:  p.consumption_unit as string | null,
+      consumptionUnit:  p.consumption_unit,
       unitsPerPackage:  upp,
       totalStock,
       totalRendimento,
@@ -113,29 +126,31 @@ export default async function BranchStockPage({
   const startOfMonth = startOfMonthTZ(now).toISOString()
   const in30Days     = addDaysTZ(now, 30)
 
-  const [{ data: movementsRaw }, { data: batchesRaw }] = productIds.length > 0
+  // Por `ler`: sem checar o erro, uma falha virava giro zero e nenhum lote
+  // vencendo — os dois alertas quietos exatamente quando não deviam.
+  const [movementsRaw, batchesRaw] = productIds.length > 0
     ? await Promise.all([
         // Giro ao custo do movimento (unit_cost), que preserva o custo da
         // época; o custo atual do produto é só o fallback.
-        admin
+        ler(admin
           .from('stock_movements')
           .select('product_id, quantity, unit_cost')
           .in('product_id', productIds)
           .eq('branch_id', branchId)
           .eq('type', 'PROCEDURE_USAGE')
-          .gte('created_at', startOfMonth),
+          .gte('created_at', startOfMonth), 'carregar o giro do mês'),
 
         // `product_batches` não tem branch_id — o filtro por filial que existia
         // aqui fazia o PostgREST devolver erro e o alerta ficava sempre vazio.
         // O lote é do produto; o recorte da filial vem de productIds.
-        admin
+        ler(admin
           .from('product_batches')
           .select('product_id, expires_at')
           .in('product_id', productIds)
           .gt('quantity', 0)
-          .lte('expires_at', in30Days.toISOString()),
+          .lte('expires_at', in30Days.toISOString()), 'carregar os lotes vencendo'),
       ])
-    : [{ data: [] as any }, { data: [] as any }]
+    : [[], []]
 
   // KPIs da filial
   const valorEstoque = products.reduce(
@@ -144,8 +159,8 @@ export default async function BranchStockPage({
   )
 
   const costMap  = Object.fromEntries(products.map(p => [p.id, p.costPrice]))
-  const valorGiro = (movementsRaw ?? []).reduce(
-    (sum: number, m: any) =>
+  const valorGiro = ((movementsRaw ?? []) as MovimentoLido[]).reduce(
+    (sum: number, m) =>
       sum + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? costMap[m.product_id] ?? 0),
     0,
   )

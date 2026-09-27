@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useEffectEvent } from 'react'
 import dynamic from 'next/dynamic'
 import type { BranchPoint, HeatPoint } from './hotmap-types'
 import { GRADIENT_CLIENTS, GRADIENT_LTV } from './hotmap-types'
@@ -60,13 +60,18 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
   const [branches,      setBranches]      = useState<BranchPoint[]>([])
   const [heatPoints,    setHeatPoints]    = useState<HeatPoint[]>([])
   const [heatLtvPoints, setHeatLtvPoints] = useState<HeatPoint[]>([])
-  const [loading, setLoading] = useState(true)
+  const [carregando, setLoading] = useState(true)
+  // Sem cidade nem CEP não há o que buscar: nem chega a carregar.
+  const nadaParaBuscar = !rawBranches.some(b => b.cityKey) && Object.keys(rawCepCounts).length === 0
+  const loading = !nadaParaBuscar && carregando
 
-  useEffect(() => {
+  // Geocodifica UMA vez, ao montar, com os dados daquele momento — cada
+  // consulta é uma chamada ao Nominatim, que bane o IP acima de 1/s.
+  const geocodificar = useEffectEvent(() => {
     const cities = [...new Set(rawBranches.map(b => b.cityKey).filter(Boolean))]
     const ceps   = Object.keys(rawCepCounts)
 
-    if (cities.length === 0 && ceps.length === 0) { setLoading(false); return }
+    if (cities.length === 0 && ceps.length === 0) return
 
     fetch('/api/geocode', {
       method: 'POST',
@@ -108,7 +113,8 @@ export function HotmapSection({ rawBranches, rawCepCounts, rawCepLtv }: Props) {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  })
+  useEffect(() => { geocodificar() }, [])
 
   const layers =
     mode === 'clients'

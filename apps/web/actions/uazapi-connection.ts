@@ -441,7 +441,8 @@ async function marcarConectada(
 
   // `provider` mora na coluna, não no jsonb. Removido explicitamente em vez de
   // gravar `undefined` e confiar no acaso da serialização.
-  const { provider: _ignorado, ...semProvider } = numero.config as UazapiConfig
+  const semProvider: Partial<UazapiConfig> = { ...(numero.config as UazapiConfig) }
+  delete semProvider.provider
 
   const { error } = await admin
     .from('whatsapp_numbers')

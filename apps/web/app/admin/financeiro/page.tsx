@@ -2,7 +2,15 @@ import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
-import { resolvePeriod, getCore, getByBranch, EMPTY_CORE } from '@/lib/metrics'
+import { resolvePeriod, getCore, getByBranch } from '@/lib/metrics'
+import { ler } from '@/lib/db'
+
+/** Lançamento como o select pede. */
+type LancamentoLido = {
+  id: string; type: string; category: string | null; description: string; amount: number | string
+  payment_method: string | null; is_paid: boolean; paid_at: string | null; due_date: string | null
+  created_at: string; branch_id: string; notes: string | null
+}
 
 export default async function AdminFinanceiroPage({
   searchParams,
@@ -72,13 +80,14 @@ export default async function AdminFinanceiroPage({
   }
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
-  const [core, prevCore, branchMetrics, { data: txsRaw }, { data: clientsRaw }] = await Promise.all([
+  const [core, prevCore, branchMetrics, txsRaw, clientsRaw] = await Promise.all([
     getCore(metricArgs),
     getCore({ ...metricArgs, from: prevStart, to: prevEnd }),
     getByBranch({ tenantId: ctx.tenantId!, from: start, to: end }),
 
     // A lista de lançamentos continua sendo lida direto — é extrato, não KPI.
-    admin
+    // Por `ler`: consulta que falha PARA, em vez de virar um extrato vazio.
+    ler(admin
       .from('financial_transactions')
       .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id, notes')
       .in('branch_id', branchIds)
@@ -90,17 +99,17 @@ export default async function AdminFinanceiroPage({
     // com `created_at` no futuro e some da tela que acabou de criá-lo.
       .lte('created_at', fimDoPeriodo.toISOString())
       .order('created_at', { ascending: false })
-      .limit(500),
+      .limit(500), 'carregar os lançamentos da rede'),
 
     // Clientes da rede, para o crédito interno. Só quem recebe precisa.
     ctx.permissions.financial === 'MANAGE'
-      ? admin.from('clients').select('id, name')
+      ? ler(admin.from('clients').select('id, name')
           .eq('tenant_id', ctx.tenantId!).eq('is_active', true)
-          .order('name').limit(500)
-      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+          .order('name').limit(500), 'carregar os clientes da rede')
+      : Promise.resolve([] as { id: string; name: string }[]),
   ])
 
-  const txs = (txsRaw ?? []) as any[]
+  const txs = (txsRaw ?? []) as LancamentoLido[]
 
   // KPIs consolidados
   const totalRevenue  = core.revenueCash
@@ -129,7 +138,7 @@ export default async function AdminFinanceiroPage({
   }))
 
   // Transações enriquecidas com nome da filial
-  const transactions = txs.map((t: any) => ({
+  const transactions = txs.map(t => ({
     ...t,
     branchName: branchNameMap[t.branch_id] ?? '—',
     amount:     Number(t.amount),

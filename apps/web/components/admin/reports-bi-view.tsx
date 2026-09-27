@@ -8,6 +8,11 @@ import { PeriodSelector, type Period } from './period-selector'
 import { SegSelect } from '@/components/shared/seg-select'
 import { FunnelSelect } from '@/components/shared/funnel-select'
 import { weekdayTZ } from '@/lib/datetime'
+import type {
+  LinhaTransacao, LinhaTransacaoAnterior, LinhaAtendimento, LinhaClienteNovo, LinhaCliente,
+  LinhaAgendamento, LinhaComissao, LinhaMovimentoDeEstoque, LinhaEstoqueDaUnidade, LinhaLote,
+  LinhaParcela, LinhaCustoDoProcedimento,
+} from './reports-linhas'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
   DreWaterfall, SimpleTable, Badge,
@@ -71,20 +76,20 @@ export interface ReportsBiProps {
   customTo?: string
   granularity: 'hour' | 'day'
   branches: { id: string; name: string; slug: string }[]
-  txsCurr: any[]
-  txsPrev: any[]
-  installments: any[]
-  apptsCurr: any[]
+  txsCurr: LinhaTransacao[]
+  txsPrev: LinhaTransacaoAnterior[]
+  installments: LinhaParcela[]
+  apptsCurr: LinhaAtendimento[]
   apptsPrevCount: number
-  allAppts: any[]
-  clientsCurr: any[]
+  allAppts: LinhaAgendamento[]
+  clientsCurr: LinhaClienteNovo[]
   clientsPrevCount: number
-  clientsAll: any[]
-  commissions: any[]
-  stockMoves: any[]
-  bps: any[]
-  productBatches: any[]
-  procedureCosts: any[]
+  clientsAll: LinhaCliente[]
+  commissions: LinhaComissao[]
+  stockMoves: LinhaMovimentoDeEstoque[]
+  bps: LinhaEstoqueDaUnidade[]
+  productBatches: LinhaLote[]
+  procedureCosts: LinhaCustoDoProcedimento[]
   retention: { clientsServed: number; returningClients: number; firstTimeClients: number }
   newClientsSeries: { bucket: string; count: number }[]
   evolutionData: ChartPoint[]
@@ -104,7 +109,7 @@ function useCountUp(target: number, duration = 900): number {
   const [val, setVal] = useState(0)
   const frameRef = useRef<number>(0)
   useEffect(() => {
-    setVal(0)
+    // Sem `setVal(0)` aqui: o primeiro quadro já parte de ~0 (t≈0).
     const start = performance.now()
     const tick = (now: number) => {
       const t = Math.min((now - start) / duration, 1)
@@ -259,7 +264,7 @@ const STATUS_LABELS: Record<string, string> = {
 // TAB: VISÃO GERAL
 // -----------------------------------------------------------------------------
 function TabOverview(p: ReportsBiProps) {
-  const { txsCurr, txsPrev, apptsCurr, apptsPrevCount, clientsCurr, clientsPrevCount,
+  const { txsCurr, apptsCurr, apptsPrevCount, clientsCurr, clientsPrevCount,
     allAppts, branches, evolutionData, granularity } = p
 
   const revenue      = p.core.revenueCash
@@ -289,14 +294,14 @@ function TabOverview(p: ReportsBiProps) {
 
   const payMap: Record<string, number> = {}
   txsCurr.filter(t => t.type === 'INCOME' && t.is_paid && t.payment_method).forEach(t => {
-    const k = PAY_LABELS[t.payment_method] ?? t.payment_method
+    const k = PAY_LABELS[t.payment_method!] ?? t.payment_method!
     payMap[k] = (payMap[k] ?? 0) + Number(t.amount)
   })
   const byPayment = Object.entries(payMap).map(([name, value]) => ({ name, value }))
 
   const procMap: Record<string, number> = {}
   apptsCurr.filter(a => a.procedures?.name).forEach(a => {
-    const k = a.procedures.name
+    const k = a.procedures!.name
     procMap[k] = (procMap[k] ?? 0) + Number(a.price)
   })
   const topProcs = Object.entries(procMap)
@@ -305,7 +310,7 @@ function TabOverview(p: ReportsBiProps) {
 
   const profMap: Record<string, number> = {}
   apptsCurr.filter(a => a.users?.name).forEach(a => {
-    const k = a.users.name
+    const k = a.users!.name
     profMap[k] = (profMap[k] ?? 0) + Number(a.price)
   })
   const topProfs = Object.entries(profMap)
@@ -369,7 +374,7 @@ function TabFinanceiro(p: ReportsBiProps) {
   // resultado: a compra do insumo já foi lançada como despesa (categoria
   // "Estoque"), e somar o consumo de novo contava o mesmo custo duas vezes.
   const stockCOGS   = stockMoves.reduce(
-    (s, m) => s + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? m.products?.cost_price ?? 0), 0)
+    (s, m) => s + Math.abs(Number(m.quantity)) * Number(m.products?.cost_price ?? 0), 0)
   const opEx        = p.core.expensesCash
   const prevOpEx    = p.corePrev.expensesCash
   const profit      = revenue - opEx
@@ -382,13 +387,13 @@ function TabFinanceiro(p: ReportsBiProps) {
 
   const payMap: Record<string, number> = {}
   txsCurr.filter(t => t.type === 'INCOME' && t.is_paid && t.payment_method).forEach(t => {
-    const k = PAY_LABELS[t.payment_method] ?? t.payment_method
+    const k = PAY_LABELS[t.payment_method!] ?? t.payment_method!
     payMap[k] = (payMap[k] ?? 0) + Number(t.amount)
   })
 
   const catMap: Record<string, number> = {}
   txsCurr.filter(t => t.type === 'INCOME' && t.is_paid && t.category).forEach(t => {
-    catMap[t.category] = (catMap[t.category] ?? 0) + Number(t.amount)
+    catMap[t.category!] = (catMap[t.category!] ?? 0) + Number(t.amount)
   })
 
   const branchMap: Record<string, { curr: number; prev: number }> = {}
@@ -405,13 +410,13 @@ function TabFinanceiro(p: ReportsBiProps) {
   // Pending installments table
   const installCols: TableColumn[] = [
     { key: 'client',    label: 'Cliente'    },
-    { key: 'value',     label: 'Valor',      align: 'right',  render: (v) => fmtBRLFull(v) },
+    { key: 'value',     label: 'Valor',      align: 'right',  render: (v) => fmtBRLFull(Number(v)) },
     { key: 'due',       label: 'Vencimento', align: 'center' },
     { key: 'branch',    label: 'Filial'      },
     {
       key: 'daysLeft', label: 'Dias', align: 'center',
       render: (v) => (
-        <Badge label={`${v}d`} color={v <= 3 ? 'red' : v <= 7 ? 'amber' : 'gray'} />
+        <Badge label={`${v}d`} color={Number(v) <= 3 ? 'red' : Number(v) <= 7 ? 'amber' : 'gray'} />
       ),
     },
   ]
@@ -497,7 +502,7 @@ function TabAgenda(p: ReportsBiProps) {
 
   const srcMap: Record<string, number> = {}
   allAppts.filter(a => a.source).forEach(a => {
-    const k = SRC_LABELS[a.source] ?? a.source
+    const k = SRC_LABELS[a.source!] ?? a.source!
     srcMap[k] = (srcMap[k] ?? 0) + 1
   })
   const bySource = Object.entries(srcMap).map(([name, value]) => ({ name, value }))
@@ -570,7 +575,7 @@ function TabClientes(p: ReportsBiProps) {
 
   const apptByClient: Record<string, number> = {}
   apptsCurr.filter(a => a.client_id).forEach(a => {
-    apptByClient[a.client_id] = (apptByClient[a.client_id] ?? 0) + 1
+    apptByClient[a.client_id!] = (apptByClient[a.client_id!] ?? 0) + 1
   })
 
   // Retenção agora vem do banco: clientes atendidos no período que JÁ tinham
@@ -586,7 +591,7 @@ function TabClientes(p: ReportsBiProps) {
     .filter(t => t.type === 'INCOME' && t.is_paid && t.client_id
                  && t.notes !== 'Estornada' && t.category !== 'Estorno')
     .forEach(t => {
-      spendByClient[t.client_id] = (spendByClient[t.client_id] ?? 0) + Number(t.amount)
+      spendByClient[t.client_id!] = (spendByClient[t.client_id!] ?? 0) + Number(t.amount)
     })
   const spends = Object.values(spendByClient)
   const gastoMedio = spends.length > 0 ? spends.reduce((s, v) => s + v, 0) / spends.length : 0
@@ -619,7 +624,7 @@ function TabClientes(p: ReportsBiProps) {
   // Gender
   const genderMap: Record<string, number> = {}
   clientsAll.filter(c => c.gender).forEach(c => {
-    genderMap[c.gender] = (genderMap[c.gender] ?? 0) + 1
+    genderMap[c.gender!] = (genderMap[c.gender!] ?? 0) + 1
   })
   const byGender = Object.entries(genderMap).map(([name, value]) => ({ name, value }))
 
@@ -637,7 +642,7 @@ function TabClientes(p: ReportsBiProps) {
   // Cities
   const cityMap: Record<string, number> = {}
   clientsAll.filter(c => c.city).forEach(c => {
-    cityMap[c.city] = (cityMap[c.city] ?? 0) + 1
+    cityMap[c.city!] = (cityMap[c.city!] ?? 0) + 1
   })
   const byCities = Object.entries(cityMap)
     .map(([name, value]) => ({ name, value }))
@@ -751,8 +756,8 @@ function TabProcedimentos(p: ReportsBiProps) {
 
   const procData: Record<string, { revenue: number; count: number; category: string }> = {}
   apptsCurr.filter(a => a.procedures?.name).forEach(a => {
-    const k = a.procedures.name
-    if (!procData[k]) procData[k] = { revenue: 0, count: 0, category: a.procedures.category ?? '—' }
+    const k = a.procedures!.name
+    if (!procData[k]) procData[k] = { revenue: 0, count: 0, category: a.procedures!.category ?? '—' }
     procData[k].revenue += Number(a.price)
     procData[k].count++
   })
@@ -783,10 +788,10 @@ function TabProcedimentos(p: ReportsBiProps) {
   const ageMarginMap = new Map<string, Map<string, { total: number; count: number }>>()
 
   apptsCurr.filter(a => a.procedures?.name).forEach(a => {
-    const procName = a.procedures.name as string
+    const procName = a.procedures!.name
     const ageGroup = getAgeGroup(a.clients?.birth_date ?? null, refDate)
     const price    = Number(a.price)
-    const cost     = costByProcedure.get(a.procedure_id) ?? 0
+    const cost     = costByProcedure.get(a.procedure_id ?? '') ?? 0
 
     // Volume
     if (!ageVolumeMap.has(ageGroup)) ageVolumeMap.set(ageGroup, new Map())
@@ -849,8 +854,8 @@ function TabProcedimentos(p: ReportsBiProps) {
     { key: 'name',     label: 'Procedimento'  },
     { key: 'category', label: 'Categoria'     },
     { key: 'count',    label: 'Execuções',    align: 'center' },
-    { key: 'revenue',  label: 'Receita Total', align: 'right', render: (v) => fmtBRLFull(v) },
-    { key: 'ticket',   label: 'Ticket Médio',  align: 'right', render: (v) => fmtBRLFull(v) },
+    { key: 'revenue',  label: 'Receita Total', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'ticket',   label: 'Ticket Médio',  align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'pct',      label: '% do Total',    align: 'center', render: (v) => `${v}%` },
   ]
   const tableRows = topByName.slice(0, 20).map(([name, d]) => ({
@@ -924,13 +929,13 @@ function TabProfissionais(p: ReportsBiProps) {
 
   const profData: Record<string, { revenue: number; count: number }> = {}
   apptsCurr.filter(a => a.users?.name).forEach(a => {
-    const k = a.users.name
+    const k = a.users!.name
     if (!profData[k]) profData[k] = { revenue: 0, count: 0 }
     profData[k].revenue += Number(a.price)
     profData[k].count++
   })
 
-  const professionais = new Set(apptsCurr.filter(a => a.users?.name).map(a => a.users.name)).size
+  const professionais = new Set(apptsCurr.filter(a => a.users?.name).map(a => a.users!.name)).size
   const totalAppts = apptsCurr.length
   const commOpen = commissions.filter(c => c.status === 'OPEN').reduce((s, c) => s + Number(c.amount), 0)
   const commPaid = commissions.filter(c => c.status === 'PAID').reduce((s, c) => s + Number(c.amount), 0)
@@ -946,7 +951,7 @@ function TabProfissionais(p: ReportsBiProps) {
   // Commission summary per professional
   const commByProf: Record<string, { open: number; paid: number }> = {}
   commissions.filter(c => c.users?.name).forEach(c => {
-    const k = c.users.name
+    const k = c.users!.name
     if (!commByProf[k]) commByProf[k] = { open: 0, paid: 0 }
     if (c.status === 'OPEN') commByProf[k].open += Number(c.amount)
     else                      commByProf[k].paid += Number(c.amount)
@@ -955,12 +960,12 @@ function TabProfissionais(p: ReportsBiProps) {
   const commCols: TableColumn[] = [
     { key: 'name',    label: 'Profissional'   },
     { key: 'appts',   label: 'Atendimentos',   align: 'center' },
-    { key: 'revenue', label: 'Receita Gerada', align: 'right', render: (v) => fmtBRLFull(v) },
-    { key: 'open',    label: 'Comissão Aberta', align: 'right', render: (v) => fmtBRLFull(v) },
-    { key: 'paid',    label: 'Comissão Paga',   align: 'right', render: (v) => fmtBRLFull(v) },
+    { key: 'revenue', label: 'Receita Gerada', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'open',    label: 'Comissão Aberta', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
+    { key: 'paid',    label: 'Comissão Paga',   align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     {
       key: 'status', label: 'Status', align: 'center',
-      render: (v) => <Badge label={v} color={v === 'OK' ? 'green' : 'amber'} />,
+      render: (v) => <Badge label={String(v)} color={v === 'OK' ? 'green' : 'amber'} />,
     },
   ]
   const allProfNames = new Set([
@@ -1028,8 +1033,9 @@ function TabEstoque(p: ReportsBiProps) {
   // Top consumed products
   const consumeMap: Record<string, number> = {}
   stockMoves.filter(m => m.products?.name).forEach(m => {
-    consumeMap[m.products.name] = (consumeMap[m.products.name] ?? 0) +
-      Math.abs(Number(m.quantity)) * Number(m.products.cost_price ?? 0)
+    const produto = m.products!
+    consumeMap[produto.name] = (consumeMap[produto.name] ?? 0) +
+      Math.abs(Number(m.quantity)) * Number(produto.cost_price ?? 0)
   })
   const topConsumed = Object.entries(consumeMap)
     .map(([name, value]) => ({ name, value }))
@@ -1038,8 +1044,9 @@ function TabEstoque(p: ReportsBiProps) {
   // Value by category
   const catValueMap: Record<string, number> = {}
   bps.filter(b => b.products?.category).forEach(b => {
-    const cat = b.products.category
-    catValueMap[cat] = (catValueMap[cat] ?? 0) + Number(b.current_stock) * Number(b.products.cost_price ?? 0)
+    const produto = b.products!
+    const cat = produto.category!
+    catValueMap[cat] = (catValueMap[cat] ?? 0) + Number(b.current_stock) * Number(produto.cost_price ?? 0)
   })
   const byCategory = Object.entries(catValueMap).map(([name, value]) => ({ name, value }))
 
@@ -1051,7 +1058,7 @@ function TabEstoque(p: ReportsBiProps) {
       render: (v) => <Badge label={String(v)} color={Number(v) > 0 ? 'red' : 'green'} /> },
     { key: 'criticos', label: 'Críticos', align: 'center',
       render: (v) => <Badge label={String(v)} color={Number(v) > 0 ? 'amber' : 'green'} /> },
-    { key: 'value',    label: 'Valor em Estoque', align: 'right', render: (v) => fmtBRLFull(v) },
+    { key: 'value',    label: 'Valor em Estoque', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
   ]
   const branchHealthRows = branches.map(b => {
     const bBps   = bps.filter(bp => bp.branch_id === b.id)
@@ -1125,12 +1132,12 @@ function TabComercial(p: ReportsBiProps) {
 
   const colunas: TableColumn[] = [
     { key: 'name',         label: 'Vendedor' },
-    { key: 'leads',        label: 'Leads',   align: 'right', width: 80, render: v => fmtInt(v) },
+    { key: 'leads',        label: 'Leads',   align: 'right', width: 80, render: v => fmtInt(Number(v)) },
     { key: 'conversao',    label: 'Conv.',   align: 'right', width: 80,
-      render: (_v, row) => row.leads > 0
-        ? <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{fmtPct((row.convertidos / row.leads) * 100)}</span>
+      render: (_v, row) => Number(row.leads) > 0
+        ? <span style={{ color: 'var(--brand)', fontWeight: 700 }}>{fmtPct((Number(row.convertidos) / Number(row.leads)) * 100)}</span>
         : '—' },
-    { key: 'agendamentos', label: 'Agend.',  align: 'right', width: 90, render: v => fmtInt(v) },
+    { key: 'agendamentos', label: 'Agend.',  align: 'right', width: 90, render: v => fmtInt(Number(v)) },
   ]
 
   return (

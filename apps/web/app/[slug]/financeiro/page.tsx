@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 
+import type { ComponentProps } from 'react'
 import { FinancialHub } from '@/components/branch/financial-hub'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { resolvePeriod, getCommissionsDetail, getCore } from '@/lib/metrics'
@@ -89,17 +90,21 @@ export default async function FinancialPage({
   const canReverse = canWrite
   const canPay     = ctx.permissions.cashier === 'MANAGE'
 
-  const { data: clientsRaw } = canWrite
-    ? await supabase
+  // Por `ler`: sem checar o erro, uma falha virava "nenhum cliente" no
+  // lançamento de crédito, sem nada acusando.
+  const clientsRaw = canWrite
+    ? await ler(supabase
         .from('clients')
         .select('id, name')
         .eq('branch_id', branch.id)
         .eq('is_active', true)
         .order('name')
-        .limit(300)
-    : { data: [] }
+        .limit(300), 'carregar os clientes da unidade')
+    : []
 
-  const clients = (clientsRaw ?? []).map((c: any) => ({ id: c.id as string, name: c.name as string }))
+  const clients = ((clientsRaw ?? []) as { id: string; name: string }[]).map(c => ({ id: c.id, name: c.name }))
+
+  type Props = ComponentProps<typeof FinancialHub>
 
   return (
     <>
@@ -116,8 +121,8 @@ export default async function FinancialPage({
         periodStart={start.toISOString()}
         customFrom={sp.from}
         customTo={sp.to}
-        transactions={(transactions ?? []) as any}
-        prevTransactions={(prevTxs ?? []) as any}
+        transactions={(transactions ?? []) as unknown as Props['transactions']}
+        prevTransactions={(prevTxs ?? []) as unknown as Props['prevTransactions']}
         commissions={commissions}
         canReverse={canReverse}
         canWrite={canWrite}

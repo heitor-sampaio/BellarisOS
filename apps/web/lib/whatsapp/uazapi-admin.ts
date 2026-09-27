@@ -31,15 +31,28 @@ export function conexaoGerenciadaDisponivel(): boolean {
   return !!(process.env.UAZAPI_BASE_URL && process.env.UAZAPI_ADMIN_TOKEN)
 }
 
+/**
+ * O que as rotas de administração devolvem — cada uma, um pedaço disto. Não é
+ * contrato: é o que este arquivo lê, todo campo opcional.
+ */
+interface RespostaAdmin {
+  token?: string; error?: string; message?: string
+  qrcode?: string; paircode?: string
+  status?: { connected?: boolean; loggedIn?: boolean; jid?: string }
+  instance?: { token?: string; id?: string; name?: string; qrcode?: string; paircode?: string; profileName?: string }
+  effective_mode?: string; mode?: string; managed?: boolean
+  proxy_managed_country?: string; proxy_url?: string
+}
+
 async function chamar(
   url: string,
   init: RequestInit,
   contexto: string,
-): Promise<any> {
+): Promise<RespostaAdmin | null> {
   const res = await fetch(url, { ...init, signal: AbortSignal.timeout(TIMEOUT_MS) })
   const texto = await res.text()
 
-  let body: any = null
+  let body: RespostaAdmin | null = null
   try { body = texto ? JSON.parse(texto) : null } catch { /* não-JSON */ }
 
   if (!res.ok) {

@@ -3,9 +3,9 @@
 import { useMemo, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  TrendingUp, TrendingDown, Wallet, Receipt,
+  TrendingUp, TrendingDown, Wallet,
   Clock, BarChart2, Plus, ArrowUpRight, ArrowDownRight,
-  Users, CheckCircle2, Gift,
+  Gift,
 } from 'lucide-react'
 import { FinancialTransactionModal }                        from './financial-transaction-modal'
 import { ClientCreditModal, ClientCreditModalHandle }       from './client-credit-modal'
@@ -72,12 +72,6 @@ interface Props {
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
-const fmtShort = (v: number): string => {
-  if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1).replace('.', ',')}M`
-  if (v >= 1_000)     return `R$ ${(v / 1_000).toFixed(1).replace('.', ',')}k`
-  return fmtBRL(v)
-}
 
 const PM_LABELS: Record<string, string> = {
   CASH:            'Dinheiro',
@@ -343,8 +337,15 @@ function DonutChart({ segments, total }: { segments: DonutSegment[]; total: numb
     )
   }
 
-  // Rotate each segment by accumulating angles; start at -90° (12 o'clock)
-  let cumRotate = -90
+  // Rotate each segment by accumulating angles; start at -90° (12 o'clock).
+  // Calculado ANTES do JSX: acumular dentro do `map` reatribuía a variável
+  // depois de o render ter terminado.
+  const rotacoes: number[] = []
+  let acumulado = -90
+  for (const seg of segments) {
+    rotacoes.push(acumulado)
+    acumulado += (seg.value / total) * 360
+  }
   return (
     <svg viewBox="0 0 150 150" width={150} height={150}>
       {/* Track ring */}
@@ -353,8 +354,7 @@ function DonutChart({ segments, total }: { segments: DonutSegment[]; total: numb
       {segments.map((seg, i) => {
         const pct       = seg.value / total
         const dashLen   = pct * circ
-        const rotate    = cumRotate
-        cumRotate      += pct * 360
+        const rotate    = rotacoes[i]
         return (
           <circle
             key={i}

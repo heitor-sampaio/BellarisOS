@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useActionState, useEffect } from 'react'
+import { useState, useActionState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { X, CheckCircle2, Clock, AlertCircle, Ban, Play, CalendarClock } from 'lucide-react'
 import Link from 'next/link'
@@ -63,10 +63,16 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
   const [loading, setLoading]                   = useState(false)
   const [remarcando, setRemarcando]             = useState(false)
 
-  const [remarcaState, remarcaAction, remarcaPending] = useActionState(rescheduleAppointment, undefined)
-  useEffect(() => {
-    if (remarcaState?.success) { setRemarcando(false); onClose(); router.refresh() }
-  }, [remarcaState?.success])
+  // O sucesso é tratado na própria action, quando a resposta chega — e não num
+  // efeito que observa o estado depois.
+  const [remarcaState, remarcaAction, remarcaPending] = useActionState(
+    async (anterior: Parameters<typeof rescheduleAppointment>[0], dados: FormData) => {
+      const r = await rescheduleAppointment(anterior, dados)
+      if (r?.success) { setRemarcando(false); onClose(); router.refresh() }
+      return r
+    },
+    undefined,
+  )
 
   const dt = new Date(appointment.start)
   const dateStr = dt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })

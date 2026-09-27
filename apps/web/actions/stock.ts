@@ -2,7 +2,6 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
@@ -887,7 +886,7 @@ export async function searchProducts(query: string) {
       .limit(20), 'buscar o produto')
 
     return { products: (data ?? []) as { id: string; name: string; sku: string | null; unit: string; barcode: string | null }[] }
-  } catch (e) {
+  } catch {
     return { products: [] as { id: string; name: string; sku: string | null; unit: string; barcode: string | null }[] }
   }
 }

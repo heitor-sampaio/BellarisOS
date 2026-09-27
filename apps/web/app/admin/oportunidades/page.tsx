@@ -6,6 +6,7 @@ import { funnelStats } from '@/lib/crm'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
+import type { ComponentProps } from 'react'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
@@ -18,6 +19,13 @@ function unidadeDoLead(tags: unknown): string | null {
     (x): x is string => typeof x === 'string' && isUnitTag(x),
   )
   return t ? unitTagName(t) : null
+}
+
+/** O que a tela lê do lead; o resto do select passa adiante como veio. */
+type LeadLido = Record<string, unknown> & {
+  contato_id: string
+  tags:       string[] | null
+  users:      { name: string } | null
 }
 
 export default async function AdminOportunidadesPage({
@@ -56,7 +64,7 @@ export default async function AdminOportunidadesPage({
   // funil sem etapa não tem o que buscar, e `.in()` com lista vazia vira
   // condição inválida no PostgREST.
   const leadOwner = ownerFilter(ctx, 'crm')
-  let leadsRaw: Record<string, unknown>[] = []
+  let leadsRaw: LeadLido[] = []
   if (stageIds.length > 0) {
     let leadsQuery = admin
       .from('leads')
@@ -72,21 +80,21 @@ export default async function AdminOportunidadesPage({
     if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
     const { data, error } = await leadsQuery.order('created_at', { ascending: false })
     if (error) throw new Error(`Falha ao carregar os leads: ${error.message}`)
-    leadsRaw = data ?? []
+    leadsRaw = (data ?? []) as unknown as LeadLido[]
   }
 
   // A atividade da PESSOA dona de cada lead — de todas as threads dela, não só
   // da que a oportunidade nasceu (ver `atividadeDasPessoas`).
   const atividade = await atividadeDasPessoas(
-    ctx.tenantId!, leadsRaw.map((l: any) => l.contato_id as string),
+    ctx.tenantId!, leadsRaw.map(l => l.contato_id),
   )
-  const leads = leadsRaw.map((l: any) => {
-    const { users: _dono, contato_id: _pessoa, ...rest } = l
-    const ativ = atividade.get(l.contato_id as string)
+  const leads = leadsRaw.map(l => {
+    const { users: dono, contato_id: pessoa, ...rest } = l
+    const ativ = atividade.get(pessoa)
     return {
       ...rest,
       tags:                l.tags ?? [],
-      owner_name:          l.users?.name ?? null,
+      owner_name:          dono?.name ?? null,
       last_interaction_at: ativ?.last_interaction_at ?? null,
       awaiting_since:      ativ?.awaiting_since ?? null,
       // O badge da unidade sai da TAG, não de branch_id: o lead é da rede e a
@@ -157,7 +165,7 @@ export default async function AdminOportunidadesPage({
       ) : (
         <>
           <CRMBoard
-            initialLeads={leads}
+            initialLeads={leads as unknown as ComponentProps<typeof CRMBoard>['initialLeads']}
             stages={stages}
             allStages={allStages}
             funnels={ativos}

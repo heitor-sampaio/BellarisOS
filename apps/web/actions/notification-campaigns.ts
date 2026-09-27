@@ -120,7 +120,7 @@ export async function getCampaign(id: string): Promise<{
 
   return {
     campaign: camp as NotificationCampaign,
-    dispatches: (dispatches ?? []).map((d: any) => ({
+    dispatches: ((dispatches ?? []) as unknown as { sent_at: string; status: string; clients: { name?: string } | null }[]).map(d => ({
       client_name: d.clients?.name ?? '—',
       sent_at:     d.sent_at,
       status:      d.status,
@@ -351,7 +351,7 @@ export async function previewAudienceCount(
       .in('procedure_id', rules.procedure_ids)
       .eq('status', 'COMPLETED'), 'carregar os agendamentos')
 
-    const clientsWithProc = new Set((apptClients ?? []).map((a: any) => a.client_id))
+    const clientsWithProc = new Set(((apptClients ?? []) as { client_id: string }[]).map(a => a.client_id))
     // This is an over-approximation without a subquery; use count from the base query
     // filtered by intersection — for preview purposes this is acceptable
     const { count: procCount } = await admin
@@ -403,8 +403,8 @@ export async function dispatchCampaignInline(
       .in('procedure_id', rules.procedure_ids)
       .eq('status', 'COMPLETED'), 'carregar os agendamentos')
 
-    const set = new Set((apptClients ?? []).map((a: any) => a.client_id))
-    eligibleClients = eligibleClients.filter((c: any) => set.has(c.id))
+    const set = new Set(((apptClients ?? []) as { client_id: string }[]).map(a => a.client_id))
+    eligibleClients = eligibleClients.filter(c => set.has(c.id))
   }
 
   if (eligibleClients.length === 0) return { sent: 0 }
@@ -431,7 +431,7 @@ export async function dispatchCampaignInline(
       .select('id, client_id'), 'carregar as notificações')
 
     if (inserted?.length) {
-      const dispatches = inserted.map((n: any) => ({
+      const dispatches = (inserted as { id: string; client_id: string }[]).map(n => ({
         campaign_id:     campaign.id,
         client_id:       n.client_id,
         notification_id: n.id,
@@ -464,7 +464,7 @@ async function sendWebPush(
   if (!subs?.length) return
 
   await Promise.allSettled(
-    subs.map((sub: any) => {
+    (subs as { client_id: string; endpoint: string; keys: { p256dh: string; auth: string } }[]).map(sub => {
       const client = clients.find(c => c.id === sub.client_id)
       if (!client) return Promise.resolve()
       const payload = JSON.stringify({
@@ -563,7 +563,7 @@ async function sendFcmBatch(
   const endpoint = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`
 
   await Promise.allSettled(
-    rows.map(async (r: any) => {
+    (rows as { token: string; client_id: string }[]).map(async r => {
       const client = clients.find(c => c.id === r.client_id)
       if (!client) return
       const res = await fetch(endpoint, {

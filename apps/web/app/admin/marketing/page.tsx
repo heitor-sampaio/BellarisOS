@@ -8,6 +8,7 @@ import { MarketingAttribution } from '@/components/admin/marketing-attribution'
 import type { Campaign, DatePreset } from '@/lib/ads/types'
 import { SegSelect } from '@/components/shared/seg-select'
 import { startOfDayTZ, addDaysTZ } from '@/lib/datetime'
+import { ler } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -116,15 +117,18 @@ export default async function AdminMarketingPage({
   // filtro só de utm_source esses leads ficavam de fora, o que inflava o CPL.
   const attributionFilter = 'utm_source.not.is.null,fbclid.not.is.null,gclid.not.is.null,ctwa_clid.not.is.null'
 
-  const [{ data: attributedLeads }, { count: attributedLeadsTotal }] = await Promise.all([
-    admin
+  const [attributedLeads, { count: attributedLeadsTotal }] = await Promise.all([
+    // A etapa vem pelo embed: a tabela da atribuição mostra `crm_stage`, que
+    // nunca estava no select — toda linha dizia "Lead", qualquer que fosse a
+    // etapa (2026-09-27).
+    ler(admin
       .from('leads')
-      .select('id, name, phone, created_at, utm_source, utm_medium, utm_campaign, fbclid, gclid, client_id')
+      .select('id, name, phone, created_at, utm_source, utm_medium, utm_campaign, fbclid, gclid, client_id, crm_stages(name)')
       .eq('tenant_id', ctx.tenantId!)
       .or(attributionFilter)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
-      .limit(200),
+      .limit(200), 'carregar os leads atribuídos'),
 
     // O CPL e a taxa de conversão precisam do total, não da amostra exibida:
     // com mais de 200 leads o CPL travava em `gasto / 200` e crescia junto
@@ -137,7 +141,12 @@ export default async function AdminMarketingPage({
       .gte('created_at', since),
   ])
 
-  const leads = attributedLeads ?? []
+  const leads = ((attributedLeads ?? []) as unknown as {
+    id: string; name: string; phone: string | null; created_at: string
+    utm_source: string | null; utm_medium: string | null; utm_campaign: string | null
+    fbclid: string | null; gclid: string | null; client_id: string | null
+    crm_stages: { name: string } | null
+  }[]).map(({ crm_stages, ...l }) => ({ ...l, crm_stage: crm_stages?.name ?? null }))
 
   return (
     <div>
@@ -253,7 +262,7 @@ export default async function AdminMarketingPage({
               Leads captados com dados de origem de campanha (UTM / click ID)
             </p>
           </div>
-          <MarketingAttribution leads={leads as any} />
+          <MarketingAttribution leads={leads} />
         </div>
       )}
     </div>

@@ -70,7 +70,6 @@ export async function SettingsBranches() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
           {branches.map(branch => {
-            const memberCount = Array.isArray(branch.users) ? branch.users.length : 0
             const location = [branch.city, branch.state].filter(Boolean).join(' · ')
 
             return (

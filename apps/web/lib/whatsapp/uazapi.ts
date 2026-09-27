@@ -6,6 +6,61 @@ import {
   montarIdentidade, classificarIdentificador, ehConversaDeGrupo,
 } from '@/lib/channels/identity'
 
+// -- O que se lê da uazapi --------------------------------------------------
+//
+// A uazapi repassa o protocolo do Baileys quase cru, e versões diferentes
+// nomeiam os campos de jeitos diferentes. Estes tipos NÃO são contrato: são o
+// mínimo que o código lê, todo campo opcional e no tipo mais largo que já
+// chegou. Existem para o resto da função ser checado — um `any` na entrada
+// desligava a checagem de tudo o que vinha depois dele.
+
+/** Valor cru do protocolo: texto, número ou nada, conforme a versão. */
+type Cru = string | number | boolean | null | undefined
+
+interface AnuncioCru {
+  sourceType?: Cru; sourceID?: Cru; sourceId?: Cru; sourceURL?: Cru; sourceUrl?: Cru
+  ctwaClid?: Cru; title?: Cru; body?: Cru; mediaType?: Cru
+  thumbnailURL?: Cru; thumbnailUrl?: Cru; thumbnail?: Cru; sourceApp?: Cru
+}
+
+interface ContextoCru { externalAdReply?: AnuncioCru; stanzaId?: Cru }
+
+interface MensagemCrua {
+  fromMe?: Cru; isGroup?: Cru
+  chatid?: string; sender_pn?: string; sender?: string
+  mediaType?: Cru; file?: string; fileURL?: string; mediaUrl?: string; mimetype?: string
+  owner?: Cru; messageid?: Cru; id?: Cru
+  text?: unknown; body?: unknown; caption?: unknown
+  /** Texto — ou OBJETO, em resposta de botão e de lista. */
+  content?: unknown
+  messageTimestamp?: Cru; timestamp?: Cru
+  senderName?: Cru; pushName?: Cru
+  quoted?: Cru; quotedMsgId?: Cru; contextInfo?: ContextoCru
+  message?: { extendedTextMessage?: { contextInfo?: ContextoCru } }
+  edited?: Cru
+  status?: Cru; ack?: Cru; messageStatus?: Cru; key?: { id?: Cru }
+}
+
+/** Recibo no formato nativo do Baileys: `[{ key, update }]`. */
+interface AtualizacaoCrua { key?: { id?: Cru }; update?: { status?: Cru } }
+
+interface EntregaCrua {
+  data?: EntregaCrua
+  message?: MensagemCrua
+  chat?: { phone?: string; name?: Cru }
+  contextInfo?: ContextoCru
+  messages?: AtualizacaoCrua[]
+}
+
+/** Resposta da API — cada rota devolve um pedaço disto. */
+interface RespostaCrua {
+  messageid?: Cru; id?: Cru; error?: Cru; message?: Cru
+  name?: Cru; wa_name?: Cru; wa_contactName?: Cru
+  fileURL?: string; fileUrl?: string; mimetype?: string
+  status?: { connected?: boolean; loggedIn?: boolean; jid?: string }
+  instance?: { status?: string }
+}
+
 /**
  * uazapi — provedor não oficial de WhatsApp.
  *
@@ -95,9 +150,9 @@ const MIDIA_DO_ANUNCIO: Record<number, string> = {
  * As duas grafias são aceitas porque a uazapi repassa o protocolo quase cru e
  * versões diferentes do Baileys já nomearam isto de formas diferentes.
  */
-function lerAnuncio(m: any, raiz: any): InboundReferral | undefined {
+function lerAnuncio(m: MensagemCrua, raiz: EntregaCrua): InboundReferral | undefined {
   const ctx =
-    m?.content?.contextInfo ??       // o caminho REAL, conferido no tráfego
+    (m?.content as { contextInfo?: ContextoCru } | null | undefined)?.contextInfo ??       // o caminho REAL, conferido no tráfego
     m?.contextInfo ??
     m?.message?.extendedTextMessage?.contextInfo ??
     raiz?.contextInfo
@@ -187,14 +242,14 @@ export class UazapiProvider implements WhatsAppProvider {
     this.base  = (config.baseUrl ?? process.env.UAZAPI_BASE_URL ?? '').replace(/\/$/, '')
   }
 
-  private async chamar(path: string, body?: unknown): Promise<any> {
+  private async chamar(path: string, body?: unknown): Promise<RespostaCrua | null> {
     const res = await fetch(`${this.base}${path}`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', token: this.token },
       body:    body ? JSON.stringify(body) : undefined,
     })
     const texto = await res.text()
-    let json: any = null
+    let json: RespostaCrua | null = null
     try { json = texto ? JSON.parse(texto) : null } catch { /* não-JSON */ }
 
     if (!res.ok) {
@@ -249,7 +304,7 @@ export class UazapiProvider implements WhatsAppProvider {
    * mostrar as duas versões como se fossem duas falas.
    */
   parseEdit(payload: unknown): { externalId: string; texto: string } | null {
-    const p = payload as any
+    const p = payload as EntregaCrua | null
     const raiz = p?.data ?? p
     const m = raiz?.message
     if (!m?.edited) return null
@@ -331,7 +386,7 @@ export class UazapiProvider implements WhatsAppProvider {
       const url = data?.fileURL ?? data?.fileUrl
       if (!url) return null
 
-      const arquivo = await fetch(url as string)
+      const arquivo = await fetch(url)
       if (!arquivo.ok) return null
       return {
         bytes:    await arquivo.arrayBuffer(),
@@ -349,7 +404,7 @@ export class UazapiProvider implements WhatsAppProvider {
    * `{event, instance, data}` que a documentação mostra — daí o `p?.data ?? p`.
    */
   parseInbound(payload: unknown): InboundMsg | null {
-    const p = payload as any
+    const p = payload as EntregaCrua | null
     const raiz = p?.data ?? p
     const m = raiz?.message
     const c = raiz?.chat
@@ -374,7 +429,7 @@ export class UazapiProvider implements WhatsAppProvider {
       ? {
           kind,
           url:      m.file ?? m.fileURL ?? m.mediaUrl ?? undefined,
-          mediaId:  m.owner && m.messageid ? `${m.owner}:${m.messageid}` : (m.id ?? undefined),
+          mediaId:  m.owner && m.messageid ? `${m.owner}:${m.messageid}` : ((m.id ?? undefined) as string | undefined),
           mimeType: m.mimetype ?? undefined,
         }
       : undefined
@@ -414,7 +469,7 @@ export class UazapiProvider implements WhatsAppProvider {
     const citada = m.quoted ?? m.quotedMsgId ?? m.contextInfo?.stanzaId
     if (citada) out.replyToExternalId = idCurto(citada)
 
-    const anuncio = lerAnuncio(m, raiz)
+    const anuncio = lerAnuncio(m, raiz!)
     if (anuncio) out.referral = anuncio
 
     return out
@@ -428,18 +483,19 @@ export class UazapiProvider implements WhatsAppProvider {
    * par `messageid` + código.
    */
   parseStatus(payload: unknown): StatusUpdate | null {
-    const p = payload as any
-    const raiz = p?.data ?? p
+    const p = payload as EntregaCrua | AtualizacaoCrua[] | null
+    const raiz = Array.isArray(p) ? p : (p?.data ?? p)
 
     // Forma 2: array nativo do Baileys.
-    const doArray = Array.isArray(raiz) ? raiz[0] : Array.isArray(raiz?.messages) ? raiz.messages[0] : null
+    const doArray: AtualizacaoCrua | null | undefined =
+      Array.isArray(raiz) ? raiz[0] : Array.isArray(raiz?.messages) ? raiz?.messages?.[0] : null
     if (doArray?.key?.id && doArray?.update?.status !== undefined) {
       const st = STATUS_NUMERICO[Number(doArray.update.status)]
       return st ? { externalId: idCurto(doArray.key.id), status: st } : null
     }
 
     // Formas 1 e 3: campo de status no objeto de mensagem.
-    const m = raiz?.message ?? raiz
+    const m = ((Array.isArray(raiz) ? undefined : raiz?.message) ?? raiz) as MensagemCrua | null
     const bruto = m?.status ?? m?.ack ?? m?.messageStatus
     if (bruto === undefined || bruto === null) return null
 
@@ -459,15 +515,15 @@ export class UazapiProvider implements WhatsAppProvider {
         headers: { token: this.token },
       })
       if (!res.ok) return { ok: false, detail: `HTTP ${res.status}` }
-      const data = await res.json()
+      const data = await res.json() as RespostaCrua | null
 
       const conectado = data?.status?.connected === true && data?.status?.loggedIn !== false
       return {
         ok: conectado,
         detail: data?.status?.jid ?? data?.instance?.status ?? undefined,
       }
-    } catch (err: any) {
-      return { ok: false, detail: err?.message }
+    } catch (err) {
+      return { ok: false, detail: (err as { message?: string } | null)?.message }
     }
   }
 }

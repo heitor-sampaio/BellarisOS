@@ -43,7 +43,7 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
 
   const editRef  = useRef<StockProductModalHandle>(null)
   const router   = useRouter()
-  const [_p, start] = useTransition()
+  const [, start] = useTransition()
 
   function handleEditClick(p: Product) {
     setEditProduct({
@@ -94,9 +94,6 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
       ? <ChevronUp   size={12} style={{ color: 'var(--brand)' }} />
       : <ChevronDown size={12} style={{ color: 'var(--brand)' }} />
   }
-
-  const fmtBRL = (v: number | null) =>
-    v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   const thStyle: React.CSSProperties = {
     fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)',
@@ -156,7 +153,7 @@ export function AdminProductTable({ initialProducts, categories, suppliers }: Pr
             <PackageX size={36} style={{ color: 'var(--text-faint)', margin: '0 auto 12px' }} />
             <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--text-base-sz)' }}>Nenhum produto encontrado</p>
             <p style={{ color: 'var(--text-faint)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-              Crie o primeiro produto com o botão "Novo produto".
+              Crie o primeiro produto com o botão “Novo produto”.
             </p>
           </div>
         ) : (

@@ -31,7 +31,13 @@ export function InboxQuickReplies({
   const buscaRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { recarregar() }, [])
-  useEffect(() => { setFiltro(busca) }, [busca])
+  // O que se digita depois da `/` no compositor vira o filtro — ajustado no
+  // render quando a busca muda, não num efeito.
+  const [buscaAnterior, setBuscaAnterior] = useState(busca)
+  if (buscaAnterior !== busca) {
+    setBuscaAnterior(busca)
+    setFiltro(busca)
+  }
 
   function recarregar() {
     listQuickReplies()

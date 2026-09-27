@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { Pencil, X } from 'lucide-react'
 import { updateTeamMember } from '@/actions/team'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -39,9 +39,13 @@ export function TeamMemberEdit({ member, branches, roles, canChooseScope, redire
   const [state, action, pending] = useActionState(updateTeamMember, undefined)
   const stateError = state && 'error' in state ? state.error : null
 
-  useEffect(() => {
+  // Fecha quando chega um resultado NOVO de sucesso — no render, com o
+  // resultado anterior guardado, e não num efeito.
+  const [resultadoVisto, setResultadoVisto] = useState(state)
+  if (resultadoVisto !== state) {
+    setResultadoVisto(state)
     if (state && 'success' in state && state.success) setOpen(false)
-  }, [state])
+  }
 
   return (
     <>

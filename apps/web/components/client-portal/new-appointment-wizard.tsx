@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useTransition, useEffect } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, Check, Calendar, Clock, User, Sparkles } from 'lucide-react'
 import { getClientAvailableSlots, createClientAppointment } from '@/actions/appointments'
@@ -27,6 +27,7 @@ interface Props {
 
 type Step = 1 | 2 | 3 | 4
 
+
 export function NewAppointmentWizard({ slug, branchId, procedures, professionals }: Props) {
   const router = useRouter()
   const [step,       setStep]       = useState<Step>(1)
@@ -37,10 +38,6 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
   const [time,       setTime]       = useState('')
   const [error,      setError]      = useState('')
   const [isPending,  startTransition] = useTransition()
-  // Diagnostic: confirms React mounted client-side + counts raw pointer events
-  const [mounted,   setMounted]   = useState(false)
-  const [tapCount,  setTapCount]  = useState(0)
-  useEffect(() => { setMounted(true) }, [])
 
   const today = new Date().toISOString().split('T')[0]!
 
@@ -117,7 +114,7 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
   }
 
   return (
-    <div onPointerDown={() => setTapCount(c => c + 1)}>
+    <div>
       {/* Back + title */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
         <button
@@ -163,16 +160,6 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
             </p>
           </div>
         ))}
-      </div>
-
-      {/* Diagnostic strip — remove after debugging */}
-      <div style={{
-        fontSize: 'var(--text-overline)', color: 'var(--text-faint)', marginBottom: 8,
-        display: 'flex', gap: 12, padding: '4px 0',
-      }}>
-        <span>React: {mounted ? '✓ ativo' : '○ SSR'}</span>
-        <span>Taps: {tapCount}</span>
-        <span>Step: {step}</span>
       </div>
 
       {/* --- Step 1: Procedimento ---------------------------------- */}

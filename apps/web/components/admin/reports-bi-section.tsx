@@ -10,6 +10,11 @@ import {
 } from '@/lib/metrics'
 import { seedDefaultFunnel } from '@/actions/crm-funnels'
 import type { DadosComerciais } from '@/components/admin/reports-bi-view'
+import type {
+  LinhaTransacao, LinhaTransacaoAnterior, LinhaAtendimento, LinhaClienteNovo, LinhaCliente,
+  LinhaAgendamento, LinhaComissao, LinhaMovimentoDeEstoque, LinhaEstoqueDaUnidade, LinhaLote,
+  LinhaParcela, LinhaCustoDoProcedimento,
+} from '@/components/admin/reports-linhas'
 
 export type ReportsTab    = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
 export type ReportsPeriod = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
@@ -163,7 +168,7 @@ export async function ReportsBiSection({
           .select('id, name, birth_date, gender, city, state, created_at')
           .eq('tenant_id', ctx.tenantId!)
           .eq('is_active', true)
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as unknown[] }),
 
     // 7 — Todos os agendamentos (qualquer status) — overview + agenda
     needAllAppts
@@ -172,7 +177,7 @@ export async function ReportsBiSection({
           .in('branch_id', branchIds)
           .gte('scheduled_at', startDate.toISOString())
           .lte('scheduled_at', endDate.toISOString())
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as unknown[] }),
 
     // 8 — Comissões — overview + profissionais.
     // `commissions` não tem created_at: a consulta antiga falhava com 42703,
@@ -184,7 +189,7 @@ export async function ReportsBiSection({
           .in('branch_id', branchIds)
           .gte('appointments.scheduled_at', startDate.toISOString())
           .lte('appointments.scheduled_at', endDate.toISOString())
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as unknown[] }),
 
     // 9 — Movimentações de estoque (PROCEDURE_USAGE) — overview + estoque
     needStockMoves
@@ -194,14 +199,14 @@ export async function ReportsBiSection({
           .eq('type', 'PROCEDURE_USAGE')
           .gte('created_at', startDate.toISOString())
           .lte('created_at', endDate.toISOString())
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as unknown[] }),
 
     // 10 — Estoque por filial × produto
     needBps
       ? admin.from('branch_product_stock')
           .select('current_stock, current_rendimento, min_stock, branch_id, product_id, products(name, category, cost_price, is_active), branches(name)')
           .in('branch_id', branchIds)
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as unknown[] }),
 
     // 11 — Lotes vencendo em ≤ 30 dias.
     // O filtro por tenant vem do produto: sem ele esta consulta rodava com o
@@ -214,7 +219,7 @@ export async function ReportsBiSection({
           .gt('quantity', 0)
           .order('expires_at', { ascending: true })
           .limit(20)
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as unknown[] }),
 
     // 12 — Parcelas pendentes (aba financeiro).
     // Mesmo problema: sem o vínculo com as filiais do tenant, as 50 vagas do
@@ -227,7 +232,7 @@ export async function ReportsBiSection({
           .eq('is_paid', false)
           .order('due_date', { ascending: true })
           .limit(50)
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as unknown[] }),
 
     // 13 — Custo por procedimento (aba procedimentos — margem por faixa etária).
     // Traz também mão de obra e outros custos: a margem considerava só os
@@ -236,7 +241,7 @@ export async function ReportsBiSection({
       ? admin.from('procedure_products')
           .select('procedure_id, quantity, products(cost_price), procedures!inner(tenant_id, labor_cost, other_costs)')
           .eq('procedures.tenant_id', ctx.tenantId!)
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as unknown[] }),
 
     // 14 — Retenção real (quem já era cliente antes do período e voltou)
     needClientsAll
@@ -272,19 +277,19 @@ export async function ReportsBiSection({
   ])
 
   // -- Cast + filter -------------------------------------------------
-  const txsCurr        = (txsCurrRaw        ?? []) as any[]
-  const txsPrev        = (txsPrevRaw        ?? []) as any[]
-  const apptsCurr      = (apptsCurrRaw      ?? []) as any[]
-  const clientsCurr    = (clientsCurrRaw    ?? []) as any[]
-  const clientsAll     = (clientsAllRaw     ?? []) as any[]
-  const allAppts       = (allApptsRaw       ?? []) as any[]
-  const commissions    = (commissionsRaw    ?? []) as any[]
-  const stockMoves     = (stockMovesRaw     ?? []) as any[]
-  const bps            = (bpsRaw            ?? []) as any[]
-  const productBatches = (productBatchesRaw ?? []) as any[]
-  const procedureCosts = (procedureCostsRaw ?? []) as any[]
-  const installments   = ((installmentsRaw  ?? []) as any[])
-    .filter(i => branchIds.includes(i.financial_transactions?.branch_id))
+  const txsCurr        = (txsCurrRaw        ?? []) as unknown as LinhaTransacao[]
+  const txsPrev        = (txsPrevRaw        ?? []) as unknown as LinhaTransacaoAnterior[]
+  const apptsCurr      = (apptsCurrRaw      ?? []) as unknown as LinhaAtendimento[]
+  const clientsCurr    = (clientsCurrRaw    ?? []) as unknown as LinhaClienteNovo[]
+  const clientsAll     = (clientsAllRaw     ?? []) as unknown as LinhaCliente[]
+  const allAppts       = (allApptsRaw       ?? []) as unknown as LinhaAgendamento[]
+  const commissions    = (commissionsRaw    ?? []) as unknown as LinhaComissao[]
+  const stockMoves     = (stockMovesRaw     ?? []) as unknown as LinhaMovimentoDeEstoque[]
+  const bps            = (bpsRaw            ?? []) as unknown as LinhaEstoqueDaUnidade[]
+  const productBatches = (productBatchesRaw ?? []) as unknown as LinhaLote[]
+  const procedureCosts = (procedureCostsRaw ?? []) as unknown as LinhaCustoDoProcedimento[]
+  const installments   = ((installmentsRaw  ?? []) as unknown as LinhaParcela[])
+    .filter(i => branchIds.includes(i.financial_transactions?.branch_id ?? ''))
 
   // -- Aba Comercial -------------------------------------------------
   // Vive aqui desde que deixou de ser tela própria (/admin/comercial): o funil
@@ -314,11 +319,11 @@ export async function ReportsBiSection({
   )
 
   const insumosNaFatia = (inicio: number, fim: number) => stockMoves
-    .filter((m: any) => {
+    .filter(m => {
       const ts = new Date(m.created_at).getTime()
       return ts >= inicio && ts <= fim
     })
-    .reduce((s: number, m: any) => s + Math.abs(Number(m.quantity)) * Number(m.products?.cost_price ?? 0), 0)
+    .reduce((s, m) => s + Math.abs(Number(m.quantity)) * Number(m.products?.cost_price ?? 0), 0)
 
   function pontoDoGrafico(chave: string, idx: number, inicio: number, fim: number): ChartPoint {
     const ponto   = seriesPorBucket.get(chave)

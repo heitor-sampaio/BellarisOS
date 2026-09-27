@@ -42,7 +42,6 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
 
     const [search,     setSearch]     = useState('')
     const [clientId,   setClientId]   = useState('')
-    const [clientName, setClientName] = useState('')
     const [open_dd,    setOpenDd]     = useState(false)
 
     const [state, formAction, pending] = useActionState(grantInternalCredit, null)
@@ -58,7 +57,6 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
       formRef.current?.reset()
       setSearch('')
       setClientId('')
-      setClientName('')
       setOpenDd(false)
       dialogRef.current?.showModal()
     }, [])
@@ -69,11 +67,10 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
 
     useEffect(() => {
       if (state && !state.error) close()
-    }, [state])
+    }, [state, close])
 
     function selectClient(id: string, name: string) {
       setClientId(id)
-      setClientName(name)
       setSearch(name)
       setOpenDd(false)
     }
@@ -140,7 +137,6 @@ export const ClientCreditModal = forwardRef<ClientCreditModalHandle, Props>(
                     onChange={e => {
                       setSearch(e.target.value)
                       setClientId('')
-                      setClientName('')
                       setOpenDd(true)
                     }}
                     onFocus={() => setOpenDd(true)}

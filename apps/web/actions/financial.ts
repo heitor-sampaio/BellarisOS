@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient as createSupabase } from '@/lib/supabase/server'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
 function str(fd: FormData, key: string) {

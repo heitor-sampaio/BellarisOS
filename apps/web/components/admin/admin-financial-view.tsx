@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet, Users,
   ArrowUpRight, ArrowDownRight,
-  ChevronRight, CreditCard, Plus, CheckCircle2, Clock, RotateCcw, Gift,
+  Plus, CheckCircle2, Clock, RotateCcw, Gift,
 } from 'lucide-react'
 import { FinancialTransactionModal } from '@/components/branch/financial-transaction-modal'
 import { ClientCreditModal, type ClientCreditModalHandle } from '@/components/branch/client-credit-modal'
@@ -80,12 +80,6 @@ interface Props {
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
-const fmtShort = (v: number): string => {
-  if (v >= 1_000_000) return `R$ ${(v / 1_000_000).toFixed(1).replace('.', ',')}M`
-  if (v >= 1_000)     return `R$ ${(v / 1_000).toFixed(1).replace('.', ',')}k`
-  return fmtBRL(v)
-}
 
 const PERIOD_OPTIONS = [
   { value: 'today',      label: 'Hoje' },

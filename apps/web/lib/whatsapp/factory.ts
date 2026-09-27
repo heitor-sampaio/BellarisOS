@@ -1,15 +1,14 @@
 import { timingSafeEqual } from 'crypto'
 import type {
-  WhatsAppProvider, WhatsAppConfig, UazapiConfig, NumeroDeWhatsApp, WhatsAppProviderType,
+  WhatsAppProvider, WhatsAppConfig, NumeroDeWhatsApp, WhatsAppProviderType,
 } from './types'
 import { UazapiProvider } from './uazapi'
 import { OfficialAPIProvider } from './official'
-import { ler } from '@/lib/db'
 
 export function resolveProvider(config: WhatsAppConfig): WhatsAppProvider {
   if (config.provider === 'uazapi')   return new UazapiProvider(config)
   if (config.provider === 'official') return new OfficialAPIProvider(config)
-  throw new Error(`Unknown WhatsApp provider: ${(config as any).provider}`)
+  throw new Error(`Unknown WhatsApp provider: ${(config as { provider?: string }).provider}`)
 }
 
 /** As colunas que compõem uma `NumeroDeWhatsApp`. Uma lista só, para não divergirem. */

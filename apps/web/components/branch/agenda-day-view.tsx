@@ -68,7 +68,7 @@ interface ColProps {
 }
 
 function ProfColumn({
-  pro, profColor, events, currentDate, isFirst, canWrite,
+  events, currentDate, isFirst, canWrite,
   draggingId, dropPreviewY,
   onEventClick, onSlotClick, onDragStart, onDragEnd, onDragOver, onDrop,
 }: ColProps) {

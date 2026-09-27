@@ -62,7 +62,9 @@ export function RealtimeRefresher({ tables, filter, debounceMs = 500 }: Props) {
       if (document.visibilityState === 'visible' && pendente) agendar()
     }
 
-    for (const table of tables) {
+    // As tabelas saem da `key`, não do array: o array é novo a cada render do
+    // pai, e depender dele reassinaria o canal toda vez.
+    for (const table of (key ? key.split(',') : [])) {
       channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table, ...(filter ? { filter } : {}) },

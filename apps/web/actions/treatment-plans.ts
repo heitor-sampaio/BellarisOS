@@ -540,7 +540,8 @@ export async function listarPlanejamentos(opcoes?: {
     .map(p => {
       const cli     = p.clients as unknown as RawCli | null
       const sessoes = (p.treatment_plan_sessions as unknown as RawSess[]) ?? []
-      return {
+      // Documento e telefone só servem à busca abaixo — não vão para a tela.
+      const plano = {
         id:       p.id as string,
         nome:     (p.name as string | null) ?? 'Plano de tratamento',
         status:   p.status as string,
@@ -552,18 +553,17 @@ export async function listarPlanejamentos(opcoes?: {
         ),
         cliente:  cli ? { id: cli.id, name: cli.name, phone: cli.phone } : null,
         unidade:  doTenant.find(b => b.id === p.branch_id)?.name ?? null,
-        _doc:     cli?.document ?? '',
-        _fone:    cli?.phone ?? '',
       }
+      return { plano, doc: cli?.document ?? '', fone: cli?.phone ?? '' }
     })
-    .filter(p => {
+    .filter(({ plano: p, doc, fone }) => {
       if (!termo) return true
       if (p.nome.toLowerCase().includes(termo)) return true
       if (p.cliente?.name.toLowerCase().includes(termo)) return true
-      if (digitos && (p._doc.includes(digitos) || p._fone.replace(/\D/g, '').includes(digitos))) return true
+      if (digitos && (doc.includes(digitos) || fone.replace(/\D/g, '').includes(digitos))) return true
       return false
     })
-    .map(({ _doc, _fone, ...p }) => p)
+    .map(({ plano }) => plano)
 
   return { planos }
 }

@@ -30,7 +30,9 @@ export async function oportunidadesDoCliente(
     return []
   }
 
-  const linhas = (leads ?? []) as any[]
+  type Linha = { id: string; crm_stage_id: string | null; owner_id: string | null; created_at: string; value: number | string | null }
+  type Etapa = { id: string; name: string; color: string | null; funnel_id: string | null; outcome: string | null }
+  const linhas = (leads ?? []) as Linha[]
   if (linhas.length === 0) return []
 
   const stageIds = [...new Set(linhas.map(l => l.crm_stage_id).filter(Boolean))] as string[]
@@ -48,14 +50,15 @@ export async function oportunidadesDoCliente(
   if (stagesRes.error) console.error('[oportunidadesDoCliente] etapas:', stagesRes.error.message)
   if (ownersRes.error) console.error('[oportunidadesDoCliente] donos:', ownersRes.error.message)
 
-  const porStage = new Map((stagesRes.data ?? []).map((s: any) => [s.id as string, s]))
-  const porOwner = new Map((ownersRes.data ?? []).map((u: any) => [u.id as string, u.name as string]))
+  const etapas = (stagesRes.data ?? []) as Etapa[]
+  const porStage = new Map(etapas.map(s => [s.id, s]))
+  const porOwner = new Map(((ownersRes.data ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
 
-  const funnelIds = [...new Set((stagesRes.data ?? []).map((s: any) => s.funnel_id).filter(Boolean))] as string[]
+  const funnelIds = [...new Set(etapas.map(s => s.funnel_id).filter(Boolean))] as string[]
   const { data: funis } = funnelIds.length > 0
     ? await admin.from('crm_funnels').select('id, name').in('id', funnelIds)
     : { data: [] }
-  const porFunil = new Map((funis ?? []).map((f: any) => [f.id as string, f.name as string]))
+  const porFunil = new Map(((funis ?? []) as { id: string; name: string }[]).map(f => [f.id, f.name]))
 
   return linhas.map(l => {
     const etapa = l.crm_stage_id ? porStage.get(l.crm_stage_id) : null

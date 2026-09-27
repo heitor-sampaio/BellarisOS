@@ -293,12 +293,15 @@ export function DreWaterfall({
 }
 
 // -- SimpleTable ---------------------------------------------------------------
+/** Valor de uma célula: as linhas das tabelas só carregam texto e número. */
+export type ValorDeCelula = string | number
+
 export interface TableColumn {
   key: string
   label: string
   align?: 'left' | 'right' | 'center'
   width?: number | string
-  render?: (value: any, row: any) => ReactNode
+  render?: (value: ValorDeCelula | undefined, row: Record<string, ValorDeCelula>) => ReactNode
 }
 
 export function SimpleTable({
@@ -307,7 +310,7 @@ export function SimpleTable({
   emptyMsg = 'Nenhum registro no período.',
 }: {
   columns: TableColumn[]
-  rows: Record<string, any>[]
+  rows: Record<string, ValorDeCelula>[]
   emptyMsg?: string
 }) {
   if (!rows.length) return <EmptyChart msg={emptyMsg} />

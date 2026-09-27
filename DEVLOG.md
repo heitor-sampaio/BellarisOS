@@ -1260,6 +1260,53 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Lint zerado no apps/web (e o que o `any` escondia)
+
+"Corrige todos erros de lint." Eram 342 erros e 108 avisos em 105 arquivos:
+215 `any`, 85 variáveis sem uso e ~100 das regras do React Compiler
+(`set-state-in-effect`, `refs`, `static-components`, `purity`,
+`immutability`). Agora: **zero erros, zero avisos, e nenhum `eslint-disable`**
+— os 13 que existiam (10 em `components/admin`, 3 em `components/branch`)
+foram resolvidos de verdade, não recolocados.
+
+- `any` virou o tipo do que o `select` pede (linhas do Supabase) ou do que o
+  código lê (payload da Meta, uazapi, Google Ads — `unknown` + interface
+  mínima, sem mudar o runtime).
+- As regras de efeito foram resolvidas pela forma que o React recomenda:
+  estado derivado calculado no render, reset "ao mudar a prop" durante o
+  render, `setState` síncrono movido para o handler, `useEffectEvent` para
+  callbacks do pai, `useSyncExternalStore` para relógio e `localStorage`.
+  Resposta atrasada de busca passou a ser descartada em vários painéis.
+
+**Defeitos que a tipagem revelou, corrigidos:**
+- `/admin/branches/<id>` **quebrava sempre**: pedia `users.role`, coluna que
+  não existe desde os cargos dinâmicos (42703).
+- A tabela de atribuição do marketing dizia "Lead" em toda linha: a etapa
+  nunca vinha no select.
+- Em Configurações → Integrações o `SectionCard` era declarado dentro do
+  componente: a cada render do pai o formulário aberto remontava e **perdia o
+  que estava digitado**.
+- Resposta de uma conversa já trocada ainda era aplicada no card do inbox.
+- Consultas que descartavam o erro nos financeiros e estoques passaram a `ler`.
+- `is_evaluation` e o rótulo "Avaliação" (entidade extinta em 25/09) saíram.
+- Portal do cliente: a etiqueta "React ✓" fixa no canto e a faixa
+  "React / Taps / Step" no topo do agendamento eram diagnóstico de julho
+  ("remove after debugging") e apareciam para o cliente final. Removidas.
+
+**Anotado, não corrigido** (fora de lint; entram numa próxima frente):
+- "Pacote adquirido" nunca aparece no histórico do cliente:
+  `getCachedClientProfileData` não traz `purchased_at` de `client_packages`.
+- Erro de consulta ainda descartado em `configuracoes.tsx`, no dashboard da
+  rede (7 consultas), na sessão de atendimento (falha vira 404), na agenda da
+  rede, nos relatórios, em `oportunidades-do-cliente`, `buscarOportunidades`,
+  `getCampaign` e `previewAudience`.
+- O dashboard da rede soma a demografia em JS sobre todos os clientes — trunca
+  em 1000 (§13.1).
+
+Regressão: 226 E2E passaram na rodada completa; o único que falhou
+(`planejamentos-mobile`, espera de 5 s no bloco mais carregado) passou sozinho
+e em 2 repetições com os outros de planejamento. Vitest 378/378.
+
 ### 2026-09-27 — Frente 7: a mensagem que sai, e três ações que nunca funcionaram
 
 "Corrige os erros de lint e segue para P5." Os 10 erros de lint da frente 6

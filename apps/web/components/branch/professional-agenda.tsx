@@ -55,7 +55,7 @@ interface Props {
   branchId:         string
 }
 
-export function ProfessionalAgendaView({ events, slug, professionalName, branchName, professionalId, branchId }: Props) {
+export function ProfessionalAgendaView({ events, slug, professionalName, branchName, professionalId }: Props) {
   const router = useRouter()
   const today  = useMemo(() => new Date(), [])
 
@@ -112,13 +112,13 @@ export function ProfessionalAgendaView({ events, slug, professionalName, branchN
   const heroEvent = useMemo(() => {
     const inProgress = todayEvents.find(e => e.status === 'IN_PROGRESS')
     if (inProgress) return { ev: inProgress, label: 'Em atendimento agora' }
-    const now = Date.now()
+    const now = today.getTime()
     const next = todayEvents
       .filter(e => parseISO(e.start).getTime() > now && e.status !== 'CANCELLED' && e.status !== 'NO_SHOW')
       .sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime())[0]
     if (next) return { ev: next, label: 'Próximo atendimento' }
     return null
-  }, [todayEvents])
+  }, [todayEvents, today])
 
   const todayDuration = useMemo(() =>
     todayEvents.reduce((s, e) => s + e.durationMin, 0), [todayEvents])

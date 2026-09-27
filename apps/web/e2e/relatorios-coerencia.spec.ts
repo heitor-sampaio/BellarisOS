@@ -77,7 +77,7 @@ test('faturamento: cartão, legenda do gráfico e banco dizem o mesmo', async ({
  * Este teste prova que a regra vale na série do gráfico, e não só no total:
  * um estorno criado agora não pode aumentar o faturamento de nenhum dia.
  */
-test('estorno não infla a série do gráfico', async ({ page: _page }) => {
+test('estorno não infla a série do gráfico', async () => {
   const db = banco()
   const tenant = await tenantId()
 

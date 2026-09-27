@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
+import Image from 'next/image'
 import { Save, Upload, X, ImageIcon, CheckCircle2 } from 'lucide-react'
 import {
   flattenFields, isInjectableMap, emptyInjectableMap,
@@ -33,7 +34,7 @@ interface Props {
 }
 
 export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(function AnamnesisFormRenderer(
-  { appointmentId, slug, formName, rows, initial, canEdit, saveAction, hideSaveButton }, ref,
+  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton }, ref,
 ) {
   const doSave = saveAction ?? salvarFichaDoProcedimento
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
@@ -43,18 +44,20 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
   // path da foto → signed URL (temporária) para exibir
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({})
 
-  // Resolve as fotos já salvas (paths) para signed URLs ao montar.
+  // As fotos já salvas quando a ficha abre — calculadas uma vez, das
+  // respostas iniciais. As que chegam depois ganham a URL no upload.
+  const [fotosSalvas] = useState(() => flattenFields({ rows })
+    .filter(f => f.type === 'photo')
+    .map(f => (initial ?? {})[f.id])
+    .filter((v): v is string => typeof v === 'string' && !!v))
+
+  // Resolve essas fotos (paths) para signed URLs ao montar.
   useEffect(() => {
-    const paths = flattenFields({ rows })
-      .filter(f => f.type === 'photo')
-      .map(f => answers[f.id])
-      .filter((v): v is string => typeof v === 'string' && !!v)
-    if (paths.length === 0) return
+    if (fotosSalvas.length === 0) return
     let active = true
-    signAnamnesisPhotos(paths).then(map => { if (active) setPhotoUrls(prev => ({ ...prev, ...map })) })
+    signAnamnesisPhotos(fotosSalvas).then(map => { if (active) setPhotoUrls(prev => ({ ...prev, ...map })) })
     return () => { active = false }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [fotosSalvas])
 
   function setAnswer(id: string, value: AnswerValue) {
     setAnswers(a => ({ ...a, [id]: value }))
@@ -231,7 +234,7 @@ function FieldView({ field: f, value, canEdit, appointmentId, photoUrl, onPhotoU
 function ReadOnlyValue({ field: f, value, photoUrl }: { field: AnamnesisField; value: AnswerValue | undefined; photoUrl?: string }) {
   if (f.type === 'photo') {
     if (typeof value === 'string' && value && photoUrl) {
-      return <img src={photoUrl} alt={f.label} style={{ maxWidth: 220, borderRadius: 10, border: '1px solid var(--border)' }} />
+      return <Image unoptimized src={photoUrl} alt={f.label} width={220} height={220} style={{ width: 'auto', height: 'auto', maxWidth: 220, borderRadius: 10, border: '1px solid var(--border)' }} />
     }
     return <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>{value ? 'Carregando foto…' : 'Não informado'}</p>
   }
@@ -281,7 +284,7 @@ function PhotoField({ path, displayUrl, appointmentId, onChange, onUploaded }: {
       />
       {path && displayUrl ? (
         <div style={{ position: 'relative', display: 'inline-block' }}>
-          <img src={displayUrl} alt="Foto" style={{ maxWidth: 220, borderRadius: 10, border: '1px solid var(--border)', display: 'block' }} />
+          <Image unoptimized src={displayUrl} alt="Foto" width={220} height={220} style={{ width: 'auto', height: 'auto', maxWidth: 220, borderRadius: 10, border: '1px solid var(--border)', display: 'block' }} />
           <button
             type="button" onClick={() => onChange('')} title="Remover"
             style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: 8, border: 'none', background: 'rgba(0,0,0,0.55)', color: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}

@@ -18,8 +18,7 @@ import {
   createFunnel, renameFunnel, setDefaultFunnel, setFunnelArchived, deleteFunnel, reorderFunnels,
 } from '@/actions/crm-funnels'
 
-// Converte hex em versão suave (hex 8 dígitos com alpha)
-function softBg(hex: string)     { return hex + '18' }
+// Converte hex em versão suave para a borda (hex 8 dígitos com alpha)
 function softBorder(hex: string) { return hex + '50' }
 
 interface CRMStageSettingsProps {
@@ -48,12 +47,17 @@ function StageRow({
   const [color, setColor] = useState(stage.color)
   const [outcome, setOutcome] = useState<StageOutcome>(stage.outcome)
   const [deleteErr, setDeleteErr] = useState<string | null>(null)
-  const [_pending, start] = useTransition()
+  const [, start] = useTransition()
   const router = useRouter()
 
-  useEffect(() => {
+  // A etapa mudou no servidor: os campos acompanham. Ajustado durante o render,
+  // comparando com a versão anterior da etapa.
+  const versaoDaEtapa = `${stage.id}|${stage.name}|${stage.color}|${stage.outcome}`
+  const [versaoAnterior, setVersaoAnterior] = useState(versaoDaEtapa)
+  if (versaoAnterior !== versaoDaEtapa) {
+    setVersaoAnterior(versaoDaEtapa)
     setName(stage.name); setColor(stage.color); setOutcome(stage.outcome)
-  }, [stage.id, stage.name, stage.color, stage.outcome])
+  }
 
   function handleNameBlur() {
     if (name.trim() && name.trim() !== stage.name) {
@@ -195,11 +199,17 @@ function FunnelRow({
   onError:     (msg: string | null) => void
 }) {
   const [name, setName] = useState(funnel.name)
-  const [_pending, start] = useTransition()
+  const [, start] = useTransition()
   const router = useRouter()
   const arquivado = funnel.archived_at !== null
 
-  useEffect(() => { setName(funnel.name) }, [funnel.id, funnel.name])
+  // O funil mudou no servidor: o nome acompanha (ajustado durante o render).
+  const versaoDoFunil = `${funnel.id}|${funnel.name}`
+  const [versaoAnterior, setVersaoAnterior] = useState(versaoDoFunil)
+  if (versaoAnterior !== versaoDoFunil) {
+    setVersaoAnterior(versaoDoFunil)
+    setName(funnel.name)
+  }
 
   function handleNameBlur() {
     if (name.trim() && name.trim() !== funnel.name) {
@@ -333,15 +343,28 @@ export function CRMStageSettings({
   const [draggingFunnel, setDraggingFunnel] = useState<string | null>(null)
   const [overFunnelIdx,  setOverFunnelIdx]  = useState<number | null>(null)
   const enterCounts = useRef<Record<string, number>>({})
-  const [_pending, startReorder] = useTransition()
+  const [, startReorder] = useTransition()
 
-  // Sync com o servidor (revalidate atualiza as props pela página)
-  useEffect(() => { setFunnels(initialFunnels) }, [initialFunnels])
-  useEffect(() => { setStages(initialStages) },   [initialStages])
+  // Sync com o servidor (revalidate atualiza as props pela página). Ajustado
+  // durante o render, guardando o que veio da última vez.
+  const [funisDoServidor,  setFunisDoServidor]  = useState(initialFunnels)
+  const [etapasDoServidor, setEtapasDoServidor] = useState(initialStages)
+  if (funisDoServidor !== initialFunnels) {
+    setFunisDoServidor(initialFunnels)
+    setFunnels(initialFunnels)
+  }
+  if (etapasDoServidor !== initialStages) {
+    setEtapasDoServidor(initialStages)
+    setStages(initialStages)
+  }
 
   // Abrir a engrenagem com a navegação do seletor ainda em voo pegava o funil
   // anterior. Quando a prop chega, a seleção acompanha.
-  useEffect(() => { setSelectedId(activeFunnelId) }, [activeFunnelId])
+  const [funilAtivoAnterior, setFunilAtivoAnterior] = useState(activeFunnelId)
+  if (funilAtivoAnterior !== activeFunnelId) {
+    setFunilAtivoAnterior(activeFunnelId)
+    setSelectedId(activeFunnelId)
+  }
 
   const open = useCallback(() => {
     setSelectedId(activeFunnelId)
@@ -441,8 +464,8 @@ export function CRMStageSettings({
   const [stageState, stageAction, stagePending] = useActionState(createStage,  undefined)
   const [funnelState, funnelAction, funnelPending] = useActionState(createFunnel, undefined)
 
-  useEffect(() => { if (stageState?.success)  router.refresh() }, [stageState?.success])
-  useEffect(() => { if (funnelState?.success) router.refresh() }, [funnelState?.success])
+  useEffect(() => { if (stageState?.success)  router.refresh() }, [stageState?.success, router])
+  useEffect(() => { if (funnelState?.success) router.refresh() }, [funnelState?.success, router])
 
   return (
     <>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaAtendimento } from '@/lib/rotas'
-import { X, User, Stethoscope, Calendar, CheckCircle2, Clock, Play, ChevronRight, Loader2, Settings } from 'lucide-react'
+import { X, User, Stethoscope, Calendar, CheckCircle2, Play, ChevronRight, Loader2, Settings } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { getTreatmentPlanDetails } from '@/actions/treatment-plans'
@@ -68,13 +68,12 @@ function Divider() {
 // -- Sessão item ---------------------------------------------------------------
 
 function SessionItem({
-  session, index, isLast, slug, onSessionClick,
+  session, index, isLast, slug,
 }: {
   session:        TreatmentFileDetails['sessions'][number]
   index:          number
   isLast:         boolean
   slug:           string
-  onSessionClick: (apptId: string) => void
 }) {
   const router     = useRouter()
   const pathname   = usePathname()
@@ -83,7 +82,6 @@ function SessionItem({
   const isDone     = apptStatus === 'COMPLETED'
   const isActive   = apptStatus === 'IN_PROGRESS'
   const isBooked   = apptStatus === 'SCHEDULED' || apptStatus === 'CONFIRMED'
-  const isPending  = !appt
 
   const dotColor = isDone ? 'var(--success)' : isActive ? 'var(--warning)' : isBooked ? 'var(--info)' : 'var(--border)'
   const dotBg    = isDone ? 'var(--success-bg)' : isActive ? 'var(--warning-soft)' : isBooked ? 'var(--info-soft)' : 'var(--bg-app)'
@@ -184,7 +182,7 @@ function Timeline({ details }: { details: TreatmentFileDetails }) {
   }
 
   const completed = details.sessions.filter(s => s.appointment?.status === 'COMPLETED')
-  completed.forEach((s, i) => {
+  completed.forEach(s => {
     if (!s.appointment) return
     const procName = s.procedures[0]?.name ?? '—'
     events.push({
@@ -261,26 +259,34 @@ interface Props {
 
 export function TreatmentFileModal({ client, activePackage, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, onClose }: Props) {
   const [details,      setDetails]      = useState<TreatmentFileDetails | null>(null)
-  const [loading,      setLoading]      = useState(false)
+  // Nasce carregando quando há plano: a busca inicial sai no efeito abaixo.
+  const [loading,      setLoading]      = useState(!!activePackage.planId)
   const [error,        setError]        = useState<string | null>(null)
   const [sessionsOpen, setSessionsOpen] = useState(false)
 
   const hasPlan = !!activePackage.planId
 
+  const aplicarDetalhes = useCallback((res: Awaited<ReturnType<typeof getTreatmentPlanDetails>>) => {
+    if (res.data) setDetails(res.data)
+    else setError(res.error ?? 'Erro ao carregar ficha.')
+    setLoading(false)
+  }, [])
+
+  // Re-busca disparada pelo realtime: liga o "carregando" e aplica a resposta.
   const fetchDetails = useCallback(() => {
     if (!activePackage.planId) return
     setLoading(true)
-    getTreatmentPlanDetails(activePackage.planId, client.id).then(res => {
-      if (res.data) setDetails(res.data)
-      else setError(res.error ?? 'Erro ao carregar ficha.')
-      setLoading(false)
-    })
-  }, [activePackage.planId, client.id])
+    getTreatmentPlanDetails(activePackage.planId, client.id).then(aplicarDetalhes)
+  }, [activePackage.planId, client.id, aplicarDetalhes])
 
+  // Busca inicial: o "carregando" já nasce ligado; aqui só se aplica a resposta.
   useEffect(() => {
-    if (!hasPlan) return
-    fetchDetails()
-  }, [hasPlan, fetchDetails])
+    if (!hasPlan || !activePackage.planId) return
+    getTreatmentPlanDetails(activePackage.planId, client.id).then(aplicarDetalhes)
+  }, [hasPlan, activePackage.planId, client.id, aplicarDetalhes])
+
+  // "Agora" para a idade, lido uma vez: o render não pode ler o relógio.
+  const [agora] = useState(() => Date.now())
 
   // Realtime: re-busca detalhes quando plano ou seus agendamentos mudam
   useEffect(() => {
@@ -308,7 +314,7 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
   }
 
   function calcAge(birthDate: string) {
-    const diff = Date.now() - new Date(birthDate).getTime()
+    const diff = agora - new Date(birthDate).getTime()
     return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25))
   }
 
@@ -573,7 +579,6 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
                           index={i}
                           isLast={i === details!.sessions.length - 1}
                           slug={slug}
-                          onSessionClick={() => {}}
                         />
                       ))}
                     </div>

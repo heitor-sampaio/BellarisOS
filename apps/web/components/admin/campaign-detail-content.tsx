@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { ChevronDown, ChevronUp, ImageOff } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { numericAxisWidth } from '@/lib/chart-utils'
@@ -49,9 +50,11 @@ function AdCard({ ad, ageBreakdowns, placements }: { ad: Ad; ageBreakdowns: AgeB
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', background: 'var(--surface)' }}>
       {ad.creative.imageUrl || ad.creative.thumbnailUrl ? (
-        <img
-          src={ad.creative.imageUrl ?? ad.creative.thumbnailUrl}
+        <Image
+          unoptimized
+          src={(ad.creative.imageUrl ?? ad.creative.thumbnailUrl)!}
           alt={ad.creative.title ?? ad.name}
+          width={600} height={150}
           style={{ width: '100%', height: 150, objectFit: 'cover', display: 'block' }}
         />
       ) : (
@@ -293,13 +296,14 @@ function buildArc(cx: number, cy: number, r: number, ir: number, startDeg: numbe
 
 function DonutChart({ data, totalSpend }: { data: { age: string; spend: number }[]; totalSpend: number }) {
   const cx = 70; const cy = 70; const r = 58; const ir = 36
-  let angle = 0
+  const pcts = data.map(d => (totalSpend > 0 ? d.spend / totalSpend : 0))
   const slices = data.map((d, i) => {
-    const pct   = totalSpend > 0 ? d.spend / totalSpend : 0
+    const pct   = pcts[i]!
     const sweep = pct * 360
+    // Cada fatia começa onde as anteriores terminaram.
+    const angle = pcts.slice(0, i).reduce((soma, p) => soma + p * 360, 0)
     const path  = buildArc(cx, cy, r, ir, angle, angle + sweep)
     const mid   = polarToXY(cx, cy, (r + ir) / 2, angle + sweep / 2)
-    angle += sweep
     return { ...d, pct, path, mid, color: AGE_COLORS[i % AGE_COLORS.length] }
   })
 

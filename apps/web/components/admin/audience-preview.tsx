@@ -14,17 +14,19 @@ export function AudiencePreview({ rules }: Props) {
   const [isPending, startTransition] = useTransition()
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // A dependência é o TEXTO das regras: o pai monta um objeto novo a cada
+  // render, e pela identidade a contagem seria pedida o tempo todo.
+  const chaveDasRegras = JSON.stringify(rules)
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
       startTransition(async () => {
-        const res = await previewAudienceCount(rules)
+        const res = await previewAudienceCount(JSON.parse(chaveDasRegras) as typeof rules)
         setCount(res.count)
       })
     }, 600)
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(rules)])
+  }, [chaveDasRegras])
 
   return (
     <div style={{

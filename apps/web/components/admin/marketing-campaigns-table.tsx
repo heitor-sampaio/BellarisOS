@@ -6,6 +6,13 @@ import { Search, X } from 'lucide-react'
 import type { Campaign } from '@/lib/ads/types'
 
 type SortKey = 'spend' | 'impressions' | 'cpm' | 'linkClicks' | 'linkCtr' | 'conversions' | 'costPerConversion' | 'conversionValue'
+
+/** Seta da coluna. No módulo, não dentro da tabela: declarado lá dentro, seria
+ *  um componente novo a cada render. */
+function SortIcon({ k, sortKey, sortDir }: { k: SortKey; sortKey: SortKey; sortDir: 'desc' | 'asc' }) {
+  if (k !== sortKey) return <span style={{ opacity: 0.3 }}> ↕</span>
+  return <span style={{ color: 'var(--brand)' }}>{sortDir === 'desc' ? ' ↓' : ' ↑'}</span>
+}
 type StatusFilter = 'ALL' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED'
 type Signal = 'scale' | 'watch' | 'review' | 'neutral'
 
@@ -187,11 +194,6 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
     background: 'var(--surface-raised, var(--bg-app))',
   }
 
-  function SortIcon({ k }: { k: SortKey }) {
-    if (k !== sortKey) return <span style={{ opacity: 0.3 }}> ↕</span>
-    return <span style={{ color: 'var(--brand)' }}>{sortDir === 'desc' ? ' ↓' : ' ↑'}</span>
-  }
-
   const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
     { key: 'ALL',      label: `Todas (${statusCounts.ALL ?? 0})` },
     { key: 'ACTIVE',   label: `Ativas (${statusCounts.ACTIVE ?? 0})` },
@@ -279,28 +281,28 @@ export function MarketingCampaignsTable({ campaigns, preset = '30d' }: { campaig
                 <th style={{ ...headerStyle, textAlign: 'center', cursor: 'default' }}>Sinal</th>
                 <th style={{ ...headerStyle, textAlign: 'center' }}>Status</th>
                 <th style={headerStyle} onClick={() => handleSort('spend')}>
-                  Gasto <SortIcon k="spend" />
+                  Gasto <SortIcon k="spend" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th style={headerStyle} onClick={() => handleSort('impressions')}>
-                  Impressões <SortIcon k="impressions" />
+                  Impressões <SortIcon k="impressions" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th style={headerStyle} onClick={() => handleSort('cpm')}>
-                  CPM <SortIcon k="cpm" />
+                  CPM <SortIcon k="cpm" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th style={headerStyle} onClick={() => handleSort('linkClicks')}>
-                  Cliques no link <SortIcon k="linkClicks" />
+                  Cliques no link <SortIcon k="linkClicks" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th style={headerStyle} onClick={() => handleSort('linkCtr')}>
-                  CTR (link) <SortIcon k="linkCtr" />
+                  CTR (link) <SortIcon k="linkCtr" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th style={headerStyle} onClick={() => handleSort('conversions')}>
-                  Conversões <SortIcon k="conversions" />
+                  Conversões <SortIcon k="conversions" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th style={headerStyle} onClick={() => handleSort('conversionValue')}>
-                  Valor conv. <SortIcon k="conversionValue" />
+                  Valor conv. <SortIcon k="conversionValue" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th style={headerStyle} onClick={() => handleSort('costPerConversion')}>
-                  Custo/conv. <SortIcon k="costPerConversion" />
+                  Custo/conv. <SortIcon k="costPerConversion" sortKey={sortKey} sortDir={sortDir} />
                 </th>
                 <th style={{ ...headerStyle, cursor: 'default' }}>ROI</th>
               </tr>

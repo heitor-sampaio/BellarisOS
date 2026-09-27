@@ -11,6 +11,8 @@ import {
   Megaphone,
   Reply, Pencil, Check,
 } from 'lucide-react'
+import Link from 'next/link'
+import Image from 'next/image'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { createClient } from '@/lib/supabase/client'
@@ -334,10 +336,11 @@ function SeloDeAnuncio({ anuncio }: { anuncio: AnuncioDaMensagem }) {
         {anuncio.imagem && (
           // A peça que a pessoa viu. Reconhecer a imagem é mais rápido que ler
           // o nome da campanha — quem atende sabe de cara de qual anúncio veio.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
+            unoptimized
             src={anuncio.imagem}
             alt="Criativo do anúncio"
+            width={44} height={44}
             style={{
               width: 44, height: 44, objectFit: 'cover', flexShrink: 0,
               borderRadius: 6, border: '1px solid var(--brand-soft-border)',
@@ -527,12 +530,15 @@ function Bubble({
             link assinado — a URL do provedor expiraria em horas. */}
         {msg.media_url && msg.media_type === 'image' && (
           <a href={msg.media_url} target="_blank" rel="noreferrer">
-            <img
+            <Image
+              unoptimized
               src={msg.media_url}
               alt={msg.content}
+              // Tamanho real desconhecido: 0×0 e o CSS decide, como no <img>.
+              width={0} height={0}
               style={ehFigurinha
-                ? { width: 128, maxWidth: '100%', marginBottom: 6, display: 'block' }
-                : { maxWidth: '100%', minWidth: 120, borderRadius: 10, marginBottom: 6, display: 'block' }}
+                ? { width: 128, height: 'auto', maxWidth: '100%', marginBottom: 6, display: 'block' }
+                : { width: 'auto', height: 'auto', maxWidth: '100%', minWidth: 120, borderRadius: 10, marginBottom: 6, display: 'block' }}
             />
           </a>
         )}
@@ -888,6 +894,11 @@ interface CRMInboxProps {
 /** Id da bolha que existe só na tela, enquanto o envio não voltou do servidor. */
 const PREFIXO_OTIMISTA = 'opt-'
 
+/** Id da bolha otimista. Fora do componente: é chamado no envio, não no render. */
+function idOtimista(): string {
+  return `${PREFIXO_OTIMISTA}${Date.now()}`
+}
+
 /** Acha a citada entre as mensagens já carregadas. Null = não está aqui. */
 function previaDaCitada(lista: Message[], externalId: string): ReplyPreview | null {
   const citada = lista.find(m => m.external_id === externalId)
@@ -946,7 +957,7 @@ function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
 export function CRMInbox({
   initialConversations, leads, canEdit, branches,
   slug = '', initialSelectedId = null, canaisConectados = [],
-  numerosDaRede = [], numeroDoUsuario = null, telaCheia = false,
+  numeroDoUsuario = null, telaCheia = false,
 }: CRMInboxProps) {
   const [conversations, setConversations] = useState(initialConversations)
   // A assinatura do Realtime é montada uma vez só (deps `[]`), então os
@@ -961,7 +972,8 @@ export function CRMInbox({
   const pedidosSemResposta = useRef<Set<string>>(new Set())
   const [selectedId,    setSelectedId]    = useState<string | null>(initialSelectedId)
   const [messages,      setMessages]      = useState<Message[]>([])
-  const [loadingMsgs,   setLoadingMsgs]   = useState(false)
+  // Já nasce carregando quando a página abre numa conversa (`?c=`).
+  const [loadingMsgs,   setLoadingMsgs]   = useState(!!initialSelectedId)
   const [search,        setSearch]        = useState('')
   const [filtros,       setFiltros]       = useState<FiltrosInbox>(FILTROS_VAZIOS)
   const [draft,         setDraft]         = useState('')
@@ -997,10 +1009,10 @@ export function CRMInbox({
    * o UPDATE de `is_read` chega logo depois da mensagem e é a única notícia que
    * a tela tem daquela linha em vários casos.
    */
-  // Tipo explícito porque a função se rechama no retry, e sem a anotação o TS
-  // não consegue inferir algo que se referencia dentro do próprio inicializador.
-  const assinarMidiaSeFaltar: (linha: Message, tentativa?: number) => void
-  = useCallback((linha: Message, tentativa = 0) => {
+  // O retry chama `tentar` de novo, não o próprio callback: referenciar a
+  // constante dentro do seu inicializador é o que o React Compiler recusa.
+  const assinarMidiaSeFaltar = useCallback((linha: Message) => {
+    const tentar = (tentativa: number) => {
     const path = linha.media_path
     if (!path || linha.media_url) return
     if (tentativa === 0 && midiaPedida.current.has(linha.id)) return
@@ -1021,8 +1033,10 @@ export function CRMInbox({
         // build, e o servidor novo responde 404 para o bundle antigo.
         console.error('[inbox] falha ao assinar a mídia', linha.id, err)
         midiaPedida.current.delete(linha.id)
-        if (tentativa === 0) setTimeout(() => assinarMidiaSeFaltar(linha, 1), 2_000)
+        if (tentativa === 0) setTimeout(() => tentar(1), 2_000)
       })
+    }
+    tentar(0)
   }, [])
 
   const selectedConv = conversations.find(c => c.id === selectedId) ?? null
@@ -1087,15 +1101,23 @@ export function CRMInbox({
     : { aberta: true, fechaEm: null, motivo: null }
 
   // Load messages + subscribe to realtime when conversation changes
-  useEffect(() => {
+  // Trocou de conversa: o que era da anterior sai AQUI, no render, e não num
+  // efeito — setState síncrono em efeito renderiza duas vezes à toa.
+  const [conversaAnterior, setConversaAnterior] = useState(selectedId)
+  if (conversaAnterior !== selectedId) {
+    setConversaAnterior(selectedId)
     setSendError(null)   // erro é da conversa anterior
     setPainelAberto(false)   // no celular, o card da conversa anterior sai junto
     // A escapatória "responder pelo número da conversa" vale para UMA conversa.
     // Deixar ligada ao trocar faria a pessoa mandar pela caixa errada sem ter
     // pedido — e sem o aviso, porque ele some quando a escapatória está ativa.
     setIgnorarCaixaPropria(false)
-    if (!selectedId) { setMessages([]); return }
-    setLoadingMsgs(true)
+    if (!selectedId) setMessages([])
+    else setLoadingMsgs(true)
+  }
+
+  useEffect(() => {
+    if (!selectedId) return
     getMessages(selectedId).then(msgs => {
       setMessages(msgs)
       setLoadingMsgs(false)
@@ -1232,9 +1254,11 @@ export function CRMInbox({
 
   // Reactive "now" for aging metrics — refresh every minute
   useEffect(() => {
-    setNowMs(Date.now())
+    // O primeiro valor também vem por callback (e não direto no efeito): nulo
+    // no servidor, preenchido logo depois de montar.
+    const primeiro = setTimeout(() => setNowMs(Date.now()), 0)
     const id = setInterval(() => setNowMs(Date.now()), 60000)
-    return () => clearInterval(id)
+    return () => { clearTimeout(primeiro); clearInterval(id) }
   }, [])
 
   const handleSelect = useCallback((conv: Conversation) => {
@@ -1242,7 +1266,7 @@ export function CRMInbox({
     if (conv.unread_count > 0) {
       setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread_count: 0 } : c))
     }
-  }, [])
+  }, [setSelectedId, setConversations])
 
   function iniciarResposta(m: Message) {
     setEditando(null)
@@ -1291,7 +1315,7 @@ export function CRMInbox({
     const citada = respondendoA?.external_id ? respondendoA : null
 
     const optimistic: Message = {
-      id:              `${PREFIXO_OTIMISTA}${Date.now()}`,
+      id:              idOtimista(),
       conversation_id: selectedId,
       direction:       'outbound',
       content:         text,
@@ -1825,9 +1849,9 @@ export function CRMInbox({
                   <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   <span>
                     Canal {CH[selectedConv.channel].label} não está conectado — não é possível responder por aqui.{' '}
-                    <a href="/admin/settings?tab=integrations" style={{ color: 'var(--warning)', fontWeight: 700, textDecoration: 'underline' }}>
+                    <Link href="/admin/settings?tab=integrations" style={{ color: 'var(--warning)', fontWeight: 700, textDecoration: 'underline' }}>
                       Configurar integração →
-                    </a>
+                    </Link>
                   </span>
                 </div>
               )}

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Check, ChevronRight, ChevronLeft, User, FileText, CreditCard, CalendarCheck, Package, Stethoscope, Printer, MapPin, Clock } from 'lucide-react'
+import { Check, ChevronRight, User, FileText, CreditCard, CalendarCheck, Stethoscope, Printer, Clock } from 'lucide-react'
 import { createCheckoutConsentTerms, checkoutTreatmentPlan, cancelCheckout, signConsentTerm, marcarTermoAssinadoEmPapel } from '@/actions/treatment-plans'
 import { SignaturePad } from '@/components/shared/signature-pad'
 import type { PagamentoDoPlano } from '@/actions/treatment-plans'
@@ -10,7 +10,6 @@ import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/tre
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
 import { rotaCliente } from '@/lib/rotas'
 import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { SegSelect } from '@/components/shared/seg-select'
 
 // -- Types ---------------------------------------------------------------------
@@ -146,7 +145,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [formaPgto,     setFormaPgto]     = useState<'NADA_AGORA' | 'AVISTA' | 'PARCELADO' | 'A_RECEBER'>('NADA_AGORA')
   const [entrada,       setEntrada]       = useState('')
   const [parcelas,      setParcelas]      = useState(3)
-  const [primeiroVenc,  setPrimeiroVenc]  = useState(
+  const [primeiroVenc,  setPrimeiroVenc]  = useState(() =>
     format(new Date(Date.now() + 30 * 864e5), 'yyyy-MM-dd'),
   )
 
@@ -157,17 +156,27 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   // Agendamento — compartilhado por todas as sessões
   const [schedBranchId, setSchedBranchId] = useState(plan.currentBranchId)
   const [schedProfs,    setSchedProfs]    = useState<{ id: string; name: string }[]>([])
-  const [loadingProfs,  setLoadingProfs]  = useState(false)
+  // Nasce carregando quando já há filial; cada troca liga de novo no handler.
+  const [loadingProfs,  setLoadingProfs]  = useState(!!plan.currentBranchId)
   const [schedProfId,   setSchedProfId]   = useState('')
 
   // Por sessão: key = planSessionId → { date, time }
   const [sessionDates,  setSessionDates]  = useState<Record<string, { date: string; time: string }>>({})
   const [activeSession, setActiveSession] = useState(plan.sessions[0]?.id ?? '')
-  const [daySlots,      setDaySlots]      = useState<DaySlot[]>([])
-  const [loadingSlots,  setLoadingSlots]  = useState(false)
 
   const activeDate = sessionDates[activeSession]?.date ?? ''
   const activeTime = sessionDates[activeSession]?.time ?? ''
+
+  // Os horários do dia valem para UMA combinação de filial, profissional, data
+  // e sessão. Guardados junto com a chave dela: enquanto a resposta da chave
+  // atual não chega, a lista é vazia e "carregando" — derivado, sem zerar nada
+  // dentro de efeito.
+  const chaveDosSlots = schedBranchId && schedProfId && activeDate
+    ? `${schedBranchId}|${schedProfId}|${activeDate}|${activeSession}`
+    : ''
+  const [slotsLidos, setSlotsLidos] = useState<{ chave: string; slots: DaySlot[] }>({ chave: '', slots: [] })
+  const daySlots     = chaveDosSlots && slotsLidos.chave === chaveDosSlots ? slotsLidos.slots : []
+  const loadingSlots = !!chaveDosSlots && slotsLidos.chave !== chaveDosSlots
 
   const [submitting,   startSubmit]   = useTransition()
   const [error,        setError]      = useState<string | null>(null)
@@ -175,11 +184,18 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   const [showCancel,   setShowCancel] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
 
+  // Trocar a filial zera o profissional e liga o "carregando"; o efeito abaixo
+  // só busca a equipe dela.
+  function trocarFilialDoAgendamento(id: string) {
+    setSchedBranchId(id)
+    if (!id) return
+    setLoadingProfs(true)
+    setProfId('')
+  }
+
   // Busca profissionais quando branch muda
   useEffect(() => {
     if (!schedBranchId) return
-    setLoadingProfs(true)
-    setProfId('')
     getSchedulingBranchProfessionals(schedBranchId).then(res => {
       setSchedProfs(res.professionals)
       setLoadingProfs(false)
@@ -190,22 +206,18 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     setSchedProfId(v)
     setSessionDates({})
     setActiveSession(plan.sessions[0]?.id ?? '')
-    setDaySlots([])
   }
 
   // Busca slots quando profissional + sessão ativa + data mudam
   useEffect(() => {
-    if (!schedBranchId || !schedProfId || !activeDate) { setDaySlots([]); return }
-    setLoadingSlots(true)
+    if (!chaveDosSlots || !schedBranchId) return
     getSchedulingDaySlots(schedBranchId, schedProfId, activeDate).then(res => {
-      setDaySlots(res.slots)
-      setLoadingSlots(false)
+      setSlotsLidos({ chave: chaveDosSlots, slots: res.slots })
     })
-  }, [schedBranchId, schedProfId, activeDate, activeSession])
+  }, [chaveDosSlots, schedBranchId, schedProfId, activeDate])
 
   function setActiveDate(date: string) {
     setSessionDates(prev => ({ ...prev, [activeSession]: { date, time: '' } }))
-    setDaySlots([])
   }
 
   function setActiveTime(time: string) {
@@ -459,7 +471,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
         {plan.professionalNotes && (
           <p style={{ marginTop: 14, fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', fontStyle: 'italic', paddingTop: 14, borderTop: '1px solid var(--hairline)' }}>
-            "{plan.professionalNotes}"
+            “{plan.professionalNotes}”
           </p>
         )}
 
@@ -716,7 +728,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               className="filtro-select"
               aria-label="Filial do agendamento"
               value={schedBranchId ?? ''}
-              onChange={e => setSchedBranchId(e.target.value)}
+              onChange={e => trocarFilialDoAgendamento(e.target.value)}
             >
               {plan.branches.map(b => (
                 <option key={b.id} value={b.id}>

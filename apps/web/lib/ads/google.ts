@@ -29,7 +29,7 @@ export class GoogleAdsProvider implements AdsProvider {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error(`OAuth token refresh failed: ${(err as any)?.error_description ?? res.status}`)
+      throw new Error(`OAuth token refresh failed: ${(err as { error_description?: string })?.error_description ?? res.status}`)
     }
 
     const body = await res.json() as { access_token: string }
@@ -77,7 +77,8 @@ export class GoogleAdsProvider implements AdsProvider {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      const detail = (err as any)?.[0]?.error?.message ?? `HTTP ${res.status}`
+      // O searchStream devolve o erro dentro de uma LISTA.
+      const detail = (err as { error?: { message?: string } }[])?.[0]?.error?.message ?? `HTTP ${res.status}`
       throw new Error(`Google Ads API: ${detail}`)
     }
 
@@ -102,7 +103,7 @@ export class GoogleAdsProvider implements AdsProvider {
       )
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        return { ok: false, detail: (err as any)?.error?.message ?? `HTTP ${res.status}` }
+        return { ok: false, detail: (err as { error?: { message?: string } })?.error?.message ?? `HTTP ${res.status}` }
       }
       const body = await res.json() as { descriptiveName?: string }
       return { ok: true, detail: body.descriptiveName }

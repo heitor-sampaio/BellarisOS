@@ -11,6 +11,13 @@ import { UserPlus } from 'lucide-react'
 import { ler } from '@/lib/db'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
 
+/** O que a tela lê do lead; o resto do select passa adiante como veio. */
+type LeadLido = Record<string, unknown> & {
+  contato_id: string
+  tags:       string[] | null
+  users:      { name: string } | null
+}
+
 export default async function BranchOportunidadesPage({
   params, searchParams,
 }: {
@@ -83,7 +90,7 @@ export default async function BranchOportunidadesPage({
   // leads"), coisa diferente de recorte por unidade. Funil sem etapa nenhuma
   // não tem o que buscar — `.in()` com lista vazia é inválido no PostgREST.
   const leadOwner = ownerFilter(ctx, 'crm')
-  let leads: Record<string, unknown>[] = []
+  let leads: LeadLido[] = []
   if (stageIds.length > 0) {
     let leadsQuery = supabase
       .from('leads')
@@ -101,7 +108,7 @@ export default async function BranchOportunidadesPage({
     if (leadOwner) leadsQuery = leadsQuery.or(`owner_id.is.null,owner_id.eq.${leadOwner}`)
     const { data, error } = await leadsQuery.order('created_at', { ascending: false })
     if (error) throw new Error(`Falha ao carregar os leads: ${error.message}`)
-    leads = data ?? []
+    leads = (data ?? []) as unknown as LeadLido[]
   }
 
   const stats = funnelStats(
@@ -112,15 +119,15 @@ export default async function BranchOportunidadesPage({
   // Métricas de atendimento da PESSOA dona de cada lead — de todas as threads
   // dela, não só da que a oportunidade nasceu (ver `atividadeDasPessoas`).
   const atividade = await atividadeDasPessoas(
-    ctx.tenantId!, leads.map((l: any) => l.contato_id as string),
+    ctx.tenantId!, leads.map(l => l.contato_id),
   )
-  const leadsData = leads.map((l: any) => {
-    const { users: _dono, contato_id: _pessoa, ...rest } = l
-    const ativ = atividade.get(l.contato_id as string)
+  const leadsData = leads.map(l => {
+    const { users: dono, contato_id: pessoa, ...rest } = l
+    const ativ = atividade.get(pessoa)
     return {
       ...rest,
       tags:                l.tags ?? [],
-      owner_name:          l.users?.name ?? null,
+      owner_name:          dono?.name ?? null,
       last_interaction_at: ativ?.last_interaction_at ?? null,
       awaiting_since:      ativ?.awaiting_since ?? null,
     }

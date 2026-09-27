@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClipboardList, Plus, ChevronLeft, Loader2, Send, CreditCard, CheckCircle2, UserPlus, UserCheck } from 'lucide-react'
 import {
@@ -71,9 +71,21 @@ export function PlanejamentoTratamento({
 }) {
   const router   = useRouter()
 
-  const [planos,    setPlanos]    = useState<PlanoItem[] | null>(null)
+  /**
+   * Controlado quando o pai passa `onAbrir`; senão o estado é daqui.
+   *
+   * `planIdInicial` continua servindo à rota do plano (`/planejamentos/<id>`),
+   * onde não há lista por trás e o plano é a própria tela.
+   */
+  const controlado = typeof onAbrir === 'function'
+  const idPedido   = controlado ? (abertoId ?? null) : planIdInicial
+
+  const [planosLidos, setPlanos]  = useState<PlanoItem[] | null>(null)
+  // Sem cliente não há lista: a tela geral já passa o plano a abrir.
+  const planos = clientId ? planosLidos : []
   const [aberto,    setAberto]    = useState<ExistingPlan | null>(null)
-  const [carregando, setCarregando] = useState(false)
+  // Nasce carregando quando há plano pedido; o efeito abaixo o busca.
+  const [carregando, setCarregando] = useState(!!idPedido)
   const [salvando,  setSalvando]   = useState(false)
   const [erro,      setErro]       = useState<string | null>(null)
   const [checkout,  setCheckout]   = useState<CheckoutPlan | null>(null)
@@ -86,34 +98,41 @@ export function PlanejamentoTratamento({
   const termoRef = useRef("")
 
   const carregarLista = useCallback(async () => {
-    // Sem cliente não há lista: a tela geral já passa o plano a abrir.
-    if (!clientId) { setPlanos([]); return }
+    if (!clientId) return
     const res = await getPlanosDoCliente(clientId)
     setPlanos(res.planos)
   }, [clientId])
 
-  useEffect(() => { void carregarLista() }, [carregarLista])
-
-  /**
-   * Controlado quando o pai passa `onAbrir`; senão o estado é daqui.
-   *
-   * `planIdInicial` continua servindo à rota do plano (`/planejamentos/<id>`),
-   * onde não há lista por trás e o plano é a própria tela.
-   */
-  const controlado = typeof onAbrir === 'function'
-  const idPedido   = controlado ? (abertoId ?? null) : planIdInicial
-
   useEffect(() => {
+    if (!clientId) return
+    let vivo = true
+    getPlanosDoCliente(clientId).then(res => { if (vivo) setPlanos(res.planos) })
+    return () => { vivo = false }
+  }, [clientId])
+
+  // O pedido de abrir mudou: ajustado durante o render, guardando o anterior.
+  const [pedidoVisto, setPedidoVisto] = useState(idPedido)
+  if (pedidoVisto !== idPedido) {
+    setPedidoVisto(idPedido)
     if (!idPedido) {
       // Só o controlado fecha sozinho: no modo local, `setAberto(null)` já
       // aconteceu no clique, e reagir aqui apagaria o que o pai não pediu.
       if (controlado) setAberto(null)
-      return
+    } else if (aberto?.id !== idPedido) {
+      setErro(null); setCarregando(true)
     }
-    if (aberto?.id === idPedido) return
-    void abrirPlano(idPedido)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idPedido, controlado])
+  }
+
+  // Lido no efeito sem ser dependência dele: o plano aberto muda a cada
+  // salvamento, e isso não é motivo para buscar de novo.
+  const jaEstaAberto = useEffectEvent((id: string) => aberto?.id === id)
+
+  useEffect(() => {
+    if (!idPedido || jaEstaAberto(idPedido)) return
+    let vivo = true
+    getPlanoParaEditar(idPedido).then(res => { if (vivo) aplicarPlano(res) })
+    return () => { vivo = false }
+  }, [idPedido])
 
   /** Abrir/fechar passando por quem decide. */
   function pedirAbrir(planId: string | null) {
@@ -122,12 +141,15 @@ export function PlanejamentoTratamento({
     else setAberto(null)
   }
 
-  async function abrirPlano(planId: string) {
-    setErro(null); setCarregando(true)
-    const res = await getPlanoParaEditar(planId)
+  function aplicarPlano(res: Awaited<ReturnType<typeof getPlanoParaEditar>>) {
     setCarregando(false)
     if (res.error || !res.plano) { setErro(res.error ?? 'Não foi possível abrir o plano.'); return }
     setAberto(res.plano as ExistingPlan)
+  }
+
+  async function abrirPlano(planId: string) {
+    setErro(null); setCarregando(true)
+    aplicarPlano(await getPlanoParaEditar(planId))
   }
 
   async function novoPlano() {

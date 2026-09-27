@@ -1,10 +1,11 @@
 ﻿'use client'
 
 import { useState, useEffect, type ReactNode } from 'react'
+import Link from 'next/link'
 import {
   TrendingUp, TrendingDown, Users, Calendar,
   ArrowUpRight, ArrowDownRight, ExternalLink,
-  AlertTriangle, ClipboardList, Package, CheckCircle2,
+  ClipboardList, Package, CheckCircle2,
   Clock, Zap,
 } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip as RechartsTip, ResponsiveContainer } from 'recharts'
@@ -144,7 +145,8 @@ const AGE_PIE_COLORS = ['var(--brand)', 'var(--cat-4)', 'var(--info)', 'var(--su
 function useCountUp(target: number, duration = 900): number {
   const [val, setVal] = useState(0)
   useEffect(() => {
-    if (target === 0) { setVal(0); return }
+    // Zero não anima: o retorno abaixo já o mostra, sem setState no efeito.
+    if (target === 0) return
     let raf: number
     let start: number | null = null
     const step = (ts: number) => {
@@ -157,7 +159,7 @@ function useCountUp(target: number, duration = 900): number {
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
   }, [target, duration])
-  return val
+  return target === 0 ? 0 : val
 }
 
 function AnimatedNum({
@@ -1452,7 +1454,7 @@ export function AdminDashboardView({
               Integre sua conta de anúncios para ver alcance e gasto. {marketing.notifActive} campanha(s) de notificação ativa(s).
             </p>
           </div>
-          <a href="/admin/settings?tab=integrations" style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Configurar →</a>
+          <Link href="/admin/settings?tab=integrations" style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--brand)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Configurar →</Link>
         </div>
       )}
       </>)}

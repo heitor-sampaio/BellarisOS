@@ -75,7 +75,7 @@ export async function SessaoDeAtendimento({
   const procedureId = apptRaw.procedure_id as string | null
 
   // 2ª rodada: anamnese + insumos + produtos + profissionais + histórico + pagamento + plano de tratamento
-  const treatmentPlanId = (apptRaw as any).treatment_plan_id as string | null
+  const treatmentPlanId = apptRaw.treatment_plan_id as string | null
   // Era `&& !apptRaw.is_evaluation`: a avaliação nunca contava como sessão do
   // plano. Com ela virando procedimento comum (2026-09-25), quem decide se o
   // atendimento é do plano é o proprio vinculo ao plano, e mais nada.
@@ -202,7 +202,7 @@ export async function SessaoDeAtendimento({
   type RawSessProduct = { product_id: string; name: string; unit: string; quantity: number }
   type RawSessProc    = { products: RawSessProduct[] | null }
   const planSessionProducts: SessionProduct[] = planSessionRaw
-    ? ((planSessionRaw as any).treatment_plan_session_procedures as RawSessProc[] ?? [])
+    ? ((planSessionRaw as unknown as { treatment_plan_session_procedures: RawSessProc[] | null }).treatment_plan_session_procedures ?? [])
         .flatMap(sp => (sp.products ?? []).map(p => ({
           productId: p.product_id,
           name:      p.name,
@@ -326,11 +326,11 @@ export async function SessaoDeAtendimento({
     roomName:            room?.name ?? null,
     savedNotes:          mreRaw?.notes ?? null,
     savedIntercurrences: mreRaw?.intercurrences ?? null,
-    complaints:          (apptRaw as any).notes ?? null,
-    clientConfirmedAt:   (apptRaw as any).client_confirmed_at ?? null,
-    clientRating:        (apptRaw as any).client_rating ?? null,
-    procedureRating:     (apptRaw as any).procedure_rating ?? null,
-    clientFeedback:      (apptRaw as any).client_feedback ?? null,
+    complaints:          apptRaw.notes ?? null,
+    clientConfirmedAt:   apptRaw.client_confirmed_at ?? null,
+    clientRating:        apptRaw.client_rating ?? null,
+    procedureRating:     apptRaw.procedure_rating ?? null,
+    clientFeedback:      apptRaw.client_feedback ?? null,
   }
 
   const client: SessionClient = {

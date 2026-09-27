@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback, useActionState, useEffect, useState, useMemo, cloneElement, isValidElement } from 'react'
+import { useRef, useCallback, useActionState, useEffect, useState, useMemo, isValidElement } from 'react'
 import { X, TrendingUp, TrendingDown, Tag, CalendarClock } from 'lucide-react'
 import { createTransactionAdvanced } from '@/actions/financial'
 
@@ -101,7 +101,7 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
 
   useEffect(() => {
     if (state?.success) close()
-  }, [state?.success])
+  }, [state?.success, close])
 
   const categories = type === 'INCOME' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
@@ -109,9 +109,11 @@ export function FinancialTransactionModal({ branchId, slug, branches, trigger }:
 
   return (
     <>
-      {trigger && isValidElement(trigger) && cloneElement(trigger as React.ReactElement<any>, {
-        onClick: open,
-      })}
+      {/* O clique no gatilho sobe até aqui. `display: contents` tira a caixa do
+          invólucro do layout: o botão continua filho direto do flex da barra. */}
+      {trigger && isValidElement(trigger) && (
+        <span style={{ display: 'contents' }} onClick={open}>{trigger}</span>
+      )}
 
       <dialog
         ref={dialogRef} className="modal"

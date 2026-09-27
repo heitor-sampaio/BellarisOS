@@ -85,19 +85,9 @@ function getMondayOf(dateStr: string): string {
   return d.toISOString().slice(0, 10)
 }
 
-function fmtWeekday(dateStr: string, fmt: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric' }) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR', fmt)
-}
-
 function fmtDayFull(dateStr: string) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  })
-}
-
-function fmtMonthYear(dateStr: string) {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR', {
-    month: 'long', year: 'numeric',
   })
 }
 
@@ -339,15 +329,6 @@ function WeekGrid({
   const days = Array.from({ length: 7 }, (_, i) => addDays(mondayStr, i))
 
   const DAY_NAMES = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
-
-  const STATUS_DOT: Record<string, string> = {
-    SCHEDULED:   'var(--info)',
-    CONFIRMED:   'var(--cat-4)',
-    IN_PROGRESS: 'var(--warning)',
-    COMPLETED:   'var(--success)',
-    CANCELLED:   'var(--text-faint)',
-    NO_SHOW:     'var(--danger)',
-  }
 
   return (
     <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--surface)' }}>

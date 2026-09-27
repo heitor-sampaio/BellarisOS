@@ -199,10 +199,13 @@ export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction
     onDone()
   }
 
-  const Separator = ({ index }: { index: number }) => {
+  // Função de render, não componente: declarado aqui dentro, um componente
+  // seria outro tipo a cada render e remontaria o separador no meio do arrasto.
+  const separador = (index: number) => {
     const active = !!drag && over?.kind === 'sep' && over.index === index
     return (
       <div
+        key={`sep-${index}`}
         onDragOver={e => { if (drag) { e.preventDefault(); setOver({ kind: 'sep', index }) } }}
         onDrop={e => { e.preventDefault(); e.stopPropagation(); performDrop({ kind: 'sep', index }) }}
         style={{
@@ -272,7 +275,7 @@ export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction
             </div>
           ) : (
             <>
-              <Separator index={0} />
+              {separador(0)}
               {rows.map((row, ri) => {
                 const rowOver = !!drag && over?.kind === 'row' && over.rowId === row.id
                 return (
@@ -318,7 +321,7 @@ export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction
                         })}
                       </div>
                     </div>
-                    <Separator index={ri + 1} />
+                    {separador(ri + 1)}
                   </div>
                 )
               })}

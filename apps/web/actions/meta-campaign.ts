@@ -7,6 +7,50 @@ import type { AdSet, Ad, CampaignDetail, CampaignSummary, AgeBreakdown, GeoBreak
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
 
+// -- O que se lê da Graph API ---------------------------------------------------
+//
+// Só os campos que esta action pede nos `fields`, todos opcionais: a Meta
+// omite a métrica que não se aplica. Os números chegam como TEXTO ('12.34') —
+// daí os `parseFloat`/`parseInt` abaixo.
+
+interface AcaoGraph { action_type: string; value: string }
+
+interface InsightsGraph {
+  spend?: string; impressions?: string; cpm?: string; ctr?: string; reach?: string
+  inline_link_clicks?: string; inline_link_click_ctr?: string; cost_per_inline_link_click?: string
+  conversions?: string; cost_per_conversion?: string
+  purchase_roas?: { value: string }[]
+  action_values?: AcaoGraph[]
+}
+
+/** Linha de insights com quebra (idade, país, posicionamento, dia). */
+interface LinhaGraph extends InsightsGraph {
+  age?: string; country?: string; clicks?: string; date_start: string
+  publisher_platform?: string; platform_position?: string
+  adset_id?: string; ad_id?: string
+}
+
+interface ComInsights { insights?: { data?: InsightsGraph[] } }
+
+interface CampanhaGraph extends ComInsights { id: string; name: string; status: string }
+
+interface ConjuntoGraph extends ComInsights {
+  id: string; name: string; status: string
+  daily_budget?: string; lifetime_budget?: string
+  targeting?: {
+    age_min?: number; age_max?: number; genders?: number[]
+    geo_locations?: { countries?: string[]; cities?: { name: string }[] }
+    flexible_spec?: { interests?: { name: string }[] }[]
+  }
+}
+
+interface AnuncioGraph extends ComInsights {
+  id: string; name: string; status: string; adset_id?: string
+  creative?: { title?: string; body?: string; image_url?: string; thumbnail_url?: string; call_to_action_type?: string }
+}
+
+type ErroGraph = { error?: { message?: string } }
+
 const PRESET_MAP: Record<string, string> = {
   today: 'today',
   '7d':  'last_7d',
@@ -27,7 +71,7 @@ export async function getCampaignDetail(
     return { ok: false, error: 'Meta Ads não configurado' }
   }
 
-  const token      = (config as any).accessToken as string
+  const token      = config.accessToken
   const datePreset = PRESET_MAP[preset] ?? 'last_30d'
 
   const campaignFields = encodeURIComponent([
@@ -100,24 +144,24 @@ export async function getCampaignDetail(
 
   if (!campaignRes.ok) {
     const err = await campaignRes.json().catch(() => ({}))
-    return { ok: false, error: (err as any)?.error?.message ?? `Meta API ${campaignRes.status}` }
+    return { ok: false, error: (err as ErroGraph)?.error?.message ?? `Meta API ${campaignRes.status}` }
   }
   if (!adSetsRes.ok) {
     const err = await adSetsRes.json().catch(() => ({}))
-    return { ok: false, error: (err as any)?.error?.message ?? `Meta API ${adSetsRes.status}` }
+    return { ok: false, error: (err as ErroGraph)?.error?.message ?? `Meta API ${adSetsRes.status}` }
   }
 
-  const campaignBody  = await campaignRes.json() as any
-  const adSetsBody    = await adSetsRes.json()  as { data: any[] }
-  const adsBody       = await adsRes.json()     as { data: any[] }
-  const ageBody       = await ageRes.json().catch(()       => ({ data: [] })) as { data: any[] }
-  const geoBody       = await geoRes.json().catch(()       => ({ data: [] })) as { data: any[] }
-  const adSetAgeBody  = await adSetAgeRes.json().catch(()  => ({ data: [] })) as { data: any[] }
-  const adSetPosBody  = await adSetPosRes.json().catch(()  => ({ data: [] })) as { data: any[] }
-  const adAgeBody     = await adAgeRes.json().catch(()     => ({ data: [] })) as { data: any[] }
-  const adPosBody     = await adPosRes.json().catch(()     => ({ data: [] })) as { data: any[] }
-  const dailyBody     = await dailyRes.json().catch(()     => ({ data: [] })) as { data: any[] }
-  const prevBody      = prevRes ? await prevRes.json().catch(() => ({ data: [] })) as { data: any[] } : null
+  const campaignBody  = await campaignRes.json() as CampanhaGraph
+  const adSetsBody    = await adSetsRes.json()  as { data: ConjuntoGraph[] }
+  const adsBody       = await adsRes.json()     as { data: AnuncioGraph[] }
+  const ageBody       = await ageRes.json().catch(()       => ({ data: [] })) as { data: LinhaGraph[] }
+  const geoBody       = await geoRes.json().catch(()       => ({ data: [] })) as { data: LinhaGraph[] }
+  const adSetAgeBody  = await adSetAgeRes.json().catch(()  => ({ data: [] })) as { data: LinhaGraph[] }
+  const adSetPosBody  = await adSetPosRes.json().catch(()  => ({ data: [] })) as { data: LinhaGraph[] }
+  const adAgeBody     = await adAgeRes.json().catch(()     => ({ data: [] })) as { data: LinhaGraph[] }
+  const adPosBody     = await adPosRes.json().catch(()     => ({ data: [] })) as { data: LinhaGraph[] }
+  const dailyBody     = await dailyRes.json().catch(()     => ({ data: [] })) as { data: LinhaGraph[] }
+  const prevBody      = prevRes ? await prevRes.json().catch(() => ({ data: [] })) as { data: LinhaGraph[] } : null
 
   const cins = campaignBody.insights?.data?.[0]
   const cSpend = parseFloat(cins?.spend ?? '0')
@@ -149,13 +193,13 @@ export async function getCampaignDetail(
     roas:              cRoas,
   }
 
-  const adSets: AdSet[] = (adSetsBody.data ?? []).map((s: any) => {
+  const adSets: AdSet[] = (adSetsBody.data ?? []).map(s => {
     const ins  = s.insights?.data?.[0]
-    const t    = s.targeting ?? {}
+    const t: NonNullable<ConjuntoGraph['targeting']> = s.targeting ?? {}
     const geos = (t.geo_locations?.countries ?? [])
-      .concat(t.geo_locations?.cities?.map((c: any) => c.name) ?? [])
-    const interests = (t.flexible_spec ?? []).flatMap((fs: any) =>
-      (fs.interests ?? []).map((i: any) => i.name)
+      .concat(t.geo_locations?.cities?.map(c => c.name) ?? [])
+    const interests = (t.flexible_spec ?? []).flatMap(fs =>
+      (fs.interests ?? []).map(i => i.name)
     )
     const targeting: AdSetTargeting = {
       ageMin:       t.age_min,
@@ -183,9 +227,9 @@ export async function getCampaignDetail(
     }
   })
 
-  const ads: Ad[] = (adsBody.data ?? []).map((a: any) => {
+  const ads: Ad[] = (adsBody.data ?? []).map(a => {
     const ins = a.insights?.data?.[0]
-    const cr  = a.creative ?? {}
+    const cr: NonNullable<AnuncioGraph['creative']> = a.creative ?? {}
     return {
       id:      a.id,
       name:    a.name,
@@ -209,7 +253,7 @@ export async function getCampaignDetail(
   })
 
   const ageBreakdowns: AgeBreakdown[] = (ageBody.data ?? [])
-    .map((row: any) => ({
+    .map(row => ({
       age:         row.age ?? 'desconhecido',
       spend:       parseFloat(row.spend ?? '0'),
       impressions: parseInt(row.impressions ?? '0', 10),
@@ -218,7 +262,7 @@ export async function getCampaignDetail(
     .sort((a: AgeBreakdown, b: AgeBreakdown) => b.spend - a.spend)
 
   const geoBreakdowns: GeoBreakdown[] = (geoBody.data ?? [])
-    .map((row: any) => ({
+    .map(row => ({
       country:     row.country ?? '??',
       spend:       parseFloat(row.spend ?? '0'),
       impressions: parseInt(row.impressions ?? '0', 10),
@@ -226,7 +270,7 @@ export async function getCampaignDetail(
     }))
     .sort((a: GeoBreakdown, b: GeoBreakdown) => b.spend - a.spend)
 
-  function groupAge(rows: any[], idField: string): Record<string, AgeBreakdown[]> {
+  function groupAge(rows: LinhaGraph[], idField: 'adset_id' | 'ad_id'): Record<string, AgeBreakdown[]> {
     const map: Record<string, AgeBreakdown[]> = {}
     for (const row of rows) {
       const id = row[idField]; if (!id) continue
@@ -241,7 +285,7 @@ export async function getCampaignDetail(
     return map
   }
 
-  function groupPlacement(rows: any[], idField: string): Record<string, PlacementBreakdown[]> {
+  function groupPlacement(rows: LinhaGraph[], idField: 'adset_id' | 'ad_id'): Record<string, PlacementBreakdown[]> {
     const map: Record<string, PlacementBreakdown[]> = {}
     for (const row of rows) {
       const id = row[idField]; if (!id) continue
@@ -261,14 +305,14 @@ export async function getCampaignDetail(
   const adAgeBreakdowns          = groupAge(adAgeBody.data ?? [], 'ad_id')
   const adPlacementBreakdowns    = groupPlacement(adPosBody.data ?? [], 'ad_id')
 
-  const dailyInsights: DailyInsight[] = (dailyBody.data ?? []).map((row: any) => {
+  const dailyInsights: DailyInsight[] = (dailyBody.data ?? []).map(row => {
     const spend = parseFloat(row.spend ?? '0')
     const conversions = row.conversions != null ? parseFloat(row.conversions) : undefined
-    const actionVals  = row.action_values as Array<{ action_type: string; value: string }> | undefined
-    const roasArr     = row.purchase_roas as Array<{ value: string }> | undefined
+    const actionVals  = row.action_values
+    const roasArr     = row.purchase_roas
     const convValue   = actionVals && actionVals.length > 0
-      ? actionVals.filter((a: any) => a.action_type.includes('purchase') || a.action_type.includes('omni_'))
-                  .reduce((s: number, a: any) => s + parseFloat(a.value ?? '0'), 0)
+      ? actionVals.filter(a => a.action_type.includes('purchase') || a.action_type.includes('omni_'))
+                  .reduce((s, a) => s + parseFloat(a.value ?? '0'), 0)
       : roasArr && roasArr.length > 0 && spend > 0 ? parseFloat(roasArr[0]?.value ?? '0') * spend : undefined
     const roi = convValue != null && spend > 0 ? (convValue - spend) / spend * 100 : undefined
     return { date: row.date_start, spend, conversions, conversionValue: convValue, roi }

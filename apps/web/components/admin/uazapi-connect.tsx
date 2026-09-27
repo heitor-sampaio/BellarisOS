@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import {
   QrCode, CheckCircle2, AlertCircle, Loader2, RefreshCw, Smartphone, Unplug, ShieldCheck,
 } from 'lucide-react'
@@ -72,7 +73,12 @@ export function UazapiConnect() {
     catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao consultar a conexão') }
   }, [])
 
-  useEffect(() => { carregarEstado() }, [carregarEstado])
+  // Primeira leitura: o setState fica nos callbacks da promessa, não no efeito.
+  useEffect(() => {
+    getEstadoConexaoUazapi()
+      .then(setEstado)
+      .catch(e => setErro(e instanceof Error ? e.message : 'Falha ao consultar a conexão'))
+  }, [])
 
   // ⚠️ `tentativas` NÃO entra nas dependências.
   //
@@ -298,7 +304,7 @@ export function UazapiConnect() {
                 </button>
               </div>
             ) : qr ? (
-              <img src={qr} alt="QR code para conectar o WhatsApp"
+              <Image unoptimized src={qr} alt="QR code para conectar o WhatsApp" width={0} height={0}
                 style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 8 }} />
             ) : (
               <div style={{ textAlign: 'center' }}>

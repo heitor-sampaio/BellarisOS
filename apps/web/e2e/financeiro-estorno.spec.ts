@@ -119,7 +119,7 @@ test('estornar grava os dois lados, na filial do registro, e não repete', async
   await expect(linhaDoEstorno.getByTitle('Estornar'), 'a linha do estorno não oferece estornar').toHaveCount(0)
 })
 
-test('estorno de outra rede não encontra o lançamento', async ({ page: _page }) => {
+test('estorno de outra rede não encontra o lançamento', async () => {
   const db = banco()
   const unidades = await filiaisAtivas()
 

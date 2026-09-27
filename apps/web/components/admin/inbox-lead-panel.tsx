@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition, useRef, useCallback } from 'react'
+import { useEffect, useEffectEvent, useState, useTransition, useRef, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import { rotaCliente, rotaOportunidades } from '@/lib/rotas'
 import {
@@ -198,13 +198,12 @@ export function InboxLeadPanel({
   // montar: "há 4min" no servidor e "há 5min" no cliente derruba a hidratação.
   const [agora, setAgora] = useState<number | null>(null)
   useEffect(() => {
-    setAgora(Date.now())
+    const primeiro = setTimeout(() => setAgora(Date.now()), 0)
     const id = setInterval(() => setAgora(Date.now()), 60_000)
-    return () => clearInterval(id)
+    return () => { clearTimeout(primeiro); clearInterval(id) }
   }, [])
 
-  const recarregar = useCallback(async () => {
-    const res = await getConversationCard(conversation.id)
+  const aplicarCard = useCallback((res: ConversationCard | null) => {
     setCard(res)
     if (res) {
       setNome(res.contato.nome ?? '')
@@ -214,42 +213,65 @@ export function InboxLeadPanel({
         nome: res.contato.nome ?? '', telefone: res.contato.telefone ?? '', tags: res.contato.tags,
       })
     }
-    return res
-  }, [conversation.id])
+  }, [])
 
-  useEffect(() => {
-    let vivo = true
+  const recarregar = useCallback(async () => {
+    const res = await getConversationCard(conversation.id)
+    aplicarCard(res)
+    return res
+  }, [conversation.id, aplicarCard])
+
+  // Trocou de conversa: volta a carregar e esquece o aviso da anterior — no
+  // render, com a conversa anterior guardada, e não em setState no efeito.
+  const [conversaDoCard, setConversaDoCard] = useState(conversation.id)
+  if (conversaDoCard !== conversation.id) {
+    setConversaDoCard(conversation.id)
     setLoading(true)
     setErro(null)
     setAviso(null)
-    recarregar().then(() => { if (vivo) setLoading(false) })
+  }
+
+  useEffect(() => {
+    let vivo = true
+    // A resposta de uma conversa que já foi trocada não entra na tela.
+    getConversationCard(conversation.id).then(res => {
+      if (!vivo) return
+      aplicarCard(res)
+      setLoading(false)
+    })
     return () => { vivo = false }
-  }, [recarregar])
+  }, [conversation.id, aplicarCard])
 
   // -- Salvamento automático do contato --------------------------------------
   const estadoAtual = JSON.stringify({ nome, telefone, tags })
+
+  // O salvamento em si é um evento: lê a conversa e o aviso ao pai de agora,
+  // sem que mudar qualquer um deles reagende o salvamento.
+  const salvarContato = useEffectEvent(async (
+    dados: { nome: string; telefone: string; tags: string[] }, estado: string,
+  ) => {
+    setSalvando(true)
+    const res = await atualizarContato(conversation.id, dados)
+    pendenteRef.current = null
+    setSalvando(false)
+    if (!res.ok) { setErro(res.error ?? 'Não foi possível salvar o contato.'); return }
+    salvoRef.current = estado
+    setSalvoEm(Date.now())
+    setHistoricoKey(k => k + 1)
+    onLeadChanged?.()
+  })
 
   useEffect(() => {
     if (loading || !card || !canEdit) return
     if (estadoAtual === salvoRef.current) return
 
+    // Os dados saem de `estadoAtual` — é ele que decide quando salvar.
+    const dados = JSON.parse(estadoAtual) as { nome: string; telefone: string; tags: string[] }
     setSalvoEm(null)
-    pendenteRef.current = { nome, telefone, tags }
+    pendenteRef.current = dados
 
-    const t = setTimeout(async () => {
-      setSalvando(true)
-      const res = await atualizarContato(conversation.id, { nome, telefone, tags })
-      pendenteRef.current = null
-      setSalvando(false)
-      if (!res.ok) { setErro(res.error ?? 'Não foi possível salvar o contato.'); return }
-      salvoRef.current = estadoAtual
-      setSalvoEm(Date.now())
-      setHistoricoKey(k => k + 1)
-      onLeadChanged?.()
-    }, 500)
-
+    const t = setTimeout(() => { salvarContato(dados, estadoAtual) }, 500)
     return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estadoAtual, loading, card, canEdit])
 
   // Trocar de conversa no meio do intervalo não pode engolir a alteração.
@@ -933,7 +955,7 @@ function ScheduleModal({
   const [telefone, setTelefone] = useState(contatoInicial.telefone)
   const [branchId,   setBranchId]   = useState(branches[0]?.id ?? '')
   const [data,       setData]       = useState<CrmSchedulingData | null>(null)
-  const [loadingData, setLoadingData] = useState(false)
+  const [loadingData, setLoadingData] = useState(!!branchId)
   const [procedureId, setProcedureId] = useState('')
   const [professionalId, setProfessionalId] = useState('')
   const [roomId,     setRoomId]     = useState('')
@@ -946,22 +968,37 @@ function ScheduleModal({
 
   const durationMin = data?.procedures.find(p => p.id === procedureId)?.duration_min ?? 60
 
+  // Trocou a unidade: o que era da anterior sai no render (e não num efeito).
+  const [unidadeAnterior, setUnidadeAnterior] = useState(branchId)
+  if (unidadeAnterior !== branchId) {
+    setUnidadeAnterior(branchId)
+    setLoadingData(!!branchId)
+    setData(null); setProcedureId(''); setProfessionalId(''); setRoomId(''); setSlots([]); setSlot('')
+  }
+
   // Carrega profissionais/procedimentos/salas da filial
   useEffect(() => {
-    if (!branchId) { setData(null); return }
+    if (!branchId) return
     let active = true
-    setLoadingData(true)
-    setData(null); setProcedureId(''); setProfessionalId(''); setRoomId(''); setSlots([]); setSlot('')
     getCrmSchedulingData(branchId).then(d => { if (active) { setData(d); setLoadingData(false) } })
     return () => { active = false }
   }, [branchId])
 
-  // Carrega horários livres
+  // Carrega horários livres. Mudou qualquer coisa que define a grade: zera
+  // horário e lista no render; o efeito só busca.
+  const pronto = !!(branchId && professionalId && date && procedureId)
+  const chaveDaGrade = pronto ? [branchId, professionalId, date, procedureId, durationMin].join('|') : ''
+  const [gradeAnterior, setGradeAnterior] = useState(chaveDaGrade)
+  if (gradeAnterior !== chaveDaGrade) {
+    setGradeAnterior(chaveDaGrade)
+    setSlots([])
+    setSlot('')
+    setLoadingSlots(pronto)
+  }
+
   useEffect(() => {
-    const ready = branchId && professionalId && date && procedureId
-    if (!ready) { setSlots([]); return }
+    if (!(branchId && professionalId && date && procedureId)) return
     let active = true
-    setLoadingSlots(true); setSlot('')
     getCrmSlots(branchId, professionalId, date, durationMin).then(s => { if (active) { setSlots(s); setLoadingSlots(false) } })
     return () => { active = false }
   }, [branchId, professionalId, date, procedureId, durationMin])

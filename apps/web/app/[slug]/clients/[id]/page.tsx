@@ -53,13 +53,13 @@ export default async function ClientProfilePage({
     notes:             raw.notes ?? null,
     isActive:          raw.is_active,
     createdAt:         raw.created_at,
-    zipCode:           (raw as any).zip_code ?? null,
-    address:           (raw as any).address ?? null,
-    addressNumber:     (raw as any).address_number ?? null,
-    addressComplement: (raw as any).address_complement ?? null,
-    neighborhood:      (raw as any).neighborhood ?? null,
-    city:              (raw as any).city ?? null,
-    state:             (raw as any).state ?? null,
+    zipCode:           raw.zip_code ?? null,
+    address:           raw.address ?? null,
+    addressNumber:     raw.address_number ?? null,
+    addressComplement: raw.address_complement ?? null,
+    neighborhood:      raw.neighborhood ?? null,
+    city:              raw.city ?? null,
+    state:             raw.state ?? null,
   }
 
   // Parallel data fetches (cacheadas — TTL 60s, tags clients/appointments do tenant)
@@ -140,7 +140,7 @@ export default async function ClientProfilePage({
     const sessions   = plan.treatment_plan_sessions ?? []
     const totalSess  = sessions.length
     const completedSess = (appts ?? []).filter(
-      (a: { status: string }) => a.status === 'COMPLETED' && (a as any).treatment_plan_id === plan.id
+      (a: { status: string; treatment_plan_id: string | null }) => a.status === 'COMPLETED' && a.treatment_plan_id === plan.id
     ).length
     const firstProc  = sessions[0]?.treatment_plan_session_procedures?.[0] ?? null
     const allProcNames = [...new Set(sessions.flatMap(s =>
@@ -268,7 +268,7 @@ export default async function ClientProfilePage({
   }
 
   // -- Unified client history ------------------------------------------------
-  const appAccountCreatedAt = (raw as any).app_account_created_at as string | null
+  const appAccountCreatedAt = raw.app_account_created_at as string | null
 
   type RawHistoryPlan = { id: string; status: string; created_at: string; updated_at: string | null }
   type RawConsentTerm = { id: string; title: string; signed_at: string | null; signed_via: string | null }
@@ -297,21 +297,20 @@ export default async function ClientProfilePage({
   for (const a of (appts ?? [])) {
     const proc = (a.procedures as { name?: string } | null)?.name ?? '—'
     const prof = (a.professional as { name?: string } | null)?.name ?? '—'
-    const isEval = Boolean((a as any).is_evaluation)
-    const label = isEval ? 'Avaliação' : proc
+    const label = proc
 
-    if (a.status === 'COMPLETED' && (a as any).completed_at) {
+    if (a.status === 'COMPLETED' && a.completed_at) {
       history.push({
-        id: uid('ac'), date: (a as any).completed_at,
+        id: uid('ac'), date: a.completed_at,
         type: 'APPOINTMENT_COMPLETED',
         title: `Atendimento: ${label}`,
         subtitle: `com ${prof}`,
         amount: parseFloat(String(a.price ?? 0)),
         link: `/${slug}/agenda/${a.id}`,
       })
-    } else if (a.status === 'CANCELLED' && (a as any).cancelled_at) {
+    } else if (a.status === 'CANCELLED' && a.cancelled_at) {
       history.push({
-        id: uid('ax'), date: (a as any).cancelled_at,
+        id: uid('ax'), date: a.cancelled_at,
         type: 'APPOINTMENT_CANCELLED',
         title: `Cancelado: ${label}`,
         subtitle: null, amount: null,
@@ -326,7 +325,7 @@ export default async function ClientProfilePage({
         link: `/${slug}/agenda/${a.id}`,
       })
     } else {
-      const evDate = (a as any).created_at ?? a.scheduled_at
+      const evDate = a.created_at ?? a.scheduled_at
       history.push({
         id: uid('as'), date: evDate,
         type: 'APPOINTMENT_SCHEDULED',
@@ -385,7 +384,8 @@ export default async function ClientProfilePage({
   // 6. Pacotes adquiridos
   for (const pkg of pkgsArray) {
     const sp       = pkg.service_packages as { name?: string; price?: number } | null
-    const pkgDate  = (pkg as any).purchased_at ?? (pkg as any).created_at as string | undefined
+    const pkgDate  = (pkg as { purchased_at?: string | null; created_at?: string | null }).purchased_at
+      ?? (pkg as { created_at?: string | null }).created_at ?? undefined
     if (pkgDate) {
       history.push({
         id: uid('pkg'), date: pkgDate,
@@ -399,7 +399,7 @@ export default async function ClientProfilePage({
   }
 
   // 7. Termos assinados (via prontuário)
-  const consentTerms = (medRecord as any)?.consent_terms as RawConsentTerm[] | null
+  const consentTerms = (medRecord as { consent_terms?: RawConsentTerm[] | null } | null)?.consent_terms ?? null
   for (const term of (consentTerms ?? [])) {
     if (term.signed_at) {
       history.push({

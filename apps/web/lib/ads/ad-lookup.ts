@@ -91,7 +91,13 @@ export async function nomesDoAnuncio(
       `?fields=${encodeURIComponent(campos)}&access_token=${encodeURIComponent(config.accessToken)}`
 
     const res = await fetch(url, { cache: 'no-store' })
-    const body = await res.json().catch(() => ({})) as any
+    const body = await res.json().catch(() => ({})) as {
+      error?:    { message?: string }
+      name?:     string
+      adset?:    { id?: string; name?: string }
+      campaign?: { id?: string; name?: string }
+      creative?: { name?: string; thumbnail_url?: string; body?: string }
+    }
     if (!res.ok) {
       erro = body?.error?.message ?? `Graph API ${res.status}`
     } else {

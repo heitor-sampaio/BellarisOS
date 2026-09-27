@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useActionState, useState, useEffect } from 'react'
+import { useActionState, useState } from 'react'
 import { Plus, X, Loader2 } from 'lucide-react'
 import { createBranch } from '@/actions/branches'
 import { fetchCep } from '@/lib/cep'
@@ -25,8 +25,10 @@ function toSlug(name: string) {
 export function BranchForm() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
-  const [slug, setSlug] = useState('')
+  const [slugDigitado, setSlug] = useState('')
   const [slugTouched, setSlugTouched] = useState(false)
+  // Enquanto ninguém mexeu no slug, ele acompanha o nome — derivado no render.
+  const slug = slugTouched ? slugDigitado : toSlug(name)
   const [formState, action, pending] = useActionState(createBranch, undefined)
 
   // Endereço — controlado para permitir preenchimento via CEP
@@ -36,10 +38,6 @@ export function BranchForm() {
   const [uf,         setUf]         = useState('')
   const [cepLoading, setCepLoading] = useState(false)
   const [cepError,   setCepError]   = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!slugTouched) setSlug(toSlug(name))
-  }, [name, slugTouched])
 
   if (formState?.success && open) {
     setOpen(false)

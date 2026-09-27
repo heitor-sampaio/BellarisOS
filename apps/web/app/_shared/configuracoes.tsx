@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { getTenantContext, can } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -175,9 +174,9 @@ export async function Configuracoes({
   const [numerosDeWhatsApp, opcoesDeVinculo] = activeTab === 'integrations'
     ? await Promise.all([listarNumerosWhatsApp(), opcoesDeVinculoDoNumero()])
     : [[], { unidades: [], pessoas: [] }]
-  const fichas: ItemDeFicha[] = (formRows ?? []).map((r: any) => ({
-    id:       r.id as string,
-    name:     r.name as string,
+  const fichas: ItemDeFicha[] = ((formRows ?? []) as { id: string; name: string; schema: unknown; is_active: boolean | null }[]).map(r => ({
+    id:       r.id,
+    name:     r.name,
     rows:     normalizeFormSchema(r.schema).rows,
     isActive: !!r.is_active,
   }))

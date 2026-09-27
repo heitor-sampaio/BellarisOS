@@ -355,7 +355,7 @@ function SessionCard({
         <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {session.procs.length === 0 ? (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'center', padding: '8px 0' }}>
-              Nenhum procedimento. Clique em "Adicionar" abaixo.
+              Nenhum procedimento. Clique em “Adicionar” abaixo.
             </p>
           ) : (
             session.procs.map(proc => (
@@ -571,7 +571,8 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
       const saveResult = await saveTreatmentPlan(appointmentId, toActionSessions(), notes, slug)
       if (saveResult.error) { setMsg(`Erro: ${saveResult.error}`); return }
       const propResult = await proposeTreatmentPlan(saveResult.planId!, slug)
-      if ((propResult as any)?.error) setMsg(`Erro: ${(propResult as any).error}`)
+      const erroDaProposta = (propResult as { error?: string } | undefined)?.error
+      if (erroDaProposta) setMsg(`Erro: ${erroDaProposta}`)
       else setMsg('Plano enviado para a recepção.')
     })
   }
@@ -612,7 +613,7 @@ export const TreatmentPlanEditor = forwardRef<TreatmentPlanEditorRef, Props>(fun
           ))}
           {existingPlan?.notes && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 12px', background: 'var(--bg-app)', borderRadius: 8 }}>
-              "{existingPlan.notes}"
+              “{existingPlan.notes}”
             </p>
           )}
         </div>

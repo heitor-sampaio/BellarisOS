@@ -516,8 +516,9 @@ export function AdminStockManageModal({ product, allBranches, defaultBranchId, o
   const [movOp, setMovOp] = useState<MovOp>('entrada')
 
   useEffect(() => {
-    dialogRef.current?.showModal()
-    return () => dialogRef.current?.close()
+    const dialogo = dialogRef.current
+    dialogo?.showModal()
+    return () => dialogo?.close()
   }, [])
 
   const allMovOpts: { op: MovOp; label: string; icon: React.ReactNode; color: string }[] = [

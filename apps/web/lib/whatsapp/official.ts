@@ -7,6 +7,38 @@ import { montarIdentidade, classificarIdentificador } from '@/lib/channels/ident
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
 
+// -- O que se lê do webhook da Cloud API ---------------------------------------
+//
+// Só os campos que este arquivo lê, todos opcionais: a Meta omite o que não se
+// aplica (`wa_id` some quando o contato usa username, por exemplo).
+
+interface MidiaCloud { id?: string; mime_type?: string; caption?: string }
+
+interface MensagemCloud {
+  type?: string; id?: string; timestamp?: string
+  from?: string; from_user_id?: string
+  text?: { body?: string }
+  image?: MidiaCloud; document?: MidiaCloud; video?: MidiaCloud; audio?: MidiaCloud; voice?: MidiaCloud
+  context?: { id?: string }
+  referral?: {
+    source_type?: string; source_id?: string; source_url?: string; ctwa_clid?: string
+    headline?: string; body?: string; media_type?: string; image_url?: string; thumbnail_url?: string
+  }
+}
+
+interface EntregaCloud {
+  entry?: { changes?: { value?: {
+    messages?: MensagemCloud[]
+    statuses?: { id?: string; status?: string }[]
+    contacts?: { wa_id?: string; user_id?: string; profile?: { name?: string } }[]
+  } }[] }[]
+}
+
+/** A mídia mora num campo com o nome do tipo (`image`, `audio`…). */
+function midiaDoTipo(msg: MensagemCloud, tipo: string): MidiaCloud | undefined {
+  return (msg as Record<string, unknown>)[tipo] as MidiaCloud | undefined
+}
+
 const STATUS_MAP: Record<string, StatusUpdate['status']> = {
   sent:      'sent',
   delivered: 'delivered',
@@ -152,7 +184,7 @@ export class OfficialAPIProvider implements WhatsAppProvider {
 
   parseInbound(payload: unknown): InboundMsg | null {
     // Meta Cloud API payload: entry[0].changes[0].value.messages[0]
-    const p     = payload as any
+    const p     = payload as EntregaCloud | null
     const value = p?.entry?.[0]?.changes?.[0]?.value
     const msg   = value?.messages?.[0]
     if (!msg) return null
@@ -174,8 +206,8 @@ export class OfficialAPIProvider implements WhatsAppProvider {
     const media: InboundMedia | undefined = kind
       ? {
           kind,
-          mediaId:  msg[type]?.id as string | undefined,
-          mimeType: msg[type]?.mime_type as string | undefined,
+          mediaId:  midiaDoTipo(msg, type)?.id,
+          mimeType: midiaDoTipo(msg, type)?.mime_type,
         }
       : undefined
 
@@ -233,7 +265,7 @@ export class OfficialAPIProvider implements WhatsAppProvider {
   }
 
   parseStatus(payload: unknown): StatusUpdate | null {
-    const p       = payload as any
+    const p       = payload as EntregaCloud | null
     const value   = p?.entry?.[0]?.changes?.[0]?.value
     const statusObj = value?.statuses?.[0]
     if (!statusObj) return null
@@ -295,8 +327,8 @@ export class OfficialAPIProvider implements WhatsAppProvider {
       if (!res.ok) return { ok: false, detail: `HTTP ${res.status}` }
       const data = await res.json()
       return { ok: true, detail: data?.display_phone_number ?? undefined }
-    } catch (err: any) {
-      return { ok: false, detail: err?.message }
+    } catch (err) {
+      return { ok: false, detail: (err as { message?: string } | null)?.message }
     }
   }
 }

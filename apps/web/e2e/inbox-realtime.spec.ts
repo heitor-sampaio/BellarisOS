@@ -20,7 +20,6 @@ const nome = nomeDeTeste('realtime inbox')
 let convId: string | null = null
 
 test.afterAll(async () => {
-  const db = banco()
   if (convId) {
     await apagarConversas([convId])
   }

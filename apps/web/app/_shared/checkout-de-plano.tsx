@@ -21,7 +21,7 @@ export async function CheckoutDePlano({
   const ctx = await getTenantContext()
   assertPodeReceber(ctx)
 
-  const { plan, clientId, error } = await montarCheckoutPlan(planId, branchId, branchName, ctx.tenantId!)
+  const { plan, clientId } = await montarCheckoutPlan(planId, branchId, branchName, ctx.tenantId!)
 
   if (!plan) {
     // Plano já fechado volta para a ficha do cliente; o resto é 404.

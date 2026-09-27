@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import simpleheat from 'simpleheat'
@@ -50,8 +50,11 @@ function HeatLayer({ points, gradient }: LayerConfig) {
 
     function animateZoom(e: L.ZoomAnimEvent) {
       const scale = map.getZoomScale(e.zoom)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const m     = map as any
+      // API interna do Leaflet (é o que o próprio L.Map usa na animação de zoom).
+      const m     = map as L.Map & {
+        _getCenterOffset(center: L.LatLng): L.Point & { _multiplyBy(n: number): L.Point }
+        _getMapPanePos(): L.Point
+      }
       const offset = m._getCenterOffset(e.center)._multiplyBy(-scale).subtract(m._getMapPanePos())
       L.DomUtil.setTransform(canvas, offset, scale)
     }
@@ -76,11 +79,14 @@ function HeatLayer({ points, gradient }: LayerConfig) {
 
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap()
-  useEffect(() => {
+  // Enquadra UMA vez, ao montar: depois disso o mapa é de quem está olhando, e
+  // reenquadrar a cada render do pai tiraria o zoom que a pessoa escolheu.
+  const enquadrar = useEffectEvent(() => {
     if (points.length === 0) return
     if (points.length === 1) { map.setView(points[0]!, 13); return }
     map.fitBounds(L.latLngBounds(points), { padding: [48, 48] })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  })
+  useEffect(() => { enquadrar() }, [])
   return null
 }
 

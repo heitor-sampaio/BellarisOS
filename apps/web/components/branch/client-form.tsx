@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useRef, useState } from 'react'
+import { useActionState, useEffect, useEffectEvent, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { addClient } from '@/actions/clients'
 import { rotaCliente } from '@/lib/rotas'
@@ -69,14 +69,16 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
   const router   = useRouter()
   const pathname = usePathname()
 
-  useEffect(() => {
-    if (!state?.success) return
+  const aoCadastrar = useEffectEvent(() => {
     const clientId = (state as unknown as { clientId?: string }).clientId
     if (onSuccess) {
       onSuccess(clientId)
     } else if (clientId) {
       router.push(rotaCliente(pathname, slug, clientId))
     }
+  })
+  useEffect(() => {
+    if (state?.success) aoCadastrar()
   }, [state?.success])
 
   function toggleTag(tag: string) {

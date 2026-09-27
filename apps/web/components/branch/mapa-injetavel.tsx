@@ -52,15 +52,24 @@ export function MapaInjetavel({
   const [nomeNovo,   setNomeNovo]   = useState('')
   const [ligando,    setLigando]    = useState(false)
 
-  const carregar = useCallback(async () => {
-    const res = await getPlanejamentoInjetavel(mapId)
+  const aplicar = useCallback((res: Awaited<ReturnType<typeof getPlanejamentoInjetavel>>) => {
     if (res.error || !res.planejamento) { setErro(res.error ?? 'Planejamento não encontrado.'); return }
     setErro(null)
     setPlano(res.planejamento)
     setMapa(res.planejamento.mapa)
-  }, [mapId])
+  }, [])
 
-  useEffect(() => { void carregar() }, [carregar])
+  const carregar = useCallback(async () => {
+    aplicar(await getPlanejamentoInjetavel(mapId))
+  }, [mapId, aplicar])
+
+  // A busca inicial aplica no `.then`: o efeito só dispara, quem grava estado é
+  // a resposta.
+  useEffect(() => {
+    let vivo = true
+    getPlanejamentoInjetavel(mapId).then(res => { if (vivo) aplicar(res) })
+    return () => { vivo = false }
+  }, [mapId, aplicar])
 
   async function salvar() {
     if (!mapa) return

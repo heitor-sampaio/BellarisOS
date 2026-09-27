@@ -7,7 +7,7 @@ function useCountUp(target: number, duration = 700): number {
   const [val, setVal] = useState(0)
   const frameRef = useRef<number>(0)
   useEffect(() => {
-    setVal(0)
+    // Sem `setVal(0)` aqui: o primeiro quadro já parte de ~0 (t≈0).
     const start = performance.now()
     const tick = (now: number) => {
       const t = Math.min((now - start) / duration, 1)

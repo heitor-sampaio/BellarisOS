@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { rotaAtendimento } from '@/lib/rotas'
 import { X, Calendar, Play, CheckCircle2, Loader2, ChevronRight, AlertTriangle } from 'lucide-react'
@@ -86,7 +86,8 @@ function SessionScheduler({
 }) {
   const [branchId,     setBranchId]     = useState(currentBranchId)
   const [profs,        setProfs]        = useState<{ id: string; name: string }[]>([])
-  const [loadingProfs, setLoadingProfs] = useState(false)
+  // Nasce carregando quando já há filial; cada troca liga de novo no handler.
+  const [loadingProfs, setLoadingProfs] = useState(!!currentBranchId)
   const [profId,       setProfId]       = useState('')
   const [date,         setDate]         = useState('')
   const [slots,        setSlots]        = useState<{ scheduledAt: string; durationMin: number; clientName: string | null }[]>([])
@@ -95,13 +96,29 @@ function SessionScheduler({
   const [saving,       setSaving]       = useState(false)
   const [error,        setError]        = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!branchId) return
+  // Os resets acontecem no handler que muda a escolha; os efeitos só buscam.
+  function trocarFilial(id: string) {
+    setBranchId(id)
+    if (!id) return
     setLoadingProfs(true)
     setProfId('')
     setDate('')
     setSlots([])
     setTime('')
+  }
+
+  /** Profissional ou data mudou: com os três escolhidos, uma busca nova começa. */
+  function trocarProfissionalOuData(novoProf: string, novaData: string) {
+    setProfId(novoProf)
+    setDate(novaData)
+    if (branchId && novoProf && novaData) {
+      setLoadingSlots(true)
+      setTime('')
+    }
+  }
+
+  useEffect(() => {
+    if (!branchId) return
     getSchedulingBranchProfessionals(branchId).then(res => {
       setProfs(res.professionals)
       setLoadingProfs(false)
@@ -110,8 +127,6 @@ function SessionScheduler({
 
   useEffect(() => {
     if (!branchId || !profId || !date) return
-    setLoadingSlots(true)
-    setTime('')
     getSchedulingDaySlots(branchId, profId, date).then(res => {
       setSlots(res.slots)
       setLoadingSlots(false)
@@ -152,7 +167,7 @@ function SessionScheduler({
             className="filtro-select"
             aria-label="Filial da sessão"
             value={branchId ?? ''}
-            onChange={e => setBranchId(e.target.value)}
+            onChange={e => trocarFilial(e.target.value)}
           >
             {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
@@ -165,7 +180,7 @@ function SessionScheduler({
           {loadingProfs ? (
             <Loader2 size={14} style={{ color: 'var(--text-faint)', animation: 'spin 1s linear infinite' }} />
           ) : (
-            <select value={profId} onChange={e => setProfId(e.target.value)}
+            <select value={profId} onChange={e => trocarProfissionalOuData(e.target.value, date)}
               style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)', background: 'var(--surface)', color: 'var(--text)', outline: 'none' }}>
               <option value="">Selecionar…</option>
               {profs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -174,7 +189,7 @@ function SessionScheduler({
         </div>
         <div>
           <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>DATA</p>
-          <input type="date" min={minDate} value={date} onChange={e => setDate(e.target.value)}
+          <input type="date" min={minDate} value={date} onChange={e => trocarProfissionalOuData(profId, e.target.value)}
             disabled={!profId}
             style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 'var(--text-base-sz)', background: 'var(--surface)', color: 'var(--text)', outline: 'none', boxSizing: 'border-box' as const }} />
         </div>
@@ -226,7 +241,7 @@ function SessionScheduler({
 
 export function TreatmentSessionsModal({
   clientPackageId, planId, planStatus,
-  packageName, totalSessions, usedSessions,
+  packageName, totalSessions,
   clientId, procedureId, procedureName, price, durationMin,
   slug, branches, currentBranchId, canManageProcedures, isNetworkWide, onClose,
 }: Props) {
@@ -260,19 +275,45 @@ export function TreatmentSessionsModal({
     onClose()
   }
 
-  async function load() {
-    setLoading(true)
+  /** Busca as sessões — sem tocar em estado; quem aplica é quem chamou. */
+  const buscarSessoes = useCallback(async (): Promise<Session[] | null> => {
     if (isPlanMode) {
       const res = await getPlannedSessionAppointments(planId!)
-      setSessions(res.sessions.map(s => ({ ...s, procedureId: s.procedureId })))
-    } else if (clientPackageId) {
-      const res = await getClientPackageSessions(clientPackageId)
-      setSessions(res.sessions.map(s => ({ ...s, procedureName: procedureName })))
+      return res.sessions.map(s => ({ ...s, procedureId: s.procedureId }))
     }
+    if (clientPackageId) {
+      const res = await getClientPackageSessions(clientPackageId)
+      return res.sessions.map(s => ({ ...s, procedureName: procedureName }))
+    }
+    return null
+  }, [isPlanMode, planId, clientPackageId, procedureName])
+
+  // Re-carga disparada pelo realtime e pelas ações da tela.
+  const load = useCallback(async () => {
+    setLoading(true)
+    const lidas = await buscarSessoes()
+    if (lidas) setSessions(lidas)
     setLoading(false)
+  }, [buscarSessoes])
+
+  // Outro plano/pacote: volta a "carregando" (ajustado durante o render).
+  const alvo = `${planId ?? ''}|${clientPackageId ?? ''}`
+  const [alvoVisto, setAlvoVisto] = useState(alvo)
+  if (alvoVisto !== alvo) {
+    setAlvoVisto(alvo)
+    setLoading(true)
   }
 
-  useEffect(() => { load() }, [clientPackageId, planId])
+  // Busca ao abrir: o "carregando" já nasce ligado; a resposta é aplicada no `.then`.
+  useEffect(() => {
+    let vivo = true
+    buscarSessoes().then(lidas => {
+      if (!vivo) return
+      if (lidas) setSessions(lidas)
+      setLoading(false)
+    })
+    return () => { vivo = false }
+  }, [buscarSessoes])
 
   // Realtime: re-carrega sessões quando agendamentos ou plano mudarem
   useEffect(() => {
@@ -302,7 +343,7 @@ export function TreatmentSessionsModal({
 
     channel.subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [planId, clientPackageId])
+  }, [planId, clientPackageId, load])
 
   const completedCount = sessions.filter(s => s.status === 'USED' || s.status === 'COMPLETED').length
   const pct = totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0

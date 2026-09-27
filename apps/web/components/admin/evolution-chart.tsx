@@ -2,7 +2,7 @@
 
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Legend,
+  Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { numericAxisWidth } from '@/lib/chart-utils'
 
@@ -41,7 +41,12 @@ function fmtAxis(v: number) {
   return `${v}`
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+/** O que o Recharts entrega ao `content` do Tooltip — só o que é lido aqui. */
+interface EntradaDoTooltip { dataKey?: string | number; color?: string; value?: unknown }
+
+function CustomTooltip({ active, payload, label }: {
+  active?: boolean; payload?: EntradaDoTooltip[]; label?: string | number
+}) {
   if (!active || !payload?.length) return null
   return (
     <div style={{
@@ -56,28 +61,13 @@ function CustomTooltip({ active, payload, label }: any) {
       <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 10px' }}>
         Dia {label}
       </p>
-      {payload.map((entry: any) => (
-        <div key={entry.dataKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, marginBottom: 6 }}>
+      {payload.map(entry => (
+        <div key={String(entry.dataKey)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, marginBottom: 6 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: entry.color, flexShrink: 0 }} />
-            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 600, color: '#666' }}>{LABELS[entry.dataKey]}</span>
+            <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 600, color: '#666' }}>{LABELS[String(entry.dataKey)]}</span>
           </div>
           <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, color: entry.color }}>{fmtBRL(Number(entry.value))}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function CustomLegend({ payload }: any) {
-  return (
-    <div style={{ display: 'flex', gap: 24, justifyContent: 'flex-end', paddingRight: 8 }}>
-      {payload?.map((entry: any) => (
-        <div key={entry.dataKey ?? entry.value} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <div style={{ width: 24, height: 3, borderRadius: 2, background: entry.color }} />
-          <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.03em' }}>
-            {LABELS[entry.dataKey ?? entry.value] ?? entry.value}
-          </span>
         </div>
       ))}
     </div>

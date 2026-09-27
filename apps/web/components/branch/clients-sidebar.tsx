@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, UserPlus, Building2, Tag as TagIcon } from 'lucide-react'
+import { Search, UserPlus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { unitTag, isUnitTag } from '@estetica-os/utils'

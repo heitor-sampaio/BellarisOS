@@ -120,24 +120,34 @@ export function LeadTimeline({
   conversationId?: string
   refreshKey?: number
 }) {
-  const [eventos, setEventos] = useState<LeadEvent[] | null>(null)
-  const [erro, setErro] = useState<string | null>(null)
-  // "Agora" fixado quando a lista chega, e não lido durante o render: Date.now()
-  // no corpo do componente diverge entre servidor e cliente.
-  const [nowMs, setNowMs] = useState(0)
+  // A resposta fica guardada com a CHAVE da busca que a pediu. Enquanto a da
+  // chave atual não chega, a lista é "carregando" — derivado, em vez de zerar
+  // eventos e erro dentro do efeito a cada troca.
+  const chave = `${leadId ?? ''}|${conversationId ?? ''}|${clientId ?? ''}|${refreshKey ?? ''}`
+  const [lido, setLido] = useState<{
+    chave: string
+    eventos: LeadEvent[] | null
+    erro: string | null
+    // "Agora" fixado quando a lista chega, e não lido durante o render:
+    // Date.now() no corpo do componente diverge entre servidor e cliente.
+    nowMs: number
+  }>({ chave: '', eventos: null, erro: null, nowMs: 0 })
+  const atual   = lido.chave === chave
+  const eventos = atual ? lido.eventos : null
+  const erro    = atual ? lido.erro : null
+  const nowMs   = lido.nowMs
 
   useEffect(() => {
     let ativo = true
-    setEventos(null); setErro(null)
     const busca = conversationId ? getContactEvents(conversationId)
       : clientId ? getClientEvents(clientId)
       : leadId   ? getLeadEvents(leadId)
       : Promise.resolve([])
     busca
-      .then(r => { if (!ativo) return; setEventos(r); setNowMs(Date.now()) })
-      .catch(() => { if (ativo) setErro('Não foi possível carregar o histórico.') })
+      .then(r => { if (ativo) setLido({ chave, eventos: r, erro: null, nowMs: Date.now() }) })
+      .catch(() => { if (ativo) setLido(l => ({ ...l, chave, eventos: null, erro: 'Não foi possível carregar o histórico.' })) })
     return () => { ativo = false }
-  }, [leadId, conversationId, clientId, refreshKey])
+  }, [chave, leadId, conversationId, clientId])
 
   // O evento mais recente é o começo do tempo parado — é o número que diz se o
   // card está esquecido, e é a pergunta que a lista inteira responde.

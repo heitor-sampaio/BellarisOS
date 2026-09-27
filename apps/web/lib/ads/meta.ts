@@ -33,7 +33,7 @@ export class MetaAdsProvider implements AdsProvider {
     const res = await fetch(endpoint, { cache: 'no-store' })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
-      throw new Error((err as any)?.error?.message ?? `Meta API error ${res.status}`)
+      throw new Error((err as { error?: { message?: string } })?.error?.message ?? `Meta API error ${res.status}`)
     }
 
     const body = await res.json() as { data: MetaCampaign[] }
@@ -49,7 +49,7 @@ export class MetaAdsProvider implements AdsProvider {
       const res = await fetch(url.toString(), { cache: 'no-store' })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
-        return { ok: false, detail: (err as any)?.error?.message ?? `HTTP ${res.status}` }
+        return { ok: false, detail: (err as { error?: { message?: string } })?.error?.message ?? `HTTP ${res.status}` }
       }
       const body = await res.json() as { name?: string }
       return { ok: true, detail: body.name }
