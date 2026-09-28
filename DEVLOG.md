@@ -1258,6 +1258,34 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — A conclusão do atendimento numa transação só (e o pacote que nunca agendou)
+
+"Pode fazer o ajuste como você sugeriu." `finishSession` gravava status,
+prontuário, comissão, pontos, estoque, pacote e histórico em sequência: falhar
+o quinto deixava os quatro primeiros, e o atendimento ficava concluído com
+comissão e sem baixa de estoque — sem jeito de refazer.
+
+- **`concluir_atendimento`** (migration `20260928000003`): o app calcula, a
+  função grava tudo numa transação, com o agendamento travado e o status
+  conferido lá dentro — dois "finalizar" ao mesmo tempo concluíam duas vezes.
+  Pontos e contador do pacote passaram a somar no banco (ler e regravar perdia
+  quando dois atendimentos fechavam juntos). Eventos e notificações saem depois,
+  só se gravou. Nenhuma regra de negócio foi para o banco.
+- `e2e/conclusao-atomica.spec.ts`: falha no meio desfaz status, prontuário,
+  comissão e o primeiro insumo; pacote usado e contador na mesma transação;
+  dois cliques concluem uma vez.
+- **Agendar sessão de pacote nunca funcionou**, por dois motivos (achados
+  escrevendo o teste acima):
+  - `client_packages` não tinha chave para `branches`, e o embed que confere a
+    rede respondia PGRST200 — a mesma consulta da lista de sessões do pacote,
+    que também nunca abria (migration `20260928000004`);
+  - passando dali, gravava `status: 'SCHEDULED'` na sessão, que não existe no
+    enum — depois de o agendamento já ter nascido, que ficava órfão. Agora a
+    sessão continua `AVAILABLE` (o `appointment_id` é que diz que está marcada),
+    só vincula se ninguém vinculou antes, e o agendamento sai se o vínculo falhar.
+  - `e2e/pacote-agendar.spec.ts`, provado com o código antigo. A produção não
+    tem nenhum pacote vendido.
+
 ### 2026-09-28 — Lotes que baixam, lead que não se apaga, Prisma fora, PRD reescrito
 
 Pendências de "Em aberto" que o Heitor mandou resolver.
@@ -3581,11 +3609,6 @@ verdade. O que vale:
 - ~~Hidratação em `/admin/inbox`, chave de lista no estoque, e o
   lançamento que sumia da lista.~~ **Resolvidos em 2026-09-25** — ver a entrada
   da linha do tempo.
-- **Não há transação em nenhum fluxo além do estorno.** A conclusão de
-  atendimento faz sete gravações em sequência — status, prontuário, estoque,
-  financeiro, comissão, pacote, fidelidade — e o CLAUDE.md §10 a descreve como
-  atômica. Hoje cada uma falha alto, mas falhar a quarta deixa as três
-  primeiras gravadas.
 - **O sistema nunca foi usado por uma clínica de verdade.** Nenhuma sessão de
   celular, um navegador logado, clientes demo, nenhum número pareado no
   WhatsApp oficial. Tudo que se sabe vem de testes escritos por quem escreveu o
@@ -3599,13 +3622,13 @@ verdade. O que vale:
 
 ### Próxima frente candidata
 
-**A conclusão de atendimento em uma transação só.** É o que sobrou da varredura
-de falha silenciosa: as sete gravações precisam valer juntas. O desenho que
-funcionou no estorno serve aqui — o TypeScript calcula (pontos, comissão,
-insumos) e uma função do Postgres grava tudo dentro de uma transação, sem
-duplicar regra de negócio no banco.
+**Credenciais fora do alcance da sessão** (`integration_configs` e
+`whatsapp_numbers`): a RLS só confere a rede, e as duas guardam token de Meta,
+Google e WhatsApp — qualquer membro os lê pela chave pública. Nenhuma tela lê
+essas tabelas pelo navegador, e nenhuma está no realtime: basta tirar o acesso
+de sessão. Aguardando o Heitor.
 
-Depois dela, **fidelidade**: hoje só existe saldo read-only no portal do
+Depois, **fidelidade**: hoje só existe saldo read-only no portal do
 cliente. Falta configurar regras (`loyalty_configs`), creditar e debitar
 pontos, extrato e resgate como desconto no pagamento. O módulo foi removido do
 catálogo de permissões em `4511b5c` por não ter gate nenhum — volta quando

@@ -778,41 +778,16 @@ async function finishSessionInterno(
 
     const now = new Date().toISOString()
 
-    // 1. Marca como concluído
-    await gravar(admin.from('appointments').update({
-      status:       'COMPLETED',
-      completed_at: now,
-    }).eq('id', appointmentId), 'concluir o atendimento')
+    // ─── Calcula ───────────────────────────────────────────────────────────
+    // O app decide os números; `concluir_atendimento` (banco) grava tudo numa
+    // transação — status, prontuário, comissão, pontos, insumos, pacote e
+    // histórico (CLAUDE.md §10). Até 2026-09-28 eram gravações soltas: falhar
+    // a quinta deixava as quatro primeiras, e o atendimento ficava concluído
+    // com comissão e sem baixa de estoque, sem jeito de refazer.
 
-    // 2. Prontuário
-    let medRecord = await ler(admin
-      .from('medical_records')
-      .select('id')
-      .eq('client_id', appt.client_id)
-      .maybeSingle(), 'buscar o prontuário do cliente')
-
-    if (!medRecord) {
-      const newRecord = await ler(admin
-        .from('medical_records')
-        .insert({ client_id: appt.client_id })
-        .select('id')
-        .single(), 'abrir o prontuário do cliente')
-      medRecord = newRecord
-    }
-
-    if (medRecord) {
-      await gravar(admin.from('medical_record_entries').upsert({
-        medical_record_id: medRecord.id,
-        appointment_id:    appointmentId,
-        professional_id:   appt.professional_id,
-        notes,
-        intercurrences,
-      }, { onConflict: 'appointment_id' }), 'salvar a entrada do prontuário')
-    }
-
-    // 3. Comissão — regra específica do procedimento tem precedência sobre a geral.
-    //    `type` e `rule_value` são NOT NULL em commissions: gravam a regra aplicada,
-    //    para o extrato continuar auditável se a regra mudar depois.
+    // Comissão — regra específica do procedimento tem precedência sobre a geral.
+    // `type` e `rule_value` gravam a regra aplicada, para o extrato continuar
+    // auditável se a regra mudar depois.
     let ruleQuery = admin
       .from('commission_rules')
       .select('type, value')
@@ -829,192 +804,130 @@ async function finishSessionInterno(
       .limit(1)
       .maybeSingle(), 'buscar a regra de comissão')
 
-    if (rule) {
-      const existingComm = await ler(admin
-        .from('commissions')
-        .select('id')
-        .eq('appointment_id', appointmentId)
-        .maybeSingle(), 'conferir a comissão já lançada')
+    const comissao = rule
+      ? (() => {
+          const regra = parseFloat(String(rule.value))
+          return {
+            valor:   rule.type === 'PERCENTAGE' ? parseFloat(String(appt.price)) * regra / 100 : regra,
+            tipo:    rule.type as string,
+            regra,
+            periodo: periodRef(now),
+          }
+        })()
+      : null
 
-      if (!existingComm) {
-        const ruleValue = parseFloat(String(rule.value))
-        const commissionAmount = rule.type === 'PERCENTAGE'
-          ? (parseFloat(String(appt.price)) * ruleValue / 100)
-          : ruleValue
-        const { error: commErr } = await admin.from('commissions').insert({
-          branch_id:       appt.branch_id,
-          professional_id: appt.professional_id,
-          appointment_id:  appointmentId,
-          amount:          commissionAmount,
-          type:            rule.type,
-          rule_value:      ruleValue,
-          period_ref:      periodRef(now),
-          status:          'OPEN',
-        })
-        if (commErr) return { error: `Erro ao registrar a comissão: ${commErr.message}` }
-
-        await emitirComissaoGerada(
-          appointmentId, appt.professional_id as string | null,
-          commissionAmount, periodRef(now), appt.branch_id as string | null, ctx,
-        )
-      }
-    }
-
-    // 4. Pontos de fidelidade
+    // Pontos de fidelidade
     const loyaltyConfig = await ler(admin
       .from('loyalty_configs')
       .select('points_per_real')
       .eq('tenant_id', apptBranch!.tenant_id)
       .maybeSingle(), 'buscar a regra de fidelidade')
+    const pontos = loyaltyConfig
+      ? Math.floor(parseFloat(String(appt.price)) * parseFloat(String(loyaltyConfig.points_per_real ?? 0)))
+      : 0
 
-    if (loyaltyConfig) {
-      const points = Math.floor(parseFloat(String(appt.price)) * parseFloat(String(loyaltyConfig.points_per_real ?? 0)))
-      if (points > 0) {
-        const loyaltyAcc = await ler(admin
-          .from('loyalty_accounts')
-          .select('id, balance')
-          .eq('client_id', appt.client_id)
-          .maybeSingle(), 'buscar a conta de fidelidade')
-        if (loyaltyAcc) {
-          await gravar(admin.from('loyalty_accounts').update({ balance: (loyaltyAcc.balance ?? 0) + points }).eq('id', loyaltyAcc.id), 'atualizar o saldo de pontos')
-          await gravar(admin.from('loyalty_transactions').insert({
-            loyalty_account_id: loyaltyAcc.id,
-            points,
-            description:        'Atendimento concluído',
-            appointment_id:     appointmentId,
-          }), 'lançar os pontos de fidelidade')
-        }
-      }
-    }
-
-    // 5. Baixar estoque
+    // Insumos
     //
     // Insumo faltando NÃO impede o fechamento — a cliente já foi atendida
     // (decisão do Heitor, 2026-09-27). Mas também não some: o saldo fica
-    // NEGATIVO (antes era travado em 0, e a falta desaparecia do estoque) e a
-    // tela recebe `avisos` dizendo o que faltou. O mínimo cruzado dispara
-    // `estoque.abaixo_do_minimo` pelo gatilho, como qualquer saída.
+    // NEGATIVO e a tela recebe `avisos` dizendo o que faltou. O mínimo cruzado
+    // e a baixa do lote saem dos gatilhos do banco, como qualquer saída.
     const avisos: string[] = []
     let productsUsed: { productId: string; quantity: number }[] = []
     try {
       productsUsed = JSON.parse((formData.get('products_used') as string | null) ?? '[]')
     } catch { /* JSON inválido → sem insumos */ }
 
+    // O mesmo produto duas vezes na lista soma: a baixa é calculada sobre o
+    // saldo lido UMA vez, e duas linhas do mesmo produto se sobreporiam.
+    const porProduto = new Map<string, number>()
     for (const item of productsUsed) {
       if (!item.productId || !item.quantity || item.quantity <= 0) continue
+      porProduto.set(item.productId, (porProduto.get(item.productId) ?? 0) + item.quantity)
+    }
 
+    const insumos: {
+      produto: string; quantidade: number; saldo_apos: number
+      embalagens: number; rendimento: number | null; custo: number | null; minimo: number
+    }[] = []
+
+    for (const [productId, quantity] of porProduto) {
       // Leitura que falha não pode virar "saldo 0": a baixa seria calculada
       // sobre um número inventado e gravada como verdade no movimento.
       const [bps, prod] = await Promise.all([
         ler(admin.from('branch_product_stock')
           .select('current_stock, min_stock, current_rendimento')
-          .eq('product_id', item.productId)
+          .eq('product_id', productId)
           .eq('branch_id', appt.branch_id)
           .maybeSingle(), 'buscar o saldo do insumo'),
         // Da rede: o id vem do navegador (`products_used`), e um produto de
         // outra rede ganharia saldo e movimento nesta unidade.
         ler(admin.from('products')
           .select('name, unit, units_per_package, consumption_unit, cost_price')
-          .eq('id', item.productId)
+          .eq('id', productId)
           .eq('tenant_id', ctx.tenantId!)
           .maybeSingle(), 'buscar o insumo'),
       ])
       if (!prod) continue
 
       const currentStock = Number(bps?.current_stock ?? 0)
-      const minStock     = Number(bps?.min_stock ?? 0)
       const upp          = prod?.units_per_package && prod?.consumption_unit ? Number(prod.units_per_package) : null
 
-      let newPackages: number
-      let newRendimento: number | null
-      let movQty: number       // quantity registrado no movement (sempre negativo)
-      let movBalance: number   // balance_after no movement
+      let embalagens: number
+      let rendimento: number | null
+      let saldoApos: number    // balance_after do movimento
 
       if (upp) {
-        // item.quantity está em unidades de consumo (ex: 2 UI, 5 ml)
-        const currentRendimento = bps?.current_rendimento != null
+        // quantity está em unidades de consumo (ex: 2 UI, 5 ml)
+        const rendimentoAtual = bps?.current_rendimento != null
           ? Number(bps.current_rendimento)
           : currentStock * upp  // fallback: assume embalagens cheias
-
-        newRendimento = currentRendimento - item.quantity
+        rendimento = rendimentoAtual - quantity
         // Arredonda PARA LONGE do zero: sobra parcial ainda ocupa uma
         // embalagem aberta; falta parcial já é uma embalagem devida.
-        newPackages   = newRendimento >= 0 ? Math.ceil(newRendimento / upp) : Math.floor(newRendimento / upp)
-        movQty        = -item.quantity
-        movBalance    = newRendimento  // balance em unidades de consumo
+        embalagens = rendimento >= 0 ? Math.ceil(rendimento / upp) : Math.floor(rendimento / upp)
+        saldoApos  = rendimento  // em unidades de consumo
       } else {
-        // Produto sem unidade de consumo: item.quantity = embalagens
-        newRendimento = null
-        newPackages   = currentStock - item.quantity
-        movQty        = -item.quantity
-        movBalance    = newPackages
+        // Produto sem unidade de consumo: quantity = embalagens
+        rendimento = null
+        embalagens = currentStock - quantity
+        saldoApos  = embalagens
       }
 
-      const { error: movErr } = await admin.from('stock_movements').insert({
-        branch_id:      appt.branch_id,
-        product_id:     item.productId,
-        type:           'PROCEDURE_USAGE',
-        quantity:       movQty,
-        balance_after:  movBalance,
-        appointment_id: appointmentId,
-        created_by:     ctx.internalUserId,
-        unit_cost:      prod?.cost_price ?? null,
+      insumos.push({
+        produto: productId, quantidade: -quantity, saldo_apos: saldoApos,
+        embalagens, rendimento,
+        custo:   prod.cost_price != null ? Number(prod.cost_price) : null,
+        minimo:  Number(bps?.min_stock ?? 0),
       })
-      if (movErr) return { error: `Erro ao registrar movimentação de estoque: ${movErr.message}` }
 
-      const { error: bpsErr } = await admin.from('branch_product_stock').upsert({
-        product_id:         item.productId,
-        branch_id:          appt.branch_id,
-        current_stock:      newPackages,
-        current_rendimento: newRendimento,
-        min_stock:          minStock,
-        updated_at:         now,
-      }, { onConflict: 'product_id,branch_id' })
-      if (bpsErr) return { error: `Erro ao atualizar estoque: ${bpsErr.message}` }
-
-      if (movBalance < 0) {
+      if (saldoApos < 0) {
         const unidade = upp ? (prod.consumption_unit as string) : (prod.unit as string)
-        const falta = (-movBalance).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+        const falta = (-saldoApos).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
         avisos.push(`${prod.name as string}: faltaram ${falta} ${unidade} no estoque da unidade`)
       }
     }
 
-    // 6. Atualiza sessão de pacote (se este agendamento pertencer a um)
-    const pkgSession = await ler(admin
-      .from('package_sessions')
-      .select('id, client_package_id')
-      .eq('appointment_id', appointmentId)
-      .maybeSingle(), 'buscar a sessão do pacote')
+    // ─── Grava, tudo ou nada ──────────────────────────────────────────────
+    const userName = await getUserName(admin, ctx.userId)
+    const gravado = await gravar(admin.rpc('concluir_atendimento', {
+      p_agendamento: appointmentId,
+      p_tenant:      ctx.tenantId!,
+      p_ator:        ctx.internalUserId,
+      p_ator_nome:   userName,
+      p_dados:       { notas: notes, intercorrencias: intercurrences, comissao, pontos, insumos },
+    }), 'concluir o atendimento') as { comissao_criada: boolean; pacote: string | null } | null
 
-    if (pkgSession) {
-      await gravar(admin
-        .from('package_sessions')
-        .update({ status: 'USED', used_at: now })
-        .eq('id', pkgSession.id), 'marcar a sessão do pacote como usada')
-
-      const pkg = await ler(admin
-        .from('client_packages')
-        .select('used_sessions')
-        .eq('id', pkgSession.client_package_id)
-        .single(), 'buscar o pacote do cliente')
-
-      if (pkg) {
-        await gravar(admin
-          .from('client_packages')
-          .update({ used_sessions: Number(pkg.used_sessions) + 1 })
-          .eq('id', pkgSession.client_package_id), 'atualizar o pacote do cliente')
-      }
-
-      // DEPOIS do incremento, para `restantes` já refletir esta sessão — é
-      // zero que dispara a automação de renovação, e emitir antes daria
-      // sempre um a mais.
-      await emitirSessaoDePacoteUsada(
-        pkgSession.client_package_id as string, appointmentId, ctx,
+    // ─── Depois: os avisos do que aconteceu ───────────────────────────────
+    if (gravado?.comissao_criada && comissao) {
+      await emitirComissaoGerada(
+        appointmentId, appt.professional_id as string | null,
+        comissao.valor, comissao.periodo, appt.branch_id as string | null, ctx,
       )
     }
-
-    const userName = await getUserName(admin, ctx.userId)
-    await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'COMPLETED', 'Atendimento concluído pelo profissional')
+    // Depois do incremento (feito na transação), para `restantes` já refletir
+    // esta sessão — é zero que dispara a automação de renovação.
+    if (gravado?.pacote) await emitirSessaoDePacoteUsada(gravado.pacote, appointmentId, ctx)
     await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CONCLUIDO, appointmentId, { ...ctx, userName })
 
     revalidatePath(`/${slug}/agenda`)
@@ -1552,11 +1465,22 @@ async function schedulePackageSessionInterno(params: {
     .single()
   if (apptErr || !appt) return { error: `Erro ao criar agendamento: ${apptErr?.message}` }
 
-  // Vincula sessão ao appointment
-  await gravar(admin
+  // Vincula a sessão ao agendamento. Quem diz que ela está marcada é o
+  // `appointment_id` — o status continua AVAILABLE até ser usada. Até
+  // 2026-09-28 gravava `status: 'SCHEDULED'`, que não existe no enum: TODO
+  // agendamento de sessão de pacote falhava aqui, depois de o agendamento já
+  // ter nascido — ele ficava órfão na agenda. E só vincula se ninguém vinculou
+  // antes (dois cliques na mesma sessão); senão o agendamento recém-criado sai.
+  const { data: vinculada, error: vincErr } = await admin
     .from('package_sessions')
-    .update({ appointment_id: appt.id, status: 'SCHEDULED' })
-    .eq('id', params.packageSessionId), 'vincular a sessão do pacote ao agendamento')
+    .update({ appointment_id: appt.id })
+    .eq('id', params.packageSessionId)
+    .is('appointment_id', null)
+    .select('id')
+  if (vincErr || !vinculada?.length) {
+    await tentar(admin.from('appointments').delete().eq('id', appt.id), 'desfazer o agendamento da sessão')
+    return { error: vincErr ? `Erro ao vincular a sessão: ${vincErr.message}` : 'Sessão já está agendada.' }
+  }
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, 'max')

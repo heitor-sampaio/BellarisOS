@@ -906,36 +906,43 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 
 ## 10. Fluxo de conclusão de atendimento
 
-> **Atenção:** este é o desenho ALVO, não o que está no código. Hoje as sete
-> gravações acontecem em sequência (cada uma falha alto, mas falhar a quarta
-> deixa as três primeiras gravadas). O caminho já provado no estorno é o mesmo
-> que serve aqui: o TypeScript calcula (pontos, comissão, insumos) e **uma
-> função do Postgres grava tudo dentro de uma transação**, sem duplicar regra
-> de negócio no banco. É a próxima frente candidata (DEVLOG §5).
+**É UMA transação** (desde 2026-09-28). `finishSession` CALCULA — a regra de
+comissão aplicada, os pontos, a baixa de cada insumo (com rendimento e o
+arredondamento das embalagens) — e a função `concluir_atendimento` (migration
+`20260928000003`) GRAVA tudo de uma vez. Nenhuma regra de negócio no banco: ela
+recebe os números prontos. É o desenho do estorno (`estornar_transacao`).
 
-Os sete passos, na ordem, e o que cada um precisa deixar gravado:
+O que a transação grava, na ordem:
 
 | # | O que grava | Onde |
 |---|---|---|
-| 1 | status `COMPLETED` + `completed_at` | `appointments` |
-| 2 | entrada do prontuário (1 por atendimento, `appointment_id` único) | `medical_record_entries` |
-| 3 | baixa de cada insumo do procedimento, com `balance_after` | `stock_movements` + `products` |
-| 4 | a receita do atendimento | `financial_transactions` |
-| 5 | a comissão do profissional | `commissions` |
-| 6 | a sessão do pacote, se houver | `package_sessions` |
-| 7 | os pontos de fidelidade | `loyalty_transactions` |
+| 1 | status `COMPLETED` + `completed_at` (agendamento TRAVADO, status conferido de novo) | `appointments` |
+| 2 | o prontuário do cliente (nasce se não existe) e a entrada deste atendimento | `medical_records`, `medical_record_entries` |
+| 3 | a comissão, com a regra aplicada | `commissions` |
+| 4 | os pontos (o saldo soma no banco) | `loyalty_accounts`, `loyalty_transactions` |
+| 5 | cada insumo — e, pelos gatilhos, evento, mínimo e baixa do lote | `stock_movements`, `branch_product_stock` |
+| 6 | a sessão do pacote usada e o contador (soma no banco) | `package_sessions`, `client_packages` |
+| 7 | a linha do tempo | `appointment_history` |
 
-**Como é hoje, de fato** (mapeado e testado em 2026-09-27,
-`e2e/atendimento-fechamento.spec.ts`):
-- `finishSession` grava status → prontuário → comissão → pontos → estoque →
-  pacote. A **receita não nasce no fechamento**: é `confirmPayment`, na
-  recepção, que a lança já paga.
-- O saldo do insumo mora em `branch_product_stock` (por unidade), não em
-  `products`.
+- **Falha em qualquer passo desfaz todos.** Antes, falhar o quinto deixava os
+  quatro primeiros, e o atendimento ficava concluído com comissão e sem baixa
+  de estoque — sem jeito de refazer, porque o status já dizia concluído.
+- **Dois "finalizar" ao mesmo tempo concluem uma vez**: o agendamento é travado
+  (`for update`) e o status conferido lá dentro. Antes, os dois passavam.
+- **Eventos e notificações saem DEPOIS**, no TypeScript, só se a transação
+  gravou — são aviso do que aconteceu.
+- O mesmo insumo duas vezes na lista SOMA antes do cálculo (a baixa é
+  calculada sobre o saldo lido uma vez).
+- Prova: `e2e/conclusao-atomica.spec.ts` (falha no meio, pacote, concorrência)
+  e `e2e/atendimento-fechamento.spec.ts` (a tela).
+
+O resto do fluxo:
+- A **receita não nasce no fechamento**: é `confirmPayment`, na recepção, que a
+  lança já paga. Marcar "Concluído" na agenda (`completeAppointment`) exige o
+  fechamento feito e só lança a conta a receber, se faltar — repetir é seguro.
 - **Insumo faltando NÃO impede o fechamento** — a cliente já foi atendida
-  (decisão do Heitor, 2026-09-27; o texto antigo dizia o contrário). O saldo
-  fica **negativo**, para a falta aparecer no estoque, e a tela mostra o que
-  faltou antes de fechar o modal.
+  (decisão do Heitor, 2026-09-27). O saldo fica **negativo**, para a falta
+  aparecer no estoque, e a tela mostra o que faltou.
 - Sessão de **plano** e de **pacote** já foi paga em outro lugar:
   `confirmPayment` recusa as duas no servidor, e a tela esconde o botão.
 - Pontos: só com `loyalty_configs` da rede — e **nenhuma rede tem**, nem há
@@ -1310,6 +1317,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Action que recebe id de registro de UNIDADE e confere só a rede (use alcancaUnidade depois da rede)
 ❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
 ❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece)
+❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só)
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)
 ❌ Invalidar cache de permissão/acesso com revalidateTag 'max' (serve o velho mais uma vez) — use updateTag
@@ -1319,7 +1327,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Criar agendamento sem procedure_id (a avaliação era a exceção e não existe mais)
 ❌ Confundir a ficha do PROCEDIMENTO (forms/form_data) com a anamnese GERAL do cliente
 ❌ Chamar action que grava e ignorar o { error } que ela devolve
-❌ Escrever no banco fora de transação quando duas gravações precisam valer juntas
+❌ Escrever no banco fora de transação quando duas gravações precisam valer juntas (padrão: o app calcula, uma função grava)
 ❌ Introduzir cores, fontes ou sombras fora dos tokens da skill /lumiere-design
 ❌ Escrever cor/sombra/raio/tamanho de fonte à mão em vez de var(--token)
 ❌ Escolher o tamanho de um seletor na tela (a altura é --altura-controle, e só)
