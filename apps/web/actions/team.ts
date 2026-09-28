@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath, revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { membroCriado, membroDesativado, membroReativado } from '@/lib/events/cadastro'
@@ -49,6 +49,26 @@ async function assertRoleInTenant(
   return { ok: true }
 }
 
+/**
+ * A unidade do membro tem de ser DA REDE.
+ *
+ * O `branchId` vem do formulário. Sem esta conferência, um admin de rede
+ * criava um membro preso à unidade de OUTRA clínica — e toda consulta que
+ * filtra só por `branch_id` passava a entregar os dados dela a esse membro.
+ * O id da unidade não é segredo: o slug aparece na URL.
+ */
+async function assertBranchInTenant(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  branchId: string | null,
+): Promise<{ error: string } | { ok: true }> {
+  if (branchId === null) return { ok: true }
+  const unidade = await ler(admin
+    .from('branches').select('id').eq('id', branchId).eq('tenant_id', tenantId).maybeSingle(),
+    'buscar a unidade')
+  return unidade ? { ok: true } : { error: 'Unidade inválida.' }
+}
+
 export async function createTeamMember(
   _prevState: { error: string } | { success: boolean } | undefined,
   formData: FormData,
@@ -76,6 +96,8 @@ export async function createTeamMember(
   const scoped = resolveScope(ctx, scope, branchId)
   if ('error' in scoped) return scoped
   const effectiveBranchId = scoped.branchId
+  const branchCheck = await assertBranchInTenant(admin, ctx.tenantId!, effectiveBranchId)
+  if ('error' in branchCheck) return branchCheck
 
   // 1. Criar usuário no Supabase Auth (exige service role)
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
@@ -149,6 +171,8 @@ export async function updateTeamMember(
   const scoped = resolveScope(ctx, scope, branchId)
   if ('error' in scoped) return scoped
   const effectiveBranchId = scoped.branchId
+  const branchCheck = await assertBranchInTenant(admin, ctx.tenantId!, effectiveBranchId)
+  if ('error' in branchCheck) return branchCheck
 
   const member = await ler(admin
     .from('users')
@@ -177,16 +201,47 @@ export async function updateTeamMember(
 
   revalidatePath(redirectPath)
   revalidateTag(`professionals:${ctx.tenantId!}`, 'max')
-  revalidateTag(`user:${member.auth_id}`, 'max')
+  // `updateTag` expira na hora; o perfil 'max' ainda serviria o valor velho na
+  // próxima requisição — um cargo rebaixado ganharia mais uma com o acesso antigo.
+  updateTag(`user:${member.auth_id}`)
   return { success: true }
+}
+
+/**
+ * O membro, DA REDE da sessão, com o login dele.
+ *
+ * O `auth_id` vai para o Auth (bloquear, desbloquear): lido sem o filtro de
+ * rede, um id de membro de outra clínica bloquearia a conta dela.
+ */
+async function membroDaRede(admin: ReturnType<typeof createAdminClient>, tenantId: string, userId: string) {
+  const membro = await ler(admin
+    .from('users').select('id, auth_id')
+    .eq('id', userId).eq('tenant_id', tenantId).maybeSingle(), 'buscar o membro')
+  if (!membro) throw new Error('Membro não encontrado.')
+  return membro as { id: string; auth_id: string | null }
 }
 
 export async function deactivateTeamMember(userId: string, redirectPath: string = '/admin/team') {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'team', 'MANAGE')
+  // Desativar a si mesmo tranca a pessoa do lado de fora sem ninguém para
+  // desfazer — se for a única que administra a equipe, a rede fica sem.
+  if (userId === ctx.internalUserId) throw new Error('Você não pode desativar o seu próprio acesso.')
 
   const admin = createAdminClient()
+  const membro = await membroDaRede(admin, ctx.tenantId!, userId)
   await gravar(admin.from('users').update({ is_active: false }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'desativar o membro')
+
+  // Desativar TIRA o acesso — até 2026-09-27 era só uma coluna que nada lia.
+  // O bloqueio no Auth impede renovar o token e entrar de novo; o `updateTag`
+  // faz o contexto (`buildContext`) ver o `is_active` já na próxima requisição,
+  // e é ele que barra o token que ainda está na mão.
+  if (membro.auth_id) {
+    // Resposta do Auth, não do PostgREST: o erro é tratado aqui, e alto.
+    const { error: erroBloqueio } = await admin.auth.admin.updateUserById(membro.auth_id, { ban_duration: '876000h' })
+    if (erroBloqueio) throw new Error(`Desativado, mas não consegui bloquear o login: ${erroBloqueio.message}`)
+    updateTag(`user:${membro.auth_id}`)
+  }
 
   // O retrato leva o cargo e a abrangência que a pessoa tinha — é o que uma
   // automação de "revogar o que ela ainda alcança" precisa saber, e depois de
@@ -202,7 +257,13 @@ export async function reactivateTeamMember(userId: string, redirectPath: string 
   assertPermission(ctx, 'team', 'MANAGE')
 
   const admin = createAdminClient()
+  const membro = await membroDaRede(admin, ctx.tenantId!, userId)
   await gravar(admin.from('users').update({ is_active: true }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'reativar o membro')
+  if (membro.auth_id) {
+    const { error: erroDesbloqueio } = await admin.auth.admin.updateUserById(membro.auth_id, { ban_duration: 'none' })
+    if (erroDesbloqueio) throw new Error(`Reativado, mas não consegui desbloquear o login: ${erroDesbloqueio.message}`)
+    updateTag(`user:${membro.auth_id}`)
+  }
 
   await membroReativado(userId, ctx)
 

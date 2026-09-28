@@ -244,7 +244,9 @@ export default async function AdminTeamPage({
                         canChooseScope={ctx.branchId === null}
                         redirectPath="/admin/team"
                       />}
-                      {canManage && (m.is_active ? (
+                      {/* Não se oferece desativar a si mesmo: trancaria a pessoa do lado de fora
+                          (a action também recusa). */}
+                      {canManage && m.id !== ctx.internalUserId && (m.is_active ? (
                         <form action={async () => {
                           'use server'
                           await deactivateTeamMember(m.id, '/admin/team')

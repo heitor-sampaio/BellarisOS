@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { redirect } from 'next/navigation'
 import { createClient as createSupabaseJsClient } from '@supabase/supabase-js'
 import type {
   TenantContext, UserRole, JwtClaims, AppModule,
@@ -24,6 +25,14 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   // efeito na hora. Com a precedência invertida, o `role_id` velho continuava
   // no JWT até o token renovar e a mudança parecia não ter acontecido.
   const member = isClient ? null : await getCachedMember(authId)
+
+  // Membro DESATIVADO não opera, com sessão ou sem. A conta também é bloqueada
+  // no Auth ao desativar (não renova o token nem entra de novo), mas o token
+  // que já estava na mão vale até expirar — é esta linha que o barra no meio.
+  // `redirect` e não `throw`: numa página vira a tela de login, não a de erro;
+  // nas rotas da extensão o `authenticate` o captura e responde 401.
+  if (member && !member.isActive) redirect('/login?acesso=desativado')
+
   const roleId = member?.roleId ?? meta.role_id ?? null
 
   // A abrangência segue a mesma regra, pelo mesmo motivo. Ela decide em quais

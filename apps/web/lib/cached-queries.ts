@@ -19,6 +19,12 @@ export type CachedMember = {
    * de onde o layout manda sair quem tem filial fixa.
    */
   branchId: string | null
+  /**
+   * Desativado não entra (`buildContext`). Até 2026-09-27 nada lia esta
+   * coluna: quem era desligado seguia com acesso completo até alguém apagar a
+   * conta na mão.
+   */
+  isActive: boolean
 }
 
 export function getCachedMember(authId: string) {
@@ -27,7 +33,7 @@ export function getCachedMember(authId: string) {
       const admin = createAdminClient()
       const data = await ler(admin
         .from('users')
-        .select('id, name, role_id, branch_id, provides_services, tenant_roles(label)')
+        .select('id, name, role_id, branch_id, provides_services, is_active, tenant_roles(label)')
         .eq('auth_id', authId)
         .maybeSingle(), 'buscar o usuário')
       if (!data) return null
@@ -39,6 +45,7 @@ export function getCachedMember(authId: string) {
         roleLabel: roleRef?.label ?? '',
         providesServices: data.provides_services ?? false,
         branchId: (data.branch_id as string | null) ?? null,
+        isActive: data.is_active !== false,
       }
     },
     [`member-${authId}`],

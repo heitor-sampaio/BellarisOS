@@ -43,6 +43,13 @@ export async function createStage(
 
     const admin = createAdminClient()
 
+    // O funil vem do formulário: sem conferir, nascia uma etapa desta rede
+    // pendurada no funil de outra.
+    const funil = await ler(admin
+      .from('crm_funnels').select('id')
+      .eq('id', funnelId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o funil')
+    if (!funil) return { error: 'Funil não encontrado.' }
+
     // Posição é por funil: contar no tenant inteiro jogaria a etapa nova para o
     // fim de uma numeração que não é a deste quadro.
     const ultima = await ler(admin

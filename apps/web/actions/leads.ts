@@ -12,7 +12,7 @@ import {
 import { emitirEventoDeLead, eventoDoDesfecho, etapaDeCrm } from '@/lib/events/lead'
 import { EVENTOS } from '@estetica-os/types'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
-import { gravar } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -26,12 +26,28 @@ function str(fd: FormData, key: string) {
  * coluna de todos eles ao mesmo tempo — então a etapa passou a ser resolvida
  * aqui: a informada, ou a primeira do funil indicado, ou a primeira do padrão.
  */
+/**
+ * A etapa é DA REDE?
+ *
+ * O id da etapa vem do formulário e do arrasto do quadro. Sem esta conferência,
+ * um card movido para a etapa de outra rede sumia de todos os quadros desta.
+ */
+async function etapaDaRede(tenantId: string, stageId: string): Promise<boolean> {
+  const etapa = await ler(createAdminClient()
+    .from('crm_stages').select('id')
+    .eq('id', stageId).eq('tenant_id', tenantId).maybeSingle(), 'buscar a etapa')
+  return !!etapa
+}
+
 async function resolverEtapa(
   tenantId: string,
   crmStageId: string | null,
   funnelId: string | null,
 ): Promise<string | null> {
-  if (crmStageId) return crmStageId
+  if (crmStageId) {
+    if (!(await etapaDaRede(tenantId, crmStageId))) throw new Error('Etapa não encontrada.')
+    return crmStageId
+  }
 
   const funis  = await seedDefaultFunnel(tenantId)
   const alvo   = funis.find(f => f.id === funnelId)
@@ -212,7 +228,10 @@ export async function updateLead(
     }
     // Etapa só entra no patch quando o form mandou uma: gravar null aqui tirava
     // o lead de todos os quadros.
-    if (crmStageId) patch.crm_stage_id = crmStageId
+    if (crmStageId) {
+      if (!(await etapaDaRede(ctx.tenantId!, crmStageId))) return { error: 'Etapa não encontrada.' }
+      patch.crm_stage_id = crmStageId
+    }
 
     // Só atualiza tags se o form as enviou (evita apagar tags de callers que não editam tags)
     const novasTags = formData.has('tags') ? parseStringArray(formData, 'tags') : null
@@ -308,6 +327,8 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'crm', 'MANAGE')
+
+    if (!(await etapaDaRede(ctx.tenantId!, crm_stage_id))) return
 
     // Antes do update: é a única chance de saber de onde o card saiu.
     const etapaAnterior = await etapaAtualDoLead(ctx.tenantId!, leadId)

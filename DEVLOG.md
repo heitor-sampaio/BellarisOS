@@ -1260,6 +1260,36 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Frente 8 (P6, parte 1): cinco furos de "o id veio do navegador"
+
+"Pode seguir com o P6." O levantamento achou cinco furos; cada um tem teste
+que falha no código antigo.
+
+1. **Membro desativado seguia com acesso completo** — o mais grave. Nem o login
+   nem o contexto conferiam `users.is_active`: desativar era uma coluna que
+   nada lia. Agora o contexto barra (vai para `/login?acesso=desativado`), a
+   conta é bloqueada no Auth (não renova nem entra de novo) e o cache do membro
+   expira na hora (`updateTag`; o `revalidateTag 'max'` serviria o valor velho
+   em mais uma requisição — vale também para trocar cargo). Ninguém desativa a
+   si mesmo: o botão some da própria linha e a action recusa.
+   `e2e/membro-desativado.spec.ts`.
+2. **Membro preso à unidade de outra clínica**: `createTeamMember` e
+   `updateTeamMember` não conferiam o `branchId` — e toda consulta que filtra
+   só por `branch_id` entregaria os dados da outra unidade a ele.
+   `e2e/equipe-unidade-da-rede.spec.ts`.
+3. **Agendamento na agenda de outra clínica**: `createAppointmentCore` (agenda
+   e comercial) só conferia o procedimento. Profissional, sala e cliente de
+   outra rede agendavam; e quem tem unidade fixa agendava em qualquer outra da
+   rede. `e2e/agendamento-da-rede.spec.ts`.
+4. **Um id qualquer tirava o funil padrão da rede**: `setDefaultFunnel` limpava
+   o padrão de todos os funis ANTES de conferir o id. Na prova com o código
+   antigo a rede real ficou sem padrão por segundos e o teste devolveu.
+5. **Etapa e card atravessando redes**: `createStage` aceitava funil de outra
+   rede; `updateLeadStage`/`updateLead`/`createLead` aceitavam etapa de outra
+   rede (o card sumia dos quadros). `e2e/crm-estrutura.spec.ts`, que cobre
+   também as regras do quadro que nunca tinham teste (padrão não se arquiva nem
+   apaga; funil e etapa com lead não se apagam).
+
 ### 2026-09-27 — Nenhuma tela soma nem conta: o resto do §13.1
 
 "Resolve a questão do JavaScript primeiro." As três telas anotadas e mais três

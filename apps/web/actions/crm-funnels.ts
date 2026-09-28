@@ -186,6 +186,15 @@ export async function setDefaultFunnel(funnelId: string, slug: string): Promise<
 
     const admin = createAdminClient()
 
+    // O funil tem de ser DA REDE — e isso é conferido ANTES de limpar o padrão.
+    // Com um id alheio, o passo de baixo tirava o padrão de todos os funis e o
+    // de marcar não atingia linha nenhuma: a rede ficava sem funil padrão, e
+    // bastava um id qualquer.
+    const funil = await ler(admin
+      .from('crm_funnels').select('id')
+      .eq('id', funnelId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o funil')
+    if (!funil) return { error: 'Funil não encontrado.' }
+
     // Limpar antes de marcar: o índice único parcial só admite um padrão por
     // rede, então a ordem inversa bateria em violação de unicidade.
     const { error: erroLimpar } = await admin

@@ -986,6 +986,17 @@ Regras:
   pessoa ao número decide por onde ela ENVIA; isto decide o que ela VÊ. A regra
   mora em `caixasDoAlcance` (`lib/inbox/alcance.ts`), usada pela lista, pelas
   outras threads e pela abertura por id, como `alcanceDoDono`.
+- **Membro desativado não opera.** `buildContext` confere `users.is_active`
+  (via `getCachedMember`) e manda para `/login?acesso=desativado`; desativar
+  também bloqueia a conta no Auth (`ban_duration`) e expira o cache do membro
+  com `updateTag` — o `revalidateTag(…, 'max')` serviria o valor velho em mais
+  uma requisição. Até 2026-09-27 desativar era uma coluna que nada lia. Ninguém
+  desativa a si mesmo. Prova: `e2e/membro-desativado.spec.ts`.
+- **A unidade do membro é da rede** (`assertBranchInTenant` em
+  `actions/team.ts`), e **o agendamento só nasce com peças da rede**:
+  `createAppointmentCore` confere unidade, profissional, cliente e sala, e quem
+  tem unidade fixa só agenda nela. É o núcleo da agenda E do comercial — a
+  conferência mora nele, não em cada chamador.
 - Teste de regra de alcance precisa de um membro com escopo OWN de verdade:
   `membroComEscopoProprio` (`e2e/apoio/sessao.ts`). Como admin a tela abre de
   qualquer jeito, e o teste não prova nada.
@@ -1272,6 +1283,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão
+❌ Limpar um estado da rede ANTES de conferir o id que vai recebê-lo (setDefaultFunnel zerava o padrão)
+❌ Invalidar cache de permissão/acesso com revalidateTag 'max' (serve o velho mais uma vez) — use updateTag
 ❌ Fechar LISTA de período em "agora" (resolvePeriod.to) — use fullTo, o fim do período
 ❌ Tirar inicial de nome com nome[0] ou charAt(0) — use iniciaisDoNome (quebra em emoji)
 ❌ map() que devolve <> sem chave (a key no filho de dentro não conta)

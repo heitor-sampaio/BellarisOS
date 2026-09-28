@@ -48,6 +48,31 @@ export async function createAppointmentCore(
   if (!input.professionalId)                        return { error: 'Selecione um profissional.' }
   if (!input.scheduledAt)                           return { error: 'Informe data e hora.' }
 
+  // Tudo que vem do navegador tem de ser DA REDE. Até 2026-09-27 só o
+  // procedimento era conferido: com a unidade, o profissional, o cliente e a
+  // sala de outra clínica, o agendamento nascia na agenda DELA. E quem tem
+  // unidade fixa só agenda na própria (a abrangência, §11) — a rede agenda em
+  // qualquer uma. Um lugar só: a agenda e o comercial passam por aqui.
+  if (ctx.branchId && input.branchId !== ctx.branchId) {
+    return { error: 'Você só pode agendar na sua unidade.' }
+  }
+  const [unidade, profissional, cliente, sala] = await Promise.all([
+    ler(admin.from('branches').select('id')
+      .eq('id', input.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
+    ler(admin.from('users').select('id')
+      .eq('id', input.professionalId).eq('tenant_id', ctx.tenantId!).eq('is_active', true).maybeSingle(), 'buscar o profissional'),
+    ler(admin.from('clients').select('id')
+      .eq('id', input.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente'),
+    input.roomId
+      ? ler(admin.from('rooms').select('id')
+          .eq('id', input.roomId).eq('branch_id', input.branchId).maybeSingle(), 'buscar a sala')
+      : Promise.resolve({ id: null }),
+  ])
+  if (!unidade)      return { error: 'Filial não encontrada.' }
+  if (!profissional) return { error: 'Profissional não encontrado.' }
+  if (!cliente)      return { error: 'Cliente não encontrado.' }
+  if (!sala)         return { error: 'Sala não encontrada nesta unidade.' }
+
   // Preço/duração do procedimento (quando houver)
   let procedure: { price: number; duration_min: number } | null = null
   if (input.procedureId) {
