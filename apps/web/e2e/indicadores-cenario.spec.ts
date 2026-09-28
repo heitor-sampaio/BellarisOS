@@ -23,10 +23,11 @@ const dia = (d: number, h = 10) => `2021-03-${String(d).padStart(2, '0')}T${Stri
 interface Cenario {
   tenant: string; unidade: string; profissional: string
   pA: string; pB: string; c1: string; c2: string; c3: string
-  agendamentos: string[]; leads: string[]
+  agendamentos: string[]; leads: string[]; produtos: string[]
 }
 
 const num = (v: unknown) => Number(v ?? 0)
+const nums2 = (xs: unknown) => (xs as { procedure_id: string; sessoes: unknown }[]).map(x => [x.procedure_id, num(x.sessoes)])
 
 test.describe.serial('indicadores com cenário conhecido', () => {
   let c: Cenario | null = null
@@ -48,7 +49,8 @@ test.describe.serial('indicadores com cenário conhecido', () => {
 
     // C1: cliente ANTIGO (antes da janela) que volta; C2: novo na unidade;
     // C3: novo, mas de OUTRA unidade — não pode contar como novo desta.
-    const c1 = await ins('clients', { tenant_id: tenant, branch_id: unidade.id, name: `${PREFIXO} Ind C1 ${marca}`, phone: '5548900000001', created_at: '2021-01-15T10:00:00-03:00' })
+    // C1 tem nascimento: prova a faixa etária dos relatórios (35–44 em 2026).
+    const c1 = await ins('clients', { tenant_id: tenant, branch_id: unidade.id, name: `${PREFIXO} Ind C1 ${marca}`, phone: '5548900000001', created_at: '2021-01-15T10:00:00-03:00', birth_date: '1990-06-15' })
     const c2 = await ins('clients', { tenant_id: tenant, branch_id: unidade.id, name: `${PREFIXO} Ind C2 ${marca}`, phone: '5548900000002', created_at: dia(6) })
     const c3 = await ins('clients', { tenant_id: tenant, branch_id: outra.id, name: `${PREFIXO} Ind C3 ${marca}`, phone: '5548900000003', created_at: dia(7) })
 
@@ -66,17 +68,40 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     const tx = (linha: Record<string, unknown>) => ins('financial_transactions', {
       branch_id: unidade.id, category: 'Serviços', created_by: 'e2e', ...linha,
     })
-    await tx({ type: 'INCOME', amount: 200, is_paid: true, paid_at: dia(10), created_at: dia(10), client_id: c1.id, appointment_id: a1.id, description: `${PREFIXO} t1` })
-    await tx({ type: 'INCOME', amount: 100, is_paid: true, paid_at: dia(11), created_at: dia(11), client_id: c2.id, appointment_id: a2.id, description: `${PREFIXO} t2` })
-    await tx({ type: 'INCOME', amount: 70, is_paid: false, created_at: dia(12), client_id: c2.id, description: `${PREFIXO} t3 pendente` })
+    await tx({ type: 'INCOME', amount: 200, is_paid: true, paid_at: dia(10), created_at: dia(10), client_id: c1.id, appointment_id: a1.id, payment_method: 'PIX', description: `${PREFIXO} t1` })
+    await tx({ type: 'INCOME', amount: 100, is_paid: true, paid_at: dia(11), created_at: dia(11), client_id: c2.id, appointment_id: a2.id, payment_method: 'CREDIT_CARD', description: `${PREFIXO} t2` })
+    await tx({ type: 'INCOME', amount: 70, is_paid: false, created_at: dia(12), client_id: c2.id, payment_method: 'PIX', description: `${PREFIXO} t3 pendente` })
     await tx({ type: 'EXPENSE', amount: 40, is_paid: true, paid_at: dia(15), created_at: dia(15), description: `${PREFIXO} t4 despesa` })
-    // Um estorno, os dois lados — nenhum pode aparecer em lugar nenhum.
-    await tx({ type: 'INCOME', amount: 55, is_paid: true, paid_at: dia(16), created_at: dia(16), client_id: c2.id, notes: 'Estornada', description: `${PREFIXO} t5 estornada` })
+    // Um estorno, os dois lados — nenhum pode aparecer em lugar nenhum. Com
+    // forma de pagamento: os gráficos por forma somavam o estornado.
+    await tx({ type: 'INCOME', amount: 55, is_paid: true, paid_at: dia(16), created_at: dia(16), client_id: c2.id, notes: 'Estornada', payment_method: 'PIX', description: `${PREFIXO} t5 estornada` })
     await tx({ type: 'EXPENSE', category: 'Estorno', amount: 55, is_paid: true, paid_at: dia(16, 11), created_at: dia(16, 11), client_id: c2.id, description: `Estorno: ${PREFIXO} t5 estornada` })
     await tx({ type: 'EXPENSE', amount: 30, is_paid: false, created_at: dia(17), description: `${PREFIXO} t6 despesa pendente` })
 
     await ins('commissions', { branch_id: unidade.id, professional_id: prof!.id, appointment_id: a1.id, amount: 20, type: 'PERCENTAGE', rule_value: 10, status: 'OPEN', period_ref: '2021-03' })
     await ins('commissions', { branch_id: unidade.id, professional_id: prof!.id, appointment_id: a2.id, amount: 10, type: 'PERCENTAGE', rule_value: 10, status: 'PAID', period_ref: '2021-03' })
+
+    // Estoque: um insumo normal, um crítico, um zerado; o Proc A consome 2 do
+    // normal (custo 10 → margem 95% em a1, 90% em a2); e um consumo no dia 10
+    // com custo NO MOVIMENTO (4), diferente do de cadastro (5).
+    const produto = (nome: string, custo: number) => ins('products', {
+      tenant_id: tenant, name: `${PREFIXO} ${nome} ${marca}`, unit: 'un', cost_price: custo, category: `e2e-cat-${marca}`,
+    })
+    const iOk = await produto('Insumo ok', 5)
+    const iCrit = await produto('Insumo crítico', 10)
+    const iZero = await produto('Insumo zerado', 2)
+    const { error: erroSaldo } = await db.from('branch_product_stock').insert([
+      { branch_id: unidade.id, product_id: iOk.id,   current_stock: 10, min_stock: 2 },
+      { branch_id: unidade.id, product_id: iCrit.id, current_stock: 1,  min_stock: 2 },
+      { branch_id: unidade.id, product_id: iZero.id, current_stock: 0,  min_stock: 0 },
+    ])
+    expect(erroSaldo).toBeNull()
+    const { error: erroInsumo } = await db.from('procedure_products').insert({ procedure_id: pA.id, product_id: iOk.id, quantity: 2 })
+    expect(erroInsumo).toBeNull()
+    await ins('stock_movements', {
+      branch_id: unidade.id, product_id: iOk.id, type: 'PROCEDURE_USAGE', quantity: -3, unit_cost: 4,
+      balance_after: 10, created_by: 'e2e', created_at: dia(10, 15),
+    })
 
     // Funil padrão: 2 na 1ª etapa (1 virou cliente) e 1 na de ganho.
     const { data: funil } = await db.from('crm_funnels').select('id').eq('tenant_id', tenant).eq('is_default', true).single<{ id: string }>()
@@ -95,6 +120,7 @@ test.describe.serial('indicadores com cenário conhecido', () => {
       tenant, unidade: unidade.id, profissional: prof!.id, pA: pA.id, pB: pB.id,
       c1: c1.id, c2: c2.id, c3: c3.id,
       agendamentos: [a0.id, a1.id, a2.id, a3.id, a4.id, a5.id], leads: [l1.id, l2.id, l3.id],
+      produtos: [iOk.id, iCrit.id, iZero.id],
     }
   })
 
@@ -107,6 +133,11 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     const idsContatos = (contatos ?? []).map(x => x.contato_id as string).filter(Boolean)
     if (idsContatos.length) await db.from('contacts').delete().in('id', idsContatos)
     await db.from('commissions').delete().eq('branch_id', c.unidade)
+    await db.from('stock_movements').delete().eq('branch_id', c.unidade)
+    await db.from('branch_product_stock').delete().eq('branch_id', c.unidade)
+    await db.from('procedure_products').delete().in('product_id', c.produtos)
+    await db.from('domain_events').delete().in('entidade_id', c.produtos)
+    await db.from('products').delete().in('id', c.produtos)
     await db.from('financial_transactions').delete().eq('branch_id', c.unidade)
     const falhas = await apagarAgendamentos(c.agendamentos)
     await apagarClientes([c.c1, c.c2, c.c3], falhas)
@@ -191,6 +222,120 @@ test.describe.serial('indicadores com cenário conhecido', () => {
 
     const { data: novos } = await db.rpc('metrics_new_clients_series', { ...args(), p_granularity: 'month' })
     expect(novos!.map((b: Record<string, unknown>) => num(b.count))).toEqual([1])
+  })
+
+  test('relatórios, aba por aba: o que cada gráfico desenha (metrics_relatorio)', async () => {
+    const db = banco()
+    const aba = async (nome: string, granularidade = 'day') => {
+      const { data, error } = await db.rpc('metrics_relatorio', {
+        ...args(), p_prev_from: '2021-02-01T00:00:00-03:00', p_prev_to: '2021-02-28T23:59:59-03:00',
+        p_aba: nome, p_granularidade: granularidade,
+      })
+      expect(error, `aba ${nome}`).toBeNull()
+      return data as Record<string, unknown>
+    }
+    // Ordena por conteúdo, com as chaves em ordem fixa: o banco devolve as
+    // chaves do jsonb na ordem dele, não na do objeto esperado.
+    const chave = (x: unknown) => JSON.stringify(Object.entries(x as object).sort(([a], [b]) => a.localeCompare(b)))
+    const ordena = <T,>(xs: T[]) => [...xs].sort((a, b) => chave(a).localeCompare(chave(b)))
+    const nums = (xs: unknown, campos: string[]) => ordena((xs as Record<string, unknown>[]).map(x =>
+      Object.fromEntries(Object.entries(x).map(([k, v]) => [k, campos.includes(k) ? num(v) : v]))))
+
+    // Visão geral: dinheiro do MESMO conjunto do KPI (300) — o estorno de
+    // R$ 55 no Pix e o pendente não aparecem em lugar nenhum.
+    const geral = await aba('overview')
+    expect(nums(geral.receita_por_unidade, ['atual', 'anterior'])).toEqual([{ branch_id: c!.unidade, atual: 300, anterior: 0 }])
+    expect(nums(geral.receita_por_forma, ['valor'])).toEqual(ordena([{ forma: 'PIX', valor: 200 }, { forma: 'CREDIT_CARD', valor: 100 }]))
+    expect(nums(geral.por_procedimento, ['receita', 'execucoes'])).toEqual([{ nome: `${PREFIXO} Proc A ${marca}`, categoria: 'e2e', receita: 300, execucoes: 2 }])
+    expect(nums(geral.por_profissional, ['receita', 'atendimentos']).map(p => [p.receita, p.atendimentos])).toEqual([[300, 2]])
+    expect(nums(geral.agendamentos_por_status, ['n'])).toEqual(ordena([
+      { status: 'COMPLETED', n: 2 }, { status: 'CANCELLED', n: 1 }, { status: 'NO_SHOW', n: 1 }, { status: 'SCHEDULED', n: 1 },
+    ]))
+    // Consumo ao custo do MOVIMENTO (3 × 4), não do cadastro (3 × 5).
+    expect(num(geral.consumo_total)).toBe(12)
+    expect(nums(geral.consumo_por_fatia, ['valor'])).toEqual([{ chave: '2021-03-10', valor: 12 }])
+
+    const financeiro = await aba('financeiro')
+    expect(nums(financeiro.receita_por_categoria, ['valor'])).toEqual([{ categoria: 'Serviços', valor: 300 }])
+
+    // Agenda: um atendimento por dia, de quarta (10/03) a domingo (14/03).
+    const agenda = await aba('agenda')
+    expect(nums(agenda.por_dia_da_semana, ['dia', 'n'])).toEqual(ordena([0, 3, 4, 5, 6].map(dia => ({ dia, n: 1 }))))
+    expect(nums(agenda.por_origem, ['n'])).toEqual([{ origem: 'INTERNAL', n: 5 }])
+    expect(nums(agenda.agenda_por_unidade, ['total', 'concluidos', 'cancelados', 'faltas']))
+      .toEqual([{ branch_id: c!.unidade, total: 5, concluidos: 2, cancelados: 1, faltas: 1 }])
+
+    // Clientes: gasto e ranking do conjunto pago; a base é a rede inteira,
+    // conferida contra a contagem direta.
+    const clientes = await aba('clientes')
+    expect(num(clientes.gasto_medio)).toBe(150)
+    expect(nums(clientes.top_clientes, ['total', 'atendimentos'])).toEqual(ordena([
+      { nome: `${PREFIXO} Ind C1 ${marca}`, total: 200, atendimentos: 1 },
+      { nome: `${PREFIXO} Ind C2 ${marca}`, total: 100, atendimentos: 1 },
+    ]))
+    const { count: ativos } = await db.from('clients').select('id', { count: 'exact', head: true }).eq('tenant_id', c!.tenant).eq('is_active', true)
+    expect(num(clientes.total_ativos)).toBe(ativos)
+
+    // Procedimentos: a faixa etária de C1 (35–44) e margem só com custo.
+    const procs = await aba('procedimentos')
+    expect(nums(procs.volume_por_faixa, ['n'])).toEqual(ordena([
+      { faixa: '35–44', nome: `${PREFIXO} Proc A ${marca}`, n: 1 },
+      { faixa: 'Não informado', nome: `${PREFIXO} Proc A ${marca}`, n: 1 },
+    ]))
+    expect(nums(procs.margem_por_faixa, ['margem'])).toEqual(ordena([
+      { faixa: '35–44', nome: `${PREFIXO} Proc A ${marca}`, margem: 95 },
+      { faixa: 'Não informado', nome: `${PREFIXO} Proc A ${marca}`, margem: 90 },
+    ]))
+    const { data: porCategoria, error: erroCategoria } = await db.rpc('metrics_receita_por_categoria_de_procedimento', args())
+    expect(erroCategoria).toBeNull()
+    expect(nums(porCategoria, ['receita'])).toEqual([{ categoria: 'e2e', receita: 300 }])
+
+    const profs = await aba('profissionais')
+    expect(nums(profs.comissoes_por_profissional, ['aberta', 'paga']).map(x => [x.aberta, x.paga])).toEqual([[20, 10]])
+
+    // Estoque: 10×5 + 1×10 + 0×2 = 60; um crítico, um zerado.
+    const estoque = await aba('estoque')
+    expect([num(estoque.valor_em_estoque), num(estoque.criticos), num(estoque.zerados)]).toEqual([60, 1, 1])
+    expect(nums(estoque.valor_por_categoria, ['valor'])).toEqual([{ categoria: `e2e-cat-${marca}`, valor: 60 }])
+    expect(nums(estoque.estoque_por_unidade, ['itens', 'zerados', 'criticos', 'valor']))
+      .toEqual([{ branch_id: c!.unidade, itens: 3, zerados: 1, criticos: 1, valor: 60 }])
+    expect(nums(estoque.mais_consumidos, ['valor'])).toEqual([{ nome: `${PREFIXO} Insumo ok ${marca}`, valor: 12 }])
+  })
+
+  test('telas da unidade: sessões por procedimento e clientes para reativar', async () => {
+    const db = banco()
+    const { data: sessoes } = await db.rpc('metrics_sessoes_por_procedimento', { p_branch_ids: [c!.unidade] })
+    // Desde sempre: a0 (fev) conta junto com a1 e a2.
+    expect(nums2(sessoes)).toEqual([[c!.pA, 3]])
+
+    // C1 e C2 com a tag da unidade: C2 tem agendamento marcado (a5, SCHEDULED)
+    // "desde" 2021-03-13 — só C1 fica sem visita; a última dela é a1 (10/03).
+    const { data: u } = await db.from('branches').select('name').eq('id', c!.unidade).single<{ name: string }>()
+    const tag = `Unidade: ${u!.name}`
+    await db.from('clients').update({ tags: [tag] }).in('id', [c!.c1, c!.c2])
+    const { data: reativar } = await db.rpc('metrics_clientes_para_reativar', {
+      p_tenant: c!.tenant, p_branch_id: c!.unidade, p_tag: tag, p_desde: '2021-03-13T00:00:00-03:00', p_limite: 3,
+    })
+    const r = reativar as { total: number; lista: { id: string; ultima_visita: string }[] }
+    expect(r.total).toBe(1)
+    expect(r.lista.map(x => x.id)).toEqual([c!.c1])
+    expect(new Date(r.lista[0]!.ultima_visita).toISOString()).toBe(new Date(dia(10)).toISOString())
+
+    // Ficha do cliente: LTV = o que PAGOU desde sempre. C2 tem R$ 55 estornado
+    // e R$ 70 pendente — nenhum entra. Atendimentos e serviço, desde sempre
+    // (C1 inclui a0, de fevereiro).
+    const doCliente = async (id: string) => {
+      const { data, error } = await db.rpc('metrics_do_cliente', { p_tenant: c!.tenant, p_client: id })
+      expect(error).toBeNull()
+      const d = data as Record<string, unknown>
+      return [num(d.ltv), num(d.atendimentos), num(d.receita_servico)]
+    }
+    expect(await doCliente(c!.c1)).toEqual([200, 2, 999 + 200])
+    expect(await doCliente(c!.c2)).toEqual([100, 1, 100])
+
+    const { data: valor, error: erroValor } = await db.rpc('metrics_valor_em_estoque', { p_branch_ids: [c!.unidade] })
+    expect(erroValor).toBeNull()
+    expect(num(valor)).toBe(60)
   })
 
   test('funil: leads por etapa e convertidos', async () => {

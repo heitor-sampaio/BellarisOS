@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { getDoCliente } from '@/lib/metrics/unidade'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -169,19 +170,22 @@ export default async function AdminClientProfilePage({
   const slug      = effBranch?.slug ?? ''
 
   // KPIs
-  const completedAppts   = (appts ?? []).filter(a => a.status === 'COMPLETED')
-  const totalSessions    = completedAppts.length
-  const apptInvested     = completedAppts.reduce((s, a) => s + parseFloat(String(a.price ?? 0)), 0)
-
+  // O dinheiro do cliente vem do banco, pela regra do sistema (§13.1): LTV é
+  // o que ele PAGOU desde sempre (sem estorno — o mesmo LTV do dashboard) e o
+  // ticket é serviço dos concluídos ÷ concluídos. A ficha somava "preço dos
+  // atendimentos + lançamentos pagos sem agendamento" no JS: contava estorno,
+  // contava atendimento que nunca foi pago, e dividia por outra base.
+  const doCliente = await getDoCliente(ctx.tenantId!, id)
   type DirectTx = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string }
   const directTxList     = (directTxRaw as DirectTx[] | null) ?? []
-  const checkoutInvested = directTxList.filter(t => t.is_paid).reduce((s, t) => s + parseFloat(t.amount), 0)
-  const totalInvested    = apptInvested + checkoutInvested
-  const txCount          = totalSessions + directTxList.filter(t => t.is_paid).length
-  const ticketMedio      = txCount > 0 ? totalInvested / txCount : 0
   const age              = client.birthDate ? differenceInYears(new Date(), new Date(client.birthDate)) : null
 
-  const stats: ProfileStats = { totalSessions, totalInvested, ticketMedio, age }
+  const stats: ProfileStats = {
+    totalSessions: doCliente.atendimentos,
+    totalInvested: doCliente.ltv,
+    ticketMedio:   doCliente.ticketMedio,
+    age,
+  }
 
   const allAppointments: ProfileAppointment[] = (appts ?? []).map(a => ({
     id:               a.id,

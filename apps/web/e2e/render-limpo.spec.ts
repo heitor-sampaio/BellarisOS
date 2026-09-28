@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { filiaisAtivas } from './apoio/banco'
 
 /**
  * Nenhuma tela renderiza com defeito estrutural.
@@ -38,6 +39,16 @@ const TELAS: { rota: string; abrir?: string }[] = [
   { rota: '/admin/estoque' },
   { rota: '/admin/estoque', abrir: 'Por unidade' },
   { rota: '/admin/reports' },
+  // Cada aba dos relatórios lê um agregado diferente de `metrics_relatorio`:
+  // desde 2026-09-27 uma consulta que falha PARA a tela em vez de virar zero,
+  // então cada aba precisa abrir de verdade.
+  { rota: '/admin/reports?tab=financeiro' },
+  { rota: '/admin/reports?tab=agenda' },
+  { rota: '/admin/reports?tab=clientes' },
+  { rota: '/admin/reports?tab=procedimentos' },
+  { rota: '/admin/reports?tab=profissionais' },
+  { rota: '/admin/reports?tab=estoque' },
+  { rota: '/admin/reports?tab=comercial' },
   { rota: '/admin/team' },
   { rota: '/admin/procedures' },
   { rota: '/admin/automacoes' },
@@ -48,23 +59,39 @@ const TELAS: { rota: string; abrir?: string }[] = [
 
 const RUIM = /hydrat|server rendered|didn't match|unique .key./i
 
+/** Telas da UNIDADE — a rota depende do slug, resolvido na hora. */
+const TELAS_DA_UNIDADE = ['dashboard', 'procedures', 'reports']
+
+async function conferir(page: import('@playwright/test').Page, rota: string, nome: string, abrir?: string) {
+  const falhas: string[] = []
+  const olhar = (t: string) => { if (RUIM.test(t)) falhas.push(t.slice(0, 300)) }
+  page.on('console', m => olhar(m.text()))
+  page.on('pageerror', e => olhar(e.message))
+
+  await page.goto(rota)
+  await page.waitForLoadState('networkidle')
+  if (abrir) {
+    const gatilho = page.getByRole('button', { name: abrir }).first()
+    if (await gatilho.count()) await gatilho.click()
+  }
+  // Os dois avisos saem DEPOIS da hidratação, não durante o load.
+  await page.waitForTimeout(1200)
+
+  expect(falhas, `${nome} tem defeito de render`).toEqual([])
+  // Consulta que falha agora PARA a tela (§13.1) — e cai aqui, não num zero.
+  await expect(page.getByRole('heading', { name: 'Algo deu errado' }), `${nome} caiu na página de erro`).toHaveCount(0)
+}
+
 for (const { rota, abrir } of TELAS) {
   const nome = abrir ? `${rota} (${abrir})` : rota
   test(`${nome} renderiza sem aviso do React`, async ({ page }) => {
-    const falhas: string[] = []
-    const olhar = (t: string) => { if (RUIM.test(t)) falhas.push(t.slice(0, 300)) }
-    page.on('console', m => olhar(m.text()))
-    page.on('pageerror', e => olhar(e.message))
+    await conferir(page, rota, nome, abrir)
+  })
+}
 
-    await page.goto(rota)
-    await page.waitForLoadState('networkidle')
-    if (abrir) {
-      const gatilho = page.getByRole('button', { name: abrir }).first()
-      if (await gatilho.count()) await gatilho.click()
-    }
-    // Os dois avisos saem DEPOIS da hidratação, não durante o load.
-    await page.waitForTimeout(1200)
-
-    expect(falhas, `${nome} tem defeito de render`).toEqual([])
+for (const tela of TELAS_DA_UNIDADE) {
+  test(`/[unidade]/${tela} renderiza sem aviso do React`, async ({ page }) => {
+    const unidade = (await filiaisAtivas())[0]!
+    await conferir(page, `/${unidade.slug}/${tela}`, `/${unidade.slug}/${tela}`)
   })
 }

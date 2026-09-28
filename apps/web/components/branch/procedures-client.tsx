@@ -30,7 +30,7 @@ interface Props {
   procedures:  ProcedureItem[]
   categories:  string[]
   totalCount:  number
-  ticketMedio: number
+  precoMedio: number
 }
 
 // -- Helper ---------------------------------------------------------------------
@@ -105,7 +105,7 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
 
 // -- Main ----------------------------------------------------------------------
 
-export function ProceduresClient({ procedures, categories, totalCount, ticketMedio }: Props) {
+export function ProceduresClient({ procedures, categories, totalCount, precoMedio }: Props) {
   const [activeTab, setActiveTab] = useState('Todos')
 
   const tabs    = ['Todos', ...categories]
@@ -126,7 +126,7 @@ export function ProceduresClient({ procedures, categories, totalCount, ticketMed
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
             {totalCount} {totalCount === 1 ? 'procedimento' : 'procedimentos'} no catálogo da rede
-            {ticketMedio > 0 && ` · ticket médio ${fmtBRL(ticketMedio)}`}
+            {precoMedio > 0 && ` · preço médio ${fmtBRL(precoMedio)}`}
           </p>
         </div>
       </div>

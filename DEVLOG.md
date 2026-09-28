@@ -1260,6 +1260,54 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Nenhuma tela soma nem conta: o resto do §13.1
+
+"Resolve a questão do JavaScript primeiro." As três telas anotadas e mais três
+achadas no caminho. Todo número agora vem do Postgres, e todo dinheiro de uma
+regra só.
+
+- **Relatórios** (`metrics_relatorio`, migration `20260927000011`): a tela
+  buscava as linhas do período — transações (até 5000), atendimentos,
+  agendamentos, comissões, movimentos, saldos, a base de clientes — e fazia ~40
+  contas em JS. Cortava em 1000 linhas e, pior, tinha **dois faturamentos**:
+  "por unidade", "forma de pagamento" e "por categoria" somavam por
+  `created_at` e COM estorno, ao lado do KPI por `paid_at` sem estorno. Agora
+  toda soma de dinheiro parte de `metrics_receitas_pagas` (o predicado de
+  `metrics_core`), e as contagens que o núcleo já tem vêm dele. Diferenças
+  visíveis, todas para o certo: "Novos clientes" passa a contar também o
+  cadastro sem unidade (a regra do dashboard); a faixa etária usa a data em
+  UTC (antes errava por um dia perto do aniversário); o consumo de insumo usa
+  o custo do movimento (antes o do cadastro).
+- **Procedimentos da unidade**: sessões por procedimento contadas no banco;
+  o "ticket médio" da tela era a MÉDIA DOS PREÇOS DE TABELA — virou "preço
+  médio" (o rótulo acompanha a conta).
+- **Dashboard da unidade**, clientes para reativar: três selects sem limite
+  viraram `metrics_clientes_para_reativar` (total + os três há mais tempo sem
+  vir, na mesma ordem).
+- **Ficha do cliente** (os dois portais) e "Total investido" do portal do
+  cliente: o LTV era "preço dos atendimentos + lançamentos pagos sem
+  agendamento" — contava estorno e atendimento nunca pago; o ticket dividia por
+  (sessões + lançamentos). Agora `metrics_do_cliente`: LTV = o que pagou, desde
+  sempre (o mesmo do dashboard); ticket = serviço dos concluídos ÷ concluídos.
+- **Estoque** (unidade e rede): valor em estoque e giro do mês no banco — o
+  giro era uma terceira cópia da conta, sobre linhas cortadas.
+- **`lib/metrics` parou de engolir erro**: `logRpcError` registrava e o wrapper
+  devolvia zero. Agora lança.
+- Provado em `e2e/indicadores-cenario.spec.ts` (cada aba com valor escrito à
+  mão, estorno e pendente fora de tudo) e `render-limpo` (as 8 abas e as telas
+  da unidade abrem sem cair na página de erro).
+- ⚠️ A função recém-criada falhava 1 em 3 chamadas: réplicas do PostgREST sem
+  o schema novo. Migration que cria função termina com `notify pgrst`.
+- **O "intermitente" do `planejamentos-mobile` não era tempo** (a espera já
+  tinha ido a 15 s e ele caiu de novo). O teste escolhia a PRIMEIRA unidade do
+  seletor, e na regressão completa ela era a `[e2e]` de outro spec rodando em
+  paralelo, que a apaga no fim — o "Criar" batia em chave estrangeira. O mesmo
+  valia para `filiaisAtivas()`, usado por dezenas de specs: ordena por nome e o
+  `[` vem antes das letras. Agora ele só devolve unidades reais.
+
+Regressão completa com o código final: 241 E2E passaram, 2 pulados, nenhuma
+falha. Vitest 378/378, tsc e lint limpos.
+
 ### 2026-09-27 — Nenhum erro de consulta descartado; demografia no banco
 
 "Corrige as pendências anotadas." As da entrada abaixo, e a regra inteira do
@@ -1303,9 +1351,8 @@ TESTE e foram corrigidos: `fase5-cliente` pedia `?tab=dados` (a ficha lê
 `?aba=`) e clicava na aba depois de um `isVisible()` que não espera;
 `planejamentos-mobile` estourava os 5 s da espera no bloco mais carregado.
 
-**Ainda contam em JS** (anotado, fica para depois): sessões concluídas por
-procedimento na tela de procedimentos da unidade, a lista de clientes inativos
-do dashboard da unidade, e os relatórios (limite de 5000 transações).
+~~**Ainda contam em JS**: sessões por procedimento, clientes inativos do
+dashboard da unidade e os relatórios.~~ Resolvido na entrada acima.
 
 ### 2026-09-27 — Lint zerado no apps/web (e o que o `any` escondia)
 

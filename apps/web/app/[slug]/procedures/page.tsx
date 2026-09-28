@@ -6,6 +6,7 @@ import { ProceduresClient } from '@/components/branch/procedures-client'
 import type { ProcedureItem } from '@/components/branch/procedures-client'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
+import { getSessoesPorProcedimento } from '@/lib/metrics/unidade'
 
 export default async function BranchProceduresPage({
   params,
@@ -27,7 +28,7 @@ export default async function BranchProceduresPage({
     .single(), 'buscar a unidade')
   if (!branch) notFound()
 
-  const [allProcs, apptCounts] = await Promise.all([
+  const [allProcs, sessionsMap] = await Promise.all([
     ler(// Procedures (rede + locais da filial)
     admin
       .from('procedures')
@@ -42,12 +43,9 @@ export default async function BranchProceduresPage({
       .order('category')
       .order('name'), 'carregar os procedimentos'),
 
-    ler(// Contagem de sessões concluídas por procedimento nesta filial
-    admin
-      .from('appointments')
-      .select('procedure_id')
-      .eq('branch_id', branch.id)
-      .eq('status', 'COMPLETED'), 'contar as sessões por procedimento'),
+    // Sessões concluídas por procedimento nesta filial, contadas no banco:
+    // trazer uma linha por atendimento cortava em 1000 (§13.1).
+    getSessoesPorProcedimento([branch.id]),
   ])
 
   // Filtra procedimentos de rede pela disponibilidade de filial
@@ -57,13 +55,6 @@ export default async function BranchProceduresPage({
     if (!av || av.length === 0) return true  // sem restrição → toda a rede
     return av.some(a => a.branch_id === branch.id)
   })
-
-  // Mapa procedureId → contagem de sessões
-  const sessionsMap = new Map<string, number>()
-  for (const a of apptCounts ?? []) {
-    const pid = a.procedure_id as string
-    sessionsMap.set(pid, (sessionsMap.get(pid) ?? 0) + 1)
-  }
 
   // Categorias únicas (ordem de aparição)
   const categoriesOrdered: string[] = []
@@ -83,8 +74,13 @@ export default async function BranchProceduresPage({
     visibleOnClientApp: Boolean(p.visible_on_client_app),
   }))
 
-  const totalCount  = items.length
-  const ticketMedio = totalCount > 0
+  // "Preço médio" do CATÁLOGO — média dos preços de tabela, não dinheiro que
+  // entrou. Chamava-se "ticket médio", que no sistema inteiro é receita dos
+  // atendimentos ÷ atendimentos concluídos (§13.1): se a conta é outra, o
+  // nome tem de ser outro. É uma média sobre a lista já exibida, não um
+  // indicador do período.
+  const totalCount = items.length
+  const precoMedio = totalCount > 0
     ? items.reduce((s, p) => s + p.price, 0) / totalCount
     : 0
 
@@ -96,7 +92,7 @@ export default async function BranchProceduresPage({
         procedures={items}
         categories={categoriesOrdered}
         totalCount={totalCount}
-        ticketMedio={ticketMedio}
+        precoMedio={precoMedio}
       />
     </>
   )

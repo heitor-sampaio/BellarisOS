@@ -1,6 +1,7 @@
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { getDoCliente } from '@/lib/metrics/unidade'
 
 type TxRow = {
   id:             string
@@ -57,7 +58,11 @@ export default async function ClientFinancialPage() {
     procedure_name: r.appointments?.procedures?.name ?? null,
   }))
 
-  const total = rows.filter(r => r.is_paid).reduce((s, r) => s + r.amount, 0)
+  // O total é o LTV do cliente, do banco (pago, sem estorno) — a mesma conta
+  // da ficha dele na clínica. Somar a lista aqui contava o estornado.
+  const ficha = await ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId!).single(), 'buscar o cliente')
+  if (!ficha) throw new Error('Cadastro do cliente não encontrado.')
+  const total = (await getDoCliente(ficha.tenant_id as string, ctx.clientId!)).ltv
 
   return (
     <div>

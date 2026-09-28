@@ -73,11 +73,17 @@ export async function unidadeQueAtende(): Promise<Filial | null> {
 export async function filiaisAtivas(): Promise<Filial[]> {
   // Só da rede de verdade: sem o filtro, a unidade `[e2e]` da segunda rede de
   // teste vinha primeiro na ordem alfabética (o `[` vem antes das letras).
+  //
+  // E só unidades REAIS: specs que criam uma unidade `[e2e]` na rede real
+  // (permissões, indicadores, campanha) a apagam no fim — com a regressão em
+  // paralelo, a `[0]` daqui podia ser uma delas, que sumia no meio do teste do
+  // vizinho (chave estrangeira no insert, "intermitente" que parecia tempo).
   const { data, error } = await banco()
     .from('branches')
     .select('id, name, slug')
     .eq('tenant_id', await tenantId())
     .eq('is_active', true)
+    .not('name', 'like', `${PREFIXO}%`)
     .order('name')
   if (error) throw new Error(`Não consegui listar as filiais: ${error.message}`)
   return (data ?? []) as Filial[]

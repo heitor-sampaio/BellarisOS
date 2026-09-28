@@ -8,6 +8,7 @@ import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
+import { getDoCliente } from '@/lib/metrics/unidade'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, ProfileTransaction, ProfileInternalCredit, ClientHistoryEvent } from '@/components/branch/client-profile'
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
@@ -78,21 +79,22 @@ export default async function ClientProfilePage({
   } = await getCachedClientProfileData(id, branch.id, ctx.tenantId!)
 
   // KPIs
-  const completedAppts  = (appts ?? []).filter(a => a.status === 'COMPLETED')
-  const totalSessions   = completedAppts.length
-  const apptInvested    = completedAppts.reduce((s, a) => s + parseFloat(String(a.price ?? 0)), 0)
-
-  // Transações diretas de checkout (evita duplicar com apptTx)
+  // O dinheiro do cliente vem do banco, pela regra do sistema (§13.1): LTV é
+  // o que ele PAGOU desde sempre (sem estorno — o mesmo LTV do dashboard) e o
+  // ticket é serviço dos concluídos ÷ concluídos. A ficha somava "preço dos
+  // atendimentos + lançamentos pagos sem agendamento" no JS: contava estorno,
+  // contava atendimento que nunca foi pago, e dividia por outra base.
+  const doCliente = await getDoCliente(ctx.tenantId!, id)
   type DirectTx = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string }
-  const directTxList    = (directTxRaw as DirectTx[] | null) ?? []
-  const checkoutInvested = directTxList.filter(t => t.is_paid).reduce((s, t) => s + parseFloat(t.amount), 0)
+  const directTxList     = (directTxRaw as DirectTx[] | null) ?? []
+  const age              = client.birthDate ? differenceInYears(new Date(), new Date(client.birthDate)) : null
 
-  const totalInvested   = apptInvested + checkoutInvested
-  const txCount         = totalSessions + directTxList.filter(t => t.is_paid).length
-  const ticketMedio     = txCount > 0 ? totalInvested / txCount : 0
-  const age             = client.birthDate ? differenceInYears(new Date(), new Date(client.birthDate)) : null
-
-  const stats: ProfileStats = { totalSessions, totalInvested, ticketMedio, age }
+  const stats: ProfileStats = {
+    totalSessions: doCliente.atendimentos,
+    totalInvested: doCliente.ltv,
+    ticketMedio:   doCliente.ticketMedio,
+    age,
+  }
 
   // Map appointments — separar futuros de passados
   const allAppointments: ProfileAppointment[] = (appts ?? []).map(a => ({

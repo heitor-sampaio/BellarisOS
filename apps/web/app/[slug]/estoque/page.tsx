@@ -7,7 +7,9 @@ import { StockProductModal } from '@/components/branch/stock-product-modal'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { filiaisAtivas } from '@/lib/branches'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
-import { startOfMonthTZ, addDaysTZ } from '@/lib/datetime'
+import { startOfMonthTZ, endOfMonthTZ, addDaysTZ } from '@/lib/datetime'
+import { getGiroDeEstoque } from '@/lib/metrics/demografia'
+import { getValorEmEstoque } from '@/lib/metrics/unidade'
 import { ler } from '@/lib/db'
 
 /** Produto como o select pede, com o saldo por unidade embutido. */
@@ -21,7 +23,6 @@ type ProdutoLido = {
     branches: { id: string; name: string; slug: string } | null
   }[] | null
 }
-type MovimentoLido = { product_id: string; quantity: number | string; unit_cost: number | string | null }
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -123,22 +124,18 @@ export default async function BranchStockPage({
   const productIds   = products.map(p => p.id)
 
   const now          = new Date()
-  const startOfMonth = startOfMonthTZ(now).toISOString()
   const in30Days     = addDaysTZ(now, 30)
 
   // Por `ler`: sem checar o erro, uma falha virava giro zero e nenhum lote
   // vencendo — os dois alertas quietos exatamente quando não deviam.
-  const [movementsRaw, batchesRaw] = productIds.length > 0
+  // Valor em estoque e giro do mês somados no banco, pela mesma conta do
+  // dashboard (custo do movimento; o do cadastro só como reserva). Somar as
+  // linhas aqui cortava em 1000 (§13.1). Fim do MÊS, não "agora": o consumo
+  // lançado neste segundo nasce com o relógio do Postgres, à frente do app.
+  const [valorEstoque, valorGiro, batchesRaw] = productIds.length > 0
     ? await Promise.all([
-        // Giro ao custo do movimento (unit_cost), que preserva o custo da
-        // época; o custo atual do produto é só o fallback.
-        ler(admin
-          .from('stock_movements')
-          .select('product_id, quantity, unit_cost')
-          .in('product_id', productIds)
-          .eq('branch_id', branchId)
-          .eq('type', 'PROCEDURE_USAGE')
-          .gte('created_at', startOfMonth), 'carregar o giro do mês'),
+        getValorEmEstoque([branchId]),
+        getGiroDeEstoque({ branchIds: [branchId], from: startOfMonthTZ(now), to: endOfMonthTZ(now) }),
 
         // `product_batches` não tem branch_id — o filtro por filial que existia
         // aqui fazia o PostgREST devolver erro e o alerta ficava sempre vazio.
@@ -150,20 +147,7 @@ export default async function BranchStockPage({
           .gt('quantity', 0)
           .lte('expires_at', in30Days.toISOString()), 'carregar os lotes vencendo'),
       ])
-    : [[], []]
-
-  // KPIs da filial
-  const valorEstoque = products.reduce(
-    (sum, p) => sum + p.costPrice * p.totalStock,
-    0,
-  )
-
-  const costMap  = Object.fromEntries(products.map(p => [p.id, p.costPrice]))
-  const valorGiro = ((movementsRaw ?? []) as MovimentoLido[]).reduce(
-    (sum: number, m) =>
-      sum + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? costMap[m.product_id] ?? 0),
-    0,
-  )
+    : [0, 0, []]
 
   const abaixoMinimo = products.filter(p =>
     p.branches.some(b => b.minStock > 0 && b.currentStock <= b.minStock),

@@ -1201,6 +1201,29 @@ aquele prova que estão CERTOS. Mexeu numa `metrics_*`, o cenário tem de contin
 batendo — ou mudar junto, com o porquê. `new_clients` respeita a unidade como a
 série (a unidade escolhida mais os clientes sem unidade).
 
+**Uma regra de receita, e toda soma de dinheiro parte dela.**
+`metrics_receitas_pagas` (migration `20260927000011`) é o conjunto canônico —
+INCOME pago, sem estorno dos dois lados, eixo em `paid_at` — e é o mesmo
+predicado de `metrics_core.revenue_cash`. Receita por unidade, por forma de
+pagamento, por categoria, gasto por cliente e LTV saem DELE. Até 2026-09-27 os
+relatórios somavam esses gráficos por `created_at` e com estorno, ao lado de um
+KPI que não fazia nenhum dos dois.
+- **LTV é o que o cliente PAGOU**, desde sempre (`metrics_do_cliente`,
+  `metrics_top_clients`). Não é "preço dos atendimentos": atendimento concluído
+  e não pago não é dinheiro que entrou.
+- **Relatórios**: `metrics_relatorio(…, aba)` devolve os agregados só da aba
+  aberta; a tela ordena, rotula e desenha. Contagens que o núcleo já tem
+  (atendimentos, novos clientes, agenda, comissões, ticket) vêm de `getCore`, não
+  de uma segunda conta. Listas curtas e com limite (lotes vencendo, parcelas)
+  continuam listas.
+- **Consumo de insumo é uma conta só** (`metrics_giro_estoque`): custo do
+  MOVIMENTO, o do cadastro só como reserva. Dashboard, estoque e relatórios.
+- **`lib/metrics` para a tela quando o RPC falha** (`logRpcError` lança). Ele
+  registrava e devolvia zero — "R$ 0,00" com cara de dado.
+- ⚠️ **Migration que cria função termina com `notify pgrst, 'reload schema'`.**
+  Sem isso, parte das réplicas do PostgREST não conhece a função nova por um
+  tempo e a chamada falha às vezes (visto em 2026-09-27: 1 em 3 rodadas).
+
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
 (idempotente; os valores esperados estão no cabeçalho do arquivo).
 
@@ -1225,6 +1248,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ page.tsx sem assertPermission próprio, confiando no layout
 ❌ Rota de /api/* sem defesa própria (segredo, assinatura ou sessão + permissão) — o proxy não barra
 ❌ Somar/contar indicador na tela em vez de usar lib/metrics (trunca em 1000 linhas)
+❌ Somar dinheiro por uma regra própria em vez de partir de metrics_receitas_pagas
+❌ Migration que cria função sem notify pgrst, 'reload schema' no fim
 ❌ Montar janela de período com new Date(y, m, d) ou startOfMonth() do date-fns
 ❌ Comparar período parcial com período anterior inteiro
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar

@@ -32,13 +32,13 @@ test('criar um plano abre a tela dele; voltar traz a lista', async ({ page }) =>
 
   // Na rede com mais de uma unidade o plano precisa dizer de qual é: é ela que
   // define o caixa que recebe e a agenda onde as sessões caem.
+  //
+  // Uma unidade REAL, e não "a primeira da lista": na regressão completa a
+  // primeira pode ser a `[e2e]` de outro spec rodando em paralelo, que ela
+  // apaga logo depois — o "Criar" batia em chave estrangeira e o plano não
+  // nascia (foi o "intermitente" que parecia ser tempo).
   const unidade = page.locator('select').first()
-  if (await unidade.count()) {
-    const valores = await unidade.locator('option').evaluateAll(
-      os => os.map(o => (o as HTMLOptionElement).value).filter(Boolean),
-    )
-    if (valores[0]) await unidade.selectOption(valores[0])
-  }
+  if (await unidade.count()) await unidade.selectOption((await filiaisAtivas())[0]!.id)
 
   await page.getByRole('button', { name: 'Criar', exact: true }).click()
 

@@ -83,8 +83,18 @@ function baseArgs({ tenantId, branchIds, from, to }: Args) {
  * O erro do PostgREST era descartado em todas as telas, então drift de schema
  * virava "R$ 0,00" silencioso em vez de falha visível. Aqui ele é registrado.
  */
+/**
+ * Falha de indicador PARA a tela — não vira zero.
+ *
+ * Isto registrava e seguia: o wrapper devolvia `EMPTY_CORE` ou lista vazia, e
+ * um RPC quebrado aparecia como "R$ 0,00" com cara de dado (§13.1). O nome
+ * ficou porque é chamado em todo wrapper; o comportamento é o de `ler`.
+ */
 function logRpcError(fn: string, error: { message: string } | null): void {
-  if (error) console.error(`[metrics] ${fn} falhou: ${error.message}`)
+  if (error) {
+    console.error(`[metrics] ${fn} falhou: ${error.message}`)
+    throw new Error(`Não consegui calcular os indicadores (${fn}): ${error.message}`)
+  }
 }
 
 export async function getCore(args: Args): Promise<MetricsCore> {

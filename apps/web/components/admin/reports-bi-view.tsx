@@ -7,12 +7,9 @@ import { EvolutionChart, type ChartPoint } from './evolution-chart'
 import { PeriodSelector, type Period } from './period-selector'
 import { SegSelect } from '@/components/shared/seg-select'
 import { FunnelSelect } from '@/components/shared/funnel-select'
-import { weekdayTZ } from '@/lib/datetime'
-import type {
-  LinhaTransacao, LinhaTransacaoAnterior, LinhaAtendimento, LinhaClienteNovo, LinhaCliente,
-  LinhaAgendamento, LinhaComissao, LinhaMovimentoDeEstoque, LinhaEstoqueDaUnidade, LinhaLote,
-  LinhaParcela, LinhaCustoDoProcedimento,
-} from './reports-linhas'
+import type { LinhaLote, LinhaParcela } from './reports-linhas'
+import type { Relatorio } from '@/lib/metrics/relatorio'
+import type { MetricsCore } from '@/lib/metrics'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
   DreWaterfall, SimpleTable, Badge,
@@ -76,20 +73,15 @@ export interface ReportsBiProps {
   customTo?: string
   granularity: 'hour' | 'day'
   branches: { id: string; name: string; slug: string }[]
-  txsCurr: LinhaTransacao[]
-  txsPrev: LinhaTransacaoAnterior[]
+  /**
+   * Os agregados da aba, calculados no Postgres (`metrics_relatorio`). A tela
+   * NÃO soma nem conta: só ordena, rotula e desenha. Antes ela recebia as
+   * linhas do período e fazia ~40 contas — cortando em 1000 linhas e com uma
+   * segunda regra de faturamento ao lado do KPI (§13.1).
+   */
+  relatorio: Relatorio
   installments: LinhaParcela[]
-  apptsCurr: LinhaAtendimento[]
-  apptsPrevCount: number
-  allAppts: LinhaAgendamento[]
-  clientsCurr: LinhaClienteNovo[]
-  clientsPrevCount: number
-  clientsAll: LinhaCliente[]
-  commissions: LinhaComissao[]
-  stockMoves: LinhaMovimentoDeEstoque[]
-  bps: LinhaEstoqueDaUnidade[]
   productBatches: LinhaLote[]
-  procedureCosts: LinhaCustoDoProcedimento[]
   retention: { clientsServed: number; returningClients: number; firstTimeClients: number }
   newClientsSeries: { bucket: string; count: number }[]
   evolutionData: ChartPoint[]
@@ -98,8 +90,8 @@ export interface ReportsBiProps {
    * o gráfico. Some daqui e a tela volta a ter duas definições de faturamento:
    * era isso que punha R$ 5.200 no cartão e R$ 5.450 na legenda logo abaixo.
    */
-  core:     { revenueCash: number; expensesCash: number }
-  corePrev: { revenueCash: number; expensesCash: number }
+  core:     MetricsCore
+  corePrev: MetricsCore
   /** Só vem preenchido quando a aba Comercial está aberta. */
   comercial?: DadosComerciais
 }
@@ -260,69 +252,43 @@ const STATUS_LABELS: Record<string, string> = {
   SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', IN_PROGRESS: 'Em Andamento',
 }
 
+/** Nome da unidade pelo id — os agregados vêm por `branch_id`. */
+function nomesDasUnidades(branches: { id: string; name: string }[]) {
+  const m = new Map(branches.map(b => [b.id, b.name]))
+  return (id: string) => m.get(id) ?? '—'
+}
+
+const porValor = <T extends { value: number }>(a: T, b: T) => b.value - a.value
+
 // -----------------------------------------------------------------------------
 // TAB: VISÃO GERAL
 // -----------------------------------------------------------------------------
 function TabOverview(p: ReportsBiProps) {
-  const { txsCurr, apptsCurr, apptsPrevCount, clientsCurr, clientsPrevCount,
-    allAppts, branches, evolutionData, granularity } = p
+  const { relatorio: r, core, corePrev, branches, evolutionData, granularity } = p
+  const nomeDaUnidade = nomesDasUnidades(branches)
 
-  const revenue      = p.core.revenueCash
-  const prevRevenue  = p.corePrev.revenueCash
+  const revenue      = core.revenueCash
+  const prevRevenue  = corePrev.revenueCash
   // Despesa simétrica à receita: só o que foi pago. Antes a receita exigia
   // is_paid e a despesa não, então uma conta com vencimento futuro derrubava
   // o lucro do mês corrente — e esta tela discordava de /admin/financeiro.
-  const expenses     = p.core.expensesCash
-  const prevExpenses = p.corePrev.expensesCash
+  const expenses     = core.expensesCash
+  const prevExpenses = corePrev.expensesCash
   const profit       = revenue - expenses
   const prevProfit   = prevRevenue - prevExpenses
-  // Ticket médio: receita dos ATENDIMENTOS ÷ atendimentos. Antes era o caixa
-  // do período (que inclui venda de produto e pacote) sobre a contagem da
-  // agenda — dois conjuntos diferentes, e a conta não fechava na mão.
-  const serviceRevenue = apptsCurr.reduce((s, a) => s + Number(a.price ?? 0), 0)
-  const avgTicket      = apptsCurr.length > 0 ? serviceRevenue / apptsCurr.length : 0
+  // Ticket médio canônico (§13.1): receita dos atendimentos ÷ atendimentos
+  // concluídos, os dois do núcleo.
+  const avgTicket    = core.appointmentsCompleted > 0 ? core.serviceRevenue / core.appointmentsCompleted : 0
 
-
-  const byBranch = branches
-    .map(b => ({
-      name: b.name,
-      value: txsCurr
-        .filter(t => t.branch_id === b.id && t.type === 'INCOME' && t.is_paid)
-        .reduce((s, t) => s + Number(t.amount), 0),
-    }))
-    .sort((a, b) => b.value - a.value)
-
-  const payMap: Record<string, number> = {}
-  txsCurr.filter(t => t.type === 'INCOME' && t.is_paid && t.payment_method).forEach(t => {
-    const k = PAY_LABELS[t.payment_method!] ?? t.payment_method!
-    payMap[k] = (payMap[k] ?? 0) + Number(t.amount)
-  })
-  const byPayment = Object.entries(payMap).map(([name, value]) => ({ name, value }))
-
-  const procMap: Record<string, number> = {}
-  apptsCurr.filter(a => a.procedures?.name).forEach(a => {
-    const k = a.procedures!.name
-    procMap[k] = (procMap[k] ?? 0) + Number(a.price)
-  })
-  const topProcs = Object.entries(procMap)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value).slice(0, 5)
-
-  const profMap: Record<string, number> = {}
-  apptsCurr.filter(a => a.users?.name).forEach(a => {
-    const k = a.users!.name
-    profMap[k] = (profMap[k] ?? 0) + Number(a.price)
-  })
-  const topProfs = Object.entries(profMap)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value).slice(0, 5)
-
-  const statusMap: Record<string, number> = {}
-  allAppts.forEach(a => {
-    const k = STATUS_LABELS[a.status] ?? a.status
-    statusMap[k] = (statusMap[k] ?? 0) + 1
-  })
-  const byStatus = Object.entries(statusMap).map(([name, value]) => ({ name, value }))
+  const byBranch = r.receitaPorUnidade
+    .map(u => ({ name: nomeDaUnidade(u.branchId), value: u.atual }))
+    .sort(porValor)
+  const byPayment = r.receitaPorForma.map(f => ({ name: PAY_LABELS[f.forma] ?? f.forma, value: f.valor }))
+  const topProcs = r.porProcedimento
+    .map(x => ({ name: x.nome, value: x.receita })).sort(porValor).slice(0, 5)
+  const topProfs = r.porProfissional
+    .map(x => ({ name: x.nome, value: x.receita })).sort(porValor).slice(0, 5)
+  const byStatus = r.agendamentosPorStatus.map(x => ({ name: STATUS_LABELS[x.status] ?? x.status, value: x.n }))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -331,8 +297,8 @@ function TabOverview(p: ReportsBiProps) {
         <KpiCard label="Faturamento"    value={revenue}           format="brl" delta={pctDelta(revenue, prevRevenue)}           showDelta hero />
         <KpiCard label="Despesas"       value={expenses}          format="brl" accent="var(--danger)" delta={pctDelta(expenses, prevExpenses)}   showDelta />
         <KpiCard label="Lucro"          value={profit}            format="brl" accent={profit >= 0 ? 'var(--success)' : 'var(--danger)'} delta={pctDelta(profit, prevProfit)}     showDelta />
-        <KpiCard label="Atendimentos"   value={apptsCurr.length}  format="int" delta={pctDelta(apptsCurr.length, apptsPrevCount)}         showDelta />
-        <KpiCard label="Novos Clientes" value={clientsCurr.length} format="int" delta={pctDelta(clientsCurr.length, clientsPrevCount)}    showDelta />
+        <KpiCard label="Atendimentos"   value={core.appointmentsCompleted} format="int" delta={pctDelta(core.appointmentsCompleted, corePrev.appointmentsCompleted)} showDelta />
+        <KpiCard label="Novos Clientes" value={core.newClients}            format="int" delta={pctDelta(core.newClients, corePrev.newClients)}                       showDelta />
         {/* Sem delta: a receita de serviço do período anterior não é carregada,
             e comparar com o caixa anterior daria uma variação de outra métrica. */}
         <KpiCard label="Ticket Médio"   value={avgTicket}         format="brl" />
@@ -366,17 +332,18 @@ function TabOverview(p: ReportsBiProps) {
 // TAB: FINANCEIRO
 // -----------------------------------------------------------------------------
 function TabFinanceiro(p: ReportsBiProps) {
-  const { txsCurr, txsPrev, stockMoves, branches, installments } = p
+  const { relatorio: r, core, corePrev, branches, installments } = p
+  const nomeDaUnidade = nomesDasUnidades(branches)
 
-  const revenue     = p.core.revenueCash
-  const prevRevenue = p.corePrev.revenueCash
+  const revenue     = core.revenueCash
+  const prevRevenue = corePrev.revenueCash
   // Consumo de insumos é indicador gerencial, exibido à parte. NÃO entra no
   // resultado: a compra do insumo já foi lançada como despesa (categoria
   // "Estoque"), e somar o consumo de novo contava o mesmo custo duas vezes.
-  const stockCOGS   = stockMoves.reduce(
-    (s, m) => s + Math.abs(Number(m.quantity)) * Number(m.products?.cost_price ?? 0), 0)
-  const opEx        = p.core.expensesCash
-  const prevOpEx    = p.corePrev.expensesCash
+  // Ao custo do MOVIMENTO — a mesma conta do giro do dashboard.
+  const stockCOGS   = r.consumoTotal
+  const opEx        = core.expensesCash
+  const prevOpEx    = corePrev.expensesCash
   const profit      = revenue - opEx
   const prevProfit  = prevRevenue - prevOpEx
   const margin      = revenue > 0 ? (profit / revenue) * 100 : 0
@@ -385,27 +352,13 @@ function TabFinanceiro(p: ReportsBiProps) {
   // "percentual de percentual" (20% → 22% não é "+10%", é "+2,0 p.p.").
   const marginDeltaPp = margin - prevMargin
 
-  const payMap: Record<string, number> = {}
-  txsCurr.filter(t => t.type === 'INCOME' && t.is_paid && t.payment_method).forEach(t => {
-    const k = PAY_LABELS[t.payment_method!] ?? t.payment_method!
-    payMap[k] = (payMap[k] ?? 0) + Number(t.amount)
-  })
-
-  const catMap: Record<string, number> = {}
-  txsCurr.filter(t => t.type === 'INCOME' && t.is_paid && t.category).forEach(t => {
-    catMap[t.category!] = (catMap[t.category!] ?? 0) + Number(t.amount)
-  })
-
-  const branchMap: Record<string, { curr: number; prev: number }> = {}
-  branches.forEach(b => { branchMap[b.id] = { curr: 0, prev: 0 } })
-  txsCurr.filter(t => t.type === 'INCOME' && t.is_paid).forEach(t => {
-    const bm = branchMap[t.branch_id]; if (bm) bm.curr += Number(t.amount)
-  })
-  txsPrev.filter(t => t.type === 'INCOME' && t.is_paid).forEach(t => {
-    const bm = branchMap[t.branch_id]; if (bm) bm.prev += Number(t.amount)
-  })
-  const branchCompareCurr  = branches.map(b => ({ name: b.name, value: branchMap[b.id]?.curr  ?? 0 }))
-  const branchComparePrev  = branches.map(b => ({ name: b.name, value: branchMap[b.id]?.prev  ?? 0 }))
+  // Forma, categoria e unidade saem do MESMO conjunto do KPI (pago, sem
+  // estorno, eixo em paid_at). Antes somavam por created_at e com estorno —
+  // dois faturamentos na mesma tela.
+  const byPayment  = r.receitaPorForma.map(f => ({ name: PAY_LABELS[f.forma] ?? f.forma, value: f.valor }))
+  const byCategory = r.receitaPorCategoria.map(c => ({ name: c.categoria, value: c.valor }))
+  const branchCompareCurr = r.receitaPorUnidade.map(u => ({ name: nomeDaUnidade(u.branchId), value: u.atual }))
+  const branchComparePrev = r.receitaPorUnidade.map(u => ({ name: nomeDaUnidade(u.branchId), value: u.anterior }))
 
   // Pending installments table
   const installCols: TableColumn[] = [
@@ -445,11 +398,11 @@ function TabFinanceiro(p: ReportsBiProps) {
           <DreWaterfall receita={revenue} custoProdutos={0} despesas={opEx} lucro={profit} />
         </SCard>
         <SCard title="Receita por Forma de Pagamento">
-          <HBarChart data={Object.entries(payMap).map(([name, value]) => ({ name, value }))} />
+          <HBarChart data={byPayment} />
         </SCard>
         <SCard title="Receita por Categoria">
           <HBarChart
-            data={Object.entries(catMap).map(([name, value]) => ({ name, value }))}
+            data={byCategory}
             color={CHART_COLORS[1]}
             emptyMsg="Sem categorias registradas."
           />
@@ -476,12 +429,14 @@ function TabFinanceiro(p: ReportsBiProps) {
 // TAB: AGENDA
 // -----------------------------------------------------------------------------
 function TabAgenda(p: ReportsBiProps) {
-  const { allAppts, apptsPrevCount, branches } = p
+  const { relatorio: r, core, corePrev, branches } = p
+  const nomeDaUnidade = nomesDasUnidades(branches)
 
-  const total      = allAppts.length
-  const completed  = allAppts.filter(a => a.status === 'COMPLETED').length
-  const cancelled  = allAppts.filter(a => a.status === 'CANCELLED').length
-  const noShow     = allAppts.filter(a => a.status === 'NO_SHOW').length
+  // As contagens do período são as do núcleo (as mesmas do dashboard).
+  const total      = core.appointmentsTotal
+  const completed  = core.appointmentsCompleted
+  const cancelled  = core.appointmentsCancelled
+  const noShow     = core.appointmentsNoShow
   const rate       = total > 0 ? (completed / total) * 100 : 0
 
   const byStatus = [
@@ -491,21 +446,9 @@ function TabAgenda(p: ReportsBiProps) {
     { name: 'Outros',         value: Math.max(0, total - completed - cancelled - noShow) },
   ]
 
-  // Dia da semana no fuso do negócio: um atendimento das 22h de sábado cairia
-  // em domingo se o cálculo seguisse o fuso do processo.
-  const weekMap: Record<number, number> = {}
-  allAppts.forEach(a => {
-    const d = weekdayTZ(a.scheduled_at)
-    weekMap[d] = (weekMap[d] ?? 0) + 1
-  })
-  const byWeekday = Array.from({ length: 7 }, (_, i) => ({ day: i, count: weekMap[i] ?? 0 }))
-
-  const srcMap: Record<string, number> = {}
-  allAppts.filter(a => a.source).forEach(a => {
-    const k = SRC_LABELS[a.source!] ?? a.source!
-    srcMap[k] = (srcMap[k] ?? 0) + 1
-  })
-  const bySource = Object.entries(srcMap).map(([name, value]) => ({ name, value }))
+  // Dia da semana no fuso do negócio (0 = domingo), contado no banco.
+  const byWeekday = r.porDiaDaSemana.map(d => ({ day: d.dia, count: d.n }))
+  const bySource  = r.porOrigem.map(o => ({ name: SRC_LABELS[o.origem] ?? o.origem, value: o.n }))
 
   // Branch comparison table
   const branchCols: TableColumn[] = [
@@ -520,20 +463,19 @@ function TabAgenda(p: ReportsBiProps) {
       ),
     },
   ]
-  const branchRows = branches.map(b => {
-    const bAppts     = allAppts.filter(a => a.branch_id === b.id)
-    const bCompleted = bAppts.filter(a => a.status === 'COMPLETED').length
-    const bCancelled = bAppts.filter(a => a.status === 'CANCELLED').length
-    const bNoShow    = bAppts.filter(a => a.status === 'NO_SHOW').length
-    const bRate      = bAppts.length > 0 ? (bCompleted / bAppts.length) * 100 : 0
-    return { name: b.name, completed: bCompleted, cancelled: bCancelled, noShow: bNoShow, rate: bRate }
-  })
+  const branchRows = r.agendaPorUnidade.map(u => ({
+    name:      nomeDaUnidade(u.branchId),
+    completed: u.concluidos,
+    cancelled: u.cancelados,
+    noShow:    u.faltas,
+    rate:      u.total > 0 ? (u.concluidos / u.total) * 100 : 0,
+  }))
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Total Agendamentos" value={total}     format="int" />
-        <KpiCard label="Realizados"         value={completed} format="int" delta={pctDelta(completed, apptsPrevCount)} showDelta />
+        <KpiCard label="Realizados"         value={completed} format="int" delta={pctDelta(completed, corePrev.appointmentsCompleted)} showDelta />
         <KpiCard label="Cancelados"         value={cancelled} format="int" accent="var(--warning)" />
         <KpiCard label="Não Compareceu"     value={noShow}    format="int" accent="var(--danger)" />
         <KpiCard label="Taxa de Conclusão"  value={rate}      format="pct" accent={rate >= 70 ? 'var(--success)' : 'var(--warning)'} />
@@ -568,38 +510,27 @@ function TabAgenda(p: ReportsBiProps) {
 // TAB: CLIENTES
 // -----------------------------------------------------------------------------
 function TabClientes(p: ReportsBiProps) {
-  const { clientsCurr, clientsPrevCount, clientsAll, txsCurr, apptsCurr, retention, newClientsSeries } = p
+  const { relatorio: r, core, corePrev, retention, newClientsSeries } = p
+  const c = r.clientes
 
-  const totalAtivos = clientsAll.length
-  const novos       = clientsCurr.length
+  const totalAtivos = c.totalAtivos
+  // Novos clientes do núcleo — a mesma regra do dashboard (a unidade e os
+  // cadastros da rede, sem unidade). Aqui contava só os com unidade.
+  const novos       = core.newClients
 
-  const apptByClient: Record<string, number> = {}
-  apptsCurr.filter(a => a.client_id).forEach(a => {
-    apptByClient[a.client_id!] = (apptByClient[a.client_id!] ?? 0) + 1
-  })
-
-  // Retenção agora vem do banco: clientes atendidos no período que JÁ tinham
-  // sido atendidos antes dele. O cálculo anterior — "2+ atendimentos dentro da
+  // Retenção vem do banco: clientes atendidos no período que JÁ tinham sido
+  // atendidos antes dele. O cálculo anterior — "2+ atendimentos dentro da
   // janela" — media recorrência, não retenção, e em janelas curtas dava zero
   // por construção.
   const { clientsServed, returningClients, firstTimeClients } = retention
   const taxaRetencao = clientsServed > 0 ? (returningClients / clientsServed) * 100 : 0
 
-  // Gasto por cliente, com estorno excluído dos dois lados.
-  const spendByClient: Record<string, number> = {}
-  txsCurr
-    .filter(t => t.type === 'INCOME' && t.is_paid && t.client_id
-                 && t.notes !== 'Estornada' && t.category !== 'Estorno')
-    .forEach(t => {
-      spendByClient[t.client_id!] = (spendByClient[t.client_id!] ?? 0) + Number(t.amount)
-    })
-  const spends = Object.values(spendByClient)
-  const gastoMedio = spends.length > 0 ? spends.reduce((s, v) => s + v, 0) / spends.length : 0
+  // Gasto médio por cliente que pagou algo no período, do mesmo conjunto de
+  // receita do KPI (pago, sem estorno, eixo em paid_at).
+  const gastoMedio = c.gastoMedio
 
   // Série de aquisição agregada no banco, dentro da janela e no fuso do
-  // negócio. Antes era montada sobre TODOS os clientes já cadastrados, com
-  // chave 'dd/MM' (a mesma data de anos diferentes somava no mesmo ponto) e um
-  // corte final que seguia a ordem de inserção do objeto, não a cronológica.
+  // negócio.
   const acquisitionData = newClientsSeries.map(pt => ({
     label: new Date(pt.bucket).toLocaleDateString('pt-BR', {
       day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo',
@@ -607,46 +538,17 @@ function TabClientes(p: ReportsBiProps) {
     value: pt.count,
   }))
 
-  // Faixa etária pelo mesmo getAgeGroup usado na aba Procedimentos: aqui a
-  // idade era `anoAtual - anoNascimento`, que erra em até um ano e classificava
-  // a mesma pessoa em faixas diferentes nas duas telas.
-  const refDate = new Date()
-  const ageCount = new Map<string, number>()
-  clientsAll.forEach(c => {
-    const group = getAgeGroup(c.birth_date ?? null, refDate)
-    if (group === 'Não informado') return
-    ageCount.set(group, (ageCount.get(group) ?? 0) + 1)
-  })
+  // Faixa etária pela mesma função da aba Procedimentos (metrics_faixa_etaria).
   const byAge = AGE_GROUP_ORDER
-    .filter(g => g !== 'Não informado' && (ageCount.get(g) ?? 0) > 0)
-    .map(name => ({ name, value: ageCount.get(name) ?? 0 }))
-
-  // Gender
-  const genderMap: Record<string, number> = {}
-  clientsAll.filter(c => c.gender).forEach(c => {
-    genderMap[c.gender!] = (genderMap[c.gender!] ?? 0) + 1
-  })
-  const byGender = Object.entries(genderMap).map(([name, value]) => ({ name, value }))
-
-  // Top 10 clients by spend
-  const clientNameMap: Record<string, string> = {}
-  clientsAll.forEach(c => { clientNameMap[c.id] = c.name })
-  const top10Rows = Object.entries(spendByClient)
-    .sort(([, a], [, b]) => b - a).slice(0, 10)
-    .map(([cid, total]) => ({
-      name:  clientNameMap[cid] ?? cid.slice(0, 8),
-      total: fmtBRLFull(total),
-      appts: String(apptByClient[cid] ?? 0),
-    }))
-
-  // Cities
-  const cityMap: Record<string, number> = {}
-  clientsAll.filter(c => c.city).forEach(c => {
-    cityMap[c.city!] = (cityMap[c.city!] ?? 0) + 1
-  })
-  const byCities = Object.entries(cityMap)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value).slice(0, 10)
+    .map(faixa => ({ name: faixa, value: c.porFaixa.find(f => f.faixa === faixa)?.n ?? 0 }))
+    .filter(f => f.value > 0)
+  const byGender = c.porGenero.map(g => ({ name: g.genero, value: g.n }))
+  const byCities = c.cidades.map(x => ({ name: x.cidade, value: x.n }))
+  const top10Rows = c.topClientes.map(x => ({
+    name:  x.nome,
+    total: fmtBRLFull(x.total),
+    appts: String(x.atendimentos),
+  }))
 
   const top10Cols: TableColumn[] = [
     { key: 'name',  label: 'Cliente'    },
@@ -658,7 +560,7 @@ function TabClientes(p: ReportsBiProps) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Total Ativos"     value={totalAtivos}  format="int" />
-        <KpiCard label="Novos no Período" value={novos}        format="int" delta={pctDelta(novos, clientsPrevCount)} showDelta />
+        <KpiCard label="Novos no Período" value={novos}        format="int" delta={pctDelta(novos, corePrev.newClients)} showDelta />
         <KpiCard label="Atendidos no Período" value={clientsServed}    format="int" accent={CHART_COLORS[1]} />
         <KpiCard label="Primeira Vez"         value={firstTimeClients} format="int" accent={CHART_COLORS[2]} />
         <KpiCard label="Taxa de Retenção"     value={taxaRetencao}     format="pct" accent={taxaRetencao >= 40 ? 'var(--success)' : 'var(--warning)'} />
@@ -689,21 +591,6 @@ function TabClientes(p: ReportsBiProps) {
 // Helpers — faixa etária e ranking por idade
 // -----------------------------------------------------------------------------
 const AGE_GROUP_ORDER = ['< 18', '18–24', '25–34', '35–44', '45–54', '55–64', '65+', 'Não informado']
-
-function getAgeGroup(birthDate: string | null, ref: Date): string {
-  if (!birthDate) return 'Não informado'
-  const born = new Date(birthDate)
-  let age = ref.getFullYear() - born.getFullYear()
-  const m = ref.getMonth() - born.getMonth()
-  if (m < 0 || (m === 0 && ref.getDate() < born.getDate())) age--
-  if (age < 18) return '< 18'
-  if (age < 25) return '18–24'
-  if (age < 35) return '25–34'
-  if (age < 45) return '35–44'
-  if (age < 55) return '45–54'
-  if (age < 65) return '55–64'
-  return '65+'
-}
 
 function AgeRankCard({ data }: {
   data: { ageGroup: string; top3: { name: string; label: string }[] }[]
@@ -752,103 +639,35 @@ function AgeRankCard({ data }: {
 // TAB: PROCEDIMENTOS
 // -----------------------------------------------------------------------------
 function TabProcedimentos(p: ReportsBiProps) {
-  const { apptsCurr, apptsPrevCount, procedureCosts } = p
+  const { relatorio: r, core, corePrev } = p
+  const faixas = r.procedimentosPorFaixa
 
-  const procData: Record<string, { revenue: number; count: number; category: string }> = {}
-  apptsCurr.filter(a => a.procedures?.name).forEach(a => {
-    const k = a.procedures!.name
-    if (!procData[k]) procData[k] = { revenue: 0, count: 0, category: a.procedures!.category ?? '—' }
-    procData[k].revenue += Number(a.price)
-    procData[k].count++
-  })
+  // Top 3 por faixa etária, na ordem das faixas. Vêm ranqueados do banco.
+  const porFaixa = <T,>(linhas: (T & { faixa: string })[], rotulo: (l: T) => string, nome: (l: T) => string) =>
+    AGE_GROUP_ORDER
+      .filter(faixa => linhas.some(l => l.faixa === faixa))
+      .map(faixa => ({
+        ageGroup: faixa,
+        top3: linhas.filter(l => l.faixa === faixa).map(l => ({ name: nome(l), label: rotulo(l) })),
+      }))
+  const topByAgeVolume = porFaixa(faixas.volume, l => `${l.n} exec.`, l => l.nome)
+  const topByAgeMargin = porFaixa(faixas.margem, l => `${l.margem.toFixed(1).replace('.', ',')}%`, l => l.nome)
 
-  // -- Custo por procedure_id → para cálculo de margem ----------------
-  // Insumos + mão de obra + outros custos. As duas últimas parcelas existem no
-  // cadastro (e são usadas na tela de procedimentos) mas ficavam de fora aqui,
-  // então a margem exibida era sistematicamente otimista.
-  const inputCostByProcedure = new Map<string, number>()
-  const fixedCostByProcedure = new Map<string, number>()
-  for (const pp of procedureCosts) {
-    const qty  = Number(pp.quantity ?? 0)
-    const cost = Number(pp.products?.cost_price ?? 0)
-    inputCostByProcedure.set(pp.procedure_id, (inputCostByProcedure.get(pp.procedure_id) ?? 0) + qty * cost)
-    fixedCostByProcedure.set(
-      pp.procedure_id,
-      Number(pp.procedures?.labor_cost ?? 0) + Number(pp.procedures?.other_costs ?? 0),
-    )
-  }
-  const costByProcedure = new Map<string, number>()
-  for (const id of inputCostByProcedure.keys()) {
-    costByProcedure.set(id, (inputCostByProcedure.get(id) ?? 0) + (fixedCostByProcedure.get(id) ?? 0))
-  }
-
-  // -- Agrupamento por faixa etária -----------------------------------
-  const refDate = new Date()
-  const ageVolumeMap = new Map<string, Map<string, number>>()
-  const ageMarginMap = new Map<string, Map<string, { total: number; count: number }>>()
-
-  apptsCurr.filter(a => a.procedures?.name).forEach(a => {
-    const procName = a.procedures!.name
-    const ageGroup = getAgeGroup(a.clients?.birth_date ?? null, refDate)
-    const price    = Number(a.price)
-    const cost     = costByProcedure.get(a.procedure_id ?? '') ?? 0
-
-    // Volume
-    if (!ageVolumeMap.has(ageGroup)) ageVolumeMap.set(ageGroup, new Map())
-    const vm = ageVolumeMap.get(ageGroup)!
-    vm.set(procName, (vm.get(procName) ?? 0) + 1)
-
-    // Margem (só com custo configurado)
-    if (cost > 0) {
-      const margin = price > 0 ? ((price - cost) / price) * 100 : 0
-      if (!ageMarginMap.has(ageGroup)) ageMarginMap.set(ageGroup, new Map())
-      const mm = ageMarginMap.get(ageGroup)!
-      const prev = mm.get(procName) ?? { total: 0, count: 0 }
-      mm.set(procName, { total: prev.total + margin, count: prev.count + 1 })
-    }
-  })
-
-  const topByAgeVolume = AGE_GROUP_ORDER
-    .filter(ag => ageVolumeMap.has(ag))
-    .map(ag => ({
-      ageGroup: ag,
-      top3: [...ageVolumeMap.get(ag)!.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 3)
-        .map(([name, count]) => ({ name, label: `${count} exec.` })),
-    }))
-
-  const topByAgeMargin = AGE_GROUP_ORDER
-    .filter(ag => ageMarginMap.has(ag))
-    .map(ag => ({
-      ageGroup: ag,
-      top3: [...ageMarginMap.get(ag)!.entries()]
-        .sort((a, b) => (b[1].total / b[1].count) - (a[1].total / a[1].count))
-        .slice(0, 3)
-        .map(([name, d]) => ({
-          name,
-          label: `${(d.total / d.count).toFixed(1).replace('.', ',')}%`,
-        })),
-    }))
-
-  // Conta todos os atendimentos concluídos do período, para casar com o
-  // denominador do período anterior (apptsPrevCount). Os rankings abaixo é que
-  // se restringem aos que têm procedimento nomeado.
-  const totalExec   = apptsCurr.length
-  const totalRev    = Object.values(procData).reduce((s, d) => s + d.revenue, 0)
+  // Totais do NÚCLEO: atendimentos concluídos e a receita deles — o mesmo
+  // ticket médio do sistema inteiro (§13.1). Os rankings abaixo são por
+  // procedimento.
+  const totalExec   = core.appointmentsCompleted
+  const totalRev    = core.serviceRevenue
   const avgTicket   = totalExec > 0 ? totalRev / totalExec : 0
-  const topByName   = Object.entries(procData).sort(([, a], [, b]) => b.revenue - a.revenue)
-  const topRevenue  = topByName.slice(0, 10).map(([name, d]) => ({ name, value: d.revenue }))
-  const topVolume   = Object.entries(procData)
-    .sort(([, a], [, b]) => b.count - a.count).slice(0, 10)
-    .map(([name, d]) => ({ name, value: d.count }))
+  const topByName   = [...r.porProcedimento].sort((a, b) => b.receita - a.receita)
+  const topRevenue  = topByName.slice(0, 10).map(d => ({ name: d.nome, value: d.receita }))
+  const topVolume   = [...r.porProcedimento]
+    .sort((a, b) => b.execucoes - a.execucoes).slice(0, 10)
+    .map(d => ({ name: d.nome, value: d.execucoes }))
   const maisRealizado = topVolume[0]?.name ?? '—'
 
-  const catMap: Record<string, number> = {}
-  Object.entries(procData).forEach(([, d]) => {
-    catMap[d.category] = (catMap[d.category] ?? 0) + d.revenue
-  })
-  const byCategory = Object.entries(catMap).map(([name, value]) => ({ name, value }))
+  // Receita por categoria, somada no banco (nenhuma tela soma dinheiro).
+  const byCategory = r.receitaPorCategoriaDeProcedimento.map(c => ({ name: c.categoria, value: c.receita }))
 
   const tableCols: TableColumn[] = [
     { key: 'name',     label: 'Procedimento'  },
@@ -858,13 +677,13 @@ function TabProcedimentos(p: ReportsBiProps) {
     { key: 'ticket',   label: 'Ticket Médio',  align: 'right', render: (v) => fmtBRLFull(Number(v)) },
     { key: 'pct',      label: '% do Total',    align: 'center', render: (v) => `${v}%` },
   ]
-  const tableRows = topByName.slice(0, 20).map(([name, d]) => ({
-    name,
-    category: d.category,
-    count:    d.count,
-    revenue:  d.revenue,
-    ticket:   d.count > 0 ? d.revenue / d.count : 0,
-    pct:      totalRev > 0 ? ((d.revenue / totalRev) * 100).toFixed(1) : '0.0',
+  const tableRows = topByName.slice(0, 20).map(d => ({
+    name:     d.nome,
+    category: d.categoria,
+    count:    d.execucoes,
+    revenue:  d.receita,
+    ticket:   d.execucoes > 0 ? d.receita / d.execucoes : 0,
+    pct:      totalRev > 0 ? ((d.receita / totalRev) * 100).toFixed(1) : '0.0',
   }))
 
   return (
@@ -874,7 +693,7 @@ function TabProcedimentos(p: ReportsBiProps) {
             anterior é medido do mesmo jeito (atendimentos concluídos). Receita
             e ticket aqui vêm de appointments.price, e o comparativo disponível
             do período anterior é de caixa — comparar os dois media outra coisa. */}
-        <KpiCard label="Total Execuções" value={totalExec} format="int" delta={pctDelta(totalExec, apptsPrevCount ?? 0)} showDelta />
+        <KpiCard label="Total Execuções" value={totalExec} format="int" delta={pctDelta(totalExec, corePrev.appointmentsCompleted)} showDelta />
         <KpiCard label="Receita Total"   value={totalRev}  format="brl" />
         <KpiCard label="Ticket Médio"    value={avgTicket} format="brl" />
         <div className="card" style={{ padding: '16px 20px', flex: '1 1 160px' }}>
@@ -906,7 +725,7 @@ function TabProcedimentos(p: ReportsBiProps) {
           <AgeRankCard data={topByAgeVolume} />
         </SCard>
         <SCard title="Top 3 por Faixa de Idade — Margem">
-          {procedureCosts.length === 0
+          {!faixas.temCustos
             ? <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)', margin: 0 }}>
                 Configure o custo dos insumos em Procedimentos para visualizar a margem por faixa etária.
               </p>
@@ -925,37 +744,16 @@ function TabProcedimentos(p: ReportsBiProps) {
 // TAB: PROFISSIONAIS
 // -----------------------------------------------------------------------------
 function TabProfissionais(p: ReportsBiProps) {
-  const { apptsCurr, commissions, apptsPrevCount } = p
+  const { relatorio: r, core, corePrev } = p
 
-  const profData: Record<string, { revenue: number; count: number }> = {}
-  apptsCurr.filter(a => a.users?.name).forEach(a => {
-    const k = a.users!.name
-    if (!profData[k]) profData[k] = { revenue: 0, count: 0 }
-    profData[k].revenue += Number(a.price)
-    profData[k].count++
-  })
+  const profissionais = r.porProfissional.length
+  const totalAppts    = core.appointmentsCompleted
+  // Comissões do núcleo: o período é o do atendimento que as gerou.
+  const commOpen      = core.commissionsOpen
+  const commPaid      = core.commissionsPaid
 
-  const professionais = new Set(apptsCurr.filter(a => a.users?.name).map(a => a.users!.name)).size
-  const totalAppts = apptsCurr.length
-  const commOpen = commissions.filter(c => c.status === 'OPEN').reduce((s, c) => s + Number(c.amount), 0)
-  const commPaid = commissions.filter(c => c.status === 'PAID').reduce((s, c) => s + Number(c.amount), 0)
-
-  const byRevenue = Object.entries(profData)
-    .map(([name, d]) => ({ name, value: d.revenue }))
-    .sort((a, b) => b.value - a.value)
-
-  const byCount = Object.entries(profData)
-    .map(([name, d]) => ({ name, value: d.count }))
-    .sort((a, b) => b.value - a.value)
-
-  // Commission summary per professional
-  const commByProf: Record<string, { open: number; paid: number }> = {}
-  commissions.filter(c => c.users?.name).forEach(c => {
-    const k = c.users!.name
-    if (!commByProf[k]) commByProf[k] = { open: 0, paid: 0 }
-    if (c.status === 'OPEN') commByProf[k].open += Number(c.amount)
-    else                      commByProf[k].paid += Number(c.amount)
-  })
+  const byRevenue = r.porProfissional.map(x => ({ name: x.nome, value: x.receita })).sort(porValor)
+  const byCount   = r.porProfissional.map(x => ({ name: x.nome, value: x.atendimentos })).sort(porValor)
 
   const commCols: TableColumn[] = [
     { key: 'name',    label: 'Profissional'   },
@@ -968,18 +766,16 @@ function TabProfissionais(p: ReportsBiProps) {
       render: (v) => <Badge label={String(v)} color={v === 'OK' ? 'green' : 'amber'} />,
     },
   ]
-  const allProfNames = new Set([
-    ...Object.keys(profData),
-    ...Object.keys(commByProf),
-  ])
-  const commRows = Array.from(allProfNames).map(name => {
-    const open = commByProf[name]?.open ?? 0
+  const producao  = new Map(r.porProfissional.map(x => [x.nome, x]))
+  const comissoes = new Map(r.comissoesPorProfissional.map(x => [x.nome, x]))
+  const commRows = [...new Set([...producao.keys(), ...comissoes.keys()])].map(name => {
+    const open = comissoes.get(name)?.aberta ?? 0
     return {
       name,
-      appts:   profData[name]?.count   ?? 0,
-      revenue: profData[name]?.revenue ?? 0,
+      appts:   producao.get(name)?.atendimentos ?? 0,
+      revenue: producao.get(name)?.receita ?? 0,
       open,
-      paid:    commByProf[name]?.paid  ?? 0,
+      paid:    comissoes.get(name)?.paga ?? 0,
       status:  open === 0 ? 'OK' : 'Pendente',
     }
   }).sort((a, b) => b.revenue - a.revenue)
@@ -987,8 +783,8 @@ function TabProfissionais(p: ReportsBiProps) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <KpiCard label="Profissionais Ativos" value={professionais} format="int" />
-        <KpiCard label="Atendimentos"         value={totalAppts}    format="int" delta={pctDelta(totalAppts, apptsPrevCount ?? 0)} showDelta />
+        <KpiCard label="Profissionais Ativos" value={profissionais} format="int" />
+        <KpiCard label="Atendimentos"         value={totalAppts}    format="int" delta={pctDelta(totalAppts, corePrev.appointmentsCompleted)} showDelta />
         <KpiCard label="Comissões em Aberto"  value={commOpen}      format="brl" accent="var(--warning)" />
         <KpiCard label="Comissões Pagas"      value={commPaid}      format="brl" accent="var(--success)" />
       </div>
@@ -1011,44 +807,18 @@ function TabProfissionais(p: ReportsBiProps) {
 // TAB: ESTOQUE
 // -----------------------------------------------------------------------------
 function TabEstoque(p: ReportsBiProps) {
-  const { stockMoves, bps, productBatches, branches } = p
+  const { relatorio: r, productBatches, branches } = p
+  const e = r.estoque
+  const nomeDaUnidade = nomesDasUnidades(branches)
 
-  const totalStockValue = bps.reduce((s, b) => {
-    const cost = Number(b.products?.cost_price ?? 0)
-    return s + Number(b.current_stock) * cost
-  }, 0)
-  const consumoValue = stockMoves.reduce(
-    (s, m) => s + Math.abs(Number(m.quantity)) * Number(m.products?.cost_price ?? 0), 0,
-  )
-  const giro = totalStockValue > 0 ? (consumoValue / totalStockValue) * 100 : 0
-  const criticos = bps.filter(b =>
-    Number(b.current_stock) > 0 &&
-    Number(b.min_stock) > 0 &&
-    Number(b.current_stock) <= Number(b.min_stock)
-  ).length
-  const zerados = bps.filter(b =>
-    Number(b.current_stock) === 0 && b.products?.is_active !== false
-  ).length
-
-  // Top consumed products
-  const consumeMap: Record<string, number> = {}
-  stockMoves.filter(m => m.products?.name).forEach(m => {
-    const produto = m.products!
-    consumeMap[produto.name] = (consumeMap[produto.name] ?? 0) +
-      Math.abs(Number(m.quantity)) * Number(produto.cost_price ?? 0)
-  })
-  const topConsumed = Object.entries(consumeMap)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value).slice(0, 10)
-
-  // Value by category
-  const catValueMap: Record<string, number> = {}
-  bps.filter(b => b.products?.category).forEach(b => {
-    const produto = b.products!
-    const cat = produto.category!
-    catValueMap[cat] = (catValueMap[cat] ?? 0) + Number(b.current_stock) * Number(produto.cost_price ?? 0)
-  })
-  const byCategory = Object.entries(catValueMap).map(([name, value]) => ({ name, value }))
+  const totalStockValue = e.valorEmEstoque
+  // Consumo ao custo do MOVIMENTO, a mesma conta do giro do dashboard.
+  const consumoValue    = r.consumoTotal
+  const giro            = totalStockValue > 0 ? (consumoValue / totalStockValue) * 100 : 0
+  const criticos        = e.criticos
+  const zerados         = e.zerados
+  const topConsumed     = e.maisConsumidos.map(x => ({ name: x.nome, value: x.valor }))
+  const byCategory      = e.valorPorCategoria.map(x => ({ name: x.categoria, value: x.valor }))
 
   // Branch health table
   const branchHealthCols: TableColumn[] = [
@@ -1060,13 +830,9 @@ function TabEstoque(p: ReportsBiProps) {
       render: (v) => <Badge label={String(v)} color={Number(v) > 0 ? 'amber' : 'green'} /> },
     { key: 'value',    label: 'Valor em Estoque', align: 'right', render: (v) => fmtBRLFull(Number(v)) },
   ]
-  const branchHealthRows = branches.map(b => {
-    const bBps   = bps.filter(bp => bp.branch_id === b.id)
-    const bZero  = bBps.filter(bp => Number(bp.current_stock) === 0 && bp.products?.is_active !== false).length
-    const bCrit  = bBps.filter(bp => Number(bp.current_stock) > 0 && Number(bp.min_stock) > 0 && Number(bp.current_stock) <= Number(bp.min_stock)).length
-    const bValue = bBps.reduce((s, bp) => s + Number(bp.current_stock) * Number(bp.products?.cost_price ?? 0), 0)
-    return { name: b.name, total: bBps.length, zerados: bZero, criticos: bCrit, value: bValue }
-  })
+  const branchHealthRows = e.porUnidade.map(u => ({
+    name: nomeDaUnidade(u.branchId), total: u.itens, zerados: u.zerados, criticos: u.criticos, value: u.valor,
+  }))
 
   // Expiring batches
   const today = new Date()

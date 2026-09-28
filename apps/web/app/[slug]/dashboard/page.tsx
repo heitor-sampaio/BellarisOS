@@ -11,6 +11,7 @@ import { DashboardEmptyState } from '@/components/shared/dashboard-empty-state'
 import { format, differenceInDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { unitTag } from '@estetica-os/utils'
+import { getClientesParaReativar } from '@/lib/metrics/unidade'
 import { startOfDayTZ, endOfDayTZ, startOfMonthTZ, addMonthsTZ, addDaysTZ, monthKeyTZ } from '@/lib/datetime'
 import {
   resolvePeriod, delta, ratio, occupancyPct, CAPACITY_HOURS_PER_DAY,
@@ -134,8 +135,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     todayAppts,
     professionalsCount,
     procedureStats,
-    recentVisitorIds,
-    allActiveClients,
+    paraReativar,
   ] = await Promise.all([
     // O núcleo é uma chamada só, agregada no Postgres: receita, atendimentos,
     // novos clientes e comissões saem coerentes entre si por construção.
@@ -185,18 +185,14 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
         })
       : Promise.resolve([]),
 
+    // Sem visita há 90 dias: o total e os três há mais tempo sem vir, contados
+    // no banco. Eram três selects sem limite (clientes, visitas e todos os
+    // atendimentos dos inativos) somados aqui — cortavam em 1000 (§13.1).
     canClients
-      ? ler(admin.from('appointments').select('client_id')
-          .eq('branch_id', branchId)
-          .in('status', ['COMPLETED', 'SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'])
-          .gte('scheduled_at', ninetyDaysAgo.toISOString()), 'carregar as visitas recentes')
-      : Promise.resolve([]),
-
-    canClients
-      ? ler(admin.from('clients').select('id, name, phone')
-          .eq('tenant_id', ctx.tenantId!).eq('is_active', true)
-          .contains('tags', [unitTag(branch.name)]), 'carregar os clientes da unidade')
-      : Promise.resolve([]),
+      ? getClientesParaReativar({
+          tenantId: ctx.tenantId!, branchId, tag: unitTag(branch.name), desde: ninetyDaysAgo,
+        })
+      : Promise.resolve({ total: 0, lista: [] }),
   ])
 
   // -- KPIs ------------------------------------------------------
@@ -251,38 +247,13 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   const funnelMax = Math.max(1, ...funnel.map(f => f.count))
 
   // -- Reativar clientes -----------------------------------------
-  const recentIds = new Set((recentVisitorIds ?? []).map(a => a.client_id))
-  const inactiveClients = (allActiveClients ?? []).filter(c => !recentIds.has(c.id))
-
-  type RC = { id: string; name: string; phone: string; daysSince: number | null }
-  let toReactivate: RC[] = []
-
-  if (inactiveClients.length > 0) {
-    // A última visita precisa ser buscada para TODOS os inativos: antes só os
-    // 60 primeiros eram consultados, e como os não consultados ficavam com
-    // daysSince null — ordenados na frente — a lista mostrava justamente
-    // quem não tinha sido medido.
-    const lastAppts = await ler(admin
-      .from('appointments').select('client_id, scheduled_at')
-      .in('client_id', inactiveClients.map(c => c.id))
-      .eq('status', 'COMPLETED')
-      .order('scheduled_at', { ascending: false }), 'carregar os agendamentos')
-
-    const lastMap = new Map<string, string>()
-    for (const a of (lastAppts ?? [])) {
-      if (!lastMap.has(a.client_id)) lastMap.set(a.client_id, a.scheduled_at)
-    }
-
-    toReactivate = inactiveClients
-      .map(c => ({
-        ...c,
-        daysSince: lastMap.has(c.id) ? differenceInDays(now, new Date(lastMap.get(c.id)!)) : null,
-      }))
-      // Quem tem mais tempo sem vir primeiro; quem nunca veio vai para o fim,
-      // porque não é caso de reativação e sim de primeira visita.
-      .sort((a, b) => (b.daysSince ?? -1) - (a.daysSince ?? -1))
-      .slice(0, 3)
-  }
+  // A ordem (quem há mais tempo sem vir primeiro; quem nunca veio no fim) vem
+  // do banco; aqui só os dias para o rótulo.
+  const toReactivate = paraReativar.lista.map(c => ({
+    ...c,
+    daysSince: c.ultimaVisita ? differenceInDays(now, new Date(c.ultimaVisita)) : null,
+  }))
+  const inactiveCount = paraReativar.total
 
   // Atalhos para o estado vazio (módulos que o cargo acessa)
   const BRANCH_ROUTES: Partial<Record<AppModule, string>> = {
@@ -610,13 +581,13 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
                 ))}
               </div>
 
-              {inactiveClients.length > 3 && (
+              {inactiveCount > 3 && (
                 <Link href={`/${slug}/clients?status=active`} style={{
                   display: 'block', textAlign: 'center', marginTop: 16,
                   padding: '8px', borderRadius: 10, border: '1px solid var(--border)',
                   fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'none',
                 }}>
-                  Ver {inactiveClients.length - 3} clientes inativos
+                  Ver {inactiveCount - 3} clientes inativos
                 </Link>
               )}
             </>

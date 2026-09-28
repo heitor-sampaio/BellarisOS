@@ -4,7 +4,9 @@ import { AdminStockView } from '@/components/admin/admin-stock-view'
 import { ProductCategoryModal } from '@/components/admin/product-category-modal'
 import { StockProductModal } from '@/components/branch/stock-product-modal'
 import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-react'
-import { startOfMonthTZ, addDaysTZ } from '@/lib/datetime'
+import { startOfMonthTZ, endOfMonthTZ, addDaysTZ } from '@/lib/datetime'
+import { getGiroDeEstoque } from '@/lib/metrics/demografia'
+import { getValorEmEstoque } from '@/lib/metrics/unidade'
 import { ler } from '@/lib/db'
 
 /** Produto como o select pede, com o saldo por unidade embutido. */
@@ -18,7 +20,6 @@ type ProdutoLido = {
     branches: { id: string; name: string; slug: string } | null
   }[] | null
 }
-type MovimentoLido = { product_id: string; quantity: number | string; unit_cost: number | string | null }
 
 const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -124,12 +125,6 @@ export default async function AdminEstoquePage({
   const unidade   = branches.find(b => b.id === unidadeParam || b.slug === unidadeParam) ?? null
   const unidadeId = unidade?.id ?? ''
 
-  /** Saldo do produto na unidade recortada — ou na rede, quando não há. */
-  const saldoDe = (p: { totalStock: number; branches: { branchId: string; currentStock: number }[] }) =>
-    unidadeId
-      ? p.branches.filter(b => b.branchId === unidadeId).reduce((s, b) => s + b.currentStock, 0)
-      : p.totalStock
-
   // Segunda rodada: movimentos e lotes (dependem dos product IDs)
   const now       = new Date()
   const in30Days  = addDaysTZ(now, 30)
@@ -137,26 +132,20 @@ export default async function AdminEstoquePage({
 
   // Por `ler`: sem checar o erro, uma falha virava giro zero e nenhum lote
   // vencendo — os dois alertas quietos exatamente quando não deviam.
-  const [movementsRaw, batchesRaw] = productIds.length > 0
+  // O recorte: a unidade escolhida, ou todas as unidades da rede.
+  const unidadesDoRecorte = unidadeId
+    ? [unidadeId]
+    : ((await ler(admin.from('branches').select('id').eq('tenant_id', ctx.tenantId!), 'listar as unidades da rede')) ?? [])
+        .map(b => b.id as string)
+
+  // Valor em estoque e giro do mês somados no banco — a mesma conta da tela da
+  // filial e do dashboard. Giro = consumo em procedimentos no mês (não qualquer
+  // saída: transferência entre unidades não é consumo). Somar as linhas aqui
+  // cortava em 1000 (§13.1). Fim do MÊS, não "agora" (relógio do Postgres).
+  const [valorEstoque, valorGiro, batchesRaw] = productIds.length > 0
     ? await Promise.all([
-        // Giro = consumo em procedimentos no mês, a mesma definição usada na
-        // tela da filial. Antes a rede somava QUALQUER saída dos últimos 30
-        // dias — incluindo transferência entre unidades da própria rede, que
-        // não é consumo — e por isso a soma das filiais nunca fechava com ela.
-        ler(unidadeId
-          ? admin
-              .from('stock_movements')
-              .select('product_id, quantity, unit_cost')
-              .in('product_id', productIds)
-              .eq('type', 'PROCEDURE_USAGE')
-              .eq('branch_id', unidadeId)
-              .gte('created_at', monthStart.toISOString())
-          : admin
-              .from('stock_movements')
-              .select('product_id, quantity, unit_cost')
-              .in('product_id', productIds)
-              .eq('type', 'PROCEDURE_USAGE')
-              .gte('created_at', monthStart.toISOString()), 'carregar o giro do mês'),
+        getValorEmEstoque(unidadesDoRecorte),
+        getGiroDeEstoque({ branchIds: unidadesDoRecorte, from: monthStart, to: endOfMonthTZ(now) }),
 
         // Lotes com saldo vencendo em até 30 dias (inclui os já vencidos)
         ler(admin
@@ -166,20 +155,9 @@ export default async function AdminEstoquePage({
           .gt('quantity', 0)
           .lte('expires_at', in30Days.toISOString()), 'carregar os lotes vencendo'),
       ])
-    : [[], []]
+    : [0, 0, []]
 
   // -- KPIs ------------------------------------------------------------
-  const valorEstoque = products.reduce(
-    (sum, p) => sum + p.costPrice * saldoDe(p),
-    0,
-  )
-
-  const costMap = Object.fromEntries(products.map(p => [p.id, p.costPrice]))
-  const valorGiro = ((movementsRaw ?? []) as MovimentoLido[]).reduce(
-    (sum: number, m) =>
-      sum + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? costMap[m.product_id] ?? 0),
-    0,
-  )
 
   // Com uma unidade recortada, só o saldo dela conta — um produto zerado no
   // Centro e cheio no Jardins é problema de quem opera o Centro.

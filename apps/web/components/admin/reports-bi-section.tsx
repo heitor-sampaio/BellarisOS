@@ -1,21 +1,18 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ler, contar } from '@/lib/db'
+import { ler } from '@/lib/db'
 import { getTenantContext } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
 import { addDaysTZ, startOfDayTZ, dayKeyTZ, partsInTZ } from '@/lib/datetime'
+import { getRelatorio } from '@/lib/metrics/relatorio'
 import {
   resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, percent,
   getCore, getSeries,
 } from '@/lib/metrics'
 import { seedDefaultFunnel } from '@/actions/crm-funnels'
 import type { DadosComerciais } from '@/components/admin/reports-bi-view'
-import type {
-  LinhaTransacao, LinhaTransacaoAnterior, LinhaAtendimento, LinhaClienteNovo, LinhaCliente,
-  LinhaAgendamento, LinhaComissao, LinhaMovimentoDeEstoque, LinhaEstoqueDaUnidade, LinhaLote,
-  LinhaParcela, LinhaCustoDoProcedimento,
-} from '@/components/admin/reports-linhas'
+import type { LinhaLote, LinhaParcela } from '@/components/admin/reports-linhas'
 
 export type ReportsTab    = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
 export type ReportsPeriod = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
@@ -83,133 +80,35 @@ export async function ReportsBiSection({
   const prevEnd     = periodInfo.prevTo
   const periodLabel = periodInfo.label
 
-  // -- Flags condicionais --------------------------------------------
-  const needAllAppts    = tab === 'overview' || tab === 'agenda'
-  const needCommissions = tab === 'overview' || tab === 'profissionais'
-  const needStockMoves  = tab === 'overview' || tab === 'estoque' || tab === 'financeiro'
-  const needClientsAll  = tab === 'clientes'
-  const needBps         = tab === 'estoque'
-  const needBatches     = tab === 'estoque'
-  const needInstall     = tab === 'financeiro'
-  const needProcCosts   = tab === 'procedimentos'
+  // -- O que a aba precisa ----------------------------------------------
+  // Os NÚMEROS vêm agregados do Postgres (`metrics_relatorio`, só a aba
+  // aberta) e do núcleo (`metrics_core`). Antes esta seção trazia as linhas do
+  // período — transações, atendimentos, agendamentos, comissões, movimentos,
+  // saldos e a base de clientes — e a tela fazia ~40 contas em JS: cortava em
+  // 1000 linhas e tinha uma segunda regra de faturamento ao lado do KPI
+  // (§13.1). Aqui só sobram LISTAS curtas e com limite: lotes e parcelas.
+  const granularity = period === 'today' ? 'hour' : 'day'
+  const needBatches = tab === 'estoque'
+  const needInstall = tab === 'financeiro'
+  const needClientes = tab === 'clientes'
 
-  // -- Queries paralelas ---------------------------------------------
   const [
-    txsCurrRaw,
-    txsPrevRaw,
-    apptsCurrRaw,
-    clientsCurrRaw,
-    apptsPrevCount,
-    clientsPrevCount,
-    clientsAllRaw,
-    allApptsRaw,
-    commissionsRaw,
-    stockMovesRaw,
-    bpsRaw,
+    relatorio,
     productBatchesRaw,
     installmentsRaw,
-    procedureCostsRaw,
     retention,
     newClientsSeries,
     core,
     corePrev,
     seriesData,
   ] = await Promise.all([
+    getRelatorio({
+      tenantId: ctx.tenantId!, branchIds,
+      from: startDate, to: endDate, prevFrom: prevStart, prevTo: prevEnd,
+      aba: tab, granularidade: granularity,
+    }),
 
-    // 0 — Transações do período (ricas: todas as colunas usadas nos tabs).
-    // `client_id` é lido pela view para "Gasto médio" e "Top 10 clientes" mas
-    // não vinha no select: os dois indicadores ficavam zerados/vazios.
-    ler(admin.from('financial_transactions')
-      .select('id, amount, type, is_paid, branch_id, client_id, payment_method, category, notes, created_at, paid_at')
-      .in('branch_id', branchIds)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString())
-      .limit(5000), 'carregar as transações do período'),
-
-    // 1 — Transações do período anterior (só comparação de delta)
-    ler(admin.from('financial_transactions')
-      .select('amount, type, is_paid, branch_id')
-      .in('branch_id', branchIds)
-      .gte('created_at', prevStart.toISOString())
-      .lte('created_at', prevEnd.toISOString()), 'carregar as transações do período anterior'),
-
-    // 2 — Atendimentos COMPLETED do período
-    ler(admin.from('appointments')
-      .select('id, branch_id, procedure_id, professional_id, client_id, price, scheduled_at, source, procedures(name, category), users!appointments_professional_id_fkey(name), clients(birth_date)')
-      .in('branch_id', branchIds)
-      .eq('status', 'COMPLETED')
-      .gte('scheduled_at', startDate.toISOString())
-      .lte('scheduled_at', endDate.toISOString()), 'carregar os atendimentos do período'),
-
-    // 3 — Novos clientes do período
-    ler(admin.from('clients')
-      .select('id, branch_id')
-      .in('branch_id', branchIds)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString()), 'carregar os clientes novos'),
-
-    // 4 — Contagem de atendimentos no período anterior (head)
-    contar(admin.from('appointments')
-      .select('id', { count: 'exact', head: true })
-      .in('branch_id', branchIds)
-      .eq('status', 'COMPLETED')
-      .gte('scheduled_at', prevStart.toISOString())
-      .lte('scheduled_at', prevEnd.toISOString()), 'contar os atendimentos do período anterior'),
-
-    // 5 — Contagem de novos clientes no período anterior (head)
-    contar(admin.from('clients')
-      .select('id', { count: 'exact', head: true })
-      .in('branch_id', branchIds)
-      .gte('created_at', prevStart.toISOString())
-      .lte('created_at', prevEnd.toISOString()), 'contar os clientes novos do período anterior'),
-
-    // 6 — Todos os clientes com dados demográficos (clientes tab)
-    needClientsAll
-      ? ler(admin.from('clients')
-          .select('id, name, birth_date, gender, city, state, created_at')
-          .eq('tenant_id', ctx.tenantId!)
-          .eq('is_active', true), 'carregar os clientes (demografia)')
-      : Promise.resolve([] as unknown[]),
-
-    // 7 — Todos os agendamentos (qualquer status) — overview + agenda
-    needAllAppts
-      ? ler(admin.from('appointments')
-          .select('id, branch_id, status, source, scheduled_at')
-          .in('branch_id', branchIds)
-          .gte('scheduled_at', startDate.toISOString())
-          .lte('scheduled_at', endDate.toISOString()), 'carregar os agendamentos do período')
-      : Promise.resolve([] as unknown[]),
-
-    // 8 — Comissões — overview + profissionais.
-    // `commissions` não tem created_at: a consulta antiga falhava com 42703,
-    // o erro era descartado e "Comissões em aberto/pagas" ficava sempre R$ 0.
-    // O período agora é o do atendimento que originou a comissão.
-    needCommissions
-      ? ler(admin.from('commissions')
-          .select('amount, professional_id, status, branch_id, users(name), appointments!inner(scheduled_at)')
-          .in('branch_id', branchIds)
-          .gte('appointments.scheduled_at', startDate.toISOString())
-          .lte('appointments.scheduled_at', endDate.toISOString()), 'carregar as comissões')
-      : Promise.resolve([] as unknown[]),
-
-    // 9 — Movimentações de estoque (PROCEDURE_USAGE) — overview + estoque
-    needStockMoves
-      ? ler(admin.from('stock_movements')
-          .select('quantity, created_at, branch_id, product_id, products(name, cost_price, category)')
-          .in('branch_id', branchIds)
-          .eq('type', 'PROCEDURE_USAGE')
-          .gte('created_at', startDate.toISOString())
-          .lte('created_at', endDate.toISOString()), 'carregar as movimentações de estoque')
-      : Promise.resolve([] as unknown[]),
-
-    // 10 — Estoque por filial × produto
-    needBps
-      ? ler(admin.from('branch_product_stock')
-          .select('current_stock, current_rendimento, min_stock, branch_id, product_id, products(name, category, cost_price, is_active), branches(name)')
-          .in('branch_id', branchIds), 'carregar o estoque por unidade')
-      : Promise.resolve([] as unknown[]),
-
-    // 11 — Lotes vencendo em ≤ 30 dias.
+    // Lotes vencendo em ≤ 30 dias.
     // O filtro por tenant vem do produto: sem ele esta consulta rodava com o
     // service role (RLS desligada) e trazia lotes de OUTROS tenants.
     needBatches
@@ -222,10 +121,9 @@ export async function ReportsBiSection({
           .limit(20), 'carregar os lotes vencendo')
       : Promise.resolve([] as unknown[]),
 
-    // 12 — Parcelas pendentes (aba financeiro).
-    // Mesmo problema: sem o vínculo com as filiais do tenant, as 50 vagas do
-    // limite podiam ser ocupadas por parcelas de outros clientes da plataforma
-    // — e a tabela aparecia vazia mesmo havendo parcelas desta rede.
+    // Parcelas pendentes (aba financeiro).
+    // Sem o vínculo com as filiais do tenant, as 50 vagas do limite podiam ser
+    // ocupadas por parcelas de outros clientes da plataforma.
     needInstall
       ? ler(admin.from('installments')
           .select('id, amount, due_date, financial_transactions!inner(branch_id, clients(name))')
@@ -235,60 +133,31 @@ export async function ReportsBiSection({
           .limit(50), 'carregar as parcelas pendentes')
       : Promise.resolve([] as unknown[]),
 
-    // 13 — Custo por procedimento (aba procedimentos — margem por faixa etária).
-    // Traz também mão de obra e outros custos: a margem considerava só os
-    // insumos e por isso saía sistematicamente otimista.
-    needProcCosts
-      ? ler(admin.from('procedure_products')
-          .select('procedure_id, quantity, products(cost_price), procedures!inner(tenant_id, labor_cost, other_costs)')
-          .eq('procedures.tenant_id', ctx.tenantId!), 'carregar o custo dos procedimentos')
-      : Promise.resolve([] as unknown[]),
-
-    // 14 — Retenção real (quem já era cliente antes do período e voltou)
-    needClientsAll
+    // Retenção real (quem já era cliente antes do período e voltou)
+    needClientes
       ? getRetention({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate })
       : Promise.resolve({ clientsServed: 0, returningClients: 0, firstTimeClients: 0 }),
 
-    // 15 — Novos clientes por dia, dentro da janela e no fuso do negócio
-    needClientsAll
+    // Novos clientes por dia, dentro da janela e no fuso do negócio
+    needClientes
       ? getNewClientsSeries({
           tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
           granularity: period === 'all' ? 'month' : 'day',
         })
       : Promise.resolve([]),
 
-    // 16, 17 e 18 — O DINHEIRO, agregado no Postgres.
-    //
-    // Estes três existem porque a tela tinha DOIS faturamentos: o KPI somava
-    // `txsCurr` em JS excluindo o estorno, e o gráfico somava o mesmo array
-    // sem excluir — R$ 5.200 no cartão e R$ 5.450 na legenda, na mesma tela.
-    // Somar à mão o resultado de um select repete a definição do indicador em
-    // cada lugar que precisa dele, e duas cópias de uma definição divergem;
-    // é só questão de quando.
-    //
-    // `metrics_core` e `metrics_series` são a mesma conta, feita uma vez, no
-    // banco: só pago, estorno fora dos dois lados, eixo em `paid_at` e fuso do
-    // negócio. É o que o dashboard já fazia desde 2026-09-09.
+    // O dinheiro e as contagens do período, agregados no Postgres — a mesma
+    // conta do dashboard. Atendimentos, novos clientes, ticket, agenda e
+    // comissões também saem daqui: recontar na tela era a segunda cópia.
     getCore({ tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate }),
     getCore({ tenantId: ctx.tenantId!, branchIds, from: prevStart, to: prevEnd }),
     getSeries({
       tenantId: ctx.tenantId!, branchIds, from: startDate, to: endDate,
-      granularity: period === 'today' ? 'hour' : 'day',
+      granularity,
     }),
   ])
 
-  // -- Cast + filter -------------------------------------------------
-  const txsCurr        = (txsCurrRaw        ?? []) as unknown as LinhaTransacao[]
-  const txsPrev        = (txsPrevRaw        ?? []) as unknown as LinhaTransacaoAnterior[]
-  const apptsCurr      = (apptsCurrRaw      ?? []) as unknown as LinhaAtendimento[]
-  const clientsCurr    = (clientsCurrRaw    ?? []) as unknown as LinhaClienteNovo[]
-  const clientsAll     = (clientsAllRaw     ?? []) as unknown as LinhaCliente[]
-  const allAppts       = (allApptsRaw       ?? []) as unknown as LinhaAgendamento[]
-  const commissions    = (commissionsRaw    ?? []) as unknown as LinhaComissao[]
-  const stockMoves     = (stockMovesRaw     ?? []) as unknown as LinhaMovimentoDeEstoque[]
-  const bps            = (bpsRaw            ?? []) as unknown as LinhaEstoqueDaUnidade[]
   const productBatches = (productBatchesRaw ?? []) as unknown as LinhaLote[]
-  const procedureCosts = (procedureCostsRaw ?? []) as unknown as LinhaCustoDoProcedimento[]
   const installments   = ((installmentsRaw  ?? []) as unknown as LinhaParcela[])
     .filter(i => branchIds.includes(i.financial_transactions?.branch_id ?? ''))
 
@@ -300,7 +169,6 @@ export async function ReportsBiSection({
     : undefined
 
   // -- Gráfico de evolução (mesmo padrão do dashboard) ---------------
-  const granularity = period === 'today' ? 'hour' : 'day'
 
   // Os buckets vêm prontos do Postgres, com a MESMA regra do KPI: só pago,
   // estorno fora dos dois lados, eixo em `paid_at`, fuso do negócio. Remontar
@@ -319,32 +187,24 @@ export async function ReportsBiSection({
     ]),
   )
 
-  const insumosNaFatia = (inicio: number, fim: number) => stockMoves
-    .filter(m => {
-      const ts = new Date(m.created_at).getTime()
-      return ts >= inicio && ts <= fim
-    })
-    .reduce((s, m) => s + Math.abs(Number(m.quantity)) * Number(m.products?.cost_price ?? 0), 0)
-
-  function pontoDoGrafico(chave: string, idx: number, inicio: number, fim: number): ChartPoint {
+  // O consumo de cada fatia vem somado do banco, com a chave da fatia
+  // ('0'…'23' por hora, 'YYYY-MM-DD' por dia, no fuso da clínica).
+  function pontoDoGrafico(chave: string, idx: number): ChartPoint {
     const ponto   = seriesPorBucket.get(chave)
     const revenue = ponto?.revenue ?? 0
-    const cost    = (ponto?.expenses ?? 0) + insumosNaFatia(inicio, fim)
+    const cost    = (ponto?.expenses ?? 0) + (relatorio.consumoPorFatia.get(chave) ?? 0)
     return { day: idx, revenue, cost, profit: revenue - cost }
   }
 
   const evolutionData: ChartPoint[] =
     granularity === 'hour'
-      ? Array.from({ length: 24 }, (_, i) => {
-          const inicio = startDate.getTime() + i * 3_600_000
-          return pontoDoGrafico(String(i), i, inicio, inicio + 3_600_000 - 1)
-        })
+      ? Array.from({ length: 24 }, (_, i) => pontoDoGrafico(String(i), i))
       : (() => {
           const MS_DAY = 86_400_000
           const days = Math.max(1, Math.floor((endDate.getTime() - startDate.getTime()) / MS_DAY) + 1)
           return Array.from({ length: days }, (_, i) => {
             const base = startOfDayTZ(addDaysTZ(startDate, i))
-            return pontoDoGrafico(dayKeyTZ(base), i + 1, base.getTime(), base.getTime() + MS_DAY - 1)
+            return pontoDoGrafico(dayKeyTZ(base), i + 1)
           })
         })()
 
@@ -376,20 +236,9 @@ export async function ReportsBiSection({
         customTo={rawTo}
         granularity={granularity}
         branches={branches}
-        txsCurr={txsCurr}
-        txsPrev={txsPrev}
+        relatorio={relatorio}
         installments={installments}
-        apptsCurr={apptsCurr}
-        apptsPrevCount={apptsPrevCount ?? 0}
-        allAppts={allAppts}
-        clientsCurr={clientsCurr}
-        clientsPrevCount={clientsPrevCount ?? 0}
-        clientsAll={clientsAll}
-        commissions={commissions}
-        stockMoves={stockMoves}
-        bps={bps}
         productBatches={productBatches}
-        procedureCosts={procedureCosts}
         retention={retention}
         newClientsSeries={newClientsSeries}
         evolutionData={evolutionData}
