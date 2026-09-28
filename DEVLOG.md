@@ -1260,6 +1260,36 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — Frente 9 (P7, parte 3): a extensão com o token, os pacotes, e o fim da P7
+
+- **Rotas da extensão com o token de verdade** (`e2e/extensao-api.spec.ts`,
+  6 casos). Até aqui só o "sem credencial → 401" tinha teste. Agora: CORS da
+  origem da extensão; sem agenda → 403, escopo "só os meus" → 403 explicado;
+  o comercial da rede escolhe a unidade (a de outra rede → 403, sem unidade →
+  400) e cria agendamento que nasce COMERCIAL; profissional de outra rede é
+  recusado; a recepção da unidade é sempre a dela, peça a unidade que pedir;
+  membro desativado perde o token que já estava na mão (401). Nenhum defeito:
+  `requireExtAccess`, `resolveExtBranch` e o núcleo da agenda já seguravam.
+- **Pacotes** (`tests/pacotes.test.ts`, 12 casos): os schemas de
+  autenticação, a regra de origem do lead (Google/Meta/orgânico, a plataforma
+  do provedor vencendo a URL, a escolha manual sem apagar o anúncio), a
+  formatação (moeda, percentual, data no fuso do negócio, máscaras), as
+  iniciais por code point, o "tempo parado" do CRM e a tag de unidade. Nenhum
+  defeito. `CreateAppointmentSchema`, `UpdateAppointmentSchema`, os schemas de
+  procedimento, `ClientLoginSchema`, `ClientMagicLinkSchema` e
+  `sourceTagFor` NÃO são usados pelo app — código morto, não testado.
+- `chamarAcao` passou a falhar alto com "Server action not found" (o Next
+  responde 200): os nove specs que o usam foram rodados de novo e nenhum caía
+  nisso.
+- **Fora de propósito**: a interface da extensão (`apps/extension`, pediria
+  carregar a extensão num Chromium) e o app nativo — `apps/native` é uma casca
+  do Capacitor que abre a URL de produção num WebView, sem lógica própria além
+  do web. ⚠️ O `capacitor.config.ts` está com `cleartext: true` para uma URL
+  `https`: libera tráfego HTTP sem necessidade; desligar pede um novo build
+  do app.
+
+Com isso a varredura de cobertura (P1…P7) fecha.
+
 ### 2026-09-28 — Frente 9 (P7, parte 2): quem tem unidade fixa age só na dela
 
 O levantamento do portal da unidade achou o buraco maior da P7: **a
