@@ -2,7 +2,8 @@ import { defineConfig } from '@playwright/test'
 import base from './playwright.config'
 
 /**
- * A suíte inteira contra o BUILD de produção (`next build` + `next start`), na
+ * A suíte inteira contra o BUILD de produção (`next build` + o servidor
+ * standalone, como no Docker — ver `scripts/servir-build.mjs`), na
  * porta 3100 — o `next dev` da 3000 pode continuar aberto ao lado.
  *
  * É a regressão completa (local, por `pnpm test:e2e:completa`, e no GitHub
@@ -20,7 +21,7 @@ export default defineConfig({
   ...base,
   use: { ...base.use, baseURL: process.env.E2E_BASE_URL },
   webServer: {
-    command: `pnpm exec next start -p ${PORTA}`,
+    command: `node scripts/servir-build.mjs ${PORTA}`,
     cwd: __dirname,
     url: process.env.E2E_BASE_URL,
     reuseExistingServer: !process.env.CI,
