@@ -111,7 +111,10 @@ export default async function AdminOportunidadesPage({
 
   return (
     <div className="crm-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <RealtimeRefresher tables={['leads', 'crm_stages', 'crm_funnels']} />
+      {/* O SINAL do quadro, não os dados: leads, etapas e funis marcam
+          `crm_quadro_sinais` por gatilho, e a página recarrega pelo servidor,
+          com o alcance de sempre (migration 20260928000006). */}
+      <RealtimeRefresher tables={['crm_quadro_sinais']} filter={`tenant_id=eq.${ctx.tenantId}`} />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>

@@ -1258,6 +1258,23 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — O quadro de oportunidades em tempo real
+
+"Adicione realtime no quadro de oportunidades." O quadro já assinava leads,
+etapas e funis — e quase nada chegava: funis fora da publicação do realtime, a
+política de etapas comparando a claim fora de `app_metadata` (nunca valeu) e
+lead legível pela sessão só para quem é da rede. Na prova com a tela antiga,
+nem o lead novo chegou para quem é da rede.
+
+- **Sinal em vez de dado** (migration `20260928000006`): `crm_quadro_sinais`,
+  uma linha por rede, marcada por gatilho em leads, etapas e funis. A tela
+  assina o sinal e recarrega pelo servidor, com o alcance de sempre. Abrir a
+  leitura de `leads` pela sessão mandaria a linha inteira pelo websocket a quem
+  o escopo "só os meus" esconde.
+- `e2e/quadro-tempo-real.spec.ts`: com o quadro aberto, o banco é mexido por
+  fora — o lead novo aparece para quem é da rede, a etapa renomeada aparece
+  para quem é de unidade. Os dois falham com a tela antiga.
+
 ### 2026-09-28 — Três funções sem botão ganham tela; código morto sai
 
 O levantamento do código morto separou três casos, e o Heitor aceitou a

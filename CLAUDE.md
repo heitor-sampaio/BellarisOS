@@ -142,6 +142,12 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   Meta pela chave pública. Tela que precise de algo dali pelo navegador não
   reabre a tabela: expõe só as colunas sem segredo, numa view ou função.
   Prova: `e2e/credenciais-fora-da-sessao.spec.ts`.
+- **Realtime de tela que mostra dado com escopo assina um SINAL, não a tabela.**
+  O quadro de oportunidades assina `crm_quadro_sinais` (uma linha por rede,
+  marcada por gatilho em leads, etapas e funis) e recarrega pelo servidor, que
+  aplica o alcance. Assinar `leads` exigiria abrir a leitura pela sessão — e a
+  linha inteira iria pelo websocket a quem o "só os meus" esconde. Prova:
+  `e2e/quadro-tempo-real.spec.ts` (membro da rede e de unidade).
 - ⚠️ Política que compara `auth.jwt() ->> 'x'` está ERRADA: as claims moram em
   `app_metadata` — use `jwt_claim('x')`. A de `leads` era assim e nunca valeu.
 
