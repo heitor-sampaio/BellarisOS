@@ -344,15 +344,17 @@ async function anexarDadosDoCard(conversas: LinhaDeConversa[], tenantId: string)
   // filtro por tag achar a pessoa numa thread e não na outra — e a lista é por
   // pessoa, então o filtro precisa concordar com ela.
   const tagsPorContato = new Map<string, string[]>()
+  const nomePorContato = new Map<string, string | null>()
   const contatoIds = [...new Set(
     conversas.map(c => c.contato_id as string | null).filter(Boolean) as string[],
   )]
   if (contatoIds.length > 0) {
     const { data, error } = await createAdminClient()
-      .from('contacts').select('id, tags').in('id', contatoIds)
+      .from('contacts').select('id, tags, name').in('id', contatoIds)
     if (error) console.error('[getConversations] tags da pessoa:', error.message)
-    for (const k of (data ?? []) as { id: string; tags: string[] | null }[]) {
+    for (const k of (data ?? []) as { id: string; tags: string[] | null; name: string | null }[]) {
       tagsPorContato.set(k.id, k.tags ?? [])
+      nomePorContato.set(k.id, k.name)
     }
   }
 
@@ -360,6 +362,9 @@ async function anexarDadosDoCard(conversas: LinhaDeConversa[], tenantId: string)
     const caixa = c.whatsapp_number_id ? caixas.get(c.whatsapp_number_id) : undefined
     return {
       ...c,
+      // O nome é da PESSOA (§9.2.1): a conversa guarda uma cópia, que já
+      // acompanha a pessoa, mas a fonte é o contato.
+      contact_name: (c.contato_id ? nomePorContato.get(c.contato_id) : null) ?? c.contact_name,
       branch_name: c.branches?.name ?? null,
       lead_tags:   (c.contato_id ? tagsPorContato.get(c.contato_id) : null) ?? [],
       eh_cliente:  !!c.client_id,
@@ -750,7 +755,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
-    .select('id, contact_name, contact_phone, client_id, channel, contato_id')
+    .select('id, contact_name, contact_phone, client_id, channel, contato_id, pessoa:contacts!conversations_contato_id_fkey(name)')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -758,7 +763,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   if (erroConv) { console.error('[getConversationCard]', erroConv.message); return null }
   if (!conv) return null
 
-  const c = conv as { contact_name: string | null; contact_phone: string | null; client_id: string | null; channel: string; contato_id: string | null }
+  const c = conv as unknown as { contact_name: string | null; contact_phone: string | null; client_id: string | null; channel: string; contato_id: string | null; pessoa: { name: string | null } | null }
   const clientId = c.client_id
 
   const funis  = await seedDefaultFunnel(ctx.tenantId!)
@@ -802,7 +807,9 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   return {
     contato: {
       conversationId,
-      nome:     c.contact_name ?? null,
+      // Nome da pessoa; telefone da THREAD — é o destino desta conversa, e a
+      // pessoa pode ter outro WhatsApp em outra (§9.2.1).
+      nome:     c.pessoa?.name ?? c.contact_name ?? null,
       telefone: c.contact_phone ?? null,
       tags:     tagsDaPessoa,
       canal:    c.channel as InboxChannel,
@@ -1003,18 +1010,21 @@ export async function criarOportunidade(
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
-    .select('id, contact_name, contact_phone, contact_external_id, client_id, branch_id, channel, attribution, lead_id, contato_id')
+    .select('id, contact_name, contact_phone, contact_external_id, client_id, branch_id, channel, attribution, lead_id, contato_id, pessoa:contacts!conversations_contato_id_fkey(name)')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
 
   if (erroConv) return { ok: false, error: erroConv.message }
   if (!conv)    return { ok: false, error: 'Conversa não encontrada.' }
-  const c = conv as {
+  const c = conv as unknown as {
     contact_name: string | null; contact_phone: string | null; contact_external_id: string | null
     client_id: string | null; branch_id: string | null; channel: string
     attribution: Record<string, string | undefined> | null; lead_id: string | null; contato_id: string | null
+    pessoa: { name: string | null } | null
   }
+  // O nome é da pessoa (§9.2.1).
+  c.contact_name = c.pessoa?.name ?? c.contact_name
   // O gatilho dá pessoa a toda conversa; sem ela, a oportunidade nasceria sem
   // dono (`leads.contato_id` é NOT NULL) — melhor dizer do que chutar.
   if (!c.contato_id) return { ok: false, error: 'Esta conversa ainda não está ligada a um contato.' }
@@ -1641,7 +1651,7 @@ export async function getTemplatesParaConversa(
     // `leads!conversations_lead_id_fkey`: com `leads.conversation_id` existindo,
     // há duas relações entre as tabelas e o embed sem nome é recusado. Esta é a
     // oportunidade principal — que é de onde sai o nome para o template.
-    .select('channel, contact_name, whatsapp_number_id, leads!conversations_lead_id_fkey(name)')
+    .select('channel, contact_name, whatsapp_number_id, leads!conversations_lead_id_fkey(name), pessoa:contacts!conversations_contato_id_fkey(name)')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -1678,12 +1688,13 @@ export async function getTemplatesParaConversa(
 
   if (error) { console.error('[getTemplatesParaConversa]', error.message); return [] }
 
-  const convRow = conv as {
+  const convRow = conv as unknown as {
     contact_name: string | null
     leads: { name: string } | { name: string }[] | null
+    pessoa: { name: string | null } | null
   }
   const lead = Array.isArray(convRow.leads) ? convRow.leads[0] : convRow.leads
-  const nome = lead?.name ?? convRow.contact_name ?? ''
+  const nome = lead?.name ?? convRow.pessoa?.name ?? convRow.contact_name ?? ''
   // Só o primeiro nome: "Olá, Ana Paula Ribeiro da Silva" soa a mala direta.
   const primeiroNome = nome.trim().split(/\s+/)[0] ?? ''
 

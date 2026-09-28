@@ -1258,6 +1258,30 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — "Criando…" eterno: bug do Next; o nome vem da pessoa; erro na tela
+
+Três pendências fechadas de uma vez.
+
+- **O "Criando…" eterno era bug do Next** (vercel/next.js#86151, corrigido no
+  PR #95391, em 16.3.0): um `router.refresh()` que atropela uma server action em
+  andamento desalinhava a fila do router, e a action nunca entregava o
+  resultado — com o registro gravado. Só no build, em página com
+  `loading.tsx`, mais em rede rápida: era o `RealtimeRefresher` recebendo o
+  próprio insert. Subimos para **16.3.4**; 16.3.5+ tem outra regressão no
+  refresh (#99028), por isso a versão fica fixa. Contra o build, o diagnóstico
+  que travava 4 de 5 fechou 5 de 5; `eventos-cadastro`,
+  `procedimento-modal-limpo`, `prontuario` e `permissoes-acoes` passaram. A
+  regra nova de lint do 16.3 (`window.location` com caminho interno) virou
+  `lib/navegacao-inteira.ts`, para as três navegações inteiras de propósito.
+- **O nome é lido da pessoa** (`contacts.name`), não da cópia da conversa:
+  lista, busca do inbox (migration `20260928000009`), card, "virar cliente",
+  templates, agendamento pelo CRM, evento. O telefone da conversa fica — é o
+  destino da thread. `e2e/inbox-nome-da-pessoa.spec.ts` falha sem a mudança.
+- **Cinco telas mostravam `e.message`** de erro do servidor (movimentações,
+  respostas rápidas, visibilidade do inbox, conexão uazapi ×2): em produção, o
+  aviso genérico do Next em inglês. `lib/erro-na-tela.ts` (`erroParaTela`)
+  põe o texto da tela, e "sem acesso" pelo digest. `tests/erro-na-tela.test.ts`.
+
 ### 2026-09-28 — O que a suíte contra o build achou em produção
 
 A primeira regressão no GitHub (contra o build, não o `next dev`) deu 283
@@ -1278,13 +1302,13 @@ mostraria:
   lá, sem o cookie: agora servidor e teste em `127.0.0.1`.
 - A varredura passou a apagar procedimentos `[e2e]` da rede real (havia 33).
 
-**Em aberto:** criar procedimento contra o build fica às vezes em "Criando…" —
+~~**Em aberto:** criar procedimento contra o build fica às vezes em "Criando…" —
 a action grava, a resposta chega inteira, e o formulário não recebe o
 resultado. É corrida: o `RealtimeRefresher` pede `router.refresh()` com a
 action em andamento e o router a aborta (visto pelo stack do DevTools), mas
 com o realtime bloqueado ainda acontece às vezes. Em produção o Heitor criou
 normalmente. Uma tentativa de contar actions em voo pelo `fetch` não se provou
-e não entrou.
+e não entrou.~~ **Resolvido no mesmo dia** — bug do Next, ver a entrada acima.
 
 ### 2026-09-28 — Novo procedimento abre vazio
 

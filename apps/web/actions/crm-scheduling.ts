@@ -86,11 +86,13 @@ async function contatoDaConversa(
   if (conversationId) {
     const data = await ler(admin
       .from('conversations')
-      .select('contact_name, contact_phone')
+      .select('contact_name, contact_phone, pessoa:contacts!conversations_contato_id_fkey(name)')
       .eq('id', conversationId)
       .eq('tenant_id', tenantId)
       .maybeSingle(), 'buscar a conversa')
-    const nome     = (data?.contact_name  as string | null)?.trim()
+    // Nome da pessoa (§9.2.1); o telefone é o da conversa, por onde ela fala.
+    const pessoa   = (data as { pessoa?: { name: string | null } | null } | null)?.pessoa
+    const nome     = (pessoa?.name ?? (data?.contact_name as string | null))?.trim()
     const telefone = (data?.contact_phone as string | null)?.trim()
     if (nome && telefone) return { nome, telefone }
   }

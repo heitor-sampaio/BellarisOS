@@ -38,7 +38,7 @@ export async function emitirEventoDeConversa(
 
     const { data, error } = await admin
       .from('conversations')
-      .select('id, branch_id, contact_name, contact_phone, channel, client_id')
+      .select('id, branch_id, contact_name, contact_phone, channel, client_id, pessoa:contacts!conversations_contato_id_fkey(name)')
       .eq('id', conversationId)
       .eq('tenant_id', tenantId)
       .maybeSingle()
@@ -46,7 +46,9 @@ export async function emitirEventoDeConversa(
     if (error) console.error('[eventoDeConversa] retrato:', error.message)
 
     const dados: DadosDeConversa = {
-      contatoNome:     (data?.contact_name  as string) ?? null,
+      // O nome é da pessoa (§9.2.1); a cópia da conversa só se falta.
+      contatoNome:     ((data as { pessoa?: { name: string | null } | null } | null)?.pessoa?.name
+                        ?? (data?.contact_name as string)) ?? null,
       contatoTelefone: (data?.contact_phone as string) ?? null,
       canal:           (data?.channel as string) ?? 'desconhecido',
       clienteId:       (data?.client_id as string) ?? null,

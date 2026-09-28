@@ -31,7 +31,7 @@ unidade impossível.
 
 | Camada | Tecnologia |
 |---|---|
-| Web Framework | Next.js 16 (App Router) |
+| Web Framework | Next.js 16.3.4 (App Router) — ver a nota abaixo da tabela |
 | App | Capacitor (Android), casca do portal web |
 | Linguagem | TypeScript (strict) em todos os packages |
 | Estilo Web | Tailwind CSS + shadcn/ui |
@@ -48,6 +48,13 @@ unidade impossível.
 | Monorepo | Turborepo |
 
 ---
+
+⚠️ **Next fixado em 16.3.4, e não sobe sozinho.** Abaixo de 16.3.0 o router
+travava a action que um `router.refresh()` atropelava (formulário eterno em
+"Criando…", com o registro gravado — vercel/next.js#86151, corrigido no PR
+#95391). A partir de 16.3.5 o `router.refresh()` deixa de buscar a página nova
+em página com streaming (#99028). Subir de versão exige a suíte contra o BUILD
+(`test:e2e:completa` ou o GitHub Actions): nenhum dos dois aparece no `next dev`.
 
 ## 3. Estrutura de pastas
 
@@ -593,7 +600,7 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
     passe para mexer em card nem em conversa.
 
 **Nome e telefone são da pessoa, e as cópias acompanham** (2026-09-28). A conversa
-e a oportunidade guardam cópia (é dela que a tela lê), e a edição em qualquer
+e a oportunidade guardam cópia, e a edição em qualquer
 um dos dois lugares — painel do inbox (`atualizarContato`) ou card da
 oportunidade (`updateLead`) — passa por `propagarDadosDaPessoa`
 (`lib/contatos/propagar.ts`):
@@ -605,6 +612,13 @@ oportunidade (`updateLead`) — passa por `propagarDadosDaPessoa`
 - cada oportunidade que mudou registra o de → para na linha do tempo.
 Prova: `e2e/contato-propaga.spec.ts`. Editar cópia sem passar por aí é o
 defeito de volta.
+
+**A tela lê o NOME da pessoa, não a cópia** — lista, busca (`inbox_pagina`),
+card do contato, "virar cliente", template, agendamento pelo CRM e o evento da
+conversa (embed `pessoa:contacts!conversations_contato_id_fkey(name)`; a cópia
+só na falta). O **telefone da conversa não é cópia**: é o destino daquela thread,
+e é dele que o envio, a lista e o card leem. Prova:
+`e2e/inbox-nome-da-pessoa.spec.ts` (a pessoa renomeada com a cópia velha).
 
 Em teste, limpar conversa é `apagarConversas()` de `e2e/apoio/banco.ts`, que tira
 o contato junto.
@@ -1357,7 +1371,9 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Ler ou gravar whatsapp_numbers.user_id (legado — quem fala pelo número é whatsapp_number_users)
 ❌ Montar redirect ou redirect_uri com req.url / req.nextUrl.origin (é 0.0.0.0 no standalone) — use origemPublica
 ❌ Lançar new Error('Forbidden') à mão — use semAcesso() (em produção só o digest chega à tela)
-❌ Contar com a MENSAGEM de um erro lançado no servidor na tela — em produção ela chega trocada; devolva { error }
+❌ Contar com a MENSAGEM de um erro lançado no servidor na tela — em produção ela chega trocada; devolva { error } ou use erroParaTela
+❌ Subir o Next sem rodar a suíte contra o build (16.3.5+ quebra o refresh; abaixo de 16.3.0 trava a action)
+❌ Mostrar o nome da conversa (contact_name) em vez do da pessoa (contacts.name)
 ❌ Update pela sessão sem conferir a linha devolvida (sem policy de UPDATE, atinge zero linhas sem erro)
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
 ❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)

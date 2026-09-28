@@ -9,6 +9,7 @@ import {
   adminAddStock, adminTransferStock, adminAdjustStock, adminUpdateMinStock,
   getProductMovements, type MovimentoDeEstoque,
 } from '@/actions/stock'
+import { erroParaTela } from '@/lib/erro-na-tela'
 
 type BranchStock = {
   branchId:     string
@@ -648,7 +649,7 @@ function HistoricoTab({ product, defaultBranchId }: {
     let vivo = true
     getProductMovements(product.id, defaultBranchId ?? '')
       .then(r => { if (vivo) setMovs(r) })
-      .catch(e => { if (vivo) setErro(e instanceof Error ? e.message : 'Erro inesperado.') })
+      .catch(e => { if (vivo) setErro(erroParaTela(e, 'Não foi possível carregar as movimentações.')) })
     return () => { vivo = false }
   }, [product.id, defaultBranchId])
 

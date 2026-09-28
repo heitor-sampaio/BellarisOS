@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { nativeStore } from '@/lib/supabase/native-store'
+import { navegarInteira } from '@/lib/navegacao-inteira'
 
 // Fallback client-side para cold start do Capacitor (Android + iOS):
 // O request inicial pode chegar sem cookies (cookie store do WebView ainda
@@ -17,7 +18,8 @@ export function AuthRedirect() {
       // 1. Tenta sessão em cookie (caso normal)
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        window.location.href = '/auth/redirect'
+        // Recarga inteira de propósito: o servidor precisa ler a sessão do zero.
+        navegarInteira('/auth/redirect')
         return
       }
 
@@ -35,7 +37,7 @@ export function AuthRedirect() {
       if (res.ok) {
         // API retorna o destino final — navega direto sem bounce via /auth/redirect
         const { redirectTo } = await res.json() as { redirectTo: string }
-        window.location.href = redirectTo ?? '/auth/redirect'
+        navegarInteira(redirectTo ?? '/auth/redirect')
       } else {
         // Tokens expirados ou inválidos — limpa storage nativo
         await nativeStore.clear()

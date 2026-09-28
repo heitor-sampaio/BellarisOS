@@ -18,6 +18,7 @@ import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { UazapiConnect } from '@/components/admin/uazapi-connect'
 import { SegSelect } from '@/components/shared/seg-select'
 import { MODOS_OFICIAIS, modoDaConfig, type ModoOficial } from '@/lib/whatsapp/modo-oficial'
+import { navegarInteira } from '@/lib/navegacao-inteira'
 
 /**
  * Origem do site, resolvida só depois de montar.
@@ -448,7 +449,8 @@ function MetaAdsConnect({
   const [fetchError,      setFetchError]       = useState<string | null>(null)
 
   function handleConnect() {
-    window.location.href = '/api/oauth/meta'
+    // Navegação de VERDADE: é uma rota de API que redireciona para o Facebook.
+    navegarInteira('/api/oauth/meta')
   }
 
   async function handleOpenChange() {
@@ -968,7 +970,7 @@ function MetaMessagingConnect({
   const [trocando,   setTrocando]   = useState(false)
 
   function handleConnect() {
-    window.location.href = '/api/oauth/meta?produto=mensagens'
+    navegarInteira('/api/oauth/meta?produto=mensagens')
   }
 
   function handleConfirm() {

@@ -5,6 +5,7 @@ import { Zap, Plus, Pencil, Trash2, X, Search } from 'lucide-react'
 import {
   listQuickReplies, saveQuickReply, deleteQuickReply, type QuickReply,
 } from '@/actions/quick-replies'
+import { erroParaTela } from '@/lib/erro-na-tela'
 
 /**
  * Respostas rápidas na conversa.
@@ -42,7 +43,7 @@ export function InboxQuickReplies({
   function recarregar() {
     listQuickReplies()
       .then(setItens)
-      .catch(e => { setItens([]); setErro(e instanceof Error ? e.message : 'Erro ao carregar') })
+      .catch(e => { setItens([]); setErro(erroParaTela(e, 'Não foi possível carregar as respostas rápidas.')) })
   }
 
   const visiveis = (itens ?? []).filter(q => {

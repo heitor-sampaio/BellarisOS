@@ -11,6 +11,7 @@ import {
   desconectarUazapi, removerConexaoUazapi, repararConexaoUazapi,
   type EstadoConexaoUazapi,
 } from '@/actions/uazapi-connection'
+import { erroParaTela } from '@/lib/erro-na-tela'
 
 /**
  * Conectar o WhatsApp sem sair do BellarisOS.
@@ -70,14 +71,14 @@ export function UazapiConnect() {
 
   const carregarEstado = useCallback(async () => {
     try { setEstado(await getEstadoConexaoUazapi()) }
-    catch (e) { setErro(e instanceof Error ? e.message : 'Falha ao consultar a conexão') }
+    catch (e) { setErro(erroParaTela(e, 'Não foi possível consultar a conexão.')) }
   }, [])
 
   // Primeira leitura: o setState fica nos callbacks da promessa, não no efeito.
   useEffect(() => {
     getEstadoConexaoUazapi()
       .then(setEstado)
-      .catch(e => setErro(e instanceof Error ? e.message : 'Falha ao consultar a conexão'))
+      .catch(e => setErro(erroParaTela(e, 'Não foi possível consultar a conexão.')))
   }, [])
 
   // ⚠️ `tentativas` NÃO entra nas dependências.

@@ -7,6 +7,7 @@ import { atualizarVisibilidadeDoInbox } from '@/actions/rede'
 import {
   OPCOES_DE_VISIBILIDADE, type VisibilidadeDoInbox,
 } from '@/lib/inbox/visibilidade'
+import { erroParaTela } from '@/lib/erro-na-tela'
 
 /**
  * Configurações → Cargos: com "só os próprios leads", o inbox segue a pessoa
@@ -55,7 +56,7 @@ export function SettingsVisibilidadeInbox({
       } catch (e) {
         // A tela não pode ficar mostrando uma escolha que o banco não gravou.
         setModo(anterior)
-        setErro(e instanceof Error ? e.message : 'Não foi possível salvar.')
+        setErro(erroParaTela(e, 'Não foi possível salvar.'))
       }
     })
   }
