@@ -37,11 +37,11 @@ export async function montarCheckoutPlan(
   type RawClient = { name: string; document: string | null; phone: string | null }
   const cli = planRaw.clients as unknown as RawClient | null
 
-  const [{ sessions, total }, professionalsRaw, { data: medRecordRaw }, { data: branchesRaw }] = await Promise.all([
+  const [{ sessions, total }, professionalsRaw, medRecordRaw, branchesRaw] = await Promise.all([
     getTreatmentPlanSessions(planId),
     getCachedBranchProfessionals(branchId, tenantId),
-    admin.from('medical_records').select('id').eq('client_id', planRaw.client_id).maybeSingle(),
-    admin.from('branches').select('id, name').eq('tenant_id', tenantId).eq('is_active', true).order('name'),
+    ler(admin.from('medical_records').select('id').eq('client_id', planRaw.client_id).maybeSingle(), 'buscar o prontuário do cliente'),
+    ler(admin.from('branches').select('id, name').eq('tenant_id', tenantId).eq('is_active', true).order('name'), 'carregar as unidades'),
   ])
 
   return {

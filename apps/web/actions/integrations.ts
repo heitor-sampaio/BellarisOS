@@ -635,11 +635,13 @@ export async function opcoesDeVinculoDoNumero(): Promise<OpcoesDeVinculo> {
   assertPermission(ctx, 'settings', 'MANAGE')
   const admin = createAdminClient()
 
-  const [{ data: branches }, { data: users }] = await Promise.all([
-    admin.from('branches').select('id, name')
-      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
-    admin.from('users').select('id, name')
-      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
+  // Uma leitura que falha não pode virar lista vazia: a tela mostraria o número
+  // sem ninguém ligado, e salvar gravaria exatamente isso.
+  const [branches, users] = await Promise.all([
+    ler(admin.from('branches').select('id, name')
+      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as unidades'),
+    ler(admin.from('users').select('id, name')
+      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar a equipe'),
   ])
 
   return {

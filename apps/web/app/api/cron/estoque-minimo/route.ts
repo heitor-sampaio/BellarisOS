@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notificarInteressados } from '@/lib/notifications/interessados'
+import { contar } from '@/lib/db'
 
 /**
  * Avisa quem cuida do estoque que um produto cruzou o mínimo.
@@ -55,12 +56,14 @@ export async function GET(req: NextRequest) {
 
       // Já avisamos deste? A execução anterior pode ter pegado o mesmo evento
       // pela folga da janela.
-      const { count } = await admin
+      // Contagem que falha não pode virar "nunca avisado": a equipe receberia o
+      // mesmo aviso a cada passada do cron.
+      const jaAvisado = await contar(admin
         .from('user_notifications')
         .select('id', { count: 'exact', head: true })
         .eq('type', 'stock_below_minimum')
-        .filter('data->>evento_id', 'eq', eventoId)
-      if ((count ?? 0) > 0) { repetidos++; continue }
+        .filter('data->>evento_id', 'eq', eventoId), 'conferir se o aviso já saiu')
+      if (jaAvisado > 0) { repetidos++; continue }
 
       const d = (ev.dados ?? {}) as Record<string, unknown>
       const produto = String(d.produtoNome ?? 'Produto')

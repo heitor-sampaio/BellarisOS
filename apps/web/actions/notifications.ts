@@ -60,6 +60,7 @@ export async function markNotificationRead(id: string): Promise<void> {
 
   if (!notif) return
 
-  // Atomic: marks read + updates campaign_dispatches.status + increments total_read
-  await admin.rpc('mark_notification_read', { p_notification_id: id })
+  // Atomic: marks read + updates campaign_dispatches.status + increments total_read.
+  // `tentar`: marcar como lida é acessório — falhar não pode quebrar o sino.
+  await tentar(admin.rpc('mark_notification_read', { p_notification_id: id }), 'marcar a notificação como lida')
 }

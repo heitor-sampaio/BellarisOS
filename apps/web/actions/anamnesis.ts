@@ -190,19 +190,19 @@ export async function salvarFichaDoProcedimento(params: {
     const formId = (proc?.form_id as string | null) ?? null
     if (!formId) return { error: 'Este procedimento não tem ficha vinculada.' }
 
-    const { data: form } = await admin
+    const form = await ler(admin
       .from('forms')
       .select('id, name, schema')
       .eq('id', formId)
       .eq('tenant_id', ctx.tenantId!)
-      .maybeSingle()
+      .maybeSingle(), 'buscar a ficha do procedimento')
     if (!form) return { error: 'Ficha não encontrada.' }
 
     const rows = normalizeFormSchema(form.schema).rows
 
     // medical_records (get or create)
-    let { data: medRecord } = await admin
-      .from('medical_records').select('id').eq('client_id', appt.client_id).maybeSingle()
+    let medRecord = await ler(admin
+      .from('medical_records').select('id').eq('client_id', appt.client_id).maybeSingle(), 'buscar o prontuário do cliente')
     if (!medRecord) {
       const created = await ler(admin
         .from('medical_records').insert({ client_id: appt.client_id }).select('id').single(), 'abrir o prontuário do cliente')

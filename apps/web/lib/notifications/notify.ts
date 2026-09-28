@@ -27,9 +27,11 @@ export async function notifyClient(admin: Admin, clientId: string, p: NotifyPayl
       data:      p.data ?? null,
     }), 'registrar a notificação do cliente')
 
-    const [{ data: tokens }, { data: subs }] = await Promise.all([
-      admin.from('push_tokens').select('token').eq('client_id', clientId),
-      admin.from('web_push_subscriptions').select('endpoint, keys').eq('client_id', clientId),
+    // `ler` dentro do try deste fire-and-forget: a falha cai no catch abaixo,
+    // registrada, em vez de virar "o cliente não tem aparelho".
+    const [tokens, subs] = await Promise.all([
+      ler(admin.from('push_tokens').select('token').eq('client_id', clientId), 'carregar os aparelhos do cliente'),
+      ler(admin.from('web_push_subscriptions').select('endpoint, keys').eq('client_id', clientId), 'carregar as inscrições do cliente'),
     ])
 
     await Promise.allSettled([

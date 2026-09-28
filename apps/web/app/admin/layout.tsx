@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import { AdminSidebar } from '@/components/admin/sidebar'
 import { Topbar } from '@/components/shared/topbar'
 import { SidebarProvider } from '@/components/shared/sidebar-context'
@@ -14,18 +15,23 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const admin = createAdminClient()
 
-  const [tenantResult, unreadRes] = await Promise.all([
+  const [tenant, unreadRes] = await Promise.all([
+    // A rede É lida com `ler`: com o erro descartado, uma falha na consulta
+    // parecia "onboarding não concluído" e mandava o admin para /setup.
     (ctx.role === 'NETWORK_ADMIN' && ctx.tenantId)
-      ? admin.from('tenants').select('onboarding_completed_at').eq('id', ctx.tenantId).maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
+      ? ler(admin.from('tenants').select('onboarding_completed_at').eq('id', ctx.tenantId).maybeSingle(), 'carregar a rede')
+      : Promise.resolve(null),
     ctx.internalUserId
       ? admin.from('user_notifications').select('id', { count: 'exact', head: true })
           .eq('user_id', ctx.internalUserId).eq('is_received', false)
-      : Promise.resolve({ count: 0 }),
+      : Promise.resolve({ count: 0, error: null }),
   ])
 
-  if (ctx.role === 'NETWORK_ADMIN' && !tenantResult.data?.onboarding_completed_at) redirect('/setup')
+  if (ctx.role === 'NETWORK_ADMIN' && !tenant?.onboarding_completed_at) redirect('/setup')
 
+  // O contador do sino é acessório: falhar aqui não pode derrubar o portal
+  // inteiro. A falha fica no log e o sino começa em zero (o realtime corrige).
+  if (unreadRes.error) console.error('[admin/layout] contar as notificações:', unreadRes.error.message)
   const initialUnread = unreadRes.count ?? 0
 
   return (

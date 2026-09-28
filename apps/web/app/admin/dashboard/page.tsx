@@ -17,7 +17,9 @@ import {
   getCore, getByBranch, getSeries, getTopProcedures, getTopProfessionals,
   getTopClients, getLeadFunnel,
 } from '@/lib/metrics'
+import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
 import { seedDefaultFunnel } from '@/actions/crm-funnels'
+import { ler, contar } from '@/lib/db'
 
 // -- Linhas como os selects as pedem ---------------------------------
 type Num = number | string | null
@@ -35,8 +37,6 @@ type ProcedimentoLido = {
   id: string; name: string; price: Num; labor_cost: Num; other_costs: Num
   procedure_products: { quantity: Num; products: { cost_price: Num } | null }[] | null
 }
-type MovimentoLido = { quantity: Num; unit_cost: Num; created_at: string; products: { cost_price: Num } | null }
-type ClienteLido = { id: string; name: string; birth_date: string | null; city: string | null; zip_code: string | null }
 
 export default async function AdminDashboardPage({
   searchParams,
@@ -98,14 +98,12 @@ export default async function AdminDashboardPage({
   // -- Filiais -------------------------------------------------------
   // Falha de consulta não é rede sem filial — o erro sobe em vez de virar um
   // dashboard vazio com cara de rede nova.
-  const { data: branchesRaw, error: branchesError } = await admin
+  const branchesRaw = await ler(admin
     .from('branches')
     .select('id, name, slug, city, state')
     .eq('tenant_id', ctx.tenantId!)
     .eq('is_active', true)
-    .order('name')
-
-  if (branchesError) throw new Error(`Não foi possível carregar as unidades: ${branchesError.message}`)
+    .order('name'), 'carregar as unidades')
 
   const branches  = branchesRaw ?? []
   const branchIds = branches.map(b => b.id)
@@ -130,14 +128,13 @@ export default async function AdminDashboardPage({
     procedureStats,
     professionalStats,
     clientStats,
-    ltvStats,
-    { count: totalClientsEver },
-    { data: todayApptsRaw },
-    { data: pendingPlansRaw },
-    { data: bpsRaw },
-    { data: proceduresRaw },
-    { data: stockMovementsRaw },
-    { data: clientsDemoRaw },
+    totalClientsEver,
+    todayApptsRaw,
+    pendingPlansRaw,
+    bpsRaw,
+    proceduresRaw,
+    stockTurnover,
+    demografia,
   ] = needsCore ? await Promise.all([
 
     // Núcleo agregado no Postgres: receita, atendimentos, novos clientes,
@@ -150,68 +147,55 @@ export default async function AdminDashboardPage({
     getTopProfessionals({ ...metricArgs, limit: 5 }),
     getTopClients({ ...metricArgs, limit: 10 }),
 
-    // LTV desde sempre. O limite alto é do SQL, não do PostgREST: antes esta
-    // consulta trazia "todas" as transações da história e era cortada em 1000.
-    getTopClients({
-      tenantId: ctx.tenantId!, branchIds,
-      from: new Date(Date.UTC(2000, 0, 1)), to: endDate, limit: 5000,
-    }),
-
     // Total de clientes da rede (all time)
-    admin.from('clients')
+    contar(admin.from('clients')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true),
+      .eq('is_active', true), 'contar os clientes da rede'),
 
     // Agendamentos de hoje (exceto cancelados e no-show)
-    admin.from('appointments')
+    ler(admin.from('appointments')
       .select('id, status, branch_id')
       .in('branch_id', branchIds)
       .gte('scheduled_at', startOfToday.toISOString())
       .lte('scheduled_at', endOfToday.toISOString())
       .neq('status', 'CANCELLED')
-      .neq('status', 'NO_SHOW'),
+      .neq('status', 'NO_SHOW'), 'carregar os agendamentos de hoje'),
 
     // Planos de tratamento aguardando checkout
-    admin.from('treatment_plans')
+    ler(admin.from('treatment_plans')
       .select('id, branch_id, created_at, clients(name), branches(name, slug)')
       .in('branch_id', branchIds)
       .eq('status', 'PROPOSED')
       .order('created_at', { ascending: true })
-      .limit(20),
+      .limit(20), 'carregar os planos aguardando checkout'),
 
     // Estoque: produtos com min_stock configurado OU zerados (para indicador de saúde)
-    admin.from('branch_product_stock')
+    ler(admin.from('branch_product_stock')
       .select('current_stock, min_stock, branch_id, products(name, is_active), branches(name, slug)')
       .in('branch_id', branchIds)
       .or('min_stock.gt.0,current_stock.eq.0')
-      .order('current_stock', { ascending: true }),
+      .order('current_stock', { ascending: true }), 'carregar os saldos de estoque'),
 
     // Procedimentos ativos com custo variável (para cálculo de margem)
-    admin.from('procedures')
+    ler(admin.from('procedures')
       .select('id, name, price, labor_cost, other_costs, procedure_products(quantity, products(cost_price))')
       .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true),
+      .eq('is_active', true), 'carregar os procedimentos'),
 
-    // Giro do período: consumo em procedimentos, ao custo do movimento.
-    // Fim do PERÍODO e não "agora": o consumo que acabou de ser baixado nasce
-    // com o relógio do Postgres, que está à frente do relógio do app.
-    admin.from('stock_movements')
-      .select('quantity, unit_cost, created_at, products(cost_price)')
-      .in('branch_id', branchIds)
-      .eq('type', 'PROCEDURE_USAGE')
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', periodInfo.fullTo.toISOString()),
+    // Giro do período: consumo em procedimentos, ao custo do MOVIMENTO (não
+    // ao custo atual do produto, que mudaria o giro a cada compra). Fim do
+    // PERÍODO e não "agora": o consumo que acabou de ser baixado nasce com o
+    // relógio do Postgres, que está à frente do relógio do app. Somado no
+    // banco: em JS, passando de 1000 movimentos, subcontava.
+    getGiroDeEstoque({ branchIds, from: startDate, to: periodInfo.fullTo }),
 
-    // Demografia — todos os clientes da rede
-    admin.from('clients')
-      .select('id, name, birth_date, city, zip_code')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true),
+    // Demografia — todos os clientes da rede, contada no banco (idade, cidade,
+    // CEP e LTV por CEP). Antes vinha a base inteira e era cortada em 1000.
+    getDemografia({ tenantId: ctx.tenantId!, branchIds, to: endDate }),
   ]) : [
-    { ...EMPTY_CORE }, { ...EMPTY_CORE }, [], [], [], [], [], [],
-    { count: 0 }, { data: [] }, { data: [] }, { data: [] }, { data: [] },
-    { data: [] }, { data: [] },
+    { ...EMPTY_CORE }, { ...EMPTY_CORE }, [], [], [], [], [],
+    0, [], [], [], [], 0, { idades: [], cidades: [], ceps: [] } as Demografia,
   ]
 
   const todayAppts = (todayApptsRaw ?? []) as AgendamentoDeHoje[]
@@ -292,12 +276,6 @@ export default async function AdminDashboardPage({
   ).length
   const stockStatus: 'critical' | 'warning' | 'healthy' =
     zeroStockCount > 0 ? 'critical' : lowStockCount > 0 ? 'warning' : 'healthy'
-  // Giro ao custo do MOVIMENTO (unit_cost), não ao custo atual do produto —
-  // a coluna existe e antes nem era selecionada, então o giro era recalculado
-  // toda vez que o preço de compra mudava.
-  const stockTurnover = ((stockMovementsRaw ?? []) as unknown as MovimentoLido[])
-    .reduce((s, m) => s + Math.abs(Number(m.quantity)) * Number(m.unit_cost ?? m.products?.cost_price ?? 0), 0)
-
   // Despesas do período. Simétrico à receita: só o que foi efetivamente pago
   // (antes a receita exigia is_paid e a despesa não, então o "lucro" misturava
   // caixa de um lado com competência do outro).
@@ -436,17 +414,9 @@ export default async function AdminDashboardPage({
   }))
 
   // 8. Distribuição de clientes por faixa etária
-  const clientsDemo = (clientsDemoRaw ?? []) as ClienteLido[]
-  const now2        = new Date()
-  const ageBuckets: Record<string, number> = { '< 18': 0, '18–25': 0, '26–35': 0, '36–45': 0, '46–55': 0, '55+': 0 }
-  for (const c of clientsDemo) {
-    if (!c.birth_date) continue
-    const age = Math.floor((now2.getTime() - new Date(c.birth_date).getTime()) / (365.25 * 24 * 3600 * 1000))
-    const key = age < 18 ? '< 18' : age <= 25 ? '18–25' : age <= 35 ? '26–35' : age <= 45 ? '36–45' : age <= 55 ? '46–55' : '55+'
-    ageBuckets[key] = (ageBuckets[key] ?? 0) + 1
-  }
-  const sortedAgeGroups = Object.entries(ageBuckets)
-    .filter(([, count]) => count > 0)
+  // As faixas vêm contadas do banco (`metrics_demografia`); aqui só a ordem.
+  const sortedAgeGroups = demografia.idades
+    .map(i => [i.faixa, i.n] as const)
     .sort(([, a], [, b]) => b - a)
   // Percentual sobre o TOTAL de clientes classificados — é a legenda de uma
   // pizza. Antes era sobre o maior grupo, então a maior faixa mostrava sempre
@@ -457,14 +427,8 @@ export default async function AdminDashboardPage({
   }))
 
   // 9. Top 5 cidades por número de clientes
-  const cityMap: Record<string, number> = {}
-  for (const c of clientsDemo) {
-    if (!c.city) continue
-    cityMap[c.city] = (cityMap[c.city] ?? 0) + 1
-  }
-  const sortedCities  = Object.entries(cityMap).sort(([, a], [, b]) => b - a).slice(0, 5)
-  const maxCityCount  = sortedCities[0]?.[1] ?? 1
-  const topClientsByLocation = sortedCities.map(([city, count]) => ({ city, count, pct: (count / maxCityCount) * 100 }))
+  const maxCityCount  = demografia.cidades[0]?.n ?? 1
+  const topClientsByLocation = demografia.cidades.map(c => ({ city: c.cidade, count: c.n, pct: (c.n / maxCityCount) * 100 }))
 
   // -- Hotmap: dados brutos para geocoding client-side ------------------
   // O geocoding (BrasilAPI + Nominatim) é feito pelo componente HotmapSection
@@ -476,25 +440,14 @@ export default async function AdminDashboardPage({
     cityKey: [b.city, b.state].filter(Boolean).join(', '),
   }))
 
+  // Clientes e LTV por CEP vêm somados do banco. O LTV é o de
+  // `metrics_top_clients` desde sempre — a mesma regra do dinheiro, não uma
+  // segunda cópia dela.
   const hotmapRawCepCounts: Record<string, number> = {}
-  for (const c of clientsDemo) {
-    const digits = ((c.zip_code as string | null) ?? '').replace(/\D/g, '')
-    if (digits.length !== 8) continue
-    hotmapRawCepCounts[digits] = (hotmapRawCepCounts[digits] ?? 0) + 1
-  }
-
-  // LTV por cliente desde sempre, agregado no banco. Antes vinha de um select
-  // sem limite de "todas as transações da história", cortado em 1000 linhas.
-  const clientLtvMap: Record<string, number> = {}
-  for (const c of ltvStats) clientLtvMap[c.clientId] = c.totalSpent
-
   const hotmapRawCepLtv: Record<string, number> = {}
-  for (const c of clientsDemo) {
-    const digits = ((c.zip_code as string | null) ?? '').replace(/\D/g, '')
-    if (digits.length !== 8) continue
-    const ltv = clientLtvMap[c.id as string] ?? 0
-    if (ltv === 0) continue
-    hotmapRawCepLtv[digits] = (hotmapRawCepLtv[digits] ?? 0) + ltv
+  for (const c of demografia.ceps) {
+    hotmapRawCepCounts[c.cep] = c.n
+    if (c.ltv > 0) hotmapRawCepLtv[c.cep] = c.ltv
   }
 
   // -- Comercial: funil de leads por estágio + conversão (gate crm) --------
@@ -541,10 +494,10 @@ export default async function AdminDashboardPage({
         totalCampaigns  = campaigns.length
       }
     } catch { /* integração indisponível → connected=false */ }
-    const { count: notifActive } = await admin
+    const notifActive = await contar(admin
       .from('notification_campaigns').select('id', { count: 'exact', head: true })
-      .eq('tenant_id', ctx.tenantId!).eq('status', 'ACTIVE')
-    marketing = { connected, spend, reach, activeCampaigns, totalCampaigns, notifActive: notifActive ?? 0 }
+      .eq('tenant_id', ctx.tenantId!).eq('status', 'ACTIVE'), 'contar as campanhas ativas')
+    marketing = { connected, spend, reach, activeCampaigns, totalCampaigns, notifActive }
   }
 
   return (

@@ -20,6 +20,7 @@ import { SettingsGeral } from '@/components/admin/settings-geral'
 import { lerDadosDaRede, lerVisibilidadeDoInbox } from '@/actions/rede'
 import { SettingsVisibilidadeInbox } from '@/components/admin/settings-visibilidade-inbox'
 import { lerCaixas } from '@/lib/inbox/visibilidade'
+import { ler } from '@/lib/db'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -113,43 +114,45 @@ export async function Configuracoes({
   const wantsRoles = activeTab === 'permissions'
   const wantsForms = activeModule === 'forms'
 
-  const [{ data: allRoles, error: rolesError }, { data: overrides }, { data: abasDeRelatorio }, { data: integrationRows }, { data: formRows }] = await Promise.all([
+  const [allRoles, overrides, abasDeRelatorio, integrationRows, formRows] = await Promise.all([
     // Admin client de propósito: a policy de SELECT em `users` limita quem não
     // é da rede à própria unidade, e a contagem sairia menor do que a real —
     // "0 pessoas" num cargo que tem gente em outra unidade é pior que nada.
     wantsRoles
-      ? admin
+      ? ler(admin
           .from('tenant_roles')
           .select('id, key, label, is_system, inbox_caixas, users(count)')
           .eq('tenant_id', ctx.tenantId!)
           .order('is_system', { ascending: false })
-          .order('created_at')
-      : { data: [], error: null },
+          .order('created_at'), 'carregar os cargos')
+      : [],
+    // Matriz e abas de relatório: uma falha aqui mostraria o cargo SEM
+    // permissão nenhuma, e salvar gravaria isso por cima do que existe.
     wantsRoles
-      ? supabase
+      ? ler(supabase
           .from('role_permissions')
           .select('role_id, module, level, scope')
-          .eq('tenant_id', ctx.tenantId!)
-      : { data: [] },
+          .eq('tenant_id', ctx.tenantId!), 'carregar as permissões dos cargos')
+      : [],
     wantsRoles
-      ? supabase
+      ? ler(supabase
           .from('role_report_tabs')
           .select('role_id, tab')
-          .eq('tenant_id', ctx.tenantId!)
-      : { data: [] },
+          .eq('tenant_id', ctx.tenantId!), 'carregar as abas de relatório dos cargos')
+      : [],
     activeTab === 'integrations'
-      ? admin
+      ? ler(admin
           .from('integration_configs')
           .select('id, provider, config, is_active, updated_at')
-          .eq('tenant_id', ctx.tenantId!)
-      : { data: [] },
+          .eq('tenant_id', ctx.tenantId!), 'carregar as integrações')
+      : [],
     wantsForms
-      ? admin
+      ? ler(admin
           .from('forms')
           .select('id, name, schema, is_active')
           .eq('tenant_id', ctx.tenantId!)
-          .order('created_at')
-      : { data: [] },
+          .order('created_at'), 'carregar as fichas')
+      : [],
   ])
 
   // Só carrega quando a aba está aberta: a lista não é usada nas outras.
@@ -181,9 +184,9 @@ export async function Configuracoes({
     isActive: !!r.is_active,
   }))
 
-  // Falha na consulta de cargos não é "a rede não tem cargo": sem checar, a
-  // tela mostraria a lista vazia e convidaria a recriar o que já existe.
-  if (rolesError) console.error('[configuracoes] tenant_roles:', rolesError.message)
+  // Falha na consulta de cargos não é "a rede não tem cargo": o `ler` acima
+  // para a tela em vez de mostrar a lista vazia e convidar a recriar o que já
+  // existe (antes o erro ia só para o log).
 
   type RawRole = {
     id: string; key: string; label: string; is_system: boolean; inbox_caixas?: string

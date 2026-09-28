@@ -8,7 +8,7 @@ import { MarketingAttribution } from '@/components/admin/marketing-attribution'
 import type { Campaign, DatePreset } from '@/lib/ads/types'
 import { SegSelect } from '@/components/shared/seg-select'
 import { startOfDayTZ, addDaysTZ } from '@/lib/datetime'
-import { ler } from '@/lib/db'
+import { ler, contar } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -117,7 +117,7 @@ export default async function AdminMarketingPage({
   // filtro só de utm_source esses leads ficavam de fora, o que inflava o CPL.
   const attributionFilter = 'utm_source.not.is.null,fbclid.not.is.null,gclid.not.is.null,ctwa_clid.not.is.null'
 
-  const [attributedLeads, { count: attributedLeadsTotal }] = await Promise.all([
+  const [attributedLeads, attributedLeadsTotal] = await Promise.all([
     // A etapa vem pelo embed: a tabela da atribuição mostra `crm_stage`, que
     // nunca estava no select — toda linha dizia "Lead", qualquer que fosse a
     // etapa (2026-09-27).
@@ -130,7 +130,7 @@ export default async function AdminMarketingPage({
       .order('created_at', { ascending: false })
       .limit(200), 'carregar os leads atribuídos'),
 
-    // O CPL e a taxa de conversão precisam do total, não da amostra exibida:
+    contar(// O CPL e a taxa de conversão precisam do total, não da amostra exibida:
     // com mais de 200 leads o CPL travava em `gasto / 200` e crescia junto
     // com o investimento, como se cada lead custasse mais.
     admin
@@ -138,7 +138,7 @@ export default async function AdminMarketingPage({
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', ctx.tenantId!)
       .or(attributionFilter)
-      .gte('created_at', since),
+      .gte('created_at', since), 'contar os leads atribuídos'),
   ])
 
   const leads = ((attributedLeads ?? []) as unknown as {
@@ -202,7 +202,7 @@ export default async function AdminMarketingPage({
         <MarketingOverview
           metaCampaigns={metaResult.data}
           googleCampaigns={googleResult.data}
-          attributedLeadsCount={attributedLeadsTotal ?? leads.length}
+          attributedLeadsCount={attributedLeadsTotal}
         />
       )}
 

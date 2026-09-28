@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -64,51 +65,51 @@ export default async function AdminClientProfilePage({
   }
 
   const [
-    { data: appts },
-    { data: loyalty },
-    { data: medRecord },
-    { data: pkgs },
-    { data: docsRaw },
-    { data: txAppts },
-    { data: directTxRaw },
-    { data: credits },
-    { data: branchesRaw },
-    { data: activePlansRaw },
-    { data: allPlansHistRaw },
+    appts,
+    loyalty,
+    medRecord,
+    pkgs,
+    docsRaw,
+    txAppts,
+    directTxRaw,
+    credits,
+    branchesRaw,
+    activePlansRaw,
+    allPlansHistRaw,
   ] = await Promise.all([
-    admin
+    ler(admin
       .from('appointments')
       .select('id, scheduled_at, status, price, treatment_plan_id, created_at, completed_at, cancelled_at, professional_id, procedures(name), professional:users!professional_id(name)')
       .eq('client_id', id)
       .order('scheduled_at', { ascending: false })
-      .limit(60),
+      .limit(60), 'carregar os agendamentos do cliente'),
 
-    admin
+    ler(admin
       .from('loyalty_accounts')
       .select('balance')
       .eq('client_id', id)
-      .maybeSingle(),
+      .maybeSingle(), 'carregar os pontos'),
 
-    admin
+    ler(admin
       .from('medical_records')
       .select('id, general_anamnesis, consent_terms(id, title, signed_at, signed_via), entries:medical_record_entries(appointment_id, notes, form_data, created_at)')
       .eq('client_id', id)
-      .maybeSingle(),
+      .maybeSingle(), 'carregar o prontuário'),
 
-    admin
+    ler(admin
       .from('client_packages')
-      .select('id, total_sessions, used_sessions, expires_at, service_packages(name, procedure_id, price, procedures(name, duration_min))')
+      .select('id, total_sessions, used_sessions, expires_at, purchased_at, service_packages(name, procedure_id, price, procedures(name, duration_min))')
       .eq('client_id', id)
       .order('purchased_at', { ascending: false })
-      .limit(10),
+      .limit(10), 'carregar os pacotes'),
 
-    admin
+    ler(admin
       .from('client_documents')
       .select('id, name, category, file_path, file_name, file_size, mime_type, uploaded_by:users!uploaded_by(name), created_at')
       .eq('client_id', id)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false }), 'carregar os documentos'),
 
-    admin
+    ler(admin
       .from('appointments')
       .select(`
         scheduled_at,
@@ -121,41 +122,41 @@ export default async function AdminClientProfilePage({
       .eq('client_id', id)
       .not('transaction', 'is', null)
       .order('scheduled_at', { ascending: false })
-      .limit(50),
+      .limit(50), 'carregar os pagamentos dos atendimentos'),
 
-    admin
+    ler(admin
       .from('financial_transactions')
       .select('id, description, amount, payment_method, is_paid, paid_at, created_at')
       .eq('client_id', id)
       .order('created_at', { ascending: false })
-      .limit(50),
+      .limit(50), 'carregar os lançamentos do cliente'),
 
-    admin
+    ler(admin
       .from('internal_credits')
       .select('id, amount, description, created_at')
       .eq('client_id', id)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false }), 'carregar os créditos'),
 
-    admin
+    ler(admin
       .from('branches')
       .select('id, name, slug')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
-      .order('name'),
+      .order('name'), 'carregar as unidades'),
 
-    admin
+    ler(admin
       .from('treatment_plans')
       .select('id, status, treatment_plan_sessions(id, treatment_plan_session_procedures(procedure_id, price, procedures(name, duration_min)))')
       .eq('client_id', id)
       .eq('status', 'ACCEPTED')
       .order('created_at', { ascending: false })
-      .limit(1),
+      .limit(1), 'carregar o plano aceito'),
 
-    admin
+    ler(admin
       .from('treatment_plans')
       .select('id, status, created_at, updated_at')
       .eq('client_id', id)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false }), 'carregar o histórico de planos'),
   ])
 
   // Filial "efetiva": a vinculada ao cliente ou, na ausência, a primeira ativa
@@ -370,8 +371,7 @@ export default async function AdminClientProfilePage({
 
   for (const pkg of pkgsArray) {
     const sp      = pkg.service_packages as { name?: string; price?: number } | null
-    const pkgDate = (pkg as { purchased_at?: string | null; created_at?: string | null }).purchased_at
-      ?? (pkg as { created_at?: string | null }).created_at ?? undefined
+    const pkgDate = (pkg as { purchased_at?: string | null }).purchased_at ?? undefined
     if (pkgDate) {
       history.push({ id: uid('pkg'), date: pkgDate, type: 'PACKAGE_PURCHASED', title: `Pacote adquirido: ${sp?.name ?? 'Pacote'}`, subtitle: `${pkg.total_sessions} sessões`, amount: Number(sp?.price ?? 0), link: null })
     }

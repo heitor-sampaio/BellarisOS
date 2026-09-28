@@ -760,11 +760,11 @@ async function finishSessionInterno(
     }).eq('id', appointmentId), 'concluir o atendimento')
 
     // 2. Prontuário
-    let { data: medRecord } = await admin
+    let medRecord = await ler(admin
       .from('medical_records')
       .select('id')
       .eq('client_id', appt.client_id)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o prontuário do cliente')
 
     if (!medRecord) {
       const newRecord = await ler(admin
@@ -878,19 +878,21 @@ async function finishSessionInterno(
     for (const item of productsUsed) {
       if (!item.productId || !item.quantity || item.quantity <= 0) continue
 
-      const [{ data: bps }, { data: prod }] = await Promise.all([
-        admin.from('branch_product_stock')
+      // Leitura que falha não pode virar "saldo 0": a baixa seria calculada
+      // sobre um número inventado e gravada como verdade no movimento.
+      const [bps, prod] = await Promise.all([
+        ler(admin.from('branch_product_stock')
           .select('current_stock, min_stock, current_rendimento')
           .eq('product_id', item.productId)
           .eq('branch_id', appt.branch_id)
-          .maybeSingle(),
+          .maybeSingle(), 'buscar o saldo do insumo'),
         // Da rede: o id vem do navegador (`products_used`), e um produto de
         // outra rede ganharia saldo e movimento nesta unidade.
-        admin.from('products')
+        ler(admin.from('products')
           .select('name, unit, units_per_package, consumption_unit, cost_price')
           .eq('id', item.productId)
           .eq('tenant_id', ctx.tenantId!)
-          .maybeSingle(),
+          .maybeSingle(), 'buscar o insumo'),
       ])
       if (!prod) continue
 
@@ -1141,11 +1143,11 @@ async function saveDraftNotesInterno(
     if (isFinalised && !isAdmin) return { error: 'Registro finalizado. Apenas gerentes podem editar.' }
 
     // Get or create medical_records
-    let { data: medRecord } = await admin
+    let medRecord = await ler(admin
       .from('medical_records')
       .select('id')
       .eq('client_id', appt.client_id)
-      .maybeSingle()
+      .maybeSingle(), 'buscar o prontuário do cliente')
 
     if (!medRecord) {
       const newRecord = await ler(admin

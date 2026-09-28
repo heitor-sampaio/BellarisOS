@@ -7,7 +7,7 @@ import {
   DEFAULT_FUNNEL_NAME, DEFAULT_STAGES, NEW_FUNNEL_STAGES,
   type CRMFunnel, type CRMStage,
 } from '@/lib/crm'
-import { ler } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 const FUNNEL_COLS = 'id, name, is_default, position, archived_at'
 const STAGE_COLS  = 'id, funnel_id, name, color, position, outcome'
@@ -324,13 +324,15 @@ export async function reorderFunnels(orderedIds: string[], slug: string) {
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
+    // Cada update olhado: com o erro descartado, a ordem nova "salvava" e a
+    // tela voltava à antiga no próximo carregamento, sem aviso.
     await Promise.all(
       orderedIds.map((id, idx) =>
-        admin
+        gravar(admin
           .from('crm_funnels')
           .update({ position: idx })
           .eq('id', id)
-          .eq('tenant_id', ctx.tenantId!),
+          .eq('tenant_id', ctx.tenantId!), 'reordenar os funis'),
       ),
     )
 

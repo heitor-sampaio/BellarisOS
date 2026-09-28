@@ -34,9 +34,12 @@ export async function SessaoDeAtendimento({
   const admin = createAdminClient()
 
 
-  // 1ª rodada: appointment + MRE em paralelo
-  const [{ data: apptRaw }, { data: mreRaw }] = await Promise.all([
-    admin
+  // 1ª rodada: appointment + MRE em paralelo.
+  //
+  // `maybeSingle` + `ler`: "não existe" continua sendo 404, e uma FALHA da
+  // consulta deixa de se disfarçar de 404 — antes as duas davam na mesma tela.
+  const [apptRaw, mreRaw] = await Promise.all([
+    ler(admin
       .from('appointments')
       .select(`
         id, status, scheduled_at, started_at, completed_at, cancelled_at,
@@ -50,13 +53,13 @@ export async function SessaoDeAtendimento({
       `)
       .eq('id', id)
       .eq('branch_id', branchId)
-      .single(),
+      .maybeSingle(), 'carregar o atendimento'),
 
-    admin
+    ler(admin
       .from('medical_record_entries')
       .select('notes, intercurrences, form_data')
       .eq('appointment_id', id)
-      .maybeSingle(),
+      .maybeSingle(), 'carregar a ficha do atendimento'),
   ])
 
   if (!apptRaw) notFound()
@@ -82,23 +85,23 @@ export async function SessaoDeAtendimento({
   const isPartOfPlan    = !!treatmentPlanId
 
   const [
-    { data: medRecord }, { data: procProductsRaw }, branchProductsRaw,
-    professionalsRaw, { data: historyRaw }, { data: paymentRaw },
-    { data: allProceduresRaw }, { data: packagesRaw }, { data: planRaw },
-    { data: planSessionRaw }, sessaoDePacote,
+    medRecord, procProductsRaw, branchProductsRaw,
+    professionalsRaw, historyRaw, paymentRaw,
+    allProceduresRaw, packagesRaw, planRaw,
+    planSessionRaw, sessaoDePacote,
   ] = await Promise.all([
-    admin
+    ler(admin
       .from('medical_records')
       .select('general_anamnesis')
       .eq('client_id', cli.id)
-      .maybeSingle(),
+      .maybeSingle(), 'carregar a anamnese do cliente'),
 
     procedureId
-      ? admin
+      ? ler(admin
           .from('procedure_products')
           .select('product_id, quantity, products(name, unit, consumption_unit, units_per_package)')
-          .eq('procedure_id', procedureId)
-      : Promise.resolve({ data: [] as never[], error: null }),
+          .eq('procedure_id', procedureId), 'carregar os insumos do procedimento')
+      : Promise.resolve([]),
 
     getCachedProductsReference(ctx.tenantId!),
 
@@ -107,17 +110,17 @@ export async function SessaoDeAtendimento({
     // com o erro descartado, a lista de profissionais para reatribuir ficava vazia.
     getCachedBranchProfessionals(branchId, ctx.tenantId!),
 
-    admin
+    ler(admin
       .from('appointment_history')
       .select('id, changed_by_name, action, description, created_at')
       .eq('appointment_id', id)
-      .order('created_at', { ascending: false }),
+      .order('created_at', { ascending: false }), 'carregar o histórico do atendimento'),
 
-    admin
+    ler(admin
       .from('financial_transactions')
       .select('id, payment_method, amount')
       .eq('appointment_id', id)
-      .maybeSingle(),
+      .maybeSingle(), 'carregar o pagamento do atendimento'),
 
     // Todos os procedimentos ativos da rede (para o plano de tratamento) — com
     // insumos embutidos.
@@ -132,17 +135,17 @@ export async function SessaoDeAtendimento({
       .select('id, name, category, duration_min, price, procedure_products(product_id, quantity, products(id, name, unit, consumption_unit, units_per_package))')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
-      .order('name'), 'carregar os procedimentos do plano').then(data => ({ data })),
+      .order('name'), 'carregar os procedimentos do plano'),
 
     // Pacotes disponíveis
-    admin
+    ler(admin
       .from('service_packages')
       .select('id, name, procedure_id, total_sessions, price')
       .eq('tenant_id', ctx.tenantId!)
-      .eq('is_active', true),
+      .eq('is_active', true), 'carregar os pacotes'),
 
     // Plano de tratamento existente para este appointment
-    admin
+    ler(admin
       .from('treatment_plans')
       .select(`
         id, status, professional_notes,
@@ -152,16 +155,16 @@ export async function SessaoDeAtendimento({
         )
       `)
       .eq('evaluation_appointment_id', id)
-      .maybeSingle(),
+      .maybeSingle(), 'carregar o plano gerado nesta avaliação'),
 
     // Sessão do plano vinculada a este agendamento (para sessões de execução)
     isPartOfPlan
-      ? admin
+      ? ler(admin
           .from('treatment_plan_sessions')
           .select('treatment_plan_session_procedures(products)')
           .eq('appointment_id', id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+          .maybeSingle(), 'carregar a sessão do plano')
+      : Promise.resolve(null),
 
     // Sessão de pacote: já paga na venda do pacote, não se cobra de novo
     // (2026-09-27). O servidor recusa em `confirmPayment`; aqui é o botão.

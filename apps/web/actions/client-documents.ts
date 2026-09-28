@@ -5,7 +5,7 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, tentar } from '@/lib/db'
 
 const BUCKET        = CLIENT_DOCS_BUCKET
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -78,8 +78,9 @@ export async function uploadClientDocument(
   })
 
   if (dbError) {
-    // rollback storage upload
-    await admin.storage.from(BUCKET).remove([path])
+    // Desfaz o upload. `tentar`: o erro que importa é o do registro, que vai
+    // para a tela; um arquivo que sobrar fica registrado no log para limpeza.
+    await tentar(admin.storage.from(BUCKET).remove([path]), 'desfazer o upload do documento')
     return { error: `Erro ao salvar: ${dbError.message}` }
   }
 

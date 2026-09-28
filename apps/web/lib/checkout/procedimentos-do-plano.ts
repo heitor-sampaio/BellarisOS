@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 
 /**
  * Procedimentos e insumos que alimentam o editor de plano de tratamento.
@@ -12,8 +13,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 export async function procedimentosParaPlano(tenantId: string) {
   const admin = createAdminClient()
 
-  const [{ data: procsRaw }, { data: prodsRaw }] = await Promise.all([
-    admin
+  const [procsRaw, prodsRaw] = await Promise.all([
+    ler(admin
       .from('procedures')
       .select('id, name, category, duration_min, price, procedure_products(product_id, quantity, products(id, name, unit))')
       .eq('tenant_id', tenantId)
@@ -21,13 +22,13 @@ export async function procedimentosParaPlano(tenantId: string) {
       // A avaliação deixou de ser uma entidade e não precisa mais ser
       // excluída à mão: se ela vale como item de plano é escolha de quem monta
       // o plano, como qualquer outro procedimento (2026-09-25).
-      .order('name'),
-    admin
+      .order('name'), 'carregar os procedimentos'),
+    ler(admin
       .from('products')
       .select('id, name, unit')
       .eq('tenant_id', tenantId)
       .eq('is_active', true)
-      .order('name'),
+      .order('name'), 'carregar os produtos'),
   ])
 
   type RawProd = { product_id: string; quantity: number; products: { id: string; name: string; unit: string } | null }

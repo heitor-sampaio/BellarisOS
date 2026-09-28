@@ -72,6 +72,21 @@ export async function ler<T>(consulta: PromiseLike<Resposta<T>>, oQue: string): 
 }
 
 /**
+ * Conta — e para o fluxo se a contagem falhar.
+ *
+ * Para `select('id', { count: 'exact', head: true })`: ali o dado é o
+ * `count`, não o `data`, e `const { count } = await …` descartava o erro do
+ * mesmo jeito que `{ data }` — uma contagem que falhou virava "0" na tela.
+ */
+export async function contar(
+  consulta: PromiseLike<{ count: number | null; error: FalhaDoSupabase | null }>, oQue: string,
+): Promise<number> {
+  const { count, error } = await consulta
+  if (error) throw registrar(oQue, error)
+  return count ?? 0
+}
+
+/**
  * Tenta, registra a falha e segue em frente — para o que é acessório de
  * verdade: o retrato de uma versão, o aviso que acompanha uma ação que já
  * aconteceu. Devolve se deu certo, para quem quiser contar.

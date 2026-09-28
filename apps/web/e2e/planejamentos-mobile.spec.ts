@@ -42,11 +42,13 @@ test('criar um plano abre a tela dele; voltar traz a lista', async ({ page }) =>
 
   await page.getByRole('button', { name: 'Criar', exact: true }).click()
 
+  // 15 s: criar o plano compila a rota dele no dev; no bloco mais carregado da
+  // regressão os 5 s padrão estouravam antes de a linha existir.
   await expect.poll(async () => {
     const { data } = await banco().from('treatment_plans').select('id').eq('name', nome).maybeSingle()
     planId = (data?.id as string) ?? null
     return planId
-  }, { message: 'o plano de teste deveria ter sido criado' }).not.toBeNull()
+  }, { message: 'o plano de teste deveria ter sido criado', timeout: 15_000 }).not.toBeNull()
 
   // Criar já abre o plano…
   await expect(page).toHaveURL(new RegExp(`/admin/planejamentos/${planId}$`))

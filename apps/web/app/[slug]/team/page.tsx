@@ -46,17 +46,17 @@ export default async function TeamPage({
 
   const branchId = branch?.id ?? ctx.branchId!
 
-  const [{ data: members }, { data: tenantRoles }] = await Promise.all([
-    supabase
+  const [members, tenantRoles] = await Promise.all([
+    ler(supabase
       .from('users')
       .select('id, name, email, role_id, is_active, provides_services')
       .eq('branch_id', branchId)
-      .order('name'),
-    supabase
+      .order('name'), 'carregar a equipe'),
+    ler(supabase
       .from('tenant_roles')
       .select('id, key, label, is_system')
       .eq('tenant_id', ctx.tenantId!)
-      .order('label'),
+      .order('label'), 'carregar os cargos'),
   ])
 
   const allRoles = tenantRoles ?? []

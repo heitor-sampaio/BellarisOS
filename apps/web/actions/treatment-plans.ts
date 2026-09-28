@@ -7,7 +7,7 @@ import { EVENTOS } from '@estetica-os/types'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, tentar, contar, mensagemDoErro } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
@@ -765,11 +765,11 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
   }
 
   // 2. Pelo menos 1 sessão
-  const { count: itemCount } = await admin
+  const itemCount = await contar(admin
     .from('treatment_plan_sessions')
     .select('id', { count: 'exact', head: true })
-    .eq('plan_id', planId)
-  if (!itemCount || itemCount === 0) {
+    .eq('plan_id', planId), 'contar as sessões do plano')
+  if (itemCount === 0) {
     return { error: 'Adicione ao menos uma sessão ao plano antes de enviar.' }
   }
 
@@ -915,12 +915,14 @@ async function cancelTreatmentPlanInterno(
   // Cancelar tratamento é gestão de procedimentos. Para os de múltiplas sessões
   // exige-se também abrangência de rede — que é atributo do membro
   // (`users.branch_id = null`), não mais o nome do cargo NETWORK_ADMIN.
-  const { count: sessionCount } = await admin
+  // É a trava de quem pode cancelar: contagem que falha não pode virar "uma
+  // sessão só" e liberar o cancelamento a quem não tem abrangência de rede.
+  const sessionCount = await contar(admin
     .from('treatment_plan_sessions')
     .select('id', { count: 'exact', head: true })
-    .eq('plan_id', planId)
+    .eq('plan_id', planId), 'contar as sessões do plano')
 
-  if ((sessionCount ?? 0) > 1 && ctx.branchId !== null) {
+  if (sessionCount > 1 && ctx.branchId !== null) {
     return { error: 'Tratamentos com múltiplas sessões só podem ser cancelados por quem tem abrangência de rede.' }
   }
 
@@ -1084,8 +1086,8 @@ async function generateEvaluationPlanInterno(
 
   // 4. Observações do atendimento → medical_record_entries
   if (sessionNotes.trim() || sessionIntercurrences.trim()) {
-    let { data: medRecord } = await admin
-      .from('medical_records').select('id').eq('client_id', appt.client_id).maybeSingle()
+    let medRecord = await ler(admin
+      .from('medical_records').select('id').eq('client_id', appt.client_id).maybeSingle(), 'buscar o prontuário do cliente')
     if (!medRecord) {
       const newRec = await ler(admin.from('medical_records').insert({ client_id: appt.client_id }).select('id').single(), 'abrir o prontuário do cliente')
       medRecord = newRec
@@ -1874,35 +1876,32 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
     if (planErr || !plan) return { error: 'Plano não encontrado.' }
 
     // 2. Busca em paralelo: profissional, avaliação, sessões, agendamentos e anamnese
-    const [
-      { data: professional },
-      { data: evalAppt },
-      { data: sessionsRaw },
-      { data: appts },
-      { data: medRecord },
-    ] = await Promise.all([
+    // `maybeSingle` onde era `single`: profissional ou avaliação apagados
+    // continuam sendo "sem nome"/"sem avaliação", como antes; falha de leitura
+    // é que deixou de virar ficha em branco.
+    const [professional, evalAppt, sessionsRaw, appts, medRecord] = await Promise.all([
       plan.professional_id
-        ? admin.from('users').select('name').eq('id', plan.professional_id).single()
-        : Promise.resolve({ data: null }),
+        ? ler(admin.from('users').select('name').eq('id', plan.professional_id).maybeSingle(), 'buscar o profissional')
+        : Promise.resolve(null),
 
       plan.evaluation_appointment_id
-        ? admin.from('appointments').select('id, scheduled_at, notes').eq('id', plan.evaluation_appointment_id).single()
-        : Promise.resolve({ data: null }),
+        ? ler(admin.from('appointments').select('id, scheduled_at, notes').eq('id', plan.evaluation_appointment_id).maybeSingle(), 'buscar a avaliação')
+        : Promise.resolve(null),
 
-      admin.from('treatment_plan_sessions')
+      ler(admin.from('treatment_plan_sessions')
         .select('id, sort_order, treatment_plan_session_procedures(procedure_id, price, procedures(name, duration_min))')
         .eq('plan_id', planId)
-        .order('sort_order'),
+        .order('sort_order'), 'carregar as sessões do plano'),
 
-      admin.from('appointments')
+      ler(admin.from('appointments')
         .select('id, scheduled_at, status, completed_at, notes')
         .eq('treatment_plan_id', planId)
-        .order('scheduled_at'),
+        .order('scheduled_at'), 'carregar os agendamentos do plano'),
 
-      admin.from('medical_records')
+      ler(admin.from('medical_records')
         .select('general_anamnesis')
         .eq('client_id', clientId)
-        .maybeSingle(),
+        .maybeSingle(), 'buscar a anamnese do cliente'),
     ])
 
     // 3. Zipa sessões com agendamentos pela ordem (sort_order ↔ scheduled_at asc)

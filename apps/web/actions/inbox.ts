@@ -838,8 +838,8 @@ async function buscarOutrasThreads(
   const caixaIds = [...new Set(linhas.map(l => l.whatsapp_number_id).filter(Boolean))] as string[]
   const rotulos = new Map<string, string>()
   if (caixaIds.length > 0) {
-    const { data: caixas } = await admin
-      .from('whatsapp_numbers').select('id, label').in('id', caixaIds)
+    const caixas = await ler(admin
+      .from('whatsapp_numbers').select('id, label').in('id', caixaIds), 'carregar o nome das caixas')
     for (const n of (caixas ?? []) as { id: string; label: string }[]) rotulos.set(n.id, n.label)
   }
 
@@ -900,10 +900,9 @@ async function buscarOportunidades(
   if (linhas.length === 0) return []
 
   const porEtapa = new Map(stages.map(s => [s.id, s]))
-  const funis = new Map(
-    (await admin.from('crm_funnels').select('id, name').eq('tenant_id', tenantId)).data
-      ?.map(f => [f.id as string, f.name as string] as const) ?? [],
-  )
+  const funisLidos = await ler(
+    admin.from('crm_funnels').select('id, name').eq('tenant_id', tenantId), 'carregar os funis')
+  const funis = new Map((funisLidos ?? []).map(f => [f.id as string, f.name as string] as const))
 
   const ownerIds = [...new Set(linhas.map(l => l.owner_id).filter(Boolean))] as string[]
   const donos = new Map<string, string>()
@@ -1778,9 +1777,13 @@ export async function sendTemplateMessage(
     ?? (conv as { contact_external_id: string | null }).contact_external_id
   if (!destino) return { ok: false, error: 'Esta conversa não tem um destinatário identificado.' }
 
+  // Quem envia — como em `sendMessage`: a falha fica registrada e o id do
+  // membro da sessão cobre, porque a autoria não pode impedir o envio.
   const perfil = await admin
     .from('users').select('id, name').eq('auth_id', ctx.userId).maybeSingle()
-  const membro = perfil.data as { id: string; name: string } | null
+  if (perfil.error) console.error('[inbox] perfil de quem envia:', perfil.error.message)
+  const membro = (perfil.data as { id: string; name: string } | null)
+    ?? (ctx.internalUserId ? { id: ctx.internalUserId, name: ctx.userName } : null)
 
   // O histórico guarda o texto JÁ preenchido: é o que o cliente leu. O vínculo
   // com o template fica em `template_id`, para auditar o que foi disparado.
@@ -1911,9 +1914,13 @@ export async function sendMediaMessage(
     }
   }
 
+  // Quem envia — como em `sendMessage`: a falha fica registrada e o id do
+  // membro da sessão cobre, porque a autoria não pode impedir o envio.
   const perfil = await admin
     .from('users').select('id, name').eq('auth_id', ctx.userId).maybeSingle()
-  const membro = perfil.data as { id: string; name: string } | null
+  if (perfil.error) console.error('[inbox] perfil de quem envia:', perfil.error.message)
+  const membro = (perfil.data as { id: string; name: string } | null)
+    ?? (ctx.internalUserId ? { id: ctx.internalUserId, name: ctx.userName } : null)
 
   let guardado: { path: string; url: string }
   try {

@@ -159,12 +159,12 @@ export async function createCrmAppointment(
   }
 
   const leadRow = input.leadId
-    ? (await admin
+    ? await ler(admin
         .from('leads')
         .select('id, client_id, conversation_id')
         .eq('id', input.leadId)
         .eq('tenant_id', ctx.tenantId!)
-        .maybeSingle()).data
+        .maybeSingle(), 'buscar a oportunidade')
     : null
   if (input.leadId && !leadRow) return { error: 'Oportunidade não encontrada.' }
 
@@ -230,9 +230,13 @@ export async function createCrmAppointment(
   // Sem oportunidade não há linha do tempo a escrever: agendar pelo contato é
   // legítimo e não inventa um negócio que ninguém abriu.
   if (input.leadId) {
-    const { data: proc } = input.procedureId
+    // O agendamento JÁ EXISTE aqui: o nome do procedimento só enfeita a linha
+    // do tempo. Lançar faria a tela dizer "falhou" para um agendamento criado,
+    // e quem agenda tentaria de novo — então a falha é registrada e segue.
+    const { data: proc, error: erroProc } = input.procedureId
       ? await admin.from('procedures').select('name').eq('id', input.procedureId).maybeSingle()
-      : { data: null }
+      : { data: null, error: null }
+    if (erroProc) console.error('[createCrmAppointment] nome do procedimento:', erroProc.message)
 
     await registrarEventoLead({
       tenantId:    ctx.tenantId!,

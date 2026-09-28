@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, contar } from '@/lib/db'
 
 function getWebPush() {
   webpush.setVapidDetails(
@@ -106,14 +106,14 @@ export async function getCampaign(id: string): Promise<{
   assertPermission(ctx, 'marketing', 'VIEW')
 
   const admin = createAdminClient()
-  const [{ data: camp, error }, { data: dispatches }] = await Promise.all([
+  const [{ data: camp, error }, dispatches] = await Promise.all([
     admin.from('notification_campaigns').select('*').eq('id', id).eq('tenant_id', ctx.tenantId!).single(),
-    admin
+    ler(admin
       .from('campaign_dispatches')
       .select('sent_at, status, client_id, clients(name)')
       .eq('campaign_id', id)
       .order('sent_at', { ascending: false })
-      .limit(20),
+      .limit(20), 'carregar os disparos da campanha'),
   ])
 
   if (error || !camp) throw new Error('Campanha não encontrada')
@@ -337,10 +337,9 @@ export async function previewAudienceCount(
     query = query.not('auth_id', 'is', null)
   }
 
-  const { count, error } = await query
-  if (error) return { count: 0 }
-
-  let result = count ?? 0
+  // Contagem que falha não pode virar "0 clientes": quem monta a campanha
+  // concluiria que o público está vazio.
+  let result = await contar(query, 'contar o público da campanha')
 
   // procedure_ids filter: clientes com appointments nesses procedimentos
   if (rules.procedure_ids?.length) {
@@ -354,14 +353,14 @@ export async function previewAudienceCount(
     const clientsWithProc = new Set(((apptClients ?? []) as { client_id: string }[]).map(a => a.client_id))
     // This is an over-approximation without a subquery; use count from the base query
     // filtered by intersection — for preview purposes this is acceptable
-    const { count: procCount } = await admin
+    const procCount = await contar(admin
       .from('clients')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
-      .in('id', [...clientsWithProc].slice(0, 400))
+      .in('id', [...clientsWithProc].slice(0, 400)), 'contar o público com o procedimento')
 
-    result = Math.min(result, procCount ?? 0)
+    result = Math.min(result, procCount)
   }
 
   return { count: result }

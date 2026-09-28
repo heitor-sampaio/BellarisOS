@@ -1,5 +1,6 @@
 import { type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import { preflight, jsonCors, requireExtAccess } from '@/lib/ext/http'
 
 export const dynamic = 'force-dynamic'
@@ -37,9 +38,11 @@ export async function GET(req: NextRequest) {
   // Operacional fica restrito à própria filial; comercial busca na rede inteira.
   if (ctx.branchId) query = query.eq('branch_id', ctx.branchId)
 
-  const { data } = await query
+  // Busca que falha não pode responder "nenhum cliente": a atendente
+  // cadastraria de novo quem já existe.
+  const data = await ler(query
     .or(filters.join(','))
-    .limit(10)
+    .limit(10), 'buscar os clientes')
 
   return jsonCors(req, {
     clients: (data ?? []).map((c: Record<string, unknown>) => ({

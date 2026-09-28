@@ -53,13 +53,12 @@ export default async function BranchLayout({
   // Filiais (NETWORK_ADMIN) + não-lidas em paralelo. Nome e permissões já vêm no ctx.
   const [allBranches, unreadRes] = await Promise.all([
     ctx.role === 'NETWORK_ADMIN'
-      ? supabase
+      ? ler(supabase
           .from('branches')
           .select('name, slug')
           .eq('tenant_id', ctx.tenantId!)
           .eq('is_active', true)
-          .order('name')
-          .then(r => r.data ?? [])
+          .order('name'), 'carregar as unidades da rede').then(d => d ?? [])
       : Promise.resolve([]),
     ctx.internalUserId
       ? createAdminClient()
@@ -67,10 +66,12 @@ export default async function BranchLayout({
           .select('id', { count: 'exact', head: true })
           .eq('user_id', ctx.internalUserId)
           .eq('is_received', false)
-      : Promise.resolve({ count: 0 }),
+      : Promise.resolve({ count: 0, error: null }),
   ])
 
   const permissions   = ctx.permissions
+  // O contador do sino é acessório: a falha fica no log e ele começa em zero.
+  if (unreadRes.error) console.error('[slug/layout] contar as notificações:', unreadRes.error.message)
   const initialUnread = unreadRes.count ?? 0
 
   return (

@@ -17,7 +17,7 @@ import {
   getCore, getSeries, getTopProcedures, EMPTY_CORE,
 } from '@/lib/metrics'
 import { ChevronRight, ArrowUpRight, ClipboardList } from 'lucide-react'
-import { ler } from '@/lib/db'
+import { ler, contar } from '@/lib/db'
 
 // --- Avatar colorido determinístico ------------------------------
 const PALETTE = [
@@ -130,12 +130,12 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
     core,
     prevCore,
     monthSeries,
-    { count: pendingCheckouts },
-    { data: todayAppts },
-    { count: professionalsCount },
+    pendingCheckouts,
+    todayAppts,
+    professionalsCount,
     procedureStats,
-    { data: recentVisitorIds },
-    { data: allActiveClients },
+    recentVisitorIds,
+    allActiveClients,
   ] = await Promise.all([
     // O núcleo é uma chamada só, agregada no Postgres: receita, atendimentos,
     // novos clientes e comissões saem coerentes entre si por construção.
@@ -155,9 +155,9 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       : Promise.resolve([]),
 
     canCheckout
-      ? admin.from('treatment_plans').select('id', { count: 'exact', head: true })
-          .eq('branch_id', branchId).eq('status', 'PROPOSED')
-      : Promise.resolve({ count: 0 }),
+      ? contar(admin.from('treatment_plans').select('id', { count: 'exact', head: true })
+          .eq('branch_id', branchId).eq('status', 'PROPOSED'), 'contar os planos a receber')
+      : Promise.resolve(0),
 
     // Agenda do dia: a lista em si, não uma agregação.
     canAgenda
@@ -169,14 +169,14 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
             .lte('scheduled_at', todayEnd.toISOString())
             .order('scheduled_at')
           if (proId) q = q.eq('professional_id', proId)
-          return q
+          return ler(q, 'carregar a agenda do dia')
         })()
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve([]),
 
     (canAgenda && !professionalOnly)
-      ? admin.from('users').select('id', { count: 'exact', head: true })
-          .eq('branch_id', branchId).eq('provides_services', true).eq('is_active', true)
-      : Promise.resolve({ count: 0 }),
+      ? contar(admin.from('users').select('id', { count: 'exact', head: true })
+          .eq('branch_id', branchId).eq('provides_services', true).eq('is_active', true), 'contar os profissionais')
+      : Promise.resolve(0),
 
     canProcedures
       ? getTopProcedures({
@@ -186,17 +186,17 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
       : Promise.resolve([]),
 
     canClients
-      ? admin.from('appointments').select('client_id')
+      ? ler(admin.from('appointments').select('client_id')
           .eq('branch_id', branchId)
           .in('status', ['COMPLETED', 'SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'])
-          .gte('scheduled_at', ninetyDaysAgo.toISOString())
-      : Promise.resolve({ data: [] }),
+          .gte('scheduled_at', ninetyDaysAgo.toISOString()), 'carregar as visitas recentes')
+      : Promise.resolve([]),
 
     canClients
-      ? admin.from('clients').select('id, name, phone')
+      ? ler(admin.from('clients').select('id, name, phone')
           .eq('tenant_id', ctx.tenantId!).eq('is_active', true)
-          .contains('tags', [unitTag(branch.name)])
-      : Promise.resolve({ data: [] }),
+          .contains('tags', [unitTag(branch.name)]), 'carregar os clientes da unidade')
+      : Promise.resolve([]),
   ])
 
   // -- KPIs ------------------------------------------------------

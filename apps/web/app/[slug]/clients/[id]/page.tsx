@@ -384,8 +384,7 @@ export default async function ClientProfilePage({
   // 6. Pacotes adquiridos
   for (const pkg of pkgsArray) {
     const sp       = pkg.service_packages as { name?: string; price?: number } | null
-    const pkgDate  = (pkg as { purchased_at?: string | null; created_at?: string | null }).purchased_at
-      ?? (pkg as { created_at?: string | null }).created_at ?? undefined
+    const pkgDate  = (pkg as { purchased_at?: string | null }).purchased_at ?? undefined
     if (pkgDate) {
       history.push({
         id: uid('pkg'), date: pkgDate,

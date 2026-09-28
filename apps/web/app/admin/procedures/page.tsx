@@ -5,6 +5,7 @@ import { ProcedureModal } from '@/components/admin/procedure-modal'
 import { ToggleProcedureBtn } from '@/components/admin/toggle-procedure-btn'
 import { Pencil, Smartphone } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
+import { ler } from '@/lib/db'
 
 function formatBRL(v: string | number) {
   return parseFloat(String(v)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -29,29 +30,29 @@ export default async function AdminProceduresPage() {
   const admin = createAdminClient()
 
   // Queries paralelas sem usar embed do PostgREST (evita dependência do schema cache)
+  // Erro aqui PARA a página: com ele só no log, a falha virava "nenhum
+  // procedimento cadastrado" — convite a cadastrar de novo o que já existe.
   const [
-    { data: branches },
-    { data: procedures, error: proceduresError },
+    branches,
+    procedures,
     products,
-    { data: fichaRows },
+    fichaRows,
   ] = await Promise.all([
-    admin.from('branches').select('id, name')
-      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
+    ler(admin.from('branches').select('id, name')
+      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as unidades'),
 
-    admin.from('procedures')
+    ler(admin.from('procedures')
       .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id')
       .eq('tenant_id', ctx.tenantId!).is('branch_id', null)
-      .order('category').order('name'),
+      .order('category').order('name'), 'carregar os procedimentos'),
 
     getCachedProductsReference(ctx.tenantId!),
 
-    admin.from('forms').select('id, name')
-      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'),
+    ler(admin.from('forms').select('id, name')
+      .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as fichas'),
   ])
 
   const fichas = (fichaRows ?? []) as { id: string; name: string }[]
-
-  if (proceduresError) console.error('[AdminProcedures]', proceduresError.message)
 
   const baseProcs = procedures ?? []
 
@@ -59,16 +60,16 @@ export default async function AdminProceduresPage() {
   const procIds = baseProcs.map(p => p.id)
 
   const [
-    { data: availability },
-    { data: procProducts },
-    { data: branchPricing },
+    availability,
+    procProducts,
+    branchPricing,
   ] = procIds.length > 0
     ? await Promise.all([
-        admin.from('procedure_branch_availability').select('procedure_id, branch_id').in('procedure_id', procIds),
-        admin.from('procedure_products').select('procedure_id, product_id, quantity, unit_cost').in('procedure_id', procIds),
-        admin.from('procedure_branch_pricing').select('procedure_id, branch_id, price, labor_cost').in('procedure_id', procIds),
+        ler(admin.from('procedure_branch_availability').select('procedure_id, branch_id').in('procedure_id', procIds), 'carregar a disponibilidade por unidade'),
+        ler(admin.from('procedure_products').select('procedure_id, product_id, quantity, unit_cost').in('procedure_id', procIds), 'carregar os insumos dos procedimentos'),
+        ler(admin.from('procedure_branch_pricing').select('procedure_id, branch_id, price, labor_cost').in('procedure_id', procIds), 'carregar os preços por unidade'),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }]
+    : [[], [], []]
 
   // Junta os dados manualmente
   const procList = baseProcs.map(p => ({

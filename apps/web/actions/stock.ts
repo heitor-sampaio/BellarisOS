@@ -487,13 +487,15 @@ async function adminAddStockInterno(
     if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
       return { error: 'Produto ou filial não encontrado.' }
 
-    const [{ data: bps }, upp] = await Promise.all([
-      admin
+    // `maybeSingle`: unidade sem linha de saldo é saldo 0 (a primeira entrada).
+    // Falha de leitura é outra coisa — não pode virar 0 e gravar um saldo falso.
+    const [bps, upp] = await Promise.all([
+      ler(admin
         .from('branch_product_stock')
         .select('current_stock, min_stock, current_rendimento')
         .eq('product_id', productId)
         .eq('branch_id', branchId)
-        .single(),
+        .maybeSingle(), 'buscar o saldo do produto'),
       getUpp(admin, productId),
     ])
 
@@ -594,9 +596,10 @@ async function adminTransferStockInterno(
     if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [fromBranchId, toBranchId])))
       return { error: 'Produto ou filial não encontrado.' }
 
-    const [{ data: fromBps }, { data: toBps }, upp] = await Promise.all([
-      admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', fromBranchId).single(),
-      admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', toBranchId).single(),
+    // Sem linha de saldo na unidade = saldo 0; falha de leitura para o fluxo.
+    const [fromBps, toBps, upp] = await Promise.all([
+      ler(admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', fromBranchId).maybeSingle(), 'buscar o saldo da origem'),
+      ler(admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', toBranchId).maybeSingle(), 'buscar o saldo do destino'),
       getUpp(admin, productId),
     ])
 
@@ -711,8 +714,10 @@ async function adminAdjustStockInterno(
     if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
       return { error: 'Produto ou filial não encontrado.' }
 
-    const [{ data: bps }, upp] = await Promise.all([
-      admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', branchId).single(),
+    // Sem linha de saldo = saldo 0; falha de leitura não pode virar 0 (o ajuste
+    // gravaria um delta sobre um número inventado).
+    const [bps, upp] = await Promise.all([
+      ler(admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', branchId).maybeSingle(), 'buscar o saldo do produto'),
       getUpp(admin, productId),
     ])
 

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler, contar } from '@/lib/db'
 import { getTenantContext } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -94,20 +95,20 @@ export async function ReportsBiSection({
 
   // -- Queries paralelas ---------------------------------------------
   const [
-    { data: txsCurrRaw },
-    { data: txsPrevRaw },
-    { data: apptsCurrRaw },
-    { data: clientsCurrRaw },
-    { count: apptsPrevCount },
-    { count: clientsPrevCount },
-    { data: clientsAllRaw },
-    { data: allApptsRaw },
-    { data: commissionsRaw },
-    { data: stockMovesRaw },
-    { data: bpsRaw },
-    { data: productBatchesRaw },
-    { data: installmentsRaw },
-    { data: procedureCostsRaw },
+    txsCurrRaw,
+    txsPrevRaw,
+    apptsCurrRaw,
+    clientsCurrRaw,
+    apptsPrevCount,
+    clientsPrevCount,
+    clientsAllRaw,
+    allApptsRaw,
+    commissionsRaw,
+    stockMovesRaw,
+    bpsRaw,
+    productBatchesRaw,
+    installmentsRaw,
+    procedureCostsRaw,
     retention,
     newClientsSeries,
     core,
@@ -118,130 +119,130 @@ export async function ReportsBiSection({
     // 0 — Transações do período (ricas: todas as colunas usadas nos tabs).
     // `client_id` é lido pela view para "Gasto médio" e "Top 10 clientes" mas
     // não vinha no select: os dois indicadores ficavam zerados/vazios.
-    admin.from('financial_transactions')
+    ler(admin.from('financial_transactions')
       .select('id, amount, type, is_paid, branch_id, client_id, payment_method, category, notes, created_at, paid_at')
       .in('branch_id', branchIds)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
-      .limit(5000),
+      .limit(5000), 'carregar as transações do período'),
 
     // 1 — Transações do período anterior (só comparação de delta)
-    admin.from('financial_transactions')
+    ler(admin.from('financial_transactions')
       .select('amount, type, is_paid, branch_id')
       .in('branch_id', branchIds)
       .gte('created_at', prevStart.toISOString())
-      .lte('created_at', prevEnd.toISOString()),
+      .lte('created_at', prevEnd.toISOString()), 'carregar as transações do período anterior'),
 
     // 2 — Atendimentos COMPLETED do período
-    admin.from('appointments')
+    ler(admin.from('appointments')
       .select('id, branch_id, procedure_id, professional_id, client_id, price, scheduled_at, source, procedures(name, category), users!appointments_professional_id_fkey(name), clients(birth_date)')
       .in('branch_id', branchIds)
       .eq('status', 'COMPLETED')
       .gte('scheduled_at', startDate.toISOString())
-      .lte('scheduled_at', endDate.toISOString()),
+      .lte('scheduled_at', endDate.toISOString()), 'carregar os atendimentos do período'),
 
     // 3 — Novos clientes do período
-    admin.from('clients')
+    ler(admin.from('clients')
       .select('id, branch_id')
       .in('branch_id', branchIds)
       .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString()),
+      .lte('created_at', endDate.toISOString()), 'carregar os clientes novos'),
 
     // 4 — Contagem de atendimentos no período anterior (head)
-    admin.from('appointments')
+    contar(admin.from('appointments')
       .select('id', { count: 'exact', head: true })
       .in('branch_id', branchIds)
       .eq('status', 'COMPLETED')
       .gte('scheduled_at', prevStart.toISOString())
-      .lte('scheduled_at', prevEnd.toISOString()),
+      .lte('scheduled_at', prevEnd.toISOString()), 'contar os atendimentos do período anterior'),
 
     // 5 — Contagem de novos clientes no período anterior (head)
-    admin.from('clients')
+    contar(admin.from('clients')
       .select('id', { count: 'exact', head: true })
       .in('branch_id', branchIds)
       .gte('created_at', prevStart.toISOString())
-      .lte('created_at', prevEnd.toISOString()),
+      .lte('created_at', prevEnd.toISOString()), 'contar os clientes novos do período anterior'),
 
     // 6 — Todos os clientes com dados demográficos (clientes tab)
     needClientsAll
-      ? admin.from('clients')
+      ? ler(admin.from('clients')
           .select('id, name, birth_date, gender, city, state, created_at')
           .eq('tenant_id', ctx.tenantId!)
-          .eq('is_active', true)
-      : Promise.resolve({ data: [] as unknown[] }),
+          .eq('is_active', true), 'carregar os clientes (demografia)')
+      : Promise.resolve([] as unknown[]),
 
     // 7 — Todos os agendamentos (qualquer status) — overview + agenda
     needAllAppts
-      ? admin.from('appointments')
+      ? ler(admin.from('appointments')
           .select('id, branch_id, status, source, scheduled_at')
           .in('branch_id', branchIds)
           .gte('scheduled_at', startDate.toISOString())
-          .lte('scheduled_at', endDate.toISOString())
-      : Promise.resolve({ data: [] as unknown[] }),
+          .lte('scheduled_at', endDate.toISOString()), 'carregar os agendamentos do período')
+      : Promise.resolve([] as unknown[]),
 
     // 8 — Comissões — overview + profissionais.
     // `commissions` não tem created_at: a consulta antiga falhava com 42703,
     // o erro era descartado e "Comissões em aberto/pagas" ficava sempre R$ 0.
     // O período agora é o do atendimento que originou a comissão.
     needCommissions
-      ? admin.from('commissions')
+      ? ler(admin.from('commissions')
           .select('amount, professional_id, status, branch_id, users(name), appointments!inner(scheduled_at)')
           .in('branch_id', branchIds)
           .gte('appointments.scheduled_at', startDate.toISOString())
-          .lte('appointments.scheduled_at', endDate.toISOString())
-      : Promise.resolve({ data: [] as unknown[] }),
+          .lte('appointments.scheduled_at', endDate.toISOString()), 'carregar as comissões')
+      : Promise.resolve([] as unknown[]),
 
     // 9 — Movimentações de estoque (PROCEDURE_USAGE) — overview + estoque
     needStockMoves
-      ? admin.from('stock_movements')
+      ? ler(admin.from('stock_movements')
           .select('quantity, created_at, branch_id, product_id, products(name, cost_price, category)')
           .in('branch_id', branchIds)
           .eq('type', 'PROCEDURE_USAGE')
           .gte('created_at', startDate.toISOString())
-          .lte('created_at', endDate.toISOString())
-      : Promise.resolve({ data: [] as unknown[] }),
+          .lte('created_at', endDate.toISOString()), 'carregar as movimentações de estoque')
+      : Promise.resolve([] as unknown[]),
 
     // 10 — Estoque por filial × produto
     needBps
-      ? admin.from('branch_product_stock')
+      ? ler(admin.from('branch_product_stock')
           .select('current_stock, current_rendimento, min_stock, branch_id, product_id, products(name, category, cost_price, is_active), branches(name)')
-          .in('branch_id', branchIds)
-      : Promise.resolve({ data: [] as unknown[] }),
+          .in('branch_id', branchIds), 'carregar o estoque por unidade')
+      : Promise.resolve([] as unknown[]),
 
     // 11 — Lotes vencendo em ≤ 30 dias.
     // O filtro por tenant vem do produto: sem ele esta consulta rodava com o
     // service role (RLS desligada) e trazia lotes de OUTROS tenants.
     needBatches
-      ? admin.from('product_batches')
+      ? ler(admin.from('product_batches')
           .select('id, product_id, batch_number, expires_at, quantity, products!inner(name, tenant_id)')
           .eq('products.tenant_id', ctx.tenantId!)
           .lte('expires_at', addDaysTZ(now, 30).toISOString())
           .gt('quantity', 0)
           .order('expires_at', { ascending: true })
-          .limit(20)
-      : Promise.resolve({ data: [] as unknown[] }),
+          .limit(20), 'carregar os lotes vencendo')
+      : Promise.resolve([] as unknown[]),
 
     // 12 — Parcelas pendentes (aba financeiro).
     // Mesmo problema: sem o vínculo com as filiais do tenant, as 50 vagas do
     // limite podiam ser ocupadas por parcelas de outros clientes da plataforma
     // — e a tabela aparecia vazia mesmo havendo parcelas desta rede.
     needInstall
-      ? admin.from('installments')
+      ? ler(admin.from('installments')
           .select('id, amount, due_date, financial_transactions!inner(branch_id, clients(name))')
           .in('financial_transactions.branch_id', branchIds)
           .eq('is_paid', false)
           .order('due_date', { ascending: true })
-          .limit(50)
-      : Promise.resolve({ data: [] as unknown[] }),
+          .limit(50), 'carregar as parcelas pendentes')
+      : Promise.resolve([] as unknown[]),
 
     // 13 — Custo por procedimento (aba procedimentos — margem por faixa etária).
     // Traz também mão de obra e outros custos: a margem considerava só os
     // insumos e por isso saía sistematicamente otimista.
     needProcCosts
-      ? admin.from('procedure_products')
+      ? ler(admin.from('procedure_products')
           .select('procedure_id, quantity, products(cost_price), procedures!inner(tenant_id, labor_cost, other_costs)')
-          .eq('procedures.tenant_id', ctx.tenantId!)
-      : Promise.resolve({ data: [] as unknown[] }),
+          .eq('procedures.tenant_id', ctx.tenantId!), 'carregar o custo dos procedimentos')
+      : Promise.resolve([] as unknown[]),
 
     // 14 — Retenção real (quem já era cliente antes do período e voltou)
     needClientsAll
@@ -430,22 +431,22 @@ async function painelComercial({
     ?? funisAtivos.find(f => f.is_default)
     ?? funisAtivos[0]
 
-  const [etapasRaw, { data: leadsRaw }, { data: apptsRaw }, { data: usersRaw }] = await Promise.all([
+  const [etapasRaw, leadsRaw, apptsRaw, usersRaw] = await Promise.all([
     getLeadFunnel({
       tenantId, branchIds: null, from, to, funnelId: funilAtivo?.id ?? null,
     }),
 
-    admin.from('leads')
+    ler(admin.from('leads')
       .select('id, client_id, owner_id')
       .eq('tenant_id', tenantId)
-      .gte('created_at', fromISO).lte('created_at', toISO),
+      .gte('created_at', fromISO).lte('created_at', toISO), 'carregar os leads do período'),
 
-    admin.from('appointments')
+    ler(admin.from('appointments')
       .select('id, status, source, created_by_id')
       .in('branch_id', branchIds)
-      .gte('scheduled_at', fromISO).lte('scheduled_at', toISO),
+      .gte('scheduled_at', fromISO).lte('scheduled_at', toISO), 'carregar os agendamentos do funil'),
 
-    admin.from('users').select('id, name').eq('tenant_id', tenantId),
+    ler(admin.from('users').select('id, name').eq('tenant_id', tenantId), 'carregar a equipe'),
   ])
 
   const leads = (leadsRaw ?? []) as { client_id: string | null; owner_id: string | null }[]

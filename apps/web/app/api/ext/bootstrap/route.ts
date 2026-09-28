@@ -1,5 +1,6 @@
 import { type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import {
   getCachedBranchProcedures,
   getCachedBranchProfessionals,
@@ -26,8 +27,8 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient()
 
-  const [branchRes, procedures, professionals, rooms] = await Promise.all([
-    admin.from('branches').select('id, name, slug').eq('id', branchId).maybeSingle(),
+  const [branch, procedures, professionals, rooms] = await Promise.all([
+    ler(admin.from('branches').select('id, name, slug').eq('id', branchId).maybeSingle(), 'buscar a unidade'),
     getCachedBranchProcedures(branchId, ctx.tenantId),
     getCachedBranchProfessionals(branchId, ctx.tenantId),
     getCachedRoomsByBranch(branchId, ctx.tenantId),
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
 
   return jsonCors(req, {
     mode:          isNetworkMode(ctx) ? 'network' : 'branch',
-    branch:        branchRes.data ?? null,
+    branch:        branch ?? null,
     procedures,
     professionals,
     rooms,

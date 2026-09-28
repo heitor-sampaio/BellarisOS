@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
 import { NotificationCampaignForm } from '@/components/admin/notification-campaign-form'
 
@@ -13,13 +14,13 @@ export default async function NovaCampanhaPage() {
 
   const admin = createAdminClient()
 
-  const [{ data: branches }, procedures] = await Promise.all([
-    admin
+  const [branches, procedures] = await Promise.all([
+    ler(admin
       .from('branches')
       .select('id, name, city')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
-      .order('name'),
+      .order('name'), 'carregar as unidades'),
     getCachedNetworkProcedures(ctx.tenantId!),
   ])
 

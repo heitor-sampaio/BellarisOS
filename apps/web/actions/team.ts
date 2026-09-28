@@ -93,12 +93,13 @@ export async function createTeamMember(
   const authId = authData.user.id
 
   // 2. Setar claims no JWT (role derivado do cargo; abrangência = branch_id)
-  await admin.rpc('set_user_claims', {
+  // Sem as claims o membro entra sem rede no JWT, e a RLS depende delas.
+  await gravar(admin.rpc('set_user_claims', {
     p_auth_id:   authId,
     p_tenant_id: ctx.tenantId!,
     p_branch_id: effectiveBranchId,
     p_role_id:   roleId,
-  })
+  }), 'gravar o acesso do membro')
 
   // 3. Inserir na tabela users
   const { data: novo, error: insertError } = await admin.from('users').insert({
@@ -167,12 +168,12 @@ export async function updateTeamMember(
   // Reemite os claims do JWT. O app já lê cargo e abrangência do banco (com a
   // invalidação de `user:` logo abaixo), então a mudança vale na hora; os claims
   // continuam sendo reescritos porque é deles que o RLS do Postgres depende.
-  await admin.rpc('set_user_claims', {
+  await gravar(admin.rpc('set_user_claims', {
     p_auth_id:   member.auth_id,
     p_tenant_id: ctx.tenantId!,
     p_branch_id: effectiveBranchId,
     p_role_id:   roleId,
-  })
+  }), 'atualizar o acesso do membro')
 
   revalidatePath(redirectPath)
   revalidateTag(`professionals:${ctx.tenantId!}`, 'max')

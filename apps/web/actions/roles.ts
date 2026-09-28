@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, contar } from '@/lib/db'
 
 function toKey(label: string): string {
   return label
@@ -105,14 +105,15 @@ export async function deleteRole(roleId: string): Promise<{ error: string } | { 
   if (!role) return { error: 'Cargo não encontrado.' }
   if (role.is_system) return { error: 'Cargos do sistema não podem ser excluídos.' }
 
-  // Impede excluir cargo em uso (evita órfão em users.role_id)
-  const { count } = await supabase
+  // Impede excluir cargo em uso (evita órfão em users.role_id). Contagem que
+  // falha não pode virar "ninguém usa" — é ela que protege os membros.
+  const emUso = await contar(supabase
     .from('users')
     .select('id', { count: 'exact', head: true })
     .eq('tenant_id', ctx.tenantId!)
-    .eq('role_id', roleId)
+    .eq('role_id', roleId), 'contar os membros com o cargo')
 
-  if ((count ?? 0) > 0) {
+  if (emUso > 0) {
     return { error: 'Há membros com esse cargo. Reatribua-os antes de excluir.' }
   }
 

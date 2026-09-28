@@ -1,6 +1,7 @@
 ﻿import { redirect } from 'next/navigation'
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import { ClientPortalNav } from '@/components/client-portal/client-nav'
 import { NotificationBell } from '@/components/client-portal/notification-bell'
 import { CapacitorNavFix } from '@/components/client-portal/capacitor-nav-fix'
@@ -18,17 +19,25 @@ export default async function ClientPortalLayout({
   if (!ctx.isClient) redirect(`/${slug}/dashboard`)
 
   const admin = createAdminClient()
-  const [{ data: branch }, { count: unreadCount }] = await Promise.all([
-    admin.from('branches').select('name').eq('slug', slug).single(),
+  // O slug NÃO é único entre redes: a unidade é procurada dentro da rede da
+  // ficha do cliente. Só pelo slug, com duas redes usando o mesmo, o
+  // `.single()` falhava e o erro era descartado.
+  const [cliente, unread] = await Promise.all([
+    ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId!).maybeSingle(), 'buscar o cliente'),
     admin
       .from('client_notifications')
       .select('id', { count: 'exact', head: true })
       .eq('client_id', ctx.clientId!)
       .eq('is_received', false),
   ])
+  const branch = cliente
+    ? await ler(admin.from('branches').select('name').eq('slug', slug).eq('tenant_id', cliente.tenant_id as string).maybeSingle(), 'buscar a unidade')
+    : null
 
   const branchName = (branch as { name: string } | null)?.name ?? 'Clínica'
-  const initialUnread = unreadCount ?? 0
+  // O contador do sino é acessório: a falha fica no log e ele começa em zero.
+  if (unread.error) console.error('[cliente/layout] contar as notificações:', unread.error.message)
+  const initialUnread = unread.count ?? 0
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg-app)' }}>

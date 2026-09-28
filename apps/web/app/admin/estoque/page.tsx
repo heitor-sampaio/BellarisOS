@@ -40,7 +40,7 @@ export default async function AdminEstoquePage({
   // O erro do embed aninhado (`products → branch_product_stock → branches`) era
   // descartado: qualquer recusa do PostgREST deixava o estoque da rede inteiro
   // em branco, sem mensagem nenhuma.
-  const [{ data: raw, error: produtosErr }, { data: branchesRaw, error: filiaisErr }, { data: categoriesRaw }] = await Promise.all([
+  const [{ data: raw, error: produtosErr }, { data: branchesRaw, error: filiaisErr }, { data: categoriesRaw, error: categoriasErr }] = await Promise.all([
     admin
       .from('products')
       .select(`
@@ -71,6 +71,7 @@ export default async function AdminEstoquePage({
 
   if (produtosErr) throw new Error(`Não foi possível carregar o estoque: ${produtosErr.message}`)
   if (filiaisErr)  throw new Error(`Não foi possível carregar as unidades: ${filiaisErr.message}`)
+  if (categoriasErr) throw new Error(`Não foi possível carregar as categorias: ${categoriasErr.message}`)
 
   // Normaliza produtos
   const products = ((raw ?? []) as unknown as ProdutoLido[]).map(p => {

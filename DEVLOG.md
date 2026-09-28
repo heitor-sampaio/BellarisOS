@@ -1260,6 +1260,53 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Nenhum erro de consulta descartado; demografia no banco
+
+"Corrige as pendências anotadas." As da entrada abaixo, e a regra inteira do
+§13.1: a lista anotada era um pedaço de ~125 consultas no sistema que liam
+`{ data }` sem olhar o `error`. Agora nenhuma — só sobram, com o motivo escrito
+ao lado, os `tentar` do que é acessório ou do que roda DEPOIS de um efeito
+externo já ter acontecido (lançar ali diria "falhou" sobre algo feito).
+
+- `contar` em `lib/db.ts`: `const { count } = await …` descartava o erro do
+  mesmo jeito que `{ data }`, e a contagem que falhou virava "0".
+- **Onde o silêncio escondia dano, não só tela vazia** (achados na troca):
+  - travas que LIBERAVAM quando a contagem falhava: `deleteRole` (apagava
+    cargo em uso), `cancelTreatmentPlan`, `proposeTreatmentPlan`;
+  - estoque: `finishSession` e os três ajustes do admin gravavam o movimento
+    sobre um saldo 0 inventado quando a leitura falhava;
+  - `opcoesDeVinculoDoNumero`: lista vazia → salvar desligaria todo mundo do
+    número;
+  - `set_user_claims` solto: membro sem rede no JWT, e a RLS depende dela;
+  - reordenar funis e etapas dizia "salvo" e voltava na próxima carga;
+  - layout da rede: consulta falhando parecia "onboarding não feito" e mandava
+    o admin para `/setup`; Cargos mostrava o cargo sem permissão nenhuma, e
+    salvar gravaria isso por cima;
+  - sessão de atendimento: falha virava 404;
+  - cron de estoque mínimo reenviaria o mesmo aviso a cada passada;
+  - busca da extensão: "nenhum cliente" levava a cadastrar de novo;
+  - portal do cliente: a unidade era buscada só pelo slug (não é único entre
+    redes); agora dentro da rede da ficha do cliente.
+- Conferido antes de trocar: as 229 colunas dos selects que passaram a lançar
+  existem, e os 24 selects com embed foram aceitos pelo PostgREST — nenhuma
+  página passa a cair por schema.
+- **"Pacote adquirido" volta ao histórico do cliente**: o select não trazia
+  `purchased_at`.
+- **Dashboard da rede**: faixa etária, top 5 cidades, clientes e LTV por CEP
+  (mapa de calor) e o giro de estoque saem de `metrics_demografia` e
+  `metrics_giro_estoque` (migration `20260927000009`). Eram contados em JS
+  sobre a base inteira e cortados em 1000. O LTV por CEP reaproveita
+  `metrics_top_clients` — a mesma regra do dinheiro, não uma segunda cópia.
+
+Regressão completa: 227 E2E passaram, 2 pulados. Dois intermitentes eram do
+TESTE e foram corrigidos: `fase5-cliente` pedia `?tab=dados` (a ficha lê
+`?aba=`) e clicava na aba depois de um `isVisible()` que não espera;
+`planejamentos-mobile` estourava os 5 s da espera no bloco mais carregado.
+
+**Ainda contam em JS** (anotado, fica para depois): sessões concluídas por
+procedimento na tela de procedimentos da unidade, a lista de clientes inativos
+do dashboard da unidade, e os relatórios (limite de 5000 transações).
+
 ### 2026-09-27 — Lint zerado no apps/web (e o que o `any` escondia)
 
 "Corrige todos erros de lint." Eram 342 erros e 108 avisos em 105 arquivos:

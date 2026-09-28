@@ -81,12 +81,13 @@ export async function registerAction(
     role_id:   adminRole?.id ?? null,
   }), 'criar o usuário da rede')
 
-  await admin.rpc('set_user_claims', {
+  // Sem as claims o login entra sem rede no JWT, e a RLS inteira depende delas.
+  await gravar(admin.rpc('set_user_claims', {
     p_auth_id:   authUser.id,
     p_tenant_id: tenant.id,
     p_branch_id: null,
     p_role_id:   adminRole?.id ?? null,
-  })
+  }), 'gravar o acesso do usuário')
 
   // Se o Supabase exigir confirmação de e-mail, a sessão não estará disponível ainda
   if (!signUpData.session) {

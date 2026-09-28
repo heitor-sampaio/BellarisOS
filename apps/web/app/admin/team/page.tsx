@@ -7,6 +7,7 @@ import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
 import { UserMinus, UserCheck } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { iniciaisDoNome } from '@estetica-os/utils'
+import { ler } from '@/lib/db'
 
 function Initials({ name }: { name: string }) {
   const letters = iniciaisDoNome(name)
@@ -39,22 +40,22 @@ export default async function AdminTeamPage({
   const supabase = await createClient()
 
   // Dados para os filtros + lista de membros em paralelo
-  const [{ data: branches }, { data: tenantRoles }, membersResult] = await Promise.all([
-    supabase
+  const [branches, tenantRoles, membersResult] = await Promise.all([
+    ler(supabase
       .from('branches')
       .select('id, name')
       .eq('tenant_id', ctx.tenantId!)
       .eq('is_active', true)
-      .order('name'),
+      .order('name'), 'carregar as unidades'),
 
-    supabase
+    ler(supabase
       .from('tenant_roles')
       .select('id, key, label, is_system')
       .eq('tenant_id', ctx.tenantId!)
       .order('is_system', { ascending: false })
-      .order('label'),
+      .order('label'), 'carregar os cargos'),
 
-    (() => {
+    ler((() => {
       let query = supabase
         .from('users')
         .select('id, name, email, role_id, is_active, branch_id, provides_services, branches(name)')
@@ -67,10 +68,10 @@ export default async function AdminTeamPage({
       if (status === 'inactive') query = query.eq('is_active', false)
 
       return query.order('name')
-    })(),
+    })(), 'carregar a equipe'),
   ])
 
-  const members = membersResult.data ?? []
+  const members = membersResult ?? []
 
   const allRoles = tenantRoles ?? []
   // Cargos atribuíveis pela UI: sem os de sistema (NETWORK_ADMIN)

@@ -23,7 +23,7 @@ import { podeFalarCom, limitesDe } from './limites'
 import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
 import { resumoDoNo } from './resumo'
 import { chaveDoPasso } from './passos'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, contar } from '@/lib/db'
 
 /**
  * O executor: um passo por vez, dirigido por `automation_runs`.
@@ -585,12 +585,14 @@ function ligacaoSaindo(
   return candidatas[0]?.para ?? null
 }
 
+/** Contagem que falha não pode virar "começa do 1": o passo a passo do run
+ *  ficaria com duas ordens iguais e o histórico, embaralhado. */
 async function proximaOrdem(runId: string): Promise<number> {
-  const { count } = await createAdminClient()
+  const feitos = await contar(createAdminClient()
     .from('automation_run_steps')
     .select('id', { count: 'exact', head: true })
-    .eq('run_id', runId)
-  return (count ?? 0) + 1
+    .eq('run_id', runId), 'contar os passos do run')
+  return feitos + 1
 }
 
 async function gravarPasso(

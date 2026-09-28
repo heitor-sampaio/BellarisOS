@@ -27,8 +27,8 @@ export default async function BranchProceduresPage({
     .single(), 'buscar a unidade')
   if (!branch) notFound()
 
-  const [{ data: allProcs }, { data: apptCounts }] = await Promise.all([
-    // Procedures (rede + locais da filial)
+  const [allProcs, apptCounts] = await Promise.all([
+    ler(// Procedures (rede + locais da filial)
     admin
       .from('procedures')
       .select(`
@@ -40,14 +40,14 @@ export default async function BranchProceduresPage({
       .eq('is_active', true)
       .or(`branch_id.is.null,branch_id.eq.${branch.id}`)
       .order('category')
-      .order('name'),
+      .order('name'), 'carregar os procedimentos'),
 
-    // Contagem de sessões concluídas por procedimento nesta filial
+    ler(// Contagem de sessões concluídas por procedimento nesta filial
     admin
       .from('appointments')
       .select('procedure_id')
       .eq('branch_id', branch.id)
-      .eq('status', 'COMPLETED'),
+      .eq('status', 'COMPLETED'), 'contar as sessões por procedimento'),
   ])
 
   // Filtra procedimentos de rede pela disponibilidade de filial

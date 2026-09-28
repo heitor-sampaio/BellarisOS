@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isStageOutcome, type StageOutcome } from '@/lib/crm'
-import { ler } from '@/lib/db'
+import { gravar, ler } from '@/lib/db'
 
 // Os tipos e o seed dos funis vivem em `lib/crm.ts` e `actions/crm-funnels.ts`:
 // arquivo `'use server'` só exporta função assíncrona.
@@ -198,13 +198,15 @@ export async function reorderStages(orderedIds: string[], slug: string) {
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
+    // Cada update olhado: com o erro descartado, a ordem nova "salvava" e a
+    // tela voltava à antiga no próximo carregamento, sem aviso.
     await Promise.all(
       orderedIds.map((id, idx) =>
-        admin
+        gravar(admin
           .from('crm_stages')
           .update({ position: idx })
           .eq('id', id)
-          .eq('tenant_id', ctx.tenantId!),
+          .eq('tenant_id', ctx.tenantId!), 'reordenar as etapas'),
       ),
     )
 

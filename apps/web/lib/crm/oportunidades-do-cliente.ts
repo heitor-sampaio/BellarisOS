@@ -55,9 +55,12 @@ export async function oportunidadesDoCliente(
   const porOwner = new Map(((ownersRes.data ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
 
   const funnelIds = [...new Set(etapas.map(s => s.funnel_id).filter(Boolean))] as string[]
-  const { data: funis } = funnelIds.length > 0
+  // Como etapas e donos acima: o nome do funil é rótulo do card, e a falha fica
+  // registrada em vez de derrubar a ficha do cliente.
+  const { data: funis, error: erroFunis } = funnelIds.length > 0
     ? await admin.from('crm_funnels').select('id, name').in('id', funnelIds)
-    : { data: [] }
+    : { data: [], error: null }
+  if (erroFunis) console.error('[oportunidadesDoCliente] funis:', erroFunis.message)
   const porFunil = new Map(((funis ?? []) as { id: string; name: string }[]).map(f => [f.id, f.name]))
 
   return linhas.map(l => {

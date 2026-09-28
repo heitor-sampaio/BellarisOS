@@ -12,7 +12,7 @@ import {
 import { telefoneDoJid } from '@/lib/whatsapp/uazapi'
 import { getNumero, getNumerosDaRede } from '@/lib/whatsapp/factory'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, tentar } from '@/lib/db'
 
 /**
  * Conexão de WhatsApp gerenciada pelo BellarisOS.
@@ -274,8 +274,10 @@ export async function criarConexaoUazapi(
   try {
     criada = await criarInstancia(nome)
   } catch (e) {
-    // Nada foi cobrado: a linha some e a rede pode tentar de novo.
-    await admin.from('whatsapp_numbers').delete().eq('id', numeroId)
+    // Nada foi cobrado: a linha some e a rede pode tentar de novo. `tentar`:
+    // o erro que a tela precisa é o da instância; uma linha que sobrar fica
+    // registrada no log.
+    await tentar(admin.from('whatsapp_numbers').delete().eq('id', numeroId), 'apagar o número sem instância')
     return { ok: false, error: e instanceof Error ? e.message : 'Falha ao criar a instância.' }
   }
 

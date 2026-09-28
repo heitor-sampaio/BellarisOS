@@ -1,5 +1,6 @@
 ﻿import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import type { ComponentProps } from 'react'
 import { AdminAgendaView } from '@/components/admin/admin-agenda-view'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -99,9 +100,9 @@ export default async function AdminAgendaPage({
     .order('scheduled_at', { ascending: true })
     .limit(1000)
   if (agendaOwner) apptsQuery = apptsQuery.eq('professional_id', agendaOwner)
-  const { data: apptsRaw, error: apptsError } = await apptsQuery
-
-  if (apptsError) console.error('[admin/agenda] appointments:', apptsError.message)
+  // Falha para a tela: com o erro só no log, a agenda aparecia VAZIA — e agenda
+  // vazia é informação ("dia livre"), não sintoma.
+  const apptsRaw = await ler(apptsQuery, 'carregar a agenda da rede')
 
   const appointments = (apptsRaw ?? []) as unknown as ComponentProps<typeof AdminAgendaView>['appointments']
 

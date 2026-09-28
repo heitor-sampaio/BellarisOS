@@ -38,11 +38,11 @@ async function abrirMenuDeAcoes(page: import('@playwright/test').Page) {
 
 test('editar nome e gênero, depois desativar e reativar — sem sair do /admin', async ({ page }) => {
   const db = banco()
-  await page.goto(`/admin/clients/${clientId}?tab=dados`)
-
-  // A aba Dados pode abrir por link ou por clique — o clique cobre os dois.
-  const abaDados = page.getByRole('button', { name: 'Dados' }).or(page.getByRole('link', { name: 'Dados' })).first()
-  if (await abaDados.isVisible()) await abaDados.click()
+  // A aba aberta mora na URL (`?aba=`). O teste pedia `?tab=dados`, que a
+  // ficha ignora, e dependia de clicar na aba depois de um `isVisible()` — que
+  // não espera: com a página ainda renderizando, o clique era pulado e o teste
+  // falhava de vez em quando na "Visão geral".
+  await page.goto(`/admin/clients/${clientId}?aba=dados`)
 
   // Ancorado no rótulo: o primeiro input da página é a busca da lista lateral.
   const campoNome = page.locator('xpath=//p[normalize-space()="Nome *"]/following::input[1]')
