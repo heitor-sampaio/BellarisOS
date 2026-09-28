@@ -9,7 +9,9 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:completa": "next build && playwright test -c playwright.build.config.ts",
+    "test:e2e:afetados": "node scripts/e2e-afetados.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^7",

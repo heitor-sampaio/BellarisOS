@@ -13,7 +13,8 @@ import type { Page } from '@playwright/test'
  * matriz de actions × cargos sem montar a tela de cada uma.
  *
  * - O id da action sai do manifesto que o `next dev` grava por página
- *   (`.next/dev/server/app/<rota>/page/server-reference-manifest.json`, com
+ *   (`.next/dev/server/app/<rota>/page/server-reference-manifest.json` — no
+ *   build, `.next/server/app/...` —, com
  *   `filename` e `exportedName`). A página precisa ter sido compilada: por
  *   isso a `rota` é visitada antes, se o id ainda não estiver lá.
  * - **Só argumentos JSON** (o corpo é o JSON do array de argumentos). Action
@@ -22,7 +23,11 @@ import type { Page } from '@playwright/test'
  *   FormData vazio). Para essas, `apoio/acao.ts` (capturar e reenviar).
  */
 
-const RAIZ = path.resolve(__dirname, '..', '..', '.next', 'dev', 'server', 'app')
+// No build (`playwright.build.config.ts`) os manifestos moram em `.next/server`;
+// no `next dev`, em `.next/dev/server`. O formato é o mesmo.
+const RAIZ = process.env.E2E_BUILD
+  ? path.resolve(__dirname, '..', '..', '.next', 'server', 'app')
+  : path.resolve(__dirname, '..', '..', '.next', 'dev', 'server', 'app')
 
 function manifestos(dir = RAIZ, achados: string[] = []): string[] {
   if (!fs.existsSync(dir)) return achados

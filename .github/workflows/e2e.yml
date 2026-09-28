@@ -1,0 +1,89 @@
+# A regressão completa, a cada push na main.
+#
+# Saiu do caminho de cada etapa de trabalho (lá roda `pnpm test:e2e:afetados`)
+# e veio para cá: roda sozinha, e o selo da main diz se algo quebrou.
+#
+# Segurança (decisão do Heitor, 2026-09-28 — repositório privado):
+# - só em push na main e à mão; NUNCA em pull_request, que é o caminho de um
+#   workflow alterado ler os secrets;
+# - os secrets moram no environment `e2e`, restrito à main
+#   (Settings → Environments → e2e → Deployment branches: main);
+# - só as três chaves do Supabase (o admin de teste é o padrão do global-setup). O resto é gerado a
+#   cada execução e morre com ela: CRON_SECRET e META_APP_SECRET são do app que
+#   sobe aqui mesmo, e as chaves VAPID só assinam push para endpoints falsos.
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Duas rodadas no mesmo banco disputariam os mesmos registros: a nova espera.
+  group: e2e
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    environment: e2e
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      CI: 'true'
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NEXT_PUBLIC_APP_URL: http://localhost:3100
+      TZ: America/Sao_Paulo
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Segredos descartáveis desta execução
+        run: |
+          CRON=$(openssl rand -hex 32);  echo "::add-mask::$CRON"
+          META=$(openssl rand -hex 32);  echo "::add-mask::$META"
+          VAPID=$(pnpm exec web-push generate-vapid-keys --json)
+          PUB=$(echo "$VAPID" | node -pe 'JSON.parse(require("fs").readFileSync(0)).publicKey')
+          PRIV=$(echo "$VAPID" | node -pe 'JSON.parse(require("fs").readFileSync(0)).privateKey')
+          echo "::add-mask::$PRIV"
+          {
+            echo "CRON_SECRET=$CRON"
+            echo "META_APP_SECRET=$META"
+            echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=$PUB"
+            echo "VAPID_PRIVATE_KEY=$PRIV"
+            echo "VAPID_SUBJECT=mailto:e2e@bellaris.invalid"
+          } >> "$GITHUB_ENV"
+
+      - name: Navegador do Playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build
+        run: pnpm exec next build
+
+      - name: Suíte completa
+        run: pnpm exec playwright test -c playwright.build.config.ts --reporter=list
+
+      - name: Relatório das falhas
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-falhas
+          path: apps/web/test-results/
+          retention-days: 7

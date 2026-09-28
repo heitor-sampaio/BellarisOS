@@ -1258,6 +1258,24 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — A regressão sai do caminho: afetados na etapa, completa no GitHub
+
+"Se cada etapa vai demorar todo esse tempo, o desenvolvimento fica quase
+inviável." A suíte tem 299 testes num worker só (eles dividem o banco) e levava
+27 minutos contra o `next dev`, que compila cada tela na primeira visita.
+
+- **`pnpm test:e2e:afetados`** (`scripts/e2e-afetados.mjs`): os arquivos
+  alterados (ou `--desde <ref>`) casam com áreas, e cada área diz seus specs;
+  roda também o `vitest related`. Arquivo compartilhado recusa a escolha e
+  pede a completa.
+- **`pnpm test:e2e:completa`**: `next build` + a suíte contra `next start`
+  na porta 3100 (`playwright.build.config.ts`), ao lado do dev da 3000.
+- **GitHub Actions** (`.github/workflows/e2e.yml`): a completa a cada push na
+  main. Secrets só do Supabase, no environment `e2e` restrito à main, e nunca
+  em pull request; o resto é descartável, gerado a cada execução. Repositório
+  privado (confirmado pelo Heitor).
+- Falta do lado do Heitor: criar o environment e os três secrets (ver §6).
+
 ### 2026-09-28 — O inbox paginado, filtrado no banco
 
 "A lista de leads do dono pode carregar 30 com carregamento automático por
@@ -3754,8 +3772,18 @@ pnpm dev --filter=web        # http://localhost:3000
 pnpm typecheck               # tsc --noEmit em todos os pacotes
 pnpm test                    # Vitest
 pnpm --filter web test:e2e   # Playwright (sobe o dev sozinho)
+pnpm --filter web test:e2e:afetados  # só a área alterada — o de cada etapa
+pnpm --filter web test:e2e:completa  # tudo, contra o build (também roda no GitHub a cada push)
 pnpm build --filter=web
 ```
+
+**A completa no GitHub Actions** precisa, uma vez, no repositório:
+Settings → Environments → **New environment** `e2e` → *Deployment branches
+and tags*: **Selected branches** → `main`; e, dentro dele, três
+**Environment secrets** com os mesmos valores do `apps/web/.env.local`:
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`. Depois, Actions → E2E → *Run workflow* roda na
+hora, sem esperar um push.
 
 O `.env.local` de `apps/web` precisa das chaves do Supabase, uazapi, Meta, VAPID
 e `CRON_SECRET` — ver CLAUDE.md §12. O E2E não pede nenhuma chave nova.

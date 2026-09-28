@@ -1445,7 +1445,26 @@ pnpm lint                           # ESLint em todos os packages
 pnpm typecheck                      # tsc --noEmit em todos os packages
 pnpm test                           # Vitest
 pnpm --filter web test:e2e          # Playwright (sobe o dev sozinho)
+pnpm --filter web test:e2e:afetados # só os testes da área alterada (--listar, --desde <ref>)
+pnpm --filter web test:e2e:completa # a suíte inteira contra o build (porta 3100)
 ```
+
+**Qual E2E rodar** (decisão do Heitor, 2026-09-28 — a suíte inteira passa de
+20 minutos, e rodá-la a cada etapa tornava o desenvolvimento inviável):
+- **Em cada etapa:** o teste novo e `test:e2e:afetados`, que escolhe os specs
+  pela área dos arquivos alterados (`AREAS` em `scripts/e2e-afetados.mjs`) e
+  roda o Vitest relacionado. Spec novo precisa cair numa área — `--listar`
+  aponta os que nenhuma cobre.
+- Arquivo **compartilhado** (auth, db, supabase, layouts, proxy, permissões,
+  rotas, apoio do E2E, dependências) afeta tudo: o script recusa escolher e
+  pede a completa.
+- **A completa roda no GitHub Actions** a cada push na `main`
+  (`.github/workflows/e2e.yml`), contra o build, com o selo na main. Falha lá
+  é a primeira coisa da etapa seguinte. Os secrets (só as três chaves do
+  Supabase) moram no environment `e2e`, restrito à main; o workflow NUNCA
+  roda em `pull_request`. CRON, Meta e VAPID são gerados a cada execução.
+- Contra o build, `chamarAcao` lê os manifestos de `.next/server`
+  (`E2E_BUILD`, ligado por `playwright.build.config.ts`).
 
 **Apoio do E2E** (`apps/web/e2e/apoio/`). O E2E roda contra o banco da
 produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
