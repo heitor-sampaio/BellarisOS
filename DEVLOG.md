@@ -3550,7 +3550,6 @@ verdade. O que vale:
   (`jwt_claim('role') = 'NETWORK_ADMIN'`), o que o CLAUDE.md §11 proíbe. É a
   última regra por nome de cargo no banco; não é exposição hoje porque o app lê
   pelo cliente de serviço.
-- `metrics_core.new_clients` ignora o filtro de filial.
 - ~~Hidratação em `/admin/inbox`, chave de lista no estoque, e o
   lançamento que sumia da lista.~~ **Resolvidos em 2026-09-25** — ver a entrada
   da linha do tempo.
