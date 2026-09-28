@@ -66,5 +66,12 @@ export async function chamarAcao(
     headers: { 'next-action': id, accept: 'text/x-component', 'content-type': 'text/plain;charset=UTF-8' },
     data: corpo,
   })
-  return { status: r.status(), texto: await r.text() }
+  const texto = await r.text()
+  // O Next responde 200 com este texto quando a rota não tem a action (ela só
+  // existe nas rotas cujas PÁGINAS a usam). Uma recusa testada assim "passa"
+  // sem ter chegado à action — o teste precisa quebrar, não concordar.
+  if (texto.includes('Server action not found')) {
+    throw new Error(`${arquivo}#${funcao} não existe em ${rota}: poste numa página que usa a action`)
+  }
+  return { status: r.status(), texto }
 }

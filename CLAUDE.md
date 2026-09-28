@@ -1446,6 +1446,9 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   manifesto do `next dev`, como a pessoa logada, sem montar a tela. Só
   argumentos JSON (FormData, por `acao.ts`). Toda recusa testada assim tem o
   admin como CONTROLE: argumento errado também "não muda nada".
+  A action só existe nas rotas cujas PÁGINAS a usam; em outra, o Next responde
+  200 com "Server action not found" — e `chamarAcao` lança, para a recusa não
+  "passar" sem ter chegado à action.
 - Limpeza que apaga no teste **olha o erro** (`expect(falhas).toEqual([])`):
   foi um `delete` calado que acumulou 78 clientes `[e2e]` na produção.
 - Upload com arquivo não se reenvia (o Playwright não expõe o corpo
