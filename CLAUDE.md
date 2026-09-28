@@ -563,9 +563,19 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
     `_leadId`). Os dois portões exigem `crm: VIEW`: `clients: MANAGE` não é
     passe para mexer em card nem em conversa.
 
-**Estado atual:** a conversa **ainda carrega** nome e telefone, e é dela que a
-tela lê. Sai numa frente própria, junto com a limpeza de `conversations.tags`
-depois do soak.
+**Nome e telefone são da pessoa, e as cópias acompanham** (2026-09-28). A conversa
+e a oportunidade guardam cópia (é dela que a tela lê), e a edição em qualquer
+um dos dois lugares — painel do inbox (`atualizarContato`) ou card da
+oportunidade (`updateLead`) — passa por `propagarDadosDaPessoa`
+(`lib/contatos/propagar.ts`):
+- **nome** → a pessoa, TODAS as conversas e TODAS as oportunidades;
+- **telefone** → a pessoa (que passa a ser achada pelo número novo) e as
+  conversas com o MESMO número antigo ou sem número. Conversa com outro número
+  é outro WhatsApp da pessoa, e ali o telefone é o DESTINO da mensagem: não
+  muda. Nas oportunidades vai para todas;
+- cada oportunidade que mudou registra o de → para na linha do tempo.
+Prova: `e2e/contato-propaga.spec.ts`. Editar cópia sem passar por aí é o
+defeito de volta. A limpeza de `conversations.tags` continua pendente do soak.
 
 Em teste, limpar conversa é `apagarConversas()` de `e2e/apoio/banco.ts`, que tira
 o contato junto.
@@ -1302,6 +1312,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Comparar período parcial com período anterior inteiro
 ❌ Descartar o error de uma query (vira R$ 0,00 silencioso) — use gravar/ler/tentar
 ❌ Tratar a conversa como a pessoa — a pessoa é contacts, a conversa é uma thread
+❌ Editar nome/telefone numa cópia (conversa, oportunidade) sem propagarDadosDaPessoa
 ❌ Buscar oportunidades por leads.conversation_id (é a thread de ORIGEM; a dona é contato_id)
 ❌ Agrupar a fila do inbox por pessoa — é uma linha por conversa (decisão de 2026-09-26)
 ❌ Ler tags de conversations.tags (é semente; a fonte é contacts.tags)

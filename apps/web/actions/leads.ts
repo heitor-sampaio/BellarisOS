@@ -13,6 +13,7 @@ import { emitirEventoDeLead, eventoDoDesfecho, etapaDeCrm } from '@/lib/events/l
 import { EVENTOS } from '@estetica-os/types'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { gravar, ler } from '@/lib/db'
+import { propagarDadosDaPessoa, digitosDoTelefone } from '@/lib/contatos/propagar'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -260,6 +261,26 @@ export async function updateLead(
     }
 
     await saveProcedures(admin, leadId, procedureIds)
+
+    // Nome e telefone do card são cópia da PESSOA: a pessoa, as conversas e as
+    // outras oportunidades dela acompanham (`propagarDadosDaPessoa`). Até
+    // 2026-09-28 corrigir o nome aqui mudava só este card.
+    if (antes) {
+      const mudouNome = (name ?? null) !== (antes.campos.name ?? null)
+      const mudouFone = digitosDoTelefone(phone) !== digitosDoTelefone(antes.campos.phone)
+      if (mudouNome || mudouFone) {
+        const dono = await ler(admin.from('leads').select('contato_id')
+          .eq('id', leadId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a pessoa do lead')
+        const contatoId = (dono as { contato_id: string | null } | null)?.contato_id
+        if (contatoId) {
+          await propagarDadosDaPessoa(admin, ctx, contatoId, {
+            nome:             mudouNome ? name : undefined,
+            telefone:         mudouFone ? phone : undefined,
+            telefoneAnterior: antes.campos.phone ?? null,
+          }, { excetoLead: leadId })
+        }
+      }
+    }
 
     // --- Histórico ------------------------------------------------
     // Toda ação sobre o lead deixa rastro. A unidade tem evento próprio porque

@@ -16,10 +16,11 @@ import {
 } from '@/lib/inbox/media'
 import type { ChannelKind } from '@/lib/channels/types'
 import { registrarEventoLead } from '@/lib/lead-events'
+import { propagarDadosDaPessoa } from '@/lib/contatos/propagar'
 import {
   extrairVariaveis, montarParametrosEnvio, textoDoEnvio,
 } from '@/lib/templates/core'
-import { gravar, ler, tentar } from '@/lib/db'
+import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import { passaNasCaixas, passaNoAlcanceDoDono, type AlcanceDoDono } from '@/lib/inbox/visibilidade'
 import { alcanceDoDono, caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
 import { leadAoAlcance } from '@/lib/crm/alcance'
@@ -1047,13 +1048,11 @@ export async function criarOportunidade(
 }
 
 /**
- * Atualiza a pessoa e propaga para as oportunidades dela.
+ * Atualiza a pessoa a partir de uma conversa, e propaga.
  *
- * A oportunidade guarda uma cópia de nome e telefone porque o card do quadro
- * precisa se identificar sozinho. Cópia que não acompanha o original vira mentira
- * — então a alteração desce para todas, e cada uma registra na sua linha do tempo
- * o que mudou, com valor anterior e autor. Só as que realmente mudaram: senão
- * salvar o contato carimbaria o histórico de oportunidades intocadas.
+ * Nome e telefone são da PESSOA: a pessoa, as OUTRAS conversas dela e as
+ * oportunidades acompanham (`propagarDadosDaPessoa`, que diz a regra do
+ * telefone). Cada oportunidade que mudou registra na linha do tempo o de → para.
  */
 export async function atualizarContato(
   conversationId: string,
@@ -1063,6 +1062,11 @@ export async function atualizarContato(
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada.' }
+
+  // O número que esta edição substitui: é por ele que se sabe quais outras
+  // conversas eram do mesmo WhatsApp (§9.2.1).
+  const antes = await ler(admin.from('conversations').select('contact_phone')
+    .eq('id', conversationId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a conversa')
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (dados.nome     !== undefined) patch.contact_name  = dados.nome.trim() || null
@@ -1097,60 +1101,20 @@ export async function atualizarContato(
   const mudouNome = patch.contact_name !== undefined
   const mudouFone = patch.contact_phone !== undefined
   if ((mudouNome || mudouFone) && contatoId) {
-    await propagarParaOportunidades(admin, ctx, contatoId, {
-      name:  mudouNome ? (patch.contact_name as string | null) : undefined,
-      phone: mudouFone ? (patch.contact_phone as string | null) : undefined,
-    })
+    try {
+      await propagarDadosDaPessoa(admin, ctx, contatoId, {
+        nome:             mudouNome ? (patch.contact_name as string | null) : undefined,
+        telefone:         mudouFone ? (patch.contact_phone as string | null) : undefined,
+        telefoneAnterior: (antes as { contact_phone: string | null } | null)?.contact_phone ?? null,
+      })
+    } catch (e) {
+      // Esta conversa já mudou; o resto não. A tela precisa saber.
+      return { ok: false, error: `Salvo nesta conversa, mas não nas outras da pessoa: ${mensagemDoErro(e)}` }
+    }
   }
 
   revalidarInbox()
   return { ok: true }
-}
-
-async function propagarParaOportunidades(
-  admin: ReturnType<typeof createAdminClient>,
-  ctx: Awaited<ReturnType<typeof getTenantContext>>,
-  contatoId: string,
-  novos: { name?: string | null; phone?: string | null },
-): Promise<void> {
-  // Todas as oportunidades da PESSOA, não só as que nasceram nesta thread:
-  // corrigir o nome atendendo pela unidade tem de chegar ao card que nasceu no
-  // marketing.
-  const { data, error } = await admin
-    .from('leads')
-    .select('id, name, phone')
-    .eq('tenant_id', ctx.tenantId!)
-    .eq('contato_id', contatoId)
-
-  if (error) { console.error('[atualizarContato] oportunidades:', error.message); return }
-
-  for (const lead of (data ?? []) as { id: string; name: string | null; phone: string | null }[]) {
-    const patch: Record<string, unknown> = {}
-    const changes: { campo: string; de: string | null; para: string | null }[] = []
-
-    // Nome é NOT NULL no lead: contato sem nome não pode apagar o do card.
-    if (novos.name !== undefined && novos.name && novos.name !== lead.name) {
-      patch.name = novos.name
-      changes.push({ campo: 'Nome', de: lead.name ?? null, para: novos.name })
-    }
-    if (novos.phone !== undefined && (novos.phone ?? null) !== (lead.phone ?? null)) {
-      patch.phone = novos.phone
-      changes.push({ campo: 'Telefone', de: lead.phone ?? null, para: novos.phone })
-    }
-    if (changes.length === 0) continue
-
-    const { error: erroUpdate } = await admin.from('leads').update(patch).eq('id', lead.id)
-    if (erroUpdate) { console.error('[atualizarContato] propagar:', erroUpdate.message); continue }
-
-    await registrarEventoLead({
-      tenantId:    ctx.tenantId!,
-      leadId:      lead.id,
-      type:        'UPDATED',
-      actorUserId: ctx.internalUserId,
-      actorName:   ctx.userName || null,
-      changes,
-    })
-  }
 }
 
 /**

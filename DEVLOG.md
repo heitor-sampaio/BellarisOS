@@ -1258,6 +1258,28 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — Nome e telefone da pessoa se propagam
+
+"Sobre editar nome ou telefone do contato, faça com que a edição propague."
+Corrigir o nome numa conversa não mudava a outra conversa da mesma pessoa nem a
+própria pessoa (`contacts`), só as oportunidades; e corrigir no card da
+oportunidade não mudava nada fora dele.
+
+- `propagarDadosDaPessoa` (`lib/contatos/propagar.ts`), chamada pelos dois
+  lugares que editam (painel do inbox e card da oportunidade). O nome vai para
+  a pessoa, todas as conversas e todas as oportunidades.
+- **O telefone tem regra**: na conversa ele é o DESTINO da mensagem. Vai para
+  as conversas com o mesmo número antigo ou sem número; a conversa com outro
+  número (outro WhatsApp da pessoa) não muda. O número novo passa a identificar
+  a pessoa (`identifiers`).
+- `e2e/contato-propaga.spec.ts`: uma pessoa com quatro conversas (duas no
+  mesmo número em caixas diferentes, uma no Instagram, uma com outro número) e
+  duas oportunidades; edição pelo inbox e pelo card. Os dois caminhos falham no
+  código antigo.
+- Achado de teste: o nome do lead também aparece nos diálogos fechados de cada
+  card do quadro — clicar pelo texto acerta um elemento invisível e trava.
+  Clicar pelo `.crm-card`.
+
 ### 2026-09-28 — Credencial fora do alcance da sessão
 
 "Pode fazer o ajuste do RLS." O item de "Em aberto" dizia que a RLS de
@@ -3611,8 +3633,6 @@ verdade. O que vale:
   em 2026-09-26):
   - `conversations.tags` é só semente e sai numa migration própria depois do
     soak;
-  - nome e telefone ainda são lidos da conversa, não de `contacts` — editar
-    numa thread não muda o nome exibido na outra;
   - com escopo OWN no modo "pela conversa", a lista de leads do dono ainda vem
     num `in.(...)` sem teto (o modo "pela pessoa", que é o padrão, já é conta
     do banco).
