@@ -35,8 +35,10 @@ if (fs.existsSync(path.join(WEB, 'public'))) {
 const servidor = spawn(process.execPath, ['server.js'], {
   cwd: SOLTO,
   stdio: 'inherit',
-  // '::' atende IPv4 e IPv6: 'localhost' pode resolver para qualquer um.
-  env: { ...process.env, PORT: porta, HOSTNAME: '::' },
+  // 127.0.0.1, e o teste fala com 127.0.0.1: o standalone usa o HOSTNAME para
+  // montar os redirects, e com '::' a pessoa ia parar em http://[::]:3100 —
+  // outro endereço, sem o cookie da sessão (visto no GitHub Actions).
+  env: { ...process.env, PORT: porta, HOSTNAME: '127.0.0.1' },
 })
 for (const sinal of ['SIGINT', 'SIGTERM']) process.on(sinal, () => servidor.kill(sinal))
 servidor.on('exit', code => process.exit(code ?? 0))

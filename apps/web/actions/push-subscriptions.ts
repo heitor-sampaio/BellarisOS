@@ -3,6 +3,7 @@
 import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar } from '@/lib/db'
+import { semAcesso } from '@/lib/sem-acesso'
 
 export async function savePushToken({
   token,
@@ -31,7 +32,7 @@ export async function saveWebPushSubscription(sub: {
   keys: { p256dh: string; auth: string }
 }): Promise<void> {
   const ctx = await getTenantContext()
-  if (!ctx.isClient) throw new Error('Forbidden')
+  if (!ctx.isClient) throw semAcesso()
 
   const admin = createAdminClient()
   await gravar(admin.from('web_push_subscriptions').upsert(
@@ -42,7 +43,7 @@ export async function saveWebPushSubscription(sub: {
 
 export async function removeWebPushSubscription(endpoint: string): Promise<void> {
   const ctx = await getTenantContext()
-  if (!ctx.isClient) throw new Error('Forbidden')
+  if (!ctx.isClient) throw semAcesso()
 
   const admin = createAdminClient()
   await gravar(admin

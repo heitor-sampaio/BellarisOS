@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { MetaMessagingPage } from '@/lib/meta/messaging'
+import { origemPublica, urlPublica } from '@/lib/origem'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
 const BACK  = '/admin/settings?tab=integrations'
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
   cookieStore.delete('meta_oauth_produto')
 
   const makeErrUrl = (reason: string) => {
-    const u = new URL(BACK, req.url)
+    const u = urlPublica(req, BACK)
     u.searchParams.set('meta_error', '1')
     u.searchParams.set('meta_error_reason', reason)
     return u
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
   if (!can(ctx, 'settings', 'MANAGE')) return NextResponse.redirect(makeErrUrl('sem_permissao'))
 
   try {
-    const origin      = req.nextUrl.origin
+    const origin      = origemPublica(req)
     const appId       = process.env.META_APP_ID!
     const appSecret   = process.env.META_APP_SECRET!
     const redirectUri = `${origin}/api/oauth/meta/callback`
@@ -95,7 +96,7 @@ export async function GET(req: NextRequest) {
     revalidatePath('/admin/settings')
 
     const passo = produto === 'mensagens' ? 'select_page' : 'select'
-    return NextResponse.redirect(new URL(`${BACK}&meta_step=${passo}`, req.url))
+    return NextResponse.redirect(urlPublica(req, `${BACK}&meta_step=${passo}`))
   } catch (e) {
     console.error('[meta-oauth-callback]', e)
     return NextResponse.redirect(makeErrUrl(e instanceof Error ? e.message : 'unknown'))

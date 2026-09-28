@@ -124,7 +124,8 @@ test.describe.serial('autenticação pela tela', () => {
       await expect(p.getByText('Link expirado')).toBeVisible()
 
       await p.goto('/auth/confirm?token_hash=nao-existe&type=recovery&next=//exemplo.invalid/roubo')
-      await expect(p).toHaveURL(/localhost:\d+\/login\?erro=link/)
+      // O próprio app (localhost no dev, 127.0.0.1 contra o build) — não o exemplo.invalid.
+      await expect(p).toHaveURL(/^http:\/\/(localhost|127\.0\.0\.1):\d+\/login\?erro=link/)
     })
   })
 

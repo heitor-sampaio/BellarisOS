@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShieldOff, RotateCw, ArrowLeft } from 'lucide-react'
+import { ehSemAcesso } from '@/lib/sem-acesso'
 
 /**
  * Tela de erro do app.
@@ -21,7 +22,8 @@ export default function AppError({
   reset: () => void
 }) {
   const router = useRouter()
-  const forbidden = error.message === 'Forbidden'
+  // Pelo `digest`: em produção a mensagem chega trocada (ver lib/sem-acesso).
+  const forbidden = ehSemAcesso(error)
 
   useEffect(() => {
     // Forbidden é esperado — não polui o log como se fosse falha.

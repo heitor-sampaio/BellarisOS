@@ -10,6 +10,7 @@ import {
   resolvePermissions, resolveScopes, resolveReportTabs, hasLevel,
   NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS,
 } from '@/lib/permissions'
+import { semAcesso } from '@/lib/sem-acesso'
 
 // Resolve permissões + campos derivados do membro a partir das claims do JWT.
 // Durante a transição, role_id/provides_services vêm do banco (getCachedMember)
@@ -112,7 +113,7 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
 /** Gate do portal do cliente (role CLIENT). */
 export function assertClient(ctx: TenantContext): void {
   if (!ctx.isClient) {
-    throw new Error('Forbidden')
+    throw semAcesso()
   }
 }
 
@@ -127,7 +128,7 @@ export function assertPermission(
   required: 'VIEW' | 'MANAGE',
 ): void {
   if (!hasLevel(ctx.permissions[module], required)) {
-    throw new Error('Forbidden')
+    throw semAcesso()
   }
 }
 
@@ -142,7 +143,7 @@ export function assertAnyPermission(
   required: 'VIEW' | 'MANAGE',
 ): void {
   if (!modules.some(m => hasLevel(ctx.permissions[m], required))) {
-    throw new Error('Forbidden')
+    throw semAcesso()
   }
 }
 
@@ -168,7 +169,7 @@ export function podeReceber(ctx: TenantContext): boolean {
 
 /** Barra quem não pode receber. */
 export function assertPodeReceber(ctx: TenantContext): void {
-  if (!podeReceber(ctx)) throw new Error('Forbidden')
+  if (!podeReceber(ctx)) throw semAcesso()
 }
 
 /**
@@ -220,7 +221,7 @@ export function alcancaUnidade(ctx: TenantContext, branchId: string | null | und
 
 /** `alcancaUnidade` que barra — mesma resposta de quem não tem o módulo. */
 export function assertUnidade(ctx: TenantContext, branchId: string | null | undefined): void {
-  if (!alcancaUnidade(ctx, branchId)) throw new Error('Forbidden')
+  if (!alcancaUnidade(ctx, branchId)) throw semAcesso()
 }
 
 

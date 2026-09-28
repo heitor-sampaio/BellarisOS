@@ -278,6 +278,13 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   - `e2e/privacidade-publica.spec.ts` confere sem sessão
     (`storageState` vazio), que é o único jeito de a regressão aparecer:
     logado, a página abre de qualquer forma.
+- ⚠️ **Endereço público nunca sai de `req.url` / `req.nextUrl.origin`.** O
+  servidor standalone (o do Docker) monta os dois a partir do `HOSTNAME` em
+  que escuta (`0.0.0.0`), não do domínio acessado: até 2026-09-28
+  `/auth/confirm` mandava para `https://0.0.0.0:8080/login` em produção — todo
+  link de e-mail e o retorno do OAuth da Meta quebrados. Redirect absoluto e
+  `redirect_uri` usam `origemPublica` / `urlPublica` (`lib/origem.ts`). No
+  `next dev` não aparece: só a suíte contra o build pega.
 - ⚠️ **Por isso toda rota de `/api/*` se defende sozinha** — o proxy não barra
   nenhuma. Cron pelo `CRON_SECRET`, webhook pela assinatura ou token do
   provedor, e o resto por
@@ -1021,6 +1028,9 @@ sem ver o faturamento. Sem nenhuma aba marcada, o módulo vale NONE
 `podeVerRelatorio(ctx, aba)` — é o que a seção de relatórios usa.
 
 ```typescript
+// A trava lança semAcesso() (lib/sem-acesso.ts), nunca new Error('Forbidden'):
+// em produção o Next troca a mensagem de todo erro do servidor, e só o digest
+// fixo dela deixa a tela dizer "sem acesso" em vez de "algo deu errado".
 // lib/auth.ts — os quatro helpers de autorização
 assertPermission(ctx, 'agenda', 'MANAGE')                    // barra (throw)
 assertAnyPermission(ctx, ['settings', 'roles', 'forms'], 'MANAGE')  // tela multi-módulo
@@ -1345,6 +1355,9 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Perguntar "qual o WhatsApp desta rede?" — a pergunta é qual DESTES, e por quê
 ❌ Ler ou gravar whatsapp_numbers.user_id (legado — quem fala pelo número é whatsapp_number_users)
+❌ Montar redirect ou redirect_uri com req.url / req.nextUrl.origin (é 0.0.0.0 no standalone) — use origemPublica
+❌ Lançar new Error('Forbidden') à mão — use semAcesso() (em produção só o digest chega à tela)
+❌ Contar com a MENSAGEM de um erro lançado no servidor na tela — em produção ela chega trocada; devolva { error }
 ❌ Update pela sessão sem conferir a linha devolvida (sem policy de UPDATE, atinge zero linhas sem erro)
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
 ❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)

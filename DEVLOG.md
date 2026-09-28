@@ -1258,6 +1258,34 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — O que a suíte contra o build achou em produção
+
+A primeira regressão no GitHub (contra o build, não o `next dev`) deu 283
+passando e 8 falhando. Três eram defeitos REAIS de produção, que o dev nunca
+mostraria:
+
+- **Link de e-mail quebrado.** O standalone monta `req.url` e
+  `req.nextUrl.origin` com o `HOSTNAME` em que escuta: `/auth/confirm` em
+  app.bellarisos.com redirecionava para `https://0.0.0.0:8080/login`
+  (conferido com curl). Recuperação de senha, confirmação e o retorno do OAuth
+  da Meta. `lib/origem.ts` (`origemPublica`) usa `x-forwarded-*`, depois o
+  `Host`; `tests/origem.test.ts`.
+- **"Algo deu errado" no lugar de "sem acesso".** Em produção o Next troca a
+  mensagem de todo erro do servidor, e `app/error.tsx` reconhecia a falta de
+  permissão por `message === 'Forbidden'`. As travas lançam `semAcesso()`
+  (`lib/sem-acesso.ts`), com `digest` fixo, que é o que atravessa.
+- A suíte em si servia o build em `[::]` e os redirects levavam a pessoa para
+  lá, sem o cookie: agora servidor e teste em `127.0.0.1`.
+- A varredura passou a apagar procedimentos `[e2e]` da rede real (havia 33).
+
+**Em aberto:** criar procedimento contra o build fica às vezes em "Criando…" —
+a action grava, a resposta chega inteira, e o formulário não recebe o
+resultado. É corrida: o `RealtimeRefresher` pede `router.refresh()` com a
+action em andamento e o router a aborta (visto pelo stack do DevTools), mas
+com o realtime bloqueado ainda acontece às vezes. Em produção o Heitor criou
+normalmente. Uma tentativa de contar actions em voo pelo `fetch` não se provou
+e não entrou.
+
 ### 2026-09-28 — Novo procedimento abre vazio
 
 Visto pelo Heitor em produção: depois de criar um procedimento, "Novo

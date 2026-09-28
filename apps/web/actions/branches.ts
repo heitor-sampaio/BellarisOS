@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, assertUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
+import { semAcesso } from '@/lib/sem-acesso'
 
 function toSlug(name: string): string {
   return name
@@ -23,7 +24,7 @@ export async function createBranch(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
   // Abrir unidade nova é decisão da REDE, não de quem tem unidade fixa (§11).
-  if (ctx.branchId !== null) throw new Error('Forbidden')
+  if (ctx.branchId !== null) throw semAcesso()
 
   const name     = (formData.get('name') as string)?.trim()
   const slugRaw  = (formData.get('slug') as string)?.trim()
@@ -126,7 +127,7 @@ export async function toggleBranchStatus(branchId: string, isActive: boolean) {
   assertPermission(ctx, 'settings', 'MANAGE')
   // Desativar uma unidade tira a agenda dela do ar: decisão da REDE (§11). A
   // gerente da A desativava a B.
-  if (ctx.branchId !== null) throw new Error('Forbidden')
+  if (ctx.branchId !== null) throw semAcesso()
 
   const supabase = createAdminClient()
   await gravar(supabase

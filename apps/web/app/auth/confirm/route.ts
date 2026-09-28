@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { urlPublica } from '@/lib/origem'
 
 /**
  * A volta de um link de e-mail do Supabase (hoje, o de recuperar a senha):
@@ -35,9 +36,10 @@ export async function GET(req: NextRequest) {
       : { error: new Error('link sem código') }
 
   if (error) {
-    const volta = new URL(next === '/update-password' ? '/update-password' : '/login', url)
+    // Endereço público, não o do servidor: ver lib/origem.ts.
+    const volta = urlPublica(req, next === '/update-password' ? '/update-password' : '/login')
     volta.searchParams.set('erro', 'link')
     return NextResponse.redirect(volta)
   }
-  return NextResponse.redirect(new URL(next, url))
+  return NextResponse.redirect(urlPublica(req, next))
 }

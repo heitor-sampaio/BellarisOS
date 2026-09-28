@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
 import { getTenantContext, can } from '@/lib/auth'
+import { origemPublica } from '@/lib/origem'
 
 /**
  * Início do OAuth da Meta.
@@ -64,7 +65,8 @@ export async function GET(req: NextRequest) {
     path:     '/',
   })
 
-  const origin      = req.nextUrl.origin
+  // O redirect_uri tem de ser o domínio público (ver lib/origem.ts).
+  const origin      = origemPublica(req)
   const redirectUri = `${origin}/api/oauth/meta/callback`
 
   const url = new URL('https://www.facebook.com/dialog/oauth')

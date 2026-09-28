@@ -187,6 +187,26 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     apagou.caixas = caixas.length
   }
 
+  // 5b. Procedimentos de teste em qualquer rede (os criados pela tela ficam na
+  //     rede real; um teste que estoura o tempo não chega ao afterAll — foram
+  //     33 acumulados até 2026-09-28). Só os sem agendamento: com agendamento,
+  //     quem limpa é a varredura dos agendamentos, na próxima rodada.
+  const procs = await ids(db.from('procedures').select('id').like('name', like))
+  if (procs.length) {
+    const { data: usados } = await db.from('appointments').select('procedure_id').in('procedure_id', procs)
+    const presos = new Set(((usados ?? []) as { procedure_id: string }[]).map(u => u.procedure_id))
+    const livres = procs.filter(id => !presos.has(id))
+    if (livres.length) {
+      await passo(falhas, 'eventos dos procedimentos de teste', db.from('domain_events').delete().in('entidade_id', livres))
+      await passo(falhas, 'histórico de preço de teste', db.from('procedure_price_history').delete().in('procedure_id', livres))
+      await passo(falhas, 'unidades dos procedimentos de teste', db.from('procedure_branch_availability').delete().in('procedure_id', livres))
+      await passo(falhas, 'insumos dos procedimentos de teste', db.from('procedure_products').delete().in('procedure_id', livres))
+      await passo(falhas, 'preços por unidade de teste', db.from('procedure_branch_pricing').delete().in('procedure_id', livres))
+      await passo(falhas, 'procedimentos de teste', db.from('procedures').delete().in('id', livres))
+      apagou.procedimentos = livres.length
+    }
+  }
+
   // 6. Membros e cargos de teste, e os logins deles.
   const { data: membros } = await db.from('users').select('id, auth_id').like('name', like)
   for (const m of (membros ?? []) as { id: string; auth_id: string | null }[]) {

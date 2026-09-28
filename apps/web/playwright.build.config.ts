@@ -15,7 +15,8 @@ import base from './playwright.config'
  */
 process.env.E2E_BUILD = '1'
 const PORTA = process.env.E2E_PORTA ?? '3100'
-process.env.E2E_BASE_URL = `http://localhost:${PORTA}`
+// 127.0.0.1, igual ao HOSTNAME do servidor (ver scripts/servir-build.mjs).
+process.env.E2E_BASE_URL = `http://127.0.0.1:${PORTA}`
 
 export default defineConfig({
   ...base,

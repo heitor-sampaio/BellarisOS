@@ -12,6 +12,7 @@ import { gravar, ler, tentar, contar, mensagemDoErro } from '@/lib/db'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { emAbertoDoPlano } from '@/lib/checkout/em-aberto-do-plano'
 import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
+import { semAcesso } from '@/lib/sem-acesso'
 
 /**
  * Quem pode o quê, neste arquivo.
@@ -42,7 +43,7 @@ import type { CheckoutPlan } from '@/components/branch/checkout-wizard'
  * ⚠️ Não é export: todo export de arquivo `'use server'` vira endpoint público.
  */
 function assertPodeFecharPlano(ctx: TenantContext): void {
-  if (!can(ctx, 'medical_records', 'MANAGE') && !podeReceber(ctx)) throw new Error('Forbidden')
+  if (!can(ctx, 'medical_records', 'MANAGE') && !podeReceber(ctx)) throw semAcesso()
 }
 
 // -- Tipos ---------------------------------------------------------------------

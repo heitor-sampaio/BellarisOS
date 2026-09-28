@@ -20,6 +20,7 @@ import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { periodRef, dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { notificarInteressados } from '@/lib/notifications/interessados'
+import { semAcesso } from '@/lib/sem-acesso'
 
 // --- Helpers internos ---------------------------------------------
 async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
@@ -271,7 +272,7 @@ export async function updateAppointmentStatus(
   // Quem só gerencia a própria agenda mexe no andamento do atendimento
   // (iniciar/concluir), não no ciclo de vida do agendamento.
   if (isOwnScope(ctx, 'agenda') && !(['IN_PROGRESS', 'COMPLETED'] as string[]).includes(status)) {
-    throw new Error('Forbidden')
+    throw semAcesso()
   }
 
   if (status === 'CANCELLED' && !cancellationReason?.trim()) {
