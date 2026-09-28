@@ -493,8 +493,10 @@ duas conversas.
 `conversations.tags` já dizia "Tags do CONTATO: descrevem a pessoa, não o
 negócio". `conversations.tags` sobrevive como **semente**: escrita uma vez no
 nascimento da thread (é de onde vêm as tags derivadas da origem), lida pelo
-gatilho que a leva para a pessoa, e **nunca lida pelo app**. Sai numa migration
-própria depois do soak.
+gatilho que a leva para a pessoa, e **nunca lida pelo app**. **Fica** — decisão
+do Heitor em 2026-09-28: tirá-la obrigaria cada ponto que cria conversa a
+escrever na pessoa, que é o que o gatilho existe para evitar (comentário na
+coluna, migration `20260928000008`).
 
 ⚠️ **Variável de plpgsql não pode se chamar como uma coluna.** `declare tags
 text[]` num gatilho de `contacts` fez a referência ficar ambígua (`42702`)
@@ -514,6 +516,21 @@ dado novo, não uma mudança de casa: não entra antes de alguém precisar dele.
   veio da campanha. `on_transaction_paid` fazia isso errado e mandava a compra
   para a API de Conversões da Meta com `ad_id` nulo — ROI menor do que é, sem
   nada acusando.
+
+**A fila do inbox vem de 30 em 30, filtrada no BANCO** (`inbox_pagina`,
+migration `20260928000007`), e o fim da lista busca a próxima pelo cursor
+`(last_message_at, id)`. Eram as 200 mais recentes filtradas no navegador: a
+201ª não aparecia nunca, nem procurando. Consequências:
+- **Filtro e busca vão ao servidor.** `passaNosFiltros` continua no navegador
+  só como guarda do que chega pelo realtime — as duas definições têm de
+  continuar iguais (a da função cita a do componente).
+- **As opções dos menus vêm da rede** (`inbox_opcoes`), não das conversas
+  carregadas: o dono que só aparece na página 5 sumiria do menu.
+- **O realtime recarrega o tanto que já está na tela**, com os filtros de
+  agora — recarregar "do zero" encolheria a lista de quem rolou.
+- O alcance entra na mesma consulta: no modo "pela conversa" os leads do dono
+  vêm de `leads_do_dono` (um array só; o select parava em 1000).
+- Prova: `e2e/inbox-paginado.spec.ts`, numa rede `[e2e]` própria.
 
 **A fila do inbox é de CONVERSAS** — a mesma pessoa em duas caixas são duas
 linhas, cada uma com o nome da caixa quando a rede tem mais de uma. Foi por
@@ -580,7 +597,7 @@ oportunidade (`updateLead`) — passa por `propagarDadosDaPessoa`
   muda. Nas oportunidades vai para todas;
 - cada oportunidade que mudou registra o de → para na linha do tempo.
 Prova: `e2e/contato-propaga.spec.ts`. Editar cópia sem passar por aí é o
-defeito de volta. A limpeza de `conversations.tags` continua pendente do soak.
+defeito de volta.
 
 Em teste, limpar conversa é `apagarConversas()` de `e2e/apoio/banco.ts`, que tira
 o contato junto.

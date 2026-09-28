@@ -224,6 +224,15 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     await passo(falhas, 'unidades da rede de teste', db.from('branches').delete().eq('tenant_id', rede))
     await passo(falhas, 'cargos da rede de teste', db.from('tenant_roles').delete().eq('tenant_id', rede))
     await passo(falhas, 'eventos da rede de teste', db.from('domain_events').delete().eq('tenant_id', rede))
+    // Oportunidades em lotes até esvaziar (um select só para em 1000), e depois
+    // as pessoas, que elas prendem (`on delete restrict`).
+    for (let volta = 0; volta < 20; volta++) {
+      const lote = await ids(db.from('leads').select('id').eq('tenant_id', rede).limit(300))
+      if (lote.length === 0) break
+      await passo(falhas, 'histórico da rede de teste', db.from('lead_events').delete().in('lead_id', lote))
+      await passo(falhas, 'oportunidades da rede de teste', db.from('leads').delete().in('id', lote))
+    }
+    await passo(falhas, 'pessoas da rede de teste', db.from('contacts').delete().eq('tenant_id', rede))
     await passo(falhas, 'rede de teste', db.from('tenants').delete().eq('id', rede))
   }
   if (redes.length) apagou.redes = redes.length

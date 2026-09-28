@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Zap, Clock, RefreshCw, Gift, CalendarHeart, Package,
@@ -51,6 +51,14 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
   const [step, setStep]           = useState<Step>(1)
   const [isPending, startTransition] = useTransition()
   const [error, setError]         = useState<string | null>(null)
+  /**
+   * Para onde ir depois de salvar. A navegação sai num efeito, DEPOIS de a
+   * transição terminar: `router.push` dentro dela disputava com o refresh que
+   * o `revalidatePath` da action dispara, e o refresh ganhava — a tela ficava
+   * no formulário com a campanha já salva.
+   */
+  const [destino, setDestino]     = useState<string | null>(null)
+  useEffect(() => { if (destino) router.push(destino) }, [destino, router])
 
   // Step 1
   const gatilho = (existing?.trigger_config ?? {}) as Record<string, number | undefined>
@@ -144,7 +152,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
         if (actRes.error) { setError(actRes.error); return }
       }
 
-      router.push(existing ? `/admin/notificacoes/${id}` : '/admin/notificacoes')
+      setDestino(existing ? `/admin/notificacoes/${id}` : '/admin/notificacoes')
     })
   }
 

@@ -1,7 +1,7 @@
 import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { filiaisAtivas } from '@/lib/branches'
-import { getConversations } from '@/actions/inbox'
+import { getConversations, opcoesDoInbox } from '@/actions/inbox'
 import { canaisConectados } from '@/lib/channels/factory'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { CRMInbox } from '@/components/admin/crm-inbox'
@@ -32,7 +32,10 @@ export default async function AdminInboxPage({
 
   // `convParam` entra aqui: a conversa vinda de um card do funil pode não ter
   // mensagem nenhuma, e sem isso ela não estaria na lista para ser aberta.
-  const conversations = await getConversations(convParam)
+  const [pagina, opcoesDosFiltros] = await Promise.all([
+    getConversations({ incluirId: convParam }),
+    opcoesDoInbox(),
+  ])
   const canais = await canaisConectados(ctx.tenantId!, ctx.internalUserId)
 
   // Lista para o seletor de "nova conversa". Não passa por etapa nem funil: a
@@ -69,7 +72,10 @@ export default async function AdminInboxPage({
 
       <CRMInbox
         telaCheia
-        initialConversations={conversations}
+        initialConversations={pagina.conversas}
+        initialTemMais={pagina.temMais}
+        initialCursor={pagina.cursor}
+        opcoesDosFiltros={opcoesDosFiltros}
         leads={inboxLeads}
         canEdit={can(ctx, 'crm', 'MANAGE')}
         branches={branches}

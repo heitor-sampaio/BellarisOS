@@ -47,11 +47,13 @@ export async function alcanceDoDono(admin: Admin, ctx: TenantContext): Promise<A
   const modo = lerVisibilidade((rede as { inbox_visibilidade?: string } | null)?.inbox_visibilidade)
 
   if (modo === 'conversa') {
+    // Num array só, pelo banco: o select direto parava em 1000 linhas (o teto
+    // do PostgREST), e as conversas dos leads além disso sumiam sem aviso.
     const meus = await ler(
-      admin.from('leads').select('id').eq('tenant_id', tenantId).eq('owner_id', owner),
+      admin.rpc('leads_do_dono', { p_tenant: tenantId, p_owner: owner }),
       'carregar os leads do dono',
     )
-    return { modo, meusLeads: ((meus ?? []) as { id: string }[]).map(l => l.id) }
+    return { modo, meusLeads: (meus ?? []) as string[] }
   }
 
   // No banco, e num array só: ler os leads com dono para contar aqui bateria

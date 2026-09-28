@@ -21,6 +21,7 @@ import {
   setConversationStatus, createConversationForLead, getMessageMediaUrl, editMessage,
   type Conversation, type Message, type InboxChannel, type ConvStatus,
   type ReplyPreview, type AnuncioDaMensagem,
+  type PaginaDoInbox, type CursorDoInbox, type OpcoesDoInbox,
 } from '@/actions/inbox'
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
 import { nomeDoAnuncio, legendaDoAnuncio } from '@/lib/ads/rotulo'
@@ -852,7 +853,13 @@ function MenuDeAcoes({
 // --- Main export -------------------------------------------------------------
 
 interface CRMInboxProps {
+  /** A primeira página (30), já no alcance de quem abre — ver `getConversations`. */
   initialConversations: Conversation[]
+  /** Há mais conversas além desta página: a lista busca ao chegar no fim. */
+  initialTemMais?:      boolean
+  initialCursor?:       CursorDoInbox
+  /** Donos, funis, etapas, tags e unidades em uso na rede, para os filtros. */
+  opcoesDosFiltros?:    OpcoesDoInbox | null
   leads:                { id: string; name: string; phone?: string | null; branch_name?: string | null }[]
   canEdit:              boolean
   branches:             PanelBranch[]
@@ -955,7 +962,8 @@ function mesclarMensagem(lista: Message[], entrada: Message): Message[] {
 }
 
 export function CRMInbox({
-  initialConversations, leads, canEdit, branches,
+  initialConversations, initialTemMais = false, initialCursor = null, opcoesDosFiltros = null,
+  leads, canEdit, branches,
   slug = '', initialSelectedId = null, canaisConectados = [],
   numeroDoUsuario = null, telaCheia = false,
 }: CRMInboxProps) {
@@ -976,6 +984,22 @@ export function CRMInbox({
   const [loadingMsgs,   setLoadingMsgs]   = useState(!!initialSelectedId)
   const [search,        setSearch]        = useState('')
   const [filtros,       setFiltros]       = useState<FiltrosInbox>(FILTROS_VAZIOS)
+  /**
+   * A lista vem de 30 em 30, já filtrada no banco (`inbox_pagina`). Era as 200
+   * mais recentes filtradas aqui — a 201ª nunca aparecia, nem para o filtro.
+   */
+  const [temMais,       setTemMais]       = useState(initialTemMais)
+  const [carregandoMais, setCarregandoMais] = useState(false)
+  const cursorRef   = useRef<CursorDoInbox>(initialCursor)
+  /** O que está pedido agora — o realtime recarrega com isto, e não do zero. */
+  const consultaRef = useRef<{ filtros: FiltrosInbox; busca: string }>({ filtros: FILTROS_VAZIOS, busca: '' })
+  /** Cada troca de filtro ou busca invalida a resposta que ainda estava a caminho. */
+  const geracaoRef  = useRef(0)
+  const fimDaListaRef = useRef<HTMLDivElement>(null)
+  // Preenchidas por efeito, mais abaixo — ver lá.
+  const selecionadaRef     = useRef<string | null>(initialSelectedId)
+  const recarregarListaRef = useRef<() => Promise<Conversation[] | null>>(async () => null)
+  const carregarMaisRef    = useRef<() => Promise<void>>(async () => {})
   const [draft,         setDraft]         = useState('')
   const [isPending,     startTransition]  = useTransition()
   const [showNewConv,   setShowNewConv]   = useState(false)
@@ -1184,9 +1208,9 @@ export function CRMInbox({
     function recarregar() {
       if (recarregando) return
       recarregando = true
-      getConversations_client()
+      recarregarListaRef.current()
         .then(convs => {
-          setConversations(convs)
+          if (!convs) return
           const vieram = new Set(convs.map(c => c.id))
           for (const id of pedidosSemResposta.current) {
             if (vieram.has(id)) pedidosSemResposta.current.delete(id)
@@ -1422,16 +1446,114 @@ export function CRMInbox({
   function handleConvCreated(convId: string) {
     setShowNewConv(false)
     // Refresh conversations list
-    getConversations_client().then(convs => setConversations(convs))
+    void recarregarLista()
     setSelectedId(convId)
   }
+
+  /**
+   * Recarrega o que está na tela, com os filtros e a busca de agora, e o mesmo
+   * tanto que já foi carregado — um evento do realtime não pode encolher a
+   * lista de quem rolou até a página 4. Devolve nulo se a consulta mudou
+   * enquanto isso (a resposta velha não sobrescreve a nova).
+   */
+  /**
+   * Troca a lista inteira sem fechar a conversa aberta: ela fica no estado
+   * (o painel a lê de lá) e só sai da LISTA, pelo filtro do navegador — como
+   * era quando o filtro era só daqui. É também o que segura o deep-link.
+   */
+  function trocarLista(novas: Conversation[]) {
+    setConversations(prev => {
+      const aberta = prev.find(c => c.id === selecionadaRef.current)
+      return aberta && !novas.some(c => c.id === aberta.id)
+        ? ordenarPorUltimaMensagem([...novas, aberta])
+        : novas
+    })
+  }
+
+  async function recarregarLista(): Promise<Conversation[] | null> {
+    const geracao = geracaoRef.current
+    const { filtros: f, busca } = consultaRef.current
+    const pagina = await getConversations_client({
+      filtros: f, busca, limite: Math.max(30, conversasRef.current.length),
+    })
+    if (geracao !== geracaoRef.current) return null
+    trocarLista(pagina.conversas)
+    setTemMais(pagina.temMais)
+    cursorRef.current = pagina.cursor
+    return pagina.conversas
+  }
+
+  /** A próxima página, pelo cursor. Chamada quando o fim da lista aparece. */
+  const carregandoMaisRef = useRef(false)
+  async function carregarMais() {
+    if (carregandoMaisRef.current || !cursorRef.current) return
+    carregandoMaisRef.current = true
+    setCarregandoMais(true)
+    const geracao = geracaoRef.current
+    try {
+      const { filtros: f, busca } = consultaRef.current
+      const pagina = await getConversations_client({ filtros: f, busca, depois: cursorRef.current })
+      if (geracao !== geracaoRef.current) return
+      setConversations(prev => {
+        const ja = new Set(prev.map(c => c.id))
+        return [...prev, ...pagina.conversas.filter(c => !ja.has(c.id))]
+      })
+      setTemMais(pagina.temMais)
+      cursorRef.current = pagina.cursor
+    } catch (err) {
+      console.error('[inbox] carregar mais conversas', err)
+    } finally {
+      carregandoMaisRef.current = false
+      setCarregandoMais(false)
+    }
+  }
+  // Os handlers montados uma vez (realtime, observador) chamam pela ref: assim
+  // enxergam a versão mais nova, e não a da primeira renderização.
+  useEffect(() => {
+    selecionadaRef.current     = selectedId
+    recarregarListaRef.current = recarregarLista
+    carregarMaisRef.current    = carregarMais
+  })
+
+  // Filtro ou busca mudou: a lista volta à primeira página, filtrada no banco.
+  // A busca espera a pessoa parar de digitar.
+  useEffect(() => {
+    // Nada mudou (a montagem, ou o efeito repetido do StrictMode): a primeira
+    // página já veio do servidor.
+    if (filtros === consultaRef.current.filtros && search.trim() === consultaRef.current.busca) return
+    const buscaMudou = consultaRef.current.busca !== search.trim()
+    consultaRef.current = { filtros, busca: search.trim() }
+    const geracao = ++geracaoRef.current
+    const t = setTimeout(() => {
+      getConversations_client({ filtros, busca: search.trim() })
+        .then(pagina => {
+          if (geracao !== geracaoRef.current) return
+          trocarLista(pagina.conversas)
+          setTemMais(pagina.temMais)
+          cursorRef.current = pagina.cursor
+        })
+        .catch(err => console.error('[inbox] filtrar conversas', err))
+    }, buscaMudou ? 300 : 0)
+    return () => clearTimeout(t)
+  }, [filtros, search])
+
+  // O fim da lista apareceu: busca a próxima página.
+  useEffect(() => {
+    const alvo = fimDaListaRef.current
+    if (!alvo || !temMais) return
+    const obs = new IntersectionObserver(entradas => {
+      if (entradas.some(e => e.isIntersecting)) void carregarMaisRef.current()
+    }, { rootMargin: '200px' })
+    obs.observe(alvo)
+    return () => obs.disconnect()
+  }, [temMais, conversations.length])
 
   const filtered = conversations.filter(c => {
     if (!passaNosFiltros(c, filtros)) return false
 
-    // A busca é independente dos filtros e continua como era: nome do contato e
-    // texto da última mensagem. Agora também telefone e tag, porque quem procura
-    // "botox" ou o número que acabou de ligar espera achar por aí.
+    // A busca é independente dos filtros: nome do contato, texto da última
+    // mensagem, telefone e tag. O banco já aplica filtros e busca
+    // (`inbox_pagina`); aqui é a guarda do que chega pelo realtime.
     const q = search.trim().toLowerCase()
     if (!q) return true
     return (c.contact_name ?? '').toLowerCase().includes(q)
@@ -1558,6 +1680,7 @@ export function CRMInbox({
                 conversas={conversations}
                 filtros={filtros}
                 onChange={setFiltros}
+                rede={opcoesDosFiltros}
               />
               {canEdit && (
                 <button
@@ -1587,6 +1710,7 @@ export function CRMInbox({
                 conversas={conversations}
                 filtros={filtros}
                 onChange={setFiltros}
+                rede={opcoesDosFiltros}
               />
             </div>
           </div>
@@ -1651,6 +1775,16 @@ export function CRMInbox({
                   nowMs={nowMs}
                 />
               ))
+            )}
+            {/* Chegar aqui busca a próxima página (o observador fica em cima). */}
+            {temMais && (
+              <div
+                ref={fimDaListaRef}
+                data-testid="inbox-fim-da-lista"
+                style={{ padding: '12px 14px', textAlign: 'center', fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}
+              >
+                {carregandoMais ? 'Carregando mais conversas…' : ''}
+              </div>
             )}
           </div>
         </div>
@@ -2116,7 +2250,7 @@ export function CRMInbox({
               canEdit={canEdit}
               branches={branches}
               slug={slug}
-              onLeadChanged={() => { getConversations_client().then(setConversations) }}
+              onLeadChanged={() => { void recarregarLista() }}
               // O cruzamento do handoff: abrir outra thread da mesma pessoa.
               onAbrirConversa={setSelectedId}
             />
@@ -2192,7 +2326,9 @@ function StatusDropdown({
 }
 
 // Client-side helper to refresh conversations without full page reload
-async function getConversations_client(): Promise<Conversation[]> {
+async function getConversations_client(
+  opcoes: Parameters<typeof import('@/actions/inbox').getConversations>[0] = {},
+): Promise<PaginaDoInbox> {
   const { getConversations } = await import('@/actions/inbox')
-  return getConversations()
+  return getConversations(opcoes)
 }

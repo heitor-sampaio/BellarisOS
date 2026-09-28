@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getConversations } from '@/actions/inbox'
+import { getConversations, opcoesDoInbox } from '@/actions/inbox'
 import { canaisConectados } from '@/lib/channels/factory'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { CRMInbox } from '@/components/admin/crm-inbox'
@@ -43,7 +43,10 @@ export default async function BranchInboxPage({
   // aplicado dentro de `getConversations`), não a unidade.
   // `convParam` é o deep-link do card de Oportunidades: a conversa apontada pelo
   // card pode não ter mensagem nenhuma e, sem essa exceção, não estaria na lista.
-  const conversations = await getConversations(convParam)
+  const [pagina, opcoesDosFiltros] = await Promise.all([
+    getConversations({ incluirId: convParam }),
+    opcoesDoInbox(),
+  ])
   const canais = await canaisConectados(ctx.tenantId!, ctx.internalUserId)
 
   const admin = createAdminClient()
@@ -84,7 +87,10 @@ export default async function BranchInboxPage({
 
       <CRMInbox
         telaCheia
-        initialConversations={conversations}
+        initialConversations={pagina.conversas}
+        initialTemMais={pagina.temMais}
+        initialCursor={pagina.cursor}
+        opcoesDosFiltros={opcoesDosFiltros}
         leads={inboxLeads}
         canEdit={can(ctx, 'crm', 'MANAGE')}
         branches={branches}

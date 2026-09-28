@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { SlidersHorizontal, X } from 'lucide-react'
-import type { Conversation, InboxChannel, ConvStatus } from '@/actions/inbox'
+import type { Conversation, InboxChannel, ConvStatus, OpcoesDoInbox } from '@/actions/inbox'
 
 /**
  * Filtros da caixa de entrada.
@@ -12,10 +12,10 @@ import type { Conversation, InboxChannel, ConvStatus } from '@/actions/inbox'
  * (dono, funil, etapa, tag) e não da conversa — quem atende procura "os leads
  * da Natascha na etapa Proposta", não "as conversas de WhatsApp".
  *
- * As opções são derivadas das conversas carregadas, não de catálogos completos.
- * Um menu com quarenta etapas das quais duas têm conversa é pior que um menu
- * com duas: oferecer um filtro que devolve lista vazia é desperdiçar o clique
- * de quem está atendendo.
+ * As opções vêm do que está EM USO na rede (`opcoesDoInbox`), somadas às das
+ * conversas carregadas. Eram só as carregadas — e com a lista paginada (30 por
+ * vez, desde 2026-09-28) o dono que só aparece na página 5 sumiria do menu,
+ * sendo justamente o filtro o jeito de chegar nele.
  */
 
 export interface FiltrosInbox {
@@ -155,6 +155,25 @@ function derivarOpcoes(conversas: Conversation[]): Opcoes {
   }
 }
 
+/** As das conversas carregadas mais as da rede. Sem o servidor, só as carregadas. */
+function juntarOpcoes(carregadas: Opcoes, rede?: OpcoesDoInbox | null): Opcoes {
+  if (!rede) return carregadas
+  const ordenar = (a: { nome: string }, b: { nome: string }) => a.nome.localeCompare(b.nome, 'pt-BR')
+  const unir = <T extends { id: string; nome: string }>(a: T[], b: T[]) => {
+    const m = new Map<string, T>()
+    for (const x of [...b, ...a]) m.set(x.id, x)
+    return [...m.values()].sort(ordenar)
+  }
+  return {
+    canais:   carregadas.canais,
+    tags:     [...new Set([...rede.tags, ...carregadas.tags])].sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    donos:    unir([{ id: SEM_DONO, nome: 'Sem dono' }, ...rede.donos], carregadas.donos),
+    funis:    unir(rede.funis, carregadas.funis),
+    etapas:   unir(rede.etapas, carregadas.etapas),
+    unidades: unir([{ id: SEM_UNIDADE, nome: 'Rede (sem unidade)' }, ...rede.unidades], carregadas.unidades),
+  }
+}
+
 const SITUACOES: { key: ConvStatus | 'todos'; label: string }[] = [
   { key: 'todos',   label: 'Todas' },
   { key: 'open',    label: 'Abertas' },
@@ -216,14 +235,16 @@ function Secao({ titulo, children }: { titulo: string; children: React.ReactNode
 }
 
 export function InboxFiltros({
-  conversas, filtros, onChange,
+  conversas, filtros, onChange, rede,
 }: {
   conversas: Conversation[]
   filtros:   FiltrosInbox
   onChange:  (f: FiltrosInbox) => void
+  /** O que está em uso na rede — ver `juntarOpcoes`. */
+  rede?:     OpcoesDoInbox | null
 }) {
   const [aberto, setAberto] = useState(false)
-  const opcoes = useMemo(() => derivarOpcoes(conversas), [conversas])
+  const opcoes = useMemo(() => juntarOpcoes(derivarOpcoes(conversas), rede), [conversas, rede])
   const ativos = contarFiltros(filtros)
 
   function alternar(campo: 'tags' | 'donos', valor: string) {
@@ -455,13 +476,14 @@ export function InboxFiltros({
  * lista curta e culpa o sistema. Os chips deixam a razão à vista.
  */
 export function ChipsDeFiltro({
-  conversas, filtros, onChange,
+  conversas, filtros, onChange, rede,
 }: {
   conversas: Conversation[]
   filtros:   FiltrosInbox
   onChange:  (f: FiltrosInbox) => void
+  rede?:     OpcoesDoInbox | null
 }) {
-  const opcoes = useMemo(() => derivarOpcoes(conversas), [conversas])
+  const opcoes = useMemo(() => juntarOpcoes(derivarOpcoes(conversas), rede), [conversas, rede])
   if (contarFiltros(filtros) === 0) return null
 
   const chips: { rotulo: string; limpar: () => void }[] = []

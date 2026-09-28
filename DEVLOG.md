@@ -1258,6 +1258,37 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — O inbox paginado, filtrado no banco
+
+"A lista de leads do dono pode carregar 30 com carregamento automático por
+scroll." O inbox carregava as 200 conversas mais recentes e filtrava no
+navegador: a 201ª não aparecia nunca — nem rolando, nem procurando por ela, nem
+filtrando. E no modo "pela conversa" os leads do dono vinham de um select que o
+PostgREST corta em 1000 linhas sem avisar.
+
+- **`inbox_pagina`** (migration `20260928000007`): 30 por vez, cursor
+  `(last_message_at, id)`, com alcance (dono, caixas do cargo), filtros do
+  painel e busca aplicados no banco — as mesmas definições de
+  `passaNosFiltros`, que ficou como guarda do realtime.
+- **`inbox_opcoes`**: donos, funis, etapas, tags e unidades em uso na rede,
+  somados às opções das conversas carregadas.
+- **`leads_do_dono`**: os leads do dono num array só, também usado pela
+  abertura por id (`alcanceDoDono`).
+- Na tela: o fim da lista busca a próxima página; filtro e busca (com espera
+  de 300 ms) voltam à primeira; o realtime recarrega o tanto já carregado.
+  `getConversations` deixou de engolir erro devolvendo lista vazia.
+- `conversations.tags` **fica** (decisão do Heitor): é a semente das tags da
+  pessoa, lida só pelo gatilho. Ganhou comentário na coluna
+  (`20260928000008`) e saiu da lista de dívidas.
+- `e2e/inbox-paginado.spec.ts`: 45 conversas numa rede `[e2e]` — abre com
+  30 e traz as 45 ao rolar; busca e "não lidas" acham a da página 2; SDR com
+  1005 leads no modo "pela conversa" vê a do seu e não a do outro dono. A
+  varredura de sobras passou a apagar oportunidades e pessoas das redes de
+  teste (a primeira rodada deixou 1006 pessoas para trás).
+- De carona, na regressão: salvar a campanha editada não saía do formulário.
+  O `router.push` dentro da transição perdia para o refresh do
+  `revalidatePath` da action; a navegação agora sai num efeito, depois dela.
+
 ### 2026-09-28 — O quadro de oportunidades em tempo real
 
 "Adicione realtime no quadro de oportunidades." O quadro já assinava leads,
@@ -2293,8 +2324,8 @@ uma pessoa por número.
   de sempre. Quem já fala por outro número aparece com o nome dele ("· em
   Comercial"), e salvar assim é recusado dizendo quem e onde.
 - `whatsapp_numbers.user_id` fica no banco como LEGADO (ninguém lê nem escreve;
-  não havia nenhum vínculo gravado). Sai numa migration própria, junto com a
-  limpeza de `conversations.tags`.
+  não havia nenhum vínculo gravado). Sai numa migration própria. (`conversations.tags`
+  ficou: é semente, ver 2026-09-28.)
 
 Migration `20260927000001`, aplicada pelo MCP. E2E: três casos novos em
 `whatsapp-numeros-modelagem.spec.ts` (várias pessoas; uma pessoa, um número, sem
@@ -3683,11 +3714,10 @@ verdade. O que vale:
 
 - **Contato separado da conversa — o que sobrou** (a ordem combinada terminou
   em 2026-09-26):
-  - `conversations.tags` é só semente e sai numa migration própria depois do
-    soak;
-  - com escopo OWN no modo "pela conversa", a lista de leads do dono ainda vem
-    num `in.(...)` sem teto (o modo "pela pessoa", que é o padrão, já é conta
-    do banco).
+  - ~~`conversations.tags` sai depois do soak~~ **fica** (2026-09-28): é a
+    semente das tags da pessoa, e o app não a lê;
+  - ~~no modo "pela conversa", a lista de leads do dono cortada em 1000~~
+    **resolvido em 2026-09-28** (inbox paginado).
 - **Dado de demonstração em produção:** "Carla Mendes (demo)" (2 conversas, 1
   oportunidade, telefone DDD 00), criado em 2026-09-26 para o Heitor ver o
   inbox com duas conversas da mesma pessoa. Apagar quando ele liberar.

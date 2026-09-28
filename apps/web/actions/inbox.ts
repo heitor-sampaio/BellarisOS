@@ -1,6 +1,8 @@
 'use server'
 
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+import { lerVisibilidade, type VisibilidadeDoInbox } from '@/lib/inbox/visibilidade'
+import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { nomesDeAnuncios, type NomesDoAnuncio } from '@/lib/ads/ad-lookup'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
@@ -187,79 +189,123 @@ type MensagemLida = Message & { ad_referral?: ReferenciaDoAnuncio | null }
 
 type EtapaLida = { id: string; name: string; funnel_id: string | null; outcome: string | null }
 
-export async function getConversations(
+/** Uma página do inbox: as conversas, se há mais, e de onde a próxima começa. */
+export type CursorDoInbox = { em: string; id: string } | null
+
+export interface PaginaDoInbox {
+  conversas: Conversation[]
+  temMais:   boolean
+  cursor:    { em: string; id: string } | null
+}
+
+export async function getConversations(opcoes: {
   /**
-   * Conversa que deve entrar na lista mesmo sem mensagem nenhuma.
+   * Conversa que deve entrar na lista mesmo sem mensagem nenhuma, ou mesmo fora
+   * da primeira página.
    *
    * É o caso do deep-link vindo de um card do funil: a pessoa clicou em "ver
    * conversa", a conversa existe e foi aberta de propósito, mas ninguém falou
-   * ainda. Sem esta exceção ela some da lista e o inbox abre parecendo vazio —
-   * com a conversa pedida em lugar nenhum.
+   * ainda (ou a última mensagem é antiga). Sem esta exceção ela some da lista e
+   * o inbox abre com a conversa pedida em lugar nenhum.
    */
-  incluirId?: string | null,
-): Promise<Conversation[]> {
+  incluirId?: string | null
+  filtros?:   Partial<FiltrosInbox>
+  busca?:     string
+  /** Cursor: a última conversa da página anterior. */
+  depois?:    { em: string; id: string } | null
+  /** Quantas. 30 por página; o realtime pede o tanto que já está na tela. */
+  limite?:    number
+} = {}): Promise<PaginaDoInbox> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
+  const vazia: PaginaDoInbox = { conversas: [], temMais: false, cursor: null }
 
-  // O alcance do CRM filtrava o funil e não filtrava aqui: com "só os próprios
-  // leads", a pessoa ainda lia o WhatsApp da clínica inteira.
-  // A regra mora em `lib/inbox/alcance.ts`, a mesma que confere a abertura por id.
-  let alcance: AlcanceDoDono | null
+  // O alcance (dono e caixas do cargo) — a mesma regra de `lib/inbox/alcance.ts`,
+  // aplicada no banco por `inbox_pagina`, junto com filtros e busca.
+  let dono: string | null
+  let modo: VisibilidadeDoInbox
   let minhasCaixas: string[] | null
   try {
-    [alcance, minhasCaixas] = await Promise.all([alcanceDoDono(admin, ctx), caixasDoAlcance(admin, ctx)])
+    dono = ownerFilter(ctx, 'crm')
+    const [rede, caixas] = await Promise.all([
+      dono
+        ? ler(admin.from('tenants').select('inbox_visibilidade').eq('id', ctx.tenantId!).maybeSingle(), 'ler a visibilidade do inbox')
+        : Promise.resolve(null),
+      caixasDoAlcance(admin, ctx),
+    ])
+    modo = lerVisibilidade((rede as { inbox_visibilidade?: string } | null)?.inbox_visibilidade)
+    minhasCaixas = caixas
   } catch (e) {
     // Sem saber o alcance, não se mostra nada: mostrar tudo seria vazar.
     console.error('[getConversations] alcance:', e instanceof Error ? e.message : e)
-    return []
+    return vazia
   }
 
-  let query = admin
+  // A lista era as 200 mais recentes, filtradas no navegador: a 201ª não
+  // aparecia nunca, e o filtro só enxergava as 200 (2026-09-28). Agora vem de
+  // 30 em 30, já filtrada — `inbox_pagina`, migration 20260928000007.
+  const limite = Math.max(1, Math.min(opcoes.limite ?? 30, 500))
+  const paginaIds = await ler(admin.rpc('inbox_pagina', {
+    p_tenant:   ctx.tenantId!,
+    p_dono:     dono,
+    p_modo:     modo,
+    p_caixas:   minhasCaixas,
+    p_filtros:  opcoes.filtros ?? {},
+    p_busca:    opcoes.busca ?? '',
+    p_antes_em: opcoes.depois?.em ?? null,
+    p_antes_id: opcoes.depois?.id ?? null,
+    p_limite:   limite + 1,   // um a mais: é assim que se sabe se há próxima página
+  }), 'carregar a página do inbox') as { id: string; last_message_at: string }[] | null
+
+  const linhas  = paginaIds ?? []
+  const temMais = linhas.length > limite
+  const daPagina = linhas.slice(0, limite)
+  const ids = daPagina.map(l => l.id)
+
+  // O deep-link entra na primeira página, se o alcance deixar — mesmo calado
+  // ou antigo demais para estar nela.
+  const incluir = !opcoes.depois && opcoes.incluirId && !ids.includes(opcoes.incluirId)
+    && await conversaAoAlcance(admin, ctx, opcoes.incluirId)
+    ? opcoes.incluirId : null
+
+  const todos = incluir ? [incluir, ...ids] : ids
+  if (todos.length === 0) return vazia
+
+  const lidas = await ler(admin
     .from('conversations')
     .select('id, lead_id, client_id, channel, status, unread_count, last_message_at, last_message, contact_name, contact_phone, provider, whatsapp_number_id, contato_id, branch_id, created_at, last_message_direction, last_inbound_at, awaiting_since, first_response_seconds, attribution, branches(name)')
     .eq('tenant_id', ctx.tenantId!)
-  // Contato sem nenhuma mensagem não é conversa. A conversa é também o registro
-  // do contato, e contato criado pelo quadro (ou pelo backfill que deu dono às
-  // oportunidades antigas) nasce sem ninguém ter falado — na lista do inbox
-  // isso seria só ruído entre os atendimentos de verdade.
-  //
-  // A exceção é a conversa pedida pelo deep-link, que entra mesmo calada.
-  query = incluirId
-    ? query.or(`last_message_at.not.is.null,id.eq.${incluirId}`)
-    : query.not('last_message_at', 'is', null)
+    .in('id', todos), 'carregar as conversas') as unknown as LinhaDeConversa[] | null
 
-  if (alcance?.modo === 'conversa') {
-    // Conversa sem lead é contato que ainda não virou card: fica no bolo comum,
-    // visível para todo mundo, senão ninguém atende.
-    query = alcance.meusLeads.length > 0
-      ? query.or(`lead_id.is.null,lead_id.in.(${alcance.meusLeads.join(',')})`)
-      : query.is('lead_id', null)
-  } else if (alcance?.modo === 'pessoa' && alcance.ocultas.length > 0) {
-    // Pessoa sem oportunidade continua no bolo comum; some só quem é de outro.
-    query = query.or(`contato_id.is.null,contato_id.not.in.(${alcance.ocultas.join(',')})`)
+  // A ordem é a da página (o `in` não a preserva).
+  const porId = new Map((lidas ?? []).map(c => [c.id as string, c]))
+  const ordenadas = todos.map(id => porId.get(id)).filter(Boolean) as LinhaDeConversa[]
+
+  const ultima = daPagina[daPagina.length - 1]
+  return {
+    conversas: await anexarDadosDoCard(ordenadas, ctx.tenantId!),
+    temMais,
+    cursor: ultima ? { em: ultima.last_message_at, id: ultima.id } : null,
   }
-
-  // Caixas do cargo. Soma-se ao filtro acima (dois `or` viram AND no
-  // PostgREST). Conversa sem caixa passa — ver `passaNasCaixas`.
-  if (minhasCaixas !== null) {
-    query = minhasCaixas.length > 0
-      ? query.or(`whatsapp_number_id.is.null,whatsapp_number_id.in.(${minhasCaixas.join(',')})`)
-      : query.is('whatsapp_number_id', null)
-  }
-
-  const { data, error } = await query
-    .order('last_message_at', { ascending: false, nullsFirst: false })
-    .limit(200)
-
-  if (error) {
-    console.error('[getConversations]', error.message)
-    return []
-  }
-
-  return anexarDadosDoCard((data ?? []) as unknown as LinhaDeConversa[], ctx.tenantId!)
 }
 
+/** As opções dos menus de filtro do inbox — o que está em uso na rede. */
+export interface OpcoesDoInbox {
+  donos:    { id: string; nome: string }[]
+  funis:    { id: string; nome: string }[]
+  etapas:   { id: string; nome: string; funil: string }[]
+  tags:     string[]
+  unidades: { id: string; nome: string }[]
+}
+
+export async function opcoesDoInbox(): Promise<OpcoesDoInbox> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'crm', 'VIEW')
+  const data = await ler(createAdminClient().rpc('inbox_opcoes', { p_tenant: ctx.tenantId! }), 'carregar as opções do inbox')
+  const o = (data ?? {}) as Partial<OpcoesDoInbox>
+  return { donos: o.donos ?? [], funis: o.funis ?? [], etapas: o.etapas ?? [], tags: o.tags ?? [], unidades: o.unidades ?? [] }
+}
 
 /**
  * Junta a cada contato o que vem das oportunidades dele: dono, etapa e funil.
