@@ -1,10 +1,11 @@
-# A regressão completa, a cada push na main.
+# A regressão completa — SÓ À MÃO (Actions → E2E → Run workflow, ou gh workflow run e2e.yml).
 #
-# Saiu do caminho de cada etapa de trabalho (lá roda `pnpm test:e2e:afetados`)
-# e veio para cá: roda sozinha, e o selo da main diz se algo quebrou.
+# Rodava a cada push na main, e a espera pelo resultado travava o ritmo do
+# desenvolvimento (Heitor, 2026-09-28): a suíte leva ~17 min. Agora roda quando
+# o Heitor pede; no dia a dia, só os testes novos.
 #
 # Segurança (decisão do Heitor, 2026-09-28 — repositório privado):
-# - só em push na main e à mão; NUNCA em pull_request, que é o caminho de um
+# - só à mão; NUNCA em pull_request, que é o caminho de um
 #   workflow alterado ler os secrets;
 # - os secrets moram no environment `e2e`, restrito à main
 #   (Settings → Environments → e2e → Deployment branches: main);
@@ -14,8 +15,6 @@
 name: E2E
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:

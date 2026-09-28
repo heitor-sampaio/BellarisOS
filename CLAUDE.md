@@ -1479,17 +1479,18 @@ pnpm --filter web test:e2e:completa # a suíte inteira contra o build (porta 310
 ```
 
 **Qual E2E rodar** (decisão do Heitor, 2026-09-28 — a suíte inteira passa de
-20 minutos, e rodá-la a cada etapa tornava o desenvolvimento inviável):
-- **Em cada etapa:** o teste novo e `test:e2e:afetados`, que escolhe os specs
-  pela área dos arquivos alterados (`AREAS` em `scripts/e2e-afetados.mjs`) e
-  roda o Vitest relacionado. Spec novo precisa cair numa área — `--listar`
-  aponta os que nenhuma cobre.
-- Arquivo **compartilhado** (auth, db, supabase, layouts, proxy, permissões,
-  rotas, apoio do E2E, dependências) afeta tudo: o script recusa escolher e
-  pede a completa.
-- **A completa roda no GitHub Actions** a cada push na `main`
-  (`.github/workflows/e2e.yml`), contra o build, com o selo na main. Falha lá
-  é a primeira coisa da etapa seguinte. Os secrets (só as três chaves do
+15 minutos, e esperar por ela a cada etapa tornava o desenvolvimento inviável):
+- **Em cada etapa: só o que é NOVO** — o teste novo e, quando mexer em algo que
+  já existia, os vizinhos diretos. `test:e2e:afetados --listar` ajuda a
+  achá-los: escolhe os specs pela área dos arquivos alterados (`AREAS` em
+  `scripts/e2e-afetados.mjs`); spec novo precisa cair numa área.
+- Mexeu em arquivo **compartilhado** (auth, db, supabase, layouts, proxy,
+  permissões, rotas, dependências)? Roda os vizinhos mais óbvios e AVISA o
+  Heitor que vale uma completa — não roda por conta própria.
+- **A completa roda SÓ QUANDO O HEITOR PEDE**: no GitHub Actions, à mão
+  (`.github/workflows/e2e.yml`, `gh workflow run e2e.yml`), contra o build — ou
+  local, `test:e2e:completa`. Não dispara a cada push, e ninguém espera por ela
+  para seguir. Os secrets (só as três chaves do
   Supabase) moram no environment `e2e`, restrito à main; o workflow NUNCA
   roda em `pull_request`. CRON, Meta e VAPID são gerados a cada execução.
 - Contra o build, `chamarAcao` lê os manifestos de `.next/server`
