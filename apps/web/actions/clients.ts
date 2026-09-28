@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertClient, assertPermission, assertAnyPermission } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { leadAoAlcance } from '@/lib/crm/alcance'
@@ -13,7 +13,7 @@ import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { camposAlterados } from '@/lib/events/emitir'
 import { EVENTOS } from '@estetica-os/types'
 import { registrarEventoLead } from '@/lib/lead-events'
-import { garantirClienteRapido, ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
+import { ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
 import { gravar, ler } from '@/lib/db'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
@@ -32,32 +32,6 @@ async function resolveBranch(tenantId: string, branchId: string) {
 // gravado por três caminhos (CPF novo, CPF que já era de um cliente, e o
 // cadastro rápido feito ao agendar), e esquecer um deixa a conversa sem o selo
 // que o comercial olha antes de responder.
-
-// --- Cadastro rápido: só nome e telefone ---------------------------
-//
-// É o cadastro de quem vai ser atendido, não de quem vai usar o app. Sem CPF e
-// sem e-mail não há login — e é exatamente por isso que ele cabe no balcão e no
-// telefone, onde marcar o horário é o que importa.
-export async function cadastrarClienteRapido(input: {
-  nome: string; telefone: string; branchId: string; conversationId?: string | null
-}): Promise<{ clientId?: string; criado?: boolean; error?: string }> {
-  const ctx = await getTenantContext()
-  // Quem marca horário precisa poder registrar quem é a pessoa — senão a regra
-  // devolve o problema para a recepção sem lhe dar como resolver.
-  assertAnyPermission(ctx, ['clients', 'agenda'], 'MANAGE')
-
-  const admin = createAdminClient()
-  // A conversa é opcional; vindo, o cliente é ligado a ela — então ela tem de
-  // estar ao alcance de quem cadastra.
-  if (input.conversationId && !(await conversaAoAlcance(admin, ctx, input.conversationId))) {
-    return { error: 'Conversa não encontrada.' }
-  }
-  const res   = await garantirClienteRapido(admin, ctx, input)
-  if (res.error) return res
-
-  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
-  return res
-}
 
 // --- Criar cliente ------------------------------------------------
 export async function addClient(

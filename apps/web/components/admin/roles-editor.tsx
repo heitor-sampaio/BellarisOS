@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { createRole, updateRole, deleteRole } from '@/actions/roles'
 import { saveRolePermissions } from '@/actions/permissions'
 import {
-  ALL_MODULES, MODULE_LABELS, MODULE_LEVELS, LEVEL_LABELS,
+  ALL_MODULES, MODULE_LABELS, MODULE_HINTS, MODULE_LEVELS, LEVEL_LABELS,
   SCOPE_LABELS, isScoped,
   ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS,
 } from '@/lib/permissions'
@@ -622,6 +622,12 @@ function ModuleRow({
             fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)',
           }}>
             {MODULE_LABELS[module]}
+            {/* O que o módulo abrange — antes escrito e nunca mostrado. */}
+            {MODULE_HINTS[module] && (
+              <span style={{ fontWeight: 'var(--weight-medium)', color: 'var(--text-faint)', marginLeft: 6 }}>
+                · {MODULE_HINTS[module]}
+              </span>
+            )}
           </div>
           <div style={{
             fontSize: 'var(--text-2xs)', color: enabled ? 'var(--text-soft)' : 'var(--text-faint)',

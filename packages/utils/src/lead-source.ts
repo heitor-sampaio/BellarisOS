@@ -43,11 +43,6 @@ export function sourceStyle(source: string | null | undefined): LeadSourceStyle 
   return BY_KEY.get(source)?.style ?? NEUTRAL
 }
 
-/** A tag de origem espelha o próprio source. */
-export function sourceTagFor(source: string): string {
-  return source
-}
-
 // -- Derivação de origem a partir de atribuição -------------------------------
 
 export interface InboundReferralAttribution {

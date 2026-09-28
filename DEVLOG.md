@@ -1258,6 +1258,41 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — Três funções sem botão ganham tela; código morto sai
+
+O levantamento do código morto separou três casos, e o Heitor aceitou a
+sugestão para cada um.
+
+**Funcionalidade pronta no servidor e sem botão** — ligadas
+(`e2e/funcionalidades-ligadas.spec.ts`, as três falham no código antigo):
+- **Excluir automação**: ícone na barra do editor, só com ela DESLIGADA (a
+  action recusa excluir o que está agindo), com confirmação que diz o que sai
+  (o histórico de execuções) e o que fica (o que ela já fez).
+- **Editar campanha**: `/admin/notificacoes/[id]/editar`, o mesmo formulário
+  aberto preenchido, nos estados em que o servidor aceita (rascunho e pausada).
+  O tipo fica travado — mudar o tipo é outra campanha. `updateCampaign` lia com
+  `.single()` (500 para id inexistente): agora `maybeSingle`.
+- **Sair do portal para o push deste navegador**: o botão "Sair da conta" tira
+  a inscrição do servidor, cancela no navegador e só então sai. Antes, quem saía
+  de um computador emprestado continuava recebendo as notificações nele.
+
+**Substituídos por outro caminho** — removidos: `saveSessionNotes` (a tela usa
+`saveDraftNotes`), `cadastrarClienteRapido` (o cadastro rápido é o
+`garantirClienteRapido`, dentro do agendamento), `conferirGrafo` (o editor
+valida no navegador), `podeEditarMapa`, `getIntegrations`, `getMetaPages`,
+`assertRelatorio`, `CANAIS_COM_JANELA`, `REFERENCED_BUCKETS`, `rotaNovoCliente`,
+`rotaCheckout`, `sourceTagFor` e os schemas de agendamento, procedimento,
+cliente e login do cliente em `packages/validators`. A seção de relatórios
+passou a usar `podeVerRelatorio` (a regra testada) em vez de repeti-la.
+
+**As dicas de cada módulo** (`MODULE_HINTS`, escritas e nunca mostradas)
+aparecem ao lado do nome na tela de Cargos; a de Fichas foi corrigida para a
+ficha única do procedimento.
+
+Tropeço registrado: um script que removia funções por nome errou os limites de
+blocos em quatro arquivos (apagou 67 linhas onde eram 3). Foi desfeito antes de
+qualquer commit e a remoção refeita item a item, conferindo cada trecho.
+
 ### 2026-09-28 — Nome e telefone da pessoa se propagam
 
 "Sobre editar nome ou telefone do contato, faça com que a edição propague."

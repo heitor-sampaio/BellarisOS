@@ -54,11 +54,6 @@ export function rotaClientes(pathname: string, slug?: string | null): string {
   return rotaNoPortal(pathname, slug, '/clients')
 }
 
-/** Cadastro de cliente. */
-export function rotaNovoCliente(pathname: string, slug?: string | null): string {
-  return rotaNoPortal(pathname, slug, '/clients/new')
-}
-
 /** Caixa de entrada. `conversationId` abre a conversa já selecionada. */
 export function rotaInbox(pathname: string, slug?: string | null, conversationId?: string | null): string {
   const base = rotaNoPortal(pathname, slug, '/inbox')
@@ -68,9 +63,4 @@ export function rotaInbox(pathname: string, slug?: string | null, conversationId
 /** Quadro de oportunidades. */
 export function rotaOportunidades(pathname: string, slug?: string | null): string {
   return rotaNoPortal(pathname, slug, '/oportunidades')
-}
-
-/** Checkout de planos de tratamento; sem `planId`, a lista de propostas. */
-export function rotaCheckout(pathname: string, slug?: string | null, planId?: string | null): string {
-  return rotaNoPortal(pathname, slug, planId ? `/checkout/${planId}` : '/checkout')
 }

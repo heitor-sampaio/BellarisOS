@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, can, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
@@ -396,12 +396,6 @@ function revalidarPlanejamento(slug: string, clientId: string | null) {
   }
   if (slug) revalidatePath(`/${slug}/injetaveis`)
   revalidatePath('/admin/injetaveis')
-}
-
-/** Quem pode editar — para a tela decidir o que mostrar. */
-export async function podeEditarMapa(): Promise<boolean> {
-  const ctx = await getTenantContext()
-  return can(ctx, 'medical_records', 'MANAGE')
 }
 
 /** Os planejamentos de um cliente — a aba na ficha e o atendimento. */

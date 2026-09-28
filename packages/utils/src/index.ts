@@ -12,7 +12,6 @@ export {
   LEAD_SOURCES,
   LEAD_SOURCE_KEYS,
   sourceStyle,
-  sourceTagFor,
   deriveLeadSource,
   resolveLeadSource,
   mergeTags,

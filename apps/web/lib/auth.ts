@@ -182,11 +182,6 @@ export function podeVerRelatorio(ctx: TenantContext, tab: ReportTab): boolean {
   return can(ctx, 'reports', 'VIEW') && ctx.reportTabs.includes(tab)
 }
 
-/** Barra quem não tem a aba. Use nas páginas que abrem um relatório direto. */
-export function assertRelatorio(ctx: TenantContext, tab: ReportTab): void {
-  if (!podeVerRelatorio(ctx, tab)) throw new Error('Forbidden')
-}
-
 /**
  * O cargo enxerga só os próprios registros neste módulo?
  *

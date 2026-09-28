@@ -1,6 +1,6 @@
 ﻿import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ChevronLeft, Zap, Clock, RefreshCw, Users, Send, BookOpen } from 'lucide-react'
+import { ChevronLeft, Zap, Clock, RefreshCw, Users, Send, BookOpen, Pencil } from 'lucide-react'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { getCampaign, activateCampaign, pauseCampaign, archiveCampaign, deleteCampaign } from '@/actions/notification-campaigns'
 import type { CampaignStatus, CampaignType, TriggerType } from '@/actions/notification-campaigns'
@@ -88,6 +88,12 @@ export default async function CampanhaDetailPage({ params }: { params: Promise<{
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+          {/* Os mesmos estados em que o servidor aceita a edição. */}
+          {['DRAFT', 'PAUSED'].includes(campaign.status) && (
+            <Link href={`/admin/notificacoes/${id}/editar`} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Pencil size={14} /> Editar
+            </Link>
+          )}
           {['DRAFT', 'PAUSED'].includes(campaign.status) && (
             <form action={async () => { 'use server'; await activateCampaign(id) }}>
               <button type="submit" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

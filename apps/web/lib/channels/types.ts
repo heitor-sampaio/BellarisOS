@@ -213,13 +213,3 @@ export interface SendProvider {
     template: { name: string; language: string; components: Array<Record<string, unknown>> },
   ): Promise<{ externalId: string }>
 }
-
-/**
- * Canais regidos pela janela de 24h da Meta: só dá para responder livremente
- * até 24h da última mensagem do contato.
- *
- * A uazapi fica de fora porque não passa pela API oficial e não tem essa trava.
- * É o mesmo motivo de a janela ser decidida pelo PROVEDOR configurado, e não
- * só pelo canal — ver `lib/channels/window.ts`.
- */
-export const CANAIS_COM_JANELA: ChannelKind[] = ['instagram', 'messenger']

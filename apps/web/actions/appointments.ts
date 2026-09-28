@@ -1119,67 +1119,6 @@ async function saveDraftNotesInterno(
   }
 }
 
-// --- Salvar anotações da sessão (anamnese) ------------------------
-/**
- * Erro de banco vira mensagem na tela, e não uma exceção nua.
- *
- * As gravações lá dentro passaram a falhar alto (`gravar`). Sem esta
- * captura a exceção subiria até o cliente como rejeição sem tratamento: o
- * log teria o motivo e a tela não mostraria nada — que é o silêncio de
- * novo, só que mais caro de achar.
- */
-export async function saveSessionNotes(
-  ...args: Parameters<typeof saveSessionNotesInterno>
-): ReturnType<typeof saveSessionNotesInterno> {
-  try {
-    return await saveSessionNotesInterno(...args)
-  } catch (e) {
-    return { error: mensagemDoErro(e) }
-  }
-}
-
-async function saveSessionNotesInterno(
-  _prev: { error?: string; success?: boolean } | undefined,
-  formData: FormData,
-) {
-  try {
-    const ctx = await getTenantContext()
-    assertPermission(ctx, 'agenda', 'VIEW')
-
-    const appointmentId = formData.get('_appointmentId') as string
-    const notes         = (formData.get('session_notes') as string)?.trim() ?? ''
-
-    const admin = createAdminClient()
-
-    const appt = await ler(admin
-      .from('appointments')
-      .select('id, professional_id, branches!inner(id, tenant_id)')
-      .eq('id', appointmentId)
-      .single(), 'buscar o agendamento')
-
-    const branch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    if (!appt || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, branch.id)) return { error: 'Agendamento não encontrado.' }
-
-    await gravar(admin
-      .from('medical_record_entries')
-      .upsert(
-        {
-          appointment_id:  appointmentId,
-          professional_id: appt.professional_id,
-          // `notes` tem coluna própria. Isto gravava as observações dentro de
-          // `anamnesis_data`, a coluna das respostas da ficha — e o prontuário
-          // ficava com a observação onde ninguém a lia.
-          notes,
-        },
-        { onConflict: 'appointment_id' },
-      ), 'salvar as observações do atendimento')
-
-    return { success: true }
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
-  }
-}
-
 // --- Reagendar ----------------------------------------------------
 export async function rescheduleAppointment(
   _prev: { error?: string; success?: boolean } | undefined,

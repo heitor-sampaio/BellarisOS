@@ -300,13 +300,10 @@ export type { ClientWithLoyalty } from './client'
 ```
 
 ### `packages/validators`
-Schemas Zod usados tanto no web (Server Actions) quanto no mobile (validação de formulários):
-```typescript
-export { CreateAppointmentSchema } from './appointment'
-export { CreateClientSchema } from './client'
-export { LoginSchema, ClientLoginSchema } from './auth'
-// ...
-```
+Hoje só os de autenticação (`RegisterSchema`, `LoginSchema`,
+`ResetPasswordSchema`, `UpdatePasswordSchema`). Os de agendamento,
+procedimento, cliente e login do cliente nunca foram usados e saíram em
+2026-09-28 — schema novo entra aqui quando tiver quem o importe.
 
 ### `packages/utils`
 ```typescript
@@ -344,12 +341,14 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar } from '@/lib/db'
 import { revalidatePath } from 'next/cache'
-import { CreateAppointmentSchema } from '@estetica-os/validators'
+import { z } from 'zod'
+
+const EntradaDoAgendamento = z.object({ clientId: z.string().uuid(), /* … */ })
 
 export async function createAppointment(input: unknown) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'agenda', 'MANAGE')
-  const data = CreateAppointmentSchema.parse(input)
+  const data = EntradaDoAgendamento.parse(input)
 
   const admin = createAdminClient()
 
@@ -996,7 +995,7 @@ a minha unidade" × "a rede inteira", não "os meus registros").
 `role_report_tabs` diz QUAIS abas o cargo enxerga — o time comercial vê o funil
 sem ver o faturamento. Sem nenhuma aba marcada, o módulo vale NONE
 (`buildContext`): a entrada some do menu em vez de abrir uma tela vazia. Ler com
-`podeVerRelatorio(ctx, aba)` / `assertRelatorio`.
+`podeVerRelatorio(ctx, aba)` — é o que a seção de relatórios usa.
 
 ```typescript
 // lib/auth.ts — os quatro helpers de autorização

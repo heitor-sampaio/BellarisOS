@@ -36,7 +36,8 @@ export const MODULE_LABELS: Record<AppModule, string> = {
   automations:     'Automações',
 }
 
-// Descrição curta de cada módulo (ajuda na tela de montagem do cargo)
+// O que cada módulo ABRANGE — ao lado do nome, na tela de Cargos. (O que cada
+// NÍVEL libera é outra coisa: `LEVEL_COPY`, no editor.)
 export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   agenda:          'Agendamentos, check-in e atendimentos',
   clients:         'Cadastro e ficha de clientes',
@@ -49,7 +50,7 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   marketing:       'Campanhas e notificações',
   reports:         'Indicadores e relatórios da rede',
   team:            'Membros da equipe',
-  forms:           'Molde da anamnese e da ficha de atendimento',
+  forms:           'O construtor das fichas dos procedimentos',
   roles:           'Criar cargos e definir o que cada um acessa',
   settings:        'Dados da rede, unidades e integrações',
   automations:     'Fluxos que reagem sozinhos ao que acontece',

@@ -7,9 +7,9 @@ import {
   Bell, CheckCircle2, CalendarDays, Star, Sparkles, AlertCircle, ChevronRight, ChevronLeft,
   AlarmClock,
 } from 'lucide-react'
-import { createCampaign, activateCampaign } from '@/actions/notification-campaigns'
+import { createCampaign, updateCampaign, activateCampaign } from '@/actions/notification-campaigns'
 import { AudiencePreview } from '@/components/admin/audience-preview'
-import type { CampaignType, TriggerType, AudienceRules, CreateCampaignInput } from '@/actions/notification-campaigns'
+import type { CampaignType, TriggerType, AudienceRules, CreateCampaignInput, NotificationCampaign } from '@/actions/notification-campaigns'
 
 // -- Types --------------------------------------------------------------
 
@@ -31,39 +31,52 @@ const NOTIF_TYPES = [
 interface Props {
   branches:   Branch[]
   procedures: Procedure[]
+  /** Editar em vez de criar. O TIPO fica travado: o servidor não o muda (é outra campanha). */
+  existing?:  NotificationCampaign
+}
+
+/** ISO do banco → o valor que um `datetime-local` aceita, no fuso do navegador. */
+function paraCampoLocal(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const z = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`
 }
 
 type Step = 1 | 2 | 3 | 4
 
-export function NotificationCampaignForm({ branches, procedures }: Props) {
+export function NotificationCampaignForm({ branches, procedures, existing }: Props) {
   const router = useRouter()
   const [step, setStep]           = useState<Step>(1)
   const [isPending, startTransition] = useTransition()
   const [error, setError]         = useState<string | null>(null)
 
   // Step 1
-  const [campType,      setCampType]      = useState<CampaignType>('IMMEDIATE')
-  const [triggerType,   setTriggerType]   = useState<TriggerType>('BIRTHDAY')
-  const [scheduledAt,   setScheduledAt]   = useState('')
-  const [triggerDays,   setTriggerDays]   = useState(30)
-  const [triggerHours,  setTriggerHours]  = useState(24)
-  const [annualMonth,   setAnnualMonth]   = useState(3)
-  const [annualDay,     setAnnualDay]     = useState(8)
+  const gatilho = (existing?.trigger_config ?? {}) as Record<string, number | undefined>
+  const regras  = existing?.audience_rules ?? {}
+  const [campType,      setCampType]      = useState<CampaignType>(existing?.type ?? 'IMMEDIATE')
+  const [triggerType,   setTriggerType]   = useState<TriggerType>(existing?.trigger_type ?? 'BIRTHDAY')
+  const [scheduledAt,   setScheduledAt]   = useState(paraCampoLocal(existing?.scheduled_at))
+  const [triggerDays,   setTriggerDays]   = useState(gatilho.days ?? 30)
+  const [triggerHours,  setTriggerHours]  = useState(gatilho.hours ?? 24)
+  const [annualMonth,   setAnnualMonth]   = useState(gatilho.month ?? 3)
+  const [annualDay,     setAnnualDay]     = useState(gatilho.day ?? 8)
 
   // Step 2
-  const [name,          setName]          = useState('')
-  const [title,         setTitle]         = useState('')
-  const [body,          setBody]          = useState('')
-  const [notifType,     setNotifType]     = useState('promotion')
+  const [name,          setName]          = useState(existing?.name ?? '')
+  const [title,         setTitle]         = useState(existing?.title ?? '')
+  const [body,          setBody]          = useState(existing?.body ?? '')
+  const [notifType,     setNotifType]     = useState(existing?.notification_type ?? 'promotion')
 
   // Step 3 — audience
-  const [branchIds,     setBranchIds]     = useState<string[]>([])
-  const [genders,       setGenders]       = useState<('M'|'F'|'O')[]>([])
-  const [procIds,       setProcIds]       = useState<string[]>([])
-  const [tags,          setTags]          = useState<string[]>([])
+  const [branchIds,     setBranchIds]     = useState<string[]>(regras.branch_ids ?? [])
+  const [genders,       setGenders]       = useState<('M'|'F'|'O')[]>(regras.genders ?? [])
+  const [procIds,       setProcIds]       = useState<string[]>(regras.procedure_ids ?? [])
+  const [tags,          setTags]          = useState<string[]>(regras.tags ?? [])
   const [tagInput,      setTagInput]      = useState('')
-  const [hasApp,        setHasApp]        = useState(false)
-  const [maxDays,       setMaxDays]       = useState<number | null>(null)
+  const [hasApp,        setHasApp]        = useState(regras.has_app_account ?? false)
+  const [maxDays,       setMaxDays]       = useState<number | null>(regras.max_days_since_visit ?? null)
 
   const audienceRules: AudienceRules = {
     ...(branchIds.length   && { branch_ids: branchIds }),
@@ -111,15 +124,27 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
         }),
       }
 
-      const res = await createCampaign(input)
-      if ('error' in res) { setError(res.error); return }
+      // Editar: `updateCampaign` (o tipo não vai — ele não muda). Até 2026-09-28
+      // a action existia e nenhuma tela a chamava: campanha não se editava.
+      let id: string
+      if (existing) {
+        const { type: _tipo, ...semTipo } = input
+        void _tipo
+        const upd = await updateCampaign(existing.id, semTipo)
+        if (upd.error) { setError(upd.error); return }
+        id = existing.id
+      } else {
+        const res = await createCampaign(input)
+        if ('error' in res) { setError(res.error); return }
+        id = res.id
+      }
 
       if (activate) {
-        const actRes = await activateCampaign(res.id)
+        const actRes = await activateCampaign(id)
         if (actRes.error) { setError(actRes.error); return }
       }
 
-      router.push('/admin/notificacoes')
+      router.push(existing ? `/admin/notificacoes/${id}` : '/admin/notificacoes')
     })
   }
 
@@ -143,13 +168,16 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
                 key={opt.type}
                 type="button"
                 onClick={() => setCampType(opt.type)}
+                disabled={!!existing && existing.type !== opt.type}
+                title={existing && existing.type !== opt.type ? 'O tipo não muda depois de criada' : undefined}
                 style={{
+                  opacity:       existing && existing.type !== opt.type ? 0.45 : 1,
                   flex:          '1 1 180px',
                   padding:       '18px 20px',
                   borderRadius:  12,
                   border:        campType === opt.type ? `2px solid ${opt.color}` : '1px solid var(--border)',
                   background:    campType === opt.type ? `${opt.color}0f` : 'var(--surface)',
-                  cursor:        'pointer',
+                  cursor:        existing && existing.type !== opt.type ? 'not-allowed' : 'pointer',
                   textAlign:     'left',
                 }}
               >
@@ -522,7 +550,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
               disabled={isPending}
               onClick={() => handleSubmit(false)}
             >
-              {isPending ? 'Salvando…' : 'Salvar rascunho'}
+              {isPending ? 'Salvando…' : existing ? 'Salvar alterações' : 'Salvar rascunho'}
             </button>
             <button
               type="button"
@@ -531,7 +559,7 @@ export function NotificationCampaignForm({ branches, procedures }: Props) {
               onClick={() => handleSubmit(true)}
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              {isPending ? 'Aguarde…' : campType === 'IMMEDIATE' ? 'Ativar e enviar agora' : campType === 'SCHEDULED' ? 'Agendar envio' : 'Ativar automação'}
+              {isPending ? 'Aguarde…' : existing ? 'Salvar e ativar' : campType === 'IMMEDIATE' ? 'Ativar e enviar agora' : campType === 'SCHEDULED' ? 'Agendar envio' : 'Ativar automação'}
             </button>
           </div>
         </div>

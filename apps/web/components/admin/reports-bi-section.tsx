@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, podeVerRelatorio } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
@@ -60,7 +60,8 @@ export async function ReportsBiSection({
   // aba na tela de Cargos. Resolver aqui — e não em cada página — garante que
   // os dois portais obedecem à mesma regra, e que ninguém carrega dado de uma
   // aba que não pode ver só porque digitou `?tab=` na URL.
-  const abasPermitidas = (await getTenantContext()).reportTabs
+  const ctxDoCargo     = await getTenantContext()
+  const abasPermitidas = ctxDoCargo.reportTabs
   if (abasPermitidas.length === 0) {
     return (
       <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
@@ -69,7 +70,8 @@ export async function ReportsBiSection({
     )
   }
   // Aba pedida na URL só vale se o cargo tiver: senão cai na primeira liberada.
-  if (!abasPermitidas.includes(tab)) tab = abasPermitidas[0]!
+  // A regra é a de `podeVerRelatorio` (módulo E aba), a mesma testada em tests/auth.
+  if (!podeVerRelatorio(ctxDoCargo, tab)) tab = abasPermitidas[0]!
 
   // -- Período -------------------------------------------------------
   // Janela no fuso do negócio, com período anterior de mesma duração decorrida.

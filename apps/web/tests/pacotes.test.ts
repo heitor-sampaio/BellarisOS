@@ -8,10 +8,9 @@ import { secondsSince, agingLevel, formatDurationShort, formatDurationLong } fro
 import { unitTag, isUnitTag, unitTagName } from '../../../packages/utils/src/client-tags'
 
 /**
- * Os pacotes compartilhados que o app USA — nenhum tinha teste. (O plano da P7
- * listava também `CreateAppointmentSchema`, `UpdateAppointmentSchema`, os de
- * procedimento e `sourceTagFor`: nada no app os importa, e testar código morto
- * não protege nada.)
+ * Os pacotes compartilhados que o app usa. (Os schemas de agendamento,
+ * procedimento, cliente e login do cliente, e o `sourceTagFor`, não eram usados
+ * por nada e saíram em 2026-09-28.)
  */
 
 const primeiroErro = (r: { success: boolean; error?: { errors: { message: string }[] } }) =>

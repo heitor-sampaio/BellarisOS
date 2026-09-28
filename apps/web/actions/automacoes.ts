@@ -770,12 +770,3 @@ export async function ensaiarAutomacao(automationId: string): Promise<{
   revalidatePath(`/admin/automacoes/${automationId}`)
   return { runId: run.id as string }
 }
-
-/** Problemas do grafo, para a tela acender o aviso enquanto se monta. */
-export async function conferirGrafo(grafo: GrafoDeAutomacao): Promise<{
-  problemas: { noId?: string; mensagem: string; grau: 'erro' | 'aviso' }[]
-}> {
-  const ctx = await getTenantContext()
-  assertPermission(ctx, 'automations', 'VIEW')
-  return { problemas: validarGrafo(grafo) }
-}

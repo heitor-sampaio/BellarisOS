@@ -1,10 +1,9 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { logoutAction } from '@/actions/auth'
+import { BotaoSairDoPortal } from '@/components/client-portal/botao-sair'
 import { EditProfileForm } from '@/components/client-portal/edit-profile-form'
 import { DataRequestCard } from '@/components/client-portal/data-request-card'
 import { getMyDataRequests } from '@/actions/lgpd'
-import { LogOut } from 'lucide-react'
 import { ler } from '@/lib/db'
 import { iniciaisDoNome } from '@estetica-os/utils'
 
@@ -130,29 +129,8 @@ export default async function ClientProfilePage() {
 
       {/* -- Logout ------------------------------------------------ */}
       <section style={{ paddingTop: 8 }}>
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            style={{
-              width:          '100%',
-              display:        'flex',
-              alignItems:     'center',
-              justifyContent: 'center',
-              gap:            8,
-              padding:        '13px 16px',
-              borderRadius:   12,
-              border:         '1px solid var(--border)',
-              background:     'var(--surface)',
-              color:          'var(--danger)',
-              fontWeight:     700,
-              fontSize: 'var(--text-base-sz)',
-              cursor:         'pointer',
-            }}
-          >
-            <LogOut size={15} />
-            Sair da conta
-          </button>
-        </form>
+        {/* Sair também para as notificações deste navegador. */}
+        <BotaoSairDoPortal />
       </section>
 
     </div>

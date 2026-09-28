@@ -3,7 +3,7 @@ import type { TenantContext } from '@estetica-os/types'
 import {
   can, podeReceber, ownerFilter, isOwnScope,
   assertPermission, assertAnyPermission, assertPodeReceber, getRedirectPath,
-  podeVerRelatorio, assertRelatorio,
+  podeVerRelatorio,
 } from '@/lib/auth'
 import { NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
 
@@ -124,8 +124,6 @@ describe('abas de Relatórios', () => {
     expect(podeVerRelatorio(comercial, 'comercial')).toBe(true)
     expect(podeVerRelatorio(comercial, 'agenda')).toBe(true)
     expect(podeVerRelatorio(comercial, 'financeiro')).toBe(false)
-    expect(() => assertRelatorio(comercial, 'financeiro')).toThrow('Forbidden')
-    expect(() => assertRelatorio(comercial, 'comercial')).not.toThrow()
   })
 
   it('financial em MANAGE não abre o relatório financeiro por tabela', () => {

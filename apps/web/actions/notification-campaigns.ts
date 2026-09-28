@@ -174,12 +174,13 @@ export async function updateCampaign(
 
   const admin = createAdminClient()
 
-  // Only allow editing DRAFT or PAUSED campaigns
+  // Só rascunho ou pausada. `maybeSingle`: id que não existe é "não
+  // encontrado", não exceção dentro de `ler` (erro 500).
   const existing = await ler(admin
     .from('notification_campaigns')
     .select('status, tenant_id')
     .eq('id', id)
-    .single(), 'buscar a campanha')
+    .maybeSingle(), 'buscar a campanha')
 
   if (!existing || existing.tenant_id !== ctx.tenantId!) return { error: 'Não encontrado' }
   if (!['DRAFT', 'PAUSED'].includes(existing.status))

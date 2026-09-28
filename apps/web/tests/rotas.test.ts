@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   ehPortalDaRede, portalDe, rotaNoPortal, rotaAtendimento, rotaAgenda,
-  rotaCliente, rotaClientes, rotaNovoCliente, rotaInbox, rotaOportunidades, rotaCheckout,
+  rotaCliente, rotaClientes, rotaInbox, rotaOportunidades,
 } from '@/lib/rotas'
 
 /** O portal vem de onde a pessoa está (pathname), nunca do slug do registro. */
@@ -44,7 +44,6 @@ describe('atalhos', () => {
   it('agenda, clientes e cadastro seguem o portal atual', () => {
     expect(rotaAgenda(naRede, 'centro')).toBe('/admin/agenda')
     expect(rotaClientes(naUnidade, 'centro')).toBe('/centro/clients')
-    expect(rotaNovoCliente(naRede, 'centro')).toBe('/admin/clients/new')
     expect(rotaCliente(naUnidade, 'centro', 'cl-9')).toBe('/centro/clients/cl-9')
   })
 
@@ -60,7 +59,5 @@ describe('atalhos', () => {
 
   it('oportunidades e checkout', () => {
     expect(rotaOportunidades(naUnidade, 'centro')).toBe('/centro/oportunidades')
-    expect(rotaCheckout(naRede, 'centro')).toBe('/admin/checkout')
-    expect(rotaCheckout(naRede, 'centro', 'plan-3')).toBe('/admin/checkout/plan-3')
   })
 })

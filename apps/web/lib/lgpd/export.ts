@@ -1,7 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildPdf, type PdfSection } from '@/lib/pdf'
-import { ensurePrivateBucket, ANAMNESIS_BUCKET, CLIENT_DOCS_BUCKET } from '@/lib/storage'
+import { ensurePrivateBucket } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
 
 /**
@@ -308,6 +308,3 @@ export async function buildClientExport(
   const expiresAt = new Date(Date.now() + EXPORT_TTL_DAYS * 24 * 60 * 60 * 1000)
   return { jsonPath, pdfPath, expiresAt }
 }
-
-/** Buckets de onde saem os anexos citados no pacote (referência). */
-export const REFERENCED_BUCKETS = [ANAMNESIS_BUCKET, CLIENT_DOCS_BUCKET]

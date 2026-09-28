@@ -1,12 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   ChevronLeft, Play, Pause, Save, Plus, AlertCircle, CheckCircle2, ShieldCheck, History,
-  X,
+  X, Trash2,
   GitBranch,
 } from 'lucide-react'
 import {
@@ -22,7 +22,7 @@ import { PainelDeVersoes } from './painel-de-versoes'
 import { validarGrafo, ROTULOS, type ProblemaDoGrafo } from '@/lib/automacoes/validar'
 import { novoIdDeNo, configPadrao } from '@/lib/automacoes/ids'
 import { nomePadraoDoPasso, renomearPasso } from '@/lib/automacoes/passos'
-import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor } from '@/actions/automacoes'
+import { salvarAutomacao, mudarStatusDaAutomacao, opcoesDoEditor, excluirAutomacao } from '@/actions/automacoes'
 import type { OpcoesDoEditor } from '@/actions/automacoes'
 import type { AutomacaoCompleta } from '@/actions/automacoes'
 
@@ -213,6 +213,21 @@ export function EditorDeAutomacao({
     })
   }
 
+  // Excluir existia no servidor desde o começo e nunca teve botão (2026-09-28).
+  // Só aparece DESLIGADA: a action recusa apagar o que está agindo agora, e
+  // oferecer o botão com ela ligada seria prometer o que não acontece.
+  const confirmarExclusao = useRef<HTMLDialogElement>(null)
+  const [excluindo, startExcluir] = useTransition()
+  function excluir() {
+    startExcluir(async () => {
+      const r = await excluirAutomacao(automacao.id)
+      if (r.error) { toast.error(r.error); return }
+      confirmarExclusao.current?.close()
+      toast.success('Automação excluída.')
+      router.push('/admin/automacoes')
+    })
+  }
+
   const naoExecutaveis = grafo.nos.filter(n => !EXECUTAVEIS.includes(n.tipo as TipoDeNo))
 
   return (
@@ -306,6 +321,16 @@ export function EditorDeAutomacao({
                 <CheckCircle2 size={13} /> <span className="auto-rotulo">Salvo</span>
               </span>
             )}
+            {status !== 'ATIVA' && (
+              <button
+                type="button" className="btn-ghost" onClick={() => confirmarExclusao.current?.showModal()}
+                disabled={salvando || excluindo}
+                title="Excluir automação" aria-label="Excluir automação"
+                style={{ color: 'var(--danger)', padding: '6px 8px' }}
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
             <button
               type="button" className="btn-primary" onClick={alternarStatus}
               disabled={salvando || (status !== 'ATIVA' && erros.length > 0)}
@@ -317,6 +342,35 @@ export function EditorDeAutomacao({
           </>
         )}
       </div>
+
+      <dialog
+        ref={confirmarExclusao}
+        className="modal"
+        style={{ maxWidth: 400 }}
+        onClick={e => { if (e.target === confirmarExclusao.current) confirmarExclusao.current?.close() }}
+      >
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
+            Excluir automação?
+          </p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            <strong style={{ color: 'var(--text)' }}>{nome}</strong> sai da lista, com o histórico de
+            execuções dela. O que ela já fez — mensagens enviadas, cards movidos — continua registrado
+            onde aconteceu. Não dá para desfazer.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn-secondary" onClick={() => confirmarExclusao.current?.close()} disabled={excluindo}>
+              Cancelar
+            </button>
+            <button
+              type="button" onClick={excluir} disabled={excluindo} className="btn-secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--danger)', background: 'var(--danger-soft)' }}
+            >
+              <Trash2 size={14} /> {excluindo ? 'Excluindo…' : 'Excluir'}
+            </button>
+          </div>
+        </div>
+      </dialog>
 
       {/* -- Corpo ---------------------------------------------------------- */}
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
