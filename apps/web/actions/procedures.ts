@@ -20,6 +20,37 @@ import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cada
  * `procedures: MANAGE` continua valendo — é a permissão que decide o quê; a
  * abrangência decide onde.
  */
+/**
+ * Os ids que o formulário do procedimento traz — unidades (disponibilidade e
+ * preço), produtos (insumos) e ficha — são DA REDE? Até 2026-09-28 iam direto
+ * para as tabelas de ligação: o procedimento aparecia na unidade de outra
+ * clínica e consumia o produto dela no fechamento. Devolve a recusa, ou null.
+ */
+async function idsDoFormularioDaRede(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  ids: { unidades: string[]; produtos: string[]; ficha: string | null },
+): Promise<string | null> {
+  const unicos = (xs: string[]) => [...new Set(xs.filter(Boolean))]
+  const unidades = unicos(ids.unidades)
+  const produtos = unicos(ids.produtos)
+  const [u, pr, f] = await Promise.all([
+    unidades.length
+      ? ler(admin.from('branches').select('id').eq('tenant_id', tenantId).in('id', unidades), 'conferir as unidades')
+      : Promise.resolve([]),
+    produtos.length
+      ? ler(admin.from('products').select('id').eq('tenant_id', tenantId).in('id', produtos), 'conferir os insumos')
+      : Promise.resolve([]),
+    ids.ficha
+      ? ler(admin.from('forms').select('id').eq('tenant_id', tenantId).eq('id', ids.ficha).maybeSingle(), 'conferir a ficha')
+      : Promise.resolve({ id: null }),
+  ])
+  if ((u ?? []).length !== unidades.length) return 'Unidade não encontrada.'
+  if ((pr ?? []).length !== produtos.length) return 'Insumo não encontrado.'
+  if (!f) return 'Ficha não encontrada.'
+  return null
+}
+
 function assertRede(ctx: { branchId: string | null }) {
   if (ctx.branchId !== null) {
     throw new Error('Procedimentos são do catálogo da rede: só quem tem abrangência de rede pode alterá-los.')
@@ -75,6 +106,12 @@ async function addProcedureInterno(
   if (isNaN(price) || price < 0)                 return { error: 'Preço inválido.' }
 
   const admin = createAdminClient()
+  const recusa = await idsDoFormularioDaRede(admin, ctx.tenantId!, {
+    unidades: [...branchIds, ...branchPricing.map(bp => bp.branch_id)],
+    produtos: products.map(pp => pp.product_id),
+    ficha:    fichaId,
+  })
+  if (recusa) return { error: recusa }
 
   // Insere o procedimento no catálogo da rede (branch_id = null)
   const { data: procedure, error } = await admin
@@ -189,6 +226,12 @@ async function updateProcedureInterno(
   if (isNaN(price) || price < 0)             return { error: 'Preço inválido.' }
 
   const admin = createAdminClient()
+  const recusa = await idsDoFormularioDaRede(admin, ctx.tenantId!, {
+    unidades: [...branchIds, ...branchPricing.map(bp => bp.branch_id)],
+    produtos: products.map(pp => pp.product_id),
+    ficha:    fichaId,
+  })
+  if (recusa) return { error: recusa }
 
   // Histório de preço se alterado
   const precoAnterior = parseFloat(String(existing.price))

@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
@@ -111,7 +111,8 @@ export async function deleteClientDocument(
   if (!doc) return { error: 'Documento não encontrado.' }
 
   const tenantId = (doc.branches as unknown as { tenant_id: string }).tenant_id
-  if (tenantId !== ctx.tenantId) return { error: 'Acesso negado.' }
+  // E a unidade onde o documento foi posto, ao alcance de quem apaga (§11).
+  if (tenantId !== ctx.tenantId || !alcancaUnidade(ctx, doc.branch_id as string)) return { error: 'Acesso negado.' }
 
   if (doc.file_path) {
     await gravar(admin.storage.from(BUCKET).remove([doc.file_path]), 'apagar o arquivo do documento')

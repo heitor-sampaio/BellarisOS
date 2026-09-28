@@ -117,7 +117,10 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
       await db.from('role_permissions').delete().eq('tenant_id', t!.id)
       await db.from('tenant_roles').delete().eq('tenant_id', t!.id)
       await db.from('domain_events').delete().eq('tenant_id', t!.id)
-      await db.from('tenants').delete().eq('id', t!.id)
+      // Rede que não sai é, quase sempre, unidade que o teste criou nela e ainda
+      // não apagou: quem criou apaga, e apaga a rede de novo depois.
+      const { error: eRede } = await db.from('tenants').delete().eq('id', t!.id)
+      if (eRede) console.warn(`[e2e] outra rede: a rede ficou (${eRede.message}) — ainda há algo dela no banco`)
     },
   }
   return rede

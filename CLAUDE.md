@@ -1013,6 +1013,18 @@ Regras:
   com `updateTag` — o `revalidateTag(…, 'max')` serviria o valor velho em mais
   uma requisição. Até 2026-09-27 desativar era uma coluna que nada lia. Ninguém
   desativa a si mesmo. Prova: `e2e/membro-desativado.spec.ts`.
+- **A abrangência se confere na ACTION, não só no layout.** Registro de
+  unidade que chega por id (agendamento, lançamento, plano, mapa, membro,
+  unidade) passa por `alcancaUnidade` / `assertUnidade` (`lib/auth.ts`)
+  depois de conferida a rede: quem é da rede alcança todas, quem tem unidade
+  fixa só a dela, e registro sem unidade é da rede. Leitura que recebe
+  `branchId` usa `ctx.branchId ?? branchId` — o pedido não vence a
+  abrangência. Até 2026-09-28 a recepção da A cancelava, recebia e estornava
+  na B pelo id. Prova: `e2e/abrangencia-unidade.spec.ts`.
+- **Todo caminho que cria ou move agendamento passa por
+  `conferirPecasDoAgendamento`** (`lib/appointments/core.ts`): unidade,
+  profissional, cliente e sala da rede, e a unidade ao alcance. O checkout,
+  a sessão de pacote e a de plano gravavam o que o navegador mandasse.
 - **A unidade do membro é da rede** (`assertBranchInTenant` em
   `actions/team.ts`), e **o agendamento só nasce com peças da rede**:
   `createAppointmentCore` confere unidade, profissional, cliente e sala, e quem
@@ -1307,6 +1319,9 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Gravar config de integração com chave fora da lista do provedor, ou baseUrl não pública (SSRF)
 ❌ Gravar mensagem de saída sem whatsapp_number_id (texto, template e mídia levam a caixa que enviou)
 ❌ Limpar um estado da rede ANTES de conferir o id que vai recebê-lo (setDefaultFunnel zerava o padrão)
+❌ Action que recebe id de registro de UNIDADE e confere só a rede (use alcancaUnidade depois da rede)
+❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
+❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)
 ❌ Invalidar cache de permissão/acesso com revalidateTag 'max' (serve o velho mais uma vez) — use updateTag
 ❌ Fechar LISTA de período em "agora" (resolvePeriod.to) — use fullTo, o fim do período
 ❌ Tirar inicial de nome com nome[0] ou charAt(0) — use iniciaisDoNome (quebra em emoji)

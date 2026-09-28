@@ -1,7 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, alcancaUnidade } from '@/lib/auth'
+import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
@@ -64,18 +65,27 @@ export interface MapaNaLista {
 
 const SEM_NOME = 'Planejamento sem nome'
 
-/** Confere que o planejamento é do tenant de quem chama. */
+/**
+ * O planejamento está ao alcance de quem age? Planejamento avulso (sem unidade)
+ * aparece em qualquer recorte — é a regra da lista —; o de uma unidade, só para
+ * ela e para a rede (§11).
+ */
+function mapaAoAlcance(ctx: TenantContext, branchId: string | null): boolean {
+  return branchId === null || alcancaUnidade(ctx, branchId)
+}
+
+/** Confere que o planejamento é da rede de quem chama, e da unidade ao alcance. */
 async function mapaDoTenant(
   admin: ReturnType<typeof createAdminClient>,
   mapId: string,
-  tenantId: string,
+  ctx: TenantContext,
 ) {
   const data = await ler(admin
     .from('injectable_maps')
     .select('id, tenant_id, client_id, branch_id, name')
     .eq('id', mapId)
     .maybeSingle(), 'carregar o planejamento')
-  return data && data.tenant_id === tenantId ? data : null
+  return data && data.tenant_id === ctx.tenantId && mapaAoAlcance(ctx, data.branch_id as string | null) ? data : null
 }
 
 /** Confere que o cliente é do tenant de quem chama. */
@@ -110,7 +120,15 @@ export async function criarPlanejamentoInjetavel({
   const titulo = nome.trim()
   if (!titulo) return { error: 'Dê um nome ao planejamento.' }
 
-  let filial = branchId
+  // A unidade vem do navegador: da rede e ao alcance (§11). Até 2026-09-28
+  // era gravada como chegava.
+  if (branchId) {
+    const daRede = await ler(admin.from('branches').select('id')
+      .eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
+    if (!daRede || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
+  }
+
+  let filial = branchId ?? (ctx.branchId || null)
   if (clientId) {
     const cliente = await clienteDoTenant(admin, clientId, ctx.tenantId!)
     if (!cliente) return { error: 'Cliente não encontrado.' }
@@ -150,12 +168,14 @@ export async function getPlanejamentoInjetavel(mapId: string): Promise<{
 
   const { data, error } = await admin
     .from('injectable_maps')
-    .select('id, tenant_id, name, client_id, view, points, clients(name), branches(name)')
+    .select('id, tenant_id, branch_id, name, client_id, view, points, clients(name), branches(name)')
     .eq('id', mapId)
     .maybeSingle()
 
   if (error) return { error: `Não foi possível abrir o planejamento: ${error.message}` }
-  if (!data || data.tenant_id !== ctx.tenantId) return { error: 'Planejamento não encontrado.' }
+  if (!data || data.tenant_id !== ctx.tenantId || !mapaAoAlcance(ctx, data.branch_id as string | null)) {
+    return { error: 'Planejamento não encontrado.' }
+  }
 
   const clientId = (data.client_id as string | null) ?? null
 
@@ -219,7 +239,7 @@ export async function salvarPlanejamentoInjetavel(
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
-  const plano = await mapaDoTenant(admin, mapId, ctx.tenantId!)
+  const plano = await mapaDoTenant(admin, mapId, ctx)
   if (!plano) return { error: 'Planejamento não encontrado.' }
 
   const { error } = await admin
@@ -246,7 +266,7 @@ export async function renomearPlanejamentoInjetavel(
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
-  const plano = await mapaDoTenant(admin, mapId, ctx.tenantId!)
+  const plano = await mapaDoTenant(admin, mapId, ctx)
   if (!plano) return { error: 'Planejamento não encontrado.' }
   if (!nome.trim()) return { error: 'Dê um nome ao planejamento.' }
 
@@ -270,7 +290,7 @@ export async function vincularClienteAoPlanejamento(
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
-  const plano = await mapaDoTenant(admin, mapId, ctx.tenantId!)
+  const plano = await mapaDoTenant(admin, mapId, ctx)
   if (!plano) return { error: 'Planejamento não encontrado.' }
 
   const cliente = await clienteDoTenant(admin, clientId, ctx.tenantId!)
@@ -311,12 +331,22 @@ export async function registrarAplicacao(
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
-  const plano = await mapaDoTenant(admin, mapId, ctx.tenantId!)
+  const plano = await mapaDoTenant(admin, mapId, ctx)
   if (!plano) return { error: 'Planejamento não encontrado.' }
 
   const clientId = plano.client_id as string | null
   if (!clientId) {
     return { error: 'Ligue o planejamento a um cliente antes de registrar a aplicação.' }
+  }
+  // O atendimento é DESTE cliente e está ao alcance: até 2026-09-28 qualquer
+  // id servia, e a aplicação apontava para o atendimento de outra pessoa.
+  if (appointmentId) {
+    const appt = await ler(admin.from('appointments').select('id, branch_id, branches!inner(tenant_id)')
+      .eq('id', appointmentId).eq('client_id', clientId).maybeSingle(), 'buscar o atendimento')
+    const rede = (appt?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+    if (!appt || rede !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id as string)) {
+      return { error: 'Atendimento não encontrado para este cliente.' }
+    }
   }
   if ((mapa.points ?? []).length === 0) {
     return { error: 'Marque ao menos um ponto antes de registrar a aplicação.' }
@@ -421,7 +451,11 @@ export async function listarMapasDeInjetaveis({ branchId }: { branchId: string |
     .limit(300)
   // Planejamento avulso não tem unidade: ele aparece em qualquer recorte, senão
   // sumiria da tela exatamente de quem acabou de criá-lo.
-  if (branchId) q = q.or(`branch_id.eq.${branchId},branch_id.is.null`)
+  // Quem tem unidade fixa vê a dela, qualquer que seja o pedido (§11). E o id
+  // entra num filtro em texto: só uuid.
+  const recorte = ctx.branchId ?? branchId
+  if (recorte && !/^[0-9a-f-]{36}$/i.test(recorte)) return { mapas: [], error: 'Unidade inválida.' }
+  if (recorte) q = q.or(`branch_id.eq.${recorte},branch_id.is.null`)
 
   const { data, error } = await q
   if (error) return { mapas: [], error: `Não foi possível carregar os planejamentos: ${error.message}` }

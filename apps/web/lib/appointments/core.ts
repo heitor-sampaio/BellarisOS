@@ -31,6 +31,49 @@ export interface CreateAppointmentInput {
 const IGNORED_STATUS = '("CANCELLED","NO_SHOW")'
 
 /**
+ * As peças de um agendamento que vêm do navegador são DA REDE, e a unidade
+ * está ao alcance de quem agenda (§11). Devolve a mensagem de recusa, ou null.
+ *
+ * Mora aqui para servir a TODO caminho que cria ou move agendamento: o núcleo
+ * (agenda e comercial), o checkout do plano, a sessão de pacote e de plano, a
+ * remarcação e a troca de profissional. Até 2026-09-28 só o núcleo conferia —
+ * os outros gravavam a unidade e o profissional que o navegador mandasse.
+ * Campo ausente não é conferido (quem chama decide o que é obrigatório).
+ */
+export async function conferirPecasDoAgendamento(
+  admin: Admin,
+  ctx: TenantContext,
+  pecas: { branchId?: string | null; professionalId?: string | null; clientId?: string | null; roomId?: string | null },
+): Promise<string | null> {
+  if (pecas.branchId && ctx.branchId && pecas.branchId !== ctx.branchId) {
+    return 'Você só pode agendar na sua unidade.'
+  }
+  const [unidade, profissional, cliente, sala] = await Promise.all([
+    pecas.branchId
+      ? ler(admin.from('branches').select('id')
+          .eq('id', pecas.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
+      : Promise.resolve({ id: null }),
+    pecas.professionalId
+      ? ler(admin.from('users').select('id')
+          .eq('id', pecas.professionalId).eq('tenant_id', ctx.tenantId!).eq('is_active', true).maybeSingle(), 'buscar o profissional')
+      : Promise.resolve({ id: null }),
+    pecas.clientId
+      ? ler(admin.from('clients').select('id')
+          .eq('id', pecas.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente')
+      : Promise.resolve({ id: null }),
+    pecas.roomId && pecas.branchId
+      ? ler(admin.from('rooms').select('id')
+          .eq('id', pecas.roomId).eq('branch_id', pecas.branchId).maybeSingle(), 'buscar a sala')
+      : Promise.resolve({ id: null }),
+  ])
+  if (!unidade)      return 'Filial não encontrada.'
+  if (!profissional) return 'Profissional não encontrado.'
+  if (!cliente)      return 'Cliente não encontrado.'
+  if (!sala)         return 'Sala não encontrada nesta unidade.'
+  return null
+}
+
+/**
  * Cria um agendamento aplicando toda a regra de negócio. Recebe o contexto já
  * resolvido (de cookies OU de token) — não depende de FormData nem de cookies.
  * Não dispara notificação nem revalidate: isso fica a cargo de quem chama.
@@ -48,30 +91,10 @@ export async function createAppointmentCore(
   if (!input.professionalId)                        return { error: 'Selecione um profissional.' }
   if (!input.scheduledAt)                           return { error: 'Informe data e hora.' }
 
-  // Tudo que vem do navegador tem de ser DA REDE. Até 2026-09-27 só o
-  // procedimento era conferido: com a unidade, o profissional, o cliente e a
-  // sala de outra clínica, o agendamento nascia na agenda DELA. E quem tem
-  // unidade fixa só agenda na própria (a abrangência, §11) — a rede agenda em
-  // qualquer uma. Um lugar só: a agenda e o comercial passam por aqui.
-  if (ctx.branchId && input.branchId !== ctx.branchId) {
-    return { error: 'Você só pode agendar na sua unidade.' }
-  }
-  const [unidade, profissional, cliente, sala] = await Promise.all([
-    ler(admin.from('branches').select('id')
-      .eq('id', input.branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade'),
-    ler(admin.from('users').select('id')
-      .eq('id', input.professionalId).eq('tenant_id', ctx.tenantId!).eq('is_active', true).maybeSingle(), 'buscar o profissional'),
-    ler(admin.from('clients').select('id')
-      .eq('id', input.clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente'),
-    input.roomId
-      ? ler(admin.from('rooms').select('id')
-          .eq('id', input.roomId).eq('branch_id', input.branchId).maybeSingle(), 'buscar a sala')
-      : Promise.resolve({ id: null }),
-  ])
-  if (!unidade)      return { error: 'Filial não encontrada.' }
-  if (!profissional) return { error: 'Profissional não encontrado.' }
-  if (!cliente)      return { error: 'Cliente não encontrado.' }
-  if (!sala)         return { error: 'Sala não encontrada nesta unidade.' }
+  // Tudo que vem do navegador tem de ser DA REDE, e a unidade ao alcance de
+  // quem agenda (§11). Até 2026-09-27 só o procedimento era conferido.
+  const recusa = await conferirPecasDoAgendamento(admin, ctx, input)
+  if (recusa) return { error: recusa }
 
   // Preço/duração do procedimento (quando houver)
   let procedure: { price: number; duration_min: number } | null = null

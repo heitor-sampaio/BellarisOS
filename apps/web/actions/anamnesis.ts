@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
@@ -102,7 +102,8 @@ export async function uploadAnamnesisPhoto(
       .select('client_id, branch_id, branches!inner(tenant_id)')
       .eq('id', appointmentId)
       .maybeSingle(), 'buscar o agendamento')
-    if ((appt?.branches as unknown as { tenant_id?: string } | null)?.tenant_id !== ctx.tenantId) {
+    if ((appt?.branches as unknown as { tenant_id?: string } | null)?.tenant_id !== ctx.tenantId
+      || !alcancaUnidade(ctx, appt?.branch_id as string)) {
       return { error: 'Agendamento não encontrado.' }
     }
 
@@ -170,12 +171,14 @@ export async function salvarFichaDoProcedimento(params: {
     const admin = createAdminClient()
     const appt = await ler(admin
       .from('appointments')
-      .select('id, status, client_id, professional_id, procedure_id, branches!inner(tenant_id)')
+      .select('id, status, branch_id, client_id, professional_id, procedure_id, branches!inner(tenant_id)')
       .eq('id', params.appointmentId)
-      .single(), 'buscar o agendamento')
+      .maybeSingle(), 'buscar o agendamento')
 
     const apptBranch = appt?.branches as unknown as { tenant_id: string } | null
-    if (!appt || apptBranch?.tenant_id !== ctx.tenantId) return { error: 'Agendamento não encontrado.' }
+    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id as string)) {
+      return { error: 'Agendamento não encontrado.' }
+    }
 
     const isFinalised = ['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)
     const isAdmin     = ctx.permissions.medical_records === 'MANAGE'

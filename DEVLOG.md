@@ -1260,6 +1260,56 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — Frente 9 (P7, parte 2): quem tem unidade fixa age só na dela
+
+O levantamento do portal da unidade achou o buraco maior da P7: **a
+abrangência do membro (§11) quase não era conferida nas actions.** Navegar
+entre unidades estava trancado (o layout manda embora), mas a action pelo id
+só conferia a REDE. A recepção da unidade A confirmava, cancelava e fazia
+check-in no agendamento da B; dava baixa e estornava lançamento da B; abria,
+listava e cancelava o plano da B; abria e renomeava o mapa de injetáveis da B;
+a gerente da A desativava — e bania do login — gente da B e até admins da rede,
+e desativava a unidade B. A produção tem 1 rede com 4 unidades e 5 membros de
+unidade fixa: o furo era real.
+
+- **Um portão só**: `alcancaUnidade` / `assertUnidade` (`lib/auth.ts`). Quem é
+  da rede alcança todas; quem tem unidade, só a dela; registro sem unidade é da
+  rede. Os helpers que já conferiam a rede (`planoDoTenant`,
+  `agendamentoDoTenant`, `mapaDoTenant`, `membroDaRede`) passaram a conferir
+  a unidade — as actions que passam por eles ganharam a trava juntas.
+- **`conferirPecasDoAgendamento`** saiu de dentro do núcleo da agenda
+  (`lib/appointments/core.ts`) e passou a servir a TODO caminho que cria ou
+  move agendamento. Além da unidade, fechou furos de REDE que o levantamento
+  achou: o checkout do plano, a sessão de pacote e a de plano gravavam unidade,
+  profissional, cliente e procedimento que o navegador mandasse (inclusive de
+  outra clínica); remarcar e trocar o profissional aceitavam profissional de
+  qualquer rede; a sessão de plano não era amarrada ao plano. A conferência do
+  checkout roda antes do dinheiro, para a recusa não deixar receita lançada.
+- **Concluir o atendimento** (`updateAppointmentStatus` → COMPLETED) não
+  conferia NADA — nem a rede — antes de baixar estoque, lançar comissão e
+  pontos. Agora confere as duas. E mudar o status pela sessão confere a linha
+  devolvida (RLS podia zerar o update sem erro, com o histórico gravado).
+- **Leituras com recorte do chamador** (horários do dia, profissionais,
+  planejamentos, mapas, histórico do produto): quem tem unidade fixa vê a dela,
+  qualquer que seja o pedido.
+- **Unidades**: criar e ativar/desativar é da rede; editar, a própria.
+- **Procedimento**: unidades de disponibilidade e preço, insumos e ficha do
+  formulário são conferidos na rede (iam direto para as tabelas de ligação).
+- Também: `createProduct` (a unidade do estoque inicial — que grava despesa),
+  `criarPlanoDoCliente`, `criarPlanejamentoInjetavel`, `registrarAplicacao`
+  (o atendimento é do cliente), `deleteClientDocument`, a ficha e a foto do
+  atendimento.
+
+Prova: `e2e/abrangencia-unidade.spec.ts` (5 casos), numa rede `[e2e]` com
+duas unidades; cada recusa tem o membro da rede como controle e a própria A
+continua agindo na A. Os cinco falham no código antigo. A varredura de sobras
+passou a tirar mapas e lançamentos sem cliente de rede `[e2e]` (prendiam a
+unidade), e o `limpar()` da outra rede avisa quando a rede não sai.
+
+Fica de fora, de propósito: o **cliente é da rede** (§9.2), então a ficha dele
+mostra transações, documentos e planos de todas as unidades — é desenho, não
+furo. CRM e inbox não têm dimensão de unidade.
+
 ### 2026-09-28 — Frente 9 (P7, parte 1): entrar, recuperar a senha e cadastrar
 
 "Pode seguir com o P7." As telas de autenticação nunca tinham rodado num

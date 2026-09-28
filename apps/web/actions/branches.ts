@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 
@@ -22,6 +22,8 @@ export async function createBranch(
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // Abrir unidade nova é decisão da REDE, não de quem tem unidade fixa (§11).
+  if (ctx.branchId !== null) throw new Error('Forbidden')
 
   const name     = (formData.get('name') as string)?.trim()
   const slugRaw  = (formData.get('slug') as string)?.trim()
@@ -89,6 +91,9 @@ export async function updateBranch(
   const zipCode           = (formData.get('zip_code') as string)?.trim() || null
 
   if (!name) return { error: 'Nome é obrigatório.' }
+  // Quem tem unidade fixa edita a dela; a da rede, todas (§11). Até 2026-09-28
+  // a gerente da unidade A reescrevia os dados da B.
+  assertUnidade(ctx, branchId)
 
   const supabase = createAdminClient()
 
@@ -119,6 +124,9 @@ export async function updateBranch(
 export async function toggleBranchStatus(branchId: string, isActive: boolean) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // Desativar uma unidade tira a agenda dela do ar: decisão da REDE (§11). A
+  // gerente da A desativava a B.
+  if (ctx.branchId !== null) throw new Error('Forbidden')
 
   const supabase = createAdminClient()
   await gravar(supabase

@@ -206,6 +206,13 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
   // 7. Redes inteiras de teste (a "outra rede" do teste de RLS).
   const redes = await ids(db.from('tenants').select('id').like('name', like))
   for (const rede of redes) {
+    // O que prende a unidade e não sai com os clientes: mapas de injetáveis e
+    // lançamentos sem cliente (a contra-transação do estorno nasce sem ele).
+    await passo(falhas, 'mapas da rede de teste', db.from('injectable_maps').delete().eq('tenant_id', rede))
+    const unidades = await ids(db.from('branches').select('id').eq('tenant_id', rede))
+    if (unidades.length) {
+      await passo(falhas, 'lançamentos da rede de teste', db.from('financial_transactions').delete().in('branch_id', unidades))
+    }
     await passo(falhas, 'procedimentos da rede de teste', db.from('procedures').delete().eq('tenant_id', rede))
     await passo(falhas, 'unidades da rede de teste', db.from('branches').delete().eq('tenant_id', rede))
     await passo(falhas, 'cargos da rede de teste', db.from('tenant_roles').delete().eq('tenant_id', rede))

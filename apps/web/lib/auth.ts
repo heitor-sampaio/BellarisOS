@@ -232,6 +232,27 @@ export function ownerFilter(ctx: TenantContext, module: AppModule): string | nul
   return isOwnScope(ctx, module) ? ctx.internalUserId : null
 }
 
+/**
+ * A ABRANGÊNCIA do membro (§11): quem é da rede (`branchId` nulo) alcança
+ * todas as unidades; quem tem unidade fixa, só a dele.
+ *
+ * O registro de UNIDADE que chega por id — agendamento, lançamento, plano,
+ * estoque, mapa, membro — passa por aqui depois de conferida a rede. Até
+ * 2026-09-28 quase nenhuma action olhava isto, e a recepção da unidade A
+ * cancelava, recebia e estornava na unidade B pelo id.
+ *
+ * `branchId` nulo no REGISTRO é coisa da rede (catálogo, cliente sem
+ * unidade): só quem é da rede mexe.
+ */
+export function alcancaUnidade(ctx: TenantContext, branchId: string | null | undefined): boolean {
+  return ctx.branchId === null || (!!branchId && branchId === ctx.branchId)
+}
+
+/** `alcancaUnidade` que barra — mesma resposta de quem não tem o módulo. */
+export function assertUnidade(ctx: TenantContext, branchId: string | null | undefined): void {
+  if (!alcancaUnidade(ctx, branchId)) throw new Error('Forbidden')
+}
+
 
 // Destino pós-login: abrangência de filial → dashboard da filial; rede → /admin.
 // A autorização fina de cada página é feita por assertPermission.

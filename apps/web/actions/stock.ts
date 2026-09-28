@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
@@ -117,6 +117,17 @@ async function createProductInterno(
     if (categoryId) {
       const cat = await ler(admin.from('product_categories').select('name').eq('id', categoryId).single(), 'buscar a categoria')
       categoryName = cat?.name ?? null
+    }
+
+    // A unidade do estoque inicial vem do formulário: da rede e ao alcance de
+    // quem cria (§11). Até 2026-09-28 ia direto para o saldo, o movimento e a
+    // DESPESA — inclusive numa unidade de outra clínica. Conferida antes de o
+    // produto nascer, para a recusa não deixar um produto sem estoque para trás.
+    const filialPedida = str(formData, '_branchId')
+    if (filialPedida) {
+      const daRede = await ler(admin.from('branches').select('id')
+        .eq('id', filialPedida).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
+      if (!daRede || !alcancaUnidade(ctx, filialPedida)) return { error: 'Unidade não encontrada.' }
     }
 
     const sku = await nextSku(ctx.tenantId!, categoryName)
@@ -797,8 +808,9 @@ export async function getProductMovements(
     .order('created_at', { ascending: false })
     .limit(80)
 
-  // Quem tem unidade fixa só vê a dela; a rede vê todas.
-  const recorte = branchId || ctx.branchId
+  // Quem tem unidade fixa só vê a dela — qualquer que seja o pedido; a rede vê
+  // todas. Antes o `branchId` do chamador vencia o do contexto.
+  const recorte = ctx.branchId ?? branchId
   if (recorte) query = query.eq('branch_id', recorte)
 
   const { data, error } = await query

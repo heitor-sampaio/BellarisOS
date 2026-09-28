@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 
@@ -182,7 +182,8 @@ export async function markTransactionPaid(transactionId: string, slug: string) {
       .eq('id', transactionId)
       .maybeSingle(), 'buscar o lançamento')
     const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-    if (!tx || txTenant !== ctx.tenantId) return { error: 'Lançamento não encontrado.' }
+    // E a unidade ao alcance (§11): a recepção da A não dá baixa na B.
+    if (!tx || txTenant !== ctx.tenantId || !alcancaUnidade(ctx, tx.branch_id as string)) return { error: 'Lançamento não encontrado.' }
 
     const { error } = await admin.from('financial_transactions').update({
       is_paid:    true,
@@ -221,6 +222,17 @@ export async function reverseTransaction(transactionId: string, slug: string) {
     assertPermission(ctx, 'financial', 'MANAGE')
 
     const admin = createAdminClient()
+    // A rede a função do banco confere; a UNIDADE é daqui (§11) — até
+    // 2026-09-28 a unidade A estornava o lançamento da B.
+    const tx = await ler(admin
+      .from('financial_transactions')
+      .select('branch_id, branches!inner(tenant_id)')
+      .eq('id', transactionId)
+      .maybeSingle(), 'buscar o lançamento')
+    const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+    if (!tx || txTenant !== ctx.tenantId || !alcancaUnidade(ctx, tx.branch_id as string)) {
+      return { error: 'Lançamento não encontrado.' }
+    }
     await gravar(
       admin.rpc('estornar_transacao', {
         p_transacao: transactionId,

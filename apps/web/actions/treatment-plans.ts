@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS } from '@estetica-os/types'
-import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade } from '@/lib/auth'
+import { conferirPecasDoAgendamento } from '@/lib/appointments/core'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, tentar, contar, mensagemDoErro } from '@/lib/db'
@@ -137,7 +138,7 @@ async function gravarSessoes(
 async function planoDoTenant(
   admin: ReturnType<typeof createAdminClient>,
   planId: string,
-  tenantId: string,
+  ctx: Pick<TenantContext, 'tenantId' | 'branchId'>,
 ) {
   const data = await ler(admin
     .from('treatment_plans')
@@ -145,7 +146,9 @@ async function planoDoTenant(
     .eq('id', planId)
     .maybeSingle(), 'buscar o plano')
   const branch = data?.branches as unknown as { slug: string; tenant_id: string } | null
-  if (!data || branch?.tenant_id !== tenantId) return null
+  // A rede, e a unidade ao alcance de quem age (§11): o plano da unidade B não
+  // se mexe pela recepção da A.
+  if (!data || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx as TenantContext, data.branch_id as string)) return null
   return { ...data, slug: branch!.slug }
 }
 
@@ -169,11 +172,11 @@ async function termoDoTenant(
   return !!data && rede === tenantId
 }
 
-/** O agendamento é desta rede? Devolve o essencial dele, ou null. */
+/** O agendamento é desta rede, e da unidade ao alcance? O essencial dele, ou null. */
 async function agendamentoDoTenant(
   admin: ReturnType<typeof createAdminClient>,
   appointmentId: string,
-  tenantId: string,
+  ctx: Pick<TenantContext, 'tenantId' | 'branchId'>,
 ) {
   const data = await ler(admin
     .from('appointments')
@@ -181,7 +184,7 @@ async function agendamentoDoTenant(
     .eq('id', appointmentId)
     .maybeSingle(), 'buscar o agendamento')
   const rede = (data?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-  if (!data || rede !== tenantId) return null
+  if (!data || rede !== ctx.tenantId || !alcancaUnidade(ctx as TenantContext, data.branch_id as string)) return null
   return { id: data.id as string, branch_id: data.branch_id as string, client_id: data.client_id as string, professional_id: data.professional_id as string }
 }
 
@@ -217,7 +220,7 @@ async function saveTreatmentPlanInterno(
 
   // Agendamento de outra rede responde como inexistente — senão o plano
   // nasceria no cliente e na unidade de lá.
-  const appt = await agendamentoDoTenant(admin, appointmentId, ctx.tenantId!)
+  const appt = await agendamentoDoTenant(admin, appointmentId, ctx)
   if (!appt) return { error: 'Agendamento não encontrado.' }
 
   const { data: plan, error: planErr } = await admin
@@ -328,6 +331,11 @@ export async function criarPlanoDoCliente(
   }
 
   if (!filial) return { error: 'Selecione a unidade do plano.' }
+  // Da rede e ao alcance: até 2026-09-28 a unidade do plano era gravada como
+  // chegava — inclusive a de outra clínica.
+  const unidadeDoPlano = await ler(admin.from('branches').select('id')
+    .eq('id', filial).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
+  if (!unidadeDoPlano || !alcancaUnidade(ctx, filial)) return { error: 'Unidade não encontrada.' }
 
   const { data, error } = await admin
     .from('treatment_plans')
@@ -362,7 +370,7 @@ export async function vincularClienteAoPlano(
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
-  const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
+  const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
 
   const cliente = await ler(admin
@@ -423,7 +431,7 @@ export async function renomearPlano(planId: string, nome: string): Promise<{ err
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
-  const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
+  const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
   if (!nome.trim()) return { error: 'Dê um nome ao plano.' }
 
@@ -454,7 +462,7 @@ export async function getCabecalhoDoPlano(planId: string): Promise<{
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
-  const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
+  const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
 
   const { data, error } = await admin
@@ -509,7 +517,8 @@ export async function listarPlanejamentos(opcoes?: {
     .from('branches')
     .select('id, name')
     .eq('tenant_id', ctx.tenantId!), 'carregar as unidades')
-  const doTenant = (filiais ?? []) as { id: string; name: string }[]
+  // Quem tem unidade fixa lista só a dele, qualquer que seja o pedido (§11).
+  const doTenant = ((filiais ?? []) as { id: string; name: string }[]).filter(b => alcancaUnidade(ctx, b.id))
   const alcance  = opcoes?.branchId
     ? doTenant.filter(b => b.id === opcoes.branchId)
     : doTenant
@@ -580,7 +589,7 @@ export async function getPlanoParaEditar(planId: string): Promise<{
   assertPermission(ctx, 'agenda', 'VIEW')
   const admin = createAdminClient()
 
-  const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
+  const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
 
   const data = await ler(admin
@@ -650,7 +659,7 @@ async function salvarPlanoDoClienteInterno(
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
-  const plan = await planoDoTenant(admin, planId, ctx.tenantId!)
+  const plan = await planoDoTenant(admin, planId, ctx)
   if (!plan) return { error: 'Plano não encontrado.' }
   if (plan.status === 'ACCEPTED' || plan.status === 'COMPLETED') {
     return { error: 'Este plano já foi fechado e não pode mais ser alterado.' }
@@ -697,7 +706,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
     .select('tenant_id')
     .eq('id', plan.branch_id)
     .maybeSingle(), 'buscar a unidade')
-  if (branch?.tenant_id !== ctx.tenantId) return { sessions: [], total: 0 }
+  if (branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) return { sessions: [], total: 0 }
 
   const rawSessions = await ler(admin
     .from('treatment_plan_sessions')
@@ -748,7 +757,7 @@ export async function proposeTreatmentPlan(planId: string, slug: string) {
 
   const admin = createAdminClient()
 
-  if (!(await planoDoTenant(admin, planId, ctx.tenantId!))) return { error: 'Plano não encontrado.' }
+  if (!(await planoDoTenant(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
 
   const plan = await ler(admin
     .from('treatment_plans')
@@ -842,7 +851,7 @@ export async function cancelCheckout(
     .select('tenant_id')
     .eq('id', plan.branch_id)
     .maybeSingle(), 'buscar a unidade')
-  if (branch?.tenant_id !== ctx.tenantId) return { error: 'Acesso negado.' }
+  if (branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) return { error: 'Acesso negado.' }
 
   if (plan.status === 'ACCEPTED') return { error: 'Plano já foi aprovado e não pode ser cancelado.' }
 
@@ -908,7 +917,7 @@ async function cancelTreatmentPlanInterno(
     .select('tenant_id')
     .eq('id', plan.branch_id)
     .maybeSingle(), 'buscar a unidade')
-  if (branch?.tenant_id !== ctx.tenantId) return { error: 'Acesso negado.' }
+  if (branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) return { error: 'Acesso negado.' }
 
   if (plan.status !== 'ACCEPTED') return { error: 'Apenas tratamentos ativos (aceitos) podem ser cancelados.' }
 
@@ -1031,7 +1040,7 @@ async function generateEvaluationPlanInterno(
 
   // Grava anamnese e prontuário do cliente DESTE agendamento: de outra rede,
   // seria escrever no prontuário de uma clínica alheia.
-  const appt = await agendamentoDoTenant(admin, appointmentId, ctx.tenantId!)
+  const appt = await agendamentoDoTenant(admin, appointmentId, ctx)
   if (!appt) return { error: 'Agendamento não encontrado.' }
 
   // 1. Queixas do cliente → appointment.notes
@@ -1199,7 +1208,7 @@ export async function getCheckoutPlan(planId: string): Promise<{ plan?: Checkout
     .maybeSingle(), 'buscar o plano')
 
   const branch = plan?.branches as unknown as { name: string; tenant_id: string } | null
-  if (!plan?.branch_id || !branch || branch.tenant_id !== ctx.tenantId) {
+  if (!plan?.branch_id || !branch || branch.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) {
     return { error: 'Plano não encontrado.' }
   }
 
@@ -1258,7 +1267,7 @@ export async function createCheckoutConsentTerms(
   // Plano e prontuário vêm do navegador. O plano tem de ser desta rede, e o
   // prontuário tem de ser do CLIENTE do plano — senão os termos (com o
   // contrato e o valor) seriam plantados no prontuário de outra pessoa.
-  const plano = await planoDoTenant(admin, planId, ctx.tenantId!)
+  const plano = await planoDoTenant(admin, planId, ctx)
   if (!plano) return { error: 'Plano não encontrado.' }
   const prontuario = await ler(admin
     .from('medical_records').select('client_id').eq('id', medicalRecordId).maybeSingle(),
@@ -1417,7 +1426,7 @@ async function checkoutTreatmentPlanInterno(
 
   // Aceitar o plano lança receita, cria agendamentos e muda o status: com o id
   // de um plano de outra rede, tudo isso acontecia lá.
-  if (!(await planoDoTenant(admin, planId, ctx.tenantId!))) return { error: 'Plano não encontrado.' }
+  if (!(await planoDoTenant(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
 
   const plan = await ler(admin
     .from('treatment_plans')
@@ -1453,6 +1462,18 @@ async function checkoutTreatmentPlanInterno(
       })
       .select('id')
       .single()
+  }
+
+  // Cada horário escolhido é conferido ANTES de o dinheiro e o primeiro agendamento nascerem:
+  // até 2026-09-28 a unidade e o profissional iam direto para o insert —
+  // inclusive os de outra clínica.
+  if (can(ctx, 'agenda', 'MANAGE')) {
+    for (const sched of sessionSchedules) {
+      const recusa = await conferirPecasDoAgendamento(admin, ctx, {
+        branchId: sched.branchId, professionalId: sched.professionalId,
+      })
+      if (recusa) return { error: recusa }
+    }
   }
 
   // 1. Dinheiro.
@@ -1551,6 +1572,7 @@ async function checkoutTreatmentPlanInterno(
   // inteira ser negada.
   const podeAgendar = can(ctx, 'agenda', 'MANAGE')
   let newAppointmentId: string | null = null
+
 
   for (const sess of sessions) {
     const sched = podeAgendar
@@ -1683,7 +1705,7 @@ async function receberDoPlanoInterno(
     .maybeSingle(), 'buscar o plano')
 
   const planTenant = (plan?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-  if (!plan || planTenant !== ctx.tenantId) return { error: 'Plano não encontrado.' }
+  if (!plan || planTenant !== ctx.tenantId || !alcancaUnidade(ctx, plan.branch_id as string)) return { error: 'Plano não encontrado.' }
 
   // O agendamento só serve para registrar o recebimento no histórico dele — e
   // tem de ser DESTE plano (uma sessão dele ou a avaliação que o gerou). Antes
@@ -1863,7 +1885,7 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
     assertPermission(ctx, 'agenda', 'VIEW')
 
     const admin = createAdminClient()
-    if (!(await planoDoTenant(admin, planId, ctx.tenantId!))) return { error: 'Plano não encontrado.' }
+    if (!(await planoDoTenant(admin, planId, ctx))) return { error: 'Plano não encontrado.' }
 
     // 1. Busca o plano (sem joins — evita erro de FK alias no PostgREST)
     const { data: plan, error: planErr } = await admin

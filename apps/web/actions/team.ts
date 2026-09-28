@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { membroCriado, membroDesativado, membroReativado } from '@/lib/events/cadastro'
 import { gravar, ler } from '@/lib/db'
@@ -176,11 +176,13 @@ export async function updateTeamMember(
 
   const member = await ler(admin
     .from('users')
-    .select('auth_id')
+    .select('auth_id, branch_id')
     .eq('id', userId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle(), 'buscar o usuário')
-  if (!member) return { error: 'Membro não encontrado.' }
+  // O membro tem de estar ao alcance de quem edita (§11): a gerente da unidade
+  // A editava — e puxava para a A — gente da B e até da rede.
+  if (!member || !alcancaUnidade(ctx, member.branch_id as string | null)) return { error: 'Membro não encontrado.' }
 
   const { error } = await admin
     .from('users')
@@ -213,11 +215,17 @@ export async function updateTeamMember(
  * O `auth_id` vai para o Auth (bloquear, desbloquear): lido sem o filtro de
  * rede, um id de membro de outra clínica bloquearia a conta dela.
  */
-async function membroDaRede(admin: ReturnType<typeof createAdminClient>, tenantId: string, userId: string) {
+async function membroDaRede(
+  admin: ReturnType<typeof createAdminClient>,
+  ctx: Awaited<ReturnType<typeof getTenantContext>>,
+  userId: string,
+) {
   const membro = await ler(admin
-    .from('users').select('id, auth_id')
-    .eq('id', userId).eq('tenant_id', tenantId).maybeSingle(), 'buscar o membro')
-  if (!membro) throw new Error('Membro não encontrado.')
+    .from('users').select('id, auth_id, branch_id')
+    .eq('id', userId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o membro')
+  // E ao alcance (§11): a gerente da unidade A desativava — e bania do login —
+  // gente da B e admins da rede.
+  if (!membro || !alcancaUnidade(ctx, membro.branch_id as string | null)) throw new Error('Membro não encontrado.')
   return membro as { id: string; auth_id: string | null }
 }
 
@@ -229,7 +237,7 @@ export async function deactivateTeamMember(userId: string, redirectPath: string 
   if (userId === ctx.internalUserId) throw new Error('Você não pode desativar o seu próprio acesso.')
 
   const admin = createAdminClient()
-  const membro = await membroDaRede(admin, ctx.tenantId!, userId)
+  const membro = await membroDaRede(admin, ctx, userId)
   await gravar(admin.from('users').update({ is_active: false }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'desativar o membro')
 
   // Desativar TIRA o acesso — até 2026-09-27 era só uma coluna que nada lia.
@@ -257,7 +265,7 @@ export async function reactivateTeamMember(userId: string, redirectPath: string 
   assertPermission(ctx, 'team', 'MANAGE')
 
   const admin = createAdminClient()
-  const membro = await membroDaRede(admin, ctx.tenantId!, userId)
+  const membro = await membroDaRede(admin, ctx, userId)
   await gravar(admin.from('users').update({ is_active: true }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'reativar o membro')
   if (membro.auth_id) {
     const { error: erroDesbloqueio } = await admin.auth.admin.updateUserById(membro.auth_id, { ban_duration: 'none' })
