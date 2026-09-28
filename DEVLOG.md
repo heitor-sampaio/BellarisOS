@@ -1258,6 +1258,24 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — Credencial fora do alcance da sessão
+
+"Pode fazer o ajuste do RLS." O item de "Em aberto" dizia que a RLS de
+`integration_configs` decidia por nome de cargo. Conferido no banco, era pior:
+uma política FOR ALL que só conferia a REDE — e a tabela guarda o token da Meta,
+do Google Ads e o segredo do app. `whatsapp_numbers` (o token de cada número) e
+`whatsapp_number_users` (quem fala por cada número) estavam iguais. Qualquer
+membro lia os tokens e mexia nos vínculos pela chave pública.
+
+- **Provado ANTES da correção** (`e2e/credenciais-fora-da-sessao.spec.ts`): um
+  SDR com só `crm: VIEW` leu o token da Meta direto do PostgREST.
+- Migration `20260928000005`: as três ficam com RLS ligada e **nenhuma
+  política** — a sessão não alcança nada, e o servidor (service role) segue
+  igual. Conferido antes: nenhuma leitura pela sessão no código, nenhuma das
+  três no realtime, nenhuma função SECURITY INVOKER dependendo delas.
+- O Heitor perguntou se a regra aberta existia por causa do realtime: não
+  existia — nenhuma dessas tabelas é publicada nem assinada.
+
 ### 2026-09-28 — A conclusão do atendimento numa transação só (e o pacote que nunca agendou)
 
 "Pode fazer o ajuste como você sugeriu." `finishSession` gravava status,
@@ -3602,10 +3620,6 @@ verdade. O que vale:
   oportunidade, telefone DDD 00), criado em 2026-09-26 para o Heitor ver o
   inbox com duas conversas da mesma pessoa. Apagar quando ele liberar.
 
-- **RLS de `integration_configs` decide por nome de cargo**
-  (`jwt_claim('role') = 'NETWORK_ADMIN'`), o que o CLAUDE.md §11 proíbe. É a
-  última regra por nome de cargo no banco; não é exposição hoje porque o app lê
-  pelo cliente de serviço.
 - ~~Hidratação em `/admin/inbox`, chave de lista no estoque, e o
   lançamento que sumia da lista.~~ **Resolvidos em 2026-09-25** — ver a entrada
   da linha do tempo.
@@ -3622,13 +3636,7 @@ verdade. O que vale:
 
 ### Próxima frente candidata
 
-**Credenciais fora do alcance da sessão** (`integration_configs` e
-`whatsapp_numbers`): a RLS só confere a rede, e as duas guardam token de Meta,
-Google e WhatsApp — qualquer membro os lê pela chave pública. Nenhuma tela lê
-essas tabelas pelo navegador, e nenhuma está no realtime: basta tirar o acesso
-de sessão. Aguardando o Heitor.
-
-Depois, **fidelidade**: hoje só existe saldo read-only no portal do
+**Fidelidade**: hoje só existe saldo read-only no portal do
 cliente. Falta configurar regras (`loyalty_configs`), creditar e debitar
 pontos, extrato e resgate como desconto no pagamento. O módulo foi removido do
 catálogo de permissões em `4511b5c` por não ter gate nenhum — volta quando

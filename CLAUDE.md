@@ -135,6 +135,15 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   `grant … to service_role`.
 - A prova é `e2e/rls-isolamento.spec.ts`, que fala com o banco **com o token de
   um membro**. Teste com `service_role` não prova RLS nenhuma.
+- **Credencial não tem política nenhuma.** `integration_configs`,
+  `whatsapp_numbers` e `whatsapp_number_users` têm RLS ligada e ZERO políticas
+  (migration `20260928000005`): a sessão não lê nem escreve, só o servidor
+  (service role). Até 2026-09-28 conferiam só a rede, e um SDR lia o token da
+  Meta pela chave pública. Tela que precise de algo dali pelo navegador não
+  reabre a tabela: expõe só as colunas sem segredo, numa view ou função.
+  Prova: `e2e/credenciais-fora-da-sessao.spec.ts`.
+- ⚠️ Política que compara `auth.jwt() ->> 'x'` está ERRADA: as claims moram em
+  `app_metadata` — use `jwt_claim('x')`. A de `leads` era assim e nunca valeu.
 
 ### Claims do JWT
 
@@ -1307,6 +1316,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Action que recebe id de conversa/mensagem sem conversaAoAlcance (esconder da lista não tranca o id)
 ❌ Action que recebe id de oportunidade sem leadAoAlcance (vale também fora do CRM: agenda, clientes)
 ❌ Policy RLS que confere só o cargo (role <> 'CLIENT') sem conferir a REDE
+❌ Criar política de RLS em tabela de credencial (integration_configs, whatsapp_numbers) — só o servidor lê
 ❌ Função security definer em public que recebe tenant por parâmetro e fica aberta a anon/authenticated
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
