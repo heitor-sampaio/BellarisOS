@@ -182,7 +182,7 @@ async function despachar(
 
   try {
     const res = await fetch(
-      `https://graph.facebook.com/${GRAPH_API_VERSION}/${config.pixelId}/events`,
+      `${(config.graphBase ?? `https://graph.facebook.com/${GRAPH_API_VERSION}`).replace(/\/$/, '')}/${config.pixelId}/events`,
       {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -237,7 +237,9 @@ export async function reenviarEventosPendentes(limite = 50): Promise<{
     .order('ocorrido_em', { ascending: true })
     .limit(limite)
 
-  if (error) { console.error('[capi cron]', error.message); return { enviados: 0, descartados: 0, falharam: 0 } }
+  // Lança, não devolve zeros: o cron sai vermelho no painel em vez de dizer
+  // "nada a enviar" enquanto a fila cresce (§14.1).
+  if (error) throw new Error(`Não consegui ler a fila da Meta: ${error.message}`)
 
   let enviados = 0, descartados = 0, falharam = 0
 

@@ -1748,6 +1748,11 @@ export async function sendTemplateMessage(
   if (faltando.length > 0) {
     return { ok: false, error: `Preencha: ${faltando.map(v => `{{${v}}}`).join(', ')}` }
   }
+  // Sobrou chave depois de preencher (um `{{1}}` posicional, que o sistema não
+  // reconhece como variável): o cliente receberia as chaves literais. Recusa.
+  if (/\{\{[^}]*\}\}/.test(textoDoEnvio(t, valores))) {
+    return { ok: false, error: 'Este template tem variáveis num formato que o sistema não preenche.' }
+  }
 
   // Mesma caixa que a lista de templates usou para decidir o que oferecer —
   // senão a tela mostra o catálogo de uma WABA e o envio tenta por outra.
@@ -1799,6 +1804,10 @@ export async function sendTemplateMessage(
       sent_by_id:      membro?.id ?? null,
       sent_by_name:    membro?.name ?? null,
       template_id:     t.id,
+      // A caixa que ENVIA, na mensagem (§9.8.0): sem isto o histórico afirmava
+      // que o template saiu pela caixa da conversa, mesmo quando saiu pela do
+      // usuário.
+      whatsapp_number_id: canal.numeroId ?? null,
     })
     .select()
     .single()
@@ -1817,6 +1826,17 @@ export async function sendTemplateMessage(
       .update({ status: 'sent', external_id: externalId, provider: canal.nome })
       .eq('id', criada.id), 'registrar a mensagem enviada')
     criada.status = 'sent'
+
+    // A conversa sem caixa adquire a de saída no primeiro envio que deu certo —
+    // a regra de `enviarNaConversa`. `tentar`: a mensagem JÁ saiu; lançar aqui a
+    // marcaria como falhada e quem atende reenviaria.
+    if (!(conv as { whatsapp_number_id: string | null }).whatsapp_number_id && canal.numeroId) {
+      await tentar(admin
+        .from('conversations')
+        .update({ whatsapp_number_id: canal.numeroId, provider: canal.nome })
+        .eq('id', conversationId)
+        .is('whatsapp_number_id', null), 'carimbar a caixa na conversa')
+    }
   } catch (sendErr) {
     console.error('[sendTemplateMessage]', sendErr)
     await gravar(admin.from('messages').update({ status: 'failed' }).eq('id', criada.id), 'marcar a mensagem como falhada')
@@ -1950,6 +1970,8 @@ export async function sendMediaMessage(
       sent_by_name:    membro?.name ?? null,
       media_type:      kind,
       media_path:      guardado.path,
+      // A caixa que ENVIA, na mensagem (§9.8.0) — como no texto e no template.
+      whatsapp_number_id: canal?.numeroId ?? null,
     })
     .select()
     .single()
@@ -1986,6 +2008,16 @@ export async function sendMediaMessage(
       .update({ status: 'sent', external_id: externalId, provider: canal.nome })
       .eq('id', criada.id), 'registrar a mensagem enviada')
     criada.status = 'sent'
+
+    // A conversa sem caixa adquire a de saída (regra de `enviarNaConversa`);
+    // `tentar` porque o arquivo JÁ saiu.
+    if (!caixaDaConversa && canal.numeroId) {
+      await tentar(admin
+        .from('conversations')
+        .update({ whatsapp_number_id: canal.numeroId, provider: canal.nome })
+        .eq('id', conversationId)
+        .is('whatsapp_number_id', null), 'carimbar a caixa na conversa')
+    }
   } catch (sendErr) {
     console.error('[sendMediaMessage]', sendErr)
     return falhaComAnexo(admin, criada.id, msgRow as unknown as Message, guardado.path,

@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
 import { ler } from '@/lib/db'
+import { enderecoPublico } from '@/lib/whatsapp/endereco-publico'
 
 export interface IntegrationConfig {
   id:         string
@@ -42,6 +43,18 @@ export async function getIntegrations(): Promise<IntegrationConfig[]> {
  * `numeroId` nulo cria uma caixa; preenchido, atualiza aquela linha (conferindo
  * que ela é desta rede, pelo mesmo motivo de `uazapi-connection.ts`).
  */
+/**
+ * As chaves que a TELA grava em cada provedor — e só elas.
+ *
+ * O formulário aceitava qualquer chave: quem tinha `settings: MANAGE` gravava
+ * um `baseUrl` apontando para onde quisesse, e o servidor fazia a chamada
+ * levando o token da caixa (SSRF). Chave fora da lista é descartada.
+ */
+const CHAVES_DA_CONFIG: Record<WhatsAppConfig['provider'], string[]> = {
+  uazapi:   ['token', 'baseUrl'],
+  official: ['phoneNumberId', 'accessToken', 'verifyToken', 'appSecret', 'wabaId', 'modo'],
+}
+
 export async function salvarNumeroWhatsApp(
   numeroId:  string | null,
   provider:  WhatsAppConfig['provider'],
@@ -54,10 +67,14 @@ export async function salvarNumeroWhatsApp(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
-  // Remove empty strings to keep config clean
+  // Só as chaves do provedor, e sem string vazia.
+  const permitidas = CHAVES_DA_CONFIG[provider] ?? []
   const cleanConfig = Object.fromEntries(
-    Object.entries(config).filter(([, v]) => v.trim() !== '')
+    Object.entries(config).filter(([k, v]) => permitidas.includes(k) && typeof v === 'string' && v.trim() !== '')
   )
+  if (cleanConfig.baseUrl && !enderecoPublico(cleanConfig.baseUrl)) {
+    return { ok: false, error: 'O endereço do servidor precisa ser público e começar com https://.' }
+  }
 
   const admin = createAdminClient()
 
@@ -216,6 +233,15 @@ export async function testWhatsAppConnection(
 
 // --- Ads integrations ---------------------------------------------------------
 
+/**
+ * As chaves que cada integração de anúncio aceita pela tela — como
+ * `CHAVES_DA_CONFIG` nas caixas. Qualquer outra era gravada sem pergunta.
+ */
+const CHAVES_DO_ADS: Record<'meta_ads' | 'google_ads', string[]> = {
+  meta_ads:   ['adAccountId', 'accessToken', 'pixelId'],
+  google_ads: ['customerId', 'developerToken', 'clientId', 'clientSecret', 'refreshToken'],
+}
+
 export async function saveAdsConfig(
   provider: 'meta_ads' | 'google_ads',
   config: Record<string, string>,
@@ -224,8 +250,9 @@ export async function saveAdsConfig(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
+  const permitidas = CHAVES_DO_ADS[provider] ?? []
   const cleanConfig = Object.fromEntries(
-    Object.entries(config).filter(([, v]) => v.trim() !== '')
+    Object.entries(config).filter(([k, v]) => permitidas.includes(k) && typeof v === 'string' && v.trim() !== '')
   )
 
   const admin = createAdminClient()

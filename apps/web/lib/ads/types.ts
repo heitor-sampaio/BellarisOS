@@ -159,6 +159,11 @@ export interface MetaAdsConfig {
   adAccountId: string
   accessToken: string
   pixelId: string
+  /**
+   * Endereço da Graph API — SÓ para teste (a Graph falsa do E2E). Fora da
+   * lista de chaves da tela (`CHAVES_DO_ADS`): só se grava no banco.
+   */
+  graphBase?: string
 }
 
 export interface GoogleAdsConfig {

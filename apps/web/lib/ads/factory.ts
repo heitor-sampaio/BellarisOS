@@ -27,6 +27,9 @@ export async function getAdsConfig(
       accessToken:  (raw.access_token ?? raw.accessToken) as string,
       adAccountId:  raw.adAccountId as string,
       pixelId:      (raw.pixelId ?? '') as string,
+      // A Graph falsa do E2E. Remontar a config campo a campo descartava este,
+      // e o teste do cron chegou a falar com a Meta de verdade.
+      ...(typeof raw.graphBase === 'string' ? { graphBase: raw.graphBase } : {}),
     } satisfies MetaAdsConfig
   }
 

@@ -1260,6 +1260,52 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — Frente 7b (fim da P5): template, mídia, Instagram e os crons da Meta
+
+"Termina a P5 primeiro." O que a Frente 7 deixou para depois agora roda
+inteiro num teste (`e2e/mensagens-meta.spec.ts`, 6 casos), contra servidores
+falsos em `127.0.0.1` — nada sai para a Meta nem para a uazapi.
+
+**Uma Graph API falsa** (`e2e/apoio/graph-falsa.ts`), irmã da uazapi falsa. A
+caixa oficial e a integração de anúncios aceitam `config.graphBase`, que troca
+o endereço da Graph. **É costura de teste, não configuração**: fica fora das
+listas de chaves que a tela grava (abaixo), então só entra direto no banco.
+
+Achados, cada um provado com o código antigo:
+- **Template com variável posicional saía com as chaves.** A Meta usa
+  `{{1}}` e o sistema só preenche variável com nome (`{{nome}}`): o cliente
+  recebia "Olá {{1}}". Agora o envio recusa template com variável que o
+  sistema não preenche, antes de gravar e de chamar a Meta.
+- **Template e mídia gravavam a mensagem sem a caixa que enviou** (§9.8.0 —
+  `messages.whatsapp_number_id` existe justamente para o histórico não
+  afirmar que tudo saiu pela caixa da conversa), e a conversa sem caixa nunca
+  adquiria a sua nesses dois caminhos. O texto já fazia os dois.
+- **A tela de integrações gravava qualquer chave e qualquer endereço.** O
+  `config` da caixa e o da integração de anúncios iam para o banco como o
+  navegador mandasse — inclusive `graphBase`, e uma `baseUrl` apontando
+  para `127.0.0.1` ou `169.254.169.254`: o servidor faz a chamada para esse
+  endereço, e aceitar um interno é dar a quem tem `settings: MANAGE` um jeito
+  de o app falar com a rede de dentro (SSRF). Agora cada provedor tem sua lista
+  de chaves (`CHAVES_DA_CONFIG`, `CHAVES_DO_ADS`) e a `baseUrl` tem de ser
+  `https` e pública (`lib/whatsapp/endereco-publico.ts`, com teste unitário).
+- **O cron da Meta ficava verde sem enviar**: `reenviarEventosPendentes`
+  devolvia zeros quando a leitura da fila falhava. Agora lança (§14.1: o cron
+  sai vermelho).
+- **O webhook da Meta descartava a mensagem** quando a consulta da página
+  falhava (`getTenantPorPagina` engolia o erro e respondia "página
+  desconhecida"). Agora falha alto — a Meta reenvia.
+- `getAdsConfig` remontava a config campo a campo e jogava `graphBase` fora:
+  o primeiro teste do cron chegou a falar com a Meta de verdade (token falso,
+  recusado). Corrigido junto.
+
+Cobertos sem achado: Instagram assinado vira conversa na rede da página e o eco
+não entra; `eventos-expirados` apaga o fato de 31 dias e deixa o de hoje;
+`meta-capi` envia o evento com click id e descarta o velho e o sem click id.
+
+Fora de propósito: `saveAdsConfig` pela action — faz upsert na integração da
+rede de teste inteira, e sobrescrevê-la não é aceitável; a lista de chaves é a
+mesma forma da caixa, que tem o teste.
+
 ### 2026-09-27 — Frente 8 (P6, parte 2): cargos, fichas, unidades e caixas
 
 Cobertura do que não tinha teste (`e2e/estrutura-da-rede.spec.ts`): cargo em
@@ -1490,9 +1536,9 @@ em produção até alguém criar uma. Isolado numa unidade `[e2e]`.
 **Lint**: os 19 erros de `any` dos três webhooks e do cron de campanhas
 viraram tipos do que cada rota lê.
 
-**Fica para depois**: envio de template e de mídia (a mídia vai por FormData),
+**Fica para depois** (feito na Frente 7b): envio de template e de mídia,
 entrada pelo webhook da Meta (Instagram/Messenger), crons `eventos-expirados` e
-`meta-capi` (este envia para a Meta de verdade).
+`meta-capi`.
 
 ### 2026-09-27 — Frente 6: o portal do cliente, entrando como cliente
 

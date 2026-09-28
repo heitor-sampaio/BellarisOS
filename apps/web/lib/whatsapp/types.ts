@@ -75,6 +75,13 @@ export interface OfficialConfig {
    */
   wabaId?:       string
   /**
+   * Endereço da Graph API — SÓ para teste. O E2E aponta a caixa `[e2e]` para
+   * uma Graph falsa em 127.0.0.1 e o envio roda inteiro sem sair para a Meta
+   * (como `baseUrl` na uazapi). Não está na lista de chaves do formulário
+   * (`CHAVES_DA_CONFIG`): só se grava direto no banco, nunca pela tela.
+   */
+  graphBase?:    string
+  /**
    * Como o numero chegou a API: com o aplicativo do celular continuando a
    * funcionar (coexistencia) ou migrando de vez (cloud_api).
    *

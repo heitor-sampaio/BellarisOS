@@ -48,15 +48,18 @@ const STATUS_MAP: Record<string, StatusUpdate['status']> = {
 
 export class OfficialAPIProvider implements WhatsAppProvider {
   private config: OfficialConfig
+  /** A Graph API — a da Meta, ou a falsa do E2E (`graphBase`). */
+  private graph: string
 
   constructor(config: OfficialConfig) {
     this.config = config
+    this.graph  = (config.graphBase ?? GRAPH).replace(/\/$/, '')
   }
 
   async send(
     to: string, content: string, options?: SendOptions,
   ): Promise<{ externalId: string }> {
-    const res = await fetch(`${GRAPH}/${this.config.phoneNumberId}/messages`, {
+    const res = await fetch(`${this.graph}/${this.config.phoneNumberId}/messages`, {
       method:  'POST',
       headers: {
         'Authorization': `Bearer ${this.config.accessToken}`,
@@ -98,7 +101,7 @@ export class OfficialAPIProvider implements WhatsAppProvider {
     form.append('type', media.mimeType)
     form.append('file', new Blob([media.bytes], { type: media.mimeType }), media.filename)
 
-    const upload = await fetch(`${GRAPH}/${this.config.phoneNumberId}/media`, {
+    const upload = await fetch(`${this.graph}/${this.config.phoneNumberId}/media`, {
       method:  'POST',
       headers: { 'Authorization': `Bearer ${this.config.accessToken}` },
       body:    form,
@@ -117,7 +120,7 @@ export class OfficialAPIProvider implements WhatsAppProvider {
       : media.kind === 'document' ? { id, filename: media.filename, ...(media.caption && { caption: media.caption }) }
       : { id, ...(media.caption && { caption: media.caption }) }
 
-    const res = await fetch(`${GRAPH}/${this.config.phoneNumberId}/messages`, {
+    const res = await fetch(`${this.graph}/${this.config.phoneNumberId}/messages`, {
       method:  'POST',
       headers: {
         'Authorization': `Bearer ${this.config.accessToken}`,
@@ -150,7 +153,7 @@ export class OfficialAPIProvider implements WhatsAppProvider {
     to: string,
     template: { name: string; language: string; components: Array<Record<string, unknown>> },
   ): Promise<{ externalId: string }> {
-    const res = await fetch(`${GRAPH}/${this.config.phoneNumberId}/messages`, {
+    const res = await fetch(`${this.graph}/${this.config.phoneNumberId}/messages`, {
       method:  'POST',
       headers: {
         'Authorization': `Bearer ${this.config.accessToken}`,
@@ -305,7 +308,7 @@ export class OfficialAPIProvider implements WhatsAppProvider {
     if (!media.mediaId) return null
     const auth = { 'Authorization': `Bearer ${this.config.accessToken}` }
 
-    const metaRes = await fetch(`${GRAPH}/${media.mediaId}`, { headers: auth })
+    const metaRes = await fetch(`${this.graph}/${media.mediaId}`, { headers: auth })
     if (!metaRes.ok) return null
     const { url, mime_type } = await metaRes.json()
     if (!url) return null
@@ -321,7 +324,7 @@ export class OfficialAPIProvider implements WhatsAppProvider {
 
   async testConnection(): Promise<{ ok: boolean; detail?: string }> {
     try {
-      const res = await fetch(`${GRAPH}/${this.config.phoneNumberId}?fields=display_phone_number,verified_name`, {
+      const res = await fetch(`${this.graph}/${this.config.phoneNumberId}?fields=display_phone_number,verified_name`, {
         headers: { 'Authorization': `Bearer ${this.config.accessToken}` },
       })
       if (!res.ok) return { ok: false, detail: `HTTP ${res.status}` }

@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
 import type { ChannelKind, SendProvider } from './types'
 import { MetaMessagingProvider, type MetaMessagingConfig } from '@/lib/meta/messaging'
 
@@ -105,13 +106,13 @@ export async function getMetaMessagingConfig(
 export async function getTenantPorPagina(
   id: string,
 ): Promise<{ tenantId: string; config: MetaMessagingConfig } | null> {
-  const { data, error } = await createAdminClient()
+  // ler, não 'loga e devolve null': com o banco falhando, null parecia 'página
+  // de outra instalação' e o webhook descartava a mensagem do cliente calado.
+  const data = await ler(createAdminClient()
     .from('integration_configs')
     .select('tenant_id, config')
     .eq('provider', 'meta_messaging')
-    .eq('is_active', true)
-
-  if (error) { console.error('[getTenantPorPagina]', error.message); return null }
+    .eq('is_active', true), 'buscar a página da Meta')
 
   for (const row of (data ?? []) as { tenant_id: string; config: Record<string, unknown> }[]) {
     const config = { provider: 'meta_messaging', ...(row.config as object) } as MetaMessagingConfig

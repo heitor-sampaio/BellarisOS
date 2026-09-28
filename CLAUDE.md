@@ -768,6 +768,20 @@ número: escopar por número duplicaria o catálogo e faria submeter o mesmo nom
 duas vezes à Meta, que recusa por colisão. Oferecer um template de outra conta
 dá 404 no clique; lista vazia é melhor resposta.
 
+⚠️ **O `config` de uma integração só grava as chaves do provedor**
+(`CHAVES_DA_CONFIG` nas caixas, `CHAVES_DO_ADS` nos anúncios), e a
+`baseUrl` tem de ser `https` e pública (`enderecoPublico`). O servidor
+chama esse endereço: aceitar `127.0.0.1` ou `169.254.169.254` é dar a quem
+tem `settings: MANAGE` um jeito de o app falar com a rede de dentro (SSRF).
+`graphBase` (caixa oficial e `meta_ads`) troca o endereço da Graph API e é
+**costura de teste** — fica fora das listas de propósito, e quem remonta a
+config campo a campo (`getAdsConfig`) precisa carregá-lo, senão o teste fala
+com a Meta de verdade.
+
+**Template só sai com variável que o sistema preenche** — com nome
+(`{{nome}}`). O formato posicional da Meta (`{{1}}`) é recusado antes de
+gravar: sairia com as chaves no texto do cliente.
+
 ⚠️ Os exports de `actions/uazapi-connection.ts` são **endpoints públicos**, e
 recebem `numeroId`. Toda uma delas passa por `numeroDaRede()`, que confirma a
 posse — sem isso, um id de outra rede entrega o QR code, desconecta e apaga a
@@ -1283,6 +1297,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Decidir janela de 24h ou botão de editar por escalar de rede em vez da caixa da conversa
 ❌ Medir a janela de 24h na conversa quando quem envia é outra caixa
 ❌ Receber um id em export 'use server' sem confirmar que ele é da rede da sessão
+❌ Gravar config de integração com chave fora da lista do provedor, ou baseUrl não pública (SSRF)
+❌ Gravar mensagem de saída sem whatsapp_number_id (texto, template e mídia levam a caixa que enviou)
 ❌ Limpar um estado da rede ANTES de conferir o id que vai recebê-lo (setDefaultFunnel zerava o padrão)
 ❌ Invalidar cache de permissão/acesso com revalidateTag 'max' (serve o velho mais uma vez) — use updateTag
 ❌ Fechar LISTA de período em "agora" (resolvePeriod.to) — use fullTo, o fim do período
@@ -1397,6 +1413,9 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   `modo = 'erro'`). Caixa `[e2e]` com `config.baseUrl` apontando para ela faz o
   envio rodar INTEIRO — sucesso incluído — sem mensagem chegar a ninguém.
   `https://e2e.invalido` só serve para quando o teste não envia nada.
+- `graph-falsa.ts` — `subirGraphFalsa`: a Graph API da Meta em
+  `127.0.0.1` (envio oficial e API de Conversões), pela costura
+  `config.graphBase` gravada direto no banco.
 - `acao-direta.ts` — `chamarAcao`: chama uma server action pelo id do
   manifesto do `next dev`, como a pessoa logada, sem montar a tela. Só
   argumentos JSON (FormData, por `acao.ts`). Toda recusa testada assim tem o
