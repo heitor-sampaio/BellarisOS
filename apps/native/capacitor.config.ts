@@ -5,10 +5,11 @@ const config: CapacitorConfig = {
   appName: 'BellarisOS',
   webDir: 'dist',
   server: {
-    // Dev:  http://SEU_IP:3000  +  cleartext: true
-    // Prod: https://app.esteticaos.com.br  +  cleartext: false
+    // Dev:  http://SEU_IP:3000  +  cleartext: true (e o IP no
+    //       network_security_config.xml) — só na cópia local, nunca no commit.
+    // Prod: https, sem tráfego em claro.
     url: 'https://bellarisos-production.up.railway.app',
-    cleartext: true,
+    cleartext: false,
   },
   plugins: {
     PushNotifications: {

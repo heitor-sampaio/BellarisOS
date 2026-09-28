@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Só HTTPS. O app abre a URL de produção, que é https; tráfego em claro não tem
+  por que existir no build que vai para a loja. Para desenvolver contra um
+  servidor local em http, acrescentar aqui um <domain-config
+  cleartextTrafficPermitted="true"> com o IP da máquina — só na cópia local.
+-->
 <network-security-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">192.168.0.188</domain>
-        <domain includeSubdomains="false">localhost</domain>
-        <domain includeSubdomains="false">127.0.0.1</domain>
-    </domain-config>
     <base-config cleartextTrafficPermitted="false" />
 </network-security-config>

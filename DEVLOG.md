@@ -29,8 +29,6 @@ impossível.
 
 Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
 (`/[slug]`) e **app mobile** (Expo, com fluxo operacional e fluxo do cliente).
-Há ainda uma **extensão de Chrome** para o time comercial agendar em qualquer
-unidade.
 
 ---
 
@@ -1260,16 +1258,26 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
-### 2026-09-28 — Frente 9 (P7, parte 3): a extensão com o token, os pacotes, e o fim da P7
+### 2026-09-28 — A extensão de Chrome sai; o app nativo deixa de aceitar HTTP
 
-- **Rotas da extensão com o token de verdade** (`e2e/extensao-api.spec.ts`,
-  6 casos). Até aqui só o "sem credencial → 401" tinha teste. Agora: CORS da
-  origem da extensão; sem agenda → 403, escopo "só os meus" → 403 explicado;
-  o comercial da rede escolhe a unidade (a de outra rede → 403, sem unidade →
-  400) e cria agendamento que nasce COMERCIAL; profissional de outra rede é
-  recusado; a recepção da unidade é sempre a dela, peça a unidade que pedir;
-  membro desativado perde o token que já estava na mão (401). Nenhum defeito:
-  `requireExtAccess`, `resolveExtBranch` e o núcleo da agenda já seguravam.
+- **A extensão foi descontinuada** (decisão do Heitor). Saíram `apps/extension`,
+  as rotas `/api/ext/*`, `lib/ext`, o `getTenantContextFromToken` (só ela
+  entrava por token) e os testes dela. O time comercial agenda pelo CRM
+  (`createCrmAppointment`), que é de onde o `source = COMMERCIAL` passa a vir.
+  As menções na linha do tempo abaixo ficam como histórico.
+- **O app nativo não aceita mais tráfego HTTP em claro**: `cleartext: false` no
+  `capacitor.config.ts` (a URL já era `https`). Vale no próximo build
+  (`npx cap sync` + build do Android). Saíram junto a exceção de HTTP para os
+  IPs de desenvolvimento no `network_security_config.xml` e o
+  `usesCleartextTraffic` do manifesto.
+- **Achado ao remover**: era a extensão que, por acaso, punha o `@types/react`
+  ao alcance dos tipos do `next` — e na versão 18, enquanto o app usa a 19. Sem
+  ela o `tsc` quebrava (`next/script` sem atributos). Agora `@types/*` fica
+  no `node_modules` da raiz por configuração (`publicHoistPattern` no
+  `pnpm-workspace.yaml`), e os tipos do React são os do 19.
+
+### 2026-09-28 — Frente 9 (P7, parte 3): os pacotes, e o fim da P7
+
 - **Pacotes** (`tests/pacotes.test.ts`, 12 casos): os schemas de
   autenticação, a regra de origem do lead (Google/Meta/orgânico, a plataforma
   do provedor vencendo a URL, a escolha manual sem apagar o anúncio), a
@@ -1281,12 +1289,9 @@ sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 - `chamarAcao` passou a falhar alto com "Server action not found" (o Next
   responde 200): os nove specs que o usam foram rodados de novo e nenhum caía
   nisso.
-- **Fora de propósito**: a interface da extensão (`apps/extension`, pediria
-  carregar a extensão num Chromium) e o app nativo — `apps/native` é uma casca
-  do Capacitor que abre a URL de produção num WebView, sem lógica própria além
-  do web. ⚠️ O `capacitor.config.ts` está com `cleartext: true` para uma URL
-  `https`: libera tráfego HTTP sem necessidade; desligar pede um novo build
-  do app.
+- **Fora de propósito**: o app nativo — `apps/native` é uma casca do
+  Capacitor que abre a URL de produção num WebView, sem lógica própria além do
+  web.
 
 Com isso a varredura de cobertura (P1…P7) fecha.
 

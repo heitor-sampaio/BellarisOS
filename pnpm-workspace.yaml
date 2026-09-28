@@ -2,6 +2,14 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# Os tipos (@types/*) ficam no node_modules da raiz: os .d.ts do `next` importam
+# `react` e só acham o @types/react subindo diretórios. Antes quem o punha ao
+# alcance era, por acaso, a extensão (removida em 2026-09-28) — com o React 18,
+# enquanto o app usa o 19. Sem ele, o `next/script` perdia os atributos e o
+# tsc do apps/web quebrava.
+publicHoistPattern:
+  - "@types/*"
+
 allowBuilds:
   "@prisma/client": true
   "@prisma/engines": true

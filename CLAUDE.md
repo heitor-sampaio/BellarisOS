@@ -287,7 +287,7 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
     logado, a página abre de qualquer forma.
 - ⚠️ **Por isso toda rota de `/api/*` se defende sozinha** — o proxy não barra
   nenhuma. Cron pelo `CRON_SECRET`, webhook pela assinatura ou token do
-  provedor, extensão pelo Bearer + módulo (`requireExtAccess`), e o resto por
+  provedor, e o resto por
   sessão **e permissão** (`getTenantContext` + `can`). Foi o que faltou no
   `/api/geocode` (proxy aberto) e no OAuth da Meta (qualquer membro trocava a
   conta ligada à rede). Rota nova entra em `e2e/api-sem-credencial.spec.ts`.
@@ -418,7 +418,7 @@ const clients = await admin.from('clients').select('*')
 ### 9.1 Agenda
 - Status: `SCHEDULED → CONFIRMED → IN_PROGRESS → COMPLETED → CANCELLED | NO_SHOW`
 - Campos de timestamp por transição: `confirmedAt`, `startedAt`, `completedAt`, `cancelledAt`
-- Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (extensão do time comercial). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
+- Campo `source`: `INTERNAL` (equipe pelo web/app), `CLIENT_APP` (cliente pelo portal, só procedimentos `visible_on_client_app`), `COMMERCIAL` (o time comercial agendando pelo CRM, `createCrmAppointment`). `ONLINE` é legado do agendamento público, que foi descartado — não usar em código novo.
 - **Todo agendamento tem procedimento.** A "avaliação" era a exceção que
   permitia marcar sem escolher um — ela deixou de ser entidade em 2026-09-25 e
   virou um procedimento como outro qualquer, com a ficha que precisar. Não há

@@ -95,7 +95,7 @@ enum AppointmentSource {
   INTERNAL      // criado pela recepção/profissional no web ou app operacional
   ONLINE        // agendamento via link público (web)
   CLIENT_APP    // agendamento feito pelo cliente no app mobile
-  COMMERCIAL    // criado por um cargo comercial (extensão) — atribuição de KPIs
+  COMMERCIAL    // criado pelo time comercial no CRM — atribuição de KPIs
 }
 
 // ============================================================

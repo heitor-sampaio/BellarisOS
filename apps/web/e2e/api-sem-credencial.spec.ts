@@ -9,8 +9,8 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
 /**
  * As rotas de `/api/*` são PÚBLICAS no proxy (`lib/supabase/middleware.ts`):
  * ninguém é mandado para o login. Cada uma se defende sozinha — cron pelo
- * `CRON_SECRET`, webhook pela assinatura ou token do provedor, extensão pelo
- * Bearer + módulo, e o resto pela sessão. Aqui se confere que cada defesa
+ * `CRON_SECRET`, webhook pela assinatura ou token do provedor, e o resto pela
+ * sessão. Aqui se confere que cada defesa
  * existe, porque uma rota nova que esqueça a dela não dá erro nenhum: ela
  * simplesmente atende quem chegar.
  *
@@ -22,14 +22,6 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
  */
 
 const CRONS = ['automacoes', 'estoque-minimo', 'eventos-expirados', 'lgpd-exports', 'meta-capi', 'notification-campaigns']
-const EXT = [
-  { metodo: 'GET',  rota: '/api/ext/bootstrap' },
-  { metodo: 'GET',  rota: '/api/ext/branches' },
-  { metodo: 'GET',  rota: '/api/ext/agenda?date=2026-01-01' },
-  { metodo: 'GET',  rota: '/api/ext/slots?date=2026-01-01' },
-  { metodo: 'GET',  rota: '/api/ext/clients/search?q=ana' },
-  { metodo: 'POST', rota: '/api/ext/appointments' },
-] as const
 
 // Sem sessão nenhuma: o `storageState` padrão do projeto é o do admin.
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -40,26 +32,6 @@ test('crons recusam sem o CRON_SECRET e com um segredo errado', async ({ request
     expect(sem.status(), `${job} sem cabeçalho`).toBe(401)
     const errado = await request.get(`/api/cron/${job}`, { headers: { authorization: 'Bearer nao-e-o-segredo' } })
     expect(errado.status(), `${job} com segredo errado`).toBe(401)
-  }
-})
-
-test('rotas da extensão recusam sem Bearer, com Bearer inválido e sem o módulo', async ({ request }) => {
-  const semNada = await criarMembro(`ext${Date.now().toString(36)}`, { rotulo: 'Extensão sem módulo', permissoes: [] })
-  try {
-    for (const { metodo, rota } of EXT) {
-      const semToken = await request.fetch(rota, { method: metodo, data: metodo === 'POST' ? {} : undefined })
-      expect(semToken.status(), `${rota} sem token`).toBe(401)
-
-      const tokenFalso = await request.fetch(rota, { method: metodo, headers: { authorization: 'Bearer abc.def.ghi' }, data: metodo === 'POST' ? {} : undefined })
-      expect(tokenFalso.status(), `${rota} com token falso`).toBe(401)
-    }
-    // Com um login de verdade, mas sem agenda/clientes: o módulo barra.
-    for (const { metodo, rota } of EXT.filter(e => e.rota !== '/api/ext/bootstrap')) {
-      const r = await request.fetch(rota, { method: metodo, headers: { authorization: `Bearer ${semNada.accessToken}` }, data: metodo === 'POST' ? {} : undefined })
-      expect(r.status(), `${rota} sem o módulo`).toBe(403)
-    }
-  } finally {
-    await semNada.limpar()
   }
 })
 

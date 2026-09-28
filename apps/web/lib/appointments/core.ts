@@ -1,5 +1,5 @@
-// Núcleo de agendamento reutilizável — usado tanto pela server action interna
-// (addAppointment, cookies) quanto pela API REST da extensão (/api/ext, Bearer).
+// Núcleo de agendamento reutilizável — usado pela agenda (addAppointment) e
+// pelo agendamento do comercial no CRM (createCrmAppointment).
 // Contém a REGRA de negócio (preço/duração, conflito de sala E de profissional,
 // insert, histórico) desacoplada de FormData/cookies. Sem 'use server'.
 

@@ -1,6 +1,5 @@
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
-import { createClient as createSupabaseJsClient } from '@supabase/supabase-js'
 import type {
   TenantContext, UserRole, JwtClaims, AppModule,
   ResolvedPermissions, ResolvedScopes, ReportTab,
@@ -29,8 +28,7 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   // Membro DESATIVADO não opera, com sessão ou sem. A conta também é bloqueada
   // no Auth ao desativar (não renova o token nem entra de novo), mas o token
   // que já estava na mão vale até expirar — é esta linha que o barra no meio.
-  // `redirect` e não `throw`: numa página vira a tela de login, não a de erro;
-  // nas rotas da extensão o `authenticate` o captura e responde 401.
+  // `redirect` e não `throw`: numa página vira a tela de login, não a de erro.
   if (member && !member.isActive) redirect('/login?acesso=desativado')
 
   const roleId = member?.roleId ?? meta.role_id ?? null
@@ -110,29 +108,6 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
 
   return buildContext(authId, meta)
 })
-
-/**
- * Resolve o TenantContext a partir de um access token (Authorization: Bearer),
- * SEM depender de cookies. Usado pelas rotas /api/ext consumidas pela extensão
- * de navegador, que roda em contexto separado e não tem os cookies do app.
- * Valida o token via getUser() (o JWT carrega as claims em app_metadata).
- */
-export async function getTenantContextFromToken(accessToken: string): Promise<TenantContext> {
-  const url  = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !anon) throw new Error('Supabase env ausente')
-
-  const supabase = createSupabaseJsClient(url, anon, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
-
-  const { data, error } = await supabase.auth.getUser(accessToken)
-  const user = data?.user
-  if (error || !user) throw new Error('Unauthenticated')
-
-  const meta = (user.app_metadata ?? {}) as Partial<JwtClaims>
-  return buildContext(user.id, meta)
-}
 
 /** Gate do portal do cliente (role CLIENT). */
 export function assertClient(ctx: TenantContext): void {
