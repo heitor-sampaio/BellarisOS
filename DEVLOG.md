@@ -1260,6 +1260,33 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — Frente 9 (P7, parte 1): entrar, recuperar a senha e cadastrar
+
+"Pode seguir com o P7." As telas de autenticação nunca tinham rodado num
+teste (`e2e/autenticacao.spec.ts`, 5 casos, sem sessão e sem mandar e-mail:
+o link vem do `generateLink` do admin).
+
+- **"Esqueci minha senha" não funcionava.** O link apontava para
+  `/auth/update-password`, que não existia — a recuperação inteira terminava
+  num 404. Agora `/auth/confirm` troca o link por sessão (o `?code=` do fluxo
+  PKCE, que é o que o e-mail padrão produz, ou `?token_hash=`) e segue para
+  `/update-password`, a tela nova da nova senha. `next` só aceita caminho
+  interno. Link usado ou inválido diz que expirou e oferece pedir outro.
+- **Cadastrar um e-mail que já tem conta criava uma rede órfã.** Com a
+  confirmação de e-mail ligada (é o caso aqui), o Supabase não dá erro: devolve
+  um usuário disfarçado, sem identidades e com id fictício. O cadastro seguia,
+  criava uma "Minha Clínica" e um membro com aquele id. Agora recusa ("Este
+  e-mail já está cadastrado."), e se a criação de membro ou acesso falhar, a
+  rede recém-criada é desfeita. Provado com o código antigo; a produção tem uma
+  rede só e nenhuma órfã — nunca aconteceu lá.
+- O pedido de reset passou a validar o e-mail com `ResetPasswordSchema`
+  (existia e ninguém usava).
+- Fora de propósito: cadastro NOVO pela tela (mandaria e-mail de confirmação
+  de verdade) e o envio do e-mail de reset. ⚠️ Com o SMTP padrão do Supabase,
+  e-mail só sai para endereços da equipe do projeto: se não houver SMTP
+  próprio configurado, nem a confirmação de cadastro nem o reset chegam a
+  cliente nenhum — vale conferir no painel.
+
 ### 2026-09-28 — A integração de anúncios, pela tela
 
 "Faz os testes da integração de anúncios pela tela." Era o que a Frente 7b

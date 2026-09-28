@@ -275,6 +275,13 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   - Quem precisa disso: o que é lido por quem **ainda não entrou** ou **nunca
     vai entrar**. A política de privacidade é o caso típico — e loja de
     aplicativo exige uma URL pública para publicar o app.
+  - `/auth/confirm` também é pública: é a volta do link de e-mail do
+    Supabase, e é ela que ABRE a sessão (troca `?code=` ou `?token_hash=`,
+    e segue para `next`, só caminho interno). A recuperação de senha passa
+    por ela até `/update-password`. Prova: `e2e/autenticacao.spec.ts`.
+  - ⚠️ Com confirmação de e-mail ligada, `signUp` de e-mail já cadastrado NÃO
+    dá erro — devolve usuário sem `identities` e com id fictício. Quem cria
+    coisa depois do `signUp` confere `identities.length` antes.
   - `e2e/privacidade-publica.spec.ts` confere sem sessão
     (`storageState` vazio), que é o único jeito de a regressão aparecer:
     logado, a página abre de qualquer forma.

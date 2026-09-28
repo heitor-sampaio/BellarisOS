@@ -1,4 +1,4 @@
-export { RegisterSchema, LoginSchema, ClientLoginSchema, ClientMagicLinkSchema, ResetPasswordSchema } from './auth'
+export { RegisterSchema, LoginSchema, ClientLoginSchema, ClientMagicLinkSchema, ResetPasswordSchema, UpdatePasswordSchema } from './auth'
 export type { RegisterInput, LoginInput, ClientLoginInput } from './auth'
 
 export { CreateClientSchema, UpdateClientSchema } from './client'

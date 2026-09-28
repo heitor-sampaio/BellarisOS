@@ -4,9 +4,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
-import { LoginSchema, RegisterSchema } from '@estetica-os/validators'
+import { LoginSchema, RegisterSchema, ResetPasswordSchema, UpdatePasswordSchema } from '@estetica-os/validators'
 import type { JwtClaims } from '@estetica-os/types'
-import { gravar, ler } from '@/lib/db'
+import { gravar, ler, tentar } from '@/lib/db'
 
 function toSlug(name: string): string {
   return name
@@ -49,6 +49,12 @@ export async function registerAction(
 
   const authUser = signUpData.user
   if (!authUser) return { error: 'Erro ao criar conta. Tente novamente.' }
+  // Com confirmação de e-mail ligada, o Supabase NÃO devolve erro para e-mail
+  // já cadastrado: devolve um usuário disfarçado, sem identidades e com id
+  // fictício (para não revelar quem tem conta). Seguir adiante criava uma rede
+  // "Minha Clínica" órfã a cada tentativa e gravava acesso para um id que não
+  // existe.
+  if (!authUser.identities?.length) return { error: 'Este e-mail já está cadastrado.' }
 
   // Gera slug único baseado no domínio do e-mail
   const domain      = email.split('@')[1]?.split('.')[0] ?? 'clinica'
@@ -64,30 +70,39 @@ export async function registerAction(
 
   if (tenantError || !tenant) return { error: 'Erro ao configurar conta. Tente novamente.' }
 
-  // O cargo-sistema NETWORK_ADMIN é semeado pela trigger after-insert em tenants.
-  const adminRole = await ler(admin
-    .from('tenant_roles')
-    .select('id')
-    .eq('tenant_id', tenant.id)
-    .eq('key', 'NETWORK_ADMIN')
-    .single(), 'buscar o cargo de administrador')
+  // Rede, membro e acesso valem JUNTOS: se um falhar, a rede recém-criada sai,
+  // senão sobra uma clínica vazia que ninguém consegue abrir.
+  try {
+    // O cargo-sistema NETWORK_ADMIN é semeado pela trigger after-insert em tenants.
+    const adminRole = await ler(admin
+      .from('tenant_roles')
+      .select('id')
+      .eq('tenant_id', tenant.id)
+      .eq('key', 'NETWORK_ADMIN')
+      .single(), 'buscar o cargo de administrador')
 
-  await gravar(admin.from('users').insert({
-    auth_id:   authUser.id,
-    tenant_id: tenant.id,
-    branch_id: null,
-    name:      email,
-    email:     email,
-    role_id:   adminRole?.id ?? null,
-  }), 'criar o usuário da rede')
+    await gravar(admin.from('users').insert({
+      auth_id:   authUser.id,
+      tenant_id: tenant.id,
+      branch_id: null,
+      name:      email,
+      email:     email,
+      role_id:   adminRole?.id ?? null,
+    }), 'criar o usuário da rede')
 
-  // Sem as claims o login entra sem rede no JWT, e a RLS inteira depende delas.
-  await gravar(admin.rpc('set_user_claims', {
-    p_auth_id:   authUser.id,
-    p_tenant_id: tenant.id,
-    p_branch_id: null,
-    p_role_id:   adminRole?.id ?? null,
-  }), 'gravar o acesso do usuário')
+    // Sem as claims o login entra sem rede no JWT, e a RLS inteira depende delas.
+    await gravar(admin.rpc('set_user_claims', {
+      p_auth_id:   authUser.id,
+      p_tenant_id: tenant.id,
+      p_branch_id: null,
+      p_role_id:   adminRole?.id ?? null,
+    }), 'gravar o acesso do usuário')
+  } catch (e) {
+    console.error('[registerAction]', (e as Error).message)
+    await tentar(admin.from('users').delete().eq('tenant_id', tenant.id), 'desfazer o membro do cadastro')
+    await tentar(admin.from('tenants').delete().eq('id', tenant.id), 'desfazer a rede do cadastro')
+    return { error: 'Erro ao configurar conta. Tente novamente.' }
+  }
 
   // Se o Supabase exigir confirmação de e-mail, a sessão não estará disponível ainda
   if (!signUpData.session) {
@@ -109,8 +124,15 @@ export async function loginAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
   if (error) return { error: 'E-mail ou senha incorretos' }
 
-  // Resolve o destino final diretamente, eliminando a navegação extra para /auth/redirect.
-  // Fallback: /auth/redirect (OAuth, links mágicos, erros inesperados).
+  return { redirectTo: await destinoDaSessao(supabase) }
+}
+
+/**
+ * Para onde a pessoa da sessão vai: o portal dela. Resolve direto, sem a
+ * navegação extra por /auth/redirect — que fica de reserva (OAuth, links
+ * mágicos, erro inesperado).
+ */
+async function destinoDaSessao(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
   let dest = '/auth/redirect'
   try {
     const { data: { user } } = await supabase.auth.getUser()
@@ -133,7 +155,7 @@ export async function loginAction(
     }
   } catch { /* mantém fallback /auth/redirect */ }
 
-  return { redirectTo: dest }
+  return dest
 }
 
 export async function logoutAction() {
@@ -146,14 +168,45 @@ export async function resetPasswordAction(
   _prevState: { error: string } | { success: boolean } | undefined,
   formData: FormData,
 ) {
-  const email = formData.get('email') as string
-  if (!email) return { error: 'E-mail obrigatório' }
+  const parsed = ResetPasswordSchema.safeParse({ email: formData.get('email') })
+  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? 'E-mail inválido' }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/update-password`,
+  // O link volta por /auth/confirm, que troca o código por sessão e segue para
+  // a tela da nova senha. Até 2026-09-28 apontava para /auth/update-password,
+  // que não existia: todo "esqueci minha senha" terminava num 404.
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm?next=/update-password`,
   })
 
   if (error) return { error: 'Erro ao enviar e-mail. Tente novamente.' }
   return { success: true }
+}
+
+/**
+ * A nova senha, com a sessão que o link de recuperação abriu (/auth/confirm).
+ * Sem essa sessão o link já expirou ou foi usado — e não há o que trocar.
+ */
+export async function updatePasswordAction(
+  _prevState: { error: string } | { redirectTo: string } | undefined,
+  formData: FormData,
+) {
+  const parsed = UpdatePasswordSchema.safeParse({
+    password:        formData.get('password'),
+    confirmPassword: formData.get('confirmPassword'),
+  })
+  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? 'Dados inválidos' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'O link expirou ou já foi usado. Peça um novo.' }
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
+  if (error) {
+    // A mensagem do Auth é em inglês; a mais comum é repetir a senha atual.
+    if (/different from the old/i.test(error.message)) return { error: 'A nova senha precisa ser diferente da atual.' }
+    return { error: 'Não consegui trocar a senha. Tente novamente.' }
+  }
+
+  return { redirectTo: await destinoDaSessao(supabase) }
 }

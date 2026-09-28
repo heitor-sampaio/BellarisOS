@@ -34,6 +34,8 @@ export async function updateSession(request: NextRequest) {
     const pathname = request.nextUrl.pathname
     const isAuthRoute = pathname === '/login' || pathname === '/register'
       || pathname === '/reset-password' || pathname === '/update-password'
+      // A volta do link de e-mail: é ela que ABRE a sessão (app/auth/confirm).
+      || pathname === '/auth/confirm'
     // Abre SEM sessão. É aqui que "página pública" se decide de verdade: a
     // página pode não chamar `getTenantContext` e ainda assim nunca ser vista,
     // porque o proxy manda para o login antes de ela renderizar.
