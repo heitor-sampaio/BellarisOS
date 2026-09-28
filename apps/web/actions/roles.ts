@@ -65,7 +65,7 @@ export async function updateRole(
     .select('is_system')
     .eq('id', roleId)
     .eq('tenant_id', ctx.tenantId!)
-    .single(), 'buscar o cargo')
+    .maybeSingle(), 'buscar o cargo')
   if (!role) return { error: 'Cargo não encontrado.' }
   if (role.is_system) return { error: 'Cargos do sistema não podem ser renomeados.' }
 
@@ -100,7 +100,7 @@ export async function deleteRole(roleId: string): Promise<{ error: string } | { 
     .select('is_system')
     .eq('id', roleId)
     .eq('tenant_id', ctx.tenantId!)
-    .single(), 'buscar o cargo')
+    .maybeSingle(), 'buscar o cargo')
 
   if (!role) return { error: 'Cargo não encontrado.' }
   if (role.is_system) return { error: 'Cargos do sistema não podem ser excluídos.' }

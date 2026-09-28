@@ -1260,6 +1260,25 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-27 — Frente 8 (P6, parte 2): cargos, fichas, unidades e caixas
+
+Cobertura do que não tinha teste (`e2e/estrutura-da-rede.spec.ts`): cargo em
+uso não se apaga e o livre sai; fichas editam, desativam e, apagadas, soltam o
+procedimento que as usava (o prontuário guarda cópia das perguntas); nada disso
+alcança a ficha, o cargo ou a unidade de outra rede.
+- **Cargo de outra rede derrubava a tela**: `updateRole`/`deleteRole` liam com
+  `.single()` dentro de `ler`, e "não achei" virava erro 500 em vez de "Cargo
+  não encontrado". Agora `maybeSingle`. Provado com o código antigo.
+- **Caixa de WhatsApp com a unidade de outra clínica**: os caminhos que CRIAM a
+  caixa gravavam o `branch_id` (rótulo) sem conferir a rede — o nome da unidade
+  alheia apareceria onde a caixa aparece. A garantia foi para o banco: chave
+  composta `(branch_id, tenant_id)` → `branches(id, tenant_id)`, com
+  `on delete set null (branch_id)` (migration `20260927000014`).
+- Fora de propósito: o perfil da clínica e o onboarding (usam a rede da sessão,
+  sem id de fora — e testar mudaria a clínica real); criar conexão uazapi e
+  Ads (instância paga e conta Meta reais). O "id de outra rede é recusado" da
+  uazapi já é garantido por `numeroDaRede`.
+
 ### 2026-09-27 — Frente 8 (P6, parte 1): cinco furos de "o id veio do navegador"
 
 "Pode seguir com o P6." O levantamento achou cinco furos; cada um tem teste
