@@ -1258,6 +1258,16 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — Novo procedimento abre vazio
+
+Visto pelo Heitor em produção: depois de criar um procedimento, "Novo
+procedimento" abria com campos do anterior e o "criado com sucesso" dele. O
+`<dialog>` só se esconde ao fechar, e o formulário (com o estado do
+`useActionState`) sobrevivia. A modal agora monta um formulário novo a cada
+abertura (`key`). As outras seis modais com `useActionState` já zeravam ao
+abrir. Prova: `e2e/procedimento-modal-limpo.spec.ts` (falha sem a correção). O
+`test:e2e:afetados` ganhou a área de procedimentos: 3 specs, 32 s.
+
 ### 2026-09-28 — A regressão sai do caminho: afetados na etapa, completa no GitHub
 
 "Se cada etapa vai demorar todo esse tempo, o desenvolvimento fica quase

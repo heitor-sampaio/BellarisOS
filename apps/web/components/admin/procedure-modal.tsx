@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X } from 'lucide-react'
 import { ProcedureForm } from './procedure-form'
@@ -37,7 +37,17 @@ export function ProcedureModal({ branches, products, fichas = [], existing, trig
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
 
-  const open  = useCallback(() => dialogRef.current?.showModal(), [])
+  /**
+   * Cada abertura monta um formulário NOVO (a `key` muda). O diálogo só
+   * esconde, não desmonta: sem isto, o segundo "Novo procedimento" abria com os
+   * campos do anterior e o aviso de sucesso dele (visto pelo Heitor em
+   * produção, 2026-09-28).
+   */
+  const [abertura, setAbertura] = useState(0)
+  const open  = useCallback(() => {
+    setAbertura(n => n + 1)
+    dialogRef.current?.showModal()
+  }, [])
   const close = useCallback(() => dialogRef.current?.close(), [])
 
   function handleSuccess() {
@@ -99,6 +109,7 @@ export function ProcedureModal({ branches, products, fichas = [], existing, trig
           {/* Corpo rolável */}
           <div className="modal-body" style={{ padding: '24px 24px 28px' }}>
             <ProcedureForm
+              key={abertura}
               branches={branches}
               products={products}
               fichas={fichas}
