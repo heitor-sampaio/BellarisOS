@@ -1260,6 +1260,31 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — A integração de anúncios, pela tela
+
+"Faz os testes da integração de anúncios pela tela." Era o que a Frente 7b
+deixou de fora (`e2e/anuncios-integracao.spec.ts`, 7 casos). Roda inteiro
+numa rede `[e2e]` — `criarMembro` ganhou a opção `tenant` —, então a
+integração da rede real nem é lida; a Graph é a falsa, que passou a responder
+GET (contas, pixels, campanhas).
+
+Coberto: a volta do OAuth com a escolha de conta e pixel; as campanhas da
+conta escolhida no marketing, com o token dela; "alterar conta", que busca as
+contas na Meta e inclui o pixel pendurado na CONTA (Business Manager);
+desconectar; o formulário do Google Ads; quem só vê o marketing não grava,
+não desconecta nem consulta a Meta; chave fora da lista não entra (Google e
+Meta). A troca do `code` com o Facebook não se simula — o teste parte do que
+o callback grava.
+
+Dois achados, provados com o código antigo:
+- **Quem voltava do Facebook não via a escolha da conta.** O OAuth de
+  anúncios volta com `meta_step=select`, e a tela só abria a seção certa para
+  o de mensagens: caía na seção do WhatsApp, com a conta a escolher escondida
+  num cartão fechado.
+- **Rede sem integração dava erro 500** em "escolher conta" e "buscar contas":
+  as duas liam com `.single()` dentro de `ler`, e "não achei" virava
+  exceção em vez de "reconecte com o Facebook".
+
 ### 2026-09-28 — Frente 7b (fim da P5): template, mídia, Instagram e os crons da Meta
 
 "Termina a P5 primeiro." O que a Frente 7 deixou para depois agora roda
@@ -1302,9 +1327,7 @@ Cobertos sem achado: Instagram assinado vira conversa na rede da página e o eco
 não entra; `eventos-expirados` apaga o fato de 31 dias e deixa o de hoje;
 `meta-capi` envia o evento com click id e descarta o velho e o sem click id.
 
-Fora de propósito: `saveAdsConfig` pela action — faz upsert na integração da
-rede de teste inteira, e sobrescrevê-la não é aceitável; a lista de chaves é a
-mesma forma da caixa, que tem o teste.
+`saveAdsConfig` ficou para a entrada seguinte, feita numa rede `[e2e]`.
 
 ### 2026-09-27 — Frente 8 (P6, parte 2): cargos, fichas, unidades e caixas
 

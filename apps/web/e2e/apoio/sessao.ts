@@ -95,10 +95,12 @@ export async function criarMembro(
     branchId?: string | null
     inboxCaixas?: 'todas' | 'minhas'
     rotulo?: string
+    /** Outra rede `[e2e]` (`criarOutraRede`). Sem isto, a rede de teste. */
+    tenant?: string
   },
 ): Promise<MembroDeTeste> {
   const db     = banco()
-  const tenant = await tenantId()
+  const tenant = opcoes.tenant ?? await tenantId()
   const email  = `e2e-membro-${marca}@bellaris.invalid`
   const rotulo = opcoes.rotulo ?? 'Membro'
   const estado = path.join(__dirname, '..', '.auth', `membro-${marca}.json`)

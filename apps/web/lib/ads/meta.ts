@@ -15,6 +15,11 @@ const PRESET_MAP: Record<string, string> = {
 export class MetaAdsProvider implements AdsProvider {
   constructor(private config: MetaAdsConfig) {}
 
+  /** A Graph de verdade, ou a falsa do E2E (`config.graphBase`). */
+  private get base(): string {
+    return (this.config.graphBase ?? BASE_URL).replace(/\/$/, '')
+  }
+
   async getCampaigns(dateRange: DateRange): Promise<Campaign[]> {
     const preset = PRESET_MAP[dateRange.preset] ?? 'last_30d'
     const fields = [
@@ -28,7 +33,7 @@ export class MetaAdsProvider implements AdsProvider {
     })
     // fields contém parênteses e chaves — encodeURIComponent evita que
     // URLSearchParams os codifique de forma que a Meta API não reconheça
-    const endpoint = `${BASE_URL}/act_${this.config.adAccountId}/campaigns?${qs}&fields=${encodeURIComponent(fields)}`
+    const endpoint = `${this.base}/act_${this.config.adAccountId}/campaigns?${qs}&fields=${encodeURIComponent(fields)}`
 
     const res = await fetch(endpoint, { cache: 'no-store' })
     if (!res.ok) {
@@ -42,7 +47,7 @@ export class MetaAdsProvider implements AdsProvider {
 
   async testConnection(): Promise<{ ok: boolean; detail?: string }> {
     try {
-      const url = new URL(`${BASE_URL}/act_${this.config.adAccountId}`)
+      const url = new URL(`${this.base}/act_${this.config.adAccountId}`)
       url.searchParams.set('fields', 'name,account_status')
       url.searchParams.set('access_token', this.config.accessToken)
 
@@ -77,7 +82,7 @@ export class MetaAdsProvider implements AdsProvider {
       access_token: this.config.accessToken,
     }
 
-    await fetch(`${BASE_URL}/${this.config.pixelId}/events`, {
+    await fetch(`${this.base}/${this.config.pixelId}/events`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

@@ -1204,7 +1204,9 @@ function SectionCard({
 
 export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo, metaStep, metaError, metaErrorReason }: SettingsIntegrationsProps) {
   const [section,    setSection]    = useState<Section>(
-    metaStep === 'select_page' ? 'meta_messaging' : 'whatsapp',
+    // Volta do OAuth: abre a seção que pede a escolha. O de anúncios volta com
+    // `select`, e caía na seção do WhatsApp com a conta a escolher escondida.
+    metaStep === 'select_page' ? 'meta_messaging' : metaStep === 'select' ? 'meta_ads' : 'whatsapp',
   )
   // Quem já configurou à mão cai direto na aba do formulário; quem não tem
   // nada vê primeiro o caminho fácil.

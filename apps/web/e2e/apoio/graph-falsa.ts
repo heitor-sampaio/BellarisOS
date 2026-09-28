@@ -12,6 +12,7 @@ import type { AddressInfo } from 'node:net'
  *
  *  - POST `…/messages` → `{ messages: [{ id: 'wamid.falsa-N' }] }`
  *  - POST `…/events`   → `{ events_received: 1 }`
+ *  - GET que termina num sufixo de `responder` → o corpo registrado
  *  - qualquer outro    → `{}`
  */
 
@@ -21,15 +22,19 @@ export interface GraphFalsa {
   url: string
   chamadas: ChamadaAGraph[]
   terminadasEm(sufixo: string): ChamadaAGraph[]
+  /** Resposta de um GET cujo caminho termina em `sufixo` (contas, pixels, campanhas). */
+  responder(sufixo: string, corpo: unknown): void
   fechar(): Promise<void>
 }
 
 export async function subirGraphFalsa(): Promise<GraphFalsa> {
   let contador = 0
+  const respostas = new Map<string, unknown>()
   const estado: GraphFalsa = {
     url: '',
     chamadas: [],
     terminadasEm: sufixo => estado.chamadas.filter(c => c.caminho.endsWith(sufixo)),
+    responder: (sufixo, corpo) => { respostas.set(sufixo, corpo) },
     fechar: () => new Promise(resolve => servidor.close(() => resolve())),
   }
   const servidor = http.createServer((req, res) => {
@@ -39,8 +44,15 @@ export async function subirGraphFalsa(): Promise<GraphFalsa> {
       let corpo: Record<string, unknown> = {}
       try { corpo = bruto ? JSON.parse(bruto) : {} } catch { /* não-JSON */ }
       const caminho = (req.url ?? '').split('?')[0]!
+      // Num GET, os parâmetros (o token, por exemplo) contam como o corpo.
+      if (req.method === 'GET') corpo = Object.fromEntries(new URL(req.url ?? '/', 'http://x').searchParams)
       estado.chamadas.push({ metodo: req.method ?? '', caminho, corpo })
       res.writeHead(200, { 'content-type': 'application/json' })
+      if (req.method === 'GET') {
+        // O sufixo mais longo vence: `/act_1/adspixels` antes de `/act_1`.
+        const achado = [...respostas.keys()].sort((a, b) => b.length - a.length).find(s => caminho.endsWith(s))
+        if (achado) return res.end(JSON.stringify(respostas.get(achado)))
+      }
       if (req.method === 'POST' && caminho.endsWith('/messages')) return res.end(JSON.stringify({ messages: [{ id: `wamid.falsa-${++contador}` }] }))
       if (req.method === 'POST' && caminho.endsWith('/events')) return res.end(JSON.stringify({ events_received: 1 }))
       res.end('{}')

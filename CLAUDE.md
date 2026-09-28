@@ -773,8 +773,8 @@ dá 404 no clique; lista vazia é melhor resposta.
 `baseUrl` tem de ser `https` e pública (`enderecoPublico`). O servidor
 chama esse endereço: aceitar `127.0.0.1` ou `169.254.169.254` é dar a quem
 tem `settings: MANAGE` um jeito de o app falar com a rede de dentro (SSRF).
-`graphBase` (caixa oficial e `meta_ads`) troca o endereço da Graph API e é
-**costura de teste** — fica fora das listas de propósito, e quem remonta a
+`graphBase` (caixa oficial e `meta_ads`: envio, CAPI, campanhas, busca de
+contas) troca o endereço da Graph API e é **costura de teste** — fica fora das listas de propósito, e quem remonta a
 config campo a campo (`getAdsConfig`) precisa carregá-lo, senão o teste fala
 com a Meta de verdade.
 
@@ -1414,8 +1414,12 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   envio rodar INTEIRO — sucesso incluído — sem mensagem chegar a ninguém.
   `https://e2e.invalido` só serve para quando o teste não envia nada.
 - `graph-falsa.ts` — `subirGraphFalsa`: a Graph API da Meta em
-  `127.0.0.1` (envio oficial e API de Conversões), pela costura
-  `config.graphBase` gravada direto no banco.
+  `127.0.0.1` (envio oficial, API de Conversões, e com `responder` os GET de
+  contas, pixels e campanhas), pela costura `config.graphBase` gravada direto
+  no banco.
+- Teste que mexe em configuração da REDE (integração, perfil) roda numa rede
+  `[e2e]`: `criarOutraRede` + `criarMembro(…, { tenant })`. Assim a rede
+  real nem é lida (`e2e/anuncios-integracao.spec.ts`).
 - `acao-direta.ts` — `chamarAcao`: chama uma server action pelo id do
   manifesto do `next dev`, como a pessoa logada, sem montar a tela. Só
   argumentos JSON (FormData, por `acao.ts`). Toda recusa testada assim tem o

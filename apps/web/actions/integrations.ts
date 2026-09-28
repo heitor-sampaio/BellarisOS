@@ -299,12 +299,14 @@ export async function confirmMetaAdsSelection(
 
   const admin = createAdminClient()
 
+  // `maybeSingle`: rede sem a linha é "reconecte", não erro 500 — com
+  // `.single()` o "não achei" virava exceção dentro de `ler`.
   const existing = await ler(admin
     .from('integration_configs')
     .select('config')
     .eq('tenant_id', ctx.tenantId!)
     .eq('provider', 'meta_ads')
-    .single(), 'buscar a integração')
+    .maybeSingle(), 'buscar a integração')
 
   if (!existing?.config) return { ok: false, error: 'Reconecte com o Facebook primeiro' }
 
@@ -320,6 +322,8 @@ export async function confirmMetaAdsSelection(
         adAccountName:   adAccountName ?? '',
         pixelId,
         pixelName:       pixelName ?? '',
+        // Costura do E2E (a Graph falsa): some se não estava lá.
+        ...(typeof prev.graphBase === 'string' ? { graphBase: prev.graphBase } : {}),
       },
       is_active:  true,
       updated_at: new Date().toISOString(),
@@ -353,12 +357,14 @@ export async function fetchMetaAdAccounts(): Promise<{
     .select('config')
     .eq('tenant_id', ctx.tenantId!)
     .eq('provider', 'meta_ads')
-    .single(), 'buscar a integração')
+    .maybeSingle(), 'buscar a integração')
 
-  const token = (data?.config as Record<string, unknown>)?.access_token as string | undefined
+  const cfg = (data?.config ?? {}) as Record<string, unknown>
+  const token = cfg.access_token as string | undefined
   if (!token) return { ok: false, error: 'Token não encontrado. Reconecte com o Facebook.' }
 
-  const GRAPH = 'https://graph.facebook.com/v25.0'
+  // A Graph falsa do E2E (`graphBase`) — fora das chaves que a tela grava.
+  const GRAPH = typeof cfg.graphBase === 'string' ? cfg.graphBase.replace(/\/$/, '') : 'https://graph.facebook.com/v25.0'
 
   try {
     const [acctRes, pixRes] = await Promise.all([
