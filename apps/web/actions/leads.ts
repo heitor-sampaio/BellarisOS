@@ -380,25 +380,6 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
 // Conversão lead→cliente vive agora em `addClient` (actions/clients.ts) com `_leadId`,
 // reutilizando a MESMA regra de criação de cliente (e-mail + CPF + login).
 
-// --- Excluir lead -------------------------------------------------
-export async function deleteLead(leadId: string, slug: string) {
-  try {
-    const ctx = await getTenantContext()
-    assertPermission(ctx, 'crm', 'MANAGE')
-
-    const admin = createAdminClient()
-    let q = admin
-      .from('leads')
-      .delete()
-      .eq('id', leadId)
-      .eq('tenant_id', ctx.tenantId!)
-    const owner = ownerFilter(ctx, 'crm')
-    if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
-    await q
-
-    revalidatePath(`/${slug}/oportunidades`)
-    revalidatePath('/admin/oportunidades')
-  } catch (e) {
-    console.error('[deleteLead]', e)
-  }
-}
+// Excluir lead não existe (decisão do Heitor, 2026-09-28): levava junto o
+// histórico (`lead_events` em cascata). A oportunidade que não vai adiante é
+// marcada como perdida, não apagada.

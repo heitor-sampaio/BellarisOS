@@ -137,12 +137,12 @@ export default async function BranchStockPage({
         getValorEmEstoque([branchId]),
         getGiroDeEstoque({ branchIds: [branchId], from: startOfMonthTZ(now), to: endOfMonthTZ(now) }),
 
-        // `product_batches` não tem branch_id — o filtro por filial que existia
-        // aqui fazia o PostgREST devolver erro e o alerta ficava sempre vazio.
-        // O lote é do produto; o recorte da filial vem de productIds.
+        // O lote é DA UNIDADE (desde 2026-09-28): o que vence aqui é o que está
+        // nesta prateleira, não o que está em outra unidade.
         ler(admin
           .from('product_batches')
           .select('product_id, expires_at')
+          .eq('branch_id', branchId)
           .in('product_id', productIds)
           .gt('quantity', 0)
           .lte('expires_at', in30Days.toISOString()), 'carregar os lotes vencendo'),

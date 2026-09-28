@@ -21,9 +21,9 @@ unidade impossível.
 
 - **Portal Web Admin** (`/admin`) — visão consolidada da rede inteira
 - **Portal Web Filial** (`/[slug]`) — operação isolada de cada unidade
-- **App Mobile** (Expo, iOS + Android) — app único com dois fluxos distintos por tipo de usuário:
-  - *Fluxo Operacional*: admins, gerentes, profissionais (gestão completa pelo celular)
-  - *Fluxo Cliente*: clientes finais da clínica (agendamento self-service, histórico, pontos)
+- **Portal do cliente final** (`/[slug]/cliente`) — agendamento self-service, histórico, financeiro, LGPD
+- **App Android** (`apps/native`) — o MESMO portal web dentro de um Capacitor, com push nativo. Não há
+  app com código próprio, nem iOS: tela nova é tela web.
 
 ---
 
@@ -32,20 +32,19 @@ unidade impossível.
 | Camada | Tecnologia |
 |---|---|
 | Web Framework | Next.js 16 (App Router) |
-| Mobile Framework | Expo (React Native) |
+| App | Capacitor (Android), casca do portal web |
 | Linguagem | TypeScript (strict) em todos os packages |
 | Estilo Web | Tailwind CSS + shadcn/ui |
-| Estilo Mobile | NativeWind + componentes customizados |
 | Banco | PostgreSQL via Supabase |
 | Acesso ao banco | Cliente Supabase (PostgREST) + `lib/db.ts` |
 | Auth | Supabase Auth (JWT + RLS) |
 | Storage | Supabase Storage (fotos de prontuário) |
-| Cache / Filas | Upstash Redis + BullMQ |
+| Filas | Postgres (`automation_runs`) + `after()` + cron — sem broker |
 | Pagamentos | Pagar.me (assinaturas da rede) |
 | WhatsApp | uazapi (não oficial) + Cloud API da Meta (oficial) |
-| Push Notifications | Expo Push Notifications |
+| Push Notifications | Web Push (VAPID) no navegador + FCM no app Android |
 | Deploy Web | Railway (Docker) |
-| Deploy Mobile | EAS Build (Expo Application Services) |
+| Deploy do app | `npx cap sync` + build do Android |
 | Monorepo | Turborepo |
 
 ---
@@ -85,35 +84,14 @@ estetica-os/                          (raiz do monorepo)
 │   │   ├── hooks/
 │   │   └── actions/                  Server Actions (Next.js)
 │   │
-│   └── mobile/                       Expo — app iOS + Android
-│       ├── app/                      Expo Router (file-based)
-│       │   ├── (auth)/               login do usuário operacional e do cliente
-│       │   ├── (operational)/        fluxo operacional (admin, gerente, profissional)
-│       │   │   ├── dashboard/
-│       │   │   ├── agenda/
-│       │   │   ├── clients/
-│       │   │   ├── stock/
-│       │   │   └── financial/
-│       │   └── (client)/             fluxo do cliente final
-│       │       ├── home/
-│       │       ├── schedule/         agendamento self-service
-│       │       ├── history/
-│       │       └── loyalty/
-│       ├── components/
-│       ├── hooks/
-│       └── lib/
-│           ├── supabase.ts           cliente Supabase para mobile
-│           └── auth.ts
+│   └── native/                       Capacitor — casca Android do portal web
+│       ├── capacitor.config.ts       URL de produção, só HTTPS
+│       └── android/
 │
 ├── packages/
-│   ├── db/                           schema Prisma — LEGADO, ninguém importa
-│   │   ├── prisma/
-│   │   │   ├── schema.prisma
-│   │   │   └── migrations/
-│   │   └── index.ts
 │   ├── types/                        interfaces TypeScript compartilhadas
 │   │   └── index.ts                  AppointmentWithClient, JwtClaims, etc.
-│   ├── validators/                   schemas Zod (mesma validação web + mobile)
+│   ├── validators/                   schemas Zod
 │   │   └── index.ts
 │   └── utils/                        helpers compartilhados
 │       └── index.ts                  formatBRL, formatDate, maskCPF, etc.
@@ -202,8 +180,8 @@ export async function getTenantContext() {
 | Role no JWT | NETWORK_ADMIN, BRANCH_ADMIN, RECEPTIONIST, PROFESSIONAL, FINANCIAL | CLIENT |
 | `tenant_id` no JWT | Preenchido | `null` |
 | `client_id` no JWT | `null` | Preenchido |
-| Login | E-mail + senha | CPF + senha ou magic link |
-| Plataformas | Web + App Mobile (operacional) | App Mobile (cliente) |
+| Login | E-mail + senha | E-mail + senha (a inicial é o CPF; a clínica cria o acesso no cadastro) |
+| Plataformas | Web + app Android | Portal do cliente (web + app Android) |
 | Acesso ao banco | Filtra por `tenantId` / `branchId` | Filtra por `clientId` |
 
 ### Vinculação Cliente → Conta no App
@@ -292,17 +270,13 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   `/api/geocode` (proxy aberto) e no OAuth da Meta (qualquer membro trocava a
   conta ligada à rede). Rota nova entra em `e2e/api-sem-credencial.spec.ts`.
 
-### Mobile
+### App (Android)
 
-O app usa Expo Router com grupos de rotas:
-
-```
-(auth)/          → tela de login (decide o fluxo pelo role após autenticar)
-(operational)/   → fluxo admin/profissional
-(client)/        → fluxo do cliente final
-```
-
-Após login, o app verifica o `role` do JWT e redireciona para o grupo correto.
+O app é o portal web num Capacitor: as rotas são as mesmas, e o login decide o
+portal pelo contexto (rede, unidade ou cliente final). O que é nativo é pouco —
+sessão guardada no aparelho (`lib/supabase/native-store`), push (FCM) e barra
+de status. Só HTTPS (`cleartext: false`); para desenvolver contra `http`
+local, liberar só na cópia local.
 
 ---
 
@@ -551,6 +525,10 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
   webhook), senão uma nova. O cadastro manual (`createLead`) nunca gravou
   `conversation_id`, e o lead nascia sem pessoa — o motivo de não ser código.
 - `on delete restrict`: pessoa com oportunidade não se apaga.
+- **Oportunidade não se apaga** (decisão do Heitor, 2026-09-28): apagar levava
+  o histórico junto (`lead_events` em cascata). A que não vai adiante é marcada
+  perdida. Não há action, botão nem política de DELETE — e `lead_events` é
+  append-only pela sessão (ler e acrescentar). Prova: `e2e/lead-nao-se-apaga.spec.ts`.
 - **Com escopo OWN, o inbox segue a pessoa OU a conversa — escolha da clínica**
   (`tenants.inbox_visibilidade`, Configurações → Cargos, pede `roles: MANAGE`).
   Decisão do Heitor em 2026-09-26: "pessoa" é o padrão, mas configurável.
@@ -624,8 +602,19 @@ const procedures = await ler(
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação
 - `StockMovement.balanceAfter`: saldo snapshot no momento da movimentação (imutável)
-- `StockTransfer` requer confirmação da filial destino (status `PENDING → CONFIRMED | CANCELLED`)
-- `ProductBatch`: rastreia lote e validade por produto; produtos com validade vencida devem ser sinalizados antes do uso
+- **Transferência entre unidades é imediata** (`adminTransferStock`): as duas
+  pernas (`TRANSFER_OUT` e `TRANSFER_IN`) no mesmo insert, ligadas por uma
+  `reference` aleatória. A tabela `stock_transfers` com confirmação do destino
+  não é usada.
+- **O lote é DA UNIDADE e BAIXA com a saída** (`product_batches.branch_id`,
+  migration `20260928000001`). A baixa é GATILHO (`trg_lote_do_movimento`),
+  pelo mesmo argumento do evento de estoque: FEFO entre os lotes ainda válidos,
+  os vencidos só depois; o consumo do atendimento vem em unidade de consumo e
+  é convertido para embalagens; a transferência leva o lote para o destino.
+  Cada baixa deixa a ligação em `stock_movement_batches` — é ela que diz de qual
+  lote saiu o que foi aplicado. Lote vencido é sinalizado, não bloqueado. Até
+  2026-09-28 a tabela não tinha unidade, a entrada COM número de lote falhava
+  inteira e o lote nunca baixava. Prova: `e2e/lotes-baixa.spec.ts`.
 
 ### 9.6 Financeiro
 - **Não existe caixa de abrir e fechar.** Foi removido em 2026-09-18: quase
@@ -659,8 +648,9 @@ const procedures = await ler(
 - `periodRef` formato: `"YYYY-MM"`
 - Comissão de pacotes: calculada na sessão executada, não na venda do pacote
 
-### 9.8 Push Notifications (mobile)
-- `PushToken` armazena o token Expo do dispositivo com `platform: "ios" | "android"`
+### 9.8 Push Notifications
+- Dois canais: **Web Push** (VAPID) no navegador e **FCM** no app Android
+  (`lib/notifications/push.ts`)
 - Pode estar vinculado a `userId` (usuário operacional) ou `clientId` (cliente final) — nunca aos dois ao mesmo tempo
 - **Quem recebe uma notificação operacional são as PARTES INTERESSADAS no
   fato**, e a lista não é escrita à mão por evento: sai de
@@ -1072,9 +1062,11 @@ UAZAPI_PROXY_TEMPLATE=             # vazio = proxy gerenciado pela própria uaza
 NEXT_PUBLIC_APP_URL=https://app.esteticaos.com.br
 # (NEXT_PUBLIC_SCHEDULE_URL existia para o agendamento público, descartado — não é lida por nenhum código)
 
-# Mobile (Expo — em app.config.ts)
-EXPO_PUBLIC_SUPABASE_URL=
-EXPO_PUBLIC_SUPABASE_ANON_KEY=
+# Push
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=      # Web Push
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=
+# FCM (app Android): conta de serviço do Firebase — ver lib/notifications/push.ts
 ```
 
 ---
@@ -1152,13 +1144,9 @@ Princípios inegociáveis:
 - Datas: `date-fns` com locale `pt-BR`
 - Moeda: `formatBRL` de `@estetica-os/utils`
 
-#### Mobile
-- Componentes base: NativeWind (Tailwind para React Native)
-- Navegação: Expo Router
-- Formulários: `react-hook-form` + schemas do `@estetica-os/validators` (mesmos do web)
-- Datas: `date-fns` com locale `pt-BR`
-- Câmera: `expo-camera` (fotos de prontuário)
-- Imagens: `expo-image`
+#### App
+- É o web: as mesmas telas e bibliotecas. Plugins do Capacitor só para o que é
+  nativo (push, preferências, barra de status).
 
 ---
 
@@ -1321,6 +1309,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Limpar um estado da rede ANTES de conferir o id que vai recebê-lo (setDefaultFunnel zerava o padrão)
 ❌ Action que recebe id de registro de UNIDADE e confere só a rede (use alcancaUnidade depois da rede)
 ❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
+❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece)
+❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)
 ❌ Invalidar cache de permissão/acesso com revalidateTag 'max' (serve o velho mais uma vez) — use updateTag
 ❌ Fechar LISTA de período em "agora" (resolvePeriod.to) — use fullTo, o fim do período
@@ -1389,23 +1379,15 @@ uma pendência real, conferir os logs do deployment e **restaurar `0 * * * *`**.
 # Dev
 pnpm dev                            # inicia todos os apps
 pnpm dev --filter=web               # só o web
-pnpm dev --filter=mobile            # só o mobile (Expo)
-
-# Banco
-pnpm db:migrate                     # roda migrations pendentes
-pnpm db:studio                      # Prisma Studio (só leitura do schema legado)
-pnpm db:seed                        # popula banco com dados de dev
-pnpm db:reset                       # reseta banco (dev only)
 
 # Supabase
 supabase start                      # inicia Supabase local
 supabase db push                    # aplica migrations SQL
 supabase gen types typescript       # gera tipos do schema
 
-# Mobile
-eas build --platform ios            # build iOS via EAS
-eas build --platform android        # build Android via EAS
-eas submit                          # submete para as stores
+# App Android (apps/native)
+npx cap sync android                # copia a config e os plugins para o projeto Android
+npx cap open android                # abre no Android Studio para gerar o build
 
 # Qualidade
 pnpm lint                           # ESLint em todos os packages

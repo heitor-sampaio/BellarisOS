@@ -3,11 +3,11 @@
 import { useState, useTransition, useRef, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import {
-  Plus, ArrowRight, ArrowRightLeft, Trash2, Phone, Mail, X, AlertTriangle,
+  Plus, ArrowRight, ArrowRightLeft, Phone, Mail, X,
   MoreHorizontal,
 } from 'lucide-react'
 import { differenceInDays } from 'date-fns'
-import { updateLeadStage, deleteLead } from '@/actions/leads'
+import { updateLeadStage } from '@/actions/leads'
 import { ClientForm } from './client-form'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { rotaCliente } from '@/lib/rotas'
@@ -381,12 +381,10 @@ function LeadCard({
   onLeadDeleted:  (id: string) => void
 }) {
   const [convertOpen, setConvertOpen] = useState(false)
-  const [deleting,   startDelete]  = useTransition()
   const [moving,     startMoving]  = useTransition()
   const router     = useRouter()
   const pathname   = usePathname()
   const editRef    = useRef<CRMLeadModalHandle>(null)
-  const confirmRef = useRef<HTMLDialogElement>(null)
   const moveRef    = useRef<HTMLDialogElement>(null)
   const menuRef    = useRef<HTMLDivElement>(null)
 
@@ -486,14 +484,6 @@ function LeadCard({
     setConvertOpen(true)   // abre o form de cliente (e-mail + CPF) pré-preenchido
   }
 
-  async function handleDelete() {
-    confirmRef.current?.close()
-    startDelete(async () => {
-      await deleteLead(lead.id, slug)
-      onLeadDeleted(lead.id)
-    })
-  }
-
   return (
     <>
       {/* Modal de edição via ref (sem trigger visível) */}
@@ -514,76 +504,6 @@ function LeadCard({
           lead_procedures: lead.lead_procedures.map(lp => ({ procedure_id: lp.procedure_id })),
         }}
       />
-
-      {/* Modal de confirmação de exclusão */}
-      <dialog
-        ref={confirmRef}
-        className="modal"
-        style={{ maxWidth: 380 } as React.CSSProperties}
-        onClick={e => { if (e.target === confirmRef.current) confirmRef.current?.close() }}
-      >
-        <div style={{ padding: '28px 24px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: 'var(--danger-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <AlertTriangle size={18} color="var(--danger)" />
-              </div>
-              <div>
-                <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Remover lead?</p>
-                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-                  {lead.name}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => confirmRef.current?.close()}
-              style={{
-                width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                border: '1px solid var(--border)', background: 'var(--bg-app)',
-                color: 'var(--text-faint)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              }}
-            >
-              <X size={13} />
-            </button>
-          </div>
-
-          <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            Este lead será removido permanentemente do funil de CRM. Esta ação não pode ser desfeita.
-          </p>
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              onClick={() => confirmRef.current?.close()}
-              className="btn-secondary"
-              disabled={deleting}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '8px 16px', borderRadius: 10, cursor: 'pointer',
-                fontSize: 'var(--text-sm-sz)', fontWeight: 700,
-                background: 'var(--danger-soft)', color: 'var(--danger)',
-                border: '1.5px solid var(--brand-3)',
-                opacity: deleting ? 0.6 : 1,
-              }}
-            >
-              <Trash2 size={13} />
-              {deleting ? 'Removendo…' : 'Remover'}
-            </button>
-          </div>
-        </div>
-      </dialog>
 
       {/* Mover para outro funil */}
       <dialog
@@ -678,8 +598,10 @@ function LeadCard({
 
           {/*
             Menu do card. Mover de funil é ação rara e não merece um botão fixo
-            ocupando o topo do card; excluir também não precisa ficar à mão.
+            ocupando o topo do card. Excluir lead deixou de existir (2026-09-28):
+            sem outro funil, não há menu.
           */}
+          {outrosFunis.length > 0 && (
           <div ref={menuRef} style={{ position: 'relative', flexShrink: 0 }}>
             <button
               type="button"
@@ -687,14 +609,14 @@ function LeadCard({
               aria-haspopup="menu"
               aria-expanded={menuAberto}
               onClick={e => { e.stopPropagation(); setMenuAberto(v => !v) }}
-              disabled={deleting || moving}
+              disabled={moving}
               style={{
                 width: 24, height: 24, borderRadius: 6,
                 border: '1px solid var(--border)',
                 background: menuAberto ? 'var(--brand-soft)' : 'var(--bg-app)',
                 color: menuAberto ? 'var(--brand)' : 'var(--text-faint)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                opacity: deleting || moving ? 0.5 : 1,
+                opacity: moving ? 0.5 : 1,
               }}
             >
               <MoreHorizontal size={12} />
@@ -714,24 +636,16 @@ function LeadCard({
                   display: 'flex', flexDirection: 'column', gap: 2,
                 }}
               >
-                {outrosFunis.length > 0 && (
-                  <MenuItem
-                    icon={<ArrowRightLeft size={13} />}
-                    onClick={() => { setMenuAberto(false); moveRef.current?.showModal() }}
-                  >
-                    Mover para outro funil
-                  </MenuItem>
-                )}
                 <MenuItem
-                  icon={<Trash2 size={13} />}
-                  danger
-                  onClick={() => { setMenuAberto(false); confirmRef.current?.showModal() }}
+                  icon={<ArrowRightLeft size={13} />}
+                  onClick={() => { setMenuAberto(false); moveRef.current?.showModal() }}
                 >
-                  Excluir lead
+                  Mover para outro funil
                 </MenuItem>
               </div>
             )}
           </div>
+          )}
         </div>
 
         {/* Nome */}

@@ -1258,6 +1258,44 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-28 — Lotes que baixam, lead que não se apaga, Prisma fora, PRD reescrito
+
+Pendências de "Em aberto" que o Heitor mandou resolver.
+
+- **Lotes** (migration `20260928000001`, `e2e/lotes-baixa.spec.ts`). Dois
+  defeitos, um desenho:
+  - `product_batches` não tinha `branch_id`, e a entrada de estoque gravava
+    um: **toda entrada com número de lote falhava**, depois de já ter gravado o
+    movimento e o saldo. O lote agora é da unidade (o existente foi preenchido
+    pela compra mais próxima), e a leitura segue a unidade do lote — a política
+    antiga passava por `products.branch_id`, nulo no catálogo da rede, e pela
+    sessão ninguém lia lote nenhum.
+  - **O lote nunca baixava.** Agora o gatilho `trg_lote_do_movimento` baixa a
+    cada saída: FEFO entre os ainda válidos, os vencidos por último; o consumo
+    do atendimento (em ml/UI) convertido para embalagens; a transferência leva
+    o lote para o destino. Cada baixa fica em `stock_movement_batches` — de
+    qual lote saiu o que foi aplicado. A `reference` da transferência virou
+    aleatória (com o relógio, duas no mesmo milissegundo trocariam lotes).
+- **Oportunidade não se apaga** (migration `20260928000002`,
+  `e2e/lead-nao-se-apaga.spec.ts`). Saíram a action `deleteLead`, o "Excluir
+  lead" do card (o menu só aparece quando há outro funil) e o caminho pelo
+  banco. Achado: a política FOR ALL de `leads` comparava a claim no topo do
+  token, onde ela não está — nunca valeu, e a sessão só lia lead. A de
+  `lead_events` valia: **qualquer membro apagava e reescrevia o histórico** pela
+  chave pública. Agora é ler e acrescentar. Nada novo foi liberado para a
+  sessão (criar política de escrita em `leads` furaria o escopo "só os meus").
+- **Prisma removido**: `packages/db`, `lib/prisma.ts`, o `schema.prisma` solto
+  na raiz, os scripts `db:*`, o `postinstall` que rodava `prisma generate` à
+  toa, e as permissões de build dele.
+- **PRD reescrito** (v2.0) contra o sistema como ele é: clínica única, ERP + CRM,
+  inbox, funil, automações, marketing; sem caixa, sem agendamento público, sem
+  cargos fixos. As metas de negócio da v1.1 eram para redes de filiais e ficaram
+  marcadas para redefinir.
+- **CLAUDE.md corrigido onde descrevia o que não existe**: o app em Expo
+  (é o portal num Capacitor, só Android), BullMQ/Upstash (a fila é o Postgres),
+  Expo Push (é Web Push + FCM), a transferência com confirmação (é imediata) e o
+  login do cliente por CPF/magic link (é e-mail e senha).
+
 ### 2026-09-28 — A extensão de Chrome sai; o app nativo deixa de aceitar HTTP
 
 - **A extensão foi descontinuada** (decisão do Heitor). Saíram `apps/extension`,
@@ -3536,16 +3574,6 @@ verdade. O que vale:
   oportunidade, telefone DDD 00), criado em 2026-09-26 para o Heitor ver o
   inbox com duas conversas da mesma pessoa. Apagar quando ele liberar.
 
-- **`estetica-os-prd.md` desatualizado**: descreve "SaaS para redes de 2–5
-  filiais" e caixa com abertura/fechamento diário. É o único documento do repo
-  que ainda não foi conferido contra o sistema.
-- **Prisma está morto — metade resolvida em 2026-09-25.** O CLAUDE.md parou de
-  descrevê-lo: a tabela de stack, o exemplo de Server Action, as queries e o
-  fluxo de conclusão passaram a mostrar o que o código de fato faz (cliente
-  Supabase + `lib/db.ts`). **Falta a outra metade:** `apps/web/lib/prisma.ts`
-  re-exporta um client que ninguém importa e o `postinstall` roda
-  `prisma generate` para nada. Tirar isso é mexer em código e ficou para
-  quando o Heitor decidir.
 - **RLS de `integration_configs` decide por nome de cargo**
   (`jwt_claim('role') = 'NETWORK_ADMIN'`), o que o CLAUDE.md §11 proíbe. É a
   última regra por nome de cargo no banco; não é exposição hoje porque o app lê
@@ -3553,8 +3581,6 @@ verdade. O que vale:
 - ~~Hidratação em `/admin/inbox`, chave de lista no estoque, e o
   lançamento que sumia da lista.~~ **Resolvidos em 2026-09-25** — ver a entrada
   da linha do tempo.
-- `product_batches` nunca é decrementado.
-- Apagar um lead leva junto o histórico dele (`lead_events` em cascata).
 - **Não há transação em nenhum fluxo além do estorno.** A conclusão de
   atendimento faz sete gravações em sequência — status, prontuário, estoque,
   financeiro, comissão, pacote, fidelidade — e o CLAUDE.md §10 a descreve como

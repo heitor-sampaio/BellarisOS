@@ -209,6 +209,13 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     // O que prende a unidade e não sai com os clientes: mapas de injetáveis e
     // lançamentos sem cliente (a contra-transação do estorno nasce sem ele).
     await passo(falhas, 'mapas da rede de teste', db.from('injectable_maps').delete().eq('tenant_id', rede))
+    const produtos = await ids(db.from('products').select('id').eq('tenant_id', rede))
+    if (produtos.length) {
+      await passo(falhas, 'lotes da rede de teste', db.from('product_batches').delete().in('product_id', produtos))
+      await passo(falhas, 'movimentos da rede de teste', db.from('stock_movements').delete().in('product_id', produtos))
+      await passo(falhas, 'saldos da rede de teste', db.from('branch_product_stock').delete().in('product_id', produtos))
+      await passo(falhas, 'produtos da rede de teste', db.from('products').delete().in('id', produtos))
+    }
     const unidades = await ids(db.from('branches').select('id').eq('tenant_id', rede))
     if (unidades.length) {
       await passo(falhas, 'lançamentos da rede de teste', db.from('financial_transactions').delete().in('branch_id', unidades))

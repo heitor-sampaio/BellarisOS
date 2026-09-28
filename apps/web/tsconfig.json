@@ -22,8 +22,7 @@
       "@/*": ["./*"],
       "@estetica-os/types": ["../../packages/types/src/index.ts"],
       "@estetica-os/validators": ["../../packages/validators/src/index.ts"],
-      "@estetica-os/utils": ["../../packages/utils/src/index.ts"],
-      "@estetica-os/db": ["../../packages/db/src/index.ts"]
+      "@estetica-os/utils": ["../../packages/utils/src/index.ts"]
     },
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true

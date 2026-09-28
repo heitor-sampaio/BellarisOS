@@ -5,7 +5,7 @@ import { can, ownerFilter } from '@/lib/auth'
 /**
  * Esta pessoa pode mexer nesta oportunidade?
  *
- * Mesma regra do funil (`updateLead`, `updateLeadStage`, `deleteLead`): com CRM
+ * Mesma regra do funil (`updateLead`, `updateLeadStage`): com CRM
  * "só os meus", alcança o que é seu e o que ainda não tem dono. Sem nenhum
  * acesso ao CRM, nenhuma — é o caso de quem cadastra cliente e mandaria um
  * `_leadId` junto.

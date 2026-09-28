@@ -24,7 +24,6 @@ const nextConfig: NextConfig = {
     '@estetica-os/types',
     '@estetica-os/validators',
     '@estetica-os/utils',
-    '@estetica-os/db',
   ],
   async headers() {
     return [

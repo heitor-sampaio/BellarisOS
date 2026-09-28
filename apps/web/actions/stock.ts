@@ -191,6 +191,8 @@ async function createProductInterno(
       if (initialBatch) {
         await gravar(admin.from('product_batches').insert({
           product_id:   newProduct.id,
+          // O lote é da unidade que recebeu (o saldo também é).
+          branch_id:    filialEstoque,
           batch_number: initialBatch,
           expires_at:   initialExpires ?? null,
           quantity:     initialQty,
@@ -621,7 +623,10 @@ async function adminTransferStockInterno(
     const toCurrent  = Number(toBps?.current_stock ?? 0)
     const toAfter    = toCurrent + qty
     const now        = new Date().toISOString()
-    const ref        = `TRANSFER-${Date.now()}`
+    // Liga a saída à entrada — e é por ela que o gatilho leva os lotes da
+    // origem para o destino. Com o relógio, duas transferências do mesmo
+    // produto no mesmo milissegundo trocariam lotes entre si.
+    const ref        = `TRANSFER-${crypto.randomUUID()}`
 
     // Rendimento: transfere qty embalagens inteiras (sempre cheias)
     const fromRendimento      = fromBps?.current_rendimento != null ? Number(fromBps.current_rendimento) : (upp ? fromCurrent * upp : null)

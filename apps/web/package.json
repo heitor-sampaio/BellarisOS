@@ -17,7 +17,6 @@
     "@capacitor/preferences": "^7.0.4",
     "@capacitor/push-notifications": "^7",
     "@capacitor/status-bar": "^7.0.6",
-    "@estetica-os/db": "workspace:*",
     "@estetica-os/types": "workspace:*",
     "@estetica-os/utils": "workspace:*",
     "@estetica-os/validators": "workspace:*",

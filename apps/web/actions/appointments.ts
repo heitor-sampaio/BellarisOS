@@ -376,7 +376,7 @@ async function completeAppointment(
   slug: string,
   ctx: Awaited<ReturnType<typeof getTenantContext>>,
 ) {
-  // Nota: idealmente em prisma.$transaction — aqui sequencial via Supabase
+  // Sequencial: cada gravação falha alto, mas não há transação (§10).
   const admin = createAdminClient()
 
   const appt = await ler(admin
