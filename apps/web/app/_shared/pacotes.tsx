@@ -15,9 +15,9 @@ export async function PacotesDaRede({ ctx, unidadeId }: { ctx: TenantContext; un
   const [pacotes, procedimentos] = await Promise.all([
     catalogoDePacotes(ctx.tenantId!, { branchId: unidadeId ?? null }),
     podeEditar
-      ? ler(createAdminClient().from('procedures').select('id, name')
+      ? ler(createAdminClient().from('procedures').select('id, name, price')
           .eq('tenant_id', ctx.tenantId!).is('branch_id', null).eq('is_active', true).order('name'), 'carregar os procedimentos')
-      : Promise.resolve([] as { id: string; name: string }[]),
+      : Promise.resolve([] as { id: string; name: string; price: number }[]),
   ])
 
   return (
@@ -27,12 +27,12 @@ export async function PacotesDaRede({ ctx, unidadeId }: { ctx: TenantContext; un
           Pacotes
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-          Sessões de um procedimento vendidas juntas. A venda é na ficha do cliente, em “Vender pacote”.
+          Um conjunto de procedimentos, iguais ou não, vendido por um preço só. A venda é na ficha do cliente, em “Vender pacote”.
         </p>
       </div>
       <PacotesCatalogo
         pacotes={pacotes}
-        procedimentos={(procedimentos ?? []) as { id: string; name: string }[]}
+        procedimentos={((procedimentos ?? []) as { id: string; name: string; price: number | null }[]).map(p => ({ id: p.id, name: p.name, price: Number(p.price ?? 0) }))}
         podeEditar={podeEditar}
       />
     </div>

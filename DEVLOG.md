@@ -1258,6 +1258,38 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Pacote é um conjunto de procedimentos
+
+A pedido do Heitor: um pacote tem vários procedimentos, iguais ou não ("5
+limpezas + 3 drenagens"). Antes era um procedimento × N sessões.
+
+- **Itens** (`service_package_items`): procedimento + quantidade. O editor do
+  catálogo tem "Adicionar procedimento" e mostra quanto as sessões custariam
+  avulsas, como referência para o preço. Pacote e itens se gravam juntos
+  (`pacote_salvar`).
+- **Cada sessão vendida guarda o seu procedimento e a sua parte do preço**,
+  rateada pelo preço de tabela. Exemplo: R$ 800 com 2× A (R$ 300) + 2× B
+  (R$ 100) dá sessões de 300, 300, 100 e 100. `pacote_vender` confere que as
+  sessões batem com os itens e que a soma fecha. É a base da comissão da
+  sessão.
+- **Agendar a sessão** usa o procedimento, a parte do preço e a duração dela:
+  o servidor recusa outro procedimento. O modal mostra o procedimento de cada
+  sessão e a composição no cabeçalho.
+- Os pacotes de antes viraram um item só, e as sessões deles ganharam o
+  procedimento. A parte do preço fica vazia e cai na conta antiga (preço ÷
+  sessões).
+
+Migration `20260930000020`.
+
+**Prova:**
+- `pacotes-venda`, reescrito para um pacote misto:
+  - o editor com dois procedimentos;
+  - as quatro sessões com procedimento e parte do preço;
+  - a comissão de 30 × a proporção recebida;
+  - a recusa de sessões que não batem e de agendar a sessão de B como A.
+- Unitários do rateio.
+- Vizinhos (31 testes): pacote, conclusão, comissões, portal e permissões.
+
 ### 2026-09-30 — Menu: Vendas e Marketing separados, Pacotes com entrada própria
 
 A pedido do Heitor:

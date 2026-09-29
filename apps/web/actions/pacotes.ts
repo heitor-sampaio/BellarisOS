@@ -15,18 +15,24 @@ import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
+import { sessoesDoPacote } from '@/lib/pacotes/rateio'
+import { itensParaRateio } from '@/lib/pacotes/leitura'
 
 type Resultado = { error?: string; ok?: true }
 
+/** Um pacote é um conjunto de procedimentos, iguais ou não (decisão do Heitor). */
 const EntradaDoPacote = z.object({
-  id:             z.string().uuid().optional(),
-  name:           z.string().trim().min(2, 'Dê um nome ao pacote.').max(120),
-  procedure_id:   z.string().uuid('Escolha o procedimento.'),
-  total_sessions: z.number().int().min(2, 'Um pacote tem pelo menos 2 sessões.').max(100),
-  price:          z.number().min(0).max(1_000_000),
-  validity_days:  z.number().int().min(1).max(3650).nullable(),
-  is_active:      z.boolean(),
-})
+  id:            z.string().uuid().optional(),
+  name:          z.string().trim().min(2, 'Dê um nome ao pacote.').max(120),
+  itens:         z.array(z.object({
+    procedure_id: z.string().uuid('Escolha o procedimento.'),
+    quantity:     z.number().int().min(1, 'Cada procedimento entra pelo menos uma vez.').max(100),
+  })).min(1, 'Adicione pelo menos um procedimento ao pacote.').max(30),
+  price:         z.number().min(0).max(1_000_000),
+  validity_days: z.number().int().min(1).max(3650).nullable(),
+  is_active:     z.boolean(),
+}).refine(p => p.itens.reduce((s, i) => s + i.quantity, 0) >= 2, 'Um pacote tem pelo menos 2 sessões.')
+  .refine(p => p.itens.reduce((s, i) => s + i.quantity, 0) <= 100, 'No máximo 100 sessões num pacote.')
 
 /** Catálogo da REDE: procedimento e configuração são dados da rede (§ Decisões). */
 export async function salvarPacote(entrada: unknown): Promise<Resultado> {
@@ -38,24 +44,18 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
     const p = lido.data
 
-    const admin = createAdminClient()
-    const proc = await ler(admin.from('procedures').select('id')
-      .eq('id', p.procedure_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o procedimento')
-    if (!proc) return { error: 'Procedimento não encontrado.' }
+    // O mesmo procedimento em duas linhas vira uma só, somada.
+    const porProcedimento = new Map<string, number>()
+    for (const i of p.itens) porProcedimento.set(i.procedure_id, (porProcedimento.get(i.procedure_id) ?? 0) + i.quantity)
+    const itens = [...porProcedimento].map(([procedure_id, quantity]) => ({ procedure_id, quantity }))
 
-    const campos = {
-      name: p.name, procedure_id: p.procedure_id, total_sessions: p.total_sessions,
-      price: Math.round(p.price * 100) / 100, validity_days: p.validity_days, is_active: p.is_active,
-    }
-    if (p.id) {
-      // Vendido já tem o retrato do preço e das sessões (client_packages):
-      // mudar o catálogo vale para as próximas vendas.
-      await gravar(admin.from('service_packages').update(campos)
-        .eq('id', p.id).eq('tenant_id', ctx.tenantId!).select('id').single(), 'salvar o pacote')
-    } else {
-      await gravar(admin.from('service_packages').insert({ ...campos, tenant_id: ctx.tenantId!, branch_id: null })
-        .select('id').single(), 'criar o pacote')
-    }
+    // Pacote e itens numa transação; o banco confere que os procedimentos são
+    // da rede. Vendido já tem o retrato (preço, sessões e procedimento de cada
+    // uma): mudar o catálogo vale para as próximas vendas.
+    await gravar(createAdminClient().rpc('pacote_salvar', {
+      p_tenant: ctx.tenantId!, p_id: p.id ?? null, p_nome: p.name, p_preco: Math.round(p.price * 100) / 100,
+      p_validade: p.validity_days, p_ativo: p.is_active, p_itens: itens,
+    }), 'salvar o pacote')
     revalidatePath('/admin/pacotes')
     revalidatePath('/[slug]/pacotes', 'page')
     return { ok: true }
@@ -93,9 +93,12 @@ export async function venderPacote(
     if (!pacote.is_active) return { error: 'Este pacote está desativado.' }
 
     const lancamentos = lancamentosDoPagamento(Number(pacote.price), lido.data, `Pacote ${pacote.name as string}`)
+    // Cada sessão com o seu procedimento e a sua parte do preço (rateio pelo
+    // preço de tabela): é a base da comissão dela. O banco confere a soma.
+    const sessoes = sessoesDoPacote(await itensParaRateio(ctx.tenantId!, pacoteId), Number(pacote.price))
     const clientPackageId = await gravar(admin.rpc('pacote_vender', {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_pacote: pacoteId, p_unidade: branchId,
-      p_ator: ctx.internalUserId ?? null, p_lancamentos: lancamentos,
+      p_ator: ctx.internalUserId ?? null, p_lancamentos: lancamentos, p_sessoes: sessoes,
     }), 'vender o pacote') as string
 
     revalidatePath('/admin/clients/[id]', 'page')

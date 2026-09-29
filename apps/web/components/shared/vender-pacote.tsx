@@ -16,7 +16,8 @@ import { CamposDoPagamento, estadoDoPagamento, montarPagamento } from '@/compone
 
 export interface PacoteAVenda {
   id: string; name: string; price: number; totalSessions: number
-  procedureName: string; validityDays: number | null
+  /** "5× Limpeza + 3× Drenagem". */
+  composicao: string; validityDays: number | null
 }
 
 export function VenderPacote({ clienteId, branchId, pacotes }: {
@@ -81,7 +82,7 @@ function Formulario({ clienteId, branchId, pacotes, onFim }: {
         </select>
       </label>
       <p style={texto} data-resumo-do-pacote>
-        {pacote.totalSessions} sessões de {pacote.procedureName} · {formatBRL(pacote.price)}
+        {pacote.composicao} ({pacote.totalSessions} sessões) · {formatBRL(pacote.price)}
         {pacote.validityDays ? ` · válido por ${pacote.validityDays} dias` : ''}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>

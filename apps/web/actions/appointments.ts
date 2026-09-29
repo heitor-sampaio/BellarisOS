@@ -1320,6 +1320,8 @@ interface SessaoDePacoteLida {
   session_number: number
   status: string
   appointment_id: string | null
+  procedure_id: string | null
+  procedures: { name: string; duration_min: number | null } | null
   appointments: { status: string; scheduled_at: string; professional: { name: string } | null } | null
 }
 
@@ -1332,6 +1334,9 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
     scheduledAt:    string | null
     apptStatus:     string | null
     professionalName: string | null
+    /** O procedimento DESTA sessão: o pacote é um conjunto de procedimentos. */
+    procedureId:    string | null
+    procedureName:  string | null
   }>
 }> {
   const ctx   = await getTenantContext()
@@ -1350,7 +1355,7 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
 
   const data = await ler(admin
     .from('package_sessions')
-    .select('id, session_number, status, appointment_id, appointments(status, scheduled_at, professional:users!professional_id(name))')
+    .select('id, session_number, status, appointment_id, procedure_id, procedures(name, duration_min), appointments(status, scheduled_at, professional:users!professional_id(name))')
     .eq('client_package_id', clientPackageId)
     .order('session_number'), 'buscar as sessões do pacote')
 
@@ -1363,6 +1368,8 @@ export async function getClientPackageSessions(clientPackageId: string): Promise
       scheduledAt:     s.appointments?.scheduled_at ?? null,
       apptStatus:      s.appointments?.status ?? null,
       professionalName: s.appointments?.professional?.name ?? null,
+      procedureId:     s.procedure_id,
+      procedureName:   s.procedures?.name ?? null,
     })),
   }
 }
@@ -1403,11 +1410,15 @@ async function schedulePackageSessionInterno(params: {
   // Valida sessão pertence ao tenant
   const sess = await ler(admin
     .from('package_sessions')
-    .select('id, appointment_id, client_package_id, client_packages!inner(branch_id, client_id, branches!inner(tenant_id))')
+    .select('id, appointment_id, client_package_id, procedure_id, preco, procedures(duration_min), client_packages!inner(branch_id, client_id, branches!inner(tenant_id))')
     .eq('id', params.packageSessionId)
     .maybeSingle(), 'buscar a sessão do plano')
   if (!sess) return { error: 'Sessão não encontrada.' }
-  type SessWithJoins = { appointment_id: string | null; client_packages: { branch_id: string; client_id: string; branches: { tenant_id: string } | null } | null }
+  type SessWithJoins = {
+    appointment_id: string | null; procedure_id: string | null; preco: number | null
+    procedures: { duration_min: number | null } | null
+    client_packages: { branch_id: string; client_id: string; branches: { tenant_id: string } | null } | null
+  }
   const typedSess = sess as unknown as SessWithJoins
   const pacote = typedSess.client_packages
   if (pacote?.branches?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, pacote.branch_id)) return { error: 'Sem permissão.' }
@@ -1415,6 +1426,14 @@ async function schedulePackageSessionInterno(params: {
   // O cliente é o DO PACOTE, e unidade, profissional e procedimento são da
   // rede: até 2026-09-28 os quatro iam do navegador direto para o insert.
   if (params.clientId !== pacote.client_id) return { error: 'Cliente não confere com o pacote.' }
+  // O pacote é um conjunto de procedimentos: a sessão já diz de qual é, e o
+  // navegador não escolhe outro. O preço é a parte dela na venda, e a duração
+  // a do procedimento.
+  if (typedSess.procedure_id && params.procedureId !== typedSess.procedure_id) {
+    return { error: 'Esta sessão do pacote é de outro procedimento.' }
+  }
+  const precoDaSessao   = typedSess.preco != null ? Number(typedSess.preco) : params.price
+  const duracaoDaSessao = typedSess.procedures?.duration_min ?? params.durationMin
   const recusa = await conferirPecasDoAgendamento(admin, ctx, {
     branchId: params.branchId, professionalId: params.professionalId, clientId: params.clientId,
   }) ?? await procedimentoDaRedeOuRecusa(admin, params.procedureId, ctx.tenantId!)
@@ -1429,8 +1448,8 @@ async function schedulePackageSessionInterno(params: {
       procedure_id:    params.procedureId,
       professional_id: params.professionalId,
       scheduled_at:    params.scheduledAt,
-      duration_min:    params.durationMin,
-      price:           params.price,
+      duration_min:    duracaoDaSessao,
+      price:           precoDaSessao,
       status:          'SCHEDULED',
       source:          'INTERNAL',
     })

@@ -743,13 +743,29 @@ const procedures = await ler(
 
 ### 9.3.1 Pacotes (2026-09-30)
 
-Sessões de UM procedimento vendidas juntas. Até 2026-09-30 só existiam no
-banco de demonstração — nenhuma tela criava pacote nem o vendia.
+Um CONJUNTO de procedimentos, iguais ou não ("5 limpezas + 3 drenagens"),
+vendido por um preço só (decisão do Heitor, 2026-09-30). Até 2026-09-30 só
+existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
+
+- **Os itens** moram em `service_package_items` (procedimento + quantidade);
+  `service_packages.total_sessions` é a soma e `procedure_id` o primeiro item
+  (as leituras de "o procedimento do pacote" seguem certas). Pacote e itens se
+  gravam juntos em `pacote_salvar`; o mesmo procedimento em duas linhas vira
+  uma, somada.
+- **Cada sessão vendida** (`package_sessions`) guarda o SEU procedimento e a SUA
+  parte do preço (`preco`): o preço do pacote rateado pelo preço de TABELA de
+  cada procedimento, em centavos, com a última sessão levando o arredondamento
+  (`sessoesDoPacote`, `lib/pacotes/rateio.ts`). `pacote_vender` confere que as
+  sessões batem com os itens e que a soma fecha com o preço. A parte da sessão
+  é a base da comissão dela.
+- **Agendar uma sessão** usa o procedimento, a parte do preço e a duração DELA
+  (`schedulePackageSession` recusa outro procedimento — o navegador não
+  escolhe).
 
 - **Catálogo da rede** em Vendas → Pacotes (`/admin/pacotes` e
   `/[slug]/pacotes`, corpo em `app/_shared/pacotes.tsx`, `PacotesCatalogo`):
-  procedimento, sessões, preço, validade em dias (vazio = sem validade), à
-  venda ou não. Ver pede `procedures: VIEW`; editar, `procedures: MANAGE` e
+  os procedimentos e quantas sessões de cada, preço, validade em dias (vazio =
+  sem validade), à venda ou não. Ver pede `procedures: VIEW`; editar, `procedures: MANAGE` e
   abrangência de rede (`salvarPacote`) — na unidade é consulta.
 - **O menu tem Vendas e Marketing separados** (decisão do Heitor, 2026-09-30):
   Vendas = Inbox, Oportunidades, Procedimentos e Pacotes (o funil e o que se
@@ -1062,7 +1078,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   - **A base é lida no servidor** (`linhasDoAtendimento`,
     `lib/comissoes/leitura.ts`): avulso = preço do atendimento; sessão de plano
     = CADA procedimento da sessão com o preço dele no plano (e a regra dele);
-    sessão de pacote = preço da VENDA (`client_packages.price`) ÷ sessões. Antes a regra do primeiro
+    sessão de pacote = a parte DELA no rateio da venda (`package_sessions.preco`), e a regra do procedimento dela. Antes a regra do primeiro
     procedimento valia sobre a sessão inteira, e o pacote usava o preço que o
     navegador mandou.
   - Os insumos da linha são o custo dos movimentos do atendimento (a conta de

@@ -71,6 +71,13 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   CANCELLED:   { label: 'Cancelada',     color: 'var(--danger)' },
 }
 
+/** "5× Limpeza + 3× Drenagem", das sessões carregadas (o pacote é um conjunto de procedimentos). */
+function composicaoDasSessoes(sessoes: Session[]): string {
+  const contagem = new Map<string, number>()
+  for (const s of sessoes) if (s.procedureName) contagem.set(s.procedureName, (contagem.get(s.procedureName) ?? 0) + 1)
+  return [...contagem].map(([nome, n]) => `${n}× ${nome}`).join(' + ')
+}
+
 // -- Mini-scheduler inline -----------------------------------------------------
 
 function SessionScheduler({
@@ -283,7 +290,9 @@ export function TreatmentSessionsModal({
     }
     if (clientPackageId) {
       const res = await getClientPackageSessions(clientPackageId)
-      return res.sessions.map(s => ({ ...s, procedureName: procedureName }))
+      // Cada sessão com o SEU procedimento (o pacote é um conjunto deles); a
+      // de antes da mudança cai no procedimento do pacote.
+      return res.sessions.map(s => ({ ...s, procedureId: s.procedureId ?? undefined, procedureName: s.procedureName ?? procedureName }))
     }
     return null
   }, [isPlanMode, planId, clientPackageId, procedureName])
@@ -368,7 +377,7 @@ export function TreatmentSessionsModal({
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', marginBottom: 4 }}>TRATAMENTO EM ANDAMENTO</p>
             <p style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.01em' }}>{packageName}</p>
-            {!isPlanMode && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 3 }}>{procedureName}</p>}
+            {!isPlanMode && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 3 }}>{composicaoDasSessoes(sessions) || procedureName}</p>}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
               <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--hairline)' }}>
                 <div style={{ height: '100%', borderRadius: 3, background: 'var(--brand)', width: `${pct}%`, transition: 'width 0.3s' }} />
@@ -424,7 +433,7 @@ export function TreatmentSessionsModal({
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
                           Sessão {sess.sessionNumber}
-                          {isPlanMode && sess.procedureName && (
+                          {sess.procedureName && (
                             <span style={{ fontSize: 'var(--text-2xs)', fontWeight: 500, color: 'var(--text-muted)', marginLeft: 6 }}>· {sess.procedureName}</span>
                           )}
                         </p>
@@ -475,9 +484,7 @@ export function TreatmentSessionsModal({
                         currentBranchId={currentBranchId}
                         onCancel={() => setSchedulingId(null)}
                         onSave={async (params) => {
-                          const sessProcedureId = isPlanMode
-                            ? (sess.procedureId ?? procedureId)
-                            : procedureId
+                          const sessProcedureId = sess.procedureId ?? procedureId
 
                           let result: { error?: string }
                           if (isPlanMode) {
@@ -495,7 +502,7 @@ export function TreatmentSessionsModal({
                             result = await schedulePackageSession({
                               packageSessionId: sess.id,
                               clientId,
-                              procedureId,
+                              procedureId: sessProcedureId,
                               price,
                               durationMin,
                               slug,
