@@ -3921,7 +3921,8 @@ verdade. O que vale:
 
 Nenhuma definida — a fidelidade (fases 1 a 4) fechou em 2026-09-29. O que
 ficou de fora dela, por decisão: bônus de eventos (aniversário, primeiro
-acesso), resgate pelo próprio cliente no portal e aviso antes de vencer.
+acesso) e resgate pelo próprio cliente no portal. Pendente, sem decisão: o aviso
+ao cliente antes de os pontos vencerem (estava no plano como opcional e não foi feito).
 
 ---
 
