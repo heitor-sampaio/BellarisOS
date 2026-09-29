@@ -1550,6 +1550,9 @@ valida no navegador), `podeEditarMapa`, `getIntegrations`, `getMetaPages`,
 `rotaCheckout`, `sourceTagFor` e os schemas de agendamento, procedimento,
 cliente e login do cliente em `packages/validators`. A seção de relatórios
 passou a usar `podeVerRelatorio` (a regra testada) em vez de repeti-la.
+(O teste desses schemas ficou para trás e deixou o Vitest de `validators`
+vermelho — 16 de 18 — até 2026-09-29, quando ficou só com os de
+autenticação, os dois de senha incluídos.)
 
 **As dicas de cada módulo** (`MODULE_HINTS`, escritas e nunca mostradas)
 aparecem ao lado do nome na tela de Cargos; a de Fichas foi corrigida para a
@@ -3937,6 +3940,16 @@ verdade. O que vale:
     semente das tags da pessoa, e o app não a lê;
   - ~~no modo "pela conversa", a lista de leads do dono cortada em 1000~~
     **resolvido em 2026-09-28** (inbox paginado).
+- **Dois E2E pulam sempre na completa** (visto em 2026-09-29, 331 passaram e
+  2 pularam), porque dependem de dado que o banco não tem:
+  - `automacoes-ensaio` precisa de um `cliente.criado` da rede real na
+    corrente (retenção de 30 dias), e não há nenhum;
+  - `whatsapp-numeros-modelagem` › "número de uma rede não aceita pessoa de
+    outra" precisa de um usuário de outra rede, e o banco só tem uma quando
+    nenhum spec está com a sua `[e2e]` de pé. É uma prova de isolamento entre
+    redes que, na prática, não roda.
+  O conserto é cada um criar o que precisa (o fato na corrente; a outra rede
+  por `criarOutraRede`) em vez de pular.
 - **Dado de demonstração em produção:** "Carla Mendes (demo)" (2 conversas, 1
   oportunidade, telefone DDD 00), criado em 2026-09-26 para o Heitor ver o
   inbox com duas conversas da mesma pessoa. Apagar quando ele liberar.
