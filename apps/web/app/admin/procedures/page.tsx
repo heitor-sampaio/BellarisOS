@@ -7,6 +7,7 @@ import { Pencil, Smartphone } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
 import { configDaRede } from '@/lib/fidelidade/leitura'
+import { opcoesDeModeloParaProcedimento } from '@/lib/documentos/modelos'
 
 function formatBRL(v: string | number) {
   return parseFloat(String(v)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -43,7 +44,7 @@ export default async function AdminProceduresPage() {
       .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as unidades'),
 
     ler(admin.from('procedures')
-      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id, loyalty_points')
+      .select('id, name, category, description, duration_min, price, labor_cost, other_costs, visible_on_client_app, is_active, created_at, form_id, consent_template_id, contract_template_id, loyalty_points')
       .eq('tenant_id', ctx.tenantId!).is('branch_id', null)
       .order('category').order('name'), 'carregar os procedimentos'),
 
@@ -54,6 +55,8 @@ export default async function AdminProceduresPage() {
   ])
 
   const fichas = (fichaRows ?? []) as { id: string; name: string }[]
+  // Termo e contrato que o procedimento pode ligar — só quem edita precisa.
+  const modelos = canEdit ? await opcoesDeModeloParaProcedimento(ctx.tenantId!) : undefined
 
   // O campo de pontos só existe quando a rede ganha por procedimento.
   const cfgFidelidade = await configDaRede(ctx.tenantId!, admin)
@@ -122,7 +125,7 @@ export default async function AdminProceduresPage() {
             {totalActive} ativos · {totalInactive} inativos · catálogo da rede
           </p>
         </div>
-        {canEdit && <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} />}
+        {canEdit && <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} />}
       </div>
 
       {/* Lista agrupada por categoria */}
@@ -178,6 +181,8 @@ export default async function AdminProceduresPage() {
                     procedure_products:   (p.procedure_products   as { product_id: string; quantity: number; unit_cost: number }[]              | null) ?? [],
                     branch_pricing:       (p.procedure_branch_pricing as { branch_id: string; price: number | null; labor_cost: number | null }[] | null) ?? [],
                     form_id:              (p.form_id as string | null) ?? null,
+                    consent_template_id:  (p.consent_template_id as string | null) ?? null,
+                    contract_template_id: (p.contract_template_id as string | null) ?? null,
                     loyalty_points:       (p.loyalty_points as number | null) ?? null,
                   }
 
@@ -230,6 +235,7 @@ export default async function AdminProceduresPage() {
                               fichas={fichas}
                               existing={existingForEdit}
                               pontosDeFidelidade={pontosPorProcedimento}
+                              modelos={modelos}
                               trigger={
                                 <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <Pencil size={13} /> Editar
@@ -257,7 +263,7 @@ export default async function AdminProceduresPage() {
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 16 }}>
             Nenhum procedimento cadastrado na rede ainda.
           </p>
-          <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} />
+          <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} />
         </div>
       )}
     </div>

@@ -62,6 +62,10 @@ const CASOS: Caso[] = [
   { nome: 'fichas: criar ficha', arquivo: 'actions/fichas.ts', funcao: 'criarFicha',
     rota: () => '/admin/settings?tab=fichas', args: () => [{ name: `${PREFIXO} ficha invasora ${marca}`, schema: { fields: [{ id: 'q', type: 'text', label: 'Pergunta' }] } }],
     estado: async () => (await db().from('forms').select('id').eq('name', `${PREFIXO} ficha invasora ${marca}`)).data?.length },
+  { nome: 'documentos: criar modelo de termo', arquivo: 'actions/modelos-de-documento.ts', funcao: 'salvarModeloDoEditor',
+    rota: () => '/admin/settings?tab=documentos',
+    args: () => [{ nome: `${PREFIXO} modelo invasor ${marca}`, tipo: 'TERMO', momento: 'AGENDAMENTO', exigencia: 'AVISA', texto: 'Termo de {{cliente.nome}}' }],
+    estado: async () => (await db().from('document_templates').select('id').eq('name', `${PREFIXO} modelo invasor ${marca}`)).data?.length },
   { nome: 'clientes: desativar cliente', arquivo: 'actions/clients.ts', funcao: 'toggleClientStatus',
     rota: f => `/admin/clients/${f.cliente}`, args: f => [f.cliente, false, f.unidade.slug], estado: f => campo('clients', 'is_active', f.cliente) },
   { nome: 'configurações: número padrão', arquivo: 'actions/integrations.ts', funcao: 'definirNumeroPadrao',
@@ -149,6 +153,11 @@ test.describe.serial('permissões nas actions, chamadas direto', () => {
     await b.from('whatsapp_numbers').delete().eq('id', f.caixa)
     await b.from('notification_campaigns').delete().like('name', `${PREFIXO}%${marca}`)
     await b.from('forms').delete().like('name', `${PREFIXO}%${marca}`)
+    const modelos = ((await b.from('document_templates').select('id').like('name', `${PREFIXO}%${marca}`)).data ?? []).map(m => m.id as string)
+    if (modelos.length) {
+      await b.from('document_template_versions').delete().in('template_id', modelos)
+      await b.from('document_templates').delete().in('id', modelos)
+    }
     expect(falhas).toEqual([])
   })
 

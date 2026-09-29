@@ -29,12 +29,13 @@ import { procedimentoCriado, procedimentoPrecoAlterado } from '@/lib/events/cada
 async function idsDoFormularioDaRede(
   admin: ReturnType<typeof createAdminClient>,
   tenantId: string,
-  ids: { unidades: string[]; produtos: string[]; ficha: string | null },
+  ids: { unidades: string[]; produtos: string[]; ficha: string | null; termo: string | null; contrato: string | null },
 ): Promise<string | null> {
   const unicos = (xs: string[]) => [...new Set(xs.filter(Boolean))]
   const unidades = unicos(ids.unidades)
   const produtos = unicos(ids.produtos)
-  const [u, pr, f] = await Promise.all([
+  const modelos = [ids.termo, ids.contrato].filter((x): x is string => !!x)
+  const [u, pr, f, m] = await Promise.all([
     unidades.length
       ? ler(admin.from('branches').select('id').eq('tenant_id', tenantId).in('id', unidades), 'conferir as unidades')
       : Promise.resolve([]),
@@ -44,10 +45,18 @@ async function idsDoFormularioDaRede(
     ids.ficha
       ? ler(admin.from('forms').select('id').eq('tenant_id', tenantId).eq('id', ids.ficha).maybeSingle(), 'conferir a ficha')
       : Promise.resolve({ id: null }),
+    modelos.length
+      ? ler(admin.from('document_templates').select('id, kind').eq('tenant_id', tenantId).in('id', modelos), 'conferir os modelos de documento')
+      : Promise.resolve([]),
   ])
   if ((u ?? []).length !== unidades.length) return 'Unidade não encontrada.'
   if ((pr ?? []).length !== produtos.length) return 'Insumo não encontrado.'
   if (!f) return 'Ficha não encontrada.'
+  // O banco também recusa (chave composta com a rede e o gatilho do tipo);
+  // aqui é para a mensagem sair em português.
+  const tipoDe = new Map((m ?? []).map(x => [x.id as string, x.kind as string]))
+  if (ids.termo && tipoDe.get(ids.termo) !== 'TERMO') return 'Termo de consentimento não encontrado.'
+  if (ids.contrato && tipoDe.get(ids.contrato) !== 'CONTRATO') return 'Contrato não encontrado.'
   return null
 }
 
@@ -97,6 +106,8 @@ async function addProcedureInterno(
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
   // Consulta de avaliação: abre o planejamento de tratamento no atendimento.
   const fichaId = (formData.get('form_id') as string)?.trim() || null
+  const termoId    = (formData.get('consent_template_id') as string)?.trim() || null
+  const contratoId = (formData.get('contract_template_id') as string)?.trim() || null
   const pontos = pontosDeFidelidade(formData)
   if (pontos === 'invalido') return { error: 'Pontos de fidelidade inválidos.' }
   const branchIds      = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
@@ -112,6 +123,8 @@ async function addProcedureInterno(
     unidades: [...branchIds, ...branchPricing.map(bp => bp.branch_id)],
     produtos: products.map(pp => pp.product_id),
     ficha:    fichaId,
+    termo:    termoId,
+    contrato: contratoId,
   })
   if (recusa) return { error: recusa }
 
@@ -130,6 +143,8 @@ async function addProcedureInterno(
       other_costs:           otherCosts,
       visible_on_client_app: visibleOnClientApp,
       form_id:               fichaId,
+      consent_template_id:   termoId,
+      contract_template_id:  contratoId,
       ...(pontos !== undefined && { loyalty_points: pontos }),
       is_active:             true,
     })
@@ -220,6 +235,8 @@ async function updateProcedureInterno(
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
   // Consulta de avaliação: abre o planejamento de tratamento no atendimento.
   const fichaId = (formData.get('form_id') as string)?.trim() || null
+  const termoId    = (formData.get('consent_template_id') as string)?.trim() || null
+  const contratoId = (formData.get('contract_template_id') as string)?.trim() || null
   const pontos = pontosDeFidelidade(formData)
   if (pontos === 'invalido') return { error: 'Pontos de fidelidade inválidos.' }
   const branchIds     = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
@@ -235,6 +252,8 @@ async function updateProcedureInterno(
     unidades: [...branchIds, ...branchPricing.map(bp => bp.branch_id)],
     produtos: products.map(pp => pp.product_id),
     ficha:    fichaId,
+    termo:    termoId,
+    contrato: contratoId,
   })
   if (recusa) return { error: recusa }
 
@@ -252,7 +271,7 @@ async function updateProcedureInterno(
   // Atualiza dados básicos
   const { error } = await admin
     .from('procedures')
-    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, form_id: fichaId, ...(pontos !== undefined && { loyalty_points: pontos }) })
+    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, form_id: fichaId, consent_template_id: termoId, contract_template_id: contratoId, ...(pontos !== undefined && { loyalty_points: pontos }) })
     .eq('id', procedureId)
     .eq('tenant_id', ctx.tenantId!)
 

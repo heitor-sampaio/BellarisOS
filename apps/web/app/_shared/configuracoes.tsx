@@ -7,6 +7,8 @@ import type { RoleModulePermission } from '@/components/admin/roles-editor'
 import { SettingsIntegrations } from '@/components/admin/settings-integrations'
 import { SettingsBranches } from '@/components/admin/settings-branches'
 import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
+import { SettingsDocumentos } from '@/components/admin/settings-documentos'
+import { modelosDaRede } from '@/lib/documentos/modelos'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import type { IntegrationConfig } from '@/actions/integrations'
 import { listarNumerosWhatsApp, opcoesDeVinculoDoNumero } from '@/actions/integrations'
@@ -46,6 +48,8 @@ const TABS = [
   { key: 'unidades',      label: 'Unidades',     module: 'settings' },
   { key: 'permissions',   label: 'Cargos',       module: 'roles'    },
   { key: 'fichas',        label: 'Fichas',       module: 'forms'    },
+  // Termos e contratos: autoria de rede, como as fichas (módulo 'forms').
+  { key: 'documentos',    label: 'Documentos',   module: 'forms'    },
   { key: 'integrations',  label: 'Integrações',  module: 'settings' },
   { key: 'fidelidade',    label: 'Fidelidade',   module: 'settings' },
   { key: 'lgpd',          label: 'LGPD',         module: 'settings' },
@@ -55,15 +59,13 @@ const TABS = [
 
 export type ChaveDeAba = typeof TABS[number]['key']
 
-const TAB_MODULES = new Map<ChaveDeAba, AppModule>(TABS.map(t => [t.key, t.module]))
-
 /** Todas as abas — o portal da rede. */
 export const ABAS_DA_REDE: readonly ChaveDeAba[] =
   TABS.map(t => t.key)
 
 /** O que a unidade governa sem sair do próprio portal nem ver outra unidade. */
 export const ABAS_DA_UNIDADE: readonly ChaveDeAba[] =
-  ['permissions', 'fichas', 'integrations', 'general']
+  ['permissions', 'fichas', 'documentos', 'integrations', 'general']
 
 interface Props {
   /** Prefixo dos links de aba: `/admin/settings` ou `/${slug}/settings`. */
@@ -110,14 +112,13 @@ export async function Configuracoes({
   const activeTab: ChaveDeAba =
     requested && tabs.some(t => t.key === requested) ? requested : tabs[0]!.key
 
-  const activeModule = TAB_MODULES.get(activeTab)!
   const supabase = await createClient()
   const admin    = createAdminClient()
 
   // Cada bloco só é buscado quando a aba correspondente está aberta: as demais
   // não usam o dado, e o admin client ignora RLS.
   const wantsRoles = activeTab === 'permissions'
-  const wantsForms = activeModule === 'forms'
+  const wantsForms = activeTab === 'fichas'
 
   const [allRoles, overrides, abasDeRelatorio, integrationRows, formRows] = await Promise.all([
     // Admin client de propósito: a policy de SELECT em `users` limita quem não
@@ -162,6 +163,8 @@ export async function Configuracoes({
 
   // Só carrega quando a aba está aberta: a lista não é usada nas outras.
   const lgpdRequests = activeTab === 'lgpd' ? await listDataRequests() : []
+
+  const modelosDeDocumento = activeTab === 'documentos' ? await modelosDaRede(ctx.tenantId!) : null
 
   // Idem para os dados da própria rede.
   const dadosDaRede = activeTab === 'general' ? await lerDadosDaRede() : null
@@ -305,6 +308,10 @@ export async function Configuracoes({
 
       {activeTab === 'fichas' && (
         <SettingsFichas forms={fichas} />
+      )}
+
+      {activeTab === 'documentos' && modelosDeDocumento && (
+        <SettingsDocumentos modelos={modelosDeDocumento} />
       )}
 
       {activeTab === 'integrations' && (

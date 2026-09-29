@@ -30,7 +30,7 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
     key:     'atendimento',
     label:   'Atendimento',
     hint:    'O dia a dia com o cliente na unidade',
-    modules: ['agenda', 'clients', 'loyalty', 'medical_records'],
+    modules: ['agenda', 'clients', 'loyalty', 'medical_records', 'documents'],
   },
   {
     key:     'vendas',
@@ -79,6 +79,11 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     VIEW:   'Lê a anamnese, a evolução clínica e as fotos do cliente.',
     MANAGE: 'Tudo do Ver, mais preencher e salvar anamnese, evolução e fotos, e liberar a parte clínica em pedidos de LGPD.',
   },
+  documents: {
+    NONE:   SEM_ACESSO,
+    VIEW:   'Vê os termos e contratos do cliente, assinados e pendentes, e baixa o documento assinado.',
+    MANAGE: 'Tudo do Ver, mais colher a assinatura (na tela, no papel, pelo portal ou por link), emitir documento avulso e dispensar um documento, com motivo.',
+  },
   procedures: {
     NONE:   SEM_ACESSO,
     VIEW:   'Vê a tabela de procedimentos e preços, os pacotes do cliente e a fila de fechamentos.',
@@ -119,7 +124,7 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
   },
   forms: {
     NONE:   SEM_ACESSO,
-    MANAGE: 'Monta os modelos de ficha de anamnese e de atendimento que os profissionais preenchem. Preencher a ficha do cliente é Prontuário.',
+    MANAGE: 'Monta as fichas que os profissionais preenchem e os modelos de termo e contrato que o cliente assina. Preencher a ficha é Prontuário; colher a assinatura é Termos e contratos.',
   },
   roles: {
     NONE:   SEM_ACESSO,

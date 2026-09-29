@@ -19,6 +19,11 @@ export const APP_MODULES = [
   // programa (e o catálogo) é Configurações — decisão de rede, não de balcão.
   'loyalty',
   'medical_records',
+  // Termos e contratos do cliente: colher a assinatura, emitir, dispensar.
+  // Não é Prontuário de propósito — a recepção colhe o contrato sem abrir a
+  // parte clínica, e o documento não carrega dado clínico. Os MODELOS são
+  // autoria de rede e ficam em 'forms'.
+  'documents',
   'procedures',
   'stock',
   'financial',

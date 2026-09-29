@@ -43,7 +43,22 @@ interface ExistingProcedure {
   procedure_products: { product_id: string; quantity: number; unit_cost?: number | null }[]
   branch_pricing?: BranchPricingOverride[]
   form_id?: string | null
+  consent_template_id?: string | null
+  contract_template_id?: string | null
   loyalty_points?: number | null
+}
+
+/** Um modelo de termo ou contrato que o procedimento pode ligar. */
+export interface OpcaoDeModeloDoProcedimento {
+  id:        string
+  nome:      string
+  momento:   'AGENDAMENTO' | 'INICIO_ATENDIMENTO' | null
+  exigencia: 'BLOQUEIA' | 'AVISA'
+  ativo:     boolean
+}
+export interface ModelosDoProcedimento {
+  termos:    OpcaoDeModeloDoProcedimento[]
+  contratos: OpcaoDeModeloDoProcedimento[]
 }
 
 interface ProcedureFormProps {
@@ -55,6 +70,8 @@ interface ProcedureFormProps {
   onCancel?: () => void
   /** A rede ganha pontos POR PROCEDIMENTO: o campo aparece. Fora disso, nem é enviado. */
   pontosDeFidelidade?: boolean
+  /** Termos e contratos da rede (Configurações → Documentos). */
+  modelos?: ModelosDoProcedimento
 }
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
@@ -91,7 +108,7 @@ export function ProcedureForm(props: ProcedureFormProps) {
   return props.existing ? <EditProcedureForm {...props} /> : <CreateProcedureForm {...props} />
 }
 
-function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false }: InnerProps) {
+function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos }: InnerProps) {
 
   const [selectedBranches, setSelectedBranches] = useState<string[]>(existing?.branch_ids ?? [])
   const [insumos, setInsumos] = useState<{ product_id: string; quantity: number; unit_cost: number }[]>(
@@ -281,6 +298,21 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
             </select>
           </Field>
         </div>
+
+        {/* Até UM termo e UM contrato por procedimento (decisão do Heitor,
+            2026-09-29). No plano, o cliente assina o termo de cada
+            procedimento e o contrato de plano da rede — o contrato daqui é o
+            do atendimento avulso. */}
+        <SeletorDeModelo
+          nome="consent_template_id" rotulo="Termo de consentimento"
+          opcoes={modelos?.termos ?? []} inicial={existing?.consent_template_id ?? null}
+          vazio="Nenhum termo cadastrado ainda — crie em Configurações → Documentos."
+        />
+        <SeletorDeModelo
+          nome="contract_template_id" rotulo="Contrato"
+          opcoes={modelos?.contratos ?? []} inicial={existing?.contract_template_id ?? null}
+          vazio="Nenhum contrato de procedimento cadastrado — crie em Configurações → Documentos."
+        />
 
         {/* Só no modo "por procedimento": ausente do formulário, o servidor não
             mexe no valor gravado (ver pontosDeFidelidade em actions/procedures). */}
@@ -564,5 +596,37 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
         </button>
       </div>
     </form>
+  )
+}
+
+const ROTULO_DO_MOMENTO = { AGENDAMENTO: 'nasce ao agendar', INICIO_ATENDIMENTO: 'nasce no início do atendimento' } as const
+
+/**
+ * Escolha do termo ou do contrato. Diz, embaixo, quando o documento nasce e se
+ * ele trava o atendimento — é isso que muda o dia da recepção, e quem liga o
+ * modelo precisa ver sem abrir Configurações.
+ */
+function SeletorDeModelo({ nome, rotulo, opcoes, inicial, vazio }: {
+  nome: string; rotulo: string; opcoes: OpcaoDeModeloDoProcedimento[]; inicial: string | null; vazio: string
+}) {
+  const [valor, setValor] = useState(inicial ?? '')
+  // Inativos só aparecem se já estão ligados: sumir da lista apagaria o
+  // vínculo em silêncio ao salvar.
+  const visiveis = opcoes.filter(o => o.ativo || o.id === inicial)
+  const escolhido = visiveis.find(o => o.id === valor)
+  const dica = escolhido
+    ? [
+        escolhido.momento ? ROTULO_DO_MOMENTO[escolhido.momento] : null,
+        escolhido.exigencia === 'BLOQUEIA' ? 'bloqueia o início sem assinatura' : 'só avisa se faltar',
+        escolhido.ativo ? null : 'modelo inativo — não nasce em atendimento novo',
+      ].filter(Boolean).join(' · ')
+    : visiveis.length ? 'Opcional.' : vazio
+  return (
+    <Field label={rotulo} hint={dica.charAt(0).toUpperCase() + dica.slice(1)}>
+      <select name={nome} className="field" value={valor} onChange={e => setValor(e.target.value)}>
+        <option value="">Nenhum</option>
+        {visiveis.map(o => <option key={o.id} value={o.id}>{o.nome}{o.ativo ? '' : ' (inativo)'}</option>)}
+      </select>
+    </Field>
   )
 }

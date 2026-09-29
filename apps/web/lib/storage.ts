@@ -6,6 +6,8 @@ import { ler } from '@/lib/db'
 // Guardamos o PATH no banco e geramos signed URLs (temporárias) para exibir.
 export const ANAMNESIS_BUCKET   = 'anamnesis-photos'
 export const CLIENT_DOCS_BUCKET  = 'client-documents'
+/** PDFs enviados como modelo de termo/contrato: `<tenant>/<sha256>.pdf`. */
+export const MODELOS_DE_DOCUMENTO_BUCKET = 'modelos-de-documento'
 
 const DEFAULT_EXPIRES = 60 * 60 // 1h
 

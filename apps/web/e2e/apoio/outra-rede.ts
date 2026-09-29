@@ -117,6 +117,9 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
       await db.auth.admin.deleteUser(auth.user!.id)
       // Todos os procedimentos da rede — o teste pode ter criado outros além do padrão.
       await db.from('procedures').delete().eq('tenant_id', t!.id)
+      // Os modelos de documento: o procedimento aponta para eles, e a versão para o modelo.
+      await db.from('document_template_versions').delete().eq('tenant_id', t!.id)
+      await db.from('document_templates').delete().eq('tenant_id', t!.id)
       await db.from('branches').delete().eq('id', b!.id)
       await db.from('role_permissions').delete().eq('tenant_id', t!.id)
       await db.from('tenant_roles').delete().eq('tenant_id', t!.id)

@@ -823,6 +823,16 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
 }
 @media (max-width: 639px) { .form-2col { grid-template-columns: 1fr; } }
 
+/* Editor de modelo de documento: o texto de um lado, a prévia do outro. Em
+   tela estreita a prévia desce para baixo do texto. */
+.editor-documento {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 899px) { .editor-documento { grid-template-columns: minmax(0, 1fr); } }
+
 /* 3 colunas para formulários */
 .form-3col {
   display: grid;

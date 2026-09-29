@@ -3,7 +3,7 @@
 import { useRef, useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X } from 'lucide-react'
-import { ProcedureForm } from './procedure-form'
+import { ProcedureForm, type ModelosDoProcedimento } from './procedure-form'
 
 interface Branch  { id: string; name: string }
 interface Product { id: string; name: string; unit: string; branch_name: string; cost_price?: number | null }
@@ -23,6 +23,8 @@ interface ExistingProcedure {
   procedure_products: { product_id: string; quantity: number }[]
   branch_pricing?: { branch_id: string; price: number | null; labor_cost: number | null }[]
   form_id?: string | null
+  consent_template_id?: string | null
+  contract_template_id?: string | null
   loyalty_points?: number | null
 }
 
@@ -33,9 +35,10 @@ interface ProcedureModalProps {
   existing?: ExistingProcedure
   trigger?: React.ReactNode
   pontosDeFidelidade?: boolean
+  modelos?: ModelosDoProcedimento
 }
 
-export function ProcedureModal({ branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false }: ProcedureModalProps) {
+export function ProcedureModal({ branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false, modelos }: ProcedureModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
 
@@ -117,6 +120,7 @@ export function ProcedureModal({ branches, products, fichas = [], existing, trig
               fichas={fichas}
               existing={existing}
               pontosDeFidelidade={pontosDeFidelidade}
+              modelos={modelos}
               onSuccess={handleSuccess}
               onCancel={close}
             />

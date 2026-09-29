@@ -1258,6 +1258,55 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Termos e contratos, fase 1: os modelos da rede
+
+"A rede poder enviar documentos de termos de consentimento e contratos, ou criar
+os documentos pelo próprio sistema. Ao criar ou editar um procedimento, deve ser
+possível linkar um documento para assinatura do cliente. Precisamos também de
+alguma forma de validação dessa assinatura." Até aqui só existiam os dois textos
+fixos do checkout de plano (`consent_terms`, sem modelo, sem PDF, sem prova).
+
+**Decisões do Heitor (2026-09-29):**
+- assina nos QUATRO canais: na clínica (tela), portal do cliente, link público
+  pelo WhatsApp e papel;
+- validação própria: assinatura eletrônica simples (Lei 14.063/2020) com
+  evidências (IP, aparelho, hash), PDF final e código de verificação público —
+  sem serviço externo;
+- PDF enviado vai COMO ESTÁ; só o documento do editor tem variáveis;
+- **o documento é do procedimento**: até UM termo e UM contrato por
+  procedimento. No plano, um termo por procedimento distinto e UM contrato de
+  plano da rede (que lista procedimentos, sessões, valor e pagamento);
+- no avulso, o momento (agendar / início do atendimento) e se bloqueia ou avisa
+  são do modelo; no plano, tudo no fechamento;
+- **sempre de novo**: cada atendimento e cada plano pede documentos novos.
+
+**Plano em seis fases**: (1) modelos; (2) emissão pelo atendimento, assinatura
+na clínica e no papel, ficha do cliente; (3) checkout do plano com o contrato de
+plano e a forma de pagamento; (4) PDF final e verificação pública; (5) portal do
+cliente; (6) link público e WhatsApp mínimo (copiar link / wa.me).
+
+**Fase 1, entregue:**
+- Tabelas `document_templates` e `document_template_versions` (migration
+  `20260930000001`). Tipos TERMO, CONTRATO e CONTRATO_PLANO; origem EDITOR ou
+  ARQUIVO. Versão é imutável; editar só abre versão nova quando o CONTEÚDO muda
+  (`documento_modelo_salvar`, uma transação). Contrato de plano: no máximo um
+  ativo por rede, por índice.
+- `procedures.consent_template_id` / `contract_template_id`, com chave composta
+  com `tenant_id` (outra rede não entra) e gatilho do tipo certo em cada campo.
+- Marcação própria (`lib/documentos/marcacao.ts`) e catálogo fechado de
+  variáveis por tipo (`lib/documentos/variaveis.ts`), com 13 unitários.
+- Configurações → **Documentos** (editor com prévia, envio de PDF conferido com
+  `pdf-lib`) e os dois seletores no cadastro do procedimento.
+- Módulo novo `documents` ("Termos e contratos"), semeado para ninguém perder
+  o que fazia no checkout: Gerenciar para quem gerencia clientes, prontuário,
+  recebimentos ou financeiro; Ver para quem só vê clientes ou prontuário.
+- Prova: `e2e/documentos-modelos.spec.ts` (5 casos, numa rede `[e2e]`, com o
+  reenvio da action contra outra rede e a RLS pelo token do membro) e o caso
+  novo em `permissoes-acoes`.
+
+Ainda NÃO muda nada no dia da clínica: nenhum documento é emitido até a fase 2,
+e o checkout segue com os dois termos fixos até a fase 3.
+
 ### 2026-09-29 — Fidelidade: opcionais da rede (bônus, troca pelo portal, aviso de vencimento)
 
 Decisão do Heitor: o que tinha ficado fora da fidelidade vira OPÇÃO da rede, e o
@@ -3980,9 +4029,9 @@ verdade. O que vale:
 
 ### Próxima frente candidata
 
-Nenhuma definida — a fidelidade fechou em 2026-09-29: fases 1 a 4 e os
-opcionais da rede (bônus de aniversário e de primeiro acesso, troca pelo portal,
-aviso de vencimento por push).
+**Termos e contratos, em andamento** (plano de 2026-09-29, seis fases; ver a
+entrada de 2026-09-30). Fase 1 (modelos) feita; a próxima é a fase 2: emissão
+pelo atendimento, assinatura na clínica e no papel, e a ficha do cliente.
 
 ---
 

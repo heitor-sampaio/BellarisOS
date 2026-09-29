@@ -754,8 +754,44 @@ const procedures = await ler(
     de consentimento e o planejamento. Esse continua existindo e é outra coisa.
 - `RecordPhoto.source`: `"web"` ou `"mobile"` — rastrear de onde veio o upload
 - `RecordPhoto.type`: `"before"`, `"after"`, ou `"during"`
-- `ConsentTerm.signedVia`: `"web"` ou `"mobile"`
+- `ConsentTerm.signedVia`: `"web"` ou `"paper"` — `consent_terms` é o LEGADO dos
+  termos fixos do checkout; os termos e contratos novos são o §9.4.1
 - Cliente NÃO acessa o prontuário pelo app — apenas histórico de procedimentos
+
+### 9.4.1 Termos e contratos (em construção, 2026-09-30)
+
+A rede monta (no editor, com variáveis) ou envia (PDF pronto, assinado como
+está) os modelos de termo e contrato, e o cliente assina eletronicamente —
+na clínica, no portal, por link ou no papel. Plano aprovado em 2026-09-29, em
+seis fases; **só a fase 1 (modelos) está no ar**. O desenho inteiro está no
+DEVLOG ("Termos e contratos").
+
+- **O documento é do PROCEDIMENTO** (decisão do Heitor): cada procedimento
+  liga até UM termo (`procedures.consent_template_id`) e UM contrato
+  (`contract_template_id`). No plano, o cliente assina um termo por
+  procedimento distinto e UM **contrato de plano** da rede
+  (`kind = 'CONTRATO_PLANO'`, no máximo um ativo — índice único). Sempre de
+  novo: cada atendimento avulso e cada plano pede documentos novos.
+- **Três tipos, cada um com as suas variáveis** (`lib/documentos/variaveis.ts`,
+  catálogo FECHADO): o termo também serve ao plano, então não usa
+  `agendamento.*`; o contrato do procedimento é o do avulso; só o contrato de
+  plano usa `plano.*` e `pagamento.*`. Variável fora do tipo é recusada ao
+  salvar — sairia em branco num documento assinado.
+- **A marcação é própria e pequena** (`lib/documentos/marcacao.ts`): a tela e o
+  PDF desenham a MESMA árvore, e a variável é interpolada sobre a árvore (vira
+  texto puro — nome com `**` não injeta marcação). Não trocar por editor rico.
+- **Versão é retrato**: `documento_modelo_salvar` grava modelo + versão numa
+  transação, e só abre versão nova quando o CONTEÚDO muda. Versão não se
+  altera (gatilho); modelo não se apaga (desativa).
+- **Modelos são `forms: MANAGE`** (Configurações → Documentos); colher a
+  assinatura é o módulo `documents`; ligar ao procedimento é `procedures`.
+- O banco recusa modelo de outra rede no procedimento (chave composta com
+  `tenant_id`) e o tipo errado no campo (gatilho
+  `trg_procedimento_modelos_do_tipo`).
+- PDF enviado: cabeçalho `%PDF-` conferido (não o `type` do navegador), abre
+  no `pdf-lib` sem senha, até 10 MB e 50 páginas; mora em
+  `modelos-de-documento/<tenant>/<sha256>.pdf`.
+- Prova: `e2e/documentos-modelos.spec.ts`.
 
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação
@@ -1126,9 +1162,9 @@ Escopo e abrangência são coisas diferentes: o escopo é do **cargo**, a abrang
 é do **membro**. Um mesmo cargo "Profissional" serve para alguém de uma filial e
 para alguém da rede.
 
-Os 16 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `procedures`, `stock`,
-`financial`, `cashier`, `crm`, `marketing`, `reports`, `team`, `forms`, `roles`,
-`settings`, `automations`. Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
+Os 17 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `documents`,
+`procedures`, `stock`, `financial`, `cashier`, `crm`, `marketing`, `reports`, `team`,
+`forms`, `roles`, `settings`, `automations`. Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
 (`lib/permissions.ts`) declara o que cada um aceita, e a tela de cargos só
 oferece esses. O escopo aparece apenas em `SCOPED_MODULES`: `agenda`,
 `medical_records`, `financial`, `crm` e `reports` (em `reports` o escopo é "só
@@ -1515,6 +1551,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Usar a paleta do Tailwind (red-600, green-600…) — o sistema tem a sua
 ❌ Encerrar uma entrega sem atualizar o DEVLOG e a memória (§16)
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
+❌ Usar em termo/contrato variável fora do catálogo de lib/documentos/variaveis.ts, ou interpolar o TEXTO em vez da árvore
+❌ Alterar uma versão de modelo de documento ou apagar um modelo (edita → versão nova; o que não serve, desativa)
 ```
 
 ---

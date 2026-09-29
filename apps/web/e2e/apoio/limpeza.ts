@@ -248,6 +248,9 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     await passo(falhas, 'vouchers da rede de teste', db.from('loyalty_vouchers').delete().eq('tenant_id', rede))
     await passo(falhas, 'recompensas da rede de teste', db.from('loyalty_rewards').delete().eq('tenant_id', rede))
     await passo(falhas, 'procedimentos da rede de teste', db.from('procedures').delete().eq('tenant_id', rede))
+    // Modelos de documento: o procedimento aponta para eles, então saem depois.
+    await passo(falhas, 'versões de modelo da rede de teste', db.from('document_template_versions').delete().eq('tenant_id', rede))
+    await passo(falhas, 'modelos de documento da rede de teste', db.from('document_templates').delete().eq('tenant_id', rede))
     await passo(falhas, 'unidades da rede de teste', db.from('branches').delete().eq('tenant_id', rede))
     await passo(falhas, 'cargos da rede de teste', db.from('tenant_roles').delete().eq('tenant_id', rede))
     await passo(falhas, 'eventos da rede de teste', db.from('domain_events').delete().eq('tenant_id', rede))
