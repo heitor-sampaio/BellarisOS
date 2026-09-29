@@ -5,7 +5,7 @@ import { Check, Loader2 } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { salvarConfigFidelidade } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
-import type { ConfigFidelidade, ModoDeGanho, BaseDaComissao } from '@/lib/fidelidade/config'
+import type { ConfigFidelidade, ModoDeGanho } from '@/lib/fidelidade/config'
 
 /**
  * Configurações → Fidelidade: a rede liga o programa e escolhe as regras.
@@ -27,17 +27,6 @@ const MODOS: { key: ModoDeGanho; label: string; explicacao: string }[] = [
   },
 ]
 
-const COMISSAO: { key: BaseDaComissao; label: string; explicacao: string }[] = [
-  {
-    key: 'PRECO', label: 'Sobre o preço',
-    explicacao: 'Quando o cliente usar pontos como desconto, a comissão do profissional continua sobre o preço do atendimento. O desconto é custo da clínica.',
-  },
-  {
-    key: 'VALOR_PAGO', label: 'Sobre o valor pago',
-    explicacao: 'Quando o cliente usar pontos como desconto, a comissão cai na mesma proporção. O profissional divide o custo do programa.',
-  },
-]
-
 export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }: {
   inicial: ConfigFidelidade
   podeEditar: boolean
@@ -47,7 +36,6 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
   const [ligado,   setLigado]   = useState(inicial.enabled)
   const [modo,     setModo]     = useState<ModoDeGanho>(inicial.earn_mode)
   const [taxa,     setTaxa]     = useState(String(inicial.points_per_real).replace('.', ','))
-  const [comissao, setComissao] = useState<BaseDaComissao>(inicial.commission_base)
   const [valorDoPonto, setValorDoPonto] = useState(String(inicial.redeem_points_value).replace('.', ','))
   const [minimo,   setMinimo]   = useState(String(inicial.redeem_min_points))
   const [teto,     setTeto]     = useState(String(inicial.redeem_max_pct).replace('.', ','))
@@ -82,7 +70,6 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
           enabled:         ligado,
           earn_mode:       modo,
           points_per_real: taxa.replace(/\./g, '').replace(',', '.'),
-          commission_base: comissao,
           redeem_points_value: numero(valorDoPonto),
           redeem_min_points:   numero(minimo),
           redeem_max_pct:      numero(teto),
@@ -102,7 +89,6 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
   }
 
   const modoAtual     = MODOS.find(m => m.key === modo)!
-  const comissaoAtual = COMISSAO.find(c => c.key === comissao)!
 
   return (
     <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}
@@ -283,18 +269,10 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
       </Bloco>
 
       <Bloco titulo="Comissão quando o cliente usa pontos">
-        {podeEditar ? (
-          <SegSelect
-            options={COMISSAO.map(c => ({ key: c.key, label: c.label }))}
-            value={comissao}
-            onSelect={k => setComissao(k as BaseDaComissao)}
-            ariaLabel="Base da comissão com desconto de fidelidade"
-          />
-        ) : (
-          <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{comissaoAtual.label}</strong>
-        )}
+        {/* Mudou de casa em 2026-09-30: é política de comissão, e mora com as
+            outras (modo, descontos, período) em Configurações → Comissões. */}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
-          {comissaoAtual.explicacao}
+          Agora se define em Configurações → Comissões, junto com as outras regras de comissão da rede.
         </p>
       </Bloco>
 

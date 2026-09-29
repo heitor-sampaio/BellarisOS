@@ -62,6 +62,12 @@ describe('entradas com mais de uma porta', () => {
     }
   })
 
+  it('quem administra o financeiro da rede chega a Configurações (aba de comissões); na unidade, não', () => {
+    expect(menuEntriesFor(ADMIN_MENU, com({ financial: 'MANAGE' })).map(e => e.key)).toContain('settings')
+    expect(menuEntriesFor(ADMIN_MENU, com({ financial: 'VIEW' })).map(e => e.key)).not.toContain('settings')
+    expect(menuEntriesFor(BRANCH_MENU, com({ financial: 'MANAGE' })).map(e => e.key)).not.toContain('settings')
+  })
+
   it('a unidade não tem mais uma entrada separada de modelos de ficha', () => {
     expect(BRANCH_MENU.map(e => e.key)).not.toContain('forms')
   })

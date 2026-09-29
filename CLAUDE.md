@@ -660,7 +660,9 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   comissão e linha do tempo. O servidor recalcula o desconto a partir dos pontos
   pedidos — o valor do navegador não entra.
 - **Comissão**: `commission_base` = PRECO (não muda) ou VALOR_PAGO (cai na
-  proporção do pago, só a comissão ainda em aberto).
+  proporção do pago, só a comissão ainda em aberto). A opção saiu da aba
+  Fidelidade em 2026-09-30: é `commission_configs.base_com_pontos`
+  (Configurações → Comissões), espelhada aqui até a fase 2 das comissões (§9.7).
 - Pago todo com pontos: `amount` 0, sem forma de pagamento, sem "Purchase" na
   API de Conversões (o `pagamento.recebido` sai, com 0).
 - Estorno devolve os pontos usados (ESTORNO_RESGATE) e tira os ganhos.
@@ -994,10 +996,39 @@ DEVLOG ("Termos e contratos").
   e o **próprio estorno**. A contra-transação não leva `appointment_id` (há
   UNIQUE nele — levar fazia todo estorno de atendimento falhar).
 
-### 9.7 Comissões
-- Buscar `CommissionRule` específica (profissional + procedimento); fallback para regra geral (`procedureId: null`)
+### 9.7 Comissões (reforma em três fases, 2026-09-30 — fase 1 no código)
+
+Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
+
+- **A regra é do PROFISSIONAL, na rede** (`commission_rules`: `tenant_id`,
+  `professional_id uuid → users`, `procedure_id` nulo = PADRÃO): um padrão
+  (% ou R$ fixo) e EXCEÇÕES por procedimento. Índice único
+  `(professional_id, procedure_id) nulls not distinct`. Qual vale:
+  `regraAplicavel` (`lib/comissoes/config.ts`) — a exceção, senão o padrão,
+  senão nenhuma (o atendimento conclui sem comissão, e a tela avisa quem
+  "atende" sem padrão).
+- **Só o servidor grava regra**: `comissao_regras_definir` (service_role, confere
+  profissional e procedimentos da rede). A sessão só LÊ — até 2026-09-30
+  qualquer funcionário gravava `commission_rules` pelo PostgREST.
+- **Configuração da REDE** (`commission_configs`, Configurações → Comissões,
+  `financial: MANAGE` + abrangência de rede): `modo` (ATENDIMENTO, sobre o preço
+  ao concluir | PAGAMENTO, sobre o recebido), descontos da base
+  (`desconta_insumos`, `desconta_taxa`), `base_com_pontos` (PRECO | VALOR_PAGO,
+  veio de `loyalty_configs.commission_base`) e `periodo` do fechamento
+  (MENSAL | QUINZENAL | SEMANAL). **Taxas da maquininha** em `payment_fees`
+  (Pix, débito, crédito 1–12x; `taxaDoRecebimento` usa a maior parcela
+  cadastrada abaixo), gravadas por `comissao_taxas_definir`.
+- A comissão de cada membro se define na **Equipe** (chip "Comissão …" na
+  linha, `ComissaoDoMembro`), só com `financial: MANAGE` — gerir a equipe não
+  dá acesso a quanto cada um ganha. Quem é de unidade só mexe nos da unidade.
+- ⚠️ **Fase 1 só configura.** O cálculo ainda é o antigo (regra nova, base =
+  preço do atendimento); modo PAGAMENTO, descontos, taxa, base de plano/pacote no
+  servidor, estorno e fechamento são as fases 2 e 3. Até a fase 2,
+  `confirmar_pagamento_do_atendimento` lê `loyalty_configs.commission_base`,
+  que `salvarConfigDeComissao` espelha.
 - `periodRef` formato: `"YYYY-MM"`
 - Comissão de pacotes: calculada na sessão executada, não na venda do pacote
+- Prova: `e2e/comissoes-configuracao.spec.ts`.
 
 ### 9.8 Push Notifications
 - Dois canais: **Web Push** (VAPID) no navegador e **FCM** no app Android

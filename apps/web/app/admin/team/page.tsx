@@ -1,5 +1,7 @@
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
+import { regrasDaRede, procedimentosParaComissao } from '@/lib/comissoes/leitura'
 import { AdminTeamForm } from '@/components/admin/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { TeamFilters } from '@/components/admin/team-filters'
@@ -72,6 +74,13 @@ export default async function AdminTeamPage({
   ])
 
   const members = membersResult ?? []
+
+  // A comissão de cada um é do financeiro, não da equipe: quem gere a equipe
+  // sem `financial: MANAGE` não vê nem muda quanto cada um ganha.
+  const podeComissao = can(ctx, 'financial', 'MANAGE')
+  const [regras, procedimentos] = podeComissao
+    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId)])
+    : [null, []]
 
   const allRoles = tenantRoles ?? []
   // Cargos atribuíveis pela UI: sem os de sistema (NETWORK_ADMIN)
@@ -230,6 +239,10 @@ export default async function AdminTeamPage({
 
                     <td data-label="" style={{ padding: '14px 20px', textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                      {regras && (m.provides_services || regras.has(m.id)) && (
+                        <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
+                          procedimentos={procedimentos} atende={!!m.provides_services} />
+                      )}
                       {canManage && <TeamMemberEdit
                         member={{
                           id:               m.id,

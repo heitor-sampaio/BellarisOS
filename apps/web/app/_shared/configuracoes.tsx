@@ -28,6 +28,8 @@ import { FidelidadeConfig } from '@/components/admin/fidelidade-config'
 import { FidelidadeCatalogo } from '@/components/admin/fidelidade-catalogo'
 import { catalogoDeRecompensas } from '@/actions/fidelidade'
 import { configDaRede, redeTemLancamentos } from '@/lib/fidelidade/leitura'
+import { SettingsComissoes } from '@/components/admin/settings-comissoes'
+import { configDeComissaoDaRede, taxasDaRede, profissionaisSemComissao } from '@/lib/comissoes/leitura'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -53,6 +55,8 @@ const TABS = [
   { key: 'documentos',    label: 'Documentos',   module: 'forms'    },
   { key: 'integrations',  label: 'Integrações',  module: 'settings' },
   { key: 'fidelidade',    label: 'Fidelidade',   module: 'settings' },
+  // Como a comissão acontece e as taxas da maquininha: é dinheiro, 'financial'.
+  { key: 'comissoes',     label: 'Comissões',    module: 'financial' },
   { key: 'lgpd',          label: 'LGPD',         module: 'settings' },
   { key: 'eventos',       label: 'Eventos',      module: 'settings' },
   { key: 'general',       label: 'Geral',        module: 'settings' },
@@ -175,6 +179,10 @@ export async function Configuracoes({
   const configFidelidade = activeTab === 'fidelidade' ? await configDaRede(ctx.tenantId!) : null
   const catalogo = activeTab === 'fidelidade' ? await catalogoDeRecompensas() : null
   const temLancamentos = activeTab === 'fidelidade' ? await redeTemLancamentos(ctx.tenantId!) : false
+  // As comissões também são da rede (a aba não está em ABAS_DA_UNIDADE).
+  const comissoes = activeTab === 'comissoes'
+    ? await Promise.all([configDeComissaoDaRede(ctx.tenantId!), taxasDaRede(ctx.tenantId!), profissionaisSemComissao(ctx.tenantId!)])
+    : null
   const visibilidadeDoInbox = wantsRoles ? await lerVisibilidadeDoInbox() : null
 
   // A corrente de eventos, idem. São duas consultas (o resumo agregado e as
@@ -359,6 +367,11 @@ export async function Configuracoes({
             <FidelidadeCatalogo inicial={catalogo} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null} />
           )}
         </div>
+      )}
+
+      {activeTab === 'comissoes' && comissoes && (
+        <SettingsComissoes inicial={comissoes[0]} taxas={comissoes[1]} semRegra={comissoes[2]}
+          podeEditar={can(ctx, 'financial', 'MANAGE') && ctx.branchId === null} />
       )}
 
       {activeTab === 'general' && (

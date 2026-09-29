@@ -100,12 +100,11 @@ begin
     ('dddddddd-1000-0000-0000-000000000003', v_tenant, v_jardins, 'dddddddd-1000-0000-0000-00000000a003', 'Carla Nunes',  'carla.demo@bellaris.com.br',  true, true, v_role_prof),
     ('dddddddd-1000-0000-0000-000000000004', v_tenant, v_centro,  'dddddddd-1000-0000-0000-00000000a004', 'Diana Rocha',  'diana.demo@bellaris.com.br',  true, false, v_role_rec);
 
-  -- Comissão de 10% para todos, em ambas as filiais
-  insert into public.commission_rules (branch_id, professional_id, procedure_id, type, value, is_active)
-  select b.id, u.id, null, 'PERCENTAGE', 10, true
+  -- Comissão padrão de 10% para cada profissional (a regra é da pessoa, na rede)
+  insert into public.commission_rules (tenant_id, professional_id, procedure_id, type, value, is_active)
+  select v_tenant, u.id, null, 'PERCENTAGE', 10, true
   from public.users u
-  cross join (select v_centro as id union all select v_jardins) b
-  where u.id::text like 'dddddddd%' and u.provides_services and u.branch_id = b.id;
+  where u.id::text like 'dddddddd%' and u.provides_services;
 
   -- ── Salas ─────────────────────────────────────────────────────────────────
   insert into public.rooms (id, branch_id, name, is_active) values

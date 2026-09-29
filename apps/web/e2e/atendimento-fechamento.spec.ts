@@ -63,7 +63,7 @@ test.describe.serial('fechar um atendimento', () => {
       .insert({ product_id: prod.id, branch_id: unidade!.id, current_stock: 1, min_stock: 0 }).select('product_id').single())
     // Regra ESPECÍFICA do procedimento: vence qualquer regra geral do profissional.
     const regra = await passo<{ id: string }>('regra de comissão', db.from('commission_rules')
-      .insert({ branch_id: unidade!.id, professional_id: prof.id, procedure_id: proc.id, type: 'PERCENTAGE', value: 10, is_active: true })
+      .insert({ tenant_id: tenant, professional_id: prof.id, procedure_id: proc.id, type: 'PERCENTAGE', value: 10, is_active: true })
       .select('id').single())
     const ag = await passo<{ id: string }>('agendamento', db.from('appointments')
       .insert({

@@ -1,5 +1,7 @@
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, can } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
+import { regrasDaRede, procedimentosParaComissao } from '@/lib/comissoes/leitura'
 import { TeamForm } from '@/components/branch/team-form'
 import { TeamMemberEdit } from '@/components/admin/team-member-edit'
 import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
@@ -63,6 +65,11 @@ export default async function TeamPage({
   const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
   const roleLabel = Object.fromEntries(allRoles.map(r => [r.id, r.label]))
   const canManage = ctx.permissions.team === 'MANAGE'
+  // A comissão é do financeiro, não da equipe (ver a página da rede).
+  const podeComissao = can(ctx, 'financial', 'MANAGE')
+  const [regras, procedimentos] = podeComissao
+    ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, branchId)])
+    : [null, []]
 
   return (
     <div>
@@ -153,6 +160,10 @@ export default async function TeamPage({
                   {/* Ações */}
                   <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                    {regras && (m.provides_services || regras.has(m.id)) && (
+                      <ComissaoDoMembro membro={{ id: m.id, nome: m.name }} regras={regras.get(m.id) ?? []}
+                        procedimentos={procedimentos} atende={!!m.provides_services} />
+                    )}
                     {canManage && (
                       <TeamMemberEdit
                         member={{

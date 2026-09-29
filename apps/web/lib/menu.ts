@@ -85,10 +85,11 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // Só na rede: a automação reage a fatos de todas as unidades, e uma versão
   // por filial prometeria um recorte que o motor não faz.
   { key: 'automations',  group: 'gestao',       label: 'Automações',    href: '/admin/automacoes',     visible: p => has(p, 'automations') },
-  // Uma tela, três módulos: quem só tem cargos ou fichas continua chegando lá.
+  // Uma tela, quatro módulos: quem só tem cargos ou fichas continua chegando lá,
+  // e quem administra o financeiro da rede, à aba de comissões.
   {
     key: 'settings', group: 'gestao', label: 'Configurações', href: '/admin/settings',
-    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms'),
+    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || p.financial === 'MANAGE',
   },
 ]
 

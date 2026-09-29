@@ -63,7 +63,8 @@ export const EntradaDaConfig = z.object({
   points_per_real: z.coerce.number()
     .min(0.01, 'Informe quantos pontos o cliente ganha por R$ 1.')
     .max(1000, 'No máximo 1.000 pontos por R$ 1.'),
-  commission_base: z.enum(BASES_DA_COMISSAO),
+  // Desde 2026-09-30 quem grava é Configurações → Comissões; aqui só se lê.
+  commission_base: z.enum(BASES_DA_COMISSAO).optional(),
   // Resgate como desconto no pagamento (fase 2).
   redeem_points_value: z.coerce.number()
     .min(0.0001, 'Informe quanto vale um ponto, em R$.')

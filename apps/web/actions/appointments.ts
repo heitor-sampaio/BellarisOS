@@ -19,6 +19,8 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { periodRef, dayKeyTZ, partsInTZ } from '@/lib/datetime'
+import { regrasDaRede } from '@/lib/comissoes/leitura'
+import { regraAplicavel, valorDaRegra } from '@/lib/comissoes/config'
 import { notificarInteressados } from '@/lib/notifications/interessados'
 import { semAcesso } from '@/lib/sem-acesso'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
@@ -792,35 +794,20 @@ async function finishSessionInterno(
     // a quinta deixava as quatro primeiras, e o atendimento ficava concluído
     // com comissão e sem baixa de estoque, sem jeito de refazer.
 
-    // Comissão — regra específica do procedimento tem precedência sobre a geral.
+    // Comissão — as regras são do PROFISSIONAL na rede (Configurações de
+    // comissão, 2026-09-30): a exceção do procedimento vence o padrão dele.
     // `type` e `rule_value` gravam a regra aplicada, para o extrato continuar
     // auditável se a regra mudar depois.
-    let ruleQuery = admin
-      .from('commission_rules')
-      .select('type, value')
-      .eq('professional_id', appt.professional_id)
-      .eq('branch_id', appt.branch_id)
-      .eq('is_active', true)
-
-    ruleQuery = appt.procedure_id
-      ? ruleQuery.or(`procedure_id.eq.${appt.procedure_id},procedure_id.is.null`)
-      : ruleQuery.is('procedure_id', null)
-
-    const rule = await ler(ruleQuery
-      .order('procedure_id', { nullsFirst: false })
-      .limit(1)
-      .maybeSingle(), 'buscar a regra de comissão')
+    const regrasDoProfissional = (await regrasDaRede(ctx.tenantId!, appt.professional_id as string)).get(appt.professional_id as string) ?? []
+    const rule = regraAplicavel(regrasDoProfissional, (appt.procedure_id as string | null) ?? null)
 
     const comissao = rule
-      ? (() => {
-          const regra = parseFloat(String(rule.value))
-          return {
-            valor:   rule.type === 'PERCENTAGE' ? parseFloat(String(appt.price)) * regra / 100 : regra,
-            tipo:    rule.type as string,
-            regra,
-            periodo: periodRef(now),
-          }
-        })()
+      ? {
+          valor:   valorDaRegra(rule, parseFloat(String(appt.price))),
+          tipo:    rule.tipo as string,
+          regra:   rule.valor,
+          periodo: periodRef(now),
+        }
       : null
 
     // Pontos de fidelidade: NÃO aqui. Desde 2026-09-28 o ponto nasce quando o

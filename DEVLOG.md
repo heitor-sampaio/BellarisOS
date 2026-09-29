@@ -1258,6 +1258,71 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Comissões, fase 1 (de 3): configuração e regras
+
+**Por que:** a comissão nascia de `commission_rules`, mas nenhuma tela criava
+regra (só o seed e os testes), nada era pago (tudo `OPEN`), a base de plano e
+pacote era frágil (o preço do pacote vinha do navegador), o estorno não mexia
+na comissão, e a sessão de QUALQUER funcionário gravava `commission_rules` pelo
+PostgREST. Plano aprovado pelo Heitor em três fases:
+
+1. **Configuração e regras** (esta entrega).
+2. **Cálculo novo**: linhas e extrato (`commission_lines`), base de plano e
+   pacote no servidor, desconto de insumos e taxa, os dois modos, liberação
+   proporcional do plano (gatilho no pagamento), estorno e o bloqueio de
+   cancelar atendimento concluído.
+3. **Fechamento e visibilidade**: `commission_payouts`, Financeiro → Comissões
+   (extrato, fechar e pagar → despesa, CSV), o profissional vê as dele, e os
+   vazamentos do dashboard e dos relatórios.
+
+**Decisões do Heitor:**
+- A regra é do profissional (padrão), com exceção por procedimento.
+- Quando e sobre o quê é configurável pela rede: no atendimento, sobre o preço;
+  ou quando o cliente paga, sobre o recebido.
+- Os descontos da base (insumos, taxa da maquininha) são configuráveis, e a
+  tabela de taxas entrou agora.
+- No plano, a base é o preço de cada procedimento. No pacote, preço ÷ sessões.
+  No modo "quando paga", o plano libera na proporção do que já recebeu.
+- O pagamento ao profissional é um fechamento por período configurável
+  (mensal, quinzenal ou semanal).
+
+**O que entrou:**
+- Migrations `20260930000008..10`:
+  - `commission_configs` (uma por rede) e `payment_fees`.
+  - `commission_rules` reformada: `tenant_id`, `professional_id` uuid → users,
+    sem unidade obrigatória, um padrão e uma exceção por procedimento (índice
+    único), valor validado.
+  - As funções `comissao_regras_definir` e `comissao_taxas_definir`
+    (service_role).
+  - RLS de só leitura, e as políticas de INSERT/UPDATE abertas saíram.
+  - `updated_by` nulo quando o membro sai; a regra sai com o profissional, o
+    procedimento ou a rede.
+- **Configurações → Comissões** (`financial: MANAGE`, só no portal da rede):
+  como a comissão acontece, o que sai da base, a base com pontos (saiu da aba
+  Fidelidade), o período do fechamento e a tabela de taxas. A aba também avisa
+  quem atende sem comissão padrão.
+- **Equipe**: o chip "Comissão 30% · 1 exceção" (ou "Sem comissão", amarelo
+  para quem atende) abre o diálogo do padrão e das exceções. Só aparece com
+  `financial: MANAGE`. Quem gere a equipe sem o financeiro não vê quanto cada
+  um ganha.
+- `finishSession` lê as regras novas (`regraAplicavel`). **O resto do cálculo
+  ainda é o antigo** até a fase 2: modo e descontos ficam gravados, mas ainda
+  não mudam o valor. Por isso esta fase fica na `main` local e **sobe junto com
+  a fase 2**.
+
+**Prova:**
+- `e2e/comissoes-configuracao.spec.ts`, 6 casos:
+  - config e taxas pela tela, conferidas no banco;
+  - padrão + exceção pela Equipe;
+  - percentual acima de 100 recusado;
+  - quem só vê o financeiro não vê o chip, e as três actions recusam;
+  - profissional e procedimento de outra rede recusados;
+  - a sessão não grava regra, configuração, taxa nem chama a função pelo
+    PostgREST.
+- Unitários em `tests/comissoes-config.test.ts`.
+- Vizinhos verdes: `atendimento-fechamento` (exceção vence o padrão), a
+  fidelidade no pagamento, `configuracoes-geral` e `permissoes-acoes`.
+
 ### 2026-09-30 — O pagamento no contrato do procedimento
 
 **O que muda:** as variáveis de pagamento (forma, meio, entrada, parcelas,
@@ -4255,6 +4320,15 @@ verdade. O que vale:
   instância ou compartilhado? `DELETE /instance` para a cobrança na hora?
 
 ### Dívida técnica conhecida
+
+- **Comissões, fases 2 e 3** (plano aprovado em 2026-09-30, ver a linha do
+  tempo): o cálculo novo (modo, descontos, taxa, plano e pacote no servidor,
+  estorno) e o fechamento com despesa. Os vazamentos continuam até a fase 3: o
+  dashboard e os relatórios mostram a comissão de todos a quem só pode ver a
+  própria, e o ranking ordena por comissão só depois de cortar o top 5 por
+  atendimentos. A fase 1 fica sem subir até a fase 2 estar pronta. Depois do
+  deploy, a coluna `commission_rules.branch_id` sai (ela só existe porque o
+  `finishSession` que está no ar ainda filtra por ela).
 
 - **Contato separado da conversa — o que sobrou** (a ordem combinada terminou
   em 2026-09-26):
