@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar } from '@/lib/db'
+import { gravar, tentar } from '@/lib/db'
 import { gerarPdfAssinado } from '@/lib/documentos/pdf'
 
 /**
@@ -12,6 +12,9 @@ import { gerarPdfAssinado } from '@/lib/documentos/pdf'
  * geram o mesmo PDF, e o que falha 5 vezes para de ser tentado — fica
  * visível no banco (assinado, sem PDF, 5 tentativas) em vez de repetir para
  * sempre.
+ *
+ * De carona, apaga as tentativas de abrir link de assinatura com mais de 30
+ * dias: só servem ao limite por IP (1 hora), e IP é dado pessoal.
  */
 
 export const dynamic = 'force-dynamic'
@@ -37,6 +40,9 @@ export async function GET(req: NextRequest) {
       }
     }
     if (falhas.length) console.error('[cron documentos-pdf]', falhas)
+    // Acessório: se falhar, o limite por IP continua certo — só sobra linha velha.
+    await tentar(admin.from('document_link_attempts').delete()
+      .lt('created_at', new Date(Date.now() - 30 * 86_400_000).toISOString()), 'apagar as tentativas de link antigas')
     return NextResponse.json({ ok: falhas.length === 0, reivindicados: (fila ?? []).length, gerados, falhas: falhas.length },
       { status: falhas.length ? 500 : 200 })
   } catch (e) {

@@ -26,13 +26,16 @@ export interface DocumentoAssinavel {
 export const COLUNAS_ASSINAVEIS = 'id, tenant_id, branch_id, client_id, appointment_id, title, status'
 
 /**
- * O IP de quem está na tela. Atrás do proxy do Railway, o primeiro do
- * `x-forwarded-for`. Só vai para o banco se tiver cara de IP: o parâmetro é
- * `inet`, e um valor torto faria a ASSINATURA inteira falhar.
+ * O IP de quem está na tela. O `X-Real-IP` vem PRIMEIRO: é a borda do Railway
+ * que o escreve, com o IP de quem conectou. O `x-forwarded-for` o cliente
+ * manda como quiser, e a borda só acrescenta ao fim — lido primeiro, bastaria
+ * trocar o cabeçalho a cada tentativa para furar o limite por IP do link
+ * público. Só vai para o banco se tiver cara de IP: o parâmetro é `inet`, e
+ * um valor torto faria a ASSINATURA inteira falhar.
  */
 export async function ipEAparelho(): Promise<{ ip: string | null; ua: string | null }> {
   const h = await headers()
-  const bruto = (h.get('x-forwarded-for') ?? h.get('x-real-ip') ?? '').split(',')[0]!.trim()
+  const bruto = (h.get('x-real-ip') ?? h.get('x-forwarded-for') ?? '').split(',')[0]!.trim()
   const ip = /^(\d{1,3}\.){3}\d{1,3}$/.test(bruto) || (/^[0-9a-f:]+$/i.test(bruto) && bruto.includes(':')) ? bruto : null
   return { ip, ua: (h.get('user-agent') ?? '').slice(0, 500) || null }
 }

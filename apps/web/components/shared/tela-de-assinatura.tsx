@@ -49,7 +49,7 @@ async function hashDe(bytes: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTerminar, canal = 'CLINICA' }: {
+export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTerminar, canal = 'CLINICA', assinarPorFora }: {
   doc:            DocumentoNaTela
   podeColher:     boolean
   /** Página inteira: para onde "Voltar" leva, e o link do cliente. */
@@ -64,10 +64,14 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
   /**
    * PORTAL: é o próprio cliente, na sessão dele — abre direto no modo do
    * cliente (sem a etapa da equipe) e assina pela action do portal.
+   * LINK: o cliente pelo link público, sem sessão — assina por `assinarPorFora`.
    */
-  canal?:         'CLINICA' | 'PORTAL'
+  canal?:         'CLINICA' | 'PORTAL' | 'LINK'
+  /** Quem assina fora das actions (o link público, pela rota dele). */
+  assinarPorFora?: (d: { assinatura: string; hashExibido: string; aceite: string }) => Promise<{ error?: string; codigo?: string | null }>
 }) {
-  const noPortal = canal === 'PORTAL'
+  // No portal e no link é o próprio cliente na tela, sem a etapa da equipe.
+  const noPortal = canal !== 'CLINICA'
   const router = useRouter()
   const [modo, setModo] = useState<Modo>(noPortal && doc.status === 'PENDENTE' ? 'cliente' : 'equipe')
   const [conferido, setConferido] = useState(false)
@@ -112,7 +116,9 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
     if (!hash || !assinatura) return
     setErro(null)
     iniciar(async () => {
-      const r = noPortal
+      const r = assinarPorFora
+        ? await assinarPorFora({ assinatura, hashExibido: hash, aceite: textoDoAceite })
+        : noPortal
         ? await assinarNoPortal({ id: doc.id, assinatura, hashExibido: hash, aceite: textoDoAceite })
         : await assinarNaClinica({ id: doc.id, assinatura, hashExibido: hash, identidadeConferida: conferido, aceite: textoDoAceite })
       if (r.error) { setErro(r.error); return }
@@ -210,7 +216,9 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           {noPortal ? 'Obrigado! A clínica já recebeu o documento assinado.' : 'Devolva o aparelho à equipe.'}
         </p>
-        {aoTerminar
+        {canal === 'LINK'
+          ? codigo && <Link href={`/verificar/${codigo}`} className="btn-secondary" style={{ marginTop: 8 }}>Conferir a assinatura</Link>
+          : aoTerminar
           ? <button type="button" className="btn-primary" style={{ marginTop: 8 }} onClick={aoTerminar}>Continuar</button>
           : <Link href={voltar ?? '/'} className="btn-primary" style={{ marginTop: 8 }}>Voltar</Link>}
       </div>

@@ -52,7 +52,7 @@ const AREAS = [
     chaves: ['procedure', 'procedimento'],
     specs: /^(procedimento|eventos-cadastro|ficha-unica|documentos)/ },
   { nome: 'termos e contratos',
-    chaves: ['documento', 'document', 'termo', 'consent', 'contrato', 'assinatura', 'signature', 'pdf'],
+    chaves: ['documento', 'document', 'termo', 'consent', 'contrato', 'assinatura', 'assinar', 'signature', 'pdf'],
     specs: /^(documentos|checkout|permissoes-acoes|rls)/ },
   { nome: 'estoque',
     chaves: ['estoque', 'stock', 'lote', 'batch', 'produto', 'product', 'insumo', 'injetav'],

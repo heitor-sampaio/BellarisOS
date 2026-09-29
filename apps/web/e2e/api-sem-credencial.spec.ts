@@ -40,6 +40,21 @@ test('o PDF de um documento assinado exige sessão', async ({ request }) => {
   expect(r.status()).toBe(401)
 })
 
+test('o link público de assinatura: sem token válido, nada abre nem assina', async ({ request }) => {
+  // A defesa destas rotas é o próprio link (token + CPF), não a sessão.
+  const falso = 'A'.repeat(43)
+  const abrir = await request.post('/api/assinar/abrir', { data: { token: falso, cpf: '52998224725' } })
+  expect(abrir.status()).toBe(404)
+  const torto = await request.post('/api/assinar/abrir', { data: { token: '../../x', cpf: '52998224725' } })
+  expect(torto.status()).toBe(404)
+  const assinar = await request.post('/api/assinar/assinar', {
+    data: { token: falso, cpf: '52998224725', assinatura: 'data:image/png;base64,AAAA', hashExibido: 'x', aceite: 'x' },
+  })
+  expect(assinar.status()).toBe(404)
+  const semCorpo = await request.post('/api/assinar/abrir', { data: 'x' })
+  expect(semCorpo.status()).toBe(400)
+})
+
 test('geocode exige sessão', async ({ request, browser }) => {
   const anonimo = await request.post('/api/geocode', { data: { cities: [], ceps: [] } })
   expect(anonimo.status()).toBe(401)

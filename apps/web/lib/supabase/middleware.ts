@@ -51,6 +51,9 @@ export async function updateSession(request: NextRequest) {
       // A conferência de um documento assinado: quem recebe o papel ou o PDF
       // (o cliente, um advogado, um juiz) não tem conta no sistema.
       || pathname === '/verificar' || pathname.startsWith('/verificar/')
+      // O link de assinatura: o cliente abre sem conta; a identidade é o CPF
+      // (ou o nascimento), conferido pelo banco.
+      || pathname.startsWith('/assinar/')
       || pathname.startsWith('/api/')
 
     if (!user && !isAuthRoute && !isPublicRoute) {

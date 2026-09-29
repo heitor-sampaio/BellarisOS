@@ -1258,6 +1258,37 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Termos e contratos, fase 6: o link público de assinatura
+
+**O que muda:** na ficha, "Enviar link" gera um link de uso único, válido por
+7 dias, com "Copiar link" e "Abrir no WhatsApp" (mensagem pronta, genérica, no
+`wa.me` com o telefone do cadastro). O cliente abre sem conta, confirma o CPF
+(ou a data de nascimento, se o cadastro não tem CPF) e assina na mesma tela do
+portal. Antes da identidade a página mostra só a clínica e "um documento". A
+ficha mostra "link enviado · vale até…" e "Revogar link".
+
+- Migration `20260930000005`: `document_sign_links` (só o SHA-256 do token;
+  um ativo por documento) e `document_link_attempts`, as duas sem política;
+  `documento_link_criar` (gerar revoga o anterior; token nulo só revoga),
+  `documento_link_espiar`, `documento_link_abrir` (CPF/nascimento, 5 erros
+  revogam, 20 por IP na hora bloqueiam) e `documento_assinar` passando a
+  conferir e consumir o link.
+- `lib/documentos/link.ts` e `link-publico.ts`; rotas `/api/assinar/abrir` e
+  `/api/assinar/assinar`; página `/assinar/[token]` (pública no proxy,
+  `noindex`, `no-referrer`).
+- **Achado no caminho:** `ipEAparelho` lia o primeiro do `x-forwarded-for`,
+  que o cliente escreve como quiser — furava o limite por IP e deixava o IP da
+  evidência forjável. Passou a ler o `X-Real-IP`, que a borda do Railway
+  escreve.
+- O cron `documentos-pdf` apaga as tentativas com mais de 30 dias.
+- Prova: `e2e/documentos-link-publico.spec.ts` (9 casos, sem sessão: o hash no
+  banco e o WhatsApp; CPF errado conta e o certo assina e consome o link; 5
+  erros revogam; vencido, inexistente e revogado; token de um com hash de
+  outro; nascimento; sem CPF nem nascimento; limite por IP; quem só vê não
+  gera nem revoga; a sessão de um membro não lê os links). `api-sem-credencial`
+  ganhou as duas rotas. Telas conferidas em 390px. Vizinhos (fases 2, 4 e 5)
+  verdes.
+
 ### 2026-09-30 — Termos e contratos, fase 5: o portal do cliente
 
 **O que muda:** o cliente assina pelo celular. Na ficha, "Pedir no portal"
@@ -4161,11 +4192,11 @@ verdade. O que vale:
 
 ### Próxima frente candidata
 
-**Termos e contratos, em andamento** (plano de 2026-09-29, seis fases; ver a
-entradas de 2026-09-30). Fases 1 a 4 feitas (modelos; emissão pelo
-atendimento com assinatura na clínica e no papel; checkout do plano; PDF
-assinado e verificação pública; portal do cliente). Falta a fase 6: o link
-público de assinatura e o WhatsApp mínimo (copiar o link / abrir no WhatsApp).
+**Termos e contratos: as seis fases estão feitas** (plano de 2026-09-29; ver
+as entradas de 2026-09-30). Fica como opcional a "fase 6b": enviar o link
+pela conversa aberta no inbox, com a caixa e a janela de 24h. Vale uma suíte
+completa: as fases mexeram em appointments, middleware, permissões e no IP da
+evidência.
 
 ---
 

@@ -31,6 +31,8 @@ export interface ResumoDeDocumento {
   canal:         'CLINICA' | 'PORTAL' | 'LINK' | 'PAPEL' | null
   codigo:        string | null
   motivo:        string | null
+  /** Link público de assinatura ainda valendo: até quando. */
+  linkAte:       string | null
 }
 
 const CATALOGO = VARIAVEIS_DE_DOCUMENTO as Record<string, { grupo: string; rotulo: string }>
@@ -47,7 +49,8 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
   const agendamentos = [...new Set(montados.map(d => d.appointment_id).filter((x): x is string => !!x))]
   const procedimentos = [...new Set(montados.map(d => d.procedure_id).filter((x): x is string => !!x))]
   const assinados = montados.filter(d => d.status === 'ASSINADO').map(d => d.id)
-  const [ags, procs, assins] = await Promise.all([
+  const pendentes = montados.filter(d => d.status === 'PENDENTE').map(d => d.id)
+  const [ags, procs, assins, links] = await Promise.all([
     agendamentos.length
       ? ler(admin.from('appointments').select('id, scheduled_at').in('id', agendamentos), 'buscar os agendamentos dos documentos')
       : Promise.resolve([]),
@@ -57,7 +60,13 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
     assinados.length
       ? ler(admin.from('document_signatures').select('issued_document_id, channel').in('issued_document_id', assinados), 'buscar as assinaturas')
       : Promise.resolve([]),
+    pendentes.length
+      ? ler(admin.from('document_sign_links').select('issued_document_id, expires_at')
+          .in('issued_document_id', pendentes).is('used_at', null).is('revoked_at', null)
+          .gt('expires_at', new Date().toISOString()), 'buscar os links de assinatura')
+      : Promise.resolve([]),
   ])
+  const linkAte = new Map((links ?? []).map(l => [l.issued_document_id as string, l.expires_at as string]))
   const quando = new Map((ags ?? []).map(a => [a.id as string, a.scheduled_at as string]))
   const nomeProc = new Map((procs ?? []).map(p => [p.id as string, p.name as string]))
   const canal = new Map((assins ?? []).map(s => [s.issued_document_id as string, s.channel as ResumoDeDocumento['canal']]))
@@ -79,6 +88,7 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
     canal:         canal.get(d.id) ?? null,
     codigo:        d.verification_code,
     motivo:        d.closed_reason,
+    linkAte:       linkAte.get(d.id) ?? null,
   }))
 }
 

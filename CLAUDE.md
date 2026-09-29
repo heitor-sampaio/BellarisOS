@@ -271,7 +271,7 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
   de chamar `getTenantContext`. O proxy manda para `/login` tudo que
   não estiver na lista — a página pode não pedir sessão e mesmo assim nunca ser
   vista. Hoje são: `/`, `/privacidade`, `/verificar*` (conferir documento
-  assinado), `/schedule*` e
+  assinado), `/assinar/*` (o link de assinatura), `/schedule*` e
   `/api/*`, mais as telas de autenticação.
   - Quem precisa disso: o que é lido por quem **ainda não entrou** ou **nunca
     vai entrar**. A política de privacidade é o caso típico — e loja de
@@ -759,14 +759,14 @@ const procedures = await ler(
   termos fixos do checkout; os termos e contratos novos são o §9.4.1
 - Cliente NÃO acessa o prontuário pelo app — apenas histórico de procedimentos
 
-### 9.4.1 Termos e contratos (em construção, 2026-09-30)
+### 9.4.1 Termos e contratos (2026-09-30)
 
 A rede monta (no editor, com variáveis) ou envia (PDF pronto, assinado como
 está) os modelos de termo e contrato, e o cliente assina eletronicamente —
 na clínica, no portal, por link ou no papel. Plano aprovado em 2026-09-29, em
-seis fases; **fases 1 (modelos), 2 (emissão pelo atendimento, assinatura na
-clínica e no papel), 3 (checkout do plano), 4 (PDF assinado e verificação
-pública) e 5 (portal do cliente) estão no ar**. O desenho inteiro está no
+seis fases, **todas no ar**: modelos; emissão pelo atendimento com
+assinatura na clínica e no papel; checkout do plano; PDF assinado e
+verificação pública; portal do cliente; link público. O desenho inteiro está no
 DEVLOG ("Termos e contratos").
 
 - **O documento é do PROCEDIMENTO** (decisão do Heitor): cada procedimento
@@ -853,13 +853,34 @@ DEVLOG ("Termos e contratos").
   texto GENÉRICO — o título pode dizer o procedimento, e o push aparece na tela
   de bloqueio. Cliente sem conta no portal: recusado, e a tela diz o caminho.
   Quem agenda pelo portal e tem documento a assinar vai direto para ele.
+- **Link público** (`/assinar/[token]`, rota pública; `gerarLinkDeAssinatura`
+  na ficha): uso único, 7 dias, um ativo por documento (gerar outro revoga).
+  - **Só o SHA-256 do token vai para o banco** (`document_sign_links`) — o
+    link se mostra UMA vez; perdeu, gera outro.
+  - Antes de ver o documento o cliente confirma o CPF, ou a data de nascimento
+    se o cadastro não tem CPF (sem nenhum dos dois, o link não é gerado).
+    Antes disso a página mostra só a clínica e "um documento".
+  - A conferência e as contas moram no banco, com o link travado
+    (`documento_link_abrir`): 5 erros revogam o link, 20 erros na hora param
+    o IP. Devolve jsonb em vez de lançar — a tentativa errada tem de ficar
+    gravada.
+  - `/api/assinar/abrir` e `/api/assinar/assinar` se defendem pelo link;
+    assinar confere a identidade DE NOVO, e `documento_assinar` consome o link
+    na mesma transação.
+  - `document_sign_links` e `document_link_attempts`: RLS ligada e ZERO
+    políticas, como credencial.
+  - ⚠️ **IP é o `X-Real-IP`** (a borda do Railway o escreve), não o primeiro
+    do `x-forwarded-for`, que o cliente forja à vontade — trocar o cabeçalho a
+    cada tentativa furaria o limite (`ipEAparelho`).
+  - WhatsApp mínimo: mensagem pronta (genérica) + `wa.me`; não depende de
+    caixa conectada nem da janela de 24h.
 - O que os canais têm em comum mora em `lib/documentos/assinar.ts` (IP,
   assinante, o evento e o PDF depois de assinar), fora de `actions/`.
 - O export da LGPD traz os termos e contratos na parte GERAL (sem dado
   clínico, por construção) e copia os PDFs assinados para o pacote.
 - Prova: `e2e/documentos-modelos.spec.ts`, `e2e/documentos-atendimento.spec.ts`,
-  `e2e/checkout-de-plano.spec.ts`, `e2e/documentos-verificacao.spec.ts` e
-  `e2e/documentos-portal.spec.ts`.
+  `e2e/checkout-de-plano.spec.ts`, `e2e/documentos-verificacao.spec.ts`,
+  `e2e/documentos-portal.spec.ts` e `e2e/documentos-link-publico.spec.ts`.
 
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação
@@ -1623,6 +1644,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Alterar uma versão de modelo de documento ou apagar um modelo (edita → versão nova; o que não serve, desativa)
 ❌ Assinar documento fora de documento_assinar, ou emitir documento de agendamento fora do gatilho
 ❌ Guardar a forma canônica de um documento em jsonb (reordena as chaves e o hash não bate)
+❌ Gravar o token do link de assinatura (só o SHA-256), ou contar tentativas do link fora de documento_link_abrir
+❌ Usar o primeiro do x-forwarded-for como IP de limite (o cliente o forja) — é o X-Real-IP
 ```
 
 ---

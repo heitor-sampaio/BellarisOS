@@ -13,6 +13,9 @@
  */
 
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
+import { origemPublicaDe } from '@/lib/origem'
+import { novoToken, telefoneParaWhatsApp, VALIDADE_DO_LINK_DIAS } from '@/lib/documentos/link'
 import { getTenantContext, assertPermission, alcancaUnidade, can, podeReceber } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -256,6 +259,92 @@ export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: str
       issued_document_id: doc.id, tenant_id: ctx.tenantId!, kind: 'NOTIFICADO_PORTAL', actor_user_id: ctx.internalUserId ?? null,
     }), 'registrar o pedido no portal')
     return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+// ─── Link público (e o WhatsApp mínimo) ──────────────────────────────────────
+
+export interface LinkDeAssinatura {
+  url:       string
+  expiraEm:  string
+  /** Mensagem pronta para colar — genérica, como a do portal. */
+  mensagem:  string
+  /** `wa.me` com a mensagem; sem o número quando o cadastro não tem um válido. */
+  whatsapp:  string
+  /** O que o cliente vai confirmar ao abrir. */
+  pede:      'CPF' | 'NASCIMENTO'
+}
+
+/**
+ * Gera o link público de assinatura: uso único, 7 dias, e o cliente confirma
+ * o CPF (ou a data de nascimento) antes de ver o documento. Gerar de novo
+ * revoga o anterior — o token não fica no banco, então não se "mostra de
+ * novo".
+ *
+ * O WhatsApp é o mínimo: a mensagem pronta e o `wa.me`. Não depende de caixa
+ * conectada, janela de 24h nem provedor — quem envia é a pessoa, do aparelho.
+ */
+export async function gerarLinkDeAssinatura(id: string): Promise<{ error?: string; link?: LinkDeAssinatura }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'documents', 'MANAGE')
+    const doc = await documentoAoAlcance(ctx, id)
+    if (!doc) return { error: 'Documento não encontrado.' }
+    const montado = await garantirRenderizado(ctx.tenantId!, doc.id)
+    if (montado?.status === 'INCOMPLETO') return { error: 'Faltam dados do cliente neste documento. Complete o cadastro antes de enviar o link.' }
+    if (montado?.status !== 'PENDENTE') return { error: 'Este documento não está esperando assinatura.' }
+
+    const admin = createAdminClient()
+    const cliente = await ler(admin.from('clients').select('name, document, birth_date, phone').eq('id', doc.client_id).single(), 'buscar o cliente')
+    const temCpf = ((cliente?.document as string | null) ?? '').replace(/\D/g, '').length > 0
+    if (!temCpf && !cliente?.birth_date) {
+      // Sem nada para conferir, o link valeria para quem o tivesse na mão.
+      return { error: 'O cadastro do cliente não tem CPF nem data de nascimento, e o link precisa de um dos dois para conferir quem abre. Complete o cadastro ou colha na clínica.' }
+    }
+
+    const { token, hash } = novoToken()
+    const expiraEm = new Date(Date.now() + VALIDADE_DO_LINK_DIAS * 86_400_000).toISOString()
+    await gravar(admin.rpc('documento_link_criar', {
+      p_doc: doc.id, p_tenant: ctx.tenantId!, p_token_hash: hash, p_expira: expiraEm, p_ator: ctx.internalUserId ?? null,
+    }), 'gerar o link de assinatura')
+
+    const [unidade, rede] = await Promise.all([
+      doc.branch_id ? ler(admin.from('branches').select('name').eq('id', doc.branch_id).maybeSingle(), 'buscar a unidade') : Promise.resolve(null),
+      ler(admin.from('tenants').select('name').eq('id', ctx.tenantId!).single(), 'buscar a rede'),
+    ])
+    const clinica = (unidade?.name as string) || (rede?.name as string) || 'a clínica'
+    const url = `${origemPublicaDe(await headers())}/assinar/${token}`
+    const primeiroNome = ((cliente?.name as string) ?? '').trim().split(/\s+/)[0] ?? ''
+    // Genérica de propósito: a prévia do WhatsApp aparece na tela de bloqueio.
+    const mensagem = `Olá${primeiroNome ? `, ${primeiroNome}` : ''}! ${clinica} pediu a sua assinatura em um documento. `
+      + `Para ler e assinar, abra o link abaixo e confirme o seu ${temCpf ? 'CPF' : 'data de nascimento'}. O link vale por ${VALIDADE_DO_LINK_DIAS} dias.\n\n${url}`
+    const numero = telefoneParaWhatsApp(cliente?.phone as string | null)
+    const whatsapp = `https://wa.me/${numero ?? ''}?text=${encodeURIComponent(mensagem)}`
+
+    revalidatePath('/admin/clients/[id]', 'page')
+    revalidatePath('/[slug]/clients/[id]', 'page')
+    return { link: { url, expiraEm, mensagem, whatsapp, pede: temCpf ? 'CPF' : 'NASCIMENTO' } }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/** Revoga o link ativo do documento (mandado para a pessoa errada, por exemplo). */
+export async function revogarLinkDeAssinatura(id: string): Promise<Resultado> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'documents', 'MANAGE')
+    const doc = await documentoAoAlcance(ctx, id)
+    if (!doc) return { error: 'Documento não encontrado.' }
+    const admin = createAdminClient()
+    await gravar(admin.rpc('documento_link_criar', {
+      p_doc: doc.id, p_tenant: ctx.tenantId!, p_token_hash: null, p_expira: null, p_ator: ctx.internalUserId ?? null,
+    }), 'revogar o link de assinatura')
+    revalidatePath('/admin/clients/[id]', 'page')
+    revalidatePath('/[slug]/clients/[id]', 'page')
+    return {}
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

@@ -1,17 +1,19 @@
 import Link from 'next/link'
 
 /** A moldura das páginas públicas de verificação — sem sessão, sem menu. */
-export function MolduraDaVerificacao({ children }: { children: React.ReactNode }) {
+/** `marca` nula: o logo não leva a lugar nenhum (a página do link de assinatura). */
+export function MolduraDaVerificacao({ children, marca = '/verificar' }: { children: React.ReactNode; marca?: string | null }) {
+  const estilo = {
+    fontSize: 20, fontWeight: 'var(--weight-extrabold)', color: 'var(--brand)',
+    letterSpacing: 'var(--tracking-tight)', textDecoration: 'none',
+  } as const
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-app)' }}>
       <header style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 20px', height: 64, display: 'flex', alignItems: 'center' }}>
-          <Link href="/verificar" style={{
-            fontSize: 20, fontWeight: 'var(--weight-extrabold)', color: 'var(--brand)',
-            letterSpacing: 'var(--tracking-tight)', textDecoration: 'none',
-          }}>
-            BellarisOS ✦
-          </Link>
+          {marca
+            ? <Link href={marca} style={estilo}>BellarisOS ✦</Link>
+            : <span style={estilo}>BellarisOS ✦</span>}
         </div>
       </header>
       <main style={{ maxWidth: 680, margin: '0 auto', padding: '36px 20px 80px', display: 'flex', flexDirection: 'column', gap: 18 }}>

@@ -16,14 +16,23 @@ import type { NextRequest } from 'next/server'
  * requisição, e só então `NEXT_PUBLIC_APP_URL`.
  */
 export function origemPublica(req: NextRequest | Request): string {
-  const h = req.headers
+  return origemDosCabecalhos(req.headers) ?? (process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin).replace(/\/$/, '')
+}
+
+/**
+ * O mesmo, sem a requisição na mão — numa server action, com
+ * `await headers()`. Sem cabeçalho de host, `NEXT_PUBLIC_APP_URL`.
+ */
+export function origemPublicaDe(h: Headers): string {
+  return origemDosCabecalhos(h) ?? (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
+}
+
+function origemDosCabecalhos(h: Headers): string | null {
   const host = primeiro(h.get('x-forwarded-host')) ?? h.get('host')
-  if (host) {
-    const proto = primeiro(h.get('x-forwarded-proto'))
-      ?? (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host) ? 'http' : 'https')
-    return `${proto}://${host}`
-  }
-  return (process.env.NEXT_PUBLIC_APP_URL ?? new URL(req.url).origin).replace(/\/$/, '')
+  if (!host) return null
+  const proto = primeiro(h.get('x-forwarded-proto'))
+    ?? (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host) ? 'http' : 'https')
+  return `${proto}://${host}`
 }
 
 /** Um caminho interno virado URL absoluta no endereço público. */

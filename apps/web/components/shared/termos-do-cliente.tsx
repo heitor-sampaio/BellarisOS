@@ -3,10 +3,13 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { FileSignature, FileText, ScrollText } from 'lucide-react'
+import { Copy, FileSignature, FileText, Link2, MessageCircle, ScrollText } from 'lucide-react'
 import { formatDate, formatTime } from '@estetica-os/utils'
 import { rotaNoPortal } from '@/lib/rotas'
-import { dispensarDocumento, montarDocumentoDeNovo, pedirAssinaturaNoPortal } from '@/actions/documentos'
+import {
+  dispensarDocumento, montarDocumentoDeNovo, pedirAssinaturaNoPortal, gerarLinkDeAssinatura, revogarLinkDeAssinatura,
+  type LinkDeAssinatura,
+} from '@/actions/documentos'
 
 /**
  * Os termos e contratos do cliente — na aba Documentos da ficha, acima dos
@@ -30,6 +33,7 @@ export interface ItemDeTermo {
   canal:         'CLINICA' | 'PORTAL' | 'LINK' | 'PAPEL' | null
   codigo:        string | null
   motivo:        string | null
+  linkAte?:      string | null
 }
 
 const ICONE = { TERMO: FileSignature, CONTRATO: FileText, CONTRATO_PLANO: ScrollText } as const
@@ -66,6 +70,9 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [ocupado, iniciar] = useTransition()
+  // O link acabado de gerar: o token não fica no banco, então só se mostra agora.
+  const [link, setLink] = useState<{ id: string; dados: LinkDeAssinatura } | null>(null)
+  const [copiado, setCopiado] = useState(false)
 
   const voltar = encodeURIComponent(`${pathname}${compacto ? '' : '?aba=documentos'}`)
   const rotaDoDocumento = (id: string) => rotaNoPortal(pathname, slug, `/documentos/${id}/assinar?voltar=${voltar}`)
@@ -87,6 +94,32 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
       if (r.error) setErro(r.error)
       else setAviso('Pedido enviado: o documento está no portal do cliente, e ele foi avisado.')
     })
+  }
+
+  function enviarLink(id: string) {
+    setErro(null); setAviso(null); setCopiado(false)
+    iniciar(async () => {
+      const r = await gerarLinkDeAssinatura(id)
+      if (r.error || !r.link) { setErro(r.error ?? 'Não consegui gerar o link.'); return }
+      setLink({ id, dados: r.link })
+      router.refresh()
+    })
+  }
+
+  function revogarLink(id: string) {
+    setErro(null); setAviso(null)
+    iniciar(async () => {
+      const r = await revogarLinkDeAssinatura(id)
+      if (r.error) { setErro(r.error); return }
+      if (link?.id === id) setLink(null)
+      setAviso('Link revogado: ele não abre mais o documento.')
+      router.refresh()
+    })
+  }
+
+  async function copiar(texto: string) {
+    try { await navigator.clipboard.writeText(texto); setCopiado(true) }
+    catch { setErro('Não consegui copiar. Selecione o link e copie à mão.') }
   }
 
   function gerarDeNovo(id: string) {
@@ -157,6 +190,12 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
                     Pedir no portal
                   </button>
                 )}
+                {item.status === 'PENDENTE' && podeColher && (
+                  <button type="button" className="btn-secondary" disabled={ocupado} onClick={() => enviarLink(item.id)}
+                    style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <Link2 size={13} /> {item.linkAte || link?.id === item.id ? 'Novo link' : 'Enviar link'}
+                  </button>
+                )}
                 {aberto && podeColher && dispensando !== item.id && (
                   <button type="button" className="btn-ghost" onClick={() => { setDispensando(item.id); setMotivo('') }}
                     style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>
@@ -166,6 +205,40 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
               </div>
             </div>
 
+            {link?.id === item.id && (
+              <div data-link-de-assinatura style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 'var(--radius-field-token)', background: 'var(--bg-app)', border: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                  Link de uso único, vale até {formatDate(link.dados.expiraEm)} às {formatTime(link.dados.expiraEm)}. O cliente confirma {link.dados.pede === 'CPF' ? 'o CPF' : 'a data de nascimento'} antes de ver o documento.
+                  Ele só aparece agora: se perder, gere outro.
+                </p>
+                <input className="field" readOnly value={link.dados.url} aria-label="Link de assinatura" onFocus={e => e.currentTarget.select()} style={{ fontSize: 'var(--text-xs-sz)' }} />
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <button type="button" className="btn-secondary" onClick={() => copiar(link.dados.url)}
+                    style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <Copy size={13} /> {copiado ? 'Copiado' : 'Copiar link'}
+                  </button>
+                  <a href={link.dados.whatsapp} target="_blank" rel="noopener noreferrer" className="btn-primary"
+                    style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <MessageCircle size={13} /> Abrir no WhatsApp
+                  </a>
+                  <button type="button" className="btn-ghost" disabled={ocupado} onClick={() => revogarLink(item.id)}
+                    style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>
+                    Revogar
+                  </button>
+                </div>
+              </div>
+            )}
+            {item.linkAte && link?.id !== item.id && item.status === 'PENDENTE' && (
+              <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span>Link de assinatura enviado · vale até {formatDate(item.linkAte)} às {formatTime(item.linkAte)}</span>
+                {podeColher && (
+                  <button type="button" className="btn-ghost" disabled={ocupado} onClick={() => revogarLink(item.id)}
+                    style={{ padding: '2px 8px', fontSize: 'var(--text-xs-sz)' }}>
+                    Revogar link
+                  </button>
+                )}
+              </p>
+            )}
             {item.status === 'INCOMPLETO' && item.faltando.length > 0 && (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
                 Falta no cadastro: {item.faltando.join(', ')}.
