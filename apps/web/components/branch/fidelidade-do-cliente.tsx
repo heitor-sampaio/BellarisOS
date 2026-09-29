@@ -72,6 +72,16 @@ export function FidelidadeDoCliente({
             }}>
               {formatarPontos(saldo)}
             </p>
+            {fidelidade.vencendo > 0 && (
+              <p data-testid="pontos-vencendo" style={{ fontSize: 'var(--text-2xs)', color: 'var(--warning)', fontWeight: 700 }}>
+                {formatarPontos(fidelidade.vencendo)} vencem nos próximos 30 dias
+              </p>
+            )}
+            {fidelidade.porUnidade && fidelidade.porUnidade.length > 0 && (
+              <p data-testid="saldo-por-unidade" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                {fidelidade.porUnidade.map(u => `${u.nome}: ${formatarPontos(u.saldo)}`).join(' · ')}
+              </p>
+            )}
             {saldo < 0 && (
               <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)' }}>
                 Saldo negativo: um pagamento que gerou pontos foi estornado depois de os pontos serem usados.
@@ -129,6 +139,7 @@ export function FidelidadeDoCliente({
                     {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                     {l.branch_name && ` · ${l.branch_name}`}
                     {l.autor && ` · por ${l.autor}`}
+                    {l.expires_at && l.points > 0 && ` · vence em ${new Date(l.expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`}
                   </p>
                 </div>
                 <span style={{

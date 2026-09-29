@@ -1258,6 +1258,34 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-29 — Fidelidade, fase 4: validade dos pontos e abrangência por unidade
+
+Fecha o plano de fidelidade (fases 1 a 4).
+
+- **Validade** na aba Fidelidade: "Não vencem" ou "Vencem" após N meses (1 a
+  120). Cada ponto recebe o vencimento ao entrar e o guarda — mudar a regra vale
+  para os novos. Os mais antigos são usados primeiro.
+- **Baixa diária** pelo cron `fidelidade-expiracao` (no Notification Cron, de
+  hora em hora; idempotente). A conta FIFO é uma função só, em forma fechada
+  (`fidelidade_a_expirar`), sem "consumir" lote a lote.
+- **Abrangência**: rede inteira (padrão) ou só na unidade. Com "só na unidade",
+  a ficha mostra o saldo de cada unidade, e pagamento, troca e débito usam só o
+  saldo de onde acontecem. **Trava** depois do primeiro lançamento da rede — a
+  tela mostra a escolha fixa com o porquê, e a action recusa.
+- **Na ficha e no portal**: "N pontos vencem nos próximos 30 dias" e "vence em
+  dd/mm" em cada crédito do extrato.
+- O estorno de um ganho leva o vencimento dele (senão o lote estornado vencia
+  de novo). `loyalty_accounts.balance` saiu do banco.
+- Banco: migration `20260929000004` (`fidelidade_a_expirar`,
+  `pontos_expirando`, `saldos_por_unidade`, `expirar_pontos`,
+  `estornar_transacao` refeito).
+- Testes: `e2e/fidelidade-validade.spec.ts` (5: config e trava pela tela e pela
+  action; FIFO com datas escritas à mão, rodado duas vezes; estorno com
+  validade; saldo da unidade A recusado na B no débito e no pagamento; o cron
+  com o segredo) e o caso novo em `tests/fidelidade-config.test.ts`; vizinhos
+  (fidelidade 1–3, RLS, crons sem credencial, crédito interno, estorno, LGPD,
+  portal): 48 passaram.
+
 ### 2026-09-29 — Fidelidade, fase 3: catálogo de recompensas e vouchers
 
 - **Catálogo** em Configurações → Fidelidade: procedimento grátis, desconto em
@@ -3891,9 +3919,9 @@ verdade. O que vale:
 
 ### Próxima frente candidata
 
-**Fidelidade — fase 4** (plano aprovado pelo Heitor em 2026-09-28; fases 1 a 3
-feitas em 2026-09-29): validade dos pontos (cron de expiração, consumo FIFO) e
-abrangência por unidade.
+Nenhuma definida — a fidelidade (fases 1 a 4) fechou em 2026-09-29. O que
+ficou de fora dela, por decisão: bônus de eventos (aniversário, primeiro
+acesso), resgate pelo próprio cliente no portal e aviso antes de vencer.
 
 ---
 

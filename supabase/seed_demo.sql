@@ -132,7 +132,7 @@ begin
       v_month + ((i - 1) || ' days')::interval + interval '10 hours',
       array[case when i <= 6 then 'Unidade: Centro' else 'Unidade: Jardins' end]
     );
-    insert into public.loyalty_accounts (client_id, balance) values (v_client, 0);
+    insert into public.loyalty_accounts (client_id) values (v_client);
     insert into public.medical_records (id, client_id)
     values (('dddddddd-6000-0000-0000-0000000000' || lpad(to_hex(i), 2, '0'))::uuid, v_client);
   end loop;

@@ -109,7 +109,7 @@ function alvos(p: Prontuario): [string, string, Record<string, unknown>][] {
     ['record_photos',          p.photoId,     { source: 'invadido' }],
     ['anamnesis_data',         p.anamnesisId, { form_data: { invadido: true } }],
     ['consent_terms',          p.consentId,   { signed_via: 'invadido' }],
-    ['loyalty_accounts',       p.loyaltyId,   { balance: 999_999 }],
+    ['loyalty_accounts',       p.loyaltyId,   { updated_at: '2000-01-01T00:00:00Z' }],
     ['loyalty_transactions',   p.pointsId,    { points: 999_999 }],
   ]
 }

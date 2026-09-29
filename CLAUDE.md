@@ -643,7 +643,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
 - **Ajuste manual** pela equipe (`loyalty: MANAGE`), com motivo, por
   `ajustar_pontos` — débito acima do saldo é recusado.
 - **Saldo = SOMA do extrato** (`saldo_de_pontos`). `loyalty_accounts.balance`
-  não é mais lido nem escrito. Extrato e conta só se LEEM pela sessão: quem
+  saiu do banco (fase 4). Extrato e conta só se LEEM pela sessão: quem
   escreve é o gatilho e o servidor, com a trava `fidelidade:<cliente>`.
 - Módulo `loyalty`: VIEW = saldo e extrato; MANAGE = ajustar. Configurar é
   Configurações.
@@ -677,7 +677,22 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
     `expires_at`) não vale e não devolve; estorno do pagamento o reativa.
 - A conta do saldo depois de uma saída de estoque é UMA: `lib/estoque/baixa.ts`
   (conclusão do atendimento e entrega de produto).
-- Próxima fase (DEVLOG): validade dos pontos e abrangência por unidade.
+- **Validade** (fase 4): a rede escolhe "não vencem" ou N meses
+  (`expiry_months`). Cada crédito recebe `expires_at` ao nascer, CONGELADO —
+  mudar a regra vale para os pontos novos. O consumo é FIFO por vencimento, e a
+  conta mora numa função só, em forma fechada (`fidelidade_a_expirar`): o que
+  vence até D = créditos com vencimento ≤ D menos tudo que já saiu (expirações
+  incluídas, por isso é idempotente). O estorno de um ganho leva o
+  `expires_at` dele — sem isso o lote estornado venceria de novo.
+  - A baixa é o cron `fidelidade-expiracao` (`expirar_pontos`, lança
+    EXPIRACAO "Pontos vencidos"). Ficha e portal mostram "vencem nos próximos
+    30 dias" (`pontos_expirando`) e o "vence em" de cada linha.
+- **Abrangência** (fase 4): rede inteira (padrão) ou só na unidade
+  (`scope_per_branch`). Todo lançamento sempre levou `branch_id`; "só na
+  unidade" é o saldo filtrado por ela — pagamento, troca de recompensa e
+  débito só usam o saldo da unidade onde acontecem (`saldos_por_unidade`
+  para a ficha). **A troca é recusada depois do primeiro lançamento da rede**
+  (action e tela travada): mudaria em silêncio o saldo de quem já tem.
 
 ### 9.3 Procedimentos
 - `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)
@@ -1448,7 +1463,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
 ❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece)
 ❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só)
-❌ Dar ponto de fidelidade no TypeScript ou ler loyalty_accounts.balance (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
+❌ Dar ponto de fidelidade no TypeScript (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
+❌ Calcular vencimento de pontos fora de fidelidade_a_expirar (é a única cópia do FIFO)
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado
 ❌ Pôr o desconto de pontos em amount (amount é o dinheiro recebido; o desconto é loyalty_discount)
 ❌ Confirmar pagamento de atendimento fora de confirmar_pagamento_do_atendimento, ou confiar no valor que o navegador manda
@@ -1486,7 +1502,7 @@ assim a execução aparece vermelha no painel em vez de falhar em silêncio.
 
 | Serviço | Ritmo | `CRON_JOBS` |
 |---|---|---|
-| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`) |
+| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade-expiracao`) |
 | **Automations Cron** | `*/5 * * * *` (5 min) | `automacoes` |
 
 O segundo existe porque **granularidade de uma hora não serve a automação**:

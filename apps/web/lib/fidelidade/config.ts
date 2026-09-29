@@ -60,6 +60,13 @@ export const EntradaDaConfig = z.object({
   redeem_max_pct: z.coerce.number()
     .min(1, 'Os pontos precisam pagar ao menos 1% do valor.')
     .max(100, 'Os pontos pagam no máximo 100% do valor.'),
+  // Validade e abrangência (fase 4). Nulo = os pontos não vencem.
+  expiry_months: z.union([
+    z.null(),
+    z.coerce.number().int('A validade é um número inteiro de meses.')
+      .min(1, 'A validade é de pelo menos 1 mês.').max(120, 'A validade é de no máximo 120 meses.'),
+  ]),
+  scope_per_branch: z.boolean(),
 })
 export type EntradaDaConfig = z.infer<typeof EntradaDaConfig>
 

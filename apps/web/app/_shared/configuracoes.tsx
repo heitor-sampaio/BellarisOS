@@ -24,7 +24,7 @@ import { ler } from '@/lib/db'
 import { FidelidadeConfig } from '@/components/admin/fidelidade-config'
 import { FidelidadeCatalogo } from '@/components/admin/fidelidade-catalogo'
 import { catalogoDeRecompensas } from '@/actions/fidelidade'
-import { configDaRede } from '@/lib/fidelidade/leitura'
+import { configDaRede, redeTemLancamentos } from '@/lib/fidelidade/leitura'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -168,6 +168,7 @@ export async function Configuracoes({
   // A fidelidade é da rede: a aba só existe no portal da rede (ABAS_DA_UNIDADE não a tem).
   const configFidelidade = activeTab === 'fidelidade' ? await configDaRede(ctx.tenantId!) : null
   const catalogo = activeTab === 'fidelidade' ? await catalogoDeRecompensas() : null
+  const temLancamentos = activeTab === 'fidelidade' ? await redeTemLancamentos(ctx.tenantId!) : false
   const visibilidadeDoInbox = wantsRoles ? await lerVisibilidadeDoInbox() : null
 
   // A corrente de eventos, idem. São duas consultas (o resumo agregado e as
@@ -341,7 +342,8 @@ export async function Configuracoes({
 
       {activeTab === 'fidelidade' && configFidelidade && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <FidelidadeConfig inicial={configFidelidade} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null} />
+          <FidelidadeConfig inicial={configFidelidade} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null}
+            temLancamentos={temLancamentos} />
           {catalogo && (
             <FidelidadeCatalogo inicial={catalogo} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null} />
           )}

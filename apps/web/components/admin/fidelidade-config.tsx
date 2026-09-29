@@ -38,7 +38,12 @@ const COMISSAO: { key: BaseDaComissao; label: string; explicacao: string }[] = [
   },
 ]
 
-export function FidelidadeConfig({ inicial, podeEditar }: { inicial: ConfigFidelidade; podeEditar: boolean }) {
+export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }: {
+  inicial: ConfigFidelidade
+  podeEditar: boolean
+  /** A rede já tem pontos lançados: a abrangência fica travada. */
+  temLancamentos?: boolean
+}) {
   const [ligado,   setLigado]   = useState(inicial.enabled)
   const [modo,     setModo]     = useState<ModoDeGanho>(inicial.earn_mode)
   const [taxa,     setTaxa]     = useState(String(inicial.points_per_real).replace('.', ','))
@@ -46,6 +51,9 @@ export function FidelidadeConfig({ inicial, podeEditar }: { inicial: ConfigFidel
   const [valorDoPonto, setValorDoPonto] = useState(String(inicial.redeem_points_value).replace('.', ','))
   const [minimo,   setMinimo]   = useState(String(inicial.redeem_min_points))
   const [teto,     setTeto]     = useState(String(inicial.redeem_max_pct).replace('.', ','))
+  const [vencem,   setVencem]   = useState(inicial.expiry_months != null)
+  const [meses,    setMeses]    = useState(String(inicial.expiry_months ?? 12))
+  const [porUnidade, setPorUnidade] = useState(inicial.scope_per_branch)
   const [erro,     setErro]     = useState<string | null>(null)
   const [salvo,    setSalvo]    = useState(false)
   const [salvando, iniciar]     = useTransition()
@@ -69,6 +77,8 @@ export function FidelidadeConfig({ inicial, podeEditar }: { inicial: ConfigFidel
           redeem_points_value: numero(valorDoPonto),
           redeem_min_points:   numero(minimo),
           redeem_max_pct:      numero(teto),
+          expiry_months:       vencem ? numero(meses) : null,
+          scope_per_branch:    porUnidade,
         })
         if (res.error) setErro(res.error)
         else setSalvo(true)
@@ -153,6 +163,51 @@ export function FidelidadeConfig({ inicial, podeEditar }: { inicial: ConfigFidel
           <CampoNumero rotulo="Pontos pagam até (%)" nome="redeem_max_pct" valor={teto} onChange={setTeto}
             dica="100 = pode pagar tudo com pontos." desabilitado={!podeEditar} />
         </div>
+      </Bloco>
+
+      <Bloco titulo="Validade dos pontos">
+        {podeEditar ? (
+          <SegSelect
+            options={[{ key: 'nunca', label: 'Não vencem' }, { key: 'meses', label: 'Vencem' }]}
+            value={vencem ? 'meses' : 'nunca'}
+            onSelect={k => setVencem(k === 'meses')}
+            ariaLabel="Os pontos vencem?"
+          />
+        ) : (
+          <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{vencem ? 'Vencem' : 'Não vencem'}</strong>
+        )}
+        {vencem && (
+          <div style={{ maxWidth: 260 }}>
+            <CampoNumero rotulo="Vencem após (meses)" nome="expiry_months" valor={meses} onChange={setMeses}
+              desabilitado={!podeEditar} dica="Contados de quando cada ponto entrou." />
+          </div>
+        )}
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
+          {vencem
+            ? 'Cada ponto vence N meses depois de entrar; os mais antigos são usados primeiro. Mudar a regra vale para os pontos novos — os que já existem mantêm o vencimento de quando entraram.'
+            : 'Os pontos ficam com o cliente até ele usar.'}
+        </p>
+      </Bloco>
+
+      <Bloco titulo="Onde os pontos valem">
+        {podeEditar && !temLancamentos ? (
+          <SegSelect
+            options={[{ key: 'rede', label: 'Rede inteira' }, { key: 'unidade', label: 'Só na unidade' }]}
+            value={porUnidade ? 'unidade' : 'rede'}
+            onSelect={k => setPorUnidade(k === 'unidade')}
+            ariaLabel="Onde os pontos valem"
+          />
+        ) : (
+          <strong data-testid="abrangencia-travada" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+            {porUnidade ? 'Só na unidade' : 'Rede inteira'}
+          </strong>
+        )}
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
+          {porUnidade
+            ? 'Os pontos ganhos numa unidade só valem nela: o saldo é separado por unidade.'
+            : 'Um saldo só: os pontos ganhos em qualquer unidade valem em todas.'}
+          {temLancamentos && ' Não dá para trocar depois que a rede já tem pontos lançados — mudaria o saldo de quem já tem.'}
+        </p>
       </Bloco>
 
       <Bloco titulo="Comissão quando o cliente usa pontos">

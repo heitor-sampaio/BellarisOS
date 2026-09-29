@@ -21,7 +21,7 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
  *   conta Meta da rede pela dele e deixava a integração inativa.
  */
 
-const CRONS = ['automacoes', 'estoque-minimo', 'eventos-expirados', 'lgpd-exports', 'meta-capi', 'notification-campaigns']
+const CRONS = ['automacoes', 'estoque-minimo', 'eventos-expirados', 'fidelidade-expiracao', 'lgpd-exports', 'meta-capi', 'notification-campaigns']
 
 // Sem sessão nenhuma: o `storageState` padrão do projeto é o do admin.
 test.use({ storageState: { cookies: [], origins: [] } })

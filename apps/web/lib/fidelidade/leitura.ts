@@ -12,7 +12,7 @@ type Admin = ReturnType<typeof createAdminClient>
  * rede do cliente — aqui só se lê.
  *
  * O SALDO é sempre a soma do extrato (`saldo_de_pontos`), nunca
- * `loyalty_accounts.balance`, que deixou de ser escrito.
+ * `loyalty_accounts.balance`, que saiu do banco na fase 4 (2026-09-29).
  */
 
 export async function configDaRede(tenantId: string, admin: Admin = createAdminClient()): Promise<ConfigFidelidade> {
@@ -22,6 +22,32 @@ export async function configDaRede(tenantId: string, admin: Admin = createAdminC
     .eq('tenant_id', tenantId)
     .maybeSingle(), 'ler a configuração da fidelidade')
   return configDaLinha(linha as Record<string, unknown> | null)
+}
+
+/** Quantos pontos do cliente vencem nos próximos `dias` (validade, fase 4). */
+export async function pontosVencendo(clientId: string, dias = 30, unidade: string | null = null, admin: Admin = createAdminClient()): Promise<number> {
+  const ate = new Date(Date.now() + dias * 86_400_000).toISOString()
+  const n = await ler(admin.rpc('pontos_expirando', { p_cliente: clientId, p_unidade: unidade, p_ate: ate }), 'ler os pontos a vencer')
+  return Number(n ?? 0)
+}
+
+/** O saldo de cada unidade, com o nome — abrangência por unidade. */
+export async function saldosPorUnidade(clientId: string, admin: Admin = createAdminClient()): Promise<{ branch_id: string; nome: string; saldo: number }[]> {
+  const linhas = await ler(admin.rpc('saldos_por_unidade', { p_cliente: clientId }), 'ler o saldo por unidade') as { branch_id: string; saldo: number }[] | null
+  if (!linhas?.length) return []
+  const unidades = await ler(admin.from('branches').select('id, name').in('id', linhas.map(l => l.branch_id)), 'buscar as unidades')
+  const nomes = new Map(((unidades ?? []) as { id: string; name: string }[]).map(u => [u.id, u.name]))
+  return linhas.map(l => ({ branch_id: l.branch_id, nome: nomes.get(l.branch_id) ?? 'Unidade', saldo: Number(l.saldo) }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+}
+
+/** A rede já tem algum ponto lançado? (trava a troca de abrangência) */
+export async function redeTemLancamentos(tenantId: string, admin: Admin = createAdminClient()): Promise<boolean> {
+  const linhas = await ler(admin.from('loyalty_transactions')
+    .select('id, branches!inner(tenant_id)')
+    .eq('branches.tenant_id', tenantId)
+    .limit(1), 'conferir se a rede tem pontos lançados')
+  return (linhas ?? []).length > 0
 }
 
 /** Saldo do cliente — da rede inteira, ou de uma unidade (abrangência por unidade). */
@@ -52,6 +78,10 @@ export interface FidelidadeDoPerfil {
   vouchers:     VoucherDoCliente[]
   /** O catálogo ativo — para trocar pontos por recompensa. */
   recompensas:  Recompensa[]
+  /** Pontos que vencem nos próximos 30 dias (0 sem validade). */
+  vencendo:     number
+  /** Abrangência por unidade: o saldo de cada uma. Nulo = saldo único da rede. */
+  porUnidade:   { branch_id: string; nome: string; saldo: number }[] | null
 }
 
 export interface Recompensa {
@@ -112,13 +142,15 @@ export async function fidelidadeDoPerfil(ctx: TenantContext, clientId: string): 
   const admin = createAdminClient()
   const cfg = await configDaRede(ctx.tenantId!, admin)
   if (!cfg.enabled) return null
-  const [saldo, extrato, vouchers, recompensas] = await Promise.all([
+  const [saldo, extrato, vouchers, recompensas, vencendo, porUnidade] = await Promise.all([
     saldoDoCliente(clientId, null, admin),
     extratoDoCliente(clientId, {}, admin),
     vouchersDoCliente(clientId, admin),
     recompensasDaRede(ctx.tenantId!, true, admin),
+    cfg.expiry_months ? pontosVencendo(clientId, 30, null, admin) : Promise.resolve(0),
+    cfg.scope_per_branch ? saldosPorUnidade(clientId, admin) : Promise.resolve(null),
   ])
-  return { saldo, valorDoPonto: cfg.redeem_points_value, extrato, podeAjustar: can(ctx, 'loyalty', 'MANAGE'), vouchers, recompensas }
+  return { saldo, valorDoPonto: cfg.redeem_points_value, extrato, podeAjustar: can(ctx, 'loyalty', 'MANAGE'), vouchers, recompensas, vencendo, porUnidade }
 }
 
 /** O extrato, do mais recente para o mais antigo, em páginas. */

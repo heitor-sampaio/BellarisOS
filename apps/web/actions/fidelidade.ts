@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDaConfig, type ConfigFidelidade } from '@/lib/fidelidade/config'
 import {
-  configDaRede, saldoDoCliente, extratoDoCliente as lerExtrato, recompensasDaRede, vouchersDoCliente,
+  configDaRede, redeTemLancamentos, saldoDoCliente, extratoDoCliente as lerExtrato, recompensasDaRede, vouchersDoCliente,
   type LinhaDoExtrato, type Recompensa, type VoucherDoCliente,
 } from '@/lib/fidelidade/leitura'
 import { EntradaDaRecompensa } from '@/lib/fidelidade/recompensa'
@@ -41,6 +41,14 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
   if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
   const c = lido.data
 
+  // A abrangência só muda antes do primeiro lançamento: depois, trocar
+  // reescreveria em silêncio o saldo de cada unidade (os pontos de uma unidade
+  // passariam a valer nas outras, ou o contrário).
+  const atual = await configDaRede(ctx.tenantId!)
+  if (atual.scope_per_branch !== c.scope_per_branch && await redeTemLancamentos(ctx.tenantId!)) {
+    return { error: 'A abrangência não muda depois que a rede já tem pontos lançados.' }
+  }
+
   try {
     await gravar(createAdminClient()
       .from('loyalty_configs')
@@ -53,6 +61,8 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
         redeem_points_value: c.redeem_points_value,
         redeem_min_points:   c.redeem_min_points,
         redeem_max_pct:      c.redeem_max_pct,
+        expiry_months:       c.expiry_months,
+        scope_per_branch:    c.scope_per_branch,
         updated_at:      new Date().toISOString(),
         updated_by:      ctx.internalUserId,
       }, { onConflict: 'tenant_id' })

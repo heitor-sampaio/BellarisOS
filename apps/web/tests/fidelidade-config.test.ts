@@ -6,6 +6,7 @@ describe('EntradaDaConfig', () => {
   const valida = {
     enabled: true, earn_mode: 'POR_REAL', points_per_real: '1.5', commission_base: 'PRECO',
     redeem_points_value: '0.01', redeem_min_points: '0', redeem_max_pct: '100',
+    expiry_months: null as string | null, scope_per_branch: false,
   }
 
   it('aceita a config da tela e converte o número', () => {
@@ -24,6 +25,12 @@ describe('EntradaDaConfig', () => {
     expect(EntradaDaConfig.safeParse({ ...valida, redeem_min_points: '1.5' }).success).toBe(false)
     expect(EntradaDaConfig.safeParse({ ...valida, redeem_max_pct: '0' }).success).toBe(false)
     expect(EntradaDaConfig.safeParse({ ...valida, redeem_max_pct: '101' }).success).toBe(false)
+  })
+
+  it('validade: nula (não vence) ou 1 a 120 meses', () => {
+    expect(EntradaDaConfig.parse(valida).expiry_months).toBeNull()
+    expect(EntradaDaConfig.parse({ ...valida, expiry_months: '6' }).expiry_months).toBe(6)
+    for (const m of ['0', '121', '1.5']) expect(EntradaDaConfig.safeParse({ ...valida, expiry_months: m }).success, m).toBe(false)
   })
 
   it('recusa modo e base de comissão fora da lista', () => {

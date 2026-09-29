@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { configDaRede, saldoDoCliente, extratoDoCliente, vouchersDoCliente, recompensasDaRede } from '@/lib/fidelidade/leitura'
+import {
+  configDaRede, saldoDoCliente, extratoDoCliente, vouchersDoCliente, recompensasDaRede, pontosVencendo, saldosPorUnidade,
+} from '@/lib/fidelidade/leitura'
 import { descricaoDoVoucher, situacaoDoVoucher } from '@/lib/fidelidade/voucher'
 import { formatarPontos, rotuloDoLancamento } from '@/lib/fidelidade/formato'
 
@@ -24,11 +26,13 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
   const cfg = cliente?.tenant_id ? await configDaRede(cliente.tenant_id, admin) : null
   if (!cfg?.enabled) redirect(`/${slug}/cliente/home`)
 
-  const [saldo, extrato, vouchers, recompensas] = await Promise.all([
+  const [saldo, extrato, vouchers, recompensas, vencendo, porUnidade] = await Promise.all([
     saldoDoCliente(ctx.clientId!, null, admin),
     extratoDoCliente(ctx.clientId!, { limite: 100 }, admin),
     vouchersDoCliente(ctx.clientId!, admin),
     recompensasDaRede(cliente!.tenant_id!, true, admin),
+    cfg.expiry_months ? pontosVencendo(ctx.clientId!, 30, null, admin) : Promise.resolve(0),
+    cfg.scope_per_branch ? saldosPorUnidade(ctx.clientId!, admin) : Promise.resolve([]),
   ])
   const ativos = vouchers.filter(v => situacaoDoVoucher(v) === 'ATIVO')
   const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
@@ -53,6 +57,16 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
         <p data-testid="saldo-do-portal" style={{ fontSize: 'var(--text-kpi)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
           {formatarPontos(saldo)}
         </p>
+        {vencendo > 0 && (
+          <p data-testid="vencendo-no-portal" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, marginTop: 6, opacity: 0.9 }}>
+            {formatarPontos(vencendo)} vencem nos próximos 30 dias
+          </p>
+        )}
+        {porUnidade.length > 0 && (
+          <p style={{ fontSize: 'var(--text-xs-sz)', marginTop: 6, opacity: 0.9 }}>
+            {porUnidade.map(u => `${u.nome}: ${formatarPontos(u.saldo)}`).join(' · ')}
+          </p>
+        )}
       </div>
 
       {ativos.length > 0 && (
@@ -107,6 +121,7 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                     {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                     {l.branch_name && ` · ${l.branch_name}`}
+                    {l.expires_at && l.points > 0 && ` · vence em ${data(l.expires_at)}`}
                   </p>
                 </div>
                 <span style={{
