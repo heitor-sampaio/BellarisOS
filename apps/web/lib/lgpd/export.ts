@@ -213,7 +213,7 @@ export async function buildClientExport(
       fields: loyalty ? [['Saldo de pontos', String(((loyalty.loyalty_transactions ?? []) as { points: number }[])
         .reduce((soma, l) => soma + Number(l.points), 0))]] : [],
       lines: ((loyalty?.loyalty_transactions ?? []) as unknown as { created_at: string; kind: string; points: number; description: string; branches: { name: string } | null }[])
-        .map(t => `${fmtDate(t.created_at)} — ${rotuloDoLancamento(t.kind)} — ${t.points > 0 ? '+' : ''}${t.points} pontos — ${t.description ?? ''}${t.branches?.name ? ` (${t.branches.name})` : ''}`),
+        .map(t => `${fmtDate(t.created_at)} — ${rotuloDoLancamento(t.kind, t.description)} — ${t.points > 0 ? '+' : ''}${t.points} pontos — ${t.description ?? ''}${t.branches?.name ? ` (${t.branches.name})` : ''}`),
     },
     {
       title: `Pacotes (${(packages ?? []).length})`,

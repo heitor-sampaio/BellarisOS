@@ -28,6 +28,15 @@ export interface ConfigFidelidade {
   expiry_months:       number | null
   scope_per_branch:    boolean
   commission_base:     BaseDaComissao
+  // Opcionais da rede (2026-09-29), todos desligados de fábrica.
+  /** Pontos no aniversário. 0 = desligado. */
+  birthday_bonus:      number
+  /** Pontos no primeiro acesso ao portal/app. 0 = desligado. */
+  first_access_bonus:  number
+  /** O cliente também troca pontos por recompensa pelo portal. */
+  client_redeem:       boolean
+  /** Avisa por push N dias antes de vencer. Nulo = não avisa (e sem validade, nunca). */
+  expiry_notice_days:  number | null
 }
 
 /** A config de quem nunca configurou: tudo desligado, com valores sensatos para quando ligar. */
@@ -41,6 +50,10 @@ export const CONFIG_PADRAO: ConfigFidelidade = {
   expiry_months:       null,
   scope_per_branch:    false,
   commission_base:     'PRECO',
+  birthday_bonus:      0,
+  first_access_bonus:  0,
+  client_redeem:       false,
+  expiry_notice_days:  null,
 }
 
 /** O que a tela manda para salvar. Os números chegam do formulário; a validação é aqui. */
@@ -67,6 +80,17 @@ export const EntradaDaConfig = z.object({
       .min(1, 'A validade é de pelo menos 1 mês.').max(120, 'A validade é de no máximo 120 meses.'),
   ]),
   scope_per_branch: z.boolean(),
+  // Opcionais. Bônus 0 = desligado; aviso nulo = não avisa.
+  birthday_bonus: z.coerce.number().int('O bônus é um número inteiro de pontos.')
+    .min(0, 'O bônus não pode ser negativo.').max(1_000_000, 'Bônus alto demais.'),
+  first_access_bonus: z.coerce.number().int('O bônus é um número inteiro de pontos.')
+    .min(0, 'O bônus não pode ser negativo.').max(1_000_000, 'Bônus alto demais.'),
+  client_redeem: z.boolean(),
+  expiry_notice_days: z.union([
+    z.null(),
+    z.coerce.number().int('O aviso é um número inteiro de dias.')
+      .min(1, 'O aviso sai com pelo menos 1 dia de antecedência.').max(90, 'O aviso sai com no máximo 90 dias de antecedência.'),
+  ]),
 })
 export type EntradaDaConfig = z.infer<typeof EntradaDaConfig>
 
@@ -87,5 +111,9 @@ export function configDaLinha(linha: Record<string, unknown> | null | undefined)
     expiry_months:       linha.expiry_months == null ? null : num(linha.expiry_months, 0) || null,
     scope_per_branch:    linha.scope_per_branch === true,
     commission_base:     linha.commission_base === 'VALOR_PAGO' ? 'VALOR_PAGO' : 'PRECO',
+    birthday_bonus:      num(linha.birthday_bonus, 0),
+    first_access_bonus:  num(linha.first_access_bonus, 0),
+    client_redeem:       linha.client_redeem === true,
+    expiry_notice_days:  linha.expiry_notice_days == null ? null : num(linha.expiry_notice_days, 0) || null,
   }
 }

@@ -7,13 +7,15 @@ import {
 } from '@/lib/fidelidade/leitura'
 import { descricaoDoVoucher, situacaoDoVoucher } from '@/lib/fidelidade/voucher'
 import { formatarPontos, rotuloDoLancamento } from '@/lib/fidelidade/formato'
+import { TrocarRecompensa } from '@/components/client-portal/trocar-recompensa'
 
 /**
  * Portal do cliente → Meus pontos: saldo e extrato.
  *
  * Só com o programa ligado na rede do cliente — desligado, a página não existe
- * para ele (volta ao início). O cliente não resgata por aqui: o resgate é na
- * recepção (decisão do Heitor, 2026-09-28).
+ * para ele (volta ao início). Trocar pontos por recompensa aqui é OPCIONAL da
+ * rede (`client_redeem`); desligado, o catálogo é só para ver e a troca é na
+ * recepção.
  */
 export default async function FidelidadeDoClientePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -35,6 +37,14 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
     cfg.scope_per_branch ? saldosPorUnidade(ctx.clientId!, admin) : Promise.resolve([]),
   ])
   const ativos = vouchers.filter(v => situacaoDoVoucher(v) === 'ATIVO')
+  // O saldo que paga uma troca aqui: com abrangência por unidade, o da unidade
+  // deste portal (a troca acontece nela).
+  let saldoParaTrocar = saldo
+  if (cfg.client_redeem && cfg.scope_per_branch) {
+    const unidade = await ler(admin.from('branches').select('id').eq('slug', slug).eq('tenant_id', cliente!.tenant_id!).maybeSingle(),
+      'buscar a unidade') as { id: string } | null
+    saldoParaTrocar = porUnidade.find(u => u.branch_id === unidade?.id)?.saldo ?? 0
+  }
   const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
 
   return (
@@ -44,7 +54,9 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
           Meus pontos
         </h1>
         <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
-          Você ganha pontos a cada pagamento. Para usar ou trocar por uma recompensa, fale com a recepção.
+          {cfg.client_redeem
+            ? 'Você ganha pontos a cada pagamento. Troque por uma recompensa aqui mesmo, ou use como desconto na recepção.'
+            : 'Você ganha pontos a cada pagamento. Para usar ou trocar por uma recompensa, fale com a recepção.'}
         </p>
       </div>
 
@@ -90,15 +102,22 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
           <p className="overline" style={{ marginBottom: 8 }}>Troque seus pontos</p>
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {recompensas.map(r => (
-              <li key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{r.name}</span>
-                <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, whiteSpace: 'nowrap', color: saldo >= r.points_cost ? 'var(--brand)' : 'var(--text-faint)' }}>
-                  {formatarPontos(r.points_cost)}
-                </span>
+              <li key={r.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{r.name}</p>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, whiteSpace: 'nowrap', color: saldoParaTrocar >= r.points_cost ? 'var(--brand)' : 'var(--text-faint)' }}>
+                    {formatarPontos(r.points_cost)}
+                  </p>
+                </div>
+                {cfg.client_redeem && (
+                  <TrocarRecompensa slug={slug} rewardId={r.id} nome={r.name} custo={r.points_cost} saldo={saldoParaTrocar} />
+                )}
               </li>
             ))}
           </ul>
-          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 8 }}>A troca é feita na recepção.</p>
+          {!cfg.client_redeem && (
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 8 }}>A troca é feita na recepção.</p>
+          )}
         </section>
       )}
 
@@ -116,7 +135,7 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
               }}>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
-                    {rotuloDoLancamento(l.kind)}
+                    {rotuloDoLancamento(l.kind, l.description)}
                   </p>
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
                     {new Date(l.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}

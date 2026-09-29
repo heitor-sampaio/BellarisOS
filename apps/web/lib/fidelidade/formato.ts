@@ -5,7 +5,7 @@
 
 export type TipoDeLancamento =
   | 'GANHO' | 'ESTORNO_GANHO' | 'AJUSTE' | 'RESGATE' | 'ESTORNO_RESGATE'
-  | 'VOUCHER' | 'VOUCHER_CANCELADO' | 'EXPIRACAO'
+  | 'VOUCHER' | 'VOUCHER_CANCELADO' | 'EXPIRACAO' | 'BONUS'
 
 const ROTULOS: Record<TipoDeLancamento, string> = {
   GANHO:             'Ganho no pagamento',
@@ -16,9 +16,12 @@ const ROTULOS: Record<TipoDeLancamento, string> = {
   VOUCHER:           'Trocado por recompensa',
   VOUCHER_CANCELADO: 'Devolvido (voucher cancelado)',
   EXPIRACAO:         'Pontos vencidos',
+  BONUS:             'Bônus',
 }
 
-export function rotuloDoLancamento(tipo: string): string {
+/** O bônus diz QUAL (aniversário, primeiro acesso) pela descrição que o banco gravou. */
+export function rotuloDoLancamento(tipo: string, descricao?: string | null): string {
+  if (tipo === 'BONUS' && descricao) return descricao
   return ROTULOS[tipo as TipoDeLancamento] ?? 'Lançamento'
 }
 

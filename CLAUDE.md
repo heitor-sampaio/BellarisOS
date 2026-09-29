@@ -667,7 +667,8 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   (`loyalty_rewards`: procedimento grátis, desconto R$ ou %, produto) em
   Configurações → Fidelidade. A EQUIPE troca os pontos na ficha
   (`resgatar_recompensa`): os pontos saem na hora e nasce um voucher
-  (`loyalty_vouchers`) com validade — o cliente só VÊ no portal. O voucher
+  (`loyalty_vouchers`) com validade — o cliente só VÊ no portal, a não ser que
+  a rede ligue a troca pelo portal (opcionais, abaixo). O voucher
   guarda um RETRATO da recompensa: editá-la depois não muda o já emitido.
   - Procedimento/desconto: aplicado no pagamento, ANTES dos pontos (os pontos
     e o teto valem sobre o que sobra); `loyalty_discount` soma os dois.
@@ -684,7 +685,7 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   vence até D = créditos com vencimento ≤ D menos tudo que já saiu (expirações
   incluídas, por isso é idempotente). O estorno de um ganho leva o
   `expires_at` dele — sem isso o lote estornado venceria de novo.
-  - A baixa é o cron `fidelidade-expiracao` (`expirar_pontos`, lança
+  - A baixa é o cron `fidelidade` (`expirar_pontos`, lança
     EXPIRACAO "Pontos vencidos"). Ficha e portal mostram "vencem nos próximos
     30 dias" (`pontos_expirando`) e o "vence em" de cada linha.
 - **Abrangência** (fase 4): rede inteira (padrão) ou só na unidade
@@ -693,6 +694,30 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   débito só usam o saldo da unidade onde acontecem (`saldos_por_unidade`
   para a ficha). **A troca é recusada depois do primeiro lançamento da rede**
   (action e tela travada): mudaria em silêncio o saldo de quem já tem.
+- **Opcionais da rede** (decisão do Heitor, 2026-09-29) — todos nascem
+  DESLIGADOS e se ligam na aba Fidelidade:
+  - **Bônus de aniversário** (`birthday_bonus`) e **de primeiro acesso**
+    (`first_access_bonus`): lançamento BONUS, uma vez por `bonus_ref`
+    (`ANIVERSARIO:<ano>`, `PRIMEIRO_ACESSO`) — é o índice único que impede dar
+    duas vezes, não o app. Quem nasceu em 29/02 ganha em 28/02 fora de ano
+    bissexto. O primeiro acesso é o primeiro login do cliente
+    (`clients.app_account_created_at`, marcado por `fidelidade_primeiro_acesso`
+    no `loginAction` e na sessão do app); quem já tinha entrado antes da
+    opção existir não ganha.
+  - **Troca pelo portal** (`client_redeem`): o cliente troca pontos por
+    recompensa em `/[slug]/cliente/fidelidade` (`actions/fidelidade-portal.ts`),
+    com o saldo da unidade daquele portal quando a abrangência é por unidade.
+    Desligada, só a equipe troca, na ficha.
+  - **Aviso de vencimento por push** (`expiry_notice_days`, só com validade):
+    `avisos_de_vencimento` REIVINDICA o aviso antes de o push sair (a conta
+    guarda até onde já avisou) — um aviso por lote novo na janela, nunca um
+    por dia nem dois por passagem concorrente.
+  - A rotina é o cron `fidelidade`: expirar → aniversário → avisos, nessa
+    ordem (avisar antes de expirar contaria o que acabou de vencer).
+  - ⚠️ As três funções da rotina aceitam `p_tenant` (nulo = todas, o cron).
+    **Teste que as chama com data escolhida à mão passa a rede `[e2e]`** — sem
+    o recorte, "e se hoje fosse 2027?" vence pontos e dá bônus de clientes
+    reais na produção.
 
 ### 9.3 Procedimentos
 - `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)
@@ -1468,7 +1493,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado
 ❌ Pôr o desconto de pontos em amount (amount é o dinheiro recebido; o desconto é loyalty_discount)
 ❌ Confirmar pagamento de atendimento fora de confirmar_pagamento_do_atendimento, ou confiar no valor que o navegador manda
-❌ Ler o voucher pela recompensa (o voucher tem o retrato de quando foi trocado) ou deixar o cliente trocar pontos sozinho
+❌ Ler o voucher pela recompensa (o voucher tem o retrato de quando foi trocado) ou deixar o cliente trocar pontos sem client_redeem ligado
+❌ Chamar expirar_pontos / fidelidade_bonus_aniversario / avisos_de_vencimento em teste sem p_tenant (vale para as redes reais)
 ❌ Calcular saldo de estoque depois de uma saída fora de lib/estoque/baixa.ts
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)
@@ -1502,7 +1528,7 @@ assim a execução aparece vermelha no painel em vez de falhar em silêncio.
 
 | Serviço | Ritmo | `CRON_JOBS` |
 |---|---|---|
-| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade-expiracao`) |
+| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`) |
 | **Automations Cron** | `*/5 * * * *` (5 min) | `automacoes` |
 
 O segundo existe porque **granularidade de uma hora não serve a automação**:

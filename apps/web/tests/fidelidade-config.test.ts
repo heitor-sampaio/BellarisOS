@@ -7,6 +7,7 @@ describe('EntradaDaConfig', () => {
     enabled: true, earn_mode: 'POR_REAL', points_per_real: '1.5', commission_base: 'PRECO',
     redeem_points_value: '0.01', redeem_min_points: '0', redeem_max_pct: '100',
     expiry_months: null as string | null, scope_per_branch: false,
+    birthday_bonus: '0', first_access_bonus: '0', client_redeem: false, expiry_notice_days: null as string | null,
   }
 
   it('aceita a config da tela e converte o número', () => {
@@ -25,6 +26,13 @@ describe('EntradaDaConfig', () => {
     expect(EntradaDaConfig.safeParse({ ...valida, redeem_min_points: '1.5' }).success).toBe(false)
     expect(EntradaDaConfig.safeParse({ ...valida, redeem_max_pct: '0' }).success).toBe(false)
     expect(EntradaDaConfig.safeParse({ ...valida, redeem_max_pct: '101' }).success).toBe(false)
+  })
+
+  it('opcionais: bônus de 0 a 1.000.000 inteiros; aviso nulo ou 1 a 90 dias', () => {
+    const ok = EntradaDaConfig.parse({ ...valida, birthday_bonus: '200', first_access_bonus: '50', client_redeem: true, expiry_notice_days: '7' })
+    expect([ok.birthday_bonus, ok.first_access_bonus, ok.client_redeem, ok.expiry_notice_days]).toEqual([200, 50, true, 7])
+    for (const b of ['-1', '1.5', '1000001']) expect(EntradaDaConfig.safeParse({ ...valida, birthday_bonus: b }).success, b).toBe(false)
+    for (const d of ['0', '91', '2.5']) expect(EntradaDaConfig.safeParse({ ...valida, expiry_notice_days: d }).success, d).toBe(false)
   })
 
   it('validade: nula (não vence) ou 1 a 120 meses', () => {
@@ -72,8 +80,14 @@ describe('formato', () => {
   })
 
   it('todo tipo do extrato tem rótulo', () => {
-    for (const k of ['GANHO', 'ESTORNO_GANHO', 'AJUSTE', 'RESGATE', 'ESTORNO_RESGATE', 'VOUCHER', 'VOUCHER_CANCELADO', 'EXPIRACAO']) {
+    for (const k of ['GANHO', 'ESTORNO_GANHO', 'AJUSTE', 'RESGATE', 'ESTORNO_RESGATE', 'VOUCHER', 'VOUCHER_CANCELADO', 'EXPIRACAO', 'BONUS']) {
       expect(rotuloDoLancamento(k)).not.toBe('Lançamento')
     }
+  })
+
+  it('o bônus se rotula pela descrição do banco', () => {
+    expect(rotuloDoLancamento('BONUS', 'Bônus de aniversário')).toBe('Bônus de aniversário')
+    expect(rotuloDoLancamento('BONUS')).toBe('Bônus')
+    expect(rotuloDoLancamento('GANHO', 'qualquer')).toBe('Ganho no pagamento')
   })
 })

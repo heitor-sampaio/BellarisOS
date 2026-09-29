@@ -1,8 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEvento, atorDoContexto, ATOR_SISTEMA } from './emitir'
-import { EVENTOS } from '@estetica-os/types'
+import { EVENTOS, type AtorDoEvento } from '@estetica-os/types'
 
-type Ctx = { tenantId?: string | null; internalUserId?: string | null; userName?: string | null }
+type Ctx = { tenantId?: string | null; internalUserId?: string | null; userName?: string | null; ator?: AtorDoEvento }
 
 /**
  * Fidelidade — os fatos que saem do APP. O ganho de pontos sai do gatilho do
@@ -41,7 +41,7 @@ export async function voucherEmitido(voucherId: string, ctx: Ctx): Promise<void>
         pontos:      v.points_cost,
         validoAte:   v.expires_at,
       },
-      ator: ctx.internalUserId ? atorDoContexto(ctx) : ATOR_SISTEMA,
+      ator: ctx.ator ?? (ctx.internalUserId ? atorDoContexto(ctx) : ATOR_SISTEMA),
       chave: `fidelidade.voucher_emitido:${voucherId}`,
     })
   } catch (e) {

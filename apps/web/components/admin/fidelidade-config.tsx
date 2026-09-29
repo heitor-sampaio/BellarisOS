@@ -54,6 +54,15 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
   const [vencem,   setVencem]   = useState(inicial.expiry_months != null)
   const [meses,    setMeses]    = useState(String(inicial.expiry_months ?? 12))
   const [porUnidade, setPorUnidade] = useState(inicial.scope_per_branch)
+  // Opcionais: cada um tem o liga/desliga e o número separados, para desligar
+  // não apagar o número que a rede tinha escolhido.
+  const [aniversario, setAniversario] = useState(inicial.birthday_bonus > 0)
+  const [pontosAniversario, setPontosAniversario] = useState(String(inicial.birthday_bonus || 100))
+  const [primeiroAcesso, setPrimeiroAcesso] = useState(inicial.first_access_bonus > 0)
+  const [pontosPrimeiroAcesso, setPontosPrimeiroAcesso] = useState(String(inicial.first_access_bonus || 50))
+  const [trocaNoPortal, setTrocaNoPortal] = useState(inicial.client_redeem)
+  const [avisar,   setAvisar]   = useState(inicial.expiry_notice_days != null)
+  const [diasAviso, setDiasAviso] = useState(String(inicial.expiry_notice_days ?? 7))
   const [erro,     setErro]     = useState<string | null>(null)
   const [salvo,    setSalvo]    = useState(false)
   const [salvando, iniciar]     = useTransition()
@@ -79,6 +88,10 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
           redeem_max_pct:      numero(teto),
           expiry_months:       vencem ? numero(meses) : null,
           scope_per_branch:    porUnidade,
+          birthday_bonus:      aniversario ? numero(pontosAniversario) : 0,
+          first_access_bonus:  primeiroAcesso ? numero(pontosPrimeiroAcesso) : 0,
+          client_redeem:       trocaNoPortal,
+          expiry_notice_days:  vencem && avisar ? numero(diasAviso) : null,
         })
         if (res.error) setErro(res.error)
         else setSalvo(true)
@@ -187,6 +200,65 @@ export function FidelidadeConfig({ inicial, podeEditar, temLancamentos = false }
             ? 'Cada ponto vence N meses depois de entrar; os mais antigos são usados primeiro. Mudar a regra vale para os pontos novos — os que já existem mantêm o vencimento de quando entraram.'
             : 'Os pontos ficam com o cliente até ele usar.'}
         </p>
+        {vencem && (
+          <Opcional
+            titulo="Aviso antes de vencer" testId="opcional-aviso"
+            opcoes={[{ key: 'nao', label: 'Não avisa' }, { key: 'sim', label: 'Avisa por push' }]}
+            ligado={avisar} onChange={setAvisar} podeEditar={podeEditar}
+            explicacao={avisar
+              ? 'O cliente recebe uma notificação no celular ou no navegador quando tiver pontos para vencer dentro do prazo — um aviso por lote, não um por dia.'
+              : 'O cliente só vê o que vai vencer quando abrir os pontos no portal.'}
+          >
+            <CampoNumero rotulo="Dias antes" nome="expiry_notice_days" valor={diasAviso} onChange={setDiasAviso}
+              desabilitado={!podeEditar} dica="De 1 a 90 dias." />
+          </Opcional>
+        )}
+      </Bloco>
+
+      <Bloco titulo="Bônus">
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
+          Pontos que o cliente ganha sem pagar nada, uma vez por ocasião. Valem e vencem como os outros.
+        </p>
+        <Opcional
+          titulo="No aniversário" testId="opcional-aniversario"
+          opcoes={[{ key: 'nao', label: 'Sem bônus' }, { key: 'sim', label: 'Dá pontos' }]}
+          ligado={aniversario} onChange={setAniversario} podeEditar={podeEditar}
+          explicacao={aniversario
+            ? 'No dia do aniversário (pela data de nascimento do cadastro), o cliente ganha os pontos e recebe uma notificação. Uma vez por ano.'
+            : undefined}
+        >
+          <CampoNumero rotulo="Pontos no aniversário" nome="birthday_bonus" valor={pontosAniversario} onChange={setPontosAniversario}
+            desabilitado={!podeEditar} />
+        </Opcional>
+        <Opcional
+          titulo="No primeiro acesso ao portal ou ao app" testId="opcional-primeiro-acesso"
+          opcoes={[{ key: 'nao', label: 'Sem bônus' }, { key: 'sim', label: 'Dá pontos' }]}
+          ligado={primeiroAcesso} onChange={setPrimeiroAcesso} podeEditar={podeEditar}
+          explicacao={primeiroAcesso
+            ? 'Na primeira vez que o cliente entra no portal ou no app. Quem já tinha entrado antes não ganha.'
+            : undefined}
+        >
+          <CampoNumero rotulo="Pontos no primeiro acesso" nome="first_access_bonus" valor={pontosPrimeiroAcesso} onChange={setPontosPrimeiroAcesso}
+            desabilitado={!podeEditar} />
+        </Opcional>
+      </Bloco>
+
+      <Bloco titulo="Quem troca pontos por recompensa">
+        {podeEditar ? (
+          <SegSelect
+            options={[{ key: 'equipe', label: 'Só a equipe' }, { key: 'cliente', label: 'Também o cliente' }]}
+            value={trocaNoPortal ? 'cliente' : 'equipe'}
+            onSelect={k => setTrocaNoPortal(k === 'cliente')}
+            ariaLabel="Quem troca pontos por recompensa"
+          />
+        ) : (
+          <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{trocaNoPortal ? 'Também o cliente' : 'Só a equipe'}</strong>
+        )}
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
+          {trocaNoPortal
+            ? 'Além da recepção, o cliente troca os pontos pelo portal ou pelo app. O voucher aparece na hora para ele e na ficha para a equipe.'
+            : 'A troca é feita na recepção, pela ficha do cliente. No portal, o cliente só vê o catálogo.'}
+        </p>
       </Bloco>
 
       <Bloco titulo="Onde os pontos valem">
@@ -269,6 +341,34 @@ function CampoNumero({ rotulo, nome, valor, onChange, dica, desabilitado }: {
         onChange={e => onChange(e.target.value)} disabled={desabilitado} />
       {dica && <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{dica}</span>}
     </label>
+  )
+}
+
+/** Um opcional: liga/desliga, o número quando ligado e o que acontece. */
+function Opcional({ titulo, testId, opcoes, ligado, onChange, podeEditar, explicacao, children }: {
+  titulo: string
+  testId?: string
+  opcoes: [{ key: string; label: string }, { key: string; label: string }]
+  ligado: boolean
+  onChange: (v: boolean) => void
+  podeEditar: boolean
+  explicacao?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div data-testid={testId} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text)' }}>{titulo}</span>
+      {podeEditar ? (
+        <SegSelect options={opcoes} value={ligado ? opcoes[1].key : opcoes[0].key}
+          onSelect={k => onChange(k === opcoes[1].key)} ariaLabel={titulo} />
+      ) : (
+        <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{ligado ? opcoes[1].label : opcoes[0].label}</strong>
+      )}
+      {ligado && <div style={{ maxWidth: 260 }}>{children}</div>}
+      {explicacao && (
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>{explicacao}</p>
+      )}
+    </div>
   )
 }
 

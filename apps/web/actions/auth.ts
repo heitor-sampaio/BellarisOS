@@ -7,6 +7,7 @@ import { getRedirectPath } from '@/lib/auth'
 import { LoginSchema, RegisterSchema, ResetPasswordSchema, UpdatePasswordSchema } from '@estetica-os/validators'
 import type { JwtClaims } from '@estetica-os/types'
 import { gravar, ler, tentar } from '@/lib/db'
+import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 
 function toSlug(name: string): string {
   return name
@@ -123,6 +124,12 @@ export async function loginAction(
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
   if (error) return { error: 'E-mail ou senha incorretos' }
+
+  // Cliente final: o primeiro login marca o primeiro acesso e, se a rede
+  // configurou, dá o bônus. Acessório — nunca impede a entrada.
+  const { data: { user } } = await supabase.auth.getUser()
+  const clienteId = (user?.app_metadata as JwtClaims | undefined)?.client_id
+  if (clienteId) await bonusDePrimeiroAcesso(clienteId)
 
   return { redirectTo: await destinoDaSessao(supabase) }
 }

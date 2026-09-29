@@ -53,7 +53,7 @@ async function lancar(c: string, pontos: number, expira: string | null, unidade 
   expect(error, 'lançar no cenário').toBeNull()
 }
 const expirar = async (ate: string) => {
-  const { error } = await db().rpc('expirar_pontos', { p_ate: ate })
+  const { error } = await db().rpc('expirar_pontos', { p_ate: ate, p_tenant: rede!.tenantId })
   expect(error).toBeNull()
 }
 
@@ -162,7 +162,7 @@ test.describe.serial('fidelidade: validade e abrangência', () => {
   test('o cron de expiração responde com o segredo', async () => {
     const api = await request.newContext({ baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000' })
     try {
-      const r = await api.get('/api/cron/fidelidade-expiracao', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } })
+      const r = await api.get('/api/cron/fidelidade', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } })
       expect(r.status()).toBe(200)
       expect((await r.json()).ok).toBe(true)
     } finally { await api.dispose() }

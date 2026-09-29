@@ -130,7 +130,7 @@ export function FidelidadeDoCliente({
               }}>
                 <div style={{ minWidth: 0 }}>
                   <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>
-                    {rotuloDoLancamento(l.kind)}
+                    {rotuloDoLancamento(l.kind, l.description)}
                   </p>
                   <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>
                     {l.description}

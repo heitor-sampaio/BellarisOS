@@ -190,9 +190,11 @@ export async function membroComEscopoProprio(
 export async function clienteComSessao(
   marca: string,
   unidade: { id: string; slug: string },
+  /** Rede do cliente (uma rede [e2e]); sem ela, a rede de teste padrão. */
+  opcoes: { tenant?: string } = {},
 ): Promise<ClienteDeTeste> {
   const db     = banco()
-  const tenant = await tenantId()
+  const tenant = opcoes.tenant ?? await tenantId()
   const email  = `e2e-cliente-${marca}@bellaris.invalid`
   const estado = path.join(__dirname, '..', '.auth', `cliente-${marca}.json`)
 

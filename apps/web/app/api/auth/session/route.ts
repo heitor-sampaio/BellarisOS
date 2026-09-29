@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import type { JwtClaims } from '@estetica-os/types'
 import { ler } from '@/lib/db'
+import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 
 // Recebe tokens do armazenamento nativo (Capacitor Preferences),
 // valida com Supabase, grava cookies de sessão e retorna o destino
@@ -44,6 +45,10 @@ export async function POST(req: NextRequest) {
   // Para roles com branchId/clientId, uma query mínima busca o slug da filial.
   const claims = data.session.user.app_metadata as JwtClaims
   const admin  = createAdminClient()
+
+  // Primeiro acesso do cliente pelo app: a mesma marca (e o bônus opcional) do
+  // login pela tela. Idempotente — só o primeiro conta.
+  if (claims.client_id) await bonusDePrimeiroAcesso(claims.client_id)
 
   let redirectTo = '/auth/redirect'  // fallback seguro
   try {

@@ -1258,6 +1258,44 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-29 — Fidelidade: opcionais da rede (bônus, troca pelo portal, aviso de vencimento)
+
+Decisão do Heitor: o que tinha ficado fora da fidelidade vira OPÇÃO da rede, e o
+aviso de vencimento sai por push. Os quatro nascem desligados.
+
+- **Bônus de aniversário** e **de primeiro acesso**, cada um com liga/desliga e
+  quantidade de pontos. Uma vez por ano / uma vez na vida, garantido por índice
+  único (`bonus_ref`). O aniversariante e quem entra pela primeira vez recebem
+  push. 29/02 ganha em 28/02 fora de ano bissexto.
+- O primeiro acesso passou a ser marcado (`clients.app_account_created_at`
+  existia e ninguém preenchia) no login pela tela e na sessão do app; quem já
+  tinha entrado foi marcado pela migration, pelo auth.
+- **Troca pelo portal**: "Quem troca pontos por recompensa: só a equipe /
+  também o cliente". Ligada, o portal mostra "Trocar" → "Confirmar" em cada
+  recompensa ao alcance do saldo; o voucher aparece na hora.
+- **Aviso antes de vencer** (com validade ligada): push N dias antes (1 a 90),
+  um por lote novo na janela.
+- O cron `fidelidade-expiracao` virou `fidelidade` (expirar → aniversário →
+  avisos).
+- **Achado no caminho**: `expirar_pontos` valia para todas as redes, e o teste
+  da fase 4 a chamava com datas de 2027. Inofensivo hoje (nenhuma rede real
+  ligou o programa); no dia em que uma ligasse, o teste venceria pontos de
+  clientes reais. As três funções da rotina ganharam `p_tenant` e os testes o
+  passam (migration `20260929000006`).
+- `test:e2e:afetados` não tinha área de fidelidade desde a fase 1: os specs
+  `fidelidade-*` só rodavam na completa. Área criada.
+- Banco: migrations `20260929000005` (config, BONUS, `fidelidade_dar_bonus`,
+  `fidelidade_primeiro_acesso`, `fidelidade_bonus_aniversario`,
+  `avisos_de_vencimento`) e `20260929000006` (recorte por rede).
+- Testes: `e2e/fidelidade-opcionais.spec.ts` (6: config pela tela; primeiro
+  acesso pela tela de login, uma vez, e não para quem já entrou; aniversário
+  uma vez e o 29/02; aviso por lote e sem a opção; o cron gravando o push; troca
+  pelo portal e a action recusando sem a opção) e 2 casos unitários novos;
+  vizinhos (fidelidade 1–4, autenticação, portal, crons, LGPD, RLS): 50
+  passaram. Mudou `e2e/apoio/sessao.ts` (parâmetro opcional de rede em
+  `clienteComSessao`) e `actions/auth.ts` — vale uma completa quando o Heitor
+  quiser.
+
 ### 2026-09-29 — Fidelidade, fase 4: validade dos pontos e abrangência por unidade
 
 Fecha o plano de fidelidade (fases 1 a 4).
@@ -1265,7 +1303,7 @@ Fecha o plano de fidelidade (fases 1 a 4).
 - **Validade** na aba Fidelidade: "Não vencem" ou "Vencem" após N meses (1 a
   120). Cada ponto recebe o vencimento ao entrar e o guarda — mudar a regra vale
   para os novos. Os mais antigos são usados primeiro.
-- **Baixa diária** pelo cron `fidelidade-expiracao` (no Notification Cron, de
+- **Baixa diária** pelo cron `fidelidade-expiracao` (hoje `fidelidade`) (no Notification Cron, de
   hora em hora; idempotente). A conta FIFO é uma função só, em forma fechada
   (`fidelidade_a_expirar`), sem "consumir" lote a lote.
 - **Abrangência**: rede inteira (padrão) ou só na unidade. Com "só na unidade",
@@ -3919,10 +3957,9 @@ verdade. O que vale:
 
 ### Próxima frente candidata
 
-Nenhuma definida — a fidelidade (fases 1 a 4) fechou em 2026-09-29. O que
-ficou de fora dela, por decisão: bônus de eventos (aniversário, primeiro
-acesso) e resgate pelo próprio cliente no portal. Pendente, sem decisão: o aviso
-ao cliente antes de os pontos vencerem (estava no plano como opcional e não foi feito).
+Nenhuma definida — a fidelidade fechou em 2026-09-29: fases 1 a 4 e os
+opcionais da rede (bônus de aniversário e de primeiro acesso, troca pelo portal,
+aviso de vencimento por push).
 
 ---
 
