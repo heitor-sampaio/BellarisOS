@@ -67,6 +67,22 @@ function toWinAnsi(text: string): Buffer {
   return Buffer.from(bytes)
 }
 
+/**
+ * O texto que as fontes base-14 (Helvetica, WinAnsi) conseguem desenhar: o
+ * que está fora do repertório vira '?'. Usado também pelo PDF dos documentos
+ * assinados (`lib/documentos/pdf`) — lá o `pdf-lib` LANÇA ao ver um emoji num
+ * nome, e o PDF de um contrato assinado não pode falhar por isso.
+ */
+export function limparParaWinAnsi(text: string): string {
+  let saida = ''
+  for (const ch of text) {
+    const code = ch.codePointAt(0)!
+    const cabe = WIN_ANSI_EXTRA[ch] != null || (code >= 0x20 && code <= 0x7e) || (code >= 0xa0 && code <= 0xff)
+    saida += cabe ? ch : (ch === '\t' ? ' ' : '?')
+  }
+  return saida
+}
+
 /** Escapa os três caracteres que têm significado dentro de uma string PDF. */
 function escapePdfText(text: string): string {
   return text.replace(/([\\()])/g, '\\$1')

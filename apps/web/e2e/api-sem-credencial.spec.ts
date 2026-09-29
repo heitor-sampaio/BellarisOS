@@ -21,7 +21,7 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
  *   conta Meta da rede pela dele e deixava a integração inativa.
  */
 
-const CRONS = ['automacoes', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns']
+const CRONS = ['automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns']
 
 // Sem sessão nenhuma: o `storageState` padrão do projeto é o do admin.
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -33,6 +33,11 @@ test('crons recusam sem o CRON_SECRET e com um segredo errado', async ({ request
     const errado = await request.get(`/api/cron/${job}`, { headers: { authorization: 'Bearer nao-e-o-segredo' } })
     expect(errado.status(), `${job} com segredo errado`).toBe(401)
   }
+})
+
+test('o PDF de um documento assinado exige sessão', async ({ request }) => {
+  const r = await request.get('/api/documentos/00000000-0000-4000-8000-000000000000/pdf', { maxRedirects: 0 })
+  expect(r.status()).toBe(401)
 })
 
 test('geocode exige sessão', async ({ request, browser }) => {

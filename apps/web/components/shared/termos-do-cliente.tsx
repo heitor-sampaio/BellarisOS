@@ -136,6 +136,10 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
                 {!aberto && item.status === 'ASSINADO' && (
                   <Link href={rotaDoDocumento(item.id)} className="btn-ghost" style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>Ver</Link>
                 )}
+                {!aberto && item.status === 'ASSINADO' && (
+                  // O PDF final: documento + página de evidências (rota que confere a sessão).
+                  <a href={`/api/documentos/${item.id}/pdf`} target="_blank" rel="noopener" className="btn-ghost" style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>PDF</a>
+                )}
                 {aberto && podeColher && dispensando !== item.id && (
                   <button type="button" className="btn-ghost" onClick={() => { setDispensando(item.id); setMotivo('') }}
                     style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>

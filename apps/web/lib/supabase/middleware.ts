@@ -48,6 +48,9 @@ export async function updateSession(request: NextRequest) {
     const isPublicRoute = pathname === '/'
       || PUBLICAS.includes(pathname)
       || pathname.startsWith('/schedule')
+      // A conferência de um documento assinado: quem recebe o papel ou o PDF
+      // (o cliente, um advogado, um juiz) não tem conta no sistema.
+      || pathname === '/verificar' || pathname.startsWith('/verificar/')
       || pathname.startsWith('/api/')
 
     if (!user && !isAuthRoute && !isPublicRoute) {

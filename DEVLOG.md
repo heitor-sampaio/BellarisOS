@@ -1258,6 +1258,36 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Termos e contratos, fase 4: o PDF assinado e a verificação pública
+
+**O que muda:** todo documento assinado ganha um PDF final — o documento, a
+assinatura, um rodapé "Assinado eletronicamente · Código XXXX" em toda página e
+uma **página de evidências** (assinante com CPF mascarado, canal, identidade,
+quem conduziu, horário em Brasília e UTC, IP, aparelho, SHA-256 do conteúdo,
+código, QR e a trilha). A ficha tem o botão "PDF", e qualquer pessoa confere a
+autenticidade em `/verificar`, pelo código, sem conta — inclusive escolhendo o
+arquivo recebido, que é conferido no próprio aparelho.
+
+- Migration `20260930000004`: `documento_registrar_pdf` (uma vez só),
+  `documentos_pdf_reivindicar` (fila do cron, `skip locked`, 5 tentativas) e
+  código de verificação para os 6 do legado.
+- `lib/documentos/pdf.ts` com `pdf-lib` + `qrcode` (dependências novas); o
+  PDF enviado pela clínica é carimbado como está. Gerado em `after()` depois da
+  assinatura; cron `documentos-pdf` no Notification Cron.
+- Páginas públicas `/verificar` e `/verificar/[código]` (declaradas no proxy),
+  `noindex`, sem CPF, nome completo, IP nem conteúdo — só as iniciais.
+- `/api/documentos/[id]/pdf`: sessão + `documents: VIEW` + rede + unidade.
+- Export da LGPD: os termos e contratos saem da parte clínica para a geral
+  (com as evidências do titular), e os PDFs assinados vão no pacote.
+- Achados na limpeza dos testes: o PDF assinado não era apagado com o
+  documento, e o spec da fase 1 deixava o membro (autor dos modelos, via
+  `created_by`) e a rede para trás.
+- Prova: `e2e/documentos-verificacao.spec.ts` (4 casos: o PDF aparece sozinho
+  e o hash gravado é o do arquivo; a rota do PDF com e sem o módulo; a página
+  sem sessão, sem CPF nem nome, conferindo o arquivo certo e o alterado; código
+  torto e inexistente), `api-sem-credencial` com o cron e a rota novos. Conferi
+  o PDF gerado página a página.
+
 ### 2026-09-30 — Termos e contratos, fase 3: o checkout do plano
 
 **O que muda no dia da clínica:** o fechamento do plano passou a ser Plano →
@@ -4107,9 +4137,9 @@ verdade. O que vale:
 ### Próxima frente candidata
 
 **Termos e contratos, em andamento** (plano de 2026-09-29, seis fases; ver a
-entradas de 2026-09-30). Fases 1 a 3 feitas (modelos; emissão pelo
-atendimento com assinatura na clínica e no papel; checkout do plano). A
-próxima é a fase 4: o PDF final assinado e a página pública de verificação.
+entradas de 2026-09-30). Fases 1 a 4 feitas (modelos; emissão pelo
+atendimento com assinatura na clínica e no papel; checkout do plano; PDF
+assinado e verificação pública). A próxima é a fase 5: o portal do cliente.
 
 ---
 

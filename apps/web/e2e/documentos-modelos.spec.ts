@@ -43,6 +43,13 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
+  // Os modelos PRIMEIRO: o gestor os criou pela tela (`created_by`), e o
+  // membro não sai enquanto eles apontarem para ele — nem a rede, presa nele.
+  if (rede) {
+    await db().from('procedures').update({ consent_template_id: null, contract_template_id: null }).eq('tenant_id', rede.tenantId)
+    await db().from('document_template_versions').delete().eq('tenant_id', rede.tenantId)
+    await db().from('document_templates').delete().eq('tenant_id', rede.tenantId)
+  }
   await gestor?.limpar()
   await rede?.limpar()
   await alheia?.limpar()

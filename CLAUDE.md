@@ -270,7 +270,8 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
 - **Rota PÚBLICA se declara em `lib/supabase/middleware.ts`**, não só deixando
   de chamar `getTenantContext`. O proxy manda para `/login` tudo que
   não estiver na lista — a página pode não pedir sessão e mesmo assim nunca ser
-  vista. Hoje são: `/`, `/privacidade`, `/schedule*` e
+  vista. Hoje são: `/`, `/privacidade`, `/verificar*` (conferir documento
+  assinado), `/schedule*` e
   `/api/*`, mais as telas de autenticação.
   - Quem precisa disso: o que é lido por quem **ainda não entrou** ou **nunca
     vai entrar**. A política de privacidade é o caso típico — e loja de
@@ -764,7 +765,8 @@ A rede monta (no editor, com variáveis) ou envia (PDF pronto, assinado como
 está) os modelos de termo e contrato, e o cliente assina eletronicamente —
 na clínica, no portal, por link ou no papel. Plano aprovado em 2026-09-29, em
 seis fases; **fases 1 (modelos), 2 (emissão pelo atendimento, assinatura na
-clínica e no papel) e 3 (checkout do plano) estão no ar**. O desenho inteiro está no
+clínica e no papel), 3 (checkout do plano) e 4 (PDF assinado e verificação
+pública) estão no ar**. O desenho inteiro está no
 DEVLOG ("Termos e contratos").
 
 - **O documento é do PROCEDIMENTO** (decisão do Heitor): cada procedimento
@@ -832,8 +834,22 @@ DEVLOG ("Termos e contratos").
 - `consent_terms` é LEGADO: os assinados foram copiados para `issued_documents`
   (`moment = 'LEGADO'`, assinatura `identity_method = 'LEGADO'`) e o histórico da
   ficha e do portal lê `assinadosDoCliente`. Nada novo é gravado lá.
-- Prova: `e2e/documentos-modelos.spec.ts`, `e2e/documentos-atendimento.spec.ts` e
-  `e2e/checkout-de-plano.spec.ts`.
+- **O PDF final** (`lib/documentos/pdf.ts`, `pdf-lib` + `qrcode`): o documento
+  desenhado da MESMA árvore (ou o PDF enviado, como está), rodapé com o código
+  em toda página e a página de evidências. Sai em `after()` depois de
+  `documento_assinar`; o cron `documentos-pdf` recolhe o que falhar,
+  reivindicando a linha (`documentos_pdf_reivindicar`, `skip locked`, 5
+  tentativas). `documento_registrar_pdf` só grava uma vez. Texto passa por
+  `limparParaWinAnsi` — o `pdf-lib` LANÇA com emoji no nome.
+- **`/verificar` e `/verificar/[código]` são PÚBLICAS** (no proxy) e mostram
+  status, rede, unidade, as INICIAIS do assinante e os dois SHA-256 — nunca CPF,
+  nome completo, IP nem conteúdo. "Conferir um arquivo" calcula o hash no
+  navegador. O PDF da equipe sai por `/api/documentos/[id]/pdf` (sessão +
+  `documents: VIEW` + rede + unidade).
+- O export da LGPD traz os termos e contratos na parte GERAL (sem dado
+  clínico, por construção) e copia os PDFs assinados para o pacote.
+- Prova: `e2e/documentos-modelos.spec.ts`, `e2e/documentos-atendimento.spec.ts`,
+  `e2e/checkout-de-plano.spec.ts` e `e2e/documentos-verificacao.spec.ts`.
 
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação
@@ -1610,7 +1626,7 @@ assim a execução aparece vermelha no painel em vez de falhar em silêncio.
 
 | Serviço | Ritmo | `CRON_JOBS` |
 |---|---|---|
-| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`) |
+| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`, `documentos-pdf`) |
 | **Automations Cron** | `*/5 * * * *` (5 min) | `automacoes` |
 
 O segundo existe porque **granularidade de uma hora não serve a automação**:

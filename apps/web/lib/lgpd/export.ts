@@ -1,7 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { buildPdf, type PdfSection } from '@/lib/pdf'
-import { ensurePrivateBucket } from '@/lib/storage'
+import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
 import { rotuloDoLancamento } from '@/lib/fidelidade/formato'
 
@@ -9,7 +9,7 @@ import { rotuloDoLancamento } from '@/lib/fidelidade/formato'
  * Monta o pacote de dados pessoais de um cliente (LGPD art. 18, II e V).
  *
  * O pacote base — cadastro, agenda, financeiro, fidelidade, comunicações — sai
- * sempre. A parte clínica (anamnese, evolução, termos, fotos) só entra quando
+ * sempre. A parte clínica (anamnese, evolução, fotos) só entra quando
  * alguém da equipe com permissão de prontuário aprova o pedido: o produto não
  * expõe prontuário no autoatendimento, e são dados sensíveis de saúde.
  */
@@ -59,7 +59,7 @@ export async function buildClientExport(
 
   const [
     apptRes, txRes, creditRes, loyaltyRes, packageRes,
-    documentRes, notificationRes, planRes, branchRes,
+    documentRes, notificationRes, planRes, branchRes, termosRes,
   ] = await Promise.all([
     // `users` é desambiguado pela FK: appointments referencia users duas vezes
     // (professional_id e created_by_id) e o embed sem qualificação falha com
@@ -87,6 +87,12 @@ export async function buildClientExport(
     admin.from('treatment_plans')
       .select('created_at, status, branch_id').eq('client_id', clientId),
     admin.from('branches').select('id, name').eq('tenant_id', client.tenant_id),
+    // Termos e contratos (§9.4.1): na parte GERAL, porque não carregam dado
+    // clínico (o catálogo de variáveis não tem nenhum). Com as evidências do
+    // próprio titular — ele tem direito de saber de que aparelho assinou.
+    admin.from('issued_documents')
+      .select('created_at, title, kind, status, moment, signed_at, verification_code, content_sha256, signed_pdf_sha256, signed_pdf_path, content_text, closed_reason, document_signatures(channel, identity_method, signed_at, ip, user_agent, accepted_text)')
+      .eq('client_id', clientId).neq('status', 'A_GERAR').order('created_at', { ascending: false }),
   ])
 
   const appointments  = unwrap('os agendamentos', apptRes)
@@ -98,6 +104,7 @@ export async function buildClientExport(
   const notifications = unwrap('as comunicações', notificationRes)
   const plans         = unwrap('os planos de tratamento', planRes)
   const branches      = unwrap('as unidades', branchRes)
+  const termos        = unwrap('os termos e contratos', termosRes)
 
   const branchName = new Map((branches ?? []).map(b => [b.id as string, b.name as string]))
   const unit = (id: string | null | undefined) => (id ? branchName.get(id) ?? '—' : '—')
@@ -105,35 +112,19 @@ export async function buildClientExport(
   // ─── Parte clínica (só com aprovação) ──────────────────────────────────────
   let medical: Json | null = null
   if (includeMedical) {
-    // `consent_terms.procedure_id` não tem FK, então o procedimento não pode
-    // ser embutido aqui — é resolvido depois, por consulta separada.
     const recordRes = await admin
       .from('medical_records')
-      .select('created_at, general_anamnesis, medical_record_entries(created_at, notes, intercurrences, products_used, form_data, appointment_id, users(name), record_photos(created_at, type, source)), consent_terms(title, status, signed_at, signed_via, procedure_id)')
+      .select('created_at, general_anamnesis, medical_record_entries(created_at, notes, intercurrences, products_used, form_data, appointment_id, users(name), record_photos(created_at, type, source))')
       .eq('client_id', clientId)
       .maybeSingle()
 
     const record = unwrap('o prontuário', recordRes)
 
     if (record) {
-      const terms = (record.consent_terms ?? []) as Record<string, unknown>[]
-      const procIds = [...new Set(terms.map(t => t.procedure_id).filter(Boolean))] as string[]
-      const procName = new Map<string, string>()
-      if (procIds.length) {
-        const procRes = await admin.from('procedures').select('id, name').in('id', procIds)
-        for (const p of unwrap('os procedimentos do prontuário', procRes) ?? []) {
-          procName.set(p.id as string, p.name as string)
-        }
-      }
-
       medical = {
         criadoEm:      record.created_at,
         anamneseGeral: record.general_anamnesis,
         atendimentos:  record.medical_record_entries ?? [],
-        termosConsentimento: terms.map(t => ({
-          ...t,
-          procedimento: t.procedure_id ? procName.get(t.procedure_id as string) ?? null : null,
-        })),
       }
     }
   }
@@ -164,6 +155,9 @@ export async function buildClientExport(
     fidelidade:   loyalty ?? null,
     pacotes:      packages ?? [],
     documentos:   documents ?? [],
+    // O que o titular assinou: o texto, o hash e as evidências. O PDF assinado
+    // de cada um vai junto no pacote (pasta documentos/).
+    termosEContratos: (termos ?? []).map(t => Object.fromEntries(Object.entries(t).filter(([k]) => k !== 'signed_pdf_path'))),
     planosDeTratamento: plans ?? [],
     comunicacoes: notifications ?? [],
     prontuario:   includeMedical ? medical : 'Não incluído nesta solicitação.',
@@ -229,6 +223,17 @@ export async function buildClientExport(
       lines: (documents ?? []).map(d => `${fmtDate(d.created_at)} — ${String(d.name ?? d.file_name)} (${String(d.category ?? 'sem categoria')})`),
     },
     {
+      title: `Termos e contratos (${(termos ?? []).length})`,
+      emptyLabel: 'Nenhum termo ou contrato.',
+      lines: (termos ?? []).map(t => {
+        const assinatura = t.document_signatures as unknown as { channel?: string } | null
+        const situacao = t.status === 'ASSINADO'
+          ? `assinado em ${fmtDateTime(t.signed_at as string)}${assinatura?.channel ? ` (${String(assinatura.channel).toLowerCase()})` : ''} — código ${t.verification_code ?? '—'}`
+          : String(t.status).toLowerCase()
+        return `${fmtDate(t.created_at as string)} — ${String(t.title)} — ${situacao}`
+      }),
+    },
+    {
       title: `Comunicações recebidas (${(notifications ?? []).length})`,
       emptyLabel: 'Nenhuma comunicação registrada.',
       lines: (notifications ?? []).slice(0, 50).map(n => `${fmtDate(n.created_at)} — ${String(n.title ?? '')}`),
@@ -237,7 +242,6 @@ export async function buildClientExport(
 
   if (includeMedical) {
     const entries = (medical?.atendimentos ?? []) as Record<string, unknown>[]
-    const terms   = (medical?.termosConsentimento ?? []) as Record<string, unknown>[]
     sections.push(
       {
         title: `Prontuário — registros de atendimento (${entries.length})`,
@@ -252,21 +256,13 @@ export async function buildClientExport(
                + (inter ? ` — intercorrências: ${inter}` : '')
         }),
       },
-      {
-        title: `Prontuário — termos de consentimento (${terms.length})`,
-        emptyLabel: 'Nenhum termo registrado.',
-        lines: terms.map(t => {
-          const proc = (t.procedimento as string | null) ?? '—'
-          return `${String(t.title ?? 'Termo')} — ${proc} — ${t.status === 'SIGNED' ? `assinado em ${fmtDate(t.signed_at as string)}` : 'pendente'}`
-        }),
-      },
     )
   } else {
     sections.push({
       title: 'Prontuário',
       lines: [
-        'Os dados de prontuário (anamnese, evolução dos atendimentos, termos de',
-        'consentimento e fotos clínicas) não fazem parte deste pacote. Para',
+        'Os dados de prontuário (anamnese, evolução dos atendimentos e fotos',
+        'clínicas) não fazem parte deste pacote. Para',
         'solicitá-los, procure a unidade onde você é atendido.',
       ],
     })
@@ -307,6 +303,18 @@ export async function buildClientExport(
     pdfPath, pdf, { contentType: 'application/pdf', upsert: true },
   )
   if (pdfUp.error) throw new Error(`Falha ao gravar o PDF: ${pdfUp.error.message}`)
+
+  // Os PDFs assinados: uma cópia de cada no pacote. Falhou a cópia, falha o
+  // pedido — o titular receberia um pacote que parece completo e não é.
+  for (const t of termos ?? []) {
+    if (!t.signed_pdf_path) continue
+    const { data: arquivo, error: erroLeitura } = await admin.storage.from(DOCUMENTOS_ASSINADOS_BUCKET).download(t.signed_pdf_path as string)
+    if (erroLeitura || !arquivo) throw new Error(`Falha ao ler o PDF assinado "${t.title}": ${erroLeitura?.message}`)
+    const destino = `${base}/documentos/${String(t.verification_code ?? 'documento')}.pdf`
+    const copia = await admin.storage.from(LGPD_BUCKET).upload(destino, Buffer.from(await arquivo.arrayBuffer()),
+      { contentType: 'application/pdf', upsert: true })
+    if (copia.error) throw new Error(`Falha ao copiar o PDF assinado "${t.title}": ${copia.error.message}`)
+  }
 
   const expiresAt = new Date(Date.now() + EXPORT_TTL_DAYS * 24 * 60 * 60 * 1000)
   return { jsonPath, pdfPath, expiresAt }

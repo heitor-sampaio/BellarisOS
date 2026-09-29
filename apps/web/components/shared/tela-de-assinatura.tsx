@@ -235,6 +235,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
               </p>
               {doc.assinatura.conduzidoPor && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Conduzido por {doc.assinatura.conduzidoPor}</p>}
               {doc.codigo && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Código {doc.codigo}</p>}
+              <a href={`/api/documentos/${doc.id}/pdf`} target="_blank" rel="noopener" className="btn-secondary" style={{ alignSelf: 'flex-start', marginTop: 6 }}>Baixar o PDF assinado</a>
             </div>
           )}
 

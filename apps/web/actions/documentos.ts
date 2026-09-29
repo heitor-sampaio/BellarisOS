@@ -13,6 +13,7 @@
  */
 
 import { headers } from 'next/headers'
+import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, can, podeReceber } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -21,6 +22,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { garantirRenderizado, sha256 } from '@/lib/documentos/renderizar'
 import { prepararDocumentosDoPlano } from '@/lib/documentos/plano'
+import { gerarPdfAssinado } from '@/lib/documentos/pdf'
 import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
@@ -71,6 +73,14 @@ async function depoisDeAssinar(ctx: TenantContext, doc: NonNullable<Awaited<Retu
   })
   revalidatePath('/admin/clients/[id]', 'page')
   revalidatePath('/[slug]/clients/[id]', 'page')
+  // O PDF final (documento + página de evidências) sai depois da resposta: a
+  // assinatura já está gravada, e quem assinou não espera o PDF. O cron
+  // `documentos-pdf` recolhe o que falhar aqui.
+  const tenantId = ctx.tenantId!
+  after(async () => {
+    try { await gerarPdfAssinado(tenantId, doc.id) }
+    catch (e) { console.error('[documentos] PDF assinado ficou para o cron:', (e as Error).message) }
+  })
 }
 
 // ─── Na clínica, na tela ─────────────────────────────────────────────────────

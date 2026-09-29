@@ -46,7 +46,12 @@ export async function apagarDocumentosEmitidos(docs: string[], falhas: Falha[] =
   if (docs.length === 0) return falhas
   const db = banco()
   const { data: scans } = await db.from('document_signatures').select('scan_path').in('issued_document_id', docs)
-  const caminhos = (scans ?? []).map(s => s.scan_path as string | null).filter((p): p is string => !!p)
+  const { data: pdfs } = await db.from('issued_documents').select('signed_pdf_path').in('id', docs)
+  // A digitalização do papel e o PDF final assinado (fase 4): os dois no mesmo bucket.
+  const caminhos = [
+    ...(scans ?? []).map(s => s.scan_path as string | null),
+    ...(pdfs ?? []).map(p => p.signed_pdf_path as string | null),
+  ].filter((p): p is string => !!p)
   if (caminhos.length) {
     const { error } = await db.storage.from('documentos-assinados').remove(caminhos)
     if (error) falhas.push({ o_que: 'digitalizações dos documentos', erro: error.message })
