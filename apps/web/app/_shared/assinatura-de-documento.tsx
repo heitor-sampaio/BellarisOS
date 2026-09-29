@@ -48,6 +48,7 @@ export async function AssinaturaDeDocumento({ id, base, voltar }: {
         cliente:    { nome: doc.cliente.nome },
         conteudo:   doc.conteudo,
         pdfUrl:     doc.pdfUrl,
+        imagens:    doc.imagens,
         assinatura: doc.assinatura,
       }}
     />

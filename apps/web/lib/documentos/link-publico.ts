@@ -77,7 +77,7 @@ export async function abrirPorLink(input: Identidade): Promise<{ erro?: string; 
     doc: {
       id: d.resumo.id, titulo: d.resumo.titulo, tipo: d.resumo.tipo, status: d.resumo.status,
       faltando: [], codigo: d.resumo.codigo, motivo: null,
-      cliente: { nome: d.cliente.nome }, conteudo: d.conteudo, pdfUrl: d.pdfUrl, assinatura: null,
+      cliente: { nome: d.cliente.nome }, conteudo: d.conteudo, pdfUrl: d.pdfUrl, imagens: d.imagens, assinatura: null,
     },
   }
 }

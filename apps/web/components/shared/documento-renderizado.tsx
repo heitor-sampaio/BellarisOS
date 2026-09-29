@@ -1,71 +1,184 @@
-import type { ArvoreResolvida, TrechoResolvido } from '@/lib/documentos/marcacao'
+import type { CSSProperties, ReactNode } from 'react'
+import {
+  estiloEfetivo, ENTRELINHAS_BASE, FATOR_DE_LINHA, ESPACO_DEPOIS_DO_PARAGRAFO, ESPACO_ANTES_DO_TITULO,
+  RECUO_DA_LISTA, TAMANHO_DO_TITULO,
+  type Alinhamento, type BlocoResolvido, type DocumentoResolvido, type Trecho,
+} from '@/lib/documentos/arvore'
+import { familiaCss } from '@/lib/documentos/fontes'
 
 /**
- * Desenha um documento do editor — a mesma árvore que o PDF desenha.
+ * Desenha um documento (termo ou contrato) — a MESMA árvore que o PDF desenha
+ * (`lib/documentos/pdf/diagramacao.ts`), com as mesmas fontes e medidas.
  *
- * Tudo vira texto React (nada de `dangerouslySetInnerHTML`): o conteúdo vem do
- * modelo da rede e dos dados do cliente, e o valor de uma variável é texto
- * puro por construção (`interpolarArvore`).
+ * A folha tem as medidas em PONTOS, como o PDF: `--pt` é quanto vale um ponto
+ * nesta largura (a folha A4 tem 595pt; ver `.folha-documento` no CSS). No
+ * celular, onde a escala deixaria o texto ilegível, o ponto tem um piso — o
+ * texto quebra em outras palavras, mas o conteúdo é o mesmo, e é o conteúdo
+ * que o hash prova.
  *
+ * Tudo vira elemento React (nada de `dangerouslySetInnerHTML`): o conteúdo vem
+ * do modelo da rede e dos dados do cliente, e fonte, cor e tamanho só chegam
+ * aqui depois de passar pelo conversor (catálogo fechado, `#rrggbb`).
+ *
+ * `imagens`: URLs temporárias por caminho — a URL não entra no documento.
  * `assinatura`: a imagem da assinatura, quando já existe; sem ela, o lugar
- * marcado com [[assinatura]] (ou o fim do documento) mostra a linha em branco.
+ * marcado (ou o fim do documento) mostra a linha em branco.
  */
-export function DocumentoRenderizado({ arvore, assinatura, nomeDoAssinante }: {
-  arvore:           ArvoreResolvida
+
+const pt = (n: number) => `calc(var(--pt) * ${n})`
+
+const ALINHAR: Record<Alinhamento, CSSProperties['textAlign']> = {
+  esquerda: 'left', centro: 'center', direita: 'right', justificado: 'justify',
+}
+const FLEX: Record<Alinhamento, CSSProperties['justifyContent']> = {
+  esquerda: 'flex-start', centro: 'center', direita: 'flex-end', justificado: 'flex-start',
+}
+
+interface Ctx {
+  base:       DocumentoResolvido['base']
+  imagens:    Record<string, string>
+  assinatura: string | null
+  nome:       string | null
+}
+
+export function DocumentoRenderizado({ documento, imagens, assinatura, nomeDoAssinante }: {
+  documento:        DocumentoResolvido
+  imagens?:         Record<string, string>
   assinatura?:      string | null
   nomeDoAssinante?: string | null
 }) {
-  const temLugar = arvore.some(b => b.tipo === 'assinatura')
+  const ctx: Ctx = { base: documento.base, imagens: imagens ?? {}, assinatura: assinatura ?? null, nome: nomeDoAssinante ?? null }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, color: 'var(--text)', fontSize: 'var(--text-base-sz)', lineHeight: 1.6 }}>
-      {arvore.map((b, i) => {
-        switch (b.tipo) {
-          case 'titulo':
-            return b.nivel === 1
-              ? <h2 key={i} style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', textAlign: 'center', marginTop: i ? 8 : 0 }}><Trechos ts={b.trechos} /></h2>
-              : <h3 key={i} style={{ fontSize: 'var(--text-base-sz)', fontWeight: 'var(--weight-extrabold)', marginTop: 6 }}><Trechos ts={b.trechos} /></h3>
-          case 'paragrafo':
-            return (
-              <p key={i} style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                {b.linhas.map((l, j) => (
-                  <span key={j}>{j > 0 && '\n'}<Trechos ts={l} /></span>
-                ))}
-              </p>
-            )
-          case 'lista': {
-            const Tag = b.ordenada ? 'ol' : 'ul'
-            return (
-              <Tag key={i} style={{ paddingLeft: 22, display: 'flex', flexDirection: 'column', gap: 4, listStyle: b.ordenada ? 'decimal' : 'disc' }}>
-                {b.itens.map((it, j) => <li key={j} style={{ overflowWrap: 'anywhere' }}><Trechos ts={it} /></li>)}
-              </Tag>
-            )
-          }
-          case 'divisoria':
-            return <hr key={i} style={{ border: 0, borderTop: '1px solid var(--border)', margin: '4px 0' }} />
-          case 'assinatura':
-            return <LugarDaAssinatura key={i} assinatura={assinatura} nome={nomeDoAssinante} />
-        }
-      })}
-      {!temLugar && <LugarDaAssinatura assinatura={assinatura} nome={nomeDoAssinante} />}
+    <div className="folha-documento">
+      <div className="folha-documento-pagina" style={{ color: '#1f1f1f', fontFamily: familiaCss(documento.base.fonte), fontSize: pt(documento.base.tamanho) }}>
+        {documento.cabecalho.length > 0 && (
+          <div className="folha-documento-cabecalho">{documento.cabecalho.map((b, i) => <Bloco key={i} b={b} ctx={ctx} />)}</div>
+        )}
+        {documento.blocos.map((b, i) => <Bloco key={i} b={b} ctx={ctx} />)}
+        {!temAssinatura(documento.blocos) && <LugarDaAssinatura ctx={ctx} />}
+        {documento.rodape.length > 0 && (
+          <div className="folha-documento-rodape">{documento.rodape.map((b, i) => <Bloco key={i} b={b} ctx={ctx} />)}</div>
+        )}
+      </div>
     </div>
   )
 }
 
-function Trechos({ ts }: { ts: TrechoResolvido[] }) {
-  return <>{ts.map((t, i) => (t.negrito ? <strong key={i} style={{ fontWeight: 'var(--weight-extrabold)' }}>{t.texto}</strong> : <span key={i}>{t.texto}</span>))}</>
+export function temAssinatura(blocos: BlocoResolvido[]): boolean {
+  return blocos.some(b => b.tipo === 'assinatura'
+    || (b.tipo === 'tabela' && b.linhas.some(l => l.celulas.some(c => temAssinatura(c.blocos)))))
 }
 
-function LugarDaAssinatura({ assinatura, nome }: { assinatura?: string | null; nome?: string | null }) {
+function Bloco({ b, ctx }: { b: BlocoResolvido; ctx: Ctx }): ReactNode {
+  switch (b.tipo) {
+    case 'paragrafo':
+    case 'titulo': {
+      const nivel = b.tipo === 'titulo' ? b.nivel : null
+      const entre = b.entrelinhas ?? ENTRELINHAS_BASE
+      const Tag = nivel ? (`h${nivel + 1}` as 'h2' | 'h3' | 'h4') : 'p'
+      const tamanho = nivel ? TAMANHO_DO_TITULO[nivel] : ctx.base.tamanho
+      return (
+        <Tag style={{
+          margin: 0,
+          marginTop: nivel ? pt(ESPACO_ANTES_DO_TITULO) : 0,
+          marginBottom: pt(ESPACO_DEPOIS_DO_PARAGRAFO),
+          textAlign: ALINHAR[b.alinhar ?? 'esquerda'],
+          lineHeight: FATOR_DE_LINHA * entre,
+          whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+          fontWeight: 400,
+          // Parágrafo vazio ocupa uma linha, como no PDF.
+          minHeight: pt(tamanho * FATOR_DE_LINHA * entre),
+        }}>
+          {b.trechos.map((t, i) => <Pedaco key={i} t={t} ctx={ctx} nivel={nivel} />)}
+        </Tag>
+      )
+    }
+    case 'lista': {
+      const Tag = b.ordenada ? 'ol' : 'ul'
+      return (
+        <Tag start={b.ordenada ? b.inicio : undefined}
+          style={{ margin: 0, marginBottom: pt(ESPACO_DEPOIS_DO_PARAGRAFO), paddingLeft: pt(RECUO_DA_LISTA), listStyle: b.ordenada ? 'decimal' : 'disc' }}>
+          {b.itens.map((it, i) => (
+            <li key={i} style={{ paddingLeft: pt(2) }}>
+              {it.map((bi, j) => <Bloco key={j} b={bi} ctx={ctx} />)}
+            </li>
+          ))}
+        </Tag>
+      )
+    }
+    case 'tabela':
+      return (
+        <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', marginBottom: pt(ESPACO_DEPOIS_DO_PARAGRAFO) }}>
+          <colgroup>{b.larguras.map((w, i) => <col key={i} style={{ width: `${w * 100}%` }} />)}</colgroup>
+          <tbody>
+            {b.linhas.map((l, i) => (
+              <tr key={i}>
+                {l.celulas.map((c, j) => {
+                  const Tag = c.cabecalho ? 'th' : 'td'
+                  return (
+                    <Tag key={j} colSpan={c.colspan} style={{
+                      border: `${pt(0.6)} solid #9a9a9a`, padding: `${pt(4)} ${pt(5)}`, verticalAlign: 'top',
+                      textAlign: 'left', fontWeight: 400, background: c.cabecalho ? '#f2f2f2' : undefined,
+                    }}>
+                      {c.blocos.map((bi, k) => <Bloco key={k} b={bi} ctx={ctx} />)}
+                    </Tag>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )
+    case 'imagem': {
+      const url = ctx.imagens[b.caminho]
+      const medida: CSSProperties = { width: pt(b.largura), maxWidth: '100%', aspectRatio: `${b.largura} / ${b.altura}`, display: 'block' }
+      return (
+        <div style={{ marginBottom: pt(ESPACO_DEPOIS_DO_PARAGRAFO), display: 'flex', justifyContent: FLEX[b.alinhar ?? 'esquerda'] }}>
+          {url
+            // eslint-disable-next-line @next/next/no-img-element -- URL temporária do storage, não otimizável
+            ? <img src={url} alt="" style={{ ...medida, height: 'auto' }} />
+            : <div style={{ ...medida, border: '1px dashed #bbbbbb' }} />}
+        </div>
+      )
+    }
+    case 'divisoria':
+      return <hr style={{ border: 0, borderTop: `${pt(0.6)} solid #c8c8c8`, margin: `${pt(4)} 0 ${pt(8)}` }} />
+    case 'quebra':
+      // Na tela não há páginas: a quebra aparece como separação discreta.
+      return <div aria-hidden style={{ borderTop: '1px dashed #d4d4d4', margin: `${pt(10)} 0` }} />
+    case 'assinatura':
+      return <LugarDaAssinatura ctx={ctx} />
+  }
+}
+
+function Pedaco({ t, ctx, nivel }: { t: Trecho; ctx: Ctx; nivel: 1 | 2 | 3 | null }) {
+  const e = estiloEfetivo(t, ctx.base, nivel !== null)
+  const tamanho = t.tamanho ?? (nivel ? TAMANHO_DO_TITULO[nivel] : ctx.base.tamanho)
+  const decoracao = [e.sublinhado && 'underline', e.tachado && 'line-through'].filter(Boolean).join(' ')
   return (
-    <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-      <div style={{ width: 280, maxWidth: '100%', height: 72, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-        {assinatura && (
+    <span style={{
+      fontFamily: familiaCss(e.fonte),
+      fontSize: pt(tamanho),
+      fontWeight: e.negrito ? 700 : 400,
+      fontStyle: e.italico ? 'italic' : 'normal',
+      textDecoration: decoracao || undefined,
+      color: e.cor,
+      background: e.realce ?? undefined,
+    }}>{t.texto}</span>
+  )
+}
+
+function LugarDaAssinatura({ ctx }: { ctx: Ctx }) {
+  return (
+    <div style={{ margin: `${pt(14)} 0 ${pt(8)}`, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: pt(3) }}>
+      <div style={{ width: pt(200), maxWidth: '100%', height: pt(70), display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        {ctx.assinatura && (
           // eslint-disable-next-line @next/next/no-img-element -- dataURL da assinatura, não imagem otimizável
-          <img src={assinatura} alt="Assinatura" style={{ maxHeight: 72, maxWidth: '100%', objectFit: 'contain' }} />
+          <img src={ctx.assinatura} alt="Assinatura" style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} />
         )}
       </div>
-      <div style={{ width: 280, maxWidth: '100%', borderTop: '1px solid var(--text-muted)' }} />
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{nome || 'Assinatura do cliente'}</p>
+      <div style={{ width: pt(260), maxWidth: '100%', borderTop: `${pt(0.8)} solid #6b6b6b` }} />
+      <p style={{ margin: 0, fontSize: pt(9), color: '#6b6b6b' }}>{ctx.nome || 'Assinatura do cliente'}</p>
     </div>
   )
 }

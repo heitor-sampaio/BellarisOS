@@ -780,9 +780,37 @@ DEVLOG ("Termos e contratos").
   `agendamento.*`; o contrato do procedimento é o do avulso; só o contrato de
   plano usa `plano.*` e `pagamento.*`. Variável fora do tipo é recusada ao
   salvar — sairia em branco num documento assinado.
-- **A marcação é própria e pequena** (`lib/documentos/marcacao.ts`): a tela e o
-  PDF desenham a MESMA árvore, e a variável é interpolada sobre a árvore (vira
-  texto puro — nome com `**` não injeta marcação). Não trocar por editor rico.
+- **O editor é rico (Tiptap), mas o que se assina é a árvore NOSSA**
+  (`lib/documentos/arvore.ts`, v2 — decisão do Heitor, 2026-09-29, que
+  substituiu a marcação leve): fonte, tamanho, negrito/itálico/sublinhado/
+  tachado, cor, realce, alinhamento, entrelinhas, títulos, listas, tabelas,
+  imagens, cabeçalho/rodapé, quebra de página. A tela
+  (`DocumentoRenderizado`) e o PDF (`lib/documentos/pdf/diagramacao.ts`)
+  desenham a MESMA árvore, com as mesmas medidas (em pontos) e fontes.
+  - **A porta única é o conversor** (`editor/converter.ts`): o JSON do editor
+    vira árvore só com nó/marca/atributo conhecidos; o resto é ERRO (o JSON vem
+    do navegador). Colado do Word é normalizado (fonte do Office → a livre
+    equivalente, tamanho → o mais próximo da lista, cor só `#rrggbb`). O JSON
+    do editor NUNCA vai para a tela como HTML.
+  - A variável é interpolada sobre a árvore (vira texto puro, com o estilo que
+    tinha no modelo).
+  - A marcação leve de antes ainda vale (versões antigas, o contrato de plano
+    semeado, E2E por `p_texto`): `editor/da-marcacao.ts` a converte para o
+    MESMO JSON, e ela passa pelo mesmo conversor. A v1 gravada (array) se lê
+    por `lerConteudo`/`deV1`.
+  - **Fontes**: 12 famílias livres em `public/fontes-documento/` (as do Office
+    não se embutem: Arimo = Arial, Tinos = Times, Carlito = Calibri, Cousine =
+    Courier, Gelasio = Georgia). A tela as usa por `@font-face` (`doc-<id>`), o
+    PDF as embute com `@pdf-lib/fontkit`, `subset: false` (o subset troca
+    glifos). ⚠️ O TTF que a API do Google Fonts serve para Arimo, Carlito e
+    Cousine QUEBRA o fontkit — vêm do repositório google/fonts
+    (`scripts/baixar-fontes.mjs`); o teste embute os 48 arquivos.
+  - **Imagens** moram em `modelos-de-documento/<rede>/imagens/<sha256>.<ext>`
+    (endereçadas pelo conteúdo). A árvore guarda caminho + sha256 — o hash do
+    documento cobre a imagem —; a tela recebe URLs temporárias à parte
+    (`urlsDasImagens`), e o PDF confere o sha256 antes de desenhar.
+  - `.ttf`/`.woff` ficam fora do matcher do proxy: a página pública do link
+    carrega as fontes SEM sessão.
 - **Versão é retrato**: `documento_modelo_salvar` grava modelo + versão numa
   transação, e só abre versão nova quando o CONTEÚDO muda. Versão não se
   altera (gatilho); modelo não se apaga (desativa).
@@ -1652,6 +1680,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Encerrar uma entrega sem atualizar o DEVLOG e a memória (§16)
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
 ❌ Usar em termo/contrato variável fora do catálogo de lib/documentos/variaveis.ts, ou interpolar o TEXTO em vez da árvore
+❌ Levar o JSON do editor (Tiptap) à tela ou ao PDF sem passar por converterDocumentoDoEditor (é a porta única do que se assina)
+❌ Pôr fonte em documento que não esteja no catálogo e em public/fontes-documento (a tela e o PDF têm de desenhar a mesma)
 ❌ Alterar uma versão de modelo de documento ou apagar um modelo (edita → versão nova; o que não serve, desativa)
 ❌ Assinar documento fora de documento_assinar, ou emitir documento de agendamento fora do gatilho
 ❌ Guardar a forma canônica de um documento em jsonb (reordena as chaves e o hash não bate)

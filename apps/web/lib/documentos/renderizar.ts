@@ -2,7 +2,9 @@ import 'server-only'
 import { createHash } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
-import { analisarMarcacao, interpolarArvore, formaCanonica, textoDaArvore } from './marcacao'
+import { interpolar, formaCanonica, textoDoDocumento, type DocumentoDoModelo } from './arvore'
+import { converterDocumentoDoEditor } from './editor/converter'
+import { marcacaoParaEditor } from './editor/da-marcacao'
 import { ehOpcional } from './variaveis'
 import { valoresDoDocumento, type DadosDoDocumento } from './valores'
 import { gerarCodigoDeVerificacao } from './codigo'
@@ -164,7 +166,7 @@ export async function garantirRenderizado(
 
   const admin = createAdminClient()
   const versao = await ler(admin.from('document_template_versions')
-    .select('source, body_markup, file_sha256, file_name')
+    .select('source, body_markup, body_doc, file_sha256, file_name')
     .eq('id', doc.template_version_id).eq('tenant_id', tenantId).single(), 'buscar a versão do modelo')
   if (!versao) return doc
 
@@ -176,9 +178,9 @@ export async function garantirRenderizado(
   if (versao.source === 'EDITOR') {
     const pagamento = opcoes.pagamento ? opcoes.pagamento.valor : pagamentoDoRetrato(doc.payment_snapshot)
     const valores = valoresDoDocumento(await dadosDoDocumento(doc, pagamento))
-    const r = interpolarArvore(analisarMarcacao(versao.body_markup as string), v => valores[v] ?? null, ehOpcional)
-    conteudo = formaCanonica(r.arvore)
-    texto = textoDaArvore(r.arvore)
+    const r = interpolar(documentoDaVersao(versao, tenantId), v => valores[v] ?? null, ehOpcional)
+    conteudo = formaCanonica(r.documento)
+    texto = textoDoDocumento(r.documento)
     hash = sha256(conteudo)
     faltando = r.faltando
   } else {
@@ -201,6 +203,21 @@ export async function garantirRenderizado(
   }), 'montar o documento')
 
   return lerDocumento(tenantId, docId)
+}
+
+/**
+ * A árvore do modelo de uma versão do EDITOR: o JSON do editor rico
+ * (`body_doc`) ou, nas versões antigas, a marcação leve convertida para ele —
+ * as duas passam pelo MESMO conversor, a porta única do que se assina. A
+ * versão foi validada ao salvar; falhar aqui é dado corrompido, e para.
+ */
+export function documentoDaVersao(
+  versao: { body_doc?: unknown; body_markup?: unknown }, tenantId: string,
+): DocumentoDoModelo {
+  const entrada = versao.body_doc ?? marcacaoParaEditor(String(versao.body_markup ?? ''))
+  const r = converterDocumentoDoEditor(entrada, { tenantId })
+  if ('erro' in r) throw new Error(`O modelo do documento não pôde ser montado: ${r.erro}`)
+  return r.documento
 }
 
 /** Monta os que ainda não foram montados (ou ficaram incompletos) de uma lista. */

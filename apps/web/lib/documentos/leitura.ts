@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getSignedUrl, MODELOS_DE_DOCUMENTO_BUCKET } from '@/lib/storage'
 import { VARIAVEIS_DE_DOCUMENTO } from './variaveis'
+import { urlsDasImagens } from './imagens'
 import {
   garantirRenderizado, renderizarPendentes, COLUNAS_DO_DOCUMENTO,
   type DocumentoEmitido, type StatusDoDocumento,
@@ -123,6 +124,8 @@ export interface DocumentoParaExibir {
   conteudo:   string | null
   /** O PDF enviado (ARQUIVO), por link temporário. */
   pdfUrl:     string | null
+  /** URLs temporárias das imagens do documento, por caminho — fora do hash. */
+  imagens:    Record<string, string>
   hash:       string | null
   assinatura: { png: string | null; nome: string; em: string; canal: string; conduzidoPor: string | null } | null
 }
@@ -158,6 +161,7 @@ export async function documentoParaExibir(
     branchId:  doc.branch_id,
     conteudo:  doc.content,
     pdfUrl:    versao?.file_path ? await getSignedUrl(MODELOS_DE_DOCUMENTO_BUCKET, versao.file_path as string, 30 * 60) : null,
+    imagens:   await urlsDasImagens(doc.content),
     hash:      doc.content_sha256,
     assinatura: assinatura
       ? {

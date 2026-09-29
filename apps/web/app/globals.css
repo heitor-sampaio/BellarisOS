@@ -1755,3 +1755,79 @@ input[type="search"].field {
 .painel-de-filtros .filtro-select,
 .painel-de-filtros .filtro-toggle { width: 100%; }
 .painel-de-filtros .filtro-toggle { justify-content: flex-start; }
+
+/* ── Fontes dos documentos (termos e contratos) ─────────────────────────────
+   Os MESMOS arquivos que o PDF assinado embute (lib/documentos/fontes.ts),
+   então o que se vê na tela é o que se assina. Nome prefixado (doc-*): não
+   colide com uma fonte instalada na máquina de quem lê. O navegador só baixa
+   a fonte que o documento usa. */
+@font-face { font-family: 'doc-arimo'; src: url('/fontes-documento/arimo-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-arimo'; src: url('/fontes-documento/arimo-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-arimo'; src: url('/fontes-documento/arimo-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-arimo'; src: url('/fontes-documento/arimo-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-tinos'; src: url('/fontes-documento/tinos-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-tinos'; src: url('/fontes-documento/tinos-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-tinos'; src: url('/fontes-documento/tinos-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-tinos'; src: url('/fontes-documento/tinos-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-carlito'; src: url('/fontes-documento/carlito-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-carlito'; src: url('/fontes-documento/carlito-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-carlito'; src: url('/fontes-documento/carlito-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-carlito'; src: url('/fontes-documento/carlito-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-cousine'; src: url('/fontes-documento/cousine-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-cousine'; src: url('/fontes-documento/cousine-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-cousine'; src: url('/fontes-documento/cousine-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-cousine'; src: url('/fontes-documento/cousine-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-gelasio'; src: url('/fontes-documento/gelasio-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-gelasio'; src: url('/fontes-documento/gelasio-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-gelasio'; src: url('/fontes-documento/gelasio-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-gelasio'; src: url('/fontes-documento/gelasio-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-hanken'; src: url('/fontes-documento/hanken-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-hanken'; src: url('/fontes-documento/hanken-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-hanken'; src: url('/fontes-documento/hanken-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-hanken'; src: url('/fontes-documento/hanken-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-roboto'; src: url('/fontes-documento/roboto-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-roboto'; src: url('/fontes-documento/roboto-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-roboto'; src: url('/fontes-documento/roboto-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-roboto'; src: url('/fontes-documento/roboto-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-open-sans'; src: url('/fontes-documento/open-sans-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-open-sans'; src: url('/fontes-documento/open-sans-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-open-sans'; src: url('/fontes-documento/open-sans-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-open-sans'; src: url('/fontes-documento/open-sans-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-montserrat'; src: url('/fontes-documento/montserrat-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-montserrat'; src: url('/fontes-documento/montserrat-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-montserrat'; src: url('/fontes-documento/montserrat-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-montserrat'; src: url('/fontes-documento/montserrat-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-lato'; src: url('/fontes-documento/lato-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-lato'; src: url('/fontes-documento/lato-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-lato'; src: url('/fontes-documento/lato-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-lato'; src: url('/fontes-documento/lato-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-merriweather'; src: url('/fontes-documento/merriweather-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-merriweather'; src: url('/fontes-documento/merriweather-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-merriweather'; src: url('/fontes-documento/merriweather-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-merriweather'; src: url('/fontes-documento/merriweather-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-playfair'; src: url('/fontes-documento/playfair-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-playfair'; src: url('/fontes-documento/playfair-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-playfair'; src: url('/fontes-documento/playfair-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-playfair'; src: url('/fontes-documento/playfair-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+
+/* A folha do documento (components/shared/documento-renderizado.tsx): as
+   medidas vêm em PONTOS, como no PDF. `--pt` é quanto vale 1pt nesta largura
+   (a A4 tem 595pt); no celular ele tem um piso, senão o texto sairia miúdo.
+   A margem segue a do PDF (56pt) até um mínimo que caiba no celular. */
+.folha-documento { container-type: inline-size; width: 100%; }
+.folha-documento-pagina {
+  --pt: max(calc(100cqw / 595.28), 1.15px);
+  padding: clamp(14px, calc(100cqw * 56 / 595.28), 75px);
+  background: #ffffff;
+  word-break: normal;
+}
+.folha-documento-cabecalho {
+  padding-bottom: calc(var(--pt) * 6);
+  margin-bottom: calc(var(--pt) * 12);
+  border-bottom: 1px solid #e6e6e6;
+}
+.folha-documento-rodape {
+  padding-top: calc(var(--pt) * 6);
+  margin-top: calc(var(--pt) * 12);
+  border-top: 1px solid #e6e6e6;
+}

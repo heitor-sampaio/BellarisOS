@@ -1258,6 +1258,45 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Editor rico de documentos, fase 1: a árvore, as fontes e o PDF
+
+**Por quê:** a marcação leve (`#`, `**`, `{{…}}`) era boa, mas pouca gente na
+clínica entende markdown. O Heitor pediu um editor de texto de verdade, "bem
+completo": 12 fontes (as do Office pelas equivalentes livres + modernas),
+tamanho, negrito, itálico, sublinhado, tachado, cor, realce, alinhamento,
+entrelinhas, listas, tabelas, imagens (logo), cabeçalho e rodapé, quebra de
+página. Plano em duas fases; esta é a de baixo — nada muda na tela de edição
+ainda.
+
+- **Árvore v2** (`lib/documentos/arvore.ts`): o que se assina continua sendo
+  uma árvore própria, fechada; o editor (Tiptap, fase 2) só a escreve, pelo
+  conversor (`editor/converter.ts`), que recusa o que não conhece e normaliza o
+  que vem colado do Word.
+- **A marcação antiga continua valendo** por conversão
+  (`editor/da-marcacao.ts`): o contrato de plano semeado e todos os E2E que
+  criam modelo por `p_texto` passam pelo caminho novo sem mudar.
+- **Migration `20260930000007`**: `document_template_versions.body_doc` (o JSON
+  do editor), `documento_modelo_salvar` com `p_documento` (default, compatível
+  com o código no ar) e o CHECK "marcação OU JSON".
+- **Fontes**: 48 TTF (12 × 4 estilos, ~13 MB, licenças livres junto) em
+  `public/fontes-documento/`, por `scripts/baixar-fontes.mjs`; `@font-face` na
+  tela, `@pdf-lib/fontkit` no PDF (sem subset). **Achado:** o TTF que a API do
+  Google serve para Arimo, Carlito e Cousine quebra o fontkit ("beyond buffer
+  length") — as três vêm do repositório (a Arimo estática, de um commit antigo).
+  Um teste embute e desenha os 48.
+- **PDF**: motor novo (`pdf/diagramacao.ts`) — quebra com estilos misturados,
+  justificado, listas aninhadas, tabelas (linha maior que a página é dividida
+  sem perder conteúdo), imagens conferidas pelo sha256, cabeçalho/rodapé em
+  toda página (ou no fluxo, se não couberem). A página de evidências passou
+  para a Arimo: nome com acento ou símbolo sai como é.
+- **Tela**: `DocumentoRenderizado` desenha uma "folha" com medidas em pontos,
+  como o PDF (no celular, com piso de legibilidade).
+- O proxy deixa `.ttf` passar: a página pública do link carrega as fontes sem
+  sessão.
+- Prova: `tests/documentos-arvore.test.ts` e `tests/documentos-pdf.test.ts`
+  (19 casos); PDF de amostra conferido página a página; E2E de verificação,
+  atendimento, portal, link e checkout verdes (28).
+
 ### 2026-09-30 — Termos e contratos: o link pela conversa do inbox (a "6b")
 
 **O que muda:** a rede escolhe, em Configurações → Documentos, se a equipe

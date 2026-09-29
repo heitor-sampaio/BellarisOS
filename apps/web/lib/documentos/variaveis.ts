@@ -1,6 +1,8 @@
 import {
   analisarMarcacao, variaveisDaArvore, chavesMalFormadas, MAX_CARACTERES_DO_MODELO,
 } from './marcacao'
+import { variaveisDoDocumento, type DocumentoDoModelo } from './arvore'
+import { converterDocumentoDoEditor } from './editor/converter'
 
 /**
  * O catálogo FECHADO das variáveis de termo e contrato.
@@ -142,7 +144,30 @@ export function validarModelo(fonte: string, tipo: TipoDeModelo): ValidacaoDoMod
     return { ...vazio, erro: `Variável mal escrita: ${ruins.join(', ')}. Use o botão "Inserir variável".` }
   }
 
-  const variaveis = variaveisDaArvore(analisarMarcacao(fonte))
+  return validarVariaveis(variaveisDaArvore(analisarMarcacao(fonte)), tipo)
+}
+
+/**
+ * Confere o documento do EDITOR antes de gravar: primeiro o conversor (só o
+ * que a árvore conhece, imagens da rede), depois as mesmas regras de variável
+ * da marcação. Devolve a árvore do modelo quando passa.
+ */
+export function validarDocumentoDoEditor(
+  entrada: unknown, tipo: TipoDeModelo, tenantId: string | null,
+): ValidacaoDoModelo & { documento?: DocumentoDoModelo } {
+  const r = converterDocumentoDoEditor(entrada, { tenantId })
+  if ('erro' in r) return { erro: r.erro, variaveis: [], usaPagamento: false }
+  const v = validarVariaveis(variaveisDoDocumento(r.documento), tipo)
+  return v.erro ? v : { ...v, documento: r.documento }
+}
+
+function rotuloDaVariavel(v: string): string {
+  const c = CATALOGO[v]
+  return c ? `“${c.grupo} · ${c.rotulo}”` : `{{${v}}}`
+}
+
+function validarVariaveis(variaveis: string[], tipo: TipoDeModelo): ValidacaoDoModelo {
+  const vazio = { variaveis: [], usaPagamento: false }
   const desconhecidas = variaveis.filter(v => !ehVariavelConhecida(v))
   if (desconhecidas.length) {
     return { ...vazio, erro: `Variável que não existe: ${desconhecidas.map(v => `{{${v}}}`).join(', ')}.` }
@@ -152,7 +177,7 @@ export function validarModelo(fonte: string, tipo: TipoDeModelo): ValidacaoDoMod
   if (foraDoTipo.length) {
     return {
       ...vazio,
-      erro: `${foraDoTipo.map(v => `{{${v}}}`).join(', ')} não ${foraDoTipo.length > 1 ? 'servem' : 'serve'} em ${ROTULO_DO_TIPO[tipo].toLowerCase()}. ${DICA_DO_TIPO[tipo]}`,
+      erro: `${foraDoTipo.map(rotuloDaVariavel).join(', ')} não ${foraDoTipo.length > 1 ? 'servem' : 'serve'} em ${ROTULO_DO_TIPO[tipo].toLowerCase()}. ${DICA_DO_TIPO[tipo]}`,
     }
   }
 

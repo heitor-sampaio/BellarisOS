@@ -5,6 +5,7 @@ import { ArrowLeft, FileUp, FileText, ExternalLink } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { DocumentoRenderizado } from '@/components/shared/documento-renderizado'
 import { analisarMarcacao, interpolarArvore } from '@/lib/documentos/marcacao'
+import { deV1 } from '@/lib/documentos/arvore'
 import {
   ROTULO_DO_TIPO, VARIAVEIS_DE_DOCUMENTO, variaveisDoTipo, validarModelo, ehOpcional,
   type TipoDeModelo, type NomeDeVariavel,
@@ -259,7 +260,7 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, onPro
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
             <span className="overline">Prévia com dados de exemplo</span>
             <div className="card" style={{ padding: '24px 22px', background: 'var(--surface)' }}>
-              {previa && <DocumentoRenderizado arvore={previa} />}
+              {previa && <DocumentoRenderizado documento={deV1(previa)} />}
             </div>
           </div>
         </div>

@@ -7,7 +7,7 @@ import { ArrowLeft, BadgeCheck, FileSignature, Printer, RotateCcw, ShieldCheck, 
 import { DocumentoRenderizado } from '@/components/shared/documento-renderizado'
 import { VisualizadorDePdf } from '@/components/shared/visualizador-de-pdf'
 import { SignaturePad } from '@/components/shared/signature-pad'
-import type { ArvoreResolvida } from '@/lib/documentos/marcacao'
+import { lerConteudo, type DocumentoResolvido } from '@/lib/documentos/arvore'
 import { assinarNaClinica, marcarAssinadoEmPapel, montarDocumentoDeNovo } from '@/actions/documentos'
 import { assinarNoPortal } from '@/actions/documentos-portal'
 
@@ -34,6 +34,8 @@ export interface DocumentoNaTela {
   cliente:     { nome: string }
   conteudo:    string | null
   pdfUrl:      string | null
+  /** URLs temporárias das imagens do documento, por caminho (fora do hash). */
+  imagens?:    Record<string, string>
   assinatura:  { png: string | null; nome: string; em: string; canal: string; conduzidoPor: string | null } | null
   motivo:      string | null
 }
@@ -86,10 +88,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
   const [erro, setErro] = useState<string | null>(null)
   const [enviando, iniciar] = useTransition()
 
-  const arvore = useMemo<ArvoreResolvida | null>(() => {
-    if (!doc.conteudo) return null
-    try { return JSON.parse(doc.conteudo) as ArvoreResolvida } catch { return null }
-  }, [doc.conteudo])
+  const arvore = useMemo<DocumentoResolvido | null>(() => (doc.conteudo ? lerConteudo(doc.conteudo) : null), [doc.conteudo])
 
   // O hash do que está na tela: dos bytes que chegaram, nunca reserializados.
   useEffect(() => {
@@ -157,10 +156,11 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
   }
 
   const documento = (
-    <div className="card area-impressao" style={{ padding: '28px 26px' }}>
+    <div className="card area-impressao" style={{ padding: arvore ? 0 : '28px 26px', overflow: 'hidden' }}>
       {arvore && (
         <DocumentoRenderizado
-          arvore={arvore}
+          documento={arvore}
+          imagens={doc.imagens}
           assinatura={doc.assinatura?.png ?? (modo === 'cliente' ? assinatura : null)}
           nomeDoAssinante={doc.cliente.nome}
         />
@@ -168,7 +168,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
       {!arvore && pdf && <VisualizadorDePdf bytes={pdf} />}
       {!arvore && !pdf && !erro && <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>Carregando o documento…</p>}
       {doc.codigo && (
-        <p style={{ marginTop: 18, fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', textAlign: 'center' }}>
+        <p style={{ margin: '4px 0 16px', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', textAlign: 'center' }}>
           Código de verificação {doc.codigo}
         </p>
       )}

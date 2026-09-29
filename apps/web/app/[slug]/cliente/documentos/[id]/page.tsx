@@ -24,7 +24,7 @@ export default async function DocumentoDoClientePage({ params }: { params: Promi
       doc={{
         id: d.resumo.id, titulo: d.resumo.titulo, tipo: d.resumo.tipo, status: d.resumo.status,
         faltando: d.resumo.faltando, codigo: d.resumo.codigo, motivo: d.resumo.motivo,
-        cliente: { nome: d.cliente.nome }, conteudo: d.conteudo, pdfUrl: d.pdfUrl, assinatura: d.assinatura,
+        cliente: { nome: d.cliente.nome }, conteudo: d.conteudo, pdfUrl: d.pdfUrl, imagens: d.imagens, assinatura: d.assinatura,
       }}
     />
   )
