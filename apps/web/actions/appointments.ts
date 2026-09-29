@@ -577,7 +577,9 @@ async function startAppointmentInterno(
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
     return {}
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
+    // mensagemDoErro, e não e.message: a recusa do banco ("Falta assinar: …",
+    // o gatilho dos termos) é a frase que a tela tem de mostrar.
+    return { error: mensagemDoErro(e) }
   }
 }
 

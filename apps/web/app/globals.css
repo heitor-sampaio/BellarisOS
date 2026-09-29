@@ -286,6 +286,10 @@
     font-family: inherit;
   }
   .btn-primary:hover { background: var(--brand-deep); }
+  /* Desabilitado tem de PARECER desabilitado: sem isto o "Iniciar atendimento"
+     travado pela falta de assinatura parecia um botão que não respondia. */
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+  .btn-primary:disabled:hover { background: var(--brand); }
 
   .btn-secondary {
     display: inline-flex;
@@ -832,6 +836,15 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
   align-items: start;
 }
 @media (max-width: 899px) { .editor-documento { grid-template-columns: minmax(0, 1fr); } }
+
+/* Tela de assinar: o documento e, ao lado, o que a equipe faz com ele. */
+.assinatura-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 899px) { .assinatura-layout { grid-template-columns: minmax(0, 1fr); } }
 
 /* 3 colunas para formulários */
 .form-3col {

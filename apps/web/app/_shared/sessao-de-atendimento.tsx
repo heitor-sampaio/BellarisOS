@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
+import { documentosDoAgendamento } from '@/lib/documentos/leitura'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference, getCachedBranchProfessionals } from '@/lib/cached-queries'
 import { AppointmentSession } from '@/components/branch/appointment-session'
@@ -434,6 +435,9 @@ export async function SessaoDeAtendimento({
         isPackageSession={!!sessaoDePacote}
         podeReceber={podeReceber(ctx)}
         planoEmAberto={planoEmAberto}
+        documentos={can(ctx, 'documents', 'VIEW')
+          ? { itens: await documentosDoAgendamento(ctx.tenantId!, appointment.id), podeColher: can(ctx, 'documents', 'MANAGE') }
+          : null}
       />
     </>
   )

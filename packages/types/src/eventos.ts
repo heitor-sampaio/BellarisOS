@@ -85,6 +85,10 @@ export const EVENTOS = {
   PRONTUARIO_ENTRADA_CRIADA: 'prontuario.entrada_criada',
   ANAMNESE_RESPONDIDA:       'anamnese.respondida',
   TERMO_ASSINADO:            'termo.assinado',
+  // Um termo ou contrato ficou pendente para o cliente assinar. Sai de
+  // GATILHO no banco (o agendamento nasce em cinco lugares do código), como
+  // pagamento.* — origem 'banco', sem ator.
+  TERMO_EMITIDO:             'termo.emitido',
   INJETAVEL_APLICADO:        'injetavel.aplicado',
   // A foto vive DENTRO da resposta da ficha, não numa galeria à parte: o fato
   // é o upload, que acontece antes de salvar e pode acabar descartado. Serve
@@ -453,7 +457,8 @@ export const ROTULOS_DE_EVENTO: Record<NomeDeEvento, string> = {
   // Clínico
   'prontuario.entrada_criada': 'Ficha do atendimento criada',
   'anamnese.respondida':       'Anamnese respondida',
-  'termo.assinado':            'Termo assinado',
+  'termo.assinado':            'Termo ou contrato assinado',
+  'termo.emitido':             'Termo ou contrato para assinar',
   'injetavel.aplicado':        'Injetável aplicado',
   'foto.enviada':              'Foto enviada',
 

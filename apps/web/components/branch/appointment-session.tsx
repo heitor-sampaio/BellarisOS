@@ -32,6 +32,7 @@ import { AttendanceRecordCard } from '@/components/branch/attendance-record-card
 import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { rotaAgenda } from '@/lib/rotas'
+import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { formatarPontos } from '@/lib/fidelidade/formato'
@@ -138,6 +139,8 @@ interface Props {
    * plano ou quando não sobrou nada a receber.
    */
   planoEmAberto?:        { planId: string; nome: string | null; emAberto: number; recebido: number } | null
+  /** Termos e contratos deste atendimento. Nulo = cargo sem o módulo `documents`. */
+  documentos?:           { itens: ItemDeTermo[]; podeColher: boolean } | null
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -857,7 +860,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, canEditRecords, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, podeReceber = false, planoEmAberto = null,
+  isPartOfPlan = false, isPackageSession = false, podeReceber = false, planoEmAberto = null, documentos = null,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -869,6 +872,7 @@ export function AppointmentSession({
   const [showFinish,    setShowFinish]    = useState(false)
   const [showPayment,   setShowPayment]   = useState(false)
   const [starting,      setStarting]      = useState(false)
+  const [erroAoIniciar, setErroAoIniciar] = useState<string | null>(null)
   const [checkingIn,    setCheckingIn]    = useState(false)
   const [insumos,       setInsumos]       = useState<SessionProduct[]>(products)
   const [checkedIds,    setCheckedIds]    = useState<Set<string>>(() => new Set(products.map(p => p.productId)))
@@ -1012,10 +1016,19 @@ export function AppointmentSession({
 
   async function handleStart() {
     setStarting(true)
-    await startAppointment(appointment.id, slug)
+    setErroAoIniciar(null)
+    // A recusa ("Falta assinar: …", ou o check-in que faltou) tem de aparecer:
+    // antes o `{ error }` era descartado e o botão só voltava ao normal.
+    const r = await startAppointment(appointment.id, slug)
+    if (r?.error) setErroAoIniciar(r.error)
     router.refresh()
     setStarting(false)
   }
+
+  // O que BLOQUEIA o início sem assinatura. O banco recusa de qualquer jeito
+  // (gatilho); aqui é para o botão já dizer o porquê.
+  const documentosQueBloqueiam = (documentos?.itens ?? []).filter(d =>
+    d.exigencia === 'BLOQUEIA' && (d.status === 'A_GERAR' || d.status === 'PENDENTE' || d.status === 'INCOMPLETO'))
 
   // Bloco "Dados do procedimento" (profissional com reassign, horários, sala/valor, duração).
   const procedureNode = (
@@ -1298,7 +1311,8 @@ export function AppointmentSession({
 
             {/* Iniciar (CONFIRMED + canManage) */}
             {status === 'CONFIRMED' && canManage && (
-              <button type="button" onClick={handleStart} disabled={starting} className="btn-primary"
+              <button type="button" onClick={handleStart} disabled={starting || documentosQueBloqueiam.length > 0} className="btn-primary"
+                title={documentosQueBloqueiam.length ? `Falta assinar: ${documentosQueBloqueiam.map(d => d.titulo).join(', ')}` : undefined}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 9, fontSize: 'var(--text-base-sz)' }}>
                 {starting ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
                 {starting ? 'Iniciando…' : 'Iniciar atendimento'}
@@ -1344,6 +1358,25 @@ export function AppointmentSession({
             )}
           </div>
         </div>
+
+        {erroAoIniciar && (
+          <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroAoIniciar}</p>
+        )}
+
+        {/* -- Termos e contratos do atendimento ----------------------------- */}
+        {documentos && documentos.itens.length > 0 && (
+          <section aria-label="Documentos do atendimento" className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+              <p className="overline">Termos e contratos</p>
+              {documentosQueBloqueiam.length > 0 && status !== 'IN_PROGRESS' && status !== 'COMPLETED' && (
+                <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>
+                  O atendimento só começa depois da assinatura
+                </span>
+              )}
+            </div>
+            <TermosDoCliente itens={documentos.itens} slug={slug} podeColher={documentos.podeColher} compacto />
+          </section>
+        )}
 
         {/* -- Client strip ----------------------------------------------- */}
         <div className="card" style={{ padding: '16px 20px' }}>

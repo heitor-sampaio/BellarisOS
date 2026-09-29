@@ -36,9 +36,32 @@ async function ids(q: PromiseLike<{ data: { id: string }[] | null }>): Promise<s
 }
 
 /** Agendamentos e o que pende deles. Dado de TESTE: aqui se apaga até lançamento. */
+/**
+ * Termos e contratos emitidos, com a assinatura e a digitalização do papel.
+ *
+ * A assinatura NÃO sai em cascata de propósito (documento assinado não se
+ * apaga, nem levado pelo agendamento): no teste, ela sai primeiro, à mão.
+ */
+export async function apagarDocumentosEmitidos(docs: string[], falhas: Falha[] = []): Promise<Falha[]> {
+  if (docs.length === 0) return falhas
+  const db = banco()
+  const { data: scans } = await db.from('document_signatures').select('scan_path').in('issued_document_id', docs)
+  const caminhos = (scans ?? []).map(s => s.scan_path as string | null).filter((p): p is string => !!p)
+  if (caminhos.length) {
+    const { error } = await db.storage.from('documentos-assinados').remove(caminhos)
+    if (error) falhas.push({ o_que: 'digitalizações dos documentos', erro: error.message })
+  }
+  await passo(falhas, 'assinaturas', db.from('document_signatures').delete().in('issued_document_id', docs))
+  await passo(falhas, 'eventos dos documentos', db.from('domain_events').delete().in('entidade_id', docs))
+  await passo(falhas, 'documentos emitidos', db.from('issued_documents').delete().in('id', docs))
+  return falhas
+}
+
 export async function apagarAgendamentos(agendamentos: string[], falhas: Falha[] = []): Promise<Falha[]> {
   if (agendamentos.length === 0) return falhas
   const db = banco()
+
+  await apagarDocumentosEmitidos(await ids(db.from('issued_documents').select('id').in('appointment_id', agendamentos)), falhas)
 
   const entradas = await ids(db.from('medical_record_entries').select('id').in('appointment_id', agendamentos))
   if (entradas.length) {
@@ -74,6 +97,8 @@ export async function apagarAgendamentos(agendamentos: string[], falhas: Falha[]
 export async function apagarClientes(clientes: string[], falhas: Falha[] = []): Promise<Falha[]> {
   if (clientes.length === 0) return falhas
   const db = banco()
+
+  await apagarDocumentosEmitidos(await ids(db.from('issued_documents').select('id').in('client_id', clientes)), falhas)
 
   // Fidelidade PRIMEIRO: o extrato aponta o lançamento (transaction_id), o
   // agendamento e o plano — apagado depois, travaria a saída de todos eles.
@@ -248,6 +273,7 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     await passo(falhas, 'vouchers da rede de teste', db.from('loyalty_vouchers').delete().eq('tenant_id', rede))
     await passo(falhas, 'recompensas da rede de teste', db.from('loyalty_rewards').delete().eq('tenant_id', rede))
     await passo(falhas, 'procedimentos da rede de teste', db.from('procedures').delete().eq('tenant_id', rede))
+    await apagarDocumentosEmitidos(await ids(db.from('issued_documents').select('id').eq('tenant_id', rede)), falhas)
     // Modelos de documento: o procedimento aponta para eles, então saem depois.
     await passo(falhas, 'versões de modelo da rede de teste', db.from('document_template_versions').delete().eq('tenant_id', rede))
     await passo(falhas, 'modelos de documento da rede de teste', db.from('document_templates').delete().eq('tenant_id', rede))

@@ -1258,6 +1258,42 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Termos e contratos, fase 2: emissão pelo atendimento, assinatura na clínica e no papel
+
+**O que muda no dia da clínica:** um procedimento com termo ou contrato ligado
+passa a gerar o documento sozinho — ao agendar ou no check-in, conforme o
+modelo. Se o modelo BLOQUEIA, o atendimento não começa sem a assinatura. A
+recepção colhe pela ficha do cliente (aba Documentos, seção "Termos e
+contratos") ou pelo painel da sessão: confere a identidade, entrega o aparelho
+e o cliente lê, marca "li e concordo" e assina com o dedo. Ou imprime e
+registra que foi assinado no papel, com a digitalização opcional.
+
+- Migration `20260930000002`: `issued_documents` (retrato do modelo, texto
+  canônico, hash, código de verificação), `document_signatures` (evidência:
+  canal, identidade, IP, aparelho, hash exibido, quem conduziu — imutável),
+  `issued_document_events` (trilha). Gatilhos no agendamento para emitir,
+  cancelar e BLOQUEAR o início; `documento_assinar`, `documento_dispensar`,
+  `documento_registrar_render`, só do service_role. Evento novo
+  `termo.emitido` (do banco); `termo.assinado` vale para os novos.
+- Texto montado no app com os dados de agora (CPF com máscara, data por
+  extenso, endereço em linha); dado obrigatório faltando deixa o documento
+  INCOMPLETO, com "Gerar de novo" depois de completar o cadastro.
+- Tela `/[slug|admin]/documentos/[id]/assinar` (equipe → cliente → pronto, ou
+  papel); PDF enviado desenhado com `pdfjs-dist` (o WebView do Android não
+  abre PDF em iframe). `voltar` só aceita caminho interno.
+- Achados no caminho: o `startAppointment` descartava o `{ error }` na tela
+  da sessão (o botão só voltava ao normal) — agora mostra o motivo; e o
+  `.btn-primary` não tinha estado desabilitado em lugar nenhum do sistema.
+- ⚠️ Armadilha registrada no CLAUDE.md: o React memoriza `fetch` GET idênticos
+  numa renderização, e a releitura do documento depois de montá-lo devolvia a
+  resposta velha (tela de assinar vazia). `abortSignal` desliga.
+- Prova: `e2e/documentos-atendimento.spec.ts` (7 casos: emissão e bloqueio
+  pelas duas portas, INCOMPLETO → gerar de novo, assinatura na tela com a
+  evidência conferida no banco, hash divergente, papel, dispensa, cancelamento,
+  plano não emite, quem só vê não colhe, outra rede e RLS), 8 unitários de
+  formatação e código. Vizinhos de agenda, atendimento, checkout, portais,
+  permissões e RLS verdes.
+
 ### 2026-09-30 — Termos e contratos, fase 1: os modelos da rede
 
 "A rede poder enviar documentos de termos de consentimento e contratos, ou criar
@@ -4030,8 +4066,10 @@ verdade. O que vale:
 ### Próxima frente candidata
 
 **Termos e contratos, em andamento** (plano de 2026-09-29, seis fases; ver a
-entrada de 2026-09-30). Fase 1 (modelos) feita; a próxima é a fase 2: emissão
-pelo atendimento, assinatura na clínica e no papel, e a ficha do cliente.
+entradas de 2026-09-30). Fases 1 (modelos) e 2 (emissão pelo atendimento,
+assinatura na clínica e no papel) feitas; a próxima é a fase 3: o checkout do
+plano com os termos dos procedimentos e o contrato de plano com a forma de
+pagamento.
 
 ---
 

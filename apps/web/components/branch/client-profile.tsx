@@ -8,6 +8,7 @@ import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggle
 import { TreatmentFileModal } from './treatment-file-modal'
 import { ClientDocumentsTab } from './client-documents-tab'
 import type { ClientDocumentItem } from './client-documents-tab'
+import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do-cliente'
 import { AnamnesisFormRenderer, type AnamnesisAnswers } from './anamnesis-form-renderer'
 import { AttendanceRecordCard } from './attendance-record-card'
 import { AnamnesisTab, type GeneralAnamnesis } from './anamnesis-tab'
@@ -178,6 +179,8 @@ interface Props {
   podeReceber?:          boolean
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
+  /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
+  termos?:               { itens: ItemDeTermo[]; podeColher: boolean } | null
 }
 
 /** Uma oportunidade na ficha do cliente: só o que a leitura precisa. */
@@ -1020,7 +1023,7 @@ export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments,
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
-  planProcedures = [], planProducts = [], podeReceber = false,
+  planProcedures = [], planProducts = [], podeReceber = false, termos = null,
 }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -1568,6 +1571,12 @@ export function ClientProfile({
       )}
 
       {/* -- Tab: Documentos ------------------------------------------- */}
+      {tab === 'documentos' && termos && (
+        <section aria-label="Termos e contratos" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+          <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Termos e contratos</h3>
+          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} />
+        </section>
+      )}
       {tab === 'documentos' && (
         <ClientDocumentsTab
           documents={documents}

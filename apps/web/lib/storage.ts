@@ -8,6 +8,8 @@ export const ANAMNESIS_BUCKET   = 'anamnesis-photos'
 export const CLIENT_DOCS_BUCKET  = 'client-documents'
 /** PDFs enviados como modelo de termo/contrato: `<tenant>/<sha256>.pdf`. */
 export const MODELOS_DE_DOCUMENTO_BUCKET = 'modelos-de-documento'
+/** Termos e contratos assinados: a digitalização do papel e o PDF final. */
+export const DOCUMENTOS_ASSINADOS_BUCKET = 'documentos-assinados'
 
 const DEFAULT_EXPIRES = 60 * 60 // 1h
 

@@ -14,6 +14,7 @@ import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, P
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
+import { documentosDoCliente } from '@/lib/documentos/leitura'
 import { ler } from '@/lib/db'
 import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 
@@ -441,6 +442,9 @@ export default async function ClientProfilePage({
       transactions={transactions}
       internalCredits={internalCredits}
       documents={documents}
+      termos={can(ctx, 'documents', 'VIEW')
+        ? { itens: await documentosDoCliente(ctx.tenantId!, id), podeColher: can(ctx, 'documents', 'MANAGE') }
+        : null}
       canGrantCredit={canGrantCredit}
       branches={(branchesRaw ?? []) as { id: string; name: string }[]}
       currentBranchId={branch.id}

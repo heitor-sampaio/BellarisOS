@@ -763,7 +763,8 @@ const procedures = await ler(
 A rede monta (no editor, com variáveis) ou envia (PDF pronto, assinado como
 está) os modelos de termo e contrato, e o cliente assina eletronicamente —
 na clínica, no portal, por link ou no papel. Plano aprovado em 2026-09-29, em
-seis fases; **só a fase 1 (modelos) está no ar**. O desenho inteiro está no
+seis fases; **fases 1 (modelos) e 2 (emissão pelo atendimento, assinatura na
+clínica e no papel) estão no ar**. O desenho inteiro está no
 DEVLOG ("Termos e contratos").
 
 - **O documento é do PROCEDIMENTO** (decisão do Heitor): cada procedimento
@@ -791,7 +792,29 @@ DEVLOG ("Termos e contratos").
 - PDF enviado: cabeçalho `%PDF-` conferido (não o `type` do navegador), abre
   no `pdf-lib` sem senha, até 10 MB e 50 páginas; mora em
   `modelos-de-documento/<tenant>/<sha256>.pdf`.
-- Prova: `e2e/documentos-modelos.spec.ts`.
+- **O documento emitido é `issued_documents`** (`consent_terms` é legado). Nasce
+  por GATILHO no agendamento (`trg_documentos_no_agendamento`: INSERT emite os de
+  AGENDAMENTO; check-in, os de INICIO_ATENDIMENTO; cancelar/falta cancela os
+  abertos; trocar o procedimento troca os documentos) — o agendamento nasce em
+  cinco INSERTs. Agendamento de plano não emite (o plano tem os dele).
+- **O gatilho só cria a linha (A_GERAR)**; o texto é montado pelo app
+  (`lib/documentos/renderizar.ts` → `documento_registrar_render`), e toda tela
+  que mostra um documento chama `garantirRenderizado` antes. Faltou dado
+  obrigatório: INCOMPLETO, não assina.
+- **A forma canônica é TEXTO** (`issued_documents.content`): jsonb reordenaria as
+  chaves e o hash não bateria. O navegador calcula o SHA-256 dos bytes que
+  recebeu; `documento_assinar` só aceita se bater com o gravado.
+- **O bloqueio é gatilho** (`trg_documentos_bloqueiam_inicio`): nenhuma porta
+  põe IN_PROGRESS com documento BLOQUEIA aberto. Dispensar (com motivo) cumpre.
+- **Assinar é UMA função** para todos os canais (`documento_assinar`): trava,
+  confere hash, grava a evidência (`document_signatures`, imutável, sem
+  cascade) e o status numa transação. `termo.assinado` sai depois, em TS;
+  `termo.emitido` sai do banco.
+- ⚠️ **Releitura na mesma renderização: `abortSignal`.** O React memoriza
+  `fetch` GET idênticos numa renderização — a releitura do documento depois de
+  montá-lo devolvia a resposta velha. `lerDocumento` passa um sinal novo.
+- A ficha do cliente lê a aba por `?aba=` (não `?tab=`).
+- Prova: `e2e/documentos-modelos.spec.ts` e `e2e/documentos-atendimento.spec.ts`.
 
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação
@@ -1553,6 +1576,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Avaliar expressão de automação com eval/new Function (o texto vem do banco)
 ❌ Usar em termo/contrato variável fora do catálogo de lib/documentos/variaveis.ts, ou interpolar o TEXTO em vez da árvore
 ❌ Alterar uma versão de modelo de documento ou apagar um modelo (edita → versão nova; o que não serve, desativa)
+❌ Assinar documento fora de documento_assinar, ou emitir documento de agendamento fora do gatilho
+❌ Guardar a forma canônica de um documento em jsonb (reordena as chaves e o hash não bate)
 ```
 
 ---

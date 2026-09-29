@@ -14,6 +14,7 @@ import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, P
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
+import { documentosDoCliente } from '@/lib/documentos/leitura'
 import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS']
@@ -414,6 +415,9 @@ export default async function AdminClientProfilePage({
         transactions={transactions}
         internalCredits={internalCredits}
         documents={documents}
+        termos={can(ctx, 'documents', 'VIEW')
+          ? { itens: await documentosDoCliente(ctx.tenantId!, id), podeColher: can(ctx, 'documents', 'MANAGE') }
+          : null}
         canGrantCredit={ctx.permissions.financial === 'MANAGE'}
         branches={(branchesRaw ?? []) as { id: string; name: string }[]}
         currentBranchId={branchId}
