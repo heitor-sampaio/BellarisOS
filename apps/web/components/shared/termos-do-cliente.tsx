@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { FileSignature, FileText, ScrollText } from 'lucide-react'
 import { formatDate, formatTime } from '@estetica-os/utils'
 import { rotaNoPortal } from '@/lib/rotas'
-import { dispensarDocumento, montarDocumentoDeNovo } from '@/actions/documentos'
+import { dispensarDocumento, montarDocumentoDeNovo, pedirAssinaturaNoPortal } from '@/actions/documentos'
 
 /**
  * Os termos e contratos do cliente — na aba Documentos da ficha, acima dos
@@ -64,6 +64,7 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
   const [dispensando, setDispensando] = useState<string | null>(null)
   const [motivo, setMotivo] = useState('')
   const [erro, setErro] = useState<string | null>(null)
+  const [aviso, setAviso] = useState<string | null>(null)
   const [ocupado, iniciar] = useTransition()
 
   const voltar = encodeURIComponent(`${pathname}${compacto ? '' : '?aba=documentos'}`)
@@ -76,6 +77,15 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
       if (r.error) { setErro(r.error); return }
       setDispensando(null); setMotivo('')
       router.refresh()
+    })
+  }
+
+  function pedirNoPortal(id: string) {
+    setErro(null); setAviso(null)
+    iniciar(async () => {
+      const r = await pedirAssinaturaNoPortal(id)
+      if (r.error) setErro(r.error)
+      else setAviso('Pedido enviado: o documento está no portal do cliente, e ele foi avisado.')
     })
   }
 
@@ -101,6 +111,7 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Termos e contratos">
       {erro && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+      {aviso && <p role="status" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)', fontWeight: 'var(--weight-semibold)' }}>{aviso}</p>}
       {itens.map(item => {
         const Icone = ICONE[item.tipo]
         const aberto = item.status === 'PENDENTE' || item.status === 'A_GERAR' || item.status === 'INCOMPLETO'
@@ -139,6 +150,12 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
                 {!aberto && item.status === 'ASSINADO' && (
                   // O PDF final: documento + página de evidências (rota que confere a sessão).
                   <a href={`/api/documentos/${item.id}/pdf`} target="_blank" rel="noopener" className="btn-ghost" style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>PDF</a>
+                )}
+                {aberto && podeColher && item.status !== 'INCOMPLETO' && (
+                  <button type="button" className="btn-secondary" disabled={ocupado} onClick={() => pedirNoPortal(item.id)}
+                    style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)' }}>
+                    Pedir no portal
+                  </button>
                 )}
                 {aberto && podeColher && dispensando !== item.id && (
                   <button type="button" className="btn-ghost" onClick={() => { setDispensando(item.id); setMotivo('') }}

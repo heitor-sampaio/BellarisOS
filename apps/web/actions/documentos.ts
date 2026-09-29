@@ -12,8 +12,6 @@
  * rede do documento e o alcance da unidade antes de tocar nele.
  */
 
-import { headers } from 'next/headers'
-import { after } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, can, podeReceber } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
@@ -22,65 +20,24 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { garantirRenderizado, sha256 } from '@/lib/documentos/renderizar'
 import { prepararDocumentosDoPlano } from '@/lib/documentos/plano'
-import { gerarPdfAssinado } from '@/lib/documentos/pdf'
+import { ipEAparelho, dadosDoAssinante, depoisDeAssinar, COLUNAS_ASSINAVEIS, type DocumentoAssinavel } from '@/lib/documentos/assinar'
+import { notifyClient } from '@/lib/notifications/notify'
 import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
-import { emitirEventoClinico } from '@/lib/events/clinico'
-import { EVENTOS, type TenantContext } from '@estetica-os/types'
+import type { TenantContext } from '@estetica-os/types'
 
 type Resultado = { error?: string; codigo?: string | null }
 
 /** O documento, se for da rede da sessão e da unidade que ela alcança. */
-async function documentoAoAlcance(ctx: TenantContext, id: string) {
+async function documentoAoAlcance(ctx: TenantContext, id: string): Promise<DocumentoAssinavel | null> {
   if (typeof id !== 'string' || !/^[0-9a-f-]{36}$/i.test(id)) return null
   const admin = createAdminClient()
   const doc = await ler(admin.from('issued_documents')
-    .select('id, tenant_id, branch_id, client_id, appointment_id, title, status')
+    .select(COLUNAS_ASSINAVEIS)
     .eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o documento')
-  if (!doc || !alcancaUnidade(ctx, doc.branch_id as string | null)) return null
-  return doc as { id: string; tenant_id: string; branch_id: string | null; client_id: string; appointment_id: string | null; title: string; status: string }
-}
-
-/**
- * O IP de quem está na tela. Atrás do proxy do Railway, o primeiro do
- * `x-forwarded-for`. Só vai para o banco se tiver cara de IP: o parâmetro é
- * `inet`, e um valor torto faria a ASSINATURA inteira falhar.
- */
-async function ipEAparelho(): Promise<{ ip: string | null; ua: string | null }> {
-  const h = await headers()
-  const bruto = (h.get('x-forwarded-for') ?? h.get('x-real-ip') ?? '').split(',')[0]!.trim()
-  const ip = /^(\d{1,3}\.){3}\d{1,3}$/.test(bruto) || /^[0-9a-f:]+$/i.test(bruto) && bruto.includes(':') ? bruto : null
-  return { ip, ua: (h.get('user-agent') ?? '').slice(0, 500) || null }
-}
-
-async function dadosDoAssinante(clientId: string) {
-  const admin = createAdminClient()
-  const c = await ler(admin.from('clients').select('name, document').eq('id', clientId).single(), 'buscar o cliente')
-  if (!c) throw new Error('Cliente do documento não encontrado.')
-  const cpf = ((c.document as string | null) ?? '').replace(/\D/g, '')
-  return { nome: c.name as string, documento: cpf || null }
-}
-
-async function depoisDeAssinar(ctx: TenantContext, doc: NonNullable<Awaited<ReturnType<typeof documentoAoAlcance>>>) {
-  // O evento é aviso do que aconteceu: sai depois, e só se a assinatura gravou.
-  await emitirEventoClinico(EVENTOS.TERMO_ASSINADO, doc.id, ctx, {
-    clientId:      doc.client_id,
-    agendamentoId: doc.appointment_id,
-    referencia:    doc.title,
-    branchId:      doc.branch_id,
-    chave:         'termo.assinado:' + doc.id,
-  })
-  revalidatePath('/admin/clients/[id]', 'page')
-  revalidatePath('/[slug]/clients/[id]', 'page')
-  // O PDF final (documento + página de evidências) sai depois da resposta: a
-  // assinatura já está gravada, e quem assinou não espera o PDF. O cron
-  // `documentos-pdf` recolhe o que falhar aqui.
-  const tenantId = ctx.tenantId!
-  after(async () => {
-    try { await gerarPdfAssinado(tenantId, doc.id) }
-    catch (e) { console.error('[documentos] PDF assinado ficou para o cron:', (e as Error).message) }
-  })
+  if (!doc || !alcancaUnidade(ctx, (doc as unknown as DocumentoAssinavel).branch_id)) return null
+  return doc as unknown as DocumentoAssinavel
 }
 
 // ─── Na clínica, na tela ─────────────────────────────────────────────────────
@@ -124,7 +81,7 @@ export async function assinarNaClinica(input: {
       p_aceite:        (input.aceite ?? '').slice(0, 300) || null,
     }), 'registrar a assinatura') as { codigo: string | null }
 
-    await depoisDeAssinar(ctx, doc)
+    await depoisDeAssinar(doc, ctx)
     return { codigo: r.codigo }
   } catch (e) {
     return { error: mensagemDoErro(e) }
@@ -188,7 +145,7 @@ export async function marcarAssinadoEmPapel(formData: FormData): Promise<Resulta
       p_aceite:        'Assinado no documento impresso',
     }), 'registrar a assinatura em papel') as { codigo: string | null }
 
-    await depoisDeAssinar(ctx, doc)
+    await depoisDeAssinar(doc, ctx)
     return { codigo: r.codigo }
   } catch (e) {
     return { error: mensagemDoErro(e) }
@@ -254,6 +211,51 @@ export async function documentoParaAssinar(id: string): Promise<{ doc?: Document
         cliente: { nome: d.cliente.nome }, conteudo: d.conteudo, pdfUrl: d.pdfUrl, assinatura: d.assinatura,
       },
     }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+// ─── Pedir pelo portal ───────────────────────────────────────────────────────
+
+/**
+ * Manda o documento para o portal do cliente: fica pendente lá, e um push
+ * avisa. O texto é GENÉRICO de propósito — o título do documento pode dizer o
+ * procedimento, e aviso na tela de bloqueio do celular é dado de saúde exposto.
+ */
+export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: string; ok?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'documents', 'MANAGE')
+    const doc = await documentoAoAlcance(ctx, id)
+    if (!doc) return { error: 'Documento não encontrado.' }
+    const montado = await garantirRenderizado(ctx.tenantId!, doc.id)
+    if (montado?.status === 'INCOMPLETO') return { error: 'Faltam dados do cliente neste documento. Complete o cadastro antes de pedir a assinatura.' }
+    if (montado?.status !== 'PENDENTE') return { error: 'Este documento não está esperando assinatura.' }
+
+    const admin = createAdminClient()
+    const cliente = await ler(admin.from('clients').select('auth_id, branch_id').eq('id', doc.client_id).single(), 'buscar o cliente')
+    if (!cliente?.auth_id) {
+      return { error: 'Este cliente ainda não tem acesso ao portal. Colha a assinatura na clínica.' }
+    }
+    // O portal é o da unidade do cliente (ou a do documento, se ele não tiver).
+    const unidadeId = (cliente.branch_id as string | null) ?? doc.branch_id
+    const [unidade, rede] = await Promise.all([
+      unidadeId ? ler(admin.from('branches').select('slug, name').eq('id', unidadeId).maybeSingle(), 'buscar a unidade') : Promise.resolve(null),
+      ler(admin.from('tenants').select('name').eq('id', ctx.tenantId!).single(), 'buscar a rede'),
+    ])
+    if (!unidade?.slug) return { error: 'Não encontrei a unidade do portal deste cliente.' }
+
+    await notifyClient(admin, doc.client_id, {
+      type:  'document_to_sign',
+      title: 'Documento para assinar',
+      body:  `${(unidade.name as string) || (rede?.name as string) || 'A clínica'} pediu a sua assinatura em um documento.`,
+      data:  { link: `/${unidade.slug}/cliente/documentos/${doc.id}` },
+    })
+    await gravar(admin.from('issued_document_events').insert({
+      issued_document_id: doc.id, tenant_id: ctx.tenantId!, kind: 'NOTIFICADO_PORTAL', actor_user_id: ctx.internalUserId ?? null,
+    }), 'registrar o pedido no portal')
+    return { ok: true }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

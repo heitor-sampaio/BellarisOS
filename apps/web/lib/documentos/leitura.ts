@@ -185,3 +185,27 @@ export async function assinadosDoCliente(
     codigo:     (l.verification_code as string | null) ?? null,
   }))
 }
+
+/**
+ * Os documentos do CLIENTE, vistos por ele no portal: os que pedem assinatura
+ * e os assinados. Cancelado, dispensado e substituído não aparecem — não são
+ * nada que ele precise fazer ou guardar.
+ */
+export async function documentosNoPortal(clientId: string): Promise<ResumoDeDocumento[]> {
+  const admin = createAdminClient()
+  const cliente = await ler(admin.from('clients').select('tenant_id').eq('id', clientId).maybeSingle(), 'buscar o cliente')
+  if (!cliente?.tenant_id) return []
+  const todos = await documentosDoCliente(cliente.tenant_id as string, clientId)
+  return todos.filter(d => ['A_GERAR', 'INCOMPLETO', 'PENDENTE', 'ASSINADO'].includes(d.status))
+}
+
+/** Um documento do próprio cliente — ou null, se não for dele. */
+export async function documentoDoClienteParaExibir(clientId: string, docId: string): Promise<DocumentoParaExibir | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(docId)) return null
+  const admin = createAdminClient()
+  const dono = await ler(admin.from('issued_documents').select('tenant_id, client_id, status')
+    .eq('id', docId).eq('client_id', clientId).maybeSingle(), 'buscar o documento do cliente')
+  if (!dono || ['CANCELADO', 'DISPENSADO', 'SUBSTITUIDO'].includes(dono.status as string)) return null
+  // Montado de novo ao abrir: o cliente assina com os dados de agora.
+  return documentoParaExibir(dono.tenant_id as string, docId, { montarDeNovo: dono.status !== 'ASSINADO' })
+}

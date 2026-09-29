@@ -765,8 +765,8 @@ A rede monta (no editor, com variáveis) ou envia (PDF pronto, assinado como
 está) os modelos de termo e contrato, e o cliente assina eletronicamente —
 na clínica, no portal, por link ou no papel. Plano aprovado em 2026-09-29, em
 seis fases; **fases 1 (modelos), 2 (emissão pelo atendimento, assinatura na
-clínica e no papel), 3 (checkout do plano) e 4 (PDF assinado e verificação
-pública) estão no ar**. O desenho inteiro está no
+clínica e no papel), 3 (checkout do plano), 4 (PDF assinado e verificação
+pública) e 5 (portal do cliente) estão no ar**. O desenho inteiro está no
 DEVLOG ("Termos e contratos").
 
 - **O documento é do PROCEDIMENTO** (decisão do Heitor): cada procedimento
@@ -846,10 +846,20 @@ DEVLOG ("Termos e contratos").
   nome completo, IP nem conteúdo. "Conferir um arquivo" calcula o hash no
   navegador. O PDF da equipe sai por `/api/documentos/[id]/pdf` (sessão +
   `documents: VIEW` + rede + unidade).
+- **Portal do cliente** (`/[slug]/cliente/documentos`): o cliente vê o que pede a
+  assinatura dele e os assinados, e assina com a SESSÃO como identidade
+  (`assinarNoPortal`, `actions/documentos-portal.ts` — só documento DELE). A
+  equipe manda por "Pedir no portal" (`pedirAssinaturaNoPortal`): push com
+  texto GENÉRICO — o título pode dizer o procedimento, e o push aparece na tela
+  de bloqueio. Cliente sem conta no portal: recusado, e a tela diz o caminho.
+  Quem agenda pelo portal e tem documento a assinar vai direto para ele.
+- O que os canais têm em comum mora em `lib/documentos/assinar.ts` (IP,
+  assinante, o evento e o PDF depois de assinar), fora de `actions/`.
 - O export da LGPD traz os termos e contratos na parte GERAL (sem dado
   clínico, por construção) e copia os PDFs assinados para o pacote.
 - Prova: `e2e/documentos-modelos.spec.ts`, `e2e/documentos-atendimento.spec.ts`,
-  `e2e/checkout-de-plano.spec.ts` e `e2e/documentos-verificacao.spec.ts`.
+  `e2e/checkout-de-plano.spec.ts`, `e2e/documentos-verificacao.spec.ts` e
+  `e2e/documentos-portal.spec.ts`.
 
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação

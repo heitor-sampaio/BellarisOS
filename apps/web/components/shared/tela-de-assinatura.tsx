@@ -9,6 +9,7 @@ import { VisualizadorDePdf } from '@/components/shared/visualizador-de-pdf'
 import { SignaturePad } from '@/components/shared/signature-pad'
 import type { ArvoreResolvida } from '@/lib/documentos/marcacao'
 import { assinarNaClinica, marcarAssinadoEmPapel, montarDocumentoDeNovo } from '@/actions/documentos'
+import { assinarNoPortal } from '@/actions/documentos-portal'
 
 /**
  * Colher a assinatura na clínica.
@@ -48,7 +49,7 @@ async function hashDe(bytes: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTerminar }: {
+export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTerminar, canal = 'CLINICA' }: {
   doc:            DocumentoNaTela
   podeColher:     boolean
   /** Página inteira: para onde "Voltar" leva, e o link do cliente. */
@@ -60,9 +61,15 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
    * escolhido no passo do pagamento.
    */
   aoTerminar?:    () => void
+  /**
+   * PORTAL: é o próprio cliente, na sessão dele — abre direto no modo do
+   * cliente (sem a etapa da equipe) e assina pela action do portal.
+   */
+  canal?:         'CLINICA' | 'PORTAL'
 }) {
+  const noPortal = canal === 'PORTAL'
   const router = useRouter()
-  const [modo, setModo] = useState<Modo>('equipe')
+  const [modo, setModo] = useState<Modo>(noPortal && doc.status === 'PENDENTE' ? 'cliente' : 'equipe')
   const [conferido, setConferido] = useState(false)
   const [aceite, setAceite] = useState(false)
   const [assinatura, setAssinatura] = useState<string | null>(null)
@@ -105,7 +112,9 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
     if (!hash || !assinatura) return
     setErro(null)
     iniciar(async () => {
-      const r = await assinarNaClinica({ id: doc.id, assinatura, hashExibido: hash, identidadeConferida: conferido, aceite: textoDoAceite })
+      const r = noPortal
+        ? await assinarNoPortal({ id: doc.id, assinatura, hashExibido: hash, aceite: textoDoAceite })
+        : await assinarNaClinica({ id: doc.id, assinatura, hashExibido: hash, identidadeConferida: conferido, aceite: textoDoAceite })
       if (r.error) { setErro(r.error); return }
       setCodigo(r.codigo ?? null)
       setModo('feito')
@@ -165,7 +174,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 760, margin: '0 auto' }}>
         <div className="card-brand" style={{ padding: '14px 18px', borderRadius: 'var(--radius-card-token)' }}>
-          <p style={{ fontWeight: 'var(--weight-extrabold)' }}>{doc.cliente.nome}, leia o documento e assine no fim.</p>
+          <p style={{ fontWeight: 'var(--weight-extrabold)' }}>{noPortal ? `${doc.cliente.nome.split(' ')[0]}, leia` : `${doc.cliente.nome}, leia`} o documento e assine no fim.</p>
         </div>
         {documento}
         <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -198,7 +207,9 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
         </div>
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Documento assinado</h2>
         {codigo && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Código de verificação <strong style={{ color: 'var(--text)' }}>{codigo}</strong></p>}
-        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Devolva o aparelho à equipe.</p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          {noPortal ? 'Obrigado! A clínica já recebeu o documento assinado.' : 'Devolva o aparelho à equipe.'}
+        </p>
         {aoTerminar
           ? <button type="button" className="btn-primary" style={{ marginTop: 8 }} onClick={aoTerminar}>Continuar</button>
           : <Link href={voltar ?? '/'} className="btn-primary" style={{ marginTop: 8 }}>Voltar</Link>}
@@ -249,10 +260,12 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
           {doc.status === 'INCOMPLETO' && (
             <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
               <span className="chip chip-warning" style={{ alignSelf: 'flex-start' }}>Faltam dados</span>
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>Complete o cadastro do cliente para gerar o documento:</p>
-              <ul style={{ paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', listStyle: 'disc' }}>
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+                {noPortal ? 'A clínica ainda está completando os seus dados para este documento. Você será avisado quando ele estiver pronto para assinar.' : 'Complete o cadastro do cliente para gerar o documento:'}
+              </p>
+              {!noPortal && <ul style={{ paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', listStyle: 'disc' }}>
                 {doc.faltando.map(f => <li key={f}>{f}</li>)}
-              </ul>
+              </ul>}
               {podeColher && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {rotaDoCliente && <Link href={`${rotaDoCliente}?aba=dados`} className="btn-secondary">Completar o cadastro</Link>}

@@ -1258,6 +1258,31 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Termos e contratos, fase 5: o portal do cliente
+
+**O que muda:** o cliente assina pelo celular. Na ficha, "Pedir no portal"
+coloca o documento no portal dele e manda um push ("A Unidade X pediu a sua
+assinatura em um documento" — nada do título, que pode dizer o procedimento).
+No portal: um cartão "N documentos para assinar" na home, a lista em
+Documentos, e a mesma tela de assinatura, já no modo do cliente. Quem agenda
+pelo portal um procedimento que pede termo vai direto para ele. O cliente
+também baixa o PDF dos que assinou.
+
+- `actions/documentos-portal.ts` (`assinarNoPortal`: identidade = a sessão do
+  cliente, canal PORTAL; só documento DELE) e `pedirAssinaturaNoPortal` na
+  equipe (recusa cliente sem conta no portal e documento com dado faltando).
+- `/api/documentos/[id]/pdf` atende o cliente, só no documento dele.
+- O comum aos canais saiu de `actions/documentos.ts` para
+  `lib/documentos/assinar.ts`.
+- Prova: `e2e/documentos-portal.spec.ts` (4 casos: o pedido e o aviso
+  genérico; o cliente na home → lista → assina → baixa o PDF; o documento de
+  outro cliente não abre, não assina, não baixa, e a tela da equipe não é
+  dele; cliente sem portal). Telas conferidas em 390px. Vizinhos (portal,
+  portais-isolamento, ficha, fases 2 e 4, API sem credencial) verdes.
+- Não testado de ponta a ponta: o desvio para os documentos depois de agendar
+  pelo portal (o agendamento pelo portal depende de horário livre real);
+  a action devolve a contagem e o wizard navega, conferido no código.
+
 ### 2026-09-30 — Termos e contratos, fase 4: o PDF assinado e a verificação pública
 
 **O que muda:** todo documento assinado ganha um PDF final — o documento, a
@@ -4139,7 +4164,8 @@ verdade. O que vale:
 **Termos e contratos, em andamento** (plano de 2026-09-29, seis fases; ver a
 entradas de 2026-09-30). Fases 1 a 4 feitas (modelos; emissão pelo
 atendimento com assinatura na clínica e no papel; checkout do plano; PDF
-assinado e verificação pública). A próxima é a fase 5: o portal do cliente.
+assinado e verificação pública; portal do cliente). Falta a fase 6: o link
+público de assinatura e o WhatsApp mínimo (copiar o link / abrir no WhatsApp).
 
 ---
 

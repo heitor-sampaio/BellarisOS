@@ -7,7 +7,7 @@ import { ptBR } from 'date-fns/locale'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, tentar, contar, mensagemDoErro } from '@/lib/db'
 import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
@@ -1582,7 +1582,7 @@ export async function createClientAppointment(params: {
   professionalId: string
   scheduledAt:    string
   slug:           string
-}): Promise<{ error?: string; id?: string }> {
+}): Promise<{ error?: string; id?: string; documentosParaAssinar?: number }> {
   try {
     const ctx = await getTenantContext()
     assertClient(ctx)
@@ -1675,7 +1675,11 @@ export async function createClientAppointment(params: {
     revalidatePath(`/${params.slug}/cliente/agendamentos`)
     // Marcado pelo proprio cliente no portal: nao ha ator da equipe a excluir.
     notifyNewAppointment(appt.id as string)
-    return { id: appt.id as string }
+    // O gatilho já emitiu os documentos que nascem ao agendar (§9.4.1): o
+    // portal leva o cliente direto a eles.
+    const documentosParaAssinar = await contar(admin.from('issued_documents').select('id', { count: 'exact', head: true })
+      .eq('appointment_id', appt.id as string).in('status', ['A_GERAR', 'PENDENTE', 'INCOMPLETO']), 'contar os documentos do agendamento')
+    return { id: appt.id as string, documentosParaAssinar }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }

@@ -1,8 +1,8 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ler } from '@/lib/db'
+import { ler, contar } from '@/lib/db'
 import Link from 'next/link'
-import { CalendarDays, ChevronRight, Sparkles } from 'lucide-react'
+import { CalendarDays, ChevronRight, FileSignature, Sparkles } from 'lucide-react'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 
 // -- Helpers --------------------------------------------------------
@@ -97,6 +97,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
 
   const hasActiveTreatments = activePkgs.length > 0 || activePlans.length > 0
 
+  // Termos e contratos esperando a assinatura dele (§9.4.1).
+  const paraAssinar = await contar(admin.from('issued_documents').select('id', { count: 'exact', head: true })
+    .eq('client_id', ctx.clientId!).in('status', ['A_GERAR', 'PENDENTE']), 'contar os documentos para assinar')
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
@@ -115,6 +119,23 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
           Bem-vinda ao seu espaço pessoal.
         </p>
       </div>
+
+      {/* -- Documentos para assinar --------------------------------- */}
+      {paraAssinar > 0 && (
+        <Link href={`/${slug}/cliente/documentos`} data-testid="documentos-para-assinar" className="card" style={{
+          textDecoration: 'none', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12,
+          borderColor: 'var(--brand-soft-border)', background: 'var(--brand-soft)',
+        }}>
+          <FileSignature size={20} color="var(--brand)" style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ fontWeight: 800, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
+              {paraAssinar === 1 ? '1 documento para assinar' : `${paraAssinar} documentos para assinar`}
+            </p>
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Leia e assine pelo celular, antes do seu atendimento.</p>
+          </div>
+          <ChevronRight size={16} color="var(--brand)" />
+        </Link>
+      )}
 
       {/* -- Pontos de fidelidade ----------------------------------- */}
       {fidelidadeLigada && (

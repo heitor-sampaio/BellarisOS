@@ -88,6 +88,9 @@ export function NewAppointmentWizard({ slug, branchId, procedures, professionals
       })
       if (res.error) {
         setError(res.error)
+      } else if (res.documentosParaAssinar) {
+        // O procedimento pede termo ou contrato: direto para ele.
+        router.push(`/${slug}/cliente/documentos?agendamento=${res.id}`)
       } else {
         router.push(`/${slug}/cliente/agendamentos`)
       }
