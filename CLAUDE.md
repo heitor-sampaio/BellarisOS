@@ -755,8 +755,8 @@ tabela veio remover.
   SDRs respondendo por ele. O contrário continua proibido (`unique (user_id)`).
   As chaves são compostas com `tenant_id`, então número de uma rede não liga
   pessoa de outra. A única escrita é `definir_vinculos_do_numero` (nome,
-  unidade e pessoas numa transação). `whatsapp_numbers.user_id` é legado: não
-  ler nem escrever.
+  unidade e pessoas numa transação). A antiga `whatsapp_numbers.user_id` saiu
+  em 2026-09-28 (migration `20260928000010`).
 - **`branch_id` no número é RÓTULO**, não escopo (decisão do Heitor,
   2026-09-25). Não entra em RLS, não entra em `ownerFilter`, e a conversa
   continua nascendo com `branch_id` nulo — a unidade vira tag depois.
@@ -1368,7 +1368,6 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Ligar conversa a contato no TypeScript (é gatilho; senão o próximo ponto esquece)
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Perguntar "qual o WhatsApp desta rede?" — a pergunta é qual DESTES, e por quê
-❌ Ler ou gravar whatsapp_numbers.user_id (legado — quem fala pelo número é whatsapp_number_users)
 ❌ Montar redirect ou redirect_uri com req.url / req.nextUrl.origin (é 0.0.0.0 no standalone) — use origemPublica
 ❌ Lançar new Error('Forbidden') à mão — use semAcesso() (em produção só o digest chega à tela)
 ❌ Contar com a MENSAGEM de um erro lançado no servidor na tela — em produção ela chega trocada; devolva { error } ou use erroParaTela

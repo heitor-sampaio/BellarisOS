@@ -2403,8 +2403,9 @@ uma pessoa por número.
 - **Na tela**, "Quem fala por ele" virou selos removíveis + o seletor múltiplo
   de sempre. Quem já fala por outro número aparece com o nome dele ("· em
   Comercial"), e salvar assim é recusado dizendo quem e onde.
-- `whatsapp_numbers.user_id` fica no banco como LEGADO (ninguém lê nem escreve;
-  não havia nenhum vínculo gravado). Sai numa migration própria. (`conversations.tags`
+- `whatsapp_numbers.user_id` ficou no banco como LEGADO (ninguém lia nem escrevia;
+  não havia nenhum vínculo gravado). **Saiu em 2026-09-28** (migration
+  `20260928000010`). (`conversations.tags`
   ficou: é semente, ver 2026-09-28.)
 
 Migration `20260927000001`, aplicada pelo MCP. E2E: três casos novos em
