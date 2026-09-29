@@ -3940,16 +3940,19 @@ verdade. O que vale:
     semente das tags da pessoa, e o app não a lê;
   - ~~no modo "pela conversa", a lista de leads do dono cortada em 1000~~
     **resolvido em 2026-09-28** (inbox paginado).
-- **Dois E2E pulam sempre na completa** (visto em 2026-09-29, 331 passaram e
-  2 pularam), porque dependem de dado que o banco não tem:
-  - `automacoes-ensaio` precisa de um `cliente.criado` da rede real na
-    corrente (retenção de 30 dias), e não há nenhum;
+- ~~**Dois E2E pulavam sempre na completa**~~ **resolvido em 2026-09-29**
+  (a completa deu 331 verdes e 2 pulados). Os dois dependiam de dado que o
+  banco não tem:
+  - `automacoes-ensaio` precisava de um `cliente.criado` da rede real na
+    corrente, e nunca havia (a limpeza apaga os eventos dos clientes `[e2e]`, e
+    a corrente guarda 30 dias). Agora roda numa rede `[e2e]` com membro
+    próprio e grava o fato ele mesmo — o motor não varre a corrente, então o
+    fato gravado direto não dispara nada;
   - `whatsapp-numeros-modelagem` › "número de uma rede não aceita pessoa de
-    outra" precisa de um usuário de outra rede, e o banco só tem uma quando
-    nenhum spec está com a sua `[e2e]` de pé. É uma prova de isolamento entre
-    redes que, na prática, não roda.
-  O conserto é cada um criar o que precisa (o fato na corrente; a outra rede
-  por `criarOutraRede`) em vez de pular.
+    outra" procurava um usuário de outra rede, e o banco só tem uma quando
+    nenhum spec está com a sua `[e2e]` de pé. A prova de isolamento nunca
+    rodava; agora a pessoa de fora vem de `criarOutraRede`.
+  Regra que fica: teste não pula por falta de dado que ele mesmo pode criar.
 - **Dado de demonstração em produção:** "Carla Mendes (demo)" (2 conversas, 1
   oportunidade, telefone DDD 00), criado em 2026-09-26 para o Heitor ver o
   inbox com duas conversas da mesma pessoa. Apagar quando ele liberar.

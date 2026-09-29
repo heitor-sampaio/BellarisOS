@@ -1,5 +1,7 @@
-import { test, expect } from '@playwright/test'
-import { banco, nomeDeTeste, tenantId } from './apoio/banco'
+import { test, expect, type Page } from '@playwright/test'
+import { banco, nomeDeTeste } from './apoio/banco'
+import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
+import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 
 /**
  * O ensaio: conferir o fluxo sem que nada aconteça.
@@ -10,37 +12,63 @@ import { banco, nomeDeTeste, tenantId } from './apoio/banco'
  * salvo, e o cliente recebe.
  *
  * A automação fica DESLIGADA de propósito: conferir antes de ligar é o ponto.
+ *
+ * Roda numa rede `[e2e]`, com o fato que ele mesmo grava. Antes pegava "o
+ * último `cliente.criado` da rede real" e pulava quando não havia — e nunca
+ * havia: a limpeza do E2E apaga os eventos dos clientes `[e2e]`, e a corrente
+ * só guarda 30 dias. Gravar o fato direto no banco não dispara automação
+ * nenhuma: o motor recebe o fato de quem o emite (`lib/events/emitir.ts`), não
+ * varre a corrente.
  */
 
+const marca = Date.now().toString(36)
 const nome = nomeDeTeste('Ensaio')
-const TITULO = `[e2e] ensaio nao manda ${Date.now().toString(36)}`
+const TITULO = `[e2e] ensaio nao manda ${marca}`
 
+let f: { outra: OutraRede; membro: MembroDeTeste } | null = null
 let automationId: string | null = null
 
-test.afterAll(async () => {
-  const db = banco()
-  if (!automationId) return
-  const { data: runs } = await db.from('automation_runs').select('id').eq('automation_id', automationId)
-  for (const r of runs ?? []) await db.from('automation_run_steps').delete().eq('run_id', r.id as string)
-  await db.from('automation_runs').delete().eq('automation_id', automationId)
-  await db.from('automations').delete().eq('id', automationId)
-  await db.from('user_notifications').delete().eq('title', TITULO)
+test.beforeAll(async () => {
+  const outra = await criarOutraRede(`ens${marca}`)
+  f = {
+    outra,
+    membro: await criarMembro(`ens${marca}`, {
+      tenant: outra.tenantId, rotulo: 'Automações',
+      permissoes: [{ modulo: 'automations', nivel: 'MANAGE' }],
+    }),
+  }
 })
 
-test('o ensaio percorre o fluxo, mostra o caminho e NÃO executa as ações', async ({ page }) => {
+test.afterAll(async () => {
+  if (!f) return
   const db = banco()
-  const tenant = await tenantId()
+  const falhas: string[] = []
+  const olhar = (o: string, r: { error: { message: string } | null }) => { if (r.error) falhas.push(`${o}: ${r.error.message}`) }
+  if (automationId) {
+    const { data: runs } = await db.from('automation_runs').select('id').eq('automation_id', automationId)
+    const ids = (runs ?? []).map(r => r.id as string)
+    if (ids.length) olhar('passos', await db.from('automation_run_steps').delete().in('run_id', ids))
+    olhar('execuções', await db.from('automation_runs').delete().eq('automation_id', automationId))
+    olhar('versões', await db.from('automation_versions').delete().eq('automation_id', automationId))
+    olhar('automação', await db.from('automations').delete().eq('id', automationId))
+  }
+  olhar('avisos', await db.from('user_notifications').delete().eq('title', TITULO))
+  await f.membro.limpar()
+  await f.outra.limpar()
+  expect(falhas).toEqual([])
+})
 
-  const { data: usuario } = await db
-    .from('users').select('id').eq('tenant_id', tenant).eq('is_active', true).limit(1).single()
+test('o ensaio percorre o fluxo, mostra o caminho e NÃO executa as ações', async ({ browser }) => {
+  const db = banco()
+  const tenant = f!.outra.tenantId
 
-  // Precisa de um fato real na corrente para o ensaio repetir.
-  const { data: fato } = await db
-    .from('domain_events').select('id').eq('tenant_id', tenant)
-    .eq('nome', 'cliente.criado').limit(1).maybeSingle()
-  test.skip(!fato, 'a corrente ainda não tem cliente.criado neste banco')
+  // O fato que o ensaio vai repetir: o mais recente daquele tipo na rede.
+  const { error: erroFato } = await db.from('domain_events').insert({
+    tenant_id: tenant, nome: 'cliente.criado', entidade: 'cliente', dados: { marca },
+  })
+  expect(erroFato, 'gravar o fato na corrente da rede de teste').toBeNull()
 
-  const { data: auto } = await db.from('automations').insert({
+  const { data: auto, error: erroAuto } = await db.from('automations').insert({
     tenant_id: tenant, nome,
     // DESLIGADA: é assim que se confere antes de ligar.
     status:   'RASCUNHO',
@@ -54,7 +82,7 @@ test('o ensaio percorre o fluxo, mostra o caminho e NÃO executa as ações', as
             { campo: 'evento.nome', operador: 'igual', valor: 'cliente.criado' },
           ] } } },
         { id: 'a1', tipo: 'acao.notificar_equipe', pos: { x: 480, y: 0 },
-          config: { alvo: 'usuario', alvoId: usuario!.id, titulo: TITULO, corpo: 'não deveria chegar' } },
+          config: { alvo: 'usuario', alvoId: f!.membro.userId, titulo: TITULO, corpo: 'não deveria chegar' } },
       ],
       ligacoes: [
         { id: 'l1', de: 'g1', para: 'c1' },
@@ -62,7 +90,19 @@ test('o ensaio percorre o fluxo, mostra o caminho e NÃO executa as ações', as
       ],
     },
   }).select('id').single()
+  expect(erroAuto, 'criar a automação').toBeNull()
   automationId = auto!.id as string
+
+  const ctx = await browser.newContext({ storageState: f!.membro.estado })
+  try {
+    await ensaiarPelaTela(await ctx.newPage())
+  } finally {
+    await ctx.close()
+  }
+})
+
+async function ensaiarPelaTela(page: Page) {
+  const db = banco()
 
   // -- Ensaiar pela tela -----------------------------------------------------
   await page.goto(`/admin/automacoes/${automationId}`)
@@ -101,4 +141,4 @@ test('o ensaio percorre o fluxo, mostra o caminho e NÃO executa as ações', as
   // um sufixo em base 36, e quando o relógio produzia um "0" ali o seletor
   // casava com duas coisas e o teste caía sem nada a ver com o produto.
   await expect(cartao.getByText(/^0$/)).toBeVisible()
-})
+}

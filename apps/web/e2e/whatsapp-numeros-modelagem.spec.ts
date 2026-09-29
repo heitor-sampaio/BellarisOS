@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { banco, tenantId, PREFIXO } from './apoio/banco'
+import { criarOutraRede } from './apoio/outra-rede'
 
 /**
  * As garantias de `whatsapp_numbers` moram no BANCO, e é lá que se confere.
@@ -138,12 +139,14 @@ test.describe('whatsapp_numbers: o banco recusa o ambíguo', () => {
     }
   })
 
+  // A pessoa de fora vem de uma rede `[e2e]` criada aqui. Antes o teste
+  // procurava "um usuário de outra rede" no banco e pulava quando não achava —
+  // e o banco só tem uma rede quando nenhum outro spec está com a sua de pé:
+  // na completa, esta prova de isolamento nunca rodava.
   test('número de uma rede não aceita pessoa de outra', async () => {
     const db = banco()
     const tenant = await tenantId()
-    const { data: estranho } = await db.from('users')
-      .select('id').neq('tenant_id', tenant).limit(1).maybeSingle<Linha>()
-    test.skip(!estranho, 'o banco de dev tem uma rede só')
+    const outra = await criarOutraRede(`wafront${Date.now().toString(36)}`)
 
     let numero: string | null = null
     try {
@@ -153,11 +156,12 @@ test.describe('whatsapp_numbers: o banco recusa o ambíguo', () => {
       numero = a!.id
       const { error } = await db.rpc('definir_vinculos_do_numero', {
         p_numero: numero, p_tenant: tenant, p_label: `${PREFIXO} fronteira`,
-        p_branch: null, p_usuarios: [estranho!.id],
+        p_branch: null, p_usuarios: [outra.professionalId],
       })
       expect(error?.code, 'a chave composta com tenant_id tem de recusar').toBe('23503')
     } finally {
       if (numero) await db.from('whatsapp_numbers').delete().eq('id', numero)
+      await outra.limpar()
     }
   })
 
