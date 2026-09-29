@@ -78,6 +78,8 @@ export const EVENTOS = {
   // Sai do GATILHO do pagamento, como `pagamento.*` (origem 'banco', sem ator):
   // o ponto nasce onde o pagamento nasce, em qualquer um dos lugares.
   FIDELIDADE_PONTOS_GANHOS: 'fidelidade.pontos_ganhos',
+  // A troca de pontos por uma recompensa — sai do app (lib/events/fidelidade.ts).
+  FIDELIDADE_VOUCHER_EMITIDO: 'fidelidade.voucher_emitido',
 
   // ── Clínico ───────────────────────────────────────────────────────────
   PRONTUARIO_ENTRADA_CRIADA: 'prontuario.entrada_criada',
@@ -444,6 +446,7 @@ export const ROTULOS_DE_EVENTO: Record<NomeDeEvento, string> = {
   'plano.proposto':      'Plano proposto',
   'plano.aceito':        'Plano aceito',
   'fidelidade.pontos_ganhos': 'Cliente ganhou pontos',
+  'fidelidade.voucher_emitido': 'Cliente trocou pontos por recompensa',
   'pacote.sessao_usada': 'Sessão de pacote usada',
   'comissao.gerada':     'Comissão gerada',
 

@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { configDaRede, saldoDoCliente, extratoDoCliente } from '@/lib/fidelidade/leitura'
+import { configDaRede, saldoDoCliente, extratoDoCliente, vouchersDoCliente, recompensasDaRede } from '@/lib/fidelidade/leitura'
+import { descricaoDoVoucher, situacaoDoVoucher } from '@/lib/fidelidade/voucher'
 import { formatarPontos, rotuloDoLancamento } from '@/lib/fidelidade/formato'
 
 /**
@@ -23,10 +24,14 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
   const cfg = cliente?.tenant_id ? await configDaRede(cliente.tenant_id, admin) : null
   if (!cfg?.enabled) redirect(`/${slug}/cliente/home`)
 
-  const [saldo, extrato] = await Promise.all([
+  const [saldo, extrato, vouchers, recompensas] = await Promise.all([
     saldoDoCliente(ctx.clientId!, null, admin),
     extratoDoCliente(ctx.clientId!, { limite: 100 }, admin),
+    vouchersDoCliente(ctx.clientId!, admin),
+    recompensasDaRede(cliente!.tenant_id!, true, admin),
   ])
+  const ativos = vouchers.filter(v => situacaoDoVoucher(v) === 'ATIVO')
+  const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -35,7 +40,7 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
           Meus pontos
         </h1>
         <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
-          Você ganha pontos a cada pagamento. Para usar, fale com a recepção.
+          Você ganha pontos a cada pagamento. Para usar ou trocar por uma recompensa, fale com a recepção.
         </p>
       </div>
 
@@ -49,6 +54,39 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
           {formatarPontos(saldo)}
         </p>
       </div>
+
+      {ativos.length > 0 && (
+        <section className="card" style={{ padding: '14px 18px' }} aria-label="Meus vouchers" data-testid="meus-vouchers">
+          <p className="overline" style={{ marginBottom: 8 }}>Meus vouchers</p>
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {ativos.map(v => (
+              <li key={v.id}>
+                <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{descricaoDoVoucher(v)}</p>
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                  Válido até {data(v.expires_at)}. Mostre na recepção.
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {recompensas.length > 0 && (
+        <section className="card" style={{ padding: '14px 18px' }} aria-label="Recompensas">
+          <p className="overline" style={{ marginBottom: 8 }}>Troque seus pontos</p>
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {recompensas.map(r => (
+              <li key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{r.name}</span>
+                <span style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 800, whiteSpace: 'nowrap', color: saldo >= r.points_cost ? 'var(--brand)' : 'var(--text-faint)' }}>
+                  {formatarPontos(r.points_cost)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 8 }}>A troca é feita na recepção.</p>
+        </section>
+      )}
 
       <section className="card" style={{ padding: '6px 18px' }} aria-label="Extrato de pontos">
         {extrato.linhas.length === 0 ? (

@@ -23,6 +23,8 @@ import { notificarInteressados } from '@/lib/notifications/interessados'
 import { semAcesso } from '@/lib/sem-acesso'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
+import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
+import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
 
 // --- Helpers internos ---------------------------------------------
 async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
@@ -870,26 +872,13 @@ async function finishSessionInterno(
       const currentStock = Number(bps?.current_stock ?? 0)
       const upp          = prod?.units_per_package && prod?.consumption_unit ? Number(prod.units_per_package) : null
 
-      let embalagens: number
-      let rendimento: number | null
-      let saldoApos: number    // balance_after do movimento
-
-      if (upp) {
-        // quantity está em unidades de consumo (ex: 2 UI, 5 ml)
-        const rendimentoAtual = bps?.current_rendimento != null
-          ? Number(bps.current_rendimento)
-          : currentStock * upp  // fallback: assume embalagens cheias
-        rendimento = rendimentoAtual - quantity
-        // Arredonda PARA LONGE do zero: sobra parcial ainda ocupa uma
-        // embalagem aberta; falta parcial já é uma embalagem devida.
-        embalagens = rendimento >= 0 ? Math.ceil(rendimento / upp) : Math.floor(rendimento / upp)
-        saldoApos  = rendimento  // em unidades de consumo
-      } else {
-        // Produto sem unidade de consumo: quantity = embalagens
-        rendimento = null
-        embalagens = currentStock - quantity
-        saldoApos  = embalagens
-      }
+      // A conta do saldo depois da saída é a mesma da entrega de produto de
+      // voucher (lib/estoque/baixa.ts): uma cópia só.
+      const { embalagens, rendimento, saldoApos } = saldoDepoisDaSaida({
+        embalagens:           currentStock,
+        rendimento:           bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
+        unidadesPorEmbalagem: upp,
+      }, quantity)
 
       insumos.push({
         produto: productId, quantidade: -quantity, saldo_apos: saldoApos,
@@ -952,12 +941,13 @@ export async function confirmPayment(
     const paymentMethod = (formData.get('payment_method') as string)?.trim() || null
     const slug          = (formData.get('slug') as string)?.trim()
     const pedido        = Math.trunc(Number(formData.get('pontos') ?? 0) || 0)
+    const voucherId     = (formData.get('voucher_id') as string | null)?.trim() || null
 
     const admin = createAdminClient()
 
     const appt = await ler(admin
       .from('appointments')
-      .select('id, status, branch_id, client_id, price, treatment_plan_id, branches!inner(id, tenant_id)')
+      .select('id, status, branch_id, client_id, procedure_id, price, treatment_plan_id, branches!inner(id, tenant_id)')
       .eq('id', appointmentId)
       .single(), 'buscar o agendamento')
 
@@ -967,18 +957,34 @@ export async function confirmPayment(
     // Pontos como desconto (fidelidade, fase 2): o SERVIDOR calcula a partir
     // dos pontos pedidos — o valor que o navegador mostra não entra. O banco
     // confere de novo (config, teto, saldo) dentro da transação.
+    // Com voucher (fase 3): ele desconta PRIMEIRO; os pontos valem sobre o que sobra.
     const preco = parseFloat(String(appt.price))
-    let pontos = 0, desconto = 0, valorFinal = Math.round(preco * 100) / 100
-    if (pedido > 0) {
+    let pontos = 0, desconto = 0, descontoVoucher = 0
+    let valorFinal = Math.round(preco * 100) / 100
+    if (pedido > 0 || voucherId) {
       const cfg = await configDaRede(ctx.tenantId!, admin)
       if (!cfg.enabled) return { error: 'O programa de fidelidade está desligado nesta rede.' }
-      const saldo = await saldoDoCliente(appt.client_id as string, cfg.scope_per_branch ? apptBranch.id : null, admin)
-      const r = calcularDescontoComPontos({
-        saldo, preco, pedido,
-        regras: { valorDoPonto: cfg.redeem_points_value, minimo: cfg.redeem_min_points, tetoPct: cfg.redeem_max_pct },
-      })
-      if (r.motivo) return { error: r.motivo }
-      pontos = r.pontos; desconto = r.desconto; valorFinal = r.restante
+
+      if (voucherId) {
+        const v = await ler(admin.from('loyalty_vouchers')
+          .select('type, status, expires_at, procedure_id, discount_value, client_id')
+          .eq('id', voucherId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o voucher')
+        if (!v || v.client_id !== appt.client_id) return { error: 'Voucher não encontrado para este cliente.' }
+        const dv = descontoDoVoucher(v as VoucherParaCalculo, { procedureId: appt.procedure_id as string | null, preco })
+        if (dv.motivo) return { error: dv.motivo }
+        descontoVoucher = dv.desconto
+        valorFinal = Math.round((preco - descontoVoucher) * 100) / 100
+      }
+
+      if (pedido > 0) {
+        const saldo = await saldoDoCliente(appt.client_id as string, cfg.scope_per_branch ? apptBranch.id : null, admin)
+        const r = calcularDescontoComPontos({
+          saldo, preco: valorFinal, pedido,
+          regras: { valorDoPonto: cfg.redeem_points_value, minimo: cfg.redeem_min_points, tetoPct: cfg.redeem_max_pct },
+        })
+        if (r.motivo) return { error: r.motivo }
+        pontos = r.pontos; desconto = r.desconto; valorFinal = r.restante
+      }
     }
     if (valorFinal > 0 && !paymentMethod) return { error: 'Selecione a forma de pagamento.' }
 
@@ -992,7 +998,10 @@ export async function confirmPayment(
         p_tenant:      ctx.tenantId!,
         p_ator:        ctx.internalUserId,
         p_ator_nome:   userName,
-        p_dados:       { metodo: valorFinal > 0 ? paymentMethod : null, pontos, desconto, valor_final: valorFinal },
+        p_dados:       {
+          metodo: valorFinal > 0 ? paymentMethod : null, pontos, desconto, valor_final: valorFinal,
+          voucher_id: voucherId, desconto_voucher: descontoVoucher,
+        },
       }), 'confirmar o pagamento')
     } catch (e) {
       return { error: mensagemDoErro(e) }
@@ -1010,9 +1019,10 @@ export async function confirmPayment(
 }
 
 /**
- * O que o modal de pagamento precisa para oferecer os pontos: o programa está
- * ligado? quanto o cliente tem? quanto este pagamento aceita? Nulo = não há
- * pontos a oferecer (programa desligado, sem saldo).
+ * O que o modal de pagamento precisa para oferecer a fidelidade: o saldo e as
+ * regras dos pontos, e os vouchers do cliente que servem NESTE atendimento (com
+ * o desconto de cada um). Nulo = nada a oferecer (programa desligado, sem saldo
+ * e sem voucher).
  */
 export async function previaDoPagamento(appointmentId: string): Promise<{
   saldo:        number
@@ -1020,6 +1030,7 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
   minimo:       number
   tetoPct:      number
   maximo:       number
+  vouchers:     { id: string; name: string; desconto: number; expires_at: string }[]
 } | null> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'cashier', 'MANAGE')
@@ -1027,19 +1038,33 @@ export async function previaDoPagamento(appointmentId: string): Promise<{
 
   const appt = await ler(admin
     .from('appointments')
-    .select('client_id, price, branch_id, branches!inner(tenant_id)')
+    .select('client_id, procedure_id, price, branch_id, branches!inner(tenant_id)')
     .eq('id', appointmentId)
     .maybeSingle(), 'buscar o agendamento')
   const rede = (appt?.branches as unknown as { tenant_id: string } | null)?.tenant_id
   if (!appt || rede !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id as string)) return null
 
   const cfg = await configDaRede(ctx.tenantId!, admin)
-  if (!cfg.enabled || !(cfg.redeem_points_value > 0)) return null
-  const saldo = await saldoDoCliente(appt.client_id as string, cfg.scope_per_branch ? appt.branch_id as string : null, admin)
-  if (saldo <= 0) return null
+  if (!cfg.enabled) return null
+  const preco = parseFloat(String(appt.price))
+  const [saldoLido, meus] = await Promise.all([
+    saldoDoCliente(appt.client_id as string, cfg.scope_per_branch ? appt.branch_id as string : null, admin),
+    ler(admin.from('loyalty_vouchers')
+      .select('id, name, type, status, expires_at, procedure_id, discount_value, branch_id')
+      .eq('client_id', appt.client_id as string).eq('tenant_id', ctx.tenantId!).eq('status', 'ATIVO'),
+      'buscar os vouchers do cliente'),
+  ])
+  const vouchers = ((meus ?? []) as (VoucherParaCalculo & { id: string; name: string; branch_id: string })[])
+    .filter(v => !cfg.scope_per_branch || v.branch_id === appt.branch_id)
+    .map(v => ({ v, d: descontoDoVoucher(v, { procedureId: appt.procedure_id as string | null, preco }) }))
+    .filter(({ d }) => !d.motivo && d.desconto > 0)
+    .map(({ v, d }) => ({ id: v.id, name: v.name, desconto: d.desconto, expires_at: v.expires_at }))
+
+  const saldo = cfg.redeem_points_value > 0 ? Math.max(0, saldoLido) : 0
+  if (saldo <= 0 && vouchers.length === 0) return null
 
   const regras = { valorDoPonto: cfg.redeem_points_value, minimo: cfg.redeem_min_points, tetoPct: cfg.redeem_max_pct }
-  return { saldo, ...regras, maximo: maximoDePontos(saldo, parseFloat(String(appt.price)), regras) }
+  return { saldo, ...regras, maximo: maximoDePontos(saldo, preco, regras), vouchers }
 }
 
 // --- Salvar rascunho de notas (sem concluir) ---------------------

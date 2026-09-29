@@ -49,6 +49,58 @@ export interface FidelidadeDoPerfil {
   valorDoPonto: number
   extrato:      { linhas: LinhaDoExtrato[]; temMais: boolean }
   podeAjustar:  boolean
+  vouchers:     VoucherDoCliente[]
+  /** O catálogo ativo — para trocar pontos por recompensa. */
+  recompensas:  Recompensa[]
+}
+
+export interface Recompensa {
+  id:             string
+  name:           string
+  description:    string | null
+  type:           string
+  points_cost:    number
+  procedure_id:   string | null
+  product_id:     string | null
+  discount_value: number | null
+  validity_days:  number
+  is_active:      boolean
+}
+
+export interface VoucherDoCliente {
+  id:             string
+  name:           string
+  type:           string
+  status:         string
+  expires_at:     string
+  used_at:        string | null
+  points_cost:    number
+  procedure_id:   string | null
+  product_id:     string | null
+  discount_value: number | null
+  branch_id:      string
+  cancel_reason:  string | null
+  created_at:     string
+}
+
+/** O catálogo da rede. `somenteAtivas` para a troca; a tela de configuração vê tudo. */
+export async function recompensasDaRede(tenantId: string, somenteAtivas: boolean, admin: Admin = createAdminClient()): Promise<Recompensa[]> {
+  let q = admin.from('loyalty_rewards')
+    .select('id, name, description, type, points_cost, procedure_id, product_id, discount_value, validity_days, is_active')
+    .eq('tenant_id', tenantId)
+  if (somenteAtivas) q = q.eq('is_active', true)
+  const dados = await ler(q.order('points_cost').order('name'), 'ler o catálogo de recompensas')
+  return ((dados ?? []) as Recompensa[]).map(r => ({ ...r, points_cost: Number(r.points_cost), discount_value: r.discount_value == null ? null : Number(r.discount_value) }))
+}
+
+/** Os vouchers do cliente, os mais novos primeiro. */
+export async function vouchersDoCliente(clientId: string, admin: Admin = createAdminClient()): Promise<VoucherDoCliente[]> {
+  const dados = await ler(admin.from('loyalty_vouchers')
+    .select('id, name, type, status, expires_at, used_at, points_cost, procedure_id, product_id, discount_value, branch_id, cancel_reason, created_at')
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false })
+    .limit(100), 'ler os vouchers do cliente')
+  return ((dados ?? []) as VoucherDoCliente[]).map(v => ({ ...v, points_cost: Number(v.points_cost), discount_value: v.discount_value == null ? null : Number(v.discount_value) }))
 }
 
 /**
@@ -60,11 +112,13 @@ export async function fidelidadeDoPerfil(ctx: TenantContext, clientId: string): 
   const admin = createAdminClient()
   const cfg = await configDaRede(ctx.tenantId!, admin)
   if (!cfg.enabled) return null
-  const [saldo, extrato] = await Promise.all([
+  const [saldo, extrato, vouchers, recompensas] = await Promise.all([
     saldoDoCliente(clientId, null, admin),
     extratoDoCliente(clientId, {}, admin),
+    vouchersDoCliente(clientId, admin),
+    recompensasDaRede(ctx.tenantId!, true, admin),
   ])
-  return { saldo, valorDoPonto: cfg.redeem_points_value, extrato, podeAjustar: can(ctx, 'loyalty', 'MANAGE') }
+  return { saldo, valorDoPonto: cfg.redeem_points_value, extrato, podeAjustar: can(ctx, 'loyalty', 'MANAGE'), vouchers, recompensas }
 }
 
 /** O extrato, do mais recente para o mais antigo, em páginas. */

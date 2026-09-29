@@ -1258,6 +1258,28 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-29 — Fidelidade, fase 3: catálogo de recompensas e vouchers
+
+- **Catálogo** em Configurações → Fidelidade: procedimento grátis, desconto em
+  R$ ou %, produto/brinde, com custo em pontos e validade do voucher.
+- **Na ficha do cliente**: "Trocar pontos" (as recompensas que o saldo não
+  alcança ficam desabilitadas) e a lista de vouchers — situação, validade,
+  "Cancelar voucher" com motivo (os pontos voltam) e "Entregar produto".
+- **No pagamento**: "Aplicar voucher" lista só os que servem naquele atendimento;
+  o voucher desconta antes dos pontos. Procedimento grátis zera a conta.
+- **No portal**: "Meus vouchers" (ativos) e o catálogo, só para ver.
+- Banco (migration `20260929000003`): `loyalty_rewards`, `loyalty_vouchers`
+  (leitura pela sessão, escrita só pelo servidor), `resgatar_recompensa`,
+  `cancelar_voucher`, `entregar_voucher_produto`; o pagamento e o estorno
+  refeitos para o voucher. Evento `fidelidade.voucher_emitido`.
+- A conta do saldo de estoque depois de uma saída saiu de `finishSession` para
+  `lib/estoque/baixa.ts` — a entrega de produto usa a mesma.
+- Testes: `e2e/fidelidade-vouchers.spec.ts` (5: cadastro, troca e pagamento
+  pela tela; entrega de produto pela tela com baixa do lote; cancelamento;
+  voucher de outro procedimento e vencido; % + pontos e estorno) e
+  `tests/fidelidade-voucher.test.ts`; vizinhos: 54 passaram. A varredura passou
+  a tirar vouchers e recompensas das redes de teste antes dos procedimentos.
+
 ### 2026-09-29 — Fidelidade, fase 2: pontos como desconto no pagamento
 
 - **Na recepção**, o modal de pagamento mostra "Usar pontos" quando o programa
@@ -3869,9 +3891,9 @@ verdade. O que vale:
 
 ### Próxima frente candidata
 
-**Fidelidade — fases 3 e 4** (plano aprovado pelo Heitor em 2026-09-28; fases 1
-e 2 feitas em 2026-09-29): catálogo de recompensas com voucher, e validade +
-abrangência por unidade (cron de expiração).
+**Fidelidade — fase 4** (plano aprovado pelo Heitor em 2026-09-28; fases 1 a 3
+feitas em 2026-09-29): validade dos pontos (cron de expiração, consumo FIFO) e
+abrangência por unidade.
 
 ---
 

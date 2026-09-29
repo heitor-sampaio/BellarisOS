@@ -103,6 +103,9 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
         const falhas = await apagarClientes(clientes)
         for (const f of falhas) console.warn(`[e2e] outra rede: não apagou ${f.o_que}: ${f.erro}`)
       }
+      // Recompensas apontam procedimento e produto da rede: saem antes deles (e
+      // depois dos clientes, cujos vouchers apontam a recompensa).
+      await db.from('loyalty_rewards').delete().eq('tenant_id', t!.id)
       if (produtos.length) {
         await db.from('product_batches').delete().in('product_id', produtos)
         await db.from('stock_movements').delete().in('product_id', produtos)
@@ -112,7 +115,8 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
       }
       await db.from('users').delete().eq('id', prof!.id)
       await db.auth.admin.deleteUser(auth.user!.id)
-      await db.from('procedures').delete().eq('id', pr!.id)
+      // Todos os procedimentos da rede — o teste pode ter criado outros além do padrão.
+      await db.from('procedures').delete().eq('tenant_id', t!.id)
       await db.from('branches').delete().eq('id', b!.id)
       await db.from('role_permissions').delete().eq('tenant_id', t!.id)
       await db.from('tenant_roles').delete().eq('tenant_id', t!.id)

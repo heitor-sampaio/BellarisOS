@@ -83,6 +83,8 @@ export async function apagarClientes(clientes: string[], falhas: Falha[] = []): 
     await passo(falhas, 'pontos', db.from('loyalty_transactions').delete().in('loyalty_account_id', contas))
     await passo(falhas, 'contas de fidelidade', db.from('loyalty_accounts').delete().in('id', contas))
   }
+  // Os vouchers apontam o cliente (e o lançamento em que foram usados).
+  await passo(falhas, 'vouchers', db.from('loyalty_vouchers').delete().in('client_id', clientes))
 
   // Lançamentos do cliente SEM agendamento — os do checkout de plano, do crédito
   // usado, de lançamento manual. Com o cliente apagado eles ficariam órfãos
@@ -242,6 +244,9 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     if (unidades.length) {
       await passo(falhas, 'lançamentos da rede de teste', db.from('financial_transactions').delete().in('branch_id', unidades))
     }
+    // Recompensas apontam procedimento e produto: saem antes deles.
+    await passo(falhas, 'vouchers da rede de teste', db.from('loyalty_vouchers').delete().eq('tenant_id', rede))
+    await passo(falhas, 'recompensas da rede de teste', db.from('loyalty_rewards').delete().eq('tenant_id', rede))
     await passo(falhas, 'procedimentos da rede de teste', db.from('procedures').delete().eq('tenant_id', rede))
     await passo(falhas, 'unidades da rede de teste', db.from('branches').delete().eq('tenant_id', rede))
     await passo(falhas, 'cargos da rede de teste', db.from('tenant_roles').delete().eq('tenant_id', rede))

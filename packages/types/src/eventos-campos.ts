@@ -186,6 +186,15 @@ export const CAMPOS_DO_EVENTO: Record<NomeDeEvento, CampoDeEvento[]> = {
     campo('pagamentoId', 'Id do pagamento'),
   ],
 
+  [EVENTOS.FIDELIDADE_VOUCHER_EMITIDO]: [
+    campo('clienteNome',  'Nome do cliente'),
+    campo('clienteId',    'Id do cliente'),
+    campo('recompensa',   'Recompensa'),
+    campo('tipo',         'Tipo da recompensa'),
+    campo('pontos',       'Pontos trocados', 'numero'),
+    campo('validoAte',    'Válido até'),
+  ],
+
   [EVENTOS.PLANO_CRIADO]:   PLANO,
   [EVENTOS.PLANO_PROPOSTO]: PLANO,
   [EVENTOS.PLANO_ACEITO]:   PLANO,

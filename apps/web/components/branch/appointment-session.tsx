@@ -33,7 +33,7 @@ import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { rotaAgenda } from '@/lib/rotas'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
-import { calcularDescontoComPontos } from '@/lib/fidelidade/resgate'
+import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { formatarPontos } from '@/lib/fidelidade/formato'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 
@@ -312,17 +312,20 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
   // mesma que o servidor refaz — o valor que sai do navegador não é usado.
   const [previa, setPrevia] = useState<Awaited<ReturnType<typeof previaDoPagamento>>>(null)
   const [pontos, setPontos] = useState('')
+  const [voucherId, setVoucherId] = useState('')
   useEffect(() => {
     let vivo = true
     previaDoPagamento(appointmentId).then(r => { if (vivo) setPrevia(r) }).catch(() => { /* sem pontos a oferecer */ })
     return () => { vivo = false }
   }, [appointmentId])
-  const resgate = previa
-    ? calcularDescontoComPontos({
-        saldo: previa.saldo, preco: price, pedido: Number(pontos) || 0,
-        regras: { valorDoPonto: previa.valorDoPonto, minimo: previa.minimo, tetoPct: previa.tetoPct },
-      })
-    : { pontos: 0, desconto: 0, restante: price }
+  // O voucher desconta primeiro; os pontos valem sobre o que sobra.
+  const voucher = previa?.vouchers.find(v => v.id === voucherId) ?? null
+  const base    = Math.round((price - (voucher?.desconto ?? 0)) * 100) / 100
+  const regras  = previa ? { valorDoPonto: previa.valorDoPonto, minimo: previa.minimo, tetoPct: previa.tetoPct } : null
+  const resgate = previa && regras
+    ? calcularDescontoComPontos({ saldo: previa.saldo, preco: base, pedido: Number(pontos) || 0, regras })
+    : { pontos: 0, desconto: 0, restante: base }
+  const maximo  = previa && regras ? maximoDePontos(previa.saldo, base, regras) : 0
   const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   const totalZero = resgate.restante === 0 && !resgate.motivo
   if (state !== null && !state?.error && !pending) { onClose(); router.refresh(); return null }
@@ -338,7 +341,19 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
         <form action={action} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <input type="hidden" name="appointment_id" value={appointmentId} />
           <input type="hidden" name="slug" value={slug} />
-          {previa && (
+          {previa && previa.vouchers.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label className="field-label" htmlFor="voucher-do-pagamento">Aplicar voucher</label>
+              <select id="voucher-do-pagamento" name="voucher_id" className="filtro-select" value={voucherId}
+                onChange={e => { setVoucherId(e.target.value); setPontos('') }}>
+                <option value="">Nenhum</option>
+                {previa.vouchers.map(v => (
+                  <option key={v.id} value={v.id}>{v.name} (−{brl(v.desconto)})</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {previa && previa.saldo > 0 && base > 0 && (
             <div data-testid="usar-pontos" style={{
               display: 'flex', flexDirection: 'column', gap: 8,
               background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)',
@@ -353,8 +368,8 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <input name="pontos" type="number" min={0} step={1} inputMode="numeric" className="field"
                   value={pontos} onChange={e => setPontos(e.target.value)} placeholder="0" style={{ flex: 1 }} />
-                <button type="button" className="btn-ghost" disabled={previa.maximo <= 0}
-                  onClick={() => setPontos(String(previa.maximo))}>
+                <button type="button" className="btn-ghost" disabled={maximo <= 0}
+                  onClick={() => setPontos(String(maximo))}>
                   Usar o máximo
                 </button>
               </div>
@@ -376,7 +391,7 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
           <div className="form-2col">
             {totalZero ? (
               <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', alignSelf: 'end' }}>
-                Pago todo com pontos — sem forma de pagamento.
+                Nada a receber — sem forma de pagamento.
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -387,12 +402,12 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label className="field-label">{resgate.pontos > 0 ? 'Total a receber' : 'Valor (R$)'}</label>
+              <label className="field-label">{resgate.pontos > 0 || voucher ? 'Total a receber' : 'Valor (R$)'}</label>
               <p data-testid="total-a-receber" style={{
                 fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em',
-                color: resgate.pontos > 0 ? 'var(--brand)' : 'var(--text)', padding: '6px 0',
+                color: resgate.pontos > 0 || voucher ? 'var(--brand)' : 'var(--text)', padding: '6px 0',
               }}>
-                {brl(resgate.motivo ? price : resgate.restante)}
+                {brl(resgate.motivo ? base : resgate.restante)}
               </p>
             </div>
           </div>

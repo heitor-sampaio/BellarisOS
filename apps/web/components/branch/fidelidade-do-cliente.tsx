@@ -7,6 +7,7 @@ import { ajustarPontos, extratoDoCliente } from '@/actions/fidelidade'
 import { erroParaTela } from '@/lib/erro-na-tela'
 import { formatarPontos, rotuloDoLancamento } from '@/lib/fidelidade/formato'
 import type { FidelidadeDoPerfil, LinhaDoExtrato } from '@/lib/fidelidade/leitura'
+import { VouchersDoCliente } from '@/components/branch/vouchers-do-cliente'
 
 /**
  * Fidelidade na ficha do cliente: saldo, extrato e ajuste manual.
@@ -94,6 +95,16 @@ export function FidelidadeDoCliente({
           onFeito={() => { setAjustando(false); recarregar() }}
         />
       )}
+
+      <VouchersDoCliente
+        clientId={clientId}
+        saldo={saldo}
+        recompensas={fidelidade.recompensas}
+        inicial={fidelidade.vouchers}
+        podeGerenciar={fidelidade.podeAjustar}
+        unidade={unidadePadrao}
+        onMudouSaldo={recarregar}
+      />
 
       <div style={{ borderTop: '1px solid var(--hairline)', paddingTop: 10 }}>
         {linhas.length === 0 ? (

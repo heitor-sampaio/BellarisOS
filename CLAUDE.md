@@ -663,8 +663,21 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
 - Pago todo com pontos: `amount` 0, sem forma de pagamento, sem "Purchase" na
   API de Conversões (o `pagamento.recebido` sai, com 0).
 - Estorno devolve os pontos usados (ESTORNO_RESGATE) e tira os ganhos.
-- Próximas fases (DEVLOG): catálogo de recompensas com voucher, validade e
-  abrangência por unidade.
+- **Catálogo de recompensas e vouchers** (fase 3): a rede cadastra recompensas
+  (`loyalty_rewards`: procedimento grátis, desconto R$ ou %, produto) em
+  Configurações → Fidelidade. A EQUIPE troca os pontos na ficha
+  (`resgatar_recompensa`): os pontos saem na hora e nasce um voucher
+  (`loyalty_vouchers`) com validade — o cliente só VÊ no portal. O voucher
+  guarda um RETRATO da recompensa: editá-la depois não muda o já emitido.
+  - Procedimento/desconto: aplicado no pagamento, ANTES dos pontos (os pontos
+    e o teto valem sobre o que sobra); `loyalty_discount` soma os dois.
+  - Produto: ENTREGUE na ficha (`entregar_voucher_produto`), com uma embalagem
+    saindo do estoque da unidade (MANUAL_ADJUSTMENT, lote pelo gatilho).
+  - Cancelar voucher não usado devolve os pontos; vencido (derivado de
+    `expires_at`) não vale e não devolve; estorno do pagamento o reativa.
+- A conta do saldo depois de uma saída de estoque é UMA: `lib/estoque/baixa.ts`
+  (conclusão do atendimento e entrega de produto).
+- Próxima fase (DEVLOG): validade dos pontos e abrangência por unidade.
 
 ### 9.3 Procedimentos
 - `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)
@@ -1439,6 +1452,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado
 ❌ Pôr o desconto de pontos em amount (amount é o dinheiro recebido; o desconto é loyalty_discount)
 ❌ Confirmar pagamento de atendimento fora de confirmar_pagamento_do_atendimento, ou confiar no valor que o navegador manda
+❌ Ler o voucher pela recompensa (o voucher tem o retrato de quando foi trocado) ou deixar o cliente trocar pontos sozinho
+❌ Calcular saldo de estoque depois de uma saída fora de lib/estoque/baixa.ts
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)
 ❌ Invalidar cache de permissão/acesso com revalidateTag 'max' (serve o velho mais uma vez) — use updateTag
