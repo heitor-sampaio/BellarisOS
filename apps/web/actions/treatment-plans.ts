@@ -2,8 +2,6 @@
 
 import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
-import { emitirEventoClinico } from '@/lib/events/clinico'
-import { EVENTOS } from '@estetica-os/types'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade } from '@/lib/auth'
 import { conferirPecasDoAgendamento } from '@/lib/appointments/core'
 import type { TenantContext } from '@estetica-os/types'
@@ -151,26 +149,6 @@ async function planoDoTenant(
   // se mexe pela recepção da A.
   if (!data || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx as TenantContext, data.branch_id as string)) return null
   return { ...data, slug: branch!.slug }
-}
-
-/**
- * O termo é de um cliente desta rede? Termo → prontuário → cliente → rede.
- *
- * Todo export deste arquivo é endpoint público (§9.9): sem esta conferência,
- * assinar recebia o id de um termo de QUALQUER rede e o marcava assinado.
- */
-async function termoDoTenant(
-  admin: ReturnType<typeof createAdminClient>,
-  consentId: string,
-  tenantId: string,
-): Promise<boolean> {
-  const data = await ler(admin
-    .from('consent_terms')
-    .select('id, medical_records!inner(clients!inner(tenant_id))')
-    .eq('id', consentId)
-    .maybeSingle(), 'buscar o termo')
-  const rede = (data?.medical_records as unknown as { clients: { tenant_id: string } } | null)?.clients?.tenant_id
-  return !!data && rede === tenantId
 }
 
 /** O agendamento é desta rede, e da unidade ao alcance? O essencial dele, ou null. */
@@ -1128,68 +1106,6 @@ async function generateEvaluationPlanInterno(
   return { planId: plan.id as string }
 }
 
-// -- Assinar termo de consentimento digitalmente -------------------------------
-
-/**
- * Emite `termo.assinado` a partir do id do termo.
- *
- * Existe porque a assinatura acontece por DOIS caminhos — na tela, com
- * rabisco, e "assinado em papel" — e o fato é o mesmo. Buscar o cliente e o
- * plano em cada um seria a forma mais fácil de os dois eventos saírem
- * diferentes.
- */
-async function emitirTermoAssinado(
-  consentId: string,
-  ctx: Awaited<ReturnType<typeof getTenantContext>>,
-) {
-  // O termo NÃO tem `client_id`: ele pendura no prontuário, e é de lá que sai
-  // o cliente. A unidade vem do plano, quando houver — termo avulso não tem
-  // unidade nenhuma, e inventar a do usuário seria pior que deixar nulo.
-  const { data, error } = await createAdminClient()
-    .from('consent_terms')
-    .select('id, title, medical_records!inner(client_id), treatment_plans(branch_id)')
-    .eq('id', consentId)
-    .maybeSingle()
-
-  if (error) {
-    console.error('[termo.assinado] não foi possível montar o retrato:', error.message)
-    return
-  }
-
-  await emitirEventoClinico(EVENTOS.TERMO_ASSINADO, consentId, ctx, {
-    clientId:   ((data?.medical_records as unknown as { client_id?: string } | null)?.client_id) ?? null,
-    referencia: (data?.title as string) ?? null,
-    branchId:   ((data?.treatment_plans as unknown as { branch_id?: string } | null)?.branch_id) ?? null,
-    // Assinar é irreversível: uma vez só, venha do rabisco ou do papel.
-    chave:      'termo.assinado:' + consentId,
-  })
-}
-
-export async function signConsentTerm(consentId: string, signatureDataUrl: string, slug: string) {
-  const ctx = await getTenantContext()
-  assertPodeFecharPlano(ctx)
-
-  const admin = createAdminClient()
-  if (!(await termoDoTenant(admin, consentId, ctx.tenantId!))) return { error: 'Termo não encontrado.' }
-
-  const { error } = await admin
-    .from('consent_terms')
-    .update({
-      status:         'SIGNED',
-      signed_at:      new Date().toISOString(),
-      signed_via:     'web',
-      signature_data: signatureDataUrl,
-    })
-    .eq('id', consentId)
-
-  if (error) return { error: error.message }
-
-  await emitirTermoAssinado(consentId, ctx)
-
-  revalidatePath(`/${slug}/checkout`)
-  return {}
-}
-
 /**
  * Dados do checkout de um plano, para abrir o wizard fora da página dele.
  *
@@ -1219,139 +1135,6 @@ export async function getCheckoutPlan(planId: string): Promise<{ plan?: Checkout
   return checkout ? { plan: checkout } : { error: error ?? 'Plano não encontrado.' }
 }
 
-/**
- * Termo assinado em papel.
- *
- * O passo de documentação tinha um botão "Imprimir documentos" que não imprimia
- * nada — só destravava o passo seguinte — e os termos ficavam PENDENTES para
- * sempre no prontuário. Quem imprime e colhe a assinatura na folha registra por
- * aqui; quem assina na tela usa `signConsentTerm`.
- */
-export async function marcarTermoAssinadoEmPapel(consentId: string, slug: string) {
-  const ctx = await getTenantContext()
-  assertPodeFecharPlano(ctx)
-
-  const admin = createAdminClient()
-  if (!(await termoDoTenant(admin, consentId, ctx.tenantId!))) return { error: 'Termo não encontrado.' }
-  const { error } = await admin
-    .from('consent_terms')
-    .update({
-      status:     'SIGNED',
-      signed_at:  new Date().toISOString(),
-      signed_via: 'paper',
-    })
-    .eq('id', consentId)
-
-  if (error) return { error: error.message }
-
-  await emitirTermoAssinado(consentId, ctx)
-
-  if (slug) revalidatePath(`/${slug}/checkout`)
-  return {}
-}
-
-// -- Criar termos de consentimento para o checkout -----------------------------
-
-export async function createCheckoutConsentTerms(
-  planId: string,
-  medicalRecordId: string,
-  clientName: string,
-  branchName: string,
-  items: { procedureName: string; sessions: number; unitPrice: number }[],
-  totalAmount: number,
-) {
-  const ctx = await getTenantContext()
-  assertPodeFecharPlano(ctx)
-
-  const admin  = createAdminClient()
-
-  // Plano e prontuário vêm do navegador. O plano tem de ser desta rede, e o
-  // prontuário tem de ser do CLIENTE do plano — senão os termos (com o
-  // contrato e o valor) seriam plantados no prontuário de outra pessoa.
-  const plano = await planoDoTenant(admin, planId, ctx)
-  if (!plano) return { error: 'Plano não encontrado.' }
-  const prontuario = await ler(admin
-    .from('medical_records').select('client_id').eq('id', medicalRecordId).maybeSingle(),
-    'conferir o prontuário do plano')
-  if (!prontuario || prontuario.client_id !== plano.client_id) return { error: 'Prontuário não encontrado para este cliente.' }
-
-  // Os termos deste plano já existem? Reaproveita.
-  //
-  // Entrar duas vezes no passo de documentação criava outro par, e todo
-  // checkout abandonado deixava dois termos PENDING soltos no prontuário. Como
-  // agora eles carregam `treatment_plan_id`, dá para reencontrá-los — inclusive
-  // já assinados, quando alguém volta ao checkout depois de assinar.
-  const existentes = await ler(admin
-    .from('consent_terms')
-    .select('id, title, content, status, signed_via')
-    .eq('treatment_plan_id', planId)
-    .order('created_at'), 'conferir os termos já criados')
-
-  if (existentes && existentes.length > 0) return { terms: existentes }
-
-  const today  = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
-  const totalBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalAmount)
-
-  const itemsText = items
-    .map(it => `• ${it.procedureName} — ${it.sessions} sessão(ões) — R$ ${it.unitPrice.toFixed(2).replace('.', ',')} cada`)
-    .join('\n')
-
-  const anamnesisContent = `TERMO DE ANAMNESE E SAÚDE
-
-Data: ${today}
-Paciente: ${clientName}
-Clínica: ${branchName}
-
-Declaro que as informações prestadas sobre meu histórico de saúde são verdadeiras e completas. Estou ciente de que omissões ou informações incorretas podem comprometer a segurança e eficácia dos procedimentos realizados.
-
-Confirmo não ter alergia a produtos utilizados nos procedimentos contratados ou, caso tenha, a informei à profissional durante a avaliação.
-
-Li, entendi e concordo com este Termo de Anamnese.`
-
-  const contractContent = `CONTRATO DE PRESTAÇÃO DE SERVIÇOS ESTÉTICOS
-
-Data: ${today}
-Contratante: ${clientName}
-Contratada: ${branchName}
-
-SERVIÇOS CONTRATADOS:
-${itemsText}
-
-VALOR TOTAL: ${totalBRL}
-
-A contratada se compromete a executar os procedimentos listados com profissionalismo, higiene e os materiais adequados.
-
-O contratante declara ter sido informado sobre os procedimentos, seus benefícios esperados e possíveis contraindicações.
-
-Li, entendi e concordo com os termos deste Contrato de Prestação de Serviços.`
-
-  // `signed_via` nasce nulo: quem assina é que diz por onde — tela ou papel.
-  // Antes já entrava como 'web' aqui, o que fazia todo termo parecer assinado
-  // digitalmente mesmo sem ninguém ter assinado nada.
-  const { data: terms, error } = await admin
-    .from('consent_terms')
-    .insert([
-      {
-        medical_record_id: medicalRecordId,
-        treatment_plan_id: planId,
-        title:             'Termo de Anamnese',
-        content:           anamnesisContent,
-        status:            'PENDING',
-      },
-      {
-        medical_record_id: medicalRecordId,
-        treatment_plan_id: planId,
-        title:             'Contrato de Prestação de Serviços',
-        content:           contractContent,
-        status:            'PENDING',
-      },
-    ])
-    .select('id, title, content, status, signed_via')
-
-  if (error) return { error: error.message }
-  return { terms }
-}
-
 // -- Finalizar checkout (pagamento + agendamento de execução) ------------------
 
 export type SessionScheduleInput = {
@@ -1361,33 +1144,11 @@ export type SessionScheduleInput = {
   branchId:       string
 }
 
-/**
- * Como o plano foi pago.
- *
- * `entrada` só existe em `PARCELADO`, e vale 0 quando não houve entrada. As
- * parcelas são o SALDO (total − entrada) dividido em `parcelas` vezes, a partir
- * de `primeiroVencimento`.
- */
-export type PagamentoDoPlano =
-  | { forma: 'AVISTA';    metodo: string }
-  | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string }
-  | { forma: 'A_RECEBER'; metodo: string | null; vencimento: string }
-
-/**
- * Como o pagamento entra na linha do tempo do atendimento.
- *
- * ⚠️ Não é export: todo export de um arquivo `'use server'` vira endpoint
- * público, e isto é formatação de texto.
- */
-function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
-  if (!p)                      return 'em aberto, a receber no atendimento'
-  if (p.forma === 'AVISTA')    return `${p.metodo} à vista`
-  if (p.forma === 'A_RECEBER') return 'a receber'
-  const entrada = p.entrada > 0
-    ? `entrada de R$ ${p.entrada.toFixed(2).replace('.', ',')} + `
-    : ''
-  return `${entrada}${p.parcelas}x em ${p.metodo}`
-}
+// O pagamento do plano mora em lib/checkout/pagamento.ts: o contrato de plano
+// (lib/documentos) também o lê, e aqui todo export é endpoint público.
+export type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { rotuloDoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1437,6 +1198,13 @@ async function checkoutTreatmentPlanInterno(
 
   if (!plan)                      return { error: 'Plano não encontrado.' }
   if (plan.status !== 'PROPOSED') return { error: 'Apenas planos enviados para recepção podem ser finalizados.' }
+
+  // Os documentos do plano (§9.4.1), ANTES do primeiro lançamento: nada de
+  // dinheiro com termo ou contrato que bloqueia sem assinatura, nem com um
+  // contrato assinado para outro pagamento. O gatilho no plano é a segunda
+  // linha — mas ele só barra o status, com os lançamentos já feitos.
+  const recusaDosDocumentos = await recusaDosDocumentosDoPlano(ctx.tenantId!, planId, pagamento)
+  if (recusaDosDocumentos) return { error: recusaDosDocumentos }
 
   // Busca sessões com procedimentos
   const { sessions, total } = await getTreatmentPlanSessions(planId)

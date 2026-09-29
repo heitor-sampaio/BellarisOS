@@ -4,6 +4,7 @@ import { banco, PREFIXO } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { apagarDocumentosEmitidos } from './apoio/limpeza'
 
 /**
  * Termos e contratos — fase 2: o documento nasce do agendamento, trava o
@@ -75,6 +76,13 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
+  // Os documentos PRIMEIRO: a evidência aponta quem conduziu a assinatura
+  // (`conducted_by`), e o membro não sai enquanto ela existir.
+  for (const r of [rede, alheia]) {
+    if (!r) continue
+    const { data } = await db().from('issued_documents').select('id').eq('tenant_id', r.tenantId)
+    expect(await apagarDocumentosEmitidos((data ?? []).map(d => d.id as string))).toEqual([])
+  }
   await gestor?.limpar()
   await rede?.limpar()
   await alheia?.limpar()

@@ -48,11 +48,18 @@ async function hashDe(bytes: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, '0')).join('')
 }
 
-export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente }: {
-  doc:           DocumentoNaTela
-  podeColher:    boolean
-  voltar:        string
-  rotaDoCliente: string
+export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTerminar }: {
+  doc:            DocumentoNaTela
+  podeColher:     boolean
+  /** Página inteira: para onde "Voltar" leva, e o link do cliente. */
+  voltar?:        string
+  rotaDoCliente?: string
+  /**
+   * Embutida em outra tela (o checkout do plano): "Voltar" e "Continuar"
+   * devolvem o controle a ela, sem navegar — o wizard perderia o que foi
+   * escolhido no passo do pagamento.
+   */
+  aoTerminar?:    () => void
 }) {
   const router = useRouter()
   const [modo, setModo] = useState<Modo>('equipe')
@@ -192,7 +199,9 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente }: {
         <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Documento assinado</h2>
         {codigo && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Código de verificação <strong style={{ color: 'var(--text)' }}>{codigo}</strong></p>}
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Devolva o aparelho à equipe.</p>
-        <Link href={voltar} className="btn-primary" style={{ marginTop: 8 }}>Voltar</Link>
+        {aoTerminar
+          ? <button type="button" className="btn-primary" style={{ marginTop: 8 }} onClick={aoTerminar}>Continuar</button>
+          : <Link href={voltar ?? '/'} className="btn-primary" style={{ marginTop: 8 }}>Voltar</Link>}
       </div>
     )
   }
@@ -201,13 +210,15 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="esconde-impressao" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <Link href={voltar} className="btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <ArrowLeft size={14} /> Voltar
-        </Link>
+        {aoTerminar
+          ? <button type="button" onClick={aoTerminar} className="btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><ArrowLeft size={14} /> Voltar</button>
+          : <Link href={voltar ?? '/'} className="btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><ArrowLeft size={14} /> Voltar</Link>}
         <div style={{ minWidth: 0 }}>
           <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 'var(--weight-extrabold)', letterSpacing: 'var(--tracking-tight)', color: 'var(--text)' }}>{doc.titulo}</h1>
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
-            <Link href={rotaDoCliente} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>{doc.cliente.nome}</Link>
+            {rotaDoCliente
+              ? <Link href={rotaDoCliente} style={{ color: 'var(--brand)', fontWeight: 'var(--weight-bold)' }}>{doc.cliente.nome}</Link>
+              : doc.cliente.nome}
           </p>
         </div>
       </div>
@@ -243,7 +254,7 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente }: {
               </ul>
               {podeColher && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <Link href={`${rotaDoCliente}?aba=dados`} className="btn-secondary">Completar o cadastro</Link>
+                  {rotaDoCliente && <Link href={`${rotaDoCliente}?aba=dados`} className="btn-secondary">Completar o cadastro</Link>}
                   <button type="button" className="btn-ghost" onClick={gerarDeNovo} disabled={enviando}>Gerar de novo</button>
                 </div>
               )}

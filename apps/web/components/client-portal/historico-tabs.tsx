@@ -239,7 +239,7 @@ export function HistoricoTabs({ slug, procedimentos, pagamentos, documentos, con
                 </p>
                 <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
                   Assinado em {new Date(c.signed_at).toLocaleDateString('pt-BR')}
-                  {c.signed_via && ` · via ${c.signed_via}`}
+                  {c.signed_via && ` · ${c.signed_via}`}
                 </p>
               </div>
               <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0 }} />

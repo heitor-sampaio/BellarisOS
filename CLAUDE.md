@@ -763,8 +763,8 @@ const procedures = await ler(
 A rede monta (no editor, com variáveis) ou envia (PDF pronto, assinado como
 está) os modelos de termo e contrato, e o cliente assina eletronicamente —
 na clínica, no portal, por link ou no papel. Plano aprovado em 2026-09-29, em
-seis fases; **fases 1 (modelos) e 2 (emissão pelo atendimento, assinatura na
-clínica e no papel) estão no ar**. O desenho inteiro está no
+seis fases; **fases 1 (modelos), 2 (emissão pelo atendimento, assinatura na
+clínica e no papel) e 3 (checkout do plano) estão no ar**. O desenho inteiro está no
 DEVLOG ("Termos e contratos").
 
 - **O documento é do PROCEDIMENTO** (decisão do Heitor): cada procedimento
@@ -814,7 +814,26 @@ DEVLOG ("Termos e contratos").
   `fetch` GET idênticos numa renderização — a releitura do documento depois de
   montá-lo devolvia a resposta velha. `lerDocumento` passa um sinal novo.
 - A ficha do cliente lê a aba por `?aba=` (não `?tab=`).
-- Prova: `e2e/documentos-modelos.spec.ts` e `e2e/documentos-atendimento.spec.ts`.
+- **Checkout do plano: Plano → Pagamento → Documentação → Agendamento.** O
+  contrato de plano cita a forma de pagamento, então nasce depois dela
+  (`prepararDocumentosDoPlano`, `lib/documentos/plano.ts`). O retrato do
+  pagamento (`pagamentoNormalizado`, `lib/checkout/pagamento.ts`) fica em
+  `issued_documents.payment_snapshot`; trocar o pagamento depois de assinar
+  SUBSTITUI o contrato (`documento_substituir`).
+- **A trava do checkout vem ANTES do dinheiro** (`recusaDosDocumentosDoPlano`
+  em `checkoutTreatmentPlanInterno`): documento que BLOQUEIA aberto, ou contrato
+  assinado para OUTRO pagamento, recusam. Ela EMITE antes de conferir — quem
+  chama a action direto não escapa por "ainda não havia documento". O gatilho
+  `trg_documentos_bloqueiam_plano` é a segunda linha (barra o status, mas o
+  checkout não é transação única).
+- **Toda rede nasce com o contrato de plano padrão** (`documentos_modelos_padrao`:
+  migration para as de antes, `registerAction` para as novas). Sem CPF de
+  propósito: o contrato de antes não o exigia.
+- `consent_terms` é LEGADO: os assinados foram copiados para `issued_documents`
+  (`moment = 'LEGADO'`, assinatura `identity_method = 'LEGADO'`) e o histórico da
+  ficha e do portal lê `assinadosDoCliente`. Nada novo é gravado lá.
+- Prova: `e2e/documentos-modelos.spec.ts`, `e2e/documentos-atendimento.spec.ts` e
+  `e2e/checkout-de-plano.spec.ts`.
 
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação

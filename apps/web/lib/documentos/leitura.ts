@@ -40,7 +40,7 @@ export function rotuloDoQueFalta(variavel: string): string {
   return v ? `${v.grupo} · ${v.rotulo}` : variavel
 }
 
-async function resumir(tenantId: string, docs: DocumentoEmitido[]): Promise<ResumoDeDocumento[]> {
+export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido[]): Promise<ResumoDeDocumento[]> {
   if (!docs.length) return []
   const admin = createAdminClient()
   const montados = await renderizarPendentes(tenantId, docs)
@@ -89,7 +89,7 @@ export async function documentosDoCliente(tenantId: string, clientId: string): P
     .eq('tenant_id', tenantId).eq('client_id', clientId)
     .neq('status', 'SUBSTITUIDO')
     .order('created_at', { ascending: false }).limit(200), 'listar os documentos do cliente')
-  const resumo = await resumir(tenantId, (docs ?? []) as unknown as DocumentoEmitido[])
+  const resumo = await resumirDocumentos(tenantId, (docs ?? []) as unknown as DocumentoEmitido[])
   const ordem = (s: StatusDoDocumento) => (['A_GERAR', 'INCOMPLETO', 'PENDENTE'].includes(s) ? 0 : 1)
   return resumo.sort((a, b) => ordem(a.status) - ordem(b.status))
 }
@@ -101,7 +101,7 @@ export async function documentosDoAgendamento(tenantId: string, appointmentId: s
     .eq('tenant_id', tenantId).eq('appointment_id', appointmentId)
     .not('status', 'in', '(CANCELADO,SUBSTITUIDO)')
     .order('kind').order('title'), 'listar os documentos do atendimento')
-  return resumir(tenantId, (docs ?? []) as unknown as DocumentoEmitido[])
+  return resumirDocumentos(tenantId, (docs ?? []) as unknown as DocumentoEmitido[])
 }
 
 export interface DocumentoParaExibir {
@@ -125,7 +125,7 @@ export async function documentoParaExibir(
   if (!doc) return null
   const admin = createAdminClient()
   const [[resumo], cliente, assinatura, versao] = await Promise.all([
-    resumir(tenantId, [doc]),
+    resumirDocumentos(tenantId, [doc]),
     ler(admin.from('clients').select('name, document').eq('id', doc.client_id).single(), 'buscar o cliente'),
     doc.status === 'ASSINADO'
       ? ler(admin.from('document_signatures').select('signature_png, signer_name, signed_at, channel, conducted_by')
@@ -159,4 +159,29 @@ export async function documentoParaExibir(
         }
       : null,
   }
+}
+
+/**
+ * Os documentos ASSINADOS do cliente, para a linha do tempo da ficha e o
+ * histórico do portal. Inclui o legado (os termos fixos do checkout antigo,
+ * copiados de `consent_terms` pela migration 20260930000003).
+ */
+export async function assinadosDoCliente(
+  tenantId: string | null, clientId: string,
+): Promise<{ id: string; titulo: string; assinadoEm: string; canal: string | null; codigo: string | null }[]> {
+  const admin = createAdminClient()
+  let q = admin.from('issued_documents')
+    .select('id, title, signed_at, verification_code, document_signatures(channel)')
+    .eq('client_id', clientId).eq('status', 'ASSINADO')
+  if (tenantId) q = q.eq('tenant_id', tenantId)
+  const linhas = await ler(q.order('signed_at', { ascending: false }).limit(200), 'listar os documentos assinados do cliente')
+  // A assinatura é 1:1 (issued_document_id único): o PostgREST devolve objeto.
+  const canalDe = (s: unknown) => (s && typeof s === 'object' && 'channel' in s ? String((s as { channel: string }).channel) : null)
+  return (linhas ?? []).map(l => ({
+    id:         l.id as string,
+    titulo:     l.title as string,
+    assinadoEm: l.signed_at as string,
+    canal:      canalDe(l.document_signatures),
+    codigo:     (l.verification_code as string | null) ?? null,
+  }))
 }

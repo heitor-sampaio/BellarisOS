@@ -14,7 +14,11 @@ import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, P
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
-import { documentosDoCliente } from '@/lib/documentos/leitura'
+import { documentosDoCliente, assinadosDoCliente } from '@/lib/documentos/leitura'
+
+const SUBTITULO_DO_CANAL: Record<string, string> = {
+  CLINICA: 'Na clínica', PAPEL: 'No papel', PORTAL: 'Pelo portal', LINK: 'Por link',
+}
 import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS']
@@ -92,7 +96,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('medical_records')
-      .select('id, general_anamnesis, consent_terms(id, title, signed_at, signed_via), entries:medical_record_entries(appointment_id, notes, form_data, created_at)')
+      .select('id, general_anamnesis, entries:medical_record_entries(appointment_id, notes, form_data, created_at)')
       .eq('client_id', id)
       .maybeSingle(), 'carregar o prontuário'),
 
@@ -328,7 +332,6 @@ export default async function AdminClientProfilePage({
   const appAccountCreatedAt = raw.app_account_created_at as string | null
 
   type RawHistoryPlan  = { id: string; status: string; created_at: string; updated_at: string | null }
-  type RawConsentTerm  = { id: string; title: string; signed_at: string | null; signed_via: string | null }
 
   let evIdx = 0
   const uid = (prefix: string) => `${prefix}-${evIdx++}`
@@ -380,11 +383,9 @@ export default async function AdminClientProfilePage({
     }
   }
 
-  const consentTerms = (medRecord as { consent_terms?: RawConsentTerm[] | null } | null)?.consent_terms ?? null
-  for (const term of (consentTerms ?? [])) {
-    if (term.signed_at) {
-      history.push({ id: uid('ct'), date: term.signed_at, type: 'CONSENT_SIGNED', title: `Assinado: ${term.title}`, subtitle: term.signed_via === 'web' ? 'Na recepção' : term.signed_via === 'mobile' ? 'No app' : null, amount: null, link: null })
-    }
+  // Termos e contratos assinados (os novos e o legado do checkout antigo).
+  for (const doc of await assinadosDoCliente(ctx.tenantId, id)) {
+    history.push({ id: uid('ct'), date: doc.assinadoEm, type: 'CONSENT_SIGNED', title: `Assinado: ${doc.titulo}`, subtitle: doc.canal ? SUBTITULO_DO_CANAL[doc.canal] ?? null : null, amount: null, link: null })
   }
 
   const clientHistory = history.sort((a, b) => b.date.localeCompare(a.date))

@@ -6,6 +6,9 @@ import { analisarMarcacao, interpolarArvore, formaCanonica, textoDaArvore } from
 import { ehOpcional } from './variaveis'
 import { valoresDoDocumento, type DadosDoDocumento } from './valores'
 import { gerarCodigoDeVerificacao } from './codigo'
+import {
+  valoresDoPagamento, pagamentoNormalizado, pagamentoDoRetrato, type PagamentoDoPlano,
+} from '@/lib/checkout/pagamento'
 
 /**
  * Monta o texto de um documento emitido e grava.
@@ -26,6 +29,7 @@ export interface DocumentoEmitido {
   tenant_id:           string
   branch_id:           string | null
   client_id:           string
+  template_id:         string | null
   template_version_id: string | null
   appointment_id:      string | null
   treatment_plan_id:   string | null
@@ -42,13 +46,14 @@ export interface DocumentoEmitido {
   verification_code:   string | null
   signed_at:           string | null
   closed_reason:       string | null
+  payment_snapshot:    unknown
   created_at:          string
 }
 
 export const COLUNAS_DO_DOCUMENTO =
-  'id, tenant_id, branch_id, client_id, template_version_id, appointment_id, treatment_plan_id, procedure_id, ' +
+  'id, tenant_id, branch_id, client_id, template_id, template_version_id, appointment_id, treatment_plan_id, procedure_id, ' +
   'kind, source, title, moment, enforcement, status, content, content_sha256, missing_fields, ' +
-  'verification_code, signed_at, closed_reason, created_at'
+  'verification_code, signed_at, closed_reason, payment_snapshot, created_at'
 
 const ABERTOS: StatusDoDocumento[] = ['A_GERAR', 'INCOMPLETO', 'PENDENTE']
 
@@ -56,8 +61,37 @@ export function sha256(texto: string | Buffer): string {
   return createHash('sha256').update(texto).digest('hex')
 }
 
-/** Tudo que as variáveis de um documento de atendimento podem pedir. */
-async function dadosDoDocumento(doc: DocumentoEmitido): Promise<DadosDoDocumento> {
+/**
+ * O que um documento do FECHAMENTO do plano acrescenta: os procedimentos, as
+ * sessões, o total — e, no termo, quais procedimentos do plano usam este termo.
+ */
+async function dadosDoPlano(doc: DocumentoEmitido) {
+  const admin = createAdminClient()
+  const sessoes = await ler(admin.from('treatment_plan_sessions')
+    .select('id, treatment_plan_session_procedures(price, procedure_id, procedures(name, consent_template_id))')
+    .eq('plan_id', doc.treatment_plan_id!), 'buscar as sessões do plano')
+  type Linha = { price: number | string; procedure_id: string; procedures: { name: string; consent_template_id: string | null } | null }
+  const porProcedimento = new Map<string, { nome: string; sessoes: number; valor: number; termo: string | null }>()
+  let total = 0
+  for (const s of (sessoes ?? []) as unknown as { treatment_plan_session_procedures: Linha[] }[]) {
+    for (const sp of s.treatment_plan_session_procedures ?? []) {
+      const valor = Number(sp.price) || 0
+      total += valor
+      const atual = porProcedimento.get(sp.procedure_id) ?? { nome: sp.procedures?.name ?? 'Procedimento', sessoes: 0, valor: 0, termo: sp.procedures?.consent_template_id ?? null }
+      atual.sessoes += 1
+      atual.valor += valor
+      porProcedimento.set(sp.procedure_id, atual)
+    }
+  }
+  const itens = [...porProcedimento.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+  return {
+    plano: { itens: itens.map(i => ({ nome: i.nome, sessoes: i.sessoes, valor: Math.round(i.valor * 100) / 100 })), total: Math.round(total * 100) / 100, sessoes: (sessoes ?? []).length },
+    procedimentosDoTermo: doc.kind === 'TERMO' ? itens.filter(i => i.termo === doc.template_id).map(i => i.nome) : null,
+  }
+}
+
+/** Tudo que as variáveis de um documento podem pedir. */
+async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPlano | null): Promise<DadosDoDocumento> {
   const admin = createAdminClient()
   const [cliente, rede, unidade, procedimento, agendamento] = await Promise.all([
     ler(admin.from('clients')
@@ -81,7 +115,10 @@ async function dadosDoDocumento(doc: DocumentoEmitido): Promise<DadosDoDocumento
     const u = await ler(admin.from('users').select('name').eq('id', agendamento.professional_id).maybeSingle(), 'buscar o profissional')
     profissional = (u?.name as string) ?? null
   }
+  const doPlano = doc.treatment_plan_id && !doc.appointment_id ? await dadosDoPlano(doc) : null
   return {
+    ...(doPlano ?? {}),
+    pagamento:    doPlano && doc.kind === 'CONTRATO_PLANO' ? valoresDoPagamento(pagamento, doPlano.plano.total) : null,
     agora:        new Date(),
     cliente:      cliente as DadosDoDocumento['cliente'],
     rede:         rede as DadosDoDocumento['rede'],
@@ -113,7 +150,12 @@ async function lerDocumento(tenantId: string, docId: string): Promise<DocumentoE
  * com os dados de agora.
  */
 export async function garantirRenderizado(
-  tenantId: string, docId: string, opcoes: { forcar?: boolean } = {},
+  tenantId: string, docId: string,
+  opcoes: {
+    forcar?: boolean
+    /** O pagamento escolhido no checkout. Sem ele, vale o retrato já guardado. */
+    pagamento?: { valor: PagamentoDoPlano | null }
+  } = {},
 ): Promise<DocumentoEmitido | null> {
   const doc = await lerDocumento(tenantId, docId)
   if (!doc || !ABERTOS.includes(doc.status)) return doc
@@ -132,7 +174,8 @@ export async function garantirRenderizado(
   let faltando: string[] = []
 
   if (versao.source === 'EDITOR') {
-    const valores = valoresDoDocumento(await dadosDoDocumento(doc))
+    const pagamento = opcoes.pagamento ? opcoes.pagamento.valor : pagamentoDoRetrato(doc.payment_snapshot)
+    const valores = valoresDoDocumento(await dadosDoDocumento(doc, pagamento))
     const r = interpolarArvore(analisarMarcacao(versao.body_markup as string), v => valores[v] ?? null, ehOpcional)
     conteudo = formaCanonica(r.arvore)
     texto = textoDaArvore(r.arvore)
@@ -144,7 +187,7 @@ export async function garantirRenderizado(
     hash = versao.file_sha256 as string
   }
 
-  await gravar(admin.rpc('documento_registrar_render', {
+  await gravar(admin.rpc('documento_registrar_texto', {
     p_doc:      doc.id,
     p_tenant:   tenantId,
     p_status:   faltando.length ? 'INCOMPLETO' : 'PENDENTE',
@@ -153,6 +196,8 @@ export async function garantirRenderizado(
     p_sha256:   hash,
     p_faltando: faltando,
     p_codigo:   gerarCodigoDeVerificacao(),
+    // O retrato do pagamento vai junto do texto que o cita.
+    p_pagamento: opcoes.pagamento ? pagamentoNormalizado(opcoes.pagamento.valor) : null,
   }), 'montar o documento')
 
   return lerDocumento(tenantId, docId)

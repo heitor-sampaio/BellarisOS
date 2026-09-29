@@ -278,6 +278,8 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     await passo(falhas, 'versões de modelo da rede de teste', db.from('document_template_versions').delete().eq('tenant_id', rede))
     await passo(falhas, 'modelos de documento da rede de teste', db.from('document_templates').delete().eq('tenant_id', rede))
     await passo(falhas, 'unidades da rede de teste', db.from('branches').delete().eq('tenant_id', rede))
+    // Membro que o limpar() do teste não levou (rodada interrompida): ele prende a rede.
+    await passo(falhas, 'membros da rede de teste', db.from('users').delete().eq('tenant_id', rede))
     await passo(falhas, 'cargos da rede de teste', db.from('tenant_roles').delete().eq('tenant_id', rede))
     await passo(falhas, 'eventos da rede de teste', db.from('domain_events').delete().eq('tenant_id', rede))
     await passo(falhas, 'fidelidade da rede de teste', db.from('loyalty_configs').delete().eq('tenant_id', rede))

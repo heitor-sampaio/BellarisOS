@@ -98,6 +98,11 @@ export async function registerAction(
       p_branch_id: null,
       p_role_id:   adminRole?.id ?? null,
     }), 'gravar o acesso do usuário')
+
+    // O contrato de plano padrão (§9.4.1), o mesmo que as redes de antes
+    // ganharam na migration. Acessório: sem ele a rede funciona e monta o seu
+    // em Configurações → Documentos — não vale desfazer o cadastro por isso.
+    await tentar(admin.rpc('documentos_modelos_padrao', { p_tenant: tenant.id }), 'semear o contrato de plano padrão')
   } catch (e) {
     console.error('[registerAction]', (e as Error).message)
     await tentar(admin.from('users').delete().eq('tenant_id', tenant.id), 'desfazer o membro do cadastro')

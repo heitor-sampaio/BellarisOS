@@ -1258,6 +1258,47 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Termos e contratos, fase 3: o checkout do plano
+
+**O que muda no dia da clínica:** o fechamento do plano passou a ser Plano →
+**Pagamento → Documentação** → Agendamento. Os dois termos fixos de antes
+("Termo de Anamnese" e "Contrato") saíram: o cliente assina o termo de cada
+procedimento do plano (dois procedimentos com o mesmo termo, um termo só) e o
+**contrato de plano da rede**, que agora cita a forma de pagamento escolhida.
+A assinatura acontece dentro do próprio checkout (tela ou papel), sem sair
+dele.
+
+- Migration `20260930000003`: `documentos_emitir_do_plano` (idempotente;
+  cancela o que deixou de valer se o plano mudou), `documentos_pendentes_do_plano`,
+  `documento_substituir`, `documento_registrar_texto` (o texto + o retrato do
+  pagamento), o gatilho `trg_documentos_bloqueiam_plano` e
+  `documentos_modelos_padrao` — o contrato de plano padrão, com o texto de
+  antes em variáveis e a forma de pagamento, semeado em toda rede.
+- **Trava no servidor antes do dinheiro**: `checkoutTreatmentPlan` recusa com
+  documento que bloqueia aberto, ou com o contrato assinado para OUTRO
+  pagamento. Trocar o pagamento depois de assinar substitui o contrato (o
+  antigo fica, com a assinatura, como prova).
+- **Legado**: os 6 termos assinados de `consent_terms` viraram documentos
+  emitidos (LEGADO), com a assinatura desenhada preservada. O histórico da
+  ficha e o do portal leem um lugar só. `consent_terms` ficou só de leitura
+  na prática (nada novo é gravado; a política de RLS não mudou).
+- Saíram de `actions/treatment-plans.ts`: `createCheckoutConsentTerms`,
+  `signConsentTerm`, `marcarTermoAssinadoEmPapel`, `emitirTermoAssinado` e
+  `termoDoTenant`. O pagamento do plano foi para `lib/checkout/pagamento.ts`.
+- Achado no caminho: voltando de uma assinatura, a lista do checkout mostrava
+  o estado de antes por um instante e deixava abrir de novo o documento já
+  assinado — os botões ficam travados enquanto ela recarrega.
+- Implantação: a migration entrou antes do código, e o contrato de plano
+  padrão ficou DESATIVADO até o deploy (o checkout antigo, em produção, não
+  sabia colhê-lo e o gatilho travaria o fechamento).
+- Prova: `e2e/checkout-de-plano.spec.ts` reescrito numa rede `[e2e]` (4 casos:
+  a tela inteira com três documentos no papel e o dinheiro conferido; chamar
+  direto sem assinar não lança nada, nem pelo banco; trocar o pagamento
+  substitui o contrato e o antigo é recusado; outra rede). 6 unitários do
+  pagamento. Vizinhos (planejamentos, abrangência, plano a receber, portal,
+  prontuário, ficha, fidelidade, relatórios, LGPD, RLS, ações entre redes)
+  verdes.
+
 ### 2026-09-30 — Termos e contratos, fase 2: emissão pelo atendimento, assinatura na clínica e no papel
 
 **O que muda no dia da clínica:** um procedimento com termo ou contrato ligado
@@ -4066,10 +4107,9 @@ verdade. O que vale:
 ### Próxima frente candidata
 
 **Termos e contratos, em andamento** (plano de 2026-09-29, seis fases; ver a
-entradas de 2026-09-30). Fases 1 (modelos) e 2 (emissão pelo atendimento,
-assinatura na clínica e no papel) feitas; a próxima é a fase 3: o checkout do
-plano com os termos dos procedimentos e o contrato de plano com a forma de
-pagamento.
+entradas de 2026-09-30). Fases 1 a 3 feitas (modelos; emissão pelo
+atendimento com assinatura na clínica e no papel; checkout do plano). A
+próxima é a fase 4: o PDF final assinado e a página pública de verificação.
 
 ---
 

@@ -26,6 +26,12 @@ export interface DadosDoDocumento {
   unidade:  { name: string | null; document: string | null; address: string | null; city: string | null; state: string | null; phone: string | null } | null
   procedimento: { name: string | null } | null
   agendamento:  { scheduled_at: string | null; price: number | null; profissional: string | null } | null
+  /** Documento do fechamento do plano. */
+  plano?:       { itens: { nome: string; sessoes: number; valor: number }[]; total: number; sessoes: number } | null
+  /** Termo do plano: os procedimentos do plano que usam este termo. */
+  procedimentosDoTermo?: string[] | null
+  /** As variáveis `pagamento.*`, já montadas (lib/checkout/pagamento.ts). */
+  pagamento?:   Record<string, string | null> | null
 }
 
 const vazio = (s: string | null | undefined) => (s && s.trim() ? s.trim() : null)
@@ -100,10 +106,17 @@ export function valoresDoDocumento(d: DadosDoDocumento): Record<string, string |
     'unidade.uf':          vazio(d.unidade?.state)?.toUpperCase() ?? null,
     'unidade.telefone':    formatarTelefone(d.unidade?.phone),
 
-    'procedimento.nome':   vazio(d.procedimento?.name),
+    'procedimento.nome':   d.procedimentosDoTermo?.length ? d.procedimentosDoTermo.join(', ') : vazio(d.procedimento?.name),
     'procedimento.valor':  a?.price != null ? formatBRL(Number(a.price)) : null,
     'agendamento.data':    a?.scheduled_at ? formatDate(a.scheduled_at) : null,
     'agendamento.hora':    a?.scheduled_at ? formatTime(a.scheduled_at) : null,
     'profissional.nome':   vazio(a?.profissional),
+
+    'procedimentos.lista': d.plano?.itens.length
+      ? d.plano.itens.map(i => `${i.nome} — ${i.sessoes} ${i.sessoes === 1 ? 'sessão' : 'sessões'} — ${formatBRL(i.valor)}`).join('\n')
+      : null,
+    'plano.total':         d.plano ? formatBRL(d.plano.total) : null,
+    'plano.sessoes':       d.plano ? String(d.plano.sessoes) : null,
+    ...(d.pagamento ?? {}),
   }
 }

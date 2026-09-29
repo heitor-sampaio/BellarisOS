@@ -1,5 +1,6 @@
 ﻿import { getTenantContext, assertClient } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assinadosDoCliente } from '@/lib/documentos/leitura'
 import { ler } from '@/lib/db'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
 import { HistoricoTabs } from '@/components/client-portal/historico-tabs'
@@ -51,7 +52,7 @@ type PagamentoLido = {
   appointments: { procedures: { name: string } | null } | null
 }
 type DocumentoLido = { id: string; name: string; category: string; file_path: string; created_at: string }
-type TermoLido     = { id: string; title: string; signed_at: string; signed_via: string | null }
+const CANAL_NO_PORTAL: Record<string, string> = { CLINICA: 'na clínica', PAPEL: 'no papel', PORTAL: 'pelo portal', LINK: 'por link' }
 
 export default async function HistoricoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -89,13 +90,8 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
       .order('created_at', { ascending: false })
       .limit(30), 'carregar os documentos'),
 
-    // Termos de consentimento assinados (via prontuário)
-    ler(admin.from('consent_terms')
-      .select('id, title, signed_at, signed_via, medical_records!inner(client_id)')
-      .eq('medical_records.client_id', ctx.clientId!)
-      .not('signed_at', 'is', null)
-      .order('signed_at', { ascending: false })
-      .limit(20), 'carregar os termos assinados'),
+    // Termos e contratos assinados (os de agora e o legado do checkout antigo).
+    assinadosDoCliente(null, ctx.clientId!),
   ])
 
   // -- Procedimentos ----------------------------------------------
@@ -131,11 +127,11 @@ export default async function HistoricoPage({ params }: { params: Promise<{ slug
     created_at: r.created_at,
   }))
 
-  const consentDocs = ((consentRes ?? []) as unknown as TermoLido[]).map(r => ({
+  const consentDocs = consentRes.slice(0, 20).map(r => ({
     id:         r.id,
-    title:      r.title,
-    signed_at:  r.signed_at,
-    signed_via: r.signed_via,
+    title:      r.titulo,
+    signed_at:  r.assinadoEm,
+    signed_via: r.canal ? CANAL_NO_PORTAL[r.canal] ?? null : null,
     kind:       'consent' as const,
   }))
 

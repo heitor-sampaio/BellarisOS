@@ -14,11 +14,16 @@
 
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, can, podeReceber } from '@/lib/auth'
+import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { ensurePrivateBucket, DOCUMENTOS_ASSINADOS_BUCKET } from '@/lib/storage'
 import { garantirRenderizado, sha256 } from '@/lib/documentos/renderizar'
+import { prepararDocumentosDoPlano } from '@/lib/documentos/plano'
+import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
+import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS, type TenantContext } from '@estetica-os/types'
 
@@ -175,6 +180,70 @@ export async function marcarAssinadoEmPapel(formData: FormData): Promise<Resulta
 
     await depoisDeAssinar(ctx, doc)
     return { codigo: r.codigo }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+// ─── Checkout do plano ───────────────────────────────────────────────────────
+
+/** O pagamento que veio do navegador tem a forma de um pagamento? */
+function pagamentoValido(p: unknown): p is PagamentoDoPlano | null {
+  if (p === null) return true
+  if (!p || typeof p !== 'object') return false
+  const x = p as Record<string, unknown>
+  const texto = (v: unknown) => typeof v === 'string' && v.length <= 40
+  const data = (v: unknown) => typeof v === 'string' && !Number.isNaN(Date.parse(v))
+  switch (x.forma) {
+    case 'AVISTA':    return texto(x.metodo)
+    case 'A_RECEBER': return (x.metodo === null || texto(x.metodo)) && data(x.vencimento)
+    case 'PARCELADO': return texto(x.metodo) && Number.isFinite(x.entrada) && (x.entrada as number) >= 0
+      && Number.isInteger(x.parcelas) && (x.parcelas as number) >= 1 && (x.parcelas as number) <= 48 && data(x.primeiroVencimento)
+    default:          return false
+  }
+}
+
+/**
+ * Os documentos do fechamento do plano, com o pagamento escolhido: um termo
+ * por procedimento e o contrato de plano. Quem pode fechar o plano (prontuário
+ * ou recebimento — o mesmo gate do checkout) prepara.
+ */
+export async function prepararDocumentosDoCheckout(planId: string, pagamento: unknown): Promise<{ itens?: ResumoDeDocumento[]; error?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    if (!can(ctx, 'medical_records', 'MANAGE') && !podeReceber(ctx)) throw semAcesso()
+    if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
+    const admin = createAdminClient()
+    const plano = await ler(admin.from('treatment_plans')
+      .select('id, status, branch_id, branches!branch_id(tenant_id)')
+      .eq('id', planId).maybeSingle(), 'buscar o plano')
+    const rede = (plano?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+    if (!plano || rede !== ctx.tenantId || !alcancaUnidade(ctx, plano.branch_id as string)) return { error: 'Plano não encontrado.' }
+    if (plano.status !== 'PROPOSED') return { error: 'Apenas planos enviados para recepção podem ser finalizados.' }
+
+    const docs = await prepararDocumentosDoPlano(ctx.tenantId!, planId, pagamento, ctx.internalUserId ?? null)
+    return { itens: await resumirDocumentos(ctx.tenantId!, docs) }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/** Um documento inteiro, para assinar DENTRO de outra tela (o checkout). */
+export async function documentoParaAssinar(id: string): Promise<{ doc?: DocumentoNaTela; error?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'documents', 'MANAGE')
+    const alvo = await documentoAoAlcance(ctx, id)
+    if (!alvo) return { error: 'Documento não encontrado.' }
+    const d = await documentoParaExibir(ctx.tenantId!, alvo.id, { montarDeNovo: true })
+    if (!d) return { error: 'Documento não encontrado.' }
+    return {
+      doc: {
+        id: d.resumo.id, titulo: d.resumo.titulo, tipo: d.resumo.tipo, status: d.resumo.status,
+        faltando: d.resumo.faltando, codigo: d.resumo.codigo, motivo: d.resumo.motivo,
+        cliente: { nome: d.cliente.nome }, conteudo: d.conteudo, pdfUrl: d.pdfUrl, assinatura: d.assinatura,
+      },
+    }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

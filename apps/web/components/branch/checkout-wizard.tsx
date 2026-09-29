@@ -2,10 +2,12 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { Check, ChevronRight, User, FileText, CreditCard, CalendarCheck, Stethoscope, Printer, Clock } from 'lucide-react'
-import { createCheckoutConsentTerms, checkoutTreatmentPlan, cancelCheckout, signConsentTerm, marcarTermoAssinadoEmPapel } from '@/actions/treatment-plans'
-import { SignaturePad } from '@/components/shared/signature-pad'
-import type { PagamentoDoPlano } from '@/actions/treatment-plans'
+import { Check, ChevronRight, User, FileText, CreditCard, CalendarCheck, Stethoscope, Clock, FileSignature, ScrollText } from 'lucide-react'
+import { checkoutTreatmentPlan, cancelCheckout } from '@/actions/treatment-plans'
+import { prepararDocumentosDoCheckout, documentoParaAssinar } from '@/actions/documentos'
+import { TelaDeAssinatura, type DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
+import type { ResumoDeDocumento } from '@/lib/documentos/leitura'
+import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import type { SessionScheduleInput, PlanSessionForCheckout } from '@/actions/treatment-plans'
 import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actions/appointments'
 import { rotaCliente } from '@/lib/rotas'
@@ -44,15 +46,6 @@ const TIME_SLOTS: string[] = Array.from({ length: 25 }, (_, i) => {
   return `${h}:${m}`
 })
 
-interface ConsentTerm {
-  id:      string
-  title:   string
-  content: string
-  status:  string
-  /** 'web' (assinou na tela) ou 'paper' (imprimiu e assinou na folha). */
-  signed_via?: string | null
-}
-
 interface Props {
   plan: CheckoutPlan
   slug: string
@@ -86,10 +79,12 @@ const PAYMENT_METHODS = [
   { value: 'INTERNAL_CREDIT', label: 'Crédito interno' },
 ]
 
+// Pagamento ANTES da documentação: o contrato de plano cita a forma de
+// pagamento, e ele só pode ser montado depois de ela estar escolhida.
 const STEPS = [
   { label: 'Plano',         icon: Stethoscope  },
-  { label: 'Documentação',  icon: FileText      },
   { label: 'Pagamento',     icon: CreditCard    },
+  { label: 'Documentação',  icon: FileText      },
   { label: 'Agendamento',   icon: CalendarCheck },
 ]
 
@@ -102,37 +97,16 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
   const [step, setStep] = useState(0)
 
-  // Documentação — por termo: 'web' (assinou na tela) ou 'paper' (imprimiu e
-  // confirmou). Enquanto não houver os dois, o passo não avança.
-  const [terms,         setTerms]         = useState<ConsentTerm[] | null>(null)
-  const [assinaturas,   setAssinaturas]   = useState<Record<string, 'web' | 'paper'>>({})
-  const [assinandoNaTela, setAssinandoNaTela] = useState<string | null>(null)
-  const [creatingTerms, startCreateTerms] = useTransition()
+  // Documentação — os termos dos procedimentos e o contrato de plano
+  // (§9.4.1), montados com o pagamento escolhido no passo anterior. O que
+  // BLOQUEIA sem assinatura trava o passo; o servidor confere o mesmo.
+  const [docs,       setDocs]       = useState<ResumoDeDocumento[] | null>(null)
+  const [assinando,  setAssinando]  = useState<DocumentoNaTela | null>(null)
+  const [preparando, startPreparar] = useTransition()
+  const [abrindo,    startAbrir]    = useTransition()
 
-  const termosResolvidos = (terms ?? []).length > 0
-    && (terms ?? []).every(t => assinaturas[t.id])
-
-  async function assinarNaTela(termId: string, dataUrl: string) {
-    const res = await signConsentTerm(termId, dataUrl, slug)
-    if (res?.error) { setError(res.error); return }
-    setAssinaturas(prev => ({ ...prev, [termId]: 'web' }))
-    setAssinandoNaTela(null)
-  }
-
-  /**
-   * Abre a impressão do navegador e registra que o termo foi para o papel.
-   *
-   * O `print()` é síncrono nos navegadores de mesa: quando volta, a caixa de
-   * impressão já foi resolvida. Confirmar aqui é assumir que a assinatura será
-   * colhida na folha — que é como a clínica já fazia, só que agora fica
-   * registrado no prontuário com `signed_via: 'paper'`.
-   */
-  async function imprimirEConfirmar(termId: string) {
-    window.print()
-    const res = await marcarTermoAssinadoEmPapel(termId, slug)
-    if (res?.error) { setError(res.error); return }
-    setAssinaturas(prev => ({ ...prev, [termId]: 'paper' }))
-  }
+  const aberto = (d: ResumoDeDocumento) => d.status === 'A_GERAR' || d.status === 'PENDENTE' || d.status === 'INCOMPLETO'
+  const documentosQueTravam = (docs ?? []).filter(d => aberto(d) && d.exigencia === 'BLOQUEIA')
 
   // Pagamento — plano de milhares de reais raramente é à vista, então a forma
   // vem antes do método: nada agora, à vista, entrada + parcelas, ou a receber.
@@ -237,32 +211,25 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     }) ?? null
   }
 
-  // -- Passo 1: gerar documentos ao entrar em Documentação ---------------------
-  function handleGoToDocs() {
-    if (terms) { setStep(1); return }
-    startCreateTerms(async () => {
-      if (!plan.medicalRecordId) { setError('Prontuário não encontrado para este cliente.'); return }
-      const result = await createCheckoutConsentTerms(
-        plan.id,
-        plan.medicalRecordId,
-        plan.clientName,
-        plan.branchName,
-        plan.sessions.flatMap(sess =>
-          sess.procedures.map(p => ({ procedureName: p.name, sessions: 1, unitPrice: p.price }))
-        ),
-        total,
-      )
-      if (result.error) { setError(result.error); return }
-      const recebidos = (result.terms ?? []) as ConsentTerm[]
-      setTerms(recebidos)
-      // Termo que já veio assinado (checkout retomado) não pede assinatura de
-      // novo — a action devolve os do plano, não cria um par novo.
-      setAssinaturas(Object.fromEntries(
-        recebidos
-          .filter(t => t.status === 'SIGNED')
-          .map(t => [t.id, t.signed_via === 'paper' ? 'paper' : 'web'] as const),
-      ))
-      setStep(1)
+  // -- Documentação: monta os documentos com o pagamento escolhido -----------
+  // Voltar ao pagamento e trocá-lo monta de novo — e o contrato já assinado
+  // com o pagamento antigo é substituído (o servidor decide, não a tela).
+  function irParaDocumentos() {
+    setError(null)
+    startPreparar(async () => {
+      const r = await prepararDocumentosDoCheckout(plan.id, montarPagamento())
+      if (r.error) { setError(r.error); return }
+      setDocs(r.itens ?? [])
+      setStep(2)
+    })
+  }
+
+  function abrirParaAssinar(id: string) {
+    setError(null)
+    startAbrir(async () => {
+      const r = await documentoParaAssinar(id)
+      if (r.error || !r.doc) { setError(r.error ?? 'Não consegui abrir o documento.'); return }
+      setAssinando(r.doc)
     })
   }
 
@@ -482,110 +449,17 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
 
       {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 
-      <button onClick={handleGoToDocs} disabled={creatingTerms}
-        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: creatingTerms ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
-        {creatingTerms ? 'Gerando documentos…' : 'Confirmar plano'} <ChevronRight size={18} />
+      <button onClick={() => { setError(null); setStep(1) }}
+        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
+        Confirmar plano <ChevronRight size={18} />
       </button>
 
       {cancelBlock}
     </div>
   )
 
-  // PASSO 1: Documentação — cada termo sai daqui com um estado real: assinado na
-  // tela ou impresso e assinado em papel. Antes o botão "Imprimir documentos"
-  // não imprimia nada e os termos ficavam PENDENTES para sempre no prontuário.
+  // PASSO 1: Pagamento
   if (step === 1) return (
-    <div>
-      {progressBar}
-
-      {/* `area-impressao` é o que a folha leva: o resto da tela some no @media print */}
-      <div className="area-impressao">
-        {(terms ?? []).map(term => {
-          const assinado = assinaturas[term.id]
-          return (
-            <div key={term.id} className="card" style={{ padding: '20px 24px', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-                <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                  {term.title}
-                </p>
-                {assinado && (
-                  <span className="esconde-impressao" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--success)' }}>
-                    <Check size={13} /> {assinado === 'paper' ? 'Assinado em papel' : 'Assinado na tela'}
-                  </span>
-                )}
-              </div>
-
-              <pre style={{ fontSize: 'var(--text-base-sz)', lineHeight: 1.8, color: 'var(--text-muted)', whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-                {term.content}
-              </pre>
-
-              {/* Linha de assinatura — é o que vale na folha impressa */}
-              <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid var(--hairline)' }}>
-                <div style={{ display: 'flex', gap: 40 }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ borderBottom: '1px solid var(--text)', marginBottom: 6 }} />
-                    <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Assinatura do cliente</p>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ borderBottom: '1px solid var(--text)', marginBottom: 6 }} />
-                    <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>Data</p>
-                  </div>
-                </div>
-              </div>
-
-              {!assinado && (
-                <div className="esconde-impressao" style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--hairline)' }}>
-                  {assinandoNaTela === term.id ? (
-                    <>
-                      <SignaturePad onConfirm={dataUrl => assinarNaTela(term.id, dataUrl)} />
-                      <button type="button" onClick={() => setAssinandoNaTela(null)} className="btn-ghost" style={{ marginTop: 8, fontSize: 'var(--text-sm-sz)' }}>
-                        Cancelar
-                      </button>
-                    </>
-                  ) : (
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => setAssinandoNaTela(term.id)} className="btn-primary" style={{ fontSize: 'var(--text-base-sz)', padding: '9px 16px' }}>
-                        Assinar na tela
-                      </button>
-                      <button type="button" onClick={() => imprimirEConfirmar(term.id)} className="btn-ghost" style={{ fontSize: 'var(--text-base-sz)', padding: '9px 16px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Printer size={14} /> Imprimir e confirmar em papel
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {error && <p className="esconde-impressao" style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
-
-      <button
-        type="button"
-        className="esconde-impressao"
-        onClick={() => setStep(2)}
-        disabled={!termosResolvidos}
-        style={{
-          width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', fontSize: 'var(--text-card-title)', fontWeight: 700,
-          background: termosResolvidos ? 'var(--brand)' : 'var(--bg-app)',
-          color:      termosResolvidos ? 'var(--on-brand)'          : 'var(--text-faint)',
-          border:     termosResolvidos ? 'none'          : '1px solid var(--border)',
-          cursor:     termosResolvidos ? 'pointer'       : 'not-allowed',
-          boxShadow:  termosResolvidos ? '0 2px 12px rgba(195,77,107,0.3)' : 'none',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        }}
-      >
-        {termosResolvidos ? 'Ir para pagamento' : 'Assine os dois documentos para seguir'}
-        <ChevronRight size={18} />
-      </button>
-
-      <div className="esconde-impressao">{cancelBlock}</div>
-    </div>
-  )
-
-  // PASSO 2: Pagamento
-  if (step === 2) return (
     <div>
       {progressBar}
 
@@ -697,15 +571,94 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         )}
       </div>
       )}
+      {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
+
       <button
-        onClick={() => (podeAgendar ? setStep(3) : handleFinish())}
-        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
-        {podeAgendar ? 'Ir para o agendamento' : formaPgto === 'NADA_AGORA' ? 'Aceitar plano' : 'Confirmar'} <ChevronRight size={18} />
+        onClick={irParaDocumentos} disabled={preparando}
+        style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: preparando ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
+        {preparando ? 'Montando os documentos…' : 'Ir para a documentação'} <ChevronRight size={18} />
       </button>
 
       {cancelBlock}
     </div>
   )
+
+  // PASSO 2: Documentação — os termos dos procedimentos e o contrato de plano,
+  // já com o pagamento. Assinar abre a tela de assinatura AQUI dentro: sair da
+  // página perderia o que foi escolhido no pagamento.
+  if (step === 2) {
+    if (assinando) return (
+      <div>
+        {progressBar}
+        <TelaDeAssinatura doc={assinando} podeColher aoTerminar={() => { setAssinando(null); irParaDocumentos() }} />
+      </div>
+    )
+    const podeSeguir = documentosQueTravam.length === 0
+    return (
+      <div>
+        {progressBar}
+        <div className="card" style={{ padding: '18px 20px', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Documentos para assinar
+          </p>
+          {(docs ?? []).length === 0 && (
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+              Nenhum documento configurado para este plano. O contrato de plano e os termos dos procedimentos
+              se montam em Configurações → Documentos.
+            </p>
+          )}
+          {(docs ?? []).map(d => {
+            const Icone = d.tipo === 'CONTRATO_PLANO' ? ScrollText : FileSignature
+            return (
+              <div key={d.id} data-documento={d.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 'var(--radius-field-token)', border: '1px solid var(--hairline)', background: 'var(--bg-app)' }}>
+                <Icone size={16} color="var(--brand)" style={{ flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 180 }}>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text)' }}>{d.titulo}</p>
+                  {d.status === 'INCOMPLETO' && (
+                    <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600 }}>
+                      Falta no cadastro do cliente: {d.faltando.join(', ')}.
+                    </p>
+                  )}
+                </div>
+                {d.status === 'ASSINADO'
+                  ? <span className="chip chip-success"><Check size={12} /> Assinado</span>
+                  : d.status === 'DISPENSADO'
+                    ? <span className="chip chip-muted">Dispensado</span>
+                    : d.status === 'INCOMPLETO'
+                      ? <span className="chip chip-warning">Faltam dados</span>
+                      : <button type="button" className="btn-primary" disabled={abrindo || preparando} onClick={() => abrirParaAssinar(d.id)}
+                          style={{ padding: '7px 14px', fontSize: 'var(--text-sm-sz)' }}>
+                          Colher assinatura
+                        </button>}
+              </div>
+            )
+          })}
+        </div>
+
+        {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
+
+        <button
+          type="button"
+          onClick={() => (podeAgendar ? setStep(3) : handleFinish())}
+          // Enquanto a lista se atualiza (voltou de uma assinatura), ela ainda
+          // mostra o estado de antes: nada se clica até ela chegar.
+          disabled={!podeSeguir || submitting || preparando}
+          className="btn-primary"
+          style={{ width: '100%', padding: '14px', fontSize: 'var(--text-card-title)', justifyContent: 'center', gap: 8 }}
+        >
+          {podeSeguir
+            ? (podeAgendar ? 'Ir para o agendamento' : formaPgto === 'NADA_AGORA' ? 'Aceitar plano' : 'Confirmar')
+            : `Falta assinar: ${documentosQueTravam.map(d => d.titulo).join(', ')}`}
+          <ChevronRight size={18} />
+        </button>
+        <button type="button" className="btn-ghost" onClick={() => setStep(1)} style={{ width: '100%', marginTop: 8, justifyContent: 'center' }}>
+          Voltar ao pagamento
+        </button>
+
+        {cancelBlock}
+      </div>
+    )
+  }
 
   // PASSO 3: Agendamento
   const minDate = format(new Date(), 'yyyy-MM-dd')
