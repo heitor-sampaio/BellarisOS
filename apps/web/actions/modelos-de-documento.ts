@@ -19,7 +19,9 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro, ErroDeBanco } from '@/lib/db'
 import { ensurePrivateBucket, getSignedUrl, MODELOS_DE_DOCUMENTO_BUCKET } from '@/lib/storage'
-import { validarModelo, TIPOS_DE_MODELO, type TipoDeModelo } from '@/lib/documentos/variaveis'
+import { validarDocumentoDoEditor, TIPOS_DE_MODELO, type TipoDeModelo } from '@/lib/documentos/variaveis'
+import type { DocumentoDoEditor } from '@/lib/documentos/editor/converter'
+import { medidasDaImagem } from '@/lib/documentos/editor/medidas-da-imagem'
 
 type Resultado = { error?: string; id?: string; versao?: number; novaVersao?: boolean }
 
@@ -73,7 +75,7 @@ async function salvar(
   ator: string | null,
   c: Configuracao,
   conteudo:
-    | { origem: 'EDITOR'; texto: string; variaveis: string[]; usaPagamento: boolean }
+    | { origem: 'EDITOR'; documento: DocumentoDoEditor; variaveis: string[]; usaPagamento: boolean }
     | { origem: 'ARQUIVO'; arquivo: { path: string; sha256: string; nome: string; tamanho: number; paginas: number } | null },
 ) {
   const admin = createAdminClient()
@@ -85,7 +87,8 @@ async function salvar(
     p_origem:          conteudo.origem,
     p_momento:         c.tipo === 'CONTRATO_PLANO' ? null : c.momento ?? null,
     p_exigencia:       c.exigencia,
-    p_texto:           conteudo.origem === 'EDITOR' ? conteudo.texto : null,
+    p_texto:           null,
+    p_documento:       conteudo.origem === 'EDITOR' ? conteudo.documento : null,
     p_arquivo_path:    conteudo.origem === 'ARQUIVO' ? conteudo.arquivo?.path ?? null : null,
     p_arquivo_sha256:  conteudo.origem === 'ARQUIVO' ? conteudo.arquivo?.sha256 ?? null : null,
     p_arquivo_nome:    conteudo.origem === 'ARQUIVO' ? conteudo.arquivo?.nome ?? null : null,
@@ -100,7 +103,12 @@ async function salvar(
 
 // ─── Modelo do editor ────────────────────────────────────────────────────────
 
-export async function salvarModeloDoEditor(input: Configuracao & { texto: string }): Promise<Resultado> {
+/**
+ * O documento do editor rico. O JSON vem do navegador: passa pelo conversor
+ * (só o que a árvore conhece, imagens desta rede) e pelas regras de variável
+ * ANTES de gravar — e é conferido de novo toda vez que um documento é montado.
+ */
+export async function salvarModeloDoEditor(input: Configuracao & { documento: unknown }): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
@@ -108,12 +116,18 @@ export async function salvarModeloDoEditor(input: Configuracao & { texto: string
     const recusa = conferir(input)
     if (recusa) return { error: recusa }
 
-    const texto = (input.texto ?? '').replace(/\r\n?/g, '\n')
-    const validacao = validarModelo(texto, input.tipo)
+    const bruto = (input.documento ?? {}) as Partial<DocumentoDoEditor>
+    // Só as três partes: nada que venha a mais do navegador vai para o banco.
+    const documento: DocumentoDoEditor = {
+      corpo: bruto.corpo as DocumentoDoEditor['corpo'],
+      ...(bruto.cabecalho ? { cabecalho: bruto.cabecalho } : {}),
+      ...(bruto.rodape ? { rodape: bruto.rodape } : {}),
+    }
+    const validacao = validarDocumentoDoEditor(documento, input.tipo, ctx.tenantId!)
     if (validacao.erro) return { error: validacao.erro }
 
     const r = await salvar(ctx.tenantId!, ctx.internalUserId ?? null, input, {
-      origem: 'EDITOR', texto, variaveis: validacao.variaveis, usaPagamento: validacao.usaPagamento,
+      origem: 'EDITOR', documento, variaveis: validacao.variaveis, usaPagamento: validacao.usaPagamento,
     })
     revalidar()
     return r
@@ -212,6 +226,51 @@ export async function definirModeloAtivo(id: string, ativo: boolean): Promise<Re
     if (!linhas?.length) return { error: 'Modelo não encontrado.' }
     revalidar()
     return { id }
+  } catch (e) {
+    return { error: mensagem(e) }
+  }
+}
+
+// ─── Imagem do documento (o logo, por exemplo) ───────────────────────────────
+
+const MAX_BYTES_DA_IMAGEM = 2 * 1024 * 1024
+
+/**
+ * Guarda uma imagem para os modelos da rede. Endereçada pelo CONTEÚDO
+ * (`<rede>/imagens/<sha256>.<ext>`): o arquivo de um caminho nunca muda, e o
+ * hash do documento assinado — que guarda caminho e sha256 — cobre a imagem
+ * exata. Mandar a mesma imagem duas vezes dá o mesmo caminho.
+ */
+export async function enviarImagemDoModelo(formData: FormData): Promise<{
+  error?: string
+  imagem?: { caminho: string; sha256: string; larguraPx: number; alturaPx: number; url: string | null }
+}> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'forms', 'MANAGE')
+    const file = formData.get('imagem')
+    if (!(file instanceof File) || file.size === 0) return { error: 'Escolha a imagem.' }
+    if (file.size > MAX_BYTES_DA_IMAGEM) return { error: 'A imagem passou de 2 MB.' }
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    // O cabeçalho do arquivo, não o `type` do navegador (que vem do nome).
+    const medidas = medidasDaImagem(bytes)
+    if (!medidas) return { error: 'Use uma imagem PNG ou JPG.' }
+
+    const sha256 = createHash('sha256').update(bytes).digest('hex')
+    const caminho = `${ctx.tenantId}/imagens/${sha256}.${medidas.tipo}`
+    await ensurePrivateBucket(MODELOS_DE_DOCUMENTO_BUCKET)
+    const admin = createAdminClient()
+    const { error } = await admin.storage.from(MODELOS_DE_DOCUMENTO_BUCKET)
+      .upload(caminho, bytes, { contentType: medidas.tipo === 'png' ? 'image/png' : 'image/jpeg', upsert: false })
+    // Já existe = a mesma imagem (o nome é o hash): serve.
+    if (error && !/already exists|Duplicate/i.test(error.message)) return { error: `Não consegui guardar a imagem: ${error.message}` }
+
+    return {
+      imagem: {
+        caminho, sha256, larguraPx: medidas.largura, alturaPx: medidas.altura,
+        url: await getSignedUrl(MODELOS_DE_DOCUMENTO_BUCKET, caminho, 60 * 60),
+      },
+    }
   } catch (e) {
     return { error: mensagem(e) }
   }

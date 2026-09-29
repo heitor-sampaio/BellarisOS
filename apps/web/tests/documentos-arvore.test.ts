@@ -7,6 +7,7 @@ import { interpolar, formaCanonica, textoDoDocumento, deV1, lerConteudo, variave
 import { validarDocumentoDoEditor } from '@/lib/documentos/variaveis'
 import { IDS_DE_FONTE, ESTILOS_DE_FONTE, arquivoDaFonte, fonteDoCss } from '@/lib/documentos/fontes'
 import { analisarMarcacao, interpolarArvore } from '@/lib/documentos/marcacao'
+import { medidasDaImagem } from '@/lib/documentos/editor/medidas-da-imagem'
 
 const REDE = '11111111-2222-4333-8444-555555555555'
 const SHA = 'a'.repeat(64)
@@ -130,6 +131,20 @@ describe('validação do documento do editor', () => {
     const ok = validarDocumentoDoEditor(doc(p({ type: 'variavel', attrs: { nome: 'cliente.nome' } })), 'TERMO', null)
     expect(ok).toMatchObject({ variaveis: ['cliente.nome'], usaPagamento: false })
     expect(ok.documento).toBeTruthy()
+  })
+})
+
+describe('medidas da imagem (pelo cabeçalho do arquivo)', () => {
+  it('PNG e JPEG têm tipo e medidas; o resto é recusado', async () => {
+    const QRCode = (await import('qrcode')).default
+    const png = new Uint8Array(await QRCode.toBuffer('x', { width: 120, margin: 0 }))
+    expect(medidasDaImagem(png)).toMatchObject({ tipo: 'png' })
+    expect(medidasDaImagem(png)!.largura).toBeGreaterThan(0)
+    // JPEG mínimo: SOI + APP0 curto + SOF0 com 300 × 200.
+    const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x00, 0xc8, 0x01, 0x2c, 0x03, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    expect(medidasDaImagem(jpg)).toEqual({ tipo: 'jpg', largura: 300, altura: 200 })
+    expect(medidasDaImagem(new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>'))).toBeNull()
+    expect(medidasDaImagem(new TextEncoder().encode('%PDF-1.7'))).toBeNull()
   })
 })
 

@@ -37,8 +37,10 @@ const GRUPOS: { tipo: TipoDeModelo; titulo: string; dica: string; icone: typeof 
 
 const MOMENTO = { AGENDAMENTO: 'nasce ao agendar', INICIO_ATENDIMENTO: 'nasce no início do atendimento' } as const
 
-export function SettingsDocumentos({ modelos, envio }: {
+export function SettingsDocumentos({ modelos, imagens, envio }: {
   modelos: ItemDeModelo[]
+  /** URLs temporárias das imagens usadas nos modelos. */
+  imagens: Record<string, string>
   /** Mandar o link de assinatura pela conversa do inbox — escolha da rede. */
   envio:   { pelaConversa: boolean; podeMudar: boolean }
 }) {
@@ -71,6 +73,7 @@ export function SettingsDocumentos({ modelos, envio }: {
           existente={existente}
           tipoInicial={vista.modo === 'novo' ? vista.tipo : existente!.tipo}
           origemInicial="EDITOR"
+          imagens={imagens}
           onPronto={pronto}
           onVoltar={() => setVista({ modo: 'lista' })}
         />

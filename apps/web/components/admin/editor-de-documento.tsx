@@ -1,27 +1,31 @@
 'use client'
 
-import { useMemo, useRef, useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import { ArrowLeft, FileUp, FileText, ExternalLink } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
-import { DocumentoRenderizado } from '@/components/shared/documento-renderizado'
-import { analisarMarcacao, interpolarArvore } from '@/lib/documentos/marcacao'
-import { deV1 } from '@/lib/documentos/arvore'
-import {
-  ROTULO_DO_TIPO, VARIAVEIS_DE_DOCUMENTO, variaveisDoTipo, validarModelo, ehOpcional,
-  type TipoDeModelo, type NomeDeVariavel,
-} from '@/lib/documentos/variaveis'
+import { marcacaoParaEditor } from '@/lib/documentos/editor/da-marcacao'
+import type { DocumentoDoEditor } from '@/lib/documentos/editor/converter'
+import { ROTULO_DO_TIPO, validarDocumentoDoEditor, type TipoDeModelo } from '@/lib/documentos/variaveis'
 import { salvarModeloDoEditor, salvarModeloDeArquivo, linkDoArquivoDoModelo } from '@/actions/modelos-de-documento'
 
 /**
  * O editor de um modelo de termo ou contrato.
  *
- * Texto com marcação leve (`lib/documentos/marcacao.ts`) e variáveis do
- * catálogo fechado, com a prévia ao lado desenhada pela MESMA árvore que o
- * documento emitido usa. Ou um PDF enviado, que vai como está.
+ * Um editor de texto de verdade (`editor-rico/`: fonte, tamanho, negrito,
+ * tabelas, imagens, cabeçalho e rodapé, variáveis), numa folha com as medidas
+ * do documento assinado. Ou um PDF enviado, que vai como está.
  *
  * O tipo e a origem só se escolhem ao criar: mudá-los depois mudaria o sentido
- * do que já foi emitido (o banco também recusa).
+ * do que já foi emitido (o banco também recusa). Modelo antigo, escrito na
+ * marcação leve, abre convertido — salvar abre uma versão nova no formato novo.
  */
+
+// O Tiptap só carrega para quem edita.
+const EditorRico = dynamic(() => import('./editor-rico/editor-rico'), {
+  ssr: false,
+  loading: () => <div className="card" style={{ padding: 24, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>Carregando o editor…</div>,
+})
 
 export interface ModeloEmEdicao {
   id:        string
@@ -32,7 +36,10 @@ export interface ModeloEmEdicao {
   exigencia: 'BLOQUEIA' | 'AVISA'
   versao:    number
   versaoId:  string | null
+  /** A marcação leve das versões antigas. */
   texto:     string | null
+  /** O JSON do editor rico. */
+  documento: unknown | null
   arquivo:   { nome: string | null; tamanho: number | null; paginas: number | null } | null
 }
 
@@ -84,10 +91,12 @@ const TEXTO_INICIAL: Record<TipoDeModelo, string> = {
   ].join('\n'),
 }
 
-export function EditorDeDocumento({ existente, tipoInicial, origemInicial, onPronto, onVoltar }: {
+export function EditorDeDocumento({ existente, tipoInicial, origemInicial, imagens, onPronto, onVoltar }: {
   existente:      ModeloEmEdicao | null
   tipoInicial:    TipoDeModelo
   origemInicial:  'EDITOR' | 'ARQUIVO'
+  /** URLs temporárias das imagens dos modelos (o editor mostra, não guarda). */
+  imagens:        Record<string, string>
   onPronto:       () => void
   onVoltar:       () => void
 }) {
@@ -96,51 +105,26 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, onPro
   const [nome, setNome]           = useState(existente?.nome ?? '')
   const [momento, setMomento]     = useState<'AGENDAMENTO' | 'INICIO_ATENDIMENTO'>(existente?.momento ?? 'AGENDAMENTO')
   const [exigencia, setExigencia] = useState<'BLOQUEIA' | 'AVISA'>(existente?.exigencia ?? 'BLOQUEIA')
-  const [texto, setTexto]         = useState(existente?.texto ?? TEXTO_INICIAL[existente?.tipo ?? tipoInicial])
+  const [inicial, setInicial]     = useState<DocumentoDoEditor>(() => documentoInicial(existente, existente?.tipo ?? tipoInicial))
+  const [documento, setDocumento] = useState<DocumentoDoEditor>(inicial)
+  // Trocar o tipo antes de escrever troca o texto de exemplo: o editor remonta.
+  const [chave, setChave]         = useState(0)
+  const [alterado, setAlterado]   = useState(false)
   const [arquivo, setArquivo]     = useState<File | null>(null)
   const [erro, setErro]           = useState<string | null>(null)
   const [salvando, iniciar]       = useTransition()
-  const textoRef = useRef<HTMLTextAreaElement>(null)
   const criando = !existente
 
-  // O texto de exemplo acompanha o tipo enquanto a pessoa ainda não escreveu.
   function trocarTipo(t: TipoDeModelo) {
-    if (texto === TEXTO_INICIAL[tipo]) setTexto(TEXTO_INICIAL[t])
+    if (!alterado && criando) {
+      const novo = documentoInicial(null, t)
+      setInicial(novo); setDocumento(novo); setChave(k => k + 1)
+    }
     setTipo(t)
   }
 
-  const validacao = useMemo(() => (origem === 'EDITOR' ? validarModelo(texto, tipo) : null), [origem, texto, tipo])
-
-  const previa = useMemo(() => {
-    if (origem !== 'EDITOR') return null
-    const exemplo = (v: string) =>
-      (VARIAVEIS_DE_DOCUMENTO as Record<string, { exemplo: string }>)[v]?.exemplo ?? `{{${v}}}`
-    return interpolarArvore(analisarMarcacao(texto), exemplo, ehOpcional).arvore
-  }, [origem, texto])
-
-  const grupos = useMemo(() => {
-    const porGrupo = new Map<string, { nome: string; rotulo: string }[]>()
-    for (const { nome: n, variavel } of variaveisDoTipo(tipo)) {
-      const lista = porGrupo.get(variavel.grupo) ?? []
-      lista.push({ nome: n, rotulo: variavel.rotulo })
-      porGrupo.set(variavel.grupo, lista)
-    }
-    return [...porGrupo]
-  }, [tipo])
-
-  /** Escreve a variável onde está o cursor, sem roubar a seleção de quem digita. */
-  function inserir(variavel: NomeDeVariavel | string) {
-    const el = textoRef.current
-    const marca = `{{${variavel}}}`
-    if (!el) { setTexto(t => t + marca); return }
-    const ini = el.selectionStart, fim = el.selectionEnd
-    const novo = texto.slice(0, ini) + marca + texto.slice(fim)
-    setTexto(novo)
-    requestAnimationFrame(() => {
-      el.focus()
-      el.setSelectionRange(ini + marca.length, ini + marca.length)
-    })
-  }
+  // A mesma conferência do servidor, na hora: o botão de salvar diz o que falta.
+  const validacao = useMemo(() => (origem === 'EDITOR' ? validarDocumentoDoEditor(documento, tipo, null) : null), [origem, documento, tipo])
 
   function salvar() {
     setErro(null)
@@ -152,7 +136,10 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, onPro
       }
       let r: { error?: string }
       if (origem === 'EDITOR') {
-        r = await salvarModeloDoEditor({ ...config, texto })
+        // Cópia em JSON puro: o ProseMirror cria os `attrs` sem protótipo, e o
+        // React mandaria esses objetos à action como referência temporária
+        // (o servidor não consegue ler nenhum campo deles).
+        r = await salvarModeloDoEditor({ ...config, documento: JSON.parse(JSON.stringify(documento)) as DocumentoDoEditor })
       } else {
         const fd = new FormData()
         if (config.id) fd.set('id', config.id)
@@ -231,38 +218,10 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, onPro
       </div>
 
       {origem === 'EDITOR' ? (
-        <div className="editor-documento">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-              <span className="overline">Texto</span>
-              <select
-                className="filtro-select" value="" aria-label="Inserir variável"
-                onChange={e => { if (e.target.value) inserir(e.target.value) }}
-              >
-                <option value="">Inserir variável…</option>
-                {grupos.map(([grupo, vs]) => (
-                  <optgroup key={grupo} label={grupo}>
-                    {vs.map(v => <option key={v.nome} value={v.nome}>{v.rotulo}</option>)}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-            <textarea
-              ref={textoRef} className="field" value={texto} onChange={e => setTexto(e.target.value)}
-              rows={22} spellCheck
-              style={{ resize: 'vertical', fontSize: 'var(--text-sm-sz)', lineHeight: 1.55 }}
-            />
-            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-              <code># Título</code> · <code>## Subtítulo</code> · <code>**negrito**</code> · <code>- item</code> · <code>1. item</code> · <code>---</code> divisória · <code>[[assinatura]]</code> onde o cliente assina (sem ela, no fim).
-            </p>
-            {validacao?.erro && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{validacao.erro}</p>}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-            <span className="overline">Prévia com dados de exemplo</span>
-            <div className="card" style={{ padding: '24px 22px', background: 'var(--surface)' }}>
-              {previa && <DocumentoRenderizado documento={deV1(previa)} />}
-            </div>
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <EditorRico key={chave} inicial={inicial} tipo={tipo} imagens={imagens}
+            onChange={d => { setDocumento(d); setAlterado(true) }} />
+          {validacao?.erro && <p role="status" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{validacao.erro}</p>}
         </div>
       ) : (
         <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -294,7 +253,7 @@ export function EditorDeDocumento({ existente, tipoInicial, origemInicial, onPro
         </div>
       )}
 
-      {!criando && origem === 'EDITOR' && texto !== existente.texto && (
+      {!criando && origem === 'EDITOR' && (alterado || !existente.documento) && (
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
           Salvar abre a versão {existente.versao + 1}. Quem já assinou continua com a versão que assinou.
         </p>
@@ -330,4 +289,10 @@ function Campo({ rotulo, dica, children }: { rotulo: string; dica?: string; chil
       {dica && <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{dica}</p>}
     </div>
   )
+}
+
+/** O que o editor abre: o JSON salvo, a marcação antiga convertida, ou o exemplo do tipo. */
+function documentoInicial(existente: ModeloEmEdicao | null, tipo: TipoDeModelo): DocumentoDoEditor {
+  if (existente?.documento) return existente.documento as DocumentoDoEditor
+  return marcacaoParaEditor(existente?.texto ?? TEXTO_INICIAL[tipo])
 }

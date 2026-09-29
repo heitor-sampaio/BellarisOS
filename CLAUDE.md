@@ -811,6 +811,18 @@ DEVLOG ("Termos e contratos").
     (`urlsDasImagens`), e o PDF confere o sha256 antes de desenhar.
   - `.ttf`/`.woff` ficam fora do matcher do proxy: a página pública do link
     carrega as fontes SEM sessão.
+  - **A tela de edição** (`components/admin/editor-rico/`, carregada por
+    `next/dynamic`): corpo, cabeçalho e rodapé são três editores Tiptap, numa
+    folha com as medidas do documento. Cada nó do editor tem par no conversor
+    — nó novo sem par é recusado ao salvar. A imagem sobe por
+    `enviarImagemDoModelo` (PNG/JPEG pelo cabeçalho do arquivo, até 2 MB).
+  - ⚠️ **O JSON do editor vai à action como cópia JSON pura**: o ProseMirror
+    cria os `attrs` sem protótipo, e o React os manda como referência
+    temporária — o servidor não lê nenhum campo ("Cannot access textAlign on
+    the server").
+  - ⚠️ **O foco volta ao texto na HORA** (`view.focus()` na barra): o `focus()`
+    do Tiptap espera o próximo quadro, e o que se digitava logo depois de
+    escolher numa lista ia para a própria lista.
 - **Versão é retrato**: `documento_modelo_salvar` grava modelo + versão numa
   transação, e só abre versão nova quando o CONTEÚDO muda. Versão não se
   altera (gatilho); modelo não se apaga (desativa).
@@ -918,8 +930,8 @@ DEVLOG ("Termos e contratos").
   clínico, por construção) e copia os PDFs assinados para o pacote.
 - Prova: `e2e/documentos-modelos.spec.ts`, `e2e/documentos-atendimento.spec.ts`,
   `e2e/checkout-de-plano.spec.ts`, `e2e/documentos-verificacao.spec.ts`,
-  `e2e/documentos-portal.spec.ts`, `e2e/documentos-link-publico.spec.ts` e
-  `e2e/documentos-link-conversa.spec.ts`.
+  `e2e/documentos-portal.spec.ts`, `e2e/documentos-link-publico.spec.ts`,
+  `e2e/documentos-link-conversa.spec.ts` e `e2e/documentos-editor-rico.spec.ts`.
 
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação

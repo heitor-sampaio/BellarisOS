@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { getSignedUrls, MODELOS_DE_DOCUMENTO_BUCKET } from '@/lib/storage'
 import type { TipoDeModelo } from './variaveis'
 
 /**
@@ -24,7 +25,10 @@ export interface ModeloDeDocumento {
   ativo:         boolean
   versao:        number
   versaoId:      string | null
+  /** A marcação leve (versões de antes do editor rico). */
   texto:         string | null
+  /** O JSON do editor rico ({ corpo, cabecalho?, rodape? }). */
+  documento:     unknown | null
   arquivo:       { nome: string | null; tamanho: number | null; paginas: number | null } | null
   procedimentos: number
   atualizadoEm:  string
@@ -36,8 +40,26 @@ type LinhaDoModelo = {
   current_version: number; updated_at: string
 }
 type LinhaDaVersao = {
-  id: string; template_id: string; version: number; body_markup: string | null
+  id: string; template_id: string; version: number; body_markup: string | null; body_doc: unknown
   file_name: string | null; file_size: number | null; file_pages: number | null
+}
+
+/** Os caminhos das imagens citadas num JSON do editor. */
+export function imagensDoJsonDoEditor(no: unknown, saida = new Set<string>()): Set<string> {
+  if (Array.isArray(no)) for (const n of no) imagensDoJsonDoEditor(n, saida)
+  else if (no && typeof no === 'object') {
+    const o = no as { type?: unknown; attrs?: { caminho?: unknown } }
+    if (o.type === 'imagemDoDocumento' && typeof o.attrs?.caminho === 'string') saida.add(o.attrs.caminho)
+    for (const v of Object.values(o)) if (v && typeof v === 'object') imagensDoJsonDoEditor(v, saida)
+  }
+  return saida
+}
+
+/** URLs temporárias das imagens dos modelos — o editor precisa mostrá-las. */
+export async function urlsDasImagensDosModelos(modelos: ModeloDeDocumento[]): Promise<Record<string, string>> {
+  const caminhos = new Set<string>()
+  for (const m of modelos) imagensDoJsonDoEditor(m.documento, caminhos)
+  return caminhos.size ? getSignedUrls(MODELOS_DE_DOCUMENTO_BUCKET, [...caminhos], 60 * 60) : {}
 }
 
 /** Todos os modelos da rede, com o conteúdo da versão atual — a aba de Configurações. */
@@ -49,7 +71,7 @@ export async function modelosDaRede(tenantId: string): Promise<ModeloDeDocumento
       .eq('tenant_id', tenantId)
       .order('kind').order('name'), 'carregar os modelos de documento'),
     ler(admin.from('document_template_versions')
-      .select('id, template_id, version, body_markup, file_name, file_size, file_pages')
+      .select('id, template_id, version, body_markup, body_doc, file_name, file_size, file_pages')
       .eq('tenant_id', tenantId), 'carregar as versões dos modelos'),
     // Quantos procedimentos usam cada modelo — a tela avisa antes de desativar.
     ler(admin.from('procedures')
@@ -83,6 +105,7 @@ export async function modelosDaRede(tenantId: string): Promise<ModeloDeDocumento
       versao:        m.current_version,
       versaoId:      v?.id ?? null,
       texto:         v?.body_markup ?? null,
+      documento:     v?.body_doc ?? null,
       arquivo:       m.source === 'ARQUIVO' && v
         ? { nome: v.file_name, tamanho: v.file_size, paginas: v.file_pages }
         : null,

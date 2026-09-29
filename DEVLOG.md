@@ -1258,6 +1258,33 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Editor rico de documentos, fase 2: a tela de edição
+
+**O que muda:** em Configurações → Documentos, o termo e o contrato se
+escrevem num editor de texto de verdade, numa folha com as medidas do
+documento: estilo (normal, títulos 1–3), 12 fontes, tamanho, negrito, itálico,
+sublinhado, tachado, cor do texto, realce, alinhamento (4), entrelinhas,
+listas, tabela (linhas/colunas/cabeçalho), imagem (logo, com tamanho e
+alinhamento), divisória, quebra de página, "Inserir variável" (chip) e o lugar
+da assinatura. Abas Corpo · Cabeçalho · Rodapé, e a prévia com dados de
+exemplo é o documento de verdade. Modelo antigo (marcação) abre convertido;
+salvar abre uma versão nova no formato novo.
+
+- `components/admin/editor-rico/` (Tiptap 3: extensões próprias para
+  variável, assinatura, quebra, imagem e entrelinhas; barra com
+  `useEditorState`). `salvarModeloDoEditor` recebe o JSON e passa pelo
+  conversor; `enviarImagemDoModelo` guarda a imagem pelo hash do conteúdo.
+- Dois achados de tela, registrados no CLAUDE.md: o JSON do ProseMirror (attrs
+  sem protótipo) precisa ir à action como cópia pura; e o foco tem de voltar
+  ao texto na hora, senão o que se digita depois de escolher numa lista vai
+  para a lista.
+- Prova: `e2e/documentos-modelos.spec.ts` reescrito (escreve, formata, fonte,
+  variável, tabela, imagem, cabeçalho, prévia, v2 sem mexer na v1; o servidor
+  recusa variável fora do tipo, nó estranho e imagem de outra rede) e o novo
+  `e2e/documentos-editor-rico.spec.ts` (modelo rico → emitido → aberto SEM
+  sessão com logo e fontes → assinado → PDF com as fontes embutidas e o logo).
+  Telas conferidas no desktop e em 390px. Documentos inteiros verdes (43).
+
 ### 2026-09-30 — Editor rico de documentos, fase 1: a árvore, as fontes e o PDF
 
 **Por quê:** a marcação leve (`#`, `**`, `{{…}}`) era boa, mas pouca gente na
