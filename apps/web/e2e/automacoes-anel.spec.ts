@@ -118,10 +118,9 @@ test('duas automações que se alimentam param no teto de profundidade', async (
   // -- O pavio: uma edição de verdade, pela tela ------------------------------
   // Tem de passar pelo app: é o emissor que despacha para o motor, e alterar o
   // banco por fora não dispararia nada.
-  await page.goto(`/admin/clients/${clientId}?tab=dados`)
-  const abaDados = page.getByRole('button', { name: 'Dados' })
-    .or(page.getByRole('link', { name: 'Dados' })).first()
-  if (await abaDados.isVisible()) await abaDados.click()
+  // A ficha lê a aba por `?aba=` (`?tab=` abria a Visão geral). Era o `isVisible()`
+  // — que não espera a tela — que pulava o clique na aba sob carga.
+  await page.goto(`/admin/clients/${clientId}?aba=dados`)
 
   const campoNome = page.locator('xpath=//p[normalize-space()="Nome *"]/following::input[1]')
   await campoNome.fill(`${nome} editado`)

@@ -183,7 +183,9 @@ test.describe.serial('integração de anúncios pela tela', () => {
       await expect.poll(async () => (await integracao('meta_ads'))?.is_active).toBe(false)
     })
     expect((await integracao('meta_ads'))!.config).toEqual({})
-    expect(await eventos('integracao.desconectada')).toBe(1)
+    // O evento sai DEPOIS da gravação (na mesma action): esperar o is_active
+    // não garante que ele já esteja na corrente.
+    await expect.poll(() => eventos('integracao.desconectada')).toBe(1)
   })
 
   test('Google Ads pela tela: os cinco campos gravam e ativam; chave de fora não entra', async ({ browser }) => {
