@@ -87,7 +87,7 @@ describe('catálogo de eventos', () => {
  * opera a clínica — que é o que ela fazia antes deste catálogo existir.
  */
 describe('ROTULOS_DE_EVENTO', () => {
-  it('cobre os 42 eventos, sem sobra', async () => {
+  it('cobre os 44 eventos, sem sobra', async () => {
     const { EVENTOS: E, ROTULOS_DE_EVENTO } = await import('@estetica-os/types')
     const nomes = Object.values(E) as string[]
 

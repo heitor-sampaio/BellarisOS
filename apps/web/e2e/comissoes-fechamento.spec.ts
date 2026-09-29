@@ -53,10 +53,11 @@ test.afterAll(async () => {
   const b = db()
   if (rede) {
     // O fechamento aponta a despesa e o profissional: sai antes deles.
-    const { data: pays } = await b.from('commission_payouts').select('id, transaction_id').eq('tenant_id', rede.tenantId)
+    const { data: pays } = await b.from('commission_payouts').select('id, transaction_id, estorno_transaction_id').eq('tenant_id', rede.tenantId)
     await b.from('commissions').update({ payout_id: null }).in('payout_id', (pays ?? []).map(p => p.id))
     await b.from('commission_payouts').delete().eq('tenant_id', rede.tenantId)
-    await b.from('financial_transactions').delete().in('id', (pays ?? []).map(p => p.transaction_id))
+    const txs = (pays ?? []).flatMap(p => [p.transaction_id, p.estorno_transaction_id]).filter(Boolean) as string[]
+    await b.from('financial_transactions').delete().in('id', txs)
   }
   for (const m of [equipe, proprio, gestor]) if (m) {
     await b.from('role_report_tabs').delete().eq('role_id', m.roleId)
@@ -160,6 +161,39 @@ test.describe.serial('comissões — fechamento e visibilidade', () => {
     expect(await aPagar(P)).toBe(0)
   })
 
+  test('estornar um fechamento: a despesa volta e os lançamentos ficam a pagar; por fora, é recusado', async ({ browser }) => {
+    const P = rede!.professionalId
+    const { data: ultimo } = await db().from('commission_payouts').select('id, transaction_id, total')
+      .eq('professional_id', P).order('paid_at', { ascending: false }).limit(1).single()
+    expect(Number(ultimo!.total)).toBe(30)
+
+    // O fechamento emitiu o fato para as automações.
+    const { data: paga } = await db().from('domain_events').select('dados').eq('nome', 'comissao.paga').eq('entidade_id', ultimo!.id)
+    expect(Number((paga ?? [])[0]?.dados?.valor)).toBe(30)
+
+    // Pelo financeiro comum, a despesa do fechamento não se estorna.
+    const porFora = await db().rpc('estornar_transacao', { p_transacao: ultimo!.transaction_id, p_tenant: rede!.tenantId, p_ator: 'e2e' })
+    expect(porFora.error?.message).toMatch(/estorne pelo fechamento/)
+
+    await comSessao(browser, gestor!, async p => {
+      await p.goto(ROTA)
+      const linha = p.locator(`[data-fechamento="${ultimo!.id}"]`)
+      await linha.getByRole('button', { name: 'Estornar' }).click()
+      await linha.getByLabel('Motivo do estorno').fill(`${PREFIXO} pago em dobro`)
+      await linha.getByRole('button', { name: 'Confirmar estorno' }).click()
+      await expect(linha).toContainText('Estornado')
+    })
+
+    const { data: f } = await db().from('commission_payouts').select('estornado_at, estorno_motivo, estorno_transaction_id').eq('id', ultimo!.id).single()
+    expect(f!.estornado_at).not.toBeNull()
+    expect(f!.estorno_motivo).toBe(`${PREFIXO} pago em dobro`)
+    const { data: despesa } = await db().from('financial_transactions').select('notes').eq('id', ultimo!.transaction_id).single()
+    expect(despesa!.notes).toBe('Estornada')
+    const { data: contra } = await db().from('financial_transactions').select('type, category, amount').eq('id', f!.estorno_transaction_id).single()
+    expect({ ...contra, amount: Number(contra!.amount) }).toEqual({ type: 'INCOME', category: 'Estorno', amount: 30 })
+    expect(await aPagar(P), 'os lançamentos daquele fechamento voltam a pagar').toBe(30)
+  })
+
   test('quem só vê as próprias: vai direto a elas, vê só a sua linha e não fecha', async ({ browser }) => {
     const P = rede!.professionalId
     await db().from('users').update({ provides_services: true }).eq('id', proprio!.userId)
@@ -177,7 +211,7 @@ test.describe.serial('comissões — fechamento e visibilidade', () => {
       const r = await chamarAcao(p, 'actions/comissoes.ts', 'fecharComissoes', ROTA, [P, rede!.branchId, periodoAtual(), 'PIX'])
       expect(r.texto).not.toContain('"ok":true')
     })
-    expect(await aPagar(P), 'a recusa não fechou nada').toBe(10)
+    expect(await aPagar(P), 'a recusa não fechou nada (30 do fechamento estornado + 10)').toBe(40)
     expect(await fechamentos(proprio!.userId)).toHaveLength(0)
   })
 

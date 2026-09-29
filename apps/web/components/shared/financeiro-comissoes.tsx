@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ChevronDown, Download } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
-import { fecharComissoes } from '@/actions/comissoes'
+import { fecharComissoes, estornarFechamento } from '@/actions/comissoes'
 import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/lib/comissoes/leitura'
 
 /**
@@ -167,13 +167,7 @@ export function FinanceiroComissoes(p: PropsDaTela) {
       {p.fechamentos.length > 0 && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }} aria-label="Fechamentos">
           <p className="overline">Últimos fechamentos</p>
-          {p.fechamentos.map(f => (
-            <div key={f.id} style={{ display: 'flex', gap: 12, justifyContent: 'space-between', flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)', borderTop: '1px solid var(--hairline)', paddingTop: 8 }}>
-              <span style={{ color: 'var(--text)' }}>{f.professionalName} · {f.branchName}</span>
-              <span style={{ color: 'var(--text-muted)' }}>de {data(f.inicio)} a {data(f.fim)}, pago em {data(f.paidAt)}</span>
-              <strong style={{ color: 'var(--text)' }}>{formatBRL(f.total)}</strong>
-            </div>
-          ))}
+          {p.fechamentos.map(f => <LinhaDeFechamento key={f.id} f={f} podeEstornar={p.podeFechar} />)}
         </div>
       )}
     </div>
@@ -260,6 +254,63 @@ function Extrato({ linhas }: { linhas: LancamentoDoExtrato[] }) {
           </strong>
         </div>
       ))}
+    </div>
+  )
+}
+
+/** Um fechamento da lista; quem fecha também estorna (com motivo). */
+function LinhaDeFechamento({ f, podeEstornar }: { f: Fechamento; podeEstornar: boolean }) {
+  const router = useRouter()
+  const [aberto, setAberto] = useState(false)
+  const [motivo, setMotivo] = useState('')
+  const [erro, setErro] = useState<string | null>(null)
+  const [pendente, iniciar] = useTransition()
+
+  function estornar() {
+    setErro(null)
+    iniciar(async () => {
+      const r = await estornarFechamento(f.id, motivo)
+      if (r.error) { setErro(r.error); return }
+      setAberto(false)
+      router.refresh()
+    })
+  }
+
+  return (
+    <div data-fechamento={f.id} style={{ borderTop: '1px solid var(--hairline)', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', fontSize: 'var(--text-sm-sz)' }}>
+        <span style={{ color: 'var(--text)' }}>{f.professionalName} · {f.branchName}</span>
+        <span style={{ color: 'var(--text-muted)' }}>de {data(f.inicio)} a {data(f.fim)}, pago em {data(f.paidAt)}</span>
+        <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {f.estornadoAt && <span className="chip chip-muted">Estornado</span>}
+          <strong style={{ color: 'var(--text)', textDecoration: f.estornadoAt ? 'line-through' : undefined }}>{formatBRL(f.total)}</strong>
+          {podeEstornar && !f.estornadoAt && !aberto && (
+            <button type="button" className="btn-ghost" onClick={() => setAberto(true)}>Estornar</button>
+          )}
+        </span>
+      </div>
+      {f.estornadoAt && (
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+          Estornado em {data(f.estornadoAt)}{f.estornoMotivo ? ` — ${f.estornoMotivo}` : ''}. Os lançamentos voltaram para “a pagar”.
+        </p>
+      )}
+      {aberto && (
+        <div role="group" aria-label="Estornar o fechamento"
+          style={{ padding: 12, borderRadius: 'var(--radius-field-token)', border: '1px solid var(--border)', background: 'var(--bg-app)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+            A despesa de {formatBRL(f.total)} é estornada no financeiro e os lançamentos voltam para “a pagar”.
+          </p>
+          <input className="field" aria-label="Motivo do estorno" placeholder="Motivo (obrigatório)" value={motivo}
+            onChange={e => setMotivo(e.target.value)} maxLength={300} />
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn-secondary" onClick={() => setAberto(false)} disabled={pendente}>Cancelar</button>
+            <button type="button" className="btn-primary" onClick={estornar} disabled={pendente || !motivo.trim()}>
+              {pendente ? 'Estornando…' : 'Confirmar estorno'}
+            </button>
+          </div>
+        </div>
+      )}
+      {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
     </div>
   )
 }

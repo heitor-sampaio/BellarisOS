@@ -138,3 +138,38 @@ export async function fecharComissoes(
     return { error: mensagemDoErro(e) }
   }
 }
+
+/**
+ * Estorna um fechamento pago (decisão do Heitor, 2026-09-30): a despesa é
+ * estornada como qualquer lançamento e os lançamentos daquele fechamento voltam
+ * a "a pagar". Uma função no banco faz tudo junto, e é a ÚNICA porta: a
+ * despesa de um fechamento não se estorna pelo financeiro comum.
+ */
+export async function estornarFechamento(fechamentoId: string, motivo: string): Promise<{ error?: string; ok?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'financial', 'MANAGE')
+    if (ownerFilter(ctx, 'financial')) return { error: 'Seu cargo vê só as próprias comissões: quem estorna é o financeiro.' }
+    if (typeof fechamentoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(fechamentoId)) return { error: 'Fechamento não encontrado.' }
+    const texto = typeof motivo === 'string' ? motivo.trim() : ''
+    if (!texto) return { error: 'Diga o motivo do estorno.' }
+    if (texto.length > 300) return { error: 'Motivo longo demais (até 300 caracteres).' }
+
+    const admin = createAdminClient()
+    const fechamento = await ler(admin.from('commission_payouts').select('branch_id')
+      .eq('id', fechamentoId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o fechamento')
+    if (!fechamento || !alcancaUnidade(ctx, fechamento.branch_id as string)) return { error: 'Fechamento não encontrado.' }
+
+    await gravar(admin.rpc('comissao_estornar_fechamento', {
+      p_tenant: ctx.tenantId!, p_fechamento: fechamentoId, p_ator: ctx.internalUserId ?? null, p_motivo: texto,
+    }), 'estornar o fechamento')
+
+    revalidatePath('/admin/financeiro')
+    revalidatePath('/admin/financeiro/comissoes')
+    revalidatePath('/[slug]/financeiro', 'page')
+    revalidatePath('/[slug]/financeiro/comissoes', 'page')
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}

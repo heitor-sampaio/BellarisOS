@@ -73,6 +73,11 @@ export const EVENTOS = {
 
   PACOTE_SESSAO_USADA: 'pacote.sessao_usada',
   COMISSAO_GERADA:     'comissao.gerada',
+  // Os dois saem do BANCO, como pagamento.* (origem 'banco', sem ator): a
+  // liberação nasce no gatilho do pagamento (plano, avulso no modo "quando
+  // paga") e o pagamento ao profissional, em comissao_fechar.
+  COMISSAO_LIBERADA:   'comissao.liberada',
+  COMISSAO_PAGA:       'comissao.paga',
 
   // ── Fidelidade ────────────────────────────────────────────────────────
   // Sai do GATILHO do pagamento, como `pagamento.*` (origem 'banco', sem ator):
@@ -394,6 +399,9 @@ export interface DadosDeComissao extends DadosDeEvento {
   profissionalId:   string | null
   profissionalNome: string | null
   agendamentoId:    string | null
+  /** A linha (um procedimento do atendimento): a sessão de plano tem várias. */
+  linhaId?:         string | null
+  procedimentoNome?: string | null
   valor:            number | null
   periodo:          string | null   // 'YYYY-MM'
 }
@@ -453,6 +461,8 @@ export const ROTULOS_DE_EVENTO: Record<NomeDeEvento, string> = {
   'fidelidade.voucher_emitido': 'Cliente trocou pontos por recompensa',
   'pacote.sessao_usada': 'Sessão de pacote usada',
   'comissao.gerada':     'Comissão gerada',
+  'comissao.liberada':   'Comissão liberada pelo pagamento',
+  'comissao.paga':       'Comissão paga ao profissional',
 
   // Clínico
   'prontuario.entrada_criada': 'Ficha do atendimento criada',

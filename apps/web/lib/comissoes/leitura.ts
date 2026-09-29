@@ -135,6 +135,8 @@ export interface LancamentoDoExtrato {
 export interface Fechamento {
   id: string; professionalName: string; branchName: string
   inicio: string; fim: string; total: number; paidAt: string
+  /** Estornado: a despesa voltou e os lançamentos, para "a pagar". */
+  estornadoAt: string | null; estornoMotivo: string | null
 }
 
 interface Recorte { tenantId: string; branchIds: string[]; inicio: Date; fim: Date; profissionalId: string | null }
@@ -171,16 +173,18 @@ export async function extratoDasComissoes(r: Recorte): Promise<LancamentoDoExtra
 /** Os últimos fechamentos no recorte. */
 export async function fechamentosRecentes(tenantId: string, branchIds: string[], profissionalId: string | null): Promise<Fechamento[]> {
   let q = createAdminClient().from('commission_payouts')
-    .select('id, inicio, fim, total, paid_at, users!commission_payouts_professional_id_fkey(name), branches(name)')
+    .select('id, inicio, fim, total, paid_at, estornado_at, estorno_motivo, users!commission_payouts_professional_id_fkey(name), branches(name)')
     .eq('tenant_id', tenantId).in('branch_id', branchIds)
     .order('paid_at', { ascending: false }).limit(20)
   if (profissionalId) q = q.eq('professional_id', profissionalId)
   const linhas = await ler(q, 'ler os fechamentos de comissão')
   return ((linhas ?? []) as unknown as {
     id: string; inicio: string; fim: string; total: number; paid_at: string
+    estornado_at: string | null; estorno_motivo: string | null
     users: { name: string } | null; branches: { name: string } | null
   }[]).map(l => ({
     id: l.id, professionalName: l.users?.name ?? 'Profissional', branchName: l.branches?.name ?? '—',
     inicio: l.inicio, fim: l.fim, total: Number(l.total), paidAt: l.paid_at,
+    estornadoAt: l.estornado_at, estornoMotivo: l.estorno_motivo,
   }))
 }

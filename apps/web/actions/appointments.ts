@@ -908,7 +908,7 @@ async function finishSessionInterno(
     for (const linha of gravado?.comissoes ?? []) {
       if (Number(linha.liberado) <= 0) continue
       await emitirComissaoGerada(
-        appointmentId, appt.professional_id as string | null,
+        appointmentId, linha.linha, linha.procedure_id, appt.professional_id as string | null,
         Number(linha.liberado), periodRef(now), appt.branch_id as string | null, ctx,
       )
     }

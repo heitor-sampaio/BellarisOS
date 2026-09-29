@@ -1258,6 +1258,35 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Comissões: eventos e estorno do fechamento
+
+O que ficou de fora das três fases, a pedido do Heitor.
+
+**Eventos:**
+- `comissao.liberada` sai do banco quando um pagamento libera comissão: o
+  recebimento do plano, ou o avulso no modo "quando o cliente paga";
+- `comissao.paga` sai do fechamento;
+- `comissao.gerada` passa a ter chave por linha (por procedimento). Com a
+  chave por atendimento, a sessão de plano perdia os eventos do segundo
+  procedimento em diante — defeito da fase 2.
+- O catálogo foi de 42 para 44 eventos.
+
+**Estorno do fechamento** (decisão do Heitor: volta para "a pagar"):
+- botão "Estornar" com motivo na lista de fechamentos (`financial: MANAGE`);
+- a função estorna a despesa (contra-lançamento) e devolve os lançamentos
+  daquele fechamento a "a pagar";
+- um gatilho recusa estornar essa despesa pelo financeiro comum, que deixaria
+  a comissão "paga" com o dinheiro de volta.
+
+Migrations `20260930000017` (eventos) e `…18` (estorno).
+
+**Prova:**
+- `comissoes-fechamento`: o estorno pela tela, a recusa por fora e o evento
+  `comissao.paga`;
+- `comissoes-calculo`: `comissao.liberada` e um `comissao.gerada` por
+  procedimento. O teste esperava os fatos antes de a action emiti-los, e agora
+  espera com `poll`.
+
 ### 2026-09-30 — Comissões, fase 3 (de 3): fechamento e quem vê o quê
 
 **Financeiro → Comissões**, nos dois portais (`/admin/financeiro/comissoes`,
@@ -4443,10 +4472,9 @@ verdade. O que vale:
 
 - ~~**Comissões, fases 2 e 3**~~ **concluídas em 2026-09-30** (ver a linha do
   tempo). O que ficou de fora de propósito:
-  - não há `comissao.liberada` nem `comissao.paga` na corrente de eventos;
-  - fechamento pago não se estorna pela tela;
-  - não há venda de pacote no sistema, então a comissão da sessão de pacote é
-    liberada na conclusão.
+  - ~~não há `comissao.liberada` nem `comissao.paga` na corrente de eventos~~ **feito**;
+  - ~~fechamento pago não se estorna pela tela~~ **feito**;
+  - não há venda de pacote no sistema, então a comissão da sessão de pacote é **em andamento: catálogo e venda de pacote**;
 
   A suíte completa depois das três fases ainda não rodou (mexeram em
   atendimento, financeiro, métricas e permissões).

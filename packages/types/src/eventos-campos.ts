@@ -212,8 +212,24 @@ export const CAMPOS_DO_EVENTO: Record<NomeDeEvento, CampoDeEvento[]> = {
     campo('profissionalNome', 'Profissional'),
     campo('profissionalId',   'Id do profissional'),
     campo('agendamentoId',    'Id do agendamento'),
+    campo('procedimentoNome', 'Procedimento'),
     campo('valor',            'Valor', 'numero'),
     campo('periodo',          'Período (AAAA-MM)'),
+  ],
+  [EVENTOS.COMISSAO_LIBERADA]: [
+    campo('profissionalNome', 'Profissional'),
+    campo('profissionalId',   'Id do profissional'),
+    campo('agendamentoId',    'Id do agendamento'),
+    campo('procedimentoNome', 'Procedimento'),
+    campo('valor',            'Valor liberado', 'numero'),
+    campo('motivo',           'Motivo'),
+  ],
+  [EVENTOS.COMISSAO_PAGA]: [
+    campo('profissionalNome', 'Profissional'),
+    campo('profissionalId',   'Id do profissional'),
+    campo('valor',            'Valor pago', 'numero'),
+    campo('fechamentoId',     'Id do fechamento'),
+    campo('unidadeNome',      'Unidade'),
   ],
 
   // ── Clínico ───────────────────────────────────────────────────────────

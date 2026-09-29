@@ -1079,6 +1079,15 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     profissional e unidade: dois cliques fecham uma vez.
   - Fechamento não se reabre: estorno depois dele vira lançamento negativo
     no próximo. Saldo negativo não fecha.
+  - **Estornar um fechamento** (`estornarFechamento` →
+    `comissao_estornar_fechamento`, com motivo): estorna a despesa por
+    `estornar_transacao` e devolve os lançamentos dele a "a pagar". É a ÚNICA
+    porta — o gatilho `trg_despesa_de_fechamento` recusa estornar essa despesa
+    pelo financeiro comum (a comissão ficaria "paga" com o dinheiro de volta).
+- **Eventos**: `comissao.gerada` (app, na conclusão, um por LINHA — a chave era
+  por atendimento e a sessão de plano perdia os outros), `comissao.liberada`
+  (banco, em `comissao_acertar_linha`, quando um pagamento libera) e
+  `comissao.paga` (banco, em `comissao_fechar`).
 - **Quem vê quanto cada um ganha é o financeiro com escopo de TODOS.** Com
   OWN, a pessoa vê só a própria linha ("Minhas comissões"; o financeiro da rede
   a manda para lá) e não fecha. O ranking do dashboard e a comissão na aba
@@ -1255,7 +1264,7 @@ decisão e diz à clínica o que esperar. Quando o app da Meta existir (ver §5 
 
 ### 9.9 Eventos de domínio e automações
 
-Toda ação relevante do sistema vira um fato em `domain_events` — 42 eventos
+Toda ação relevante do sistema vira um fato em `domain_events` — 44 eventos
 nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 `packages/types/src/eventos.ts`. As automações assinam essa corrente.
 
@@ -1271,7 +1280,7 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 - **Eventos clínicos não carregam conteúdo clínico**, e o contexto da automação
   também não hidrata prontuário. A automação avisa que a ficha chegou; quem
   precisa do conteúdo abre o prontuário, com a permissão que ele exige.
-- `pagamento.*` e `estoque.*` saem de GATILHO no banco (`origem: 'banco'`, sem
+- `pagamento.*`, `estoque.*`, `comissao.liberada` e `comissao.paga` saem de GATILHO ou função no banco (`origem: 'banco'`, sem
   ator), porque esses fatos nascem em cinco ou seis lugares do código e
   instrumentar um a um é garantir esquecer o próximo.
 - **Campanha ≠ automação.** Campanha é disparo em massa por público; automação
@@ -1775,6 +1784,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Recortar comissão por scheduled_at do atendimento (o período é o do lançamento, released_at)
 ❌ Mostrar comissão de outra pessoa sem financial com escopo de todos (team e reports não bastam)
 ❌ Pagar comissão fora de comissao_fechar (a despesa e os lançamentos pagos vão juntos)
+❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
 ❌ Dar ponto de fidelidade no TypeScript (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
 ❌ Calcular vencimento de pontos fora de fidelidade_a_expirar (é a única cópia do FIFO)
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado

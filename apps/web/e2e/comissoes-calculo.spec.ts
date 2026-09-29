@@ -172,6 +172,9 @@ test.describe.serial('comissões — cálculo e extrato', () => {
     await pagar(ap, 200, 'CREDIT_CARD')
     // (200 − 3% = 194 − 10 de insumo) × 10% = 18,40.
     expect(await extrato(ap)).toEqual([['LIBERACAO', 18.4]])
+    // Liberada pelo pagamento: o fato vai para a corrente (sai do banco).
+    const { data: liberada } = await db().from('domain_events').select('dados, origem').eq('nome', 'comissao.liberada').eq('entidade_id', ap)
+    expect((liberada ?? []).map(e => [Number(e.dados?.valor), e.origem])).toEqual([[18.4, 'banco']])
   })
 
   test('mudar a configuração depois não reescreve o atendimento já concluído', async () => {
@@ -215,6 +218,12 @@ test.describe.serial('comissões — cálculo e extrato', () => {
 
     // Recebido 500 de 2.000 = 25%. A: 10% de 600 = 60 → 15. B: R$ 50 fixo → 12,50.
     expect(await porProcedimento(ap)).toEqual({ [proc.A]: 15, [proc.B]: 12.5 })
+    // Um `comissao.gerada` por PROCEDIMENTO: a chave era por atendimento, e só o primeiro entrava.
+    // (Espera: o status muda dentro da transação, e os fatos saem depois dela.)
+    await expect.poll(async () => {
+      const { data: geradas } = await db().from('domain_events').select('dados').eq('nome', 'comissao.gerada').eq('entidade_id', ap)
+      return (geradas ?? []).map(e => Number(e.dados?.valor)).sort((x, y) => x - y)
+    }, { timeout: 15_000 }).toEqual([12.5, 15])
 
     // A parcela seguinte completa (o gatilho do recebimento).
     const segunda = await receber(1500)

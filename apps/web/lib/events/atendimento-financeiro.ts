@@ -72,6 +72,8 @@ export async function emitirSessaoDePacoteUsada(
  */
 export async function emitirComissaoGerada(
   appointmentId: string,
+  linhaId: string,
+  procedureId: string | null,
   professionalId: string | null,
   valor: number,
   periodo: string,
@@ -81,17 +83,18 @@ export async function emitirComissaoGerada(
   try {
     if (!ctx.tenantId) return
 
-    let nomeProf: string | null = null
-    if (professionalId) {
-      const data = await ler(createAdminClient()
-        .from('users').select('name').eq('id', professionalId).maybeSingle(), 'buscar o usuário')
-      nomeProf = (data?.name as string) ?? null
-    }
+    const admin = createAdminClient()
+    const [prof, proc] = await Promise.all([
+      professionalId ? ler(admin.from('users').select('name').eq('id', professionalId).maybeSingle(), 'buscar o usuário') : null,
+      procedureId ? ler(admin.from('procedures').select('name').eq('id', procedureId).maybeSingle(), 'buscar o procedimento') : null,
+    ])
 
     const dados: DadosDeComissao = {
       profissionalId:   professionalId,
-      profissionalNome: nomeProf,
+      profissionalNome: (prof?.name as string | undefined) ?? null,
       agendamentoId:    appointmentId,
+      linhaId,
+      procedimentoNome: (proc?.name as string | undefined) ?? null,
       valor,
       periodo,
     }
@@ -102,7 +105,9 @@ export async function emitirComissaoGerada(
       entidadeId: appointmentId,
       dados,
       ator:       ctx.internalUserId ? atorDoContexto(ctx) : ATOR_SISTEMA,
-      chave:      `comissao.gerada:${appointmentId}`,
+      // Por LINHA: a sessão de plano gera uma por procedimento, e a chave por
+      // atendimento deixava só a primeira entrar na corrente.
+      chave:      `comissao.gerada:${linhaId}`,
     })
   } catch (e) {
     console.error('[eventoDeComissao]', (e as Error).message)
