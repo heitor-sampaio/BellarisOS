@@ -3,7 +3,10 @@ import { EntradaDaConfig, configDaLinha, CONFIG_PADRAO } from '@/lib/fidelidade/
 import { formatarPontos, pontosEmReais, rotuloDoLancamento } from '@/lib/fidelidade/formato'
 
 describe('EntradaDaConfig', () => {
-  const valida = { enabled: true, earn_mode: 'POR_REAL', points_per_real: '1,5'.replace(',', '.'), commission_base: 'PRECO' }
+  const valida = {
+    enabled: true, earn_mode: 'POR_REAL', points_per_real: '1.5', commission_base: 'PRECO',
+    redeem_points_value: '0.01', redeem_min_points: '0', redeem_max_pct: '100',
+  }
 
   it('aceita a config da tela e converte o número', () => {
     const r = EntradaDaConfig.parse(valida)
@@ -14,6 +17,13 @@ describe('EntradaDaConfig', () => {
     for (const taxa of ['0', '-1', '1001', 'abc']) {
       expect(EntradaDaConfig.safeParse({ ...valida, points_per_real: taxa }).success, taxa).toBe(false)
     }
+  })
+
+  it('recusa regras de resgate fora do limite', () => {
+    expect(EntradaDaConfig.safeParse({ ...valida, redeem_points_value: '0' }).success).toBe(false)
+    expect(EntradaDaConfig.safeParse({ ...valida, redeem_min_points: '1.5' }).success).toBe(false)
+    expect(EntradaDaConfig.safeParse({ ...valida, redeem_max_pct: '0' }).success).toBe(false)
+    expect(EntradaDaConfig.safeParse({ ...valida, redeem_max_pct: '101' }).success).toBe(false)
   })
 
   it('recusa modo e base de comissão fora da lista', () => {

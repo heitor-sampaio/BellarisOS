@@ -21,6 +21,8 @@ import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { periodRef, dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { notificarInteressados } from '@/lib/notifications/interessados'
 import { semAcesso } from '@/lib/sem-acesso'
+import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
+import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 
 // --- Helpers internos ---------------------------------------------
 async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
@@ -947,10 +949,9 @@ export async function confirmPayment(
     assertPermission(ctx, 'cashier', 'MANAGE')
 
     const appointmentId = (formData.get('appointment_id') as string)?.trim()
-    const paymentMethod = (formData.get('payment_method') as string)?.trim()
+    const paymentMethod = (formData.get('payment_method') as string)?.trim() || null
     const slug          = (formData.get('slug') as string)?.trim()
-
-    if (!paymentMethod) return { error: 'Selecione a forma de pagamento.' }
+    const pedido        = Math.trunc(Number(formData.get('pontos') ?? 0) || 0)
 
     const admin = createAdminClient()
 
@@ -962,61 +963,40 @@ export async function confirmPayment(
 
     const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
     if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, apptBranch.id)) return { error: 'Agendamento não encontrado.' }
-    if (appt.status !== 'COMPLETED') return { error: 'O atendimento precisa estar concluído para confirmar pagamento.' }
 
-    // Sessão já paga em outro lugar não se cobra de novo. A tela escondia o
-    // botão só para sessão de PLANO; a de PACOTE mostrava, e confirmar lançava
-    // a receita uma segunda vez (decisão do Heitor, 2026-09-27: não cobrar).
-    // E a trava fica aqui, não só na tela: o botão escondido não tranca a action.
-    if (appt.treatment_plan_id) {
-      return { error: 'Sessão de plano de tratamento: o pagamento é recebido no plano, não no atendimento.' }
-    }
-    const sessaoDePacote = await ler(admin
-      .from('package_sessions').select('id').eq('appointment_id', appointmentId).maybeSingle(),
-      'conferir se é sessão de pacote')
-    if (sessaoDePacote) {
-      return { error: 'Sessão de pacote: já foi paga na venda do pacote.' }
-    }
-
-    // A conclusão do atendimento já lançou a receita como conta a receber.
-    // Confirmar pagamento é dar baixa nela — não criar uma segunda transação.
-    const existing = await ler(admin
-      .from('financial_transactions')
-      .select('id, is_paid')
-      .eq('appointment_id', appointmentId)
-      .maybeSingle(), 'conferir se o atendimento já foi lançado')
-
-    if (existing?.is_paid) return { error: 'Pagamento já registrado para este atendimento.' }
-
-    const now = new Date().toISOString()
-    if (existing) {
-      const { error: updErr } = await admin.from('financial_transactions').update({
-        payment_method: paymentMethod,
-        is_paid:        true,
-        paid_at:        now,
-        updated_at:     now,
-      }).eq('id', existing.id)
-      if (updErr) return { error: `Erro ao registrar o pagamento: ${updErr.message}` }
-    } else {
-      const { error: insErr } = await admin.from('financial_transactions').insert({
-        branch_id:      appt.branch_id,
-        appointment_id: appointmentId,
-        client_id:      appt.client_id,
-        type:           'INCOME',
-        category:       'Serviços',
-        description:    'Atendimento concluído',
-        amount:         appt.price,
-        payment_method: paymentMethod,
-        is_paid:        true,
-        paid_at:        now,
-        created_by:     ctx.internalUserId ?? ctx.userId,
+    // Pontos como desconto (fidelidade, fase 2): o SERVIDOR calcula a partir
+    // dos pontos pedidos — o valor que o navegador mostra não entra. O banco
+    // confere de novo (config, teto, saldo) dentro da transação.
+    const preco = parseFloat(String(appt.price))
+    let pontos = 0, desconto = 0, valorFinal = Math.round(preco * 100) / 100
+    if (pedido > 0) {
+      const cfg = await configDaRede(ctx.tenantId!, admin)
+      if (!cfg.enabled) return { error: 'O programa de fidelidade está desligado nesta rede.' }
+      const saldo = await saldoDoCliente(appt.client_id as string, cfg.scope_per_branch ? apptBranch.id : null, admin)
+      const r = calcularDescontoComPontos({
+        saldo, preco, pedido,
+        regras: { valorDoPonto: cfg.redeem_points_value, minimo: cfg.redeem_min_points, tetoPct: cfg.redeem_max_pct },
       })
-      if (insErr) return { error: `Erro ao registrar o pagamento: ${insErr.message}` }
+      if (r.motivo) return { error: r.motivo }
+      pontos = r.pontos; desconto = r.desconto; valorFinal = r.restante
     }
+    if (valorFinal > 0 && !paymentMethod) return { error: 'Selecione a forma de pagamento.' }
 
+    // UMA transação no banco: o pagamento (dar baixa no recebível ou lançar),
+    // o resgate dos pontos, a comissão (se a rede a quer sobre o valor pago) e a
+    // linha do tempo. As travas de plano, pacote e "já pago" moram lá.
     const userName = await getUserName(admin, ctx.userId)
-    await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'PAYMENT_CONFIRMED',
-      `Pagamento confirmado via ${paymentMethod}`)
+    try {
+      await gravar(admin.rpc('confirmar_pagamento_do_atendimento', {
+        p_agendamento: appointmentId,
+        p_tenant:      ctx.tenantId!,
+        p_ator:        ctx.internalUserId,
+        p_ator_nome:   userName,
+        p_dados:       { metodo: valorFinal > 0 ? paymentMethod : null, pontos, desconto, valor_final: valorFinal },
+      }), 'confirmar o pagamento')
+    } catch (e) {
+      return { error: mensagemDoErro(e) }
+    }
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
@@ -1027,6 +1007,39 @@ export async function confirmPayment(
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }
+}
+
+/**
+ * O que o modal de pagamento precisa para oferecer os pontos: o programa está
+ * ligado? quanto o cliente tem? quanto este pagamento aceita? Nulo = não há
+ * pontos a oferecer (programa desligado, sem saldo).
+ */
+export async function previaDoPagamento(appointmentId: string): Promise<{
+  saldo:        number
+  valorDoPonto: number
+  minimo:       number
+  tetoPct:      number
+  maximo:       number
+} | null> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'cashier', 'MANAGE')
+  const admin = createAdminClient()
+
+  const appt = await ler(admin
+    .from('appointments')
+    .select('client_id, price, branch_id, branches!inner(tenant_id)')
+    .eq('id', appointmentId)
+    .maybeSingle(), 'buscar o agendamento')
+  const rede = (appt?.branches as unknown as { tenant_id: string } | null)?.tenant_id
+  if (!appt || rede !== ctx.tenantId || !alcancaUnidade(ctx, appt.branch_id as string)) return null
+
+  const cfg = await configDaRede(ctx.tenantId!, admin)
+  if (!cfg.enabled || !(cfg.redeem_points_value > 0)) return null
+  const saldo = await saldoDoCliente(appt.client_id as string, cfg.scope_per_branch ? appt.branch_id as string : null, admin)
+  if (saldo <= 0) return null
+
+  const regras = { valorDoPonto: cfg.redeem_points_value, minimo: cfg.redeem_min_points, tetoPct: cfg.redeem_max_pct }
+  return { saldo, ...regras, maximo: maximoDePontos(saldo, parseFloat(String(appt.price)), regras) }
 }
 
 // --- Salvar rascunho de notas (sem concluir) ---------------------

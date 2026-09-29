@@ -43,6 +43,9 @@ export function FidelidadeConfig({ inicial, podeEditar }: { inicial: ConfigFidel
   const [modo,     setModo]     = useState<ModoDeGanho>(inicial.earn_mode)
   const [taxa,     setTaxa]     = useState(String(inicial.points_per_real).replace('.', ','))
   const [comissao, setComissao] = useState<BaseDaComissao>(inicial.commission_base)
+  const [valorDoPonto, setValorDoPonto] = useState(String(inicial.redeem_points_value).replace('.', ','))
+  const [minimo,   setMinimo]   = useState(String(inicial.redeem_min_points))
+  const [teto,     setTeto]     = useState(String(inicial.redeem_max_pct).replace('.', ','))
   const [erro,     setErro]     = useState<string | null>(null)
   const [salvo,    setSalvo]    = useState(false)
   const [salvando, iniciar]     = useTransition()
@@ -63,6 +66,9 @@ export function FidelidadeConfig({ inicial, podeEditar }: { inicial: ConfigFidel
           earn_mode:       modo,
           points_per_real: taxa.replace(/\./g, '').replace(',', '.'),
           commission_base: comissao,
+          redeem_points_value: numero(valorDoPonto),
+          redeem_min_points:   numero(minimo),
+          redeem_max_pct:      numero(teto),
         })
         if (res.error) setErro(res.error)
         else setSalvo(true)
@@ -135,6 +141,20 @@ export function FidelidadeConfig({ inicial, podeEditar }: { inicial: ConfigFidel
         )}
       </Bloco>
 
+      <Bloco titulo="Usar pontos como desconto">
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5 }}>
+          Na recepção, ao confirmar o pagamento, o cliente pode abater pontos do valor. O que ele pagar em pontos não entra como receita — só o que pagar em dinheiro.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12 }}>
+          <CampoNumero rotulo="Valor de 1 ponto (R$)" nome="redeem_points_value" valor={valorDoPonto} onChange={setValorDoPonto}
+            dica={`Ex.: 0,01 = 100 pontos valem R$ 1.`} desabilitado={!podeEditar} />
+          <CampoNumero rotulo="Mínimo para usar (pontos)" nome="redeem_min_points" valor={minimo} onChange={setMinimo}
+            dica="0 = qualquer quantidade." desabilitado={!podeEditar} />
+          <CampoNumero rotulo="Pontos pagam até (%)" nome="redeem_max_pct" valor={teto} onChange={setTeto}
+            dica="100 = pode pagar tudo com pontos." desabilitado={!podeEditar} />
+        </div>
+      </Bloco>
+
       <Bloco titulo="Comissão quando o cliente usa pontos">
         {podeEditar ? (
           <SegSelect
@@ -174,6 +194,26 @@ export function FidelidadeConfig({ inicial, podeEditar }: { inicial: ConfigFidel
         </div>
       )}
     </section>
+  )
+}
+
+/** "1.234,56" → "1234.56": o zod converte; aqui só se tira a formatação BR. */
+function numero(v: string): string {
+  return v.trim().replace(/\./g, '').replace(',', '.')
+}
+
+function CampoNumero({ rotulo, nome, valor, onChange, dica, desabilitado }: {
+  rotulo: string; nome: string; valor: string; onChange: (v: string) => void; dica?: string; desabilitado?: boolean
+}) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <span style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+        {rotulo}
+      </span>
+      <input name={nome} className="field" inputMode="decimal" value={valor}
+        onChange={e => onChange(e.target.value)} disabled={desabilitado} />
+      {dica && <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{dica}</span>}
+    </label>
   )
 }
 

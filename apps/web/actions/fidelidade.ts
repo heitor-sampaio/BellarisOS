@@ -44,6 +44,9 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
         earn_mode:       c.earn_mode,
         points_per_real: c.points_per_real,
         commission_base: c.commission_base,
+        redeem_points_value: c.redeem_points_value,
+        redeem_min_points:   c.redeem_min_points,
+        redeem_max_pct:      c.redeem_max_pct,
         updated_at:      new Date().toISOString(),
         updated_by:      ctx.internalUserId,
       }, { onConflict: 'tenant_id' })

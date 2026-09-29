@@ -647,10 +647,24 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   escreve é o gatilho e o servidor, com a trava `fidelidade:<cliente>`.
 - Módulo `loyalty`: VIEW = saldo e extrato; MANAGE = ajustar. Configurar é
   Configurações.
-- Base da comissão com desconto de pontos: configurável (`commission_base`),
-  usada a partir da fase 2 (desconto no pagamento).
-- Próximas fases (DEVLOG): desconto no pagamento, catálogo de recompensas com
-  voucher, validade e abrangência por unidade.
+- **Pontos como desconto no pagamento** (fase 2): na recepção, o cliente abate
+  pontos do atendimento. Regras da rede: valor do ponto, mínimo e teto (% do
+  valor). `financial_transactions.amount` continua sendo o DINHEIRO RECEBIDO; o
+  desconto vai em `loyalty_discount` (bruto = amount + loyalty_discount) — por
+  isso receita, LTV e estorno seguem certos sem mudar nada.
+- **O pagamento do atendimento é UMA transação**:
+  `confirmar_pagamento_do_atendimento` (o app calcula em
+  `lib/fidelidade/resgate.ts`, em CENTAVOS inteiros, e o banco confere o mesmo
+  número: config, teto, saldo sob a trava do cliente). Grava pagamento, RESGATE,
+  comissão e linha do tempo. O servidor recalcula o desconto a partir dos pontos
+  pedidos — o valor do navegador não entra.
+- **Comissão**: `commission_base` = PRECO (não muda) ou VALOR_PAGO (cai na
+  proporção do pago, só a comissão ainda em aberto).
+- Pago todo com pontos: `amount` 0, sem forma de pagamento, sem "Purchase" na
+  API de Conversões (o `pagamento.recebido` sai, com 0).
+- Estorno devolve os pontos usados (ESTORNO_RESGATE) e tira os ganhos.
+- Próximas fases (DEVLOG): catálogo de recompensas com voucher, validade e
+  abrangência por unidade.
 
 ### 9.3 Procedimentos
 - `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)
@@ -723,6 +737,9 @@ const procedures = await ler(
 - `FinancialTransaction` criada automaticamente ao concluir `Appointment`
 - `Installment`: parcelas de uma transação (ex: parcelamento no cartão) — rastrear `isPaid` + `paidAt` por parcela
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
+- **Desconto de fidelidade** fica em `loyalty_discount`, FORA de `amount`: o
+  lançamento registra o dinheiro que entrou (§9.2.2). Pago todo com pontos, o
+  lançamento é de R$ 0 e sem forma de pagamento.
 - **Pagar com `INTERNAL_CREDIT` desconta do saldo e recusa sem saldo**
   (2026-09-27). É GATILHO (`trg_credito_interno_uso`), pelo argumento do §9.9:
   receita paga nasce em cinco lugares. O saldo é a soma de
@@ -1420,6 +1437,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só)
 ❌ Dar ponto de fidelidade no TypeScript ou ler loyalty_accounts.balance (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado
+❌ Pôr o desconto de pontos em amount (amount é o dinheiro recebido; o desconto é loyalty_discount)
+❌ Confirmar pagamento de atendimento fora de confirmar_pagamento_do_atendimento, ou confiar no valor que o navegador manda
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)
 ❌ Invalidar cache de permissão/acesso com revalidateTag 'max' (serve o velho mais uma vez) — use updateTag

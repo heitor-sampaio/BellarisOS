@@ -15,6 +15,7 @@ import {
   startAppointment,
   finishSession,
   confirmPayment,
+  previaDoPagamento,
   cancelAppointmentSession,
   saveDraftNotes,
   reassignProfessional,
@@ -32,6 +33,8 @@ import { salvarFichaDoProcedimento } from '@/actions/anamnesis'
 import type { AnamnesisRow } from '@/lib/anamnesis'
 import { rotaAgenda } from '@/lib/rotas'
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
+import { calcularDescontoComPontos } from '@/lib/fidelidade/resgate'
+import { formatarPontos } from '@/lib/fidelidade/formato'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 
 // -- Types ----------------------------------------------------------------------
@@ -304,6 +307,24 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
 }) {
   const router = useRouter()
   const [state, action, pending] = useActionState(confirmPayment, null)
+  // Pontos de fidelidade: só aparecem com o programa ligado e saldo positivo
+  // (`previaDoPagamento` devolve nulo fora disso). A conta mostrada aqui é a
+  // mesma que o servidor refaz — o valor que sai do navegador não é usado.
+  const [previa, setPrevia] = useState<Awaited<ReturnType<typeof previaDoPagamento>>>(null)
+  const [pontos, setPontos] = useState('')
+  useEffect(() => {
+    let vivo = true
+    previaDoPagamento(appointmentId).then(r => { if (vivo) setPrevia(r) }).catch(() => { /* sem pontos a oferecer */ })
+    return () => { vivo = false }
+  }, [appointmentId])
+  const resgate = previa
+    ? calcularDescontoComPontos({
+        saldo: previa.saldo, preco: price, pedido: Number(pontos) || 0,
+        regras: { valorDoPonto: previa.valorDoPonto, minimo: previa.minimo, tetoPct: previa.tetoPct },
+      })
+    : { pontos: 0, desconto: 0, restante: price }
+  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const totalZero = resgate.restante === 0 && !resgate.motivo
   if (state !== null && !state?.error && !pending) { onClose(); router.refresh(); return null }
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
@@ -317,17 +338,62 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
         <form action={action} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <input type="hidden" name="appointment_id" value={appointmentId} />
           <input type="hidden" name="slug" value={slug} />
-          <div className="form-2col">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label className="field-label">Forma de pagamento *</label>
-              <select name="payment_method" className="field" defaultValue="PIX">
-                {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
+          {previa && (
+            <div data-testid="usar-pontos" style={{
+              display: 'flex', flexDirection: 'column', gap: 8,
+              background: 'var(--brand-soft)', border: '1px solid var(--brand-soft-border)',
+              borderRadius: 'var(--radius-row)', padding: '12px 14px',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                <span className="field-label" style={{ margin: 0 }}>Usar pontos</span>
+                <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                  Saldo: <strong style={{ color: 'var(--text)' }}>{formatarPontos(previa.saldo)}</strong>
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input name="pontos" type="number" min={0} step={1} inputMode="numeric" className="field"
+                  value={pontos} onChange={e => setPontos(e.target.value)} placeholder="0" style={{ flex: 1 }} />
+                <button type="button" className="btn-ghost" disabled={previa.maximo <= 0}
+                  onClick={() => setPontos(String(previa.maximo))}>
+                  Usar o máximo
+                </button>
+              </div>
+              {resgate.motivo ? (
+                <p role="alert" style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 600 }}>{resgate.motivo}</p>
+              ) : resgate.pontos > 0 ? (
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-soft)' }}>
+                  {formatarPontos(resgate.pontos)} = <strong style={{ color: 'var(--brand)' }}>−{brl(resgate.desconto)}</strong>
+                </p>
+              ) : (
+                <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                  Cada ponto vale {brl(previa.valorDoPonto)}.
+                  {previa.minimo > 0 && ` Mínimo de ${previa.minimo} pontos.`}
+                  {previa.tetoPct < 100 && ` Pontos pagam até ${String(previa.tetoPct).replace('.', ',')}% do valor.`}
+                </p>
+              )}
             </div>
+          )}
+          <div className="form-2col">
+            {totalZero ? (
+              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', alignSelf: 'end' }}>
+                Pago todo com pontos — sem forma de pagamento.
+              </p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label className="field-label">Forma de pagamento *</label>
+                <select name="payment_method" className="field" defaultValue="PIX">
+                  {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+              </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label className="field-label">Valor (R$)</label>
-              <input type="number" defaultValue={price} step="0.01" min="0" className="field" readOnly
-                style={{ background: 'var(--bg-app)', color: 'var(--text-muted)', fontWeight: 700 }} />
+              <label className="field-label">{resgate.pontos > 0 ? 'Total a receber' : 'Valor (R$)'}</label>
+              <p data-testid="total-a-receber" style={{
+                fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em',
+                color: resgate.pontos > 0 ? 'var(--brand)' : 'var(--text)', padding: '6px 0',
+              }}>
+                {brl(resgate.motivo ? price : resgate.restante)}
+              </p>
             </div>
           </div>
           {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}

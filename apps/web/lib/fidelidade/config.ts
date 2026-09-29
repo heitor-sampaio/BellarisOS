@@ -51,6 +51,15 @@ export const EntradaDaConfig = z.object({
     .min(0.01, 'Informe quantos pontos o cliente ganha por R$ 1.')
     .max(1000, 'No máximo 1.000 pontos por R$ 1.'),
   commission_base: z.enum(BASES_DA_COMISSAO),
+  // Resgate como desconto no pagamento (fase 2).
+  redeem_points_value: z.coerce.number()
+    .min(0.0001, 'Informe quanto vale um ponto, em R$.')
+    .max(1000, 'Um ponto vale no máximo R$ 1.000.'),
+  redeem_min_points: z.coerce.number().int('O mínimo é um número inteiro de pontos.')
+    .min(0, 'O mínimo não pode ser negativo.').max(1_000_000, 'Mínimo alto demais.'),
+  redeem_max_pct: z.coerce.number()
+    .min(1, 'Os pontos precisam pagar ao menos 1% do valor.')
+    .max(100, 'Os pontos pagam no máximo 100% do valor.'),
 })
 export type EntradaDaConfig = z.infer<typeof EntradaDaConfig>
 

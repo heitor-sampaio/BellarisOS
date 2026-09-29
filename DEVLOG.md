@@ -1258,6 +1258,29 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-29 — Fidelidade, fase 2: pontos como desconto no pagamento
+
+- **Na recepção**, o modal de pagamento mostra "Usar pontos" quando o programa
+  está ligado e o cliente tem saldo: "usar o máximo" (o menor entre saldo e
+  teto), a linha "−R$" e o total a receber em destaque. Pago todo com pontos,
+  some a forma de pagamento.
+- **Regras na aba Fidelidade**: valor do ponto, mínimo e teto (% do valor).
+- **`confirmar_pagamento_do_atendimento`** (migration `20260929000002`): o
+  pagamento do atendimento virou UMA transação — pagamento, resgate dos pontos,
+  comissão e linha do tempo. O app calcula em centavos inteiros
+  (`lib/fidelidade/resgate.ts`) e o banco confere o mesmo número; o servidor
+  refaz a conta a partir dos pontos pedidos.
+- **`amount` é o dinheiro recebido**; o desconto vai em `loyalty_discount`.
+  Receita, LTV, estorno e relatórios não mudaram (relatorios-coerencia passou).
+- **Comissão** conforme a rede: sobre o preço, ou cai na proporção do pago.
+- **Estorno** devolve os pontos usados e tira os ganhos; R$ 0 não vira
+  "Purchase" na Meta.
+- Testes: `e2e/fidelidade-desconto-no-pagamento.spec.ts` (tela com teto e
+  comissão, três tentativas de burla recusadas sem gravar, estorno, R$ 0,
+  concorrência — dois pagamentos com o saldo inteiro, um passa) e
+  `tests/fidelidade-resgate.test.ts`; vizinhos (fechamento, crédito, estorno,
+  permissões, entre redes, Meta, abrangência, relatórios): 53 passaram.
+
 ### 2026-09-29 — Fidelidade configurável, fase 1: config, ganho no pagamento, extrato e ajuste
 
 "Vamos pensar de uma maneira que possa ser usado ou não e configurado pela rede,
@@ -3846,10 +3869,9 @@ verdade. O que vale:
 
 ### Próxima frente candidata
 
-**Fidelidade — fases 2 a 4** (plano aprovado pelo Heitor em 2026-09-28; fase 1
-feita em 2026-09-29): desconto com pontos no pagamento (com `loyalty_discount` e a
-comissão pela `commission_base`), catálogo de recompensas com voucher, e
-validade + abrangência por unidade (cron de expiração).
+**Fidelidade — fases 3 e 4** (plano aprovado pelo Heitor em 2026-09-28; fases 1
+e 2 feitas em 2026-09-29): catálogo de recompensas com voucher, e validade +
+abrangência por unidade (cron de expiração).
 
 ---
 
