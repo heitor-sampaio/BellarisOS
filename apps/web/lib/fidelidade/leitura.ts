@@ -18,7 +18,7 @@ type Admin = ReturnType<typeof createAdminClient>
 export async function configDaRede(tenantId: string, admin: Admin = createAdminClient()): Promise<ConfigFidelidade> {
   const linha = await ler(admin
     .from('loyalty_configs')
-    .select('enabled, earn_mode, points_per_real, redeem_points_value, redeem_min_points, redeem_max_pct, expiry_months, scope_per_branch, commission_base, birthday_bonus, first_access_bonus, client_redeem, expiry_notice_days')
+    .select('enabled, earn_mode, points_per_real, redeem_points_value, redeem_min_points, redeem_max_pct, expiry_months, scope_per_branch, birthday_bonus, first_access_bonus, client_redeem, expiry_notice_days')
     .eq('tenant_id', tenantId)
     .maybeSingle(), 'ler a configuração da fidelidade')
   return configDaLinha(linha as Record<string, unknown> | null)

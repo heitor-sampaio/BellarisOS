@@ -28,7 +28,7 @@ test.beforeAll(async () => {
   })
   const { error } = await db().from('loyalty_configs').upsert({
     tenant_id: rede.tenantId, enabled: true, earn_mode: 'POR_REAL', points_per_real: 1,
-    redeem_points_value: 0.1, redeem_min_points: 0, redeem_max_pct: 100, commission_base: 'PRECO',
+    redeem_points_value: 0.1, redeem_min_points: 0, redeem_max_pct: 100,
   }, { onConflict: 'tenant_id' })
   expect(error).toBeNull()
 })

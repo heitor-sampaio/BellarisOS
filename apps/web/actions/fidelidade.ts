@@ -57,8 +57,6 @@ export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?
         enabled:         c.enabled,
         earn_mode:       c.earn_mode,
         points_per_real: c.points_per_real,
-        // commission_base não: é de Configurações → Comissões (2026-09-30),
-        // que a grava aqui também enquanto o recebimento ainda a lê daqui.
         redeem_points_value: c.redeem_points_value,
         redeem_min_points:   c.redeem_min_points,
         redeem_max_pct:      c.redeem_max_pct,

@@ -12,8 +12,6 @@ import { z } from 'zod'
 export const MODOS_DE_GANHO = ['POR_REAL', 'POR_PROCEDIMENTO'] as const
 export type ModoDeGanho = typeof MODOS_DE_GANHO[number]
 
-export const BASES_DA_COMISSAO = ['PRECO', 'VALOR_PAGO'] as const
-export type BaseDaComissao = typeof BASES_DA_COMISSAO[number]
 
 export interface ConfigFidelidade {
   enabled:             boolean
@@ -27,7 +25,6 @@ export interface ConfigFidelidade {
   /** Nulo = os pontos não vencem. */
   expiry_months:       number | null
   scope_per_branch:    boolean
-  commission_base:     BaseDaComissao
   // Opcionais da rede (2026-09-29), todos desligados de fábrica.
   /** Pontos no aniversário. 0 = desligado. */
   birthday_bonus:      number
@@ -49,7 +46,6 @@ export const CONFIG_PADRAO: ConfigFidelidade = {
   redeem_max_pct:      100,
   expiry_months:       null,
   scope_per_branch:    false,
-  commission_base:     'PRECO',
   birthday_bonus:      0,
   first_access_bonus:  0,
   client_redeem:       false,
@@ -63,8 +59,6 @@ export const EntradaDaConfig = z.object({
   points_per_real: z.coerce.number()
     .min(0.01, 'Informe quantos pontos o cliente ganha por R$ 1.')
     .max(1000, 'No máximo 1.000 pontos por R$ 1.'),
-  // Desde 2026-09-30 quem grava é Configurações → Comissões; aqui só se lê.
-  commission_base: z.enum(BASES_DA_COMISSAO).optional(),
   // Resgate como desconto no pagamento (fase 2).
   redeem_points_value: z.coerce.number()
     .min(0.0001, 'Informe quanto vale um ponto, em R$.')
@@ -111,7 +105,6 @@ export function configDaLinha(linha: Record<string, unknown> | null | undefined)
     redeem_max_pct:      num(linha.redeem_max_pct, 100),
     expiry_months:       linha.expiry_months == null ? null : num(linha.expiry_months, 0) || null,
     scope_per_branch:    linha.scope_per_branch === true,
-    commission_base:     linha.commission_base === 'VALOR_PAGO' ? 'VALOR_PAGO' : 'PRECO',
     birthday_bonus:      num(linha.birthday_bonus, 0),
     first_access_bonus:  num(linha.first_access_bonus, 0),
     client_redeem:       linha.client_redeem === true,

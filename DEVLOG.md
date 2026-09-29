@@ -4396,12 +4396,12 @@ verdade. O que vale:
   comissão de todos a quem só pode ver a própria, e o ranking ordena por
   comissão só depois de cortar o top 5 por atendimentos.
 
-  **Depois do deploy das fases 1 e 2, uma migration de limpeza** tira:
-  - `commission_rules.branch_id`;
-  - `loyalty_configs.commission_base`;
-  - o ramo `comissao` singular de `concluir_atendimento`.
-
-  Os três só existem para o código de antes do deploy.
+  **Limpeza em duas etapas:**
+  - A migration `20260930000013` saiu depois do deploy das fases 1 e 2. Ela
+    tirou `commission_rules.branch_id` e o ramo `comissao` singular de
+    `concluir_atendimento`.
+  - `loyalty_configs.commission_base` sai no deploy seguinte. O código daquele
+    deploy ainda a selecionava na leitura da fidelidade; o de agora já não lê.
 
 - **Contato separado da conversa — o que sobrou** (a ordem combinada terminou
   em 2026-09-26):

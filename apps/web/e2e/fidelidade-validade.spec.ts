@@ -78,7 +78,7 @@ test.describe.serial('fidelidade: validade e abrangência', () => {
       await p.reload()
       await expect(p.getByTestId('abrangencia-travada')).toHaveText('Só na unidade')
       await chamarAcao(p, 'actions/fidelidade.ts', 'salvarConfigFidelidade', '/admin/settings?tab=fidelidade', [{
-        enabled: true, earn_mode: 'POR_REAL', points_per_real: 1, commission_base: 'PRECO',
+        enabled: true, earn_mode: 'POR_REAL', points_per_real: 1,
         redeem_points_value: 0.01, redeem_min_points: 0, redeem_max_pct: 100, expiry_months: 6, scope_per_branch: false,
       }])
       const depois = await db().from('loyalty_configs').select('scope_per_branch').eq('tenant_id', rede!.tenantId).single()

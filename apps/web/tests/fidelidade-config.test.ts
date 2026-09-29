@@ -4,7 +4,7 @@ import { formatarPontos, pontosEmReais, rotuloDoLancamento } from '@/lib/fidelid
 
 describe('EntradaDaConfig', () => {
   const valida = {
-    enabled: true, earn_mode: 'POR_REAL', points_per_real: '1.5', commission_base: 'PRECO',
+    enabled: true, earn_mode: 'POR_REAL', points_per_real: '1.5',
     redeem_points_value: '0.01', redeem_min_points: '0', redeem_max_pct: '100',
     expiry_months: null as string | null, scope_per_branch: false,
     birthday_bonus: '0', first_access_bonus: '0', client_redeem: false, expiry_notice_days: null as string | null,
@@ -41,9 +41,8 @@ describe('EntradaDaConfig', () => {
     for (const m of ['0', '121', '1.5']) expect(EntradaDaConfig.safeParse({ ...valida, expiry_months: m }).success, m).toBe(false)
   })
 
-  it('recusa modo e base de comissão fora da lista', () => {
+  it('recusa modo de ganho fora da lista', () => {
     expect(EntradaDaConfig.safeParse({ ...valida, earn_mode: 'POR_VISITA' }).success).toBe(false)
-    expect(EntradaDaConfig.safeParse({ ...valida, commission_base: 'METADE' }).success).toBe(false)
   })
 })
 
@@ -54,15 +53,14 @@ describe('configDaLinha', () => {
   })
 
   it('numeric chega como string do banco e vira número', () => {
-    const c = configDaLinha({ enabled: true, earn_mode: 'POR_PROCEDIMENTO', points_per_real: '2.5000', redeem_points_value: '0.0200', expiry_months: 6, commission_base: 'VALOR_PAGO' })
-    expect(c).toMatchObject({ enabled: true, earn_mode: 'POR_PROCEDIMENTO', points_per_real: 2.5, redeem_points_value: 0.02, expiry_months: 6, commission_base: 'VALOR_PAGO' })
+    const c = configDaLinha({ enabled: true, earn_mode: 'POR_PROCEDIMENTO', points_per_real: '2.5000', redeem_points_value: '0.0200', expiry_months: 6 })
+    expect(c).toMatchObject({ enabled: true, earn_mode: 'POR_PROCEDIMENTO', points_per_real: 2.5, redeem_points_value: 0.02, expiry_months: 6 })
   })
 
   it('valor desconhecido cai no padrão seguro', () => {
-    const c = configDaLinha({ enabled: 'sim', earn_mode: 'OUTRO', commission_base: 'OUTRA' })
+    const c = configDaLinha({ enabled: 'sim', earn_mode: 'OUTRO' })
     expect(c.enabled).toBe(false)
     expect(c.earn_mode).toBe('POR_REAL')
-    expect(c.commission_base).toBe('PRECO')
   })
 })
 
