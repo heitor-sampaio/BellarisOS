@@ -64,7 +64,10 @@ const concluir = (appt: string, insumos: unknown[]) => db().rpc('concluir_atendi
   p_ator_nome:   'e2e',
   p_dados: {
     notas: 'e2e', intercorrencias: null, pontos: 0, insumos,
-    comissao: { valor: 20, tipo: 'PERCENTAGE', regra: 10, periodo: '2026-09' },
+    comissoes: [{
+      procedure_id: f!.outra.procedureId, origem: 'AVULSO', treatment_plan_id: null,
+      regra_tipo: 'PERCENTAGE', regra_valor: 10, preco: 200,
+    }],
   },
 })
 

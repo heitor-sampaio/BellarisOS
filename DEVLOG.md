@@ -1258,6 +1258,71 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Comissões, fase 2 (de 3): o cálculo e o extrato
+
+**O que muda:** a comissão deixa de ser um número gravado uma vez e passa a
+ser uma **linha por procedimento executado** (`commission_lines`), com um
+**extrato** (`commissions`) de lançamentos que acertam a linha até o que ela
+deve.
+
+**O acerto (`private.comissao_acertar_linha`):**
+- calcula quanto a linha deve agora (`comissao_alvo`) e lança a diferença:
+  LIBERACAO, AJUSTE ou ESTORNO, com motivo e a transação que causou;
+- a conclusão chama o acerto, e o gatilho `trg_comissoes_do_pagamento` também,
+  em pagamento, recebimento do plano e estorno;
+- chamar duas vezes não lança duas: é trava por linha, com a diferença contra o
+  já lançado.
+
+**A conta mora no banco, numa cópia só.** O recebimento do plano entra por
+gatilho, e receita paga nasce em vários lugares. O app só escolhe a regra e lê
+a base (`linhasDoAtendimento`).
+
+**Regras, como o Heitor decidiu na fase 1:**
+- **Base:**
+  - avulso: o preço;
+  - sessão de plano: cada procedimento com o seu preço no plano e a sua regra.
+    Antes, a regra do primeiro procedimento valia sobre a sessão inteira;
+  - sessão de pacote: preço ÷ sessões, lido no servidor. Antes vinha do preço
+    que o navegador mandou.
+- **Descontos**, só no percentual: taxa do recebimento (no plano, ponderada
+  pelo que cada recebimento pagou) e insumos (custo dos movimentos, rateado
+  pelo preço). Pontos e voucher reduzem o valor fixo na proporção, como já
+  era.
+- **Modo "no atendimento":** a comissão é devida na conclusão. O pagamento
+  acerta a taxa e a base com pontos, e o estorno zera.
+- **Modo "quando o cliente paga":**
+  - no avulso, só vale depois de pago;
+  - no plano, é liberada na proporção do que ele recebeu, e cada recebimento
+    seguinte completa;
+  - no pacote, é liberada na conclusão (o pacote é pago na venda, e o sistema
+    não registra essa venda).
+- **Configuração retratada na linha:** mudar a configuração não reescreve o
+  que já foi concluído.
+- **Concluído não se cancela nem vira falta.** Um gatilho no banco e a action
+  recusam; o que se desfaz é o pagamento.
+- `confirmar_pagamento_do_atendimento` não mexe mais em comissão, e
+  `loyalty_configs.commission_base` ficou sem leitor.
+
+**Migrations:**
+- `20260930000011`: tabela, extrato, funções, gatilhos, a nova
+  `concluir_atendimento` (ainda aceita o `comissao` singular do código de
+  antes do deploy) e o pagamento sem o bloco de comissão. As 21 comissões de
+  demonstração viraram linha + lançamento.
+- `20260930000012`: o valor fixo com pontos.
+
+**Prova:**
+- `e2e/comissoes-calculo.spec.ts`, 5 casos:
+  - no atendimento, com a taxa como ajuste e o estorno;
+  - quando paga, com taxa e insumos;
+  - a configuração retratada na linha;
+  - plano pela tela: 25% recebido libera 25%, a parcela completa e o estorno
+    volta;
+  - pacote pela tela: R$ 300 ÷ 3.
+- Os specs de conclusão e de fidelidade no pagamento passaram a concluir pela
+  função, como o app faz.
+- Vizinhos verdes (38 testes): fechamento, fidelidade, vouchers, estorno,
+  checkout e recebimento do plano, pacote, agenda.
+
 ### 2026-09-30 — Comissões, fase 1 (de 3): configuração e regras
 
 **Por que:** a comissão nascia de `commission_rules`, mas nenhuma tela criava
@@ -4321,14 +4386,22 @@ verdade. O que vale:
 
 ### Dívida técnica conhecida
 
-- **Comissões, fases 2 e 3** (plano aprovado em 2026-09-30, ver a linha do
-  tempo): o cálculo novo (modo, descontos, taxa, plano e pacote no servidor,
-  estorno) e o fechamento com despesa. Os vazamentos continuam até a fase 3: o
-  dashboard e os relatórios mostram a comissão de todos a quem só pode ver a
-  própria, e o ranking ordena por comissão só depois de cortar o top 5 por
-  atendimentos. A fase 1 fica sem subir até a fase 2 estar pronta. Depois do
-  deploy, a coluna `commission_rules.branch_id` sai (ela só existe porque o
-  `finishSession` que está no ar ainda filtra por ela).
+- **Comissões, fase 3** (plano aprovado em 2026-09-30, ver a linha do tempo):
+  - o fechamento por período, com despesa;
+  - Financeiro → Comissões (extrato, fechar e pagar, CSV);
+  - o profissional vendo as próprias;
+  - as métricas pelo `released_at`.
+
+  Os vazamentos continuam até lá: o dashboard e os relatórios mostram a
+  comissão de todos a quem só pode ver a própria, e o ranking ordena por
+  comissão só depois de cortar o top 5 por atendimentos.
+
+  **Depois do deploy das fases 1 e 2, uma migration de limpeza** tira:
+  - `commission_rules.branch_id`;
+  - `loyalty_configs.commission_base`;
+  - o ramo `comissao` singular de `concluir_atendimento`.
+
+  Os três só existem para o código de antes do deploy.
 
 - **Contato separado da conversa — o que sobrou** (a ordem combinada terminou
   em 2026-09-26):

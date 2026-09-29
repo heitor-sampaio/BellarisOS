@@ -19,8 +19,7 @@ import { emitirEventoClinico } from '@/lib/events/clinico'
 import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { periodRef, dayKeyTZ, partsInTZ } from '@/lib/datetime'
-import { regrasDaRede } from '@/lib/comissoes/leitura'
-import { regraAplicavel, valorDaRegra } from '@/lib/comissoes/config'
+import { linhasDoAtendimento } from '@/lib/comissoes/leitura'
 import { notificarInteressados } from '@/lib/notifications/interessados'
 import { semAcesso } from '@/lib/sem-acesso'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
@@ -297,6 +296,17 @@ export async function updateAppointmentStatus(
   if (status === 'COMPLETED') {
     await completeAppointment(appointmentId, slug, ctx)
     return
+  }
+
+  // Concluído tem prontuário, baixa de estoque e comissão: não volta a
+  // cancelado nem a falta (o gatilho trg_atendimento_concluido_nao_cancela é a
+  // segunda linha). Desfazer o dinheiro é estornar o pagamento.
+  if (status === 'CANCELLED' || status === 'NO_SHOW') {
+    const atual = await ler(createAdminClient().from('appointments').select('status')
+      .eq('id', appointmentId).maybeSingle(), 'buscar o agendamento')
+    if (atual?.status === 'COMPLETED') {
+      throw new Error('Atendimento concluído não pode ser cancelado nem marcado como falta. Para devolver o dinheiro, estorne o pagamento.')
+    }
   }
 
   // O erro deste update era descartado, e o histórico logo abaixo é escrito
@@ -772,7 +782,7 @@ async function finishSessionInterno(
 
     const appt = await ler(admin
       .from('appointments')
-      .select('id, status, branch_id, client_id, procedure_id, professional_id, price, branches!inner(id, tenant_id)')
+      .select('id, status, branch_id, client_id, procedure_id, professional_id, price, treatment_plan_id, branches!inner(id, tenant_id)')
       .eq('id', appointmentId)
       .single(), 'buscar o agendamento')
 
@@ -794,21 +804,17 @@ async function finishSessionInterno(
     // a quinta deixava as quatro primeiras, e o atendimento ficava concluído
     // com comissão e sem baixa de estoque, sem jeito de refazer.
 
-    // Comissão — as regras são do PROFISSIONAL na rede (Configurações de
-    // comissão, 2026-09-30): a exceção do procedimento vence o padrão dele.
-    // `type` e `rule_value` gravam a regra aplicada, para o extrato continuar
-    // auditável se a regra mudar depois.
-    const regrasDoProfissional = (await regrasDaRede(ctx.tenantId!, appt.professional_id as string)).get(appt.professional_id as string) ?? []
-    const rule = regraAplicavel(regrasDoProfissional, (appt.procedure_id as string | null) ?? null)
-
-    const comissao = rule
-      ? {
-          valor:   valorDaRegra(rule, parseFloat(String(appt.price))),
-          tipo:    rule.tipo as string,
-          regra:   rule.valor,
-          periodo: periodRef(now),
-        }
-      : null
+    // Comissão — uma LINHA por procedimento executado (§9.7), com a regra do
+    // profissional (a exceção do procedimento vence o padrão) e a base lida
+    // aqui no servidor. O VALOR é conta do banco (`comissao_alvo`): o
+    // recebimento do plano, por gatilho, usa a mesma.
+    const comissoes = await linhasDoAtendimento(ctx.tenantId!, {
+      id:                appointmentId,
+      procedure_id:      (appt.procedure_id as string | null) ?? null,
+      professional_id:   appt.professional_id as string,
+      price:             parseFloat(String(appt.price)),
+      treatment_plan_id: (appt.treatment_plan_id as string | null) ?? null,
+    })
 
     // Pontos de fidelidade: NÃO aqui. Desde 2026-09-28 o ponto nasce quando o
     // atendimento é PAGO (gatilho trg_fidelidade_ganho) — atendimento concluído
@@ -890,14 +896,20 @@ async function finishSessionInterno(
       p_tenant:      ctx.tenantId!,
       p_ator:        ctx.internalUserId,
       p_ator_nome:   userName,
-      p_dados:       { notas: notes, intercorrencias: intercurrences, comissao, insumos },
-    }), 'concluir o atendimento') as { comissao_criada: boolean; pacote: string | null } | null
+      p_dados:       { notas: notes, intercorrencias: intercurrences, comissoes, insumos },
+    }), 'concluir o atendimento') as {
+      comissao_criada: boolean; pacote: string | null
+      comissoes: { linha: string; procedure_id: string | null; liberado: number }[]
+    } | null
 
     // ─── Depois: os avisos do que aconteceu ───────────────────────────────
-    if (gravado?.comissao_criada && comissao) {
+    // Um fato por linha que já nasce devida. No modo "quando o cliente paga"
+    // a linha nasce zerada e é liberada no pagamento.
+    for (const linha of gravado?.comissoes ?? []) {
+      if (Number(linha.liberado) <= 0) continue
       await emitirComissaoGerada(
         appointmentId, appt.professional_id as string | null,
-        comissao.valor, comissao.periodo, appt.branch_id as string | null, ctx,
+        Number(linha.liberado), periodRef(now), appt.branch_id as string | null, ctx,
       )
     }
     // Depois do incremento (feito na transação), para `restantes` já refletir

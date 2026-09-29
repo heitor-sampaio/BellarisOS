@@ -657,12 +657,12 @@ rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal
   `confirmar_pagamento_do_atendimento` (o app calcula em
   `lib/fidelidade/resgate.ts`, em CENTAVOS inteiros, e o banco confere o mesmo
   número: config, teto, saldo sob a trava do cliente). Grava pagamento, RESGATE,
-  comissão e linha do tempo. O servidor recalcula o desconto a partir dos pontos
-  pedidos — o valor do navegador não entra.
-- **Comissão**: `commission_base` = PRECO (não muda) ou VALOR_PAGO (cai na
-  proporção do pago, só a comissão ainda em aberto). A opção saiu da aba
-  Fidelidade em 2026-09-30: é `commission_configs.base_com_pontos`
-  (Configurações → Comissões), espelhada aqui até a fase 2 das comissões (§9.7).
+  e linha do tempo; a comissão, o gatilho do pagamento acerta (§9.7). O
+  servidor recalcula o desconto a partir dos pontos pedidos — o valor do
+  navegador não entra.
+- **Comissão com pontos/voucher**: sobre o preço ou sobre o valor pago — é
+  `commission_configs.base_com_pontos` (Configurações → Comissões, §9.7), não
+  mais `loyalty_configs.commission_base` (a coluna ficou sem leitor).
 - Pago todo com pontos: `amount` 0, sem forma de pagamento, sem "Purchase" na
   API de Conversões (o `pagamento.recebido` sai, com 0).
 - Estorno devolve os pontos usados (ESTORNO_RESGATE) e tira os ganhos.
@@ -996,7 +996,7 @@ DEVLOG ("Termos e contratos").
   e o **próprio estorno**. A contra-transação não leva `appointment_id` (há
   UNIQUE nele — levar fazia todo estorno de atendimento falhar).
 
-### 9.7 Comissões (reforma em três fases, 2026-09-30 — fase 1 no código)
+### 9.7 Comissões (reforma em três fases, 2026-09-30 — fases 1 e 2 no código)
 
 Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 
@@ -1016,19 +1016,49 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   (`desconta_insumos`, `desconta_taxa`), `base_com_pontos` (PRECO | VALOR_PAGO,
   veio de `loyalty_configs.commission_base`) e `periodo` do fechamento
   (MENSAL | QUINZENAL | SEMANAL). **Taxas da maquininha** em `payment_fees`
-  (Pix, débito, crédito 1–12x; `taxaDoRecebimento` usa a maior parcela
-  cadastrada abaixo), gravadas por `comissao_taxas_definir`.
+  (Pix, débito, crédito 1–12x), gravadas por `comissao_taxas_definir`.
 - A comissão de cada membro se define na **Equipe** (chip "Comissão …" na
   linha, `ComissaoDoMembro`), só com `financial: MANAGE` — gerir a equipe não
   dá acesso a quanto cada um ganha. Quem é de unidade só mexe nos da unidade.
-- ⚠️ **Fase 1 só configura.** O cálculo ainda é o antigo (regra nova, base =
-  preço do atendimento); modo PAGAMENTO, descontos, taxa, base de plano/pacote no
-  servidor, estorno e fechamento são as fases 2 e 3. Até a fase 2,
-  `confirmar_pagamento_do_atendimento` lê `loyalty_configs.commission_base`,
-  que `salvarConfigDeComissao` espelha.
-- `periodRef` formato: `"YYYY-MM"`
-- Comissão de pacotes: calculada na sessão executada, não na venda do pacote
-- Prova: `e2e/comissoes-configuracao.spec.ts`.
+- **A comissão DEVIDA é uma linha por procedimento executado**
+  (`commission_lines`), e `commissions` é o EXTRATO dela: cada lançamento
+  (`kind` LIBERACAO | AJUSTE | ESTORNO, com `motivo`, `released_at` e a
+  transação que o causou) é uma diferença. Soma do extrato = o que a linha deve.
+  - A linha nasce em `concluir_atendimento`, com o RETRATO da regra e da
+    configuração (modo, descontos, base com pontos): mudar a configuração vale
+    para os próximos atendimentos, não reescreve os concluídos.
+  - **A base é lida no servidor** (`linhasDoAtendimento`,
+    `lib/comissoes/leitura.ts`): avulso = preço do atendimento; sessão de plano
+    = CADA procedimento da sessão com o preço dele no plano (e a regra dele);
+    sessão de pacote = preço do pacote ÷ sessões. Antes a regra do primeiro
+    procedimento valia sobre a sessão inteira, e o pacote usava o preço que o
+    navegador mandou.
+  - Os insumos da linha são o custo dos movimentos do atendimento (a conta de
+    `metrics_giro_estoque`), rateado pelo preço de cada procedimento.
+- **A conta mora no BANCO, e só lá**: `private.comissao_alvo` diz quanto a
+  linha deve AGORA, e `private.comissao_acertar_linha` lança a diferença para o
+  já lançado (trava por linha; chamar duas vezes não lança duas). Não há cópia
+  em TS — o recebimento do plano entra por gatilho e precisa dela.
+  - Percentual: sobre preço − pontos/voucher (se saem da base) − taxa do
+    recebimento (se marcada) − insumos (se marcados). Valor fixo: só pontos e
+    voucher o reduzem, na proporção; taxa e insumos não.
+  - ATENDIMENTO: devida desde a conclusão; o pagamento acerta (taxa, base com
+    pontos) e o estorno do pagamento a zera.
+  - PAGAMENTO: avulso só vale pago; plano libera na proporção do que ele
+    recebeu (receita paga, sem estorno ÷ soma dos procedimentos do plano); pacote
+    libera na conclusão (pago na venda — o sistema não registra a venda).
+  - Taxa: `private.comissao_taxa_pct` (a do meio; no crédito, a da maior
+    parcela cadastrada até a do recebimento). No plano, ponderada pelo que
+    cada recebimento pagou.
+- **Quem acerta**: a conclusão, e o gatilho `trg_comissoes_do_pagamento` em
+  `financial_transactions` (pagamento, recebimento do plano, estorno — marcar
+  `notes = 'Estornada'` é o estorno). `confirmar_pagamento_do_atendimento` não
+  mexe mais em comissão, e `loyalty_configs.commission_base` não é mais lido.
+- **Atendimento concluído não se cancela nem vira falta** (gatilho
+  `trg_atendimento_concluido_nao_cancela` + `updateAppointmentStatus`): tem
+  prontuário, baixa e comissão. Desfazer o dinheiro é estornar o pagamento.
+- `period_ref` do lançamento é o mês de `released_at` (fuso de SP).
+- Prova: `e2e/comissoes-configuracao.spec.ts` e `e2e/comissoes-calculo.spec.ts`.
 
 ### 9.8 Push Notifications
 - Dois canais: **Web Push** (VAPID) no navegador e **FCM** no app Android
@@ -1300,7 +1330,7 @@ O que a transação grava, na ordem:
 |---|---|---|
 | 1 | status `COMPLETED` + `completed_at` (agendamento TRAVADO, status conferido de novo) | `appointments` |
 | 2 | o prontuário do cliente (nasce se não existe) e a entrada deste atendimento | `medical_records`, `medical_record_entries` |
-| 3 | a comissão, com a regra aplicada | `commissions` |
+| 3 | uma linha de comissão por procedimento (regra e configuração retratadas) e o primeiro acerto do extrato (§9.7) | `commission_lines`, `commissions` |
 | 4 | cada insumo — e, pelos gatilhos, evento, mínimo e baixa do lote | `stock_movements`, `branch_product_stock` |
 | 5 | a sessão do pacote usada e o contador (soma no banco) | `package_sessions`, `client_packages` |
 | 6 | a linha do tempo | `appointment_history` |
@@ -1709,6 +1739,9 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
 ❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece)
 ❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só)
+❌ Gravar em commissions fora de comissao_acertar_linha, ou calcular valor de comissão no TypeScript (a conta é comissao_alvo)
+❌ Mandar ao banco a base de comissão que o navegador enviou (plano e pacote se leem em linhasDoAtendimento)
+❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
 ❌ Dar ponto de fidelidade no TypeScript (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
 ❌ Calcular vencimento de pontos fora de fidelidade_a_expirar (é a única cópia do FIFO)
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado

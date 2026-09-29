@@ -17,7 +17,7 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras } from '@/lib/comissoes/config'
 
 type Resultado = { error?: string; ok?: true }
@@ -42,11 +42,6 @@ export async function salvarConfigDeComissao(entrada: unknown): Promise<Resultad
       base_com_pontos: c.base_com_pontos, periodo: c.periodo,
       updated_at: new Date().toISOString(), updated_by: ctx.internalUserId ?? null,
     }, { onConflict: 'tenant_id' }).select('tenant_id').single(), 'salvar a configuração de comissões')
-    // O recebimento do atendimento ainda lê a base com pontos da fidelidade
-    // (até a fase 2 das comissões): as duas ficam iguais. Rede sem programa de
-    // fidelidade não tem a linha — e sem pontos a opção não faz diferença.
-    await tentar(admin.from('loyalty_configs').update({ commission_base: c.base_com_pontos })
-      .eq('tenant_id', ctx.tenantId!), 'espelhar a base da comissão com pontos na fidelidade')
     revalidar()
     return { ok: true }
   } catch (e) {

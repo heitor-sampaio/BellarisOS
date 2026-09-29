@@ -32,9 +32,17 @@ test.afterAll(async () => {
 async function configurar(cfg: Record<string, unknown>) {
   const { error } = await db().from('loyalty_configs').upsert({
     tenant_id: rede!.tenantId, enabled: true, earn_mode: 'POR_REAL', points_per_real: 1,
-    redeem_points_value: 0.1, redeem_min_points: 0, redeem_max_pct: 50, commission_base: 'PRECO', ...cfg,
+    redeem_points_value: 0.1, redeem_min_points: 0, redeem_max_pct: 50, ...cfg,
   }, { onConflict: 'tenant_id' })
   expect(error, 'gravar a config').toBeNull()
+}
+
+/** A base da comissão com pontos mora na configuração de comissões (§9.7), e é
+ *  retratada na linha quando o atendimento é concluído. */
+async function comissaoSobre(base: 'PRECO' | 'VALOR_PAGO') {
+  const { error } = await db().from('commission_configs')
+    .upsert({ tenant_id: rede!.tenantId, base_com_pontos: base }, { onConflict: 'tenant_id' })
+  expect(error, 'gravar a base da comissão').toBeNull()
 }
 
 async function dar(clientId: string, pontos: number) {
@@ -44,17 +52,22 @@ async function dar(clientId: string, pontos: number) {
   expect(error, 'dar pontos').toBeNull()
 }
 
+/** Concluído pela função do banco, com uma comissão fixa — o que o
+ *  `finishSession` faz, sem a tela. */
 async function atendimentoConcluido(clientId: string, preco: number, comissao = 30) {
   const { data: ap, error } = await db().from('appointments').insert({
     branch_id: rede!.branchId, client_id: clientId, professional_id: rede!.professionalId, procedure_id: rede!.procedureId,
-    scheduled_at: new Date().toISOString(), duration_min: 30, price: preco, status: 'COMPLETED', completed_at: new Date().toISOString(),
+    scheduled_at: new Date().toISOString(), duration_min: 30, price: preco, status: 'IN_PROGRESS',
   }).select('id').single<{ id: string }>()
   expect(error, 'criar o atendimento').toBeNull()
-  const { error: eCom } = await db().from('commissions').insert({
-    branch_id: rede!.branchId, professional_id: rede!.professionalId, appointment_id: ap!.id,
-    amount: comissao, type: 'FIXED_AMOUNT', rule_value: comissao, period_ref: '2026-09', status: 'OPEN',
+  const { error: eFim } = await db().rpc('concluir_atendimento', {
+    p_agendamento: ap!.id, p_tenant: rede!.tenantId, p_ator: null, p_ator_nome: null,
+    p_dados: { comissoes: [{
+      procedure_id: rede!.procedureId, origem: 'AVULSO', treatment_plan_id: null,
+      regra_tipo: 'FIXED_AMOUNT', regra_valor: comissao, preco,
+    }], insumos: [] },
   })
-  expect(eCom, 'criar a comissão').toBeNull()
+  expect(eFim, 'concluir o atendimento').toBeNull()
   return ap!.id
 }
 
@@ -67,11 +80,14 @@ async function pagarPelaFuncao(ap: string, dados: Record<string, unknown>) {
 const saldo = async (c: string) => Number((await db().rpc('saldo_de_pontos', { p_cliente: c, p_unidade: null })).data)
 const tx = async (ap: string) => (await db().from('financial_transactions')
   .select('id, amount, loyalty_discount, is_paid, payment_method').eq('appointment_id', ap).maybeSingle()).data
-const comissao = async (ap: string) => Number((await db().from('commissions').select('amount').eq('appointment_id', ap).single()).data?.amount)
+/** A comissão do atendimento: a soma do extrato (liberação + ajustes). */
+const comissao = async (ap: string) => ((await db().from('commissions').select('amount').eq('appointment_id', ap)).data ?? [])
+  .reduce((s, c) => Math.round((s + Number(c.amount)) * 100) / 100, 0)
 
 test.describe.serial('fidelidade: pontos como desconto no pagamento', () => {
   test('pela tela: "usar o máximo" respeita o teto; recebe o líquido; comissão sobre o valor pago', async ({ browser }) => {
-    await configurar({ commission_base: 'VALOR_PAGO' })
+    await configurar({})
+    await comissaoSobre('VALOR_PAGO')
     const c = await rede!.criarCliente('Tela')
     await dar(c, 1500)
     const ap = await atendimentoConcluido(c, 200)
@@ -101,7 +117,8 @@ test.describe.serial('fidelidade: pontos como desconto no pagamento', () => {
   })
 
   test('a função recusa desconto que não bate, acima do teto e acima do saldo — nada grava', async () => {
-    await configurar({ commission_base: 'PRECO' })
+    await configurar({})
+    await comissaoSobre('PRECO')
     const c = await rede!.criarCliente('Burla')
     await dar(c, 300)
     const ap = await atendimentoConcluido(c, 200)
@@ -116,7 +133,7 @@ test.describe.serial('fidelidade: pontos como desconto no pagamento', () => {
       expect(error?.message, nome).toMatch(erro)
     }
     // Mais pontos do que tem: teto alto para o saldo ser o que barra.
-    await configurar({ commission_base: 'PRECO', redeem_max_pct: 100 })
+    await configurar({ redeem_max_pct: 100 })
     const { error } = await pagarPelaFuncao(ap, { metodo: 'PIX', pontos: 400, desconto: 40, valor_final: 160 })
     expect(error?.message).toMatch(/insuficiente/)
     expect(await tx(ap), 'nenhuma recusa gravou pagamento').toBeNull()

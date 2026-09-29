@@ -14,8 +14,8 @@ import type { ConfigDeComissao, TaxaDePagamento, MetodoComTaxa } from '@/lib/com
  */
 
 const MODOS = {
-  ATENDIMENTO: { label: 'No atendimento', explicacao: 'A comissão nasce quando o atendimento é concluído, sobre o preço dele. Se o pagamento for estornado depois, a comissão que ainda não foi paga ao profissional é estornada junto.' },
-  PAGAMENTO:   { label: 'Quando o cliente paga', explicacao: 'A comissão só vale depois que o cliente paga, sobre o valor recebido (já sem os descontos). No plano e no pacote, a sessão executada libera a comissão na proporção do que o plano já recebeu.' },
+  ATENDIMENTO: { label: 'No atendimento', explicacao: 'A comissão nasce quando o atendimento é concluído, sobre o preço dele. A taxa da maquininha, se marcada abaixo, entra como ajuste quando o cliente paga. Se o pagamento for estornado, a comissão é estornada junto.' },
+  PAGAMENTO:   { label: 'Quando o cliente paga', explicacao: 'A comissão só vale depois que o cliente paga, sobre o que ele pagou (sem pontos e voucher). No plano, cada sessão executada libera a comissão na proporção do que o plano já recebeu, e cada recebimento seguinte completa. A sessão de pacote libera na conclusão: o pacote é pago na venda.' },
 } as const
 const BASES = {
   PRECO:      { label: 'Sobre o preço', explicacao: 'Quando o cliente usa pontos ou voucher como desconto, a comissão continua sobre o preço do atendimento. O desconto é custo da clínica.' },
@@ -99,7 +99,9 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
     <div className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }} aria-label="Como a comissão acontece">
       <div>
         <h2 style={titulo}>Como a comissão acontece</h2>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>Vale para a rede inteira.</p>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
+          Vale para a rede inteira, a partir dos próximos atendimentos concluídos: o que já foi concluído segue a regra de quando foi.
+        </p>
       </div>
 
       <Bloco titulo="Quando a comissão vale">
@@ -125,6 +127,7 @@ function ComoAcontece({ inicial, podeEditar }: { inicial: ConfigDeComissao; pode
           {c.desconta_insumos || c.desconta_taxa
             ? 'A comissão é calculada sobre o valor do atendimento menos o que estiver marcado acima.'
             : 'Nada é descontado: a comissão é sobre o valor cheio.'}
+          {' '}Vale para a comissão em percentual; a de valor fixo não muda com taxa nem insumos.
         </p>
       </Bloco>
 

@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import {
   configDaLinha, CONFIG_PADRAO, EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras,
-  taxaDoRecebimento, regraAplicavel, valorDaRegra, rotuloDaRegra,
+  regraAplicavel, rotuloDaRegra, linhasDaComissao, precoDaSessaoDePacote,
   type RegraDeComissao, type TaxaDePagamento,
 } from '@/lib/comissoes/config'
+
+// O VALOR da comissão e a taxa da maquininha são conta do banco
+// (`comissao_alvo`, `comissao_taxa_pct`) — provados em e2e/comissoes-calculo.
 
 describe('configDaLinha', () => {
   it('rede que nunca salvou fica com os padrões', () => {
@@ -23,34 +26,13 @@ describe('configDaLinha', () => {
   })
 })
 
-describe('taxas da maquininha', () => {
+describe('taxas da maquininha — a entrada', () => {
   const taxas: TaxaDePagamento[] = [
     { metodo: 'PIX', parcelas: 1, taxa_pct: 0.99 },
-    { metodo: 'DEBIT_CARD', parcelas: 1, taxa_pct: 1.5 },
     { metodo: 'CREDIT_CARD', parcelas: 1, taxa_pct: 3 },
-    { metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 5 },
     { metodo: 'CREDIT_CARD', parcelas: 6, taxa_pct: 8 },
   ]
-  it('usa a do meio', () => {
-    expect(taxaDoRecebimento(taxas, 'PIX')).toBe(0.99)
-    expect(taxaDoRecebimento(taxas, 'DEBIT_CARD')).toBe(1.5)
-  })
-  it('dinheiro e crédito interno não têm taxa', () => {
-    expect(taxaDoRecebimento(taxas, 'CASH')).toBe(0)
-    expect(taxaDoRecebimento(taxas, 'INTERNAL_CREDIT')).toBe(0)
-    expect(taxaDoRecebimento(taxas, null)).toBe(0)
-  })
-  it('crédito sem a taxa exata usa a da maior parcela abaixo', () => {
-    expect(taxaDoRecebimento(taxas, 'CREDIT_CARD', 1)).toBe(3)
-    expect(taxaDoRecebimento(taxas, 'CREDIT_CARD', 2)).toBe(3)
-    expect(taxaDoRecebimento(taxas, 'CREDIT_CARD', 3)).toBe(5)
-    expect(taxaDoRecebimento(taxas, 'CREDIT_CARD', 5)).toBe(5)
-    expect(taxaDoRecebimento(taxas, 'CREDIT_CARD', 12)).toBe(8)
-  })
-  it('crédito só com taxa parcelada acima: nada abaixo, zero', () => {
-    expect(taxaDoRecebimento([{ metodo: 'CREDIT_CARD', parcelas: 3, taxa_pct: 5 }], 'CREDIT_CARD', 2)).toBe(0)
-  })
-  it('a entrada recusa parcelas fora do crédito, repetida e acima de 100%', () => {
+  it('recusa parcelas fora do crédito, repetida e acima de 100%', () => {
     expect(EntradaDasTaxas.safeParse([{ metodo: 'PIX', parcelas: 2, taxa_pct: 1 }]).success).toBe(false)
     expect(EntradaDasTaxas.safeParse([{ metodo: 'PIX', parcelas: 1, taxa_pct: 1 }, { metodo: 'PIX', parcelas: 1, taxa_pct: 2 }]).success).toBe(false)
     expect(EntradaDasTaxas.safeParse([{ metodo: 'DEBIT_CARD', parcelas: 1, taxa_pct: 101 }]).success).toBe(false)
@@ -80,11 +62,6 @@ describe('regras por profissional', () => {
     expect(regraAplicavel([excecao], 'p-limpeza')).toBeNull()
     expect(regraAplicavel([], 'p-botox')).toBeNull()
   })
-  it('valor em centavos exatos', () => {
-    expect(valorDaRegra({ tipo: 'PERCENTAGE', valor: 30 }, 250)).toBe(75)
-    expect(valorDaRegra({ tipo: 'PERCENTAGE', valor: 12.5 }, 99.9)).toBe(12.49)
-    expect(valorDaRegra({ tipo: 'FIXED_AMOUNT', valor: 80 }, 1000)).toBe(80)
-  })
   it('rótulo', () => {
     expect(rotuloDaRegra(null)).toBe('Sem comissão')
     expect(rotuloDaRegra({ tipo: 'PERCENTAGE', valor: 12.5 })).toBe('12,5%')
@@ -99,5 +76,32 @@ describe('regras por profissional', () => {
     expect(EntradaDasRegras.safeParse({ padrao: { tipo: 'FIXED_AMOUNT', valor: 150 }, excecoes: [
       { procedure_id: uuid, tipo: 'PERCENTAGE', valor: 40 },
     ] }).success).toBe(true)
+  })
+})
+
+describe('linhas de um atendimento', () => {
+  const padrao: RegraDeComissao = { procedure_id: null, tipo: 'PERCENTAGE', valor: 30 }
+  const excecao: RegraDeComissao = { procedure_id: 'p-botox', tipo: 'FIXED_AMOUNT', valor: 80 }
+
+  it('sessão de plano: uma linha por procedimento, cada um com a SUA regra e o SEU preço', () => {
+    expect(linhasDaComissao([
+      { procedure_id: 'p-botox', preco: 900 },
+      { procedure_id: 'p-limpeza', preco: 200 },
+    ], [padrao, excecao], 'PLANO', 'plano-1')).toEqual([
+      { procedure_id: 'p-botox', origem: 'PLANO', treatment_plan_id: 'plano-1', regra_tipo: 'FIXED_AMOUNT', regra_valor: 80, preco: 900 },
+      { procedure_id: 'p-limpeza', origem: 'PLANO', treatment_plan_id: 'plano-1', regra_tipo: 'PERCENTAGE', regra_valor: 30, preco: 200 },
+    ])
+  })
+  it('procedimento sem regra não gera linha', () => {
+    expect(linhasDaComissao([{ procedure_id: 'p-limpeza', preco: 200 }], [excecao], 'AVULSO', null)).toEqual([])
+  })
+  it('avulso e pacote não levam o plano', () => {
+    const [l] = linhasDaComissao([{ procedure_id: 'p', preco: 99.999 }], [padrao], 'PACOTE', 'plano-x')
+    expect(l).toMatchObject({ origem: 'PACOTE', treatment_plan_id: null, preco: 100 })
+  })
+  it('sessão de pacote: preço ÷ sessões, em centavos', () => {
+    expect(precoDaSessaoDePacote(400, 5)).toBe(80)
+    expect(precoDaSessaoDePacote(1000, 3)).toBe(333.33)
+    expect(precoDaSessaoDePacote(400, 0)).toBe(0)
   })
 })

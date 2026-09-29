@@ -65,19 +65,10 @@ export const EntradaDasTaxas = z.array(z.object({
   'Há taxa repetida para o mesmo meio e parcelas.',
 )
 
-/**
- * A taxa de um recebimento: a do meio e das parcelas; sem a do número exato de
- * parcelas no crédito, a da maior quantidade cadastrada abaixo dele (e, sem
- * nenhuma, a do crédito à vista). Meio sem taxa (dinheiro, crédito interno): 0.
- */
-export function taxaDoRecebimento(taxas: TaxaDePagamento[], metodo: string | null, parcelas = 1): number {
-  const doMeio = taxas.filter(t => t.metodo === metodo)
-  if (!doMeio.length) return 0
-  if (metodo !== 'CREDIT_CARD') return doMeio[0]!.taxa_pct
-  const n = Math.max(1, Math.min(12, Math.trunc(parcelas)))
-  const candidata = doMeio.filter(t => t.parcelas <= n).sort((a, b) => b.parcelas - a.parcelas)[0]
-  return candidata?.taxa_pct ?? 0
-}
+// A taxa de um recebimento (a do meio; no crédito, a da maior quantidade de
+// parcelas cadastrada até a do recebimento) é conta do BANCO,
+// `private.comissao_taxa_pct`: o recebimento do plano entra por gatilho e
+// precisa dela. Uma cópia só.
 
 // ─── Regras por profissional ─────────────────────────────────────────────────
 
@@ -111,10 +102,49 @@ export function regraAplicavel(regras: RegraDeComissao[], procedureId: string | 
     ?? null
 }
 
-/** O valor da comissão de uma regra sobre uma base, em centavos exatos. */
-export function valorDaRegra(regra: Pick<RegraDeComissao, 'tipo' | 'valor'>, base: number): number {
-  const v = regra.tipo === 'PERCENTAGE' ? base * regra.valor / 100 : regra.valor
-  return Math.round(v * 100) / 100
+// ─── As linhas de um atendimento ─────────────────────────────────────────────
+
+export type OrigemDaComissao = 'AVULSO' | 'PLANO' | 'PACOTE'
+
+/** Um procedimento executado e o preço que serve de base à comissão dele. */
+export interface ItemExecutado { procedure_id: string | null; preco: number }
+
+/** O que `concluir_atendimento` recebe por procedimento. O VALOR não vai: é
+ *  conta do banco (`comissao_alvo`), a mesma que o pagamento do plano usa. */
+export interface LinhaDeComissao {
+  procedure_id:      string | null
+  origem:            OrigemDaComissao
+  treatment_plan_id: string | null
+  regra_tipo:        TipoDeRegra
+  regra_valor:       number
+  preco:             number
+}
+
+/**
+ * Uma linha por procedimento executado que tenha regra (a exceção dele, senão
+ * o padrão do profissional). Procedimento sem regra não gera linha — o aviso
+ * de "sem comissão" é da tela de configuração.
+ */
+export function linhasDaComissao(
+  itens: ItemExecutado[], regras: RegraDeComissao[], origem: OrigemDaComissao, planoId: string | null,
+): LinhaDeComissao[] {
+  const linhas: LinhaDeComissao[] = []
+  for (const item of itens) {
+    const regra = regraAplicavel(regras, item.procedure_id)
+    if (!regra) continue
+    linhas.push({
+      procedure_id: item.procedure_id, origem, treatment_plan_id: origem === 'PLANO' ? planoId : null,
+      regra_tipo: regra.tipo, regra_valor: regra.valor,
+      preco: Math.max(0, Math.round(item.preco * 100) / 100),
+    })
+  }
+  return linhas
+}
+
+/** A base de uma sessão de pacote: o preço do pacote dividido pelas sessões. */
+export function precoDaSessaoDePacote(precoDoPacote: number, sessoes: number): number {
+  if (!(sessoes > 0)) return 0
+  return Math.round(precoDoPacote / sessoes * 100) / 100
 }
 
 export function rotuloDaRegra(regra: Pick<RegraDeComissao, 'tipo' | 'valor'> | null): string {
