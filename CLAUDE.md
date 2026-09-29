@@ -741,6 +741,32 @@ const procedures = await ler(
 )
 ```
 
+### 9.3.1 Pacotes (2026-09-30)
+
+Sessões de UM procedimento vendidas juntas. Até 2026-09-30 só existiam no
+banco de demonstração — nenhuma tela criava pacote nem o vendia.
+
+- **Catálogo da rede** em `/admin/procedures` (card "Pacotes",
+  `PacotesCatalogo`): procedimento, sessões, preço, validade em dias (vazio =
+  sem validade), à venda ou não. Editar pede `procedures: MANAGE` e
+  abrangência de rede (`salvarPacote`).
+- **Venda na ficha do cliente** ("Vender pacote", `VenderPacote`), para quem
+  recebe (`podeReceber`), com o vocabulário do plano: à vista, entrada +
+  parcelas, a receber (`CamposDoPagamento`, o mesmo do pagamento do contrato).
+  - `lancamentosDoPagamento` (`lib/checkout/lancamentos.ts`) monta o dinheiro:
+    o recebido agora e o a receber em lançamentos separados; a última parcela
+    leva o arredondamento.
+  - `pacote_vender` grava tudo numa transação: o pacote do cliente com o
+    RETRATO do preço, das sessões e da validade (mudar o catálogo vale para as
+    próximas vendas), todas as sessões (`AVAILABLE`) e o dinheiro com
+    `financial_transactions.client_package_id`. Recusa se a soma não fechar
+    com o preço.
+  - O a receber se quita no financeiro, como qualquer conta a receber.
+- A sessão só LÊ pacote: as políticas de INSERT/UPDATE de `client_packages` e
+  `service_packages` saíram (dava para dar sessão de graça pela chave pública).
+- Comissão da sessão: §9.7.
+- Prova: `e2e/pacotes-venda.spec.ts`.
+
 ### 9.4 Prontuário
 - `MedicalRecord`: 1 por cliente
 - `MedicalRecordEntry`: 1 por `Appointment` concluído (`appointmentId @unique`)
@@ -1030,7 +1056,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   - **A base é lida no servidor** (`linhasDoAtendimento`,
     `lib/comissoes/leitura.ts`): avulso = preço do atendimento; sessão de plano
     = CADA procedimento da sessão com o preço dele no plano (e a regra dele);
-    sessão de pacote = preço do pacote ÷ sessões. Antes a regra do primeiro
+    sessão de pacote = preço da VENDA (`client_packages.price`) ÷ sessões. Antes a regra do primeiro
     procedimento valia sobre a sessão inteira, e o pacote usava o preço que o
     navegador mandou.
   - Os insumos da linha são o custo dos movimentos do atendimento (a conta de
@@ -1044,9 +1070,10 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
     voucher o reduzem, na proporção; taxa e insumos não.
   - ATENDIMENTO: devida desde a conclusão; o pagamento acerta (taxa, base com
     pontos) e o estorno do pagamento a zera.
-  - PAGAMENTO: avulso só vale pago; plano libera na proporção do que ele
-    recebeu (receita paga, sem estorno ÷ soma dos procedimentos do plano); pacote
-    libera na conclusão (pago na venda — o sistema não registra a venda).
+  - PAGAMENTO: avulso só vale pago; plano e pacote liberam na proporção do que
+    receberam (receita paga, sem estorno ÷ soma dos procedimentos do plano, ou ÷
+    preço da venda do pacote). Pacote vendido antes de 2026-09-30 (sem venda no
+    sistema) libera na conclusão.
   - Taxa: `private.comissao_taxa_pct` (a do meio; no crédito, a da maior
     parcela cadastrada até a do recebimento). No plano, ponderada pelo que
     cada recebimento pagou.
@@ -1785,6 +1812,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Mostrar comissão de outra pessoa sem financial com escopo de todos (team e reports não bastam)
 ❌ Pagar comissão fora de comissao_fechar (a despesa e os lançamentos pagos vão juntos)
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
+❌ Criar pacote de cliente fora de pacote_vender (sessões, retrato do preço e dinheiro vão juntos)
 ❌ Dar ponto de fidelidade no TypeScript (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
 ❌ Calcular vencimento de pontos fora de fidelidade_a_expirar (é a única cópia do FIFO)
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado

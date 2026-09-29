@@ -96,15 +96,23 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
   }
 
   const sessaoDePacote = await ler(admin.from('package_sessions')
-    .select('client_packages!inner(service_packages!inner(price, total_sessions, procedure_id))')
+    .select('client_packages!inner(price, total_sessions, service_packages!inner(price, total_sessions, procedure_id))')
     .eq('appointment_id', appt.id).maybeSingle(), 'buscar a sessão do pacote')
-  const pacote = (sessaoDePacote?.client_packages as unknown as {
+  const doCliente = sessaoDePacote?.client_packages as unknown as {
+    price: number | null; total_sessions: number
     service_packages: { price: number; total_sessions: number; procedure_id: string | null } | null
-  } | null)?.service_packages
-  if (pacote) {
+  } | null
+  const pacote = doCliente?.service_packages
+  if (doCliente && pacote) {
+    // O preço da VENDA (retrato em client_packages); o pacote vendido antes de
+    // existir venda no sistema cai no preço do catálogo.
+    const vendido = doCliente.price != null
     return linhasDaComissao([{
       procedure_id: pacote.procedure_id ?? appt.procedure_id,
-      preco: precoDaSessaoDePacote(Number(pacote.price), Number(pacote.total_sessions)),
+      preco: precoDaSessaoDePacote(
+        Number(vendido ? doCliente.price : pacote.price),
+        Number(vendido ? doCliente.total_sessions : pacote.total_sessions),
+      ),
     }], regras, 'PACOTE', null)
   }
 

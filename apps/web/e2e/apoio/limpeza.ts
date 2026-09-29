@@ -169,6 +169,12 @@ export async function apagarClientes(clientes: string[], falhas: Falha[] = []): 
     if (error) falhas.push({ o_que: 'arquivos de LGPD', erro: error.message })
   }
   await passo(falhas, 'pedidos de LGPD', db.from('lgpd_requests').delete().in('client_id', clientes))
+  // As sessões ainda não usadas não têm agendamento: saem pelo pacote. (A
+  // venda cria todas de uma vez, desde 2026-09-30.)
+  const pacotesDoCliente = await ids(db.from('client_packages').select('id').in('client_id', clientes))
+  if (pacotesDoCliente.length) {
+    await passo(falhas, 'sessões dos pacotes', db.from('package_sessions').delete().in('client_package_id', pacotesDoCliente))
+  }
   await passo(falhas, 'pacotes', db.from('client_packages').delete().in('client_id', clientes))
   // A oportunidade é da PESSOA, não do cliente: perde o vínculo, não some.
   await passo(falhas, 'vínculo da oportunidade', db.from('leads').update({ client_id: null }).in('client_id', clientes))

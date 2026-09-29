@@ -1258,6 +1258,45 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Pacotes: catálogo e venda
+
+Antes, pacote só existia no banco de demonstração: nenhuma tela criava nem
+vendia, e a sessão de pacote era "paga na venda" de uma venda que o sistema não
+registrava. Decisão do Heitor: construir o catálogo e a venda, com o pagamento
+do plano.
+
+- **Catálogo em Procedimentos** (card "Pacotes", da rede): procedimento,
+  sessões, preço e validade.
+- **Venda na ficha do cliente**, para quem recebe dinheiro: à vista, entrada +
+  parcelas ou a receber. `pacote_vender` grava numa transação:
+  - o pacote com o RETRATO do preço, das sessões e da validade;
+  - todas as sessões;
+  - o dinheiro ligado ao pacote (`client_package_id`), com o recebido agora e
+    o a receber em lançamentos separados.
+- **Comissão** da sessão de pacote no modo "quando o cliente paga": liberada na
+  proporção do que o pacote recebeu, como o plano. A base é o preço da venda
+  ÷ sessões.
+- **Furo fechado:** qualquer funcionário criava `client_packages` (sessões de
+  graça) e mexia no catálogo pela chave pública. A sessão agora só lê.
+- **Campos de pagamento compartilhados:** `CamposDoPagamento` saiu do
+  "Definir pagamento" do contrato e serve aos dois.
+
+Migration `20260930000019`.
+
+**Prova:**
+- `e2e/pacotes-venda.spec.ts`, 4 casos:
+  - catálogo pela tela, e quem só vê é recusado;
+  - venda com entrada + parcelas: 4 sessões e o dinheiro 100 pago e 300 em
+    3 parcelas;
+  - comissão: 25% recebido libera 2,50, a baixa do saldo completa 10, e o
+    estorno da entrada volta a 7,50;
+  - recusas: soma que não fecha, forma inválida, quem não recebe, e o
+    PostgREST.
+- Unitários dos lançamentos.
+- Vizinhos verdes (55 testes): contrato com pagamento, conclusão, comissões,
+  pacote, permissões, RLS, portal do cliente e LGPD.
+- A limpeza do E2E passou a apagar as sessões do pacote pelo pacote.
+
 ### 2026-09-30 — Comissões: eventos e estorno do fechamento
 
 O que ficou de fora das três fases, a pedido do Heitor.
@@ -4474,7 +4513,7 @@ verdade. O que vale:
   tempo). O que ficou de fora de propósito:
   - ~~não há `comissao.liberada` nem `comissao.paga` na corrente de eventos~~ **feito**;
   - ~~fechamento pago não se estorna pela tela~~ **feito**;
-  - não há venda de pacote no sistema, então a comissão da sessão de pacote é **em andamento: catálogo e venda de pacote**;
+  - ~~não há venda de pacote no sistema~~ **feito**: catálogo e venda de pacote (ver a linha do tempo).
 
   A suíte completa depois das três fases ainda não rodou (mexeram em
   atendimento, financeiro, métricas e permissões).

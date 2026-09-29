@@ -6,6 +6,7 @@ import { getCachedBranchBySlug, getCachedClientProfileData } from '@/lib/cached-
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
+import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { getDoCliente } from '@/lib/metrics/unidade'
@@ -455,6 +456,7 @@ export default async function ClientProfilePage({
       planProcedures={planoProcs.procedures}
       planProducts={planoProcs.products}
       podeReceber={podeReceber(ctx)}
+      pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branch.id as string) : []}
       isNetworkWide={ctx.branchId === null}
       clientHistory={clientHistory}
       opportunities={oportunidades}

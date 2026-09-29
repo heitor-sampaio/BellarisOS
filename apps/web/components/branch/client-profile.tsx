@@ -23,6 +23,7 @@ import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { FidelidadeDoCliente } from '@/components/branch/fidelidade-do-cliente'
 import type { FidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
+import { VenderPacote, type PacoteAVenda } from '@/components/shared/vender-pacote'
 
 // -- Types --------------------------------------------------------------------
 
@@ -177,6 +178,8 @@ interface Props {
   planProducts?:         { id: string; name: string; unit: string }[]
   /** Pode receber: habilita fechar o plano ali mesmo. */
   podeReceber?:          boolean
+  /** O catálogo de pacotes à venda (só para quem recebe). */
+  pacotesAVenda?:        PacoteAVenda[]
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
   /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
@@ -1023,7 +1026,7 @@ export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments,
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
-  planProcedures = [], planProducts = [], podeReceber = false, termos = null,
+  planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
 }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -1259,7 +1262,8 @@ export function ClientProfile({
         <NotasDoCliente client={client} slug={slug} />
         <div className="rg-3" style={{ gap: 12, alignItems: 'start' }}>
 
-          {/* 1. Tratamento em andamento */}
+          {/* 1. Tratamento em andamento — e, para quem recebe, vender um pacote. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {activePackage ? (
             <div role="button" onClick={() => setTreatmentModalOpen(true)} style={{
               borderRadius: 'var(--radius-card)',
@@ -1294,6 +1298,10 @@ export function ClientProfile({
               <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum pacote ativo.</p>
             </div>
           )}
+          {podeReceber && currentBranchId && (
+            <VenderPacote clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} />
+          )}
+          </div>
 
           {/* 2. Próximos agendamentos */}
           {upcomingAppointments.length > 0 ? (
