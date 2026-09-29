@@ -3999,6 +3999,10 @@ and tags*: **Selected branches** → `main`; e, dentro dele, três
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 `SUPABASE_SERVICE_ROLE_KEY`. Depois, Actions → E2E → *Run workflow* roda na
 hora, sem esperar um push.
+O runner é **fixo em `ubuntu-24.04`** (não `ubuntu-latest`, que vira Ubuntu 26
+em 2026-10-19): o `playwright install --with-deps` depende da distro, e trocar
+de versão é decisão. As actions estão nas majors que rodam no Node 24
+(2026-09-29).
 
 O `.env.local` de `apps/web` precisa das chaves do Supabase, uazapi, Meta, VAPID
 e `CRON_SECRET` — ver CLAUDE.md §12. O E2E não pede nenhuma chave nova.
