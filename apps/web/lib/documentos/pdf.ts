@@ -38,7 +38,7 @@ const IDENTIDADE: Record<string, string> = {
 }
 const EVENTO: Record<string, string> = {
   EMITIDO: 'Emitido', GERADO: 'Texto montado', INCOMPLETO: 'Aguardando dados do cadastro', VISUALIZADO: 'Aberto pelo cliente',
-  LINK_GERADO: 'Link de assinatura gerado', LINK_REVOGADO: 'Link de assinatura revogado', IDENTIDADE_OK: 'Identidade conferida', IDENTIDADE_FALHOU: 'Identidade recusada',
+  LINK_GERADO: 'Link de assinatura gerado', LINK_REVOGADO: 'Link de assinatura revogado', LINK_ENVIADO_CONVERSA: 'Link enviado pela conversa do WhatsApp', IDENTIDADE_OK: 'Identidade conferida', IDENTIDADE_FALHOU: 'Identidade recusada',
   ASSINADO: 'Assinado', SUBSTITUIDO: 'Substituído', PDF_GERADO: 'PDF gerado',
 }
 

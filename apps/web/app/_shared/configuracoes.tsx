@@ -9,6 +9,7 @@ import { SettingsBranches } from '@/components/admin/settings-branches'
 import { SettingsFichas, type ItemDeFicha } from '@/components/admin/settings-fichas'
 import { SettingsDocumentos } from '@/components/admin/settings-documentos'
 import { modelosDaRede } from '@/lib/documentos/modelos'
+import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 import { normalizeFormSchema } from '@/lib/anamnesis'
 import type { IntegrationConfig } from '@/actions/integrations'
 import { listarNumerosWhatsApp, opcoesDeVinculoDoNumero } from '@/actions/integrations'
@@ -165,6 +166,7 @@ export async function Configuracoes({
   const lgpdRequests = activeTab === 'lgpd' ? await listDataRequests() : []
 
   const modelosDeDocumento = activeTab === 'documentos' ? await modelosDaRede(ctx.tenantId!) : null
+  const linkPelaConversa = activeTab === 'documentos' ? await envioPelaConversaLigado(ctx.tenantId!) : false
 
   // Idem para os dados da própria rede.
   const dadosDaRede = activeTab === 'general' ? await lerDadosDaRede() : null
@@ -311,7 +313,8 @@ export async function Configuracoes({
       )}
 
       {activeTab === 'documentos' && modelosDeDocumento && (
-        <SettingsDocumentos modelos={modelosDeDocumento} />
+        <SettingsDocumentos modelos={modelosDeDocumento}
+          envio={{ pelaConversa: linkPelaConversa, podeMudar: ctx.branchId === null }} />
       )}
 
       {activeTab === 'integrations' && (

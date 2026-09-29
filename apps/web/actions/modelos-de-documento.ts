@@ -217,6 +217,34 @@ export async function definirModeloAtivo(id: string, ativo: boolean): Promise<Re
   }
 }
 
+// ─── Envio do link de assinatura pela conversa ───────────────────────────────
+
+/**
+ * Liga ou desliga, para a REDE inteira, o envio do link de assinatura pela
+ * conversa do inbox. Por ser da rede, pede abrangência de rede — quem é de
+ * uma unidade vê a escolha, mas não a muda.
+ */
+export async function definirEnvioDoLinkPelaConversa(ligado: boolean): Promise<Resultado> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'forms', 'MANAGE')
+    if (ctx.branchId !== null) return { error: 'Esta escolha vale para a rede inteira: quem muda é quem administra a rede.' }
+    if (typeof ligado !== 'boolean') return { error: 'Escolha inválida.' }
+    const admin = createAdminClient()
+    const linhas = await gravar(admin.from('tenants')
+      .update({ documentos_link_pela_conversa: ligado })
+      .eq('id', ctx.tenantId!)
+      .select('id'), 'mudar o envio do link pela conversa')
+    if (!linhas?.length) return { error: 'Rede não encontrada.' }
+    revalidar()
+    revalidatePath('/admin/clients/[id]', 'page')
+    revalidatePath('/[slug]/clients/[id]', 'page')
+    return {}
+  } catch (e) {
+    return { error: mensagem(e) }
+  }
+}
+
 // ─── Arquivo do modelo (para conferir) ───────────────────────────────────────
 
 /** Link temporário do PDF de uma versão — só da própria rede. */

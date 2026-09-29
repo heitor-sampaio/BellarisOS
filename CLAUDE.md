@@ -874,13 +874,24 @@ DEVLOG ("Termos e contratos").
     cada tentativa furaria o limite (`ipEAparelho`).
   - WhatsApp mínimo: mensagem pronta (genérica) + `wa.me`; não depende de
     caixa conectada nem da janela de 24h.
+  - **Pela conversa do inbox é escolha da REDE**, desligada de nascença
+    (`tenants.documentos_link_pela_conversa`, Configurações → Documentos;
+    muda só quem tem `forms: MANAGE` e abrangência de rede). Ligada, a ficha
+    ganha "Enviar pela conversa" (`enviarLinkPelaConversa`): gera um link
+    NOVO e o manda por `enviarNaConversa` na conversa de WhatsApp aberta em
+    que o cliente falou por último (`conversaDoCliente`: `client_id`, senão o
+    telefone), pela caixa DA CONVERSA — nunca pelo número de quem clicou.
+    Não exige `crm`: quem manda não lê a conversa. Janela de 24h fechada: não
+    sai, e o link volta para copiar. Sem conversa: recusa ANTES de gerar
+    (não revoga o link que existe).
 - O que os canais têm em comum mora em `lib/documentos/assinar.ts` (IP,
   assinante, o evento e o PDF depois de assinar), fora de `actions/`.
 - O export da LGPD traz os termos e contratos na parte GERAL (sem dado
   clínico, por construção) e copia os PDFs assinados para o pacote.
 - Prova: `e2e/documentos-modelos.spec.ts`, `e2e/documentos-atendimento.spec.ts`,
   `e2e/checkout-de-plano.spec.ts`, `e2e/documentos-verificacao.spec.ts`,
-  `e2e/documentos-portal.spec.ts` e `e2e/documentos-link-publico.spec.ts`.
+  `e2e/documentos-portal.spec.ts`, `e2e/documentos-link-publico.spec.ts` e
+  `e2e/documentos-link-conversa.spec.ts`.
 
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação

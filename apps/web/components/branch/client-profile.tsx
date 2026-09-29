@@ -180,7 +180,7 @@ interface Props {
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
   /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
-  termos?:               { itens: ItemDeTermo[]; podeColher: boolean } | null
+  termos?:               { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean } | null
 }
 
 /** Uma oportunidade na ficha do cliente: só o que a leitura precisa. */
@@ -1574,7 +1574,7 @@ export function ClientProfile({
       {tab === 'documentos' && termos && (
         <section aria-label="Termos e contratos" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Termos e contratos</h3>
-          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} />
+          <TermosDoCliente itens={termos.itens} slug={slug} podeColher={termos.podeColher} pelaConversa={termos.pelaConversa} />
         </section>
       )}
       {tab === 'documentos' && (

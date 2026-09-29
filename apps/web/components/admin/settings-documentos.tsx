@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Pencil, FileSignature, FileText, ScrollText } from 'lucide-react'
 import { EditorDeDocumento, type ModeloEmEdicao } from '@/components/admin/editor-de-documento'
-import { definirModeloAtivo } from '@/actions/modelos-de-documento'
+import { definirModeloAtivo, definirEnvioDoLinkPelaConversa } from '@/actions/modelos-de-documento'
+import { SegSelect } from '@/components/shared/seg-select'
 import type { TipoDeModelo } from '@/lib/documentos/variaveis'
 
 /**
@@ -36,7 +37,11 @@ const GRUPOS: { tipo: TipoDeModelo; titulo: string; dica: string; icone: typeof 
 
 const MOMENTO = { AGENDAMENTO: 'nasce ao agendar', INICIO_ATENDIMENTO: 'nasce no início do atendimento' } as const
 
-export function SettingsDocumentos({ modelos }: { modelos: ItemDeModelo[] }) {
+export function SettingsDocumentos({ modelos, envio }: {
+  modelos: ItemDeModelo[]
+  /** Mandar o link de assinatura pela conversa do inbox — escolha da rede. */
+  envio:   { pelaConversa: boolean; podeMudar: boolean }
+}) {
   const router = useRouter()
   const [vista, setVista] = useState<Vista>({ modo: 'lista' })
   const [ocupado, setOcupado] = useState<string | null>(null)
@@ -147,7 +152,60 @@ export function SettingsDocumentos({ modelos }: { modelos: ItemDeModelo[] }) {
           </section>
         )
       })}
+
+      <EnvioDoLink {...envio} />
     </div>
+  )
+}
+
+/**
+ * Por onde a equipe manda o link de assinatura. Nasce em "só pelo aparelho"
+ * (copiar o link, abrir no WhatsApp de quem clicou); ligado, a ficha ganha
+ * "Enviar pela conversa", que sai pelo WhatsApp da clínica, no inbox.
+ */
+function EnvioDoLink({ pelaConversa, podeMudar }: { pelaConversa: boolean; podeMudar: boolean }) {
+  const router = useRouter()
+  const [valor, setValor] = useState(pelaConversa)
+  const [salvando, setSalvando] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
+
+  async function escolher(ligado: boolean) {
+    if (ligado === valor) return
+    setErro(null)
+    setSalvando(true)
+    setValor(ligado)
+    const r = await definirEnvioDoLinkPelaConversa(ligado)
+    setSalvando(false)
+    if (r.error) { setErro(r.error); setValor(!ligado); return }
+    router.refresh()
+  }
+
+  return (
+    <section aria-label="Envio do link de assinatura" className="card" style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Envio do link de assinatura</h2>
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2, maxWidth: 560 }}>
+          Vale para a rede inteira. O link é de uso único, vale 7 dias, e o cliente confirma o CPF (ou a data de nascimento) antes de ver o documento.
+        </p>
+      </div>
+      {podeMudar ? (
+        <SegSelect
+          options={[{ key: 'aparelho', label: 'Só pelo aparelho' }, { key: 'conversa', label: 'Também pela conversa' }]}
+          value={valor ? 'conversa' : 'aparelho'}
+          onSelect={k => { if (!salvando) void escolher(k === 'conversa') }}
+          ariaLabel="Por onde a equipe manda o link de assinatura"
+        />
+      ) : (
+        <strong style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>{valor ? 'Também pela conversa' : 'Só pelo aparelho'}</strong>
+      )}
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-soft)', lineHeight: 1.5, maxWidth: 640 }}>
+        {valor
+          ? 'Na ficha do cliente, "Enviar pela conversa" manda o link pelo WhatsApp da clínica, na conversa em que o cliente falou por último — pelo número que ele conhece, com o nome de quem enviou. Na API oficial, fora da janela de 24h (o cliente não escreveu no último dia) a mensagem não sai: a equipe copia o link ou abre no WhatsApp do aparelho.'
+          : 'A equipe copia o link ou abre no WhatsApp do próprio aparelho. Nada sai pelo WhatsApp da clínica.'}
+      </p>
+      {!podeMudar && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>Quem muda é quem administra a rede.</p>}
+      {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erro}</p>}
+    </section>
   )
 }
 

@@ -1258,6 +1258,27 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Termos e contratos: o link pela conversa do inbox (a "6b")
+
+**O que muda:** a rede escolhe, em Configurações → Documentos, se a equipe
+pode mandar o link de assinatura pela conversa do cliente no inbox ("Só pelo
+aparelho" × "Também pela conversa"; decisão do Heitor: configurável, e nasce
+desligado). Ligado, a ficha ganha "Enviar pela conversa": o link sai pelo
+WhatsApp da clínica, na conversa em que o cliente falou por último, pelo número
+DELA, com o nome de quem mandou — e aparece no inbox como qualquer resposta.
+
+- Migration `20260930000006`: `tenants.documentos_link_pela_conversa`.
+- `enviarLinkPelaConversa` (`documents: MANAGE`) usa `enviarNaConversa`, o
+  mesmo caminho do inbox e das automações, com `pelaCaixaDaConversa`. Janela
+  de 24h fechada (API oficial): não sai, e o link gerado volta para copiar.
+  Sem conversa: recusa antes de gerar. Registra `LINK_ENVIADO_CONVERSA` na
+  trilha do documento (entra na página de evidências) e emite
+  `conversa.mensagem_enviada`.
+- Mudar a opção pede `forms: MANAGE` e abrangência de rede; a unidade vê.
+- Prova: `e2e/documentos-link-conversa.spec.ts` (5 casos, caixa uazapi falsa
+  e uma oficial de janela fechada). Vizinhos (link público, modelos,
+  atendimento) verdes.
+
 ### 2026-09-30 — Termos e contratos, fase 6: o link público de assinatura
 
 **O que muda:** na ficha, "Enviar link" gera um link de uso único, válido por
@@ -4193,8 +4214,8 @@ verdade. O que vale:
 ### Próxima frente candidata
 
 **Termos e contratos: as seis fases estão feitas** (plano de 2026-09-29; ver
-as entradas de 2026-09-30). Fica como opcional a "fase 6b": enviar o link
-pela conversa aberta no inbox, com a caixa e a janela de 24h. Vale uma suíte
+as entradas de 2026-09-30). O envio do link pela conversa do inbox
+entrou como escolha da rede. Vale uma suíte
 completa: as fases mexeram em appointments, middleware, permissões e no IP da
 evidência.
 

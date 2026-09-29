@@ -15,6 +15,7 @@ import type { ClientDocumentItem } from '@/components/branch/client-documents-ta
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { documentosDoCliente, assinadosDoCliente } from '@/lib/documentos/leitura'
+import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 
 const SUBTITULO_DO_CANAL: Record<string, string> = {
   CLINICA: 'Na clínica', PAPEL: 'No papel', PORTAL: 'Pelo portal', LINK: 'Por link',
@@ -417,7 +418,8 @@ export default async function AdminClientProfilePage({
         internalCredits={internalCredits}
         documents={documents}
         termos={can(ctx, 'documents', 'VIEW')
-          ? { itens: await documentosDoCliente(ctx.tenantId!, id), podeColher: can(ctx, 'documents', 'MANAGE') }
+          ? { itens: await documentosDoCliente(ctx.tenantId!, id), podeColher: can(ctx, 'documents', 'MANAGE'),
+            pelaConversa: await envioPelaConversaLigado(ctx.tenantId!) }
           : null}
         canGrantCredit={ctx.permissions.financial === 'MANAGE'}
         branches={(branchesRaw ?? []) as { id: string; name: string }[]}

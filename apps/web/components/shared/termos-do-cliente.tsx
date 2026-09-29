@@ -8,6 +8,7 @@ import { formatDate, formatTime } from '@estetica-os/utils'
 import { rotaNoPortal } from '@/lib/rotas'
 import {
   dispensarDocumento, montarDocumentoDeNovo, pedirAssinaturaNoPortal, gerarLinkDeAssinatura, revogarLinkDeAssinatura,
+  enviarLinkPelaConversa,
   type LinkDeAssinatura,
 } from '@/actions/documentos'
 
@@ -56,12 +57,14 @@ function Situacao({ item }: { item: ItemDeTermo }) {
   }
 }
 
-export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
+export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pelaConversa = false }: {
   itens:      ItemDeTermo[]
   /** Unidade do cliente (a rota vem de `lib/rotas`, pelo portal atual). */
   slug:       string
   podeColher: boolean
   compacto?:  boolean
+  /** A rede liga o envio do link pela conversa do inbox (Configurações → Documentos). */
+  pelaConversa?: boolean
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -102,6 +105,18 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
       const r = await gerarLinkDeAssinatura(id)
       if (r.error || !r.link) { setErro(r.error ?? 'Não consegui gerar o link.'); return }
       setLink({ id, dados: r.link })
+      router.refresh()
+    })
+  }
+
+  function enviarPelaConversa(id: string) {
+    setErro(null); setAviso(null); setCopiado(false); setLink(null)
+    iniciar(async () => {
+      const r = await enviarLinkPelaConversa(id)
+      // Falhou depois de gerar (janela fechada): o link volta, para copiar.
+      if (r.link && !r.enviado) setLink({ id, dados: r.link })
+      if (r.error) { setErro(r.error); router.refresh(); return }
+      setAviso('Link enviado pela conversa do WhatsApp da clínica.')
       router.refresh()
     })
   }
@@ -194,6 +209,12 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false }: {
                   <button type="button" className="btn-secondary" disabled={ocupado} onClick={() => enviarLink(item.id)}
                     style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
                     <Link2 size={13} /> {item.linkAte || link?.id === item.id ? 'Novo link' : 'Enviar link'}
+                  </button>
+                )}
+                {item.status === 'PENDENTE' && podeColher && pelaConversa && (
+                  <button type="button" className="btn-secondary" disabled={ocupado} onClick={() => enviarPelaConversa(item.id)}
+                    style={{ padding: '6px 12px', fontSize: 'var(--text-xs-sz)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <MessageCircle size={13} /> Enviar pela conversa
                   </button>
                 )}
                 {aberto && podeColher && dispensando !== item.id && (

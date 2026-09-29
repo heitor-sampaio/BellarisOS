@@ -140,7 +140,7 @@ interface Props {
    */
   planoEmAberto?:        { planId: string; nome: string | null; emAberto: number; recebido: number } | null
   /** Termos e contratos deste atendimento. Nulo = cargo sem o módulo `documents`. */
-  documentos?:           { itens: ItemDeTermo[]; podeColher: boolean } | null
+  documentos?:           { itens: ItemDeTermo[]; podeColher: boolean; pelaConversa?: boolean } | null
 }
 
 // -- Helpers -------------------------------------------------------------------
@@ -1374,7 +1374,7 @@ export function AppointmentSession({
                 </span>
               )}
             </div>
-            <TermosDoCliente itens={documentos.itens} slug={slug} podeColher={documentos.podeColher} compacto />
+            <TermosDoCliente itens={documentos.itens} slug={slug} podeColher={documentos.podeColher} pelaConversa={documentos.pelaConversa} compacto />
           </section>
         )}
 
