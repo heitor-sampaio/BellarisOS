@@ -33,12 +33,9 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar }: {
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }} aria-label="Pacotes">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Pacotes</h2>
-          <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', marginTop: 2 }}>
-            Sessões de um procedimento vendidas juntas. A venda é na ficha do cliente.
-          </p>
-        </div>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          {pacotes.length === 1 ? '1 pacote' : `${pacotes.length} pacotes`}
+        </p>
         {podeEditar && !editando && procedimentos.length > 0 && (
           <button type="button" className="btn-secondary" onClick={() => setEditando(vazio(procedimentos[0]!.id))}>
             <Plus size={15} aria-hidden /> Novo pacote

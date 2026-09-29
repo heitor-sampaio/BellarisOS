@@ -162,6 +162,7 @@ test.describe.serial('cliente final', () => {
       '/admin/dashboard', '/admin/clients',
       `/${unidade!.slug}/dashboard`, `/${unidade!.slug}/agenda`, `/${unidade!.slug}/clients`,
       `/${unidade!.slug}/financeiro`, `/${unidade!.slug}/inbox`,
+      `/${unidade!.slug}/financeiro/comissoes`, `/${unidade!.slug}/pacotes`,
     ]
     for (const url of urls) {
       const foi = await esperarBarrado(browser, cliente!.estado, url, `cliente abriu ${url}`)

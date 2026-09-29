@@ -1258,6 +1258,25 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Menu: Vendas e Marketing separados, Pacotes com entrada própria
+
+A pedido do Heitor:
+- "Vendas e marketing" virou duas categorias:
+  - **Vendas:** Inbox, Oportunidades, Procedimentos e Pacotes;
+  - **Marketing:** Notificações, Marketing e Templates.
+- **Procedimentos** saiu de Gestão.
+- **Pacotes** ganhou tela própria (`/admin/pacotes` e `/[slug]/pacotes`, ícone
+  de ingresso) e saiu do card em Procedimentos. Na unidade, a tela é só
+  consulta.
+- A tela de cargos agrupa os módulos igual ao menu: `crm` e `procedures` em
+  Vendas, `marketing` em Marketing.
+- O `portais-isolamento` passou a conferir que o cliente final não abre
+  `/[slug]/pacotes` nem `/[slug]/financeiro/comissoes`. Esta última faltava
+  desde a fase 3 das comissões.
+
+**Prova:** unitário do menu (a divisão, nos dois portais) e E2E de pacotes,
+portais e permissões verdes.
+
 ### 2026-09-30 — Pacotes: catálogo e venda
 
 Antes, pacote só existia no banco de demonstração: nenhuma tela criava nem

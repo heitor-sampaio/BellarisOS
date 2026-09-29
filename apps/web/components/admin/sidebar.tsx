@@ -2,7 +2,7 @@
 
 import {
   LayoutGrid, Calendar, BarChart3,
-  Settings, LogOut, Sparkles, Boxes, Contact, CreditCard, Layers, Megaphone,
+  Settings, LogOut, Sparkles, Ticket, Boxes, Contact, CreditCard, Layers, Megaphone,
   UsersRound, Bell, ChevronLeft, ChevronRight, Inbox, FileText, ClipboardCheck, ClipboardList,
   Syringe, Workflow,
 } from 'lucide-react'
@@ -27,6 +27,7 @@ const ICONS: Record<string, React.ReactNode> = {
   financial:    <CreditCard size={18} />,
   stock:        <Boxes      size={18} />,
   procedures:   <Sparkles   size={18} />,
+  pacotes:      <Ticket     size={18} />,
   inbox:        <Inbox      size={18} />,
   oportunidades:<Layers     size={18} />,
   notificacoes: <Bell       size={18} />,

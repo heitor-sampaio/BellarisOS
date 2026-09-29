@@ -87,10 +87,19 @@ describe('menuSectionsFor', () => {
     expect(secoes[0]!.entries.map(e => e.key)).toEqual(['dashboard'])
   })
 
-  it('quem tem tudo vê as cinco categorias, na ordem', () => {
+  it('quem tem tudo vê as seis categorias, na ordem', () => {
     const secoes = menuSectionsFor(ADMIN_MENU, ALL_PERMISSIONS)
     expect(secoes.slice(1).map(s => s.key))
-      .toEqual(['atendimento', 'planejamento', 'vendas', 'dinheiro', 'gestao'])
+      .toEqual(['atendimento', 'planejamento', 'vendas', 'marketing', 'dinheiro', 'gestao'])
+  })
+
+  it('Vendas é o funil e o que se vende; Marketing, a captação — nos dois portais', () => {
+    const rede = menuSectionsFor(ADMIN_MENU, ALL_PERMISSIONS)
+    expect(rede.find(s => s.key === 'vendas')!.entries.map(e => e.key)).toEqual(['inbox', 'oportunidades', 'procedures', 'pacotes'])
+    expect(rede.find(s => s.key === 'marketing')!.entries.map(e => e.key)).toEqual(['notificacoes', 'marketing', 'templates'])
+    expect(rede.find(s => s.key === 'gestao')!.entries.map(e => e.key)).not.toContain('procedures')
+    const unidade = menuSectionsFor(BRANCH_MENU, ALL_PERMISSIONS)
+    expect(unidade.find(s => s.key === 'vendas')!.entries.map(e => e.key)).toEqual(['inbox', 'oportunidades', 'procedures', 'pacotes'])
   })
 
   it('Planejamento junta Tratamentos e Injetáveis', () => {

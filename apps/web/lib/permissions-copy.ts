@@ -34,9 +34,17 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
   },
   {
     key:     'vendas',
-    label:   'Vendas e marketing',
-    hint:    'Captação, negociação e fechamento',
-    modules: ['crm', 'marketing'],
+    label:   'Vendas',
+    hint:    'Negociação, fechamento e o que se vende (procedimentos e pacotes)',
+    // Procedimentos e pacotes são o que se vende — ficam ao lado do funil, como
+    // no menu (decisão do Heitor, 2026-09-30; antes era Gestão).
+    modules: ['crm', 'procedures'],
+  },
+  {
+    key:     'marketing',
+    label:   'Marketing',
+    hint:    'Captação: campanhas, notificações e templates',
+    modules: ['marketing'],
   },
   {
     key:     'dinheiro',
@@ -47,10 +55,8 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
   {
     key:     'gestao',
     label:   'Gestão e configuração',
-    hint:    'Números da rede, catálogo e quem pode o quê',
-    // Procedimentos é catálogo: monta-se uma vez e revisa-se de vez em quando,
-    // não é trabalho de venda do dia a dia.
-    modules: ['reports', 'team', 'procedures', 'forms', 'roles', 'settings'],
+    hint:    'Números da rede, fichas e quem pode o quê',
+    modules: ['reports', 'team', 'forms', 'roles', 'settings'],
   },
 ]
 

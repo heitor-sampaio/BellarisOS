@@ -2,8 +2,6 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference } from '@/lib/cached-queries'
 import { ProcedureModal } from '@/components/admin/procedure-modal'
-import { PacotesCatalogo } from '@/components/admin/pacotes-catalogo'
-import { catalogoDePacotes } from '@/lib/pacotes/leitura'
 import { ToggleProcedureBtn } from '@/components/admin/toggle-procedure-btn'
 import { Pencil, Smartphone } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -268,14 +266,6 @@ export default async function AdminProceduresPage() {
           <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} />
         </div>
       )}
-
-      {/* O catálogo de pacotes é da rede, como os procedimentos. Editar pede
-          abrangência de rede (a action confere). */}
-      <PacotesCatalogo
-        pacotes={await catalogoDePacotes(ctx.tenantId!)}
-        procedimentos={procList.filter(p => p.is_active).map(p => ({ id: p.id as string, name: p.name as string }))}
-        podeEditar={canEdit && ctx.branchId === null}
-      />
     </div>
   )
 }

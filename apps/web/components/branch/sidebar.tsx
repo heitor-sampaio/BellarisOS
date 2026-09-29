@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import {
   LayoutGrid, Calendar, Users, Sparkles,
-  Package, CreditCard, LogOut, UserCircle, Layers, ClipboardList, BarChart3,
+  Package, Ticket, CreditCard, LogOut, UserCircle, Layers, ClipboardList, BarChart3,
   ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight, Inbox, ClipboardCheck, Settings,
   Syringe,
 } from 'lucide-react'
@@ -28,6 +28,7 @@ const ICONS: Record<string, React.ReactNode> = {
   reports:    <BarChart3  size={18} />,
   financial:  <CreditCard size={18} />,
   procedures: <Sparkles   size={18} />,
+  pacotes:      <Ticket     size={18} />,
   stock:      <Package    size={18} />,
   team:       <UserCircle    size={18} />,
   settings:   <Settings      size={18} />,

@@ -77,9 +77,9 @@ const devido = async (ap: string) => ((await db().from('commissions').select('am
   .reduce((s, c) => Math.round((s + Number(c.amount)) * 100) / 100, 0)
 
 test.describe.serial('pacotes — catálogo, venda e comissão', () => {
-  test('catálogo: cria um pacote em Procedimentos; quem só vê não grava', async ({ browser }) => {
+  test('catálogo: cria um pacote em Vendas → Pacotes; quem só vê não grava', async ({ browser }) => {
     await comSessao(browser, gestor!, async p => {
-      await p.goto('/admin/procedures')
+      await p.goto('/admin/pacotes')
       const card = p.locator('[aria-label="Pacotes"]')
       await card.getByRole('button', { name: 'Novo pacote' }).click()
       await card.getByLabel('Nome do pacote').fill(NOME)
@@ -98,9 +98,9 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     pacoteId = data!.id as string
 
     await comSessao(browser, soVe!, async p => {
-      await p.goto('/admin/procedures')
+      await p.goto('/admin/pacotes')
       await expect(p.locator('[aria-label="Pacotes"]').getByRole('button', { name: 'Novo pacote' })).toHaveCount(0)
-      const r = await chamarAcao(p, 'actions/pacotes.ts', 'salvarPacote', '/admin/procedures',
+      const r = await chamarAcao(p, 'actions/pacotes.ts', 'salvarPacote', '/admin/pacotes',
         [{ name: `${PREFIXO} Invasor ${marca}`, procedure_id: rede!.procedureId, total_sessions: 3, price: 1, validity_days: null, is_active: true }])
       expect(r.texto).not.toContain('"ok":true')
     })

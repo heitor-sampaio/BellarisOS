@@ -56,7 +56,8 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
       await gravar(admin.from('service_packages').insert({ ...campos, tenant_id: ctx.tenantId!, branch_id: null })
         .select('id').single(), 'criar o pacote')
     }
-    revalidatePath('/admin/procedures')
+    revalidatePath('/admin/pacotes')
+    revalidatePath('/[slug]/pacotes', 'page')
     return { ok: true }
   } catch (e) {
     return { error: mensagemDoErro(e) }

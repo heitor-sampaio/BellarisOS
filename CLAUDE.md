@@ -746,10 +746,16 @@ const procedures = await ler(
 Sessões de UM procedimento vendidas juntas. Até 2026-09-30 só existiam no
 banco de demonstração — nenhuma tela criava pacote nem o vendia.
 
-- **Catálogo da rede** em `/admin/procedures` (card "Pacotes",
-  `PacotesCatalogo`): procedimento, sessões, preço, validade em dias (vazio =
-  sem validade), à venda ou não. Editar pede `procedures: MANAGE` e
-  abrangência de rede (`salvarPacote`).
+- **Catálogo da rede** em Vendas → Pacotes (`/admin/pacotes` e
+  `/[slug]/pacotes`, corpo em `app/_shared/pacotes.tsx`, `PacotesCatalogo`):
+  procedimento, sessões, preço, validade em dias (vazio = sem validade), à
+  venda ou não. Ver pede `procedures: VIEW`; editar, `procedures: MANAGE` e
+  abrangência de rede (`salvarPacote`) — na unidade é consulta.
+- **O menu tem Vendas e Marketing separados** (decisão do Heitor, 2026-09-30):
+  Vendas = Inbox, Oportunidades, Procedimentos e Pacotes (o funil e o que se
+  vende); Marketing = Notificações, Marketing e Templates. A tela de cargos
+  agrupa os módulos igual (`MODULE_GROUPS`: `crm` e `procedures` em Vendas,
+  `marketing` em Marketing).
 - **Venda na ficha do cliente** ("Vender pacote", `VenderPacote`), para quem
   recebe (`podeReceber`), com o vocabulário do plano: à vista, entrada +
   parcelas, a receber (`CamposDoPagamento`, o mesmo do pagamento do contrato).

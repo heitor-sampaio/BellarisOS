@@ -20,12 +20,13 @@ import type { ResolvedPermissions } from '@estetica-os/types'
  * do mesmo assunto (o que se planeja para o cliente) que saíram de `agenda` e
  * `medical_records`. Misturadas em Atendimento, ninguém achava os injetáveis.
  */
-export type MenuGroupKey = 'atendimento' | 'planejamento' | 'vendas' | 'dinheiro' | 'gestao'
+export type MenuGroupKey = 'atendimento' | 'planejamento' | 'vendas' | 'marketing' | 'dinheiro' | 'gestao'
 
 export const MENU_GROUPS: readonly { key: MenuGroupKey; label: string }[] = [
   { key: 'atendimento',  label: 'Atendimento' },
   { key: 'planejamento', label: 'Planejamento' },
-  { key: 'vendas',       label: 'Vendas e marketing' },
+  { key: 'vendas',       label: 'Vendas' },
+  { key: 'marketing',    label: 'Marketing' },
   { key: 'dinheiro',     label: 'Dinheiro e estoque' },
   { key: 'gestao',       label: 'Gestão e configuração' },
 ]
@@ -68,11 +69,15 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
 
   { key: 'inbox',        group: 'vendas',       label: 'Inbox',         href: '/admin/inbox',          visible: p => has(p, 'crm') },
   { key: 'oportunidades',group: 'vendas',       label: 'Oportunidades', href: '/admin/oportunidades',  visible: p => has(p, 'crm') },
-  { key: 'notificacoes', group: 'vendas',       label: 'Notificações',  href: '/admin/notificacoes',   visible: p => has(p, 'marketing') },
-  { key: 'marketing',    group: 'vendas',       label: 'Marketing',     href: '/admin/marketing',      visible: p => has(p, 'marketing') },
+  // O que se vende: o catálogo de procedimentos e os pacotes (decisão do
+  // Heitor, 2026-09-30 — antes, Procedimentos ficava em Gestão).
+  { key: 'procedures',   group: 'vendas',       label: 'Procedimentos', href: '/admin/procedures',     visible: p => has(p, 'procedures') },
+  { key: 'pacotes',      group: 'vendas',       label: 'Pacotes',       href: '/admin/pacotes',        visible: p => has(p, 'procedures') },
+  { key: 'notificacoes', group: 'marketing',      label: 'Notificações',  href: '/admin/notificacoes',   visible: p => has(p, 'marketing') },
+  { key: 'marketing',    group: 'marketing',      label: 'Marketing',     href: '/admin/marketing',      visible: p => has(p, 'marketing') },
   // Templates do WhatsApp oficial. Ficam aqui, e não em Configurações, porque
   // quem escreve a mensagem é o time comercial — não quem conecta a API.
-  { key: 'templates',    group: 'vendas',       label: 'Templates',     href: '/admin/templates',      visible: p => has(p, 'marketing') },
+  { key: 'templates',    group: 'marketing',      label: 'Templates',     href: '/admin/templates',      visible: p => has(p, 'marketing') },
 
   { key: 'financial',    group: 'dinheiro',     label: 'Financeiro',    href: '/admin/financeiro',     visible: p => has(p, 'financial') },
   { key: 'stock',        group: 'dinheiro',     label: 'Estoque',       href: '/admin/estoque',        visible: p => has(p, 'stock') },
@@ -81,7 +86,6 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // "Comercial" daqui: mesmo módulo, mesmo assunto, um destino só.
   { key: 'reports',      group: 'gestao',       label: 'Relatórios',    href: '/admin/reports',        visible: p => has(p, 'reports') },
   { key: 'team',         group: 'gestao',       label: 'Equipe',        href: '/admin/team',           visible: p => has(p, 'team') },
-  { key: 'procedures',   group: 'gestao',       label: 'Procedimentos', href: '/admin/procedures',     visible: p => has(p, 'procedures') },
   // Só na rede: a automação reage a fatos de todas as unidades, e uma versão
   // por filial prometeria um recorte que o motor não faz.
   { key: 'automations',  group: 'gestao',       label: 'Automações',    href: '/admin/automacoes',     visible: p => has(p, 'automations') },
@@ -103,6 +107,8 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 
   { key: 'inbox',         group: 'vendas',      label: 'Inbox',         href: '/inbox',         visible: p => has(p, 'crm') },
   { key: 'oportunidades', group: 'vendas',      label: 'Oportunidades', href: '/oportunidades', visible: p => has(p, 'crm') },
+  { key: 'procedures',    group: 'vendas',      label: 'Procedimentos', href: '/procedures',    visible: p => has(p, 'procedures') },
+  { key: 'pacotes',       group: 'vendas',      label: 'Pacotes',       href: '/pacotes',       visible: p => has(p, 'procedures') },
 
   // Só `financial`. O módulo `cashier` governa RECEBER — no atendimento e no
   // checkout do plano —, e desde que o caixa de abrir/fechar saiu não há mais
@@ -112,7 +118,6 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 
   { key: 'reports',       group: 'gestao',      label: 'Relatórios',    href: '/reports',       visible: p => has(p, 'reports') },
   { key: 'team',          group: 'gestao',      label: 'Equipe',        href: '/team',          visible: p => has(p, 'team') },
-  { key: 'procedures',    group: 'gestao',      label: 'Procedimentos', href: '/procedures',    visible: p => has(p, 'procedures') },
   // Mesma tela da rede, e pelo mesmo motivo do `/admin`: uma entrada, três
   // módulos. Quem tem unidade fixa não entra em `/admin`, então sem esta linha
   // `settings`, `roles` ou `forms` em MANAGE não valiam nada numa gerente.
