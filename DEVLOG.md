@@ -3953,9 +3953,6 @@ verdade. O que vale:
     nenhum spec está com a sua `[e2e]` de pé. A prova de isolamento nunca
     rodava; agora a pessoa de fora vem de `criarOutraRede`.
   Regra que fica: teste não pula por falta de dado que ele mesmo pode criar.
-- **Dado de demonstração em produção:** "Carla Mendes (demo)" (2 conversas, 1
-  oportunidade, telefone DDD 00), criado em 2026-09-26 para o Heitor ver o
-  inbox com duas conversas da mesma pessoa. Apagar quando ele liberar.
 
 - ~~Hidratação em `/admin/inbox`, chave de lista no estoque, e o
   lançamento que sumia da lista.~~ **Resolvidos em 2026-09-25** — ver a entrada
@@ -3964,6 +3961,16 @@ verdade. O que vale:
   celular, um navegador logado, clientes demo, nenhum número pareado no
   WhatsApp oficial. Tudo que se sabe vem de testes escritos por quem escreveu o
   código — e teste só prova o que alguém pensou em perguntar.
+
+### Antes do primeiro lançamento
+
+- **Apagar TODOS os dados de demonstração** (decisão do Heitor, 2026-09-29):
+  ficam no banco até o desenvolvimento terminar, e saem de uma vez antes de a
+  primeira clínica entrar. Não é pendência de agora — não apagar antes. Inclui:
+  - "Carla Mendes (demo)" (2 conversas, 1 oportunidade, telefone DDD 00),
+    criada em 2026-09-26 para ver o inbox com duas conversas da mesma pessoa;
+  - o que `supabase/seed_demo.sql` e `supabase/seed_demo_inbox.sql` criam;
+  - clientes, conversas, oportunidades e agendamentos criados testando à mão.
 
 ### Decidido, e registrado para não voltar à discussão
 
