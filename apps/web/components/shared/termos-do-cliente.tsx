@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Copy, FileSignature, FileText, Link2, MessageCircle, ScrollText } from 'lucide-react'
 import { formatDate, formatTime } from '@estetica-os/utils'
 import { rotaNoPortal } from '@/lib/rotas'
+import { DefinirPagamento } from '@/components/shared/definir-pagamento'
+import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import {
   dispensarDocumento, montarDocumentoDeNovo, pedirAssinaturaNoPortal, gerarLinkDeAssinatura, revogarLinkDeAssinatura,
   enviarLinkPelaConversa,
@@ -35,6 +37,9 @@ export interface ItemDeTermo {
   codigo:        string | null
   motivo:        string | null
   linkAte?:      string | null
+  /** Contrato do procedimento que cita o pagamento — a recepção o define antes da assinatura. */
+  pedePagamento?: boolean
+  pagamento?:    { rotulo: string; valor: PagamentoDoPlano | null } | null
 }
 
 const ICONE = { TERMO: FileSignature, CONTRATO: FileText, CONTRATO_PLANO: ScrollText } as const
@@ -76,6 +81,8 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
   // O link acabado de gerar: o token não fica no banco, então só se mostra agora.
   const [link, setLink] = useState<{ id: string; dados: LinkDeAssinatura } | null>(null)
   const [copiado, setCopiado] = useState(false)
+  // O contrato cujo pagamento está sendo definido (formulário aberto).
+  const [pagando, setPagando] = useState<string | null>(null)
 
   const voltar = encodeURIComponent(`${pathname}${compacto ? '' : '?aba=documentos'}`)
   const rotaDoDocumento = (id: string) => rotaNoPortal(pathname, slug, `/documentos/${id}/assinar?voltar=${voltar}`)
@@ -260,10 +267,25 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
                 )}
               </p>
             )}
-            {item.status === 'INCOMPLETO' && item.faltando.length > 0 && (
+            {item.status === 'INCOMPLETO' && item.faltando.some(f => !f.startsWith('Pagamento ·')) && (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 'var(--weight-semibold)' }}>
-                Falta no cadastro: {item.faltando.join(', ')}.
+                Falta no cadastro: {item.faltando.filter(f => !f.startsWith('Pagamento ·')).join(', ')}.
               </p>
+            )}
+            {item.pedePagamento && (
+              <p style={{ fontSize: 'var(--text-xs-sz)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+                color: item.pagamento ? 'var(--text-muted)' : 'var(--warning)', fontWeight: item.pagamento ? 'var(--weight-regular)' : 'var(--weight-semibold)' }}>
+                <span>{item.pagamento ? `Pagamento: ${item.pagamento.rotulo}` : 'Falta definir o pagamento do contrato.'}</span>
+                {aberto && podeColher && pagando !== item.id && (
+                  <button type="button" className={item.pagamento ? 'btn-ghost' : 'btn-secondary'} onClick={() => setPagando(item.id)}
+                    style={{ padding: '4px 10px', fontSize: 'var(--text-xs-sz)' }}>
+                    {item.pagamento ? 'Trocar pagamento' : 'Definir pagamento'}
+                  </button>
+                )}
+              </p>
+            )}
+            {pagando === item.id && (
+              <DefinirPagamento documentoId={item.id} atual={item.pagamento?.valor} aoTerminar={() => setPagando(null)} />
             )}
             {(item.status === 'DISPENSADO' || item.status === 'CANCELADO') && item.motivo && (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{item.motivo}</p>

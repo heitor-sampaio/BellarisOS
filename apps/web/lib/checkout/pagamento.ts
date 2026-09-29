@@ -38,6 +38,15 @@ const metodo = (m: string | null | undefined) => (m ? METODO[m] ?? `em ${m}` : n
 
 const centavos = (v: number) => Math.round(v * 100) / 100
 
+/** Para a TELA: o combinado numa frase curta, com o meio de pagamento por extenso. */
+export function frasesDoPagamento(p: PagamentoDoPlano | null): string {
+  if (!p) return 'No atendimento'
+  if (p.forma === 'AVISTA') return `À vista, ${metodo(p.metodo)}`
+  if (p.forma === 'A_RECEBER') return `A receber em ${formatDate(p.vencimento)}${p.metodo ? `, ${metodo(p.metodo)}` : ''}`
+  const entrada = p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} + ` : ''
+  return `${entrada}${p.parcelas}x ${metodo(p.metodo)}, a primeira em ${formatDate(p.primeiroVencimento)}`.replace(/^./, c => c.toUpperCase())
+}
+
 /**
  * O que o CONTRATO diz do pagamento: a frase inteira (`pagamento.forma`, que
  * sempre tem valor) e as peças para quem monta o texto à mão.

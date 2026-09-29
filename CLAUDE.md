@@ -862,6 +862,19 @@ DEVLOG ("Termos e contratos").
   pagamento (`pagamentoNormalizado`, `lib/checkout/pagamento.ts`) fica em
   `issued_documents.payment_snapshot`; trocar o pagamento depois de assinar
   SUBSTITUI o contrato (`documento_substituir`).
+- **O contrato do PROCEDIMENTO também cita o pagamento** (decisão do Heitor,
+  2026-09-30): `pagamento.*` vale em CONTRATO e CONTRATO_PLANO. No avulso o
+  pagamento só é recebido depois do atendimento, então a recepção o DEFINE
+  antes da assinatura (`definirPagamentoDoContrato`, ficha e painel da sessão;
+  o mesmo `PagamentoDoPlano` do checkout, guardado em `payment_snapshot`).
+  - Sem retrato, o pagamento está "não combinado" — diferente de "no
+    atendimento" (`{ forma: 'NADA_AGORA' }`): as variáveis ficam vazias e a
+    obrigatória (`pagamento.forma`) deixa o contrato INCOMPLETO — não assina,
+    não sai por link, e se BLOQUEIA trava o início do atendimento.
+  - Troca até a assinatura (o texto e o hash são montados de novo); assinado,
+    não muda.
+  - O recebimento na recepção já vem com o meio combinado
+    (`pagamentoCombinadoDoAtendimento`) — orienta, não trava.
 - **A trava do checkout vem ANTES do dinheiro** (`recusaDosDocumentosDoPlano`
   em `checkoutTreatmentPlanInterno`): documento que BLOQUEIA aberto, ou contrato
   assinado para OUTRO pagamento, recusam. Ela EMITE antes de conferir — quem
@@ -931,7 +944,8 @@ DEVLOG ("Termos e contratos").
 - Prova: `e2e/documentos-modelos.spec.ts`, `e2e/documentos-atendimento.spec.ts`,
   `e2e/checkout-de-plano.spec.ts`, `e2e/documentos-verificacao.spec.ts`,
   `e2e/documentos-portal.spec.ts`, `e2e/documentos-link-publico.spec.ts`,
-  `e2e/documentos-link-conversa.spec.ts` e `e2e/documentos-editor-rico.spec.ts`.
+  `e2e/documentos-link-conversa.spec.ts`, `e2e/documentos-editor-rico.spec.ts` e
+  `e2e/documentos-contrato-pagamento.spec.ts`.
 
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação

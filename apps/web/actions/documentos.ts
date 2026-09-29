@@ -202,6 +202,40 @@ export async function prepararDocumentosDoCheckout(planId: string, pagamento: un
   }
 }
 
+/**
+ * O pagamento combinado de um contrato do PROCEDIMENTO (atendimento avulso),
+ * antes de o cliente assinar — decisão do Heitor, 2026-09-30. No plano o
+ * pagamento vem do checkout; no avulso ele só é recebido depois do
+ * atendimento, então a recepção o define aqui para o contrato poder citá-lo.
+ * Sem isso, o contrato que usa `pagamento.*` fica INCOMPLETO.
+ *
+ * `null` = "no atendimento" (a receber depois, sem prazo). Trocar é possível
+ * até a assinatura: o texto é montado de novo, e o hash com ele.
+ */
+export async function definirPagamentoDoContrato(id: string, pagamento: unknown): Promise<{ error?: string; ok?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'documents', 'MANAGE')
+    if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
+    const doc = await documentoAoAlcance(ctx, id)
+    if (!doc) return { error: 'Documento não encontrado.' }
+    const admin = createAdminClient()
+    const linha = await ler(admin.from('issued_documents').select('kind').eq('id', doc.id).single(), 'buscar o tipo do documento')
+    if (linha?.kind !== 'CONTRATO' || !doc.appointment_id) {
+      return { error: 'Só o contrato do procedimento tem o pagamento definido aqui (o do plano vem do fechamento do plano).' }
+    }
+    if (!['A_GERAR', 'INCOMPLETO', 'PENDENTE'].includes(doc.status)) {
+      return { error: 'Este contrato não está mais esperando assinatura: o pagamento dele não muda.' }
+    }
+    await garantirRenderizado(ctx.tenantId!, doc.id, { forcar: true, pagamento: { valor: pagamento } })
+    revalidatePath('/admin/clients/[id]', 'page')
+    revalidatePath('/[slug]/clients/[id]', 'page')
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
 /** Um documento inteiro, para assinar DENTRO de outra tela (o checkout). */
 export async function documentoParaAssinar(id: string): Promise<{ doc?: DocumentoNaTela; error?: string }> {
   try {

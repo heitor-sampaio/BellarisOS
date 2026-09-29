@@ -4,6 +4,7 @@ import { ler } from '@/lib/db'
 import { getSignedUrl, MODELOS_DE_DOCUMENTO_BUCKET } from '@/lib/storage'
 import { VARIAVEIS_DE_DOCUMENTO } from './variaveis'
 import { urlsDasImagens } from './imagens'
+import { pagamentoDoRetrato, frasesDoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import {
   garantirRenderizado, renderizarPendentes, COLUNAS_DO_DOCUMENTO,
   type DocumentoEmitido, type StatusDoDocumento,
@@ -34,6 +35,13 @@ export interface ResumoDeDocumento {
   motivo:        string | null
   /** Link público de assinatura ainda valendo: até quando. */
   linkAte:       string | null
+  /**
+   * Contrato do procedimento que cita o pagamento: a recepção o define antes
+   * da assinatura (`definirPagamentoDoContrato`). `pagamento` é a frase do que
+   * foi combinado; nulo enquanto não foi.
+   */
+  pedePagamento: boolean
+  pagamento:     { rotulo: string; valor: PagamentoDoPlano | null } | null
 }
 
 const CATALOGO = VARIAVEIS_DE_DOCUMENTO as Record<string, { grupo: string; rotulo: string }>
@@ -90,6 +98,11 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
     codigo:        d.verification_code,
     motivo:        d.closed_reason,
     linkAte:       linkAte.get(d.id) ?? null,
+    pedePagamento: d.kind === 'CONTRATO' && !!d.appointment_id
+      && (d.payment_snapshot != null || (d.missing_fields ?? []).some(v => v.startsWith('pagamento.'))),
+    pagamento:     d.kind === 'CONTRATO' && d.payment_snapshot != null
+      ? { rotulo: frasesDoPagamento(pagamentoDoRetrato(d.payment_snapshot)), valor: pagamentoDoRetrato(d.payment_snapshot) }
+      : null,
   }))
 }
 
@@ -211,6 +224,25 @@ export async function documentosNoPortal(clientId: string): Promise<ResumoDeDocu
   if (!cliente?.tenant_id) return []
   const todos = await documentosDoCliente(cliente.tenant_id as string, clientId)
   return todos.filter(d => ['A_GERAR', 'INCOMPLETO', 'PENDENTE', 'ASSINADO'].includes(d.status))
+}
+
+/**
+ * O pagamento combinado no contrato de um atendimento avulso — a recepção
+ * recebe com esse meio já escolhido (pode trocar: o combinado orienta, não
+ * trava). Nulo quando o atendimento não tem contrato com pagamento definido.
+ */
+export async function pagamentoCombinadoDoAtendimento(
+  tenantId: string, appointmentId: string,
+): Promise<{ metodo: string | null; rotulo: string } | null> {
+  const admin = createAdminClient()
+  const linhas = await ler(admin.from('issued_documents').select('payment_snapshot')
+    .eq('tenant_id', tenantId).eq('appointment_id', appointmentId).eq('kind', 'CONTRATO')
+    .not('status', 'in', '(CANCELADO,SUBSTITUIDO,DISPENSADO)').not('payment_snapshot', 'is', null)
+    .order('created_at', { ascending: false }).limit(1), 'buscar o pagamento combinado no contrato')
+  const retrato = linhas?.[0]?.payment_snapshot
+  if (retrato == null) return null
+  const p = pagamentoDoRetrato(retrato)
+  return { metodo: p?.metodo ?? null, rotulo: frasesDoPagamento(p) }
 }
 
 /** Um documento do próprio cliente — ou null, se não for dele. */

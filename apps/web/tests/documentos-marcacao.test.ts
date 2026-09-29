@@ -84,7 +84,10 @@ describe('validarModelo', () => {
 
   it('recusa variável fora do tipo — o termo também serve ao plano', () => {
     expect(validarModelo('Em {{agendamento.data}}', 'TERMO').erro).toMatch(/não serve em termo/)
-    expect(validarModelo('{{pagamento.forma}}', 'CONTRATO').erro).toMatch(/não serve/)
+    // O pagamento não vale no termo; no contrato do procedimento passou a
+    // valer em 2026-09-30 (a recepção o define antes da assinatura).
+    expect(validarModelo('{{pagamento.forma}}', 'TERMO').erro).toMatch(/não serve/)
+    expect(validarModelo('{{pagamento.forma}}', 'CONTRATO').erro).toBeUndefined()
   })
 
   it('recusa chave mal escrita e texto vazio', () => {

@@ -134,6 +134,8 @@ interface Props {
    * mandar o cliente para a recepção. O mesmo critério de "Confirmar pagamento".
    */
   podeReceber?:          boolean
+  /** O pagamento combinado no contrato do procedimento (o recebimento já vem com o meio). */
+  pagamentoCombinado?:   { metodo: string | null; rotulo: string } | null
   /**
    * Saldo do plano de tratamento ligado a este atendimento. Nulo quando não há
    * plano ou quando não sobrou nada a receber.
@@ -305,9 +307,13 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
 }
 
 // Modal 2: Recepcionista/admin confirma pagamento
-function PaymentModal({ appointmentId, slug, price, onClose }: {
-  appointmentId: string; slug: string; price: number; onClose: () => void
+function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose }: {
+  appointmentId: string; slug: string; price: number
+  /** O pagamento combinado no contrato do procedimento: o meio já vem escolhido. */
+  pagamentoCombinado?: { metodo: string | null; rotulo: string } | null
+  onClose: () => void
 }) {
+  const metodoInicial = PAYMENT_METHODS.some(m => m.value === pagamentoCombinado?.metodo) ? pagamentoCombinado!.metodo! : 'PIX'
   const router = useRouter()
   const [state, action, pending] = useActionState(confirmPayment, null)
   // Pontos de fidelidade: só aparecem com o programa ligado e saldo positivo
@@ -399,9 +405,14 @@ function PaymentModal({ appointmentId, slug, price, onClose }: {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <label className="field-label">Forma de pagamento *</label>
-                <select name="payment_method" className="field" defaultValue="PIX">
+                <select name="payment_method" className="field" defaultValue={metodoInicial} aria-label="Forma de pagamento">
                   {PAYMENT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                 </select>
+                {pagamentoCombinado && (
+                  <p data-testid="pagamento-combinado" style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)' }}>
+                    Combinado no contrato: {pagamentoCombinado.rotulo}.
+                  </p>
+                )}
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -861,6 +872,7 @@ export function AppointmentSession({
   canCheckin, canManage, canEditRecords, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, podeReceber = false, planoEmAberto = null, documentos = null,
+  pagamentoCombinado = null,
 }: Props) {
   const router   = useRouter()
   // Portal de onde se está vendo o atendimento — `slug` é o endereço da
@@ -1261,7 +1273,7 @@ export function AppointmentSession({
       )}
       {showPayment && (
         <PaymentModal
-          appointmentId={appointment.id} slug={slug} price={appointment.price}
+          appointmentId={appointment.id} slug={slug} price={appointment.price} pagamentoCombinado={pagamentoCombinado}
           onClose={() => setShowPayment(false)}
         />
       )}

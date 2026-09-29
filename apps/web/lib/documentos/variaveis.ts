@@ -49,6 +49,7 @@ const TODOS: readonly TipoDeModelo[] = TIPOS_DE_MODELO
 const DO_PROCEDIMENTO: readonly TipoDeModelo[] = ['TERMO', 'CONTRATO']
 const SO_CONTRATO: readonly TipoDeModelo[] = ['CONTRATO']
 const SO_PLANO: readonly TipoDeModelo[] = ['CONTRATO_PLANO']
+const COM_PAGAMENTO: readonly TipoDeModelo[] = ['CONTRATO', 'CONTRATO_PLANO']
 
 export const VARIAVEIS_DE_DOCUMENTO = {
   'data.hoje':             { grupo: 'Data',        rotulo: 'Data de hoje, por extenso', tipos: TODOS, exemplo: '29 de setembro de 2026' },
@@ -87,11 +88,16 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   'plano.total':           { grupo: 'Plano',       rotulo: 'Valor total do plano', tipos: SO_PLANO, exemplo: 'R$ 4.800,00' },
   'plano.sessoes':         { grupo: 'Plano',       rotulo: 'Número de sessões', tipos: SO_PLANO, exemplo: '4' },
 
-  'pagamento.forma':       { grupo: 'Pagamento',   rotulo: 'Forma de pagamento (frase completa)', tipos: SO_PLANO, exemplo: 'Entrada de R$ 800,00 + 4x de R$ 1.000,00 no cartão de crédito' },
-  'pagamento.entrada':     { grupo: 'Pagamento',   rotulo: 'Valor da entrada',  tipos: SO_PLANO, exemplo: 'R$ 800,00', opcional: true },
-  'pagamento.parcelas':    { grupo: 'Pagamento',   rotulo: 'Número de parcelas', tipos: SO_PLANO, exemplo: '4', opcional: true },
-  'pagamento.valor_parcela': { grupo: 'Pagamento', rotulo: 'Valor da parcela',  tipos: SO_PLANO, exemplo: 'R$ 1.000,00', opcional: true },
-  'pagamento.primeiro_vencimento': { grupo: 'Pagamento', rotulo: 'Primeiro vencimento', tipos: SO_PLANO, exemplo: '10/10/2026', opcional: true },
+  // O pagamento vale nos dois contratos (decisão do Heitor, 2026-09-30): no de
+  // plano ele vem do checkout; no do procedimento, a recepção o define antes
+  // de colher a assinatura (`definirPagamentoDoContrato`) — até lá o contrato
+  // fica INCOMPLETO, porque `pagamento.forma` é obrigatória.
+  'pagamento.forma':       { grupo: 'Pagamento',   rotulo: 'Forma de pagamento (frase completa)', tipos: COM_PAGAMENTO, exemplo: 'Entrada de R$ 800,00 + 4x de R$ 1.000,00 no cartão de crédito' },
+  'pagamento.metodo':      { grupo: 'Pagamento',   rotulo: 'Meio de pagamento', tipos: COM_PAGAMENTO, exemplo: 'no cartão de crédito', opcional: true },
+  'pagamento.entrada':     { grupo: 'Pagamento',   rotulo: 'Valor da entrada',  tipos: COM_PAGAMENTO, exemplo: 'R$ 800,00', opcional: true },
+  'pagamento.parcelas':    { grupo: 'Pagamento',   rotulo: 'Número de parcelas', tipos: COM_PAGAMENTO, exemplo: '4', opcional: true },
+  'pagamento.valor_parcela': { grupo: 'Pagamento', rotulo: 'Valor da parcela',  tipos: COM_PAGAMENTO, exemplo: 'R$ 1.000,00', opcional: true },
+  'pagamento.primeiro_vencimento': { grupo: 'Pagamento', rotulo: 'Primeiro vencimento', tipos: COM_PAGAMENTO, exemplo: '10/10/2026', opcional: true },
 } as const satisfies Record<string, VariavelDeDocumento>
 
 export type NomeDeVariavel = keyof typeof VARIAVEIS_DE_DOCUMENTO

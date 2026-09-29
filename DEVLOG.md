@@ -1258,6 +1258,29 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — O pagamento no contrato do procedimento
+
+**O que muda:** as variáveis de pagamento (forma, meio, entrada, parcelas,
+valor da parcela, primeiro vencimento) passam a valer também no contrato do
+procedimento — antes, só no contrato de plano. Como no atendimento avulso o
+pagamento só é recebido depois, a recepção o DEFINE antes de colher a
+assinatura (decisão do Heitor): "Definir pagamento" na ficha e no painel da
+sessão, com o mesmo vocabulário do fechamento do plano (no atendimento, à
+vista, entrada + parcelas, a receber). Enquanto não define, o contrato mostra
+"Falta definir o pagamento" e não se assina nem sai por link; trocar é
+possível até a assinatura. Na hora de receber, o meio combinado já vem
+escolhido (a recepção pode trocar).
+
+- Nova variável `pagamento.metodo` (o meio por extenso), nos dois contratos.
+- `definirPagamentoDoContrato` (`documents: MANAGE`): só contrato do
+  procedimento, e só antes de assinado; o servidor confere a forma e monta o
+  contrato de novo com ela.
+- Prova: `e2e/documentos-contrato-pagamento.spec.ts` (4 casos: sem pagamento
+  fica INCOMPLETO e não sai por link; define entrada + parcelas pela ficha e o
+  texto cita o combinado; troca e o recebimento vem com o meio; o servidor
+  recusa pagamento torto, termo e contrato fechado). Vizinhos (plano,
+  atendimento, fechamento, fidelidade no pagamento, modelos, editor) verdes.
+
 ### 2026-09-30 — Editor rico de documentos, fase 2: a tela de edição
 
 **O que muda:** em Configurações → Documentos, o termo e o contrato se

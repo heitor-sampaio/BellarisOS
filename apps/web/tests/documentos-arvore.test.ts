@@ -132,6 +132,13 @@ describe('validação do documento do editor', () => {
     expect(ok).toMatchObject({ variaveis: ['cliente.nome'], usaPagamento: false })
     expect(ok.documento).toBeTruthy()
   })
+
+  it('o pagamento vale no contrato do procedimento e no de plano, não no termo', () => {
+    const comPagamento = doc(p({ type: 'variavel', attrs: { nome: 'pagamento.forma' } }), p({ type: 'variavel', attrs: { nome: 'pagamento.metodo' } }))
+    expect(validarDocumentoDoEditor(comPagamento, 'CONTRATO', null)).toMatchObject({ usaPagamento: true, variaveis: ['pagamento.forma', 'pagamento.metodo'] })
+    expect(validarDocumentoDoEditor(comPagamento, 'CONTRATO_PLANO', null).erro).toBeUndefined()
+    expect(validarDocumentoDoEditor(comPagamento, 'TERMO', null).erro).toMatch(/não servem em termo/)
+  })
 })
 
 describe('medidas da imagem (pelo cabeçalho do arquivo)', () => {

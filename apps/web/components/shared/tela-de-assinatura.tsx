@@ -274,6 +274,11 @@ export function TelaDeAssinatura({ doc, podeColher, voltar, rotaDoCliente, aoTer
               {!noPortal && <ul style={{ paddingLeft: 18, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', listStyle: 'disc' }}>
                 {doc.faltando.map(f => <li key={f}>{f}</li>)}
               </ul>}
+              {!noPortal && doc.faltando.some(f => f.startsWith('Pagamento ·')) && (
+                <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                  O pagamento do contrato se define na ficha do cliente, em Termos e contratos (“Definir pagamento”).
+                </p>
+              )}
               {podeColher && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {rotaDoCliente && <Link href={`${rotaDoCliente}?aba=dados`} className="btn-secondary">Completar o cadastro</Link>}

@@ -93,7 +93,7 @@ async function dadosDoPlano(doc: DocumentoEmitido) {
 }
 
 /** Tudo que as variáveis de um documento podem pedir. */
-async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPlano | null): Promise<DadosDoDocumento> {
+async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPlano | null, definido: boolean): Promise<DadosDoDocumento> {
   const admin = createAdminClient()
   const [cliente, rede, unidade, procedimento, agendamento] = await Promise.all([
     ler(admin.from('clients')
@@ -120,7 +120,14 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
   const doPlano = doc.treatment_plan_id && !doc.appointment_id ? await dadosDoPlano(doc) : null
   return {
     ...(doPlano ?? {}),
-    pagamento:    doPlano && doc.kind === 'CONTRATO_PLANO' ? valoresDoPagamento(pagamento, doPlano.plano.total) : null,
+    pagamento:    doPlano && doc.kind === 'CONTRATO_PLANO'
+      ? valoresDoPagamento(pagamento, doPlano.plano.total)
+      // Contrato do procedimento: sobre o valor do atendimento, e só depois de
+      // a recepção definir. Sem isso as variáveis ficam vazias — e a
+      // obrigatória (`pagamento.forma`) deixa o documento INCOMPLETO.
+      : doc.kind === 'CONTRATO' && agendamento
+        ? (definido ? valoresDoPagamento(pagamento, Number(agendamento.price)) : {})
+        : null,
     agora:        new Date(),
     cliente:      cliente as DadosDoDocumento['cliente'],
     rede:         rede as DadosDoDocumento['rede'],
@@ -177,7 +184,10 @@ export async function garantirRenderizado(
 
   if (versao.source === 'EDITOR') {
     const pagamento = opcoes.pagamento ? opcoes.pagamento.valor : pagamentoDoRetrato(doc.payment_snapshot)
-    const valores = valoresDoDocumento(await dadosDoDocumento(doc, pagamento))
+    // "Definido" é diferente de "nada agora": no contrato do procedimento, sem
+    // retrato nenhum o pagamento ainda não foi combinado e o documento espera.
+    const definido = !!opcoes.pagamento || doc.payment_snapshot != null
+    const valores = valoresDoDocumento(await dadosDoDocumento(doc, pagamento, definido))
     const r = interpolar(documentoDaVersao(versao, tenantId), v => valores[v] ?? null, ehOpcional)
     conteudo = formaCanonica(r.documento)
     texto = textoDoDocumento(r.documento)
