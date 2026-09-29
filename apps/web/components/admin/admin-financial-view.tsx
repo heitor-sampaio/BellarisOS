@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useTransition, useRef } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet, Users,
@@ -258,6 +259,7 @@ export function AdminFinancialView({
             onSelect={(k) => navigate(k)}
             ariaLabel="Selecionar período"
           />
+          <Link href="/admin/financeiro/comissoes" className="btn-secondary">Comissões</Link>
           {period === 'custom' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <input type="date" value={customF} onChange={e => setCustomF(e.target.value)} className="field" style={{ width: 140, fontSize: 'var(--text-sm-sz)', padding: '5px 10px' }} />

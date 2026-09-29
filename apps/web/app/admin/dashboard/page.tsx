@@ -1,4 +1,4 @@
-﻿import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, isOwnScope } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
@@ -15,7 +15,7 @@ import { startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ, partsInTZ } from '@/lib/
 import {
   resolvePeriod, ratio, percent, EMPTY_CORE,
   getCore, getByBranch, getSeries, getTopProcedures, getTopProfessionals,
-  getTopClients, getLeadFunnel,
+  getTopClients, getLeadFunnel, getRankingDeComissao,
 } from '@/lib/metrics'
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
 import { seedDefaultFunnel } from '@/actions/crm-funnels'
@@ -359,12 +359,16 @@ export default async function AdminDashboardPage({
     name: p.name, revenue: p.revenue, pct: barPct(p.revenue, maxProfRevenue),
   }))
 
-  // Comissões por profissional — a consulta antiga filtrava por
-  // `commissions.created_at`, coluna que não existe: o PostgREST devolvia erro,
-  // o erro era descartado e o ranking ficava permanentemente vazio.
-  const byProfComm  = [...professionalStats].sort((a, b) => b.commission - a.commission)
-  const maxProfComm = byProfComm[0]?.commission ?? 0
-  const topProfessionalsByCommission = byProfComm.map(p => ({
+  // Comissões por profissional. Quanto cada um ganha é do FINANCEIRO, e de
+  // todos: o ranking vivia dentro da seção de equipe, e quem só via a equipe
+  // (ou só as próprias comissões) via o de todo mundo. E ordena pela comissão
+  // de verdade — antes era o top 5 por atendimentos, reordenado.
+  const verComissoesDaEquipe = canFinancial && !isOwnScope(ctx, 'financial')
+  const rankingDeComissao = verComissoesDaEquipe && needsCore
+    ? await getRankingDeComissao({ ...metricArgs, limit: 5 })
+    : []
+  const maxProfComm = rankingDeComissao[0]?.commission ?? 0
+  const topProfessionalsByCommission = rankingDeComissao.map(p => ({
     name: p.name, amount: p.commission, pct: barPct(p.commission, maxProfComm),
   }))
 
@@ -547,6 +551,7 @@ export default async function AdminDashboardPage({
         topProfessionals={topProfessionals}
         topProfessionalsByRevenue={topProfessionalsByRevenue}
         topProfessionalsByCommission={topProfessionalsByCommission}
+        verComissoesDaEquipe={verComissoesDaEquipe}
         procedureMargins={procedureMargins}
 
         bestRatedPros={bestRatedPros}

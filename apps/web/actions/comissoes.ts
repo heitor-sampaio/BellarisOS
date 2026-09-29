@@ -15,10 +15,12 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras } from '@/lib/comissoes/config'
+import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
+import { periodoDaChave } from '@/lib/comissoes/periodo'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -85,6 +87,52 @@ export async function salvarRegrasDoProfissional(profissionalId: string, entrada
       p_padrao: padrao, p_excecoes: excecoes, p_ator: ctx.internalUserId ?? null,
     }), 'salvar as regras de comissão')
     revalidar()
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+const METODOS_DO_FECHAMENTO = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD'] as const
+
+/**
+ * Fecha e paga o que está a pagar a um profissional numa unidade, até o fim
+ * do período (ou até agora, se o período ainda corre). Uma função no banco
+ * (`comissao_fechar`) grava tudo junto — o fechamento, a DESPESA paga no
+ * financeiro e os lançamentos marcados pagos — e dois cliques fecham uma vez.
+ */
+export async function fecharComissoes(
+  profissionalId: string, branchId: string, periodoChave: string, metodo: string,
+): Promise<{ error?: string; ok?: true }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'financial', 'MANAGE')
+    // Quem só vê as próprias não fecha nem as próprias.
+    if (ownerFilter(ctx, 'financial')) return { error: 'Seu cargo vê só as próprias comissões: quem fecha é o financeiro.' }
+    const uuid = /^[0-9a-f-]{36}$/i
+    if (!uuid.test(profissionalId) || !uuid.test(branchId)) return { error: 'Profissional ou unidade inválidos.' }
+    if (!(METODOS_DO_FECHAMENTO as readonly string[]).includes(metodo)) return { error: 'Escolha a forma de pagamento.' }
+
+    const admin = createAdminClient()
+    const unidade = await ler(admin.from('branches').select('id')
+      .eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
+    if (!unidade || !alcancaUnidade(ctx, branchId)) return { error: 'Unidade não encontrada.' }
+
+    const { periodo: tipo } = await configDeComissaoDaRede(ctx.tenantId!)
+    const periodo = periodoDaChave(periodoChave, tipo)
+    if (!periodo) return { error: 'Período inválido.' }
+    const agora = new Date()
+    const fim = periodo.fim.getTime() < agora.getTime() ? periodo.fim : agora
+
+    await gravar(admin.rpc('comissao_fechar', {
+      p_tenant: ctx.tenantId!, p_profissional: profissionalId, p_unidade: branchId,
+      p_fim: fim.toISOString(), p_ator: ctx.internalUserId ?? null, p_metodo: metodo,
+    }), 'fechar as comissões')
+
+    revalidatePath('/admin/financeiro')
+    revalidatePath('/admin/financeiro/comissoes')
+    revalidatePath('/[slug]/financeiro', 'page')
+    revalidatePath('/[slug]/financeiro/comissoes', 'page')
     return { ok: true }
   } catch (e) {
     return { error: mensagemDoErro(e) }

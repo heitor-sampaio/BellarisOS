@@ -1258,6 +1258,61 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Comissões, fase 3 (de 3): fechamento e quem vê o quê
+
+**Financeiro → Comissões**, nos dois portais (`/admin/financeiro/comissoes`,
+`/[slug]/financeiro/comissoes`, o link fica no cabeçalho do financeiro):
+- os períodos são os da configuração (mensal, quinzenal ou semanal, no fuso);
+- por profissional e unidade: o que foi lançado, o que foi pago e o que está a
+  pagar, agregado no banco (`comissoes_resumo`);
+- o extrato de cada um (procedimento, cliente, base, regra, motivo) e a
+  exportação em CSV;
+- os últimos fechamentos.
+
+**"Fechar e pagar"** (`comissao_fechar`, uma transação):
+- reivindica o que está a pagar até o fim do período;
+- cria o fechamento e uma **despesa paga** ("Comissões", na unidade, com a
+  forma escolhida) e marca os lançamentos como pagos;
+- dois cliques fecham uma vez;
+- fechamento não se reabre: o estorno que chegar depois fica negativo para o
+  próximo, e saldo negativo não fecha.
+
+**Quem vê quanto cada um ganha:**
+- **Financeiro com escopo de todos.** Com "só os meus", a pessoa vê "Minhas
+  comissões" e não fecha. O financeiro da rede, que mandava essa pessoa para
+  um "perfil" que não existia, agora a leva para lá.
+- **Vazamentos fechados:** o ranking de comissão do dashboard estava sob
+  `team`, e a comissão na aba Profissionais dos relatórios sob `reports`. Os
+  dois mostravam a de todos a quem não via o financeiro; agora o dado nem sai
+  do servidor.
+- **O ranking ordena pela comissão** (`metrics_ranking_comissao`). Antes era o
+  top 5 por atendimentos, reordenado, e quem mais ganhou podia nem aparecer.
+
+**Métricas pelo lançamento.** O período de uma comissão passa a ser o
+`released_at` em todas as `metrics_*`. O cenário de indicadores ganhou dois
+lançamentos que mostram a troca: um ajuste de março lançado em abril fica
+fora, e o acerto de um atendimento de fevereiro lançado em março entra. Os
+valores mudaram, à mão: aberto 25, ranking 35.
+
+**Limpeza:** `loyalty_configs.commission_base` saiu do banco (o código no ar já
+não a lia).
+
+**Migrations:** `20260930000014` (a coluna da fidelidade), `…15` (fechamento e
+leituras da tela) e `…16` (métricas; o bloco de `metrics_relatorio` é trocado
+por texto conferido — a migration falha se o trecho não estiver lá).
+
+**Prova:**
+- `e2e/comissoes-fechamento.spec.ts`, 4 casos:
+  - fechar pela tela gera a despesa e marca pago;
+  - estorno depois do fechamento, saldo negativo recusado, e dois cliques
+    concorrentes que fecham uma vez;
+  - quem vê só as próprias: redirecionada, só a própria linha, action recusada;
+  - dashboard e relatórios sem a comissão para quem só vê a equipe, com o
+    financeiro como controle.
+- Unitários dos períodos.
+- Vizinhos (66 testes): indicadores, coerência dos relatórios, financeiro,
+  portais, permissões e os specs de comissão.
+
 ### 2026-09-30 — Comissões, fase 2 (de 3): o cálculo e o extrato
 
 **O que muda:** a comissão deixa de ser um número gravado uma vez e passa a
@@ -4386,22 +4441,15 @@ verdade. O que vale:
 
 ### Dívida técnica conhecida
 
-- **Comissões, fase 3** (plano aprovado em 2026-09-30, ver a linha do tempo):
-  - o fechamento por período, com despesa;
-  - Financeiro → Comissões (extrato, fechar e pagar, CSV);
-  - o profissional vendo as próprias;
-  - as métricas pelo `released_at`.
+- ~~**Comissões, fases 2 e 3**~~ **concluídas em 2026-09-30** (ver a linha do
+  tempo). O que ficou de fora de propósito:
+  - não há `comissao.liberada` nem `comissao.paga` na corrente de eventos;
+  - fechamento pago não se estorna pela tela;
+  - não há venda de pacote no sistema, então a comissão da sessão de pacote é
+    liberada na conclusão.
 
-  Os vazamentos continuam até lá: o dashboard e os relatórios mostram a
-  comissão de todos a quem só pode ver a própria, e o ranking ordena por
-  comissão só depois de cortar o top 5 por atendimentos.
-
-  **Limpeza em duas etapas:**
-  - A migration `20260930000013` saiu depois do deploy das fases 1 e 2. Ela
-    tirou `commission_rules.branch_id` e o ramo `comissao` singular de
-    `concluir_atendimento`.
-  - `loyalty_configs.commission_base` sai no deploy seguinte. O código daquele
-    deploy ainda a selecionava na leitura da fidelidade; o de agora já não lê.
+  A suíte completa depois das três fases ainda não rodou (mexeram em
+  atendimento, financeiro, métricas e permissões).
 
 - **Contato separado da conversa — o que sobrou** (a ordem combinada terminou
   em 2026-09-26):

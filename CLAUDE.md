@@ -996,7 +996,7 @@ DEVLOG ("Termos e contratos").
   e o **próprio estorno**. A contra-transação não leva `appointment_id` (há
   UNIQUE nele — levar fazia todo estorno de atendimento falhar).
 
-### 9.7 Comissões (reforma em três fases, 2026-09-30 — fases 1 e 2 no código)
+### 9.7 Comissões (reforma de 2026-09-30, três fases no código)
 
 Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 
@@ -1058,7 +1058,37 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `trg_atendimento_concluido_nao_cancela` + `updateAppointmentStatus`): tem
   prontuário, baixa e comissão. Desfazer o dinheiro é estornar o pagamento.
 - `period_ref` do lançamento é o mês de `released_at` (fuso de SP).
-- Prova: `e2e/comissoes-configuracao.spec.ts` e `e2e/comissoes-calculo.spec.ts`.
+- **O período de uma comissão é o do LANÇAMENTO** (`released_at`), em toda
+  métrica (`metrics_core`, `_by_branch`, `_commissions_detail`,
+  `_top_professionals`, a aba Profissionais de `metrics_relatorio`) e no
+  fechamento — não o do atendimento: o ajuste de outubro de um atendimento de
+  setembro é dinheiro de outubro, e o plano no modo "quando paga" libera meses
+  depois da sessão.
+- **Fechamento** (Financeiro → Comissões, `/admin/financeiro/comissoes` e
+  `/[slug]/financeiro/comissoes`, corpo em `app/_shared/comissoes-da-equipe.tsx`):
+  - Os períodos são os da configuração, no fuso (`lib/comissoes/periodo.ts`:
+    mensal, quinzenal 1–15/16–fim, semanal segunda a domingo).
+  - A tela lê do banco, agregado: `comissoes_resumo` (por profissional e
+    unidade: lançado, a pagar, pago) e `comissoes_extrato`. O CSV é o extrato,
+    montado no navegador.
+  - "Fechar e pagar" (`fecharComissoes`, `financial: MANAGE`, e nunca com
+    escopo OWN) chama `comissao_fechar`, que numa transação reivindica o que
+    está ABERTO e não fechado até o fim do período (ou até agora),
+    cria `commission_payouts` e a **despesa paga** (categoria "Comissões", na
+    unidade) e marca os lançamentos `PAID` com `payout_id`. Trava por
+    profissional e unidade: dois cliques fecham uma vez.
+  - Fechamento não se reabre: estorno depois dele vira lançamento negativo
+    no próximo. Saldo negativo não fecha.
+- **Quem vê quanto cada um ganha é o financeiro com escopo de TODOS.** Com
+  OWN, a pessoa vê só a própria linha ("Minhas comissões"; o financeiro da rede
+  a manda para lá) e não fecha. O ranking do dashboard e a comissão na aba
+  Profissionais dos relatórios exigem `financial` sem OWN — o dado nem sai do
+  servidor. Antes ficavam sob `team` e `reports`, e mostravam a de todos.
+- O ranking de comissão é `metrics_ranking_comissao` (ordena pela comissão;
+  o dashboard reordenava o top 5 por atendimentos).
+- Prova: `e2e/comissoes-configuracao.spec.ts`, `e2e/comissoes-calculo.spec.ts`
+  e `e2e/comissoes-fechamento.spec.ts`; os valores do eixo novo no
+  `e2e/indicadores-cenario.spec.ts`.
 
 ### 9.8 Push Notifications
 - Dois canais: **Web Push** (VAPID) no navegador e **FCM** no app Android
@@ -1742,6 +1772,9 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Gravar em commissions fora de comissao_acertar_linha, ou calcular valor de comissão no TypeScript (a conta é comissao_alvo)
 ❌ Mandar ao banco a base de comissão que o navegador enviou (plano e pacote se leem em linhasDoAtendimento)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
+❌ Recortar comissão por scheduled_at do atendimento (o período é o do lançamento, released_at)
+❌ Mostrar comissão de outra pessoa sem financial com escopo de todos (team e reports não bastam)
+❌ Pagar comissão fora de comissao_fechar (a despesa e os lançamentos pagos vão juntos)
 ❌ Dar ponto de fidelidade no TypeScript (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
 ❌ Calcular vencimento de pontos fora de fidelidade_a_expirar (é a única cópia do FIFO)
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado

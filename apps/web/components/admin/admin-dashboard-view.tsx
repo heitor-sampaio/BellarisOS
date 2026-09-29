@@ -101,6 +101,8 @@ export interface AdminDashboardProps {
   topProfessionals:              { name: string; count: number; pct: number }[]
   topProfessionalsByRevenue:     { name: string; revenue: number; pct: number }[]
   topProfessionalsByCommission:  { name: string; amount: number; pct: number }[]
+  /** Ver quanto cada um ganha: financeiro com escopo de todos (o ranking vem vazio sem). */
+  verComissoesDaEquipe: boolean
   procedureMargins:   { name: string; price: number; cost: number; marginPct: number }[]
 
   bestRatedPros:      { name: string; avgRating: number; count: number }[]
@@ -383,7 +385,7 @@ export function AdminDashboardView({
   pendingPlans, lowStockItems, stockStatus, zeroStockCount, lowStockCount, stockTurnover,
   evolutionData,
   branchOccupancy,
-  topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, procedureMargins,
+  topProcedures, topProceduresByRevenue, topRecurring, topProfessionals, topProfessionalsByRevenue, topProfessionalsByCommission, verComissoesDaEquipe, procedureMargins,
   bestRatedPros, worstRatedPros, bestRatedProcedures, worstRatedProcedures,
   topClients, topClientsByRecurrence, clientAgeGroups, topClientsByLocation,
   hotmapRawBranches, hotmapRawCepCounts, hotmapRawCepLtv,
@@ -1138,8 +1140,8 @@ export function AdminDashboardView({
           )}
         </div>
 
-        {/* Ranking — Comissão */}
-        <div className="card" style={{ padding: '18px 20px' }}>
+        {/* Ranking — Comissão: é do financeiro de todos, não da equipe. */}
+        {verComissoesDaEquipe && <div className="card" style={{ padding: '18px 20px' }}>
           <div style={{ marginBottom: 16 }}>
             <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Ranking — Comissão</span>
           </div>
@@ -1156,7 +1158,7 @@ export function AdminDashboardView({
               ))}
             </div>
           )}
-        </div>
+        </div>}
 
       </div>
 

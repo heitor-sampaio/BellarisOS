@@ -207,12 +207,29 @@ export async function getTopClients(args: Args & { limit?: number }): Promise<Cl
   }))
 }
 
+/**
+ * Quem mais tem comissão LANÇADA no período, ordenado pela comissão. O
+ * dashboard reordenava o top 5 por atendimentos — quem mais ganhou podia nem
+ * estar nele.
+ */
+export async function getRankingDeComissao(args: Args & { limit?: number }): Promise<{ professionalId: string; name: string; commission: number }[]> {
+  const { data, error } = await createAdminClient().rpc('metrics_ranking_comissao', {
+    ...baseArgs(args), p_limit: args.limit ?? 5,
+  })
+  logRpcError('metrics_ranking_comissao', error)
+  return ((data as Record<string, unknown>[] | null) ?? []).map(r => ({
+    professionalId: String(r.professional_id),
+    name:           String(r.professional_name),
+    commission:     n(r.commission),
+  }))
+}
+
 export type CommissionEntry = {
   id: string; professionalId: string; professionalName: string
   amount: number; isPaid: boolean; referenceAt: string
 }
 
-/** Extrato de comissões do período (a referência é a data do atendimento). */
+/** Extrato de comissões do período (a referência é o LANÇAMENTO, `released_at`). */
 export async function getCommissionsDetail(args: Args): Promise<CommissionEntry[]> {
   const { data, error } = await createAdminClient().rpc('metrics_commissions_detail', baseArgs(args))
   logRpcError('metrics_commissions_detail', error)

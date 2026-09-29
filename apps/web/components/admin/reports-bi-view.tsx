@@ -80,6 +80,8 @@ export interface ReportsBiProps {
    * segunda regra de faturamento ao lado do KPI (§13.1).
    */
   relatorio: Relatorio
+  /** Vê a comissão da equipe (financeiro com escopo de todos). Sem, a aba Profissionais não a mostra. */
+  verComissoes: boolean
   installments: LinhaParcela[]
   productBatches: LinhaLote[]
   retention: { clientsServed: number; returningClients: number; firstTimeClients: number }
@@ -744,11 +746,11 @@ function TabProcedimentos(p: ReportsBiProps) {
 // TAB: PROFISSIONAIS
 // -----------------------------------------------------------------------------
 function TabProfissionais(p: ReportsBiProps) {
-  const { relatorio: r, core, corePrev } = p
+  const { relatorio: r, core, corePrev, verComissoes } = p
 
   const profissionais = r.porProfissional.length
   const totalAppts    = core.appointmentsCompleted
-  // Comissões do núcleo: o período é o do atendimento que as gerou.
+  // Comissões do núcleo: o período é o do LANÇAMENTO (released_at).
   const commOpen      = core.commissionsOpen
   const commPaid      = core.commissionsPaid
 
@@ -785,8 +787,10 @@ function TabProfissionais(p: ReportsBiProps) {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <KpiCard label="Profissionais Ativos" value={profissionais} format="int" />
         <KpiCard label="Atendimentos"         value={totalAppts}    format="int" delta={pctDelta(totalAppts, corePrev.appointmentsCompleted)} showDelta />
-        <KpiCard label="Comissões em Aberto"  value={commOpen}      format="brl" accent="var(--warning)" />
-        <KpiCard label="Comissões Pagas"      value={commPaid}      format="brl" accent="var(--success)" />
+        {verComissoes && <>
+          <KpiCard label="Comissões em Aberto"  value={commOpen}      format="brl" accent="var(--warning)" />
+          <KpiCard label="Comissões Pagas"      value={commPaid}      format="brl" accent="var(--success)" />
+        </>}
       </div>
       <div className="rg-2" style={{ gap: 16 }}>
         <SCard title="Receita Gerada por Profissional">
@@ -795,9 +799,11 @@ function TabProfissionais(p: ReportsBiProps) {
         <SCard title="Atendimentos por Profissional">
           <HBarChart data={byCount} color={CHART_COLORS[1]} formatValue={(v) => String(v)} />
         </SCard>
-        <SCard title="Comissões por Profissional" style={{ gridColumn: '1 / -1' }}>
-          <SimpleTable columns={commCols} rows={commRows} />
-        </SCard>
+        {verComissoes && (
+          <SCard title="Comissões por Profissional" style={{ gridColumn: '1 / -1' }}>
+            <SimpleTable columns={commCols} rows={commRows} />
+          </SCard>
+        )}
       </div>
     </div>
   )

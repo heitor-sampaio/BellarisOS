@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
-import { getTenantContext, podeVerRelatorio } from '@/lib/auth'
+import { getTenantContext, podeVerRelatorio, can, isOwnScope } from '@/lib/auth'
 import type { ChartPoint } from '@/components/admin/evolution-chart'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ReportsBiDynamic as ReportsBiView } from '@/components/admin/reports-bi-dynamic'
@@ -159,6 +159,15 @@ export async function ReportsBiSection({
     }),
   ])
 
+  // Quanto cada um ganha é do FINANCEIRO de todos: a aba Profissionais é de
+  // relatórios, e mostrava a comissão da equipe inteira a quem não vê o
+  // financeiro (ou só vê as próprias). O dado nem sai do servidor.
+  const verComissoes = can(ctxDoCargo, 'financial', 'VIEW') && !isOwnScope(ctxDoCargo, 'financial')
+  if (!verComissoes) {
+    relatorio.comissoesPorProfissional = []
+    for (const nucleo of [core, corePrev]) { nucleo.commissionsOpen = 0; nucleo.commissionsPaid = 0 }
+  }
+
   const productBatches = (productBatchesRaw ?? []) as unknown as LinhaLote[]
   const installments   = ((installmentsRaw  ?? []) as unknown as LinhaParcela[])
     .filter(i => branchIds.includes(i.financial_transactions?.branch_id ?? ''))
@@ -246,6 +255,7 @@ export async function ReportsBiSection({
         evolutionData={evolutionData}
         core={core}
         corePrev={corePrev}
+        verComissoes={verComissoes}
         comercial={comercial}
       />
     </>

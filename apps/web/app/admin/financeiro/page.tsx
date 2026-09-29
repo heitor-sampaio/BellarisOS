@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { getTenantContext, assertPermission, can, isOwnScope } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AdminFinancialView } from '@/components/admin/admin-financial-view'
@@ -69,15 +70,9 @@ export default async function AdminFinanceiroPage({
   }
 
   // Alcance "só as próprias" não vira consolidado meio filtrado: sairiam
-  // números com cara de total que não são total.
-  if (soAsProprias) {
-    return (
-      <div style={{ padding: '24px 4px', color: 'var(--text-muted)', fontSize: 'var(--text-base-sz)' }}>
-        Seu cargo vê apenas as próprias comissões, que aparecem no seu perfil —
-        o consolidado da rede não é exibido aqui.
-      </div>
-    )
-  }
+  // números com cara de total que não são total. A pessoa vai para as
+  // comissões dela — a tela para a qual este aviso apontava não existia.
+  if (soAsProprias) redirect('/admin/financeiro/comissoes')
   const metricArgs = { tenantId: ctx.tenantId!, branchIds, from: start, to: end }
 
   const [core, prevCore, branchMetrics, txsRaw, clientsRaw] = await Promise.all([

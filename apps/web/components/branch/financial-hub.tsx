@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useMemo, useTransition, useRef } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   TrendingUp, TrendingDown, Wallet,
@@ -650,6 +651,7 @@ export function FinancialHub({
             onSelect={(k) => navigatePeriod(k)}
             ariaLabel="Selecionar período"
           />
+          <Link href={`/${slug}/financeiro/comissoes`} className="btn-secondary">Comissões</Link>
           {period === 'custom' && (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
               <input

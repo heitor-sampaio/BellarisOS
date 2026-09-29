@@ -78,8 +78,18 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     await tx({ type: 'EXPENSE', category: 'Estorno', amount: 55, is_paid: true, paid_at: dia(16, 11), created_at: dia(16, 11), client_id: c2.id, description: `Estorno: ${PREFIXO} t5 estornada` })
     await tx({ type: 'EXPENSE', amount: 30, is_paid: false, created_at: dia(17), description: `${PREFIXO} t6 despesa pendente` })
 
-    await ins('commissions', { branch_id: unidade.id, professional_id: prof!.id, appointment_id: a1.id, amount: 20, type: 'PERCENTAGE', rule_value: 10, status: 'OPEN', period_ref: '2021-03' })
-    await ins('commissions', { branch_id: unidade.id, professional_id: prof!.id, appointment_id: a2.id, amount: 10, type: 'PERCENTAGE', rule_value: 10, status: 'PAID', period_ref: '2021-03' })
+    const comissao = (ap: string, amount: number, status: string, quando: string, kind = 'LIBERACAO') => ins('commissions', {
+      branch_id: unidade.id, professional_id: prof!.id, appointment_id: ap, amount, type: 'PERCENTAGE', rule_value: 10,
+      status, kind, period_ref: quando.slice(0, 7), released_at: quando,
+    })
+    await comissao(a1.id, 20, 'OPEN', dia(10))
+    await comissao(a2.id, 10, 'PAID', dia(11))
+    // O período da comissão é o do LANÇAMENTO (released_at), desde 2026-09-30:
+    // um ajuste de a1 lançado em ABRIL fica fora de março, e um acerto de a0
+    // (atendimento de FEVEREIRO) lançado em março entra. Pelo eixo antigo
+    // (scheduled_at do atendimento) seria o contrário.
+    await comissao(a1.id, -2, 'OPEN', '2021-04-02T10:00:00-03:00', 'AJUSTE')
+    await comissao(a0.id, 5, 'OPEN', dia(12), 'AJUSTE')
 
     // Estoque: um insumo normal, um crítico, um zerado; o Proc A consome 2 do
     // normal (custo 10 → margem 95% em a1, 90% em a2); e um consumo no dia 10
@@ -166,7 +176,7 @@ test.describe.serial('indicadores com cenário conhecido', () => {
       completed: 2, total: 5, cancelled: 1, noShow: 1,
       minutes: 60 + 30 + 20, // cancelado e falta não ocupam agenda
       newClients: 1,        // só C2: C1 é antigo e C3 é de OUTRA unidade
-      commOpen: 20, commPaid: 10,
+      commOpen: 25, commPaid: 10, // 20 de a1 + 5 do acerto de a0 lançado em março; o −2 é de abril
     })
   })
 
@@ -191,6 +201,7 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     const r = data!.find((l: Record<string, unknown>) => l.branch_id === c!.unidade)!
     expect([num(r.revenue_cash), num(r.revenue_pending), num(r.expenses_cash), num(r.service_revenue), num(r.new_clients)])
       .toEqual([300, 70, 40, 300, 1])
+    expect([num(r.commissions_open), num(r.commissions_paid)], 'comissão pelo lançamento, como no núcleo').toEqual([25, 10])
     // Conta TODAS as movimentações da janela, estorno incluído — é contagem de
     // lançamentos, não de dinheiro: t1..t6 e a contra-transação.
     expect(num(r.transactions_count)).toBe(7)
@@ -204,7 +215,13 @@ test.describe.serial('indicadores com cenário conhecido', () => {
 
     const { data: profs } = await db.rpc('metrics_top_professionals', { ...args(), p_limit: 5 })
     expect(profs!.map((p: Record<string, unknown>) => [p.professional_id, num(p.appointments), num(p.revenue), num(p.commission)]))
-      .toEqual([[c!.profissional, 2, 300, 30]])
+      .toEqual([[c!.profissional, 2, 300, 35]]) // comissão LANÇADA em março: 20 + 10 + 5
+
+    // O ranking de comissão ordena pela comissão (o do dashboard era o top 5
+    // por atendimentos, reordenado).
+    const { data: ranking, error: eRanking } = await db.rpc('metrics_ranking_comissao', { ...args(), p_limit: 5 })
+    expect(eRanking).toBeNull()
+    expect(ranking!.map((p: Record<string, unknown>) => [p.professional_id, num(p.commission)])).toEqual([[c!.profissional, 35]])
 
     const { data: clis } = await db.rpc('metrics_top_clients', { ...args(), p_limit: 10 })
     expect(clis!.map((x: Record<string, unknown>) => [x.client_id, num(x.total_spent), num(x.appointments)]))
@@ -214,7 +231,7 @@ test.describe.serial('indicadores com cenário conhecido', () => {
   test('comissões em detalhe, retenção e clientes novos no tempo', async () => {
     const db = banco()
     const { data: com } = await db.rpc('metrics_commissions_detail', args())
-    expect(com!.map((x: Record<string, unknown>) => [num(x.amount), x.is_paid]).sort()).toEqual([[10, true], [20, false]])
+    expect(com!.map((x: Record<string, unknown>) => [num(x.amount), x.is_paid]).sort()).toEqual([[10, true], [20, false], [5, false]])
 
     const { data: ret } = await db.rpc('metrics_retention', args())
     expect([num(ret![0]!.clients_served), num(ret![0]!.returning_clients), num(ret![0]!.first_time_clients)])
@@ -291,7 +308,7 @@ test.describe.serial('indicadores com cenário conhecido', () => {
     expect(nums(porCategoria, ['receita'])).toEqual([{ categoria: 'e2e', receita: 300 }])
 
     const profs = await aba('profissionais')
-    expect(nums(profs.comissoes_por_profissional, ['aberta', 'paga']).map(x => [x.aberta, x.paga])).toEqual([[20, 10]])
+    expect(nums(profs.comissoes_por_profissional, ['aberta', 'paga']).map(x => [x.aberta, x.paga])).toEqual([[25, 10]])
 
     // Estoque: 10×5 + 1×10 + 0×2 = 60; um crítico, um zerado.
     const estoque = await aba('estoque')
