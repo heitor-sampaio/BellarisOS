@@ -27,7 +27,11 @@ permissions:
 
 jobs:
   e2e:
-    runs-on: ubuntu-latest
+    # Fixo, não `ubuntu-latest`: o `playwright install --with-deps` instala as
+    # bibliotecas do sistema pela lista da distro, e o `latest` vira Ubuntu 26
+    # em 2026-10-19 sem ninguém pedir. Trocar de versão é decisão, junto com
+    # conferir que o Playwright do projeto suporta a nova.
+    runs-on: ubuntu-24.04
     environment: e2e
     timeout-minutes: 60
     defaults:
@@ -42,11 +46,11 @@ jobs:
       TZ: America/Sao_Paulo
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -81,7 +85,7 @@ jobs:
 
       - name: Relatório das falhas
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-falhas
           path: apps/web/test-results/
