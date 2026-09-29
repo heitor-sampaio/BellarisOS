@@ -120,7 +120,7 @@ export async function garantirClienteRapido(
 
   if (error || !cliente) return { error: `Erro ao cadastrar o cliente: ${error?.message ?? 'desconhecido'}` }
 
-  await gravar(admin.from('loyalty_accounts').insert({ client_id: cliente.id }), 'abrir a conta de fidelidade')
+  await gravar(admin.rpc('fidelidade_conta', { p_cliente: cliente.id }), 'abrir a conta de fidelidade')
 
   // A corrente de eventos. Sai daqui, e não das actions, pelo mesmo motivo do
   // agendamento: cliente nasce por três caminhos (cadastro rápido no agendar,

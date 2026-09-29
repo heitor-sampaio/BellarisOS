@@ -322,7 +322,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
     async () => {
       const admin = createAdminClient()
       const [
-        appts, loyalty, medRecord, pkgs, docsRaw,
+        appts, medRecord, pkgs, docsRaw,
         txAppts, directTxRaw, credits, branchesRaw,
         activePlansRaw, allPlansHistRaw,
       ] = await Promise.all([
@@ -332,11 +332,6 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
           .eq('client_id', clientId)
           .order('scheduled_at', { ascending: false })
           .limit(60),
-        admin
-          .from('loyalty_accounts')
-          .select('balance')
-          .eq('client_id', clientId)
-          .maybeSingle(),
         admin
           .from('medical_records')
           .select('id, general_anamnesis, consent_terms(id, title, signed_at, signed_via), entries:medical_record_entries(appointment_id, notes, form_data, created_at)')
@@ -402,7 +397,6 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
 
       return {
         appts:          appts.data,
-        loyalty:        loyalty.data,
         medRecord:      medRecord.data,
         pkgs:           pkgs.data,
         docsRaw:        docsRaw.data,

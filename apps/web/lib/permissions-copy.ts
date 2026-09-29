@@ -30,7 +30,7 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
     key:     'atendimento',
     label:   'Atendimento',
     hint:    'O dia a dia com o cliente na unidade',
-    modules: ['agenda', 'clients', 'medical_records'],
+    modules: ['agenda', 'clients', 'loyalty', 'medical_records'],
   },
   {
     key:     'vendas',
@@ -68,6 +68,11 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     NONE:   SEM_ACESSO,
     VIEW:   'Abre a lista de clientes e a ficha completa: histórico, compras, pagamentos e documentos.',
     MANAGE: 'Tudo do Ver, mais cadastrar cliente novo, editar dados, anexar documentos e inativar cliente.',
+  },
+  loyalty: {
+    NONE:   SEM_ACESSO,
+    VIEW:   'Vê o saldo e o extrato de pontos do cliente.',
+    MANAGE: 'Tudo do Ver, mais creditar e debitar pontos à mão, com motivo. Ligar o programa e definir as regras é Configurações.',
   },
   medical_records: {
     NONE:   SEM_ACESSO,

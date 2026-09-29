@@ -2,7 +2,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import Link from 'next/link'
-import { CalendarDays, Star, ChevronRight, Sparkles } from 'lucide-react'
+import { CalendarDays, ChevronRight, Sparkles } from 'lucide-react'
+import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 
 // -- Helpers --------------------------------------------------------
 function fmtDateTime(iso: string) {
@@ -49,8 +50,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
 
   const admin = createAdminClient()
 
-  const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, loyaltyRes] = await Promise.all([
-    ler(admin.from('clients').select('name').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
+  const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos] = await Promise.all([
+    ler(admin.from('clients').select('name, tenant_id').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
     ler(admin.from('appointments')
       .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
       .eq('client_id', ctx.clientId!)
@@ -77,10 +78,8 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .in('status', ['PROPOSED', 'ACCEPTED'])
       .order('created_at', { ascending: false })
       .limit(3), 'buscar os planos'),
-    ler(admin.from('loyalty_accounts')
-      .select('balance')
-      .eq('client_id', ctx.clientId!)
-      .maybeSingle(), 'buscar os pontos'),
+    // O saldo é a soma do extrato — não mais loyalty_accounts.balance.
+    saldoDoCliente(ctx.clientId!, null, admin),
   ])
 
   const clientName   = (clientRes as { name: string } | null)?.name ?? 'você'
@@ -90,7 +89,11 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const allPackages  = (packagesRes ?? []) as unknown as ActivePackage[]
   const activePkgs   = allPackages.filter(p => Number(p.used_sessions) < Number(p.total_sessions))
   const activePlans  = (plansRes ?? []) as unknown as ActivePlan[]
-  const points       = Number((loyaltyRes as { balance: number } | null)?.balance ?? 0)
+  const points       = Number(saldoDePontos ?? 0)
+  // O cliente não carrega a rede no token: ela vem da ficha dele. Programa
+  // desligado = nenhum sinal de pontos, nem com saldo.
+  const redeDoCliente = (clientRes as { tenant_id: string | null } | null)?.tenant_id ?? null
+  const fidelidadeLigada = redeDoCliente ? (await configDaRede(redeDoCliente, admin)).enabled : false
 
   const hasActiveTreatments = activePkgs.length > 0 || activePlans.length > 0
 
@@ -114,8 +117,9 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       </div>
 
       {/* -- Pontos de fidelidade ----------------------------------- */}
-      {points > 0 && (
-        <div style={{
+      {fidelidadeLigada && (
+        <Link href={`/${slug}/cliente/fidelidade`} data-testid="cartao-de-pontos" style={{
+          textDecoration: 'none',
           background:    'var(--gradient-brand)',
           borderRadius:  14,
           padding:       '16px 20px',
@@ -132,8 +136,10 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
               {points.toLocaleString('pt-BR')}
             </p>
           </div>
-          <Star size={32} strokeWidth={1.5} style={{ opacity: 0.5 }} />
-        </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-xs-sz)', fontWeight: 700 }}>
+            Ver extrato <ChevronRight size={16} />
+          </div>
+        </Link>
       )}
 
       {/* -- Aguardando confirmação --------------------------------- */}

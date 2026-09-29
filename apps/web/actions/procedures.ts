@@ -97,6 +97,8 @@ async function addProcedureInterno(
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
   // Consulta de avaliação: abre o planejamento de tratamento no atendimento.
   const fichaId = (formData.get('form_id') as string)?.trim() || null
+  const pontos = pontosDeFidelidade(formData)
+  if (pontos === 'invalido') return { error: 'Pontos de fidelidade inválidos.' }
   const branchIds      = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
   const products       = JSON.parse((formData.get('products')       as string) || '[]') as { product_id: string; quantity: number; unit_cost: number }[]
   const branchPricing  = JSON.parse((formData.get('branch_pricing') as string) || '[]') as { branch_id: string; price: number | null; labor_cost: number | null }[]
@@ -128,6 +130,7 @@ async function addProcedureInterno(
       other_costs:           otherCosts,
       visible_on_client_app: visibleOnClientApp,
       form_id:               fichaId,
+      ...(pontos !== undefined && { loyalty_points: pontos }),
       is_active:             true,
     })
     .select('id')
@@ -217,6 +220,8 @@ async function updateProcedureInterno(
   const visibleOnClientApp = formData.get('visible_on_client_app') === 'on'
   // Consulta de avaliação: abre o planejamento de tratamento no atendimento.
   const fichaId = (formData.get('form_id') as string)?.trim() || null
+  const pontos = pontosDeFidelidade(formData)
+  if (pontos === 'invalido') return { error: 'Pontos de fidelidade inválidos.' }
   const branchIds     = JSON.parse((formData.get('branch_ids')     as string) || '[]') as string[]
   const products      = JSON.parse((formData.get('products')       as string) || '[]') as { product_id: string; quantity: number; unit_cost: number }[]
   const branchPricing = JSON.parse((formData.get('branch_pricing') as string) || '[]') as { branch_id: string; price: number | null; labor_cost: number | null }[]
@@ -247,7 +252,7 @@ async function updateProcedureInterno(
   // Atualiza dados básicos
   const { error } = await admin
     .from('procedures')
-    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, form_id: fichaId })
+    .update({ name, category, description, duration_min: durationMin, price, labor_cost: laborCost, other_costs: otherCosts, visible_on_client_app: visibleOnClientApp, form_id: fichaId, ...(pontos !== undefined && { loyalty_points: pontos }) })
     .eq('id', procedureId)
     .eq('tenant_id', ctx.tenantId!)
 
@@ -320,4 +325,19 @@ async function toggleProcedureStatusInterno(procedureId: string, isActive: boole
 
   revalidatePath('/admin/procedures')
   revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
+}
+
+/**
+ * Os pontos de fidelidade do procedimento, do formulário.
+ *
+ * O campo só aparece quando a rede ganha por procedimento: AUSENTE = não mexe no
+ * que está gravado (undefined); vazio = sem pontos (null).
+ */
+function pontosDeFidelidade(formData: FormData): number | null | undefined | 'invalido' {
+  if (!formData.has('loyalty_points')) return undefined
+  const bruto = String(formData.get('loyalty_points') ?? '').trim()
+  if (bruto === '') return null
+  const n = Number(bruto)
+  if (!Number.isInteger(n) || n < 0 || n > 1_000_000) return 'invalido'
+  return n
 }

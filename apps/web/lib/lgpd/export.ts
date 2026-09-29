@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { buildPdf, type PdfSection } from '@/lib/pdf'
 import { ensurePrivateBucket } from '@/lib/storage'
 import { formatBRL, formatDate, formatDateTime, maskCPF, maskPhone } from '@estetica-os/utils'
+import { rotuloDoLancamento } from '@/lib/fidelidade/formato'
 
 /**
  * Monta o pacote de dados pessoais de um cliente (LGPD art. 18, II e V).
@@ -72,7 +73,8 @@ export async function buildClientExport(
     admin.from('internal_credits')
       .select('created_at, amount, description, branch_id').eq('client_id', clientId),
     admin.from('loyalty_accounts')
-      .select('balance, created_at, loyalty_transactions(created_at, points, description)')
+      // O saldo é a SOMA do extrato (balance deixou de ser escrito em 2026-09-28).
+      .select('created_at, loyalty_transactions(created_at, kind, points, description, branches(name))')
       .eq('client_id', clientId).maybeSingle(),
     admin.from('client_packages')
       .select('purchased_at, expires_at, total_sessions, used_sessions, service_packages(name)')
@@ -208,9 +210,10 @@ export async function buildClientExport(
     {
       title: 'Programa de fidelidade',
       emptyLabel: 'Sem conta de fidelidade.',
-      fields: loyalty ? [['Saldo de pontos', String(loyalty.balance ?? 0)]] : [],
-      lines: ((loyalty?.loyalty_transactions ?? []) as { created_at: string; points: number; description: string }[])
-        .map(t => `${fmtDate(t.created_at)} — ${t.points > 0 ? '+' : ''}${t.points} pontos — ${t.description ?? ''}`),
+      fields: loyalty ? [['Saldo de pontos', String(((loyalty.loyalty_transactions ?? []) as { points: number }[])
+        .reduce((soma, l) => soma + Number(l.points), 0))]] : [],
+      lines: ((loyalty?.loyalty_transactions ?? []) as unknown as { created_at: string; kind: string; points: number; description: string; branches: { name: string } | null }[])
+        .map(t => `${fmtDate(t.created_at)} — ${rotuloDoLancamento(t.kind)} — ${t.points > 0 ? '+' : ''}${t.points} pontos — ${t.description ?? ''}${t.branches?.name ? ` (${t.branches.name})` : ''}`),
     },
     {
       title: `Pacotes (${(packages ?? []).length})`,

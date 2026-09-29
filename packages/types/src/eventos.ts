@@ -74,6 +74,11 @@ export const EVENTOS = {
   PACOTE_SESSAO_USADA: 'pacote.sessao_usada',
   COMISSAO_GERADA:     'comissao.gerada',
 
+  // ── Fidelidade ────────────────────────────────────────────────────────
+  // Sai do GATILHO do pagamento, como `pagamento.*` (origem 'banco', sem ator):
+  // o ponto nasce onde o pagamento nasce, em qualquer um dos lugares.
+  FIDELIDADE_PONTOS_GANHOS: 'fidelidade.pontos_ganhos',
+
   // ── Clínico ───────────────────────────────────────────────────────────
   PRONTUARIO_ENTRADA_CRIADA: 'prontuario.entrada_criada',
   ANAMNESE_RESPONDIDA:       'anamnese.respondida',
@@ -117,7 +122,7 @@ export type EntidadeDeEvento =
   | 'agendamento' | 'cliente' | 'lead' | 'conversa'
   | 'pagamento' | 'plano' | 'pacote' | 'comissao'
   | 'prontuario' | 'anamnese' | 'termo' | 'injetavel' | 'foto' | 'estoque'
-  | 'procedimento' | 'membro' | 'cargo' | 'integracao'
+  | 'procedimento' | 'membro' | 'cargo' | 'integracao' | 'fidelidade'
 
 /**
  * De onde o fato veio. Webhook, cron, banco e automação não têm ator humano.
@@ -438,6 +443,7 @@ export const ROTULOS_DE_EVENTO: Record<NomeDeEvento, string> = {
   'plano.criado':        'Plano criado',
   'plano.proposto':      'Plano proposto',
   'plano.aceito':        'Plano aceito',
+  'fidelidade.pontos_ganhos': 'Cliente ganhou pontos',
   'pacote.sessao_usada': 'Sessão de pacote usada',
   'comissao.gerada':     'Comissão gerada',
 

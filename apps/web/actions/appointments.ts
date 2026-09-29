@@ -727,7 +727,7 @@ async function cancelAppointmentSessionInterno(
 
 // --- Concluir atendimento (fluxo completo) ------------------------
 // -- Profissional finaliza o atendimento (clínico) -----------------------------
-// Cria prontuário, baixa estoque, registra comissão e pontos.
+// Cria prontuário, baixa estoque e registra a comissão. Os pontos nascem no pagamento.
 // NÃO cria transação financeira — isso é responsabilidade de confirmPayment.
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -781,7 +781,7 @@ async function finishSessionInterno(
 
     // ─── Calcula ───────────────────────────────────────────────────────────
     // O app decide os números; `concluir_atendimento` (banco) grava tudo numa
-    // transação — status, prontuário, comissão, pontos, insumos, pacote e
+    // transação — status, prontuário, comissão, insumos, pacote e
     // histórico (CLAUDE.md §10). Até 2026-09-28 eram gravações soltas: falhar
     // a quinta deixava as quatro primeiras, e o atendimento ficava concluído
     // com comissão e sem baixa de estoque, sem jeito de refazer.
@@ -817,15 +817,9 @@ async function finishSessionInterno(
         })()
       : null
 
-    // Pontos de fidelidade
-    const loyaltyConfig = await ler(admin
-      .from('loyalty_configs')
-      .select('points_per_real')
-      .eq('tenant_id', apptBranch!.tenant_id)
-      .maybeSingle(), 'buscar a regra de fidelidade')
-    const pontos = loyaltyConfig
-      ? Math.floor(parseFloat(String(appt.price)) * parseFloat(String(loyaltyConfig.points_per_real ?? 0)))
-      : 0
+    // Pontos de fidelidade: NÃO aqui. Desde 2026-09-28 o ponto nasce quando o
+    // atendimento é PAGO (gatilho trg_fidelidade_ganho) — atendimento concluído
+    // e não pago não é dinheiro que entrou.
 
     // Insumos
     //
@@ -916,7 +910,7 @@ async function finishSessionInterno(
       p_tenant:      ctx.tenantId!,
       p_ator:        ctx.internalUserId,
       p_ator_nome:   userName,
-      p_dados:       { notas: notes, intercorrencias: intercurrences, comissao, pontos, insumos },
+      p_dados:       { notas: notes, intercorrencias: intercurrences, comissao, insumos },
     }), 'concluir o atendimento') as { comissao_criada: boolean; pacote: string | null } | null
 
     // ─── Depois: os avisos do que aconteceu ───────────────────────────────

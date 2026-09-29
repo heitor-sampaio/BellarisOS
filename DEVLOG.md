@@ -1258,6 +1258,33 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-29 — Fidelidade configurável, fase 1: config, ganho no pagamento, extrato e ajuste
+
+"Vamos pensar de uma maneira que possa ser usado ou não e configurado pela rede,
+como quiser." O programa existia só no esqueleto: nenhuma rede tinha config, nem
+havia tela para criá-la, e o ponto nascia na conclusão sobre o preço. Plano de
+quatro fases aprovado (decisões do Heitor: ganho por real pago OU por
+procedimento; resgate como desconto e por catálogo com voucher; validade e
+abrangência escolhidas pela rede; comissão com desconto configurável).
+
+Fase 1 (migration `20260929000001`):
+- **Config por rede**, desligada por padrão: aba Fidelidade em Configurações
+  (liga/desliga, modo de ganho e taxa, base da comissão).
+- **Ponto nasce no pagamento** (gatilho `trg_fidelidade_ganho`, evento
+  `fidelidade.pontos_ganhos`), estorno tira, plano cumulativo, crédito interno
+  não gera; `concluir_atendimento` perdeu o passo dos pontos.
+- **Pontos por procedimento**: campo no cadastro do procedimento (só nesse modo).
+- **Ficha do cliente**: saldo, extrato com autor e "Ajustar pontos" com motivo
+  (`ajustar_pontos`); **portal**: cartão e página "Meus pontos".
+- **Saldo = soma do extrato**; extrato e conta só se leem pela sessão (antes a
+  equipe gravava pontos direto pela chave pública).
+- Módulo `loyalty` volta ao catálogo (herda o nível de `clients`).
+- O teste pegou um erro real: `floor(120 × (100 ÷ 300))` dava 39 — a regra
+  multiplica antes de dividir.
+- `e2e/fidelidade-ganho.spec.ts` (7) e `e2e/fidelidade-ajuste.spec.ts` (4),
+  `tests/fidelidade-config.test.ts`; vizinhos rodados (RLS, fechamento,
+  estorno, crédito, portal, LGPD, checkout, permissões): passaram.
+
 ### 2026-09-28 — "Criando…" eterno: bug do Next; o nome vem da pessoa; erro na tela
 
 Três pendências fechadas de uma vez.
@@ -3819,11 +3846,10 @@ verdade. O que vale:
 
 ### Próxima frente candidata
 
-**Fidelidade**: hoje só existe saldo read-only no portal do
-cliente. Falta configurar regras (`loyalty_configs`), creditar e debitar
-pontos, extrato e resgate como desconto no pagamento. O módulo foi removido do
-catálogo de permissões em `4511b5c` por não ter gate nenhum — volta quando
-existir.
+**Fidelidade — fases 2 a 4** (plano aprovado pelo Heitor em 2026-09-28; fase 1
+feita em 2026-09-29): desconto com pontos no pagamento (com `loyalty_discount` e a
+comissão pela `commission_base`), catálogo de recompensas com voucher, e
+validade + abrangência por unidade (cron de expiração).
 
 ---
 

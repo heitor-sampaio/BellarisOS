@@ -87,9 +87,9 @@ describe('MODULE_LEVELS', () => {
     }
   })
 
-  it('declara níveis para os 15 módulos, sem sobra', () => {
+  it('declara níveis para os 16 módulos, sem sobra', () => {
     expect(Object.keys(MODULE_LEVELS).sort()).toEqual([...ALL_MODULES].sort())
-    expect(ALL_MODULES).toHaveLength(15)
+    expect(ALL_MODULES).toHaveLength(16)
   })
 })
 

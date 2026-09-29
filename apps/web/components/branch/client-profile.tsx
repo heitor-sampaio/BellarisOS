@@ -3,7 +3,7 @@
 import React, { useActionState, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Star, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
+import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
 import { grantInternalCredit, updateClientContactData, lookupClientByCpf, toggleClientStatus } from '@/actions/clients'
 import { TreatmentFileModal } from './treatment-file-modal'
 import { ClientDocumentsTab } from './client-documents-tab'
@@ -20,6 +20,8 @@ import { rotaComParams } from '@/lib/query-params'
 import { CLIENT_TAGS, isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
 import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { FidelidadeDoCliente } from '@/components/branch/fidelidade-do-cliente'
+import type { FidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 
 // -- Types --------------------------------------------------------------------
 
@@ -147,7 +149,8 @@ interface Props {
   upcomingAppointments:  ProfileAppointment[]
   recentAppointments:    ProfileAppointment[]
   allAppointments:       ProfileAppointment[]
-  loyaltyBalance:        number
+  /** Nulo = programa de fidelidade desligado ou cargo sem o módulo: nada de pontos na ficha. */
+  fidelidade:            FidelidadeDoPerfil | null
   activePackage:         ProfilePackage | null
   sessionNotes:          string
   transactions:          ProfileTransaction[]
@@ -1015,7 +1018,7 @@ function FinanceiroTab({
 
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments,
-  loyaltyBalance, activePackage,
+  fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false,
 }: Props) {
@@ -1211,7 +1214,7 @@ export function ClientProfile({
           { label: 'SESSÕES',          value: String(stats.totalSessions) },
           { label: 'INVESTIDO TOTAL — LTV',  value: fmtBRL(stats.totalInvested) },
           { label: 'TICKET MÉDIO',     value: fmtBRL(stats.ticketMedio) },
-          { label: 'PONTOS',           value: loyaltyBalance.toLocaleString('pt-BR') },
+          ...(fidelidade ? [{ label: 'PONTOS', value: fidelidade.saldo.toLocaleString('pt-BR') }] : []),
         ].map(k => (
           <div key={k.label} className="card" style={{ padding: '14px 18px' }}>
             <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.06em', marginBottom: 6 }}>
@@ -1384,14 +1387,14 @@ export function ClientProfile({
           </div>
         </div>{/* fim grid 3 colunas */}
 
-          {/* Pontos de fidelidade (rodapé discreto) */}
-          {loyaltyBalance > 0 && (
-            <div className="card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Star size={14} style={{ color: 'var(--brand)', flexShrink: 0 }} />
-              <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
-                <strong style={{ color: 'var(--text)' }}>{loyaltyBalance.toLocaleString('pt-BR')} pontos</strong> de fidelidade acumulados
-              </p>
-            </div>
+          {/* Fidelidade: só com o programa ligado e o módulo no cargo. */}
+          {fidelidade && (
+            <FidelidadeDoCliente
+              clientId={client.id}
+              fidelidade={fidelidade}
+              branches={branches}
+              unidadePadrao={currentBranchId || branchId}
+            />
           )}
         </div>
       )}

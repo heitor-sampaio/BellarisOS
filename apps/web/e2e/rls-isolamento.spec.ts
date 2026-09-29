@@ -75,7 +75,7 @@ async function criarProntuario(
   const fid = await passo<{ id: string }>('fidelidade', db.from('loyalty_accounts')
     .upsert({ client_id: cliente.id }, { onConflict: 'client_id' }).select('id').single())
   const pontos = await passo<{ id: string }>('pontos', db.from('loyalty_transactions')
-    .insert({ loyalty_account_id: fid.id, points: 10, description: `${PREFIXO} e2e` }).select('id').single())
+    .insert({ loyalty_account_id: fid.id, branch_id: onde.branchId, kind: 'AJUSTE', points: 10, description: `${PREFIXO} e2e` }).select('id').single())
   return {
     clientId: cliente.id, recordId: rec.id, entryId: ent.id, appointmentId: ag.id,
     photoId: foto.id, anamnesisId: ana.id, consentId: termo.id, loyaltyId: fid.id, pointsId: pontos.id,

@@ -14,6 +14,7 @@ import type { ProfileClient, ProfileStats, ProfileAppointment, ProfilePackage, P
 import type { ClientDocumentItem } from '@/components/branch/client-documents-tab'
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
+import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS']
 
@@ -67,7 +68,7 @@ export default async function AdminClientProfilePage({
 
   const [
     appts,
-    loyalty,
+    fidelidade,
     medRecord,
     pkgs,
     docsRaw,
@@ -85,11 +86,8 @@ export default async function AdminClientProfilePage({
       .order('scheduled_at', { ascending: false })
       .limit(60), 'carregar os agendamentos do cliente'),
 
-    ler(admin
-      .from('loyalty_accounts')
-      .select('balance')
-      .eq('client_id', id)
-      .maybeSingle(), 'carregar os pontos'),
+    // Nulo com o programa desligado ou sem o módulo no cargo: a ficha não mostra pontos.
+    fidelidadeDoPerfil(ctx, id),
 
     ler(admin
       .from('medical_records')
@@ -410,7 +408,7 @@ export default async function AdminClientProfilePage({
         allAppointments={allAppointments}
         recordForms={recordForms}
         generalAnamnesis={generalAnamnesis}
-        loyaltyBalance={loyalty?.balance ?? 0}
+        fidelidade={fidelidade}
         activePackage={activePackage}
         sessionNotes={sessionNotes}
         transactions={transactions}

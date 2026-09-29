@@ -177,6 +177,15 @@ export const CAMPOS_DO_EVENTO: Record<NomeDeEvento, CampoDeEvento[]> = {
   [EVENTOS.PAGAMENTO_RECEBIDO]:  PAGAMENTO,
   [EVENTOS.PAGAMENTO_ESTORNADO]: PAGAMENTO,
 
+  [EVENTOS.FIDELIDADE_PONTOS_GANHOS]: [
+    campo('clienteNome', 'Nome do cliente'),
+    campo('clienteId',   'Id do cliente'),
+    campo('pontos',      'Pontos ganhos', 'numero'),
+    campo('saldo',       'Saldo de pontos', 'numero'),
+    campo('valor',       'Valor pago', 'numero'),
+    campo('pagamentoId', 'Id do pagamento'),
+  ],
+
   [EVENTOS.PLANO_CRIADO]:   PLANO,
   [EVENTOS.PLANO_PROPOSTO]: PLANO,
   [EVENTOS.PLANO_ACEITO]:   PLANO,

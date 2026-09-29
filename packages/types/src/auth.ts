@@ -15,6 +15,9 @@ export type UserRole =
 export const APP_MODULES = [
   'agenda',
   'clients',
+  // Fidelidade: saldo, extrato, ajuste e resgates do cliente. Configurar o
+  // programa (e o catálogo) é Configurações — decisão de rede, não de balcão.
+  'loyalty',
   'medical_records',
   'procedures',
   'stock',

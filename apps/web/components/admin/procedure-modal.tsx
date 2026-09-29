@@ -23,6 +23,7 @@ interface ExistingProcedure {
   procedure_products: { product_id: string; quantity: number }[]
   branch_pricing?: { branch_id: string; price: number | null; labor_cost: number | null }[]
   form_id?: string | null
+  loyalty_points?: number | null
 }
 
 interface ProcedureModalProps {
@@ -31,9 +32,10 @@ interface ProcedureModalProps {
   fichas?: { id: string; name: string }[]
   existing?: ExistingProcedure
   trigger?: React.ReactNode
+  pontosDeFidelidade?: boolean
 }
 
-export function ProcedureModal({ branches, products, fichas = [], existing, trigger }: ProcedureModalProps) {
+export function ProcedureModal({ branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false }: ProcedureModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
 
@@ -114,6 +116,7 @@ export function ProcedureModal({ branches, products, fichas = [], existing, trig
               products={products}
               fichas={fichas}
               existing={existing}
+              pontosDeFidelidade={pontosDeFidelidade}
               onSuccess={handleSuccess}
               onCancel={close}
             />

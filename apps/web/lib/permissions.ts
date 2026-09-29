@@ -18,6 +18,7 @@ export function isScoped(module: AppModule): module is ScopedModule {
 export const MODULE_LABELS: Record<AppModule, string> = {
   agenda:          'Agenda',
   clients:         'Clientes',
+  loyalty:         'Fidelidade',
   medical_records: 'Prontuário',
   procedures:      'Procedimentos e pacotes',
   stock:           'Estoque',
@@ -41,6 +42,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
 export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   agenda:          'Agendamentos, check-in e atendimentos',
   clients:         'Cadastro e ficha de clientes',
+  loyalty:         'Pontos do cliente: saldo, extrato e ajuste',
   medical_records: 'Anamnese, evolução e fotos clínicas',
   procedures:      'Catálogo de procedimentos e pacotes',
   stock:           'Produtos, movimentações e transferências',
@@ -73,6 +75,7 @@ export const SCOPE_LABELS: Record<ScopedModule, { own: string; all: string }> = 
 export const MODULE_LEVELS: Record<AppModule, readonly PermissionLevel[]> = {
   agenda:          ['NONE', 'VIEW', 'MANAGE'],
   clients:         ['NONE', 'VIEW', 'MANAGE'],
+  loyalty:         ['NONE', 'VIEW', 'MANAGE'],
   medical_records: ['NONE', 'VIEW', 'MANAGE'],
   procedures:      ['NONE', 'VIEW', 'MANAGE'],
   stock:           ['NONE', 'VIEW', 'MANAGE'],

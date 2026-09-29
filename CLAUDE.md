@@ -431,14 +431,12 @@ const clients = await admin.from('clients').select('*')
 - `clientNotes`: observações que o cliente envia ao agendar pelo app
 - `roomId`: sala/cabine opcional — uma sala não pode ter dois agendamentos simultâneos (validar no action)
 - `cancellationReason`: obrigatório ao cancelar para rastreabilidade
-- Ao marcar `COMPLETED`: disparar consumo de estoque + transação financeira + comissão + pontos de fidelidade. **Hoje isso é sequencial e deveria ser atômico** — ver §10.
+- Ao marcar `COMPLETED`: consumo de estoque + comissão, numa transação — ver §10. Os pontos de fidelidade NÃO nascem aqui: nascem no pagamento (§9.2.2).
 
 ### 9.2 Clientes / CRM
 - CPF (`document`) único por `tenantId` — constraint `@@unique([tenantId, document])`
 - `authId` em `Client` é opcional — preenchido apenas quando o cliente cria conta no app
-- `LoyaltyAccount` criada automaticamente no primeiro cadastro
-- `firstAppLoginBonus` em `LoyaltyConfig`: pontos creditados no primeiro login do cliente no app
-- `LoyaltyConfig.scopePerBranch`: `false` = pontos consolidados em toda a rede
+- A conta de pontos (`loyalty_accounts`) nasce com o cliente, por `fidelidade_conta` — e sob demanda, se faltar. A fidelidade tem seção própria: §9.2.2.
 - Tags como `String[]` — constantes em `packages/utils/client-tags.ts`
 - `InternalCredit`: saldo de crédito do cliente (concessão manual, cancelamento de plano pago, estorno de um pagamento feito com crédito); usado como método de pagamento `INTERNAL_CREDIT`, que o desconta (§9.6)
 - `LgpdRequest`: pedido de acesso aos dados pelo titular. Só `type: "export"`
@@ -622,6 +620,37 @@ e é dele que o envio, a lista e o card leem. Prova:
 
 Em teste, limpar conversa é `apagarConversas()` de `e2e/apoio/banco.ts`, que tira
 o contato junto.
+
+### 9.2.2 Fidelidade (configurável pela rede)
+
+**O programa é da REDE, nasce DESLIGADO e cada rede configura** (decisão do
+Heitor, 2026-09-28). A config mora em `loyalty_configs` (uma linha por rede) e é
+editada em Configurações → Fidelidade — pede `settings: MANAGE` e abrangência de
+rede. Desligado, **nenhum sinal de pontos aparece**: nem na ficha, nem no portal.
+
+- **O ponto nasce no PAGAMENTO**, não na conclusão: gatilho
+  `trg_fidelidade_ganho` em `financial_transactions` (receita paga, com cliente,
+  que não é estorno nem crédito interno). Pelo mesmo argumento do §9.9: receita
+  paga nasce em vários lugares do código. Emite `fidelidade.pontos_ganhos`.
+- **Modo de ganho — a rede escolhe UM:** por real pago (`floor(valor ×
+  points_per_real)`) ou por procedimento (`procedures.loyalty_points`, editado
+  no cadastro do procedimento, só nesse modo). Plano é **cumulativo** pelo que
+  já foi pago: entrada + restante somam exatamente os pontos do plano.
+  A regra mora numa função só: `fidelidade_pontos_do_pagamento` — e multiplica
+  antes de dividir (120 × (100 ÷ 300) perdia um ponto).
+- **Estorno** (`estornar_transacao`) tira exatamente o que aquele pagamento deu
+  (lê o GANHO). Saldo pode ficar **negativo**, como estoque.
+- **Ajuste manual** pela equipe (`loyalty: MANAGE`), com motivo, por
+  `ajustar_pontos` — débito acima do saldo é recusado.
+- **Saldo = SOMA do extrato** (`saldo_de_pontos`). `loyalty_accounts.balance`
+  não é mais lido nem escrito. Extrato e conta só se LEEM pela sessão: quem
+  escreve é o gatilho e o servidor, com a trava `fidelidade:<cliente>`.
+- Módulo `loyalty`: VIEW = saldo e extrato; MANAGE = ajustar. Configurar é
+  Configurações.
+- Base da comissão com desconto de pontos: configurável (`commission_base`),
+  usada a partir da fase 2 (desconto no pagamento).
+- Próximas fases (DEVLOG): desconto no pagamento, catálogo de recompensas com
+  voucher, validade e abrangência por unidade.
 
 ### 9.3 Procedimentos
 - `branchId: null` = catálogo base da rede (criado pelo NETWORK_ADMIN)
@@ -981,10 +1010,11 @@ O que a transação grava, na ordem:
 | 1 | status `COMPLETED` + `completed_at` (agendamento TRAVADO, status conferido de novo) | `appointments` |
 | 2 | o prontuário do cliente (nasce se não existe) e a entrada deste atendimento | `medical_records`, `medical_record_entries` |
 | 3 | a comissão, com a regra aplicada | `commissions` |
-| 4 | os pontos (o saldo soma no banco) | `loyalty_accounts`, `loyalty_transactions` |
-| 5 | cada insumo — e, pelos gatilhos, evento, mínimo e baixa do lote | `stock_movements`, `branch_product_stock` |
-| 6 | a sessão do pacote usada e o contador (soma no banco) | `package_sessions`, `client_packages` |
-| 7 | a linha do tempo | `appointment_history` |
+| 4 | cada insumo — e, pelos gatilhos, evento, mínimo e baixa do lote | `stock_movements`, `branch_product_stock` |
+| 5 | a sessão do pacote usada e o contador (soma no banco) | `package_sessions`, `client_packages` |
+| 6 | a linha do tempo | `appointment_history` |
+
+Os pontos de fidelidade saíram daqui em 2026-09-28: nascem no pagamento (§9.2.2).
 
 - **Falha em qualquer passo desfaz todos.** Antes, falhar o quinto deixava os
   quatro primeiros, e o atendimento ficava concluído com comissão e sem baixa
@@ -1007,8 +1037,7 @@ O resto do fluxo:
   aparecer no estoque, e a tela mostra o que faltou.
 - Sessão de **plano** e de **pacote** já foi paga em outro lugar:
   `confirmPayment` recusa as duas no servidor, e a tela esconde o botão.
-- Pontos: só com `loyalty_configs` da rede — e **nenhuma rede tem**, nem há
-  tela que a crie. Na prática a fidelidade está desligada.
+- Pontos: não são do fechamento — nascem quando o atendimento é PAGO (§9.2.2).
 
 ---
 
@@ -1027,7 +1056,7 @@ Escopo e abrangência são coisas diferentes: o escopo é do **cargo**, a abrang
 é do **membro**. Um mesmo cargo "Profissional" serve para alguém de uma filial e
 para alguém da rede.
 
-Os 15 módulos: `agenda`, `clients`, `medical_records`, `procedures`, `stock`,
+Os 16 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `procedures`, `stock`,
 `financial`, `cashier`, `crm`, `marketing`, `reports`, `team`, `forms`, `roles`,
 `settings`, `automations`. Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
 (`lib/permissions.ts`) declara o que cada um aceita, e a tela de cargos só
@@ -1389,6 +1418,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Criar agendamento fora de createAppointmentCore sem conferirPecasDoAgendamento
 ❌ Baixar lote no TypeScript (é o gatilho trg_lote_do_movimento; senão o próximo caminho esquece)
 ❌ Gravar parte da conclusão do atendimento fora de concluir_atendimento (é uma transação só)
+❌ Dar ponto de fidelidade no TypeScript ou ler loyalty_accounts.balance (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
+❌ Mostrar qualquer sinal de pontos com o programa da rede desligado
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
 ❌ Deixar o branchId do chamador vencer o do contexto numa leitura (ctx.branchId ?? branchId)
 ❌ Invalidar cache de permissão/acesso com revalidateTag 'max' (serve o velho mais uma vez) — use updateTag

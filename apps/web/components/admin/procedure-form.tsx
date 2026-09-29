@@ -43,6 +43,7 @@ interface ExistingProcedure {
   procedure_products: { product_id: string; quantity: number; unit_cost?: number | null }[]
   branch_pricing?: BranchPricingOverride[]
   form_id?: string | null
+  loyalty_points?: number | null
 }
 
 interface ProcedureFormProps {
@@ -52,6 +53,8 @@ interface ProcedureFormProps {
   existing?: ExistingProcedure
   onSuccess?: () => void
   onCancel?: () => void
+  /** A rede ganha pontos POR PROCEDIMENTO: o campo aparece. Fora disso, nem é enviado. */
+  pontosDeFidelidade?: boolean
 }
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
@@ -88,7 +91,7 @@ export function ProcedureForm(props: ProcedureFormProps) {
   return props.existing ? <EditProcedureForm {...props} /> : <CreateProcedureForm {...props} />
 }
 
-function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending }: InnerProps) {
+function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false }: InnerProps) {
 
   const [selectedBranches, setSelectedBranches] = useState<string[]>(existing?.branch_ids ?? [])
   const [insumos, setInsumos] = useState<{ product_id: string; quantity: number; unit_cost: number }[]>(
@@ -278,6 +281,17 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
             </select>
           </Field>
         </div>
+
+        {/* Só no modo "por procedimento": ausente do formulário, o servidor não
+            mexe no valor gravado (ver pontosDeFidelidade em actions/procedures). */}
+        {pontosDeFidelidade && (
+          <Field label="Pontos de fidelidade" hint="Quantos pontos o cliente ganha quando este procedimento é pago. Vazio = nenhum.">
+            <input
+              name="loyalty_points" type="number" min={0} step={1} inputMode="numeric"
+              className="field" defaultValue={existing?.loyalty_points ?? ''} placeholder="0"
+            />
+          </Field>
+        )}
 
         <div style={{ gridColumn: '1 / -1' }}>
           <Field label="Descrição">

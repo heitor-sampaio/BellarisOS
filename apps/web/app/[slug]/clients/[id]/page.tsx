@@ -15,6 +15,7 @@ import type { ClientDocumentItem } from '@/components/branch/client-documents-ta
 import { buildRecordForms, type RawMreEntry } from '@/lib/record-forms'
 import type { GeneralAnamnesis } from '@/components/branch/anamnesis-tab'
 import { ler } from '@/lib/db'
+import { fidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
 
 const UPCOMING_STATUSES = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS']
 
@@ -66,7 +67,6 @@ export default async function ClientProfilePage({
   // Parallel data fetches (cacheadas — TTL 60s, tags clients/appointments do tenant)
   const {
     appts,
-    loyalty,
     medRecord,
     pkgs,
     docsRaw,
@@ -435,7 +435,7 @@ export default async function ClientProfilePage({
       allAppointments={allAppointments}
       recordForms={recordForms}
       generalAnamnesis={generalAnamnesis}
-      loyaltyBalance={loyalty?.balance ?? 0}
+      fidelidade={await fidelidadeDoPerfil(ctx, id)}
       activePackage={activePackage}
       sessionNotes={sessionNotes}
       transactions={transactions}

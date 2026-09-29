@@ -21,6 +21,8 @@ import { lerDadosDaRede, lerVisibilidadeDoInbox } from '@/actions/rede'
 import { SettingsVisibilidadeInbox } from '@/components/admin/settings-visibilidade-inbox'
 import { lerCaixas } from '@/lib/inbox/visibilidade'
 import { ler } from '@/lib/db'
+import { FidelidadeConfig } from '@/components/admin/fidelidade-config'
+import { configDaRede } from '@/lib/fidelidade/leitura'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -43,6 +45,7 @@ const TABS = [
   { key: 'permissions',   label: 'Cargos',       module: 'roles'    },
   { key: 'fichas',        label: 'Fichas',       module: 'forms'    },
   { key: 'integrations',  label: 'Integrações',  module: 'settings' },
+  { key: 'fidelidade',    label: 'Fidelidade',   module: 'settings' },
   { key: 'lgpd',          label: 'LGPD',         module: 'settings' },
   { key: 'eventos',       label: 'Eventos',      module: 'settings' },
   { key: 'general',       label: 'Geral',        module: 'settings' },
@@ -160,6 +163,8 @@ export async function Configuracoes({
 
   // Idem para os dados da própria rede.
   const dadosDaRede = activeTab === 'general' ? await lerDadosDaRede() : null
+  // A fidelidade é da rede: a aba só existe no portal da rede (ABAS_DA_UNIDADE não a tem).
+  const configFidelidade = activeTab === 'fidelidade' ? await configDaRede(ctx.tenantId!) : null
   const visibilidadeDoInbox = wantsRoles ? await lerVisibilidadeDoInbox() : null
 
   // A corrente de eventos, idem. São duas consultas (o resumo agregado e as
@@ -329,6 +334,10 @@ export async function Configuracoes({
             erro={resumo.error ?? primeiraPagina.error}
           />
         </>
+      )}
+
+      {activeTab === 'fidelidade' && configFidelidade && (
+        <FidelidadeConfig inicial={configFidelidade} podeEditar={can(ctx, 'settings', 'MANAGE') && ctx.branchId === null} />
       )}
 
       {activeTab === 'general' && (

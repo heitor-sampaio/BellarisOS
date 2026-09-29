@@ -1,0 +1,75 @@
+import { z } from 'zod'
+
+/**
+ * A configuração do programa de fidelidade de uma rede (`loyalty_configs`).
+ *
+ * O programa é da REDE e nasce desligado (decisão do Heitor, 2026-09-28): cada
+ * rede liga ou não, e escolhe como o cliente ganha. Nada aqui calcula ponto — a
+ * regra de ganho mora no banco (`fidelidade_pontos_do_pagamento`), porque o
+ * ponto nasce no gatilho do pagamento.
+ */
+
+export const MODOS_DE_GANHO = ['POR_REAL', 'POR_PROCEDIMENTO'] as const
+export type ModoDeGanho = typeof MODOS_DE_GANHO[number]
+
+export const BASES_DA_COMISSAO = ['PRECO', 'VALOR_PAGO'] as const
+export type BaseDaComissao = typeof BASES_DA_COMISSAO[number]
+
+export interface ConfigFidelidade {
+  enabled:             boolean
+  earn_mode:           ModoDeGanho
+  /** Pontos por R$ 1 pago (modo POR_REAL). */
+  points_per_real:     number
+  /** Quanto vale um ponto no resgate, em R$. */
+  redeem_points_value: number
+  redeem_min_points:   number
+  redeem_max_pct:      number
+  /** Nulo = os pontos não vencem. */
+  expiry_months:       number | null
+  scope_per_branch:    boolean
+  commission_base:     BaseDaComissao
+}
+
+/** A config de quem nunca configurou: tudo desligado, com valores sensatos para quando ligar. */
+export const CONFIG_PADRAO: ConfigFidelidade = {
+  enabled:             false,
+  earn_mode:           'POR_REAL',
+  points_per_real:     1,
+  redeem_points_value: 0.01,
+  redeem_min_points:   0,
+  redeem_max_pct:      100,
+  expiry_months:       null,
+  scope_per_branch:    false,
+  commission_base:     'PRECO',
+}
+
+/** O que a tela manda para salvar. Os números chegam do formulário; a validação é aqui. */
+export const EntradaDaConfig = z.object({
+  enabled:         z.boolean(),
+  earn_mode:       z.enum(MODOS_DE_GANHO),
+  points_per_real: z.coerce.number()
+    .min(0.01, 'Informe quantos pontos o cliente ganha por R$ 1.')
+    .max(1000, 'No máximo 1.000 pontos por R$ 1.'),
+  commission_base: z.enum(BASES_DA_COMISSAO),
+})
+export type EntradaDaConfig = z.infer<typeof EntradaDaConfig>
+
+/** Uma linha de `loyalty_configs` (numeric chega como string) → a config tipada. */
+export function configDaLinha(linha: Record<string, unknown> | null | undefined): ConfigFidelidade {
+  if (!linha) return { ...CONFIG_PADRAO }
+  const num = (v: unknown, padrao: number) => {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : padrao
+  }
+  return {
+    enabled:             linha.enabled === true,
+    earn_mode:           linha.earn_mode === 'POR_PROCEDIMENTO' ? 'POR_PROCEDIMENTO' : 'POR_REAL',
+    points_per_real:     num(linha.points_per_real, CONFIG_PADRAO.points_per_real),
+    redeem_points_value: num(linha.redeem_points_value, CONFIG_PADRAO.redeem_points_value),
+    redeem_min_points:   num(linha.redeem_min_points, 0),
+    redeem_max_pct:      num(linha.redeem_max_pct, 100),
+    expiry_months:       linha.expiry_months == null ? null : num(linha.expiry_months, 0) || null,
+    scope_per_branch:    linha.scope_per_branch === true,
+    commission_base:     linha.commission_base === 'VALOR_PAGO' ? 'VALOR_PAGO' : 'PRECO',
+  }
+}

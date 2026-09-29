@@ -160,7 +160,8 @@ export async function addClient(
 
   // 3) Claims do cliente + conta de fidelidade
   await gravar(admin.rpc('set_client_claims', { p_auth_id: authId, p_client_id: client.id }), 'gravar os dados de acesso do cliente')
-  if (!jaExiste) await admin.from('loyalty_accounts').insert({ client_id: client.id })
+  // A conta de pontos: pela função do banco, que não duplica e não cala erro.
+  if (!jaExiste) await gravar(admin.rpc('fidelidade_conta', { p_cliente: client.id }), 'abrir a conta de fidelidade')
 
   // A ficha completa não passa por `garantirClienteRapido` quando o cliente
   // nasce aqui — daí a emissão também neste ponto. Completar uma ficha rápida

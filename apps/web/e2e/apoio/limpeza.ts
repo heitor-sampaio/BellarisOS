@@ -75,6 +75,15 @@ export async function apagarClientes(clientes: string[], falhas: Falha[] = []): 
   if (clientes.length === 0) return falhas
   const db = banco()
 
+  // Fidelidade PRIMEIRO: o extrato aponta o lançamento (transaction_id), o
+  // agendamento e o plano — apagado depois, travaria a saída de todos eles.
+  // A conta nasce junto com o cliente.
+  const contas = await ids(db.from('loyalty_accounts').select('id').in('client_id', clientes))
+  if (contas.length) {
+    await passo(falhas, 'pontos', db.from('loyalty_transactions').delete().in('loyalty_account_id', contas))
+    await passo(falhas, 'contas de fidelidade', db.from('loyalty_accounts').delete().in('id', contas))
+  }
+
   // Lançamentos do cliente SEM agendamento — os do checkout de plano, do crédito
   // usado, de lançamento manual. Com o cliente apagado eles ficariam órfãos
   // (`client_id` vira nulo) e sem o prefixo `[e2e]` na descrição: a varredura
@@ -97,13 +106,6 @@ export async function apagarClientes(clientes: string[], falhas: Falha[] = []): 
 
   await apagarAgendamentos(await ids(db.from('appointments').select('id').in('client_id', clientes)), falhas)
   if (planos.length) await passo(falhas, 'planos', db.from('treatment_plans').delete().in('id', planos))
-
-  // A conta de fidelidade nasce JUNTO com o cliente — era ela que travava.
-  const contas = await ids(db.from('loyalty_accounts').select('id').in('client_id', clientes))
-  if (contas.length) {
-    await passo(falhas, 'pontos', db.from('loyalty_transactions').delete().in('loyalty_account_id', contas))
-    await passo(falhas, 'contas de fidelidade', db.from('loyalty_accounts').delete().in('id', contas))
-  }
 
   const prontuarios = await ids(db.from('medical_records').select('id').in('client_id', clientes))
   if (prontuarios.length) {
@@ -244,6 +246,7 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     await passo(falhas, 'unidades da rede de teste', db.from('branches').delete().eq('tenant_id', rede))
     await passo(falhas, 'cargos da rede de teste', db.from('tenant_roles').delete().eq('tenant_id', rede))
     await passo(falhas, 'eventos da rede de teste', db.from('domain_events').delete().eq('tenant_id', rede))
+    await passo(falhas, 'fidelidade da rede de teste', db.from('loyalty_configs').delete().eq('tenant_id', rede))
     // Oportunidades em lotes até esvaziar (um select só para em 1000), e depois
     // as pessoas, que elas prendem (`on delete restrict`).
     for (let volta = 0; volta < 20; volta++) {
