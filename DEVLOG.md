@@ -4788,8 +4788,30 @@ verdade. O que vale:
   - ~~fechamento pago não se estorna pela tela~~ **feito**;
   - ~~não há venda de pacote no sistema~~ **feito**: catálogo e venda de pacote (ver a linha do tempo).
 
-  A suíte completa depois das três fases ainda não rodou (mexeram em
-  atendimento, financeiro, métricas e permissões).
+  ~~A suíte completa depois das três fases ainda não rodou~~ **rodou verde
+  em 2026-09-30** (421/421, depois de comissões, pacotes, pré-pago, desconto,
+  crédito na agenda e parcelas).
+
+- **Modais "caixa fixa com z-index"** (2026-09-30): o cadastro de cliente do
+  inbox ficava embaixo da topbar e saía da tela; virou `<dialog>` nativo.
+  Há ainda ~28 ocorrências de `position: 'fixed', inset: 0, zIndex` em 21
+  componentes — parte é só o fundo que fecha um popover (certo), parte é
+  modal (pagamento da recepção, agendamento do inbox, sessões do pacote,
+  formulários de equipe e unidade…) com o mesmo risco. Falta a triagem.
+- **A ficha do cliente lê `installments`** para o "x/y parcelas" dos
+  lançamentos de atendimento — e desde 2026-09-30 cada parcela é um
+  lançamento (`parcela_*`). Trocar a leitura; `installments` é histórico (a
+  política de RLS dela cita `financial_transaction_id`, coluna que não existe).
+- **E2E**: 76 specs ainda rodam um por vez (usam a rede real, a sessão
+  padrão ou cron). Cada um migrado para rede própria vai para o paralelo
+  (`e2e/grupos.ts`). E a varredura de sobras apaga TODO [e2e]: se passasse a
+  apagar só o antigo, as duas metades poderiam rodar juntas (~14 → ~10 min).
+- **O cron de produção roda contra o mesmo banco do E2E.** Não verificado se
+  ele processa dado [e2e] no meio de um teste (a falha intermitente do
+  `automacoes-cron-concorrente` era defeito real, já corrigido).
+- **Cron do Railway sem nova tentativa**: um 404 de borda (2026-09-30,
+  madrugada) derrubou uma passagem do Automations Cron; `scripts/cron.mjs`
+  não tenta de novo. Oferecido, não feito.
 
 - **Contato separado da conversa — o que sobrou** (a ordem combinada terminou
   em 2026-09-26):
@@ -4837,11 +4859,10 @@ verdade. O que vale:
 
 ### Próxima frente candidata
 
-**Termos e contratos: as seis fases estão feitas** (plano de 2026-09-29; ver
-as entradas de 2026-09-30). O envio do link pela conversa do inbox
-entrou como escolha da rede. Vale uma suíte
-completa: as fases mexeram em appointments, middleware, permissões e no IP da
-evidência.
+Nada combinado. Termos e contratos, comissões, pacotes, pré-pago, desconto,
+agendar com crédito e parcelas estão feitos e com a suíte completa verde
+(2026-09-30). O que mais pesa agora é o de "Depende do Heitor" (Meta,
+WhatsApp real) e o uso por uma clínica de verdade.
 
 ---
 
