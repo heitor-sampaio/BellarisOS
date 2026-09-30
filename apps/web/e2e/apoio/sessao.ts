@@ -67,6 +67,7 @@ async function comPaciencia<T extends { error: { message: string } | null }>(faz
   for (let i = 0; ; i++) {
     const r = await fazer()
     if (!r.error || !/rate limit/i.test(r.error.message) || i >= esperas.length) return r
+    console.warn('[e2e] limite do Auth: esperando ' + esperas[i] + ' s para abrir a sessão')
     await new Promise(ok => setTimeout(ok, esperas[i]! * 1000))
   }
 }
