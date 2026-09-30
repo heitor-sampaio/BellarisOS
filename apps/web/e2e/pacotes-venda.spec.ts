@@ -4,6 +4,7 @@ import { banco, PREFIXO, apagarConversas } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
+import { apagarClientes } from './apoio/limpeza'
 
 /**
  * Pacotes (2026-09-30): o catálogo em Procedimentos, a venda na ficha do
@@ -22,6 +23,8 @@ let pacoteId = ''
 let vendido = ''
 let procB = ''
 const conversas: string[] = []
+/** O cliente que a tela cadastra no "Vender pacote" de quem ainda não é cliente. */
+let cadastrado = ''
 const NOME = `${PREFIXO} Pacote ${marca}`
 
 test.beforeAll(async () => {
@@ -56,6 +59,19 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await apagarConversas(conversas)
+  if (cadastrado) {
+    // Cadastrar pela tela cria o login do cliente: sai junto.
+    const { data: c } = await db().from('clients').select('auth_id').eq('id', cadastrado).maybeSingle()
+    const ids = ((await db().from('client_packages').select('id').eq('client_id', cadastrado)).data ?? []).map(x => x.id as string)
+    if (ids.length) {
+      await db().from('package_sessions').delete().in('client_package_id', ids)
+      await db().from('financial_transactions').update({ client_package_id: null }).in('client_package_id', ids)
+      await db().from('client_packages').delete().in('id', ids)
+    }
+    const falhas = await apagarClientes([cadastrado])
+    if (c?.auth_id) await db().auth.admin.deleteUser(c.auth_id as string)
+    expect(falhas).toEqual([])
+  }
   if (soVe) await soVe.limpar()
   if (gestor) await gestor.limpar()
   if (rede) {
@@ -79,6 +95,18 @@ test.afterAll(async () => {
     expect(falhas).toEqual([])
   }
 })
+
+/** CPF com dígito verificador válido, a partir do relógio (o CPF é único por rede). */
+function cpfDeTeste(): string {
+  const base = String(Date.now()).slice(-9).split('').map(Number)
+  const dv = (nums: number[]) => {
+    const soma = nums.reduce((s, n, i) => s + n * (nums.length + 1 - i), 0)
+    const r = (soma * 10) % 11
+    return r === 10 ? 0 : r
+  }
+  const d1 = dv(base)
+  return [...base, d1, dv([...base, d1])].join('')
+}
 
 async function comSessao<T>(browser: Browser, m: MembroDeTeste, fn: (p: Page) => Promise<T>) {
   const ctx = await browser.newContext({ storageState: m.estado })
@@ -257,7 +285,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     expect((txs ?? []).map(t => [Number(t.amount), t.is_paid, t.due_date])).toEqual([[800, false, null]])
   })
 
-  test('na conversa: com cliente ligado, "Vender pacote" no painel da direita; sem cliente, não', async ({ browser }) => {
+  test('na conversa: com cliente, "Vender pacote" abre a venda; sem cliente, cadastra e depois vende', async ({ browser }) => {
     const conversa = async (linha: Record<string, unknown>) => {
       const { data, error } = await db().from('conversations').insert({
         tenant_id: rede!.tenantId, status: 'open', channel: 'whatsapp', provider: 'uazapi',
@@ -279,9 +307,24 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       await expect(dlg.getByLabel('Pacote', { exact: true })).toBeVisible()
       await dlg.getByRole('button', { name: 'Cancelar' }).click()
 
+      // Sem ficha, o botão aparece do mesmo jeito: primeiro o cadastro...
       await p.goto(`/admin/inbox?c=${semCliente}`)
-      await expect(p.getByRole('button', { name: 'Cadastrar cliente' })).toBeVisible()
-      await expect(p.getByRole('button', { name: 'Vender pacote' })).toHaveCount(0)
+      await p.getByRole('button', { name: 'Vender pacote' }).click()
+      await expect(p.getByText('Para vender o pacote, primeiro o cadastro.')).toBeVisible()
+      await p.locator('input[name="email"]').fill(`e2e-pv${marca}@bellaris.invalid`)
+      await p.locator('input[name="document"]').fill(cpfDeTeste())
+      await p.getByRole('button', { name: 'Cadastrar cliente' }).last().click()
+
+      // ...e a venda abre sozinha, já para o cliente que acabou de nascer.
+      const dlg2 = p.getByRole('dialog', { name: 'Vender pacote' })
+      await expect(dlg2.getByLabel('Pacote', { exact: true })).toBeVisible({ timeout: 20_000 })
+      const { data: novo } = await db().from('conversations').select('client_id').eq('id', semCliente).single()
+      expect(novo?.client_id, 'o cadastro liga a conversa ao cliente novo').toBeTruthy()
+      cadastrado = novo!.client_id as string
+      await dlg2.getByRole('button', { name: /^Vender por/ }).click()
+      await expect(dlg2).toBeHidden({ timeout: 15_000 })
+      const { data: cp } = await db().from('client_packages').select('id, price').eq('client_id', cadastrado)
+      expect((cp ?? []).map(c => Number(c.price))).toEqual([800])
     })
   })
 })

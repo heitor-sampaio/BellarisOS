@@ -1258,6 +1258,19 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — "Vender pacote" na conversa de quem ainda não é cliente
+
+A pedido do Heitor, o botão aparece no inbox mesmo sem ficha. Clicar abre o
+cadastro (com o aviso "Para vender o pacote, primeiro o cadastro") e, ao
+salvar, a venda abre sozinha para o cliente recém-criado. Se a unidade
+escolhida no cadastro não tiver pacote à venda, a tela avisa em vez de abrir.
+Sem ficha e numa rede com várias unidades, `vendaDePacote` vem sem unidade: é
+só o sinal de que a rede tem o que vender.
+
+**Prova:** o caso da conversa em `pacotes-venda` agora cadastra pela tela e
+vende (o pacote de R$ 800 no cliente novo). A limpeza apaga o cliente e o login
+que a tela criou.
+
 ### 2026-09-30 — "Vender pacote" no cabeçalho da ficha e na conversa
 
 A pedido do Heitor:

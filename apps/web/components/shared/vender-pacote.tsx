@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Package, X } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
@@ -20,17 +20,26 @@ export interface PacoteAVenda {
   composicao: string; validityDays: number | null
 }
 
-export function VenderPacote({ clienteId, branchId, pacotes, compacto = false }: {
+export function VenderPacote({ clienteId, branchId, pacotes, compacto = false, abrirSinal = 0 }: {
   clienteId: string
   branchId:  string
   pacotes:   PacoteAVenda[]
   /** Botão pequeno, como as ações do painel da conversa. */
   compacto?: boolean
+  /**
+   * Abre a venda sem o clique (cada valor novo acima de zero abre uma vez).
+   * É o "cadastrar e depois vender" do inbox: o cadastro termina e a venda
+   * já abre para o cliente que acabou de nascer.
+   */
+  abrirSinal?: number
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
   const abrir = useCallback(() => { setAbertura(n => n + 1); dialogRef.current?.showModal() }, [])
   const fechar = useCallback(() => dialogRef.current?.close(), [])
+  useEffect(() => {
+    if (abrirSinal > 0 && !dialogRef.current?.open) dialogRef.current?.showModal()
+  }, [abrirSinal])
 
   if (!pacotes.length) return null
   return (
@@ -52,7 +61,7 @@ export function VenderPacote({ clienteId, branchId, pacotes, compacto = false }:
             <button type="button" className="btn-ghost" onClick={fechar} style={{ padding: 6 }} aria-label="Fechar"><X size={16} /></button>
           </div>
           <div className="modal-body" style={{ padding: '20px 24px 24px' }}>
-            <Formulario key={abertura} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} />
+            <Formulario key={`${abertura}-${abrirSinal}`} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} />
           </div>
         </div>
       </dialog>

@@ -179,6 +179,10 @@ export function InboxLeadPanel({
   const [saving,  startSave]  = useTransition()
   const [scheduling,  setScheduling]  = useState<string | null>(null)   // leadId ou '' para contato
   const [convertOpen, setConvertOpen] = useState(false)
+  // "Vender pacote" de quem ainda não é cliente: primeiro o cadastro, e a
+  // venda abre sozinha quando ele termina (pedido do Heitor).
+  const [venderAposCadastro, setVenderAposCadastro] = useState(false)
+  const [abrirVenda, setAbrirVenda] = useState(0)
   const [historicoKey, setHistoricoKey] = useState(0)
   const [expandida, setExpandida] = useState<string | null>(null)
   const [mostrarConcluidas, setMostrarConcluidas] = useState(false)
@@ -230,6 +234,8 @@ export function InboxLeadPanel({
     setLoading(true)
     setErro(null)
     setAviso(null)
+    setVenderAposCadastro(false)
+    setAbrirVenda(0)
   }
 
   useEffect(() => {
@@ -313,10 +319,22 @@ export function InboxLeadPanel({
 
   function handleConverted() {
     setConvertOpen(false)
-    recarregar().then(() => {
+    const vender = venderAposCadastro
+    setVenderAposCadastro(false)
+    recarregar().then(novo => {
       setHistoricoKey(k => k + 1)
       onLeadChanged?.()
+      if (!vender) return
+      // A unidade da venda é a que o cadastro escolheu: só agora se sabe se
+      // ela tem pacote à venda.
+      if (novo?.cliente && novo.vendaDePacote?.branchId && novo.vendaDePacote.pacotes.length) setAbrirVenda(n => n + 1)
+      else setErro('Cliente cadastrado, mas a unidade dele não tem pacote à venda.')
     })
+  }
+
+  function fecharCadastro() {
+    setConvertOpen(false)
+    setVenderAposCadastro(false)
   }
 
   if (loading) {
@@ -411,9 +429,18 @@ export function InboxLeadPanel({
                 <UserCheck size={12} /> Cadastrar cliente
               </button>
             )}
-            {cliente && card.vendaDePacote && (
-              <VenderPacote compacto clienteId={cliente.id} branchId={card.vendaDePacote.branchId} pacotes={card.vendaDePacote.pacotes} />
-            )}
+            {card.vendaDePacote && (cliente ? (
+              card.vendaDePacote.branchId && (
+                <VenderPacote compacto clienteId={cliente.id} branchId={card.vendaDePacote.branchId}
+                  pacotes={card.vendaDePacote.pacotes} abrirSinal={abrirVenda} />
+              )
+            ) : (
+              <button type="button" className="btn-ghost"
+                style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}
+                onClick={() => { setVenderAposCadastro(true); setConvertOpen(true) }}>
+                <Package size={12} aria-hidden /> Vender pacote
+              </button>
+            ))}
             {/* Agendar não passa mais pelo cadastro. Exigir CPF e e-mail antes
                 de marcar um horário parava o agendamento justo na etapa em que
                 a pessoa ainda está decidindo — nome e telefone bastam, e são o
@@ -595,7 +622,7 @@ export function InboxLeadPanel({
             background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
           }}
-          onClick={() => { setConvertOpen(false) }}
+          onClick={fecharCadastro}
         >
           <div className="card" style={{ width: 480, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}
             onClick={e => e.stopPropagation()}>
@@ -603,7 +630,7 @@ export function InboxLeadPanel({
               <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
                 Cadastrar como cliente
               </h3>
-              <button type="button" onClick={() => { setConvertOpen(false) }} style={{
+              <button type="button" onClick={fecharCadastro} aria-label="Fechar" style={{
                 width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)',
                 background: 'var(--bg-app)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
               }}>
@@ -611,6 +638,11 @@ export function InboxLeadPanel({
               </button>
             </div>
             <div style={{ padding: 20 }}>
+              {venderAposCadastro && (
+                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 14 }}>
+                  Para vender o pacote, primeiro o cadastro. Ao salvar, a venda abre em seguida.
+                </p>
+              )}
               <ClientForm
                 /* A unidade de cadastro vira a tag `Unidade: X`, e é POR ELA que
                    a lista de clientes de cada filial filtra. Com `branchId` vazio
@@ -627,7 +659,7 @@ export function InboxLeadPanel({
                 prefill={{ name: nome, phone: telefone || undefined }}
                 onSuccess={handleConverted}
                 showCancelButton
-                onCancel={() => { setConvertOpen(false) }}
+                onCancel={fecharCadastro}
               />
             </div>
           </div>

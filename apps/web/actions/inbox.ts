@@ -1,7 +1,7 @@
 'use server'
 
 import { getTenantContext, assertPermission, ownerFilter, podeReceber, alcancaUnidade } from '@/lib/auth'
-import { pacotesAVenda } from '@/lib/pacotes/leitura'
+import { pacotesAVenda, catalogoDePacotes } from '@/lib/pacotes/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
 import { lerVisibilidade, type VisibilidadeDoInbox } from '@/lib/inbox/visibilidade'
 import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
@@ -699,11 +699,14 @@ export interface ConversationCard {
   contato:    ContatoDaConversa
   cliente:    ClienteDoContato | null
   /**
-   * Vender pacote pela conversa (pedido do Heitor): só com cliente ligado e para
-   * quem recebe dinheiro. A unidade é a de quem atende, senão a do cliente,
-   * senão a única da rede; sem nenhuma, não há venda por aqui.
+   * Vender pacote pela conversa (pedido do Heitor), para quem recebe dinheiro.
+   * A unidade é a de quem atende, senão a do cliente, senão a única da rede.
+   * Sem ficha, o botão aparece do mesmo jeito e a venda vem DEPOIS do
+   * cadastro. Por isso `branchId` pode ser nulo: rede com várias unidades
+   * e contato sem ficha só sabe a unidade quando o cadastro a escolhe. Nesse
+   * caso `pacotes` vem vazio: só se sabe que a rede tem algum à venda.
    */
-  vendaDePacote: { branchId: string; pacotes: PacoteAVenda[] } | null
+  vendaDePacote: { branchId: string | null; pacotes: PacoteAVenda[] } | null
   /** Em andamento: etapa com outcome `OPEN`. */
   abertas:    Oportunidade[]
   /** Ganhas e perdidas, para consulta. */
@@ -814,8 +817,8 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   const concluidas = oportunidades.filter(o => o.outcome !== 'OPEN')
 
   let vendaDePacote: ConversationCard['vendaDePacote'] = null
-  if (cliente && podeReceber(ctx)) {
-    let unidade = ctx.branchId ?? cliente.branch_id
+  if (podeReceber(ctx)) {
+    let unidade = ctx.branchId ?? cliente?.branch_id ?? null
     if (!unidade) {
       const ativas = await ler(admin.from('branches').select('id')
         .eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(2), 'carregar as unidades')
@@ -824,6 +827,9 @@ export async function getConversationCard(conversationId: string): Promise<Conve
     if (unidade && alcancaUnidade(ctx, unidade)) {
       const pacotes = await pacotesAVenda(ctx.tenantId!, unidade)
       if (pacotes.length) vendaDePacote = { branchId: unidade, pacotes }
+    } else if (!unidade && !cliente) {
+      const pacotes = await catalogoDePacotes(ctx.tenantId!, { soAtivos: true })
+      if (pacotes.length) vendaDePacote = { branchId: null, pacotes: [] }
     }
   }
 

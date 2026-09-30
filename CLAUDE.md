@@ -776,11 +776,19 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
   recebe (`podeReceber`), com o vocabulário do plano: à vista, entrada +
   parcelas, a receber (`CamposDoPagamento`, o mesmo do pagamento do contrato).
   - O botão fica no cabeçalho da ficha, à esquerda do "+ Agendar".
-  - Também no painel da direita do inbox, com as ações da pessoa, quando a
-    conversa tem cliente ligado (`getConversationCard` → `vendaDePacote`).
-    A unidade é a de quem atende, senão a do cliente, senão a única da rede;
-    sem nenhuma, ou fora do alcance, o botão não aparece. Como as outras
-    ações da pessoa, some com o painel só de leitura (sem `crm: MANAGE`).
+  - Também no painel da direita do inbox, com as ações da pessoa
+    (`getConversationCard` → `vendaDePacote`), **com ou sem ficha**. A
+    unidade é a de quem atende, senão a do cliente, senão a única da rede.
+    Com cliente, fora do alcance ou sem pacote na unidade, o botão não
+    aparece. Como as outras ações da pessoa, também some com o painel só de
+    leitura (sem `crm: MANAGE`).
+  - **Sem ficha, primeiro o cadastro** (decisão do Heitor, 2026-09-30): o
+    botão abre o "Cadastrar como cliente" com o aviso, e ao salvar a venda
+    abre sozinha para o cliente novo (`abrirSinal` do `VenderPacote`). Rede
+    com várias unidades só sabe a unidade da venda depois do cadastro. Por
+    isso ali `branchId` vem nulo e `pacotes` vazio: é só o sinal de que a
+    rede tem pacote à venda. Se a unidade escolhida não tiver pacote, a tela
+    diz isso em vez de abrir.
   - `lancamentosDoPagamento` (`lib/checkout/lancamentos.ts`) monta o dinheiro:
     o recebido agora e o a receber em lançamentos separados; a última parcela
     leva o arredondamento.
