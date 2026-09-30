@@ -9,6 +9,18 @@ import { ler } from '@/lib/db'
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
 
+  // O webhook do APP do BellarisOS (Tech Provider): um só para todas as redes,
+  // configurado no painel da Meta com o `META_VERIFY_TOKEN` — o mesmo do
+  // `/api/webhooks/meta`. Os tokens por caixa, abaixo, são das caixas que
+  // ligam um app próprio da clínica.
+  const doApp = process.env.META_VERIFY_TOKEN
+  if (doApp
+    && url.searchParams.get('hub.mode') === 'subscribe'
+    && url.searchParams.get('hub.verify_token') === doApp
+    && url.searchParams.get('hub.challenge')) {
+    return new Response(url.searchParams.get('hub.challenge'), { status: 200 })
+  }
+
   // No handshake não há de onde saber a caixa: a Meta só manda o `verifyToken`,
   // e é justamente compará-lo que identifica quem está sendo verificado. Daí a
   // varredura.

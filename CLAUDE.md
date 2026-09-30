@@ -1355,6 +1355,12 @@ como conversa nova, e a janela de 24h daquela conversa não vale ali. Por isso:
 posicional e obrigatório de `resolveConversation`, antes do `provider` opcional —
 um default deixaria um webhook novo voltar a jogar o número fora em silêncio. O
 `appSecret` do HMAC vem da caixa que recebeu, não de "a config oficial da rede".
+- **O app do BellarisOS é Tech Provider** (2026-09-30): um webhook só para
+  todas as redes, em `https://app.bellarisos.com/api/webhooks/whatsapp`
+  (Instagram e Messenger: `/api/webhooks/meta`), com o `META_VERIFY_TOKEN`
+  do Railway no handshake. Número conectado pelo app não tem segredo próprio:
+  a assinatura confere com o `META_APP_SECRET`. Sem nenhum dos dois, recusa —
+  HMAC com chave vazia qualquer um calcula. Prova: `e2e/api-sem-credencial.spec.ts`.
 
 **O dedup usa DOIS índices parciais**, não um total: num índice único direto,
 `NULL` nunca colide, e Instagram, Messenger e manual ficariam sem dedup nenhum

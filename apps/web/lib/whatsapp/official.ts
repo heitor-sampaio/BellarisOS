@@ -288,8 +288,13 @@ export class OfficialAPIProvider implements WhatsAppProvider {
 
   // Verify HMAC-SHA256 signature on POST payloads
   verifySignature(body: string, signature: string | null): boolean {
-    if (!signature) return false
-    const expected = `sha256=${createHmac('sha256', this.config.appSecret).update(body).digest('hex')}`
+    // O segredo da caixa, senão o do APP da plataforma: número conectado pelo
+    // app do BellarisOS (Tech Provider) chega assinado com o segredo dele, e a
+    // caixa não tem um próprio. Sem nenhum dos dois, recusa — HMAC com chave
+    // vazia qualquer um calcula.
+    const segredo = this.config.appSecret || process.env.META_APP_SECRET
+    if (!signature || !segredo) return false
+    const expected = `sha256=${createHmac('sha256', segredo).update(body).digest('hex')}`
     try {
       return timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
     } catch {

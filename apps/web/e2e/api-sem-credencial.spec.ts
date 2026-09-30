@@ -171,3 +171,72 @@ test.describe('webhook oficial do WhatsApp confere a assinatura com o segredo DA
     await expect.poll(conversas, { message: 'a entrega assinada entra' }).toBe(1)
   })
 })
+
+/**
+ * O webhook do APP do BellarisOS como Tech Provider: um só para todas as
+ * redes. O handshake do painel da Meta usa o `META_VERIFY_TOKEN`, e o número
+ * conectado pelo app chega assinado com o `META_APP_SECRET` — a caixa não tem
+ * segredo próprio. Até 2026-09-30 a rota só conhecia o token e o segredo de
+ * cada caixa, e o painel da Meta não conseguia verificar a URL.
+ */
+test.describe('webhook do WhatsApp pelo app da plataforma (Tech Provider)', () => {
+  const tokenDoApp = process.env.META_VERIFY_TOKEN
+  const segredoDoApp = process.env.META_APP_SECRET
+  let caixa: string | null = null
+  const marca = Date.now().toString(36)
+  const phoneNumberId = `e2eapp${Date.now()}`
+  const telefone = '5548' + String(Date.now() + 7).slice(-9)
+
+  test.beforeAll(async () => {
+    const { data, error } = await banco().from('whatsapp_numbers').insert({
+      tenant_id: await tenantId(), provider: 'official', label: `${PREFIXO} Oficial pelo app ${marca}`,
+      is_active: true, phone_number_id: phoneNumberId,
+      // Sem appSecret nem verifyToken: é o número que o app da plataforma conectou.
+      config: { provider: 'official', phoneNumberId, accessToken: 'x', baseUrl: 'https://e2e.invalido' },
+    }).select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    caixa = data!.id
+  })
+
+  test.afterAll(async () => {
+    const db = banco()
+    if (!caixa) return
+    const { data } = await db.from('conversations').select('id').eq('whatsapp_number_id', caixa)
+    await apagarConversas((data ?? []).map(c => c.id as string))
+    await db.from('whatsapp_numbers').delete().eq('id', caixa)
+  })
+
+  test('o handshake aceita o token do app e só ele', async ({ request }) => {
+    test.skip(!tokenDoApp, 'META_VERIFY_TOKEN não está no .env.local')
+    const certo = await request.get(`/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=${encodeURIComponent(tokenDoApp!)}&hub.challenge=4242`)
+    expect(certo.status()).toBe(200)
+    expect(await certo.text()).toBe('4242')
+    const errado = await request.get('/api/webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=errado&hub.challenge=4242')
+    expect(errado.status()).toBe(403)
+  })
+
+  test('caixa sem segredo próprio confere pelo segredo do app — e chave vazia não passa', async ({ request }) => {
+    test.skip(!segredoDoApp, 'META_APP_SECRET não está no .env.local')
+    const corpo = JSON.stringify({
+      object: 'whatsapp_business_account',
+      entry: [{ changes: [{ value: {
+        metadata: { phone_number_id: phoneNumberId },
+        contacts: [{ wa_id: telefone, profile: { name: `${PREFIXO} Remetente app ${marca}` } }],
+        messages: [{ id: `wamid.e2e.app.${marca}`, from: telefone, timestamp: String(Math.floor(Date.now() / 1000)), type: 'text', text: { body: 'oi' } }],
+      } }] }],
+    })
+    const conversas = async () =>
+      (await banco().from('conversations').select('id').eq('whatsapp_number_id', caixa!)).data?.length ?? 0
+    const post = (assinatura: string) => request.post('/api/webhooks/whatsapp',
+      { data: corpo, headers: { 'content-type': 'application/json', 'x-hub-signature-256': assinatura } })
+
+    // Chave vazia: qualquer um a calcula — não pode valer como segredo.
+    const vazia = `sha256=${createHmac('sha256', '').update(corpo).digest('hex')}`
+    expect((await post(vazia)).status()).toBe(401)
+    expect(await conversas(), 'nada entrou').toBe(0)
+
+    const doApp = `sha256=${createHmac('sha256', segredoDoApp!).update(corpo).digest('hex')}`
+    expect((await post(doApp)).status()).toBe(200)
+    await expect.poll(conversas, { message: 'a entrega assinada pelo app entra' }).toBe(1)
+  })
+})

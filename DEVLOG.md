@@ -4815,8 +4815,10 @@ verdade. O que vale:
 - **App da Meta não existe.** Instagram e Messenger foram verificados só com
   payload simulado e HMAC válido: falta OAuth real, seleção de página e
   `subscribed_apps`.
-- **`META_VERIFY_TOKEN` não está no Railway** — sem ele o handshake do webhook
-  não fecha em produção.
+- ~~`META_VERIFY_TOKEN` não está no Railway~~ **configurado em 2026-09-30**
+  (Tech Provider): a rota do WhatsApp aceita o token do app no handshake e o
+  segredo do app na assinatura. Falta o Heitor colar URL e token no painel da
+  Meta e assinar o campo `messages`.
 - **`wabaId` não preenchido** nas integrações: o botão "enviar para aprovação"
   da tela de Templates fica desabilitado.
 - **Nenhum número de WhatsApp real foi pareado.** A uazapi foi provada por sonda
