@@ -583,6 +583,23 @@
   .sidebar-scrim { display: block; }
 }
 
+/* Título de categoria do menu, que recolhe e expande a categoria
+   (components/shared/secao-do-menu.tsx). Continua lendo como overline: o
+   que avisa que é clicável é a seta e o realce ao passar o mouse. */
+.menu-secao-titulo {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  width: 100%; padding: 9px 12px 3px;
+  background: transparent; border: none; cursor: pointer;
+  border-radius: var(--radius-field-token);
+  color: var(--text-faint);
+  text-align: left;
+}
+.menu-secao-titulo:hover .overline,
+.menu-secao-titulo:hover { color: var(--brand); }
+.menu-secao-titulo:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.menu-secao-seta { flex-shrink: 0; transition: transform 150ms ease; }
+.menu-secao-seta[data-fechada] { transform: rotate(-90deg); }
+
 /* Tela que ocupa a altura toda e rola por dentro (inbox). O documento não rola;
    quem rola é a área de mensagens. Ver `components/shared/trava-rolagem.tsx`. */
 html.trava-rolagem,

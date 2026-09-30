@@ -1258,6 +1258,23 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Categorias do menu lateral recolhem
+
+O menu tinha crescido a ponto de rolar (seis categorias, até 19 itens na
+rede). Pedido do Heitor: cada categoria recolhe e expande pelo título.
+- `SecaoDoMenu` (`components/shared/secao-do-menu.tsx`), nos menus da rede e
+  da unidade. O título continua lendo como overline, com uma seta que gira.
+- **Nasce aberta**: o menu não esconde nada sem ninguém pedir.
+- **Fechada, a página em que se está continua à mostra**: fechar a categoria
+  da tela aberta não a some do menu, e quem navega para uma tela de categoria
+  fechada a vê marcada.
+- Lembra por navegador (`localStorage`, como o "Recolher" da barra).
+- Com a barra recolhida em ícones, não recolhe: ali cada ícone precisa estar
+  à mão, e o título já vira filete.
+- No celular, abrir ou fechar a categoria não fecha a barra (o clique no
+  `<nav>` fechava).
+- Prova: `e2e/menu-lateral.spec.ts`.
+
 ### 2026-09-30 — Dívidas técnicas do dia
 
 - **Modais.** Os 27 modais feitos de `div` fixo com `z-index` (pagamento e

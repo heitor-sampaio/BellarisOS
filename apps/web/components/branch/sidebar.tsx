@@ -8,7 +8,7 @@ import {
   ArrowLeft, ChevronDown, Check, ChevronLeft, ChevronRight, Inbox, ClipboardCheck, Settings,
   Syringe,
 } from 'lucide-react'
-import { NavItem }    from '@/components/shared/nav-item'
+import { SecaoDoMenu } from '@/components/shared/secao-do-menu'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { BRANCH_MENU, menuSectionsFor } from '@/lib/menu'
@@ -184,17 +184,12 @@ export function BranchSidebar({
             scrollbarWidth: 'thin',
           }}
         >
+          {/* Cada categoria recolhe pelo título; com a barra recolhida em
+              ícones, o título vira um filete. */}
           {menuSectionsFor(BRANCH_MENU, permissions).map(secao => (
-            <div key={secao.key ?? '_topo'} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {/* Recolhida, a barra é só ícone: o título vira um filete. */}
-              {secao.label && (collapsed
-                ? <div aria-hidden style={{ height: 1, background: separatorBg, margin: '6px 10px 5px' }} />
-                : <span className="overline" style={{ display: 'block', padding: '9px 12px 3px' }}>{secao.label}</span>
-              )}
-              {secao.entries.map(e => (
-                <NavItem key={e.key} icon={ICONS[e.key]} label={e.label} href={`${base}${e.href}`} />
-              ))}
-            </div>
+            <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
+              entradas={secao.entries.map(e => ({ ...e, href: `${base}${e.href}` }))}
+              icones={ICONS} recolhida={collapsed} filete={separatorBg} />
           ))}
         </nav>
 

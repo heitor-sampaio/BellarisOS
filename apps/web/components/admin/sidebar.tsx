@@ -6,7 +6,7 @@ import {
   UsersRound, Bell, ChevronLeft, ChevronRight, Inbox, FileText, ClipboardCheck, ClipboardList,
   Syringe, Workflow,
 } from 'lucide-react'
-import { NavItem }    from '@/components/shared/nav-item'
+import { SecaoDoMenu } from '@/components/shared/secao-do-menu'
 import { logoutAction } from '@/actions/auth'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { ADMIN_MENU, menuSectionsFor } from '@/lib/menu'
@@ -106,18 +106,11 @@ export function AdminSidebar({ permissions }: { permissions: ResolvedPermissions
             scrollbarWidth: 'thin',
           }}
         >
+          {/* Cada categoria recolhe pelo título; com a barra recolhida em
+              ícones, o título vira um filete que ainda separa os blocos. */}
           {menuSectionsFor(ADMIN_MENU, permissions).map(secao => (
-            <div key={secao.key ?? '_topo'} style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {/* Recolhida, a barra é só ícone: o título da área não cabe e vira
-                  um filete, que ainda separa os blocos. */}
-              {secao.label && (collapsed
-                ? <div aria-hidden style={{ height: 1, background: separatorBg, margin: '6px 10px 5px' }} />
-                : <span className="overline" style={{ display: 'block', padding: '9px 12px 3px' }}>{secao.label}</span>
-              )}
-              {secao.entries.map(e => (
-                <NavItem key={e.key} icon={ICONS[e.key]} label={e.label} href={e.href} />
-              ))}
-            </div>
+            <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
+              entradas={secao.entries} icones={ICONS} recolhida={collapsed} filete={separatorBg} />
           ))}
         </nav>
 

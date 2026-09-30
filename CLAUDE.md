@@ -772,6 +772,11 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
   vende); Marketing = Notificações, Marketing e Templates. A tela de cargos
   agrupa os módulos igual (`MODULE_GROUPS`: `crm` e `procedures` em Vendas,
   `marketing` em Marketing).
+- **Cada categoria do menu recolhe pelo título** (pedido do Heitor,
+  2026-09-30; `SecaoDoMenu`, `components/shared/secao-do-menu.tsx`, nos dois
+  menus). Nasce aberta; fechada, ainda mostra o item da página aberta; lembra
+  por navegador (`localStorage`); com a barra recolhida em ícones, não recolhe.
+  Prova: `e2e/menu-lateral.spec.ts`.
 - **Venda na ficha do cliente** ("Vender pacote", `VenderPacote`), para quem
   recebe (`podeReceber`), com o vocabulário do plano: à vista, entrada +
   parcelas, a receber (`CamposDoPagamento`, o mesmo do pagamento do contrato).
