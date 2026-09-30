@@ -84,12 +84,21 @@ async function retomarPendentes(): Promise<{ retomadas: number; erros: number }>
       // Concorrer é normal: o serviço roda de 5 em 5 minutos e uma passagem com
       // fila grande passa disso. Mesmo idioma de `ultimo_disparo_agenda` (§9.9):
       // a marca vai antes de executar, e o que decide é quantas linhas mudaram.
+      //
+      // ⚠️ E a reivindicação TIRA o run da fila (status `rodando`) na mesma
+      // escrita. Só o compare-and-swap não bastava: se a passagem B lesse a fila
+      // DEPOIS de A reivindicar — e antes de o motor marcar `rodando`, o que só
+      // acontece depois de ler o run e a automação —, B via o run ainda
+      // `esperando`, agora com `tentativas` já somada, e o CAS dela (1 → 2)
+      // também passava: o passo rodava duas vezes. Foi o que a suíte completa
+      // pegou em 2026-09-30 (automacoes-cron-concorrente, intermitente).
       const tentativas = (run.tentativas as number) ?? 0
       const reivindicado = await gravar(admin
         .from('automation_runs')
-        .update({ tentativas: tentativas + 1 })
+        .update({ tentativas: tentativas + 1, status: 'rodando' })
         .eq('id', run.id as string)
         .eq('tentativas', tentativas)
+        .in('status', ['esperando', 'falhou'])
         .select('id'), 'reivindicar a execução')
 
       // Zero linhas não é erro: é outra passagem que chegou primeiro. Seguir

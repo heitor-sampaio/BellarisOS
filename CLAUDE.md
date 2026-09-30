@@ -1441,7 +1441,11 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   falhou e o que é de tempo.
   - ⚠️ **Tirar trabalho da fila exige REIVINDICAR a linha**, não só selecionar.
     `retomarPendentes` faz isso com um compare-and-swap em `tentativas`
-    (`.eq('tentativas', lido)`), e `dispararAgendas` com um em
+    (`.eq('tentativas', lido)`) que, na MESMA escrita, põe o run em `rodando`
+    (só se ainda estiver `esperando`/`falhou`). Sem tirar da fila, a passagem
+    que lesse DEPOIS da reivindicação via o run ainda esperando, com a
+    tentativa já somada, e o CAS dela também passava (2026-09-30). E
+    `dispararAgendas` com um em
     `ultimo_disparo_agenda`: quem escreve primeiro leva, e quem não muda linha
     nenhuma passa adiante. Sem isso, duas passagens concorrentes do cron —
     normal, porque o serviço roda de 5 em 5 minutos e uma fila grande passa
