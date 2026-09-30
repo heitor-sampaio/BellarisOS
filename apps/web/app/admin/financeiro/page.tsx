@@ -84,16 +84,21 @@ export default async function AdminFinanceiroPage({
     // Por `ler`: consulta que falha PARA, em vez de virar um extrato vazio.
     ler(admin
       .from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id, notes')
+      .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, created_at, branch_id, notes, data_de_referencia, parcela_numero, parcela_total')
       .in('branch_id', branchIds)
-      .gte('created_at', start.toISOString())
+      // O período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia do
+    // pagamento; o em aberto, no vencimento. Cada parcela aparece no mês dela —
+    // pela criação, o parcelado inteiro caía no mês da venda. O saldo zerado
+    // (substituído no check-in) é histórico: fica fora da lista.
+      .or('is_paid.eq.true,amount.neq.0')
+      .gte('data_de_referencia', start.toISOString())
     // Fim do PERÍODO, não "agora": o `to` do resolvePeriod é a janela
     // DECORRIDA, que existe para o delta comparar coisas de mesmo tamanho. Numa
     // LISTA ele vira um bug de corrida — o relógio do Postgres está à frente do
     // relógio do app (medi 0,2s), então um lançamento feito neste segundo nasce
     // com `created_at` no futuro e some da tela que acabou de criá-lo.
-      .lte('created_at', fimDoPeriodo.toISOString())
-      .order('created_at', { ascending: false })
+      .lte('data_de_referencia', fimDoPeriodo.toISOString())
+      .order('data_de_referencia', { ascending: false })
       .limit(500), 'carregar os lançamentos da rede'),
 
     // Clientes da rede, para o crédito interno. Só quem recebe precisa.

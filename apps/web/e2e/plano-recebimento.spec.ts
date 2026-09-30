@@ -90,12 +90,12 @@ test.describe.serial('receber o plano no atendimento', () => {
       const { data } = await db.from('financial_transactions').select('amount, is_paid')
         .eq('treatment_plan_id', c!.plano).gt('amount', 0).order('created_at')
       return (data ?? []).map(t => `${Number(t.amount)}:${t.is_paid}`).sort()
-    }, { message: 'entrada paga e saldo a receber; o lançamento antigo zera' }).toEqual(['100:true', '200:false'])
+    }, { message: 'entrada paga e CADA parcela a receber; o lançamento antigo zera' }).toEqual(['100:false', '100:false', '100:true'])
 
-    const { data: saldo } = await db.from('financial_transactions').select('id')
-      .eq('treatment_plan_id', c!.plano).eq('is_paid', false).gt('amount', 0).single()
-    const { data: parcelas } = await db.from('installments').select('number, total, amount').eq('transaction_id', saldo!.id).order('number')
-    expect(parcelas!.map(p => `${p.number}/${p.total}:${Number(p.amount)}`)).toEqual(['1/2:100', '2/2:100'])
+    const { data: parcelas } = await db.from('financial_transactions').select('parcela_numero, parcela_total, amount, description')
+      .eq('treatment_plan_id', c!.plano).eq('is_paid', false).gt('amount', 0).order('parcela_numero')
+    expect(parcelas!.map(p => `${p.parcela_numero}/${p.parcela_total}:${Number(p.amount)}`)).toEqual(['1/2:100', '2/2:100'])
+    expect(parcelas!.every(p => /— parcela \d\/2$/.test(p.description as string)), 'a descrição diz qual parcela').toBe(true)
 
     const { data: hist } = await db.from('appointment_history').select('action, description').eq('appointment_id', c!.appt).eq('action', 'PAYMENT_CONFIRMED')
     expect(hist?.[0]?.description, 'o recebimento entra no histórico da sessão').toMatch(/Plano de tratamento recebido/)
@@ -110,8 +110,9 @@ test.describe.serial('receber o plano no atendimento', () => {
         .eq('treatment_plan_id', c!.plano).eq('is_paid', false).gt('amount', 0)
       return data?.length ?? -1
     }, { message: 'à vista quita o que estava em aberto' }).toBe(0)
-    const { data: pagas } = await db.from('installments').select('is_paid').eq('transaction_id', saldo!.id)
-    expect((pagas ?? []).every(p => p.is_paid), 'as parcelas saem pagas junto').toBe(true)
+    const { data: pagas } = await db.from('financial_transactions').select('is_paid')
+      .eq('treatment_plan_id', c!.plano).not('parcela_total', 'is', null)
+    expect((pagas ?? []).length > 0 && (pagas ?? []).every(p => p.is_paid), 'as parcelas saem pagas junto').toBe(true)
   })
 
   test('o histórico de um atendimento de outra rede não ganha o recebimento', async ({ page }) => {

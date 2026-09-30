@@ -365,6 +365,7 @@ function TabFinanceiro(p: ReportsBiProps) {
   // Pending installments table
   const installCols: TableColumn[] = [
     { key: 'client',    label: 'Cliente'    },
+    { key: 'what',      label: 'Parcela'    },
     { key: 'value',     label: 'Valor',      align: 'right',  render: (v) => fmtBRLFull(Number(v)) },
     { key: 'due',       label: 'Vencimento', align: 'center' },
     { key: 'branch',    label: 'Filial'      },
@@ -377,10 +378,11 @@ function TabFinanceiro(p: ReportsBiProps) {
   ]
   const today = new Date()
   const installRows = installments.map(i => ({
-    client:   i.financial_transactions?.clients?.name ?? '—',
+    client:   i.clients?.name ?? '—',
+    what:     i.description,
     value:    Number(i.amount),
-    due:      new Date(i.due_date).toLocaleDateString('pt-BR'),
-    branch:   branches.find(b => b.id === i.financial_transactions?.branch_id)?.name ?? '—',
+    due:      new Date(i.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
+    branch:   branches.find(b => b.id === i.branch_id)?.name ?? '—',
     daysLeft: Math.max(0, Math.ceil((new Date(i.due_date).getTime() - today.getTime()) / 86_400_000)),
   }))
 

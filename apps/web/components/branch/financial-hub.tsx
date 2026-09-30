@@ -190,7 +190,7 @@ function groupByPeriod(
     }))
     txs.forEach(tx => {
       if (!tx.is_paid) return
-      const h = new Date(tx.created_at).getHours()
+      const h = new Date(tx.paid_at ?? tx.created_at).getHours()
       if (tx.type === 'INCOME')  hours[h]!.income  += Number(tx.amount)
       if (tx.type === 'EXPENSE') hours[h]!.expense += Number(tx.amount)
     })
@@ -201,7 +201,7 @@ function groupByPeriod(
     const weeks: Record<string, BarDatum> = {}
     txs.forEach(tx => {
       if (!tx.is_paid) return
-      const d = new Date(tx.created_at)
+      const d = new Date(tx.paid_at ?? tx.created_at)
       const ws = new Date(d)
       ws.setDate(d.getDate() - ((d.getDay() + 6) % 7))
       const key = ws.toISOString().slice(0, 10)
@@ -232,7 +232,9 @@ function groupByPeriod(
   }
   txs.forEach(tx => {
     if (!tx.is_paid) return
-    const key = tx.created_at.slice(0, 10)
+    // O que foi pago conta no dia do PAGAMENTO, não da criação (a parcela
+    // criada na venda e paga meses depois caía no dia da venda).
+    const key = (tx.paid_at ?? tx.created_at).slice(0, 10)
     if (!map[key]) return
     if (tx.type === 'INCOME')  map[key].income  += Number(tx.amount)
     if (tx.type === 'EXPENSE') map[key].expense += Number(tx.amount)

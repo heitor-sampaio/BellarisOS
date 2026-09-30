@@ -173,18 +173,23 @@ test.describe.serial('checkout de plano', () => {
     const contrato = docs.find(d => d.kind === 'CONTRATO_PLANO')!
     expect(contrato.payment_snapshot).toMatchObject({ forma: 'PARCELADO', metodo: 'PIX', entrada: 100, parcelas: 3 })
 
+    // A entrada paga e CADA parcela um lançamento a receber, no seu mês, com
+    // "parcela n/3" na descrição (2026-09-30) — não mais o saldo inteiro num só.
     const { data: fts } = await db().from('financial_transactions')
-      .select('id, amount, is_paid, payment_method, due_date').eq('treatment_plan_id', planId).order('created_at')
-    expect(fts, 'uma entrada paga e um saldo a receber').toHaveLength(2)
+      .select('id, amount, is_paid, payment_method, due_date, description, parcela_numero, parcela_total, parcela_grupo')
+      .eq('treatment_plan_id', planId).order('parcela_numero', { nullsFirst: true })
+    expect(fts, 'a entrada e as três parcelas').toHaveLength(4)
     const entrada = fts!.find(f => f.is_paid)!
-    const saldo   = fts!.find(f => !f.is_paid)!
     expect(Number(entrada.amount)).toBe(100)
     expect(entrada.payment_method).toBe('PIX')
-    expect(Number(saldo.amount)).toBe(TOTAL - 100)
-    const { data: parcelas } = await db().from('installments').select('number, total, amount, is_paid')
-      .eq('transaction_id', saldo.id).order('number')
-    expect(parcelas!.map(p => `${p.number}/${p.total}:${Number(p.amount)}:${p.is_paid}`))
-      .toEqual(['1/3:100:false', '2/3:100:false', '3/3:100:false'])
+    expect(entrada.description).toMatch(/— entrada$/)
+    const parcelas = fts!.filter(f => !f.is_paid)
+    expect(parcelas.map(p => `${p.parcela_numero}/${p.parcela_total}:${Number(p.amount)}`)).toEqual(['1/3:100', '2/3:100', '3/3:100'])
+    expect(parcelas.map(p => p.description.replace(/.*— /, ''))).toEqual(['parcela 1/3', 'parcela 2/3', 'parcela 3/3'])
+    const meses = parcelas.map(p => new Date(p.due_date as string).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7))
+    expect(new Set(meses).size, 'uma parcela em cada mês').toBe(3)
+    expect(new Set(parcelas.map(p => p.parcela_grupo)).size, 'o mesmo parcelamento').toBe(1)
+    expect(Math.round(fts!.reduce((t, f) => t + Number(f.amount), 0) * 100) / 100, 'entrada + parcelas fecham o plano').toBe(TOTAL)
   })
 
   test('sem assinar, chamando direto, nada é lançado — nem pelo banco', async ({ browser }) => {

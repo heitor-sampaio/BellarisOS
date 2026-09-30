@@ -18,19 +18,24 @@ describe('lançamentos de uma venda', () => {
     expect(l).toMatchObject({ amount: 300, is_paid: false, due_date: null })
     expect(EntradaDoPagamento.safeParse({ forma: 'A_RECEBER', metodo: null, vencimento: null }).success).toBe(true)
   })
-  it('entrada + parcelas: a entrada paga, o saldo em aberto, parcelas que fecham a soma', () => {
+  it('entrada + parcelas: a entrada paga e CADA parcela um lançamento, no seu mês', () => {
     const ls = lancamentosDoPagamento(1000, {
       forma: 'PARCELADO', metodo: 'CREDIT_CARD', entrada: 100, parcelas: 3, primeiroVencimento: '2026-10-10T15:00:00.000Z',
     }, 'Pacote')
-    expect(ls.map(l => [l.amount, l.is_paid])).toEqual([[100, true], [900, false]])
-    expect(soma(ls)).toBe(1000)
-    expect(ls[1]!.parcelas!.map(p => [p.amount, p.due_date.slice(0, 10)])).toEqual([
-      [300, '2026-10-10'], [300, '2026-11-10'], [300, '2026-12-10'],
+    expect(ls.map(l => [l.amount, l.is_paid, l.due_date?.slice(0, 10) ?? null, l.sufixo])).toEqual([
+      [100, true, null, 'entrada'],
+      [300, false, '2026-10-10', 'parcela 1/3'],
+      [300, false, '2026-11-10', 'parcela 2/3'],
+      [300, false, '2026-12-10', 'parcela 3/3'],
     ])
+    expect(soma(ls)).toBe(1000)
+    const grupos = new Set(ls.slice(1).map(l => l.parcela_grupo))
+    expect(grupos.size, 'as parcelas do mesmo parcelamento têm o mesmo grupo').toBe(1)
+    expect(ls[0]!.parcela_grupo, 'a entrada não é parcela').toBeUndefined()
   })
   it('a última parcela leva o arredondamento', () => {
-    const [l] = lancamentosDoPagamento(100, { forma: 'PARCELADO', metodo: 'PIX', entrada: 0, parcelas: 3, primeiroVencimento: '2026-10-10T15:00:00.000Z' }, 'X')
-    expect(l!.parcelas!.map(p => p.amount)).toEqual([33.33, 33.33, 33.34])
+    const ls = lancamentosDoPagamento(100, { forma: 'PARCELADO', metodo: 'PIX', entrada: 0, parcelas: 3, primeiroVencimento: '2026-10-10T15:00:00.000Z' }, 'X')
+    expect(ls.map(p => p.amount)).toEqual([33.33, 33.33, 33.34])
   })
   it('entrada maior que o preço vira à vista', () => {
     const ls = lancamentosDoPagamento(200, { forma: 'PARCELADO', metodo: 'PIX', entrada: 500, parcelas: 2, primeiroVencimento: '2026-10-10T15:00:00.000Z' }, 'X')

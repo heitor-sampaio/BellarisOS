@@ -38,6 +38,8 @@ interface AdminTx {
   paid_at:        string | null
   due_date:       string | null
   created_at:     string
+  /** O pago, no dia do pagamento; o em aberto, no vencimento (ou na criação). */
+  data_de_referencia?: string | null
   branch_id:      string
   branchName:     string
   /** `'Estornada'` marca a ponta estornada — o estorno sai dos dois lados. */
@@ -473,7 +475,9 @@ export function AdminFinancialView({
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
                     <td data-label="Data" data-par style={{ padding: '11px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {new Date(t.created_at).toLocaleDateString('pt-BR')}
+                      {!t.is_paid && t.due_date
+                        ? `Vence ${new Date(t.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+                        : new Date(t.data_de_referencia ?? t.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
                     </td>
                     <td data-label="" style={{ padding: '11px 16px', fontSize: 'var(--text-base-sz)', fontWeight: 600, color: 'var(--text)', maxWidth: 280 }}>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>

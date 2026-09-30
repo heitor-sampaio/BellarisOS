@@ -1151,6 +1151,7 @@ import { rotuloDoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamen
 import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
 import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto } from '@/lib/vendas/desconto'
+import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1304,46 +1305,36 @@ async function checkoutTreatmentPlanInterno(
 
     if (entrada > 0) {
       const { data, error } = await lancar({
-          amount:           entrada,
+        amount:           entrada,
         payment_method:   pagamento.metodo,
         is_paid:          true,
         paid_at:          agora,
+        description:      `${descricao} — entrada`,
         notes:            'Entrada do plano de tratamento',
       })
       if (error) return { error: `Erro ao registrar a entrada: ${error.message}` }
       transactionId = data!.id as string
     }
 
+    // Cada parcela, um lançamento com o seu vencimento (2026-09-30): o saldo
+    // inteiro num lançamento só aparecia no mês da venda e se quitava de uma vez.
     if (saldo > 0) {
-      const { data, error } = await lancar({
-        amount:         saldo,
-        payment_method: pagamento.metodo,
-        is_paid:        false,
-        due_date:       pagamento.primeiroVencimento,
-        notes:          `Saldo do plano em ${vezes}x`,
-      })
-      if (error) return { error: `Erro ao registrar as parcelas: ${error.message}` }
-      transactionId = transactionId ?? (data!.id as string)
-
-      // Mesmo formato das despesas parceladas (actions/financial.ts): valor
-      // dividido igualmente e um vencimento por mês a partir do primeiro.
-      const valorParcela = Math.round((saldo / vezes) * 100) / 100
-      const base         = new Date(pagamento.primeiroVencimento)
-      const { error: parcErr } = await admin.from('installments').insert(
-        Array.from({ length: vezes }, (_, i) => {
-          const venc = new Date(base)
-          venc.setMonth(venc.getMonth() + i)
-          return {
-            transaction_id: data!.id as string,
-            number:         i + 1,
-            total:          vezes,
-            amount:         valorParcela,
-            due_date:       venc.toISOString(),
-            is_paid:        false,
-          }
-        }),
-      )
-      if (parcErr) return { error: `Erro ao registrar as parcelas: ${parcErr.message}` }
+      const grupo = crypto.randomUUID()
+      for (const parcela of dividirEmParcelas(saldo, vezes, pagamento.primeiroVencimento)) {
+        const { data, error } = await lancar({
+          amount:         parcela.amount,
+          payment_method: pagamento.metodo,
+          is_paid:        false,
+          due_date:       parcela.due_date,
+          description:    `${descricao} — ${rotuloDaParcela(parcela)}`,
+          notes:          `Saldo do plano em ${vezes}x`,
+          parcela_numero: parcela.numero,
+          parcela_total:  parcela.total,
+          parcela_grupo:  grupo,
+        })
+        if (error) return { error: `Erro ao registrar as parcelas: ${error.message}` }
+        transactionId = transactionId ?? (data!.id as string)
+      }
     }
 
   } else {
@@ -1578,39 +1569,30 @@ async function receberDoPlanoInterno(
         payment_method:   recebimento.metodo,
         is_paid:          true,
         paid_at:          agora,
-          notes:            'Entrada do plano de tratamento',
+        description:      `${base.description} — entrada`,
+        notes:            'Entrada do plano de tratamento',
       })
       if (error) return { error: `Erro ao registrar a entrada: ${error.message}` }
     }
 
+    // Cada parcela, um lançamento com o seu vencimento (2026-09-30).
     if (resto > 0) {
-      const { data: parcelado, error } = await admin.from('financial_transactions').insert({
-        ...base,
-        amount:         resto,
-        payment_method: recebimento.metodo,
-        is_paid:        false,
-        due_date:       recebimento.primeiroVencimento,
-        notes:          `Saldo do plano em ${vezes}x`,
-      }).select('id').single()
-      if (error) return { error: `Erro ao registrar as parcelas: ${error.message}` }
-
-      const valorParcela = Math.round((resto / vezes) * 100) / 100
-      const primeira     = new Date(recebimento.primeiroVencimento)
-      const { error: parcErr } = await admin.from('installments').insert(
-        Array.from({ length: vezes }, (_, i) => {
-          const venc = new Date(primeira)
-          venc.setMonth(venc.getMonth() + i)
-          return {
-            transaction_id: parcelado!.id as string,
-            number:         i + 1,
-            total:          vezes,
-            amount:         valorParcela,
-            due_date:       venc.toISOString(),
-            is_paid:        false,
-          }
-        }),
+      const grupo = crypto.randomUUID()
+      const { error } = await admin.from('financial_transactions').insert(
+        dividirEmParcelas(resto, vezes, recebimento.primeiroVencimento).map(parcela => ({
+          ...base,
+          amount:         parcela.amount,
+          payment_method: recebimento.metodo,
+          is_paid:        false,
+          due_date:       parcela.due_date,
+          description:    `${base.description} — ${rotuloDaParcela(parcela)}`,
+          notes:          `Saldo do plano em ${vezes}x`,
+          parcela_numero: parcela.numero,
+          parcela_total:  parcela.total,
+          parcela_grupo:  grupo,
+        })),
       )
-      if (parcErr) return { error: `Erro ao registrar as parcelas: ${parcErr.message}` }
+      if (error) return { error: `Erro ao registrar as parcelas: ${error.message}` }
     }
   }
 

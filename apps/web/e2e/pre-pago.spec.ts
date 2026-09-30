@@ -129,8 +129,9 @@ test.describe.serial('procedimento pré-pago', () => {
       .toEqual({ q: 3, tabela: 900, desconto: 90, price: 810, por: gestor!.userId })
     const { data: us } = await db().from('procedure_sale_units').select('preco, status').eq('sale_id', venda).order('numero')
     expect((us ?? []).map(u => [n(u.preco), u.status])).toEqual([[270, 'DISPONIVEL'], [270, 'DISPONIVEL'], [270, 'DISPONIVEL']])
-    const { data: txs } = await db().from('financial_transactions').select('amount, is_paid, installments(amount)').eq('procedure_sale_id', venda).order('amount')
-    expect((txs ?? []).map(t => [n(t.amount), t.is_paid, ((t.installments ?? []) as { amount: number }[]).length])).toEqual([[210, true, 0], [600, false, 2]])
+    const { data: txs } = await db().from('financial_transactions').select('amount, is_paid, parcela_numero')
+      .eq('procedure_sale_id', venda).order('parcela_numero', { nullsFirst: true })
+    expect((txs ?? []).map(t => [n(t.amount), t.is_paid, t.parcela_numero])).toEqual([[210, true, null], [300, false, 1], [300, false, 2]])
   })
 
   test('a unidade no atendimento: conclusão a usa, recepção não cobra, comissão pela proporção recebida', async () => {
@@ -156,9 +157,13 @@ test.describe.serial('procedimento pré-pago', () => {
     })
     expect(eP?.message).toMatch(/pré-pago/)
 
-    // O saldo é pago: completa.
-    const { data: saldo } = await db().from('financial_transactions').select('id').eq('procedure_sale_id', venda).eq('is_paid', false).single()
-    await db().from('financial_transactions').update({ is_paid: true, paid_at: new Date().toISOString() }).eq('id', saldo!.id)
+    // Uma parcela paga libera a parte dela (210 + 300 de 810 → 17); as duas, tudo.
+    const { data: abertas } = await db().from('financial_transactions').select('id')
+      .eq('procedure_sale_id', venda).eq('is_paid', false).order('parcela_numero')
+    const pagar = (ids: string[]) => db().from('financial_transactions').update({ is_paid: true, paid_at: new Date().toISOString() }).in('id', ids)
+    await pagar([abertas![0]!.id])
+    expect(await devido(ap)).toBe(17)
+    await pagar(abertas!.slice(1).map(a => a.id))
     expect(await devido(ap)).toBe(27)
   })
 

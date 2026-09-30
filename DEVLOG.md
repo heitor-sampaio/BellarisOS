@@ -1258,6 +1258,41 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Cada parcela é um lançamento no financeiro
+
+O Heitor notou que um pagamento parcelado aparecia no dia da venda com o valor
+total. Conferido: o saldo virava UM lançamento (o total, com o vencimento da
+1ª parcela); as parcelas moravam em `installments`, que nenhuma tela lia; o
+"Pagar" quitava o saldo de uma vez (as parcelas ficavam em aberto para
+sempre); e a lista e o "a receber" contavam tudo no mês da venda — e o saldo
+sumia do "a receber" no mês seguinte, ainda em aberto.
+
+- **Cada parcela é um lançamento**, com o vencimento dela e "— parcela 2/3"
+  na descrição; a entrada, "— entrada" (colunas `parcela_numero`,
+  `parcela_total`, `parcela_grupo`). Pagar, estornar, comissão (proporcional),
+  fidelidade e métricas passam a valer por parcela sem código novo.
+- **Uma divisão só** (`dividirEmParcelas`) para pacote, pré-pago, checkout e
+  recebimento do plano e despesa parcelada: centavos, sobra na última, e o dia
+  31 vira o último dia dos meses curtos. O checkout do plano não jogava a sobra
+  na última (3 × 66,67 = 200,01 para 200).
+- **`data_de_referencia`** (coluna gerada): pago no dia do pagamento, em
+  aberto no vencimento. A lista do financeiro (unidade e rede) recorta por ela
+  e mostra "Vence dd/mm" no que está em aberto; o "a receber" do período conta
+  por ela; o gráfico de evolução passou a usar o dia do pagamento (usava a
+  criação). O saldo zerado do check-in saiu da lista.
+- O card "Parcelas a receber" dos relatórios lê os lançamentos (lia
+  `installments`, e mostrava parcela já quitada ou estornada).
+- A taxa da maquininha na comissão vem de `parcela_total` do lançamento.
+- Os 2 parcelamentos em aberto no banco foram convertidos (um deles com o
+  centavo a mais do arredondamento antigo, corrigido na última parcela).
+
+Migration `20260930000023`. **Prova:** `financeiro-parcelas` (a entrada no
+mês, cada parcela no seu mês com o vencimento, "Pagar" quitando só uma; a
+despesa parcelada pela tela) e os vizinhos atualizados (checkout de plano,
+recebimento do plano, pacotes e pré-pago — com a comissão liberando parcela a
+parcela), mais 41 do financeiro, comissões, fidelidade e indicadores.
+Unitários da divisão.
+
 ### 2026-09-30 — Suíte completa em duas metades (isolados em paralelo)
 
 O Heitor perguntou por que a suíte demora (~25 min no CI, 107 arquivos, 421

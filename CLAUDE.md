@@ -1106,7 +1106,23 @@ DEVLOG ("Termos e contratos").
   financeiro da unidade e o da rede pedem `financial`. `podeReceber` (cashier OU
   financial) continua sendo o gate de quem fecha uma venda.
 - `FinancialTransaction` criada automaticamente ao concluir `Appointment`
-- `Installment`: parcelas de uma transação (ex: parcelamento no cartão) — rastrear `isPaid` + `paidAt` por parcela
+- **Cada parcela é um LANÇAMENTO** (pedido do Heitor, 2026-09-30): o
+  parcelado grava a entrada ("— entrada") e uma linha de
+  `financial_transactions` por parcela, com o vencimento dela, "— parcela
+  2/3" na descrição e `parcela_numero`/`parcela_total`/`parcela_grupo` (o grupo
+  liga as parcelas do mesmo parcelamento). Pagar, estornar, comissão,
+  fidelidade e métricas já operam por lançamento — passam a valer por
+  parcela. Vale para pacote, pré-pago, checkout e recebimento do plano e
+  despesa parcelada; a divisão é uma só (`dividirEmParcelas`,
+  `lib/checkout/parcelas.ts`: centavos, sobra na última, dia 31 vira o último
+  dia do mês curto).
+  - Era UM lançamento com o saldo inteiro e o vencimento da 1ª; as parcelas
+    moravam em `installments`, que nenhuma tela lia, e o "Pagar" quitava o
+    saldo de uma vez. `installments` agora é histórico (nada novo é escrito).
+  - **`data_de_referencia`** (coluna gerada): o pago, no dia do pagamento; o
+    em aberto, no vencimento (ou na criação, sem vencimento). É por ela que a
+    lista do financeiro recorta o período — a parcela de novembro aparece em
+    novembro — e que o "a receber" do período conta.
 - Formas de pagamento: `CASH`, `PIX`, `DEBIT_CARD`, `CREDIT_CARD`, `INTERNAL_CREDIT`
 - **Desconto de fidelidade** fica em `loyalty_discount`, FORA de `amount`: o
   lançamento registra o dinheiro que entrou (§9.2.2). Pago todo com pontos, o
@@ -1805,7 +1821,9 @@ Princípios inegociáveis:
     banco para que a divergência não volte em silêncio.
 - **Definições canônicas** (uma só por indicador):
   - `revenueCash` — recebido (INCOME pago, eixo em `paid_at`)
-  - `revenuePending` — a receber
+  - `revenuePending` — a receber, pelo VENCIMENTO (`data_de_referencia`;
+    sem vencimento, a criação). Era pela criação: o parcelado inteiro caía no
+    mês da venda.
   - `serviceRevenue` — preço dos atendimentos concluídos (eixo em `scheduled_at`)
   - `ticketMedio` = `serviceRevenue ÷ atendimentos concluídos` — **numerador e
     denominador do mesmo conjunto**
@@ -1949,6 +1967,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Criar pacote de cliente fora de pacote_vender (sessões, retrato do preço e dinheiro vão juntos)
 ❌ Calcular desconto de venda fora de lib/vendas/desconto.ts, ou confiar no valor de desconto que o navegador manda
 ❌ Pôr desconto comercial em amount ou em loyalty_discount (é sale_discount no avulso; no pacote e no plano, o preço vendido)
+❌ Gravar um parcelado como um lançamento só (cada parcela é um lançamento; divida com dividirEmParcelas) ou escrever em installments
+❌ Recortar a lista do financeiro por created_at (é data_de_referencia: pago no pagamento, em aberto no vencimento)
 ❌ Mexer no preço dos procedimentos do plano no checkout fora de plano_aplicar_desconto
 ❌ Reaproveitar pacote (client_packages) para o procedimento pré-pago — são separados (decisão do Heitor)
 ❌ Vender pré-pago fora de procedimento_vender, ou cancelar unidade fora de procedimento_cancelar_unidade

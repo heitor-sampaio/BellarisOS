@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { PagamentoDoPlano } from './pagamento'
+import { dividirEmParcelas, rotuloDaParcela } from './parcelas'
 
 /**
  * Os lançamentos de uma venda paga de uma vez ou em partes — hoje, a venda de
@@ -16,7 +17,15 @@ export interface Lancamento {
   is_paid:        boolean
   due_date:       string | null
   notes:          string | null
-  parcelas?:      { number: number; total: number; amount: number; due_date: string }[]
+  /** Vai depois do " — " na descrição: "entrada", "parcela 2/3". */
+  sufixo?:        string
+  /**
+   * Parcelado: CADA parcela é um lançamento (2026-09-30), com o seu vencimento;
+   * o grupo liga as parcelas do mesmo parcelamento.
+   */
+  parcela_numero?: number
+  parcela_total?:  number
+  parcela_grupo?:  string
 }
 
 const METODOS = ['PIX', 'CASH', 'DEBIT_CARD', 'CREDIT_CARD', 'INTERNAL_CREDIT'] as const
@@ -34,13 +43,6 @@ export const EntradaDoPagamento = z.discriminatedUnion('forma', [
 
 const centavos = (v: number) => Math.round(v * 100) / 100
 
-/** Soma um número de meses no calendário, mantendo o dia (e o horário). */
-function maisMeses(iso: string, meses: number): string {
-  const d = new Date(iso)
-  d.setUTCMonth(d.getUTCMonth() + meses)
-  return d.toISOString()
-}
-
 export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotulo: string): Lancamento[] {
   const valor = centavos(total)
   if (p.forma === 'AVISTA') {
@@ -53,21 +55,19 @@ export function lancamentosDoPagamento(total: number, p: PagamentoDoPlano, rotul
   const saldo = centavos(valor - entrada)
   const saida: Lancamento[] = []
   if (entrada > 0) {
-    saida.push({ amount: entrada, payment_method: p.metodo, is_paid: true, due_date: null, notes: `Entrada — ${rotulo}` })
+    saida.push({ amount: entrada, payment_method: p.metodo, is_paid: true, due_date: null, notes: `Entrada — ${rotulo}`, sufixo: 'entrada' })
   }
   if (saldo > 0) {
-    const n = Math.max(1, Math.min(12, p.parcelas))
-    const cada = centavos(saldo / n)
-    saida.push({
-      amount: saldo, payment_method: p.metodo, is_paid: false, due_date: p.primeiroVencimento,
-      notes: `Saldo — ${rotulo} em ${n}x`,
-      // A última parcela leva o que sobra do arredondamento: a soma tem de fechar.
-      parcelas: Array.from({ length: n }, (_, i) => ({
-        number: i + 1, total: n,
-        amount: i === n - 1 ? centavos(saldo - cada * (n - 1)) : cada,
-        due_date: maisMeses(p.primeiroVencimento, i),
-      })),
-    })
+    // Cada parcela, um lançamento com o seu vencimento — e não o saldo inteiro
+    // num lançamento só, que o financeiro mostrava no mês da venda.
+    const grupo = crypto.randomUUID()
+    for (const parcela of dividirEmParcelas(saldo, Math.min(12, p.parcelas), p.primeiroVencimento)) {
+      saida.push({
+        amount: parcela.amount, payment_method: p.metodo, is_paid: false, due_date: parcela.due_date,
+        notes: `${rotuloDaParcela(parcela)} — ${rotulo}`, sufixo: rotuloDaParcela(parcela),
+        parcela_numero: parcela.numero, parcela_total: parcela.total, parcela_grupo: grupo,
+      })
+    }
   }
   return saida
 }

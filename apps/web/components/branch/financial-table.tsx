@@ -23,6 +23,8 @@ export interface Transaction {
   notes:          string | null
   created_at:     string
   appointment_id: string | null
+  /** O pago, no dia do pagamento; o em aberto, no vencimento (ou na criação). */
+  data_de_referencia?: string | null
 }
 
 interface Props {
@@ -102,7 +104,7 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
         return true
       })
       .sort((a, b) => {
-        const diff = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        const diff = new Date(a.data_de_referencia ?? a.created_at).getTime() - new Date(b.data_de_referencia ?? b.created_at).getTime()
         return sortDir === 'desc' ? -diff : diff
       })
   }, [transactions, filterType, filterPaid, search, sortDir])
@@ -218,9 +220,16 @@ export function FinancialTable({ transactions, slug, canReverse, canPay }: Props
                     }}>
                       {/* Data */}
                       <td data-label="Data" data-par style={{ padding: '13px 16px', whiteSpace: 'nowrap' }}>
-                        <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
-                          {fmtDatetime(tx.created_at)}
-                        </p>
+                        {/* O em aberto mostra o VENCIMENTO (cada parcela no seu dia); o pago, o dia do pagamento. */}
+                        {!tx.is_paid && tx.due_date ? (
+                          <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
+                            Vence {new Date(tx.due_date).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+                          </p>
+                        ) : (
+                          <p style={{ fontSize: 'var(--text-sm-sz)', fontWeight: 600, color: 'var(--text-muted)' }}>
+                            {fmtDatetime(tx.is_paid && tx.paid_at ? tx.paid_at : tx.created_at)}
+                          </p>
+                        )}
                       </td>
 
                       {/* Descrição */}

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -79,40 +80,30 @@ export async function createTransactionAdvanced(
       if (!count || count < 2 || count > 48) return { error: 'Número de parcelas inválido (2–48).' }
       if (!firstDue) return { error: 'Informe o vencimento da 1ª parcela.' }
 
-      const { data: tx, error: txErr } = await admin
-        .from('financial_transactions')
-        .insert({
-          branch_id:   branchId,
+      // Cada parcela, um lançamento com o seu vencimento (2026-09-30): a despesa
+      // inteira num lançamento só aparecia no mês da compra e se pagava de uma vez.
+      const grupo = crypto.randomUUID()
+      const primeiro = /^\d{4}-\d{2}-\d{2}$/.test(firstDue)
+        ? new Date(`${firstDue}T12:00:00-03:00`).toISOString()
+        : new Date(firstDue).toISOString()
+      const { error: txErr } = await admin.from('financial_transactions').insert(
+        dividirEmParcelas(amount, count, primeiro).map(parcela => ({
+          branch_id:      branchId,
           type,
           category,
-          description,
-          amount,
-          is_paid:     false,
-          notes:       notes ?? null,
-          created_by:  ctx.internalUserId,
-        })
-        .select('id')
-        .single()
-
-      if (txErr || !tx) return { error: txErr?.message ?? 'Erro ao criar transação.' }
-
-      const installmentAmount = Math.round((amount / count) * 100) / 100
-      const baseDate = new Date(firstDue)
-      const rows = Array.from({ length: count }, (_, i) => {
-        const due = new Date(baseDate)
-        due.setMonth(due.getMonth() + i)
-        return {
-          transaction_id: tx.id,
-          number:         i + 1,
-          total:          count,
-          amount:         installmentAmount,
-          due_date:       due.toISOString(),
+          description:    `${description} — ${rotuloDaParcela(parcela)}`,
+          amount:         parcela.amount,
+          payment_method: paymentMethod,
+          due_date:       parcela.due_date,
           is_paid:        false,
-        }
-      })
-
-      const { error: instErr } = await admin.from('installments').insert(rows)
-      if (instErr) return { error: instErr.message }
+          notes:          notes ?? null,
+          created_by:     ctx.internalUserId,
+          parcela_numero: parcela.numero,
+          parcela_total:  parcela.total,
+          parcela_grupo:  grupo,
+        })),
+      )
+      if (txErr) return { error: txErr.message }
 
     // -- Recorrente ------------------------------------------------
     } else if (scheduleMode === 'recurring' && type === 'EXPENSE') {

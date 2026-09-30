@@ -180,9 +180,13 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
       [1, 'AVAILABLE', rede!.procedureId, 300], [2, 'AVAILABLE', rede!.procedureId, 300],
       [3, 'AVAILABLE', procB, 100], [4, 'AVAILABLE', procB, 100],
     ])
-    const { data: txs } = await db().from('financial_transactions').select('id, amount, is_paid, installments(amount)')
-      .eq('client_package_id', vendido).order('is_paid', { ascending: false })
-    expect((txs ?? []).map(t => [Number(t.amount), t.is_paid, (t.installments as { amount: number }[]).length])).toEqual([[100, true, 0], [700, false, 3]])
+    // A entrada paga e cada parcela um lançamento (2026-09-30): 700 em 3x.
+    const { data: txs } = await db().from('financial_transactions').select('amount, is_paid, parcela_numero, description')
+      .eq('client_package_id', vendido).order('parcela_numero', { nullsFirst: true })
+    expect((txs ?? []).map(t => [Number(t.amount), t.is_paid, t.parcela_numero])).toEqual([
+      [100, true, null], [233.33, false, 1], [233.33, false, 2], [233.34, false, 3],
+    ])
+    expect(txs![3]!.description).toMatch(/^Pacote — .* — parcela 3\/3$/)
   })
 
   test('comissão da sessão, quando o cliente paga: na proporção do que o pacote recebeu', async ({ browser }) => {
@@ -206,9 +210,14 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     // A parte da sessão (300) × 10% = 30; recebido 100 de 800 → 3,75.
     expect(await devido(ap!.id)).toBe(3.75)
 
-    // O saldo é pago (baixa no financeiro): completa.
-    const { data: saldo } = await db().from('financial_transactions').select('id').eq('client_package_id', vendido).eq('is_paid', false).single()
-    await db().from('financial_transactions').update({ is_paid: true, paid_at: new Date().toISOString() }).eq('id', saldo!.id)
+    // Uma parcela paga libera a parte dela: 100 + 233,33 de 800 → 12,50.
+    const { data: abertas } = await db().from('financial_transactions').select('id')
+      .eq('client_package_id', vendido).eq('is_paid', false).order('parcela_numero')
+    const pagar = (ids: string[]) => db().from('financial_transactions').update({ is_paid: true, paid_at: new Date().toISOString() }).in('id', ids)
+    await pagar([abertas![0]!.id])
+    expect(await devido(ap!.id)).toBe(12.5)
+    // As outras pagas (baixa no financeiro): completa.
+    await pagar(abertas!.slice(1).map(a => a.id))
     expect(await devido(ap!.id)).toBe(30)
 
     // Estornar a entrada volta à proporção do que sobrou: 700 de 800 → 26,25.

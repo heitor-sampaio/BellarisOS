@@ -47,22 +47,27 @@ export default async function FinancialPage({
 
   const transactions = await ler(supabase
     .from('financial_transactions')
-    .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, notes, created_at, appointment_id')
+    .select('id, type, category, description, amount, payment_method, is_paid, paid_at, due_date, notes, created_at, appointment_id, data_de_referencia, parcela_numero, parcela_total')
     .eq('branch_id', branch.id)
-    .gte('created_at', start.toISOString())
+    // O período é pela DATA DE REFERÊNCIA (2026-09-30): o pago, no dia do
+    // pagamento; o em aberto, no vencimento. Cada parcela aparece no mês dela —
+    // pela criação, o parcelado inteiro caía no mês da venda. O saldo zerado
+    // (substituído no check-in) é histórico: fica fora da lista.
+    .or('is_paid.eq.true,amount.neq.0')
+    .gte('data_de_referencia', start.toISOString())
     // Fim do PERÍODO, não "agora" — ver o mesmo comentário no financeiro da
     // rede. O relógio do Postgres está à frente do relógio do app, e um
     // lançamento feito neste segundo sumia da tela que acabou de criá-lo.
-    .lte('created_at', fimDoPeriodo.toISOString())
-    .order('created_at', { ascending: false }), 'carregar os lançamentos')
+    .lte('data_de_referencia', fimDoPeriodo.toISOString())
+    .order('data_de_referencia', { ascending: false }), 'carregar os lançamentos')
 
 
   const prevTxs = await ler(supabase
     .from('financial_transactions')
     .select('type, amount, is_paid, notes, category')
     .eq('branch_id', branch.id)
-    .gte('created_at', prevStart.toISOString())
-    .lte('created_at', prevEnd.toISOString()), 'carregar os lançamentos do período anterior')
+    .gte('data_de_referencia', prevStart.toISOString())
+    .lte('data_de_referencia', prevEnd.toISOString()), 'carregar os lançamentos do período anterior')
 
   // Comissões do período (registros individuais).
   // `commissions` não tem `created_at` nem `is_paid` — a consulta anterior

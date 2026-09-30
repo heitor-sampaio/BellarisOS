@@ -123,16 +123,20 @@ export async function ReportsBiSection({
           .limit(20), 'carregar os lotes vencendo')
       : Promise.resolve([] as unknown[]),
 
-    // Parcelas pendentes (aba financeiro).
-    // Sem o vínculo com as filiais do tenant, as 50 vagas do limite podiam ser
-    // ocupadas por parcelas de outros clientes da plataforma.
+    // Parcelas a receber (aba financeiro): cada parcela é um lançamento desde
+    // 2026-09-30. Lia `installments`, que não sabia de baixa nem de estorno — a
+    // parcela quitada pelo "Pagar" continuava na lista.
     needInstall
-      ? ler(admin.from('installments')
-          .select('id, amount, due_date, financial_transactions!inner(branch_id, clients(name))')
-          .in('financial_transactions.branch_id', branchIds)
+      ? ler(admin.from('financial_transactions')
+          .select('id, amount, due_date, description, branch_id, parcela_numero, parcela_total, clients(name)')
+          .in('branch_id', branchIds)
+          .eq('type', 'INCOME')
           .eq('is_paid', false)
+          .not('parcela_total', 'is', null)
+          .or('notes.is.null,notes.neq.Estornada')
+          .gt('amount', 0)
           .order('due_date', { ascending: true })
-          .limit(50), 'carregar as parcelas pendentes')
+          .limit(50), 'carregar as parcelas a receber')
       : Promise.resolve([] as unknown[]),
 
     // Retenção real (quem já era cliente antes do período e voltou)
@@ -170,7 +174,7 @@ export async function ReportsBiSection({
 
   const productBatches = (productBatchesRaw ?? []) as unknown as LinhaLote[]
   const installments   = ((installmentsRaw  ?? []) as unknown as LinhaParcela[])
-    .filter(i => branchIds.includes(i.financial_transactions?.branch_id ?? ''))
+    .filter(i => branchIds.includes(i.branch_id))
 
   // -- Aba Comercial -------------------------------------------------
   // Vive aqui desde que deixou de ser tela própria (/admin/comercial): o funil

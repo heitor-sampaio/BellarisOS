@@ -19,9 +19,17 @@ export interface LinhaLote {
   products:     Embutido<{ name: string; tenant_id: string }>
 }
 
+/**
+ * Uma parcela a receber: desde 2026-09-30 cada parcela é um LANÇAMENTO
+ * (`financial_transactions` com `parcela_*`) — `installments` é histórico.
+ */
 export interface LinhaParcela {
-  id:       string
-  amount:   number
-  due_date: string
-  financial_transactions: Embutido<{ branch_id: string; clients: Embutido<{ name: string }> }>
+  id:             string
+  amount:         number
+  due_date:       string
+  description:    string
+  branch_id:      string
+  parcela_numero: number
+  parcela_total:  number
+  clients:        Embutido<{ name: string }>
 }
