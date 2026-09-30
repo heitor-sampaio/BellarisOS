@@ -236,4 +236,21 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     const { data: vendas } = await db().from('client_packages').select('id').eq('client_id', cliente)
     expect(vendas).toHaveLength(1)
   })
+
+  test('a receber SEM data: a venda passa e o valor fica em aberto, sem vencimento', async ({ browser }) => {
+    await comSessao(browser, gestor!, async p => {
+      await p.goto(`/admin/clients/${cliente}`)
+      await p.getByRole('button', { name: 'Vender pacote' }).click()
+      const dlg = p.getByRole('dialog', { name: 'Vender pacote' })
+      await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
+      await dlg.getByRole('button', { name: 'A receber' }).click()
+      await expect(dlg.getByLabel('Vencimento')).toHaveValue('')
+      await dlg.getByRole('button', { name: /Vender por/ }).click()
+      await expect.poll(async () => (await db().from('client_packages').select('id').eq('client_id', cliente)).data?.length,
+        { message: 'a segunda venda grava' }).toBe(2)
+    })
+    const { data: cp } = await db().from('client_packages').select('id').eq('client_id', cliente).neq('id', vendido).single()
+    const { data: txs } = await db().from('financial_transactions').select('amount, is_paid, due_date').eq('client_package_id', cp!.id)
+    expect((txs ?? []).map(t => [Number(t.amount), t.is_paid, t.due_date])).toEqual([[800, false, null]])
+  })
 })

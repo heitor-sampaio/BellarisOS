@@ -170,7 +170,7 @@ function pagamentoValido(p: unknown): p is PagamentoDoPlano | null {
   const data = (v: unknown) => typeof v === 'string' && !Number.isNaN(Date.parse(v))
   switch (x.forma) {
     case 'AVISTA':    return texto(x.metodo)
-    case 'A_RECEBER': return (x.metodo === null || texto(x.metodo)) && data(x.vencimento)
+    case 'A_RECEBER': return (x.metodo === null || texto(x.metodo)) && (x.vencimento === null || data(x.vencimento))
     case 'PARCELADO': return texto(x.metodo) && Number.isFinite(x.entrada) && (x.entrada as number) >= 0
       && Number.isInteger(x.parcelas) && (x.parcelas as number) >= 1 && (x.parcelas as number) <= 48 && data(x.primeiroVencimento)
     default:          return false

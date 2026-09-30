@@ -14,7 +14,8 @@ import { formatBRL, formatDate } from '@estetica-os/utils'
 export type PagamentoDoPlano =
   | { forma: 'AVISTA';    metodo: string }
   | { forma: 'PARCELADO'; metodo: string; entrada: number; parcelas: number; primeiroVencimento: string }
-  | { forma: 'A_RECEBER'; metodo: string | null; vencimento: string }
+  /** Vencimento opcional: "a receber" sem data combinada é válido. */
+  | { forma: 'A_RECEBER'; metodo: string | null; vencimento: string | null }
 
 /** A linha do tempo do atendimento: curta, com o método como a tela o guarda. */
 export function rotuloDoPagamento(p: PagamentoDoPlano | null): string {
@@ -42,7 +43,7 @@ const centavos = (v: number) => Math.round(v * 100) / 100
 export function frasesDoPagamento(p: PagamentoDoPlano | null): string {
   if (!p) return 'No atendimento'
   if (p.forma === 'AVISTA') return `À vista, ${metodo(p.metodo)}`
-  if (p.forma === 'A_RECEBER') return `A receber em ${formatDate(p.vencimento)}${p.metodo ? `, ${metodo(p.metodo)}` : ''}`
+  if (p.forma === 'A_RECEBER') return `A receber${p.vencimento ? ` em ${formatDate(p.vencimento)}` : ''}${p.metodo ? `, ${metodo(p.metodo)}` : ''}`
   const entrada = p.entrada > 0 ? `entrada de ${formatBRL(p.entrada)} + ` : ''
   return `${entrada}${p.parcelas}x ${metodo(p.metodo)}, a primeira em ${formatDate(p.primeiroVencimento)}`.replace(/^./, c => c.toUpperCase())
 }
@@ -67,8 +68,8 @@ export function valoresDoPagamento(p: PagamentoDoPlano | null, total: number): R
     return {
       ...vazio,
       'pagamento.metodo': m,
-      'pagamento.primeiro_vencimento': formatDate(p.vencimento),
-      'pagamento.forma': `${formatBRL(total)} a receber em ${formatDate(p.vencimento)}${m ? `, ${m}` : ''}`,
+      'pagamento.primeiro_vencimento': p.vencimento ? formatDate(p.vencimento) : null,
+      'pagamento.forma': `${formatBRL(total)} a receber${p.vencimento ? ` em ${formatDate(p.vencimento)}` : ''}${m ? `, ${m}` : ''}`,
     }
   }
   const saldo = centavos(total - p.entrada)
@@ -94,7 +95,7 @@ export function pagamentoNormalizado(p: PagamentoDoPlano | null): Record<string,
   const dia = (iso: string) => iso.slice(0, 10)
   if (!p) return { forma: 'NADA_AGORA' }
   if (p.forma === 'AVISTA') return { forma: 'AVISTA', metodo: p.metodo }
-  if (p.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: p.metodo ?? null, vencimento: dia(p.vencimento) }
+  if (p.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: p.metodo ?? null, vencimento: p.vencimento ? dia(p.vencimento) : null }
   return {
     forma: 'PARCELADO', metodo: p.metodo, entrada: centavos(p.entrada),
     parcelas: p.parcelas, primeiroVencimento: dia(p.primeiroVencimento),
@@ -111,7 +112,7 @@ export function pagamentoDoRetrato(retrato: unknown): PagamentoDoPlano | null {
   const dia = (d: unknown) => new Date(`${String(d)}T12:00:00-03:00`).toISOString()
   switch (r.forma) {
     case 'AVISTA':    return { forma: 'AVISTA', metodo: String(r.metodo) }
-    case 'A_RECEBER': return { forma: 'A_RECEBER', metodo: (r.metodo as string | null) ?? null, vencimento: dia(r.vencimento) }
+    case 'A_RECEBER': return { forma: 'A_RECEBER', metodo: (r.metodo as string | null) ?? null, vencimento: r.vencimento ? dia(r.vencimento) : null }
     case 'PARCELADO': return {
       forma: 'PARCELADO', metodo: String(r.metodo), entrada: Number(r.entrada) || 0,
       parcelas: Number(r.parcelas) || 1, primeiroVencimento: dia(r.primeiroVencimento),

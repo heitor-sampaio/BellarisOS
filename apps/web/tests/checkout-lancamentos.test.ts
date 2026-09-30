@@ -13,6 +13,11 @@ describe('lançamentos de uma venda', () => {
     const [l] = lancamentosDoPagamento(300, { forma: 'A_RECEBER', metodo: null, vencimento: '2026-10-10T15:00:00.000Z' }, 'Pacote')
     expect(l).toMatchObject({ amount: 300, is_paid: false, due_date: '2026-10-10T15:00:00.000Z' })
   })
+  it('a receber SEM data: um lançamento em aberto, sem vencimento', () => {
+    const [l] = lancamentosDoPagamento(300, { forma: 'A_RECEBER', metodo: 'PIX', vencimento: null }, 'Pacote')
+    expect(l).toMatchObject({ amount: 300, is_paid: false, due_date: null })
+    expect(EntradaDoPagamento.safeParse({ forma: 'A_RECEBER', metodo: null, vencimento: null }).success).toBe(true)
+  })
   it('entrada + parcelas: a entrada paga, o saldo em aberto, parcelas que fecham a soma', () => {
     const ls = lancamentosDoPagamento(1000, {
       forma: 'PARCELADO', metodo: 'CREDIT_CARD', entrada: 100, parcelas: 3, primeiroVencimento: '2026-10-10T15:00:00.000Z',

@@ -783,7 +783,10 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
     próximas vendas), todas as sessões (`AVAILABLE`) e o dinheiro com
     `financial_transactions.client_package_id`. Recusa se a soma não fechar
     com o preço.
-  - O a receber se quita no financeiro, como qualquer conta a receber.
+  - O a receber se quita no financeiro, como qualquer conta a receber. O
+    vencimento do "a receber" é OPCIONAL (aqui e no pagamento do contrato):
+    sem data, o lançamento nasce sem `due_date` e o contrato diz "a receber"
+    sem o dia.
 - A sessão só LÊ pacote: as políticas de INSERT/UPDATE de `client_packages` e
   `service_packages` saíram (dava para dar sessão de graça pela chave pública).
 - Comissão da sessão: §9.7.

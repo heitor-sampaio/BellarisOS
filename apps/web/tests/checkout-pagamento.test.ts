@@ -17,6 +17,16 @@ describe('o pagamento no contrato', () => {
       .toMatch(/a receber em 10\/10\/2026$/)
   })
 
+  it('a receber SEM data (o vencimento é opcional): a frase sem dia, e o retrato ida e volta', () => {
+    const semData: PagamentoDoPlano = { forma: 'A_RECEBER', metodo: 'PIX', vencimento: null }
+    const v = valoresDoPagamento(semData, 400)
+    expect(v['pagamento.forma']).toMatch(/^R\$\s400,00 a receber, no Pix$/)
+    expect(v['pagamento.primeiro_vencimento']).toBeNull()
+    const retrato = pagamentoNormalizado(semData)
+    expect(retrato).toEqual({ forma: 'A_RECEBER', metodo: 'PIX', vencimento: null })
+    expect(pagamentoDoRetrato(retrato)).toEqual(semData)
+  })
+
   it('as peças: sem entrada, a entrada fica vazia (é opcional)', () => {
     const v = valoresDoPagamento({ ...parcelado, entrada: 0 }, 400)
     expect(v['pagamento.entrada']).toBeNull()

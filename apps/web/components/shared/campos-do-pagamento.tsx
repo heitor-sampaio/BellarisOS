@@ -17,8 +17,10 @@ export interface EstadoDoPagamento {
   metodo:   string
   entrada:  string
   parcelas: number
-  /** 'YYYY-MM-DD' do vencimento (da 1ª parcela, ou do "a receber"). */
+  /** 'YYYY-MM-DD' do vencimento da 1ª parcela. */
   data:     string
+  /** 'YYYY-MM-DD' do vencimento do "a receber" — OPCIONAL (vazio = sem data). */
+  vencimento: string
 }
 
 const METODOS = [
@@ -42,18 +44,20 @@ export function estadoDoPagamento(atual: PagamentoDoPlano | null | undefined, pa
     metodo:   atual?.metodo ?? 'PIX',
     entrada:  atual?.forma === 'PARCELADO' ? String(atual.entrada).replace('.', ',') : '',
     parcelas: atual?.forma === 'PARCELADO' ? atual.parcelas : 3,
-    data:     atual?.forma === 'PARCELADO' ? diaDe(atual.primeiroVencimento)
-      : atual?.forma === 'A_RECEBER' ? diaDe(atual.vencimento) : hojeMais(30),
+    data:     atual?.forma === 'PARCELADO' ? diaDe(atual.primeiroVencimento) : hojeMais(30),
+    vencimento: atual?.forma === 'A_RECEBER' && atual.vencimento ? diaDe(atual.vencimento) : '',
   }
 }
 
 /** O estado da tela → o pagamento (nulo = no atendimento). */
 export function montarPagamento(e: EstadoDoPagamento): PagamentoDoPlano | null {
   // Meio-dia de Brasília: '2026-10-10' puro seria meia-noite UTC, dia 9 aqui.
-  const dataIso = new Date(`${e.data}T12:00:00-03:00`).toISOString()
+  // Vazio segue vazio: o servidor responde "data inválida" em vez de a tela quebrar.
+  const iso = (dia: string) => dia ? new Date(`${dia}T12:00:00-03:00`).toISOString() : ''
   if (e.forma === 'NADA_AGORA') return null
   if (e.forma === 'AVISTA') return { forma: 'AVISTA', metodo: e.metodo }
-  if (e.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: e.metodo, vencimento: dataIso }
+  if (e.forma === 'A_RECEBER') return { forma: 'A_RECEBER', metodo: e.metodo, vencimento: e.vencimento ? iso(e.vencimento) : null }
+  const dataIso = iso(e.data)
   const s = e.entrada.trim()
   const valorEntrada = Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s) || 0
   return { forma: 'PARCELADO', metodo: e.metodo, entrada: valorEntrada, parcelas: e.parcelas, primeiroVencimento: dataIso }
@@ -97,10 +101,16 @@ export function CamposDoPagamento({ estado, aoMudar, formas }: {
               </select>
             </label>
           )}
-          {(forma === 'PARCELADO' || forma === 'A_RECEBER') && (
+          {forma === 'PARCELADO' && (
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <span style={rotulo}>{forma === 'PARCELADO' ? 'Vencimento da 1ª parcela' : 'Vencimento'}</span>
-              <input className="field" type="date" value={estado.data} onChange={e => mudar({ data: e.target.value })} aria-label="Vencimento" />
+              <span style={rotulo}>Vencimento da 1ª parcela</span>
+              <input className="field" type="date" required value={estado.data} onChange={e => mudar({ data: e.target.value })} aria-label="Vencimento" />
+            </label>
+          )}
+          {forma === 'A_RECEBER' && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={rotulo}>Vencimento (opcional)</span>
+              <input className="field" type="date" value={estado.vencimento} onChange={e => mudar({ vencimento: e.target.value })} aria-label="Vencimento" />
             </label>
           )}
         </div>

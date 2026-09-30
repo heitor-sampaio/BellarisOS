@@ -1258,6 +1258,23 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — "A receber" com vencimento opcional
+
+A pedido do Heitor: na forma "A receber", a data deixou de ser obrigatória, e
+o campo começa vazio e marcado "(opcional)".
+
+- Vale nos dois lugares que usam os mesmos campos: a venda de pacote e o
+  pagamento do contrato do procedimento.
+- **Sem data:**
+  - a venda lança o valor a receber sem vencimento;
+  - o contrato diz "R$ X a receber" sem o dia, e
+    `pagamento.primeiro_vencimento` fica vazio (não é variável obrigatória).
+- Entrada + parcelas continua exigindo a data da primeira parcela.
+
+**Prova:** unitários das frases e dos lançamentos sem data; E2E da venda "a
+receber" sem data pela tela, mais o contrato com pagamento e o checkout de
+plano.
+
 ### 2026-09-30 — Pacote é um conjunto de procedimentos
 
 A pedido do Heitor: um pacote tem vários procedimentos, iguais ou não ("5

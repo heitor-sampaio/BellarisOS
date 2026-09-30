@@ -29,7 +29,7 @@ export const EntradaDoPagamento = z.discriminatedUnion('forma', [
     forma: z.literal('PARCELADO'), metodo: z.enum(METODOS),
     entrada: z.number().min(0), parcelas: z.number().int().min(1).max(12), primeiroVencimento: data,
   }),
-  z.object({ forma: z.literal('A_RECEBER'), metodo: z.enum(METODOS).nullable(), vencimento: data }),
+  z.object({ forma: z.literal('A_RECEBER'), metodo: z.enum(METODOS).nullable(), vencimento: data.nullable() }),
 ])
 
 const centavos = (v: number) => Math.round(v * 100) / 100
