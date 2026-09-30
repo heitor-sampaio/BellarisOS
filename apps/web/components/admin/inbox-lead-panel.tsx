@@ -616,56 +616,63 @@ export function InboxLeadPanel({
       )}
 
       {convertOpen && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, zIndex: 200,
-            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-          }}
-          onClick={fecharCadastro}
-        >
-          <div className="card" style={{ width: 480, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}
-            onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
-                Cadastrar como cliente
-              </h3>
-              <button type="button" onClick={fecharCadastro} aria-label="Fechar" style={{
-                width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border)',
-                background: 'var(--bg-app)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)',
-              }}>
-                <X size={14} />
-              </button>
-            </div>
-            <div style={{ padding: 20 }}>
-              {venderAposCadastro && (
-                <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 14 }}>
-                  Para vender o pacote, primeiro o cadastro. Ao salvar, a venda abre em seguida.
-                </p>
-              )}
-              <ClientForm
-                /* A unidade de cadastro vira a tag `Unidade: X`, e é POR ELA que
-                   a lista de clientes de cada filial filtra. Com `branchId` vazio
-                   o seletor abria na primeira unidade em ordem alfabética: quem
-                   cadastrava pelo portal de uma unidade gravava o cliente em
-                   outra sem perceber, e ele sumia da própria lista. No portal da
-                   filial a unidade atual é o padrão; no portal da rede não
-                   há unidade corrente e o seletor segue como está. */
-                branchId={branches.find(b => b.slug === slug)?.id ?? ''}
-                slug={slug}
-                branches={branches}
-                conversationId={conversation.id}
-                leadId={card.abertas[0]?.id}
-                prefill={{ name: nome, phone: telefone || undefined }}
-                onSuccess={handleConverted}
-                showCancelButton
-                onCancel={fecharCadastro}
-              />
-            </div>
-          </div>
-        </div>
+        <JanelaDeCadastro onFechar={fecharCadastro}>
+          {venderAposCadastro && (
+            <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 14 }}>
+              Para vender o pacote, primeiro o cadastro. Ao salvar, a venda abre em seguida.
+            </p>
+          )}
+          <ClientForm
+            /* A unidade de cadastro vira a tag `Unidade: X`, e é POR ELA que
+               a lista de clientes de cada filial filtra. Com `branchId` vazio
+               o seletor abria na primeira unidade em ordem alfabética: quem
+               cadastrava pelo portal de uma unidade gravava o cliente em
+               outra sem perceber, e ele sumia da própria lista. No portal da
+               filial a unidade atual é o padrão; no portal da rede não
+               há unidade corrente e o seletor segue como está. */
+            branchId={branches.find(b => b.slug === slug)?.id ?? ''}
+            slug={slug}
+            branches={branches}
+            conversationId={conversation.id}
+            leadId={card.abertas[0]?.id}
+            prefill={{ name: nome, phone: telefone || undefined }}
+            onSuccess={handleConverted}
+            showCancelButton
+            onCancel={fecharCadastro}
+          />
+        </JanelaDeCadastro>
       )}
     </div>
+  )
+}
+
+/**
+ * O cadastro do cliente pelo painel, no `<dialog>` nativo dos modais do
+ * sistema. Era um `div` fixo com `z-index`, e a topbar desenhava por cima do
+ * cabeçalho dele (e o formulário longo saía da tela). O `<dialog>` aberto por
+ * `showModal()` vai para a camada de cima do navegador, acima de qualquer
+ * `z-index`; o `.modal-container` limita a altura à tela e o corpo rola. No
+ * celular vira a folha de baixo, como os outros.
+ */
+function JanelaDeCadastro({ onFechar, children }: { onFechar: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null)
+  useEffect(() => { ref.current?.showModal() }, [])
+  return (
+    <dialog ref={ref} className="modal modal-flex" style={{ maxWidth: 520, textAlign: 'left' }}
+      aria-label="Cadastrar como cliente"
+      // Esc fecha o <dialog> sozinho: o estado do painel acompanha.
+      onClose={onFechar}
+      onClick={e => { if (e.target === ref.current) onFechar() }}>
+      <div className="modal-container">
+        <div style={{ flexShrink: 0, borderBottom: '1px solid var(--hairline)', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Cadastrar como cliente</h2>
+          <button type="button" className="btn-ghost" onClick={onFechar} style={{ padding: 6 }} aria-label="Fechar"><X size={16} /></button>
+        </div>
+        <div className="modal-body" style={{ padding: '20px 24px 24px' }}>
+          {children}
+        </div>
+      </div>
+    </dialog>
   )
 }
 

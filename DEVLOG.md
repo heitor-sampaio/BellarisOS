@@ -1267,6 +1267,11 @@ escolhida no cadastro não tiver pacote à venda, a tela avisa em vez de abrir.
 Sem ficha e numa rede com várias unidades, `vendaDePacote` vem sem unidade: é
 só o sinal de que a rede tem o que vender.
 
+**O modal de cadastro do inbox** era um `div` fixo com `z-index`: a topbar
+cobria o cabeçalho e o formulário saía da tela. Virou o `<dialog>` nativo dos
+outros modais (`JanelaDeCadastro`). Conferido por captura no desktop (acima da
+topbar, cabe na tela, o corpo rola) e no celular (folha de baixo).
+
 **Prova:** o caso da conversa em `pacotes-venda` agora cadastra pela tela e
 vende (o pacote de R$ 800 no cliente novo). A limpeza apaga o cliente e o login
 que a tela criou.

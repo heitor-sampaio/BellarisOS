@@ -1649,6 +1649,12 @@ Princípios inegociáveis:
   A topbar desenha por cima dos primeiros 68px do documento, e o que costuma
   ficar escondido ali é o cabeçalho da folha — que é onde mora o botão de
   fechar. Foi o que deixou o card do contato do inbox sem saída no celular.
+- **Modal é o `<dialog className="modal">` aberto por `showModal()`**, com
+  `.modal-flex` + `.modal-container` + `.modal-body` quando tem cabeçalho
+  fixo. Ele vai para a camada de cima do navegador, acima de qualquer
+  `z-index`, e cabe na tela. Um `div` fixo com `z-index` fica atrás da
+  topbar e sai da tela quando o conteúdo é longo: era o cadastro de cliente
+  pelo inbox, até 2026-09-30.
 - **Popover ancorado num gatilho que fica à direita vira o lado no celular.**
   `left: 0` de um gatilho encostado na borda direita nasce metade fora da
   tela, e o que fica de fora não tem rolagem que o alcance. O `<SegSelect>`
