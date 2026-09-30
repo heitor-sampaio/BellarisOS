@@ -133,7 +133,7 @@ test.describe.serial('checkout de plano', () => {
 
       // Pagamento ANTES da documentação: o contrato cita o pagamento.
       await page.getByRole('button', { name: 'Entrada + parcelas' }).click()
-      await page.getByPlaceholder('0,00').first().fill('100')
+      await page.getByLabel('Entrada', { exact: true }).fill('100')
       await page.getByRole('button', { name: 'Ir para a documentação' }).click()
 
       // Dois procedimentos com o MESMO termo: um termo só.
@@ -213,7 +213,11 @@ test.describe.serial('checkout de plano', () => {
 
       // Assinou à vista; tenta lançar parcelado.
       const errado = await chamarAcao(page, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota, [planId, parcelado, [], slug])
-      expect(errado.texto).toContain('A forma de pagamento é diferente da do contrato assinado')
+      expect(errado.texto).toContain('A forma de pagamento ou o desconto são diferentes dos do contrato assinado')
+      // O desconto é parte do combinado: à vista, mas com 10% que o contrato não diz, também não passa.
+      const comDesconto = await chamarAcao(page, 'actions/treatment-plans.ts', 'checkoutTreatmentPlan', rota,
+        [planId, avista, [], slug, { tipo: 'PERCENTUAL', valor: 10 }])
+      expect(comDesconto.texto).toContain('A forma de pagamento ou o desconto são diferentes dos do contrato assinado')
       expect((await db().from('financial_transactions').select('id').eq('treatment_plan_id', planId)).data).toEqual([])
 
       // Volta à documentação com o pagamento novo: o contrato antigo fica substituído.

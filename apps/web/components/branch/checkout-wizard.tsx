@@ -13,6 +13,7 @@ import { getSchedulingBranchProfessionals, getSchedulingDaySlots } from '@/actio
 import { rotaCliente } from '@/lib/rotas'
 import { format } from 'date-fns'
 import { SegSelect } from '@/components/shared/seg-select'
+import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -123,8 +124,14 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
     format(new Date(Date.now() + 30 * 864e5), 'yyyy-MM-dd'),
   )
 
-  const entradaNum = Math.max(0, Math.min(Number(entrada.replace(',', '.')) || 0, total))
-  const saldo      = Math.round((total - entradaNum) * 100) / 100
+  // Desconto do fechamento (2026-09-30): R$ ou %, sobre a soma dos
+  // procedimentos. Daqui para baixo toda conta é sobre o que o cliente paga.
+  const [desconto, setDesconto] = useState(SEM_DESCONTO)
+  const contaDesc = contaDoDesconto(total, desconto)
+  const liquido   = contaDesc.liquido
+
+  const entradaNum = Math.max(0, Math.min(Number(entrada.replace(',', '.')) || 0, liquido))
+  const saldo      = Math.round((liquido - entradaNum) * 100) / 100
   const valorParcela = parcelas > 0 ? saldo / parcelas : 0
 
   // Agendamento — compartilhado por todas as sessões
@@ -217,7 +224,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
   function irParaDocumentos() {
     setError(null)
     startPreparar(async () => {
-      const r = await prepararDocumentosDoCheckout(plan.id, montarPagamento())
+      const r = await prepararDocumentosDoCheckout(plan.id, montarPagamento(), descontoDoEstado(desconto))
       if (r.error) { setError(r.error); return }
       setDocs(r.itens ?? [])
       setStep(2)
@@ -276,7 +283,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       })
 
     startSubmit(async () => {
-      const result = await checkoutTreatmentPlan(plan.id, montarPagamento(), schedules, slug)
+      const result = await checkoutTreatmentPlan(plan.id, montarPagamento(), schedules, slug, descontoDoEstado(desconto))
       if (result.error) { setError(result.error); return }
       if (onDone) { onDone(plan.clientId); return }
       router.push(rotaCliente(pathname, slug, plan.clientId))
@@ -481,6 +488,9 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             ariaLabel="Como vai ser pago"
           />
         </div>
+        <div style={{ marginBottom: 16, maxWidth: 360 }}>
+          <CampoDoDesconto estado={desconto} aoMudar={setDesconto} total={total} />
+        </div>
 
         {formaPgto === 'PARCELADO' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -488,7 +498,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
               <div>
                 <label style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-muted)' }}>Entrada (opcional)</label>
                 <input
-                  inputMode="decimal" value={entrada} onChange={e => setEntrada(e.target.value)}
+                  inputMode="decimal" aria-label="Entrada" value={entrada} onChange={e => setEntrada(e.target.value)}
                   placeholder="0,00" className="field" style={{ marginTop: 5 }}
                 />
               </div>
@@ -525,10 +535,10 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
         {formaPgto === 'NADA_AGORA' && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.55, flex: 1, minWidth: 220 }}>
-              O plano é aceito por {fmtBRL(total)} e o valor fica em aberto. A recepção
+              O plano é aceito por {fmtBRL(liquido)} e o valor fica em aberto. A recepção
               recebe na chegada da primeira sessão, pela tela do atendimento.
             </p>
-            <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(total)}</span>
+            <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>{fmtBRL(liquido)}</span>
           </div>
         )}
       </div>
@@ -561,12 +571,12 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
             {formaPgto === 'AVISTA' ? 'Total a cobrar' : formaPgto === 'PARCELADO' ? 'Recebido agora' : 'Total a receber'}
           </span>
           <span style={{ fontSize: 'var(--text-name)', fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
-            {fmtBRL(formaPgto === 'AVISTA' ? total : formaPgto === 'PARCELADO' ? entradaNum : 0)}
+            {fmtBRL(formaPgto === 'AVISTA' ? liquido : formaPgto === 'PARCELADO' ? entradaNum : 0)}
           </span>
         </div>
         {formaPgto !== 'AVISTA' && (
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', textAlign: 'right' }}>
-            Plano de {fmtBRL(total)}
+            Plano de {fmtBRL(liquido)}
           </p>
         )}
       </div>
@@ -574,7 +584,7 @@ export function CheckoutWizard({ plan, slug, podeAgendar = true, podeCobrar = tr
       {error && <p style={{ color: 'var(--danger)', fontSize: 'var(--text-base-sz)', fontWeight: 600, marginBottom: 12 }}>{error}</p>}
 
       <button
-        onClick={irParaDocumentos} disabled={preparando}
+        onClick={irParaDocumentos} disabled={preparando || !!contaDesc.recusa}
         style={{ width: '100%', padding: '14px', borderRadius: 'var(--radius-field-token)', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-card-title)', border: 'none', cursor: preparando ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: 'var(--shadow-brand-btn)' }}>
         {preparando ? 'Montando os documentos…' : 'Ir para a documentação'} <ChevronRight size={18} />
       </button>

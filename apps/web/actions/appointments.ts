@@ -26,6 +26,7 @@ import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
 import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
+import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 
 // --- Helpers internos ---------------------------------------------
 async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
@@ -943,6 +944,12 @@ export async function confirmPayment(
     const slug          = (formData.get('slug') as string)?.trim()
     const pedido        = Math.trunc(Number(formData.get('pontos') ?? 0) || 0)
     const voucherId     = (formData.get('voucher_id') as string | null)?.trim() || null
+    // Desconto comercial da recepção (2026-09-30): R$ ou %, sem teto.
+    const valorDoDesconto = Number(formData.get('desconto_valor') ?? 0) || 0
+    const pedidoDeDesconto = EntradaDoDesconto.safeParse(
+      valorDoDesconto > 0 ? { tipo: formData.get('desconto_tipo'), valor: valorDoDesconto } : null,
+    )
+    if (!pedidoDeDesconto.success) return { error: 'Desconto inválido.' }
 
     const admin = createAdminClient()
 
@@ -958,14 +965,14 @@ export async function confirmPayment(
     // Pontos como desconto (fidelidade, fase 2): o SERVIDOR calcula a partir
     // dos pontos pedidos — o valor que o navegador mostra não entra. O banco
     // confere de novo (config, teto, saldo) dentro da transação.
-    // Com voucher (fase 3): ele desconta PRIMEIRO; os pontos valem sobre o que sobra.
+    // A ordem: o voucher desconta PRIMEIRO, depois o desconto comercial (sobre o
+    // que sobrou), e os pontos valem sobre o que sobra dos dois.
     const preco = parseFloat(String(appt.price))
-    let pontos = 0, desconto = 0, descontoVoucher = 0
+    let pontos = 0, desconto = 0, descontoVoucher = 0, descontoVenda = 0
     let valorFinal = Math.round(preco * 100) / 100
-    if (pedido > 0 || voucherId) {
-      const cfg = await configDaRede(ctx.tenantId!, admin)
-      if (!cfg.enabled) return { error: 'O programa de fidelidade está desligado nesta rede.' }
-
+    const cfg = pedido > 0 || voucherId ? await configDaRede(ctx.tenantId!, admin) : null
+    if (cfg && !cfg.enabled) return { error: 'O programa de fidelidade está desligado nesta rede.' }
+    {
       if (voucherId) {
         const v = await ler(admin.from('loyalty_vouchers')
           .select('type, status, expires_at, procedure_id, discount_value, client_id')
@@ -977,7 +984,12 @@ export async function confirmPayment(
         valorFinal = Math.round((preco - descontoVoucher) * 100) / 100
       }
 
-      if (pedido > 0) {
+      const recusa = recusaDoDesconto(valorFinal, pedidoDeDesconto.data)
+      if (recusa) return { error: recusa }
+      descontoVenda = descontoEmReais(valorFinal, pedidoDeDesconto.data)
+      valorFinal = Math.round((valorFinal - descontoVenda) * 100) / 100
+
+      if (pedido > 0 && cfg) {
         const saldo = await saldoDoCliente(appt.client_id as string, cfg.scope_per_branch ? apptBranch.id : null, admin)
         const r = calcularDescontoComPontos({
           saldo, preco: valorFinal, pedido,
@@ -1001,7 +1013,7 @@ export async function confirmPayment(
         p_ator_nome:   userName,
         p_dados:       {
           metodo: valorFinal > 0 ? paymentMethod : null, pontos, desconto, valor_final: valorFinal,
-          voucher_id: voucherId, desconto_voucher: descontoVoucher,
+          voucher_id: voucherId, desconto_voucher: descontoVoucher, desconto_venda: descontoVenda,
         },
       }), 'confirmar o pagamento')
     } catch (e) {

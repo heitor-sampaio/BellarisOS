@@ -36,6 +36,7 @@ import { TermosDoCliente, type ItemDeTermo } from '@/components/shared/termos-do
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
 import { formatarPontos } from '@/lib/fidelidade/formato'
+import { CampoDoDesconto, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
 
 // -- Types ----------------------------------------------------------------------
@@ -309,8 +310,8 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
 // Modal 2: Recepcionista/admin confirma pagamento
 function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose }: {
   appointmentId: string; slug: string; price: number
-  /** O pagamento combinado no contrato do procedimento: o meio já vem escolhido. */
-  pagamentoCombinado?: { metodo: string | null; rotulo: string } | null
+  /** O pagamento combinado no contrato do procedimento: o meio (e o desconto) já vêm escolhidos. */
+  pagamentoCombinado?: { metodo: string | null; rotulo: string; desconto?: number } | null
   onClose: () => void
 }) {
   const metodoInicial = PAYMENT_METHODS.some(m => m.value === pagamentoCombinado?.metodo) ? pagamentoCombinado!.metodo! : 'PIX'
@@ -322,14 +323,20 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
   const [previa, setPrevia] = useState<Awaited<ReturnType<typeof previaDoPagamento>>>(null)
   const [pontos, setPontos] = useState('')
   const [voucherId, setVoucherId] = useState('')
+  // Desconto comercial (2026-09-30): o combinado no contrato já vem preenchido.
+  const [descontoEstado, setDescontoEstado] = useState(() => estadoDoDesconto(pagamentoCombinado?.desconto))
   useEffect(() => {
     let vivo = true
     previaDoPagamento(appointmentId).then(r => { if (vivo) setPrevia(r) }).catch(() => { /* sem pontos a oferecer */ })
     return () => { vivo = false }
   }, [appointmentId])
-  // O voucher desconta primeiro; os pontos valem sobre o que sobra.
+  // O voucher desconta primeiro, depois o desconto comercial; os pontos valem
+  // sobre o que sobra — a mesma ordem do servidor.
   const voucher = previa?.vouchers.find(v => v.id === voucherId) ?? null
-  const base    = Math.round((price - (voucher?.desconto ?? 0)) * 100) / 100
+  const aposVoucher = Math.round((price - (voucher?.desconto ?? 0)) * 100) / 100
+  const doDesconto  = contaDoDesconto(aposVoucher, descontoEstado)
+  const pedidoDeDesconto = doDesconto.recusa ? null : descontoDoEstado(descontoEstado)
+  const base    = doDesconto.liquido
   const regras  = previa ? { valorDoPonto: previa.valorDoPonto, minimo: previa.minimo, tetoPct: previa.tetoPct } : null
   const resgate = previa && regras
     ? calcularDescontoComPontos({ saldo: previa.saldo, preco: base, pedido: Number(pontos) || 0, regras })
@@ -350,6 +357,9 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
         <form action={action} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <input type="hidden" name="appointment_id" value={appointmentId} />
           <input type="hidden" name="slug" value={slug} />
+          {pedidoDeDesconto && <input type="hidden" name="desconto_tipo" value={pedidoDeDesconto.tipo} />}
+          {pedidoDeDesconto && <input type="hidden" name="desconto_valor" value={String(pedidoDeDesconto.valor)} />}
+          <CampoDoDesconto estado={descontoEstado} aoMudar={e => { setDescontoEstado(e); setPontos('') }} total={aposVoucher} />
           {previa && previa.vouchers.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               <label className="field-label" htmlFor="voucher-do-pagamento">Aplicar voucher</label>
@@ -416,10 +426,10 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
               </div>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label className="field-label">{resgate.pontos > 0 || voucher ? 'Total a receber' : 'Valor (R$)'}</label>
+              <label className="field-label">{resgate.pontos > 0 || voucher || doDesconto.reais > 0 ? 'Total a receber' : 'Valor (R$)'}</label>
               <p data-testid="total-a-receber" style={{
                 fontSize: 'var(--text-card-title)', fontWeight: 800, letterSpacing: '-0.02em',
-                color: resgate.pontos > 0 || voucher ? 'var(--brand)' : 'var(--text)', padding: '6px 0',
+                color: resgate.pontos > 0 || voucher || doDesconto.reais > 0 ? 'var(--brand)' : 'var(--text)', padding: '6px 0',
               }}>
                 {brl(resgate.motivo ? base : resgate.restante)}
               </p>
@@ -428,7 +438,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
           {state?.error && <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>{state.error}</p>}
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
             <button type="button" onClick={onClose} className="btn-secondary"><X size={13} /> Voltar</button>
-            <button type="submit" disabled={pending} className="btn-primary"
+            <button type="submit" disabled={pending || !!doDesconto.recusa} className="btn-primary"
               style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 22px', fontSize: 'var(--text-base-sz)', minWidth: 170, justifyContent: 'center' }}>
               {pending ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
               {pending ? 'Registrando…' : 'Confirmar pagamento'}

@@ -1258,6 +1258,39 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Desconto em todas as vendas (fase 1 de "Vender")
+
+Decisões do Heitor: pacote e procedimento pré-pago são coisas SEPARADAS (o
+procedimento pré-pago ganha estrutura própria, não reaproveita o pacote); toda
+venda aceita desconto, sem teto; cliente que falta pode remarcar ou cancelar, e
+cancelar registra a devolução; validade do pré-pago é opcional. Três fases:
+**1. desconto** (esta), 2. procedimento pré-pago + "Vender" único, 3. agendar
+usando o que já foi pago.
+
+- **Um cálculo**: `lib/vendas/desconto.ts` (R$ ou %, em centavos; rateio pelo
+  maior resto) e um campo, `CampoDoDesconto`, nos quatro lugares.
+- **Pacote**: preço vendido = catálogo − desconto (`client_packages.preco_tabela`,
+  `desconto`); sessões e pagamento sobre o vendido. `pacote_vender` ganhou
+  `p_desconto` (com padrão: a chamada de antes segue valendo).
+- **Plano**: `plano_aplicar_desconto` rateia o desconto nos procedimentos do
+  plano no checkout, antes do dinheiro; o de antes fica em `preco_tabela`.
+- **Recepção**: `sale_discount` no lançamento do avulso; a comissão
+  percentual sai sobre o vendido.
+- **Contrato**: o desconto entra no retrato do pagamento; trocá-lo depois de
+  assinar é recusado no checkout como trocar a forma. Variáveis
+  `pagamento.subtotal` e `pagamento.desconto`.
+- **Conserto no caminho**: a fidelidade do plano lia `treatment_plan_items`,
+  tabela legada — no modo "por procedimento" os planos de verdade davam ZERO
+  ponto. Passou a ler os procedimentos das sessões (o mesmo total da comissão).
+
+Migration `20260930000021`. **Prova:** `vendas-desconto` (6 casos: pacote pela
+tela, recusas, plano rateado com fidelidade, recusas do rateio e de outra rede,
+recepção pela tela com a comissão, recusas da função). Unitários
+(`vendas-desconto.test.ts`). Vizinhos (35): pacotes, checkout de plano (com o
+desconto fora do contrato assinado recusado), fidelidade (ganho, pontos,
+vouchers), contrato com pagamento, fechamento e comissões. Telas conferidas por
+captura no desktop e no celular.
+
 ### 2026-09-30 — "Vender pacote" na conversa de quem ainda não é cliente
 
 A pedido do Heitor, o botão aparece no inbox mesmo sem ficha. Clicar abre o

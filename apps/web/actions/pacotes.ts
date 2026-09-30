@@ -17,6 +17,7 @@ import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
 import { sessoesDoPacote } from '@/lib/pacotes/rateio'
 import { itensParaRateio } from '@/lib/pacotes/leitura'
+import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 
 type Resultado = { error?: string; ok?: true }
 
@@ -68,9 +69,13 @@ export async function salvarPacote(entrada: unknown): Promise<Resultado> {
  * Vende um pacote ao cliente: o pacote do cliente (com o retrato do preço), as
  * sessões e o dinheiro, numa transação (`pacote_vender`). Quem recebe dinheiro
  * vende (caixa ou financeiro), como no plano.
+ *
+ * Com desconto (R$ ou %, sem teto — decisão do Heitor), o preço vendido é o do
+ * catálogo menos o desconto: é ele que o pagamento cobre e que as sessões
+ * rateiam, então a comissão de cada sessão já sai sobre o vendido.
  */
 export async function venderPacote(
-  clienteId: string, pacoteId: string, branchId: string, pagamento: unknown,
+  clienteId: string, pacoteId: string, branchId: string, pagamento: unknown, desconto?: unknown,
 ): Promise<{ error?: string; clientPackageId?: string }> {
   try {
     const ctx = await getTenantContext()
@@ -79,6 +84,8 @@ export async function venderPacote(
     if (![clienteId, pacoteId, branchId].every(v => typeof v === 'string' && uuid.test(v))) return { error: 'Dados inválidos.' }
     const lido = EntradaDoPagamento.safeParse(pagamento)
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Pagamento inválido.' }
+    const d = EntradaDoDesconto.safeParse(desconto)
+    if (!d.success) return { error: 'Desconto inválido.' }
 
     const admin = createAdminClient()
     const [unidade, cliente, pacote] = await Promise.all([
@@ -92,13 +99,19 @@ export async function venderPacote(
     if (!pacote) return { error: 'Pacote não encontrado.' }
     if (!pacote.is_active) return { error: 'Este pacote está desativado.' }
 
-    const lancamentos = lancamentosDoPagamento(Number(pacote.price), lido.data, `Pacote ${pacote.name as string}`)
-    // Cada sessão com o seu procedimento e a sua parte do preço (rateio pelo
-    // preço de tabela): é a base da comissão dela. O banco confere a soma.
-    const sessoes = sessoesDoPacote(await itensParaRateio(ctx.tenantId!, pacoteId), Number(pacote.price))
+    const preco = Number(pacote.price)
+    const recusa = recusaDoDesconto(preco, d.data)
+    if (recusa) return { error: recusa }
+    const reais = descontoEmReais(preco, d.data)
+    const vendido = Math.round((preco - reais) * 100) / 100
+
+    const lancamentos = lancamentosDoPagamento(vendido, lido.data, `Pacote ${pacote.name as string}`)
+    // Cada sessão com o seu procedimento e a sua parte do preço VENDIDO (rateio
+    // pelo preço de tabela): é a base da comissão dela. O banco confere a soma.
+    const sessoes = sessoesDoPacote(await itensParaRateio(ctx.tenantId!, pacoteId), vendido)
     const clientPackageId = await gravar(admin.rpc('pacote_vender', {
       p_tenant: ctx.tenantId!, p_cliente: clienteId, p_pacote: pacoteId, p_unidade: branchId,
-      p_ator: ctx.internalUserId ?? null, p_lancamentos: lancamentos, p_sessoes: sessoes,
+      p_ator: ctx.internalUserId ?? null, p_lancamentos: lancamentos, p_sessoes: sessoes, p_desconto: reais,
     }), 'vender o pacote') as string
 
     revalidatePath('/admin/clients/[id]', 'page')

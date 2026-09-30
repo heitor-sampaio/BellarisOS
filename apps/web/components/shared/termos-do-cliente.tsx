@@ -39,7 +39,8 @@ export interface ItemDeTermo {
   linkAte?:      string | null
   /** Contrato do procedimento que cita o pagamento — a recepção o define antes da assinatura. */
   pedePagamento?: boolean
-  pagamento?:    { rotulo: string; valor: PagamentoDoPlano | null } | null
+  pagamento?:    { rotulo: string; valor: PagamentoDoPlano | null; desconto?: number } | null
+  valorDoAtendimento?: number | null
 }
 
 const ICONE = { TERMO: FileSignature, CONTRATO: FileText, CONTRATO_PLANO: ScrollText } as const
@@ -285,7 +286,8 @@ export function TermosDoCliente({ itens, slug, podeColher, compacto = false, pel
               </p>
             )}
             {pagando === item.id && (
-              <DefinirPagamento documentoId={item.id} atual={item.pagamento?.valor} aoTerminar={() => setPagando(null)} />
+              <DefinirPagamento documentoId={item.id} atual={item.pagamento?.valor} descontoAtual={item.pagamento?.desconto}
+                total={item.valorDoAtendimento ?? null} aoTerminar={() => setPagando(null)} />
             )}
             {(item.status === 'DISPENSADO' || item.status === 'CANCELADO') && item.motivo && (
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>{item.motivo}</p>

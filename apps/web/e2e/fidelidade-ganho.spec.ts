@@ -127,9 +127,14 @@ test.describe.serial('fidelidade: ganho no pagamento', () => {
       branch_id: rede!.branchId, professional_id: rede!.professionalId, client_id: c, status: 'ACCEPTED', name: `${PREFIXO} Plano ${marca}`,
     }).select('id').single<{ id: string }>()
     expect(error).toBeNull()
-    // 3 sessões de R$ 100: total R$ 300, pontos do plano = 40 × 3 = 120.
-    const { error: eItem } = await db().from('treatment_plan_items')
-      .insert({ plan_id: plano!.id, procedure_id: rede!.procedureId, sessions: 3, unit_price: 100 })
+    // 3 sessões de R$ 100: total R$ 300, pontos do plano = 40 × 3 = 120. O
+    // plano é por SESSÃO: `treatment_plan_items` é legado, e a fidelidade lia
+    // dele (dava zero ponto nos planos de verdade) até 2026-09-30.
+    const { data: sessoes, error: eSess } = await db().from('treatment_plan_sessions')
+      .insert([0, 1, 2].map(i => ({ plan_id: plano!.id, sort_order: i }))).select('id')
+    expect(eSess).toBeNull()
+    const { error: eItem } = await db().from('treatment_plan_session_procedures')
+      .insert((sessoes ?? []).map(x => ({ session_id: x.id, procedure_id: rede!.procedureId, price: 100 })))
     expect(eItem).toBeNull()
 
     await pagar(c, 100, { treatment_plan_id: plano!.id })   // 1/3 → floor(40)

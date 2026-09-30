@@ -1149,6 +1149,8 @@ export type SessionScheduleInput = {
 export type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { rotuloDoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { recusaDosDocumentosDoPlano } from '@/lib/documentos/plano'
+import { precosDoPlano, descontoDoPlano, precosComDesconto } from '@/lib/checkout/desconto-do-plano'
+import { EntradaDoDesconto } from '@/lib/vendas/desconto'
 
 /**
  * Erro de banco vira mensagem na tela, e não uma exceção nua.
@@ -1179,6 +1181,11 @@ async function checkoutTreatmentPlanInterno(
   pagamento:        PagamentoDoPlano | null,
   sessionSchedules: SessionScheduleInput[],
   slug:             string,
+  /**
+   * O desconto do fechamento (R$ ou %), sobre a soma dos procedimentos do plano.
+   * Por último na lista para as chamadas de antes (e os testes) seguirem valendo.
+   */
+  desconto?:        unknown,
 ) {
   const ctx   = await getTenantContext()
   // Aceitar é gesto de quem monta o plano; receber, de quem recebe na recepção.
@@ -1203,8 +1210,24 @@ async function checkoutTreatmentPlanInterno(
   // dinheiro com termo ou contrato que bloqueia sem assinatura, nem com um
   // contrato assinado para outro pagamento. O gatilho no plano é a segunda
   // linha — mas ele só barra o status, com os lançamentos já feitos.
-  const recusaDosDocumentos = await recusaDosDocumentosDoPlano(ctx.tenantId!, planId, pagamento)
+  const entradaDoDesconto = EntradaDoDesconto.safeParse(desconto)
+  if (!entradaDoDesconto.success) return { error: 'Desconto inválido.' }
+  const precos = await precosDoPlano(planId)
+  const doDesconto = descontoDoPlano(precos, entradaDoDesconto.data)
+  if ('error' in doDesconto) return { error: doDesconto.error }
+
+  const recusaDosDocumentos = await recusaDosDocumentosDoPlano(ctx.tenantId!, planId, pagamento, doDesconto.reais)
   if (recusaDosDocumentos) return { error: recusaDosDocumentos }
+
+  // O desconto vira o PREÇO de cada procedimento do plano (rateado), antes do
+  // dinheiro e das sessões: o que vem depois — lançamentos, agendamentos,
+  // comissão, fidelidade — lê o preço vendido e não precisa saber de desconto.
+  // Sempre chamado: parte do preço de antes, então repetir é seguro e desconto
+  // zero desfaz o de um checkout que falhou no meio.
+  await gravar(admin.rpc('plano_aplicar_desconto', {
+    p_plano: planId, p_tenant: ctx.tenantId, p_ator: ctx.internalUserId ?? null,
+    p_desconto: doDesconto.reais, p_precos: precosComDesconto(precos, doDesconto.reais),
+  }), 'aplicar o desconto do plano')
 
   // Busca sessões com procedimentos
   const { sessions, total } = await getTreatmentPlanSessions(planId)
@@ -1393,7 +1416,7 @@ async function checkoutTreatmentPlanInterno(
       changed_by_id:     ctx.internalUserId,
       changed_by_name:   ctx.userName || ctx.roleLabel || 'Recepção',
       action:            'CHECKOUT_COMPLETED',
-      description:       `Checkout concluído — R$ ${total.toFixed(2).replace('.', ',')} — ${rotuloDoPagamento(pagamento)}`,
+      description:       `Checkout concluído — R$ ${total.toFixed(2).replace('.', ',')}${doDesconto.reais > 0 ? ` (desconto de R$ ${doDesconto.reais.toFixed(2).replace('.', ',')})` : ''} — ${rotuloDoPagamento(pagamento)}`,
     }), 'registrar o checkout no histórico')
   }
 

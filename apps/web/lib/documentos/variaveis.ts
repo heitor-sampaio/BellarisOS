@@ -98,6 +98,10 @@ export const VARIAVEIS_DE_DOCUMENTO = {
   'pagamento.parcelas':    { grupo: 'Pagamento',   rotulo: 'Número de parcelas', tipos: COM_PAGAMENTO, exemplo: '4', opcional: true },
   'pagamento.valor_parcela': { grupo: 'Pagamento', rotulo: 'Valor da parcela',  tipos: COM_PAGAMENTO, exemplo: 'R$ 1.000,00', opcional: true },
   'pagamento.primeiro_vencimento': { grupo: 'Pagamento', rotulo: 'Primeiro vencimento', tipos: COM_PAGAMENTO, exemplo: '10/10/2026', opcional: true },
+  // Desconto da venda (2026-09-30): o valor antes dele e o desconto em reais.
+  // `pagamento.forma` já fala do valor com desconto e diz o desconto.
+  'pagamento.subtotal':    { grupo: 'Pagamento',   rotulo: 'Valor antes do desconto', tipos: COM_PAGAMENTO, exemplo: 'R$ 4.800,00', opcional: true },
+  'pagamento.desconto':    { grupo: 'Pagamento',   rotulo: 'Desconto', tipos: COM_PAGAMENTO, exemplo: 'R$ 480,00', opcional: true },
 } as const satisfies Record<string, VariavelDeDocumento>
 
 export type NomeDeVariavel = keyof typeof VARIAVEIS_DE_DOCUMENTO

@@ -1050,6 +1050,28 @@ DEVLOG ("Termos e contratos").
 - **Desconto de fidelidade** fica em `loyalty_discount`, FORA de `amount`: o
   lançamento registra o dinheiro que entrou (§9.2.2). Pago todo com pontos, o
   lançamento é de R$ 0 e sem forma de pagamento.
+- **Desconto em todas as vendas** (decisão do Heitor, 2026-09-30): pacote,
+  checkout do plano e o recebimento do avulso na recepção, em R$ ou %, SEM
+  TETO, e fica registrado quem deu. A conta é uma só (`lib/vendas/desconto.ts`,
+  em centavos; a tela usa `CampoDoDesconto`): o servidor a refaz a partir do
+  pedido, e a função do banco confere.
+  - **Pacote**: `client_packages.price` é o VENDIDO (`preco_tabela` −
+    `desconto`, quem deu é `sold_by`); pagamento e sessões fecham com ele.
+  - **Plano**: o desconto é RATEADO nos procedimentos do plano
+    (`plano_aplicar_desconto`, maior resto — nenhum passa do preço de antes):
+    `price` vira o vendido e o de antes fica em `preco_tabela`
+    (`treatment_plans.desconto`/`desconto_por`). Contrato, sessões, comissão e
+    fidelidade leem o preço vendido e não precisam saber de desconto. Parte
+    sempre do preço de antes: repetir é seguro, e desconto 0 desfaz.
+  - **Avulso**: `financial_transactions.sale_discount`, fora de `amount` (o
+    bruto é `amount + loyalty_discount + sale_discount`). A ordem é voucher →
+    desconto comercial → pontos (o teto dos pontos vale sobre o que sobra).
+  - **Contrato**: o desconto é parte do COMBINADO — vai no retrato do
+    pagamento (`pagamentoNormalizado(p, desconto)`, só quando existe), e
+    trocá-lo depois de assinar substitui o contrato como trocar a forma.
+    `pagamento.forma` fala do valor com desconto e diz o desconto; há
+    `pagamento.subtotal` e `pagamento.desconto`.
+  - Prova: `e2e/vendas-desconto.spec.ts`.
 - **Pagar com `INTERNAL_CREDIT` desconta do saldo e recusa sem saldo**
   (2026-09-27). É GATILHO (`trg_credito_interno_uso`), pelo argumento do §9.9:
   receita paga nasce em cinco lugares. O saldo é a soma de
@@ -1104,9 +1126,11 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   linha deve AGORA, e `private.comissao_acertar_linha` lança a diferença para o
   já lançado (trava por linha; chamar duas vezes não lança duas). Não há cópia
   em TS — o recebimento do plano entra por gatilho e precisa dela.
-  - Percentual: sobre preço − pontos/voucher (se saem da base) − taxa do
-    recebimento (se marcada) − insumos (se marcados). Valor fixo: só pontos e
-    voucher o reduzem, na proporção; taxa e insumos não.
+  - Percentual: sobre preço − desconto comercial (sempre) − pontos/voucher
+    (se saem da base) − taxa do recebimento (se marcada) − insumos (se
+    marcados). Valor fixo: só pontos e voucher o reduzem, na proporção; taxa,
+    insumos e desconto comercial não. No pacote e no plano o desconto já está
+    no preço da sessão e do procedimento (§9.6).
   - ATENDIMENTO: devida desde a conclusão; o pagamento acerta (taxa, base com
     pontos) e o estorno do pagamento a zera.
   - PAGAMENTO: avulso só vale pago; plano e pacote liberam na proporção do que
@@ -1858,6 +1882,9 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Pagar comissão fora de comissao_fechar (a despesa e os lançamentos pagos vão juntos)
 ❌ Estornar a despesa de um fechamento fora de comissao_estornar_fechamento (os lançamentos têm de voltar a "a pagar")
 ❌ Criar pacote de cliente fora de pacote_vender (sessões, retrato do preço e dinheiro vão juntos)
+❌ Calcular desconto de venda fora de lib/vendas/desconto.ts, ou confiar no valor de desconto que o navegador manda
+❌ Pôr desconto comercial em amount ou em loyalty_discount (é sale_discount no avulso; no pacote e no plano, o preço vendido)
+❌ Mexer no preço dos procedimentos do plano no checkout fora de plano_aplicar_desconto
 ❌ Dar ponto de fidelidade no TypeScript (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
 ❌ Calcular vencimento de pontos fora de fidelidade_a_expirar (é a única cópia do FIFO)
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado

@@ -31,6 +31,8 @@ import { ipEAparelho, dadosDoAssinante, depoisDeAssinar, COLUNAS_ASSINAVEIS, typ
 import { notifyClient } from '@/lib/notifications/notify'
 import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { precosDoPlano, descontoDoPlano } from '@/lib/checkout/desconto-do-plano'
+import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
 import type { TenantContext } from '@estetica-os/types'
 
@@ -182,11 +184,17 @@ function pagamentoValido(p: unknown): p is PagamentoDoPlano | null {
  * por procedimento e o contrato de plano. Quem pode fechar o plano (prontuário
  * ou recebimento — o mesmo gate do checkout) prepara.
  */
-export async function prepararDocumentosDoCheckout(planId: string, pagamento: unknown): Promise<{ itens?: ResumoDeDocumento[]; error?: string }> {
+export async function prepararDocumentosDoCheckout(
+  planId: string, pagamento: unknown,
+  /** O desconto do checkout (R$ ou %): o contrato cita o valor com ele. */
+  desconto?: unknown,
+): Promise<{ itens?: ResumoDeDocumento[]; error?: string }> {
   try {
     const ctx = await getTenantContext()
     if (!can(ctx, 'medical_records', 'MANAGE') && !podeReceber(ctx)) throw semAcesso()
     if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
+    const d = EntradaDoDesconto.safeParse(desconto)
+    if (!d.success) return { error: 'Desconto inválido.' }
     const admin = createAdminClient()
     const plano = await ler(admin.from('treatment_plans')
       .select('id, status, branch_id, branches!branch_id(tenant_id)')
@@ -195,7 +203,9 @@ export async function prepararDocumentosDoCheckout(planId: string, pagamento: un
     if (!plano || rede !== ctx.tenantId || !alcancaUnidade(ctx, plano.branch_id as string)) return { error: 'Plano não encontrado.' }
     if (plano.status !== 'PROPOSED') return { error: 'Apenas planos enviados para recepção podem ser finalizados.' }
 
-    const docs = await prepararDocumentosDoPlano(ctx.tenantId!, planId, pagamento, ctx.internalUserId ?? null)
+    const doDesconto = descontoDoPlano(await precosDoPlano(planId), d.data)
+    if ('error' in doDesconto) return { error: doDesconto.error }
+    const docs = await prepararDocumentosDoPlano(ctx.tenantId!, planId, pagamento, ctx.internalUserId ?? null, doDesconto.reais)
     return { itens: await resumirDocumentos(ctx.tenantId!, docs) }
   } catch (e) {
     return { error: mensagemDoErro(e) }
@@ -212,11 +222,17 @@ export async function prepararDocumentosDoCheckout(planId: string, pagamento: un
  * `null` = "no atendimento" (a receber depois, sem prazo). Trocar é possível
  * até a assinatura: o texto é montado de novo, e o hash com ele.
  */
-export async function definirPagamentoDoContrato(id: string, pagamento: unknown): Promise<{ error?: string; ok?: true }> {
+export async function definirPagamentoDoContrato(
+  id: string, pagamento: unknown,
+  /** O desconto combinado (R$ ou %), sobre o preço do atendimento. */
+  desconto?: unknown,
+): Promise<{ error?: string; ok?: true }> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'documents', 'MANAGE')
     if (!pagamentoValido(pagamento)) return { error: 'Forma de pagamento inválida.' }
+    const d = EntradaDoDesconto.safeParse(desconto)
+    if (!d.success) return { error: 'Desconto inválido.' }
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
     const admin = createAdminClient()
@@ -227,7 +243,13 @@ export async function definirPagamentoDoContrato(id: string, pagamento: unknown)
     if (!['A_GERAR', 'INCOMPLETO', 'PENDENTE'].includes(doc.status)) {
       return { error: 'Este contrato não está mais esperando assinatura: o pagamento dele não muda.' }
     }
-    await garantirRenderizado(ctx.tenantId!, doc.id, { forcar: true, pagamento: { valor: pagamento } })
+    const ag = await ler(admin.from('appointments').select('price').eq('id', doc.appointment_id).single(), 'buscar o preço do atendimento')
+    const preco = Number(ag?.price ?? 0)
+    const recusa = recusaDoDesconto(preco, d.data)
+    if (recusa) return { error: recusa }
+    await garantirRenderizado(ctx.tenantId!, doc.id, {
+      forcar: true, pagamento: { valor: pagamento, desconto: descontoEmReais(preco, d.data) },
+    })
     revalidatePath('/admin/clients/[id]', 'page')
     revalidatePath('/[slug]/clients/[id]', 'page')
     return { ok: true }

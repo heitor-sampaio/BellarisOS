@@ -4,7 +4,7 @@ import { ler } from '@/lib/db'
 import { getSignedUrl, MODELOS_DE_DOCUMENTO_BUCKET } from '@/lib/storage'
 import { VARIAVEIS_DE_DOCUMENTO } from './variaveis'
 import { urlsDasImagens } from './imagens'
-import { pagamentoDoRetrato, frasesDoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { pagamentoDoRetrato, frasesDoPagamento, descontoDoRetrato, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import {
   garantirRenderizado, renderizarPendentes, COLUNAS_DO_DOCUMENTO,
   type DocumentoEmitido, type StatusDoDocumento,
@@ -41,7 +41,9 @@ export interface ResumoDeDocumento {
    * foi combinado; nulo enquanto não foi.
    */
   pedePagamento: boolean
-  pagamento:     { rotulo: string; valor: PagamentoDoPlano | null } | null
+  pagamento:     { rotulo: string; valor: PagamentoDoPlano | null; desconto: number } | null
+  /** O preço do atendimento do documento — sobre ele se dá o desconto do contrato. */
+  valorDoAtendimento: number | null
 }
 
 const CATALOGO = VARIAVEIS_DE_DOCUMENTO as Record<string, { grupo: string; rotulo: string }>
@@ -61,7 +63,7 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
   const pendentes = montados.filter(d => d.status === 'PENDENTE').map(d => d.id)
   const [ags, procs, assins, links] = await Promise.all([
     agendamentos.length
-      ? ler(admin.from('appointments').select('id, scheduled_at').in('id', agendamentos), 'buscar os agendamentos dos documentos')
+      ? ler(admin.from('appointments').select('id, scheduled_at, price').in('id', agendamentos), 'buscar os agendamentos dos documentos')
       : Promise.resolve([]),
     procedimentos.length
       ? ler(admin.from('procedures').select('id, name').in('id', procedimentos), 'buscar os procedimentos dos documentos')
@@ -77,6 +79,7 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
   ])
   const linkAte = new Map((links ?? []).map(l => [l.issued_document_id as string, l.expires_at as string]))
   const quando = new Map((ags ?? []).map(a => [a.id as string, a.scheduled_at as string]))
+  const precoDoAg = new Map((ags ?? []).map(a => [a.id as string, Number(a.price)]))
   const nomeProc = new Map((procs ?? []).map(p => [p.id as string, p.name as string]))
   const canal = new Map((assins ?? []).map(s => [s.issued_document_id as string, s.channel as ResumoDeDocumento['canal']]))
 
@@ -91,6 +94,7 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
     faltando:      (d.missing_fields ?? []).map(rotuloDoQueFalta),
     agendamentoId: d.appointment_id,
     agendamentoEm: d.appointment_id ? quando.get(d.appointment_id) ?? null : null,
+    valorDoAtendimento: d.appointment_id ? precoDoAg.get(d.appointment_id) ?? null : null,
     procedimento:  d.procedure_id ? nomeProc.get(d.procedure_id) ?? null : null,
     criadoEm:      d.created_at,
     assinadoEm:    d.signed_at,
@@ -101,7 +105,11 @@ export async function resumirDocumentos(tenantId: string, docs: DocumentoEmitido
     pedePagamento: d.kind === 'CONTRATO' && !!d.appointment_id
       && (d.payment_snapshot != null || (d.missing_fields ?? []).some(v => v.startsWith('pagamento.'))),
     pagamento:     d.kind === 'CONTRATO' && d.payment_snapshot != null
-      ? { rotulo: frasesDoPagamento(pagamentoDoRetrato(d.payment_snapshot)), valor: pagamentoDoRetrato(d.payment_snapshot) }
+      ? {
+          rotulo:   frasesDoPagamento(pagamentoDoRetrato(d.payment_snapshot), descontoDoRetrato(d.payment_snapshot)),
+          valor:    pagamentoDoRetrato(d.payment_snapshot),
+          desconto: descontoDoRetrato(d.payment_snapshot),
+        }
       : null,
   }))
 }
@@ -233,7 +241,7 @@ export async function documentosNoPortal(clientId: string): Promise<ResumoDeDocu
  */
 export async function pagamentoCombinadoDoAtendimento(
   tenantId: string, appointmentId: string,
-): Promise<{ metodo: string | null; rotulo: string } | null> {
+): Promise<{ metodo: string | null; rotulo: string; desconto: number } | null> {
   const admin = createAdminClient()
   const linhas = await ler(admin.from('issued_documents').select('payment_snapshot')
     .eq('tenant_id', tenantId).eq('appointment_id', appointmentId).eq('kind', 'CONTRATO')
@@ -242,7 +250,8 @@ export async function pagamentoCombinadoDoAtendimento(
   const retrato = linhas?.[0]?.payment_snapshot
   if (retrato == null) return null
   const p = pagamentoDoRetrato(retrato)
-  return { metodo: p?.metodo ?? null, rotulo: frasesDoPagamento(p) }
+  const desconto = descontoDoRetrato(retrato)
+  return { metodo: p?.metodo ?? null, rotulo: frasesDoPagamento(p, desconto), desconto }
 }
 
 /** Um documento do próprio cliente — ou null, se não for dele. */

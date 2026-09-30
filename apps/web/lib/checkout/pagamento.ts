@@ -40,7 +40,12 @@ const metodo = (m: string | null | undefined) => (m ? METODO[m] ?? `em ${m}` : n
 const centavos = (v: number) => Math.round(v * 100) / 100
 
 /** Para a TELA: o combinado numa frase curta, com o meio de pagamento por extenso. */
-export function frasesDoPagamento(p: PagamentoDoPlano | null): string {
+export function frasesDoPagamento(p: PagamentoDoPlano | null, desconto = 0): string {
+  const comDesconto = desconto > 0 ? ` · desconto de ${formatBRL(desconto)}` : ''
+  return fraseSemDesconto(p) + comDesconto
+}
+
+function fraseSemDesconto(p: PagamentoDoPlano | null): string {
   if (!p) return 'No atendimento'
   if (p.forma === 'AVISTA') return `À vista, ${metodo(p.metodo)}`
   if (p.forma === 'A_RECEBER') return `A receber${p.vencimento ? ` em ${formatDate(p.vencimento)}` : ''}${p.metodo ? `, ${metodo(p.metodo)}` : ''}`
@@ -51,8 +56,24 @@ export function frasesDoPagamento(p: PagamentoDoPlano | null): string {
 /**
  * O que o CONTRATO diz do pagamento: a frase inteira (`pagamento.forma`, que
  * sempre tem valor) e as peças para quem monta o texto à mão.
+ *
+ * `total` é o valor ANTES do desconto; a frase fala do que o cliente paga (o
+ * total menos o desconto) e, havendo desconto, diz de quanto foi e sobre quê.
  */
-export function valoresDoPagamento(p: PagamentoDoPlano | null, total: number): Record<string, string | null> {
+export function valoresDoPagamento(p: PagamentoDoPlano | null, total: number, desconto = 0): Record<string, string | null> {
+  const d = centavos(Math.max(0, Math.min(desconto, total)))
+  const valores = valoresSemDesconto(p, centavos(total - d))
+  return {
+    ...valores,
+    'pagamento.subtotal': formatBRL(total),
+    'pagamento.desconto': d > 0 ? formatBRL(d) : null,
+    'pagamento.forma':    d > 0
+      ? `${valores['pagamento.forma']}, com desconto de ${formatBRL(d)} sobre ${formatBRL(total)}`
+      : valores['pagamento.forma']!,
+  }
+}
+
+function valoresSemDesconto(p: PagamentoDoPlano | null, total: number): Record<string, string | null> {
   const vazio = {
     'pagamento.metodo': null, 'pagamento.entrada': null, 'pagamento.parcelas': null,
     'pagamento.valor_parcela': null, 'pagamento.primeiro_vencimento': null,
@@ -90,8 +111,17 @@ export function valoresDoPagamento(p: PagamentoDoPlano | null, total: number): R
  * depois: o cliente assinou ESTE pagamento, e o checkout só lança ele.
  * Valores em centavos, datas só no dia (o horário que a tela monta não é
  * dado do contrato), e "nada agora" explícito.
+ *
+ * O desconto (em reais) faz parte do combinado: trocá-lo depois de assinar
+ * substitui o contrato, como trocar a forma. Só entra quando existe — os
+ * retratos de antes do desconto seguem iguais aos de agora sem desconto.
  */
-export function pagamentoNormalizado(p: PagamentoDoPlano | null): Record<string, string | number | null> {
+export function pagamentoNormalizado(p: PagamentoDoPlano | null, desconto = 0): Record<string, string | number | null> {
+  const base = normalizadoSemDesconto(p)
+  return desconto > 0 ? { ...base, desconto: centavos(desconto) } : base
+}
+
+function normalizadoSemDesconto(p: PagamentoDoPlano | null): Record<string, string | number | null> {
   const dia = (iso: string) => iso.slice(0, 10)
   if (!p) return { forma: 'NADA_AGORA' }
   if (p.forma === 'AVISTA') return { forma: 'AVISTA', metodo: p.metodo }
@@ -100,6 +130,12 @@ export function pagamentoNormalizado(p: PagamentoDoPlano | null): Record<string,
     forma: 'PARCELADO', metodo: p.metodo, entrada: centavos(p.entrada),
     parcelas: p.parcelas, primeiroVencimento: dia(p.primeiroVencimento),
   }
+}
+
+/** O desconto guardado no retrato, em reais (0 = sem desconto). */
+export function descontoDoRetrato(retrato: unknown): number {
+  const v = Number((retrato as Record<string, unknown> | null)?.desconto)
+  return Number.isFinite(v) && v > 0 ? v : 0
 }
 
 /**

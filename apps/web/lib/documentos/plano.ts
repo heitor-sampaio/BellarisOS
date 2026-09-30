@@ -36,11 +36,13 @@ async function contratosAssinadosComPagamento(tenantId: string, planId: string):
  */
 export async function prepararDocumentosDoPlano(
   tenantId: string, planId: string, pagamento: PagamentoDoPlano | null, ator: string | null,
+  /** O desconto do checkout, em reais — parte do combinado que o contrato cita. */
+  desconto = 0,
 ): Promise<DocumentoEmitido[]> {
   const admin = createAdminClient()
   await gravar(admin.rpc('documentos_emitir_do_plano', { p_plano: planId }), 'emitir os documentos do plano')
 
-  const normalizado = pagamentoNormalizado(pagamento)
+  const normalizado = pagamentoNormalizado(pagamento, desconto)
   for (const c of await contratosAssinadosComPagamento(tenantId, planId)) {
     if (!mesmoPagamento(c.payment_snapshot, normalizado)) {
       await gravar(admin.rpc('documento_substituir', { p_doc: c.id, p_tenant: tenantId, p_ator: ator }),
@@ -56,7 +58,7 @@ export async function prepararDocumentosDoPlano(
   const abertos = ['A_GERAR', 'INCOMPLETO', 'PENDENTE']
   return Promise.all(((docs ?? []) as unknown as DocumentoEmitido[]).map(async d =>
     abertos.includes(d.status)
-      ? (await garantirRenderizado(tenantId, d.id, { forcar: true, pagamento: { valor: pagamento } })) ?? d
+      ? (await garantirRenderizado(tenantId, d.id, { forcar: true, pagamento: { valor: pagamento, desconto } })) ?? d
       : d,
   ))
 }
@@ -67,7 +69,7 @@ export async function prepararDocumentosDoPlano(
  * documento".
  */
 export async function recusaDosDocumentosDoPlano(
-  tenantId: string, planId: string, pagamento: PagamentoDoPlano | null,
+  tenantId: string, planId: string, pagamento: PagamentoDoPlano | null, desconto = 0,
 ): Promise<string | null> {
   const admin = createAdminClient()
   await gravar(admin.rpc('documentos_emitir_do_plano', { p_plano: planId }), 'emitir os documentos do plano')
@@ -75,11 +77,11 @@ export async function recusaDosDocumentosDoPlano(
   const travam = ((pendentes ?? []) as { title: string; enforcement: string }[]).filter(p => p.enforcement === 'BLOQUEIA')
   if (travam.length) return `Falta assinar: ${travam.map(t => t.title).join(', ')}.`
 
-  const normalizado = pagamentoNormalizado(pagamento)
+  const normalizado = pagamentoNormalizado(pagamento, desconto)
   const divergente = (await contratosAssinadosComPagamento(tenantId, planId))
     .find(c => !mesmoPagamento(c.payment_snapshot, normalizado))
   if (divergente) {
-    return 'A forma de pagamento é diferente da do contrato assinado. Volte à documentação para o cliente assinar o contrato com o pagamento de agora.'
+    return 'A forma de pagamento ou o desconto são diferentes dos do contrato assinado. Volte à documentação para o cliente assinar o contrato com o pagamento de agora.'
   }
   return null
 }

@@ -9,7 +9,7 @@ import { ehOpcional } from './variaveis'
 import { valoresDoDocumento, type DadosDoDocumento } from './valores'
 import { gerarCodigoDeVerificacao } from './codigo'
 import {
-  valoresDoPagamento, pagamentoNormalizado, pagamentoDoRetrato, type PagamentoDoPlano,
+  valoresDoPagamento, pagamentoNormalizado, pagamentoDoRetrato, descontoDoRetrato, type PagamentoDoPlano,
 } from '@/lib/checkout/pagamento'
 
 /**
@@ -70,14 +70,16 @@ export function sha256(texto: string | Buffer): string {
 async function dadosDoPlano(doc: DocumentoEmitido) {
   const admin = createAdminClient()
   const sessoes = await ler(admin.from('treatment_plan_sessions')
-    .select('id, treatment_plan_session_procedures(price, procedure_id, procedures(name, consent_template_id))')
+    .select('id, treatment_plan_session_procedures(price, preco_tabela, procedure_id, procedures(name, consent_template_id))')
     .eq('plan_id', doc.treatment_plan_id!), 'buscar as sessões do plano')
-  type Linha = { price: number | string; procedure_id: string; procedures: { name: string; consent_template_id: string | null } | null }
+  type Linha = { price: number | string; preco_tabela: number | string | null; procedure_id: string; procedures: { name: string; consent_template_id: string | null } | null }
   const porProcedimento = new Map<string, { nome: string; sessoes: number; valor: number; termo: string | null }>()
   let total = 0
   for (const s of (sessoes ?? []) as unknown as { treatment_plan_session_procedures: Linha[] }[]) {
     for (const sp of s.treatment_plan_session_procedures ?? []) {
-      const valor = Number(sp.price) || 0
+      // O preço de ANTES do desconto do checkout (depois do checkout, `price` já
+      // é o vendido): o desconto entra uma vez só, pelo combinado do pagamento.
+      const valor = Number(sp.preco_tabela ?? sp.price) || 0
       total += valor
       const atual = porProcedimento.get(sp.procedure_id) ?? { nome: sp.procedures?.name ?? 'Procedimento', sessoes: 0, valor: 0, termo: sp.procedures?.consent_template_id ?? null }
       atual.sessoes += 1
@@ -92,8 +94,8 @@ async function dadosDoPlano(doc: DocumentoEmitido) {
   }
 }
 
-/** Tudo que as variáveis de um documento podem pedir. */
-async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPlano | null, definido: boolean): Promise<DadosDoDocumento> {
+/** Tudo que as variáveis de um documento podem pedir. `desconto` em reais. */
+async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPlano | null, definido: boolean, desconto: number): Promise<DadosDoDocumento> {
   const admin = createAdminClient()
   const [cliente, rede, unidade, procedimento, agendamento] = await Promise.all([
     ler(admin.from('clients')
@@ -118,15 +120,18 @@ async function dadosDoDocumento(doc: DocumentoEmitido, pagamento: PagamentoDoPla
     profissional = (u?.name as string) ?? null
   }
   const doPlano = doc.treatment_plan_id && !doc.appointment_id ? await dadosDoPlano(doc) : null
+  // O total do plano é o que o cliente paga: o subtotal menos o desconto.
+  const subtotal = doPlano?.plano.total ?? 0
+  if (doPlano) doPlano.plano.total = Math.round((subtotal - Math.min(desconto, subtotal)) * 100) / 100
   return {
     ...(doPlano ?? {}),
     pagamento:    doPlano && doc.kind === 'CONTRATO_PLANO'
-      ? valoresDoPagamento(pagamento, doPlano.plano.total)
+      ? valoresDoPagamento(pagamento, subtotal, desconto)
       // Contrato do procedimento: sobre o valor do atendimento, e só depois de
       // a recepção definir. Sem isso as variáveis ficam vazias — e a
       // obrigatória (`pagamento.forma`) deixa o documento INCOMPLETO.
       : doc.kind === 'CONTRATO' && agendamento
-        ? (definido ? valoresDoPagamento(pagamento, Number(agendamento.price)) : {})
+        ? (definido ? valoresDoPagamento(pagamento, Number(agendamento.price), desconto) : {})
         : null,
     agora:        new Date(),
     cliente:      cliente as DadosDoDocumento['cliente'],
@@ -162,8 +167,8 @@ export async function garantirRenderizado(
   tenantId: string, docId: string,
   opcoes: {
     forcar?: boolean
-    /** O pagamento escolhido no checkout. Sem ele, vale o retrato já guardado. */
-    pagamento?: { valor: PagamentoDoPlano | null }
+    /** O pagamento escolhido no checkout (e o desconto, em reais). Sem ele, vale o retrato já guardado. */
+    pagamento?: { valor: PagamentoDoPlano | null; desconto?: number }
   } = {},
 ): Promise<DocumentoEmitido | null> {
   const doc = await lerDocumento(tenantId, docId)
@@ -187,7 +192,8 @@ export async function garantirRenderizado(
     // "Definido" é diferente de "nada agora": no contrato do procedimento, sem
     // retrato nenhum o pagamento ainda não foi combinado e o documento espera.
     const definido = !!opcoes.pagamento || doc.payment_snapshot != null
-    const valores = valoresDoDocumento(await dadosDoDocumento(doc, pagamento, definido))
+    const desconto = opcoes.pagamento ? (opcoes.pagamento.desconto ?? 0) : descontoDoRetrato(doc.payment_snapshot)
+    const valores = valoresDoDocumento(await dadosDoDocumento(doc, pagamento, definido, desconto))
     const r = interpolar(documentoDaVersao(versao, tenantId), v => valores[v] ?? null, ehOpcional)
     conteudo = formaCanonica(r.documento)
     texto = textoDoDocumento(r.documento)
@@ -209,7 +215,7 @@ export async function garantirRenderizado(
     p_faltando: faltando,
     p_codigo:   gerarCodigoDeVerificacao(),
     // O retrato do pagamento vai junto do texto que o cita.
-    p_pagamento: opcoes.pagamento ? pagamentoNormalizado(opcoes.pagamento.valor) : null,
+    p_pagamento: opcoes.pagamento ? pagamentoNormalizado(opcoes.pagamento.valor, opcoes.pagamento.desconto ?? 0) : null,
   }), 'montar o documento')
 
   return lerDocumento(tenantId, docId)
