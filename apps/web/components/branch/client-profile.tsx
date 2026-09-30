@@ -80,16 +80,6 @@ export interface ProfilePackage {
   planStatus?:   string
 }
 
-export interface ProfileInstallment {
-  id:     string
-  number: number
-  total:  number
-  amount: number
-  dueDate: string
-  isPaid: boolean
-  paidAt: string | null
-}
-
 export interface ProfileTransaction {
   id:            string
   description:   string
@@ -100,7 +90,11 @@ export interface ProfileTransaction {
   createdAt:     string
   procedureName: string | null
   scheduledAt:   string | null
-  installments:  ProfileInstallment[]
+  /**
+   * Vencimento. Desde 2026-09-30 cada parcela é um lançamento ("— parcela
+   * 2/3" na descrição), e o que está em aberto mostra quando vence.
+   */
+  dueDate:       string | null
   isCheckout?:   boolean
 }
 
@@ -908,15 +902,15 @@ function FinanceiroTab({
             <tbody>
               {transactions.map((t, i) => {
                 const isLast = i === transactions.length - 1
-                const hasInstallments = t.installments.length > 1
-                const paidCount = t.installments.filter(p => p.isPaid).length
 
                 return (
                   <tr key={t.id} style={{ borderBottom: isLast ? 'none' : '1px solid var(--hairline)' }}>
                     <td style={{ padding: '12px 16px', fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                      {t.scheduledAt
-                        ? format(new Date(t.scheduledAt), 'dd/MM/yyyy', { locale: ptBR })
-                        : format(new Date(t.createdAt), 'dd/MM/yyyy', { locale: ptBR })
+                      {!t.isPaid && t.dueDate
+                        ? `Vence ${new Date(t.dueDate).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
+                        : t.scheduledAt
+                          ? format(new Date(t.scheduledAt), 'dd/MM/yyyy', { locale: ptBR })
+                          : format(new Date(t.createdAt), 'dd/MM/yyyy', { locale: ptBR })
                       }
                     </td>
                     <td style={{ padding: '12px 16px', maxWidth: 240 }}>
@@ -928,11 +922,6 @@ function FinanceiroTab({
                           {t.procedureName ?? t.description}
                         </p>
                       </div>
-                      {hasInstallments && (
-                        <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', marginTop: 2 }}>
-                          {`${paidCount}/${t.installments[0]?.total ?? t.installments.length} parcelas · ${fmtBRL(t.installments[0]?.amount ?? 0)}/mês`}
-                        </p>
-                      )}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       {t.paymentMethod && (

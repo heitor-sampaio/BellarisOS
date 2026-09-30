@@ -47,28 +47,53 @@ const TIMEOUT_MS = 120_000
 
 let failed = 0
 
-for (const job of JOBS) {
+/**
+ * Nova tentativa só quando a chamada NÃO chegou ao app: falha de rede antes da
+ * resposta, ou erro da borda do Railway (502/503/504, ou o 404 "Application not
+ * found" que derrubou uma passagem do Automations Cron na madrugada de
+ * 2026-09-30, enquanto o serviço era redistribuído). Tempo esgotado NÃO
+ * repete: o job pode estar rodando do lado de lá, e repetir o executaria duas
+ * vezes.
+ */
+const ESPERAS_MS = [15_000, 30_000]
+const daBorda = (status, body) => [502, 503, 504].includes(status) || (status === 404 && /application not found/i.test(body))
+const espera = ms => new Promise(ok => setTimeout(ok, ms))
+
+async function chamar(job) {
   const url = `${APP_URL.replace(/\/$/, '')}/api/cron/${job}`
-  const started = Date.now()
-
-  try {
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${CRON_SECRET}` },
-      signal:  AbortSignal.timeout(TIMEOUT_MS),
-    })
-    const body = (await res.text()).slice(0, 500)
-    const ms   = Date.now() - started
-
+  for (let tentativa = 0; ; tentativa++) {
+    const started = Date.now()
+    let res, body
+    try {
+      res  = await fetch(url, { headers: { Authorization: `Bearer ${CRON_SECRET}` }, signal: AbortSignal.timeout(TIMEOUT_MS) })
+      body = (await res.text()).slice(0, 500)
+    } catch (e) {
+      const esgotou = e instanceof Error && (e.name === 'TimeoutError' || e.name === 'AbortError')
+      if (!esgotou && tentativa < ESPERAS_MS.length) {
+        console.warn(`[repete] ${job}: ${e instanceof Error ? e.message : e} — de novo em ${ESPERAS_MS[tentativa] / 1000}s`)
+        await espera(ESPERAS_MS[tentativa])
+        continue
+      }
+      console.error(`[erro] ${job}: ${e instanceof Error ? e.message : e}`)
+      return false
+    }
+    const ms = Date.now() - started
     if (res.ok) {
       console.log(`[ok]   ${job} (${res.status}, ${ms}ms) ${body}`)
-    } else {
-      console.error(`[erro] ${job} (${res.status}, ${ms}ms) ${body}`)
-      failed++
+      return true
     }
-  } catch (e) {
-    console.error(`[erro] ${job}: ${e instanceof Error ? e.message : e}`)
-    failed++
+    if (daBorda(res.status, body) && tentativa < ESPERAS_MS.length) {
+      console.warn(`[repete] ${job} (${res.status}, borda) — de novo em ${ESPERAS_MS[tentativa] / 1000}s`)
+      await espera(ESPERAS_MS[tentativa])
+      continue
+    }
+    console.error(`[erro] ${job} (${res.status}, ${ms}ms) ${body}`)
+    return false
   }
+}
+
+for (const job of JOBS) {
+  if (!(await chamar(job))) failed++
 }
 
 console.log(failed === 0 ? 'todos os jobs concluídos' : `${failed} job(s) falharam`)

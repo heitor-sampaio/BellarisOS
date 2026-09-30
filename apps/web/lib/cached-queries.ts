@@ -356,8 +356,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
             scheduled_at,
             procedures(name),
             transaction:financial_transactions(
-              id, description, amount, payment_method, is_paid, paid_at, created_at,
-              installments(id, number, total, amount, due_date, is_paid, paid_at)
+              id, description, amount, payment_method, is_paid, paid_at, created_at, due_date
             )
           `)
           .eq('client_id', clientId)
@@ -366,7 +365,7 @@ export function getCachedClientProfileData(clientId: string, branchId: string, t
           .limit(50),
         admin
           .from('financial_transactions')
-          .select('id, description, amount, payment_method, is_paid, paid_at, created_at')
+          .select('id, description, amount, payment_method, is_paid, paid_at, created_at, due_date')
           .eq('client_id', clientId)
           .order('created_at', { ascending: false })
           .limit(50),

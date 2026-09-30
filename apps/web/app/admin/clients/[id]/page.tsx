@@ -122,8 +122,7 @@ export default async function AdminClientProfilePage({
         scheduled_at,
         procedures(name),
         transaction:financial_transactions(
-          id, description, amount, payment_method, is_paid, paid_at, created_at,
-          installments(id, number, total, amount, due_date, is_paid, paid_at)
+          id, description, amount, payment_method, is_paid, paid_at, created_at, due_date
         )
       `)
       .eq('client_id', id)
@@ -133,7 +132,7 @@ export default async function AdminClientProfilePage({
 
     ler(admin
       .from('financial_transactions')
-      .select('id, description, amount, payment_method, is_paid, paid_at, created_at')
+      .select('id, description, amount, payment_method, is_paid, paid_at, created_at, due_date')
       .eq('client_id', id)
       .order('created_at', { ascending: false })
       .limit(50), 'carregar os lançamentos do cliente'),
@@ -182,7 +181,7 @@ export default async function AdminClientProfilePage({
   // atendimentos + lançamentos pagos sem agendamento" no JS: contava estorno,
   // contava atendimento que nunca foi pago, e dividia por outra base.
   const doCliente = await getDoCliente(ctx.tenantId!, id)
-  type DirectTx = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string }
+  type DirectTx = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null }
   const directTxList     = (directTxRaw as DirectTx[] | null) ?? []
   const age              = client.birthDate ? differenceInYears(new Date(), new Date(client.birthDate)) : null
 
@@ -279,8 +278,7 @@ export default async function AdminClientProfilePage({
   const recordForms  = canViewRecords ? buildRecordForms(mreEntries, apptNameById) : []
   const generalAnamnesis = canViewRecords ? ((medRecord?.general_anamnesis as GeneralAnamnesis | null) ?? null) : null
 
-  type RawInstallment = { id: string; number: number; total: number; amount: string; due_date: string; is_paid: boolean; paid_at: string | null }
-  type RawTx    = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string; installments: RawInstallment[] }
+  type RawTx    = { id: string; description: string; amount: string; payment_method: string | null; is_paid: boolean; paid_at: string | null; created_at: string; due_date: string | null }
   type RawTxAppt = { scheduled_at: string; procedures: { name: string } | null; transaction: RawTx | null }
 
   const apptTransactions: ProfileTransaction[] = ((txAppts as RawTxAppt[] | null) ?? [])
@@ -295,17 +293,14 @@ export default async function AdminClientProfilePage({
       createdAt:     a.transaction!.created_at,
       procedureName: (a.procedures as { name?: string } | null)?.name ?? null,
       scheduledAt:   a.scheduled_at,
-      installments:  (a.transaction!.installments ?? []).map(p => ({
-        id: p.id, number: p.number, total: p.total,
-        amount: parseFloat(p.amount), dueDate: p.due_date, isPaid: p.is_paid, paidAt: p.paid_at,
-      })),
+      dueDate:       a.transaction!.due_date,
     }))
 
   const checkoutTransactions: ProfileTransaction[] = directTxList.map(t => ({
     id: t.id, description: t.description, amount: parseFloat(t.amount),
     paymentMethod: t.payment_method, isPaid: t.is_paid, paidAt: t.paid_at,
     createdAt: t.created_at, procedureName: null, scheduledAt: null,
-    installments: [], isCheckout: true,
+    dueDate: t.due_date, isCheckout: true,
   }))
 
   const seenIds = new Set(apptTransactions.map(t => t.id))
