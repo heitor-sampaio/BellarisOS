@@ -23,6 +23,7 @@ import {
 } from '@/lib/cached-queries'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { gravar, ler } from '@/lib/db'
+import { lerCredito } from '@/lib/creditos/credito'
 
 
 export interface CrmSchedProcedure { id: string; name: string; duration_min: number; price: number }
@@ -141,6 +142,8 @@ export interface CreateCrmAppointmentInput {
   notes?:         string | null
   /** Nome e telefone confirmados na tela, quando o contato ainda não é cliente. */
   contato?:       { nome: string; telefone: string } | null
+  /** Usar o que o cliente já pagou: { tipo: 'PRE_PAGO' | 'PACOTE', id }. */
+  credito?:       unknown
 }
 
 /** Agenda a partir do CRM: garante o cliente e cria o agendamento. */
@@ -222,6 +225,7 @@ export async function createCrmAppointment(
     scheduledAt:    input.scheduledAt,
     roomId:         input.roomId ?? null,
     notes:          input.notes ?? null,
+    credito:        lerCredito(input.credito),
     source:         isComercial ? 'COMMERCIAL' : 'INTERNAL',
   })
 

@@ -14,6 +14,7 @@ import { cliqueDoCliente, contatoDoCliente } from '@/lib/ads/atribuicao'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { EVENTOS } from '@estetica-os/types'
 import { ler, tentar } from '@/lib/db'
+import { conferirCredito, ligarCredito, type CreditoDeAgendamento } from '@/lib/creditos/credito'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -26,6 +27,11 @@ export interface CreateAppointmentInput {
   roomId?:        string | null
   notes?:         string | null
   source?:        'INTERNAL' | 'ONLINE' | 'CLIENT_APP' | 'COMMERCIAL'
+  /**
+   * Usar o que o cliente JÁ PAGOU (unidade pré-paga ou sessão de pacote): o
+   * crédito decide o procedimento e o preço, e fica ligado ao agendamento.
+   */
+  credito?:       CreditoDeAgendamento | null
 }
 
 const IGNORED_STATUS = '("CANCELLED","NO_SHOW")'
@@ -85,6 +91,17 @@ export async function createAppointmentCore(
 ): Promise<{ id: string } | { error: string }> {
   if (!input.branchId)                              return { error: 'Filial não identificada.' }
   if (!input.clientId)                              return { error: 'Selecione um cliente.' }
+
+  // O crédito vem primeiro: é ele que diz o procedimento e o preço. Um
+  // procedimento diferente do crédito é recusado (o navegador não escolhe).
+  let doCredito: { procedureId: string; preco: number } | null = null
+  if (input.credito) {
+    const c = await conferirCredito(admin, ctx.tenantId!, input.clientId, input.credito)
+    if ('error' in c) return { error: c.error }
+    if (input.procedureId && input.procedureId !== c.procedureId) return { error: 'Este crédito é de outro procedimento.' }
+    doCredito = c
+    input = { ...input, procedureId: c.procedureId }
+  }
   // Não há mais agendamento sem procedimento. A avaliação era a exceção que
   // permitia isso — e virou um procedimento como outro qualquer (2026-09-25).
   if (!input.procedureId)                          return { error: 'Selecione um procedimento.' }
@@ -152,7 +169,8 @@ export async function createAppointmentCore(
       room_id:         input.roomId ?? null,
       scheduled_at:    input.scheduledAt,
       duration_min:    durationMin,
-      price:           procedure?.price ?? 0,
+      // Com crédito, o preço é a parte dele na venda (já paga).
+      price:           doCredito ? doCredito.preco : (procedure?.price ?? 0),
       notes:           input.notes ?? null,
       status:          'SCHEDULED',
       source:          input.source ?? 'INTERNAL',
@@ -162,6 +180,13 @@ export async function createAppointmentCore(
     .single()
 
   if (error || !data) return { error: `Erro ao criar agendamento: ${error?.message ?? 'desconhecido'}` }
+
+  // Liga o crédito, só se ainda estiver livre. Perdeu a corrida (outro
+  // agendamento o pegou no meio): o agendamento sai, antes de virar fato.
+  if (input.credito && !(await ligarCredito(admin, input.credito, data.id as string))) {
+    await tentar(admin.from('appointments').delete().eq('id', data.id as string), 'desfazer o agendamento sem crédito')
+    return { error: 'Este crédito acabou de ser usado em outro agendamento.' }
+  }
 
   const userName = await getUserName(admin, ctx.userId)
   await logAppointmentHistory(admin, data.id as string, ctx.internalUserId, userName, 'CREATED', 'Agendamento criado')

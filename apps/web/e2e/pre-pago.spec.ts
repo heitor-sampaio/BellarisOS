@@ -118,6 +118,8 @@ test.describe.serial('procedimento pré-pago', () => {
       await dlg.getByLabel('Entrada').fill('210')
       await dlg.getByLabel('Parcelas').selectOption('2')
       await dlg.getByRole('button', { name: /^Vender por R\$\s810,00$/ }).click()
+      // Quem agenda vê o "Agendar agora" (fase 3); aqui fica para depois.
+      await dlg.locator('[data-agendar-agora]').getByRole('button', { name: 'Cancelar' }).click()
       await expect(dlg).toBeHidden({ timeout: 15_000 })
       await expect(p.locator('[data-procedimentos-pagos]')).toContainText('3 para agendar')
     })

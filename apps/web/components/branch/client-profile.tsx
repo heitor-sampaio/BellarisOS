@@ -187,6 +187,8 @@ interface Props {
   procedimentosAVenda?:  ProcedimentoAVenda[]
   /** Os procedimentos pré-pagos do cliente, com as unidades. */
   prePagos?:             PrePagoDoCliente[]
+  /** Pode agendar (agenda: MANAGE): a unidade pré-paga se agenda da ficha. */
+  podeAgendar?:          boolean
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
   /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
@@ -1034,7 +1036,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
-  procedimentosAVenda = [], prePagos = [],
+  procedimentosAVenda = [], prePagos = [], podeAgendar = false,
 }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -1176,7 +1178,8 @@ export function ClientProfile({
               que o cliente compra e como paga; agendar, quando ele vem. */}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
             {podeReceber && currentBranchId && (
-              <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda} />
+              <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda}
+                podeAgendar={podeAgendar} />
             )}
             <button
               type="button"
@@ -1272,7 +1275,8 @@ export function ClientProfile({
       {tab === 'visao' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <NotasDoCliente client={client} slug={slug} />
-        <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} />
+        <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} podeAgendar={podeAgendar}
+          branches={branches} currentBranchId={currentBranchId ?? ''} />
         <div className="rg-3" style={{ gap: 12, alignItems: 'start' }}>
 
           {/* 1. Tratamento em andamento */}

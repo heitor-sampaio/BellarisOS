@@ -2,6 +2,9 @@
 
 import { useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
 import { addAppointment, dadosParaAgendar, buscarClientesParaAgendar } from '@/actions/appointments'
+import { creditosParaAgendar } from '@/actions/creditos'
+import { formatBRL } from '@estetica-os/utils'
+import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { X, Calendar, Search, UserPlus, Loader2 } from 'lucide-react'
 
 interface Client      { id: string; name: string; phone: string }
@@ -81,6 +84,22 @@ export function AppointmentModal({
     })
     return () => { vivo = false }
   }, [escolheUnidade, unidadeId])
+
+  // -- O que o cliente já pagou (fase 3 de "Vender") --------------------------
+  // Escolhido o cliente, o modal oferece as unidades pré-pagas e as sessões de
+  // pacote dele. Usar uma fixa o procedimento e o preço (o servidor confere).
+  const [creditos, setCreditos] = useState<{ de: string; itens: CreditoParaAgendar[] }>({ de: '', itens: [] })
+  const [creditoSel, setCreditoSel] = useState('')
+  useEffect(() => {
+    const id = selectedClient?.id
+    if (!id) return
+    let vivo = true
+    creditosParaAgendar(id).then(itens => { if (vivo) setCreditos({ de: id, itens }) }).catch(() => { /* sem créditos a oferecer */ })
+    return () => { vivo = false }
+  }, [selectedClient?.id])
+  const creditosDoCliente = selectedClient && creditos.de === selectedClient.id ? creditos.itens : []
+  const chaveDoCredito = (c: CreditoParaAgendar) => `${c.tipo}:${c.id}`
+  const credito = creditosDoCliente.find(c => chaveDoCredito(c) === creditoSel) ?? null
 
   const aoAgendar = useEffectEvent(() => { onSuccess(); onClose() })
   useEffect(() => { if (state?.success) aoAgendar() }, [state?.success])
@@ -194,6 +213,8 @@ export function AppointmentModal({
           <input type="hidden" name="_branchId" value={unidadeId} />
           <input type="hidden" name="_slug" value={dados.slug} />
           <input type="hidden" name="client_id" value={selectedClient?.id ?? ''} />
+          {credito && <input type="hidden" name="credito" value={chaveDoCredito(credito)} />}
+          {credito && <input type="hidden" name="procedure_id" value={credito.procedureId} />}
 
           {/* Na rede o atendimento precisa dizer de qual unidade é: é ela que
               tem a sala, a profissional e a agenda. */}
@@ -330,6 +351,32 @@ export function AppointmentModal({
               Agora ela é um procedimento do catálogo como qualquer outro: a
               rede define preço, duração e ficha, e o atendimento herda de lá
               que é uma avaliação. */}
+          {creditosDoCliente.length > 0 && (
+            <Field label="Já pago">
+              <select className="field" aria-label="Usar o que já foi pago" value={credito ? creditoSel : ''}
+                onChange={e => setCreditoSel(e.target.value)}>
+                <option value="">Não usar — cobrar no atendimento</option>
+                {creditosDoCliente.map(c => (
+                  <option key={chaveDoCredito(c)} value={chaveDoCredito(c)}>
+                    {c.procedimento} — {c.origem} · {c.restantes} restante{c.restantes > 1 ? 's' : ''} ({formatBRL(c.preco)})
+                  </option>
+                ))}
+              </select>
+              {credito && (
+                <span data-credito-escolhido style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                  O procedimento e o preço vêm do que já foi pago; a recepção não cobra de novo.
+                </span>
+              )}
+            </Field>
+          )}
+
+          {credito ? (
+            <Field label="Procedimento *">
+              <p className="field" style={{ display: 'flex', alignItems: 'center', color: 'var(--text)' }}>
+                {credito.procedimento} — já pago ({formatBRL(credito.preco)})
+              </p>
+            </Field>
+          ) : (
           <Field label="Procedimento *">
             <select name="procedure_id" required className="field" disabled={carregandoUnidade}>
               <option value="">{carregandoUnidade ? 'Carregando…' : 'Selecione o procedimento…'}</option>
@@ -340,6 +387,7 @@ export function AppointmentModal({
               ))}
             </select>
           </Field>
+          )}
 
           <div className="form-2col">
             <Field label="Profissional *">

@@ -27,6 +27,7 @@ import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resg
 import { descontoDoVoucher, type VoucherParaCalculo } from '@/lib/fidelidade/voucher'
 import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
+import { lerCredito } from '@/lib/creditos/credito'
 
 // --- Helpers internos ---------------------------------------------
 async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
@@ -249,7 +250,8 @@ export async function addAppointment(
       scheduledAt:    formData.get('scheduled_at') as string,
       roomId:         (formData.get('room_id') as string) || null,
       notes:          (formData.get('notes') as string)?.trim() || null,
-
+      // "PRE_PAGO:<id>" ou "PACOTE:<id>": usar o que o cliente já pagou.
+      credito:        lerCredito(formData.get('credito')),
       source:         'INTERNAL',
     })
 

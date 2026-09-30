@@ -79,8 +79,9 @@ function composicaoDasSessoes(sessoes: Session[]): string {
 }
 
 // -- Mini-scheduler inline -----------------------------------------------------
+// Exportado: a ficha agenda a unidade pré-paga com ele (fase 3 de "Vender").
 
-function SessionScheduler({
+export function SessionScheduler({
   branches,
   currentBranchId,
   onSave,

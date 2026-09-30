@@ -34,6 +34,9 @@ import {
 } from '@/actions/crm-scheduling'
 import { SegSelect } from '@/components/shared/seg-select'
 import { Vender } from '@/components/shared/vender'
+import { creditosParaAgendar } from '@/actions/creditos'
+import type { CreditoParaAgendar } from '@/lib/creditos/credito'
+import { formatBRL } from '@estetica-os/utils'
 
 export interface PanelBranch { id: string; name: string; slug: string }
 
@@ -608,6 +611,7 @@ export function InboxLeadPanel({
              preenchidos com o contato e são editáveis — o WhatsApp costuma
              trazer um apelido no lugar do nome. */
           clienteLigado={cliente ? cliente.name : null}
+          clienteId={cliente?.id ?? null}
           contatoInicial={{ nome, telefone }}
           branches={branches}
           onClose={() => setScheduling(null)}
@@ -983,12 +987,14 @@ function NovaOportunidade({
 // --- Modal de agendamento ----------------------------------------------------
 
 function ScheduleModal({
-  leadId, conversationId, clienteLigado, contatoInicial, branches, onClose, onScheduled,
+  leadId, conversationId, clienteLigado, clienteId, contatoInicial, branches, onClose, onScheduled,
 }: {
   leadId:         string
   conversationId: string
   /** Nome do cliente já ligado à conversa, ou `null` quando ainda não há ficha. */
   clienteLigado:  string | null
+  /** O cliente já ligado: é dele que vêm os créditos (o que já pagou). */
+  clienteId:      string | null
   contatoInicial: { nome: string; telefone: string }
   branches:       PanelBranch[]
   onClose:        () => void
@@ -1009,6 +1015,18 @@ function ScheduleModal({
   const [saving,     startSave]     = useTransition()
   const [error,      setError]      = useState<string | null>(null)
 
+  // O que o cliente já pagou (fase 3 de "Vender"): usar fixa o procedimento.
+  const [creditos, setCreditos] = useState<CreditoParaAgendar[]>([])
+  const [creditoSel, setCreditoSel] = useState('')
+  useEffect(() => {
+    if (!clienteId) return
+    let vivo = true
+    creditosParaAgendar(clienteId).then(c => { if (vivo) setCreditos(c) }).catch(() => { /* sem créditos a oferecer */ })
+    return () => { vivo = false }
+  }, [clienteId])
+  const chaveDoCredito = (c: CreditoParaAgendar) => `${c.tipo}:${c.id}`
+  const credito = creditos.find(c => chaveDoCredito(c) === creditoSel) ?? null
+
   const durationMin = data?.procedures.find(p => p.id === procedureId)?.duration_min ?? 60
 
   // Trocou a unidade: o que era da anterior sai no render (e não num efeito).
@@ -1016,7 +1034,7 @@ function ScheduleModal({
   if (unidadeAnterior !== branchId) {
     setUnidadeAnterior(branchId)
     setLoadingData(!!branchId)
-    setData(null); setProcedureId(''); setProfessionalId(''); setRoomId(''); setSlots([]); setSlot('')
+    setData(null); setProcedureId(credito?.procedureId ?? ''); setProfessionalId(''); setRoomId(''); setSlots([]); setSlot('')
   }
 
   // Carrega profissionais/procedimentos/salas da filial
@@ -1068,6 +1086,7 @@ function ScheduleModal({
         scheduledAt,
         roomId: roomId || null,
         contato: clienteLigado ? null : { nome: nome.trim(), telefone: telefone.trim() },
+        credito: credito ? { tipo: credito.tipo, id: credito.id } : null,
       })
       if (res.error) { setError(res.error); return }
       onScheduled()
@@ -1119,6 +1138,25 @@ function ScheduleModal({
             </div>
           )}
 
+          {creditos.length > 0 && (
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <span style={labelStyle}>Já pago</span>
+              <select className="field" aria-label="Usar o que já foi pago" value={creditoSel} style={selectStyle}
+                onChange={e => {
+                  setCreditoSel(e.target.value)
+                  const c = creditos.find(x => chaveDoCredito(x) === e.target.value)
+                  if (c) setProcedureId(c.procedureId)
+                }}>
+                <option value="">Não usar — cobrar no atendimento</option>
+                {creditos.map(c => (
+                  <option key={chaveDoCredito(c)} value={chaveDoCredito(c)}>
+                    {c.procedimento} — {c.origem} · {c.restantes} restante{c.restantes > 1 ? 's' : ''} ({formatBRL(c.preco)})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           {/* Unidade */}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span style={labelStyle}>Unidade</span>
@@ -1134,7 +1172,7 @@ function ScheduleModal({
               é escolhê-la aqui (2026-09-25). */}
           <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <span style={labelStyle}>Procedimento</span>
-            <select className="field" value={procedureId} disabled={loadingData} onChange={e => setProcedureId(e.target.value)} style={selectStyle}>
+            <select className="field" value={procedureId} disabled={loadingData || !!credito} onChange={e => setProcedureId(e.target.value)} style={selectStyle}>
               <option value="">{loadingData ? 'Carregando…' : 'Selecione…'}</option>
               {data?.procedures.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>

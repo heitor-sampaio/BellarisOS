@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShoppingBag, X } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
-import { venderProcedimento } from '@/actions/pre-pago'
+import { venderProcedimento, agendarUnidadePrePaga } from '@/actions/pre-pago'
+import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import { SegSelect } from '@/components/shared/seg-select'
 import { FormularioDoPacote, type PacoteAVenda } from '@/components/shared/vender-pacote'
 import { CamposDoPagamento, estadoDoPagamento, montarPagamento } from '@/components/shared/campos-do-pagamento'
@@ -22,7 +23,7 @@ export interface ProcedimentoAVenda { id: string; name: string; price: number }
 
 type Aba = 'PROCEDIMENTO' | 'PACOTE'
 
-export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto = false, abrirSinal = 0 }: {
+export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto = false, abrirSinal = 0, podeAgendar = false }: {
   clienteId:     string
   branchId:      string
   pacotes:       PacoteAVenda[]
@@ -35,6 +36,8 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto =
    * já abre para o cliente que acabou de nascer.
    */
   abrirSinal?:   number
+  /** Depois de vender um procedimento, oferece "Agendar agora" (agenda: MANAGE). */
+  podeAgendar?:  boolean
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
@@ -74,7 +77,7 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto =
               <SegSelect ariaLabel="O que vender" options={abas} value={aba} onSelect={k => setAba(k as Aba)} />
             )}
             {aba === 'PROCEDIMENTO' && procedimentos.length > 0
-              ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={fechar} />
+              ? <FormularioDoProcedimento key={chave} clienteId={clienteId} branchId={branchId} procedimentos={procedimentos} onFim={fechar} podeAgendar={podeAgendar} />
               : <FormularioDoPacote key={chave} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} />}
           </div>
         </div>
@@ -88,10 +91,12 @@ export function Vender({ clienteId, branchId, pacotes, procedimentos, compacto =
  * quantos dias valem; o desconto e como vai ser pago. As unidades ficam na
  * ficha, para agendar.
  */
-function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim }: {
-  clienteId: string; branchId: string; procedimentos: ProcedimentoAVenda[]; onFim: () => void
+function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim, podeAgendar }: {
+  clienteId: string; branchId: string; procedimentos: ProcedimentoAVenda[]; onFim: () => void; podeAgendar: boolean
 }) {
   const router = useRouter()
+  // Depois da venda: a primeira unidade, para o "Agendar agora".
+  const [vendida, setVendida] = useState<string | null>(null)
   const [procId, setProcId] = useState(procedimentos[0]!.id)
   const [quantidade, setQuantidade] = useState('1')
   const [validade, setValidade] = useState('')
@@ -110,10 +115,31 @@ function FormularioDoProcedimento({ clienteId, branchId, procedimentos, onFim }:
       const r = await venderProcedimento(clienteId, proc.id, branchId, qtd, validade.trim() ? Number(validade) : null,
         montarPagamento(estado), descontoDoEstado(desconto))
       if (r.error) { setErro(r.error); return }
-      onFim()
       router.refresh()
+      if (podeAgendar && r.primeiraUnidadeId) { setVendida(r.primeiraUnidadeId); return }
+      onFim()
     })
   }
+
+  if (vendida) return (
+    <div data-agendar-agora style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+        Venda registrada. Agendar a primeira unidade agora? As outras ficam na ficha, para agendar depois.
+      </p>
+      <SessionScheduler
+        branches={[{ id: branchId, name: '' }]}
+        currentBranchId={branchId}
+        onCancel={onFim}
+        onSave={async ({ branchId: unidade, professionalId, scheduledAt }) => {
+          const r = await agendarUnidadePrePaga({ unidadeId: vendida, branchId: unidade, professionalId, scheduledAt })
+          if (r.error) return { error: r.error }
+          router.refresh()
+          onFim()
+          return {}
+        }}
+      />
+    </div>
+  )
 
   const rotulo = { fontSize: 'var(--text-2xs)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)' } as const
   return (

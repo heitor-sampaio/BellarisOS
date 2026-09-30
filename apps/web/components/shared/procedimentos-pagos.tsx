@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Receipt } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
-import { cancelarUnidadePrePaga } from '@/actions/pre-pago'
+import { cancelarUnidadePrePaga, agendarUnidadePrePaga } from '@/actions/pre-pago'
+import { SessionScheduler } from '@/components/branch/treatment-sessions-modal'
 import type { PrePagoDoCliente, UnidadePrePaga } from '@/lib/pre-pago/leitura'
 
 const TZ = 'America/Sao_Paulo'
@@ -17,10 +18,17 @@ const diaEHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZo
  * pede motivo e registra a devolução no financeiro (decisão do Heitor: "se
  * cancelar, registra para fazer estorno").
  */
-export function ProcedimentosPagos({ vendas, podeCancelar }: {
+interface Agenda { podeAgendar: boolean; branches: { id: string; name: string }[]; currentBranchId: string }
+
+export function ProcedimentosPagos({ vendas, podeCancelar, podeAgendar = false, branches = [], currentBranchId = '' }: {
   vendas:       PrePagoDoCliente[]
   podeCancelar: boolean
+  /** Agendar uma unidade livre aqui mesmo (agenda: MANAGE). */
+  podeAgendar?: boolean
+  branches?:    { id: string; name: string }[]
+  currentBranchId?: string
 }) {
+  const agenda: Agenda = { podeAgendar: podeAgendar && !!currentBranchId, branches, currentBranchId }
   if (!vendas.length) return null
   return (
     <section className="card" data-procedimentos-pagos style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -28,12 +36,12 @@ export function ProcedimentosPagos({ vendas, podeCancelar }: {
         <Receipt size={14} style={{ color: 'var(--brand)' }} aria-hidden />
         <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Procedimentos pagos</h3>
       </div>
-      {vendas.map(v => <Venda key={v.id} venda={v} podeCancelar={podeCancelar} />)}
+      {vendas.map(v => <Venda key={v.id} venda={v} podeCancelar={podeCancelar} agenda={agenda} />)}
     </section>
   )
 }
 
-function Venda({ venda: v, podeCancelar }: { venda: PrePagoDoCliente; podeCancelar: boolean }) {
+function Venda({ venda: v, podeCancelar, agenda }: { venda: PrePagoDoCliente; podeCancelar: boolean; agenda: Agenda }) {
   const [aberta, setAberta] = useState(v.disponiveis > 0)
   return (
     <div data-venda-pre-paga style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-row)', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -50,7 +58,7 @@ function Venda({ venda: v, podeCancelar }: { venda: PrePagoDoCliente; podeCancel
       </button>
       {aberta && (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {v.unidades.map(u => <Unidade key={u.id} unidade={u} podeCancelar={podeCancelar} />)}
+          {v.unidades.map(u => <Unidade key={u.id} unidade={u} podeCancelar={podeCancelar} agenda={agenda} />)}
         </ul>
       )}
     </div>
@@ -63,9 +71,10 @@ function situacao(u: UnidadePrePaga): string {
   return u.agendamentoEm ? `Agendada para ${diaEHora(u.agendamentoEm)}` : 'Disponível'
 }
 
-function Unidade({ unidade: u, podeCancelar }: { unidade: UnidadePrePaga; podeCancelar: boolean }) {
+function Unidade({ unidade: u, podeCancelar, agenda }: { unidade: UnidadePrePaga; podeCancelar: boolean; agenda: Agenda }) {
   const router = useRouter()
   const [cancelando, setCancelando] = useState(false)
+  const [agendando, setAgendando] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -91,13 +100,38 @@ function Unidade({ unidade: u, podeCancelar }: { unidade: UnidadePrePaga; podeCa
         <span style={{ fontWeight: 700, color: 'var(--text)' }}>Unidade {u.numero}</span>
         <span style={{ color: 'var(--text-muted)' }}>{formatBRL(u.preco)}</span>
         <span style={{ color: u.status === 'DISPONIVEL' ? 'var(--success)' : 'var(--text-muted)' }}>{situacao(u)}</span>
-        {podeCancelar && livre && !cancelando && (
-          <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-2xs)', padding: '3px 7px', marginLeft: 'auto' }}
-            onClick={() => setCancelando(true)}>
-            Cancelar
-          </button>
+        {livre && !cancelando && !agendando && (
+          <span style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+            {agenda.podeAgendar && (
+              <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-2xs)', padding: '3px 7px' }}
+                onClick={() => setAgendando(true)}>
+                Agendar
+              </button>
+            )}
+            {podeCancelar && (
+              <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-2xs)', padding: '3px 7px' }}
+                onClick={() => setCancelando(true)}>
+                Cancelar
+              </button>
+            )}
+          </span>
         )}
       </div>
+      {agendando && (
+        <SessionScheduler
+          branches={agenda.branches.length ? agenda.branches : [{ id: agenda.currentBranchId, name: '' }]}
+          currentBranchId={agenda.currentBranchId}
+          onCancel={() => setAgendando(false)}
+          onSave={async ({ branchId, professionalId, scheduledAt }) => {
+            const r = await agendarUnidadePrePaga({ unidadeId: u.id, branchId, professionalId, scheduledAt })
+            if (r.error) return { error: r.error }
+            setAgendando(false)
+            setAviso('Unidade agendada.')
+            router.refresh()
+            return {}
+          }}
+        />
+      )}
       {cancelando && (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <input className="field" aria-label="Motivo do cancelamento" placeholder="Motivo (obrigatório)"

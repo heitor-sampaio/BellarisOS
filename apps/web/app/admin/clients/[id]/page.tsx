@@ -434,6 +434,7 @@ export default async function AdminClientProfilePage({
         pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branchId || null) : []}
         procedimentosAVenda={podeReceber(ctx) ? await procedimentosAVenda(ctx.tenantId!, branchId || null) : []}
         prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
+        podeAgendar={can(ctx, 'agenda', 'MANAGE')}
         isNetworkWide={ctx.branchId === null}
         clienteSemFilial={!branchRow}
         clientHistory={clientHistory}

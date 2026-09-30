@@ -41,7 +41,7 @@ const AREAS = [
     specs: /^(crm|lead|oportunidade|quadro|inbox-visibilidade|contato-propaga)/ },
   { nome: 'agenda e atendimento',
     chaves: ['agenda', 'appointment', 'agendamento', 'atendimento', 'sessao-de', 'pacote', 'package'],
-    specs: /^(agenda|agendamento|atendimento|conclusao|fase2|pacote|abrangencia|portal-cliente|plano)/ },
+    specs: /^(agenda|agendamento|agendar|atendimento|conclusao|fase2|pacote|abrangencia|portal-cliente|plano|pre-pago)/ },
   { nome: 'financeiro',
     chaves: ['financ', 'cashier', 'transac', 'pagamento', 'payment', 'credito', 'credit', 'estorno', 'checkout', 'plano', 'plan'],
     specs: /^(financeiro|credito|fase1|checkout|plano|indicadores|relatorios|comissoes|vendas|pre-pago)/ },

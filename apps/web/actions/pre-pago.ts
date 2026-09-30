@@ -10,12 +10,13 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, alcancaUnidade, podeReceber } from '@/lib/auth'
+import { getTenantContext, alcancaUnidade, podeReceber, assertPermission } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDoPagamento, lancamentosDoPagamento } from '@/lib/checkout/lancamentos'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto, ratear } from '@/lib/vendas/desconto'
+import { createAppointmentCore, notifyAppointmentCreated } from '@/lib/appointments/core'
 
 const UUID = /^[0-9a-f-]{36}$/i
 
@@ -34,7 +35,7 @@ function revalidarFicha() {
 export async function venderProcedimento(
   clienteId: string, procedimentoId: string, branchId: string,
   quantidade: unknown, validadeDias: unknown, pagamento: unknown, desconto?: unknown,
-): Promise<{ error?: string; saleId?: string }> {
+): Promise<{ error?: string; saleId?: string; primeiraUnidadeId?: string }> {
   try {
     const ctx = await getTenantContext()
     if (!podeReceber(ctx)) throw semAcesso()
@@ -76,8 +77,12 @@ export async function venderProcedimento(
       p_unidades: ratear(Array.from({ length: qtd }, () => 1), vendido).map(preco => ({ preco })),
     }), 'vender o procedimento') as string
 
+    // A primeira unidade: é por ela que o "Agendar agora" começa.
+    const primeira = await ler(admin.from('procedure_sale_units').select('id')
+      .eq('sale_id', saleId).order('numero').limit(1).maybeSingle(), 'buscar a primeira unidade')
+
     revalidarFicha()
-    return { saleId }
+    return { saleId, primeiraUnidadeId: (primeira?.id as string | undefined) ?? undefined }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }
@@ -115,6 +120,44 @@ export async function cancelarUnidadePrePaga(
 
     revalidarFicha()
     return { devolver: Number(r.devolver), reduzido: Number(r.reduzido) }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * Agenda uma unidade pré-paga (fase 3): pelo núcleo do agendamento, com o
+ * crédito — o procedimento e o preço são os da unidade, e ela fica ligada ao
+ * agendamento. Conflito de horário, histórico e evento como qualquer agendamento.
+ */
+export async function agendarUnidadePrePaga(p: {
+  unidadeId: string; branchId: string; professionalId: string; scheduledAt: string
+}): Promise<{ error?: string; appointmentId?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'agenda', 'MANAGE')
+    if (![p?.unidadeId, p?.branchId, p?.professionalId].every(v => typeof v === 'string' && UUID.test(v))) return { error: 'Dados inválidos.' }
+    if (typeof p.scheduledAt !== 'string' || Number.isNaN(Date.parse(p.scheduledAt))) return { error: 'Informe data e hora.' }
+
+    const admin = createAdminClient()
+    const unidade = await ler(admin.from('procedure_sale_units')
+      .select('id, procedure_sales!inner(tenant_id, client_id)')
+      .eq('id', p.unidadeId).maybeSingle(), 'buscar a unidade')
+    const venda = unidade?.procedure_sales as unknown as { tenant_id: string; client_id: string } | undefined
+    if (!unidade || venda?.tenant_id !== ctx.tenantId) return { error: 'Unidade não encontrada.' }
+
+    const res = await createAppointmentCore(admin, ctx, {
+      branchId: p.branchId, clientId: venda.client_id, procedureId: null,
+      professionalId: p.professionalId, scheduledAt: p.scheduledAt,
+      credito: { tipo: 'PRE_PAGO', id: p.unidadeId }, source: 'INTERNAL',
+    })
+    if ('error' in res) return { error: res.error }
+
+    notifyAppointmentCreated(res.id)
+    revalidarFicha()
+    revalidatePath('/admin/agenda')
+    revalidatePath('/[slug]/agenda', 'page')
+    return { appointmentId: res.id }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

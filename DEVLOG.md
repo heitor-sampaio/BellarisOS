@@ -1258,6 +1258,30 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Agendar usando o que já foi pago (fase 3 de "Vender")
+
+Fecha a frente "Vender". O que o cliente já pagou — unidade de procedimento
+pré-pago ou sessão de pacote — vira o **crédito** do agendamento.
+
+- **Pelo núcleo**: `createAppointmentCore` aceita `credito`
+  (`lib/creditos/credito.ts`): confere que é do cliente, da rede, livre e na
+  validade; o procedimento e o preço vêm dele (procedimento diferente é
+  recusado); liga por compare-and-swap e desfaz o agendamento se outro pegou o
+  mesmo crédito. Conflito de horário, histórico e evento como qualquer
+  agendamento.
+- **Onde**: "Agendar" em cada unidade do card "Procedimentos pagos" (o mesmo
+  seletor de horário das sessões de pacote, agora exportado); campo "Já pago"
+  no modal da agenda e no do inbox; "Agendar agora" depois de vender um
+  procedimento, para quem tem agenda.
+- Em aberto: `schedulePackageSession` (modal de sessões do pacote) ainda
+  agenda pelo caminho próprio, sem conflito nem evento — o próximo a passar
+  pelo núcleo.
+
+**Prova:** `agendar-com-credito` (4: pela ficha, "Agendar agora", pela agenda,
+pelo inbox com pacote e pré-pago e as recusas — usado, alheio, outro
+procedimento). Vizinhos (47): agenda, agendamento da rede, CRM, abrangência,
+pacote-agendar, portal, pré-pago, pacotes, permissões.
+
 ### 2026-09-30 — Procedimento pré-pago e o "Vender" único (fase 2 de "Vender")
 
 O cliente compra N unidades de UM procedimento, paga (ou fica a receber) e
@@ -1288,9 +1312,7 @@ fidelidade, procedimento de outra rede). Vizinhos (58): pacotes, desconto,
 conclusão, fechamento, comissões, fidelidade, portal, pacote-agendar,
 permissões, LGPD, inbox. Telas por captura.
 
-**Falta (fase 3):** agendar usando o que já foi pago — a agenda e o inbox
-oferecendo as unidades e as sessões de pacote, e "Agendar agora" depois da
-venda.
+A fase 3 (agendar usando o que já foi pago) está logo acima.
 
 ### 2026-09-30 — Desconto em todas as vendas (fase 1 de "Vender")
 

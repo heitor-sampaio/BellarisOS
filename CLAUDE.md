@@ -829,7 +829,22 @@ o procedimento avulso pago antes.
 - **No atendimento**: o agendamento liga a unidade (`appointment_id`, único);
   `concluir_atendimento` a marca USADA e liga a linha de comissão à venda
   (origem `PRE_PAGO`); a recepção RECUSA cobrar (`confirmar_pagamento…`),
-  e a tela esconde o botão. Agendar usando a unidade é a fase 3.
+  e a tela esconde o botão.
+- **Agendar usando o que já foi pago** (unidade pré-paga OU sessão de pacote)
+  é o **crédito** do agendamento, e passa pelo NÚCLEO:
+  `createAppointmentCore(… credito: { tipo: 'PRE_PAGO' | 'PACOTE', id })`
+  (`lib/creditos/credito.ts`). O crédito é conferido (do cliente, da rede,
+  livre, na validade) e decide o procedimento e o preço — procedimento
+  diferente é recusado; depois do insert ele é ligado por compare-and-swap
+  (`appointment_id` nulo), e quem perde a corrida tem o agendamento desfeito.
+  Com conflito de horário, histórico e evento, como todo agendamento.
+  - Onde: o card "Procedimentos pagos" ("Agendar" na unidade,
+    `agendarUnidadePrePaga`), o modal da agenda e o do inbox (campo "Já
+    pago", `creditosParaAgendar`), e o "Agendar agora" depois de vender um
+    procedimento (quem tem `agenda: MANAGE`).
+  - `schedulePackageSession` (o modal de sessões do pacote) ainda tem o
+    caminho próprio, sem o núcleo — é o candidato a passar por ele.
+  - Prova: `e2e/agendar-com-credito.spec.ts`.
 - **Comissão**: como o pacote — a base é a parte da unidade; no modo
   "quando paga", libera na proporção do que a venda recebeu (sobre o que ela
   vale hoje: vendido − unidades canceladas). O gatilho do pagamento acerta.
@@ -1928,6 +1943,7 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Mexer no preço dos procedimentos do plano no checkout fora de plano_aplicar_desconto
 ❌ Reaproveitar pacote (client_packages) para o procedimento pré-pago — são separados (decisão do Heitor)
 ❌ Vender pré-pago fora de procedimento_vender, ou cancelar unidade fora de procedimento_cancelar_unidade
+❌ Ligar crédito (unidade pré-paga ou sessão de pacote) a agendamento fora de createAppointmentCore/ligarCredito, ou com o preço que o navegador mandou
 ❌ Dar ponto de fidelidade no TypeScript (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
 ❌ Calcular vencimento de pontos fora de fidelidade_a_expirar (é a única cópia do FIFO)
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado
