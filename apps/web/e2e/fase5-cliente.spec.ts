@@ -32,8 +32,9 @@ test.afterAll(async () => {
 })
 
 async function abrirMenuDeAcoes(page: import('@playwright/test').Page) {
-  const acoes = page.getByRole('button', { name: '+ Agendar' }).locator('xpath=..')
-  await acoes.locator('button').nth(1).click()
+  // Pelo nome, não pela posição: o grupo de ações ganhou o "Vender" (e a janela
+  // dele), e "o segundo botão" deixou de ser o menu.
+  await page.getByRole('button', { name: 'Mais ações' }).click()
 }
 
 test('editar nome e gênero, depois desativar e reativar — sem sair do /admin', async ({ page }) => {

@@ -1191,7 +1191,7 @@ export function ClientProfile({
             {/* O "..." existia sem fazer nada. Desativar cliente era uma action
                 sem porta:  nao tinha um unico chamador. */}
             <div style={{ position: 'relative' }}>
-              <button type="button" className="btn-ghost" style={{ padding: '8px 10px' }}
+              <button type="button" className="btn-ghost" style={{ padding: '8px 10px' }} aria-label="Mais ações"
                 onClick={() => setMenuAberto(v => !v)}>
                 <MoreHorizontal size={16} />
               </button>
