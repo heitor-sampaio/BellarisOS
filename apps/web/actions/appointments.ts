@@ -1421,6 +1421,7 @@ async function schedulePackageSessionInterno(params: {
   scheduledAt:      string
   clientId:         string
   procedureId:      string
+  /** Ignorados: o preço e a duração são os da sessão (lidos no servidor). */
   price:            number
   durationMin:      number
   slug:             string
@@ -1449,52 +1450,29 @@ async function schedulePackageSessionInterno(params: {
   // rede: até 2026-09-28 os quatro iam do navegador direto para o insert.
   if (params.clientId !== pacote.client_id) return { error: 'Cliente não confere com o pacote.' }
   // O pacote é um conjunto de procedimentos: a sessão já diz de qual é, e o
-  // navegador não escolhe outro. O preço é a parte dela na venda, e a duração
-  // a do procedimento.
+  // navegador não escolhe outro.
   if (typedSess.procedure_id && params.procedureId !== typedSess.procedure_id) {
     return { error: 'Esta sessão do pacote é de outro procedimento.' }
   }
-  const precoDaSessao   = typedSess.preco != null ? Number(typedSess.preco) : params.price
-  const duracaoDaSessao = typedSess.procedures?.duration_min ?? params.durationMin
-  const recusa = await conferirPecasDoAgendamento(admin, ctx, {
-    branchId: params.branchId, professionalId: params.professionalId, clientId: params.clientId,
-  }) ?? await procedimentoDaRedeOuRecusa(admin, params.procedureId, ctx.tenantId!)
-  if (recusa) return { error: recusa }
 
-  // Cria appointment
-  const { data: appt, error: apptErr } = await admin
-    .from('appointments')
-    .insert({
-      branch_id:       params.branchId,
-      client_id:       params.clientId,
-      procedure_id:    params.procedureId,
-      professional_id: params.professionalId,
-      scheduled_at:    params.scheduledAt,
-      duration_min:    duracaoDaSessao,
-      price:           precoDaSessao,
-      status:          'SCHEDULED',
-      source:          'INTERNAL',
-    })
-    .select('id')
-    .single()
-  if (apptErr || !appt) return { error: `Erro ao criar agendamento: ${apptErr?.message}` }
-
-  // Vincula a sessão ao agendamento. Quem diz que ela está marcada é o
-  // `appointment_id` — o status continua AVAILABLE até ser usada. Até
-  // 2026-09-28 gravava `status: 'SCHEDULED'`, que não existe no enum: TODO
-  // agendamento de sessão de pacote falhava aqui, depois de o agendamento já
-  // ter nascido — ele ficava órfão na agenda. E só vincula se ninguém vinculou
-  // antes (dois cliques na mesma sessão); senão o agendamento recém-criado sai.
-  const { data: vinculada, error: vincErr } = await admin
-    .from('package_sessions')
-    .update({ appointment_id: appt.id })
-    .eq('id', params.packageSessionId)
-    .is('appointment_id', null)
-    .select('id')
-  if (vincErr || !vinculada?.length) {
-    await tentar(admin.from('appointments').delete().eq('id', appt.id), 'desfazer o agendamento da sessão')
-    return { error: vincErr ? `Erro ao vincular a sessão: ${vincErr.message}` : 'Sessão já está agendada.' }
-  }
+  // Pelo NÚCLEO, com a sessão como crédito (2026-09-30). Antes era um insert
+  // direto: a tela escondia o horário ocupado, mas só olhava o INÍCIO (uma
+  // sessão de 60 min às 10:00 passava por cima de outra às 10:30), e o
+  // servidor não conferia nada — duas recepções ao mesmo tempo, ou a action
+  // chamada direto, encavalavam. O núcleo confere a sobreposição com a
+  // duração, grava o histórico e emite o evento; o preço e a duração são os
+  // da sessão (a parte dela na venda), e a ligação é compare-and-swap.
+  const res = await createAppointmentCore(admin, ctx, {
+    branchId:       params.branchId,
+    clientId:       params.clientId,
+    procedureId:    typedSess.procedure_id ?? params.procedureId,
+    professionalId: params.professionalId,
+    scheduledAt:    params.scheduledAt,
+    credito:        { tipo: 'PACOTE', id: params.packageSessionId },
+    source:         'INTERNAL',
+  })
+  if ('error' in res) return { error: res.error }
+  const appt = { id: res.id }
 
   revalidatePath(`/${params.slug}/clients/${params.clientId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, 'max')

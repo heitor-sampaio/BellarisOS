@@ -210,4 +210,42 @@ test.describe.serial('agendar com crédito', () => {
     // Só dois agendamentos nasceram para o cliente (nenhum das recusas ficou).
     expect(((await db().from('appointments').select('id').eq('client_id', cliente)).data ?? []).length).toBe(2)
   })
+
+  test('sessão de pacote (modal do pacote): o horário encavalado é recusado no servidor', async ({ browser }) => {
+    // 60 min às 10:00 com outro agendamento às 10:30: a tela só olhava o
+    // INÍCIO (10:00 estava livre) e o servidor não conferia nada.
+    await db().from('procedures').update({ duration_min: 60 }).eq('id', rede!.procedureId)
+    const cliente = await rede!.criarCliente('Encavalado')
+    const outro = await rede!.criarCliente('Ocupa')
+    await db().from('appointments').insert({
+      branch_id: rede!.branchId, client_id: outro, professional_id: rede!.professionalId, procedure_id: rede!.procedureId,
+      scheduled_at: amanha('10:30').iso, duration_min: 30, price: 0, status: 'SCHEDULED',
+    })
+    const { data: cp, error } = await db().rpc('pacote_vender', {
+      p_tenant: rede!.tenantId, p_cliente: cliente, p_pacote: pacoteId, p_unidade: rede!.branchId, p_ator: null,
+      p_lancamentos: [{ amount: 500, payment_method: 'PIX', is_paid: true }],
+      p_sessoes: [{ procedure_id: rede!.procedureId, preco: 250 }, { procedure_id: rede!.procedureId, preco: 250 }],
+    })
+    expect(error).toBeNull()
+    const { data: s1 } = await db().from('package_sessions').select('id').eq('client_package_id', cp as string).eq('session_number', 1).single()
+    const pedido = (hora: string) => [{
+      packageSessionId: s1!.id, branchId: rede!.branchId, professionalId: rede!.professionalId,
+      scheduledAt: amanha(hora).iso, clientId: cliente, procedureId: rede!.procedureId, price: 0, durationMin: 60, slug: 'admin',
+    }]
+    await comSessao(browser, async p => {
+      const rota = `/admin/clients/${cliente}`
+      const encavalado = await chamarAcao(p, 'actions/appointments.ts', 'schedulePackageSession', rota, pedido('10:00'))
+      expect(encavalado.texto).toContain('já tem agendamento nesse horário')
+      expect((await db().from('package_sessions').select('appointment_id').eq('id', s1!.id).single()).data?.appointment_id).toBeNull()
+      const livre = await chamarAcao(p, 'actions/appointments.ts', 'schedulePackageSession', rota, pedido('12:00'))
+      expect(livre.texto).toContain('appointmentId')
+    })
+    const { data: s } = await db().from('package_sessions').select('appointment_id').eq('id', s1!.id).single()
+    const ap = await agendamento(s!.appointment_id as string)
+    // Pelo núcleo: preço da sessão, quem agendou e a linha do tempo.
+    expect({ preco: Number(ap!.price), por: ap!.created_by_id }).toEqual({ preco: 250, por: gestor!.userId })
+    const { data: hist } = await db().from('appointment_history').select('action').eq('appointment_id', s!.appointment_id as string)
+    expect((hist ?? []).map(h => h.action)).toContain('CREATED')
+    await db().from('procedures').update({ duration_min: 30 }).eq('id', rede!.procedureId)
+  })
 })

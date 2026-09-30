@@ -1258,6 +1258,29 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Sessão de pacote pelo núcleo; conflito com dois agendamentos
+
+O Heitor perguntou se a sessão de pacote não conferia conflito, já que a tela
+só mostra os horários livres. Conferido: a tela esconde o horário ocupado,
+mas olha só o INÍCIO da sessão nova — 60 min às 10:00 passava por cima de
+outro agendamento às 10:30 — e o servidor não conferia nada (duas recepções
+ao mesmo tempo, ou a action chamada direto, encavalavam).
+
+- `schedulePackageSession` passa pelo `createAppointmentCore` com a sessão
+  como crédito: sobreposição com a duração, histórico, evento e quem agendou.
+  As recusas próprias da sessão (já agendada, outro procedimento, cliente do
+  pacote) seguem com as mesmas mensagens. Pacote vencido passa a ser recusado.
+- **Defeito achado pelo teste**, no núcleo: a conferência de conflito usava
+  `.maybeSingle()`, e um horário que encostava em DOIS agendamentos dava
+  "Não consegui buscar o agendamento" em vez de "já tem agendamento nesse
+  horário" — na agenda, no inbox e no portal. Agora é `.limit(1)`.
+- Apoio do E2E: o `limpar()` do membro solta `appointments.created_by_id`
+  antes de apagá-lo (sem isso a rede [e2e] ficava no banco).
+
+**Prova:** `agendar-com-credito` ganhou o caso (encavalado recusado, livre
+agendado com preço da sessão, quem agendou e linha do tempo). Vizinhos (26):
+pacotes, agenda, agendamento da rede, CRM, portal, abrangência.
+
 ### 2026-09-30 — Agendar usando o que já foi pago (fase 3 de "Vender")
 
 Fecha a frente "Vender". O que o cliente já pagou — unidade de procedimento
@@ -1273,9 +1296,7 @@ pré-pago ou sessão de pacote — vira o **crédito** do agendamento.
   seletor de horário das sessões de pacote, agora exportado); campo "Já pago"
   no modal da agenda e no do inbox; "Agendar agora" depois de vender um
   procedimento, para quem tem agenda.
-- Em aberto: `schedulePackageSession` (modal de sessões do pacote) ainda
-  agenda pelo caminho próprio, sem conflito nem evento — o próximo a passar
-  pelo núcleo.
+- `schedulePackageSession` passou pelo núcleo logo depois (entrada acima).
 
 **Prova:** `agendar-com-credito` (4: pela ficha, "Agendar agora", pela agenda,
 pelo inbox com pacote e pré-pago e as recusas — usado, alheio, outro

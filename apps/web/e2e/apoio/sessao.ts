@@ -111,6 +111,9 @@ export async function criarMembro(
   let userId: string | null = null
 
   const limpar = async () => {
+    // Agendar pelo núcleo grava quem agendou (`created_by_id`, sem cascade): o
+    // agendamento prendia o membro, e a rede [e2e] dele ficava no banco.
+    if (userId) await db.from('appointments').update({ created_by_id: null }).eq('created_by_id', userId)
     if (userId) await db.from('users').delete().eq('id', userId)
     if (authId) await db.auth.admin.deleteUser(authId)
     if (roleId) {

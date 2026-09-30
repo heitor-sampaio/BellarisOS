@@ -141,8 +141,8 @@ export async function createAppointmentCore(
       .not('status', 'in', IGNORED_STATUS)
       .lt('scheduled_at', windowEnd)
       .gt('scheduled_at', windowStart)
-      .maybeSingle(), 'buscar o agendamento')
-    if (conflict) return { error: 'Esta sala já está ocupada nesse horário.' }
+      .limit(1), 'buscar o agendamento')
+    if (conflict?.length) return { error: 'Esta sala já está ocupada nesse horário.' }
   }
 
   // Conflito de PROFISSIONAL (sempre) — impede duplo-agendamento do mesmo profissional
@@ -155,8 +155,11 @@ export async function createAppointmentCore(
       .not('status', 'in', IGNORED_STATUS)
       .lt('scheduled_at', windowEnd)
       .gt('scheduled_at', windowStart)
-      .maybeSingle(), 'buscar o agendamento')
-    if (conflict) return { error: 'Este profissional já tem agendamento nesse horário.' }
+      // limit(1), não maybeSingle(): o horário pode encostar em DOIS
+      // agendamentos, e o maybeSingle dava erro ("Não consegui buscar o
+      // agendamento") em vez de dizer que o horário está ocupado.
+      .limit(1), 'buscar o agendamento')
+    if (conflict?.length) return { error: 'Este profissional já tem agendamento nesse horário.' }
   }
 
   const { data, error } = await admin

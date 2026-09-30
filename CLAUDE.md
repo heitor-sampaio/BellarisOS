@@ -842,8 +842,13 @@ o procedimento avulso pago antes.
     `agendarUnidadePrePaga`), o modal da agenda e o do inbox (campo "Já
     pago", `creditosParaAgendar`), e o "Agendar agora" depois de vender um
     procedimento (quem tem `agenda: MANAGE`).
-  - `schedulePackageSession` (o modal de sessões do pacote) ainda tem o
-    caminho próprio, sem o núcleo — é o candidato a passar por ele.
+  - `schedulePackageSession` (o modal de sessões do pacote) também passa
+    pelo núcleo, com a sessão como crédito (2026-09-30). A tela já escondia
+    o horário ocupado, mas só pelo INÍCIO (60 min às 10:00 passava por cima
+    de outro às 10:30), e o servidor não conferia nada.
+  - ⚠️ A conferência de conflito lê com `.limit(1)`, não `.maybeSingle()`:
+    o horário pode encostar em DOIS agendamentos, e o `maybeSingle` dava
+    "Não consegui buscar o agendamento" em vez de "já tem agendamento".
   - Prova: `e2e/agendar-com-credito.spec.ts`.
 - **Comissão**: como o pacote — a base é a parte da unidade; no modo
   "quando paga", libera na proporção do que a venda recebeu (sobre o que ela
