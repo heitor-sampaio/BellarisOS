@@ -775,6 +775,12 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
 - **Venda na ficha do cliente** ("Vender pacote", `VenderPacote`), para quem
   recebe (`podeReceber`), com o vocabulário do plano: à vista, entrada +
   parcelas, a receber (`CamposDoPagamento`, o mesmo do pagamento do contrato).
+  - O botão fica no cabeçalho da ficha, à esquerda do "+ Agendar".
+  - Também no painel da direita do inbox, com as ações da pessoa, quando a
+    conversa tem cliente ligado (`getConversationCard` → `vendaDePacote`).
+    A unidade é a de quem atende, senão a do cliente, senão a única da rede;
+    sem nenhuma, ou fora do alcance, o botão não aparece. Como as outras
+    ações da pessoa, some com o painel só de leitura (sem `crm: MANAGE`).
   - `lancamentosDoPagamento` (`lib/checkout/lancamentos.ts`) monta o dinheiro:
     o recebido agora e o a receber em lançamentos separados; a última parcela
     leva o arredondamento.

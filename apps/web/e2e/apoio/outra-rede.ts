@@ -125,6 +125,12 @@ export async function criarOutraRede(marca: string): Promise<OutraRede> {
       await db.from('tenant_roles').delete().eq('tenant_id', t!.id)
       await db.from('domain_events').delete().eq('tenant_id', t!.id)
       await db.from('loyalty_configs').delete().eq('tenant_id', t!.id)
+      // Abrir o inbox ou o quadro cria o funil padrão. As etapas e o funil
+      // marcam o sinal do quadro ao sair, por gatilho; por isso o sinal sai por
+      // último. Na cascata da rede, esse gatilho recusava o delete.
+      await db.from('crm_stages').delete().eq('tenant_id', t!.id)
+      await db.from('crm_funnels').delete().eq('tenant_id', t!.id)
+      await db.from('crm_quadro_sinais').delete().eq('tenant_id', t!.id)
       // Rede que não sai é, quase sempre, unidade que o teste criou nela e ainda
       // não apagou: quem criou apaga, e apaga a rede de novo depois.
       const { error: eRede } = await db.from('tenants').delete().eq('id', t!.id)

@@ -1258,6 +1258,24 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — "Vender pacote" no cabeçalho da ficha e na conversa
+
+A pedido do Heitor:
+- **Na ficha do cliente**, o botão saiu de baixo do card de tratamento e foi
+  para o cabeçalho, à esquerda do "+ Agendar".
+- **No inbox**, o painel da direita ganhou "Vender pacote" ao lado de "Ver
+  cliente", quando a conversa tem cliente ligado. `getConversationCard`
+  devolve `vendaDePacote`: a unidade da venda (a de quem atende, senão a do
+  cliente, senão a única da rede) e os pacotes à venda nela. Sem permissão de
+  receber, sem unidade ou sem pacote, o botão não aparece.
+- O apoio do E2E (`criarOutraRede`) passa a apagar o funil, as etapas e o
+  sinal do quadro. Abrir o inbox cria o funil padrão, e o gatilho do quadro
+  recusava a cascata da rede: a rede `[e2e]` ficava no banco.
+
+**Prova:** `pacotes-venda` ganhou o caso da conversa (com cliente, o botão
+abre a venda; sem cliente, só "Cadastrar cliente"). Seis testes passam e o
+banco termina sem sobra.
+
 ### 2026-09-30 — "A receber" com vencimento opcional
 
 A pedido do Heitor: na forma "A receber", a data deixou de ser obrigatória, e

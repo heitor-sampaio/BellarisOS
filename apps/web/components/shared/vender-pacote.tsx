@@ -20,10 +20,12 @@ export interface PacoteAVenda {
   composicao: string; validityDays: number | null
 }
 
-export function VenderPacote({ clienteId, branchId, pacotes }: {
+export function VenderPacote({ clienteId, branchId, pacotes, compacto = false }: {
   clienteId: string
   branchId:  string
   pacotes:   PacoteAVenda[]
+  /** Botão pequeno, como as ações do painel da conversa. */
+  compacto?: boolean
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [abertura, setAbertura] = useState(0)
@@ -33,9 +35,15 @@ export function VenderPacote({ clienteId, branchId, pacotes }: {
   if (!pacotes.length) return null
   return (
     <>
-      <button type="button" className="btn-secondary" onClick={abrir} style={{ alignSelf: 'flex-start' }}>
-        <Package size={15} aria-hidden /> Vender pacote
-      </button>
+      {compacto ? (
+        <button type="button" className="btn-ghost" onClick={abrir} style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}>
+          <Package size={12} aria-hidden /> Vender pacote
+        </button>
+      ) : (
+        <button type="button" className="btn-secondary" onClick={abrir}>
+          <Package size={15} aria-hidden /> Vender pacote
+        </button>
+      )}
       <dialog ref={dialogRef} className="modal modal-flex" style={{ maxWidth: 560, textAlign: 'left' }}
         onClick={e => { if (e.target === dialogRef.current) fechar() }} aria-label="Vender pacote">
         <div className="modal-container">

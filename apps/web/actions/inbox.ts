@@ -1,6 +1,8 @@
 'use server'
 
-import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, podeReceber, alcancaUnidade } from '@/lib/auth'
+import { pacotesAVenda } from '@/lib/pacotes/leitura'
+import type { PacoteAVenda } from '@/components/shared/vender-pacote'
 import { lerVisibilidade, type VisibilidadeDoInbox } from '@/lib/inbox/visibilidade'
 import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -677,6 +679,7 @@ export interface ClienteDoContato {
   name:  string
   phone: string | null
   email: string | null
+  branch_id: string | null
 }
 
 /** Oportunidade: o lead, agora só com o que é do negócio. */
@@ -695,6 +698,12 @@ export interface Oportunidade extends InboxLead {
 export interface ConversationCard {
   contato:    ContatoDaConversa
   cliente:    ClienteDoContato | null
+  /**
+   * Vender pacote pela conversa (pedido do Heitor): só com cliente ligado e para
+   * quem recebe dinheiro. A unidade é a de quem atende, senão a do cliente,
+   * senão a única da rede; sem nenhuma, não há venda por aqui.
+   */
+  vendaDePacote: { branchId: string; pacotes: PacoteAVenda[] } | null
   /** Em andamento: etapa com outcome `OPEN`. */
   abertas:    Oportunidade[]
   /** Ganhas e perdidas, para consulta. */
@@ -804,6 +813,20 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   const abertas    = oportunidades.filter(o => o.outcome === 'OPEN')
   const concluidas = oportunidades.filter(o => o.outcome !== 'OPEN')
 
+  let vendaDePacote: ConversationCard['vendaDePacote'] = null
+  if (cliente && podeReceber(ctx)) {
+    let unidade = ctx.branchId ?? cliente.branch_id
+    if (!unidade) {
+      const ativas = await ler(admin.from('branches').select('id')
+        .eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(2), 'carregar as unidades')
+      unidade = (ativas ?? []).length === 1 ? (ativas![0]!.id as string) : null
+    }
+    if (unidade && alcancaUnidade(ctx, unidade)) {
+      const pacotes = await pacotesAVenda(ctx.tenantId!, unidade)
+      if (pacotes.length) vendaDePacote = { branchId: unidade, pacotes }
+    }
+  }
+
   return {
     contato: {
       conversationId,
@@ -814,7 +837,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       tags:     tagsDaPessoa,
       canal:    c.channel as InboxChannel,
     },
-    cliente, abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
+    cliente, vendaDePacote, abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
     outrasThreads,
   }
 }
@@ -912,7 +935,7 @@ async function buscarCliente(
 ): Promise<ClienteDoContato | null> {
   const { data, error } = await admin
     .from('clients')
-    .select('id, name, phone, email')
+    .select('id, name, phone, email, branch_id')
     .eq('id', clientId)
     .eq('tenant_id', tenantId)
     .maybeSingle()

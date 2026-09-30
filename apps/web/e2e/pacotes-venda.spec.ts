@@ -1,6 +1,6 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
-import { banco, PREFIXO } from './apoio/banco'
+import { banco, PREFIXO, apagarConversas } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
@@ -21,6 +21,7 @@ let cliente = ''
 let pacoteId = ''
 let vendido = ''
 let procB = ''
+const conversas: string[] = []
 const NOME = `${PREFIXO} Pacote ${marca}`
 
 test.beforeAll(async () => {
@@ -44,6 +45,7 @@ test.beforeAll(async () => {
     permissoes: [
       { modulo: 'procedures', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'financial', nivel: 'MANAGE' },
       { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' }, { modulo: 'stock', nivel: 'VIEW' },
+      { modulo: 'crm', nivel: 'MANAGE' },
     ],
   })
   soVe = await criarMembro(`pvv${marca}`, {
@@ -53,6 +55,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
+  await apagarConversas(conversas)
   if (soVe) await soVe.limpar()
   if (gestor) await gestor.limpar()
   if (rede) {
@@ -252,5 +255,33 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     const { data: cp } = await db().from('client_packages').select('id').eq('client_id', cliente).neq('id', vendido).single()
     const { data: txs } = await db().from('financial_transactions').select('amount, is_paid, due_date').eq('client_package_id', cp!.id)
     expect((txs ?? []).map(t => [Number(t.amount), t.is_paid, t.due_date])).toEqual([[800, false, null]])
+  })
+
+  test('na conversa: com cliente ligado, "Vender pacote" no painel da direita; sem cliente, não', async ({ browser }) => {
+    const conversa = async (linha: Record<string, unknown>) => {
+      const { data, error } = await db().from('conversations').insert({
+        tenant_id: rede!.tenantId, status: 'open', channel: 'whatsapp', provider: 'uazapi',
+        last_message_at: new Date().toISOString(), last_message: 'oi', ...linha,
+      }).select('id').single<{ id: string }>()
+      expect(error, 'criar a conversa').toBeNull()
+      conversas.push(data!.id)
+      return data!.id
+    }
+    const comCliente = await conversa({ contact_name: `${PREFIXO} Conversa cliente ${marca}`, contact_phone: '5548911110001', client_id: cliente })
+    const semCliente = await conversa({ contact_name: `${PREFIXO} Conversa sem ficha ${marca}`, contact_phone: '5548911110002' })
+
+    await comSessao(browser, gestor!, async p => {
+      await p.goto(`/admin/inbox?c=${comCliente}`)
+      const vender = p.getByRole('button', { name: 'Vender pacote' })
+      await expect(vender).toBeVisible()
+      await vender.click()
+      const dlg = p.getByRole('dialog', { name: 'Vender pacote' })
+      await expect(dlg.getByLabel('Pacote', { exact: true })).toBeVisible()
+      await dlg.getByRole('button', { name: 'Cancelar' }).click()
+
+      await p.goto(`/admin/inbox?c=${semCliente}`)
+      await expect(p.getByRole('button', { name: 'Cadastrar cliente' })).toBeVisible()
+      await expect(p.getByRole('button', { name: 'Vender pacote' })).toHaveCount(0)
+    })
   })
 })

@@ -1164,8 +1164,11 @@ export function ClientProfile({
             </div>
           </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          {/* Actions — vender pacote à esquerda do agendar (pedido do Heitor). */}
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+            {podeReceber && currentBranchId && (
+              <VenderPacote clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} />
+            )}
             <button
               type="button"
               onClick={() => router.push(rotaAgenda(pathname, slug))}
@@ -1262,8 +1265,7 @@ export function ClientProfile({
         <NotasDoCliente client={client} slug={slug} />
         <div className="rg-3" style={{ gap: 12, alignItems: 'start' }}>
 
-          {/* 1. Tratamento em andamento — e, para quem recebe, vender um pacote. */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* 1. Tratamento em andamento */}
           {activePackage ? (
             <div role="button" onClick={() => setTreatmentModalOpen(true)} style={{
               borderRadius: 'var(--radius-card)',
@@ -1298,10 +1300,6 @@ export function ClientProfile({
               <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-faint)' }}>Nenhum pacote ativo.</p>
             </div>
           )}
-          {podeReceber && currentBranchId && (
-            <VenderPacote clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} />
-          )}
-          </div>
 
           {/* 2. Próximos agendamentos */}
           {upcomingAppointments.length > 0 ? (

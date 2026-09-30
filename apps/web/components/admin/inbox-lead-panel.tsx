@@ -33,6 +33,7 @@ import {
   type CrmSchedulingData,
 } from '@/actions/crm-scheduling'
 import { SegSelect } from '@/components/shared/seg-select'
+import { VenderPacote } from '@/components/shared/vender-pacote'
 
 export interface PanelBranch { id: string; name: string; slug: string }
 
@@ -409,6 +410,9 @@ export function InboxLeadPanel({
                 onClick={() => setConvertOpen(true)}>
                 <UserCheck size={12} /> Cadastrar cliente
               </button>
+            )}
+            {cliente && card.vendaDePacote && (
+              <VenderPacote compacto clienteId={cliente.id} branchId={card.vendaDePacote.branchId} pacotes={card.vendaDePacote.pacotes} />
             )}
             {/* Agendar não passa mais pelo cadastro. Exigir CPF e e-mail antes
                 de marcar um horário parava o agendamento justo na etapa em que
