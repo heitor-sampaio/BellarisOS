@@ -80,7 +80,20 @@ jobs:
       - name: Build
         run: pnpm exec next build
 
-      - name: Suíte completa
+      # Duas metades (apps/web/e2e/grupos.ts), em SEQUÊNCIA: a varredura de
+      # sobras de uma apagaria os dados da outra se rodassem juntas. Os isolados
+      # (rede [e2e] própria, sem a rede real nem cron) vão em paralelo.
+      - name: Suíte — isolados (em paralelo)
+        env:
+          E2E_GRUPO: isolados
+          E2E_WORKERS: '3'
+        run: pnpm exec playwright test -c playwright.build.config.ts --reporter=list
+
+      # Roda mesmo se os isolados falharem (a falha de um não esconde a do outro).
+      - name: Suíte — compartilhados (um por vez)
+        if: success() || failure()
+        env:
+          E2E_GRUPO: compartilhados
         run: pnpm exec playwright test -c playwright.build.config.ts --reporter=list
 
       - name: Relatório das falhas

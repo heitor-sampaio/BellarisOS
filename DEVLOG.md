@@ -1258,6 +1258,23 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Suíte completa em duas metades (isolados em paralelo)
+
+O Heitor perguntou por que a suíte demora (~25 min no CI, 107 arquivos, 421
+testes). O maior fator era rodar um teste por vez (`workers: 1`), necessário
+porque a suíte usa o banco da produção e metade dos specs mexe na rede real.
+
+- `e2e/grupos.ts`: os 31 specs ISOLADOS (rede própria, sem rede real, sem a
+  sessão padrão, sem cron) — 140 testes, ~630 s somados — rodam com 3
+  workers; os 76 COMPARTILHADOS (~860 s) seguem um por vez, depois.
+- Em sequência, no mesmo job: a varredura de sobras (global-setup) apaga todo
+  [e2e], e rodando juntas uma metade apagaria os dados da outra.
+- `tests/e2e-grupos.test.ts` confere que cada isolado continua cumprindo as
+  regras; cada metade guarda as falhas na sua pasta de `test-results`.
+- Estimativa: ~25 → ~18 min. Próximos passos para encurtar mais: migrar
+  compartilhados para rede própria, e (mudando a varredura para só apagar
+  sobras antigas) rodar as duas metades ao mesmo tempo.
+
 ### 2026-09-30 — Sessão de pacote pelo núcleo; conflito com dois agendamentos
 
 O Heitor perguntou se a sessão de pacote não conferia conflito, já que a tela

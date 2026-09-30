@@ -2050,7 +2050,7 @@ pnpm typecheck                      # tsc --noEmit em todos os packages
 pnpm test                           # Vitest
 pnpm --filter web test:e2e          # Playwright (sobe o dev sozinho)
 pnpm --filter web test:e2e:afetados # só os testes da área alterada (--listar, --desde <ref>)
-pnpm --filter web test:e2e:completa # a suíte inteira contra o build (porta 3100)
+pnpm --filter web test:e2e:completa # a suíte inteira contra o build (porta 3100), em duas metades
 ```
 
 **Qual E2E rodar** (decisão do Heitor, 2026-09-28 — a suíte inteira passa de
@@ -2068,6 +2068,15 @@ pnpm --filter web test:e2e:completa # a suíte inteira contra o build (porta 310
   para seguir. Os secrets (só as três chaves do
   Supabase) moram no environment `e2e`, restrito à main; o workflow NUNCA
   roda em `pull_request`. CRON, Meta e VAPID são gerados a cada execução.
+- **A completa roda em duas metades, em SEQUÊNCIA** (`e2e/grupos.ts`,
+  2026-09-30): os ISOLADOS em paralelo (3 workers) e depois os
+  COMPARTILHADOS, um por vez. Isolado é o spec que cria a própria rede
+  (`criarOutraRede`), não lê a rede real (`tenantId()`, `filiaisAtivas()`…),
+  não usa a sessão padrão (o `page` do fixture é o admin da rede real) e não
+  chama cron — `tests/e2e-grupos.test.ts` confere a lista. Nunca as duas
+  metades ao mesmo tempo: a varredura de sobras de uma apagaria os dados da
+  outra. Spec novo com rede própria entra na lista; migrar um compartilhado
+  para rede própria é o que encurta a suíte.
 - Contra o build, `chamarAcao` lê os manifestos de `.next/server`
   (`E2E_BUILD`, ligado por `playwright.build.config.ts`).
 
