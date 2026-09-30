@@ -1271,7 +1271,13 @@ porque a suíte usa o banco da produção e metade dos specs mexe na rede real.
   [e2e], e rodando juntas uma metade apagaria os dados da outra.
 - `tests/e2e-grupos.test.ts` confere que cada isolado continua cumprindo as
   regras; cada metade guarda as falhas na sua pasta de `test-results`.
-- Estimativa: ~25 → ~18 min. Próximos passos para encurtar mais: migrar
+- Medido no CI: isolados ~2–3,6 min, compartilhados ~9,5 min — ~13 min de
+  testes contra ~25. Em paralelo apareceram duas coisas, corrigidas: o Auth
+  do Supabase limita a verificação de token por origem, e ~40 sessões de
+  membro em 2 min estouravam ("Request rate limit reached") — a abertura de
+  sessão do apoio espera e tenta de novo nesse erro; e um teste conferia um
+  evento emitido depois da resposta sem esperar.
+- Estimativa inicial: ~25 → ~18 min. Próximos passos para encurtar mais: migrar
   compartilhados para rede própria, e (mudando a varredura para só apagar
   sobras antigas) rodar as duas metades ao mesmo tempo.
 

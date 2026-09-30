@@ -130,7 +130,9 @@ test.describe.serial('integração de anúncios pela tela', () => {
       adAccountId: '222', adAccountName: 'Conta B', pixelId: 'px1', pixelName: 'Pixel 1',
       graphBase: f!.graph.url,
     })
-    expect(await eventos('integracao.conectada'), 'a corrente registra a conexão').toBe(1)
+    // O evento sai depois da resposta: espera, em vez de conferir uma vez só
+    // (com a suíte em paralelo, a conferência chegava antes do evento).
+    await expect.poll(() => eventos('integracao.conectada'), { message: 'a corrente registra a conexão' }).toBe(1)
   })
 
   test('marketing: as campanhas da conta escolhida aparecem, com o token dela', async ({ browser }) => {

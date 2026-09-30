@@ -55,18 +55,34 @@ export interface Permissao {
   escopo?: 'OWN' | 'ALL'
 }
 
+/**
+ * O Auth do Supabase limita as verificações de token por endereço de origem
+ * (janela de 5 min). Um spec por vez, as sessões se espalhavam pela suíte; com
+ * os isolados em paralelo (`e2e/grupos.ts`), uns 40 membros abrem sessão nos
+ * primeiros minutos e o limite estoura ("Request rate limit reached"). Quem
+ * bate no limite espera e tenta de novo — só nesse erro, e com teto.
+ */
+async function comPaciencia<T extends { error: { message: string } | null }>(fazer: () => Promise<T>): Promise<T> {
+  const esperas = [10, 20, 30, 45, 60, 60, 60] // segundos: até ~5 min, a janela do limite
+  for (let i = 0; ; i++) {
+    const r = await fazer()
+    if (!r.error || !/rate limit/i.test(r.error.message) || i >= esperas.length) return r
+    await new Promise(ok => setTimeout(ok, esperas[i]! * 1000))
+  }
+}
+
 /** Magic link → sessão → cookies gravados no arquivo. O mesmo caminho do app nativo. */
 async function abrirSessao(email: string, estado: string): Promise<{ accessToken: string; destino: string }> {
   const db = banco()
-  const { data: link, error: erroLink } = await db.auth.admin.generateLink({ type: 'magiclink', email })
+  const { data: link, error: erroLink } = await comPaciencia(() => db.auth.admin.generateLink({ type: 'magiclink', email }))
   if (erroLink || !link?.properties?.hashed_token) throw new Error(`emitir o link: ${erroLink?.message}`)
   const anon = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     { auth: { persistSession: false } },
   )
-  const { data: sessao, error: erroOtp } = await anon.auth.verifyOtp({
+  const { data: sessao, error: erroOtp } = await comPaciencia(() => anon.auth.verifyOtp({
     token_hash: link.properties.hashed_token, type: 'magiclink',
-  })
+  }))
   if (erroOtp || !sessao.session) throw new Error(`abrir a sessão: ${erroOtp?.message}`)
 
   const ctx = await request.newContext({ baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000' })
