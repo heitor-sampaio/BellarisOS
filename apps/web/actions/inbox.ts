@@ -1,8 +1,10 @@
 'use server'
 
 import { getTenantContext, assertPermission, ownerFilter, podeReceber, alcancaUnidade } from '@/lib/auth'
-import { pacotesAVenda, catalogoDePacotes } from '@/lib/pacotes/leitura'
+import { pacotesAVenda } from '@/lib/pacotes/leitura'
+import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
+import type { ProcedimentoAVenda } from '@/components/shared/vender'
 import { lerVisibilidade, type VisibilidadeDoInbox } from '@/lib/inbox/visibilidade'
 import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -699,14 +701,14 @@ export interface ConversationCard {
   contato:    ContatoDaConversa
   cliente:    ClienteDoContato | null
   /**
-   * Vender pacote pela conversa (pedido do Heitor), para quem recebe dinheiro.
-   * A unidade é a de quem atende, senão a do cliente, senão a única da rede.
-   * Sem ficha, o botão aparece do mesmo jeito e a venda vem DEPOIS do
-   * cadastro. Por isso `branchId` pode ser nulo: rede com várias unidades
-   * e contato sem ficha só sabe a unidade quando o cadastro a escolhe. Nesse
-   * caso `pacotes` vem vazio: só se sabe que a rede tem algum à venda.
+   * Vender pela conversa (pedido do Heitor) — procedimento pré-pago ou pacote —,
+   * para quem recebe dinheiro. A unidade é a de quem atende, senão a do
+   * cliente, senão a única da rede. Sem ficha, o botão aparece do mesmo jeito
+   * e a venda vem DEPOIS do cadastro. Por isso `branchId` pode ser nulo: rede
+   * com várias unidades e contato sem ficha só sabe a unidade quando o
+   * cadastro a escolhe. Nesse caso as listas vêm vazias: é só o sinal.
    */
-  vendaDePacote: { branchId: string | null; pacotes: PacoteAVenda[] } | null
+  venda: { branchId: string | null; pacotes: PacoteAVenda[]; procedimentos: ProcedimentoAVenda[] } | null
   /** Em andamento: etapa com outcome `OPEN`. */
   abertas:    Oportunidade[]
   /** Ganhas e perdidas, para consulta. */
@@ -816,7 +818,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   const abertas    = oportunidades.filter(o => o.outcome === 'OPEN')
   const concluidas = oportunidades.filter(o => o.outcome !== 'OPEN')
 
-  let vendaDePacote: ConversationCard['vendaDePacote'] = null
+  let venda: ConversationCard['venda'] = null
   if (podeReceber(ctx)) {
     let unidade = ctx.branchId ?? cliente?.branch_id ?? null
     if (!unidade) {
@@ -825,11 +827,14 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       unidade = (ativas ?? []).length === 1 ? (ativas![0]!.id as string) : null
     }
     if (unidade && alcancaUnidade(ctx, unidade)) {
-      const pacotes = await pacotesAVenda(ctx.tenantId!, unidade)
-      if (pacotes.length) vendaDePacote = { branchId: unidade, pacotes }
+      const [pacotes, procs] = await Promise.all([
+        pacotesAVenda(ctx.tenantId!, unidade), procedimentosAVenda(ctx.tenantId!, unidade),
+      ])
+      if (pacotes.length || procs.length) venda = { branchId: unidade, pacotes, procedimentos: procs }
     } else if (!unidade && !cliente) {
-      const pacotes = await catalogoDePacotes(ctx.tenantId!, { soAtivos: true })
-      if (pacotes.length) vendaDePacote = { branchId: null, pacotes: [] }
+      const algum = await ler(admin.from('procedures').select('id')
+        .eq('tenant_id', ctx.tenantId!).eq('is_active', true).limit(1), 'conferir se há o que vender')
+      if ((algum ?? []).length) venda = { branchId: null, pacotes: [], procedimentos: [] }
     }
   }
 
@@ -843,7 +848,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       tags:     tagsDaPessoa,
       canal:    c.channel as InboxChannel,
     },
-    cliente, vendaDePacote, abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
+    cliente, venda, abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
     outrasThreads,
   }
 }

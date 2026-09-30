@@ -23,7 +23,10 @@ import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { FidelidadeDoCliente } from '@/components/branch/fidelidade-do-cliente'
 import type { FidelidadeDoPerfil } from '@/lib/fidelidade/leitura'
-import { VenderPacote, type PacoteAVenda } from '@/components/shared/vender-pacote'
+import type { PacoteAVenda } from '@/components/shared/vender-pacote'
+import { Vender, type ProcedimentoAVenda } from '@/components/shared/vender'
+import { ProcedimentosPagos } from '@/components/shared/procedimentos-pagos'
+import type { PrePagoDoCliente } from '@/lib/pre-pago/leitura'
 
 // -- Types --------------------------------------------------------------------
 
@@ -180,6 +183,10 @@ interface Props {
   podeReceber?:          boolean
   /** O catálogo de pacotes à venda (só para quem recebe). */
   pacotesAVenda?:        PacoteAVenda[]
+  /** Os procedimentos à venda como pré-pago (só para quem recebe). */
+  procedimentosAVenda?:  ProcedimentoAVenda[]
+  /** Os procedimentos pré-pagos do cliente, com as unidades. */
+  prePagos?:             PrePagoDoCliente[]
   /** Oportunidades ligadas a este cliente — abertas e concluídas. */
   opportunities?:        ClientOpportunity[]
   /** Termos e contratos. Nulo = cargo sem o módulo `documents`: a seção não aparece. */
@@ -1027,6 +1034,7 @@ export function ClientProfile({
   fidelidade, activePackage,
   transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
+  procedimentosAVenda = [], prePagos = [],
 }: Props) {
   const router   = useRouter()
   const pathname = usePathname()
@@ -1164,10 +1172,11 @@ export function ClientProfile({
             </div>
           </div>
 
-          {/* Actions — vender pacote à esquerda do agendar (pedido do Heitor). */}
+          {/* Actions — vender à esquerda do agendar (pedido do Heitor): vender é o
+              que o cliente compra e como paga; agendar, quando ele vem. */}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
             {podeReceber && currentBranchId && (
-              <VenderPacote clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} />
+              <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda} />
             )}
             <button
               type="button"
@@ -1263,6 +1272,7 @@ export function ClientProfile({
       {tab === 'visao' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <NotasDoCliente client={client} slug={slug} />
+        <ProcedimentosPagos vendas={prePagos} podeCancelar={podeReceber} />
         <div className="rg-3" style={{ gap: 12, alignItems: 'start' }}>
 
           {/* 1. Tratamento em andamento */}

@@ -1,18 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package, X } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { venderPacote } from '@/actions/pacotes'
 import { CamposDoPagamento, estadoDoPagamento, montarPagamento } from '@/components/shared/campos-do-pagamento'
 import { CampoDoDesconto, SEM_DESCONTO, contaDoDesconto, descontoDoEstado } from '@/components/shared/campo-do-desconto'
 
 /**
- * Vender um pacote na ficha do cliente (decisão do Heitor, 2026-09-30): o
- * pacote do catálogo, e como vai ser pago — à vista, entrada + parcelas ou a
- * receber, o vocabulário do plano. As sessões nascem na venda; o que ficar a
- * receber aparece no financeiro como qualquer conta a receber.
+ * Vender um pacote (decisão do Heitor, 2026-09-30): o pacote do catálogo, e
+ * como vai ser pago — à vista, entrada + parcelas ou a receber, o vocabulário
+ * do plano. As sessões nascem na venda; o que ficar a receber aparece no
+ * financeiro como qualquer conta a receber. A janela é o "Vender" único.
  */
 
 export interface PacoteAVenda {
@@ -21,56 +20,8 @@ export interface PacoteAVenda {
   composicao: string; validityDays: number | null
 }
 
-export function VenderPacote({ clienteId, branchId, pacotes, compacto = false, abrirSinal = 0 }: {
-  clienteId: string
-  branchId:  string
-  pacotes:   PacoteAVenda[]
-  /** Botão pequeno, como as ações do painel da conversa. */
-  compacto?: boolean
-  /**
-   * Abre a venda sem o clique (cada valor novo acima de zero abre uma vez).
-   * É o "cadastrar e depois vender" do inbox: o cadastro termina e a venda
-   * já abre para o cliente que acabou de nascer.
-   */
-  abrirSinal?: number
-}) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
-  const [abertura, setAbertura] = useState(0)
-  const abrir = useCallback(() => { setAbertura(n => n + 1); dialogRef.current?.showModal() }, [])
-  const fechar = useCallback(() => dialogRef.current?.close(), [])
-  useEffect(() => {
-    if (abrirSinal > 0 && !dialogRef.current?.open) dialogRef.current?.showModal()
-  }, [abrirSinal])
-
-  if (!pacotes.length) return null
-  return (
-    <>
-      {compacto ? (
-        <button type="button" className="btn-ghost" onClick={abrir} style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}>
-          <Package size={12} aria-hidden /> Vender pacote
-        </button>
-      ) : (
-        <button type="button" className="btn-secondary" onClick={abrir}>
-          <Package size={15} aria-hidden /> Vender pacote
-        </button>
-      )}
-      <dialog ref={dialogRef} className="modal modal-flex" style={{ maxWidth: 560, textAlign: 'left' }}
-        onClick={e => { if (e.target === dialogRef.current) fechar() }} aria-label="Vender pacote">
-        <div className="modal-container">
-          <div style={{ flexShrink: 0, borderBottom: '1px solid var(--hairline)', padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>Vender pacote</h2>
-            <button type="button" className="btn-ghost" onClick={fechar} style={{ padding: 6 }} aria-label="Fechar"><X size={16} /></button>
-          </div>
-          <div className="modal-body" style={{ padding: '20px 24px 24px' }}>
-            <Formulario key={`${abertura}-${abrirSinal}`} clienteId={clienteId} branchId={branchId} pacotes={pacotes} onFim={fechar} />
-          </div>
-        </div>
-      </dialog>
-    </>
-  )
-}
-
-function Formulario({ clienteId, branchId, pacotes, onFim }: {
+/** O formulário da venda do pacote — dentro do "Vender" (`components/shared/vender.tsx`). */
+export function FormularioDoPacote({ clienteId, branchId, pacotes, onFim }: {
   clienteId: string; branchId: string; pacotes: PacoteAVenda[]; onFim: () => void
 }) {
   const router = useRouter()

@@ -7,6 +7,7 @@ import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
+import { procedimentosAVenda, prePagosDoCliente } from '@/lib/pre-pago/leitura'
 import { oportunidadesDoCliente } from '@/lib/crm/oportunidades-do-cliente'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { getDoCliente } from '@/lib/metrics/unidade'
@@ -457,6 +458,8 @@ export default async function ClientProfilePage({
       planProducts={planoProcs.products}
       podeReceber={podeReceber(ctx)}
       pacotesAVenda={podeReceber(ctx) ? await pacotesAVenda(ctx.tenantId!, branch.id as string) : []}
+      procedimentosAVenda={podeReceber(ctx) ? await procedimentosAVenda(ctx.tenantId!, branch.id as string) : []}
+      prePagos={await prePagosDoCliente(ctx.tenantId!, id)}
       isNetworkWide={ctx.branchId === null}
       clientHistory={clientHistory}
       opportunities={oportunidades}

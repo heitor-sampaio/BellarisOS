@@ -1258,6 +1258,40 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Procedimento pré-pago e o "Vender" único (fase 2 de "Vender")
+
+O cliente compra N unidades de UM procedimento, paga (ou fica a receber) e
+agenda depois. Separado do pacote, como o Heitor pediu.
+
+- **Banco** (migration `20260930000022`): `procedure_sales` (retrato da venda,
+  validade opcional) e `procedure_sale_units` (uma por unidade, com a parte
+  do preço e o agendamento); `procedimento_vender` e
+  `procedimento_cancelar_unidade` numa transação cada; o dinheiro e a linha de
+  comissão ganham `procedure_sale_id`.
+- **No atendimento**: a conclusão usa a unidade e liga a comissão (origem
+  `PRE_PAGO`, proporcional ao recebido); a recepção recusa cobrar de novo;
+  falta ou cancelamento do agendamento devolvem a unidade (gatilho).
+- **Cancelar a unidade**: reduz o a receber que sobrou e registra a devolução
+  do que foi pago a mais (despesa "Devolução" a pagar).
+- **"Vender" único** na ficha e no inbox (`components/shared/vender.tsx`):
+  Procedimento | Pacote. Com ou sem ficha no inbox, como antes.
+- **Ficha**: card "Procedimentos pagos" com as unidades e o cancelar com
+  motivo. **Portal**: o que ainda há para agendar. **LGPD**: seção própria.
+- **Fidelidade por procedimento** passou a valer para pré-pago e pacote
+  (cumulativa pelo pago, como o plano). O pacote dava zero ponto nesse modo.
+
+**Prova:** `pre-pago` (8 casos: venda pela ficha com desconto e parcelas, a
+unidade no atendimento com a comissão proporcional e a recusa da recepção,
+falta devolvendo a unidade, cancelar pela ficha reduzindo o a receber,
+devolução do que foi pago e recusa com agendamento, permissões e RLS,
+fidelidade, procedimento de outra rede). Vizinhos (58): pacotes, desconto,
+conclusão, fechamento, comissões, fidelidade, portal, pacote-agendar,
+permissões, LGPD, inbox. Telas por captura.
+
+**Falta (fase 3):** agendar usando o que já foi pago — a agenda e o inbox
+oferecendo as unidades e as sessões de pacote, e "Agendar agora" depois da
+venda.
+
 ### 2026-09-30 — Desconto em todas as vendas (fase 1 de "Vender")
 
 Decisões do Heitor: pacote e procedimento pré-pago são coisas SEPARADAS (o

@@ -90,7 +90,7 @@ export async function SessaoDeAtendimento({
     medRecord, procProductsRaw, branchProductsRaw,
     professionalsRaw, historyRaw, paymentRaw,
     allProceduresRaw, packagesRaw, planRaw,
-    planSessionRaw, sessaoDePacote,
+    planSessionRaw, sessaoDePacote, unidadePrePaga,
   ] = await Promise.all([
     ler(admin
       .from('medical_records')
@@ -172,6 +172,9 @@ export async function SessaoDeAtendimento({
     // (2026-09-27). O servidor recusa em `confirmPayment`; aqui é o botão.
     ler(admin.from('package_sessions').select('id').eq('appointment_id', id).maybeSingle(),
       'conferir se é sessão de pacote'),
+    // Procedimento pré-pago: também pago na venda.
+    ler(admin.from('procedure_sale_units').select('id').eq('appointment_id', id).neq('status', 'CANCELADA').maybeSingle(),
+      'conferir se é procedimento pré-pago'),
 
   ])
 
@@ -434,6 +437,7 @@ export async function SessaoDeAtendimento({
         procedureProductsMap={procedureProductsMap}
         isPartOfPlan={isPartOfPlan}
         isPackageSession={!!sessaoDePacote}
+        isPrePago={!!unidadePrePaga}
         podeReceber={podeReceber(ctx)}
         pagamentoCombinado={canPayment ? await pagamentoCombinadoDoAtendimento(ctx.tenantId!, appointment.id) : null}
         planoEmAberto={planoEmAberto}

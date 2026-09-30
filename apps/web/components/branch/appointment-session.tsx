@@ -130,6 +130,8 @@ interface Props {
   isPartOfPlan?:         boolean
   /** Sessão de pacote: já paga na venda do pacote — não se cobra de novo (2026-09-27). */
   isPackageSession?:     boolean
+  /** Procedimento pré-pago: pago na venda, a recepção não cobra de novo. */
+  isPrePago?:            boolean
   /**
    * Pode receber (caixa ou financeiro) — quem fecha a venda da avaliação sem
    * mandar o cliente para a recepção. O mesmo critério de "Confirmar pagamento".
@@ -881,7 +883,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, canEditRecords, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, podeReceber = false, planoEmAberto = null, documentos = null,
+  isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null,
   pagamentoCombinado = null,
 }: Props) {
   const router   = useRouter()
@@ -1354,7 +1356,7 @@ export function AppointmentSession({
                 mesmo em avaliação de R$ 0,00. E quando há plano fechado, o
                 rótulo diz de QUE valor se trata — o do plano já foi pago no
                 checkout, este é o do atendimento. */}
-            {status === 'COMPLETED' && !paymentTransaction && canPayment && !isPartOfPlan && !isPackageSession
+            {status === 'COMPLETED' && !paymentTransaction && canPayment && !isPartOfPlan && !isPackageSession && !isPrePago
               && appointment.price > 0 && (
               <button type="button" onClick={() => setShowPayment(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
@@ -1530,6 +1532,10 @@ export function AppointmentSession({
                 ) : isPackageSession ? (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
                     Sessão de pacote — paga na venda do pacote.
+                  </p>
+                ) : isPrePago ? (
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--success)' }}>
+                    Procedimento pré-pago — pago na venda.
                   </p>
                 ) : (
                   <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--warning)', fontWeight: 600 }}>

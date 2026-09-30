@@ -23,7 +23,7 @@ let pacoteId = ''
 let vendido = ''
 let procB = ''
 const conversas: string[] = []
-/** O cliente que a tela cadastra no "Vender pacote" de quem ainda não é cliente. */
+/** O cliente que a tela cadastra no "Vender" de quem ainda não é cliente. */
 let cadastrado = ''
 const NOME = `${PREFIXO} Pacote ${marca}`
 
@@ -157,8 +157,9 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
   test('venda na ficha: entrada + parcelas; as sessões nascem; o dinheiro fica separado', async ({ browser }) => {
     await comSessao(browser, gestor!, async p => {
       await p.goto(`/admin/clients/${cliente}`)
-      await p.getByRole('button', { name: 'Vender pacote' }).click()
-      const dlg = p.getByRole('dialog', { name: 'Vender pacote' })
+      await p.getByRole('button', { name: 'Vender', exact: true }).click()
+      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
       await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
       await expect(dlg.locator('[data-resumo-do-pacote]')).toContainText('4 sessões')
       await dlg.getByRole('button', { name: 'Entrada + parcelas' }).click()
@@ -271,8 +272,9 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
   test('a receber SEM data: a venda passa e o valor fica em aberto, sem vencimento', async ({ browser }) => {
     await comSessao(browser, gestor!, async p => {
       await p.goto(`/admin/clients/${cliente}`)
-      await p.getByRole('button', { name: 'Vender pacote' }).click()
-      const dlg = p.getByRole('dialog', { name: 'Vender pacote' })
+      await p.getByRole('button', { name: 'Vender', exact: true }).click()
+      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
       await dlg.getByLabel('Pacote', { exact: true }).selectOption(pacoteId)
       await dlg.getByRole('button', { name: 'A receber' }).click()
       await expect(dlg.getByLabel('Vencimento')).toHaveValue('')
@@ -285,7 +287,7 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
     expect((txs ?? []).map(t => [Number(t.amount), t.is_paid, t.due_date])).toEqual([[800, false, null]])
   })
 
-  test('na conversa: com cliente, "Vender pacote" abre a venda; sem cliente, cadastra e depois vende', async ({ browser }) => {
+  test('na conversa: com cliente, "Vender" abre a venda; sem cliente, cadastra e depois vende', async ({ browser }) => {
     const conversa = async (linha: Record<string, unknown>) => {
       const { data, error } = await db().from('conversations').insert({
         tenant_id: rede!.tenantId, status: 'open', channel: 'whatsapp', provider: 'uazapi',
@@ -300,23 +302,25 @@ test.describe.serial('pacotes — catálogo, venda e comissão', () => {
 
     await comSessao(browser, gestor!, async p => {
       await p.goto(`/admin/inbox?c=${comCliente}`)
-      const vender = p.getByRole('button', { name: 'Vender pacote' })
+      const vender = p.getByRole('button', { name: 'Vender', exact: true })
       await expect(vender).toBeVisible()
       await vender.click()
-      const dlg = p.getByRole('dialog', { name: 'Vender pacote' })
+      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
       await expect(dlg.getByLabel('Pacote', { exact: true })).toBeVisible()
       await dlg.getByRole('button', { name: 'Cancelar' }).click()
 
       // Sem ficha, o botão aparece do mesmo jeito: primeiro o cadastro...
       await p.goto(`/admin/inbox?c=${semCliente}`)
-      await p.getByRole('button', { name: 'Vender pacote' }).click()
-      await expect(p.getByText('Para vender o pacote, primeiro o cadastro.')).toBeVisible()
+      await p.getByRole('button', { name: 'Vender', exact: true }).click()
+      await expect(p.getByText('Para vender, primeiro o cadastro.')).toBeVisible()
       await p.locator('input[name="email"]').fill(`e2e-pv${marca}@bellaris.invalid`)
       await p.locator('input[name="document"]').fill(cpfDeTeste())
       await p.getByRole('button', { name: 'Cadastrar cliente' }).last().click()
 
       // ...e a venda abre sozinha, já para o cliente que acabou de nascer.
-      const dlg2 = p.getByRole('dialog', { name: 'Vender pacote' })
+      const dlg2 = p.getByRole('dialog', { name: 'Vender' })
+      await dlg2.getByRole('button', { name: 'Pacote', exact: true }).click()
       await expect(dlg2.getByLabel('Pacote', { exact: true })).toBeVisible({ timeout: 20_000 })
       const { data: novo } = await db().from('conversations').select('client_id').eq('id', semCliente).single()
       expect(novo?.client_id, 'o cadastro liga a conversa ao cliente novo').toBeTruthy()

@@ -4,7 +4,7 @@ import { useEffect, useEffectEvent, useState, useTransition, useRef, useCallback
 import { usePathname } from 'next/navigation'
 import { rotaCliente, rotaOportunidades } from '@/lib/rotas'
 import {
-  UserCheck, ExternalLink, CalendarPlus, X, Check, Compass, Plus, ChevronDown, Package,
+  UserCheck, ExternalLink, CalendarPlus, X, Check, Compass, Plus, ChevronDown, Package, ShoppingBag,
   ArrowRight,
 } from 'lucide-react'
 import {
@@ -33,7 +33,7 @@ import {
   type CrmSchedulingData,
 } from '@/actions/crm-scheduling'
 import { SegSelect } from '@/components/shared/seg-select'
-import { VenderPacote } from '@/components/shared/vender-pacote'
+import { Vender } from '@/components/shared/vender'
 
 export interface PanelBranch { id: string; name: string; slug: string }
 
@@ -179,7 +179,7 @@ export function InboxLeadPanel({
   const [saving,  startSave]  = useTransition()
   const [scheduling,  setScheduling]  = useState<string | null>(null)   // leadId ou '' para contato
   const [convertOpen, setConvertOpen] = useState(false)
-  // "Vender pacote" de quem ainda não é cliente: primeiro o cadastro, e a
+  // "Vender" para quem ainda não é cliente: primeiro o cadastro, e a
   // venda abre sozinha quando ele termina (pedido do Heitor).
   const [venderAposCadastro, setVenderAposCadastro] = useState(false)
   const [abrirVenda, setAbrirVenda] = useState(0)
@@ -327,8 +327,8 @@ export function InboxLeadPanel({
       if (!vender) return
       // A unidade da venda é a que o cadastro escolheu: só agora se sabe se
       // ela tem pacote à venda.
-      if (novo?.cliente && novo.vendaDePacote?.branchId && novo.vendaDePacote.pacotes.length) setAbrirVenda(n => n + 1)
-      else setErro('Cliente cadastrado, mas a unidade dele não tem pacote à venda.')
+      if (novo?.cliente && novo.venda?.branchId && (novo.venda.pacotes.length || novo.venda.procedimentos.length)) setAbrirVenda(n => n + 1)
+      else setErro('Cliente cadastrado, mas a unidade dele não tem nada à venda.')
     })
   }
 
@@ -429,16 +429,16 @@ export function InboxLeadPanel({
                 <UserCheck size={12} /> Cadastrar cliente
               </button>
             )}
-            {card.vendaDePacote && (cliente ? (
-              card.vendaDePacote.branchId && (
-                <VenderPacote compacto clienteId={cliente.id} branchId={card.vendaDePacote.branchId}
-                  pacotes={card.vendaDePacote.pacotes} abrirSinal={abrirVenda} />
+            {card.venda && (cliente ? (
+              card.venda.branchId && (
+                <Vender compacto clienteId={cliente.id} branchId={card.venda.branchId}
+                  pacotes={card.venda.pacotes} procedimentos={card.venda.procedimentos} abrirSinal={abrirVenda} />
               )
             ) : (
               <button type="button" className="btn-ghost"
                 style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}
                 onClick={() => { setVenderAposCadastro(true); setConvertOpen(true) }}>
-                <Package size={12} aria-hidden /> Vender pacote
+                <ShoppingBag size={12} aria-hidden /> Vender
               </button>
             ))}
             {/* Agendar não passa mais pelo cadastro. Exigir CPF e e-mail antes
@@ -619,7 +619,7 @@ export function InboxLeadPanel({
         <JanelaDeCadastro onFechar={fecharCadastro}>
           {venderAposCadastro && (
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 14 }}>
-              Para vender o pacote, primeiro o cadastro. Ao salvar, a venda abre em seguida.
+              Para vender, primeiro o cadastro. Ao salvar, a venda abre em seguida.
             </p>
           )}
           <ClientForm

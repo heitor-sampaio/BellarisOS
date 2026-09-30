@@ -451,7 +451,15 @@ async function completeAppointment(
     .eq('appointment_id', appointmentId)
     .maybeSingle(), 'buscar a sessão do pacote')
 
-  const alreadyCharged = Boolean(appt.treatment_plan_id) || Boolean(pkgSession)
+  // Procedimento pré-pago: pago na venda (a unidade já foi usada na conclusão).
+  const unidadePrePaga = await ler(admin
+    .from('procedure_sale_units')
+    .select('id')
+    .eq('appointment_id', appointmentId)
+    .neq('status', 'CANCELADA')
+    .maybeSingle(), 'buscar a unidade pré-paga')
+
+  const alreadyCharged = Boolean(appt.treatment_plan_id) || Boolean(pkgSession) || Boolean(unidadePrePaga)
 
   const existingTx = await ler(admin
     .from('financial_transactions')

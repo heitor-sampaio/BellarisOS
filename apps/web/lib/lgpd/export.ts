@@ -59,7 +59,7 @@ export async function buildClientExport(
 
   const [
     apptRes, txRes, creditRes, loyaltyRes, packageRes,
-    documentRes, notificationRes, planRes, branchRes, termosRes,
+    documentRes, notificationRes, planRes, branchRes, termosRes, prePagoRes,
   ] = await Promise.all([
     // `users` é desambiguado pela FK: appointments referencia users duas vezes
     // (professional_id e created_by_id) e o embed sem qualificação falha com
@@ -93,6 +93,10 @@ export async function buildClientExport(
     admin.from('issued_documents')
       .select('created_at, title, kind, status, moment, signed_at, verification_code, content_sha256, signed_pdf_sha256, signed_pdf_path, content_text, closed_reason, document_signatures(channel, identity_method, signed_at, ip, user_agent, accepted_text)')
       .eq('client_id', clientId).neq('status', 'A_GERAR').order('created_at', { ascending: false }),
+    // Procedimentos pré-pagos (2026-09-30): o que comprou e o que usou.
+    admin.from('procedure_sales')
+      .select('sold_at, expires_at, quantity, preco_tabela, desconto, price, procedures(name), procedure_sale_units(numero, status, used_at, cancelled_at)')
+      .eq('client_id', clientId).order('sold_at', { ascending: false }),
   ])
 
   const appointments  = unwrap('os agendamentos', apptRes)
@@ -105,6 +109,7 @@ export async function buildClientExport(
   const plans         = unwrap('os planos de tratamento', planRes)
   const branches      = unwrap('as unidades', branchRes)
   const termos        = unwrap('os termos e contratos', termosRes)
+  const prePagos      = unwrap('os procedimentos pré-pagos', prePagoRes)
 
   const branchName = new Map((branches ?? []).map(b => [b.id as string, b.name as string]))
   const unit = (id: string | null | undefined) => (id ? branchName.get(id) ?? '—' : '—')
@@ -154,6 +159,7 @@ export async function buildClientExport(
     financeiro:   { transacoes: transactions ?? [], creditos: credits ?? [] },
     fidelidade:   loyalty ?? null,
     pacotes:      packages ?? [],
+    procedimentosPrePagos: prePagos ?? [],
     documentos:   documents ?? [],
     // O que o titular assinou: o texto, o hash e as evidências. O PDF assinado
     // de cada um vai junto no pacote (pasta documentos/).
@@ -215,6 +221,17 @@ export async function buildClientExport(
       lines: (packages ?? []).map(p => {
         const nome = (p.service_packages as { name?: string } | null)?.name ?? 'Pacote'
         return `${fmtDate(p.purchased_at)} — ${nome} — ${p.used_sessions}/${p.total_sessions} sessões usadas`
+      }),
+    },
+    {
+      title: `Procedimentos pré-pagos (${(prePagos ?? []).length})`,
+      emptyLabel: 'Nenhum procedimento pré-pago.',
+      lines: (prePagos ?? []).map(v => {
+        const nome = (v.procedures as { name?: string } | null)?.name ?? 'Procedimento'
+        const unidades = (v.procedure_sale_units ?? []) as { status: string }[]
+        const usadas = unidades.filter(u => u.status === 'USADA').length
+        const canceladas = unidades.filter(u => u.status === 'CANCELADA').length
+        return `${fmtDate(v.sold_at)} — ${v.quantity}× ${nome} — ${usadas} usada(s)${canceladas ? `, ${canceladas} cancelada(s)` : ''} — R$ ${Number(v.price).toFixed(2).replace('.', ',')}`
       }),
     },
     {

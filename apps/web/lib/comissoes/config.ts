@@ -104,7 +104,7 @@ export function regraAplicavel(regras: RegraDeComissao[], procedureId: string | 
 
 // ─── As linhas de um atendimento ─────────────────────────────────────────────
 
-export type OrigemDaComissao = 'AVULSO' | 'PLANO' | 'PACOTE'
+export type OrigemDaComissao = 'AVULSO' | 'PLANO' | 'PACOTE' | 'PRE_PAGO'
 
 /** Um procedimento executado e o preço que serve de base à comissão dele. */
 export interface ItemExecutado { procedure_id: string | null; preco: number }

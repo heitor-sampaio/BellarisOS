@@ -50,7 +50,7 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
 
   const admin = createAdminClient()
 
-  const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos] = await Promise.all([
+  const [clientRes, nextApptRes, pendingConfirmRes, packagesRes, plansRes, saldoDePontos, prePagosRes] = await Promise.all([
     ler(admin.from('clients').select('name, tenant_id').eq('id', ctx.clientId!).single(), 'buscar o cliente'),
     ler(admin.from('appointments')
       .select('id, scheduled_at, procedures(name), professionals:users!professional_id(name)')
@@ -80,6 +80,12 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
       .limit(3), 'buscar os planos'),
     // O saldo é a soma do extrato — não mais loyalty_accounts.balance.
     saldoDoCliente(ctx.clientId!, null, admin),
+    // Procedimentos pré-pagos (2026-09-30): o que ele ainda tem para agendar.
+    ler(admin.from('procedure_sales')
+      .select('id, quantity, expires_at, procedures(name), procedure_sale_units(status)')
+      .eq('client_id', ctx.clientId!)
+      .order('sold_at', { ascending: false })
+      .limit(10), 'buscar os procedimentos pré-pagos'),
   ])
 
   const clientName   = (clientRes as { name: string } | null)?.name ?? 'você'
@@ -95,7 +101,12 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
   const redeDoCliente = (clientRes as { tenant_id: string | null } | null)?.tenant_id ?? null
   const fidelidadeLigada = redeDoCliente ? (await configDaRede(redeDoCliente, admin)).enabled : false
 
-  const hasActiveTreatments = activePkgs.length > 0 || activePlans.length > 0
+  const prePagos = ((prePagosRes ?? []) as unknown as {
+    id: string; quantity: number; expires_at: string | null; procedures: { name: string } | null; procedure_sale_units: { status: string }[]
+  }[]).map(v => ({ ...v, disponiveis: (v.procedure_sale_units ?? []).filter(u => u.status === 'DISPONIVEL').length }))
+    .filter(v => v.disponiveis > 0)
+
+  const hasActiveTreatments = activePkgs.length > 0 || activePlans.length > 0 || prePagos.length > 0
 
   // Termos e contratos esperando a assinatura dele (§9.4.1).
   const paraAssinar = await contar(admin.from('issued_documents').select('id', { count: 'exact', head: true })
@@ -263,6 +274,23 @@ export default async function ClientHomePage({ params }: { params: Promise<{ slu
                 </div>
               )
             })}
+
+            {prePagos.map(v => (
+              <div key={v.id} className="card" data-pre-pago style={{ padding: '14px 18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Sparkles size={15} color="var(--brand)" />
+                  <div>
+                    <p style={{ fontWeight: 700, color: 'var(--text)', fontSize: 'var(--text-base-sz)' }}>
+                      {v.procedures?.name ?? 'Procedimento'}
+                    </p>
+                    <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
+                      {v.disponiveis} de {v.quantity} já pago{v.quantity > 1 ? 's' : ''}, para agendar
+                      {v.expires_at ? ` · válido até ${new Date(v.expires_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}` : ''}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
 
             {activePlans.map(plan => {
               const procs = (plan.treatment_plan_sessions ?? [])

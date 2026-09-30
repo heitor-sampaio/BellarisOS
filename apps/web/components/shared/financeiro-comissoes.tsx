@@ -17,7 +17,7 @@ import type { ResumoDoProfissional, LancamentoDoExtrato, Fechamento } from '@/li
  */
 
 const TIPO: Record<LancamentoDoExtrato['kind'], string> = { LIBERACAO: 'Liberação', AJUSTE: 'Ajuste', ESTORNO: 'Estorno' }
-const ORIGEM: Record<string, string> = { AVULSO: 'Atendimento', PLANO: 'Plano', PACOTE: 'Pacote' }
+const ORIGEM: Record<string, string> = { AVULSO: 'Atendimento', PLANO: 'Plano', PACOTE: 'Pacote', PRE_PAGO: 'Pré-pago' }
 const METODOS = [
   { key: 'PIX', label: 'Pix' }, { key: 'CASH', label: 'Dinheiro' },
   { key: 'DEBIT_CARD', label: 'Débito' }, { key: 'CREDIT_CARD', label: 'Crédito' },

@@ -775,20 +775,24 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
 - **Venda na ficha do cliente** ("Vender pacote", `VenderPacote`), para quem
   recebe (`podeReceber`), com o vocabulário do plano: à vista, entrada +
   parcelas, a receber (`CamposDoPagamento`, o mesmo do pagamento do contrato).
+  - A venda sai pelo botão **"Vender"** (`components/shared/vender.tsx`),
+    que pergunta Procedimento (pré-pago, §9.3.2) ou Pacote — os dois são
+    separados no banco, só dividem a porta. Vender é o que o cliente compra
+    e como paga; Agendar, quando ele vem.
   - O botão fica no cabeçalho da ficha, à esquerda do "+ Agendar".
   - Também no painel da direita do inbox, com as ações da pessoa
-    (`getConversationCard` → `vendaDePacote`), **com ou sem ficha**. A
+    (`getConversationCard` → `venda`), **com ou sem ficha**. A
     unidade é a de quem atende, senão a do cliente, senão a única da rede.
     Com cliente, fora do alcance ou sem pacote na unidade, o botão não
     aparece. Como as outras ações da pessoa, também some com o painel só de
     leitura (sem `crm: MANAGE`).
   - **Sem ficha, primeiro o cadastro** (decisão do Heitor, 2026-09-30): o
     botão abre o "Cadastrar como cliente" com o aviso, e ao salvar a venda
-    abre sozinha para o cliente novo (`abrirSinal` do `VenderPacote`). Rede
+    abre sozinha para o cliente novo (`abrirSinal` do `Vender`). Rede
     com várias unidades só sabe a unidade da venda depois do cadastro. Por
-    isso ali `branchId` vem nulo e `pacotes` vazio: é só o sinal de que a
-    rede tem pacote à venda. Se a unidade escolhida não tiver pacote, a tela
-    diz isso em vez de abrir.
+    isso ali `branchId` vem nulo e as listas vazias: é só o sinal de que a
+    rede tem o que vender. Se a unidade escolhida não tiver nada à venda, a
+    tela diz isso em vez de abrir.
   - `lancamentosDoPagamento` (`lib/checkout/lancamentos.ts`) monta o dinheiro:
     o recebido agora e o a receber em lançamentos separados; a última parcela
     leva o arredondamento.
@@ -805,6 +809,43 @@ existiam no banco de demonstração — nenhuma tela criava pacote nem o vendia.
   `service_packages` saíram (dava para dar sessão de graça pela chave pública).
 - Comissão da sessão: §9.7.
 - Prova: `e2e/pacotes-venda.spec.ts`.
+
+### 9.3.2 Procedimento pré-pago (2026-09-30)
+
+N unidades de UM procedimento, pagas antes (ou a receber) e agendadas depois.
+**Separado do pacote de propósito** — o Heitor recusou reaproveitar
+`client_packages`: pacote é um conjunto vendido por um preço só; o pré-pago é
+o procedimento avulso pago antes.
+
+- **A venda** é `procedure_sales` (retrato: preço unitário e total de tabela,
+  desconto, vendido, validade OPCIONAL, quem vendeu) e as **unidades**,
+  `procedure_sale_units` (uma linha por unidade, com a SUA parte do vendido —
+  rateio igual em centavos, a base da comissão dela —, a situação
+  `DISPONIVEL | USADA | CANCELADA` e o agendamento que a usa). O dinheiro leva
+  `financial_transactions.procedure_sale_id`. Uma transação:
+  `procedimento_vender` (`venderProcedimento`, `actions/pre-pago.ts`, para
+  quem recebe). Desconto como toda venda (§9.6).
+- A sessão só LÊ (equipe que alcança a unidade; o cliente, o que é dele).
+- **No atendimento**: o agendamento liga a unidade (`appointment_id`, único);
+  `concluir_atendimento` a marca USADA e liga a linha de comissão à venda
+  (origem `PRE_PAGO`); a recepção RECUSA cobrar (`confirmar_pagamento…`),
+  e a tela esconde o botão. Agendar usando a unidade é a fase 3.
+- **Comissão**: como o pacote — a base é a parte da unidade; no modo
+  "quando paga", libera na proporção do que a venda recebeu (sobre o que ela
+  vale hoje: vendido − unidades canceladas). O gatilho do pagamento acerta.
+- **Falta ou cancelamento do agendamento DEVOLVE a unidade** (gatilho
+  `trg_pre_pago_libera`): pode remarcar. Decisão do Heitor.
+- **Cancelar a unidade** (`procedimento_cancelar_unidade`, com motivo, só a
+  DISPONÍVEL e não agendada): a venda passa a valer menos; o a receber que
+  sobrou diminui primeiro (e as parcelas em aberto, da última para a
+  primeira); o que o cliente pagou além disso vira **DEVOLUÇÃO a pagar** no
+  financeiro (despesa não paga, categoria "Devolução") — "registra para fazer
+  estorno" (decisão do Heitor).
+- **Fidelidade por procedimento**: os pontos das unidades ativas, na proporção
+  do pago (como o plano). O pacote passou a ganhar do mesmo jeito (dava zero).
+- Na ficha: card "Procedimentos pagos" (`ProcedimentosPagos`); no portal, em
+  "Tratamentos em curso"; no export da LGPD, seção própria.
+- Prova: `e2e/pre-pago.spec.ts`.
 
 ### 9.4 Prontuário
 - `MedicalRecord`: 1 por cliente
@@ -1885,6 +1926,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Calcular desconto de venda fora de lib/vendas/desconto.ts, ou confiar no valor de desconto que o navegador manda
 ❌ Pôr desconto comercial em amount ou em loyalty_discount (é sale_discount no avulso; no pacote e no plano, o preço vendido)
 ❌ Mexer no preço dos procedimentos do plano no checkout fora de plano_aplicar_desconto
+❌ Reaproveitar pacote (client_packages) para o procedimento pré-pago — são separados (decisão do Heitor)
+❌ Vender pré-pago fora de procedimento_vender, ou cancelar unidade fora de procedimento_cancelar_unidade
 ❌ Dar ponto de fidelidade no TypeScript (o ponto nasce no gatilho do pagamento; o saldo é saldo_de_pontos)
 ❌ Calcular vencimento de pontos fora de fidelidade_a_expirar (é a única cópia do FIFO)
 ❌ Mostrar qualquer sinal de pontos com o programa da rede desligado

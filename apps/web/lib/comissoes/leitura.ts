@@ -120,6 +120,16 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
     }], regras, 'PACOTE', null)
   }
 
+  // Procedimento pré-pago: a parte desta UNIDADE no preço vendido (o banco liga
+  // a linha à venda na conclusão e libera na proporção do que a venda recebeu).
+  const unidadePrePaga = await ler(admin.from('procedure_sale_units')
+    .select('preco, procedure_sales!inner(procedure_id)')
+    .eq('appointment_id', appt.id).eq('status', 'DISPONIVEL').maybeSingle(), 'buscar a unidade pré-paga')
+  if (unidadePrePaga) {
+    const venda = unidadePrePaga.procedure_sales as unknown as { procedure_id: string }
+    return linhasDaComissao([{ procedure_id: venda.procedure_id, preco: Number(unidadePrePaga.preco) }], regras, 'PRE_PAGO', null)
+  }
+
   return linhasDaComissao([{ procedure_id: appt.procedure_id, preco: appt.price }], regras, 'AVULSO', null)
 }
 

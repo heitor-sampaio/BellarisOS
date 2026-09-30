@@ -85,8 +85,9 @@ test.describe.serial('desconto nas vendas', () => {
     const cliente = await rede!.criarCliente('Pacote')
     await comSessao(browser, async p => {
       await p.goto(`/admin/clients/${cliente}`)
-      await p.getByRole('button', { name: 'Vender pacote' }).click()
-      const dlg = p.getByRole('dialog', { name: 'Vender pacote' })
+      await p.getByRole('button', { name: 'Vender', exact: true }).click()
+      const dlg = p.getByRole('dialog', { name: 'Vender' })
+      await dlg.getByRole('button', { name: 'Pacote', exact: true }).click()
       await dlg.getByRole('button', { name: '%', exact: true }).click()
       await dlg.getByLabel('Desconto', { exact: true }).fill('10')
       await expect(dlg.getByTestId('conta-do-desconto')).toContainText('720,00')
