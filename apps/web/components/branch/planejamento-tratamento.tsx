@@ -10,6 +10,7 @@ import {
 import { TreatmentPlanEditor } from '@/components/branch/treatment-plan-editor'
 import type { TreatmentProcedure, ExistingPlan, AvailableProduct } from '@/components/branch/treatment-plan-editor'
 import { CheckoutWizard, type CheckoutPlan } from '@/components/branch/checkout-wizard'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 /**
  * Planejamento de tratamento do CLIENTE.
@@ -402,11 +403,8 @@ export function PlanejamentoTratamento({
 
       {/* Checkout sobre o planejamento, como na tela do atendimento. */}
       {checkout && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', zIndex: 120, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 16px', overflowY: 'auto' }}
-          onClick={() => setCheckout(null)}
-        >
-          <div className="card" style={{ width: 700, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
+        <JanelaModal onFechar={() => setCheckout(null)} rotulo="Checkout" largura={700} fechaNoFundo={false}>
+          <div style={{ padding: '22px 24px' }}>
             <div className="esconde-impressao" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Checkout</h3>
               <button type="button" onClick={() => setCheckout(null)} className="btn-ghost" style={{ padding: '6px 10px' }}>Fechar</button>
@@ -423,7 +421,7 @@ export function PlanejamentoTratamento({
               }}
             />
           </div>
-        </div>
+        </JanelaModal>
       )}
 
     </div>

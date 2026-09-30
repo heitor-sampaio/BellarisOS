@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { Plus, X } from 'lucide-react'
 import { createTeamMember } from '@/actions/team'
 import { SegSelect } from '@/components/shared/seg-select'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 interface Branch { id: string; name: string }
 interface Role   { id: string; label: string }
@@ -36,12 +37,8 @@ export function AdminTeamForm({ branches, roles, isNetworkAdmin }: AdminTeamForm
       </button>
 
       {open && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 100,
-          background: 'rgba(34,22,25,0.25)', backdropFilter: 'blur(2px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-        }}>
-          <div className="card" style={{ width: '100%', maxWidth: 460, position: 'relative' }}>
+        <JanelaModal onFechar={() => setOpen(false)} rotulo="Novo membro da equipe" largura={460} fechaNoFundo={false}>
+          <div style={{ padding: 'var(--card-pad)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <div>
                 <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)', color: 'var(--text)' }}>
@@ -151,7 +148,7 @@ export function AdminTeamForm({ branches, roles, isNetworkAdmin }: AdminTeamForm
               </div>
             </form>
           </div>
-        </div>
+        </JanelaModal>
       )}
     </>
   )

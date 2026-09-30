@@ -6,6 +6,7 @@ import { creditosParaAgendar } from '@/actions/creditos'
 import { formatBRL } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { X, Calendar, Search, UserPlus, Loader2 } from 'lucide-react'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 interface Client      { id: string; name: string; phone: string }
 interface Procedure   { id: string; name: string; category: string; duration_min: number; price: string | number }
@@ -190,12 +191,8 @@ export function AppointmentModal({
   }, [agora])
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 200,
-      background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(4px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="card" style={{ width: '100%', maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
+    <JanelaModal onFechar={onClose} rotulo="Novo agendamento" largura={520}>
+      <div style={{ padding: 'var(--card-pad)' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -444,6 +441,6 @@ export function AppointmentModal({
           </div>
         </form>
       </div>
-    </div>
+    </JanelaModal>
   )
 }

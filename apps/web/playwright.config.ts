@@ -7,7 +7,11 @@ import dotenv from 'dotenv'
 // autenticar a suíte. Nada de credencial no repositório.
 dotenv.config({ path: path.resolve(__dirname, '.env.local') })
 
-export const ARQUIVO_DE_SESSAO = path.resolve(__dirname, 'e2e/.auth/admin.json')
+// Um arquivo por metade da suíte (`E2E_GRUPO`): as duas rodam juntas no CI, e
+// cada global-setup grava a sua sessão — no mesmo arquivo, uma leria o JSON
+// pela metade enquanto a outra escrevia.
+export const ARQUIVO_DE_SESSAO = path.resolve(__dirname,
+  `e2e/.auth/admin${process.env.E2E_GRUPO ? `-${process.env.E2E_GRUPO}` : ''}.json`)
 
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
 

@@ -43,7 +43,9 @@ export default defineConfig({
     command: `node scripts/servir-build.mjs ${PORTA}`,
     cwd: __dirname,
     url: process.env.E2E_BASE_URL,
-    reuseExistingServer: !process.env.CI,
+    // No CI as duas metades rodam juntas contra UM servidor, que o workflow
+    // sobe antes (`E2E_SERVIDOR_PRONTO`); cada uma subir o seu disputaria a porta.
+    reuseExistingServer: !process.env.CI || process.env.E2E_SERVIDOR_PRONTO === '1',
     timeout: 120_000,
   },
 })

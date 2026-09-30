@@ -7,6 +7,7 @@ import {
   type TemplateDaConversa, type Message,
 } from '@/actions/inbox'
 import { interpolar } from '@/lib/templates/core'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 /**
  * Escolher e disparar um template numa conversa.
@@ -65,19 +66,8 @@ export function InboxTemplatePicker({
   const faltando = sel?.variaveis.filter(v => !valores[v]?.trim()) ?? []
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 60,
-        background: 'rgba(17,17,17,.35)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        className="card"
-        style={{ width: 520, maxWidth: '100%', maxHeight: '86vh', padding: 0, display: 'flex', flexDirection: 'column' }}
-      >
+    <JanelaModal onFechar={onClose} rotulo="Enviar template" largura={520}>
+      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 48px)' }}>
         <div style={{
           padding: '14px 18px', borderBottom: '1px solid var(--hairline)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -217,6 +207,6 @@ export function InboxTemplatePicker({
           </div>
         )}
       </div>
-    </div>
+    </JanelaModal>
   )
 }

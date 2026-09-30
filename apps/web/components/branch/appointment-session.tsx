@@ -38,6 +38,7 @@ import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resg
 import { formatarPontos } from '@/lib/fidelidade/formato'
 import { CampoDoDesconto, contaDoDesconto, descontoDoEstado, estadoDoDesconto } from '@/components/shared/campo-do-desconto'
 import type { TreatmentProcedure, TreatmentPackage, ExistingPlan, TreatmentPlanEditorRef } from '@/components/branch/treatment-plan-editor'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 // -- Types ----------------------------------------------------------------------
 
@@ -199,9 +200,8 @@ function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; 
   const [state, action, pending] = useActionState(cancelAppointmentSession, null)
   if (state !== null && !state?.error && !pending) { onClose(); router.refresh(); return null }
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="card" style={{ width: '100%', maxWidth: 460, padding: 0, overflow: 'hidden', boxShadow: 'var(--shadow-overlay)' }}>
+    <JanelaModal onFechar={onClose} rotulo="Cancelar atendimento" largura={460} travado={pending}>
+      <div>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <AlertTriangle size={16} style={{ color: 'var(--warning)' }} />
           <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Cancelar atendimento</h2>
@@ -224,7 +224,7 @@ function CancelModal({ appointmentId, slug, onClose }: { appointmentId: string; 
           </div>
         </form>
       </div>
-    </div>
+    </JanelaModal>
   )
 }
 
@@ -243,9 +243,8 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
   if (state !== null && !state?.error && !pending && avisos.length === 0) { onClose(); router.refresh(); return null }
   if (avisos.length > 0 && !pending) {
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <div className="card" role="alertdialog" aria-labelledby="titulo-falta-insumo"
-          style={{ width: '100%', maxWidth: 500, display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-overlay)' }}>
+      <JanelaModal onFechar={() => { onClose(); router.refresh() }} rotulo="Atendimento concluído — faltou insumo" papel="alertdialog" largura={500} fechaNoFundo={false}>
+        <div style={{ padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <AlertTriangle size={16} style={{ color: 'var(--warning)' }} />
             <h2 id="titulo-falta-insumo" style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
@@ -264,13 +263,12 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
             <button type="button" className="btn-primary" onClick={() => { onClose(); router.refresh() }}>Entendi</button>
           </div>
         </div>
-      </div>
+      </JanelaModal>
     )
   }
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="card" style={{ width: '100%', maxWidth: 500, padding: 0, overflow: 'hidden', boxShadow: 'var(--shadow-overlay)' }}>
+    <JanelaModal onFechar={onClose} rotulo="Finalizar atendimento" largura={500} travado={pending}>
+      <div>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <CheckCircle2 size={16} style={{ color: 'var(--success)' }} />
           <div style={{ flex: 1 }}>
@@ -305,7 +303,7 @@ function FinishModal({ appointmentId, slug, initialNotes, initialIntercurrences,
           </div>
         </form>
       </div>
-    </div>
+    </JanelaModal>
   )
 }
 
@@ -348,9 +346,8 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
   const totalZero = resgate.restante === 0 && !resgate.motivo
   if (state !== null && !state?.error && !pending) { onClose(); router.refresh(); return null }
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="card" style={{ width: '100%', maxWidth: 440, padding: 0, overflow: 'hidden', boxShadow: 'var(--shadow-overlay)' }}>
+    <JanelaModal onFechar={onClose} rotulo="Confirmar pagamento" largura={440} travado={pending}>
+      <div>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
           <CheckCircle2 size={16} style={{ color: 'var(--brand)' }} />
           <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Confirmar pagamento</h2>
@@ -448,7 +445,7 @@ function PaymentModal({ appointmentId, slug, price, pagamentoCombinado, onClose 
           </div>
         </form>
       </div>
-    </div>
+    </JanelaModal>
   )
 }
 
@@ -529,9 +526,8 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
       </div>
 
       {aberto && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-          onClick={e => { if (e.target === e.currentTarget) setAberto(false) }}>
-          <div className="card" style={{ width: '100%', maxWidth: 460, padding: 0, overflow: 'hidden', boxShadow: 'var(--shadow-overlay)' }}>
+        <JanelaModal onFechar={() => setAberto(false)} rotulo="Receber o plano de tratamento" largura={460}>
+          <div>
             <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <CreditCard size={16} style={{ color: 'var(--brand)' }} />
               <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', flex: 1 }}>Receber o plano de tratamento</h2>
@@ -599,7 +595,7 @@ function PlanoEmAbertoBanner({ plano, appointmentId, slug, podeReceber }: {
               </div>
             </div>
           </div>
-        </div>
+        </JanelaModal>
       )}
     </>
   )
@@ -1207,15 +1203,8 @@ export function AppointmentSession({
           O plano é do CLIENTE, não deste atendimento: aqui ele só é aberto —
           e o atendimento fica registrado como a origem de um plano novo. */}
       {planejamentoAberto && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', zIndex: 100,
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-            padding: '24px 16px', overflowY: 'auto',
-          }}
-          onClick={() => setPlanejamentoAberto(false)}
-        >
-          <div className="card" style={{ width: 760, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
+        <JanelaModal onFechar={() => setPlanejamentoAberto(false)} rotulo="Planejamento de tratamento" largura={760}>
+          <div style={{ padding: '22px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div>
                 <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -1238,21 +1227,14 @@ export function AppointmentSession({
               podeReceber={podeReceber}
             />
           </div>
-        </div>
+        </JanelaModal>
       )}
 
       {/* Checkout sobre a tela do atendimento: o mesmo wizard da página, sem
           tirar quem atende de perto do cliente. */}
       {checkoutPlan && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', zIndex: 100,
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-            padding: '24px 16px', overflowY: 'auto',
-          }}
-          onClick={() => setCheckoutPlan(null)}
-        >
-          <div className="card" style={{ width: 700, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
+        <JanelaModal onFechar={() => setCheckoutPlan(null)} rotulo="Checkout" largura={700} fechaNoFundo={false}>
+          <div style={{ padding: '22px 24px' }}>
             <div className="esconde-impressao" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div>
                 <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -1271,7 +1253,7 @@ export function AppointmentSession({
               onDone={() => { setCheckoutPlan(null); router.refresh() }}
             />
           </div>
-        </div>
+        </JanelaModal>
       )}
 
       {showCancel  && <CancelModal appointmentId={appointment.id} slug={slug} onClose={() => setShowCancel(false)} />}

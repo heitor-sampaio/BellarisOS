@@ -17,9 +17,12 @@
  * agenda, o mesmo cadastro) se atropelariam. Migrar um compartilhado para rede
  * própria e trazê-lo para cá é o jeito de a suíte ficar mais curta.
  *
- * Os dois grupos rodam em SEQUÊNCIA, nunca ao mesmo tempo: a varredura de
- * sobras (global-setup) apaga tudo que tem [e2e], e a de um grupo apagaria os
- * dados do outro no meio do teste.
+ * No CI os dois grupos rodam JUNTOS (desde 2026-09-30): a varredura de sobras
+ * (global-setup) só leva o [e2e] com mais de uma hora, então a de um grupo não
+ * apaga os dados do outro no meio do teste. Um isolado continua não podendo
+ * depender de a rede real estar quieta, nem de nenhum cron passar — o
+ * compartilhado ao lado chama `/api/cron/*`, e o cron de produção também
+ * roda neste banco (DEVLOG, "O cron de produção e o banco do E2E").
  */
 export const ISOLADOS = [
   'abrangencia-unidade.spec.ts',

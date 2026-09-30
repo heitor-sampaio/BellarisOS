@@ -6,6 +6,7 @@ import { X, CheckCircle2, Clock, AlertCircle, Ban, Play, CalendarClock } from 'l
 import Link from 'next/link'
 import { updateAppointmentStatus, rescheduleAppointment } from '@/actions/appointments'
 import { rotaAtendimento } from '@/lib/rotas'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 interface AppointmentEvent {
   id:               string
@@ -101,11 +102,8 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
   const isActive  = ['SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'].includes(appointment.status)
 
   return (
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div className="card" style={{ width: '100%', maxWidth: 440 }}>
+    <JanelaModal onFechar={onClose} rotulo="Agendamento" largura={440}>
+      <div style={{ padding: 'var(--card-pad)' }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <span className={STATUS_CHIP[appointment.status] ?? 'chip chip-muted'}>
@@ -245,6 +243,6 @@ export function AppointmentSheet({ appointment, slug, userRole, escopoProprio, o
           </p>
         )}
       </div>
-    </div>
+    </JanelaModal>
   )
 }

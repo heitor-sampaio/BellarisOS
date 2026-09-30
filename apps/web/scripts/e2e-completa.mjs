@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /**
  * A suíte completa em duas metades (`e2e/grupos.ts`): os ISOLADOS em paralelo e
- * depois os COMPARTILHADOS, um por vez. Em sequência, nunca juntas — a
- * varredura de sobras de uma apagaria os dados da outra. As duas rodam sempre
+ * depois os COMPARTILHADOS, um por vez. Aqui, em sequência: juntas elas
+ * poderiam rodar (a varredura só leva sobra de mais de uma hora, e é assim no
+ * CI), mas quatro navegadores e o servidor ao mesmo tempo pesam demais para a
+ * máquina de desenvolvimento. As duas rodam sempre
  * (a segunda não depende da primeira passar), e o código de saída é de falha
  * se qualquer uma falhar. Espera o build já feito (`next build`).
  *

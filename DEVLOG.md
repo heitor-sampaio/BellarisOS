@@ -1258,6 +1258,35 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — Dívidas técnicas do dia
+
+- **Modais.** Os 27 modais feitos de `div` fixo com `z-index` (pagamento e
+  finalização do atendimento, cancelamento, recebimento do plano, agendamento
+  do inbox, respostas rápidas, template, equipe, unidade, ficha e sessões do
+  tratamento, checkout, planejamento, construtor de ficha, notificações…)
+  passaram para `<JanelaModal>` (`components/shared/janela-modal.tsx`), o
+  `<dialog>` nativo: acima da topbar, cabe na tela, corpo rolando, folha de
+  baixo no celular, Esc fecha. O checkout e os formulários longos não fecham
+  com clique no fundo; os que gravam ficam `travado` enquanto gravam. Os 7
+  `position: fixed; inset: 0` que sobraram são o fundo invisível de menus.
+  A impressão do termo de dentro do checkout solta a altura da janela.
+- **Ficha do cliente**: o "x/y parcelas" (de `installments`) virou "Vence
+  dd/mm" do próprio lançamento. `installments` só leitura (a política antiga
+  citava uma coluna que não existe) — migration `20260930000024`.
+- **Cron**: `scripts/cron.mjs` repete (15 s, 30 s) quando a chamada não chegou
+  ao app — rede, 502/503/504, 404 "Application not found" da borda. Tempo
+  esgotado não repete.
+- **O cron de produção e o banco do E2E.** Investigado job a job: todos passam
+  pelo `[e2e]`, mas as filas reivindicam a linha e os testes conferem o
+  estado final. A única janela real era o `lgpd-exports`, que pegava pedido
+  recém-criado — disputando com o `after()` da própria solicitação e com o
+  pedido que o `lgpd-exportacao` deixa aberto entre dois testes. Agora ele só
+  recolhe o que está parado há 15 min (o teste do cron cria o pedido "velho").
+- **E2E**: a varredura de sobras só leva `[e2e]` com mais de uma hora; as duas
+  metades rodam JUNTAS no CI, contra um servidor só, cada uma com o seu
+  arquivo de sessão. De brinde, uma rodada local durante o CI não derruba mais
+  o CI.
+
 ### 2026-09-30 — Cada parcela é um lançamento no financeiro
 
 O Heitor notou que um pagamento parcelado aparecia no dia da venda com o valor
@@ -4792,26 +4821,19 @@ verdade. O que vale:
   em 2026-09-30** (421/421, depois de comissões, pacotes, pré-pago, desconto,
   crédito na agenda e parcelas).
 
-- **Modais "caixa fixa com z-index"** (2026-09-30): o cadastro de cliente do
-  inbox ficava embaixo da topbar e saía da tela; virou `<dialog>` nativo.
-  Há ainda ~28 ocorrências de `position: 'fixed', inset: 0, zIndex` em 21
-  componentes — parte é só o fundo que fecha um popover (certo), parte é
-  modal (pagamento da recepção, agendamento do inbox, sessões do pacote,
-  formulários de equipe e unidade…) com o mesmo risco. Falta a triagem.
-- **A ficha do cliente lê `installments`** para o "x/y parcelas" dos
-  lançamentos de atendimento — e desde 2026-09-30 cada parcela é um
-  lançamento (`parcela_*`). Trocar a leitura; `installments` é histórico (a
-  política de RLS dela cita `financial_transaction_id`, coluna que não existe).
+- ~~Modais "caixa fixa com z-index"~~ **resolvido em 2026-09-30**: os 27
+  viraram `<JanelaModal>` (ver a linha do tempo).
+- ~~A ficha do cliente lê `installments`~~ **resolvido**: lê o vencimento do
+  lançamento; a política de `installments` virou só leitura.
 - **E2E**: 76 specs ainda rodam um por vez (usam a rede real, a sessão
   padrão ou cron). Cada um migrado para rede própria vai para o paralelo
-  (`e2e/grupos.ts`). E a varredura de sobras apaga TODO [e2e]: se passasse a
-  apagar só o antigo, as duas metades poderiam rodar juntas (~14 → ~10 min).
-- **O cron de produção roda contra o mesmo banco do E2E.** Não verificado se
-  ele processa dado [e2e] no meio de um teste (a falha intermitente do
-  `automacoes-cron-concorrente` era defeito real, já corrigido).
-- **Cron do Railway sem nova tentativa**: um 404 de borda (2026-09-30,
-  madrugada) derrubou uma passagem do Automations Cron; `scripts/cron.mjs`
-  não tenta de novo. Oferecido, não feito.
+  (`e2e/grupos.ts`) — trabalho aos poucos, spec a spec. ~~A varredura apaga
+  todo [e2e]~~ **resolvido**: só o de mais de uma hora, e as duas metades
+  rodam juntas no CI.
+- ~~O cron de produção roda contra o mesmo banco do E2E~~ **investigado**: ver
+  a linha do tempo. Seguro pelas reivindicações; a janela que havia (LGPD)
+  foi fechada.
+- ~~Cron do Railway sem nova tentativa~~ **resolvido**: repete erro de borda.
 
 - **Contato separado da conversa — o que sobrou** (a ordem combinada terminou
   em 2026-09-26):

@@ -45,6 +45,11 @@ export async function GET(req: NextRequest) {
     .select('id, include_medical, medical_status')
     .eq('status', 'pending')
     .eq('type', 'export')
+    // Só o que ficou PARADO: o pedido recém-feito (ou recém-liberado) é do
+    // after() da própria solicitação. Pegá-lo aqui disputava com ele — e com o
+    // E2E, que roda no mesmo banco e deixa um pedido em aberto de propósito
+    // entre dois testes.
+    .lt('updated_at', staleBefore)
     .order('requested_at', { ascending: true })
     .limit(BATCH)
 

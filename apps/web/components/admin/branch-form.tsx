@@ -4,6 +4,7 @@ import { useActionState, useState } from 'react'
 import { Plus, X, Loader2 } from 'lucide-react'
 import { createBranch } from '@/actions/branches'
 import { fetchCep } from '@/lib/cep'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 const ESTADOS = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA',
@@ -77,13 +78,8 @@ export function BranchForm() {
       </button>
 
       {open && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 100,
-          background: 'rgba(34,22,25,0.25)', backdropFilter: 'blur(2px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 24, overflowY: 'auto',
-        }}>
-          <div className="card" style={{ width: '100%', maxWidth: 520, position: 'relative', margin: 'auto' }}>
+        <JanelaModal onFechar={() => setOpen(false)} rotulo="Nova unidade" largura={520} fechaNoFundo={false}>
+          <div style={{ padding: 'var(--card-pad)' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
               <div>
@@ -250,7 +246,7 @@ export function BranchForm() {
               </div>
             </form>
           </div>
-        </div>
+        </JanelaModal>
       )}
     </>
   )

@@ -8,6 +8,7 @@ import {
   type UserNotification,
 } from '@/actions/user-notifications'
 import { NOTIFICATION_TYPE_CFG, notificationRelativeTime } from '@/components/shared/notification-types'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 interface Props {
   internalUserId: string
@@ -224,12 +225,8 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
 
       {selected && (
         <>
-          <div onClick={() => setSelected(null)} style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)' }} />
-          <div role="dialog" aria-modal="true" style={{
-            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            width: 'min(400px, calc(100vw - 32px))', zIndex: 401, background: 'var(--surface)',
-            borderRadius: 'var(--radius-card-token)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-overlay)', overflow: 'hidden',
-          }}>
+          <JanelaModal onFechar={() => setSelected(null)} rotulo="Notificação" largura={400}>
+          <div>
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '18px 18px 14px', borderBottom: '1px solid var(--hairline)',
@@ -251,6 +248,7 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
               <button type="button" onClick={() => setSelected(null)} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>Fechar</button>
             </div>
           </div>
+          </JanelaModal>
         </>
       )}
 

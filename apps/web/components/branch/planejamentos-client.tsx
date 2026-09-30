@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Search, Plus, ClipboardList, Loader2, User } from 'lucide-react'
 import { listarPlanejamentos, criarPlanoDoCliente } from '@/actions/treatment-plans'
 import { SegSelect } from '@/components/shared/seg-select'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 /**
  * Tela de planejamentos: lista, busca e criação.
@@ -202,9 +203,8 @@ export function PlanejamentosClient({
 
       {/* Novo plano: só o nome. O cliente entra agora ou depois. */}
       {novoAberto && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
-          onClick={() => setNovoAberto(false)}>
-          <div className="card" style={{ width: 460, maxWidth: '100%', padding: '22px 24px' }} onClick={e => e.stopPropagation()}>
+        <JanelaModal onFechar={() => setNovoAberto(false)} rotulo="Novo plano" largura={460}>
+          <div style={{ padding: '22px 24px' }}>
             <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>Novo plano</h3>
             <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginBottom: 16 }}>
               Dê um nome para reencontrar o plano depois. O cliente pode ser ligado agora ou quando houver cadastro.
@@ -239,7 +239,7 @@ export function PlanejamentosClient({
               </button>
             </div>
           </div>
-        </div>
+        </JanelaModal>
       )}
     </div>
   )

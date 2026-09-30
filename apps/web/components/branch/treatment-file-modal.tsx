@@ -11,6 +11,7 @@ import { TreatmentSessionsModal } from './treatment-sessions-modal'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
 import type { TreatmentFileDetails } from '@/actions/treatment-plans'
 import type { ProfileClient, ProfilePackage } from './client-profile'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -343,23 +344,8 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '20px',
-      }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div style={{
-        background: 'var(--surface)', borderRadius: 'var(--radius-card)',
-        width: '100%', maxWidth: 720, maxHeight: '92vh',
-        display: 'flex', flexDirection: 'column',
-        border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-overlay)',
-        overflow: 'hidden',
-      }}>
+    <JanelaModal onFechar={onClose} rotulo="Ficha de tratamento" largura={720}>
+      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 48px)' }}>
 
         {/* -- Header --------------------------------------------------- */}
         <div style={{
@@ -628,6 +614,6 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
           )}
         </div>
       </div>
-    </div>
+    </JanelaModal>
   )
 }

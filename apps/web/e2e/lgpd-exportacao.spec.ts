@@ -162,8 +162,12 @@ test.describe.serial('LGPD: exportação de dados', () => {
     expect(errado.status()).toBe(401)
 
     // Um pedido que o after() não chegou a processar (processo reiniciado, p.ex.).
+    // Parado há 20 min: o cron só recolhe o que passou de 15 — o recém-feito é
+    // do after().
+    const vinteMinAtras = new Date(Date.now() - 20 * 60_000).toISOString()
     const { data: parado } = await db.from('lgpd_requests')
-      .insert({ client_id: intruso!.clientId, type: 'export', status: 'pending' }).select('id').single()
+      .insert({ client_id: intruso!.clientId, type: 'export', status: 'pending', requested_at: vinteMinAtras, updated_at: vinteMinAtras })
+      .select('id').single()
     const r = await request.get('/api/cron/lgpd-exports', { headers: { authorization: `Bearer ${segredo}` } })
     expect(r.ok(), await r.text()).toBe(true)
     const { data } = await db.from('lgpd_requests').select('status, export_pdf_path').eq('id', parado!.id).single()

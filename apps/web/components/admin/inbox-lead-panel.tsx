@@ -37,6 +37,7 @@ import { Vender } from '@/components/shared/vender'
 import { creditosParaAgendar } from '@/actions/creditos'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
 import { formatBRL } from '@estetica-os/utils'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 export interface PanelBranch { id: string; name: string; slug: string }
 
@@ -1096,16 +1097,8 @@ function ScheduleModal({
   const selectStyle: React.CSSProperties = { fontSize: 'var(--text-base-sz)', width: '100%' }
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 200,
-        background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-      }}
-      onClick={onClose}
-    >
-      <div className="card" style={{ width: 400, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 0 }}
-        onClick={e => e.stopPropagation()}>
+    <JanelaModal onFechar={onClose} rotulo="Novo agendamento" largura={400}>
+      <div>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>Novo agendamento</h3>
           <button type="button" onClick={onClose} style={{
@@ -1244,6 +1237,6 @@ function ScheduleModal({
           </div>
         </div>
       </div>
-    </div>
+    </JanelaModal>
   )
 }

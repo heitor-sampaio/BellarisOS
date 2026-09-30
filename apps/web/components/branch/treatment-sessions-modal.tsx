@@ -16,6 +16,7 @@ import {
 } from '@/actions/appointments'
 import { cancelTreatmentPlan } from '@/actions/treatment-plans'
 import { createClient as createSupabaseClient } from '@/lib/supabase/client'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -359,20 +360,9 @@ export function TreatmentSessionsModal({
   const pct = totalSessions > 0 ? Math.round((completedCount / totalSessions) * 100) : 0
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '20px',
-    }} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
+    <JanelaModal onFechar={onClose} rotulo={packageName} largura={560}>
 
-      <div style={{
-        background: 'var(--surface)', borderRadius: 'var(--radius-card)',
-        width: '100%', maxWidth: 560, maxHeight: '90vh',
-        display: 'flex', flexDirection: 'column',
-        border: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-overlay)',
-      }}>
+      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 48px)' }}>
         {/* Header */}
         <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -562,6 +552,6 @@ export function TreatmentSessionsModal({
           </div>
         )}
       </div>
-    </div>
+    </JanelaModal>
   )
 }

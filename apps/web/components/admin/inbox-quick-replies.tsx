@@ -6,6 +6,7 @@ import {
   listQuickReplies, saveQuickReply, deleteQuickReply, type QuickReply,
 } from '@/actions/quick-replies'
 import { erroParaTela } from '@/lib/erro-na-tela'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 /**
  * Respostas rápidas na conversa.
@@ -74,19 +75,8 @@ export function InboxQuickReplies({
   }
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 60,
-        background: 'rgba(17,17,17,.35)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        className="card"
-        style={{ width: 520, maxWidth: '100%', maxHeight: '80vh', padding: 0, display: 'flex', flexDirection: 'column' }}
-      >
+    <JanelaModal onFechar={onClose} rotulo="Respostas rápidas" largura={520}>
+      <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100dvh - 48px)' }}>
         <div style={{
           padding: '13px 18px', borderBottom: '1px solid var(--hairline)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
@@ -222,7 +212,7 @@ export function InboxQuickReplies({
           </>
         )}
       </div>
-    </div>
+    </JanelaModal>
   )
 }
 

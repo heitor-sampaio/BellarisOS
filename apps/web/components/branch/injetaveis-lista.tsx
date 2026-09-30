@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Search, Syringe, Plus, X, Loader2, UserPlus } from 'lucide-react'
 import { criarPlanejamentoInjetavel, type MapaNaLista } from '@/actions/injectable-map'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 /**
  * A coluna da esquerda de Injetáveis: busca, "novo" e a lista de planejamentos.
@@ -183,15 +184,8 @@ function NovoPlanejamento({
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 50,
-        background: 'rgba(0,0,0,0.35)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-      }}
-      onClick={e => { if (e.target === e.currentTarget) onFechar() }}
-    >
-      <div className="card" style={{ width: '100%', maxWidth: 440, padding: 0, overflow: 'hidden' }}>
+    <JanelaModal onFechar={onFechar} rotulo="Novo planejamento" largura={440}>
+      <div>
         <div style={{
           padding: '16px 20px', borderBottom: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', gap: 10,
@@ -238,6 +232,6 @@ function NovoPlanejamento({
           </div>
         </div>
       </div>
-    </div>
+    </JanelaModal>
   )
 }

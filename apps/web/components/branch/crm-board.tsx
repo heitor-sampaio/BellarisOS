@@ -20,6 +20,7 @@ import {
 import { TagBadge } from '@/components/shared/tag-badge'
 import { FunnelSelect } from '@/components/shared/funnel-select'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 // --- Filtros e ordenação -----------------------------------------
 const SEM_DONO = '__sem_dono__'
@@ -783,16 +784,8 @@ function LeadCard({
       </div>
 
       {convertOpen && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, zIndex: 200,
-            background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-          }}
-          onClick={() => setConvertOpen(false)}
-        >
-          <div className="card" style={{ width: 480, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto' }}
-            onClick={e => e.stopPropagation()}>
+        <JanelaModal onFechar={() => setConvertOpen(false)} rotulo="Converter em cliente" largura={480}>
+          <div style={{ padding: 'var(--card-pad)' }}>
             <h3 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)', marginBottom: 14 }}>Converter em cliente</h3>
             <ClientForm
               branchId={branchId}
@@ -808,7 +801,7 @@ function LeadCard({
               onCancel={() => setConvertOpen(false)}
             />
           </div>
-        </div>
+        </JanelaModal>
       )}
     </>
   )

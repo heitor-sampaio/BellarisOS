@@ -13,6 +13,7 @@ import {
   type AnamnesisField, type AnamnesisFieldType, type AnamnesisRow, type InjectableMapValue,
 } from '@/lib/anamnesis'
 import { criarFicha, atualizarFicha } from '@/actions/fichas'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 export interface ExistingForm {
   id:   string
@@ -476,10 +477,8 @@ function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAd
   const isSection = f.type === 'section'
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(2px)', zIndex: 500 }} />
-      <div role="dialog" aria-modal="true"
-        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'min(440px, calc(100vw - 24px))', maxHeight: '88dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-token)', boxShadow: 'var(--shadow-overlay)' }}
-      >
+      <JanelaModal onFechar={onClose} rotulo="Configurar campo" largura={440}>
+      <div>
         <div style={{ position: 'sticky', top: 0, background: 'var(--surface)', borderBottom: '1px solid var(--hairline)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Configurar campo</span>
           <button type="button" onClick={onClose} title="Fechar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
@@ -534,6 +533,7 @@ function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAd
           <button type="button" onClick={onClose} className="btn-primary">Concluir</button>
         </div>
       </div>
+      </JanelaModal>
     </>
   )
 }
@@ -557,10 +557,8 @@ function FormPreviewModal({ name, rows, onClose }: { name: string; rows: Anamnes
   const wide = rows.some(r => r.fields.some(f => f.type === 'injectable_map'))
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(34,22,25,0.45)', backdropFilter: 'blur(2px)', zIndex: 500 }} />
-      <div role="dialog" aria-modal="true"
-        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: `min(${wide ? 940 : 560}px, calc(100vw - 24px))`, maxHeight: '90dvh', overflowY: 'auto', zIndex: 501, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card-token)', boxShadow: 'var(--shadow-overlay)' }}
-      >
+      <JanelaModal onFechar={onClose} rotulo="Pré-visualização" largura={wide ? 940 : 560}>
+      <div>
         <div style={{ position: 'sticky', top: 0, background: 'var(--surface)', borderBottom: '1px solid var(--hairline)', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 1 }}>
           <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Pré-visualização</span>
           <button type="button" onClick={onClose} title="Fechar" style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
@@ -582,6 +580,7 @@ function FormPreviewModal({ name, rows, onClose }: { name: string; rows: Anamnes
           )}
         </div>
       </div>
+      </JanelaModal>
     </>
   )
 }

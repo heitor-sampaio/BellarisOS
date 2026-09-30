@@ -1418,6 +1418,26 @@ html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
     break-after: auto;
     page-break-after: auto;
   }
+
+  /* O checkout abre numa janela (<dialog>), que na tela tem altura presa e
+     corpo rolando: impressa assim, sairia só o pedaço visível. Na folha ela
+     se solta da altura e começa no topo. A página atrás dela é recolhida com
+     altura zero, não com display: none — que esconderia também o dialog, que
+     mora dentro dela no DOM (a camada de cima não herda o recorte). */
+  body:has(dialog.modal[open] .area-impressao) main {
+    height: 0 !important; overflow: hidden !important;
+  }
+  dialog.modal[open]:has(.area-impressao) {
+    position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important;
+    transform: none !important;
+    width: auto !important; max-width: none !important; max-height: none !important;
+    overflow: visible !important;
+  }
+  dialog.modal[open]:has(.area-impressao) .modal-container,
+  dialog.modal[open]:has(.area-impressao) .modal-body {
+    max-height: none !important; overflow: visible !important; box-shadow: none !important;
+  }
+  dialog.modal[open]:has(.area-impressao)::backdrop { display: none; }
 }
 
 /* ============================================================

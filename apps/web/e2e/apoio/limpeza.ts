@@ -187,6 +187,15 @@ export async function apagarClientes(clientes: string[], falhas: Falha[] = []): 
 }
 
 /**
+ * Idade mínima de uma sobra. A varredura só leva o `[e2e]` criado há mais que
+ * isto: o mais novo pode ser de uma rodada ainda em curso — a outra metade da
+ * suíte no CI, ou uma rodada local ao mesmo tempo —, e apagá-lo no meio
+ * derrubava o teste dela. Uma hora passa folgado da suíte inteira (~15 min).
+ * `E2E_IDADE_DA_SOBRA_MIN` troca, para quem precisar.
+ */
+const IDADE_DA_SOBRA_MIN = Number(process.env.E2E_IDADE_DA_SOBRA_MIN ?? 60)
+
+/**
  * Apaga as sobras `[e2e]` de rodadas anteriores. Roda no `global-setup`.
  *
  * Devolve o que apagou e o que NÃO conseguiu — quem chama imprime. Não lança:
@@ -198,33 +207,34 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
   const falhas: Falha[] = []
   const apagou: Record<string, number> = {}
   const like = `${PREFIXO}%`
+  const antes = new Date(Date.now() - IDADE_DA_SOBRA_MIN * 60_000).toISOString()
 
   // 1. Notificações da equipe que falam de dado de teste: aparecem no sino de
   //    gente de verdade.
   const notifs = await ids(db.from('user_notifications').select('id')
-    .or(`title.like.*${PREFIXO}*,body.like.*${PREFIXO}*`))
+    .or(`title.like.*${PREFIXO}*,body.like.*${PREFIXO}*`).lt('created_at', antes))
   if (notifs.length) {
     await passo(falhas, 'notificações da equipe', db.from('user_notifications').delete().in('id', notifs))
     apagou.notificacoes = notifs.length
   }
 
   // 2. Oportunidades (antes das conversas: a pessoa com card não se apaga).
-  const leads = await ids(db.from('leads').select('id').like('name', like))
+  const leads = await ids(db.from('leads').select('id').like('name', like).lt('created_at', antes))
   if (leads.length) {
     await passo(falhas, 'oportunidades', db.from('leads').delete().in('id', leads))
     apagou.oportunidades = leads.length
   }
 
   // 3. Conversas, com mensagens, eventos e a pessoa que o gatilho criou.
-  const convs = await ids(db.from('conversations').select('id').like('contact_name', like))
+  const convs = await ids(db.from('conversations').select('id').like('contact_name', like).lt('created_at', antes))
   if (convs.length) { await apagarConversas(convs); apagou.conversas = convs.length }
 
   // 4. Clientes.
-  const clientes = await ids(db.from('clients').select('id').like('name', like))
+  const clientes = await ids(db.from('clients').select('id').like('name', like).lt('created_at', antes))
   if (clientes.length) { await apagarClientes(clientes, falhas); apagou.clientes = clientes.length }
 
   // 5. Caixas de WhatsApp de teste (os vínculos saem em cascata).
-  const caixas = await ids(db.from('whatsapp_numbers').select('id').like('label', like))
+  const caixas = await ids(db.from('whatsapp_numbers').select('id').like('label', like).lt('created_at', antes))
   if (caixas.length) {
     await passo(falhas, 'caixas de WhatsApp', db.from('whatsapp_numbers').delete().in('id', caixas))
     apagou.caixas = caixas.length
@@ -234,7 +244,7 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
   //     rede real; um teste que estoura o tempo não chega ao afterAll — foram
   //     33 acumulados até 2026-09-28). Só os sem agendamento: com agendamento,
   //     quem limpa é a varredura dos agendamentos, na próxima rodada.
-  const procs = await ids(db.from('procedures').select('id').like('name', like))
+  const procs = await ids(db.from('procedures').select('id').like('name', like).lt('created_at', antes))
   if (procs.length) {
     const { data: usados } = await db.from('appointments').select('procedure_id').in('procedure_id', procs)
     const presos = new Set(((usados ?? []) as { procedure_id: string }[]).map(u => u.procedure_id))
@@ -251,7 +261,7 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
   }
 
   // 6. Membros e cargos de teste, e os logins deles.
-  const { data: membros } = await db.from('users').select('id, auth_id').like('name', like)
+  const { data: membros } = await db.from('users').select('id, auth_id').like('name', like).lt('created_at', antes)
   for (const m of (membros ?? []) as { id: string; auth_id: string | null }[]) {
     await passo(falhas, 'membro', db.from('users').delete().eq('id', m.id))
     if (m.auth_id) {
@@ -260,14 +270,14 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     }
   }
   if (membros?.length) apagou.membros = membros.length
-  const cargos = await ids(db.from('tenant_roles').select('id').like('label', like))
+  const cargos = await ids(db.from('tenant_roles').select('id').like('label', like).lt('created_at', antes))
   if (cargos.length) {
     await passo(falhas, 'cargos', db.from('tenant_roles').delete().in('id', cargos))
     apagou.cargos = cargos.length
   }
 
   // 7. Redes inteiras de teste (a "outra rede" do teste de RLS).
-  const redes = await ids(db.from('tenants').select('id').like('name', like))
+  const redes = await ids(db.from('tenants').select('id').like('name', like).lt('created_at', antes))
   for (const rede of redes) {
     // O que prende a unidade e não sai com os clientes: mapas de injetáveis e
     // lançamentos sem cliente (a contra-transação do estorno nasce sem ele).
@@ -318,7 +328,7 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
   for (let pagina = 1; pagina < 50; pagina++) {
     const { data, error } = await db.auth.admin.listUsers({ page: pagina, perPage: 200 })
     if (error) { falhas.push({ o_que: 'listar logins', erro: error.message }); break }
-    const deTeste = data.users.filter(u => /^e2e-.*@bellaris\.invalid$/.test(u.email ?? ''))
+    const deTeste = data.users.filter(u => /^e2e-.*@bellaris\.invalid$/.test(u.email ?? '') && u.created_at < antes)
     for (const u of deTeste) {
       const { error: e } = await db.auth.admin.deleteUser(u.id)
       if (e) falhas.push({ o_que: `login ${u.email}`, erro: e.message })

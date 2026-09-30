@@ -80,21 +80,43 @@ jobs:
       - name: Build
         run: pnpm exec next build
 
-      # Duas metades (apps/web/e2e/grupos.ts), em SEQUÊNCIA: a varredura de
-      # sobras de uma apagaria os dados da outra se rodassem juntas. Os isolados
-      # (rede [e2e] própria, sem a rede real nem cron) vão em paralelo.
-      - name: Suíte — isolados (em paralelo)
-        env:
-          E2E_GRUPO: isolados
-          E2E_WORKERS: '3'
-        run: pnpm exec playwright test -c playwright.build.config.ts --reporter=list
+      # Um servidor só para as duas metades (playwright.build.config.ts:
+      # E2E_SERVIDOR_PRONTO faz as duas o reaproveitarem).
+      - name: Servidor do build
+        run: |
+          nohup node scripts/servir-build.mjs 3100 > servidor.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:3100/privacidade && exit 0
+            sleep 2
+          done
+          cat servidor.log; exit 1
 
-      # Roda mesmo se os isolados falharem (a falha de um não esconde a do outro).
-      - name: Suíte — compartilhados (um por vez)
-        if: success() || failure()
+      # As duas metades (apps/web/e2e/grupos.ts) JUNTAS, desde 2026-09-30: a
+      # varredura de sobras só leva o [e2e] com mais de uma hora
+      # (e2e/apoio/limpeza.ts), então uma não apaga o que a outra está usando.
+      # Os isolados (rede [e2e] própria) em 3 workers; os compartilhados (rede
+      # real, sessão padrão, cron) um por vez. Cada linha sai com o nome da
+      # metade na frente, e o passo falha se qualquer uma falhar.
+      - name: Suíte — isolados e compartilhados, juntas
         env:
-          E2E_GRUPO: compartilhados
-        run: pnpm exec playwright test -c playwright.build.config.ts --reporter=list
+          E2E_SERVIDOR_PRONTO: '1'
+          E2E_WORKERS: '3'
+        run: |
+          set -o pipefail
+          ( E2E_GRUPO=isolados pnpm exec playwright test -c playwright.build.config.ts --reporter=list 2>&1 | sed -u 's/^/[isolados] /' ) &
+          ISO=$!
+          ( E2E_GRUPO=compartilhados pnpm exec playwright test -c playwright.build.config.ts --reporter=list 2>&1 | sed -u 's/^/[compartilhados] /' ) &
+          COM=$!
+          # `x && R=0 || R=$?`: o shell do Actions roda com -e, e um `wait` que
+          # falha sozinho encerraria o passo sem esperar a outra metade.
+          wait $ISO && R1=0 || R1=$?
+          wait $COM && R2=0 || R2=$?
+          echo "isolados: saída $R1 · compartilhados: saída $R2"
+          [ $R1 -eq 0 ] && [ $R2 -eq 0 ]
+
+      - name: Log do servidor
+        if: failure()
+        run: tail -n 300 servidor.log
 
       - name: Relatório das falhas
         if: failure()

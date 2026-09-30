@@ -1760,6 +1760,13 @@ Princípios inegociáveis:
   `z-index`, e cabe na tela. Um `div` fixo com `z-index` fica atrás da
   topbar e sai da tela quando o conteúdo é longo: era o cadastro de cliente
   pelo inbox, até 2026-09-30.
+  - **Modal novo é `<JanelaModal>`** (`components/shared/janela-modal.tsx`):
+    abre sozinho, Esc e o fundo fecham (`fechaNoFundo={false}` em formulário
+    longo, `travado` enquanto grava), e o corpo rola. Os 27 modais em `div`
+    fixo passaram para ela em 2026-09-30. O que sobra de `position: fixed;
+    inset: 0` é só o fundo invisível que fecha um menu — não é modal.
+  - Imprimir de dentro da janela (o termo no checkout) solta a altura dela no
+    `@media print` de `globals.css`.
 - **Popover ancorado num gatilho que fica à direita vira o lado no celular.**
   `left: 0` de um gatilho encostado na borda direita nasce metade fora da
   tela, e o que fica de fora não tem rolagem que o alcance. O `<SegSelect>`
@@ -2018,6 +2025,17 @@ São **dois serviços** no Railway, com ritmos diferentes, e os dois rodam o
 mesmo `node /app/cron.mjs` da mesma imagem. O script chama as rotas
 `/api/cron/*` do app com o `CRON_SECRET` e sai com código 1 se alguma falhar —
 assim a execução aparece vermelha no painel em vez de falhar em silêncio.
+Quando a chamada NÃO chegou ao app — falha de rede, 502/503/504 ou o 404
+"Application not found" da borda do Railway —, tenta de novo (15 s, 30 s).
+Tempo esgotado não repete: o job pode estar rodando, e rodaria duas vezes.
+
+**O cron de produção roda no MESMO banco do E2E** e passa pelos dados
+`[e2e]` como por quaisquer outros. É seguro porque toda fila reivindica a
+linha (§9.9) e os testes conferem o estado final, não um intermediário que o
+cron possa atravessar. Por isso: rota de cron que "recolhe o que ficou para
+trás" recolhe só o que está PARADO há um tempo (`lgpd-exports`: 15 min), não
+o recém-criado, que é do `after()` — e teste que precisa de um pendente
+"esquecido" o cria com a data no passado.
 
 | Serviço | Ritmo | `CRON_JOBS` |
 |---|---|---|
@@ -2092,14 +2110,17 @@ pnpm --filter web test:e2e:completa # a suíte inteira contra o build (porta 310
   para seguir. Os secrets (só as três chaves do
   Supabase) moram no environment `e2e`, restrito à main; o workflow NUNCA
   roda em `pull_request`. CRON, Meta e VAPID são gerados a cada execução.
-- **A completa roda em duas metades, em SEQUÊNCIA** (`e2e/grupos.ts`,
-  2026-09-30): os ISOLADOS em paralelo (3 workers) e depois os
-  COMPARTILHADOS, um por vez. Isolado é o spec que cria a própria rede
+- **A completa roda em duas metades** (`e2e/grupos.ts`, 2026-09-30): os
+  ISOLADOS em paralelo (3 workers) e os COMPARTILHADOS, um por vez — no CI
+  as duas JUNTAS, contra um servidor só (`E2E_SERVIDOR_PRONTO`); no
+  `test:e2e:completa` local, em sequência (a máquina não aguenta quatro
+  navegadores e o servidor). Isolado é o spec que cria a própria rede
   (`criarOutraRede`), não lê a rede real (`tenantId()`, `filiaisAtivas()`…),
   não usa a sessão padrão (o `page` do fixture é o admin da rede real) e não
-  chama cron — `tests/e2e-grupos.test.ts` confere a lista. Nunca as duas
-  metades ao mesmo tempo: a varredura de sobras de uma apagaria os dados da
-  outra. Spec novo com rede própria entra na lista; migrar um compartilhado
+  chama cron — `tests/e2e-grupos.test.ts` confere a lista. Juntas é seguro
+  porque a varredura de sobras só leva `[e2e]` com mais de uma hora; e cada
+  metade grava a sessão do admin no seu arquivo (`e2e/.auth/admin-<grupo>.json`).
+  Spec novo com rede própria entra na lista; migrar um compartilhado
   para rede própria é o que encurta a suíte.
 - Contra o build, `chamarAcao` lê os manifestos de `.next/server`
   (`E2E_BUILD`, ligado por `playwright.build.config.ts`).
@@ -2112,7 +2133,10 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
   (para falar com o PostgREST como a pessoa) e `destino` do login.
 - `limpeza.ts` — `apagarClientes` / `apagarAgendamentos` na ordem das FKs, e
   `varrerSobras`, que o `global-setup` roda antes de cada rodada e que imprime o
-  que não conseguiu apagar. Nunca toca `automations`.
+  que não conseguiu apagar. Nunca toca `automations`. Só leva o que tem mais
+  de UMA HORA (`E2E_IDADE_DA_SOBRA_MIN`): o mais novo pode ser de uma rodada
+  em curso ao lado. Por isso uma rodada local durante o CI não derruba mais o
+  CI (derrubava até 2026-09-30).
 - `acao.ts` — `capturarAcao` / `reenviarAcao`: pega uma server action feita
   pela tela e a reenvia trocando o id. É o teste de "o endpoint recusa", que a
   tela sozinha não prova.

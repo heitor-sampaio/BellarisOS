@@ -39,6 +39,7 @@ import {
   secondsSince, agingLevel, AGING_STYLE, AWAITING_THRESHOLDS,
   formatDurationShort, formatDurationLong, iniciaisDoNome,
 } from '@estetica-os/utils'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 // --- Gesto de puxar (só no celular) ---------------------------------------------
 
@@ -677,16 +678,8 @@ function NewConvModal({
   }
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 200,
-      background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }} onClick={onClose}>
-      <div
-        className="card"
-        style={{ width: 380, padding: 0, overflow: 'hidden' }}
-        onClick={e => e.stopPropagation()}
-      >
+    <JanelaModal onFechar={onClose} rotulo="Nova conversa" largura={380}>
+      <div>
         <div style={{
           padding: '18px 22px', borderBottom: '1px solid var(--hairline)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -750,7 +743,7 @@ function NewConvModal({
           </div>
         </form>
       </div>
-    </div>
+    </JanelaModal>
   )
 }
 

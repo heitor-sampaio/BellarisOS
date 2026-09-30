@@ -11,6 +11,7 @@ import {
   NOTIFICATION_TYPE_CFG as TYPE_CFG,
   notificationRelativeTime as relativeTime,
 } from '@/components/shared/notification-types'
+import { JanelaModal } from '@/components/shared/janela-modal'
 
 // -- Push registration (native FCM via Capacitor or browser VAPID) --------
 // Guard so os listeners nativos são registrados apenas uma vez por sessão do app
@@ -369,24 +370,8 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
       {/* Notification modal */}
       {selected && (
         <>
-          <div
-            onClick={() => setSelected(null)}
-            style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)' }}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            style={{
-              position: 'fixed', top: '50%', left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 'min(400px, calc(100vw - 32px))',
-              zIndex: 401,
-              background: 'var(--surface)', borderRadius: 'var(--radius-card-token)',
-              border: '1px solid var(--border)',
-              boxShadow: 'var(--shadow-overlay)',
-              overflow: 'hidden',
-            }}
-          >
+          <JanelaModal onFechar={() => setSelected(null)} rotulo="Notificação" largura={400}>
+          <div>
             {/* Modal header */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -450,6 +435,7 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
               </button>
             </div>
           </div>
+          </JanelaModal>
         </>
       )}
 
