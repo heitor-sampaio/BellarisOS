@@ -1477,7 +1477,7 @@ servidor), e a escolha da tela vira o `featureType` —
 
 ### 9.9 Eventos de domínio e automações
 
-Toda ação relevante do sistema vira um fato em `domain_events` — 44 eventos
+Toda ação relevante do sistema vira um fato em `domain_events` — 47 eventos
 nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
 `packages/types/src/eventos.ts`. As automações assinam essa corrente.
 
@@ -1728,16 +1728,27 @@ UPSTASH_REDIS_REST_REST_TOKEN=
 # Pagamentos
 PAGARME_API_KEY=
 
-# WhatsApp não oficial (uazapi). A API oficial não usa env: as credenciais de
-# cada rede ficam em integration_configs.
+# WhatsApp não oficial (uazapi). As caixas (uazapi e oficial) moram em
+# whatsapp_numbers, uma linha por número — não em env.
 UAZAPI_BASE_URL=https://bellarisos.uazapi.com
 UAZAPI_ADMIN_TOKEN=
 UAZAPI_MAX_INSTANCIAS=0            # 0 = sem teto (toda a instalação)
 UAZAPI_MAX_POR_REDE=5              # teto por rede; cada instância é COBRADA
 UAZAPI_PROXY_TEMPLATE=             # vazio = proxy gerenciado pela própria uazapi
 
+# Meta — o app do BellarisOS (Tech Provider): login de anúncios/Instagram/
+# Messenger, cadastro incorporado do WhatsApp e webhooks (§9.8.0, §9.8.1)
+META_APP_ID=                       # o mesmo app_id do link do cadastro incorporado
+NEXT_PUBLIC_META_APP_ID=           # o SDK da Meta no navegador (app/layout.tsx)
+META_APP_SECRET=                   # troca de código por token + assinatura dos webhooks
+META_VERIFY_TOKEN=                 # handshake dos webhooks (/api/webhooks/whatsapp e /meta)
+META_ES_CONFIG_ID=                 # config_id do cadastro incorporado (lido no servidor)
+
+# Cron (as rotas /api/cron/* conferem; ver §14.1)
+CRON_SECRET=
+
 # App
-NEXT_PUBLIC_APP_URL=https://app.esteticaos.com.br
+NEXT_PUBLIC_APP_URL=https://app.bellarisos.com
 # (NEXT_PUBLIC_SCHEDULE_URL existia para o agendamento público, descartado — não é lida por nenhum código)
 
 # Push
@@ -1745,6 +1756,10 @@ NEXT_PUBLIC_VAPID_PUBLIC_KEY=      # Web Push
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=
 # FCM (app Android): conta de serviço do Firebase — ver lib/notifications/push.ts
+
+# SÓ TESTE (nunca em produção)
+# META_GRAPH_BASE_TESTE=http://127.0.0.1:3199   # Graph falsa do cadastro incorporado (playwright.build.config)
+# E2E_IDADE_DA_SOBRA_MIN=60                      # idade mínima de sobra [e2e] que a varredura apaga
 ```
 
 ---
@@ -2250,4 +2265,4 @@ morre por memória nesta máquina" é memória.
 
 ---
 
-*BellarisOS — CLAUDE.md v1.5 | 25 de setembro de 2026*
+*BellarisOS — CLAUDE.md v1.6 | 1 de outubro de 2026*

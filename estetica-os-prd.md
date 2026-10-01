@@ -1,6 +1,6 @@
 # PRD — BellarisOS
 **Product Requirements Document**
-Versão 2.0 | 28 de setembro de 2026
+Versão 2.1 | 1 de outubro de 2026
 
 ---
 
@@ -11,6 +11,7 @@ Versão 2.0 | 28 de setembro de 2026
 | 1.0 | Jun/2026 | Versão inicial ("EstéticaOS") |
 | 1.1 | Jun/2026 | App mobile (admin + cliente), monorepo, persona Cliente App |
 | 2.0 | 28/09/2026 | Reescrito contra o sistema como ele é. O público deixou de ser "rede de 2–5 filiais" e passou a ser a clínica única; o produto passou de gestão financeira a ERP + CRM (conversas, funil, automações, marketing); saíram o caixa de abrir/fechar, o agendamento público sem login, os cargos fixos, o Prisma e o app em Expo |
+| 2.1 | 01/10/2026 | O que entrou em 29–30/09: vendas (pacote e procedimento pré-pago, desconto, agendar com o que já foi pago), termos e contratos com assinatura eletrônica, comissões por profissional com fechamento, fidelidade completa, cada parcela um lançamento, e o WhatsApp oficial pelo cadastro incorporado da Meta (Tech Provider) |
 
 > **Este documento diz O QUE o produto é e por quê.** As regras técnicas de
 > implementação moram no `CLAUDE.md`; o que foi feito, quando e o que está em
@@ -159,7 +160,12 @@ dados.
 ### 4.2 Clientes
 - Cadastro com CPF único por rede; o **cliente é da rede** (pode frequentar
   qualquer unidade).
-- Histórico, documentos, crédito interno, pacotes e planos.
+- Histórico, documentos, crédito interno, pacotes, procedimentos pré-pagos e
+  planos.
+- **Fidelidade** (a clínica liga e configura): pontos no pagamento, por real ou
+  por procedimento; desconto em pontos na recepção; recompensas trocadas por
+  vouchers; validade; bônus de aniversário e de primeiro acesso; troca pelo
+  portal, se a clínica quiser.
 - Acesso do cliente final: a clínica cria no cadastro (e-mail + senha inicial).
 - **LGPD:** o titular pede a exportação dos dados no portal; o pacote sai em PDF
   (legível) e JSON (portabilidade), com o prontuário só se liberado por quem
@@ -170,6 +176,10 @@ dados.
 - WhatsApp — **vários números por clínica**, cada um pelo provedor que ela
   escolher: uazapi (não oficial) ou API oficial da Meta (coexistência com o app
   do celular ou Cloud API). Instagram e Messenger pela Meta.
+- O número oficial se conecta pelo **cadastro da Meta** dentro do sistema: a
+  clínica entra com o Facebook, escolhe a conta e o número, e volta com tudo
+  pronto. Na coexistência, as conversas e os contatos do aplicativo vêm junto,
+  e o que a equipe responde pelo celular aparece no inbox.
 - A **pessoa** (contato) une as conversas: a mesma pessoa em duas caixas são
   duas conversas na fila, e o painel mostra as outras conversas dela.
 - Por onde a mensagem sai tem regra explícita (o número de quem responde, senão
@@ -210,12 +220,29 @@ dados.
 - Insumos consumidos por execução (base da baixa de estoque).
 - Histórico de preço.
 - **Uma ficha por procedimento**, montada no construtor de fichas.
+- Cada procedimento liga até um termo e um contrato (ver Prontuário).
+
+### 4.7.1 Vendas
+- Um botão **"Vender"** na ficha do cliente e no inbox (para quem ainda não é
+  cliente, primeiro o cadastro): **pacote** — um conjunto de procedimentos por
+  um preço só — ou **procedimento pré-pago** — N sessões de um procedimento,
+  pagas antes. Os dois são separados.
+- Pagamento à vista, entrada + parcelas ou a receber; **desconto em toda venda**
+  (R$ ou %), registrando quem deu.
+- Agendar usando o que já foi pago, com o procedimento e o preço daquilo.
+  Falta ou cancelamento devolvem a sessão; cancelar a sessão pré-paga registra a
+  devolução do dinheiro a fazer.
 
 ### 4.8 Prontuário
 - Anamnese geral do cliente (uma vez) e a ficha de cada procedimento
   (por atendimento).
-- Fotos antes/durante/depois, termos de consentimento (assinatura digital ou
-  em papel).
+- Fotos antes/durante/depois.
+- **Termos e contratos**: a clínica monta os modelos (editor com fonte, tabela,
+  imagem e variáveis) ou envia um PDF pronto. O documento nasce no
+  agendamento ou no checkout do plano, e o cliente assina na clínica, no
+  portal, por link (com conferência do CPF) ou no papel. Sai um PDF assinado
+  com código de verificação pública; o que bloqueia impede o atendimento de
+  começar.
 - Planejamento de tratamento com checkout e aceite; mapa de injetáveis com
   registro de aplicação.
 - O cliente final NÃO vê o prontuário — só o histórico de procedimentos.
@@ -240,8 +267,13 @@ dados.
   desconta do saldo do cliente e é recusado sem saldo.
 - Estorno por contra-lançamento (registro financeiro não se apaga); estornar um
   pagamento feito com crédito devolve o crédito.
-- Despesas, parcelas a receber, comissões (sobre a sessão executada, não sobre a
-  venda do pacote).
+- **Cada parcela é um lançamento**, no mês do seu vencimento.
+- Despesas e contas a receber.
+- **Comissões**: regra por profissional, com exceção por procedimento; a
+  clínica escolhe se nasce no atendimento (sobre o preço) ou no pagamento
+  (sobre o recebido), e se desconta insumos e taxa da maquininha. Fechamento
+  por período (mensal, quinzenal ou semanal), que vira despesa; cada
+  profissional vê as próprias.
 
 ### 4.11 Relatórios e indicadores
 - Dashboard da rede e da unidade; relatórios por aba, e cada cargo vê só as abas
@@ -322,10 +354,8 @@ Detalhe em `CLAUDE.md`.
 O que falta — decisões de fora do código, dívida técnica e a próxima frente —
 está no `DEVLOG.md`, seção 5. Destaques de produto:
 
-- **Fidelidade**: hoje só existe o saldo no portal do cliente; faltam as regras
-  de pontuação, crédito e débito de pontos, extrato e resgate como desconto.
-- **Conclusão do atendimento numa transação só** (hoje as gravações são
-  sequenciais).
+- **A primeira conexão real do WhatsApp oficial** pelo cadastro da Meta (o
+  fluxo está no ar, provado só em teste) e o App Review da Meta.
 - **Metas de negócio** para o público atual (seção 2.1).
 
 ---
@@ -345,9 +375,9 @@ está no `DEVLOG.md`, seção 5. Destaques de produto:
 | Instabilidade ou bloqueio do WhatsApp não oficial | Alta | Alto | Vários números por clínica; caminho oficial disponível |
 | O sistema nunca foi usado por uma clínica real | — | Alto | Piloto acompanhado antes de escalar |
 | E-mail de acesso não chegar (SMTP padrão do Supabase) | Média | Alto | Configurar SMTP próprio antes do piloto |
-| App da Meta ainda não aprovado (Instagram/Messenger) | Alta | Médio | App Review antes de oferecer os canais |
+| App da Meta sem App Review (Instagram/Messenger) e WhatsApp oficial sem conexão real ainda | Alta | Médio | App Review e uma conexão real acompanhada antes de oferecer os canais |
 | Resistência da equipe a trocar de ferramenta | Média | Alto | Onboarding presencial; o sistema substitui o WhatsApp do celular, não soma a ele |
 
 ---
 
-*BellarisOS — PRD v2.0 | 28 de setembro de 2026*
+*BellarisOS — PRD v2.1 | 1 de outubro de 2026*

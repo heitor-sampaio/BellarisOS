@@ -32,7 +32,7 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
 
 ---
 
-## 2. Estado atual (2026-09-25)
+## 2. Estado atual (2026-10-01)
 
 ### Operação
 
@@ -57,17 +57,34 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   ocupa a tela inteira, com "voltar" para a lista.
 - **CRM** — Inbox omnichannel (WhatsApp por uazapi e API oficial da Meta,
   Instagram, Messenger), funil de oportunidades, templates HSM, atribuição de
-  origem de lead.
+  origem de lead. A pessoa (`contacts`) une as conversas das várias caixas.
+  O WhatsApp oficial se conecta pelo **cadastro incorporado da Meta** (o app do
+  BellarisOS é Tech Provider), em coexistência — o aplicativo do celular segue
+  atendendo, e o histórico vem junto — ou Cloud API.
+- **Vendas** — "Vender" na ficha e no inbox: **pacote** (conjunto de
+  procedimentos por um preço) ou **procedimento pré-pago**; desconto em toda
+  venda; à vista, entrada + parcelas ou a receber; agendar usando o que já foi
+  pago.
+- **Termos e contratos** — modelos com editor rico e variáveis, emitidos pelo
+  atendimento e pelo checkout do plano, assinados na clínica, no portal, por
+  link ou no papel, com PDF assinado e verificação pública.
 - **Estoque** — produtos, lotes, movimentações, transferência entre unidades,
   mínimo por filial, histórico por produto.
-- **Financeiro** — receitas e despesas, parcelas, estorno com crédito interno,
-  comissões, DRE, indicadores por unidade e consolidados.
+- **Financeiro** — receitas e despesas, cada parcela um lançamento no mês do
+  seu vencimento, estorno com crédito interno, DRE, indicadores por unidade e
+  consolidados.
+- **Comissões** — regra por profissional com exceção por procedimento, base
+  lida no servidor, por atendimento ou por pagamento, taxa da maquininha e
+  insumos configuráveis, fechamento por período que vira despesa.
+- **Fidelidade** — programa da rede (nasce desligado): pontos no pagamento,
+  desconto em pontos, recompensas e vouchers, validade, bônus de aniversário e
+  de primeiro acesso.
 - **Relatórios (BI)** — oito abas: visão geral, financeiro, agenda, clientes,
   procedimentos, profissionais, estoque e comercial.
-- **Configurações** — unidades, cargos, modelos de ficha (anamnese e
-  atendimento), integrações, LGPD e **Eventos** (a corrente de fatos do
+- **Configurações** — unidades, cargos, fichas, documentos, integrações,
+  fidelidade, comissões, LGPD e **Eventos** (a corrente de fatos do
   sistema, com o catálogo cruzado com o que já ocorreu na rede).
-- **Eventos de domínio** — 42 fatos nomeados pela intenção
+- **Eventos de domínio** — 47 fatos nomeados pela intenção
   (`agendamento.nao_compareceu`, `pagamento.recebido`, `estoque.abaixo_do_minimo`)
   gravados em `domain_events` com ator, origem e retrato. Retenção de 30 dias.
 - **Automações** (`/admin/automacoes`) — quadro infinito de nodes que reage a
@@ -83,7 +100,7 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
 - Next.js 16 (App Router, Server Actions) + Supabase (Postgres, Auth, Storage,
   RLS) + Turborepo/pnpm. Deploy na Railway (uma réplica, us-east4); banco em
   us-east-1.
-- **Autorização dinâmica:** cargos por rede, 15 módulos com nível
+- **Autorização dinâmica:** cargos por rede, 17 módulos com nível
   (NONE/VIEW/MANAGE), escopo (OWN/ALL) em cinco deles, abrangência pelo
   `users.branch_id`, e as abas de Relatórios liberadas uma a uma
   (`role_report_tabs`).
@@ -98,11 +115,16 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   revisão de código: `seletores-padronizados.spec.ts` mede a altura de
   todo seletor visível em 11 telas e recusa aparência escrita em `style`
   inline.
-- **Testes:** 416 unitários (361 no web + 37 em `utils` + 18 em
-  `validators`, Vitest) + 81 E2E (Playwright) rodando contra o banco de
-  desenvolvimento. `pnpm test` e `pnpm --filter web test:e2e`.
+- **Testes:** 615 unitários (566 no web + 44 em `utils` + 5 em
+  `validators`, Vitest) + 110 specs E2E (Playwright; a última completa,
+  421/421) contra o banco da produção, isolados pelo prefixo `[e2e]`. A
+  completa roda à mão no GitHub Actions, em duas metades juntas (isolados em
+  paralelo, compartilhados um por vez).
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
-  (campanhas e LGPD) e a cada 5 minutos (fila das automações).
+  (campanhas, LGPD, CAPI, estoque, fidelidade, PDFs) e a cada 5 minutos (fila
+  das automações) —, com nova tentativa em erro da borda.
+- **Menu lateral** com categorias que recolhem; modais no `<dialog>` nativo
+  (`JanelaModal`).
 
 ---
 
@@ -1380,7 +1402,9 @@ porque a suíte usa o banco da produção e metade dos specs mexe na rede real.
   sessão padrão, sem cron) — 140 testes, ~630 s somados — rodam com 3
   workers; os 76 COMPARTILHADOS (~860 s) seguem um por vez, depois.
 - Em sequência, no mesmo job: a varredura de sobras (global-setup) apaga todo
-  [e2e], e rodando juntas uma metade apagaria os dados da outra.
+  [e2e], e rodando juntas uma metade apagaria os dados da outra. (Desde o
+  mesmo dia, mais tarde, a varredura só leva sobra de mais de uma hora e as
+  metades rodam JUNTAS — ver "Dívidas técnicas do dia".)
 - `tests/e2e-grupos.test.ts` confere que cada isolado continua cumprindo as
   regras; cada metade guarda as falhas na sua pasta de `test-results`.
 - Medido no CI (4 rodadas): isolados 2–4 min, compartilhados 9–14 min (varia
@@ -4001,7 +4025,8 @@ Os textos moram em `lib/whatsapp/modo-oficial.ts`, fora do componente. O
 que importa nesse ajuste é a explicação, e ela precisa sobreviver a qualquer
 refação da tela de integrações.
 
-**O que este ajuste NÃO faz, e é honesto dizer:** o Embedded Signup da Meta —
+**O que este ajuste NÃO faz, e é honesto dizer** (resolvido em 2026-09-30 — ver
+"WhatsApp pelo cadastro incorporado da Meta"): o Embedded Signup da Meta —
 onde a escolha vira parâmetro do onboarding — não existe ainda, porque o app da
 Meta não existe (está em "Em aberto" desde sempre). Hoje a conexão oficial é
 credencial colada à mão, e o modo registra a decisão e diz à clínica o que
@@ -4844,16 +4869,19 @@ verdade. O que vale:
 ### Depende do Heitor (fora do código)
 
 - ~~App da Meta não existe~~ **existe e é Tech Provider** (2026-09-30), com o
-  cadastro incorporado no ar. Falta: a primeira conexão REAL de um número
-  (só provada com a Meta falsa), assinar no painel os campos `messages`,
-  `history`, `smb_app_state_sync` e `smb_message_echoes`, e o App Review.
+  cadastro incorporado no ar (v4, `config_id` em `META_ES_CONFIG_ID`). Falta:
+  a primeira conexão REAL de um número (só provada com a Meta falsa), assinar
+  no painel os campos `messages`, `history`, `smb_app_state_sync` e
+  `smb_message_echoes`, conferir `app.bellarisos.com` nos domínios
+  permitidos do app (sem isso a janela não abre), e o App Review.
   Instagram e Messenger seguem verificados só com payload simulado.
 - ~~`META_VERIFY_TOKEN` não está no Railway~~ **configurado em 2026-09-30**
   (Tech Provider): a rota do WhatsApp aceita o token do app no handshake e o
-  segredo do app na assinatura. Falta o Heitor colar URL e token no painel da
-  Meta e assinar o campo `messages`.
-- **`wabaId` não preenchido** nas integrações: o botão "enviar para aprovação"
-  da tela de Templates fica desabilitado.
+  segredo do app na assinatura. URL e token colados no painel pelo Heitor no
+  mesmo dia (o handshake fechou em produção).
+- **`wabaId`**: a caixa conectada pelo cadastro incorporado já nasce com ele;
+  só a de credencial colada à mão depende de alguém preenchê-lo (sem ele o
+  "enviar para aprovação" de Templates fica desabilitado).
 - **Nenhum número de WhatsApp real foi pareado.** A uazapi foi provada por sonda
   (instância, webhook, proxy, QR, exclusão), mas enviar e receber de verdade só
   com celular na mão.
@@ -4881,7 +4909,8 @@ verdade. O que vale:
   padrão ou cron). Cada um migrado para rede própria vai para o paralelo
   (`e2e/grupos.ts`) — trabalho aos poucos, spec a spec. ~~A varredura apaga
   todo [e2e]~~ **resolvido**: só o de mais de uma hora, e as duas metades
-  rodam juntas no CI.
+  rodam juntas no CI. **A primeira completa com as metades juntas ainda não
+  rodou** (o workflow mudou; roda quando o Heitor pedir).
 - ~~O cron de produção roda contra o mesmo banco do E2E~~ **investigado**: ver
   a linha do tempo. Seguro pelas reivindicações; a janela que havia (LGPD)
   foi fechada.
@@ -4935,8 +4964,9 @@ verdade. O que vale:
 
 Nada combinado. Termos e contratos, comissões, pacotes, pré-pago, desconto,
 agendar com crédito e parcelas estão feitos e com a suíte completa verde
-(2026-09-30). O que mais pesa agora é o de "Depende do Heitor" (Meta,
-WhatsApp real) e o uso por uma clínica de verdade.
+(2026-09-30); o cadastro incorporado da Meta (Tech Provider) está no ar desde
+o mesmo dia. O que mais pesa agora: a primeira conexão real de um número pela
+Meta, o App Review e o uso por uma clínica de verdade.
 
 ---
 
@@ -4949,7 +4979,7 @@ pnpm typecheck               # tsc --noEmit em todos os pacotes
 pnpm test                    # Vitest
 pnpm --filter web test:e2e   # Playwright (sobe o dev sozinho)
 pnpm --filter web test:e2e:afetados  # só a área alterada — o de cada etapa
-pnpm --filter web test:e2e:completa  # tudo, contra o build (também roda no GitHub a cada push)
+pnpm --filter web test:e2e:completa  # tudo, contra o build (no GitHub, só à mão: gh workflow run e2e.yml)
 pnpm build --filter=web
 ```
 
