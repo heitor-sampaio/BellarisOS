@@ -27,7 +27,7 @@ export interface GraphFalsa {
   fechar(): Promise<void>
 }
 
-export async function subirGraphFalsa(): Promise<GraphFalsa> {
+export async function subirGraphFalsa(porta = 0): Promise<GraphFalsa> {
   let contador = 0
   const respostas = new Map<string, unknown>()
   const estado: GraphFalsa = {
@@ -58,7 +58,7 @@ export async function subirGraphFalsa(): Promise<GraphFalsa> {
       res.end('{}')
     })
   })
-  await new Promise<void>(resolve => servidor.listen(0, '127.0.0.1', () => resolve()))
+  await new Promise<void>(resolve => servidor.listen(porta, '127.0.0.1', () => resolve()))
   estado.url = `http://127.0.0.1:${(servidor.address() as AddressInfo).port}`
   return estado
 }

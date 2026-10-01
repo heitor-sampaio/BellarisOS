@@ -1432,11 +1432,46 @@ o que importa e precisa sobreviver a refação de tela.
 **O aviso da Cloud API fica na tela, em vermelho, antes de a pessoa escolher** —
 não atrás de um link. É decisão que não se desfaz clicando.
 
-⚠️ **O que ainda não existe:** o Embedded Signup da Meta, onde essa escolha
-vira parâmetro da API (`featureType` no fluxo de onboarding). Hoje a
-conexão oficial é credencial colada à mão no formulário, e o modo registra a
-decisão e diz à clínica o que esperar. Quando o app da Meta existir (ver §5 de
-"Em aberto" no DEVLOG), é aqui que o parâmetro entra.
+**A conexão é pelo cadastro incorporado da Meta** (Embedded Signup, 2026-09-30;
+o app do BellarisOS é Tech Provider). Botão "Conectar pela Meta" em
+Configurações → WhatsApp → Oficial (`ConectarWhatsAppPelaMeta`): abre a janela
+da Meta pelo SDK (`FB.login` com o `config_id` de `META_ES_CONFIG_ID`, lido no
+servidor), e a escolha da tela vira o `featureType` —
+`whatsapp_business_app_onboarding` na coexistência, nada na Cloud API.
+- **A janela devolve duas coisas por dois canais**: o código (no `FB.login`,
+  vale 30 s) e a conta + o número (postMessage `WA_EMBEDDED_SIGNUP`, só de
+  `facebook.com`). A tela junta os dois e chama `conectarWhatsAppPelaMeta`.
+- **O servidor não confia nos ids do navegador** (`lib/whatsapp/cadastro-incorporado.ts`):
+  troca o código pelo token de negócio e confere COM ELE que o número é daquela
+  conta (`/{waba}/phone_numbers`). Ids só com dígitos (vão para o caminho da URL).
+- **A caixa é gravada (inativa) ANTES de inscrever o webhook e pedir
+  sincronização**: o histórico da coexistência chega uma vez só, e sem caixa
+  ele seria descartado. Depois: `subscribed_apps`; Cloud API → `register`
+  com PIN de 6 dígitos (guardado em `config.pin`); coexistência → NÃO
+  registra e pede `smb_app_data` (contatos, depois histórico — a Meta dá 24 h).
+- A caixa do cadastro tem `config.conexao = 'cadastro_incorporado'`, sem
+  `verifyToken`/`appSecret` (vale o do app, §9.8.0). A tela NÃO recebe o
+  token nem o PIN (`listarNumerosWhatsApp`), e o formulário manual só liga e
+  desliga essa caixa — gravar por cima apagaria a credencial. Trocar de conta
+  é conectar de novo. O formulário manual continua, recolhido em "avançado",
+  para a clínica com app PRÓPRIO na Meta.
+- **Os webhooks da coexistência** (`lib/whatsapp/coexistencia.ts`; no painel da
+  Meta, assinar `history`, `smb_app_state_sync` e `smb_message_echoes`):
+  - `smb_message_echoes` — o que a clínica mandou PELO CELULAR: entra como
+    saída, ao vivo (zera o "aguardando");
+  - `history` — até 180 dias, em pedaços e fora de ordem: entra IMPORTADO
+    (`messages.importada`) e LIDO. O gatilho `on_new_message` não deixa
+    importada mais velha virar a última, nem contar não lida, nem mexer no
+    "aguardando" (migration `20260930000025`);
+  - `smb_app_state_sync` — a agenda do aparelho dá nome à PESSOA que está sem
+    (ou com o número como nome); nome escrito pela equipe não é trocado.
+  - **Nenhum dos três emite evento** (`resolveConversation(…, { semEventos })`,
+    `insertMensagemDoAplicativo`): `conversa.iniciada` e
+    `conversa.mensagem_recebida` disparariam a automação de boas-vindas para
+    conversas de meses atrás.
+- A Graph do cadastro em teste é `META_GRAPH_BASE_TESTE` (só no
+  playwright.build.config e no workflow; porta fixa 3199). Prova:
+  `e2e/whatsapp-cadastro-incorporado.spec.ts` — contra o build.
 
 ---
 
@@ -2026,6 +2061,10 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Guardar a forma canônica de um documento em jsonb (reordena as chaves e o hash não bate)
 ❌ Gravar o token do link de assinatura (só o SHA-256), ou contar tentativas do link fora de documento_link_abrir
 ❌ Usar o primeiro do x-forwarded-for como IP de limite (o cliente o forja) — é o X-Real-IP
+❌ Criar a caixa do cadastro incorporado com os ids que o navegador mandou sem conferir com o token (/{waba}/phone_numbers)
+❌ Pedir à Meta a sincronização da coexistência antes de gravar a caixa (o histórico chega uma vez só)
+❌ Importar histórico ou mensagem do aplicativo emitindo evento de conversa (dispara automação para o passado) ou sem importada = true
+❌ Gravar o formulário manual por cima da caixa do cadastro incorporado (apaga o token da Meta)
 ```
 
 ---

@@ -14,7 +14,7 @@ const GRAPH = 'https://graph.facebook.com/v25.0'
 
 interface MidiaCloud { id?: string; mime_type?: string; caption?: string }
 
-interface MensagemCloud {
+export interface MensagemCloud {
   type?: string; id?: string; timestamp?: string
   from?: string; from_user_id?: string
   text?: { body?: string }
@@ -37,6 +37,36 @@ interface EntregaCloud {
 /** A mídia mora num campo com o nome do tipo (`image`, `audio`…). */
 function midiaDoTipo(msg: MensagemCloud, tipo: string): MidiaCloud | undefined {
   return (msg as Record<string, unknown>)[tipo] as MidiaCloud | undefined
+}
+
+/**
+ * O que a mensagem da Cloud API DIZ: texto (ou a legenda, ou `[tipo]`), o tipo
+ * e a mídia a baixar. Serve à mensagem recebida e às da coexistência (as
+ * enviadas pelo aplicativo do celular e as do histórico), que têm o mesmo
+ * formato de mensagem com outro envelope.
+ */
+export function conteudoDaMensagemCloud(msg: MensagemCloud): {
+  content: string; type: InboundMsg['type']; media?: InboundMedia
+} {
+  const type    = msg.type ?? 'other'
+  const content = type === 'text'
+    ? (msg.text?.body ?? '')
+    : (msg.image?.caption ?? msg.document?.caption ?? msg.video?.caption ?? `[${type}]`)
+
+  const kind: MediaKind | null =
+      type === 'image' ? 'image'
+    : type === 'audio' || type === 'voice' ? 'audio'
+    : type === 'video' ? 'video'
+    : type === 'document' ? 'document'
+    : null
+
+  // A Cloud API não manda a URL: manda um id que exige uma segunda chamada
+  // autenticada (`fetchMedia`). O id fica guardado aqui e resolvido depois.
+  const media: InboundMedia | undefined = kind
+    ? { kind, mediaId: midiaDoTipo(msg, type)?.id, mimeType: midiaDoTipo(msg, type)?.mime_type }
+    : undefined
+
+  return { content, type: kind ?? (type === 'text' ? 'text' : 'other'), media }
 }
 
 const STATUS_MAP: Record<string, StatusUpdate['status']> = {
@@ -192,27 +222,7 @@ export class OfficialAPIProvider implements WhatsAppProvider {
     const msg   = value?.messages?.[0]
     if (!msg) return null
 
-    const type    = msg.type as string
-    const content = type === 'text'
-      ? (msg.text?.body ?? '')
-      : (msg.image?.caption ?? msg.document?.caption ?? msg.video?.caption ?? `[${type}]`)
-
-    const kind: MediaKind | null =
-        type === 'image' ? 'image'
-      : type === 'audio' || type === 'voice' ? 'audio'
-      : type === 'video' ? 'video'
-      : type === 'document' ? 'document'
-      : null
-
-    // A Cloud API não manda a URL: manda um id que exige uma segunda chamada
-    // autenticada (`fetchMedia`). O id fica guardado aqui e resolvido depois.
-    const media: InboundMedia | undefined = kind
-      ? {
-          kind,
-          mediaId:  midiaDoTipo(msg, type)?.id,
-          mimeType: midiaDoTipo(msg, type)?.mime_type,
-        }
-      : undefined
+    const { content, type: tipo, media } = conteudoDaMensagemCloud(msg)
 
     // Identidade na Cloud API deixou de ser só o telefone.
     //
@@ -236,7 +246,7 @@ export class OfficialAPIProvider implements WhatsAppProvider {
       content,
       externalId: msg.id as string,
       timestamp:  new Date(parseInt(msg.timestamp as string) * 1000).toISOString(),
-      type:       kind ?? (type === 'text' ? 'text' : 'other'),
+      type:       tipo,
       media,
     }
 

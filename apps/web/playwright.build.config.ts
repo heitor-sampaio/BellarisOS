@@ -15,6 +15,11 @@ import { ISOLADOS } from './e2e/grupos'
  * quando `E2E_BUILD` está ligado — no dev eles moram em `.next/dev/server`.
  */
 process.env.E2E_BUILD = '1'
+// A Graph da Meta que o cadastro incorporado chama (lib/whatsapp/cadastro-
+// incorporado.ts) é lida do ambiente quando o servidor SOBE — não há como o
+// teste apontá-la depois. Porta fixa da Graph falsa de
+// e2e/whatsapp-cadastro-incorporado.spec.ts; em produção a variável não existe.
+process.env.META_GRAPH_BASE_TESTE ??= 'http://127.0.0.1:3199'
 const PORTA = process.env.E2E_PORTA ?? '3100'
 // 127.0.0.1, igual ao HOSTNAME do servidor (ver scripts/servir-build.mjs).
 process.env.E2E_BASE_URL = `http://127.0.0.1:${PORTA}`

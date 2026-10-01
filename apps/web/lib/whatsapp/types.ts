@@ -64,8 +64,27 @@ export interface OfficialConfig {
   provider:      'official'
   phoneNumberId: string
   accessToken:   string
-  verifyToken:   string
-  appSecret:     string   // for HMAC webhook signature validation
+  /**
+   * Token do handshake e segredo da assinatura — da caixa ligada a um app
+   * PRÓPRIO da clínica. A caixa conectada pelo cadastro incorporado não os
+   * tem: o handshake é o `META_VERIFY_TOKEN` e a assinatura, o
+   * `META_APP_SECRET` do app do BellarisOS.
+   */
+  verifyToken?:  string
+  appSecret?:    string
+  /**
+   * `cadastro_incorporado` = conectada pelo botão "Conectar pela Meta"
+   * (`lib/whatsapp/cadastro-incorporado.ts`), com o token de negócio que a
+   * Meta emitiu para o app. Sem o campo, credencial colada à mão.
+   */
+  conexao?:      'cadastro_incorporado'
+  /** O portfólio de negócios da clínica na Meta (vem do cadastro). */
+  businessId?:   string
+  /**
+   * PIN de duas etapas definido ao registrar o número na Cloud API. Só no modo
+   * `cloud_api` pelo cadastro: a Meta o pede de novo para registrar outra vez.
+   */
+  pin?:          string
   /**
    * Id da WhatsApp Business Account.
    *

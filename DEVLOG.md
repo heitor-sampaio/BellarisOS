@@ -1258,6 +1258,37 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-09-30 — WhatsApp pelo cadastro incorporado da Meta (Tech Provider)
+
+O app do BellarisOS virou Tech Provider na Meta, e o Heitor trouxe o link do
+cadastro incorporado (Embedded Signup). Ele parecia já existir no sistema — o
+SDK da Meta já carregava em toda página e a escolha coexistência × Cloud API já
+estava na tela —, mas conferido: nada chamava `FB.login`, a caixa oficial era
+credencial colada à mão, e a volta do link caía no callback de anúncios, que
+não o entende. Construído:
+
+- **"Conectar pela Meta"** em Configurações → WhatsApp → Oficial: a janela da
+  Meta sobre o BellarisOS (`FB.login` com o `config_id` em
+  `META_ES_CONFIG_ID`), e a escolha da tela vira o `featureType`. As
+  credenciais manuais descem para "avançado" (clínica com app próprio).
+- **O servidor confere tudo** (`lib/whatsapp/cadastro-incorporado.ts`): troca
+  o código pelo token de negócio, confere com ele que o número é da conta,
+  grava a caixa inativa, inscreve o webhook da conta, registra o número com PIN
+  (Cloud API) ou pede contatos e histórico (coexistência), e ativa. Número de
+  outra rede é recusado.
+- **Webhooks da coexistência** (`lib/whatsapp/coexistencia.ts`): a mensagem
+  mandada pelo celular entra como saída; o histórico (até 180 dias) entra
+  IMPORTADO e lido, sem reordenar a conversa nem disparar automação
+  (`messages.importada` + gatilho `on_new_message`, migration
+  `20260930000025`); a agenda do aparelho dá nome a quem não tem.
+- A caixa do cadastro não manda o token à tela, e o formulário manual só a liga
+  e desliga (gravar por cima apagaria o token).
+- **Prova**: `e2e/whatsapp-cadastro-incorporado.spec.ts` (6 testes, Meta
+  falsa em porta fixa — `META_GRAPH_BASE_TESTE`, só contra o build), mais
+  `api-sem-credencial`, `mensagens-saida` e `mensagens-meta`: 26/26.
+- **Não provado**: a janela da Meta de verdade. A primeira conexão real tem de
+  ser feita pelo Heitor, com um número.
+
 ### 2026-09-30 — Categorias do menu lateral recolhem
 
 O menu tinha crescido a ponto de rolar (seis categorias, até 19 itens na
@@ -4812,9 +4843,11 @@ verdade. O que vale:
 
 ### Depende do Heitor (fora do código)
 
-- **App da Meta não existe.** Instagram e Messenger foram verificados só com
-  payload simulado e HMAC válido: falta OAuth real, seleção de página e
-  `subscribed_apps`.
+- ~~App da Meta não existe~~ **existe e é Tech Provider** (2026-09-30), com o
+  cadastro incorporado no ar. Falta: a primeira conexão REAL de um número
+  (só provada com a Meta falsa), assinar no painel os campos `messages`,
+  `history`, `smb_app_state_sync` e `smb_message_echoes`, e o App Review.
+  Instagram e Messenger seguem verificados só com payload simulado.
 - ~~`META_VERIFY_TOKEN` não está no Railway~~ **configurado em 2026-09-30**
   (Tech Provider): a rota do WhatsApp aceita o token do app no handshake e o
   segredo do app na assinatura. Falta o Heitor colar URL e token no painel da

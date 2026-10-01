@@ -45,6 +45,11 @@ jobs:
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
       TZ: America/Sao_Paulo
       NEXT_TELEMETRY_DISABLED: '1'
+      # O cadastro incorporado da Meta fala com a Graph FALSA do E2E (porta fixa,
+      # e2e/whatsapp-cadastro-incorporado.spec.ts), e precisa de um id de app —
+      # qualquer um: a Graph falsa não confere. O segredo é o gerado abaixo.
+      META_GRAPH_BASE_TESTE: http://127.0.0.1:3199
+      META_APP_ID: e2e-app
     steps:
       - uses: actions/checkout@v7
 

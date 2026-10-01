@@ -4,6 +4,7 @@ import { getNumeroPorPhoneNumberId } from '@/lib/whatsapp/factory'
 import { resolveConversation, insertInboundMessage, updateMessageStatus } from '@/lib/inbox/resolve-conversation'
 import type { OfficialConfig } from '@/lib/whatsapp/types'
 import { ler } from '@/lib/db'
+import { mudancasDaCoexistencia, tratarCoexistencia } from '@/lib/whatsapp/coexistencia'
 
 // -- GET: Meta webhook subscription verification ------------------------------
 export async function GET(req: NextRequest) {
@@ -83,6 +84,17 @@ export async function POST(req: NextRequest) {
   const signature = req.headers.get('x-hub-signature-256')
   if (!provider.verifySignature(rawText, signature)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  }
+
+  const caixa = { id: numero.id, channel: 'whatsapp' as const, provider: numero.provider }
+
+  // Coexistência: o que a clínica mandou pelo celular, o histórico e a agenda
+  // do aplicativo (lib/whatsapp/coexistencia.ts). Formatos próprios, que o
+  // parse de mensagem recebida não conhece.
+  const coexistencia = mudancasDaCoexistencia(body)
+  if (coexistencia.length) {
+    await tratarCoexistencia(tenantId, caixa, provider, coexistencia)
+    return NextResponse.json({ ok: true })
   }
 
   // Status update

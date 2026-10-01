@@ -61,6 +61,13 @@ export async function resolveConversation(
   caixa:    CaixaReceptora | null,
   /** Só para perguntar o nome do contato quando o webhook não o trouxer. */
   provider?: SendProvider,
+  /**
+   * `semEventos`: a conversa nasce por IMPORTAÇÃO (o histórico da coexistência)
+   * ou por mensagem que a própria clínica mandou do aplicativo. Nenhum dos dois
+   * é "alguém começou a falar com a clínica agora", e `conversa.iniciada`
+   * dispararia a automação de boas-vindas para conversas de meses atrás.
+   */
+  opcoes: { semEventos?: boolean } = {},
 ): Promise<ResolveResult | null> {
   const admin = createAdminClient()
   const phone = msg.phone ? normalizePhone(msg.phone) : null
@@ -235,6 +242,8 @@ export async function resolveConversation(
   // A corrente de eventos. `conversa.iniciada` só acontece AQUI — depois do
   // insert que de fato criou o contato. Emitir no começo da função marcaria
   // como nova toda mensagem de quem já é conhecido.
+  if (opcoes.semEventos) return { conversationId: inserted!.id, branchId: null }
+
   await emitirEventoDeConversa(EVENTOS.CONVERSA_INICIADA, inserted!.id, tenantId, {
     origem: 'webhook',
     anuncio: msg.referral ? {
@@ -473,6 +482,69 @@ export async function insertInboundMessage(
       } : null,
     })
   }
+}
+
+/**
+ * Mensagem que veio do APLICATIVO do WhatsApp Business, na coexistência: a que
+ * a clínica mandou pelo celular (`smb_message_echoes`, ao vivo) ou qualquer
+ * uma do histórico (`history`, importada).
+ *
+ * Não dispara evento nenhum. A enviada pelo celular não é mensagem do cliente
+ * (é a clínica falando), e a do histórico já aconteceu: `conversa.mensagem_
+ * recebida` faria a automação responder mensagens de meses atrás.
+ *
+ * `importada` muda como o gatilho `on_new_message` trata a mensagem (migration
+ * `20260930000025`): não vira a última se for mais velha, não conta como não
+ * lida, não mexe no "aguardando". A do histórico já nasce LIDA.
+ */
+export async function insertMensagemDoAplicativo(
+  conversationId: string,
+  tenantId:       string,
+  msg:            InboundMsg,
+  opcoes: {
+    direction: 'inbound' | 'outbound'
+    importada: boolean
+    status:    'sent' | 'delivered' | 'read' | 'failed'
+  },
+  caixa:          CaixaReceptora,
+  /** Para baixar a mídia; o histórico não baixa (meses de arquivos de uma vez). */
+  provider?:      SendProvider,
+): Promise<boolean> {
+  const admin = createAdminClient()
+
+  // Dedup pelo id do WhatsApp: a Meta reentrega, e o histórico pode repetir o
+  // que o eco ou o webhook normal já trouxeram.
+  const existing = await ler(admin
+    .from('messages').select('id')
+    .eq('external_id', msg.externalId)
+    .eq('conversation_id', conversationId)
+    .maybeSingle(), 'buscar a mensagem')
+  if (existing) return false
+
+  let mediaPath: string | null = null
+  if (msg.media && provider) {
+    const salvo = await guardarMidia(tenantId, conversationId, msg.externalId, msg.media, provider)
+    mediaPath = salvo?.path ?? null
+  }
+
+  const { error } = await admin.from('messages').insert({
+    conversation_id:    conversationId,
+    tenant_id:          tenantId,
+    direction:          opcoes.direction,
+    content:            msg.content,
+    channel:            'whatsapp',
+    status:             opcoes.status,
+    external_id:        msg.externalId,
+    is_read:            opcoes.importada || opcoes.direction === 'outbound',
+    created_at:         msg.timestamp,
+    media_type:         msg.media?.kind ?? null,
+    media_path:         mediaPath,
+    whatsapp_number_id: caixa.id,
+    reply_to_external_id: msg.replyToExternalId ?? null,
+    importada:          opcoes.importada,
+  })
+  if (error) { console.error('[insertMensagemDoAplicativo]', error.message); return false }
+  return true
 }
 
 /**

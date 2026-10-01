@@ -334,6 +334,9 @@ export async function Configuracoes({
           metaStep={metaStep}
           metaError={metaError === '1'}
           metaErrorReason={metaErrorReason}
+          // O config_id do cadastro incorporado (Embedded Signup) da Meta. Não é
+          // segredo, mas é por instalação: mora no ambiente, lido aqui no servidor.
+          configIdDoCadastro={process.env.META_ES_CONFIG_ID || null}
         />
       )}
 

@@ -19,6 +19,7 @@ import { UazapiConnect } from '@/components/admin/uazapi-connect'
 import { SegSelect } from '@/components/shared/seg-select'
 import { MODOS_OFICIAIS, modoDaConfig, type ModoOficial } from '@/lib/whatsapp/modo-oficial'
 import { navegarInteira } from '@/lib/navegacao-inteira'
+import { ConectarWhatsAppPelaMeta } from '@/components/admin/conectar-whatsapp-meta'
 
 /**
  * Origem do site, resolvida só depois de montar.
@@ -282,7 +283,71 @@ function ListaDoModo({ titulo, itens }: { titulo: string; itens: readonly string
   )
 }
 
-function OfficialForm({ numero }: { numero?: NumeroNaTela }) {
+/**
+ * Os campos da credencial colada à mão. Com o cadastro pela Meta disponível,
+ * eles descem para um "avançado" recolhido: servem à clínica que tem um app
+ * PRÓPRIO na Meta; a que não tem conecta pelo botão.
+ */
+function CredencialManual({ recolhida, children }: { recolhida: boolean; children: React.ReactNode }) {
+  if (!recolhida) return <>{children}</>
+  return (
+    <details className="card" style={{ padding: '12px 16px' }}>
+      <summary style={{ cursor: 'pointer', fontSize: 'var(--text-sm-sz)', fontWeight: 700, color: 'var(--text-muted)' }}>
+        Conectar com as credenciais de um app próprio da Meta (avançado)
+      </summary>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }}>{children}</div>
+    </details>
+  )
+}
+
+/**
+ * A caixa conectada pelo cadastro incorporado: não tem credencial para editar
+ * (o token fica no servidor). Liga, desliga e reconecta.
+ */
+function CaixaDoCadastro({ numero, configId }: { numero: NumeroNaTela; configId: string | null }) {
+  const modo = modoDaConfig(numero.config as Record<string, string>)
+  const [isActive, setIsActive] = useState(numero.isActive)
+  const [pendente, iniciar] = useTransition()
+  const [erro, setErro] = useState<string | null>(null)
+
+  function alternar(ativo: boolean) {
+    setIsActive(ativo)
+    setErro(null)
+    iniciar(async () => {
+      const r = await salvarNumeroWhatsApp(numero.id, 'official', {}, ativo)
+      if (!r.ok) { setErro(r.error ?? 'Não consegui salvar.'); setIsActive(!ativo) }
+    })
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <p style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>
+          <CheckCircle2 size={14} color="var(--success)" /> Conectado pela Meta
+        </p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          {MODOS_OFICIAIS[modo].rotulo} · {numero.label}
+        </p>
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+          Para trocar de número ou de conta, conecte de novo pela Meta.
+        </p>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input id="official-active" type="checkbox" checked={isActive} disabled={pendente}
+          onChange={e => alternar(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
+        <label htmlFor="official-active" style={{ fontSize: 'var(--text-base-sz)', cursor: 'pointer', color: 'var(--text)' }}>
+          Ativar WhatsApp Oficial
+        </label>
+      </div>
+      {erro && <p role="alert" style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--danger)' }}>{erro}</p>}
+
+      {configId && <ConectarWhatsAppPelaMeta configId={configId} modo={modo} rotulo="Reconectar pela Meta" />}
+    </div>
+  )
+}
+
+function OfficialForm({ numero, configIdDoCadastro }: { numero?: NumeroNaTela; configIdDoCadastro: string | null }) {
   const origem = useOrigem()
   const existing = (numero?.config ?? {}) as Record<string, string>
   const [phoneNumberId, setPhoneNumberId] = useState(existing.phoneNumberId ?? '')
@@ -298,6 +363,10 @@ function OfficialForm({ numero }: { numero?: NumeroNaTela }) {
   const [isPending,     startTransition]  = useTransition()
   const [isTesting,     startTest]        = useTransition()
   const [saved,         setSaved]         = useState(false)
+
+  if (numero && (numero.config as Record<string, unknown>)?.conexao === 'cadastro_incorporado') {
+    return <CaixaDoCadastro numero={numero} configId={configIdDoCadastro} />
+  }
 
   function handleSave() {
     setSaved(false)
@@ -323,6 +392,19 @@ function OfficialForm({ numero }: { numero?: NumeroNaTela }) {
           sabido antes de alguém começar a colar credencial. */}
       <EscolhaDoModoOficial modo={modo} onEscolher={setModo} />
 
+      {/* O caminho normal: o cadastro da Meta numa janela, sem colar token. */}
+      {configIdDoCadastro && !numero && (
+        <div className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <p style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>Conectar pela Meta</p>
+          <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 'var(--leading-normal)' }}>
+            Abre uma janela da Meta: você entra com o Facebook da clínica, escolhe a conta do
+            WhatsApp e o número, e volta com tudo pronto — sem copiar token nenhum.
+          </p>
+          <ConectarWhatsAppPelaMeta configId={configIdDoCadastro} modo={modo} />
+        </div>
+      )}
+
+      <CredencialManual recolhida={!!configIdDoCadastro && !numero}>
       <Field
         label="WhatsApp Business Account ID (WABA)"
         name="wabaId"
@@ -414,6 +496,7 @@ function OfficialForm({ numero }: { numero?: NumeroNaTela }) {
         </code>
         <p style={{ marginTop: 4 }}>Campos obrigatórios: <strong>messages</strong>, <strong>message_status_updates</strong></p>
       </div>
+      </CredencialManual>
     </div>
   )
 }
@@ -1139,6 +1222,11 @@ interface SettingsIntegrationsProps {
   metaStep?:        string
   metaError?:       boolean
   metaErrorReason?: string
+  /**
+   * `config_id` do cadastro incorporado da Meta (`META_ES_CONFIG_ID`, lido no
+   * servidor). Sem ele, a caixa oficial só se conecta com credencial colada.
+   */
+  configIdDoCadastro?: string | null
 }
 
 type Section = 'whatsapp' | 'meta_messaging' | 'meta_ads' | 'google_ads' | null
@@ -1204,7 +1292,7 @@ function SectionCard({
   )
 }
 
-export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo, metaStep, metaError, metaErrorReason }: SettingsIntegrationsProps) {
+export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo, metaStep, metaError, metaErrorReason, configIdDoCadastro = null }: SettingsIntegrationsProps) {
   const [section,    setSection]    = useState<Section>(
     // Volta do OAuth: abre a seção que pede a escolha. O de anúncios volta com
     // `select`, e caía na seção do WhatsApp com a conta a escolher escondida.
@@ -1360,7 +1448,7 @@ export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo,
               : <UazapiForm numero={caixaEmEdicao} />}
           </>
         ) : (
-          <OfficialForm numero={caixaEmEdicao} />
+          <OfficialForm numero={caixaEmEdicao} configIdDoCadastro={configIdDoCadastro} />
         )}
         </>
         )}

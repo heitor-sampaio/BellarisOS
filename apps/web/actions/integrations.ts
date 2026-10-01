@@ -7,6 +7,8 @@ import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
 import { ler } from '@/lib/db'
 import { enderecoPublico } from '@/lib/whatsapp/endereco-publico'
+import { conectarPeloCadastro } from '@/lib/whatsapp/cadastro-incorporado'
+import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
 
 export interface IntegrationConfig {
   id:         string
@@ -68,13 +70,32 @@ export async function salvarNumeroWhatsApp(
   const anterior = numeroId
     ? await ler(admin
         .from('whatsapp_numbers')
-        .select('id, is_active, label')
+        .select('id, is_active, label, config')
         .eq('id', numeroId)
         .eq('tenant_id', ctx.tenantId!)
         .maybeSingle(), 'buscar a caixa de WhatsApp')
     : null
 
   if (numeroId && !anterior) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
+
+  // A caixa conectada pelo cadastro incorporado tem o token de negócio que a
+  // Meta emitiu — e a tela nem o recebe (`listarNumerosWhatsApp`). Gravar o
+  // formulário manual por cima apagaria a credencial: o que muda por aqui é só
+  // ligar e desligar; para trocar de conta, conecta-se de novo pela Meta.
+  const configAnterior = (anterior?.config ?? {}) as Record<string, unknown>
+  if (configAnterior.conexao === 'cadastro_incorporado') {
+    const { error } = await admin.from('whatsapp_numbers')
+      .update({ is_active: isActive, updated_at: new Date().toISOString() })
+      .eq('id', anterior!.id as string)
+    if (error) return { ok: false, error: error.message }
+    if (isActive !== (anterior?.is_active ?? false)) {
+      await (isActive
+        ? integracaoConectada(provider, ctx, anterior!.label as string, anterior!.id as string)
+        : integracaoDesconectada(provider, ctx, 'pedido', anterior!.label as string, anterior!.id as string))
+    }
+    revalidatePath('/admin/settings')
+    return { ok: true, numeroId: anterior!.id as string }
+  }
 
   const rotulo = extras?.rotulo?.trim()
     || (anterior?.label as string | undefined)
@@ -152,8 +173,48 @@ export async function listarNumerosWhatsApp(): Promise<NumeroNaTela[]> {
     isActive: n.isActive, isDefault: n.isDefault, managed: n.managed,
     branchId: n.branchId, userIds: n.userIds,
     wabaId: n.wabaId, phoneNumberId: n.phoneNumberId,
-    config: n.config as unknown as Record<string, unknown>,
+    config: semSegredoDoCadastro(n.config as unknown as Record<string, unknown>),
   }))
+}
+
+/**
+ * A caixa do cadastro incorporado não tem formulário: o token de negócio e o
+ * PIN ficam no servidor. (As de credencial colada à mão ainda levam a config
+ * inteira — ver o aviso em `NumeroNaTela`.)
+ */
+function semSegredoDoCadastro(config: Record<string, unknown>): Record<string, unknown> {
+  if (config.conexao !== 'cadastro_incorporado') return config
+  const resto = { ...config }
+  delete resto.accessToken
+  delete resto.pin
+  return resto
+}
+
+/**
+ * Conecta um número pelo cadastro incorporado da Meta (Embedded Signup).
+ *
+ * O navegador manda o que a janela da Meta devolveu: o código (vale 30 s) e os
+ * ids da conta e do número. Os ids NÃO são confiados: o servidor troca o código
+ * pelo token e confere com ele que o número é daquela conta — ver
+ * `lib/whatsapp/cadastro-incorporado.ts`.
+ */
+export async function conectarWhatsAppPelaMeta(pedido: {
+  code:          string
+  wabaId:        string
+  phoneNumberId: string
+  businessId?:   string | null
+  modo:          ModoOficial
+}): Promise<{ ok: true; numeroId: string; avisos: string[] } | { ok: false; error: string }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'settings', 'MANAGE')
+  const modo: ModoOficial = pedido?.modo === 'cloud_api' ? 'cloud_api' : 'coexistencia'
+
+  const r = await conectarPeloCadastro(ctx.tenantId!, { ...pedido, modo })
+  if (!r.ok) return r
+
+  await integracaoConectada('official', ctx, r.rotulo, r.numeroId)
+  revalidatePath('/admin/settings')
+  return { ok: true, numeroId: r.numeroId, avisos: r.avisos }
 }
 
 /**
