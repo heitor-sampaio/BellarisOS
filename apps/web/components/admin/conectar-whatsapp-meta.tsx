@@ -116,8 +116,12 @@ export function ConectarWhatsAppPelaMeta({ configId, modo, rotulo = 'Conectar pe
       config_id: configId,
       response_type: 'code',
       override_default_response_type: true,
+      // Os mesmos extras do link hospedado que a Meta gera para esta
+      // configuração. A versão (v4) é da configuração do `config_id`; repetir
+      // aqui não muda nada nela e evita depender disso.
       extras: {
         setup: {},
+        version: 'v4',
         sessionInfoVersion: '3',
         // Coexistência: o número continua no aplicativo do celular.
         ...(modo === 'coexistencia' ? { featureType: 'whatsapp_business_app_onboarding' } : {}),
