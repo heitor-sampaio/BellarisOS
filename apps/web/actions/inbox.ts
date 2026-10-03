@@ -30,6 +30,7 @@ import { gravar, ler, tentar, mensagemDoErro } from '@/lib/db'
 import { passaNasCaixas, passaNoAlcanceDoDono, type AlcanceDoDono } from '@/lib/inbox/visibilidade'
 import { alcanceDoDono, caixasDoAlcance, conversaAoAlcance, mensagemAoAlcance } from '@/lib/inbox/alcance'
 import { leadAoAlcance } from '@/lib/crm/alcance'
+import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 
 export type InboxChannel = 'whatsapp' | 'instagram' | 'messenger' | 'email' | 'manual'
 export type ConvStatus   = 'open' | 'pending' | 'closed'
@@ -1367,6 +1368,9 @@ export async function sendMessage(
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
+  // No modo suporte nada sai para o paciente (decisão do Heitor).
+  const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
+  if (travado) return { ok: false, error: travado }
   const admin = createAdminClient()
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada.' }
 
@@ -1432,6 +1436,9 @@ export async function editMessage(
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
+  // No modo suporte nada sai para o paciente (decisão do Heitor).
+  const travado = bloqueioDoSuporte(ctx, 'editar mensagem enviada ao cliente')
+  if (travado) return { ok: false, error: travado }
   const admin = createAdminClient()
 
   const novo = texto.trim()
@@ -1739,6 +1746,9 @@ export async function sendTemplateMessage(
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
+  // No modo suporte nada sai para o paciente (decisão do Heitor).
+  const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
+  if (travado) return { ok: false, error: travado }
   const admin = createAdminClient()
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada' }
 
@@ -1834,7 +1844,7 @@ export async function sendTemplateMessage(
       channel:         'whatsapp',
       status:          'sending',
       sent_by_id:      membro?.id ?? null,
-      sent_by_name:    membro?.name ?? null,
+      sent_by_name:    ctx.userName || membro?.name || null,
       template_id:     t.id,
       // A caixa que ENVIA, na mensagem (§9.8.0): sem isto o histórico afirmava
       // que o template saiu pela caixa da conversa, mesmo quando saiu pela do
@@ -1897,6 +1907,9 @@ export async function sendMediaMessage(
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
+  // No modo suporte nada sai para o paciente (decisão do Heitor).
+  const travado = bloqueioDoSuporte(ctx, 'mandar arquivo ao cliente')
+  if (travado) return { ok: false, error: travado }
   const admin = createAdminClient()
 
   const conversationId = form.get('conversationId')
@@ -1999,7 +2012,7 @@ export async function sendMediaMessage(
       channel,
       status:          'sending',
       sent_by_id:      membro?.id ?? null,
-      sent_by_name:    membro?.name ?? null,
+      sent_by_name:    ctx.userName || membro?.name || null,
       media_type:      kind,
       media_path:      guardado.path,
       // A caixa que ENVIA, na mensagem (§9.8.0) — como no texto e no template.

@@ -109,4 +109,22 @@ export interface TenantContext {
   providesServices: boolean         // atende clientes (profissional)
   isNetworkAdmin: boolean
   isClient: boolean
+  /**
+   * Esta sessão é do SUPORTE da plataforma entrando na conta do membro
+   * (apps/web/lib/suporte). Nula numa sessão normal. Com ela, o nome que
+   * fica nos registros é "Ana (via suporte: Heitor)", o dado clínico fica de
+   * fora (salvo autorização que o inclua) e nada sai para o paciente.
+   */
+  suporte?: SuporteNoContexto | null
+}
+
+export interface SuporteNoContexto {
+  sessaoId:      string
+  atendenteNome: string
+  /** O nome do membro, sem a marca do suporte (a topbar mostra este). */
+  nomeDoMembro:  string
+  incluiClinico: boolean
+  /** ISO. */
+  expiraEm:      string
+  chamadoId:     string | null
 }

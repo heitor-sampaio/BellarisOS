@@ -21,6 +21,7 @@ import { enviarNaConversa } from '@/lib/inbox/enviar'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { EVENTOS } from '@estetica-os/types'
 import { getTenantContext, assertPermission, alcancaUnidade, can, podeReceber } from '@/lib/auth'
+import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -290,6 +291,8 @@ export async function pedirAssinaturaNoPortal(id: string): Promise<{ error?: str
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'documents', 'MANAGE')
+    const travado = bloqueioDoSuporte(ctx, 'pedir assinatura ao cliente')
+    if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
     const montado = await garantirRenderizado(ctx.tenantId!, doc.id)
@@ -419,6 +422,8 @@ export async function enviarLinkPelaConversa(id: string): Promise<{ error?: stri
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'documents', 'MANAGE')
+    const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
+    if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
     if (!(await envioPelaConversaLigado(ctx.tenantId!))) {

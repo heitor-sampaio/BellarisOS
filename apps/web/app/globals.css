@@ -2081,3 +2081,90 @@ input[type="search"].field {
 .busca-sobreposicao-lista::-webkit-scrollbar { display: none; }
 /* A lupa do celular encosta no sino: a topbar ali é hambúrguer | lupa + sino. */
 .busca-abrir { margin-left: auto; margin-right: -8px; }
+
+/* ============================================================
+   PORTAL DO SUPORTE (/suporte) — a plataforma atendendo as redes.
+   Fora dos portais das redes: moldura própria, sem menu de rede.
+   ============================================================ */
+.suporte-shell { min-height: 100dvh; background: var(--bg-app); }
+.suporte-topo {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  padding: 12px var(--content-pad-x);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.suporte-marca { font-weight: var(--weight-extrabold); color: var(--brand); letter-spacing: var(--tracking-tight); }
+.suporte-marca-sub { color: var(--text-muted); font-weight: var(--weight-bold); }
+.suporte-nav { display: flex; gap: 4px; flex: 1; min-width: 0; flex-wrap: wrap; }
+.suporte-nav-item {
+  padding: 7px 12px; border-radius: var(--radius-field-token);
+  font-size: var(--text-sm-sz); font-weight: var(--weight-bold);
+  color: var(--text-muted); text-decoration: none;
+}
+.suporte-nav-item:hover { color: var(--brand); background: var(--brand-soft); }
+.suporte-nav-item[aria-current="page"] { color: var(--on-brand); background: var(--brand); box-shadow: var(--shadow-nav-active); }
+.suporte-quem { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.suporte-quem-nome { font-size: var(--text-sm-sz); font-weight: var(--weight-bold); color: var(--text); }
+.suporte-conteudo { padding: var(--content-pad-y) var(--content-pad-x); max-width: 1280px; margin: 0 auto; }
+
+.suporte-centro { display: flex; justify-content: center; padding-top: 40px; }
+.suporte-cartao-estreito { width: min(440px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.suporte-titulo { font-size: var(--text-title); font-weight: var(--weight-extrabold); letter-spacing: var(--tracking-tight); color: var(--text); }
+.suporte-subtitulo { font-size: var(--text-card-title); font-weight: var(--weight-extrabold); color: var(--text); margin: 14px 0 8px; }
+.suporte-sub { font-size: var(--text-sm-sz); color: var(--text-muted); margin-top: 4px; }
+.suporte-pilha { display: flex; flex-direction: column; gap: 10px; }
+.suporte-pilha-larga { display: flex; flex-direction: column; gap: 16px; }
+.suporte-texto { font-size: var(--text-sm-sz); color: var(--text); }
+.suporte-texto-fraco { font-size: var(--text-xs-sz); color: var(--text-muted); font-weight: var(--weight-semibold); }
+.suporte-erro { font-size: var(--text-sm-sz); color: var(--danger); font-weight: var(--weight-semibold); }
+.suporte-ok { font-size: var(--text-sm-sz); color: var(--success); font-weight: var(--weight-semibold); }
+.suporte-alerta { color: var(--warning); font-weight: var(--weight-semibold); }
+.suporte-qr { width: 180px; height: 180px; border: 1px solid var(--border); border-radius: var(--radius-field-token); background: var(--surface); }
+.suporte-segredo { font-family: var(--font-mono); font-size: var(--text-xs-sz); word-break: break-all; }
+
+.suporte-cabecalho { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.suporte-cabecalho > div:first-child { min-width: 0; }
+.suporte-filtros { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.suporte-voltar { font-size: var(--text-xs-sz); color: var(--text-muted); text-decoration: none; font-weight: var(--weight-bold); }
+.suporte-voltar:hover { color: var(--brand); }
+.suporte-link-forte { font-size: var(--text-sm-sz); font-weight: var(--weight-bold); color: var(--text); text-decoration: none; }
+a.suporte-link-forte:hover { color: var(--brand); }
+.suporte-chip { background: var(--brand-soft); color: var(--brand); font-size: var(--text-2xs); font-weight: var(--weight-bold); }
+.suporte-vazio { padding: 40px 24px; text-align: center; color: var(--text-muted); font-size: var(--text-sm-sz); }
+
+.suporte-tabela { width: 100%; border-collapse: collapse; }
+.suporte-tabela th {
+  padding: 12px 16px; text-align: left;
+  font-size: var(--text-overline); font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-overline); text-transform: uppercase; color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.suporte-tabela td { padding: 12px 16px; font-size: var(--text-sm-sz); color: var(--text); border-bottom: 1px solid var(--hairline); vertical-align: middle; }
+.suporte-tabela tr:last-child td { border-bottom: none; }
+
+.suporte-secao { display: flex; flex-direction: column; gap: 10px; }
+.suporte-secao-titulo { padding: 16px 16px 4px; }
+.suporte-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--text-sm-sz); color: var(--text); }
+.suporte-lista-densa { gap: 3px; font-size: var(--text-xs-sz); }
+.suporte-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.suporte-acoes { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.suporte-form-linha { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.suporte-campo { display: flex; flex-direction: column; gap: 4px; min-width: 180px; flex: 1; }
+
+/* Banner do MODO SUPORTE, dentro da topbar (não muda --topbar-h). */
+.banner-suporte {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 6px 5px 12px; min-width: 0;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-radius: var(--radius-chip-token);
+  font-size: var(--text-xs-sz); font-weight: var(--weight-semibold);
+}
+.banner-suporte-texto { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.banner-suporte-sair {
+  padding: 3px 10px; border-radius: var(--radius-chip-token);
+  background: var(--danger); color: var(--on-brand);
+  font-weight: var(--weight-bold); text-decoration: none; flex-shrink: 0;
+}

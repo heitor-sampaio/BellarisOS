@@ -25,6 +25,9 @@ import { SettingsVisibilidadeInbox } from '@/components/admin/settings-visibilid
 import { lerCaixas } from '@/lib/inbox/visibilidade'
 import { ler } from '@/lib/db'
 import { mascararSegredos } from '@/lib/integracoes/sem-segredo'
+import { dadosDaAbaSuporte } from '@/lib/suporte/painel-da-clinica'
+import { podeIncluirClinico } from '@/lib/suporte/regras'
+import { SettingsSuporte } from '@/components/admin/settings-suporte'
 import { FidelidadeConfig } from '@/components/admin/fidelidade-config'
 import { FidelidadeCatalogo } from '@/components/admin/fidelidade-catalogo'
 import { catalogoDeRecompensas } from '@/actions/fidelidade'
@@ -151,6 +154,7 @@ export async function Configuracoes({
 
   // Só carrega quando a aba está aberta: a lista não é usada nas outras.
   const lgpdRequests = activeTab === 'lgpd' ? await listDataRequests() : []
+  const dadosDoSuporte = activeTab === 'suporte' && !ctx.suporte ? await dadosDaAbaSuporte(ctx.tenantId!) : null
 
   const modelosDeDocumento = activeTab === 'documentos' ? await modelosDaRede(ctx.tenantId!) : null
   const linkPelaConversa = activeTab === 'documentos' ? await envioPelaConversaLigado(ctx.tenantId!) : false
@@ -325,6 +329,14 @@ export async function Configuracoes({
           configIdDoCadastro={process.env.META_ES_CONFIG_ID || null}
         />
       )}
+
+      {activeTab === 'suporte' && (dadosDoSuporte
+        ? <SettingsSuporte dados={dadosDoSuporte} podeClinico={podeIncluirClinico(ctx)} />
+        : (
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+            Indisponível no modo suporte: quem autoriza o acesso é a própria clínica.
+          </p>
+        ))}
 
       {activeTab === 'lgpd' && (
         <SettingsLgpd

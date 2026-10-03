@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
   if (claims.client_id) await bonusDePrimeiroAcesso(claims.client_id)
 
   let redirectTo = '/auth/redirect'  // fallback seguro
+  // A plataforma vai para o /suporte, que pede a verificação em duas etapas.
+  if ((claims as { plataforma?: string }).plataforma) return NextResponse.json({ redirectTo: '/suporte/verificacao' })
   try {
     if (claims.client_id) {
       const cl = await ler(admin

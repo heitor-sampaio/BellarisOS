@@ -96,6 +96,11 @@ describe('atorDoContexto', () => {
       .toEqual({ id: 'u1', nome: 'Ana', tipo: 'usuario' })
   })
 
+  it('numa sessão de suporte, o ator leva a sessão', () => {
+    expect(atorDoContexto({ internalUserId: 'u1', userName: 'Ana (via suporte: H)', suporte: { sessaoId: 's1' } }))
+      .toEqual({ id: 'u1', nome: 'Ana (via suporte: H)', tipo: 'usuario', suporteSessaoId: 's1' })
+  })
+
   it('nome vazio vira nulo, não string vazia', () => {
     expect(atorDoContexto({ internalUserId: 'u1', userName: '' }).nome).toBeNull()
   })

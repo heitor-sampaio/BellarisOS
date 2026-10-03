@@ -13,6 +13,8 @@ export async function savePushToken({
   platform: 'android' | 'ios'
 }): Promise<void> {
   const ctx = await getTenantContext()
+  // O aparelho do ATENDENTE não passa a receber as notificações do membro.
+  if (ctx.suporte) return
   const admin = createAdminClient()
   await gravar(admin.from('push_tokens').upsert(
     {

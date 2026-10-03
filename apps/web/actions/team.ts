@@ -251,6 +251,17 @@ export async function deactivateTeamMember(userId: string, redirectPath: string 
     updateTag(`user:${membro.auth_id}`)
   }
 
+  // Quem sai da equipe leva junto a autorização de suporte que tinha dado (e
+  // a sessão de suporte em curso na conta dele cai).
+  const vigente = await ler(admin.from('support_grants').select('id')
+    .eq('target_user_id', userId).eq('tenant_id', ctx.tenantId!).is('revoked_at', null).maybeSingle(), 'buscar a autorização de suporte')
+  if (vigente) {
+    const sessoes = await gravar(admin.rpc('suporte_revogar_autorizacao', {
+      p_grant: vigente.id, p_tenant: ctx.tenantId!, p_por_user: ctx.internalUserId, p_por_staff: null, p_motivo: 'membro desativado',
+    }), 'revogar a autorização de suporte') as string[] | null
+    for (const s of sessoes ?? []) updateTag(`suporte-sessao:${s}`)
+  }
+
   // O retrato leva o cargo e a abrangência que a pessoa tinha — é o que uma
   // automação de "revogar o que ela ainda alcança" precisa saber, e depois de
   // desativada essa informação vira arqueologia.

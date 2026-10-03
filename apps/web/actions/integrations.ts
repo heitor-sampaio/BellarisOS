@@ -179,8 +179,8 @@ export async function listarNumerosWhatsApp(): Promise<NumeroNaTela[]> {
 
 /**
  * A caixa do cadastro incorporado não tem formulário: o token de negócio e o
- * PIN ficam no servidor. (As de credencial colada à mão ainda levam a config
- * inteira — ver o aviso em `NumeroNaTela`.)
+ * PIN ficam no servidor — nem o marcador vai à tela, porque não há o que
+ * reexibir. (As de credencial colada à mão levam o marcador: `NumeroNaTela`.)
  */
 function semSegredoDoCadastro(config: Record<string, unknown>): Record<string, unknown> {
   if (config.conexao !== 'cadastro_incorporado') return config

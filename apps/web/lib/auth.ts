@@ -11,11 +11,20 @@ import {
   NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS,
 } from '@/lib/permissions'
 import { semAcesso } from '@/lib/sem-acesso'
+import { headers } from 'next/headers'
+import { sessaoDeSuporte, sessaoVigente, registrarAcessoDoSuporte } from '@/lib/suporte/sessao'
+import { marcarSessaoDeSuporte } from '@/lib/suporte/requisicao'
+import { nomeComSuporte } from '@/lib/suporte/regras'
 
 // Resolve permissões + campos derivados do membro a partir das claims do JWT.
 // Durante a transição, role_id/provides_services vêm do banco (getCachedMember)
 // caso o JWT ainda não os carregue.
 async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<TenantContext> {
+  // Quem é da PLATAFORMA não é membro de rede nem cliente final: sem esta
+  // linha, a falta de `role` o faria virar CLIENTE no padrão logo abaixo e
+  // passar pelo portal do cliente. O lugar dele é o /suporte.
+  if ((meta as { plataforma?: string }).plataforma) redirect('/suporte')
+
   const tenantId = meta.tenant_id ?? null
   const role = (meta.role ?? 'CLIENT') as UserRole
   const isNetworkAdmin = role === 'NETWORK_ADMIN'
@@ -107,8 +116,59 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
   const meta = (claims.app_metadata ?? {}) as Partial<JwtClaims>
   const authId = claims.sub as string
 
-  return buildContext(authId, meta)
+  const ctx = await buildContext(authId, meta)
+
+  // Esta sessão é do SUPORTE da plataforma entrando na conta do membro?
+  // Achada pelo `session_id` do JWT (lib/suporte/sessao.ts) — não depende de
+  // cookie nenhum que o atendente possa apagar.
+  const sessionId = (claims as { session_id?: string }).session_id
+  if (!sessionId || ctx.isClient || !ctx.internalUserId) return ctx
+  const sessao = await sessaoDeSuporte(sessionId)
+  if (!sessao) return ctx
+
+  // Encerrada, revogada ou vencida: o fim devolve o atendente ao painel.
+  if (!sessaoVigente(sessao) || sessao.targetUserId !== ctx.internalUserId) redirect('/auth/suporte-fim?motivo=venceu')
+
+  marcarSessaoDeSuporte(sessao.id)
+  await registrarEstaRequisicao(sessao.id)
+
+  return {
+    ...ctx,
+    // O nome que fica em TUDO o que esta sessão grava.
+    userName: nomeComSuporte(ctx.userName, sessao.atendenteNome),
+    // Dado clínico fora, salvo autorização que o inclua (a RLS também barra).
+    permissions: sessao.includesClinical ? ctx.permissions : { ...ctx.permissions, medical_records: 'NONE' },
+    suporte: {
+      sessaoId:      sessao.id,
+      atendenteNome: sessao.atendenteNome,
+      nomeDoMembro:  ctx.userName,
+      incluiClinico: sessao.includesClinical,
+      expiraEm:      sessao.expiresAt,
+      chamadoId:     sessao.ticketId,
+    },
+  }
 })
+
+/**
+ * Registra a requisição feita na sessão de suporte (`support_access_log`):
+ * página ou action, com o caminho que o proxy anota em `x-bellaris-caminho`.
+ * Prefetch não conta — ninguém abriu aquela tela.
+ */
+async function registrarEstaRequisicao(sessaoId: string): Promise<void> {
+  try {
+    const h = await headers()
+    if (h.get('next-router-prefetch')) return
+    const [metodo, ...caminho] = (h.get('x-bellaris-caminho') ?? '').split(' ')
+    await registrarAcessoDoSuporte(sessaoId, {
+      method:   metodo || null,
+      path:     caminho.join(' ') || null,
+      actionId: h.get('next-action'),
+      ip:       h.get('x-real-ip'),
+    })
+  } catch (e) {
+    console.error('[suporte] registrar a requisição:', e instanceof Error ? e.message : e)
+  }
+}
 
 /** Gate do portal do cliente (role CLIENT). */
 export function assertClient(ctx: TenantContext): void {

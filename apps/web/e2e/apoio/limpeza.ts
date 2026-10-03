@@ -233,6 +233,20 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
   const clientes = await ids(db.from('clients').select('id').like('name', like).lt('created_at', antes))
   if (clientes.length) { await apagarClientes(clientes, falhas); apagou.clientes = clientes.length }
 
+  // 4b. Gente de teste da PLATAFORMA (o /suporte): a linha, o que ela
+  //     registrou e o login. Um atendente que sobra é um login com acesso a
+  //     todas as redes — não pode ficar.
+  const { data: equipe } = await db.from('platform_staff').select('id, auth_id')
+    .like('name', like).lt('created_at', antes)
+  for (const p of (equipe ?? []) as { id: string; auth_id: string }[]) {
+    await passo(falhas, 'sessões de suporte', db.from('support_sessions').delete().eq('staff_id', p.id))
+    await passo(falhas, 'registros da plataforma', db.from('platform_audit_log').delete().eq('staff_id', p.id))
+    await passo(falhas, 'equipe da plataforma', db.from('platform_staff').delete().eq('id', p.id))
+    const { error } = await db.auth.admin.deleteUser(p.auth_id)
+    if (error) falhas.push({ o_que: 'login da plataforma', erro: error.message })
+  }
+  if ((equipe ?? []).length) apagou.plataforma = equipe!.length
+
   // 5. Caixas de WhatsApp de teste (os vínculos saem em cascata).
   const caixas = await ids(db.from('whatsapp_numbers').select('id').like('label', like).lt('created_at', antes))
   if (caixas.length) {

@@ -1,4 +1,5 @@
 'use server'
+import { emSessaoDeSuporte } from '@/lib/suporte/sessao'
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -150,6 +151,8 @@ async function destinoDaSessao(supabase: Awaited<ReturnType<typeof createClient>
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const claims = (user.app_metadata ?? {}) as JwtClaims
+      // A plataforma vai para o /suporte, que pede a verificação em duas etapas.
+      if ((claims as { plataforma?: string }).plataforma) return '/suporte/verificacao'
       const admin  = createAdminClient()
 
       if (claims.client_id) {
@@ -171,6 +174,8 @@ async function destinoDaSessao(supabase: Awaited<ReturnType<typeof createClient>
 }
 
 export async function logoutAction() {
+  // Na sessão de SUPORTE, "sair" é sair da conta do membro e voltar ao painel.
+  if (await emSessaoDeSuporte()) redirect('/auth/suporte-fim')
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect('/login')
@@ -213,6 +218,8 @@ export async function updatePasswordAction(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'O link expirou ou já foi usado. Peça um novo.' }
 
+  // A senha do membro não muda pelo suporte (o banco também barra).
+  if (await emSessaoDeSuporte()) return { error: 'No modo suporte, a senha desta conta não muda.' }
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
   if (error) {
     // A mensagem do Auth é em inglês; a mais comum é repetir a senha atual.

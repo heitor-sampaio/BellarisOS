@@ -1,5 +1,5 @@
 export type {
-  UserRole, JwtClaims, TenantContext, AppModule, PermissionLevel,
+  UserRole, JwtClaims, TenantContext, SuporteNoContexto, AppModule, PermissionLevel,
   PermissionScope, ScopedModule, ResolvedPermissions, ResolvedScopes, ReportTab,
 } from './auth'
 export { APP_MODULES, SCOPED_MODULES, REPORT_TABS } from './auth'

@@ -6,7 +6,8 @@ import { useSidebar } from '@/components/shared/sidebar-context'
 import { savePushToken } from '@/actions/push-subscriptions'
 import { StaffNotificationBell } from '@/components/shared/staff-notification-bell'
 import { BuscaUniversal } from '@/components/shared/busca-universal'
-import type { ResolvedPermissions } from '@estetica-os/types'
+import { BannerDoSuporte } from '@/components/shared/banner-do-suporte'
+import type { ResolvedPermissions, SuporteNoContexto } from '@estetica-os/types'
 
 interface TopbarProps {
   userName:       string
@@ -18,6 +19,8 @@ interface TopbarProps {
   slug:           string | null
   /** O que o cargo abre: decide as páginas que a busca oferece. */
   permissions:    ResolvedPermissions
+  /** A sessão é do suporte da plataforma: mostra o aviso fixo com o "Sair". */
+  suporte?:       SuporteNoContexto | null
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -31,7 +34,7 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, suporte = null }: TopbarProps) {
   const firstName  = userName.split(' ')[0] ?? userName
   const { toggle } = useSidebar()
 
@@ -77,14 +80,17 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
         <Menu size={20} />
       </button>
 
+      {/* No modo suporte, o aviso toma o lugar da saudação — e não some */}
+      {suporte && <BannerDoSuporte suporte={suporte} />}
+
       {/* Saudação — cede o lugar à busca quando a topbar aperta (< 1280px) */}
-      <p className="topbar-saudacao" style={{
+      {!suporte && <p className="topbar-saudacao" style={{
         fontSize:   'var(--text-sm-sz)',
         color:      'var(--text-muted)',
         fontWeight: 'var(--weight-semibold)',
       }}>
         Bom dia, {firstName} ✦
-      </p>
+      </p>}
 
       {/* Busca universal — no celular vira a lupa do bloco da direita */}
       <BuscaUniversal slug={slug} permissions={permissions} />

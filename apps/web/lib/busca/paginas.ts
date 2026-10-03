@@ -54,6 +54,7 @@ const APELIDOS_DA_ABA: Record<string, readonly string[]> = {
   fidelidade:   ['pontos', 'recompensas', 'vouchers'],
   comissoes:    ['taxas', 'maquininha'],
   lgpd:         ['privacidade', 'exportação'],
+  suporte:      ['ajuda', 'acesso do suporte', 'autorizar suporte', 'bellarisos'],
   eventos:      ['log'],
   general:      ['dados da clínica', 'cnpj', 'endereço'],
 }

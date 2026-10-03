@@ -21,7 +21,7 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
  *   conta Meta da rede pela dele e deixava a integração inativa.
  */
 
-const CRONS = ['automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns']
+const CRONS = ['automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns', 'suporte-sessoes']
 
 // Sem sessão nenhuma: o `storageState` padrão do projeto é o do admin.
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -53,6 +53,22 @@ test('o link público de assinatura: sem token válido, nada abre nem assina', a
   expect(assinar.status()).toBe(404)
   const semCorpo = await request.post('/api/assinar/abrir', { data: 'x' })
   expect(semCorpo.status()).toBe(400)
+})
+
+test('entrar como (suporte) exige alguém da plataforma, verificado', async ({ request, browser }) => {
+  const form = { tenantId: '00000000-0000-4000-8000-000000000000', userId: '00000000-0000-4000-8000-000000000000', motivo: 'teste' }
+  const anonimo = await request.post('/api/suporte/entrar', { form, maxRedirects: 0 })
+  expect([303, 307], 'sem sessão vai ao login').toContain(anonimo.status())
+  expect(anonimo.headers().location ?? '').toContain('/login')
+
+  // Um membro de rede (o admin) não é da plataforma: recusado.
+  const ctx = await browser.newContext({ storageState: ARQUIVO_DE_SESSAO })
+  try {
+    const membro = await ctx.request.post('/api/suporte/entrar', { form, maxRedirects: 0 })
+    expect(membro.status()).toBe(403)
+  } finally {
+    await ctx.close()
+  }
 })
 
 test('geocode exige sessão', async ({ request, browser }) => {

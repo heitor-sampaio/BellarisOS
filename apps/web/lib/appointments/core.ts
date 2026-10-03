@@ -191,7 +191,7 @@ export async function createAppointmentCore(
     return { error: 'Este crédito acabou de ser usado em outro agendamento.' }
   }
 
-  const userName = await getUserName(admin, ctx.userId)
+  const userName = ctx.userName || await getUserName(admin, ctx.userId)
   await logAppointmentHistory(admin, data.id as string, ctx.internalUserId, userName, 'CREATED', 'Agendamento criado')
 
   // A corrente de eventos. Sai daqui, e não das actions que chamam este core,

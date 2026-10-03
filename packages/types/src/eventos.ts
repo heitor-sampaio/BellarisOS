@@ -154,6 +154,8 @@ export interface AtorDoEvento {
   id?:   string | null
   nome?: string | null
   tipo:  TipoDeAtor
+  /** A sessão do suporte da plataforma em que o fato aconteceu, se foi numa. */
+  suporteSessaoId?: string | null
 }
 
 /**

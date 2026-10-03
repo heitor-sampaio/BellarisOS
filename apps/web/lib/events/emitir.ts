@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sessaoDeSuporteDaRequisicao } from '@/lib/suporte/requisicao'
 import type {
   NomeDeEvento, EntidadeDeEvento, OrigemDeEvento, AtorDoEvento, DadosDeEvento,
 } from '@estetica-os/types'
@@ -105,6 +106,9 @@ export async function emitirEvento(
       origem:      e.origem ?? 'app',
       chave:       e.chave ?? null,
       ocorrido_em: (e.ocorridoEm ?? new Date()).toISOString(),
+      // Fato gravado numa sessão do SUPORTE da plataforma: a clínica vê o que
+      // o suporte fez (Configurações → Suporte).
+      suporte_sessao_id: e.ator?.suporteSessaoId ?? sessaoDeSuporteDaRequisicao(),
     }).select('id').maybeSingle()
 
     // 23505 = a chave de idempotência barrou uma repetição. Não é erro: é a
@@ -146,11 +150,14 @@ export async function emitirEvento(
 export function atorDoContexto(ctx: {
   internalUserId?: string | null
   userName?:       string | null
+  suporte?:        { sessaoId: string } | null
 }): AtorDoEvento {
   return {
     id:   ctx.internalUserId ?? null,
+    // Numa sessão de suporte o nome já vem "Ana (via suporte: Heitor)".
     nome: ctx.userName || null,
     tipo: 'usuario',
+    ...(ctx.suporte ? { suporteSessaoId: ctx.suporte.sessaoId } : {}),
   }
 }
 

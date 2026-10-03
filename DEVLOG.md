@@ -1284,6 +1284,83 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-03 — Entrar como o membro, com autorização (fase 2 do suporte)
+
+O coração do pedido do Heitor: o atendente entra na conta do usuário da
+clínica para ver o que ele vê e resolver. Decisões dele: **só com
+autorização da clínica, temporária**; **prontuário fora** salvo autorização
+que o inclua; **nada sai para o paciente** no modo suporte.
+
+- **Por que uma sessão REAL do membro**: a agenda, os cargos e todo o
+  Realtime usam o token do usuário (RLS). Trocar só o contexto do servidor
+  deixaria metade do app vazia. A sessão é gerada no servidor e ligada à de
+  suporte (`support_sessions`, migration `20261003000005`) antes de ir ao
+  navegador; o refresh token do atendente fica cifrado no cookie de volta.
+- **Como o sistema sabe que é o suporte**: pelo `session_id` do JWT, e não
+  por cookie. Servidor: `getTenantContext` monta `ctx.suporte`, troca o nome
+  para "Ana (via suporte: Heitor)" — e é esse nome que fica em histórico,
+  eventos, mensagens —, rebaixa o prontuário e registra cada tela e action
+  (`support_access_log`). Banco: `jwt_claim` nula a rede de sessão de suporte
+  que acabou; tabelas clínicas ganham política RESTRICTIVE; gatilhos no `auth`
+  travam senha, e-mail e fatores do membro durante a sessão.
+- **Decisão minha: o hook de token do Supabase ficou OPCIONAL.** O plano o
+  previa como obrigatório, mas ligá-lo exige o painel do Supabase (não tenho o
+  token de gerenciamento) e ele vira ponto único de falha do login. Achar a
+  sessão pelo `session_id` dá o mesmo resultado sem depender dele. A função
+  está pronta e testada; ligá-la só acrescenta a recusa do refresh pelo Auth.
+  Também tirei a variável `SUPORTE_COOKIE_KEY` do plano: a chave do cookie de
+  volta é derivada (HKDF) da service role, então não há passo no Railway.
+- **A clínica no controle**: Configurações → Suporte (autorizar por 24 h,
+  72 h ou 7 dias, com ou sem prontuário; revogar; cada sessão com o que foi
+  aberto e feito; o que a plataforma fez na rede) e aviso no sino quando o
+  suporte entra e sai. Desativar um membro revoga a autorização dele.
+- **Achado de passagem — e corrigido**: `dispatchCampaignInline` era
+  exportado de um arquivo `'use server'` sem conferir ninguém: qualquer pessoa
+  disparava notificação para os clientes de qualquer rede. Foi para
+  `lib/notifications/disparo-de-campanha.ts`.
+- **Também**: o `setAll` do proxy dava validade de 7 dias até ao pedaço de
+  cookie que vinha para ser apagado (sessão trocada); agora apaga.
+- **Prova**: `e2e/suporte-impersonar.spec.ts` (10): sem autorização e com ela
+  vencida não entra; entra com o aviso fixo e a clínica avisada; "via suporte"
+  no histórico, no evento e no registro de acesso; prontuário fora na tela e
+  pelo PostgREST com o token capturado (com o controle do próprio membro);
+  envio ao paciente recusado; senha não muda pelo Auth com o token (e muda,
+  como controle, depois); o atendente não abre `/suporte` de dentro da conta;
+  "Sair", revogar e vencer derrubam a sessão — o token capturado deixa de
+  alcançar a rede e o refresh deixa de valer; apagar cookie não tira o aviso.
+  Vizinhos (RLS, portais, credenciais, permissões, envio, campanhas,
+  documentos, tempo real): verdes.
+
+### 2026-10-03 — Portal da plataforma `/suporte` (fase 1 do suporte)
+
+O pedido do Heitor: dar suporte de verdade às clínicas que assinam, com o
+atendente podendo "entrar como" o usuário. O plano tem quatro fases
+(0: correções; 1: a base da plataforma; 2: autorização e impersonificação;
+3: chamados). Esta é a 1: a equipe do BellarisOS passa a existir no sistema.
+
+- **Quem é da plataforma não é membro de rede**: login com a marca
+  `app_metadata.plataforma` + `platform_staff` (migration `20261003000003`).
+  Portal próprio, `/suporte`, com **verificação em duas etapas obrigatória**
+  (TOTP do Supabase; cadastro do autenticador no primeiro acesso).
+- **Os lados não se misturam**: o proxy desvia, `buildContext` recusa a marca
+  antes de tratar o login como cliente final (sem `role`, viraria CLIENT), e os
+  três destinos de login mandam o atendente para a verificação.
+- **O painel**: lista das redes (agregada no banco, `suporte_resumo_redes`;
+  as `[e2e]` escondidas), o detalhe de cada uma — equipe com último uso (das
+  sessões do Auth, não de `last_sign_in_at`), unidades, plano —, e o
+  diagnóstico (caixas e integrações SEM segredo, eventos sem `dados`,
+  automações que falharam, LGPD por situação).
+- **Ações sem entrar na conta**: reenviar acesso, reativar membro (miolo em
+  `lib/equipe/ativacao.ts`), e — só admin — plano/trial, equipe da plataforma
+  (cadastrar, desativar, redefinir a verificação) e auditoria.
+- **Tudo vai para `platform_audit_log`** (só acrescenta), inclusive abrir o
+  painel de uma rede (uma vez a cada meia hora por pessoa).
+- **Primeiro admin**: `apps/web/scripts/plataforma-primeiro-admin.mjs <email> "<Nome>"`
+  — imprime o link de definir senha. É passo do Heitor.
+- **Prova**: `e2e/suporte-plataforma.spec.ts` (7) — o TOTP é calculado no
+  teste (`e2e/apoio/totp.ts`, conferido contra os vetores da RFC). A varredura
+  de sobras passou a apagar atendentes `[e2e]`.
+
 ### 2026-10-03 — Dado clínico só com prontuário; credencial fora da tela (fase 0 do suporte)
 
 Achados ao desenhar o suporte com impersonificação (o plano tem quatro
@@ -1302,10 +1379,26 @@ por decisão do Heitor — não só para o modo suporte.
   cada página do Messenger. Agora o segredo vira um marcador, e salvar com ele
   mantém o do banco (`lib/integracoes/sem-segredo.ts`).
 - **A política de `treatment_plans` nunca casava** (comparava o
-  `tenant_id` do topo do JWT): virou a regra das sessões do plano (migration
-  `20261003000002`). O Realtime de planos passa a entregar.
+  `tenant_id` do topo do JWT) e negava tudo. A primeira correção
+  (`20261003000002`) a fez casar — e com isso ABRIU a tabela: qualquer
+  funcionário da unidade lia, alterava e apagava plano pelo PostgREST, e o
+  Realtime entregava a linha inteira, com a anotação clínica, a quem não tem
+  prontuário. O verificador da fase pegou; `20261003000004` fechou de vez:
+  `treatment_plans` sem política (o app só lê pelo servidor), sessões do
+  plano só LEITURA (eram `FOR ALL` sem WITH CHECK), e as assinaturas de
+  Realtime de `treatment_plans` (que nunca entregaram nada) saíram das telas.
+- **Também da verificação:** o checkout do plano mostrava a anotação a quem só
+  recebe; a lixeira do anexo sumia com a linha mesmo quando a action recusava;
+  o escopo OWN do prontuário não valia nos planos; a tela do atendimento
+  oferecia "Finalizar" e a evolução editável a quem não tem prontuário; o
+  `proxyUrl` da uazapi (usuário e senha) não estava na lista de segredos.
+  Todos corrigidos.
 - **Prova:** `e2e/clinico-so-com-prontuario.spec.ts`, 5 testes. Pela tela e
-  pela action direta, com o admin como controle. Vizinhos verdes.
+  pela action direta, com o admin como controle (inclusive na exclusão), e o
+  token das páginas do Messenger fora do payload. Vizinhos verdes.
+  `finishSession`, `saveDraftNotes` e o upload recebem FormData — o
+  `chamarAcao` não monta multipart, então a recusa direta desses três fica
+  provada só pelo código.
 
 ### 2026-10-03 — Busca universal na topbar
 
@@ -4968,6 +5061,20 @@ verdade. O que vale:
   primeira fase só acha). "Novo agendamento", "Cadastrar cliente" e, no
   cliente achado, "Agendar"/"Vender", cada uma reaproveitando o modal que já
   existe — o que pede uma porta de entrada por URL em cada modal.
+
+### Suporte — o que depende do Heitor
+
+- **Criar o primeiro admin da plataforma**:
+  `node apps/web/scripts/plataforma-primeiro-admin.mjs <email> "<Nome>"` (no
+  diretório `apps/web`, com o `.env.local`), definir a senha pelo link que ele
+  imprime e cadastrar o autenticador no primeiro acesso a `/suporte`. O e-mail
+  NÃO pode ser o de membro de rede.
+- **(Opcional) ligar o hook de token**: Supabase → Authentication → Hooks →
+  Custom Access Token → `public.suporte_hook_do_token`. Nada depende dele.
+- **Depois**: impersonar o cliente final do portal; e-mail transacional
+  (chamado respondido, acesso do suporte); push para o suporte; host próprio
+  para trabalhar lado a lado; cobrança real (Pagar.me) com `tenants.is_active`
+  tendo efeito; gente de unidade autorizar outros.
 
 ### Dívida técnica conhecida
 

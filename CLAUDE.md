@@ -338,6 +338,82 @@ embaixo da topbar. Só ACHA — as ações ("Agendar", "Vender") são a fase 2.
 - Prova: `e2e/busca-universal.spec.ts` (rede `[e2e]` própria; recusas pela
   action direta, com o admin como controle).
 
+### Plataforma e suporte (`/suporte`, 2026-10-03)
+
+A PLATAFORMA é a equipe do BellarisOS que atende as redes que assinam. Tem
+portal próprio (`/suporte`), fora dos portais das redes.
+
+- **Quem é da plataforma não é membro de rede**: é um login do Auth com
+  `app_metadata.plataforma` (`SUPORTE` | `ADMIN`) e uma linha em
+  `platform_staff` — a fonte de verdade. Sem `tenant_id`, nenhuma RLS de rede
+  o alcança: o painel lê pelo servidor (service role), conferindo a pessoa em
+  cada página e action com `getPlatformContext` (`lib/plataforma/contexto.ts`).
+- **Verificação em duas etapas obrigatória** (TOTP do Supabase, `aal2`):
+  sem ela, `/suporte/verificacao`. O painel enxerga todas as redes.
+- **Os dois lados não se misturam**: o proxy desvia quem tem a marca para o
+  `/suporte` e quem não tem para fora dele; `buildContext` recusa a marca
+  ANTES do padrão CLIENT (sem `role`, o atendente viraria cliente final); os
+  destinos de login (`destinoDaSessao`, `/auth/redirect`, `/api/auth/session`)
+  mandam a plataforma para a verificação.
+- **Papéis:** SUPORTE vê redes e diagnóstico, reenvia acesso e reativa
+  membro; ADMIN também muda plano/trial, cuida da equipe da plataforma
+  (cadastrar, desativar, redefinir a verificação) e vê a auditoria.
+- **Tudo o que a plataforma faz vai para `platform_audit_log`**
+  (`registrarNaPlataforma`, só acrescenta), inclusive abrir o painel de uma
+  rede — e a clínica vê isso.
+- **Diagnóstico sem segredo e sem dado de cliente**
+  (`lib/plataforma/diagnostico.ts`): das caixas e integrações só o estado
+  (lista fechada); dos eventos só nome, entidade, ator e hora (os `dados`
+  carregam retrato de cliente, e o painel não depende de autorização).
+- O primeiro admin nasce por script (`apps/web/scripts/plataforma-primeiro-admin.mjs`);
+  os seguintes, pela tela. E-mail de membro de rede é recusado.
+- Tabelas da plataforma: RLS ligada e ZERO políticas, como credencial.
+- Prova: `e2e/suporte-plataforma.spec.ts` (atendentes `[e2e]` com o TOTP
+  calculado no teste, `e2e/apoio/plataforma.ts`).
+
+**Entrar como (impersonificação autorizada):**
+- **Só com AUTORIZAÇÃO vigente da clínica** (`support_grants`: 24 h, 72 h
+  ou 7 dias; uma por pessoa). Autoriza o próprio membro (para si) ou quem é da
+  rede com `settings: MANAGE` (Configurações → Suporte); "incluir dados
+  clínicos" pede prontuário MANAGE de quem autoriza (`lib/suporte/regras.ts`).
+- **É uma sessão REAL do Auth do membro** (`lib/suporte/entrar.ts`,
+  `POST /api/suporte/entrar`): parte do app e todo o Realtime falam com o banco
+  pelo token, então trocar só o contexto do servidor não funcionaria. O token é
+  gerado no servidor (`generateLink` + `verifyOtp`) e ligado à sessão de
+  suporte (`support_sessions.auth_session_id`, com `not_after` no Auth) antes de
+  ir ao navegador. Prazo: 60 min, nunca além da autorização.
+- **Quem é o suporte se acha pelo `session_id` do JWT**
+  (`lib/suporte/sessao.ts`, cache de 15 s com tag) — não por cookie. O
+  `getTenantContext` monta `ctx.suporte`, troca o nome para "Ana (via suporte:
+  Heitor)" (é o que fica em TODO registro), rebaixa o prontuário para NONE sem
+  autorização clínica e registra cada requisição em `support_access_log`
+  (caminho e action, pelo cabeçalho `x-bellaris-caminho` que o proxy escreve).
+  Encerrada, revogada ou vencida → `/auth/suporte-fim`.
+- **A RLS também sabe:** `jwt_claim` devolve nulo para token de sessão de
+  suporte que acabou (o access token restante não alcança mais a rede), e as
+  tabelas clínicas (e os anexos clínicos de `client_documents`) têm política
+  RESTRICTIVE `suporte_sem_clinico`. Senha, e-mail, telefone e fatores do
+  membro não mudam durante a sessão — gatilhos em `auth.users`,
+  `auth.mfa_factors` e `auth.identities` (o GoTrue troca senha só com o token).
+- **No modo suporte nada sai para o paciente**: `bloqueioDoSuporte(ctx, …)`
+  (`lib/suporte/travas.ts`) nas actions de envio do inbox, campanha, pedido de
+  assinatura e link pela conversa. Também não sai, não troca senha e não
+  registra aparelho de push.
+- **O fim** (`app/auth/suporte-fim/route.ts`, o "Sair" do banner): encerra a
+  sessão, apaga a sessão do Auth e devolve o atendente ao painel com o cookie de
+  volta (`bellaris_suporte_volta`: o refresh token dele, AES-GCM com chave
+  derivada da service role). Revogar na clínica derruba na próxima tela; o cron
+  `suporte-sessoes` fecha as vencidas.
+- **Transparência:** a clínica é avisada no sino quando o suporte entra e
+  sai, e vê em Configurações → Suporte cada sessão, o que foi aberto e feito
+  (acessos + `domain_events.suporte_sessao_id`) e o que a plataforma fez.
+- **Hook de token (opcional):** `public.suporte_hook_do_token` pronto e
+  testado; ligado no painel do Supabase (Auth → Hooks → Custom Access Token),
+  o token passa a carregar `suporte` e o Auth recusa renovar sessão encerrada.
+  Nada depende dele.
+- Prova: `e2e/suporte-impersonar.spec.ts` — o token "capturado" dos cookies é
+  usado direto no PostgREST e no Auth para provar o bloqueio.
+
 ### App (Android)
 
 O app é o portal web num Capacitor: as rotas são as mesmas, e o login decide o
@@ -2136,6 +2212,12 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Gravar o formulário manual por cima da caixa do cadastro incorporado (apaga o token da Meta)
 ❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, anamnese) sem podeVerClinico
 ❌ Mandar config de integração ao navegador sem mascararSegredos (ou criar chave de credencial fora da lista)
+❌ Action que manda algo ao PACIENTE (mensagem, campanha, link, pedido de assinatura) sem bloqueioDoSuporte
+❌ Tabela clínica nova sem a política RESTRICTIVE suporte_sem_clinico
+❌ Ler o nome de quem agiu fora do ctx (users.name pelo auth id) — perde a marca "via suporte"
+❌ Deixar a plataforma (marca app_metadata.plataforma) cair no buildContext como CLIENT, ou abrir /suporte sem getPlatformContext
+❌ Entrar na conta de um membro sem autorização vigente (suporte_sessao_abrir) ou entregar o token ao navegador antes de suporte_sessao_ativar
+❌ Exportar de um arquivo 'use server' função que recebe a rede por parâmetro sem conferir quem chama (era o dispatchCampaignInline)
 ❌ Achar pela busca universal o que a tela própria do registro não mostraria (tipo novo sem módulo em tiposPermitidos, ou sem o recorte de dono/unidade)
 ❌ Deixar o navegador escolher o que a busca procura, ou filtrar o resultado no navegador em vez de no servidor
 ❌ Escrever à mão a lista de páginas da busca (vem de lib/menu.ts e lib/configuracoes/abas.ts)

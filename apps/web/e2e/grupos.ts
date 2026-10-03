@@ -58,6 +58,8 @@ export const ISOLADOS = [
   'pacotes-venda.spec.ts',
   'pre-pago.spec.ts',
   'quadro-tempo-real.spec.ts',
+  'suporte-impersonar.spec.ts',
+  'suporte-plataforma.spec.ts',
   'vendas-desconto.spec.ts',
 ]
 

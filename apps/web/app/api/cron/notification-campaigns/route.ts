@@ -2,7 +2,7 @@
 import { GoogleAuth } from 'google-auth-library'
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { dispatchCampaignInline } from '@/actions/notification-campaigns'
+import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { gravar, ler } from '@/lib/db'
 import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/datetime'

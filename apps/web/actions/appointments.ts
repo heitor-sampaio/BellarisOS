@@ -326,7 +326,7 @@ export async function updateAppointmentStatus(
   if (!atualizadas?.length) throw new Error('Não foi possível atualizar o agendamento.')
 
   const admin    = createAdminClient()
-  const userName = await getUserName(admin, ctx.userId)
+  const userName = ctx.userName || await getUserName(admin, ctx.userId)
   const actionDescMap: Record<string, string> = {
     CONFIRMED:   'Agendamento confirmado',
     IN_PROGRESS: 'Atendimento iniciado',
@@ -532,7 +532,7 @@ async function checkinAppointmentInterno(
       .update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() })
       .eq('id', appointmentId), 'registrar a chegada do cliente')
 
-    const userName = await getUserName(admin, ctx.userId)
+    const userName = ctx.userName || await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'CHECKIN', 'Check-in realizado — cliente chegou')
     await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CHECK_IN, appointmentId, { ...ctx, userName })
 
@@ -592,7 +592,7 @@ async function startAppointmentInterno(
       .update({ status: 'IN_PROGRESS', started_at: new Date().toISOString() })
       .eq('id', appointmentId), 'iniciar o atendimento')
 
-    const userName = await getUserName(admin, ctx.userId)
+    const userName = ctx.userName || await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'STARTED', 'Atendimento iniciado')
     await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_INICIADO, appointmentId, { ...ctx, userName })
 
@@ -658,7 +658,7 @@ async function reassignProfessionalInterno(
       .update({ professional_id: professionalId })
       .eq('id', appointmentId), 'trocar o profissional do agendamento')
 
-    const userName = await getUserName(admin, ctx.userId)
+    const userName = ctx.userName || await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'REASSIGNED',
       `Profissional reatribuído para ${newProf?.name ?? professionalId}`,
       { new_professional_id: professionalId, new_professional_name: newProf?.name },
@@ -739,7 +739,7 @@ async function cancelAppointmentSessionInterno(
       cancellation_reason:  cancellationReason,
     }).eq('id', appointmentId), 'cancelar a sessão')
 
-    const userName = await getUserName(admin, ctx.userId)
+    const userName = ctx.userName || await getUserName(admin, ctx.userId)
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'CANCELLED',
       `Cancelado: ${cancellationReason}`)
     await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CANCELADO, appointmentId, { ...ctx, userName }, { motivo: cancellationReason })
@@ -906,7 +906,7 @@ async function finishSessionInterno(
     }
 
     // ─── Grava, tudo ou nada ──────────────────────────────────────────────
-    const userName = await getUserName(admin, ctx.userId)
+    const userName = ctx.userName || await getUserName(admin, ctx.userId)
     const gravado = await gravar(admin.rpc('concluir_atendimento', {
       p_agendamento: appointmentId,
       p_tenant:      ctx.tenantId!,
@@ -1019,7 +1019,7 @@ export async function confirmPayment(
     // UMA transação no banco: o pagamento (dar baixa no recebível ou lançar),
     // o resgate dos pontos, a comissão (se a rede a quer sobre o valor pago) e a
     // linha do tempo. As travas de plano, pacote e "já pago" moram lá.
-    const userName = await getUserName(admin, ctx.userId)
+    const userName = ctx.userName || await getUserName(admin, ctx.userId)
     try {
       await gravar(admin.rpc('confirmar_pagamento_do_atendimento', {
         p_agendamento: appointmentId,
@@ -1172,7 +1172,7 @@ async function saveDraftNotesInterno(
 
     // Log quando admin edita pós-conclusão
     if (isFinalised && isAdmin) {
-      const userName = await getUserName(admin, ctx.userId)
+      const userName = ctx.userName || await getUserName(admin, ctx.userId)
       await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'EDITED',
         'Observações do atendimento editadas pelo gerente')
     }
@@ -1229,7 +1229,7 @@ export async function rescheduleAppointment(
 
     if (error) return { error: `Erro ao reagendar: ${error.message}` }
 
-    const userName = await getUserName(admin, ctx.userId)
+    const userName = ctx.userName || await getUserName(admin, ctx.userId)
     const dt = new Date(scheduledAt)
     const dtStr = dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
     await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'RESCHEDULED',

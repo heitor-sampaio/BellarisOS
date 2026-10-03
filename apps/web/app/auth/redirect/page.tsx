@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getTenantContext, getRedirectPath } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
+import { lerClaims, marcaDaPlataforma } from '@/lib/plataforma/contexto'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +11,10 @@ export default async function AuthRedirectPage() {
   // redirect() lança NEXT_REDIRECT internamente; se estiver dentro de
   // um catch, o catch o captura e sobrescreve com redirect('/login').
   let dest = '/login'
+
+  // A plataforma não tem rede: vai para o /suporte (fora do try, que engoliria
+  // o redirect de `buildContext`).
+  if (marcaDaPlataforma(await lerClaims())) redirect('/suporte')
 
   try {
     const ctx   = await getTenantContext()
