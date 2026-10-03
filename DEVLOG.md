@@ -1284,6 +1284,29 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-03 — Dado clínico só com prontuário; credencial fora da tela (fase 0 do suporte)
+
+Achados ao desenhar o suporte com impersonificação (o plano tem quatro
+fases; esta é a 0, correções que valem sozinhas). Corrigidos **para todos**,
+por decisão do Heitor — não só para o modo suporte.
+
+- **Dado clínico vazava por telas de outros módulos:** a evolução do
+  atendimento saía com `agenda`; exame, laudo, foto clínica, receita e termo
+  anexados ao cliente, com `clients`; a anotação do profissional no plano e a
+  anamnese no arquivo do tratamento, com `agenda`. Agora tudo isso passa por
+  `podeVerClinico(ctx)` (`lib/auth.ts`), e concluir o atendimento e salvar a
+  evolução pedem `medical_records: MANAGE` — gravam prontuário. A recepção
+  sem prontuário deixa de ver e anexar laudo.
+- **A aba de integrações mandava o token das caixas ao navegador** (as de
+  credencial colada à mão; o cadastro incorporado já era limpo) e o token de
+  cada página do Messenger. Agora o segredo vira um marcador, e salvar com ele
+  mantém o do banco (`lib/integracoes/sem-segredo.ts`).
+- **A política de `treatment_plans` nunca casava** (comparava o
+  `tenant_id` do topo do JWT): virou a regra das sessões do plano (migration
+  `20261003000002`). O Realtime de planos passa a entregar.
+- **Prova:** `e2e/clinico-so-com-prontuario.spec.ts`, 5 testes. Pela tela e
+  pela action direta, com o admin como controle. Vizinhos verdes.
+
 ### 2026-10-03 — Busca universal na topbar
 
 Pedido do Heitor: na barra superior, em todas as páginas, uma busca única,

@@ -9,6 +9,7 @@ import {
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { uploadClientDocument, deleteClientDocument } from '@/actions/client-documents'
+import { ehAnexoClinico } from '@/lib/clientes/anexos'
 
 // -- Types ---------------------------------------------------------------------
 
@@ -29,6 +30,8 @@ interface Props {
   clientId:  string
   branchId:  string
   slug:      string
+  /** Anexo clínico (exame, laudo…) é prontuário: sem o módulo, nem aparece no formulário. */
+  podeAnexarClinico?: boolean
 }
 
 // -- Constants -----------------------------------------------------------------
@@ -78,9 +81,9 @@ function categoryLabel(cat: string): string {
 // -- Upload form ---------------------------------------------------------------
 
 function UploadForm({
-  clientId, branchId, slug, onClose,
+  clientId, branchId, slug, podeAnexarClinico, onClose,
 }: {
-  clientId: string; branchId: string; slug: string; onClose: () => void
+  clientId: string; branchId: string; slug: string; podeAnexarClinico: boolean; onClose: () => void
 }) {
   const formRef     = useRef<HTMLFormElement>(null)
   const [fileName, setFileName] = useState<string | null>(null)
@@ -136,7 +139,7 @@ function UploadForm({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label className="field-label">Categoria *</label>
           <select name="category" className="field" style={{ background: 'var(--surface)' }}>
-            {CATEGORIES.map(c => (
+            {CATEGORIES.filter(c => podeAnexarClinico || !ehAnexoClinico(c.value)).map(c => (
               <option key={c.value} value={c.value}>{c.label}</option>
             ))}
           </select>
@@ -272,7 +275,7 @@ function DocumentRow({
 
 // -- Main component ------------------------------------------------------------
 
-export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Props) {
+export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAnexarClinico = false }: Props) {
   const router = useRouter()
   const [showForm, setShowForm]   = useState(false)
   // A lista vem das PROPS a cada render; localmente só se guarda o que acabou
@@ -305,6 +308,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug }: Prop
           clientId={clientId}
           branchId={branchId}
           slug={slug}
+          podeAnexarClinico={podeAnexarClinico}
           onClose={() => { setShowForm(false); router.refresh() }}
         />
       )}

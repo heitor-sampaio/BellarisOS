@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getDoCliente } from '@/lib/metrics/unidade'
 import { CLIENT_DOCS_BUCKET, getSignedUrls } from '@/lib/storage'
+import { ehAnexoClinico } from '@/lib/clientes/anexos'
 import { differenceInYears, format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { ClientProfile } from '@/components/branch/client-profile'
@@ -315,7 +316,8 @@ export default async function AdminClientProfilePage({
   }))
 
   type RawDoc = { id: string; name: string; category: string; file_path: string; file_name: string; file_size: number | null; mime_type: string | null; uploaded_by: { name: string } | null; created_at: string }
-  const rawDocs = (docsRaw as RawDoc[] | null) ?? []
+  // Anexo clínico (exame, laudo…) é prontuário: sem o módulo, nem sai daqui.
+  const rawDocs = ((docsRaw as RawDoc[] | null) ?? []).filter(d => canViewRecords || !ehAnexoClinico(d.category))
   const docUrlMap = await getSignedUrls(CLIENT_DOCS_BUCKET, rawDocs.map(d => d.file_path))
   const documents: ClientDocumentItem[] = rawDocs.map(d => ({
     id: d.id, name: d.name, category: d.category, fileUrl: docUrlMap[d.file_path] ?? '', fileName: d.file_name,
@@ -423,6 +425,7 @@ export default async function AdminClientProfilePage({
         currentBranchId={branchId}
         slug={slug}
         canManageProcedures={can(ctx, 'medical_records', 'MANAGE')}
+        podeAnexarClinico={can(ctx, 'medical_records', 'MANAGE')}
         planProcedures={planoProcs.procedures}
         planProducts={planoProcs.products}
         podeReceber={podeReceber(ctx)}

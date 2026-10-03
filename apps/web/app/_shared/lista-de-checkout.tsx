@@ -1,4 +1,4 @@
-import { getTenantContext, assertPodeReceber } from '@/lib/auth'
+import { getTenantContext, assertPodeReceber, podeVerClinico } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
@@ -67,7 +67,8 @@ export async function ListaDeCheckout({
       phone:   cli?.phone ?? null,
       unidade: br?.name ?? null,
       total,
-      notes:   (p.professional_notes as string | null) ?? null,
+      // A anotação do profissional é prontuário (2026-10-03).
+      notes:   podeVerClinico(ctx) ? ((p.professional_notes as string | null) ?? null) : null,
       waitingSince: p.created_at as string,
     }
   })

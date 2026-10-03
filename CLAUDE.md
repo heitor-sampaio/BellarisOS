@@ -929,6 +929,14 @@ o procedimento avulso pago antes.
 - `ConsentTerm.signedVia`: `"web"` ou `"paper"` — `consent_terms` é o LEGADO dos
   termos fixos do checkout; os termos e contratos novos são o §9.4.1
 - Cliente NÃO acessa o prontuário pelo app — apenas histórico de procedimentos
+- **Dado clínico só com o módulo de prontuário, venha da tela que vier**
+  (`podeVerClinico(ctx)`, `lib/auth.ts`; 2026-10-03). Vazavam por telas de
+  outros módulos e foram fechados: a evolução na sessão de atendimento (só
+  `agenda`), os anexos clínicos do cliente (`lib/clientes/anexos.ts`: exame,
+  laudo, foto clínica, receita, termo — só `clients`), a anotação do
+  profissional no plano e a anamnese no arquivo do tratamento (só `agenda`).
+  Concluir o atendimento e salvar a evolução pedem `medical_records: MANAGE`
+  (gravam prontuário). Prova: `e2e/clinico-so-com-prontuario.spec.ts`.
 
 ### 9.4.1 Termos e contratos (2026-09-30)
 
@@ -1431,6 +1439,14 @@ compartilhar a mesma conta de negócio — por isso o escopo é a WABA, não o
 número: escopar por número duplicaria o catálogo e faria submeter o mesmo nome
 duas vezes à Meta, que recusa por colisão. Oferecer um template de outra conta
 dá 404 no clique; lista vazia é melhor resposta.
+
+⚠️ **Credencial de integração não vai ao navegador** (2026-10-03). O que a
+tela de integrações recebe passa por `mascararSegredos`
+(`lib/integracoes/sem-segredo.ts`, lista FECHADA de chaves secretas, também
+dentro de listas — o token de cada página do Messenger): o segredo guardado
+vira o marcador `SEGREDO_GUARDADO`, e salvar com ele mantém o do banco
+(`mesclarSegredos` em `salvarNumeroWhatsApp` e `saveAdsConfig`). Chave nova de
+credencial entra na lista, senão volta para a tela.
 
 ⚠️ **O `config` de uma integração só grava as chaves do provedor**
 (`CHAVES_DA_CONFIG` nas caixas, `CHAVES_DO_ADS` nos anúncios), e a
@@ -2118,6 +2134,8 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Pedir à Meta a sincronização da coexistência antes de gravar a caixa (o histórico chega uma vez só)
 ❌ Importar histórico ou mensagem do aplicativo emitindo evento de conversa (dispara automação para o passado) ou sem importada = true
 ❌ Gravar o formulário manual por cima da caixa do cadastro incorporado (apaga o token da Meta)
+❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, anamnese) sem podeVerClinico
+❌ Mandar config de integração ao navegador sem mascararSegredos (ou criar chave de credencial fora da lista)
 ❌ Achar pela busca universal o que a tela própria do registro não mostraria (tipo novo sem módulo em tiposPermitidos, ou sem o recorte de dono/unidade)
 ❌ Deixar o navegador escolher o que a busca procura, ou filtrar o resultado no navegador em vez de no servidor
 ❌ Escrever à mão a lista de páginas da busca (vem de lib/menu.ts e lib/configuracoes/abas.ts)

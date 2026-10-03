@@ -299,7 +299,7 @@ export async function SessaoDeAtendimento({
   const existingPlan = planRaw ? {
     id:       planRaw.id as string,
     status:   planRaw.status as string,
-    notes:    (planRaw.professional_notes as string | null) ?? null,
+    notes:    canViewRecords ? ((planRaw.professional_notes as string | null) ?? null) : null,
     sessions: ((planRaw.treatment_plan_sessions as unknown as RawPlanSess[]) ?? [])
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(sess => ({
@@ -332,8 +332,9 @@ export async function SessaoDeAtendimento({
     professionalId:      prof?.id ?? '',
     professionalName:    prof?.name ?? '—',
     roomName:            room?.name ?? null,
-    savedNotes:          mreRaw?.notes ?? null,
-    savedIntercurrences: mreRaw?.intercurrences ?? null,
+    // A evolução é prontuário: sem o módulo, a tela não a recebe (2026-10-03).
+    savedNotes:          canViewRecords ? (mreRaw?.notes ?? null) : null,
+    savedIntercurrences: canViewRecords ? (mreRaw?.intercurrences ?? null) : null,
     complaints:          apptRaw.notes ?? null,
     clientConfirmedAt:   apptRaw.client_confirmed_at ?? null,
     clientRating:        apptRaw.client_rating ?? null,

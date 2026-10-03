@@ -162,6 +162,8 @@ interface Props {
   currentBranchId:       string
   slug:                  string
   canManageProcedures:   boolean
+  /** Pode anexar e apagar anexo CLÍNICO (exame, laudo…) — prontuário MANAGE. */
+  podeAnexarClinico?:    boolean
   isNetworkWide:         boolean
   /**
    * Cliente da REDE: `clients.branch_id` nulo. Os gestos que gravam por filial
@@ -1023,7 +1025,7 @@ function FinanceiroTab({
 export function ClientProfile({
   client, branchId, stats, upcomingAppointments, recentAppointments,
   fidelidade, activePackage,
-  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
+  transactions, internalCredits, documents, recordForms = [], generalAnamnesis = null, canGrantCredit, branches, currentBranchId, slug, canManageProcedures, podeAnexarClinico = false, isNetworkWide, clienteSemFilial = false, clientHistory, opportunities = [],
   planProcedures = [], planProducts = [], podeReceber = false, termos = null, pacotesAVenda = [],
   procedimentosAVenda = [], prePagos = [], podeAgendar = false,
 }: Props) {
@@ -1592,6 +1594,7 @@ export function ClientProfile({
           clientId={client.id}
           branchId={branchId}
           slug={slug}
+          podeAnexarClinico={podeAnexarClinico}
         />
       )}
     </div>

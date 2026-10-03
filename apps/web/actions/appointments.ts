@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, tentar, contar, mensagemDoErro } from '@/lib/db'
@@ -783,6 +783,11 @@ async function finishSessionInterno(
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'VIEW')
+    // Concluir grava a evolução no prontuário (concluir_atendimento): é do
+    // módulo de prontuário, não da agenda (2026-10-03).
+    if (!can(ctx, 'medical_records', 'MANAGE')) {
+      return { error: 'Concluir o atendimento grava o prontuário: é preciso ter o módulo Prontuário para gerenciar.' }
+    }
 
     const appointmentId  = (formData.get('appointment_id') as string)?.trim()
     const notes          = (formData.get('notes') as string)?.trim() || null
@@ -1116,6 +1121,9 @@ async function saveDraftNotesInterno(
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'VIEW')
+    if (!can(ctx, 'medical_records', 'MANAGE')) {
+      return { error: 'A evolução é prontuário: é preciso ter o módulo Prontuário para gerenciar.' }
+    }
 
     const appointmentId  = (formData.get('appointment_id') as string)?.trim()
     const notes          = (formData.get('notes') as string)?.trim() || null

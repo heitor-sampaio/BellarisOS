@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
-import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico } from '@/lib/auth'
 import { conferirPecasDoAgendamento } from '@/lib/appointments/core'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -261,7 +261,8 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
       return {
         id:       p.id as string,
         status:   p.status as string,
-        notes:    (p.professional_notes as string | null) ?? null,
+        // A anotação do profissional é prontuário (2026-10-03).
+        notes:    podeVerClinico(ctx) ? ((p.professional_notes as string | null) ?? null) : null,
         criadoEm: p.created_at as string,
         sessoes:  sessoes.length,
         total:    sessoes.reduce(
@@ -604,7 +605,7 @@ export async function getPlanoParaEditar(planId: string): Promise<{
     plano: {
       id:       data.id as string,
       status:   data.status as string,
-      notes:    (data.professional_notes as string | null) ?? null,
+      notes:    podeVerClinico(ctx) ? ((data.professional_notes as string | null) ?? null) : null,
       sessions,
     },
   }
@@ -1728,14 +1729,15 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
       data: {
         id:                   plan.id,
         status:               plan.status,
-        professionalNotes:    plan.professional_notes ?? null,
+        professionalNotes:    podeVerClinico(ctx) ? (plan.professional_notes ?? null) : null,
         createdAt:            plan.created_at,
         professionalName:     (professional as { name?: string } | null)?.name ?? null,
         evaluationDate:       (evalAppt as { scheduled_at?: string } | null)?.scheduled_at ?? null,
         evaluationComplaints: (evalAppt as { notes?: string } | null)?.notes ?? null,
         evaluationNotes:      null,
         sessions,
-        anamnesis:            (medRecord?.general_anamnesis as AnamnesisData | null) ?? null,
+        // Anamnese é prontuário: o arquivo do tratamento abre com agenda (2026-10-03).
+        anamnesis:            podeVerClinico(ctx) ? ((medRecord?.general_anamnesis as AnamnesisData | null) ?? null) : null,
       },
     }
   } catch (e) {

@@ -7,6 +7,7 @@ import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
 import { ler } from '@/lib/db'
 import { enderecoPublico } from '@/lib/whatsapp/endereco-publico'
+import { mascararSegredos, mesclarSegredos } from '@/lib/integracoes/sem-segredo'
 import { conectarPeloCadastro } from '@/lib/whatsapp/cadastro-incorporado'
 import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
 
@@ -52,15 +53,6 @@ export async function salvarNumeroWhatsApp(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
-  // Só as chaves do provedor, e sem string vazia.
-  const permitidas = CHAVES_DA_CONFIG[provider] ?? []
-  const cleanConfig = Object.fromEntries(
-    Object.entries(config).filter(([k, v]) => permitidas.includes(k) && typeof v === 'string' && v.trim() !== '')
-  )
-  if (cleanConfig.baseUrl && !enderecoPublico(cleanConfig.baseUrl)) {
-    return { ok: false, error: 'O endereço do servidor precisa ser público e começar com https://.' }
-  }
-
   const admin = createAdminClient()
 
   // Estado anterior, para o evento sair só na TRAVESSIA. Este formulário também
@@ -77,6 +69,16 @@ export async function salvarNumeroWhatsApp(
     : null
 
   if (numeroId && !anterior) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
+
+  // Só as chaves do provedor, e sem string vazia. O segredo que a tela
+  // recebeu mascarado volta como marcador: vale o que está no banco.
+  const permitidas = CHAVES_DA_CONFIG[provider] ?? []
+  const cleanConfig = mesclarSegredos(Object.fromEntries(
+    Object.entries(config).filter(([k, v]) => permitidas.includes(k) && typeof v === 'string' && v.trim() !== '')
+  ) as Record<string, string>, (anterior?.config ?? null) as Record<string, unknown> | null)
+  if (cleanConfig.baseUrl && !enderecoPublico(cleanConfig.baseUrl)) {
+    return { ok: false, error: 'O endereço do servidor precisa ser público e começar com https://.' }
+  }
 
   // A caixa conectada pelo cadastro incorporado tem o token de negócio que a
   // Meta emitiu — e a tela nem o recebe (`listarNumerosWhatsApp`). Gravar o
@@ -141,12 +143,10 @@ export async function salvarNumeroWhatsApp(
 /**
  * As caixas de WhatsApp da rede, para a tela de integrações.
  *
- * ⚠️ `config` vai junto, com token e `accessToken` dentro, porque é o que o
- * formulário reexibe hoje — `getIntegrations` já fazia exatamente isto para
- * estes provedores, e tirar aqui faria o campo abrir vazio e o salvamento
- * apagar a credencial. **Não é um bom lugar para a credencial estar**, e a tela
- * de números é onde isso deve ser resolvido (campo mascarado + gravação por
- * merge). Trocar agora seria consertar uma coisa quebrando outra.
+ * `config` vai SEM credencial: o segredo guardado vira o marcador
+ * `SEGREDO_GUARDADO` (`lib/integracoes/sem-segredo.ts`), e salvar com ele
+ * mantém o do banco (`mesclarSegredos` em `salvarNumeroWhatsApp`). Até
+ * 2026-10-03 o token ia inteiro para a tela.
  */
 export interface NumeroNaTela {
   id:        string
@@ -173,7 +173,7 @@ export async function listarNumerosWhatsApp(): Promise<NumeroNaTela[]> {
     isActive: n.isActive, isDefault: n.isDefault, managed: n.managed,
     branchId: n.branchId, userIds: n.userIds,
     wabaId: n.wabaId, phoneNumberId: n.phoneNumberId,
-    config: semSegredoDoCadastro(n.config as unknown as Record<string, unknown>),
+    config: mascararSegredos(semSegredoDoCadastro(n.config as unknown as Record<string, unknown>)),
   }))
 }
 
@@ -294,12 +294,17 @@ export async function saveAdsConfig(
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
-  const permitidas = CHAVES_DO_ADS[provider] ?? []
-  const cleanConfig = Object.fromEntries(
-    Object.entries(config).filter(([k, v]) => permitidas.includes(k) && typeof v === 'string' && v.trim() !== '')
-  )
-
   const admin = createAdminClient()
+  const anterior = await ler(admin
+    .from('integration_configs').select('config')
+    .eq('tenant_id', ctx.tenantId!).eq('provider', provider).maybeSingle(), 'buscar a integração')
+
+  // O segredo mascarado na tela volta como marcador: vale o do banco.
+  const permitidas = CHAVES_DO_ADS[provider] ?? []
+  const cleanConfig = mesclarSegredos(Object.fromEntries(
+    Object.entries(config).filter(([k, v]) => permitidas.includes(k) && typeof v === 'string' && v.trim() !== '')
+  ) as Record<string, string>, (anterior?.config ?? null) as Record<string, unknown> | null)
+
   const { error } = await admin
     .from('integration_configs')
     .upsert({

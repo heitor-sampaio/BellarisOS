@@ -32,6 +32,7 @@ export const ISOLADOS = [
   'automacoes-ensaio.spec.ts',
   'busca-universal.spec.ts',
   'checkout-de-plano.spec.ts',
+  'clinico-so-com-prontuario.spec.ts',
   'comissoes-calculo.spec.ts',
   'comissoes-configuracao.spec.ts',
   'comissoes-fechamento.spec.ts',

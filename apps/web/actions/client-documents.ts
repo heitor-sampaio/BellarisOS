@@ -1,7 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, can } from '@/lib/auth'
+import { ehAnexoClinico } from '@/lib/clientes/anexos'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { CLIENT_DOCS_BUCKET, ensurePrivateBucket } from '@/lib/storage'
@@ -28,6 +29,10 @@ export async function uploadClientDocument(
   if (!name)                    return { error: 'Informe o nome do documento.' }
   if (!clientId || !branchId)   return { error: 'Dados inválidos.' }
   if (file.size > MAX_FILE_SIZE) return { error: 'Arquivo deve ter no máximo 20 MB.' }
+  // Exame, laudo, foto clínica, receita e termo são prontuário (2026-10-03).
+  if (ehAnexoClinico(category) && !can(ctx, 'medical_records', 'MANAGE')) {
+    return { error: 'Anexo clínico (exame, laudo, receita…) é prontuário: é preciso ter o módulo Prontuário para gerenciar.' }
+  }
 
   // Ensure client belongs to this tenant
   const supabase = await createSupabase()
@@ -104,7 +109,7 @@ export async function deleteClientDocument(
   // Verify ownership via branch → tenant
   const doc = await ler(admin
     .from('client_documents')
-    .select('id, file_path, branch_id, branches!inner(tenant_id)')
+    .select('id, file_path, branch_id, category, branches!inner(tenant_id)')
     .eq('id', documentId)
     .single(), 'buscar o documento')
 
@@ -113,6 +118,7 @@ export async function deleteClientDocument(
   const tenantId = (doc.branches as unknown as { tenant_id: string }).tenant_id
   // E a unidade onde o documento foi posto, ao alcance de quem apaga (§11).
   if (tenantId !== ctx.tenantId || !alcancaUnidade(ctx, doc.branch_id as string)) return { error: 'Acesso negado.' }
+  if (ehAnexoClinico(doc.category as string) && !can(ctx, 'medical_records', 'MANAGE')) return { error: 'Acesso negado.' }
 
   if (doc.file_path) {
     await gravar(admin.storage.from(BUCKET).remove([doc.file_path]), 'apagar o arquivo do documento')

@@ -173,6 +173,21 @@ export function assertPodeReceber(ctx: TenantContext): void {
 }
 
 /**
+ * O cargo enxerga dado CLÍNICO (evolução, anexos clínicos, anotação do
+ * profissional no plano)? É o módulo de prontuário, e só ele.
+ *
+ * Existe porque esses dados vazavam por telas de outros módulos: a evolução
+ * do atendimento saía com `agenda`, o exame e o laudo do cliente com
+ * `clients`, a anotação do plano com `agenda` (corrigido em 2026-10-03).
+ * Com escopo OWN, só o profissional do registro (`responsavelId`).
+ */
+export function podeVerClinico(ctx: TenantContext, responsavelId?: string | null): boolean {
+  if (!can(ctx, 'medical_records', 'VIEW')) return false
+  if (responsavelId === undefined || !isOwnScope(ctx, 'medical_records')) return true
+  return !!responsavelId && ctx.internalUserId === responsavelId
+}
+
+/**
  * O cargo enxerga esta aba de Relatórios?
  *
  * `reports` sozinho é grosso demais — liberar relatórios ao time comercial

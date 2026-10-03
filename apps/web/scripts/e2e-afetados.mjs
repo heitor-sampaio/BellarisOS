@@ -71,7 +71,7 @@ const AREAS = [
     specs: /^(campanha|notificacoes|funcionalidades)/ },
   { nome: 'clientes, prontuário e LGPD',
     chaves: ['client', 'prontuario', 'medical', 'record', 'lgpd', 'ficha', 'anamnes', 'forms', 'planejamento'],
-    specs: /^(prontuario|ficha|lgpd|portal-cliente|fase5|planejamentos|permissoes-acoes)/ },
+    specs: /^(prontuario|ficha|lgpd|portal-cliente|fase5|planejamentos|permissoes-acoes|clinico)/ },
   { nome: 'autorização e equipe',
     chaves: ['permiss', 'cargo', 'role', 'team', 'equipe', 'membro', 'login', 'register', 'password', 'senha'],
     specs: /^(autenticacao|permissoes|fase4|membro|equipe|portais|abrangencia|rls|api-sem|privacidade|acoes-entre-redes)/ },

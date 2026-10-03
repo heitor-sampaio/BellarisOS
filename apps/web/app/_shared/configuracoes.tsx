@@ -24,6 +24,7 @@ import { lerDadosDaRede, lerVisibilidadeDoInbox } from '@/actions/rede'
 import { SettingsVisibilidadeInbox } from '@/components/admin/settings-visibilidade-inbox'
 import { lerCaixas } from '@/lib/inbox/visibilidade'
 import { ler } from '@/lib/db'
+import { mascararSegredos } from '@/lib/integracoes/sem-segredo'
 import { FidelidadeConfig } from '@/components/admin/fidelidade-config'
 import { FidelidadeCatalogo } from '@/components/admin/fidelidade-catalogo'
 import { catalogoDeRecompensas } from '@/actions/fidelidade'
@@ -173,7 +174,10 @@ export async function Configuracoes({
     ? await Promise.all([resumoDoCatalogo(), listarEventosDeDominio()])
     : [null, null]
 
-  const integrationConfigs = (integrationRows ?? []) as IntegrationConfig[]
+  // Credencial não vai ao navegador: o segredo guardado vira o marcador
+  // (lib/integracoes/sem-segredo.ts), e salvar com ele mantém o do banco.
+  const integrationConfigs = ((integrationRows ?? []) as IntegrationConfig[])
+    .map(r => ({ ...r, config: mascararSegredos(r.config as Record<string, unknown>) })) as IntegrationConfig[]
 
   // As caixas de WhatsApp vêm da própria tabela delas, não de
   // `integration_configs`. Ler de um lugar e gravar no outro faria o formulário
