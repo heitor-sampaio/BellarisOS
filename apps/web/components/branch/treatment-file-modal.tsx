@@ -297,7 +297,6 @@ export function TreatmentFileModal({ client, activePackage, branches, currentBra
     const channel  = supabase.channel(`tfm-${planId}`)
 
     channel
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'treatment_plans',  filter: `id=eq.${planId}` }, fetchDetails)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'appointments',     filter: `treatment_plan_id=eq.${planId}` }, fetchDetails)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'treatment_plan_sessions', filter: `plan_id=eq.${planId}` }, fetchDetails)
       .subscribe()

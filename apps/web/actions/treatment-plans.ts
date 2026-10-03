@@ -245,7 +245,7 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
   const data = await ler(admin
     .from('treatment_plans')
     .select(`
-      id, status, professional_notes, created_at, evaluation_appointment_id,
+      id, status, professional_notes, professional_id, created_at, evaluation_appointment_id,
       clients!inner(tenant_id),
       treatment_plan_sessions(treatment_plan_session_procedures(price))
     `)
@@ -262,7 +262,7 @@ export async function getPlanosDoCliente(clientId: string): Promise<{
         id:       p.id as string,
         status:   p.status as string,
         // A anotação do profissional é prontuário (2026-10-03).
-        notes:    podeVerClinico(ctx) ? ((p.professional_notes as string | null) ?? null) : null,
+        notes:    podeVerClinico(ctx, (p.professional_id as string | null) ?? null) ? ((p.professional_notes as string | null) ?? null) : null,
         criadoEm: p.created_at as string,
         sessoes:  sessoes.length,
         total:    sessoes.reduce(
@@ -575,7 +575,7 @@ export async function getPlanoParaEditar(planId: string): Promise<{
   const data = await ler(admin
     .from('treatment_plans')
     .select(`
-      id, status, professional_notes,
+      id, status, professional_notes, professional_id,
       treatment_plan_sessions(sort_order, treatment_plan_session_procedures(procedure_id, price, sort_order, products, procedures(name)))
     `)
     .eq('id', planId)
@@ -605,7 +605,7 @@ export async function getPlanoParaEditar(planId: string): Promise<{
     plano: {
       id:       data.id as string,
       status:   data.status as string,
-      notes:    podeVerClinico(ctx) ? ((data.professional_notes as string | null) ?? null) : null,
+      notes:    podeVerClinico(ctx, (data.professional_id as string | null) ?? null) ? ((data.professional_notes as string | null) ?? null) : null,
       sessions,
     },
   }
@@ -1131,7 +1131,7 @@ export async function getCheckoutPlan(planId: string): Promise<{ plan?: Checkout
   }
 
   const { plan: checkout, error } = await montarCheckoutPlan(
-    planId, plan.branch_id as string, branch.name, ctx.tenantId!,
+    planId, plan.branch_id as string, branch.name, ctx.tenantId!, prof => podeVerClinico(ctx, prof),
   )
   return checkout ? { plan: checkout } : { error: error ?? 'Plano não encontrado.' }
 }
@@ -1729,7 +1729,7 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
       data: {
         id:                   plan.id,
         status:               plan.status,
-        professionalNotes:    podeVerClinico(ctx) ? (plan.professional_notes ?? null) : null,
+        professionalNotes:    podeVerClinico(ctx, plan.professional_id ?? null) ? (plan.professional_notes ?? null) : null,
         createdAt:            plan.created_at,
         professionalName:     (professional as { name?: string } | null)?.name ?? null,
         evaluationDate:       (evalAppt as { scheduled_at?: string } | null)?.scheduled_at ?? null,
@@ -1737,7 +1737,7 @@ export async function getTreatmentPlanDetails(planId: string, clientId: string):
         evaluationNotes:      null,
         sessions,
         // Anamnese é prontuário: o arquivo do tratamento abre com agenda (2026-10-03).
-        anamnesis:            podeVerClinico(ctx) ? ((medRecord?.general_anamnesis as AnamnesisData | null) ?? null) : null,
+        anamnesis:            podeVerClinico(ctx, plan.professional_id ?? null) ? ((medRecord?.general_anamnesis as AnamnesisData | null) ?? null) : null,
       },
     }
   } catch (e) {

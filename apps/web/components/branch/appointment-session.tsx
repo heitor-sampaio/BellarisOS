@@ -120,6 +120,8 @@ interface Props {
   canManage:          boolean
   /** Escrever no prontuário exige o módulo, não só ser o responsável. */
   canEditRecords:     boolean
+  /** Ver a evolução (prontuário). Sem o módulo, a tela nem recebe as anotações. */
+  canViewRecords?:    boolean
   canReassign:        boolean
   canPayment:         boolean
   isProfessional:     boolean
@@ -877,7 +879,7 @@ function EvaluationAnamnesisFields({
 export function AppointmentSession({
   appointment, client, anamnesis, ficha, respostasDaFicha, products, availableProducts,
   professionals, history, branchId, slug,
-  canCheckin, canManage, canEditRecords, canReassign, canPayment, isProfessional, paymentTransaction,
+  canCheckin, canManage, canEditRecords, canViewRecords = true, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
   isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null,
   pagamentoCombinado = null,
@@ -1325,8 +1327,14 @@ export function AppointmentSession({
               </button>
             )}
 
-            {/* Finalizar (IN_PROGRESS + canManage) — conclui clinicamente */}
-            {status === 'IN_PROGRESS' && canManage && (
+            {/* Finalizar (IN_PROGRESS + canManage) — conclui clinicamente. Concluir
+                grava a evolução no prontuário: sem o módulo, a tela diz quem conclui. */}
+            {status === 'IN_PROGRESS' && canManage && !canEditRecords && (
+              <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
+                Quem conclui é o profissional (concluir grava o prontuário).
+              </span>
+            )}
+            {status === 'IN_PROGRESS' && canManage && canEditRecords && (
               <button type="button" onClick={() => setShowFinish(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px', borderRadius: 9, border: 'none', background: 'var(--brand)', color: 'var(--surface)', fontWeight: 700, fontSize: 'var(--text-base-sz)', cursor: 'pointer', boxShadow: 'var(--shadow-brand-btn)' }}>
                 <CheckCircle2 size={14} /> Finalizar atendimento
@@ -1666,8 +1674,9 @@ export function AppointmentSession({
                     onPlanChange={(_items, notes) => setEvalPlanNotes(notes)}
                   />
 
-                  {/* Observações do atendimento — controladas, sem save individual */}
-                  <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                  {/* Observações do atendimento — controladas, sem save individual.
+                      São prontuário: só para quem o escreve. */}
+                  {canEditRecords && <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--hairline)' }}>
                       <h3 style={{ fontSize: 'var(--text-base-sz)', fontWeight: 800, color: 'var(--text)' }}>Observações do atendimento</h3>
                     </div>
@@ -1691,7 +1700,7 @@ export function AppointmentSession({
                         />
                       </div>
                     </div>
-                  </div>
+                  </div>}
 
                   {/* Fim da avaliação.
                       Quem pode receber fecha a venda aqui mesmo, com o cliente
@@ -1766,16 +1775,20 @@ export function AppointmentSession({
               <>
                 {renderFichaCard(insumosSection, true)}
 
-                <ObservacoesCard
-                  notes={notes}
-                  intercurrences={intercurrences}
-                  onNotesChange={setNotes}
-                  onIntercurrencesChange={setIntercurrences}
-                  readonly={editLocked}
-                />
+                {/* A evolução é prontuário: sem o módulo, nem aparece (vazia e
+                    editável, daria a entender que não há evolução). */}
+                {canViewRecords && (
+                  <ObservacoesCard
+                    notes={notes}
+                    intercurrences={intercurrences}
+                    onNotesChange={setNotes}
+                    onIntercurrencesChange={setIntercurrences}
+                    readonly={editLocked || !canEditRecords}
+                  />
+                )}
 
                 {/* Salvar tudo de uma vez */}
-                {!editLocked && (
+                {!editLocked && canEditRecords && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <button type="button" onClick={handleSaveAll} disabled={savingAll} className="btn-primary" style={{ gap: 7, fontSize: 'var(--text-base-sz)', padding: '10px 22px' }}>
                       {savingAll ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}

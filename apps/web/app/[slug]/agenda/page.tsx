@@ -111,7 +111,7 @@ export default async function AgendaPage({ params }: { params: Promise<{ slug: s
 
   return (
     <div>
-      <RealtimeRefresher tables={['appointments', 'treatment_plans']} />
+      <RealtimeRefresher tables={['appointments']} />
 
       <AgendaCalendar
         branchId={branchId}

@@ -20,12 +20,14 @@ export async function montarCheckoutPlan(
   branchId: string,
   branchName: string,
   tenantId: string,
+  /** A anotação do profissional é prontuário: quem não vê clínico recebe nula. */
+  veClinico: (professionalId: string | null) => boolean = () => false,
 ): Promise<{ plan?: CheckoutPlan; clientId?: string; error?: string }> {
   const admin = createAdminClient()
 
   const planRaw = await ler(admin
     .from('treatment_plans')
-    .select('id, status, professional_notes, client_id, branch_id, clients(name, document, phone)')
+    .select('id, status, professional_notes, professional_id, client_id, branch_id, clients(name, document, phone)')
     .eq('id', planId)
     .eq('branch_id', branchId)
     .maybeSingle(), 'carregar o plano do checkout')
@@ -54,7 +56,8 @@ export async function montarCheckoutPlan(
     plan: {
       id:                planRaw.id as string,
       status:            planRaw.status as string,
-      professionalNotes: (planRaw.professional_notes as string | null) ?? null,
+      professionalNotes: veClinico((planRaw.professional_id as string | null) ?? null)
+        ? ((planRaw.professional_notes as string | null) ?? null) : null,
       clientName:        cli?.name ?? '—',
       clientDocument:    cli?.document ?? null,
       clientPhone:       cli?.phone ?? null,

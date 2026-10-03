@@ -272,7 +272,7 @@ export default async function BranchDashboardPage({ params }: { params: Promise<
   // -------------------------------------------------------------
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <RealtimeRefresher tables={['appointments', 'financial_transactions', 'clients', 'treatment_plans']} />
+      <RealtimeRefresher tables={['appointments', 'financial_transactions', 'clients']} />
 
       {/* -- Row 0: Header --------------------------------------- */}
       <div>

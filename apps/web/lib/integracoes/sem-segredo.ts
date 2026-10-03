@@ -16,6 +16,8 @@ export const SEGREDO_GUARDADO = '••••••••'
 const CHAVES_SECRETAS: ReadonlySet<string> = new Set([
   'token', 'accessToken', 'access_token', 'appSecret', 'verifyToken', 'pin',
   'developerToken', 'clientSecret', 'refreshToken', 'adminToken',
+  // O proxy da instância uazapi leva usuário e senha (`user:pass@host`).
+  'proxyUrl',
 ])
 
 export function ehChaveSecreta(chave: string): boolean {

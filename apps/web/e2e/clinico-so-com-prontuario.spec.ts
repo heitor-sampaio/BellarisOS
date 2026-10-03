@@ -25,6 +25,7 @@ const LAUDO    = `LAUDO-SECRETO-${marca}`
 const NOTA     = `NOTA-DO-PLANO-${marca}`
 const ANAMNESE = `ANAMNESE-SECRETA-${marca}`
 const TOKEN    = `TOKEN-SECRETO-${marca}`
+const TOKEN_PAGINA = `TOKEN-DA-PAGINA-${marca}`
 const MARCADOR = '••••••••'
 
 interface Fx {
@@ -91,6 +92,13 @@ test.beforeAll(async () => {
   expect(eNum, 'criar a caixa').toBeNull()
   criado.numeroId = num!.id
 
+  // O Messenger guarda o token de CADA página dentro de uma lista.
+  const { error: eMsg } = await b.from('integration_configs').insert({
+    tenant_id: outra.tenantId, provider: 'meta_messaging', is_active: true,
+    config: { access_token: TOKEN, activePageId: '1', pages: [{ pageId: '1', pageName: `Pagina ${marca}`, access_token: TOKEN_PAGINA }] },
+  })
+  expect(eMsg, 'criar a integração do Messenger').toBeNull()
+
   f = { outra, admin, recepcao, clienteId, agendamentoId: ap!.id, planoId: plano!.id, laudoId: doc!.id, numeroId: num!.id }
 })
 
@@ -100,6 +108,10 @@ test.afterAll(async () => {
   if (criado.numeroId) {
     const r = await b.from('whatsapp_numbers').delete().eq('id', criado.numeroId)
     if (r.error) falhas.push(`caixa: ${r.error.message}`)
+  }
+  if (criado.outra) {
+    const r = await b.from('integration_configs').delete().eq('tenant_id', criado.outra.tenantId)
+    if (r.error) falhas.push(`integrações: ${r.error.message}`)
   }
   for (const m of criado.membros) await m.limpar()
   if (criado.outra) await criado.outra.limpar()
@@ -143,6 +155,15 @@ test.describe.serial('dado clínico só com prontuário', () => {
     })
     const { data } = await db().from('client_documents').select('id').eq('id', f!.laudoId).maybeSingle()
     expect(data, 'a recepção não apaga anexo clínico').not.toBeNull()
+
+    // Controle: a MESMA chamada, pelo admin, apaga — a recusa acima não era
+    // argumento errado.
+    await comSessao(browser, f!.admin.estado, async p => {
+      await chamarAcao(p, 'actions/client-documents.ts', 'deleteClientDocument', `/admin/clients/${f!.clienteId}`,
+        [f!.laudoId, 'x', f!.clienteId])
+    })
+    const { data: depois } = await db().from('client_documents').select('id').eq('id', f!.laudoId).maybeSingle()
+    expect(depois, 'o admin apaga').toBeNull()
   })
 
   test('arquivo do tratamento: anotação do profissional e anamnese só com prontuário', async ({ browser }) => {
@@ -155,6 +176,8 @@ test.describe.serial('dado clínico só com prontuário', () => {
     await comSessao(browser, f!.recepcao.estado, async p => {
       const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'getTreatmentPlanDetails', `/admin/clients/${f!.clienteId}`,
         [f!.planoId, f!.clienteId])
+      // Recebeu o plano (não um erro) — e sem o clínico.
+      expect(r.texto).toContain(f!.planoId)
       expect(r.texto).not.toContain(NOTA)
       expect(r.texto).not.toContain(ANAMNESE)
     })
@@ -167,6 +190,8 @@ test.describe.serial('credencial de integração fora da tela', () => {
       const html = await conteudo(p, '/admin/settings?tab=integrations')
       expect(html).toContain(`Caixa ${marca}`)
       expect(html).not.toContain(TOKEN)
+      expect(html).not.toContain(TOKEN_PAGINA)
+      expect(html).toContain(`Pagina ${marca}`)
       expect(html).toContain(MARCADOR)
     })
   })

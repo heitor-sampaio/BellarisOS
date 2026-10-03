@@ -418,6 +418,7 @@ export async function SessaoDeAtendimento({
         client={client}
         anamnesis={anamnesis}
         canEditRecords={canEditRecords}
+        canViewRecords={canViewRecords}
         ficha={ficha}
         respostasDaFicha={respostasDaFicha}
         products={products}

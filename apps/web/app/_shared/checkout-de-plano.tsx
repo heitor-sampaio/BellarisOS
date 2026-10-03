@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { getTenantContext, assertPodeReceber, can } from '@/lib/auth'
+import { getTenantContext, assertPodeReceber, can, podeVerClinico } from '@/lib/auth'
 import { montarCheckoutPlan } from '@/lib/checkout/plano-para-checkout'
 import { CheckoutWizard } from '@/components/branch/checkout-wizard'
 
@@ -21,7 +21,8 @@ export async function CheckoutDePlano({
   const ctx = await getTenantContext()
   assertPodeReceber(ctx)
 
-  const { plan, clientId } = await montarCheckoutPlan(planId, branchId, branchName, ctx.tenantId!)
+  const { plan, clientId } = await montarCheckoutPlan(planId, branchId, branchName, ctx.tenantId!,
+    prof => podeVerClinico(ctx, prof))
 
   if (!plan) {
     // Plano já fechado volta para a ficha do cliente; o resto é 404.

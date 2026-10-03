@@ -76,7 +76,8 @@ test('o plano abre pela lista e renomear volta para a lista', async ({ page }) =
   // sem chamador nenhum antes de a tela existir.
   const novo = `${nome} II`
   await page.getByRole('heading', { name: nome }).click()
-  await page.locator('input.field').first().fill(novo)
+  // `main`: a topbar também tem um `input.field` (a busca universal).
+  await page.locator('main input.field').first().fill(novo)
   await page.getByRole('button', { name: 'Salvar', exact: true }).click()
   await expect(page.getByRole('heading', { name: novo })).toBeVisible()
 

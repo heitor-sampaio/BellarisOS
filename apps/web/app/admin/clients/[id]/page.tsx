@@ -400,7 +400,7 @@ export default async function AdminClientProfilePage({
 
   return (
     <>
-      <RealtimeRefresher tables={['appointments', 'treatment_plans', 'client_packages']} />
+      <RealtimeRefresher tables={['appointments', 'client_packages']} />
       <ClientProfile
         client={client}
         branchId={branchId}

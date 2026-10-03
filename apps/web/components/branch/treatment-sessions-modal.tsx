@@ -337,11 +337,8 @@ export function TreatmentSessionsModal({
         { event: 'UPDATE', schema: 'public', table: 'appointments', filter: `treatment_plan_id=eq.${planId}` },
         () => load(),
       )
-      channel.on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'treatment_plans', filter: `id=eq.${planId}` },
-        () => load(),
-      )
+      // `treatment_plans` não chega pelo Realtime: a sessão não lê planos
+      // (têm a anotação clínica do profissional) — é tudo pelo servidor.
     }
 
     if (clientPackageId) {

@@ -194,17 +194,22 @@ function UploadForm({
 // -- Document row --------------------------------------------------------------
 
 function DocumentRow({
-  doc, slug, clientId, onDelete,
+  doc, slug, clientId, podeApagar, onDelete,
 }: {
-  doc: ClientDocumentItem; slug: string; clientId: string; onDelete: (id: string) => void
+  doc: ClientDocumentItem; slug: string; clientId: string; podeApagar: boolean; onDelete: (id: string) => void
 }) {
   const [deleting, setDeleting] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
   const catColor = CATEGORY_COLOR[doc.category] ?? CATEGORY_COLOR['outro']!
 
   async function handleDelete() {
     if (!confirm('Excluir este documento? Esta ação não pode ser desfeita.')) return
     setDeleting(true)
-    await deleteClientDocument(doc.id, slug, clientId)
+    setErro(null)
+    const res = await deleteClientDocument(doc.id, slug, clientId)
+    setDeleting(false)
+    // Recusado, a linha FICA e diz por quê — sumir dava a entender que apagou.
+    if (res.error) { setErro(res.error); return }
     onDelete(doc.id)
   }
 
@@ -258,16 +263,19 @@ function DocumentRow({
         >
           <Download size={14} />
         </a>
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={deleting}
-          className="btn-ghost"
-          style={{ padding: '6px 8px', color: 'var(--warning)' }}
-          title="Excluir"
-        >
-          {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-        </button>
+        {podeApagar && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="btn-ghost"
+            style={{ padding: '6px 8px', color: 'var(--warning)' }}
+            title="Excluir"
+          >
+            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+          </button>
+        )}
+        {erro && <span role="alert" style={{ fontSize: 'var(--text-2xs)', color: 'var(--danger)' }}>{erro}</span>}
       </div>
     </div>
   )
@@ -403,6 +411,7 @@ export function ClientDocumentsTab({ documents, clientId, branchId, slug, podeAn
                   doc={doc}
                   slug={slug}
                   clientId={clientId}
+                  podeApagar={podeAnexarClinico || !ehAnexoClinico(doc.category)}
                   onDelete={handleDelete}
                 />
               ))}
