@@ -244,8 +244,21 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
               {selected.body && <p style={{ fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)', lineHeight: 1.6 }}>{selected.body}</p>}
               <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: 14 }}>{notificationRelativeTime(selected.created_at)}</p>
             </div>
-            <div style={{ padding: '0 20px 20px' }}>
-              <button type="button" onClick={() => setSelected(null)} className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>Fechar</button>
+            <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Resposta do suporte: abre a Ajuda já no chamado. */}
+              {selected.type === 'suporte.chamado' && typeof selected.data?.chamadoId === 'string' && (
+                <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
+                  onClick={() => {
+                    const chamadoId = selected.data!.chamadoId as string
+                    setSelected(null)
+                    window.dispatchEvent(new CustomEvent('bellaris:ajuda', { detail: { chamadoId } }))
+                  }}>
+                  Ver a resposta
+                </button>
+              )}
+              <button type="button" onClick={() => setSelected(null)}
+                className={selected.type === 'suporte.chamado' ? 'btn-ghost' : 'btn-primary'}
+                style={{ width: '100%', justifyContent: 'center' }}>Fechar</button>
             </div>
           </div>
           </JanelaModal>

@@ -21,6 +21,7 @@ export type TipoDeRegistroDaPlataforma =
   | 'sessao.aberta'
   | 'sessao.encerrada'
   | 'chamado.respondido'
+  | 'chamado.autorizacao_pedida'
 
 export async function registrarNaPlataforma(
   ctx: Pick<PlatformContext, 'staffId'>,
@@ -62,4 +63,5 @@ export const ROTULO_DO_REGISTRO: Record<TipoDeRegistroDaPlataforma, string> = {
   'sessao.aberta':      'Entrou na conta (modo suporte)',
   'sessao.encerrada':   'Saiu da conta (modo suporte)',
   'chamado.respondido': 'Respondeu o chamado',
+  'chamado.autorizacao_pedida': 'Pediu autorização de acesso pelo chamado',
 }

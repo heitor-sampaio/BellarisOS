@@ -1,6 +1,6 @@
 import {
   Bell, CalendarDays, CalendarClock, CalendarPlus, CheckCircle2, AlertCircle,
-  Star, Sparkles, CreditCard, DoorOpen, UserCog,
+  Star, Sparkles, CreditCard, DoorOpen, UserCog, LifeBuoy,
 } from 'lucide-react'
 
 // Config visual dos tipos de notificação (cliente + staff). Ícones Lucide, cores dos tokens.
@@ -19,6 +19,9 @@ export const NOTIFICATION_TYPE_CFG: Record<string, { Icon: React.ElementType; co
   appointment_new:         { Icon: CalendarPlus, color: 'var(--brand)' },
   appointment_reassigned:  { Icon: UserCog,      color: 'var(--warning)' },
   client_checkin:          { Icon: DoorOpen,     color: 'var(--success)' },
+  // Suporte do BellarisOS: resposta a um chamado, e o suporte entrando numa conta.
+  'suporte.chamado':       { Icon: LifeBuoy,     color: 'var(--brand)' },
+  'suporte.acesso':        { Icon: LifeBuoy,     color: 'var(--danger)' },
   // Fallback
   general:                 { Icon: Bell,         color: 'var(--text-muted)' },
 }

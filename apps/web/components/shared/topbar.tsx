@@ -7,6 +7,7 @@ import { savePushToken } from '@/actions/push-subscriptions'
 import { StaffNotificationBell } from '@/components/shared/staff-notification-bell'
 import { BuscaUniversal } from '@/components/shared/busca-universal'
 import { BannerDoSuporte } from '@/components/shared/banner-do-suporte'
+import { Ajuda } from '@/components/shared/ajuda'
 import type { ResolvedPermissions, SuporteNoContexto } from '@estetica-os/types'
 
 interface TopbarProps {
@@ -96,6 +97,8 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
       <BuscaUniversal slug={slug} permissions={permissions} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Ajuda: chamado com o suporte. No modo suporte quem está aqui é o atendente */}
+        {internalUserId && !suporte && <Ajuda internalUserId={internalUserId} />}
         {internalUserId && (
           <StaffNotificationBell internalUserId={internalUserId} initialUnread={initialUnread} />
         )}

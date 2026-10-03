@@ -12,6 +12,8 @@ export type UserNotification = {
   is_read:     boolean
   is_received: boolean
   created_at:  string
+  /** Dados do aviso (ex.: o chamado de suporte que foi respondido). */
+  data?:       Record<string, unknown> | null
 }
 
 export async function getUserNotifications(): Promise<{ notifications: UserNotification[] }> {
@@ -21,7 +23,7 @@ export async function getUserNotifications(): Promise<{ notifications: UserNotif
   const admin = createAdminClient()
   const data = await ler(admin
     .from('user_notifications')
-    .select('id, title, body, type, is_read, is_received, created_at')
+    .select('id, title, body, type, is_read, is_received, created_at, data')
     .eq('user_id', ctx.internalUserId)
     .eq('is_read', false)
     .order('created_at', { ascending: false })

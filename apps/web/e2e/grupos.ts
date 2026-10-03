@@ -59,6 +59,7 @@ export const ISOLADOS = [
   'pre-pago.spec.ts',
   'quadro-tempo-real.spec.ts',
   'suporte-impersonar.spec.ts',
+  'chamados.spec.ts',
   'suporte-plataforma.spec.ts',
   'vendas-desconto.spec.ts',
 ]

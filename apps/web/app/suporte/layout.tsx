@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { lerClaims, marcaDaPlataforma, getCachedStaff } from '@/lib/plataforma/contexto'
 import { logoutAction } from '@/actions/auth'
 import { NavDoSuporte } from '@/components/suporte/nav-do-suporte'
+import { contagemDaFila } from '@/lib/suporte/chamados'
 
 /**
  * O portal da PLATAFORMA — a equipe do BellarisOS atendendo as redes.
@@ -19,6 +20,9 @@ export default async function SuporteLayout({ children }: { children: ReactNode 
 
   const staff = await getCachedStaff(claims.sub)
   const verificado = claims.aal === 'aal2' && !!staff?.is_active
+  // Só com a pessoa verificada: a contagem é dado da plataforma.
+  // O contador é acessório: falhar não derruba o portal (fica registrado).
+  const naFila = verificado ? await contagemDaFila().catch(e => { console.error('[suporte] contagem da fila', e); return 0 }) : 0
 
   return (
     <div className="suporte-shell">
@@ -26,7 +30,7 @@ export default async function SuporteLayout({ children }: { children: ReactNode 
         <div className="suporte-marca">
           BellarisOS <span aria-hidden>✦</span> <span className="suporte-marca-sub">Suporte</span>
         </div>
-        {verificado && <NavDoSuporte ehAdmin={staff?.papel === 'ADMIN'} />}
+        {verificado && <NavDoSuporte ehAdmin={staff?.papel === 'ADMIN'} naFila={naFila} />}
         <div className="suporte-quem">
           {staff && <span className="suporte-quem-nome">{staff.name}</span>}
           <form action={logoutAction}>
