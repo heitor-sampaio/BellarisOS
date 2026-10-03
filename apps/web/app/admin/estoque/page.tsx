@@ -7,6 +7,7 @@ import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-reac
 import { startOfMonthTZ, endOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 import { getGiroDeEstoque } from '@/lib/metrics/demografia'
 import { getValorEmEstoque } from '@/lib/metrics/unidade'
+import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
 
 /** Produto como o select pede, com o saldo por unidade embutido. */
@@ -27,9 +28,11 @@ const fmtBRL = (v: number) =>
 export default async function AdminEstoquePage({
   searchParams,
 }: {
-  searchParams: Promise<{ unidade?: string }>
+  searchParams: Promise<{ unidade?: string; q?: string | string[] }>
 }) {
-  const { unidade: unidadeParam } = await searchParams
+  const { unidade: unidadeParam, q } = await searchParams
+  // `?q=` abre a lista filtrada (a busca universal entra por aqui).
+  const busca = termoDaUrl(q)
   const ctx = await getTenantContext()
   assertPermission(ctx, 'stock', 'VIEW')
   const canEdit = ctx.permissions.stock === 'MANAGE'
@@ -294,6 +297,7 @@ export default async function AdminEstoquePage({
         suppliers={suppliers}
         unidadeInicial={unidadeId}
         readOnly={!canEdit}
+        buscaInicial={busca}
       />
     </div>
   )

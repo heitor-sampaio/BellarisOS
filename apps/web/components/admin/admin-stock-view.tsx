@@ -5,6 +5,7 @@ import { Search, X, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, Package
 import { useRouter } from 'next/navigation'
 import { AdminStockManageModal } from './admin-stock-manage-modal'
 import { BarcodeEntryModal } from './barcode-entry-modal'
+import { contemSemAcento } from '@/lib/texto'
 import { StockProductModal } from '../branch/stock-product-modal'
 import type { StockProduct, ProductCategory, StockProductModalHandle } from '../branch/stock-product-modal'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -58,6 +59,8 @@ interface Props {
    * não passa a ver o estoque das outras, só ganha para onde transferir.
    */
   unidadesDaRede?:   Branch[]
+  /** O `?q=` da URL — a busca universal abre a tela já filtrada. */
+  buscaInicial?:     string
   readOnly?:         boolean
 }
 
@@ -136,12 +139,18 @@ function PencilButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   return <IconButton onClick={onClick} title="Editar produto"><Pencil size={12} /></IconButton>
 }
 
-export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false }: Props) {
+export function AdminStockView({ products, branches, categories, productCategories, suppliers, defaultBranchId, unidadeInicial = '', unidadesDaRede, readOnly = false, buscaInicial = '' }: Props) {
   const router = useRouter()
   // Chegar com uma unidade na URL só faz sentido junto com a visão por unidade:
   // no consolidado o saldo dela ficaria somado ao das outras.
   const [view,       setView]       = useState<ViewMode>(unidadeInicial ? 'por-unidade' : 'consolidado')
-  const [search,     setSearch]     = useState('')
+  const [search,     setSearch]     = useState(buscaInicial)
+  // A busca universal pode trocar o `?q=` com a tela aberta.
+  const [buscaVista, setBuscaVista] = useState(buscaInicial)
+  if (buscaInicial !== buscaVista) {
+    setBuscaVista(buscaInicial)
+    setSearch(buscaInicial)
+  }
   const [category,   setCategory]   = useState('')
   const [branchId,   setBranchId]   = useState(unidadeInicial)
   const [status,     setStatus]     = useState<StatusFilter>('all')
@@ -166,11 +175,10 @@ export function AdminStockView({ products, branches, categories, productCategori
   }
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-
     return products
       .filter(p => {
-        if (q && !p.name.toLowerCase().includes(q) && !(p.sku ?? '').toLowerCase().includes(q)) return false
+        // Sem acento e também pelo código de barras: é o que a busca universal acha.
+        if (!contemSemAcento([p.name, p.sku, p.barcode], search)) return false
         if (category && p.category !== category) return false
 
         // filtro por filial (só relevante na view por-unidade, mas aplica em ambas)

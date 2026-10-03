@@ -10,6 +10,7 @@ import { UserMinus, UserCheck } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { iniciaisDoNome } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
+import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 
 function Initials({ name }: { name: string }) {
   const letters = iniciaisDoNome(name)
@@ -63,7 +64,6 @@ export default async function AdminTeamPage({
         .select('id, name, email, role_id, is_active, branch_id, provides_services, branches(name)')
         .eq('tenant_id', ctx.tenantId!)
 
-      if (q)      query = query.or(`name.ilike.%${q}%,email.ilike.%${q}%`)
       if (branch) query = query.eq('branch_id', branch)
       if (role)   query = query.eq('role_id', role)
       if (status === 'active')   query = query.eq('is_active', true)
@@ -73,7 +73,11 @@ export default async function AdminTeamPage({
     })(), 'carregar a equipe'),
   ])
 
-  const members = membersResult ?? []
+  // A busca por nome/e-mail é feita aqui, sem acento ("joao" acha "João").
+  // Ia crua para dentro do `.or()` do PostgREST — uma vírgula ou um parêntese
+  // digitados quebravam a consulta. A equipe de uma rede é lista curta.
+  const termo   = termoDaUrl(q)
+  const members = (membersResult ?? []).filter(m => contemSemAcento([m.name, m.email], termo))
 
   // A comissão de cada um é do financeiro, não da equipe: quem gere a equipe
   // sem `financial: MANAGE` não vê nem muda quanto cada um ganha.

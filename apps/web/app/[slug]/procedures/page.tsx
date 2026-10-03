@@ -7,13 +7,16 @@ import type { ProcedureItem } from '@/components/branch/procedures-client'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
 import { getSessoesPorProcedimento } from '@/lib/metrics/unidade'
+import { termoDaUrl } from '@/lib/texto'
 
 export default async function BranchProceduresPage({
-  params,
+  params, searchParams,
 }: {
-  params: Promise<{ slug: string }>
+  params:       Promise<{ slug: string }>
+  searchParams: Promise<{ q?: string | string[] }>
 }) {
   const { slug } = await params
+  const busca    = termoDaUrl((await searchParams).q)
   const ctx      = await getTenantContext()
   assertPermission(ctx, 'procedures', 'VIEW')
 
@@ -93,6 +96,7 @@ export default async function BranchProceduresPage({
         categories={categoriesOrdered}
         totalCount={totalCount}
         precoMedio={precoMedio}
+        buscaInicial={busca}
       />
     </>
   )

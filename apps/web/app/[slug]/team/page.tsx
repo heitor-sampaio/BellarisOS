@@ -8,6 +8,8 @@ import { deactivateTeamMember, reactivateTeamMember } from '@/actions/team'
 import { UserMinus, UserCheck } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
+import { BuscaNaUrl } from '@/components/shared/busca-na-url'
+import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 
 function Initials({ name }: { name: string }) {
   const parts = name.trim().split(' ')
@@ -28,11 +30,14 @@ function Initials({ name }: { name: string }) {
 }
 
 export default async function TeamPage({
-  params,
+  params, searchParams,
 }: {
-  params: Promise<{ slug: string }>
+  params:       Promise<{ slug: string }>
+  searchParams: Promise<{ q?: string | string[] }>
 }) {
   const { slug } = await params
+  // `?q=` filtra por nome ou e-mail (a busca universal entra por aqui).
+  const termo    = termoDaUrl((await searchParams).q)
   const ctx = await getTenantContext()
   // A página lista a equipe da filial e todos os cargos do tenant. Sem este gate
   // bastava a URL direta: o cargo sem acesso a Equipe via tudo, só sem botões.
@@ -48,7 +53,7 @@ export default async function TeamPage({
 
   const branchId = branch?.id ?? ctx.branchId!
 
-  const [members, tenantRoles] = await Promise.all([
+  const [todosOsMembros, tenantRoles] = await Promise.all([
     ler(supabase
       .from('users')
       .select('id, name, email, role_id, is_active, provides_services')
@@ -61,6 +66,7 @@ export default async function TeamPage({
       .order('label'), 'carregar os cargos'),
   ])
 
+  const members  = (todosOsMembros ?? []).filter(m => contemSemAcento([m.name, m.email], termo))
   const allRoles = tenantRoles ?? []
   const assignableRoles = allRoles.filter(r => !r.is_system && r.key !== 'NETWORK_ADMIN')
   const roleLabel = Object.fromEntries(allRoles.map(r => [r.id, r.label]))
@@ -84,7 +90,7 @@ export default async function TeamPage({
             Equipe
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginTop: 4 }}>
-            {members?.length ?? 0} {members?.length === 1 ? 'membro' : 'membros'} cadastrados
+            {members.length} {members.length === 1 ? 'membro' : 'membros'} {termo ? 'encontrados' : 'cadastrados'}
           </p>
         </div>
         {canManage && (
@@ -92,12 +98,18 @@ export default async function TeamPage({
         )}
       </div>
 
+      {(todosOsMembros?.length ?? 0) > 0 && (
+        <div className="filtros-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
+          <BuscaNaUrl inicial={termo} placeholder="Buscar por nome ou e-mail…" rotulo="Buscar membro" />
+        </div>
+      )}
+
       {/* Lista */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {!members?.length ? (
           <div style={{ padding: '48px 24px', textAlign: 'center' }}>
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-              Nenhum membro cadastrado ainda.
+              {termo ? <>Nenhum membro encontrado para “{termo}”.</> : 'Nenhum membro cadastrado ainda.'}
             </p>
           </div>
         ) : (

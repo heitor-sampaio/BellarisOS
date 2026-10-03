@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { formatBRL } from '@estetica-os/utils'
 import { salvarPacote } from '@/actions/pacotes'
+import { contemSemAcento } from '@/lib/texto'
 
 /**
  * O catálogo de pacotes da rede (Vendas → Pacotes). Um pacote é um conjunto de
@@ -25,12 +26,23 @@ interface Rascunho { id?: string; name: string; itens: ItemDoRascunho[]; preco: 
 const vazio = (procedureId: string): Rascunho => ({ name: '', itens: [{ procedureId, quantidade: '5' }], preco: '', validade: '', ativo: true })
 const numero = (t: string) => { const s = t.trim(); return Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s) }
 
-export function PacotesCatalogo({ pacotes, procedimentos, podeEditar }: {
+export function PacotesCatalogo({ pacotes, procedimentos, podeEditar, buscaInicial = '' }: {
   pacotes: PacoteDoCatalogo[]
   procedimentos: { id: string; name: string; price: number }[]
   podeEditar: boolean
+  /** O `?q=` da URL — a busca universal abre a tela já filtrada. */
+  buscaInicial?: string
 }) {
   const [editando, setEditando] = useState<Rascunho | null>(null)
+  const [busca,    setBusca]    = useState(buscaInicial)
+  // A busca universal pode trocar o `?q=` com a tela aberta.
+  const [buscaVista, setBuscaVista] = useState(buscaInicial)
+  if (buscaInicial !== buscaVista) {
+    setBuscaVista(buscaInicial)
+    setBusca(buscaInicial)
+  }
+  // O que está sendo editado fica na tela mesmo que deixe de casar com a busca.
+  const visiveis = pacotes.filter(p => editando?.id === p.id || contemSemAcento([p.name, p.composicao], busca))
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }} aria-label="Pacotes">
@@ -38,6 +50,27 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar }: {
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           {pacotes.length === 1 ? '1 pacote' : `${pacotes.length} pacotes`}
         </p>
+        {pacotes.length > 0 && (
+          <div className="filtro-largo" style={{ position: 'relative', flex: '1 1 220px', minWidth: 180, maxWidth: 360 }}>
+            <Search
+              size={14}
+              aria-hidden
+              style={{
+                position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                color: 'var(--text-faint)', pointerEvents: 'none',
+              }}
+            />
+            <input
+              type="search"
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              placeholder="Buscar pacote ou procedimento…"
+              aria-label="Buscar pacote"
+              className="field campo-busca"
+              style={{ paddingLeft: 32 }}
+            />
+          </div>
+        )}
         {podeEditar && !editando && procedimentos.length > 0 && (
           <button type="button" className="btn-secondary" onClick={() => setEditando(vazio(procedimentos[0]!.id))}>
             <Plus size={15} aria-hidden /> Novo pacote
@@ -53,7 +86,11 @@ export function PacotesCatalogo({ pacotes, procedimentos, podeEditar }: {
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum pacote cadastrado.</p>
       )}
 
-      {pacotes.map(p => editando?.id === p.id ? (
+      {pacotes.length > 0 && visiveis.length === 0 && (
+        <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>Nenhum pacote encontrado para “{busca.trim()}”.</p>
+      )}
+
+      {visiveis.map(p => editando?.id === p.id ? (
         <Formulario key={p.id} inicial={editando} procedimentos={procedimentos} aoTerminar={() => setEditando(null)} />
       ) : (
         <div key={p.id} data-pacote={p.id}

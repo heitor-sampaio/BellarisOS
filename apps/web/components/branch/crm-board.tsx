@@ -1,7 +1,7 @@
 ﻿'use client'
 
-import { useState, useTransition, useRef, useEffect, useMemo, useSyncExternalStore } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useState, useTransition, useRef, useEffect, useMemo, useCallback, useSyncExternalStore } from 'react'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import {
   Plus, ArrowRight, ArrowRightLeft, Phone, Mail, X,
   MoreHorizontal,
@@ -11,6 +11,7 @@ import { updateLeadStage } from '@/actions/leads'
 import { ClientForm } from './client-form'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { rotaCliente } from '@/lib/rotas'
+import { rotaComParams } from '@/lib/query-params'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
 import {
   sourceStyle,
@@ -318,6 +319,11 @@ interface CRMBoardProps {
   /** Modo rede: exibe badge de filial nos cards e oculta "+" por coluna */
   networkMode?: boolean
   branches?:    { id: string; name: string; slug: string }[]
+  /**
+   * Lead a abrir ao montar (`?lead=` da URL — é por aqui que a busca universal
+   * entra no card). Fora da lista carregada (alcance, outro funil), nada abre.
+   */
+  leadAberto?:  string | null
 }
 
 // --- Cores suaves a partir de hex --------------------------------
@@ -362,7 +368,7 @@ function MenuItem({
 // --- Cartão do lead ----------------------------------------------
 function LeadCard({
   lead, slug, branchId, allStages, funnels, funnelId, unidades, procedures, branches, networkMode, nowMs,
-  isDragging, onDragStart, onDragEnd, onLeadDeleted,
+  isDragging, onDragStart, onDragEnd, onLeadDeleted, abrirAoMontar, onAbertoAoMontar,
 }: {
   lead:           Lead
   slug:           string
@@ -380,6 +386,9 @@ function LeadCard({
   onDragStart:    (e: React.DragEvent, id: string) => void
   onDragEnd:      () => void
   onLeadDeleted:  (id: string) => void
+  /** Este é o lead pedido na URL: abre o modal e rola até o card. */
+  abrirAoMontar?:    boolean
+  onAbertoAoMontar?: () => void
 }) {
   const [convertOpen, setConvertOpen] = useState(false)
   const [moving,     startMoving]  = useTransition()
@@ -388,8 +397,18 @@ function LeadCard({
   const editRef    = useRef<CRMLeadModalHandle>(null)
   const moveRef    = useRef<HTMLDialogElement>(null)
   const menuRef    = useRef<HTMLDivElement>(null)
+  const cardRef    = useRef<HTMLDivElement>(null)
 
   const [menuAberto, setMenuAberto] = useState(false)
+
+  // Aberto pela URL (`?lead=`): rola o card para a vista e abre o modal, uma
+  // vez só — quem decide que já abriu é o quadro (`onAbertoAoMontar`).
+  useEffect(() => {
+    if (!abrirAoMontar) return
+    cardRef.current?.scrollIntoView({ block: 'center', inline: 'center' })
+    editRef.current?.open()
+    onAbertoAoMontar?.()
+  }, [abrirAoMontar, onAbertoAoMontar])
 
   // Fecha ao clicar fora. Sem isso fica um menu aberto por card assim que a
   // pessoa passa por vários.
@@ -569,7 +588,9 @@ function LeadCard({
 
       {/* Card */}
       <div
+        ref={cardRef}
         className="crm-card"
+        data-lead-id={lead.id}
         draggable
         onDragStart={handleDragStartCard}
         onDragEnd={handleDragEndCard}
@@ -824,7 +845,7 @@ const semRelogio = () => null
 // --- Board principal ---------------------------------------------
 export function CRMBoard({
   initialLeads, stages, allStages, funnels, funnelId, unidades,
-  procedures, branchId, slug, networkMode, branches,
+  procedures, branchId, slug, networkMode, branches, leadAberto,
 }: CRMBoardProps) {
   const [leads, setLeads]     = useState<Lead[]>(initialLeads)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -834,6 +855,29 @@ export function CRMBoard({
 
   const [filters, setFilters] = useState<FiltersState>(DEFAULT_FILTERS)
   const [sort,    setSort]    = useState<SortOrder>('newest')
+
+  // `?lead=` abre o card UMA vez. Depois de aberto, o parâmetro sai da URL
+  // (sem refazer a página: o `replaceState` é integrado ao router do Next),
+  // para recarregar ou voltar não reabrir o modal que a pessoa já fechou.
+  const pathnameDoQuadro = usePathname()
+  const [leadPendente, setLeadPendente] = useState(leadAberto ?? null)
+  // A busca pode pedir outro lead — ou o MESMO de novo — com o quadro já
+  // aberto (a página não remonta): ajustado durante o render, como
+  // `leadsDoServidor` abaixo. Lido da URL, e não da prop: o `replaceState`
+  // tira o `lead` da URL sem refazer a página, e a prop continuaria com o
+  // pedido antigo — pedir o mesmo card outra vez não o abriria.
+  const leadDaUrl = useSearchParams().get('lead')
+  const [leadPedido, setLeadPedido] = useState(leadAberto ?? null)
+  if (leadDaUrl !== leadPedido) {
+    setLeadPedido(leadDaUrl)
+    if (leadDaUrl) setLeadPendente(leadDaUrl)
+  }
+  const aoAbrirLeadDaUrl = useCallback(() => {
+    setLeadPendente(null)
+    const atuais = new URLSearchParams(window.location.search)
+    if (!atuais.has('lead')) return
+    window.history.replaceState(null, '', rotaComParams(pathnameDoQuadro, atuais, { lead: null }))
+  }, [pathnameDoQuadro])
 
   // "Agora" compartilhado para as métricas de aging; atualiza a cada minuto.
   //
@@ -1058,6 +1102,8 @@ export function CRMBoard({
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   onLeadDeleted={handleLeadDeleted}
+                  abrirAoMontar={leadPendente === lead.id}
+                  onAbertoAoMontar={aoAbrirLeadDaUrl}
                 />
               ))}
 

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Clock, Star, Smartphone } from 'lucide-react'
+import { Clock, Star, Smartphone, Search } from 'lucide-react'
+import { contemSemAcento } from '@/lib/texto'
 
 /**
  * Catálogo de procedimentos na unidade — só leitura.
@@ -31,6 +32,8 @@ interface Props {
   categories:  string[]
   totalCount:  number
   precoMedio: number
+  /** O `?q=` da URL — a busca universal abre a tela já filtrada. */
+  buscaInicial?: string
 }
 
 // -- Helper ---------------------------------------------------------------------
@@ -105,13 +108,21 @@ function ProcedureCard({ p }: { p: ProcedureItem }) {
 
 // -- Main ----------------------------------------------------------------------
 
-export function ProceduresClient({ procedures, categories, totalCount, precoMedio }: Props) {
+export function ProceduresClient({ procedures, categories, totalCount, precoMedio, buscaInicial = '' }: Props) {
   const [activeTab, setActiveTab] = useState('Todos')
+  const [busca,     setBusca]     = useState(buscaInicial)
+  // A busca universal pode trocar o `?q=` com a tela aberta.
+  const [buscaVista, setBuscaVista] = useState(buscaInicial)
+  if (buscaInicial !== buscaVista) {
+    setBuscaVista(buscaInicial)
+    setBusca(buscaInicial)
+  }
 
   const tabs    = ['Todos', ...categories]
-  const visible = activeTab === 'Todos'
+  const visible = (activeTab === 'Todos'
     ? procedures
-    : procedures.filter(p => p.category === activeTab)
+    : procedures.filter(p => p.category === activeTab))
+    .filter(p => contemSemAcento([p.name, p.category], busca))
 
   return (
     <div>
@@ -134,7 +145,26 @@ export function ProceduresClient({ procedures, categories, totalCount, precoMedi
       {/* Filtro por categoria. As opções vêm do catálogo da rede — são dado,
           sem número fixo —, e por isso é dropdown e não segmentado.
           Ver §13 do CLAUDE.md. */}
-      <div style={{ marginBottom: 24 }}>
+      <div className="filtros-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 24 }}>
+        <div className="filtro-largo" style={{ position: 'relative', flex: '1 1 220px', minWidth: 180, maxWidth: 360 }}>
+          <Search
+            size={14}
+            aria-hidden
+            style={{
+              position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+              color: 'var(--text-faint)', pointerEvents: 'none',
+            }}
+          />
+          <input
+            type="search"
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Buscar procedimento ou categoria…"
+            aria-label="Buscar procedimento"
+            className="field campo-busca"
+            style={{ paddingLeft: 32 }}
+          />
+        </div>
         <select
           className="filtro-select"
           aria-label="Filtrar por categoria"
@@ -149,7 +179,9 @@ export function ProceduresClient({ procedures, categories, totalCount, precoMedi
       {visible.length === 0 ? (
         <div className="card" style={{ padding: '56px 24px', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
-            Nenhum procedimento {activeTab !== 'Todos' ? `na categoria "${activeTab}"` : 'disponível'}.
+            {busca.trim()
+              ? <>Nenhum procedimento encontrado para “{busca.trim()}”.</>
+              : <>Nenhum procedimento {activeTab !== 'Todos' ? `na categoria "${activeTab}"` : 'disponível'}.</>}
           </p>
         </div>
       ) : (

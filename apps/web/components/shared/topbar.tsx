@@ -5,6 +5,8 @@ import { Menu } from 'lucide-react'
 import { useSidebar } from '@/components/shared/sidebar-context'
 import { savePushToken } from '@/actions/push-subscriptions'
 import { StaffNotificationBell } from '@/components/shared/staff-notification-bell'
+import { BuscaUniversal } from '@/components/shared/busca-universal'
+import type { ResolvedPermissions } from '@estetica-os/types'
 
 interface TopbarProps {
   userName:       string
@@ -12,6 +14,10 @@ interface TopbarProps {
   roleLabel?:     string
   internalUserId: string | null
   initialUnread:  number
+  /** Slug do portal da unidade; nulo no portal da rede. A busca o usa. */
+  slug:           string | null
+  /** O que o cargo abre: decide as páginas que a busca oferece. */
+  permissions:    ResolvedPermissions
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -25,7 +31,7 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions }: TopbarProps) {
   const firstName  = userName.split(' ')[0] ?? userName
   const { toggle } = useSidebar()
 
@@ -55,6 +61,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
       display:         'flex',
       alignItems:      'center',
       justifyContent:  'space-between',
+      gap:             16,
       padding:         '0 var(--content-pad-x)',
       zIndex:          40,
       transition:      'left var(--sidebar-anim) var(--sidebar-ease)',
@@ -70,14 +77,17 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
         <Menu size={20} />
       </button>
 
-      {/* Saudação — oculta em mobile para dar espaço */}
-      <p className="hide-mobile" style={{
+      {/* Saudação — cede o lugar à busca quando a topbar aperta (< 1280px) */}
+      <p className="topbar-saudacao" style={{
         fontSize:   'var(--text-sm-sz)',
         color:      'var(--text-muted)',
         fontWeight: 'var(--weight-semibold)',
       }}>
         Bom dia, {firstName} ✦
       </p>
+
+      {/* Busca universal — no celular vira a lupa do bloco da direita */}
+      <BuscaUniversal slug={slug} permissions={permissions} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {internalUserId && (

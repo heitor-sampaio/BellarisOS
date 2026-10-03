@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   ehPortalDaRede, portalDe, rotaNoPortal, rotaAtendimento, rotaAgenda,
-  rotaCliente, rotaClientes, rotaInbox, rotaOportunidades,
+  rotaCliente, rotaClientes, rotaInbox, rotaOportunidades, rotaOportunidade,
 } from '@/lib/rotas'
 
 /** O portal vem de onde a pessoa está (pathname), nunca do slug do registro. */
@@ -57,7 +57,13 @@ describe('atalhos', () => {
     expect(rotaInbox(naRede, 'centro', null)).toBe('/admin/inbox')
   })
 
-  it('oportunidades e checkout', () => {
+  it('oportunidades', () => {
     expect(rotaOportunidades(naUnidade, 'centro')).toBe('/centro/oportunidades')
+  })
+
+  it('uma oportunidade leva o funil e o card aberto na query', () => {
+    expect(rotaOportunidade(naRede, 'centro', 'ld-1', 'fn-2')).toBe('/admin/oportunidades?funil=fn-2&lead=ld-1')
+    expect(rotaOportunidade(naUnidade, 'centro', 'ld-1')).toBe('/centro/oportunidades?lead=ld-1')
+    expect(rotaOportunidade(naUnidade, 'centro', 'ld-1', null)).toBe('/centro/oportunidades?lead=ld-1')
   })
 })

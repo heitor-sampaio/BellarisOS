@@ -26,6 +26,7 @@ import {
 import { InboxLeadPanel, type PanelBranch } from '@/components/admin/inbox-lead-panel'
 import { nomeDoAnuncio, legendaDoAnuncio } from '@/lib/ads/rotulo'
 import { destinoDoEvento } from '@/lib/inbox/lista'
+import { conversaCasaComBusca } from '@/lib/inbox/busca'
 import {
   InboxFiltros, ChipsDeFiltro, passaNosFiltros, contarFiltros,
   FILTROS_VAZIOS, type FiltrosInbox,
@@ -1546,13 +1547,10 @@ export function CRMInbox({
 
     // A busca é independente dos filtros: nome do contato, texto da última
     // mensagem, telefone e tag. O banco já aplica filtros e busca
-    // (`inbox_pagina`); aqui é a guarda do que chega pelo realtime.
-    const q = search.trim().toLowerCase()
-    if (!q) return true
-    return (c.contact_name ?? '').toLowerCase().includes(q)
-      || (c.last_message ?? '').toLowerCase().includes(q)
-      || (c.contact_phone ?? '').toLowerCase().includes(q)
-      || (c.lead_tags ?? []).some(t => t.toLowerCase().includes(q))
+    // (`inbox_pagina`); aqui é a guarda do que chega pelo realtime — com a
+    // MESMA regra (sem acento, telefone por dígitos), senão esconde o que o
+    // banco achou.
+    return conversaCasaComBusca(c, search)
   })
 
   // `contarFiltros` já inclui a origem desde que ela virou uma seção do painel.

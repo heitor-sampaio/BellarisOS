@@ -10,7 +10,7 @@ import { catalogoDePacotes } from '@/lib/pacotes/leitura'
  * tem `procedures: MANAGE` e abrangência de rede; na unidade ele é consulta
  * (mais os pacotes locais dela, se houver). A venda é na ficha do cliente.
  */
-export async function PacotesDaRede({ ctx, unidadeId }: { ctx: TenantContext; unidadeId?: string }) {
+export async function PacotesDaRede({ ctx, unidadeId, busca }: { ctx: TenantContext; unidadeId?: string; busca?: string }) {
   const podeEditar = can(ctx, 'procedures', 'MANAGE') && ctx.branchId === null
   const [pacotes, procedimentos] = await Promise.all([
     catalogoDePacotes(ctx.tenantId!, { branchId: unidadeId ?? null }),
@@ -34,6 +34,7 @@ export async function PacotesDaRede({ ctx, unidadeId }: { ctx: TenantContext; un
         pacotes={pacotes}
         procedimentos={((procedimentos ?? []) as { id: string; name: string; price: number | null }[]).map(p => ({ id: p.id, name: p.name, price: Number(p.price ?? 0) }))}
         podeEditar={podeEditar}
+        buscaInicial={busca}
       />
     </div>
   )

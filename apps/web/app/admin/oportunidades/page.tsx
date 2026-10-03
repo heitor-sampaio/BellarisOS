@@ -13,6 +13,8 @@ import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { UserPlus } from 'lucide-react'
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /** Nome da unidade marcada no lead, se houver. */
 function unidadeDoLead(tags: unknown): string | null {
   const t = (Array.isArray(tags) ? tags : []).find(
@@ -31,12 +33,15 @@ type LeadLido = Record<string, unknown> & {
 export default async function AdminOportunidadesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ funil?: string }>
+  searchParams: Promise<{ funil?: string; lead?: string }>
 }) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
 
-  const { funil: rawFunil } = await searchParams
+  const { funil: rawFunil, lead: rawLead } = await searchParams
+  // `?lead=` abre o card (a busca universal entra por aqui). Só serve se for um
+  // id; o alcance é o da lista abaixo — lead que ela não carrega não abre.
+  const leadAberto = rawLead && UUID.test(rawLead) ? rawLead : null
 
   // Filiais da rede
   const admin    = createAdminClient()
@@ -179,6 +184,7 @@ export default async function AdminOportunidadesPage({
             slug=""
             networkMode
             branches={branches}
+            leadAberto={leadAberto}
           />
         </>
       )}

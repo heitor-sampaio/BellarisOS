@@ -30,6 +30,9 @@ import { catalogoDeRecompensas } from '@/actions/fidelidade'
 import { configDaRede, redeTemLancamentos } from '@/lib/fidelidade/leitura'
 import { SettingsComissoes } from '@/components/admin/settings-comissoes'
 import { configDeComissaoDaRede, taxasDaRede, profissionaisSemComissao } from '@/lib/comissoes/leitura'
+import {
+  ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, type ChaveDeAba,
+} from '@/lib/configuracoes/abas'
 
 /**
  * Corpo de Configurações, usado pelos dois portais.
@@ -45,32 +48,11 @@ import { configDeComissaoDaRede, taxasDaRede, profissionaisSemComissao } from '@
  * sem "LGPD" (a lista é da rede inteira, sem recorte por unidade).
  */
 
-// Cada aba declara o módulo que a governa: a tela é uma só, mas os assuntos são
-// de três módulos diferentes desde a quebra de `settings`.
-const TABS = [
-  { key: 'unidades',      label: 'Unidades',     module: 'settings' },
-  { key: 'permissions',   label: 'Cargos',       module: 'roles'    },
-  { key: 'fichas',        label: 'Fichas',       module: 'forms'    },
-  // Termos e contratos: autoria de rede, como as fichas (módulo 'forms').
-  { key: 'documentos',    label: 'Documentos',   module: 'forms'    },
-  { key: 'integrations',  label: 'Integrações',  module: 'settings' },
-  { key: 'fidelidade',    label: 'Fidelidade',   module: 'settings' },
-  // Como a comissão acontece e as taxas da maquininha: é dinheiro, 'financial'.
-  { key: 'comissoes',     label: 'Comissões',    module: 'financial' },
-  { key: 'lgpd',          label: 'LGPD',         module: 'settings' },
-  { key: 'eventos',       label: 'Eventos',      module: 'settings' },
-  { key: 'general',       label: 'Geral',        module: 'settings' },
-] as const satisfies readonly { key: string; label: string; module: AppModule }[]
-
-export type ChaveDeAba = typeof TABS[number]['key']
-
-/** Todas as abas — o portal da rede. */
-export const ABAS_DA_REDE: readonly ChaveDeAba[] =
-  TABS.map(t => t.key)
-
-/** O que a unidade governa sem sair do próprio portal nem ver outra unidade. */
-export const ABAS_DA_UNIDADE: readonly ChaveDeAba[] =
-  ['permissions', 'fichas', 'documentos', 'integrations', 'general']
+// A lista das abas (e o módulo de cada uma) mora em `lib/configuracoes/abas.ts`,
+// que a busca universal também lê.
+const TABS = ABAS_DE_CONFIGURACAO
+export { ABAS_DA_REDE, ABAS_DA_UNIDADE }
+export type { ChaveDeAba }
 
 interface Props {
   /** Prefixo dos links de aba: `/admin/settings` ou `/${slug}/settings`. */

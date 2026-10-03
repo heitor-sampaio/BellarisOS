@@ -64,3 +64,17 @@ export function rotaInbox(pathname: string, slug?: string | null, conversationId
 export function rotaOportunidades(pathname: string, slug?: string | null): string {
   return rotaNoPortal(pathname, slug, '/oportunidades')
 }
+
+/**
+ * Uma oportunidade aberta no quadro: o funil dela (`?funil=`) e o card já
+ * aberto (`?lead=`). Sem funil, o quadro abre no padrão — e o card só abre se
+ * estiver nele.
+ */
+export function rotaOportunidade(
+  pathname: string, slug: string | null | undefined, leadId: string, funilId?: string | null,
+): string {
+  const params = new URLSearchParams()
+  if (funilId) params.set('funil', funilId)
+  params.set('lead', leadId)
+  return `${rotaOportunidades(pathname, slug)}?${params.toString()}`
+}

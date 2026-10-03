@@ -11,6 +11,8 @@ import { UserPlus } from 'lucide-react'
 import { ler } from '@/lib/db'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /** O que a tela lê do lead; o resto do select passa adiante como veio. */
 type LeadLido = Record<string, unknown> & {
   contato_id: string
@@ -22,10 +24,13 @@ export default async function BranchOportunidadesPage({
   params, searchParams,
 }: {
   params:       Promise<{ slug: string }>
-  searchParams: Promise<{ funil?: string }>
+  searchParams: Promise<{ funil?: string; lead?: string }>
 }) {
   const { slug }        = await params
-  const { funil: rawFunil } = await searchParams
+  const { funil: rawFunil, lead: rawLead } = await searchParams
+  // `?lead=` abre o card (a busca universal entra por aqui). Só serve se for um
+  // id; o alcance é o da lista abaixo — lead que ela não carrega não abre.
+  const leadAberto = rawLead && UUID.test(rawLead) ? rawLead : null
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'VIEW')
 
@@ -198,6 +203,7 @@ export default async function BranchOportunidadesPage({
         procedures={procedures}
         branchId={branch.id}
         slug={slug}
+        leadAberto={leadAberto}
       />
     </div>
   )

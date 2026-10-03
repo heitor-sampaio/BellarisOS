@@ -1,11 +1,11 @@
 'use server'
 
-import { getTenantContext, assertPermission, ownerFilter, podeReceber, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, podeReceber, alcancaUnidade } from '@/lib/auth'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
 import type { ProcedimentoAVenda } from '@/components/shared/vender'
-import { lerVisibilidade, type VisibilidadeDoInbox } from '@/lib/inbox/visibilidade'
+import { idsDaPaginaDoInbox } from '@/lib/inbox/pagina'
 import type { FiltrosInbox } from '@/components/admin/inbox-filtros'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { nomesDeAnuncios, type NomesDoAnuncio } from '@/lib/ads/ad-lookup'
@@ -225,44 +225,21 @@ export async function getConversations(opcoes: {
   const admin = createAdminClient()
   const vazia: PaginaDoInbox = { conversas: [], temMais: false, cursor: null }
 
-  // O alcance (dono e caixas do cargo) — a mesma regra de `lib/inbox/alcance.ts`,
-  // aplicada no banco por `inbox_pagina`, junto com filtros e busca.
-  let dono: string | null
-  let modo: VisibilidadeDoInbox
-  let minhasCaixas: string[] | null
-  try {
-    dono = ownerFilter(ctx, 'crm')
-    const [rede, caixas] = await Promise.all([
-      dono
-        ? ler(admin.from('tenants').select('inbox_visibilidade').eq('id', ctx.tenantId!).maybeSingle(), 'ler a visibilidade do inbox')
-        : Promise.resolve(null),
-      caixasDoAlcance(admin, ctx),
-    ])
-    modo = lerVisibilidade((rede as { inbox_visibilidade?: string } | null)?.inbox_visibilidade)
-    minhasCaixas = caixas
-  } catch (e) {
-    // Sem saber o alcance, não se mostra nada: mostrar tudo seria vazar.
-    console.error('[getConversations] alcance:', e instanceof Error ? e.message : e)
-    return vazia
-  }
-
   // A lista era as 200 mais recentes, filtradas no navegador: a 201ª não
   // aparecia nunca, e o filtro só enxergava as 200 (2026-09-28). Agora vem de
-  // 30 em 30, já filtrada — `inbox_pagina`, migration 20260928000007.
+  // 30 em 30, já filtrada e com o alcance (dono e caixas do cargo) aplicado no
+  // banco — `idsDaPaginaDoInbox`, a mesma conta da busca universal.
   const limite = Math.max(1, Math.min(opcoes.limite ?? 30, 500))
-  const paginaIds = await ler(admin.rpc('inbox_pagina', {
-    p_tenant:   ctx.tenantId!,
-    p_dono:     dono,
-    p_modo:     modo,
-    p_caixas:   minhasCaixas,
-    p_filtros:  opcoes.filtros ?? {},
-    p_busca:    opcoes.busca ?? '',
-    p_antes_em: opcoes.depois?.em ?? null,
-    p_antes_id: opcoes.depois?.id ?? null,
-    p_limite:   limite + 1,   // um a mais: é assim que se sabe se há próxima página
-  }), 'carregar a página do inbox') as { id: string; last_message_at: string }[] | null
+  const paginaIds = await idsDaPaginaDoInbox(admin, ctx, {
+    filtros: opcoes.filtros,
+    busca:   opcoes.busca,
+    depois:  opcoes.depois,
+    limite:  limite + 1,   // um a mais: é assim que se sabe se há próxima página
+  })
+  // Sem saber o alcance, não se mostra nada: mostrar tudo seria vazar.
+  if (!paginaIds) return vazia
 
-  const linhas  = paginaIds ?? []
+  const linhas  = paginaIds
   const temMais = linhas.length > limite
   const daPagina = linhas.slice(0, limite)
   const ids = daPagina.map(l => l.id)

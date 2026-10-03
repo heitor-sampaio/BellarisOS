@@ -32,7 +32,7 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
 
 ---
 
-## 2. Estado atual (2026-10-01)
+## 2. Estado atual (2026-10-03)
 
 ### Operação
 
@@ -115,8 +115,8 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   revisão de código: `seletores-padronizados.spec.ts` mede a altura de
   todo seletor visível em 11 telas e recusa aparência escrita em `style`
   inline.
-- **Testes:** 615 unitários (566 no web + 44 em `utils` + 5 em
-  `validators`, Vitest) + 110 specs E2E (Playwright; a última completa,
+- **Testes:** 640 unitários (591 no web + 44 em `utils` + 5 em
+  `validators`, Vitest) + 111 specs E2E (Playwright; a última completa,
   421/421) contra o banco da produção, isolados pelo prefixo `[e2e]`. A
   completa roda à mão no GitHub Actions, em duas metades juntas (isolados em
   paralelo, compartilhados um por vez).
@@ -125,6 +125,10 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   das automações) —, com nova tentativa em erro da borda.
 - **Menu lateral** com categorias que recolhem; modais no `<dialog>` nativo
   (`JanelaModal`).
+- **Busca universal na topbar** (`Ctrl/⌘+K`): cliente, conversa,
+  oportunidade, agendamento, equipe, catálogo e páginas, sem acento e com o
+  mesmo alcance da tela de cada registro (`busca_universal` + a conta do
+  inbox).
 
 ---
 
@@ -1279,6 +1283,52 @@ próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo o
 borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
+
+### 2026-10-03 — Busca universal na topbar
+
+Pedido do Heitor: na barra superior, em todas as páginas, uma busca única,
+"um atalho universal para tudo". Decisões dele: campo fixo na topbar com o
+painel de resultados logo abaixo (no celular, a lupa abre a busca em tela
+cheia embaixo da topbar); acha páginas, clientes, conversas, oportunidades,
+agendamentos, equipe, procedimentos, pacotes e produtos; **só acha** — as
+ações ficam para uma fase 2.
+
+- **A regra que importa: a busca não abre exceção de alcance.** O navegador
+  manda só o termo e o slug do portal; `buscarTudo` decide os tipos pelo cargo
+  (o módulo da tela de cada um), o dono pelo "só os meus" do CRM e da agenda e
+  a unidade pela abrangência. As conversas passam pela MESMA conta do inbox
+  (`idsDaPaginaDoInbox`, extraída de `getConversations`), com dono, modo e
+  caixas do cargo.
+- **No banco**, `busca_universal` (migration `20261003000001`, só
+  `service_role`): sem acento (extensão `unaccent`, `private.sem_acento`),
+  todas as palavras em qualquer ordem ("prado juliana" acha "Juliana Prado"),
+  telefone e CPF por dígitos com ou sem máscara. Procedimento respeita a
+  disponibilidade por unidade; oportunidade de funil arquivado fica de fora.
+- **O inbox ganhou de brinde** a busca sem acento e o telefone por dígitos
+  (`inbox_pagina`), e a guarda do navegador passou a comparar igual
+  (`conversaCasaComBusca`) — senão a tela escondia o que o banco achava.
+- **Páginas** vêm do menu e das abas de Configurações, que saíram da tela para
+  `lib/configuracoes/abas.ts` (uma lista só, lida pelas duas), com apelidos:
+  "negócio" acha Oportunidades, "usuário" acha Equipe.
+- **Destinos por URL**, que não existiam: `?lead=` abre o card no quadro de
+  oportunidades (e o mesmo card de novo, se pedido outra vez); `?q=` nasce a
+  lista filtrada em equipe, procedimentos, pacotes e estoque, nos dois portais.
+  De passagem, a equipe da rede deixou de levar o termo cru ao `.or()` do
+  PostgREST.
+- Teclado: `Ctrl/⌘+K` e `/` focam, setas escolhem, Enter abre, Esc limpa e
+  fecha; combobox/listbox para leitor de tela.
+- **Prova**: `e2e/busca-universal.spec.ts` (7 testes, rede `[e2e]` própria):
+  sem acento e fora de ordem, páginas por apelido, conversa e oportunidade
+  abrindo no lugar certo, o mesmo card reaberto, a busca do inbox sem acento,
+  o SDR com CRM OWN sem a oportunidade e sem a conversa de outro dono, a agenda
+  OWN só com os próprios horários, a sobreposição do celular dentro da tela, e
+  o cliente final recusado — as recusas pela action direta, com o admin como
+  controle. Mais os unitários de `tests/busca-universal.test.ts` (catálogo de
+  páginas, tipos por cargo, destinos, textos, a guarda do inbox).
+- Um verificador em paralelo auditou a entrega contra o plano e achou sete
+  ajustes (a guarda do inbox no navegador, a disponibilidade do procedimento,
+  o card que não reabria, recusa provada só em negativo, acessibilidade do
+  painel); todos feitos antes do commit.
 
 ### 2026-09-30 — WhatsApp pelo cadastro incorporado da Meta (Tech Provider)
 
@@ -4888,6 +4938,13 @@ verdade. O que vale:
 - **App Review da Meta** (`pages_messaging`, `instagram_manage_messages`).
 - Perguntas abertas com o suporte da uazapi: o proxy `internal` é dedicado por
   instância ou compartilhado? `DELETE /instance` para a cobrança na hora?
+
+### Próximas fases já combinadas
+
+- **Busca universal, fase 2 — ações** (decisão do Heitor, 2026-10-03: a
+  primeira fase só acha). "Novo agendamento", "Cadastrar cliente" e, no
+  cliente achado, "Agendar"/"Vender", cada uma reaproveitando o modal que já
+  existe — o que pede uma porta de entrada por URL em cada modal.
 
 ### Dívida técnica conhecida
 

@@ -10,6 +10,7 @@ import { Package, AlertTriangle, ShoppingCart, CalendarClock } from 'lucide-reac
 import { startOfMonthTZ, endOfMonthTZ, addDaysTZ } from '@/lib/datetime'
 import { getGiroDeEstoque } from '@/lib/metrics/demografia'
 import { getValorEmEstoque } from '@/lib/metrics/unidade'
+import { termoDaUrl } from '@/lib/texto'
 import { ler } from '@/lib/db'
 
 /** Produto como o select pede, com o saldo por unidade embutido. */
@@ -28,11 +29,14 @@ const fmtBRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export default async function BranchStockPage({
-  params,
+  params, searchParams,
 }: {
-  params: Promise<{ slug: string }>
+  params:       Promise<{ slug: string }>
+  searchParams: Promise<{ q?: string | string[] }>
 }) {
   const { slug } = await params
+  // `?q=` abre a lista filtrada (a busca universal entra por aqui).
+  const busca    = termoDaUrl((await searchParams).q)
   const ctx      = await getTenantContext()
   assertPermission(ctx, 'stock', 'VIEW')
   const readOnly = ctx.permissions.stock !== 'MANAGE'
@@ -281,6 +285,7 @@ export default async function BranchStockPage({
         suppliers={suppliers}
         defaultBranchId={branchId}
         readOnly={readOnly}
+        buscaInicial={busca}
       />
     </div>
   )

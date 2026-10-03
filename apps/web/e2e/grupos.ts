@@ -30,6 +30,7 @@ export const ISOLADOS = [
   'anuncios-integracao.spec.ts',
   'autenticacao.spec.ts',
   'automacoes-ensaio.spec.ts',
+  'busca-universal.spec.ts',
   'checkout-de-plano.spec.ts',
   'comissoes-calculo.spec.ts',
   'comissoes-configuracao.spec.ts',

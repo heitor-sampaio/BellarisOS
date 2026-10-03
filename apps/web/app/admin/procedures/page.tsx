@@ -8,6 +8,8 @@ import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
 import { configDaRede } from '@/lib/fidelidade/leitura'
 import { opcoesDeModeloParaProcedimento } from '@/lib/documentos/modelos'
+import { BuscaNaUrl } from '@/components/shared/busca-na-url'
+import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 
 function formatBRL(v: string | number) {
   return parseFloat(String(v)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -24,9 +26,15 @@ const COLUNAS = [
   { titulo: '',             largura: 172 },
 ] as const
 
-export default async function AdminProceduresPage() {
+export default async function AdminProceduresPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[] }>
+}) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'procedures', 'VIEW')
+  // `?q=` filtra a lista (a busca universal abre a tela por aqui).
+  const termo = termoDaUrl((await searchParams).q)
   const canEdit = ctx.permissions.procedures === 'MANAGE'
 
   const admin = createAdminClient()
@@ -100,8 +108,12 @@ export default async function AdminProceduresPage() {
     units_per_package: p.units_per_package ?? null,
   }))
 
-  // Agrupa por categoria
-  const grouped = procList.reduce<Record<string, typeof procList>>((acc, p) => {
+  // Agrupa por categoria — só o que casa com a busca. Os totais do cabeçalho
+  // continuam sendo do catálogo inteiro.
+  const filtrados = termo
+    ? procList.filter(p => contemSemAcento([p.name, p.category], termo))
+    : procList
+  const grouped = filtrados.reduce<Record<string, typeof procList>>((acc, p) => {
     const cat = p.category ?? 'Outros'
     if (!acc[cat]) acc[cat] = []
     acc[cat]!.push(p)
@@ -127,6 +139,20 @@ export default async function AdminProceduresPage() {
         </div>
         {canEdit && <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} />}
       </div>
+
+      {procList.length > 0 && (
+        <div className="filtros-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>
+          <BuscaNaUrl inicial={termo} placeholder="Buscar procedimento ou categoria…" rotulo="Buscar procedimento" />
+        </div>
+      )}
+
+      {procList.length > 0 && filtrados.length === 0 && (
+        <div className="card" style={{ padding: '40px 24px', textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
+            Nenhum procedimento encontrado para “{termo}”.
+          </p>
+        </div>
+      )}
 
       {/* Lista agrupada por categoria */}
       {Object.entries(grouped).map(([cat, procs]) => (
