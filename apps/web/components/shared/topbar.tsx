@@ -8,6 +8,8 @@ import { StaffNotificationBell } from '@/components/shared/staff-notification-be
 import { BuscaUniversal } from '@/components/shared/busca-universal'
 import { BannerDoSuporte } from '@/components/shared/banner-do-suporte'
 import { Ajuda } from '@/components/shared/ajuda'
+import { AvisoDaAssinatura } from '@/components/shared/aviso-da-assinatura'
+import type { AvisoDaAssinatura as AvisoDaAssinaturaDados } from '@/lib/redes/aviso'
 import type { ResolvedPermissions, SuporteNoContexto } from '@estetica-os/types'
 
 interface TopbarProps {
@@ -22,6 +24,8 @@ interface TopbarProps {
   permissions:    ResolvedPermissions
   /** A sessão é do suporte da plataforma: mostra o aviso fixo com o "Sair". */
   suporte?:       SuporteNoContexto | null
+  /** Teste acabando ou pagamento em atraso — só para quem administra a rede. */
+  assinatura?:    AvisoDaAssinaturaDados | null
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -35,7 +39,7 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, suporte = null }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, suporte = null, assinatura = null }: TopbarProps) {
   const firstName  = userName.split(' ')[0] ?? userName
   const { toggle } = useSidebar()
 
@@ -85,7 +89,8 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
       {suporte && <BannerDoSuporte suporte={suporte} />}
 
       {/* Saudação — cede o lugar à busca quando a topbar aperta (< 1280px) */}
-      {!suporte && <p className="topbar-saudacao" style={{
+      {!suporte && assinatura && <AvisoDaAssinatura aviso={assinatura} rotaDaAba="/admin/settings?tab=assinatura" />}
+      {!suporte && !assinatura && <p className="topbar-saudacao" style={{
         fontSize:   'var(--text-sm-sz)',
         color:      'var(--text-muted)',
         fontWeight: 'var(--weight-semibold)',

@@ -22,6 +22,7 @@ export const NOTIFICATION_TYPE_CFG: Record<string, { Icon: React.ElementType; co
   // Suporte do BellarisOS: resposta a um chamado, e o suporte entrando numa conta.
   'suporte.chamado':       { Icon: LifeBuoy,     color: 'var(--brand)' },
   'suporte.acesso':        { Icon: LifeBuoy,     color: 'var(--danger)' },
+  'assinatura':            { Icon: CreditCard,   color: 'var(--warning)' },
   // Fallback
   general:                 { Icon: Bell,         color: 'var(--text-muted)' },
 }

@@ -25,6 +25,8 @@ export const ABAS_DE_CONFIGURACAO = [
   // Como a comissão acontece e as taxas da maquininha: é dinheiro, 'financial'.
   { key: 'comissoes',     label: 'Comissões',    module: 'financial' },
   { key: 'lgpd',          label: 'LGPD',         module: 'settings' },
+  // A assinatura do BellarisOS (plano, faturas, pagar). Da rede.
+  { key: 'assinatura',    label: 'Assinatura',   module: 'settings' },
   // O suporte do BellarisOS: autorizar o acesso e ver o que ele fez. Da rede.
   { key: 'suporte',       label: 'Suporte',      module: 'settings' },
   { key: 'eventos',       label: 'Eventos',      module: 'settings' },

@@ -28,6 +28,8 @@ import { mascararSegredos } from '@/lib/integracoes/sem-segredo'
 import { dadosDaAbaSuporte } from '@/lib/suporte/painel-da-clinica'
 import { podeIncluirClinico } from '@/lib/suporte/regras'
 import { SettingsSuporte } from '@/components/admin/settings-suporte'
+import { SettingsAssinatura } from '@/components/admin/settings-assinatura'
+import { lerAssinatura } from '@/lib/redes/assinatura'
 import { FidelidadeConfig } from '@/components/admin/fidelidade-config'
 import { FidelidadeCatalogo } from '@/components/admin/fidelidade-catalogo'
 import { catalogoDeRecompensas } from '@/actions/fidelidade'
@@ -155,6 +157,14 @@ export async function Configuracoes({
   // Só carrega quando a aba está aberta: a lista não é usada nas outras.
   const lgpdRequests = activeTab === 'lgpd' ? await listDataRequests() : []
   const dadosDoSuporte = activeTab === 'suporte' && !ctx.suporte ? await dadosDaAbaSuporte(ctx.tenantId!) : null
+  // A assinatura do BellarisOS (o plano, as faturas): só a aba dela lê.
+  const assinatura = activeTab === 'assinatura' ? await lerAssinatura(ctx.tenantId!) : null
+  const extrasDaAssinatura = assinatura ? await Promise.all([
+    assinatura.assinatura?.planoId
+      ? ler(admin.from('platform_plans').select('nome').eq('id', assinatura.assinatura.planoId).maybeSingle(), 'ler o plano')
+      : null,
+    ler(admin.from('platform_settings').select('dias_de_carencia').eq('id', 1).maybeSingle(), 'ler a carência'),
+  ]) : null
 
   const modelosDeDocumento = activeTab === 'documentos' ? await modelosDaRede(ctx.tenantId!) : null
   const linkPelaConversa = activeTab === 'documentos' ? await envioPelaConversaLigado(ctx.tenantId!) : false
@@ -327,6 +337,16 @@ export async function Configuracoes({
           // O config_id do cadastro incorporado (Embedded Signup) da Meta. Não é
           // segredo, mas é por instalação: mora no ambiente, lido aqui no servidor.
           configIdDoCadastro={process.env.META_ES_CONFIG_ID || null}
+        />
+      )}
+
+      {activeTab === 'assinatura' && assinatura && (
+        <SettingsAssinatura
+          dados={assinatura}
+          planoNome={(extrasDaAssinatura?.[0] as { nome: string } | null)?.nome ?? assinatura.rede.planName}
+          carencia={(extrasDaAssinatura?.[1] as { dias_de_carencia: number } | null)?.dias_de_carencia ?? 7}
+          // Quem paga é a clínica, não o atendente do suporte entrando na conta.
+          podePagar={!ctx.suporte}
         />
       )}
 

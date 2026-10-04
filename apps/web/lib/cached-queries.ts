@@ -53,6 +53,41 @@ export function getCachedMember(authId: string) {
   )()
 }
 
+// ─── Situação da REDE (bloqueada?) ────────────────────────────────────────────
+// Lida a cada requisição da equipe (`buildContext`) e pelo portal do paciente.
+// Quem muda a situação (o /sistema, o webhook do Asaas, o cron) expira a tag
+// `rede:<id>` na hora — mesmo desenho do membro desativado.
+export type CachedRede = { id: string; nome: string; ativa: boolean; planStatus: string | null }
+
+export function getCachedRede(tenantId: string) {
+  return unstable_cache(
+    async (): Promise<CachedRede | null> => {
+      const data = await ler(createAdminClient()
+        .from('tenants').select('id, name, is_active, plan_status')
+        .eq('id', tenantId).maybeSingle(), 'buscar a situação da rede')
+      if (!data) return null
+      return { id: data.id, nome: data.name, ativa: data.is_active !== false, planStatus: data.plan_status ?? null }
+    },
+    [`rede-${tenantId}`],
+    { revalidate: 60, tags: [tagDaRede(tenantId)] },
+  )()
+}
+
+export const tagDaRede = (tenantId: string) => `rede:${tenantId}`
+
+/** A rede de um cliente final (o JWT dele não leva `tenant_id`). Não muda. */
+export function getCachedRedeDoCliente(clientId: string) {
+  return unstable_cache(
+    async (): Promise<string | null> => {
+      const data = await ler(createAdminClient().from('clients').select('tenant_id').eq('id', clientId).maybeSingle(),
+        'buscar a rede do cliente')
+      return (data?.tenant_id as string | undefined) ?? null
+    },
+    [`cliente-rede-${clientId}`],
+    { revalidate: 86_400 },
+  )()
+}
+
 // ─── Branch: clientes que FREQUENTAM a filial (via unit tag "Unidade: <nome>") ─
 // Cliente pertence à REDE; a unidade é uma TAG. Listamos quem tem a tag da filial.
 export function getCachedBranchClients(branchId: string, tenantId: string) {

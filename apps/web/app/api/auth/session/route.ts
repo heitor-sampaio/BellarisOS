@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import type { JwtClaims } from '@estetica-os/types'
 import { ler } from '@/lib/db'
+import { promoverSeForOAdmin } from '@/lib/plataforma/primeiro-admin'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 
 // Recebe tokens do armazenamento nativo (Capacitor Preferences),
@@ -43,7 +44,18 @@ export async function POST(req: NextRequest) {
 
   // Computa o destino final usando as claims do JWT (sem DB extras para roles de rede).
   // Para roles com branchId/clientId, uma query mínima busca o slug da filial.
-  const claims = data.session.user.app_metadata as JwtClaims
+  // O primeiro admin da plataforma (PLATAFORMA_ADMIN_EMAIL) também pelo app.
+  let usuario = data.session.user
+  try {
+    if (await promoverSeForOAdmin(usuario) === 'promovido') {
+      const { data: renovada } = await supabase.auth.refreshSession()
+      if (renovada.user) usuario = renovada.user
+    }
+  } catch (e) {
+    console.error('[api/auth/session] primeiro admin:', (e as Error).message)
+  }
+
+  const claims = usuario.app_metadata as JwtClaims
   const admin  = createAdminClient()
 
   // Primeiro acesso do cliente pelo app: a mesma marca (e o bônus opcional) do

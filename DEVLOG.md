@@ -134,6 +134,11 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   ações, e **"Entrar como"** o membro — só com autorização da clínica, sem
   dado clínico salvo autorização que o inclua, nada saindo para o paciente, e
   tudo registrado "via suporte" e visível à clínica (Configurações → Suporte).
+- **Administração do sistema** (`/sistema`, só ADMIN da plataforma): painel do
+  negócio (MRR, redes por situação), redes (criar, editar, desligar), planos,
+  assinatura e cobrança pelo **Asaas** (webhook + regras de teste e carência),
+  equipe da plataforma e auditoria. Rede bloqueada (desligada, suspensa ou
+  cancelada) só vê a tela de regularizar.
 
 ---
 
@@ -1288,6 +1293,62 @@ próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo o
 borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
+
+### 2026-10-03 — Administração do sistema (`/sistema`): redes, planos e cobrança pelo Asaas
+
+O pedido do Heitor: além do suporte, uma central para administrar todos os
+clientes do sistema — e criar a equipe de suporte por lá, sem script.
+Decisões dele: o primeiro admin por variável no Railway; catálogo de planos
+com preço especial por rede; cobrança pelo **Asaas**; em atraso, aviso e
+depois suspensão sozinha pela carência (pagou, volta sozinha); suspensa, só a
+tela de regularizar; a clínica vê a assinatura em Configurações.
+
+- **Dois portais da plataforma**: o `/suporte` ficou como estava (o
+  atendimento); o `/sistema` é a administração, só ADMIN, com seletor entre
+  os dois. Equipe e auditoria mudaram do `/suporte` para lá.
+- **Primeiro admin sem script**: `PLATAFORMA_ADMIN_EMAIL`. O login promove
+  quem tem esse e-mail; sem conta, o "Esqueci minha senha" a cria já marcada.
+  Membro de rede com o e-mail não é promovido. O script saiu.
+- **Redes**: lista com situação, plano, valor e vencimento; "Nova rede" (o
+  login do responsável, a rede pelo MESMO caminho do cadastro público —
+  `semearRede` — e o convite por e-mail; a unidade fica para o `/setup`);
+  editar os dados; **desligar/religar** à mão (abuso, pedido).
+- **O portão da rede bloqueada** (`buildContext`): desligada, suspensa ou
+  cancelada → `/conta-suspensa`, para a equipe (página e action) e para o
+  paciente no portal. Automações e campanhas pausam; o que chega pelo
+  WhatsApp continua gravado.
+- **Planos e assinatura**: catálogo (`platform_plans`), o valor retratado
+  por rede (preço especial), estender o teste, marcar em dia, cancelar e
+  reabrir. Painel com MRR, recebido no mês e as redes que precisam de atenção.
+- **Asaas**: cliente (procurado antes de criar) + assinatura mensal em que a
+  clínica escolhe Pix, boleto ou cartão; webhook pelo token, gravado pela
+  chave do evento e processado depois; a situação é recalculada por estado no
+  banco (eventos fora de ordem não estragam). Cron `assinaturas`: teste
+  vencido → atraso → suspensa pela carência.
+- **A clínica**: Configurações → Assinatura (plano, faturas, "Pagar") e o aviso
+  no topo para quem administra a rede (teste acabando; atraso com a data da
+  suspensão).
+- **O verificador em paralelo achou, e foi corrigido** (migration `000012`):
+  - evento atrasado tirava do "em dia" quem já pagou (fatura paga voltava a
+    vencida) — agora paga não volta atrás;
+  - lembretes, campanhas automáticas e o push ao paciente não pausavam — agora
+    pausam (e a campanha agendada espera, em vez de ser dada como concluída);
+  - a primeira fatura se perdia (chegava antes do id da assinatura) — achada
+    pelo cliente;
+  - "marcar em dia"/"estender teste" eram desfeitos pelo próximo evento — o
+    atraso até o dia é perdoado;
+  - o bloqueio valia só no app — agora também na RLS (`jwt_claim` nulo);
+  - o primeiro admin exigia "Confirm email" ligado — agora só e-mail
+    confirmado é promovido;
+  - e menores: run de automação em espera não se perde, trava contra assinatura
+    em dobro, o dia do pagamento no fuso certo, a data do "regularize até", o
+    MRR só com cobrança ligada, "já cobrando" ligando o Asaas sozinho,
+    contestação registrada, reconciliação diária pelo cron, o cliente do Asaas
+    acompanhando a edição dos dados.
+- **Prova**: `sistema-portal` (5), `sistema-redes` (5),
+  `assinaturas-asaas` (7, contra o build com o Asaas falso),
+  `plataforma-primeiro-admin` (2, contra o build) e `tests/sistema-regras.test.ts`;
+  77 testes (os novos e os vizinhos de RLS, suporte e automações) contra o build.
 
 ### 2026-10-03 — Suporte endurecido: o que as verificações acharam
 
@@ -5145,11 +5206,19 @@ verdade. O que vale:
 
 ### Suporte — o que depende do Heitor
 
-- **Criar o primeiro admin da plataforma**:
-  `node apps/web/scripts/plataforma-primeiro-admin.mjs <email> "<Nome>"` (no
-  diretório `apps/web`, com o `.env.local`), definir a senha pelo link que ele
-  imprime e cadastrar o autenticador no primeiro acesso a `/suporte`. O e-mail
-  NÃO pode ser o de membro de rede.
+- **Virar o primeiro admin da plataforma** (sem script desde 2026-10-03): pôr
+  `PLATAFORMA_ADMIN_EMAIL` no Railway com um e-mail que **não** seja de
+  membro de rede (ex.: `heitor+admin@…`), ir em "Esqueci minha senha" com ele,
+  definir a senha pelo e-mail, entrar e cadastrar o autenticador. Cai no
+  `/sistema`; a equipe de suporte se cadastra em `/sistema/equipe`.
+- **Asaas**: criar a conta (sandbox primeiro), gerar a chave de API e pôr no
+  Railway `ASAAS_API_KEY`, `ASAAS_AMBIENTE` (`sandbox`/`producao`) e
+  `ASAAS_WEBHOOK_TOKEN` (32+ caracteres). No painel do Asaas, criar o webhook
+  para `https://app.bellarisos.com/api/webhooks/asaas`, envio **sequencial**,
+  eventos de cobrança e de assinatura, com o mesmo token. Depois, cadastrar os
+  planos em `/sistema/planos` e ligar a cobrança de cada rede no detalhe dela.
+- **A rede real de hoje** está `active`, sem plano nem assinatura: não é
+  cobrada nem bloqueada até alguém definir o plano e ligar a cobrança.
 - **(Opcional) ligar o hook de token**: Supabase → Authentication → Hooks →
   Custom Access Token → `public.suporte_hook_do_token`. Nada depende dele.
 - **Vale uma rodada completa do E2E**: `jwt_claim`, `buildContext`, o proxy e
@@ -5160,8 +5229,9 @@ verdade. O que vale:
   já previa; a mitigação seria exigir um cabeçalho que só o servidor manda.
 - **Depois**: impersonar o cliente final do portal; e-mail transacional
   (chamado respondido, acesso do suporte); push para o suporte; host próprio
-  para trabalhar lado a lado; cobrança real (Pagar.me) com `tenants.is_active`
-  tendo efeito; gente de unidade autorizar outros.
+  para trabalhar lado a lado; gente de unidade autorizar outros. Na cobrança:
+  nota fiscal do Asaas, cupom, limite por plano, cobrança anual e a clínica
+  trocar o próprio plano.
 
 ### Dívida técnica conhecida
 

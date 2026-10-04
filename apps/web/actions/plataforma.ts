@@ -10,7 +10,6 @@ import { reativarMembro } from '@/lib/equipe/ativacao'
 import { membroReativado } from '@/lib/events/cadastro'
 import { headers } from 'next/headers'
 import { origemPublicaDe } from '@/lib/origem'
-import { SITUACOES_DO_PLANO, type SituacaoDoPlano } from '@/lib/plataforma/plano'
 
 /**
  * As ações da PLATAFORMA sobre uma rede, sem entrar na conta de ninguém.
@@ -73,37 +72,6 @@ export async function reativarMembroDaRede(tenantId: string, userId: string): Pr
 }
 
 
-/** Plano, situação e fim do trial de uma rede. Só admin da plataforma. */
-export async function alterarPlanoDaRede(tenantId: string, plano: {
-  planName: string | null; planStatus: SituacaoDoPlano; trialEndsAt: string | null
-}): Promise<Resultado> {
-  const ctx = await getPlatformContext({ papel: 'ADMIN' })
-  if (!ehUuid(tenantId)) return { ok: false, error: 'Pedido inválido.' }
-  if (!SITUACOES_DO_PLANO.includes(plano?.planStatus)) return { ok: false, error: 'Situação de plano inválida.' }
-  const planName = typeof plano.planName === 'string' ? plano.planName.trim().slice(0, 60) || null : null
-  const trialEndsAt = plano.trialEndsAt ? new Date(plano.trialEndsAt) : null
-  if (trialEndsAt && Number.isNaN(trialEndsAt.getTime())) return { ok: false, error: 'Data de fim do trial inválida.' }
-  try {
-    const admin = createAdminClient()
-    const antes = await ler(admin.from('tenants').select('plan_name, plan_status, trial_ends_at')
-      .eq('id', tenantId).maybeSingle(), 'buscar a rede')
-    if (!antes) return { ok: false, error: 'Rede não encontrada.' }
-    await gravar(admin.from('tenants').update({
-      plan_name: planName, plan_status: plano.planStatus,
-      trial_ends_at: trialEndsAt?.toISOString() ?? null, updated_at: new Date().toISOString(),
-    }).eq('id', tenantId).select('id').single(), 'alterar o plano da rede')
-    await registrarNaPlataforma(ctx, 'plano.alterado', {
-      tenantId,
-      dados: { antes, depois: { plan_name: planName, plan_status: plano.planStatus, trial_ends_at: trialEndsAt?.toISOString() ?? null } },
-    })
-    revalidatePath(`/suporte/redes/${tenantId}`)
-    revalidatePath('/suporte/redes')
-    return { ok: true }
-  } catch (e) {
-    return { ok: false, error: mensagemDoErro(e) }
-  }
-}
-
 // --- Equipe da plataforma (só admin) ----------------------------------------
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -148,7 +116,7 @@ export async function criarAtendente(dados: { nome: string; email: string; papel
       redirectTo: `${origemPublicaDe(await headers())}/auth/confirm?next=/update-password`,
     })
     await registrarNaPlataforma(ctx, 'equipe.criada', { dados: { email, papel } })
-    revalidatePath('/suporte/equipe')
+    revalidatePath('/sistema/equipe')
     return { ok: true }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }
@@ -183,7 +151,7 @@ export async function ativarAtendente(staffId: string, ativo: boolean): Promise<
       }
     }
     await registrarNaPlataforma(ctx, ativo ? 'equipe.reativada' : 'equipe.desativada', { dados: { email: pessoa.email } })
-    revalidatePath('/suporte/equipe')
+    revalidatePath('/sistema/equipe')
     return { ok: true }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }
@@ -210,7 +178,7 @@ export async function redefinirVerificacao(staffId: string): Promise<Resultado> 
     }
     await gravar(admin.rpc('plataforma_encerrar_sessoes', { p_auth_id: pessoa.auth_id }), 'encerrar as sessões')
     await registrarNaPlataforma(ctx, 'mfa.redefinido', { dados: { email: pessoa.email } })
-    revalidatePath('/suporte/equipe')
+    revalidatePath('/sistema/equipe')
     return { ok: true }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }

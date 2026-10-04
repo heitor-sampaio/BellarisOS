@@ -7,19 +7,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import { LoginSchema, RegisterSchema, ResetPasswordSchema, UpdatePasswordSchema } from '@estetica-os/validators'
 import type { JwtClaims } from '@estetica-os/types'
-import { gravar, ler, tentar } from '@/lib/db'
+import { ler } from '@/lib/db'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
-
-function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-}
+import { semearRede, fimDoTesteParaHoje } from '@/lib/redes/criar'
+import { promoverSeForOAdmin, criarContaDoPrimeiroAdmin } from '@/lib/plataforma/primeiro-admin'
 
 export async function registerAction(
   _prevState: { error: string } | { needsConfirmation: boolean } | undefined,
@@ -39,7 +30,6 @@ export async function registerAction(
 
   const { email, password } = parsed.data
   const supabase = await createClient()
-  const admin    = createAdminClient()
 
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password })
   if (signUpError) {
@@ -58,58 +48,14 @@ export async function registerAction(
   // existe.
   if (!authUser.identities?.length) return { error: 'Este e-mail já está cadastrado.' }
 
-  // Gera slug único baseado no domínio do e-mail
-  const domain      = email.split('@')[1]?.split('.')[0] ?? 'clinica'
-  const baseSlug    = toSlug(domain)
-  const uniqueSuffix = authUser.id.slice(0, 6)
-  const tenantSlug  = `${baseSlug}-${uniqueSuffix}`
-
-  const { data: tenant, error: tenantError } = await admin
-    .from('tenants')
-    .insert({ name: 'Minha Clínica', slug: tenantSlug, email, plan_status: 'trial' })
-    .select('id')
-    .single()
-
-  if (tenantError || !tenant) return { error: 'Erro ao configurar conta. Tente novamente.' }
-
-  // Rede, membro e acesso valem JUNTOS: se um falhar, a rede recém-criada sai,
-  // senão sobra uma clínica vazia que ninguém consegue abrir.
-  try {
-    // O cargo-sistema NETWORK_ADMIN é semeado pela trigger after-insert em tenants.
-    const adminRole = await ler(admin
-      .from('tenant_roles')
-      .select('id')
-      .eq('tenant_id', tenant.id)
-      .eq('key', 'NETWORK_ADMIN')
-      .single(), 'buscar o cargo de administrador')
-
-    await gravar(admin.from('users').insert({
-      auth_id:   authUser.id,
-      tenant_id: tenant.id,
-      branch_id: null,
-      name:      email,
-      email:     email,
-      role_id:   adminRole?.id ?? null,
-    }), 'criar o usuário da rede')
-
-    // Sem as claims o login entra sem rede no JWT, e a RLS inteira depende delas.
-    await gravar(admin.rpc('set_user_claims', {
-      p_auth_id:   authUser.id,
-      p_tenant_id: tenant.id,
-      p_branch_id: null,
-      p_role_id:   adminRole?.id ?? null,
-    }), 'gravar o acesso do usuário')
-
-    // O contrato de plano padrão (§9.4.1), o mesmo que as redes de antes
-    // ganharam na migration. Acessório: sem ele a rede funciona e monta o seu
-    // em Configurações → Documentos — não vale desfazer o cadastro por isso.
-    await tentar(admin.rpc('documentos_modelos_padrao', { p_tenant: tenant.id }), 'semear o contrato de plano padrão')
-  } catch (e) {
-    console.error('[registerAction]', (e as Error).message)
-    await tentar(admin.from('users').delete().eq('tenant_id', tenant.id), 'desfazer o membro do cadastro')
-    await tentar(admin.from('tenants').delete().eq('id', tenant.id), 'desfazer a rede do cadastro')
-    return { error: 'Erro ao configurar conta. Tente novamente.' }
-  }
+  // A rede nasce pelo MESMO caminho do "Nova rede" do /sistema
+  // (lib/redes/criar.ts), em teste pelos dias da configuração da plataforma.
+  const rede = await semearRede({
+    authId: authUser.id, email, nomeDoResponsavel: email, nomeDaRede: 'Minha Clínica',
+    slugBase: email.split('@')[1]?.split('.')[0] ?? 'clinica',
+    planStatus: 'trial', trialEndsAt: await fimDoTesteParaHoje(),
+  })
+  if (!rede.ok) return { error: 'Erro ao configurar conta. Tente novamente.' }
 
   // Se o Supabase exigir confirmação de e-mail, a sessão não estará disponível ainda
   if (!signUpData.session) {
@@ -136,6 +82,16 @@ export async function loginAction(
   const { data: { user } } = await supabase.auth.getUser()
   const clienteId = (user?.app_metadata as JwtClaims | undefined)?.client_id
   if (clienteId) await bonusDePrimeiroAcesso(clienteId)
+
+  // O primeiro admin da plataforma (PLATAFORMA_ADMIN_EMAIL): promovido no
+  // login, e a sessão renovada para o token já vir com a marca.
+  if (user) {
+    try {
+      if (await promoverSeForOAdmin(user) === 'promovido') await supabase.auth.refreshSession()
+    } catch (e) {
+      console.error('[loginAction] primeiro admin:', (e as Error).message)
+    }
+  }
 
   return { redirectTo: await destinoDaSessao(supabase) }
 }
@@ -187,6 +143,12 @@ export async function resetPasswordAction(
 ) {
   const parsed = ResetPasswordSchema.safeParse({ email: formData.get('email') })
   if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? 'E-mail inválido' }
+
+  // O primeiro admin da plataforma ainda sem conta: nasce aqui, já marcado, e
+  // o e-mail de definir senha sai logo abaixo como para qualquer um.
+  try { await criarContaDoPrimeiroAdmin(parsed.data.email) } catch (e) {
+    console.error('[resetPasswordAction] primeiro admin:', (e as Error).message)
+  }
 
   const supabase = await createClient()
   // O link volta por /auth/confirm, que troca o código por sessão e segue para

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { lerClaims, marcaDaPlataforma, getCachedStaff } from '@/lib/plataforma/contexto'
 import { logoutAction } from '@/actions/auth'
 import { NavDoSuporte } from '@/components/suporte/nav-do-suporte'
+import { SeletorDePortal } from '@/components/plataforma/seletor-de-portal'
 import { contagemDaFila } from '@/lib/suporte/chamados'
 
 /**
@@ -30,8 +31,9 @@ export default async function SuporteLayout({ children }: { children: ReactNode 
         <div className="suporte-marca">
           BellarisOS <span aria-hidden>✦</span> <span className="suporte-marca-sub">Suporte</span>
         </div>
-        {verificado && <NavDoSuporte ehAdmin={staff?.papel === 'ADMIN'} naFila={naFila} />}
+        {verificado && <NavDoSuporte naFila={naFila} />}
         <div className="suporte-quem">
+          {verificado && staff?.papel === 'ADMIN' && <SeletorDePortal />}
           {staff && <span className="suporte-quem-nome">{staff.name}</span>}
           <form action={logoutAction}>
             <button type="submit" className="btn-ghost">Sair</button>

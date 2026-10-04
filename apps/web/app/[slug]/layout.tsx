@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { BranchSidebar } from '@/components/branch/sidebar'
 import { Topbar } from '@/components/shared/topbar'
+import { avisoDaAssinatura } from '@/lib/redes/aviso'
 import { SidebarProvider } from '@/components/shared/sidebar-context'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
@@ -83,7 +84,7 @@ export default async function BranchLayout({
         isNetworkAdmin={ctx.role === 'NETWORK_ADMIN'}
         allBranches={allBranches}
       />
-      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} suporte={ctx.suporte ?? null} />
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={branch.slug} permissions={permissions} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} />
       <main style={{
         marginLeft:    'var(--sidebar-w)',
         marginTop:     'calc(var(--topbar-h) + env(safe-area-inset-top, 0px))',

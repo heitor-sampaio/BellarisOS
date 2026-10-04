@@ -40,7 +40,7 @@ unidade impossível.
 | Auth | Supabase Auth (JWT + RLS) |
 | Storage | Supabase Storage (fotos de prontuário) |
 | Filas | Postgres (`automation_runs`) + `after()` + cron — sem broker |
-| Pagamentos | Pagar.me (assinaturas da rede) |
+| Pagamentos | Asaas (assinaturas das redes — §6, "Administração do sistema") |
 | WhatsApp | uazapi (não oficial) + Cloud API da Meta (oficial) |
 | Push Notifications | Web Push (VAPID) no navegador + FCM no app Android |
 | Deploy Web | Railway (Docker) |
@@ -355,9 +355,14 @@ portal próprio (`/suporte`), fora dos portais das redes.
   ANTES do padrão CLIENT (sem `role`, o atendente viraria cliente final); os
   destinos de login (`destinoDaSessao`, `/auth/redirect`, `/api/auth/session`)
   mandam a plataforma para a verificação.
-- **Papéis:** SUPORTE vê redes e diagnóstico, reenvia acesso e reativa
-  membro; ADMIN também muda plano/trial, cuida da equipe da plataforma
-  (cadastrar, desativar, redefinir a verificação) e vê a auditoria.
+- **Dois portais, dois papéis:** o `/suporte` (o ATENDIMENTO: chamados,
+  redes para consulta e diagnóstico, reenviar acesso, reativar membro,
+  "entrar como") é de SUPORTE e ADMIN; o `/sistema` (a ADMINISTRAÇÃO do
+  negócio: painel, redes, planos, cobrança, equipe da plataforma, auditoria,
+  configurações) é só de ADMIN. Quem é ADMIN troca pelo seletor no topo e
+  começa no `/sistema` (`inicioDaPlataforma`, `lib/plataforma/destino.ts`); o
+  proxy desvia o SUPORTE para fora do `/sistema`, e toda página e action de
+  lá pede `getPlatformContext({ papel: 'ADMIN' })`.
 - **Tudo o que a plataforma faz vai para `platform_audit_log`**
   (`registrarNaPlataforma`, só acrescenta), inclusive abrir o painel de uma
   rede ou um chamado — e a clínica vê isso. Registro DEPOIS de um efeito que
@@ -367,11 +372,86 @@ portal próprio (`/suporte`), fora dos portais das redes.
   (`lib/plataforma/diagnostico.ts`): das caixas e integrações só o estado
   (lista fechada); dos eventos só nome, entidade, ator e hora (os `dados`
   carregam retrato de cliente, e o painel não depende de autorização).
-- O primeiro admin nasce por script (`apps/web/scripts/plataforma-primeiro-admin.mjs`);
-  os seguintes, pela tela. E-mail de membro de rede é recusado.
+- **O primeiro admin nasce pela variável `PLATAFORMA_ADMIN_EMAIL`**, sem
+  script (`lib/plataforma/primeiro-admin.ts`): quem entra com esse e-mail é
+  promovido no login (`loginAction` e `/api/auth/session`, com a sessão
+  renovada para o token vir com a marca); sem conta ainda, o "Esqueci minha
+  senha" cria o login já marcado. Membro de rede com esse e-mail NÃO é
+  promovido, e só e-mail CONFIRMADO é promovido (com a confirmação desligada
+  no Auth, um `signUp` direto com o e-mail da variável viraria ADMIN). Os seguintes, o ADMIN cadastra em `/sistema/equipe` (SUPORTE ou
+  ADMIN). E-mail de membro de rede é recusado.
 - Tabelas da plataforma: RLS ligada e ZERO políticas, como credencial.
 - Prova: `e2e/suporte-plataforma.spec.ts` (atendentes `[e2e]` com o TOTP
-  calculado no teste, `e2e/apoio/plataforma.ts`).
+  calculado no teste, `e2e/apoio/plataforma.ts`), `e2e/sistema-portal.spec.ts`
+  e `e2e/plataforma-primeiro-admin.spec.ts` (contra o build).
+
+**Administração do sistema (`/sistema`) e assinaturas (2026-10-03):**
+- **A rede BLOQUEADA é uma regra só** (`lib/redes/situacao.ts`, igual a
+  `private.rede_bloqueada`): `tenants.is_active = false` (DESLIGADA à mão
+  pelo admin — abuso, pedido; a cobrança nunca religa) OU `plan_status` em
+  `suspended`/`canceled` (a assinatura, que a cobrança escreve e desfaz).
+  - **O portão é `buildContext`**: rede bloqueada → `/conta-suspensa`, para
+    página e action da equipe e para o cliente final (a rede dele vem de
+    `getCachedRedeDoCliente`). `getCachedRede` tem tag `rede:<id>`: quem muda a
+    situação EXPIRA a marca (actions, webhook, cron); sem isso vale até 60 s.
+  - `/conta-suspensa` fica fora dos layouts e não chama `getTenantContext`
+    (voltaria para ela): lê pelos claims. Quem administra a rede vê a fatura em
+    aberto e o "Pagar"; o paciente vê "Portal indisponível".
+  - **A RLS também barra**: `jwt_claim` devolve nulo para o token de membro de
+    rede bloqueada (o estado da rede é lido uma vez por transação, GUC
+    `bellaris.rede`, em `private.rede_estado`) — sem isso o membro seguia
+    lendo e gravando pelo PostgREST e pelo Realtime com a chave pública.
+  - **Saída para o paciente PAUSA** com a rede bloqueada (`redeEstaBloqueada`):
+    automação (o despacho não cria run; o run na fila volta a esperar sem
+    gastar tentativa — o "esperar 3 dias" não se perde), campanha e lembrete
+    (o cron pula a rede; a agendada NÃO é marcada concluída) e todo push ao
+    paciente (`notifyClient`). O que CHEGA (webhook do WhatsApp) continua
+    sendo gravado.
+- **A rede nasce num caminho só** (`semearRede`, `lib/redes/criar.ts`): o
+  cadastro público e o "Nova rede" do `/sistema` (este cria o login do
+  responsável e manda o e-mail de definir senha; a unidade fica para o
+  `/setup`). Rede não se apaga — cancela.
+- **Planos**: catálogo em `platform_plans` (não se apaga, desativa); a rede
+  guarda o RETRATO do valor em `tenant_subscriptions.valor_centavos` — é o
+  preço especial e o que o catálogo novo não muda. `tenants.plan_name` é a
+  cópia do nome para leitura.
+- **A situação é recalculada POR ESTADO no banco**
+  (`assinatura_aplicar_cobranca`): os eventos do Asaas chegam fora de ordem e
+  repetidos, então a função olha as faturas (`subscription_invoices`) — em
+  atraso = em aberto com vencimento passado. Só PAGAR (ou o Asaas remover a
+  cobrança vencida) tira do atraso; cancelada não volta sozinha.
+  - ⚠️ **Fatura PAGA não volta a "em aberto/vencida"** por um evento atrasado
+    (estorno e contestação, sim). E a cobrança que chega antes de o app gravar
+    o id da assinatura é achada pelo CLIENTE.
+  - **"Marcar em dia" e "Estender teste" perdoam o atraso até o dia**
+    (`tenants.atraso_perdoado_ate`): sem isso o próximo evento recalculava o
+    atraso antigo e o cron suspendia na hora seguinte.
+  - O dia do pagamento é o de São Paulo (o banco roda em UTC).
+  - Ligar a cobrança tem TRAVA (`tenant_subscriptions.ativando_em`): dois
+    cliques não criam duas assinaturas. Estorno e contestação ficam no
+    registro (`assinatura.contestacao`); a situação, quem decide é o admin.
+- **As regras de tempo** (`assinaturas_aplicar_regras`, cron `assinaturas`):
+  teste vencido sem pagamento → em atraso (contado do fim do teste); em
+  atraso além de `platform_settings.dias_de_carencia` → suspensa. A condição
+  do update é a reivindicação. ⚠️ Teste que a chama passa `p_tenant`.
+- **O Asaas** (`lib/asaas/cliente.ts`): cliente procurado pelo
+  `externalReference` (o id da rede) antes de criar — o Asaas aceita
+  duplicado e não tem chave de idempotência; assinatura MENSAL com
+  `billingType: UNDEFINED` (a clínica escolhe Pix, boleto ou cartão); o teste
+  fica só no nosso banco (a assinatura vence no fim dele).
+- **O webhook** (`/api/webhooks/asaas`) se defende pelo `asaas-access-token`
+  (tempo constante; sem token de 32+ caracteres configurado, recusa tudo),
+  GRAVA o evento pela chave do Asaas (o repetido bate no 23505), responde 200
+  na hora e processa em `after()`; o cron recolhe o que ficou parado.
+- **Depois de cada mudança** (`depoisDaMudanca`): expira a marca da rede,
+  avisa no sino quem administra a rede (tipo `assinatura`) e registra as
+  automáticas em `platform_audit_log` sem pessoa.
+- **O lado da clínica**: Configurações → Assinatura (rede + `settings:
+  MANAGE`; o "Pagar" some no modo suporte) e o aviso no topo para quem
+  administra a rede (teste acabando em 7 dias; em atraso, com a data da
+  suspensão e o link da fatura).
+- Prova: `e2e/sistema-redes.spec.ts` (criar, editar, desligar, as regras) e
+  `e2e/assinaturas-asaas.spec.ts` (contra o build, com o Asaas falso).
 
 **Entrar como (impersonificação autorizada):**
 - **Só com AUTORIZAÇÃO vigente da clínica** (`support_grants`: 24 h, 72 h
@@ -1920,8 +2000,14 @@ SUPABASE_SERVICE_ROLE_KEY=         # apenas server-side
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_REST_TOKEN=
 
-# Pagamentos
-PAGARME_API_KEY=
+# Cobrança das assinaturas das redes (Asaas, §6 "Administração do sistema")
+ASAAS_API_KEY=                     # só no servidor ($aact_hmlg_… no sandbox, $aact_prod_… em produção)
+ASAAS_AMBIENTE=sandbox             # sandbox | producao (padrão: sandbox)
+ASAAS_WEBHOOK_TOKEN=               # 32+ caracteres; o MESMO do webhook no painel do Asaas
+
+# Plataforma: o primeiro admin (o e-mail vira ADMIN ao entrar; vários por vírgula).
+# NUNCA o e-mail de um membro de rede — a marca o tiraria do portal da rede.
+PLATAFORMA_ADMIN_EMAIL=
 
 # WhatsApp não oficial (uazapi). As caixas (uazapi e oficial) moram em
 # whatsapp_numbers, uma linha por número — não em env.
@@ -1955,6 +2041,7 @@ VAPID_SUBJECT=
 # SÓ TESTE (nunca em produção)
 # META_GRAPH_BASE_TESTE=http://127.0.0.1:3199   # Graph falsa do cadastro incorporado (playwright.build.config)
 # E2E_IDADE_DA_SOBRA_MIN=60                      # idade mínima de sobra [e2e] que a varredura apaga
+# ASAAS_BASE_URL_TESTE=http://127.0.0.1:3198     # o Asaas falso (e2e/apoio/asaas-falso.ts; playwright.build.config)
 ```
 
 ---
@@ -2289,6 +2376,15 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ jwt_claim que consulta tabela a cada chamada (é por linha, em toda política) ou que vira security definer
 ❌ Política que confere auth.uid() em tabela que a sessão de suporte alcança, sem a restritiva do suporte
 ❌ Mostrar nota interna do chamado à clínica, ou o suporte autorizar acesso por conta própria
+❌ Página ou action do /sistema sem getPlatformContext({ papel: 'ADMIN' }) (o SUPORTE é desviado só pela navegação)
+❌ Decidir "rede bloqueada" fora de lib/redes/situacao.ts (ou a cobrança religar uma rede DESLIGADA à mão — is_active é só do admin)
+❌ Mudar plan_status ou is_active sem expirar a marca rede:<id> (o portão seguiria a situação velha)
+❌ Mudar a situação da assinatura evento a evento no TS — é assinatura_aplicar_cobranca, por estado, no banco
+❌ Criar rede fora de semearRede (o cadastro público e o /sistema têm de nascer iguais)
+❌ Criar cliente ou assinatura no Asaas sem procurar antes pelo externalReference (o Asaas aceita duplicado)
+❌ Webhook do Asaas que responde diferente de 200 para o que já gravou (o Asaas repete e, com 15 falhas, pausa a fila)
+❌ Mandar automação, campanha ou push ao paciente de uma rede bloqueada (redeEstaBloqueada)
+❌ Chamar assinaturas_aplicar_regras em teste sem p_tenant (vale para as redes reais)
 ❌ Exportar de um arquivo 'use server' função que recebe a rede por parâmetro sem conferir quem chama (era o dispatchCampaignInline)
 ❌ Achar pela busca universal o que a tela própria do registro não mostraria (tipo novo sem módulo em tiposPermitidos, ou sem o recorte de dono/unidade)
 ❌ Deixar o navegador escolher o que a busca procura, ou filtrar o resultado no navegador em vez de no servidor
@@ -2317,7 +2413,7 @@ o recém-criado, que é do `after()` — e teste que precisa de um pendente
 
 | Serviço | Ritmo | `CRON_JOBS` |
 |---|---|---|
-| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`, `documentos-pdf`, `suporte-sessoes`) |
+| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`, `documentos-pdf`, `suporte-sessoes`, `assinaturas`) |
 | **Automations Cron** | `*/5 * * * *` (5 min) | `automacoes` |
 
 O segundo existe porque **granularidade de uma hora não serve a automação**:
@@ -2478,4 +2574,4 @@ morre por memória nesta máquina" é memória.
 
 ---
 
-*BellarisOS — CLAUDE.md v1.7 | 3 de outubro de 2026*
+*BellarisOS — CLAUDE.md v1.8 | 3 de outubro de 2026*

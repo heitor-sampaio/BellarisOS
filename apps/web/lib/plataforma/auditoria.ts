@@ -25,6 +25,22 @@ export type TipoDeRegistroDaPlataforma =
   | 'chamado.nota_interna'
   | 'chamado.assumido'
   | 'chamado.situacao'
+  | 'rede.criada'
+  | 'rede.editada'
+  | 'rede.desligada'
+  | 'rede.religada'
+  | 'rede.suspensa_automatico'
+  | 'rede.reativada_pagamento'
+  | 'assinatura.alterada'
+  | 'assinatura.teste_estendido'
+  | 'assinatura.em_dia'
+  | 'assinatura.cancelada'
+  | 'assinatura.reaberta'
+  | 'assinatura.cobranca_ativada'
+  | 'assinatura.sincronizada'
+  | 'assinatura.contestacao'
+  | 'plano.salvo'
+  | 'plataforma.configurada'
 
 export async function registrarNaPlataforma(
   ctx: Pick<PlatformContext, 'staffId'>,
@@ -70,4 +86,20 @@ export const ROTULO_DO_REGISTRO: Record<TipoDeRegistroDaPlataforma, string> = {
   'chamado.nota_interna': 'Gravou nota interna no chamado',
   'chamado.assumido':   'Assumiu o chamado',
   'chamado.situacao':   'Mudou a situação do chamado',
+  'rede.criada':        'Criou a rede',
+  'rede.editada':       'Editou os dados da rede',
+  'rede.desligada':     'Desligou a rede',
+  'rede.religada':      'Religou a rede',
+  'rede.suspensa_automatico': 'Rede suspensa por atraso (automático)',
+  'rede.reativada_pagamento': 'Rede reativada pelo pagamento (automático)',
+  'assinatura.alterada':        'Alterou o plano ou o valor da assinatura',
+  'assinatura.teste_estendido': 'Estendeu o período de teste',
+  'assinatura.em_dia':          'Marcou a assinatura como em dia',
+  'assinatura.cancelada':       'Cancelou a assinatura',
+  'assinatura.reaberta':        'Reabriu a assinatura',
+  'assinatura.cobranca_ativada': 'Ativou a cobrança no Asaas',
+  'assinatura.sincronizada':    'Sincronizou a cobrança com o Asaas',
+  'assinatura.contestacao':     'Estorno ou contestação de um pagamento (automático)',
+  'plano.salvo':        'Salvou um plano do catálogo',
+  'plataforma.configurada': 'Alterou as configurações da plataforma',
 }

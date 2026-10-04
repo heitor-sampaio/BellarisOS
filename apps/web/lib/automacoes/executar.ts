@@ -24,6 +24,7 @@ import { quandoVoltar, quandoChegarEm, buscarClientes } from './tempo'
 import { resumoDoNo } from './resumo'
 import { chaveDoPasso } from './passos'
 import { gravar, ler, contar } from '@/lib/db'
+import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 
 /**
  * O executor: um passo por vez, dirigido por `automation_runs`.
@@ -119,6 +120,8 @@ export async function despacharEvento(
     // encadeados possíveis — mas só até o teto. Sem isto, o primeiro grafo em
     // anel manda mensagem para o cliente em laço.
     if (profundidadeDoGatilho >= PROFUNDIDADE_MAXIMA) return
+    // Rede bloqueada (assinatura): automação não dispara.
+    if (await redeEstaBloqueada(tenantId)) return
 
     const admin = createAdminClient()
 
@@ -215,6 +218,13 @@ export async function executarRun(
   // O ENSAIO é a exceção, e é o ponto dele: conferir o fluxo ANTES de ligar.
   if (automacao.status !== 'ATIVA' && !opcoes?.ignorarStatus) {
     return await encerrar(run.id, 'parado', 'Automação não está ativa.')
+  }
+  // A rede bloqueada (desligada, suspensa ou cancelada) não manda nada: o
+  // run VOLTA à fila, sem gastar a tentativa, e anda quando a rede voltar.
+  if (!opcoes?.ignorarStatus && await redeEstaBloqueada(run.tenant_id)) {
+    await gravar(admin.from('automation_runs').update({ status: 'esperando', tentativas: Math.max(0, run.tentativas - 1) })
+      .eq('id', run.id), 'devolver a execução à fila')
+    return 'esperando'
   }
 
   await gravar(admin.from('automation_runs').update({

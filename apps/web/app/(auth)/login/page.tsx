@@ -1,13 +1,24 @@
 'use client'
 
-import { useActionState, useEffect } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { loginAction } from '@/actions/auth'
 import { createClient } from '@/lib/supabase/client'
 import { nativeStore } from '@/lib/supabase/native-store'
 import Link from 'next/link'
 
+/** Por que a pessoa voltou ao login (`?acesso=`) — dito na tela, não só na URL. */
+const AVISOS_DE_ACESSO: Record<string, string> = {
+  desativado: 'Seu acesso foi desativado pela clínica. Fale com o responsável.',
+}
+
 export default function LoginPage() {
   const [state, action, pending] = useActionState(loginAction, undefined)
+  const [avisoDeAcesso, setAvisoDeAcesso] = useState<string | null>(null)
+  useEffect(() => {
+    const motivo = new URLSearchParams(window.location.search).get('acesso')
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lido do endereço uma vez, depois de montar (a página é estática)
+    if (motivo && AVISOS_DE_ACESSO[motivo]) setAvisoDeAcesso(AVISOS_DE_ACESSO[motivo])
+  }, [])
 
   useEffect(() => {
     if (!(state && 'redirectTo' in state && state.redirectTo)) return
@@ -71,6 +82,19 @@ export default function LoginPage() {
             placeholder="••••••••"
           />
         </div>
+
+        {avisoDeAcesso && !state?.error && (
+          <p role="status" style={{
+            color: 'var(--warning)',
+            background: 'var(--warning-soft)',
+            borderRadius: 'var(--radius-field-token)',
+            padding: '8px 12px',
+            fontSize: 'var(--text-xs-sz)',
+            fontWeight: 'var(--weight-semibold)',
+          }}>
+            {avisoDeAcesso}
+          </p>
+        )}
 
         {state?.error && (
           <p style={{

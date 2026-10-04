@@ -21,7 +21,7 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
  *   conta Meta da rede pela dele e deixava a integração inativa.
  */
 
-const CRONS = ['automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns', 'suporte-sessoes']
+const CRONS = ['automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns', 'suporte-sessoes', 'assinaturas']
 
 // Sem sessão nenhuma: o `storageState` padrão do projeto é o do admin.
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -33,6 +33,16 @@ test('crons recusam sem o CRON_SECRET e com um segredo errado', async ({ request
     const errado = await request.get(`/api/cron/${job}`, { headers: { authorization: 'Bearer nao-e-o-segredo' } })
     expect(errado.status(), `${job} com segredo errado`).toBe(401)
   }
+})
+
+test('o webhook do Asaas recusa sem o token (e nada é gravado)', async ({ request }) => {
+  const id = `evt_sem_token_${Date.now()}`
+  const corpo = { id, event: 'PAYMENT_RECEIVED', payment: { id: 'pay_x', subscription: 'sub_x', value: 1, dueDate: '2026-01-01', status: 'RECEIVED' } }
+  const sem = await request.post('/api/webhooks/asaas', { data: corpo })
+  expect(sem.status()).toBe(401)
+  const errado = await request.post('/api/webhooks/asaas', { data: corpo, headers: { 'asaas-access-token': 'x'.repeat(40) } })
+  expect(errado.status()).toBe(401)
+  expect((await banco().from('asaas_events').select('id').eq('id', id)).data ?? []).toHaveLength(0)
 })
 
 test('o PDF de um documento assinado exige sessão', async ({ request }) => {

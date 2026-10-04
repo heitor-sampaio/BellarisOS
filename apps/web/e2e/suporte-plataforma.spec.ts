@@ -20,7 +20,6 @@ import { chamarAcao } from './apoio/acao-direta'
 
 const marca = Date.now().toString(36)
 const db = () => banco()
-const SEM_ACESSO = 'Você não tem acesso a esta área'
 
 interface Fx {
   outra: OutraRede; membro: MembroDeTeste; desativado: MembroDeTeste
@@ -126,17 +125,17 @@ test.describe.serial('portal da plataforma', () => {
     expect(await registros(f!.semMfa.staffId, 'membro.reativado')).toBe(0)
   })
 
-  test('Equipe e Auditoria só para o admin da plataforma', async ({ browser }) => {
+  test('Equipe e Auditoria só para o admin da plataforma (moram no /sistema)', async ({ browser }) => {
     await comSessao(browser, f!.suporte.estado, async p => {
-      await p.goto('/suporte/equipe')
-      await expect(p.getByText(SEM_ACESSO)).toBeVisible()
-      await p.goto('/suporte/auditoria')
-      await expect(p.getByText(SEM_ACESSO)).toBeVisible()
+      await p.goto('/sistema/equipe')
+      await expect(p).not.toHaveURL(/\/sistema/)
+      await p.goto('/sistema/auditoria')
+      await expect(p).not.toHaveURL(/\/sistema/)
     })
     await comSessao(browser, f!.admin.estado, async p => {
-      await p.goto('/suporte/equipe')
+      await p.goto('/sistema/equipe')
       await expect(p.getByRole('heading', { name: 'Equipe da plataforma' })).toBeVisible()
-      await p.goto('/suporte/auditoria')
+      await p.goto('/sistema/auditoria')
       await expect(p.getByRole('heading', { name: 'Auditoria da plataforma' })).toBeVisible()
     })
   })
@@ -147,24 +146,24 @@ test.describe.serial('portal da plataforma', () => {
       const linha = p.locator('tr', { hasText: `Desativado pld${marca}` })
       await linha.getByRole('button', { name: 'Reativar' }).click()
       await expect(p.getByText('Membro reativado.')).toBeVisible({ timeout: 15_000 })
-      // O plano: o suporte não muda, nem pela action direta.
-      await chamarAcao(p, 'actions/plataforma.ts', 'alterarPlanoDaRede', `/suporte/redes/${f!.outra.tenantId}`,
-        [f!.outra.tenantId, { planName: 'Hack', planStatus: 'active', trialEndsAt: null }])
+      // O plano: o suporte não muda, nem pela action direta (ela é do /sistema).
+      await chamarAcao(p, 'actions/sistema.ts', 'definirAssinatura', `/sistema/redes/${f!.outra.tenantId}`,
+        [f!.outra.tenantId, { planoId: null, valorCentavos: 100 }]).catch(() => null)
     })
     const { data: membro } = await db().from('users').select('is_active').eq('id', f!.desativado.userId).single<{ is_active: boolean }>()
     expect(membro!.is_active).toBe(true)
     expect(await registros(f!.suporte.staffId, 'membro.reativado')).toBe(1)
-    const { data: antes } = await db().from('tenants').select('plan_name').eq('id', f!.outra.tenantId).single<{ plan_name: string | null }>()
-    expect(antes!.plan_name).not.toBe('Hack')
+    expect((await db().from('tenant_subscriptions').select('tenant_id').eq('tenant_id', f!.outra.tenantId)).data ?? []).toHaveLength(0)
 
     await comSessao(browser, f!.admin.estado, async p => {
-      await chamarAcao(p, 'actions/plataforma.ts', 'alterarPlanoDaRede', `/suporte/redes/${f!.outra.tenantId}`,
-        [f!.outra.tenantId, { planName: 'Essencial', planStatus: 'active', trialEndsAt: null }])
+      const r = await chamarAcao(p, 'actions/sistema.ts', 'definirAssinatura', `/sistema/redes/${f!.outra.tenantId}`,
+        [f!.outra.tenantId, { planoId: null, valorCentavos: 15900 }])
+      expect(r.texto).toContain('"ok":true')
     })
-    const { data: depois } = await db().from('tenants').select('plan_name, plan_status').eq('id', f!.outra.tenantId)
-      .single<{ plan_name: string | null; plan_status: string }>()
-    expect(depois).toEqual({ plan_name: 'Essencial', plan_status: 'active' })
-    expect(await registros(f!.admin.staffId, 'plano.alterado')).toBe(1)
+    const { data: depois } = await db().from('tenant_subscriptions').select('valor_centavos').eq('tenant_id', f!.outra.tenantId)
+      .single<{ valor_centavos: number }>()
+    expect(depois!.valor_centavos).toBe(15900)
+    expect(await registros(f!.admin.staffId, 'assinatura.alterada')).toBe(1)
   })
 
   test('cadastrar o autenticador pela tela abre o painel', async ({ browser }) => {

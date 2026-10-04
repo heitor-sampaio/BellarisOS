@@ -5,6 +5,7 @@ import { executarRun } from './executar'
 import { estaNaHora } from './tempo'
 import { partsInTZ } from '@/lib/datetime'
 import { gravar } from '@/lib/db'
+import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 
 /**
  * O que o cron faz a cada cinco minutos.
@@ -52,7 +53,7 @@ async function retomarPendentes(): Promise<{ retomadas: number; erros: number }>
 
   const { data, error } = await admin
     .from('automation_runs')
-    .select('id, status, tentativas')
+    .select('id, tenant_id, status, tentativas')
     .in('status', ['esperando', 'falhou'])
     .lte('rodar_apos', new Date().toISOString())
     .lt('tentativas', MAX_TENTATIVAS)
@@ -70,6 +71,9 @@ async function retomarPendentes(): Promise<{ retomadas: number; erros: number }>
     // faria um registro problemático impedir que TODOS os outros rodassem, e o
     // sintoma seria uma fila que para de andar sem nada explicando.
     try {
+      // Rede bloqueada: o run fica na fila, sem gastar tentativa — volta a
+      // andar quando a rede voltar (o "esperar 3 dias" não se perde).
+      if (await redeEstaBloqueada(run.tenant_id as string)) continue
       // A tentativa é contada ANTES de rodar. Contar depois faria um run que
       // derruba o processo no meio ser tentado para sempre — e um run que
       // derruba o processo é exatamente o que mais precisa parar de voltar.
@@ -143,6 +147,7 @@ async function dispararAgendas(): Promise<number> {
 
     const cfg = gatilho.config as ConfigGatilhoAgenda
     if (!estaNaHora(cfg, a.ultimo_disparo_agenda as string | null)) continue
+    if (await redeEstaBloqueada(a.tenant_id as string)) continue
 
     // Marca ANTES de executar. Se a execução demorar mais que a passagem
     // seguinte do cron — uma busca de quinhentos clientes leva —, a próxima

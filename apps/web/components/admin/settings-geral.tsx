@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from 'react'
 import { Check, Loader2 } from 'lucide-react'
 import { atualizarDadosDaRede, type DadosDaRede } from '@/actions/rede'
+import { rotuloDaSituacao } from '@/lib/redes/situacao'
 
 /**
  * Configurações → Geral: os dados da própria rede.
@@ -83,7 +84,7 @@ export function SettingsGeral({ rede, podeEditar }: { rede: DadosDaRede; podeEdi
         <SoLeitura rotulo="Endereço do portal" valor={`/${rede.slug}`}
           porque="Está em links já enviados — mudar é migração, não edição." />
         <SoLeitura rotulo="Plano" valor={rede.planName ?? '—'}
-          porque={`Situação: ${rede.planStatus ?? '—'}. Definido pela assinatura.`} />
+          porque={`${rotuloDaSituacao(rede.planStatus)}. Veja faturas e pagamento na aba Assinatura.`} />
         <SoLeitura rotulo="Rede criada em"
           valor={new Date(rede.criadaEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} />
       </div>

@@ -5,7 +5,9 @@ import type {
   ResolvedPermissions, ResolvedScopes, ReportTab,
 } from '@estetica-os/types'
 import { createClient } from '@/lib/supabase/server'
-import { getCachedMember, getCachedRolePermissions, getCachedRoleReportTabs } from '@/lib/cached-queries'
+import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedRolePermissions, getCachedRoleReportTabs } from '@/lib/cached-queries'
+import { redeBloqueada } from '@/lib/redes/situacao'
+import { inicioDaPlataforma } from '@/lib/plataforma/destino'
 import {
   resolvePermissions, resolveScopes, resolveReportTabs, hasLevel,
   NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS,
@@ -23,7 +25,8 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   // Quem é da PLATAFORMA não é membro de rede nem cliente final: sem esta
   // linha, a falta de `role` o faria virar CLIENTE no padrão logo abaixo e
   // passar pelo portal do cliente. O lugar dele é o /suporte.
-  if ((meta as { plataforma?: string }).plataforma) redirect('/suporte')
+  const marca = (meta as { plataforma?: string }).plataforma
+  if (marca) redirect(inicioDaPlataforma(marca))
 
   const tenantId = meta.tenant_id ?? null
   const role = (meta.role ?? 'CLIENT') as UserRole
@@ -40,6 +43,18 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   // que já estava na mão vale até expirar — é esta linha que o barra no meio.
   // `redirect` e não `throw`: numa página vira a tela de login, não a de erro.
   if (member && !member.isActive) redirect('/login?acesso=desativado')
+
+  // Rede BLOQUEADA (desligada pela plataforma, ou assinatura suspensa ou
+  // cancelada): a equipe inteira só vê a tela de regularizar — páginas E
+  // actions, porque toda action passa por aqui (lib/redes/situacao.ts).
+  // O paciente de uma clínica bloqueada também não usa o portal (nem agenda).
+  const redeDoContexto = isClient
+    ? (meta.client_id ? await getCachedRedeDoCliente(meta.client_id) : null)
+    : tenantId
+  if (redeDoContexto) {
+    const rede = await getCachedRede(redeDoContexto)
+    if (rede && redeBloqueada(rede)) redirect('/conta-suspensa')
+  }
 
   const roleId = member?.roleId ?? meta.role_id ?? null
 

@@ -3,11 +3,10 @@ import { notFound } from 'next/navigation'
 import { getPlatformContext } from '@/lib/plataforma/contexto'
 import { registrarVisitaDaRede } from '@/lib/plataforma/auditoria'
 import { diagnosticoDaRede } from '@/lib/plataforma/diagnostico'
-import { rotuloDaSituacao } from '@/lib/plataforma/plano'
+import { rotuloDaRede } from '@/lib/redes/situacao'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { AcoesDoMembro } from '@/components/suporte/acoes-do-membro'
-import { PlanoDaRede } from '@/components/suporte/plano-da-rede'
 import { EntrarComo } from '@/components/suporte/entrar-como'
 
 /**
@@ -76,18 +75,20 @@ export default async function RedePage({ params, searchParams }: {
             {!rede.onboarding_completed_at && ' · cadastro inicial não concluído'}
           </p>
         </div>
-        <span className="chip suporte-chip">{rotuloDaSituacao(rede.plan_status)}</span>
+        <span className="chip suporte-chip">{rotuloDaRede({ ativa: rede.is_active, planStatus: rede.plan_status })}</span>
       </div>
 
       {erro && <p className="suporte-erro" role="alert">{erro}</p>}
 
+      {/* A assinatura se administra no /sistema; aqui, só para saber. */}
       <section className="card suporte-secao">
-        <h2 className="overline">Plano</h2>
-        <PlanoDaRede
-          tenantId={rede.id}
-          podeEditar={ctx.ehAdmin}
-          inicial={{ planName: rede.plan_name, planStatus: rede.plan_status ?? 'trial', trialEndsAt: rede.trial_ends_at }}
-        />
+        <h2 className="overline">Assinatura</h2>
+        <p className="suporte-texto">
+          {rotuloDaRede({ ativa: rede.is_active, planStatus: rede.plan_status })}
+          {rede.plan_name ? ` · ${rede.plan_name}` : ''}
+          {rede.trial_ends_at ? ` · teste até ${quando(rede.trial_ends_at)}` : ''}
+        </p>
+        {ctx.ehAdmin && <a href={`/sistema/redes/${rede.id}`} className="suporte-voltar">Administrar no Sistema →</a>}
       </section>
 
       <section className="card" style={{ padding: 0, overflow: 'hidden' }}>

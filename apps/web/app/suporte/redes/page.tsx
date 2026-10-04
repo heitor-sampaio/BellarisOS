@@ -3,7 +3,7 @@ import { getPlatformContext } from '@/lib/plataforma/contexto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { contemSemAcento, termoDaUrl } from '@/lib/texto'
-import { rotuloDaSituacao } from '@/lib/plataforma/plano'
+import { rotuloDaRede } from '@/lib/redes/situacao'
 import { BuscaNaUrl } from '@/components/shared/busca-na-url'
 
 /**
@@ -74,7 +74,7 @@ export default async function RedesPage({ searchParams }: {
                     <span className="suporte-texto-fraco"> · {r.slug}{r.email ? ` · ${r.email}` : ''}</span>
                   </td>
                   <td data-label="Situação">
-                    <span className="chip suporte-chip">{rotuloDaSituacao(r.plan_status)}</span>
+                    <span className="chip suporte-chip">{rotuloDaRede({ ativa: r.is_active, planStatus: r.plan_status })}</span>
                     {r.plan_name && <span className="suporte-texto-fraco"> {r.plan_name}</span>}
                   </td>
                   <td data-label="Unidades" data-par>{r.unidades}</td>

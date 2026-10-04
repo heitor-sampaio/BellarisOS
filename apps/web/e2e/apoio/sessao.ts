@@ -255,3 +255,4 @@ export async function clienteComSessao(
     throw e
   }
 }
+export const sessaoPorEmail = abrirSessao

@@ -20,6 +20,13 @@ process.env.E2E_BUILD = '1'
 // teste apontá-la depois. Porta fixa da Graph falsa de
 // e2e/whatsapp-cadastro-incorporado.spec.ts; em produção a variável não existe.
 process.env.META_GRAPH_BASE_TESTE ??= 'http://127.0.0.1:3199'
+// O Asaas falso (e2e/apoio/asaas-falso.ts, porta fixa) e as credenciais de
+// TESTE da cobrança: o servidor as lê ao subir. Em produção não existem assim.
+process.env.ASAAS_BASE_URL_TESTE ??= 'http://127.0.0.1:3198'
+process.env.ASAAS_API_KEY ??= '$aact_hmlg_e2e-falsa'
+process.env.ASAAS_WEBHOOK_TOKEN ??= 'e2e-token-do-webhook-do-asaas-0123456789abcdef'
+// O primeiro admin da plataforma por variável (e2e/plataforma-primeiro-admin.spec.ts).
+process.env.PLATAFORMA_ADMIN_EMAIL ??= 'e2e-plataforma-primeiro-admin@bellaris.invalid'
 const PORTA = process.env.E2E_PORTA ?? '3100'
 // 127.0.0.1, igual ao HOSTNAME do servidor (ver scripts/servir-build.mjs).
 process.env.E2E_BASE_URL = `http://127.0.0.1:${PORTA}`

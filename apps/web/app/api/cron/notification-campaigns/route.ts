@@ -6,6 +6,7 @@ import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { gravar, ler } from '@/lib/db'
 import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/datetime'
+import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 
 /** Cliente de uma campanha: quem recebe, e o nome para o {{first_name}}. */
 type Destinatario = { id: string; name: string }
@@ -51,6 +52,9 @@ export async function GET(req: NextRequest) {
 
   for (const raw of campaigns ?? []) {
     const camp = raw as NotificationCampaign
+    // Rede bloqueada (desligada, suspensa, cancelada): nada sai, e a campanha
+    // ESPERA — a agendada não é marcada como concluída.
+    if (await redeEstaBloqueada(camp.tenant_id)) { results.push({ id: camp.id, type: camp.type, sent: 0, skipped: true }); continue }
 
     // -- SCHEDULED --------------------------------------------
     if (camp.type === 'SCHEDULED') {

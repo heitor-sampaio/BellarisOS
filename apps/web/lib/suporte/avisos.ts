@@ -23,6 +23,22 @@ async function quemAvisar(admin: Admin, tenantId: string, alvoId: string): Promi
   return [...new Set([alvoId, ...(admins ?? []).map(u => u.id as string)])]
 }
 
+/**
+ * Avisa no sino quem administra a rede (a assinatura em atraso, suspensa,
+ * reativada; a rede desligada). Acessório: falhar não desfaz o que aconteceu.
+ */
+export async function avisarQuemAdministraARede(tenantId: string, p: { title: string; body: string; url?: string }): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    const ids = (await quemAvisar(admin, tenantId, '')).filter(Boolean)
+    await Promise.allSettled(ids.map(id => notifyUser(admin, id, {
+      type: 'assinatura', title: p.title, body: p.body, data: { url: p.url ?? '/admin/settings?tab=assinatura' },
+    })))
+  } catch (e) {
+    console.error('[rede] aviso a quem administra:', e instanceof Error ? e.message : e)
+  }
+}
+
 /** Avisa no sino que o suporte entrou (ou saiu) da conta de alguém. */
 export async function avisarAcessoDoSuporte(tenantId: string, alvo: { id: string; nome: string }, p: {
   atendente: string; motivo: string; entrou: boolean

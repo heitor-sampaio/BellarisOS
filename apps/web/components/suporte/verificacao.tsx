@@ -10,7 +10,7 @@ import {
  * Cadastro do autenticador (QR + segredo) e confirmação do código. Depois de
  * confirmado, a sessão vira aal2 e o painel abre.
  */
-export function Verificacao({ inicial }: { inicial: EstadoDaVerificacao }) {
+export function Verificacao({ inicial, destino }: { inicial: EstadoDaVerificacao; destino: string }) {
   const router = useRouter()
   const [factorId, setFactorId] = useState<string | null>(inicial.factorId)
   const [cadastro, setCadastro] = useState<{ qr: string; segredo: string } | null>(null)
@@ -35,7 +35,7 @@ export function Verificacao({ inicial }: { inicial: EstadoDaVerificacao }) {
     startTransition(async () => {
       const r = await confirmarCodigo(factorId, codigo)
       if (!r.ok) { setErro(r.error); setCodigo(''); return }
-      router.replace('/suporte')
+      router.replace(destino)
       router.refresh()
     })
   }

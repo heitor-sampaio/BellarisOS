@@ -236,8 +236,10 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
   // 4b. Gente de teste da PLATAFORMA (o /suporte): a linha, o que ela
   //     registrou e o login. Um atendente que sobra é um login com acesso a
   //     todas as redes — não pode ficar.
+  // (O primeiro admin de teste e os criados pelo /sistema não levam o
+  //  prefixo no nome: são achados pelo e-mail de teste.)
   const { data: equipe } = await db.from('platform_staff').select('id, auth_id')
-    .like('name', like).lt('created_at', antes)
+    .or(`name.like.${like},email.like.e2e-plataforma-%@bellaris.invalid`).lt('created_at', antes)
   for (const p of (equipe ?? []) as { id: string; auth_id: string }[]) {
     await passo(falhas, 'sessões de suporte', db.from('support_sessions').delete().eq('staff_id', p.id))
     await passo(falhas, 'registros da plataforma', db.from('platform_audit_log').delete().eq('staff_id', p.id))
@@ -246,6 +248,14 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
     if (error) falhas.push({ o_que: 'login da plataforma', erro: error.message })
   }
   if ((equipe ?? []).length) apagou.plataforma = equipe!.length
+
+  // 4b'. Planos de teste do catálogo (o /sistema): a rede guarda o retrato do
+  //      valor, e a assinatura que apontava fica sem plano (on delete set null).
+  const planos = await ids(db.from('platform_plans').select('id').like('nome', like).lt('created_at', antes))
+  if (planos.length) {
+    await passo(falhas, 'planos de teste', db.from('platform_plans').delete().in('id', planos))
+    apagou.planos = planos.length
+  }
 
   // 4c. Prints dos chamados de suporte de redes que já não existem: a rede
   //     `[e2e]` leva os chamados em cascata, mas o storage não acompanha.

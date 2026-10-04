@@ -50,6 +50,12 @@ jobs:
       # qualquer um: a Graph falsa não confere. O segredo é o gerado abaixo.
       META_GRAPH_BASE_TESTE: http://127.0.0.1:3199
       META_APP_ID: e2e-app
+      # A cobrança fala com o Asaas FALSO do E2E (porta fixa,
+      # e2e/assinaturas-asaas.spec.ts); chave e token são de mentira.
+      ASAAS_BASE_URL_TESTE: http://127.0.0.1:3198
+      ASAAS_API_KEY: $aact_hmlg_e2e-falsa
+      ASAAS_WEBHOOK_TOKEN: e2e-token-do-webhook-do-asaas-0123456789abcdef
+      PLATAFORMA_ADMIN_EMAIL: e2e-plataforma-primeiro-admin@bellaris.invalid
     steps:
       - uses: actions/checkout@v7
 

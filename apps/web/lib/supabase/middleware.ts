@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
+import { inicioDaPlataforma, ehPortalDaPlataforma, ehPortalDoSistema } from '@/lib/plataforma/destino'
 
 export async function updateSession(request: NextRequest) {
   try {
@@ -77,14 +78,16 @@ export async function updateSession(request: NextRequest) {
     }
 
     // A PLATAFORMA (a equipe do BellarisOS) e as redes não se misturam: quem
-    // tem a marca fica no /suporte, e quem não tem não entra nele. É só o
-    // desvio de navegação — quem barra de verdade são `getPlatformContext` e
-    // `buildContext`, em cada página e action.
+    // tem a marca fica nos portais dela (/sistema para ADMIN, /suporte), e
+    // quem não tem não entra em nenhum dos dois. O SUPORTE não abre o
+    // /sistema. É só o desvio de navegação — quem barra de verdade são
+    // `getPlatformContext` e `buildContext`, em cada página e action.
     const plataforma = (user?.app_metadata as { plataforma?: string } | undefined)?.plataforma
-    const noSuporte = pathname === '/suporte' || pathname.startsWith('/suporte/')
-    const desvio = user && plataforma && !noSuporte && !isAuthRoute && !isPublicRoute && !pathname.startsWith('/auth/')
-      ? '/suporte'
-      : user && !plataforma && noSuporte ? '/' : null
+    const naPlataforma = ehPortalDaPlataforma(pathname)
+    const desvio = user && plataforma && !naPlataforma && !isAuthRoute && !isPublicRoute && !pathname.startsWith('/auth/')
+      ? inicioDaPlataforma(plataforma)
+      : user && plataforma && plataforma !== 'ADMIN' && ehPortalDoSistema(pathname) ? '/suporte'
+      : user && !plataforma && naPlataforma ? '/' : null
     if (desvio) {
       const url = request.nextUrl.clone()
       url.pathname = desvio

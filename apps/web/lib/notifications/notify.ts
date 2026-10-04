@@ -3,6 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendFcmToTokens, sendWebPushToSubs } from '@/lib/notifications/push'
 import { ler, tentar } from '@/lib/db'
 import { sessaoDeSuporteAtual } from '@/lib/suporte/requisicao'
+import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
+import { getCachedRedeDoCliente } from '@/lib/cached-queries'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -27,6 +29,13 @@ export function notificadorDoCliente(): typeof notifyClient {
   }
 }
 
+async function clienteDeRedeBloqueada(clientId: string): Promise<boolean> {
+  try {
+    const tenantId = await getCachedRedeDoCliente(clientId)
+    return tenantId ? await redeEstaBloqueada(tenantId) : false
+  } catch { return false }
+}
+
 /**
  * Notifica um CLIENTE: registra em client_notifications (sino + realtime) e
  * envia push nativo (FCM) + web-push aos dispositivos do cliente.
@@ -36,6 +45,8 @@ export async function notifyClient(admin: Admin, clientId: string, p: NotifyPayl
   // No modo suporte nada sai para o paciente: o atendente remarcando um
   // horário não pode virar push no celular do cliente (lib/suporte/travas).
   if (await sessaoDeSuporteAtual()) return
+  // A clínica bloqueada (assinatura): nada sai para o paciente.
+  if (await clienteDeRedeBloqueada(clientId)) return
   try {
     await tentar(admin.from('client_notifications').insert({
       client_id: clientId,

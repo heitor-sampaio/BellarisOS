@@ -4,20 +4,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 /**
- * As abas do portal da plataforma. Chamados mostra quantos esperam o suporte
- * (situação "aberto"), contados no layout.
- * Equipe e Auditoria só para admin — a tela
- * confere de novo (o menu esconde, a página barra).
+ * As abas do portal do SUPORTE (o atendimento). Chamados mostra quantos
+ * esperam o suporte (situação "aberto"), contados no layout. Equipe,
+ * auditoria e a gestão das redes moram no /sistema (só ADMIN).
  */
-export function NavDoSuporte({ ehAdmin, naFila }: { ehAdmin: boolean; naFila: number }) {
+export function NavDoSuporte({ naFila }: { naFila: number }) {
   const pathname = usePathname()
   const itens = [
     { href: '/suporte/chamados',  rotulo: 'Chamados', contador: naFila },
     { href: '/suporte/redes',     rotulo: 'Redes' },
-    ...(ehAdmin ? [
-      { href: '/suporte/equipe',    rotulo: 'Equipe' },
-      { href: '/suporte/auditoria', rotulo: 'Auditoria' },
-    ] : []),
   ]
   return (
     <nav className="suporte-nav" aria-label="Portal do suporte">

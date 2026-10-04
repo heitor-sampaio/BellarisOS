@@ -3,6 +3,7 @@ import { GoogleAuth } from 'google-auth-library'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
+import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
 
 /**
  * O DISPARO de uma campanha (notificação + Web Push + FCM) para o público dela.
@@ -31,6 +32,8 @@ export async function dispatchCampaignInline(
   campaign: NotificationCampaign,
   tenantId: string,
 ): Promise<{ sent: number; error?: string }> {
+  // Rede bloqueada (assinatura): campanha não sai.
+  if (await redeEstaBloqueada(tenantId)) return { sent: 0, error: 'A rede está bloqueada (assinatura).' }
   const admin = createAdminClient()
   const rules = campaign.audience_rules
 
