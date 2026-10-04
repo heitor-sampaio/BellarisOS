@@ -4,6 +4,8 @@ import { filaDoSuporte } from '@/lib/suporte/chamados'
 import { ehSituacao, ROTULO_DA_SITUACAO } from '@/lib/suporte/chamados-regras'
 import { SegSelect } from '@/components/shared/seg-select'
 import { SinalDaFila } from '@/components/suporte/sinal-da-fila'
+import { BuscaNaUrl } from '@/components/shared/busca-na-url'
+import { contemSemAcento, termoDaUrl } from '@/lib/texto'
 
 /**
  * A fila de chamados das clínicas. Recarrega sozinha quando chega chamado ou
@@ -19,11 +21,15 @@ const FILTROS = [
 const quando = (iso: string) =>
   new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(iso))
 
-export default async function ChamadosPage({ searchParams }: { searchParams: Promise<{ situacao?: string }> }) {
+export default async function ChamadosPage({ searchParams }: { searchParams: Promise<{ situacao?: string; q?: string }> }) {
   await getPlatformContext()
-  const { situacao } = await searchParams
+  const { situacao, q } = await searchParams
   const filtro = situacao === 'todos' || ehSituacao(situacao) ? situacao : 'abertos'
-  const chamados = await filaDoSuporte({ status: filtro })
+  const termo = termoDaUrl(q)
+  // A busca (rede, assunto, quem, atendente, número) é sobre a fila já recortada
+  // pela situação — no máximo 200 linhas, as mais recentes.
+  const chamados = (await filaDoSuporte({ status: filtro }))
+    .filter(c => contemSemAcento([c.rede, c.assunto, c.quem, c.atendente, `#${c.numero}`], termo))
 
   return (
     <div className="suporte-pilha-larga">
@@ -34,7 +40,9 @@ export default async function ChamadosPage({ searchParams }: { searchParams: Pro
           <p className="suporte-sub">{chamados.length} {chamados.length === 1 ? 'chamado' : 'chamados'}</p>
         </div>
         <div className="suporte-filtros">
-          <SegSelect options={FILTROS} value={filtro} basePath="/suporte/chamados" paramName="situacao" ariaLabel="Situação" />
+          <BuscaNaUrl inicial={termo} placeholder="Buscar rede, assunto, pessoa ou #número…" rotulo="Buscar chamado" />
+          <SegSelect options={FILTROS} value={filtro} basePath="/suporte/chamados" paramName="situacao" ariaLabel="Situação"
+            extraParams={termo ? { q: termo } : undefined} />
         </div>
       </div>
 

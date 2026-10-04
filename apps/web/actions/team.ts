@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { membroCriado, membroDesativado, membroReativado } from '@/lib/events/cadastro'
 import { gravar, ler } from '@/lib/db'
@@ -75,6 +76,9 @@ export async function createTeamMember(
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'team', 'MANAGE')
+  // Um membro criado pelo suporte seria um login permanente, fora do prazo da autorização.
+  const travado = bloqueioDoSuporte(ctx, 'cadastrar membro na equipe')
+  if (travado) return { error: travado }
 
   const name             = (formData.get('name') as string)?.trim()
   const email            = (formData.get('email') as string)?.trim().toLowerCase()
@@ -153,6 +157,8 @@ export async function updateTeamMember(
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'team', 'MANAGE')
+  const travado = bloqueioDoSuporte(ctx, 'mudar o cargo ou o acesso de um membro')
+  if (travado) return { error: travado }
 
   const userId           = formData.get('userId') as string
   const roleId           = formData.get('roleId') as string

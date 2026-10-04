@@ -29,7 +29,7 @@ export interface ChamadoCompleto extends ChamadoResumo {
   contexto: Record<string, unknown>
   criadoEm: string
   mensagens: MensagemDoChamado[]
-  autorizacao: { expiraEm: string; clinico: boolean } | null
+  autorizacao: { id: string; expiraEm: string; clinico: boolean } | null
 }
 
 type LinhaDoChamado = {
@@ -67,7 +67,7 @@ export async function filaDoSuporte(filtro: { status?: SituacaoDoChamado | 'aber
   return (linhas ?? []).map(resumo)
 }
 
-/** Quantos esperam o suporte (abertos, sem resposta do suporte depois da última mensagem). */
+/** Quantos esperam o suporte: os de situação "aberto" (a clínica escreveu por último). */
 export async function contagemDaFila(): Promise<number> {
   const { count, error } = await createAdminClient().from('support_tickets')
     .select('id', { count: 'exact', head: true }).eq('status', 'aberto')
@@ -93,7 +93,7 @@ export async function lerChamado(chamadoId: string, opcoes: { comInternas: boole
   const [msgs, grant] = await Promise.all([
     ler(qm.order('created_at'), 'carregar as mensagens do chamado'),
     t.opened_by_user_id
-      ? ler(admin.from('support_grants').select('expires_at, includes_clinical')
+      ? ler(admin.from('support_grants').select('id, expires_at, includes_clinical')
           .eq('target_user_id', t.opened_by_user_id).is('revoked_at', null)
           .gt('expires_at', new Date().toISOString()).maybeSingle(), 'conferir a autorização')
       : null,
@@ -115,7 +115,10 @@ export async function lerChamado(chamadoId: string, opcoes: { comInternas: boole
         : m.author_kind === 'sistema' ? 'BellarisOS' : (m.users?.name ?? 'Clínica'),
       anexos: (m.anexos ?? []).map(a => ({ ...a, url: urls[a.path] ?? null })),
     })),
-    autorizacao: grant ? { expiraEm: (grant as { expires_at: string }).expires_at, clinico: (grant as { includes_clinical: boolean }).includes_clinical } : null,
+    autorizacao: grant ? (() => {
+      const g = grant as { id: string; expires_at: string; includes_clinical: boolean }
+      return { id: g.id, expiraEm: g.expires_at, clinico: g.includes_clinical }
+    })() : null,
   }
 }
 
@@ -137,13 +140,24 @@ export async function guardarAnexo(tenantId: string, arquivo: unknown): Promise<
   return { path, nome: arquivo.name.slice(0, 120) || `anexo.${tipo}`, tipo: `image/${tipo === 'png' ? 'png' : 'jpeg'}` }
 }
 
-/** Avisa quem abriu que o suporte respondeu (o sino abre a Ajuda no chamado). */
-export async function avisarResposta(chamado: { id: string; numero: number; quemId: string | null }, trecho: string): Promise<void> {
+/** Tira do bucket o anexo de uma gravação que não aconteceu. */
+export async function removerAnexo(anexo: AnexoDoChamado | null): Promise<void> {
+  if (!anexo) return
+  const { error } = await createAdminClient().storage.from(BUCKET_DOS_ANEXOS).remove([anexo.path])
+  if (error) console.error('[chamados] anexo órfão no bucket:', anexo.path, error.message)
+}
+
+/**
+ * Avisa quem abriu que o suporte respondeu (o sino abre a Ajuda no chamado).
+ * O texto é GENÉRICO: o push aparece na tela de bloqueio, e a resposta pode
+ * citar cliente — ela se lê dentro do sistema.
+ */
+export async function avisarResposta(chamado: { id: string; numero: number; quemId: string | null }): Promise<void> {
   if (!chamado.quemId) return
   await notifyUser(createAdminClient(), chamado.quemId, {
     type:  'suporte.chamado',
     title: `O suporte respondeu o chamado #${chamado.numero}`,
-    body:  trecho.length > 140 ? `${trecho.slice(0, 137)}…` : trecho,
+    body:  'Abra a Ajuda para ler a resposta.',
     data:  { chamadoId: chamado.id },
   })
 }

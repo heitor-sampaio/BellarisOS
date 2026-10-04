@@ -11,7 +11,7 @@ import { gravar, ler, tentar, contar, mensagemDoErro } from '@/lib/db'
 import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
-import { notifyClient, notifyUser } from '@/lib/notifications/notify'
+import { notificadorDoCliente, notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento } from '@/lib/appointments/core'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
@@ -99,13 +99,14 @@ async function loadApptCtx(
  * lista — ver `interessadosNoFato`. Pedido do Heitor em 2026-09-25.
  */
 function notifyNewAppointment(appointmentId: string, ator?: string | null): void {
+  const avisarCliente = notificadorDoCliente()
   after(async () => {
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
     if (!c) return
     const when = fmtDateTime(c.scheduledAt)
     const data = { appointment_id: appointmentId }
-    await notifyClient(admin, c.clientId, {
+    await avisarCliente(admin, c.clientId, {
       type: 'appointment_confirmed', title: 'Agendamento confirmado',
       body: `${c.procedureName} em ${when}.`, data,
     })
@@ -120,6 +121,7 @@ function notifyNewAppointment(appointmentId: string, ator?: string | null): void
 
 /** Cancelamento → cliente + as partes interessadas. */
 function notifyCancelledAppointment(appointmentId: string, reason?: string | null, ator?: string | null): void {
+  const avisarCliente = notificadorDoCliente()
   after(async () => {
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
@@ -127,7 +129,7 @@ function notifyCancelledAppointment(appointmentId: string, reason?: string | nul
     const when = fmtDateTime(c.scheduledAt)
     const motivo = reason?.trim() ? ` Motivo: ${reason.trim()}.` : ''
     const data = { appointment_id: appointmentId }
-    await notifyClient(admin, c.clientId, {
+    await avisarCliente(admin, c.clientId, {
       type: 'appointment_cancelled', title: 'Agendamento cancelado',
       body: `${c.procedureName} de ${when} foi cancelado.${motivo}`, data,
     })
@@ -142,13 +144,14 @@ function notifyCancelledAppointment(appointmentId: string, reason?: string | nul
 
 /** Remarcação → cliente + as partes interessadas, com o novo horário. */
 function notifyRescheduledAppointment(appointmentId: string, ator?: string | null): void {
+  const avisarCliente = notificadorDoCliente()
   after(async () => {
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
     if (!c) return
     const when = fmtDateTime(c.scheduledAt)
     const data = { appointment_id: appointmentId }
-    await notifyClient(admin, c.clientId, {
+    await avisarCliente(admin, c.clientId, {
       type: 'appointment_rescheduled', title: 'Agendamento remarcado',
       body: `Novo horário: ${c.procedureName} em ${when}.`, data,
     })
@@ -183,11 +186,12 @@ function notifyCheckin(appointmentId: string): void {
 
 /** Conclusão → cliente: pedir confirmação + avaliação do atendimento. */
 function notifyCompleted(appointmentId: string): void {
+  const avisarCliente = notificadorDoCliente()
   after(async () => {
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
     if (!c) return
-    await notifyClient(admin, c.clientId, {
+    await avisarCliente(admin, c.clientId, {
       type: 'appointment_completed', title: 'Confirme seu atendimento',
       body: `Seu ${c.procedureName} foi concluído. Confirme e avalie pelo app.`,
       data: {
@@ -200,11 +204,12 @@ function notifyCompleted(appointmentId: string): void {
 
 /** Pagamento confirmado → cliente. */
 function notifyPayment(appointmentId: string): void {
+  const avisarCliente = notificadorDoCliente()
   after(async () => {
     const admin = createAdminClient()
     const c = await loadApptCtx(admin, appointmentId)
     if (!c) return
-    await notifyClient(admin, c.clientId, {
+    await avisarCliente(admin, c.clientId, {
       type: 'payment_received', title: 'Pagamento confirmado',
       body: `Pagamento do ${c.procedureName} confirmado.`,
       data: { appointment_id: appointmentId },

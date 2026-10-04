@@ -5,7 +5,7 @@ import { LifeBuoy, X, ArrowLeft, Plus, Paperclip } from 'lucide-react'
 import { toast } from 'sonner'
 import { JanelaModal } from '@/components/shared/janela-modal'
 import { abrirChamado, responderChamado, meusChamados, verChamado } from '@/actions/chamados'
-import { autorizarSuporte } from '@/actions/suporte-autorizacao'
+import { autorizarSuporte, revogarAutorizacaoDeSuporte } from '@/actions/suporte-autorizacao'
 import { ROTULO_DA_SITUACAO } from '@/lib/suporte/chamados-regras'
 import type { ChamadoResumo, ChamadoCompleto } from '@/lib/suporte/chamados'
 
@@ -26,6 +26,8 @@ const quando = (iso: string) => FORMATO.format(new Date(iso))
 export function Ajuda({ internalUserId }: { internalUserId: string | null }) {
   const [aberta, setAberta] = useState(false)
   const [tela, setTela] = useState<Tela>({ tipo: 'lista' })
+  // Vem da lista (a primeira tela): só quem gerencia o prontuário libera dado clínico.
+  const [podeClinico, setPodeClinico] = useState(false)
 
   useEffect(() => {
     function abrir(e: Event) {
@@ -46,8 +48,8 @@ export function Ajuda({ internalUserId }: { internalUserId: string | null }) {
       {aberta && (
         <JanelaModal onFechar={() => setAberta(false)} rotulo="Ajuda" largura={600} fechaNoFundo={false}>
           <div style={{ padding: 'var(--card-pad)' }}>
-            {tela.tipo === 'lista' && <Lista onAbrir={id => setTela({ tipo: 'conversa', id })} onNovo={() => setTela({ tipo: 'novo' })} onFechar={() => setAberta(false)} />}
-            {tela.tipo === 'novo' && <Novo onVoltar={() => setTela({ tipo: 'lista' })} onCriado={id => setTela({ tipo: 'conversa', id })} />}
+            {tela.tipo === 'lista' && <Lista onAbrir={id => setTela({ tipo: 'conversa', id })} onNovo={() => setTela({ tipo: 'novo' })} onFechar={() => setAberta(false)} onPodeClinico={setPodeClinico} />}
+            {tela.tipo === 'novo' && <Novo podeClinico={podeClinico} onVoltar={() => setTela({ tipo: 'lista' })} onCriado={id => setTela({ tipo: 'conversa', id })} />}
             {tela.tipo === 'conversa' && <Conversa id={tela.id} internalUserId={internalUserId} onVoltar={() => setTela({ tipo: 'lista' })} />}
           </div>
         </JanelaModal>
@@ -75,12 +77,16 @@ function Situacao({ status }: { status: ChamadoResumo['status'] }) {
   return <span className="chamado-situacao" data-situacao={status}>{ROTULO_DA_SITUACAO[status]}</span>
 }
 
-function Lista({ onAbrir, onNovo, onFechar }: { onAbrir: (id: string) => void; onNovo: () => void; onFechar: () => void }) {
+function Lista({ onAbrir, onNovo, onFechar, onPodeClinico }: {
+  onAbrir: (id: string) => void; onNovo: () => void; onFechar: () => void; onPodeClinico: (v: boolean) => void
+}) {
   const [dados, setDados] = useState<{ chamados: ChamadoResumo[]; daRede: boolean } | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   useEffect(() => {
-    meusChamados().then(r => r.ok ? setDados(r) : setErro(r.error)).catch(() => setErro('Não consegui carregar os chamados.'))
-  }, [])
+    meusChamados()
+      .then(r => { if (r.ok) { setDados(r); onPodeClinico(r.podeClinico) } else setErro(r.error) })
+      .catch(() => setErro('Não consegui carregar os chamados.'))
+  }, [onPodeClinico])
   return (
     <>
       <Cabecalho titulo="Ajuda" sub="Fale com o suporte do BellarisOS. A resposta chega no sino." onFechar={onFechar} />
@@ -121,12 +127,10 @@ function CampoDeAnexo({ nome }: { nome: string }) {
   )
 }
 
-function Novo({ onVoltar, onCriado }: { onVoltar: () => void; onCriado: (id: string) => void }) {
+function Novo({ podeClinico, onVoltar, onCriado }: { podeClinico: boolean; onVoltar: () => void; onCriado: (id: string) => void }) {
   const [autorizar, setAutorizar] = useState(false)
-  const [podeClinico, setPodeClinico] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [gravando, iniciar] = useTransition()
-  useEffect(() => { meusChamados().then(r => { if (r.ok) setPodeClinico(r.podeClinico) }).catch(() => {}) }, [])
 
   function enviar(form: FormData) {
     setErro(null)
@@ -165,7 +169,7 @@ function Novo({ onVoltar, onCriado }: { onVoltar: () => void; onCriado: (id: str
             <span>Incluir dados clínicos (prontuário, fichas e fotos).</span>
           </label>
         )}
-        {autorizar && <p className="ajuda-nota">Tudo o que o suporte fizer fica registrado em Configurações → Suporte, e dá para revogar a qualquer momento. Nada é enviado aos seus clientes durante o acesso.</p>}
+        {autorizar && <p className="ajuda-nota">Tudo o que o suporte fizer fica registrado, e dá para revogar a qualquer momento aqui mesmo, no chamado. Nada é enviado aos seus clientes durante o acesso.</p>}
         {erro && <p className="ajuda-erro">{erro}</p>}
         <div className="ajuda-acoes">
           <button type="button" className="btn-secondary" onClick={onVoltar} disabled={gravando}>Voltar</button>
@@ -187,6 +191,11 @@ function Conversa({ id, internalUserId, onVoltar }: { id: string; internalUserId
     verChamado(id).then(r => r.ok ? setDados(r) : setErro(r.error)).catch(() => setErro('Não consegui carregar o chamado.'))
   }, [id])
   useEffect(() => { carregar() }, [carregar])
+  // A resposta do suporte aparece sem precisar fechar e abrir.
+  useEffect(() => {
+    const t = setInterval(() => { if (document.visibilityState === 'visible') carregar() }, 30_000)
+    return () => clearInterval(t)
+  }, [carregar])
 
   function responder(form: FormData) {
     setErroDoEnvio(null)
@@ -195,6 +204,15 @@ function Conversa({ id, internalUserId, onVoltar }: { id: string; internalUserId
       const r = await responderChamado(form)
       if (!r.ok) { setErroDoEnvio(r.error); return }
       setChave(k => k + 1)
+      carregar()
+    })
+  }
+
+  function revogar(grantId: string) {
+    iniciar(async () => {
+      const r = await revogarAutorizacaoDeSuporte(grantId)
+      if (!r.ok) { toast.error(r.error); return }
+      toast.success('Acesso do suporte revogado.')
       carregar()
     })
   }
@@ -218,9 +236,10 @@ function Conversa({ id, internalUserId, onVoltar }: { id: string; internalUserId
       <Cabecalho titulo={`#${c.numero} · ${c.assunto}`} sub={`Aberto por ${c.quem ?? '—'} em ${quando(c.criadoEm)}`} onVoltar={onVoltar} />
       <div className="ajuda-acoes" style={{ justifyContent: 'flex-start' }}><Situacao status={c.status} /></div>
       {c.autorizacao
-        ? <p className="ajuda-aviso" data-tom="ok" style={{ marginTop: 10 }}>
-            Acesso do suporte autorizado até {quando(c.autorizacao.expiraEm)}{c.autorizacao.clinico ? ', com dados clínicos' : ''}. Revogue em Configurações → Suporte.
-          </p>
+        ? <div className="ajuda-aviso" data-tom="ok" style={{ marginTop: 10 }}>
+            <span>Acesso do suporte autorizado até {quando(c.autorizacao.expiraEm)}{c.autorizacao.clinico ? ', com dados clínicos' : ''}.</span>
+            {meu && <button type="button" className="btn-secondary" disabled={gravando} onClick={() => revogar(c.autorizacao!.id)}>Revogar</button>}
+          </div>
         : meu && (
           <div className="ajuda-aviso" style={{ marginTop: 10 }}>
             <span>O suporte só entra na sua conta com a sua autorização.</span>

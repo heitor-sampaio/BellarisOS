@@ -232,7 +232,7 @@ end $$;
 create or replace function public.plataforma_encerrar_sessao_do_auth(p_auth_session uuid)
 returns void
 language sql security definer set search_path = public
-as $ delete from auth.sessions where id = p_auth_session $;
+as $$ delete from auth.sessions where id = p_auth_session $$;
 revoke execute on function public.plataforma_encerrar_sessao_do_auth(uuid) from public, anon, authenticated;
 grant execute on function public.plataforma_encerrar_sessao_do_auth(uuid) to service_role;
 

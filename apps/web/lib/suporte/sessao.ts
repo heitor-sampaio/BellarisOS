@@ -23,6 +23,8 @@ export interface SessaoDeSuporte {
   includesClinical: boolean
   status:           'abrindo' | 'ativa' | 'encerrada' | 'falhou'
   expiresAt:        string
+  /** O atendente ainda está na equipe. Desativado, a sessão dele cai. */
+  staffAtivo?:      boolean
   ticketId:         string | null
 }
 
@@ -32,18 +34,19 @@ export function sessaoDeSuporte(authSessionId: string): Promise<SessaoDeSuporte 
   return unstable_cache(
     async () => {
       const r = await ler(createAdminClient().from('support_sessions')
-        .select('id, staff_id, tenant_id, target_user_id, includes_clinical, status, expires_at, ticket_id, platform_staff(name)')
+        .select('id, staff_id, tenant_id, target_user_id, includes_clinical, status, expires_at, ticket_id, platform_staff(name, is_active)')
         .eq('auth_session_id', authSessionId)
         .maybeSingle(), 'conferir a sessão de suporte') as {
           id: string; staff_id: string; tenant_id: string; target_user_id: string; includes_clinical: boolean
           status: SessaoDeSuporte['status']; expires_at: string; ticket_id: string | null
-          platform_staff: { name: string } | null
+          platform_staff: { name: string; is_active: boolean } | null
         } | null
       if (!r) return null
       return {
         id: r.id, staffId: r.staff_id, atendenteNome: r.platform_staff?.name ?? 'Suporte',
         tenantId: r.tenant_id, targetUserId: r.target_user_id, includesClinical: r.includes_clinical,
         status: r.status, expiresAt: r.expires_at, ticketId: r.ticket_id,
+        staffAtivo: r.platform_staff?.is_active ?? false,
       }
     },
     [`suporte-sessao-${authSessionId}`],
@@ -51,9 +54,23 @@ export function sessaoDeSuporte(authSessionId: string): Promise<SessaoDeSuporte 
   )()
 }
 
-/** Ainda vale? (Ativa e dentro do prazo — conferido a cada requisição.) */
-export function sessaoVigente(s: Pick<SessaoDeSuporte, 'status' | 'expiresAt'>, agoraMs = Date.now()): boolean {
-  return s.status === 'ativa' && Date.parse(s.expiresAt) > agoraMs
+/** Ainda vale? (Ativa, dentro do prazo e com o atendente na equipe — a cada requisição.) */
+export function sessaoVigente(s: Pick<SessaoDeSuporte, 'status' | 'expiresAt' | 'staffAtivo'>, agoraMs = Date.now()): boolean {
+  return s.status === 'ativa' && Date.parse(s.expiresAt) > agoraMs && s.staffAtivo !== false
+}
+
+/**
+ * As sessões de suporte em curso de um membro (`alvo`) ou de um atendente.
+ * Quem vai mexer na autorização lê ANTES: o banco as encerra junto (gatilho
+ * de `support_grants`), e o cache delas (`tagDaSessao`) precisa expirar.
+ */
+export async function sessoesEmCurso(filtro: { alvo?: string; atendente?: string }): Promise<{ id: string; authSessionId: string | null }[]> {
+  let q = createAdminClient().from('support_sessions').select('id, auth_session_id').in('status', ['abrindo', 'ativa'])
+  if (filtro.alvo) q = q.eq('target_user_id', filtro.alvo)
+  else if (filtro.atendente) q = q.eq('staff_id', filtro.atendente)
+  else return []
+  const linhas = await ler(q, 'buscar as sessões de suporte em curso') as { id: string; auth_session_id: string | null }[] | null
+  return (linhas ?? []).map(l => ({ id: l.id, authSessionId: l.auth_session_id }))
 }
 
 /** Registra uma requisição feita na sessão de suporte (o que foi feito). */

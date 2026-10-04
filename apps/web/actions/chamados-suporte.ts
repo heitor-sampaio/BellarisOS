@@ -7,7 +7,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, mensagemDoErro } from '@/lib/db'
 import { notifyUser } from '@/lib/notifications/notify'
 import { ehSituacao, situacaoDepois, ROTULO_DA_SITUACAO } from '@/lib/suporte/chamados-regras'
-import { lerChamado, guardarAnexo, avisarResposta } from '@/lib/suporte/chamados'
+import { lerChamado, guardarAnexo, avisarResposta, removerAnexo } from '@/lib/suporte/chamados'
+import type { PlatformContext } from '@/lib/plataforma/contexto'
+import type { TipoDeRegistroDaPlataforma } from '@/lib/plataforma/auditoria'
 
 /**
  * Os chamados do lado da PLATAFORMA (`/suporte/chamados`). Toda action passa
@@ -18,6 +20,16 @@ import { lerChamado, guardarAnexo, avisarResposta } from '@/lib/suporte/chamados
  */
 type Resultado = { ok: true } | { ok: false; error: string }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * O registro DEPOIS do efeito: se ele falhar, a action não devolve erro — o
+ * atendente repetiria e a resposta (e o sino) sairiam duas vezes. A mensagem
+ * já fica no chamado com o autor; a falha do registro vai para o log.
+ */
+async function registrar(ctx: PlatformContext, kind: TipoDeRegistroDaPlataforma, alvo: Parameters<typeof registrarNaPlataforma>[2]) {
+  try { await registrarNaPlataforma(ctx, kind, alvo) }
+  catch (e) { console.error('[chamados] registro da plataforma falhou:', kind, mensagemDoErro(e)) }
+}
 
 function recarregar(chamadoId: string) {
   revalidatePath('/suporte/chamados')
@@ -42,13 +54,11 @@ export async function responderComoSuporte(form: FormData): Promise<Resultado> {
       p_ticket: chamadoId, p_autor: 'suporte', p_user: null, p_staff: ctx.staffId,
       p_corpo: corpo, p_anexos: anexo ? [anexo] : [], p_interna: interna, p_status: status,
     })
-    if (error) return { ok: false, error: error.message }
-    if (!interna) {
-      await avisarResposta(chamado, corpo)
-      await registrarNaPlataforma(ctx, 'chamado.respondido', {
-        tenantId: chamado.redeId, targetUserId: chamado.quemId, dados: { chamado: chamado.numero, status },
-      })
-    }
+    if (error) { await removerAnexo(anexo); return { ok: false, error: error.message } }
+    if (!interna) await avisarResposta(chamado)
+    await registrar(ctx, interna ? 'chamado.nota_interna' : 'chamado.respondido', {
+      tenantId: chamado.redeId, targetUserId: chamado.quemId, dados: { chamado: chamado.numero, status },
+    })
     recarregar(chamadoId)
     return { ok: true }
   } catch (e) {
@@ -70,6 +80,7 @@ export async function mudarSituacaoDoChamado(chamadoId: string, status: string):
       p_anexos: [], p_interna: false, p_status: status,
     })
     if (error) return { ok: false, error: error.message }
+    await registrar(ctx, 'chamado.situacao', { tenantId: chamado.redeId, dados: { chamado: chamado.numero, status } })
     recarregar(chamadoId)
     return { ok: true }
   } catch (e) {
@@ -90,6 +101,7 @@ export async function assumirChamado(chamadoId: string): Promise<Resultado> {
       .eq('id', chamadoId).select('id').single(), 'assumir o chamado')
     await gravar(createAdminClient().from('support_signals')
       .update({ updated_at: new Date().toISOString() }).eq('id', 1).select('id').single(), 'avisar a fila')
+    await registrar(ctx, 'chamado.assumido', { tenantId: chamado.redeId, dados: { chamado: chamado.numero } })
     recarregar(chamadoId)
     return { ok: true }
   } catch (e) {
@@ -122,7 +134,7 @@ export async function pedirAutorizacao(chamadoId: string): Promise<Resultado> {
       body: 'Abra o chamado para autorizar (ou não) o acesso à sua conta.',
       data: { chamadoId },
     })
-    await registrarNaPlataforma(ctx, 'chamado.autorizacao_pedida', {
+    await registrar(ctx, 'chamado.autorizacao_pedida', {
       tenantId: chamado.redeId, targetUserId: chamado.quemId, dados: { chamado: chamado.numero },
     })
     recarregar(chamadoId)

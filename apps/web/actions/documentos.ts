@@ -62,6 +62,8 @@ export async function assinarNaClinica(input: {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'documents', 'MANAGE')
+    const travado = bloqueioDoSuporte(ctx, 'colher assinatura')
+    if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, input.id)
     if (!doc) return { error: 'Documento não encontrado.' }
     if (!input.identidadeConferida) return { error: 'Confira o documento de identidade do cliente antes de entregar o aparelho.' }
@@ -117,6 +119,8 @@ export async function marcarAssinadoEmPapel(formData: FormData): Promise<Resulta
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'documents', 'MANAGE')
+    const travado = bloqueioDoSuporte(ctx, 'registrar assinatura em papel')
+    if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, formData.get('id') as string)
     if (!doc) return { error: 'Documento não encontrado.' }
 
@@ -394,6 +398,9 @@ export async function gerarLinkDeAssinatura(id: string): Promise<{ error?: strin
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'documents', 'MANAGE')
+    // Gerar revoga o link que o cliente já tem nas mãos.
+    const travado = bloqueioDoSuporte(ctx, 'gerar link de assinatura')
+    if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
     return await criarLink(ctx, doc)
@@ -488,6 +495,8 @@ export async function dispensarDocumento(id: string, motivo: string): Promise<Re
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'documents', 'MANAGE')
+    const travado = bloqueioDoSuporte(ctx, 'dispensar documento')
+    if (travado) return { error: travado }
     const doc = await documentoAoAlcance(ctx, id)
     if (!doc) return { error: 'Documento não encontrado.' }
     const admin = createAdminClient()

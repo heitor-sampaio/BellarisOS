@@ -1394,7 +1394,7 @@ export async function sendMessage(
   // cliente nunca recebeu.
   const r = await enviarNaConversa(
     ctx.tenantId!, conversationId, content,
-    { id: profile?.id ?? ctx.internalUserId ?? null, nome: profile?.name ?? null },
+    { id: profile?.id ?? ctx.internalUserId ?? null, nome: ctx.userName || profile?.name || null },
     { replyToExternalId, pelaCaixaDaConversa },
   )
 

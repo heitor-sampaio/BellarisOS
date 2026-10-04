@@ -115,9 +115,9 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   revisão de código: `seletores-padronizados.spec.ts` mede a altura de
   todo seletor visível em 11 telas e recusa aparência escrita em `style`
   inline.
-- **Testes:** 640 unitários (591 no web + 44 em `utils` + 5 em
-  `validators`, Vitest) + 111 specs E2E (Playwright; a última completa,
-  421/421) contra o banco da produção, isolados pelo prefixo `[e2e]`. A
+- **Testes:** 677 unitários (628 no web + 44 em `utils` + 5 em
+  `validators`, Vitest) + 117 specs E2E (Playwright; a última completa,
+  421/421, é de antes do suporte) contra o banco da produção, isolados pelo prefixo `[e2e]`. A
   completa roda à mão no GitHub Actions, em duas metades juntas (isolados em
   paralelo, compartilhados um por vez).
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
@@ -129,6 +129,11 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   oportunidade, agendamento, equipe, catálogo e páginas, sem acento e com o
   mesmo alcance da tela de cada registro (`busca_universal` + a conta do
   inbox).
+- **Suporte da plataforma** (`/suporte`, verificação em duas etapas): fila de
+  chamados aberta pela Ajuda da topbar, painel das redes com diagnóstico e
+  ações, e **"Entrar como"** o membro — só com autorização da clínica, sem
+  dado clínico salvo autorização que o inclua, nada saindo para o paciente, e
+  tudo registrado "via suporte" e visível à clínica (Configurações → Suporte).
 
 ---
 
@@ -1283,6 +1288,82 @@ próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo o
 borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
+
+### 2026-10-03 — Suporte endurecido: o que as verificações acharam
+
+Cada fase teve um agente verificador em paralelo (pedido do Heitor). O das
+fases 1 e 2 achou três defeitos sérios e vários médios; todos corrigidos,
+cada um com prova:
+
+- **A migration `20261003000005` no repositório não aplicava** (`$` no lugar
+  de `$$` — no banco estava certa). Causa: `String.replace` com `$$` no texto
+  de troca vira `$`; os scripts de edição passaram a usar função na troca.
+- **Re-autorizar não derrubava a sessão em curso**, que seguia com o retrato
+  antigo (inclusive o dado clínico). Agora toda autorização revogada OU
+  substituída encerra as sessões dela, por gatilho
+  (`trg_autorizacao_revogada_encerra`), e quem mexe na autorização expira o
+  cache delas. Desativar o atendente também derruba a dele.
+- **O atendente criava um login permanente na rede** (cadastrar membro com
+  senha escolhida por ele). Cadastrar membro, mudar cargo e a matriz de um
+  cargo passaram a ser recusados no modo suporte — e colher assinatura,
+  marcar papel e dispensar documento também (a evidência é imutável e diria
+  que foi o membro).
+- **"Nada sai para o paciente" não era verdade**: o push do agendamento
+  (criar, cancelar, remarcar…) e as automações saíam. Agora `notifyClient`
+  não envia numa sessão de suporte e fato gravado nela não dispara automação.
+  O teste pegou um segundo furo no meio do caminho: a marca "é suporte" vinha
+  do `cache` do React, que NÃO sobrevive numa server action — passou a vir do
+  `session_id` do token (`sessaoDeSuporteAtual`).
+- **Aparelho de push e sino pelo PostgREST**: as políticas conferem
+  `auth.uid()`, então o atendente registrava o FCM dele na conta do membro.
+  Restritivas novas em `push_tokens` e `user_notifications`.
+- **Custo do `jwt_claim`**: a fase 2 o fez consultar `support_sessions` a cada
+  chamada (~140 µs, por linha, em toda política). Agora o estado é lido uma vez
+  por transação (GUC local) — 20 mil linhas: 2,8 s → 120 ms (o `auth.jwt()`
+  puro dá 35 ms). E o `anon` deixou de receber 42501.
+- Menores: telefone pendente na trava de credencial; a sessão que falha ao
+  abrir é encerrada (travava novas entradas por 60 min); o "Sair" por link de
+  fora não desloga mais um membro comum; o cabeçalho do registro de acesso não
+  passa forjado nem no caminho de erro do proxy; o nome de quem manda mensagem
+  vem do contexto.
+
+O da fase 3 não achou nada grave; corrigidos: quem autoriza pelo chamado
+revoga ali mesmo (a aba de Configurações pede `settings`); tudo o que o
+suporte faz no chamado (nota, assumir, situação, abrir) vai para a auditoria;
+registro que falha depois da resposta não a duplica; o chamado só é atribuído
+por resposta de verdade; o bucket recusa outro tipo e tamanho e gravação que
+falha apaga o print; o push da resposta tem texto genérico (tela de bloqueio).
+
+**Prova:** `e2e/suporte-clinico.spec.ts` (3) e `e2e/suporte-credenciais.spec.ts`
+(9), que faltavam do plano, e `e2e/chamados.spec.ts` ganhou a ida e volta pelo
+chamado e a recusa das actions da plataforma a um membro.
+
+### 2026-10-03 — Chamados: a Ajuda da topbar e a fila do `/suporte` (fase 3 do suporte)
+
+O canal que faltava: a clínica pede ajuda de dentro do sistema e o suporte
+responde com tudo à mão.
+
+- **Ajuda na topbar** (ícone de boia, ao lado do sino): meus chamados, novo
+  chamado e a conversa, numa `JanelaModal`. O chamado leva onde a pessoa estava
+  (a tela, a janela, o navegador) — quem, cargo, unidade e rede vêm da sessão —
+  e um print opcional (PNG/JPEG até 5 MB, no bucket privado).
+- **"Autorizo o suporte a entrar na minha conta por 72 horas"** no próprio
+  chamado: a autorização nasce na mesma transação, ligada a ele. Também dá para
+  autorizar e revogar depois, na conversa. Dado clínico só para quem gerencia
+  prontuário.
+- **`/suporte/chamados`** vira a primeira aba do portal (com o contador dos
+  abertos): fila com situação e busca, a conversa com **nota interna** (a
+  clínica nunca a recebe), resposta escolhendo a situação seguinte, "Assumir",
+  "Pedir autorização" (o suporte nunca se autoriza) e o **"Entrar como"**
+  quando quem abriu autorizou — sair volta ao chamado.
+- **A resposta chega no sino** de quem abriu, e "Ver a resposta" abre a Ajuda
+  já no chamado. A fila se atualiza sozinha pelo sinal `support_signals` (sem
+  dado; só a plataforma lê) e por um refresh a cada minuto — no lugar da rota
+  `/api/suporte/contagem` do plano.
+- **Prova**: `e2e/chamados.spec.ts` (8) — abrir pela tela com print e
+  autorização, o colega não lê e quem administra a rede sim, o sinal só para a
+  plataforma, nota interna × resposta, sino → conversa sem a nota, pedir
+  autorização → a clínica autoriza na conversa, entrar e sair pelo chamado.
 
 ### 2026-10-03 — Entrar como o membro, com autorização (fase 2 do suporte)
 
@@ -5071,6 +5152,12 @@ verdade. O que vale:
   NÃO pode ser o de membro de rede.
 - **(Opcional) ligar o hook de token**: Supabase → Authentication → Hooks →
   Custom Access Token → `public.suporte_hook_do_token`. Nada depende dele.
+- **Vale uma rodada completa do E2E**: `jwt_claim`, `buildContext`, o proxy e
+  o emissor de eventos mudaram — é o centro do sistema. Os vizinhos passaram.
+- **Risco aceito, que continua**: dentro da janela ativa o atendente pode
+  escrever pelo PostgREST o que a RLS deixa ao membro (menos o clínico, a
+  credencial e o aparelho), e isso não entra no registro de acesso — o plano
+  já previa; a mitigação seria exigir um cabeçalho que só o servidor manda.
 - **Depois**: impersonar o cliente final do portal; e-mail transacional
   (chamado respondido, acesso do suporte); push para o suporte; host próprio
   para trabalhar lado a lado; cobrança real (Pagar.me) com `tenants.is_active`

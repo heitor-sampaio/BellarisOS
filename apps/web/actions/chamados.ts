@@ -6,8 +6,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { podeIncluirClinico, HORAS_PADRAO } from '@/lib/suporte/regras'
 import { contextoDoNavegador } from '@/lib/suporte/chamados-regras'
+import { updateTag } from 'next/cache'
+import { sessoesEmCurso, tagDaSessao } from '@/lib/suporte/sessao'
 import {
-  chamadosDaClinica, lerChamado, guardarAnexo,
+  chamadosDaClinica, lerChamado, guardarAnexo, removerAnexo,
   type ChamadoResumo, type ChamadoCompleto, type AnexoDoChamado,
 } from '@/lib/suporte/chamados'
 
@@ -30,7 +32,9 @@ function veARede(ctx: TenantContext): boolean {
 }
 
 async function chamadoAoAlcance(ctx: TenantContext, chamadoId: string): Promise<ChamadoCompleto | null> {
-  if (!ctx.tenantId || !UUID.test(chamadoId ?? '')) return null
+  // Sem membro (cliente final, contexto sem id interno) não há "o meu" — e o
+  // autor apagado (nulo) não pode casar com um contexto nulo.
+  if (!ctx.tenantId || !ctx.internalUserId || ctx.isClient || !UUID.test(chamadoId ?? '')) return null
   const c = await lerChamado(chamadoId, { comInternas: false, tenantId: ctx.tenantId })
   if (!c) return null
   if (c.quemId !== ctx.internalUserId && !veARede(ctx)) return null
@@ -55,10 +59,15 @@ export async function abrirChamado(form: FormData): Promise<Resultado<{ chamadoI
   try { navegador = contextoDoNavegador(JSON.parse(String(form.get('contexto') ?? '{}'))) }
   catch { navegador = contextoDoNavegador({}) }
 
+  let anexo: AnexoDoChamado | null = null
   try {
-    const anexo = await guardarAnexo(ctx.tenantId, form.get('anexo'))
-    if (anexo && 'error' in anexo) return { ok: false, error: anexo.error }
+    const guardado = await guardarAnexo(ctx.tenantId, form.get('anexo'))
+    if (guardado && 'error' in guardado) return { ok: false, error: guardado.error }
+    anexo = guardado
     const anexos: AnexoDoChamado[] = anexo ? [anexo] : []
+    // Autorizar pelo chamado substitui a autorização anterior, e o banco
+    // derruba a sessão que corria nela: lidas antes, para expirar o cache.
+    const emCurso = autorizar && ctx.internalUserId ? await sessoesEmCurso({ alvo: ctx.internalUserId }) : []
 
     const unidade = ctx.branchId
       ? (await ler(createAdminClient().from('branches').select('name').eq('id', ctx.branchId).maybeSingle(), 'ler a unidade') as { name: string } | null)?.name ?? null
@@ -73,11 +82,13 @@ export async function abrirChamado(form: FormData): Promise<Resultado<{ chamadoI
       p_assunto: assunto, p_corpo: corpo, p_contexto: contexto, p_anexos: anexos,
       p_autorizar: autorizar, p_clinico: clinico, p_horas: HORAS_PADRAO,
     })
-    if (error) return { ok: false, error: error.message }
+    if (error) { await removerAnexo(anexo); return { ok: false, error: error.message } }
     const linha = (data as { chamado_id: string; numero: number }[] | null)?.[0]
     if (!linha) return { ok: false, error: 'Não consegui abrir o chamado.' }
+    for (const s of emCurso) if (s.authSessionId) updateTag(tagDaSessao(s.authSessionId))
     return { ok: true, chamadoId: linha.chamado_id, numero: Number(linha.numero) }
   } catch (e) {
+    await removerAnexo(anexo)
     return { ok: false, error: mensagemDoErro(e) }
   }
 }
@@ -97,7 +108,7 @@ export async function responderChamado(form: FormData): Promise<Resultado> {
       p_ticket: chamado.id, p_autor: 'usuario', p_user: ctx.internalUserId, p_staff: null,
       p_corpo: corpo, p_anexos: anexo ? [anexo] : [], p_interna: false, p_status: 'aberto',
     })
-    if (error) return { ok: false, error: error.message }
+    if (error) { await removerAnexo(anexo); return { ok: false, error: error.message } }
     return { ok: true }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }

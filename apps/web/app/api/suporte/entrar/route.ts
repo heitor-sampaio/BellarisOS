@@ -5,6 +5,7 @@ import { getPlatformContext } from '@/lib/plataforma/contexto'
 import { registrarNaPlataforma } from '@/lib/plataforma/auditoria'
 import { createClient } from '@/lib/supabase/server'
 import { urlPublica } from '@/lib/origem'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { abrirSessaoDeSuporte } from '@/lib/suporte/entrar'
 import { avisarAcessoDoSuporte } from '@/lib/suporte/avisos'
 import { COOKIE_DA_VOLTA, cifrarVolta } from '@/lib/suporte/cookie'
@@ -73,7 +74,15 @@ export async function POST(req: NextRequest) {
     },
   })
   const { error: eSet } = await doAlvo.auth.setSession({ access_token: s.accessToken, refresh_token: s.refreshToken })
-  if (eSet) return volta(`Não consegui abrir a conta: ${eSet.message}`)
+  if (eSet) {
+    // A sessão já está ATIVA no banco: sem encerrar, ela trava novas entradas
+    // (uma ativa por atendente e por alvo) até vencer.
+    const { error: eFim } = await createAdminClient().rpc('suporte_sessao_encerrar', {
+      p_sessao: s.sessaoId, p_motivo: 'falhou ao abrir', p_falhou: true,
+    })
+    if (eFim) console.error('[suporte/entrar] não encerrou a sessão que falhou:', eFim.message)
+    return volta(`Não consegui abrir a conta: ${eSet.message}`)
+  }
 
   const segundos = Math.max(60, Math.ceil((Date.parse(s.expiraEm) - Date.now()) / 1000) + 3600)
   resposta.cookies.set(COOKIE_DA_VOLTA, cifrarVolta({ sessaoId: s.sessaoId, refresh: minha.refresh_token }), {

@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { sessaoDeSuporteDaRequisicao } from '@/lib/suporte/requisicao'
+import { sessaoDeSuporteAtual } from '@/lib/suporte/requisicao'
 import type {
   NomeDeEvento, EntidadeDeEvento, OrigemDeEvento, AtorDoEvento, DadosDeEvento,
 } from '@estetica-os/types'
@@ -93,6 +93,7 @@ export async function emitirEvento(
   try {
     const admin = createAdminClient()
 
+    const suporteSessaoId = e.ator?.suporteSessaoId ?? await sessaoDeSuporteAtual()
     const { data, error } = await admin.from('domain_events').insert({
       tenant_id:   e.tenantId,
       branch_id:   e.branchId ?? null,
@@ -108,7 +109,7 @@ export async function emitirEvento(
       ocorrido_em: (e.ocorridoEm ?? new Date()).toISOString(),
       // Fato gravado numa sessão do SUPORTE da plataforma: a clínica vê o que
       // o suporte fez (Configurações → Suporte).
-      suporte_sessao_id: e.ator?.suporteSessaoId ?? sessaoDeSuporteDaRequisicao(),
+      suporte_sessao_id: suporteSessaoId,
     }).select('id').maybeSingle()
 
     // 23505 = a chave de idempotência barrou uma repetição. Não é erro: é a
@@ -122,6 +123,9 @@ export async function emitirEvento(
       return
     }
     if (error || !data) return
+    // No modo suporte nada sai para o paciente — e as automações mandam
+    // mensagem. O fato fica registrado (a clínica vê), mas não dispara fluxo.
+    if (suporteSessaoId) return
 
     await despachar({
       id:         data.id as string,

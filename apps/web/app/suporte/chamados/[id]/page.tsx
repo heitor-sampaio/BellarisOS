@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getPlatformContext } from '@/lib/plataforma/contexto'
 import { lerChamado } from '@/lib/suporte/chamados'
+import { registrarVisitaDaRede } from '@/lib/plataforma/auditoria'
 import { ROTULO_DA_SITUACAO } from '@/lib/suporte/chamados-regras'
 import { EntrarComo } from '@/components/suporte/entrar-como'
 import { RespostaDoSuporte, AcoesDoChamado } from '@/components/suporte/chamado-do-suporte'
@@ -25,12 +26,14 @@ export default async function ChamadoPage({ params, searchParams }: {
   params: Promise<{ id: string }>
   searchParams: Promise<{ erro?: string }>
 }) {
-  await getPlatformContext()
+  const ctx = await getPlatformContext()
   const { id } = await params
   const { erro } = await searchParams
   if (!UUID.test(id)) notFound()
   const c = await lerChamado(id, { comInternas: true })
   if (!c) notFound()
+  // O chamado mostra a rede, nomes e o print: abrir fica registrado, como o painel da rede.
+  await registrarVisitaDaRede(ctx, c.redeId)
 
   const contexto = Object.entries(c.contexto)
     .filter(([k, v]) => k in ROTULO_DO_CONTEXTO && typeof v === 'string' && v)

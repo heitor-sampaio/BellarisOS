@@ -5,7 +5,7 @@ import { getTenantContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, mensagemDoErro } from '@/lib/db'
 import { podeAutorizar, podeIncluirClinico, horasValidas, HORAS_PADRAO } from '@/lib/suporte/regras'
-import { tagDaSessao } from '@/lib/suporte/sessao'
+import { tagDaSessao, sessoesEmCurso } from '@/lib/suporte/sessao'
 
 /**
  * A CLÍNICA autorizando (e revogando) o suporte do BellarisOS a entrar na
@@ -32,11 +32,22 @@ export async function autorizarSuporte(pedido: {
   if (clinico && !podeIncluirClinico(ctx)) return { ok: false, error: 'Só quem gerencia o prontuário libera dado clínico ao suporte.' }
   const chamadoId = pedido.chamadoId && UUID.test(pedido.chamadoId) ? pedido.chamadoId : null
   try {
-    const { error } = await createAdminClient().rpc('suporte_autorizar', {
+    const admin = createAdminClient()
+    // O chamado ligado é o de quem recebe o acesso (a rede o gatilho confere).
+    if (chamadoId) {
+      const meu = await ler(admin.from('support_tickets').select('id')
+        .eq('id', chamadoId).eq('tenant_id', ctx.tenantId).eq('opened_by_user_id', pedido.userId).maybeSingle(), 'conferir o chamado')
+      if (!meu) return { ok: false, error: 'Chamado não encontrado.' }
+    }
+    // A autorização nova SUBSTITUI a anterior, e o banco derruba a sessão que
+    // corria nela (com o retrato antigo): lidas antes, para expirar o cache.
+    const emCurso = await sessoesEmCurso({ alvo: pedido.userId })
+    const { error } = await admin.rpc('suporte_autorizar', {
       p_tenant: ctx.tenantId, p_target: pedido.userId, p_por: ctx.internalUserId,
       p_via: chamadoId ? 'chamado' : 'configuracoes', p_ticket: chamadoId, p_clinico: clinico, p_horas: horas,
     })
     if (error) return { ok: false, error: error.message }
+    for (const s of emCurso) if (s.authSessionId) updateTag(tagDaSessao(s.authSessionId))
     revalidatePath('/admin/settings')
     return { ok: true }
   } catch (e) {

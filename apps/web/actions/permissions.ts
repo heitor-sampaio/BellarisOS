@@ -8,6 +8,7 @@ import { lerMatrizDoCargo, emitirCargoPermissoesAlteradas } from '@/lib/events/c
 import type { PermissionLevel, PermissionScope } from '@estetica-os/types'
 import { ler } from '@/lib/db'
 import { lerCaixas } from '@/lib/inbox/visibilidade'
+import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 
 const VALID_SCOPES: PermissionScope[] = ['OWN', 'ALL']
 
@@ -21,6 +22,8 @@ export async function saveRolePermissions(
 ) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'roles', 'MANAGE')
+  const travado = bloqueioDoSuporte(ctx, 'mudar as permissões de um cargo')
+  if (travado) return { error: travado }
 
   const roleId = formData.get('roleId') as string
   if (!roleId) return { error: 'Cargo não informado.' }

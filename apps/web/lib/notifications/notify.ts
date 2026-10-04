@@ -2,6 +2,7 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendFcmToTokens, sendWebPushToSubs } from '@/lib/notifications/push'
 import { ler, tentar } from '@/lib/db'
+import { sessaoDeSuporteAtual } from '@/lib/suporte/requisicao'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -13,11 +14,28 @@ export type NotifyPayload = {
 }
 
 /**
+ * O `notifyClient` para usar dentro de `after()`: a pergunta "é sessão de
+ * suporte?" começa AGORA, ainda dentro da requisição (é dela que se leem os
+ * cookies), e o callback só espera a resposta. Numa sessão de suporte, nada
+ * sai para o paciente.
+ */
+export function notificadorDoCliente(): typeof notifyClient {
+  const doSuporte = sessaoDeSuporteAtual()
+  return async (admin, clientId, p) => {
+    if (await doSuporte) return
+    await notifyClient(admin, clientId, p)
+  }
+}
+
+/**
  * Notifica um CLIENTE: registra em client_notifications (sino + realtime) e
  * envia push nativo (FCM) + web-push aos dispositivos do cliente.
  * Fire-and-forget — nunca lança (não pode quebrar a ação que a chamou).
  */
 export async function notifyClient(admin: Admin, clientId: string, p: NotifyPayload): Promise<void> {
+  // No modo suporte nada sai para o paciente: o atendente remarcando um
+  // horário não pode virar push no celular do cliente (lib/suporte/travas).
+  if (await sessaoDeSuporteAtual()) return
   try {
     await tentar(admin.from('client_notifications').insert({
       client_id: clientId,

@@ -97,6 +97,10 @@ export async function updateSession(request: NextRequest) {
 
     return supabaseResponse
   } catch {
-    return NextResponse.next({ request })
+    // Mesmo na falha, o cabeçalho do registro do suporte é o do servidor: o
+    // vindo do navegador não passa adiante.
+    const limpos = new Headers(request.headers)
+    limpos.set('x-bellaris-caminho', `${request.method} ${request.nextUrl.pathname}${request.nextUrl.search}`)
+    return NextResponse.next({ request: { headers: limpos } })
   }
 }

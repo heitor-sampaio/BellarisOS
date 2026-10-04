@@ -61,7 +61,8 @@ test.afterAll(async () => {
   for (const a of criado.atendentes) await a.limpar()
   for (const m of criado.membros) await m.limpar()
   if (criado.outra) {
-    await db().from('platform_audit_log').delete().eq('tenant_id', criado.outra.tenantId)
+    const { error } = await db().from('platform_audit_log').delete().eq('tenant_id', criado.outra.tenantId)
+    expect(error).toBeNull()
     await criado.outra.limpar()
   }
 })
@@ -81,7 +82,10 @@ async function registros(staffId: string, kind: string): Promise<number> {
 test.describe.serial('portal da plataforma', () => {
   test('o atendente vê as redes, e abrir uma fica registrado', async ({ browser }) => {
     await comSessao(browser, f!.suporte.estado, async p => {
+      // A entrada do portal é a fila de chamados (fase 3); as redes, a aba ao lado.
       await p.goto('/suporte')
+      await expect(p).toHaveURL(/\/suporte\/chamados/)
+      await p.getByRole('link', { name: 'Redes', exact: true }).click()
       await expect(p).toHaveURL(/\/suporte\/redes/)
       // As redes de teste só com o filtro ligado.
       await expect(p.getByRole('link', { name: f!.nomeDaRede })).toHaveCount(0)
@@ -172,7 +176,7 @@ test.describe.serial('portal da plataforma', () => {
       expect(segredo.length).toBeGreaterThan(10)
       await p.getByLabel('Código de 6 dígitos').fill(totp(segredo))
       await p.getByRole('button', { name: 'Confirmar' }).click()
-      await expect(p).toHaveURL(/\/suporte\/redes/, { timeout: 20_000 })
+      await expect(p).toHaveURL(/\/suporte\/chamados/, { timeout: 20_000 })
     })
   })
 })

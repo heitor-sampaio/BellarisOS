@@ -360,7 +360,9 @@ portal próprio (`/suporte`), fora dos portais das redes.
   (cadastrar, desativar, redefinir a verificação) e vê a auditoria.
 - **Tudo o que a plataforma faz vai para `platform_audit_log`**
   (`registrarNaPlataforma`, só acrescenta), inclusive abrir o painel de uma
-  rede — e a clínica vê isso.
+  rede ou um chamado — e a clínica vê isso. Registro DEPOIS de um efeito que
+  já saiu (resposta no chamado) não devolve erro se falhar: a pessoa
+  repetiria e o efeito sairia duas vezes — vai para o log.
 - **Diagnóstico sem segredo e sem dado de cliente**
   (`lib/plataforma/diagnostico.ts`): das caixas e integrações só o estado
   (lista fechada); dos eventos só nome, entidade, ator e hora (os `dados`
@@ -392,18 +394,51 @@ portal próprio (`/suporte`), fora dos portais das redes.
 - **A RLS também sabe:** `jwt_claim` devolve nulo para token de sessão de
   suporte que acabou (o access token restante não alcança mais a rede), e as
   tabelas clínicas (e os anexos clínicos de `client_documents`) têm política
-  RESTRICTIVE `suporte_sem_clinico`. Senha, e-mail, telefone e fatores do
-  membro não mudam durante a sessão — gatilhos em `auth.users`,
-  `auth.mfa_factors` e `auth.identities` (o GoTrue troca senha só com o token).
+  RESTRICTIVE `suporte_sem_clinico`. Senha, e-mail, telefone (inclusive a
+  troca pendente) e fatores do membro não mudam durante a sessão — gatilhos em
+  `auth.users`, `auth.mfa_factors` e `auth.identities` (o GoTrue troca senha
+  só com o token). `push_tokens` recusa sessão de suporte e
+  `user_notifications` recusa a encerrada (políticas restritivas: as
+  originais conferem `auth.uid()`, não `jwt_claim`).
+  - ⚠️ **O estado da sessão de suporte é lido UMA vez por transação**
+    (`private.suporte_estado`, guardado no GUC local `bellaris.suporte`), e
+    `jwt_claim` é uma função plpgsql só, que lê esse cache. A primeira versão
+    consultava `support_sessions` a cada chamada, por linha, em toda política
+    (20 mil linhas: 2,8 s; agora 120 ms; o `auth.jwt()` puro dá 35 ms).
+    Mexeu em `jwt_claim`? Meça de novo.
+  - `jwt_claim` NÃO é security definer e só toca o schema `private` quando o
+    token tem `session_id`: o `anon` (sem acesso a `private`) recebia 42501
+    em vez de nada.
+- **Autorização revogada ou SUBSTITUÍDA derruba a sessão que corria nela**
+  (gatilho `trg_autorizacao_revogada_encerra`): re-autorizar sem dado clínico
+  não pode deixar a sessão seguir com o retrato antigo. Quem mexe na
+  autorização lê as sessões em curso ANTES (`sessoesEmCurso`) para expirar o
+  cache delas (`updateTag(tagDaSessao(…))`). Desativar o atendente também
+  derruba a dele, e `sessaoVigente` confere que ele segue na equipe.
 - **No modo suporte nada sai para o paciente**: `bloqueioDoSuporte(ctx, …)`
-  (`lib/suporte/travas.ts`) nas actions de envio do inbox, campanha, pedido de
-  assinatura e link pela conversa. Também não sai, não troca senha e não
-  registra aparelho de push.
+  (`lib/suporte/travas.ts`) nas actions de envio do inbox (texto, template,
+  mídia), campanha, pedido de assinatura e link de assinatura (gerar e pela
+  conversa). O push ao cliente (`notifyClient`) não sai, e fato gravado na
+  sessão não dispara automação (o evento fica, com `suporte_sessao_id`).
+  Também não sai, não troca senha e não registra aparelho de push.
+  - ⚠️ **A marca "esta requisição é do suporte" vem do TOKEN**
+    (`sessaoDeSuporteAtual`, `lib/suporte/requisicao.ts`), não só do `cache`
+    do React: o marcador não sobrevive numa server action, e o push do
+    cancelamento feito no suporte saiu para o cliente até isso ser provado.
+    Dentro de `after()`, comece a pergunta ANTES (`notificadorDoCliente()`).
+- **O que fica como permanente, o suporte não faz**: cadastrar membro, mudar
+  cargo, abrangência ou a matriz de um cargo (`createTeamMember`,
+  `updateTeamMember`, `createRole`, `updateRole`, `saveRolePermissions`) —
+  seria acesso fora do prazo da autorização. Nem colher assinatura, marcar
+  papel ou dispensar documento: `document_signatures` é evidência imutável, e
+  ali o atendente apareceria como o membro.
 - **O fim** (`app/auth/suporte-fim/route.ts`, o "Sair" do banner): encerra a
-  sessão, apaga a sessão do Auth e devolve o atendente ao painel com o cookie de
-  volta (`bellaris_suporte_volta`: o refresh token dele, AES-GCM com chave
-  derivada da service role). Revogar na clínica derruba na próxima tela; o cron
-  `suporte-sessoes` fecha as vencidas.
+  sessão, apaga a sessão do Auth e devolve o atendente ao painel (ou ao
+  chamado de onde ele entrou) com o cookie de volta (`bellaris_suporte_volta`:
+  o refresh token dele, AES-GCM com chave derivada da service role). Revogar na
+  clínica derruba na próxima tela; o cron `suporte-sessoes` fecha as vencidas.
+  É GET (é um link): sem sessão de suporte nem cookie de volta, não faz nada —
+  um link de outro site não desloga um membro.
 - **Transparência:** a clínica é avisada no sino quando o suporte entra e
   sai, e vê em Configurações → Suporte cada sessão, o que foi aberto e feito
   (acessos + `domain_events.suporte_sessao_id`) e o que a plataforma fez.
@@ -411,8 +446,38 @@ portal próprio (`/suporte`), fora dos portais das redes.
   testado; ligado no painel do Supabase (Auth → Hooks → Custom Access Token),
   o token passa a carregar `suporte` e o Auth recusa renovar sessão encerrada.
   Nada depende dele.
-- Prova: `e2e/suporte-impersonar.spec.ts` — o token "capturado" dos cookies é
-  usado direto no PostgREST e no Auth para provar o bloqueio.
+- Prova: `e2e/suporte-impersonar.spec.ts`, `e2e/suporte-clinico.spec.ts` e
+  `e2e/suporte-credenciais.spec.ts` — o token "capturado" dos cookies é usado
+  direto no PostgREST e no Auth para provar o bloqueio (`e2e/apoio/suporte.ts`).
+
+**Chamados (o botão "Ajuda" da topbar):**
+- A clínica abre o chamado pela Ajuda (`components/shared/ajuda.tsx`,
+  `actions/chamados.ts`); o suporte atende em `/suporte/chamados` (a primeira
+  aba, com o contador dos abertos; `actions/chamados-suporte.ts`).
+- **O contexto vem da sessão**: quem, cargo, unidade e rede pelo servidor; do
+  navegador só a tela, a janela e o navegador (`contextoDoNavegador`).
+- **O print é PNG/JPEG até 5 MB pelo cabeçalho do arquivo**, no bucket privado
+  `suporte-anexos` (o bucket também recusa outro tipo e tamanho), em
+  `<rede>/<uuid>.<ext>`; gravação que falhou apaga o arquivo.
+- **Autorizar pelo chamado** ("Autorizo o suporte…" ao abrir, ou o botão na
+  conversa) cria a autorização de 72 h do PRÓPRIO membro, ligada ao chamado
+  (o chamado tem de ser dele). Revogar fica na mesma conversa — quem autoriza
+  por ali pode não ter acesso a Configurações.
+- **O suporte nunca se autoriza**: "Pedir autorização" é uma mensagem do
+  sistema na conversa + sino; quem decide é a clínica.
+- **Nota interna** (`interna`) é filtrada NO BANCO para a clínica. Só a
+  resposta do suporte atribui o chamado e avisa no sino — com texto genérico
+  (o push aparece na tela de bloqueio). O "Ver a resposta" do sino abre a Ajuda
+  no chamado (evento `bellaris:ajuda`).
+- **O chamado é de quem abriu e de quem administra a rede** (rede + `settings:
+  MANAGE`); o colega recebe "não encontrado", também pela action. Cliente final
+  e contexto sem membro nunca alcançam.
+- **A fila se atualiza pelo SINAL** `support_signals` (uma linha sem dado, só
+  a plataforma lê — o padrão de `crm_quadro_sinais`) e por um refresh a cada
+  minuto. A rota `/api/suporte/contagem` do plano não existe: seria mais um
+  endpoint a defender para dizer o que o refresh já diz.
+- Um gatilho garante que o chamado de uma autorização ou sessão é da mesma rede.
+- Tabelas: RLS ligada e ZERO políticas. Prova: `e2e/chamados.spec.ts`.
 
 ### App (Android)
 
@@ -2217,6 +2282,13 @@ Dados de demonstração para conferir os números na mão: `supabase/seed_demo.s
 ❌ Ler o nome de quem agiu fora do ctx (users.name pelo auth id) — perde a marca "via suporte"
 ❌ Deixar a plataforma (marca app_metadata.plataforma) cair no buildContext como CLIENT, ou abrir /suporte sem getPlatformContext
 ❌ Entrar na conta de um membro sem autorização vigente (suporte_sessao_abrir) ou entregar o token ao navegador antes de suporte_sessao_ativar
+❌ Ação do suporte que fica PERMANENTE (membro, cargo, matriz, assinatura) sem bloqueioDoSuporte
+❌ notifyClient dentro de after() sem notificadorDoCliente() (a pergunta "é suporte?" tem de começar na requisição)
+❌ Confiar só no marcador de React cache para saber se é sessão de suporte numa action — é sessaoDeSuporteAtual (o token)
+❌ Mexer numa autorização de suporte sem ler antes as sessões em curso (sessoesEmCurso) e expirar o cache delas
+❌ jwt_claim que consulta tabela a cada chamada (é por linha, em toda política) ou que vira security definer
+❌ Política que confere auth.uid() em tabela que a sessão de suporte alcança, sem a restritiva do suporte
+❌ Mostrar nota interna do chamado à clínica, ou o suporte autorizar acesso por conta própria
 ❌ Exportar de um arquivo 'use server' função que recebe a rede por parâmetro sem conferir quem chama (era o dispatchCampaignInline)
 ❌ Achar pela busca universal o que a tela própria do registro não mostraria (tipo novo sem módulo em tiposPermitidos, ou sem o recorte de dono/unidade)
 ❌ Deixar o navegador escolher o que a busca procura, ou filtrar o resultado no navegador em vez de no servidor
@@ -2245,7 +2317,7 @@ o recém-criado, que é do `after()` — e teste que precisa de um pendente
 
 | Serviço | Ritmo | `CRON_JOBS` |
 |---|---|---|
-| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`, `documentos-pdf`) |
+| **Notification Cron** | `0 * * * *` (hora em hora) | vazio = o padrão (`notification-campaigns`, `lgpd-exports`, `meta-capi`, `eventos-expirados`, `estoque-minimo`, `fidelidade`, `documentos-pdf`, `suporte-sessoes`) |
 | **Automations Cron** | `*/5 * * * *` (5 min) | `automacoes` |
 
 O segundo existe porque **granularidade de uma hora não serve a automação**:

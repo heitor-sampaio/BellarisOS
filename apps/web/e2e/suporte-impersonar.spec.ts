@@ -82,26 +82,29 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   const b = db()
+  const falhas: string[] = []
+  const anote = (o: string, e: { message: string } | null) => { if (e) falhas.push(`${o}: ${e.message}`) }
   if (sup) await sup.ctx.close()
   if (criado.outra) {
     const t = criado.outra.tenantId
-    await b.from('support_sessions').delete().eq('tenant_id', t)
-    await b.from('support_grants').delete().eq('tenant_id', t)
-    await b.from('platform_audit_log').delete().eq('tenant_id', t)
+    anote('sessões', (await b.from('support_sessions').delete().eq('tenant_id', t)).error)
+    anote('autorizações', (await b.from('support_grants').delete().eq('tenant_id', t)).error)
+    anote('registros', (await b.from('platform_audit_log').delete().eq('tenant_id', t)).error)
   }
   await apagarAgendamentos(criado.agendamentos)
   for (const c of criado.conversas) {
-    await b.from('messages').delete().eq('conversation_id', c)
-    await b.from('conversations').delete().eq('id', c)
+    anote('mensagens', (await b.from('messages').delete().eq('conversation_id', c)).error)
+    anote('conversas', (await b.from('conversations').delete().eq('id', c)).error)
   }
-  if (criado.outra) await b.from('contacts').delete().eq('tenant_id', criado.outra.tenantId)
+  if (criado.outra) anote('contatos', (await b.from('contacts').delete().eq('tenant_id', criado.outra.tenantId)).error)
   for (const m of criado.membros) {
-    await b.from('user_notifications').delete().eq('user_id', m.userId)
+    anote('notificações', (await b.from('user_notifications').delete().eq('user_id', m.userId)).error)
     await m.limpar()
   }
   if (criado.atendente) await criado.atendente.limpar()
   if (criado.clientes.length) await apagarClientes(criado.clientes)
   if (criado.outra) await criado.outra.limpar()
+  expect(falhas).toEqual([])
 })
 
 // --- apoio --------------------------------------------------------------------

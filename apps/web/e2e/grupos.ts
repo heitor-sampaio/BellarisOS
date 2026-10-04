@@ -60,6 +60,8 @@ export const ISOLADOS = [
   'quadro-tempo-real.spec.ts',
   'suporte-impersonar.spec.ts',
   'chamados.spec.ts',
+  'suporte-clinico.spec.ts',
+  'suporte-credenciais.spec.ts',
   'suporte-plataforma.spec.ts',
   'vendas-desconto.spec.ts',
 ]

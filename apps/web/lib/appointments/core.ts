@@ -8,7 +8,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { notifyClient, notifyUser } from '@/lib/notifications/notify'
+import { notificadorDoCliente, notifyUser } from '@/lib/notifications/notify'
 import { enviarEventoCapi } from '@/lib/ads/capi'
 import { cliqueDoCliente, contatoDoCliente } from '@/lib/ads/atribuicao'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
@@ -273,6 +273,7 @@ export async function computeAvailableSlots(
 
 /** Notifica cliente + profissional de um novo agendamento (via after()). */
 export function notifyAppointmentCreated(appointmentId: string): void {
+  const avisarCliente = notificadorDoCliente()
   after(async () => {
     const admin = createAdminClient()
     const data = await ler(admin
@@ -290,7 +291,7 @@ export function notifyAppointmentCreated(appointmentId: string): void {
     try { when = format(new Date(data.scheduled_at as string), "dd/MM 'às' HH:mm", { locale: ptBR }) } catch { /* ignore */ }
 
     const payload = { appointment_id: appointmentId }
-    await notifyClient(admin, clientId, {
+    await avisarCliente(admin, clientId, {
       type: 'appointment_confirmed', title: 'Agendamento confirmado',
       body: `${procedureName} em ${when}.`, data: payload,
     })

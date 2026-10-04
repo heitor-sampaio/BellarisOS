@@ -13,9 +13,11 @@ import { JanelaModal } from '@/components/shared/janela-modal'
 interface Props {
   internalUserId: string
   initialUnread:  number
+  /** A Ajuda está na topbar (não está no modo suporte): o "Ver a resposta" a abre. */
+  comAjuda?:      boolean
 }
 
-export function StaffNotificationBell({ internalUserId, initialUnread }: Props) {
+export function StaffNotificationBell({ internalUserId, initialUnread, comAjuda = true }: Props) {
   const [open,          setOpen]          = useState(false)
   const [notifications, setNotifications] = useState<UserNotification[] | null>(null)
   const [unread,        setUnread]        = useState(initialUnread)
@@ -246,7 +248,7 @@ export function StaffNotificationBell({ internalUserId, initialUnread }: Props) 
             </div>
             <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {/* Resposta do suporte: abre a Ajuda já no chamado. */}
-              {selected.type === 'suporte.chamado' && typeof selected.data?.chamadoId === 'string' && (
+              {comAjuda && selected.type === 'suporte.chamado' && typeof selected.data?.chamadoId === 'string' && (
                 <button type="button" className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}
                   onClick={() => {
                     const chamadoId = selected.data!.chamadoId as string

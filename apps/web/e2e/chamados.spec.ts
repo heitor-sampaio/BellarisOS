@@ -168,6 +168,41 @@ test.describe.serial('chamados de suporte', () => {
     expect((n![0]!.data as { chamadoId: string }).chamadoId).toBe(chamadoId)
   })
 
+  test('entrar pelo chamado e sair volta ao chamado', async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: atendente!.estado })
+    try {
+      const page = await ctx.newPage()
+      await page.goto(`/suporte/chamados/${chamadoId}`)
+      await page.getByRole('button', { name: 'Entrar como' }).click()
+      await page.getByLabel('Motivo do acesso').fill('Ver a agenda que não abre')
+      await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+      await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30_000 })
+      await expect(page.getByRole('status', { name: 'Modo suporte' })).toBeVisible()
+      // No modo suporte não há Ajuda: quem está ali é o atendente.
+      await expect(page.getByRole('button', { name: 'Ajuda', exact: true })).toHaveCount(0)
+      const { data: s } = await db().from('support_sessions').select('ticket_id').eq('tenant_id', outra!.tenantId).eq('status', 'ativa')
+      expect(s).toEqual([{ ticket_id: chamadoId }])
+      await page.getByRole('link', { name: 'Sair' }).click()
+      await expect(page).toHaveURL(new RegExp(`/suporte/chamados/${chamadoId}`), { timeout: 30_000 })
+    } finally { await ctx.close() }
+  })
+
+  test('as actions da plataforma recusam um membro da rede', async ({ browser }) => {
+    const antes = (await db().from('support_tickets').select('status, assigned_staff_id').eq('id', chamadoId).single()).data
+    const ctx = await browser.newContext({ storageState: gestor.estado })
+    try {
+      const p = await ctx.newPage()
+      // A rota é do /suporte: o proxy desvia o membro, e a action confere a
+      // plataforma por si. Qualquer que seja a resposta, o banco não muda.
+      await chamarAcao(p, 'actions/chamados-suporte.ts', 'mudarSituacaoDoChamado', `/suporte/chamados/${chamadoId}`,
+        [chamadoId, 'resolvido']).catch(() => null)
+      await chamarAcao(p, 'actions/chamados-suporte.ts', 'assumirChamado', `/suporte/chamados/${chamadoId}`,
+        [chamadoId]).catch(() => null)
+    } finally { await ctx.close() }
+    const depois = (await db().from('support_tickets').select('status, assigned_staff_id').eq('id', chamadoId).single()).data
+    expect(depois).toEqual(antes)
+  })
+
   test('a resposta chega no sino e abre a conversa — sem a nota interna', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: alvo.estado })
     try {

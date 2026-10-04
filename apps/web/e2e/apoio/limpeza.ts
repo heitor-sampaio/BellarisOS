@@ -247,6 +247,26 @@ export async function varrerSobras(): Promise<{ apagou: Record<string, number>; 
   }
   if ((equipe ?? []).length) apagou.plataforma = equipe!.length
 
+  // 4c. Prints dos chamados de suporte de redes que já não existem: a rede
+  //     `[e2e]` leva os chamados em cascata, mas o storage não acompanha.
+  //     (Só pastas que são id de rede e cuja rede sumiu — nada de rede viva.)
+  const { data: pastas, error: ePastas } = await db.storage.from('suporte-anexos').list('', { limit: 1000 })
+  if (ePastas && !/not found/i.test(ePastas.message)) falhas.push({ o_que: 'pastas dos prints de suporte', erro: ePastas.message })
+  const idsDePasta = ((pastas ?? []) as { name: string }[]).map(p => p.name)
+    .filter(n => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(n))
+  if (idsDePasta.length) {
+    const { data: vivas } = await db.from('tenants').select('id').in('id', idsDePasta)
+    const existe = new Set(((vivas ?? []) as { id: string }[]).map(t => t.id))
+    for (const pasta of idsDePasta.filter(p => !existe.has(p))) {
+      const { data: arquivos } = await db.storage.from('suporte-anexos').list(pasta, { limit: 1000 })
+      const caminhos = ((arquivos ?? []) as { name: string }[]).map(a => `${pasta}/${a.name}`)
+      if (!caminhos.length) continue
+      const { error } = await db.storage.from('suporte-anexos').remove(caminhos)
+      if (error) falhas.push({ o_que: 'prints de suporte órfãos', erro: error.message })
+      else apagou.prints = (apagou.prints ?? 0) + caminhos.length
+    }
+  }
+
   // 5. Caixas de WhatsApp de teste (os vínculos saem em cascata).
   const caixas = await ids(db.from('whatsapp_numbers').select('id').like('label', like).lt('created_at', antes))
   if (caixas.length) {

@@ -18,9 +18,15 @@ import { avisarAcessoDoSuporte } from '@/lib/suporte/avisos'
  *    cifrado) — ou, sem ele, vai ao login;
  * 3. volta ao chamado, ou à rede.
  *
- * GET de propósito: é um link (banner, redirect). Sem sessão de suporte na
- * mão, não faz nada além de limpar a volta e ir ao login.
+ * GET de propósito: é um link (banner, redirect). Por isso, sem sessão de
+ * suporte nem cookie de volta, NÃO faz nada: um link de outro site não pode
+ * deslogar um membro qualquer.
  */
+type SessaoLida = {
+  id: string; tenant_id: string; ticket_id: string | null; target_user_id: string; auth_session_id: string | null; status: string
+  platform_staff: { name: string } | null; users: { name: string } | null
+}
+
 export async function GET(req: NextRequest) {
   const admin = createAdminClient()
   const motivo = req.nextUrl.searchParams.get('motivo') === 'venceu' ? 'venceu' : 'saiu'
@@ -37,17 +43,21 @@ export async function GET(req: NextRequest) {
 
   // A sessão de suporte: pela do Auth (a fonte), ou pela volta.
   const filtro = authSession ? { coluna: 'auth_session_id', valor: authSession } : volta ? { coluna: 'id', valor: volta.sessaoId } : null
-  const sessao = filtro
-    ? (await admin.from('support_sessions')
-        .select('id, tenant_id, ticket_id, target_user_id, auth_session_id, status, platform_staff(name), users!support_sessions_target_user_id_fkey(name)')
-        .eq(filtro.coluna, filtro.valor).maybeSingle()).data as {
-          id: string; tenant_id: string; ticket_id: string | null; target_user_id: string; auth_session_id: string | null; status: string
-          platform_staff: { name: string } | null; users: { name: string } | null
-        } | null
-    : null
+  let sessao: SessaoLida | null = null
+  if (filtro) {
+    const { data, error } = await admin.from('support_sessions')
+      .select('id, tenant_id, ticket_id, target_user_id, auth_session_id, status, platform_staff(name), users!support_sessions_target_user_id_fkey(name)')
+      .eq(filtro.coluna, filtro.valor).maybeSingle()
+    if (error) console.error('[suporte-fim] não li a sessão de suporte:', error.message)
+    sessao = data as SessaoLida | null
+  }
+
+  // Nem sessão de suporte, nem volta: é um membro comum (ou um link de fora).
+  if (!sessao && !volta) return NextResponse.redirect(urlPublica(req, '/'), 303)
 
   if (sessao && ['abrindo', 'ativa'].includes(sessao.status)) {
-    await admin.rpc('suporte_sessao_encerrar', { p_sessao: sessao.id, p_motivo: motivo })
+    const { error: eFim } = await admin.rpc('suporte_sessao_encerrar', { p_sessao: sessao.id, p_motivo: motivo })
+    if (eFim) console.error('[suporte-fim] não encerrou a sessão:', eFim.message)
     await avisarAcessoDoSuporte(sessao.tenant_id, { id: sessao.target_user_id, nome: sessao.users?.name ?? 'membro' },
       { atendente: sessao.platform_staff?.name ?? 'Suporte', motivo, entrou: false })
   }

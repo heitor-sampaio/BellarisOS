@@ -3,6 +3,7 @@
 import { revalidatePath, updateTag } from 'next/cache'
 import { getPlatformContext } from '@/lib/plataforma/contexto'
 import { registrarNaPlataforma } from '@/lib/plataforma/auditoria'
+import { sessoesEmCurso, tagDaSessao } from '@/lib/suporte/sessao'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { reativarMembro } from '@/lib/equipe/ativacao'
@@ -174,6 +175,13 @@ export async function ativarAtendente(staffId: string, ativo: boolean): Promise<
     const { error } = await admin.auth.admin.updateUserById(pessoa.auth_id, { ban_duration: ativo ? 'none' : '876000h' })
     if (error) return { ok: false, error: `Atualizado, mas o Auth recusou o bloqueio: ${error.message}` }
     updateTag(`plataforma:${pessoa.auth_id}`)
+    if (!ativo) {
+      // A sessão de suporte em curso cai junto — não espera os 60 minutos.
+      for (const s of await sessoesEmCurso({ atendente: staffId })) {
+        await gravar(admin.rpc('suporte_sessao_encerrar', { p_sessao: s.id, p_motivo: 'atendente desativado' }), 'encerrar a sessão de suporte')
+        if (s.authSessionId) updateTag(tagDaSessao(s.authSessionId))
+      }
+    }
     await registrarNaPlataforma(ctx, ativo ? 'equipe.reativada' : 'equipe.desativada', { dados: { email: pessoa.email } })
     revalidatePath('/suporte/equipe')
     return { ok: true }
