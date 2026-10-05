@@ -69,8 +69,10 @@ async function comQuadroAberto(browser: Browser, quem: MembroDeTeste, url: strin
     const p = await ctx.newPage()
     await p.goto(url)
     await expect(p.getByRole('heading', { name: 'Oportunidades' })).toBeVisible()
-    // A assinatura sobe depois da hidratação: dá tempo de ela entrar.
-    await p.waitForTimeout(2500)
+    // A assinatura sobe depois da hidratação: espera o canal confirmar (o
+    // RealtimeRefresher marca), em vez de chutar um tempo — sob a carga da
+    // completa, 2,5 s não bastavam e o sinal saía antes de alguém escutar.
+    await expect(p.locator('[data-tempo-real="crm_quadro_sinais"]')).toHaveAttribute('data-estado', 'ligado', { timeout: 30_000 })
     await fn(p)
   } finally { await ctx.close() }
 }
@@ -83,7 +85,7 @@ test('quem é da rede vê o lead novo aparecer, sem recarregar', async ({ browse
       tenant_id: f!.outra.tenantId, name: nome, phone: '5548900' + String(Date.now()).slice(-6), crm_stage_id: f!.etapa,
     })
     expect(error).toBeNull()
-    await expect(p.locator('.crm-card').filter({ hasText: nome })).toBeVisible({ timeout: 15_000 })
+    await expect(p.locator('.crm-card').filter({ hasText: nome })).toBeVisible({ timeout: 30_000 })
   })
 })
 
@@ -93,17 +95,8 @@ test('quem é de unidade vê a etapa renomeada, sem recarregar', async ({ browse
     // O nome também está nas <option> dos seletores escondidos: só o que aparece.
     const visivel = (t: string) => p.locator(`text=${t} >> visible=true`).first()
     await expect(visivel('Primeiro contato')).toBeVisible()
-    // A inscrição no realtime sobe depois da hidratação, e sob a carga da
-    // completa os 2,5 s de folga não bastavam: o sinal saía antes de alguém
-    // escutar. Renomeia de novo (com outro nome) até a tela acompanhar — o
-    // que se prova é que ELA muda sozinha, sem recarregar.
-    let tentativa = 0
-    await expect(async () => {
-      const nome = `${novo}${tentativa ? ` ${tentativa}` : ''}`
-      tentativa++
-      const { error } = await db().from('crm_stages').update({ name: nome }).eq('id', f!.etapa)
-      expect(error).toBeNull()
-      await expect(visivel(nome)).toBeVisible({ timeout: 10_000 })
-    }).toPass({ timeout: 60_000 })
+    const { error } = await db().from('crm_stages').update({ name: novo }).eq('id', f!.etapa)
+    expect(error).toBeNull()
+    await expect(visivel(novo)).toBeVisible({ timeout: 30_000 })
   })
 })

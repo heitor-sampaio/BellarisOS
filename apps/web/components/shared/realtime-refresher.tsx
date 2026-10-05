@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -24,10 +24,16 @@ interface Props {
  * dela, não só a da tabela que mudou. Em `/admin/reports` são 9 tabelas
  * observadas ao mesmo tempo: sem cuidado, um único checkout dispara vários
  * re-renders completos por aba aberta. Daí as duas proteções abaixo.
+ *
+ * Desenha só um marcador escondido (`data-tempo-real`, `data-estado`): o canal
+ * sobe DEPOIS da hidratação, e o que muda antes disso não chega. Quem precisa
+ * saber se a tela já escuta (o E2E) espera `data-estado="ligado"` em vez de
+ * chutar um tempo.
  */
 export function RealtimeRefresher({ tables, filter, debounceMs = 500 }: Props) {
   const router = useRouter()
   const key = tables.join(',')
+  const [ligado, setLigado] = useState(false)
 
   useEffect(() => {
     const supabase = createClient()
@@ -72,7 +78,7 @@ export function RealtimeRefresher({ tables, filter, debounceMs = 500 }: Props) {
       )
     }
 
-    channel.subscribe()
+    channel.subscribe(status => setLigado(status === 'SUBSCRIBED'))
     document.addEventListener('visibilitychange', aoMudarVisibilidade)
 
     return () => {
@@ -80,8 +86,9 @@ export function RealtimeRefresher({ tables, filter, debounceMs = 500 }: Props) {
       if (timer) clearTimeout(timer)
       document.removeEventListener('visibilitychange', aoMudarVisibilidade)
       supabase.removeChannel(channel)
+      setLigado(false)
     }
   }, [key, filter, router, debounceMs])
 
-  return null
+  return <span hidden data-tempo-real={key} data-estado={ligado ? 'ligado' : 'aguardando'} />
 }
