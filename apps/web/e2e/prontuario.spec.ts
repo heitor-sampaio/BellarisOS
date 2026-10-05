@@ -181,10 +181,15 @@ test.describe.serial('prontuário', () => {
     }, [c!.appt, c!.apptAlheio])
     try {
       await aba.goto(`/admin/agenda/${c!.appt}`)
-      await aba.locator('div').filter({ has: aba.locator('label', { hasText: `Foto ${marca}` }) })
+      // O campo de arquivo vem no HTML do servidor, mas o onChange só existe
+      // depois da hidratação: sob a carga da completa, o arquivo escolhido
+      // antes dela some sem enviar nada. Repete até a resposta chegar.
+      const campo = aba.locator('div').filter({ has: aba.locator('label', { hasText: `Foto ${marca}` }) })
         .locator('input[type="file"]').last()
-        .setInputFiles({ name: 'invasora.svg', mimeType: 'image/svg+xml', buffer: SVG })
-      await expect.soft(aba.getByText('Agendamento não encontrado.'), 'a foto para outra rede é recusada').toBeVisible({ timeout: 30_000 })
+      await expect.soft(async () => {
+        await campo.setInputFiles({ name: 'invasora.svg', mimeType: 'image/svg+xml', buffer: SVG })
+        await expect(aba.getByText('Agendamento não encontrado.')).toBeVisible({ timeout: 10_000 })
+      }, 'a foto para outra rede é recusada').toPass({ timeout: 90_000 })
     } finally {
       await ctx.close()
     }

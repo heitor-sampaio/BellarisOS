@@ -196,10 +196,11 @@ test.describe.serial('suporte: credenciais e travas', () => {
     const ctx = await browser.newContext({ storageState: alvo.estado })
     try {
       const p = await ctx.newPage()
+      // Sem sessão de suporte, o "Sair" só devolve ao início — e o membro
+      // continua no portal dele. (Navegar de novo logo depois atropelava o
+      // redirecionamento: ERR_ABORTED no CI.)
       await p.goto('/auth/suporte-fim')
-      await p.waitForURL(u => !u.pathname.startsWith('/auth/'), { timeout: 30_000 })
-      await p.goto('/admin/dashboard')
-      await expect(p).toHaveURL(/\/admin\/dashboard/)
+      await p.waitForURL(/\/admin\/dashboard/, { timeout: 30_000 })
     } finally { await ctx.close() }
     // Controle da trava de credencial: sem sessão de suporte, o membro troca a senha.
     expect(await sessoesAtivasDaRede(outra!.tenantId)).toHaveLength(0)

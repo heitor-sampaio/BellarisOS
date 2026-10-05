@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco } from './apoio/banco'
+import { banco, tenantId } from './apoio/banco'
 
 /**
  * A ficha do cliente guarda na URL o que está aberto.
@@ -19,7 +19,10 @@ let clientId:    string | null = null
 let mapaCriado:  string | null = null
 
 test.beforeAll(async () => {
-  const { data } = await banco().from('clients').select('id').limit(1).maybeSingle()
+  // Da rede REAL (a do admin da sessão): com a outra metade da completa
+  // criando redes [e2e] ao lado, "um cliente qualquer" podia ser de outra rede
+  // — e a ficha dava 404.
+  const { data } = await banco().from('clients').select('id').eq('tenant_id', await tenantId()).limit(1).maybeSingle()
   clientId = (data?.id as string) ?? null
 })
 
