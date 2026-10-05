@@ -32,7 +32,7 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
 
 ---
 
-## 2. Estado atual (2026-10-03)
+## 2. Estado atual (2026-10-05)
 
 ### Operação
 
@@ -116,10 +116,11 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   todo seletor visível em 11 telas e recusa aparência escrita em `style`
   inline.
 - **Testes:** 677 unitários (628 no web + 44 em `utils` + 5 em
-  `validators`, Vitest) + 117 specs E2E (Playwright; a última completa,
-  421/421, é de antes do suporte) contra o banco da produção, isolados pelo prefixo `[e2e]`. A
-  completa roda à mão no GitHub Actions, em duas metades juntas (isolados em
-  paralelo, compartilhados um por vez).
+  `validators`, Vitest) + specs E2E (Playwright) contra o banco da produção,
+  isolados pelo prefixo `[e2e]`. A completa roda à mão no GitHub Actions, em
+  duas metades juntas (isolados em paralelo, compartilhados um por vez): a
+  última, de 2026-10-05 (run 37361972137), deu 502 verdes e 1 pulado, em
+  ~16 min.
 - **Cron:** dois serviços na Railway rodam `scripts/cron.mjs` — de hora em hora
   (campanhas, LGPD, CAPI, estoque, fidelidade, PDFs) e a cada 5 minutos (fila
   das automações) —, com nova tentativa em erro da borda.
@@ -5301,8 +5302,8 @@ verdade. O que vale:
   padrão ou cron). Cada um migrado para rede própria vai para o paralelo
   (`e2e/grupos.ts`) — trabalho aos poucos, spec a spec. ~~A varredura apaga
   todo [e2e]~~ **resolvido**: só o de mais de uma hora, e as duas metades
-  rodam juntas no CI. **A primeira completa com as metades juntas ainda não
-  rodou** (o workflow mudou; roda quando o Heitor pedir).
+  rodam juntas no CI. ~~A primeira completa com as metades juntas ainda não
+  rodou~~ **rodou em 2026-10-05**, verde (ver a linha do tempo).
 - ~~O cron de produção roda contra o mesmo banco do E2E~~ **investigado**: ver
   a linha do tempo. Seguro pelas reivindicações; a janela que havia (LGPD)
   foi fechada.
