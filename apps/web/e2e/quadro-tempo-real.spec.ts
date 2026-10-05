@@ -93,8 +93,17 @@ test('quem é de unidade vê a etapa renomeada, sem recarregar', async ({ browse
     // O nome também está nas <option> dos seletores escondidos: só o que aparece.
     const visivel = (t: string) => p.locator(`text=${t} >> visible=true`).first()
     await expect(visivel('Primeiro contato')).toBeVisible()
-    const { error } = await db().from('crm_stages').update({ name: novo }).eq('id', f!.etapa)
-    expect(error).toBeNull()
-    await expect(visivel(novo)).toBeVisible({ timeout: 15_000 })
+    // A inscrição no realtime sobe depois da hidratação, e sob a carga da
+    // completa os 2,5 s de folga não bastavam: o sinal saía antes de alguém
+    // escutar. Renomeia de novo (com outro nome) até a tela acompanhar — o
+    // que se prova é que ELA muda sozinha, sem recarregar.
+    let tentativa = 0
+    await expect(async () => {
+      const nome = `${novo}${tentativa ? ` ${tentativa}` : ''}`
+      tentativa++
+      const { error } = await db().from('crm_stages').update({ name: nome }).eq('id', f!.etapa)
+      expect(error).toBeNull()
+      await expect(visivel(nome)).toBeVisible({ timeout: 10_000 })
+    }).toPass({ timeout: 60_000 })
   })
 })
