@@ -100,6 +100,15 @@ export async function entrarComo(browser: Browser, estadoDoAtendente: string, te
   return { ctx, page }
 }
 
+/** A sessão de suporte de um token capturado (pelo `session_id` do JWT). */
+export async function sessaoDoToken(token: string): Promise<{ id: string; status: string }> {
+  const sid = JSON.parse(Buffer.from(token.split('.')[1]!, 'base64url').toString('utf8')).session_id as string
+  const { data, error } = await banco().from('support_sessions').select('id, status').eq('auth_session_id', sid).maybeSingle<{ id: string; status: string }>()
+  expect(error).toBeNull()
+  expect(data, 'o token capturado é de uma sessão de suporte').not.toBeNull()
+  return data!
+}
+
 /** As sessões de suporte ativas numa rede. */
 export async function sessoesAtivasDaRede(tenantId: string): Promise<{ id: string }[]> {
   const { data, error } = await banco().from('support_sessions').select('id').eq('tenant_id', tenantId).eq('status', 'ativa')

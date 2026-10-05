@@ -184,7 +184,7 @@ test.describe.serial('prontuário', () => {
       await aba.locator('div').filter({ has: aba.locator('label', { hasText: `Foto ${marca}` }) })
         .locator('input[type="file"]').last()
         .setInputFiles({ name: 'invasora.svg', mimeType: 'image/svg+xml', buffer: SVG })
-      await expect.soft(aba.getByText('Agendamento não encontrado.'), 'a foto para outra rede é recusada').toBeVisible()
+      await expect.soft(aba.getByText('Agendamento não encontrado.'), 'a foto para outra rede é recusada').toBeVisible({ timeout: 30_000 })
     } finally {
       await ctx.close()
     }

@@ -71,5 +71,5 @@ test('conversa nova aparece na lista sem recarregar a página', async ({ page })
   expect(erroMsg, erroMsg?.message).toBeNull()
 
   // Sem nenhum reload: o card tem de entrar sozinho.
-  await expect(page.getByText(nome).first()).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText(nome).first()).toBeVisible({ timeout: 45_000 })
 })

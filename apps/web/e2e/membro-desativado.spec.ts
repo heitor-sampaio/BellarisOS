@@ -36,11 +36,17 @@ const bloqueadoAte = async (userId: string) => {
 }
 /** Tenta entrar pelo link mágico — o mesmo caminho do login sem senha. */
 async function consegueEntrar(email: string): Promise<boolean> {
-  const { data: link } = await db().auth.admin.generateLink({ type: 'magiclink', email })
-  if (!link?.properties?.hashed_token) return false
   const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } })
-  const { data, error } = await anon.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' })
-  return !error && !!data.session
+  for (const espera of [0, 15, 30, 60]) {
+    if (espera) await new Promise(ok => setTimeout(ok, espera * 1000))
+    const { data: link, error: eLink } = await db().auth.admin.generateLink({ type: 'magiclink', email })
+    if (eLink && /rate limit/i.test(eLink.message)) continue
+    if (!link?.properties?.hashed_token) return false
+    const { data, error } = await anon.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' })
+    if (error && /rate limit/i.test(error.message)) continue
+    return !error && !!data.session
+  }
+  return false
 }
 
 test.describe.serial('membro desativado', () => {

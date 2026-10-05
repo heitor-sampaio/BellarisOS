@@ -6,7 +6,7 @@ import { criarAtendente, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarAgendamentos } from './apoio/limpeza'
 import {
-  sessaoDoNavegador, rest, restBruto, authApi, renovar, autorizarPor, entrarComo, sessoesAtivasDaRede, limparSuporteDaRede,
+  sessaoDoNavegador, sessaoDoToken, rest, restBruto, authApi, renovar, autorizarPor, entrarComo, sessoesAtivasDaRede, limparSuporteDaRede,
 } from './apoio/suporte'
 
 /**
@@ -172,8 +172,11 @@ test.describe.serial('suporte: credenciais e travas', () => {
   test('vencer o prazo mata o token e o refresh', async ({ browser }) => {
     sup = await entrarComo(browser, atendente!.estado, outra!.tenantId, `Alvo skalvo${marca}`)
     const capturada = await sessaoDoNavegador(sup.ctx)
-    const [sessao] = await sessoesAtivasDaRede(outra!.tenantId)
-    const { error } = await db().from('support_sessions').update({ expires_at: new Date(Date.now() - 1000).toISOString() }).eq('id', sessao!.id)
+    // A sessão é a do TOKEN, não "a primeira ativa da rede": sob o limite do
+    // Auth, a entrada pode ter tentado mais de uma vez.
+    const sessao = await sessaoDoToken(capturada.access_token)
+    expect(sessao.status).toBe('ativa')
+    const { error } = await db().from('support_sessions').update({ expires_at: new Date(Date.now() - 10 * 60_000).toISOString() }).eq('id', sessao.id)
     expect(error).toBeNull()
     // Vencida, a RLS já nega na hora (o estado é lido do banco a cada transação).
     expect(await rest(capturada.access_token, `clients?select=id&id=eq.${clienteId}`)).toHaveLength(0)
@@ -194,6 +197,7 @@ test.describe.serial('suporte: credenciais e travas', () => {
     try {
       const p = await ctx.newPage()
       await p.goto('/auth/suporte-fim')
+      await p.waitForURL(u => !u.pathname.startsWith('/auth/'), { timeout: 30_000 })
       await p.goto('/admin/dashboard')
       await expect(p).toHaveURL(/\/admin\/dashboard/)
     } finally { await ctx.close() }

@@ -252,8 +252,13 @@ test.describe.serial('chamados de suporte', () => {
     try {
       const page = await cc.newPage()
       await page.goto('/admin/dashboard')
-      await page.evaluate(i => window.dispatchEvent(new CustomEvent('bellaris:ajuda', { detail: { chamadoId: i } })), id)
       const janela = page.getByRole('dialog', { name: 'Ajuda' })
+      // O evento só abre a janela depois de a Ajuda hidratar (é ela que o
+      // escuta); sob a carga da completa, o primeiro pode sair antes.
+      await expect(async () => {
+        await page.evaluate(i => window.dispatchEvent(new CustomEvent('bellaris:ajuda', { detail: { chamadoId: i } })), id)
+        await expect(janela).toBeVisible({ timeout: 3_000 })
+      }).toPass({ timeout: 60_000 })
       await janela.getByRole('button', { name: 'Autorizar por 72 h' }).click()
       await expect(janela.getByText(/Acesso do suporte autorizado até/)).toBeVisible({ timeout: 20_000 })
     } finally { await cc.close() }
