@@ -31,7 +31,7 @@ let alvo: MembroDeTeste, gestor: MembroDeTeste
 let clienteComFicha = '', clienteSemFicha = ''
 
 test.beforeAll(async () => {
-  test.setTimeout(240_000)
+  test.setTimeout(600_000)
   outra = await criarOutraRede(`sc${marca}`)
   alvo = await criarMembro(`scalvo${marca}`, {
     tenant: outra.tenantId, rotulo: 'Alvo',

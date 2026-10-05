@@ -31,7 +31,7 @@ let cliente: ClienteDeTeste | null = null
 let redeNova: string | null = null
 
 test.beforeAll(async () => {
-  test.setTimeout(240_000)
+  test.setTimeout(600_000)
   admin = await criarAtendente(`srad${marca}`, { papel: 'ADMIN' })
   suporte = await criarAtendente(`srsu${marca}`, { papel: 'SUPORTE' })
   outra = await criarOutraRede(`sr${marca}`)

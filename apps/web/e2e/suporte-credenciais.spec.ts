@@ -47,7 +47,7 @@ async function agendamento(): Promise<string> {
 }
 
 test.beforeAll(async () => {
-  test.setTimeout(240_000)
+  test.setTimeout(600_000)
   outra = await criarOutraRede(`sk${marca}`)
   alvo = await criarMembro(`skalvo${marca}`, {
     tenant: outra.tenantId, rotulo: 'Alvo',

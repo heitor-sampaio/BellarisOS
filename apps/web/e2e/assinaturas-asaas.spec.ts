@@ -33,7 +33,7 @@ let gestor: MembroDeTeste
 let assinaturaId = ''
 
 test.beforeAll(async () => {
-  test.setTimeout(240_000)
+  test.setTimeout(600_000)
   asaas = await subirAsaasFalso(PORTA)
   admin = await criarAtendente(`asad${marca}`, { papel: 'ADMIN' })
   outra = await criarOutraRede(`as${marca}`)

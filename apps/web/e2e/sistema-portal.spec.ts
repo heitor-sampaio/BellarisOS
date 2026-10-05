@@ -24,7 +24,7 @@ const atendentes: AtendenteDeTeste[] = []
 const emailDoNovo = `e2e-plataforma-novo-${marca}@bellaris.invalid`
 
 test.beforeAll(async () => {
-  test.setTimeout(180_000)
+  test.setTimeout(600_000)
   admin = await criarAtendente(`sisadm${marca}`, { papel: 'ADMIN' })
   suporte = await criarAtendente(`sissup${marca}`, { papel: 'SUPORTE' })
   atendentes.push(admin, suporte)

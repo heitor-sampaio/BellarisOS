@@ -62,7 +62,7 @@ export interface Permissao {
  * primeiros minutos e o limite estoura ("Request rate limit reached"). Quem
  * bate no limite espera e tenta de novo — só nesse erro, e com teto.
  */
-async function comPaciencia<T extends { error: { message: string } | null }>(fazer: () => Promise<T>): Promise<T> {
+export async function comPaciencia<T extends { error: { message: string } | null }>(fazer: () => Promise<T>): Promise<T> {
   const esperas = [10, 20, 30, 45, 60, 60, 60] // segundos: até ~5 min, a janela do limite
   for (let i = 0; ; i++) {
     const r = await fazer()

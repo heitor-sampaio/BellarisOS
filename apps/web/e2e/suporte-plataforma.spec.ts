@@ -30,7 +30,7 @@ let f: Fx | null = null
 const criado: { outra?: OutraRede; membros: MembroDeTeste[]; atendentes: AtendenteDeTeste[] } = { membros: [], atendentes: [] }
 
 test.beforeAll(async () => {
-  test.setTimeout(240_000)
+  test.setTimeout(600_000)
   const outra = await criarOutraRede(`pl${marca}`)
   criado.outra = outra
   const membro = await criarMembro(`plm${marca}`, {

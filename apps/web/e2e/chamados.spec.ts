@@ -40,7 +40,7 @@ let alvo: MembroDeTeste, colega: MembroDeTeste, gestor: MembroDeTeste
 let chamadoId = ''
 
 test.beforeAll(async () => {
-  test.setTimeout(240_000)
+  test.setTimeout(600_000)
   outra = await criarOutraRede(`ch${marca}`)
   alvo = await criarMembro(`chalvo${marca}`, {
     tenant: outra.tenantId, rotulo: 'Alvo', permissoes: [{ modulo: 'agenda', nivel: 'MANAGE' }],

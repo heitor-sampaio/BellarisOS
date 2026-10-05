@@ -39,7 +39,7 @@ const criado: { outra?: OutraRede; membros: MembroDeTeste[]; atendente?: Atenden
 let sup: { ctx: BrowserContext; page: Page } | null = null
 
 test.beforeAll(async () => {
-  test.setTimeout(240_000)
+  test.setTimeout(600_000)
   const b = db()
   const outra = await criarOutraRede(`si${marca}`)
   criado.outra = outra

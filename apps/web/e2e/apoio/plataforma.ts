@@ -5,6 +5,7 @@ export { totp } from './totp'
 import fs from 'node:fs'
 import path from 'node:path'
 import { banco, PREFIXO } from './banco'
+import { comPaciencia } from './sessao'
 
 /**
  * Gente da PLATAFORMA (a equipe do BellarisOS no /suporte) para os testes.
@@ -30,15 +31,6 @@ export interface AtendenteDeTeste {
 }
 
 // --- Sessão -------------------------------------------------------------------
-
-async function comPaciencia<T extends { error: { message: string } | null }>(fazer: () => Promise<T>): Promise<T> {
-  const esperas = [10, 20, 30, 45, 60]
-  for (let i = 0; ; i++) {
-    const r = await fazer()
-    if (!r.error || !/rate limit/i.test(r.error.message) || i >= esperas.length) return r
-    await new Promise(ok => setTimeout(ok, esperas[i]! * 1000))
-  }
-}
 
 function anon(): SupabaseClient {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
