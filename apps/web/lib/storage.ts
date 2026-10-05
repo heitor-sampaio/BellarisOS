@@ -13,8 +13,15 @@ export const DOCUMENTOS_ASSINADOS_BUCKET = 'documentos-assinados'
 
 const DEFAULT_EXPIRES = 60 * 60 // 1h
 
-/** Garante que o bucket exista e seja privado. */
+// Bucket que já se viu existir não some. Conferir de novo a cada upload era
+// uma chamada a mais ao Storage por arquivo, listando TODOS os buckets — e,
+// sob carga, a que falhava ou demorava: "Não consegui listar os buckets" no
+// meio da assinatura no papel, e o chamado preso em "Enviando…" (2026-10-05).
+const bucketsConfirmados = new Set<string>()
+
+/** Garante que o bucket exista e seja privado (uma vez por processo). */
 export async function ensurePrivateBucket(name: string): Promise<void> {
+  if (bucketsConfirmados.has(name)) return
   const admin = createAdminClient()
   const buckets = await ler(admin.storage.listBuckets(), 'listar os buckets')
   if (!buckets?.find(b => b.name === name)) {
@@ -26,6 +33,7 @@ export async function ensurePrivateBucket(name: string): Promise<void> {
       throw new Error(`Não consegui criar o bucket ${name}: ${error.message}`)
     }
   }
+  bucketsConfirmados.add(name)
 }
 
 /** Signed URL para um único path (null se path vazio/erro). */
