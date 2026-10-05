@@ -167,7 +167,9 @@ test.describe.serial('prontuário', () => {
     expect.soft(anamneseLa?.general_anamnesis ?? null, 'anamnese no cliente de outra rede').toBeNull()
 
     // Foto: o `appointment_id` trocado no FormData, dentro da própria página.
-    const ctx = await browser.newContext({ storageState: 'e2e/.auth/admin.json' })
+    // A sessão do admin desta rodada (cada metade da completa grava a sua:
+    // admin-<grupo>.json) — nunca um caminho fixo.
+    const ctx = await browser.newContext({ storageState: test.info().project.use.storageState })
     const aba = await ctx.newPage()
     await aba.addInitScript(([meu, alheio]) => {
       const original = FormData.prototype.append

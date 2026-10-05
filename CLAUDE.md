@@ -2494,6 +2494,10 @@ pnpm --filter web test:e2e:completa # a suíte inteira contra o build (porta 310
   chama cron — `tests/e2e-grupos.test.ts` confere a lista. Juntas é seguro
   porque a varredura de sobras só leva `[e2e]` com mais de uma hora; e cada
   metade grava a sessão do admin no seu arquivo (`e2e/.auth/admin-<grupo>.json`).
+  Spec que precisa da sessão do admin lê `test.info().project.use.storageState`,
+  nunca um caminho fixo. ⚠️ As duas metades emitem o link do MESMO admin juntas:
+  o link novo invalida o da outra, e o `global-setup` tenta de novo (era o que
+  derrubava a metade inteira antes do primeiro teste).
   Spec novo com rede própria entra na lista; migrar um compartilhado
   para rede própria é o que encurta a suíte.
 - Contra o build, `chamarAcao` lê os manifestos de `.next/server`

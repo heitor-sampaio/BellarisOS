@@ -44,25 +44,31 @@ export default async function globalSetup() {
   for (const f of falhas) console.warn(`[e2e] varredura NÃO apagou ${f.o_que}: ${f.erro}`)
 
   const admin = createClient(url!, serviceKey!, { auth: { persistSession: false } })
-
-  const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
-    type: 'magiclink',
-    email,
-  })
-  if (linkErr || !link?.properties?.hashed_token) {
-    throw new Error(
-      `Não consegui emitir a sessão de ${email}: ${linkErr?.message ?? 'link sem token'}. ` +
-      'Confira E2E_ADMIN_EMAIL — precisa ser um usuário com abrangência de rede.',
-    )
-  }
-
   const anon = createClient(url!, anonKey!, { auth: { persistSession: false } })
-  const { data: sessao, error: otpErr } = await anon.auth.verifyOtp({
-    token_hash: link.properties.hashed_token,
-    type: 'magiclink',
-  })
-  if (otpErr || !sessao.session) {
-    throw new Error(`Não consegui trocar o token por uma sessão: ${otpErr?.message ?? 'sem sessão'}`)
+
+  // ⚠️ As duas metades da completa rodam JUNTAS (no CI) e emitem o link do
+  // MESMO admin ao mesmo tempo: o link novo invalida o que a outra metade
+  // ainda ia usar ("Email link is invalid or has expired"), e a metade inteira
+  // morria antes do primeiro teste (2026-10-05). Quem perde a corrida emite
+  // outro, depois de uma espera aleatória.
+  const obtida: { sessao: { session: { access_token: string; refresh_token: string } } | null } = { sessao: null }
+  let ultimoErro = ''
+  for (let tentativa = 1; tentativa <= 5 && !obtida.sessao; tentativa++) {
+    const { data: link, error: linkErr } = await admin.auth.admin.generateLink({ type: 'magiclink', email })
+    if (linkErr || !link?.properties?.hashed_token) {
+      throw new Error(
+        `Não consegui emitir a sessão de ${email}: ${linkErr?.message ?? 'link sem token'}. ` +
+        'Confira E2E_ADMIN_EMAIL — precisa ser um usuário com abrangência de rede.',
+      )
+    }
+    const { data, error: otpErr } = await anon.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' })
+    if (!otpErr && data.session) { obtida.sessao = { session: data.session }; break }
+    ultimoErro = otpErr?.message ?? 'sem sessão'
+    await new Promise(ok => setTimeout(ok, 1_000 + Math.random() * 4_000 * tentativa))
+  }
+  const sessao = obtida.sessao
+  if (!sessao) {
+    throw new Error(`Não consegui trocar o token por uma sessão: ${ultimoErro}`)
   }
 
   const ctx = await request.newContext({ baseURL })
