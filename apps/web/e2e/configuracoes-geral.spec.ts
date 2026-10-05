@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco } from './apoio/banco'
+import { banco, tenantId } from './apoio/banco'
 
 /**
  * Configurações → Geral: os dados da rede, editáveis.
@@ -14,7 +14,7 @@ import { banco } from './apoio/banco'
  */
 test('a aba Geral mostra os dados da rede e salva a edição', async ({ page }) => {
   const db = banco()
-  const { data: antes, error } = await db.from('tenants').select('id, name, phone').limit(1).single()
+  const { data: antes, error } = await db.from('tenants').select('id, name, phone').eq('id', await tenantId()).single()
   if (error) throw new Error(`não li a rede: ${error.message}`)
 
   const telefoneOriginal = (antes.phone as string | null) ?? ''
@@ -45,7 +45,7 @@ test('a aba Geral mostra os dados da rede e salva a edição', async ({ page }) 
 
 test('documento com máscara é gravado só com os dígitos', async ({ page }) => {
   const db = banco()
-  const { data: antes } = await db.from('tenants').select('id, document').limit(1).single()
+  const { data: antes } = await db.from('tenants').select('id, document').eq('id', await tenantId()).single()
   const original = (antes!.document as string | null) ?? ''
 
   try {

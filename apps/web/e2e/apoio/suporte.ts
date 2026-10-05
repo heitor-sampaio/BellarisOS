@@ -66,18 +66,37 @@ export async function autorizarPor(browser: Browser, estado: string, userId: str
   } finally { await ctx.close() }
 }
 
+/**
+ * Clica "Entrar" e espera o portal do membro. Com as duas metades da completa
+ * juntas, o Auth às vezes limita (`?erro=O Auth está limitando…`): espera a
+ * janela andar e tenta de novo, pela própria tela — como faria a pessoa.
+ */
+export async function entrarComPaciencia(page: Page, abrir: () => Promise<void>): Promise<void> {
+  const esperas = [20, 40, 60, 90]
+  for (let i = 0; ; i++) {
+    await abrir()
+    // O destino (o portal do membro) ou a volta com erro — a tela de partida
+    // já é /suporte/, então ela não conta.
+    await page.waitForURL(u => /\/admin\/|[?&]erro=/.test(u.toString()), { timeout: 30_000 }).catch(() => null)
+    if (!/limitando/.test(decodeURIComponent(page.url())) || i >= esperas.length) break
+    await page.waitForTimeout(esperas[i]! * 1000)
+  }
+  await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30_000 })
+  await expect(page.getByRole('status', { name: 'Modo suporte' })).toBeVisible()
+}
+
 /** Entra pela tela: detalhe da rede → "Entrar como" na linha do membro → motivo → Entrar. */
 export async function entrarComo(browser: Browser, estadoDoAtendente: string, tenantId: string, linhaDoMembro: string):
   Promise<{ ctx: BrowserContext; page: Page }> {
   const ctx = await browser.newContext({ storageState: estadoDoAtendente })
   const page = await ctx.newPage()
-  await page.goto(`/suporte/redes/${tenantId}`)
-  const linha = page.locator('tr', { hasText: linhaDoMembro })
-  await linha.getByRole('button', { name: 'Entrar como' }).click()
-  await linha.getByLabel('Motivo do acesso').fill('Conferir o que a clínica relatou')
-  await linha.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30_000 })
-  await expect(page.getByRole('status', { name: 'Modo suporte' })).toBeVisible()
+  await entrarComPaciencia(page, async () => {
+    await page.goto(`/suporte/redes/${tenantId}`)
+    const linha = page.locator('tr', { hasText: linhaDoMembro })
+    await linha.getByRole('button', { name: 'Entrar como' }).click()
+    await linha.getByLabel('Motivo do acesso').fill('Conferir o que a clínica relatou')
+    await linha.getByRole('button', { name: 'Entrar', exact: true }).click()
+  })
   return { ctx, page }
 }
 

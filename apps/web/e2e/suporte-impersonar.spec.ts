@@ -5,6 +5,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarAtendente, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarAgendamentos, apagarClientes } from './apoio/limpeza'
+import { entrarComPaciencia } from './apoio/suporte'
 
 /**
  * "Entrar como" um membro — o suporte com impersonificação (fase 2, 2026-10-03).
@@ -159,13 +160,13 @@ async function autorizar(browser: Browser, clinico = false) {
 async function entrar(browser: Browser): Promise<{ ctx: BrowserContext; page: Page }> {
   const ctx = await browser.newContext({ storageState: f!.atendente.estado })
   const page = await ctx.newPage()
-  await page.goto(`/suporte/redes/${f!.outra.tenantId}`)
-  const linha = page.locator('tr', { hasText: `Alvo sialvo${marca}` })
-  await linha.getByRole('button', { name: 'Entrar como' }).click()
-  await linha.getByLabel('Motivo do acesso').fill('Conferir a agenda que a clínica relatou')
-  await linha.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30_000 })
-  await expect(page.getByRole('status', { name: 'Modo suporte' })).toBeVisible()
+  await entrarComPaciencia(page, async () => {
+    await page.goto(`/suporte/redes/${f!.outra.tenantId}`)
+    const linha = page.locator('tr', { hasText: `Alvo sialvo${marca}` })
+    await linha.getByRole('button', { name: 'Entrar como' }).click()
+    await linha.getByLabel('Motivo do acesso').fill('Conferir a agenda que a clínica relatou')
+    await linha.getByRole('button', { name: 'Entrar', exact: true }).click()
+  })
   return { ctx, page }
 }
 

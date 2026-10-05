@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco } from './apoio/banco'
+import { banco, tenantId } from './apoio/banco'
 
 /**
  * A escolha entre coexistência e Cloud API é real, não decorativa.
@@ -35,7 +35,7 @@ const CAMPOS = 'id, config, is_active, label, phone_number_id, waba_id'
 
 async function caixaOficial(): Promise<Linha | null> {
   const { data } = await banco().from('whatsapp_numbers')
-    .select(CAMPOS).eq('provider', 'official').maybeSingle<Linha>()
+    .select(CAMPOS).eq('provider', 'official').eq('tenant_id', await tenantId()).not('label', 'like', '[e2e]%').maybeSingle<Linha>()
   return data ?? null
 }
 
@@ -51,7 +51,9 @@ async function restaurar(antes: Linha | null) {
       waba_id:         antes.waba_id,
     }).eq('id', antes.id)
   } else {
-    await db.from('whatsapp_numbers').delete().eq('provider', 'official')
+    // Só a da rede real: sem o filtro, apagava a caixa oficial das redes [e2e]
+    // dos specs que rodam ao lado.
+    await db.from('whatsapp_numbers').delete().eq('provider', 'official').eq('tenant_id', await tenantId()).not('label', 'like', '[e2e]%')
   }
 }
 

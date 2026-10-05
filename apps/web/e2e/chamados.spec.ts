@@ -4,6 +4,7 @@ import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarAtendente, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
+import { entrarComPaciencia } from './apoio/suporte'
 
 /**
  * Chamados de suporte (fase 3, 2026-10-03): o botão "Ajuda" da topbar e a
@@ -172,12 +173,12 @@ test.describe.serial('chamados de suporte', () => {
     const ctx = await browser.newContext({ storageState: atendente!.estado })
     try {
       const page = await ctx.newPage()
-      await page.goto(`/suporte/chamados/${chamadoId}`)
-      await page.getByRole('button', { name: 'Entrar como' }).click()
-      await page.getByLabel('Motivo do acesso').fill('Ver a agenda que não abre')
-      await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-      await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30_000 })
-      await expect(page.getByRole('status', { name: 'Modo suporte' })).toBeVisible()
+      await entrarComPaciencia(page, async () => {
+        await page.goto(`/suporte/chamados/${chamadoId}`)
+        await page.getByRole('button', { name: 'Entrar como' }).click()
+        await page.getByLabel('Motivo do acesso').fill('Ver a agenda que não abre')
+        await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+      })
       // No modo suporte não há Ajuda: quem está ali é o atendente.
       await expect(page.getByRole('button', { name: 'Ajuda', exact: true })).toHaveCount(0)
       const { data: s } = await db().from('support_sessions').select('ticket_id').eq('tenant_id', outra!.tenantId).eq('status', 'ativa')

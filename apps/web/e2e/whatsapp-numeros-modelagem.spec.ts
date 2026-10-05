@@ -169,6 +169,8 @@ test.describe('whatsapp_numbers: o banco recusa o ambíguo', () => {
     const db = banco()
     const { data, error } = await db.from('whatsapp_numbers')
       .select('id, provider, is_active, is_default')
+      .eq('tenant_id', await tenantId())
+      .not('label', 'like', `${PREFIXO}%`)
       .order('is_active', { ascending: false })
       .order('updated_at', { ascending: false })
     expect(error).toBeNull()

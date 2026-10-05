@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco } from './apoio/banco'
+import { banco, tenantId } from './apoio/banco'
 import { ALL_MODULES, MODULE_LEVELS } from '../lib/permissions'
 
 /**
@@ -16,7 +16,7 @@ test('o cargo Admin da rede tem acesso a todos os módulos, gravado no banco', a
   const db = banco()
 
   const { data: cargo, error: cargoErr } = await db
-    .from('tenant_roles').select('id, label').eq('key', 'NETWORK_ADMIN').maybeSingle()
+    .from('tenant_roles').select('id, label').eq('key', 'NETWORK_ADMIN').eq('tenant_id', await tenantId()).maybeSingle()
   expect(cargoErr).toBeNull()
   expect(cargo, 'a rede precisa ter o cargo Admin da rede').not.toBeNull()
 

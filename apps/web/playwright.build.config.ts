@@ -43,10 +43,10 @@ const isolados = ISOLADOS.map(f => `**/${f}`)
 
 export default defineConfig({
   ...base,
-  // 180 s nos isolados: em paralelo, abrir a sessão dos membros pode esperar o
+  // 300 s nas duas metades: juntas, abrir a sessão dos membros pode esperar o
   // limite do Auth (e2e/apoio/sessao.ts), e a espera come o tempo do beforeAll.
-  ...(grupo === 'isolados' ? { testMatch: isolados, workers: Number(process.env.E2E_WORKERS ?? 3), timeout: 180_000 } : {}),
-  ...(grupo === 'compartilhados' ? { testIgnore: isolados, workers: 1 } : {}),
+  ...(grupo === 'isolados' ? { testMatch: isolados, workers: Number(process.env.E2E_WORKERS ?? 3), timeout: 300_000 } : {}),
+  ...(grupo === 'compartilhados' ? { testIgnore: isolados, workers: 1, timeout: 300_000 } : {}),
   // Cada metade na sua pasta: o Playwright limpa a pasta ao começar, e a
   // segunda metade apagaria as evidências das falhas da primeira.
   ...(grupo ? { outputDir: `test-results/${grupo}` } : {}),

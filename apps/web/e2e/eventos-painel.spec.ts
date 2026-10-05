@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco } from './apoio/banco'
+import { banco, tenantId } from './apoio/banco'
 
 /**
  * O painel de conferência (Fase 6).
@@ -18,6 +18,7 @@ test('a aba Eventos mostra o catálogo inteiro e a corrente, com detalhe do payl
   const { data: exemplo } = await db
     .from('domain_events')
     .select('nome')
+    .eq('tenant_id', await tenantId())
     .order('ocorrido_em', { ascending: false })
     .limit(1)
     .maybeSingle()
