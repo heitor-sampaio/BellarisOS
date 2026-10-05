@@ -1294,6 +1294,54 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-05 — A completa no GitHub Actions, com as duas metades juntas
+
+O Heitor pediu a completa no CI (a primeira desde o suporte e o `/sistema`, e a
+primeira com as metades juntas). Foram várias rodadas até ela ficar de pé. A
+maior parte era o TESTE sob carga; duas coisas eram do app, e uma delas era
+um defeito de produção:
+
+- **Do app — o Realtime perdia eventos em lote.** O servidor do Realtime guarda
+  as claims com os nulos virados TEXTO (`"branch_id": "null"`). Lá dentro,
+  `jwt_claim('client_id')` devolvia `'null'`, `eh_da_rede()` dava falso,
+  `can_access_branch` fazia `'null'::uuid` e estourava — e o Realtime descarta
+  o lote inteiro de mudanças em que isso acontece (centenas de
+  `PoolingReplicationError` por hora nos logs, só nas horas em que havia
+  membro da rede com tela aberta). Em produção: qualquer tela com tempo real
+  podia deixar de atualizar sempre que o admin da clínica estivesse logado.
+  No E2E aparecia como o quadro de oportunidades "lento". `jwt_claim` trata o
+  texto `'null'` como nulo (migration `20261005000001`); descoberto pelos
+  quadros do websocket no trace (inscrição confirmada, evento nunca chegou) e
+  pelos logs do Realtime.
+- **Do app — `ensurePrivateBucket` listava todos os buckets a cada upload.**
+  Uma chamada a mais ao Storage por arquivo, e sob carga era ela que falhava
+  ("Não consegui listar os buckets" no meio da assinatura no papel) ou
+  demorava (o chamado da Ajuda preso em "Enviando…"). Agora confere uma vez
+  por processo (`lib/storage.ts`).
+- **O limite do Auth é POR IP e por tipo.** Com as duas metades juntas, o balde
+  da verificação de token (magic link) esgotava — e é o mesmo que o app usa no
+  "entrar como". Esperar não resolvia (nem ~5 min). Os logins que o apoio CRIA
+  (membro, cliente final, atendente) entram por SENHA aleatória posta pela API
+  de admin (`sessaoDeTeste`, `e2e/apoio/sessao.ts`), que é outro balde, e
+  alternam para o magic link no limite. O admin real segue no magic link. De
+  quebra, os tempos caíram: compartilhados de ~20 para ~13–18 min, isolados de
+  ~15 para ~5–7 min.
+- **Leitura sem a rede filtrada** (configurações, eventos, WhatsApp, a ficha
+  mobile): com redes `[e2e]` nascendo ao lado, "a primeira" ou "um cliente
+  qualquer" podiam ser de outra rede. Todas filtram por `tenantId()`.
+- **Hidratação:** evento ou arquivo entregue antes de o componente hidratar
+  some (a Ajuda aberta pelo evento, a foto da ficha). O teste repete até a
+  tela responder.
+- **Realtime:** a inscrição sobe depois da hidratação; o que mudava antes
+  disso não chegava, e os testes chutavam 2,5 s. O `RealtimeRefresher` agora
+  desenha um marcador escondido (`data-tempo-real`, `data-estado="ligado"`
+  quando o canal confirma), e o teste espera por ele.
+- **Relógio:** a sessão de suporte "vencida em agora − 1 s" pelo relógio de
+  quem roda ainda não tinha vencido para o banco. Vence com 10 min de folga.
+- **Corrida entre as metades:** as duas emitem o link do MESMO admin; o
+  `global-setup` tenta de novo. E a sessão do admin é por metade
+  (`test.info().project.use.storageState`, nunca caminho fixo).
+
 ### 2026-10-03 — Administração do sistema (`/sistema`): redes, planos e cobrança pelo Asaas
 
 O pedido do Heitor: além do suporte, uma central para administrar todos os

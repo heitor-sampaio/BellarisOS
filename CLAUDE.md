@@ -157,6 +157,16 @@ pelo app. Até 2026-09-27 o prontuário e a fidelidade só exigiam
   `e2e/quadro-tempo-real.spec.ts` (membro da rede e de unidade).
 - ⚠️ Política que compara `auth.jwt() ->> 'x'` está ERRADA: as claims moram em
   `app_metadata` — use `jwt_claim('x')`. A de `leads` era assim e nunca valeu.
+  (Sobram cinco assim — `appointment_history`, `branch_product_stock`,
+  `crm_stages`, `lead_procedures`, `treatment_plan_items` —, permissivas e
+  mortas: dão sempre falso, não abrem nada.)
+- ⚠️ **No Realtime, o nulo da claim chega como o TEXTO `"null"`**
+  (`realtime.subscription.claims`: `"branch_id": "null"`). `jwt_claim` trata o
+  texto `'null'` como nulo (migration `20261005000001`). Sem isso,
+  `can_access_branch` fazia `'null'::uuid` para todo membro da rede, e o
+  Realtime DESCARTA o lote inteiro de mudanças em que uma política estoura —
+  para todos os inscritos. Política ou função nova que leia claim sem passar
+  por `jwt_claim` (ou que faça `::uuid` de uma) traz isso de volta.
 
 ### Claims do JWT
 
