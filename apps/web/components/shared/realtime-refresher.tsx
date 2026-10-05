@@ -28,7 +28,9 @@ interface Props {
  * Desenha só um marcador escondido (`data-tempo-real`, `data-estado`): o canal
  * sobe DEPOIS da hidratação, e o que muda antes disso não chega. Quem precisa
  * saber se a tela já escuta (o E2E) espera `data-estado="ligado"` em vez de
- * chutar um tempo.
+ * chutar um tempo. "Ligado" é a confirmação do SERVIDOR de que a escuta no
+ * Postgres subiu (a mensagem `system` do postgres_changes) — não o SUBSCRIBED
+ * do canal, que chega antes: o que muda nesse meio não é entregue.
  */
 export function RealtimeRefresher({ tables, filter, debounceMs = 500 }: Props) {
   const router = useRouter()
@@ -78,7 +80,10 @@ export function RealtimeRefresher({ tables, filter, debounceMs = 500 }: Props) {
       )
     }
 
-    channel.subscribe(status => setLigado(status === 'SUBSCRIBED'))
+    channel.on('system', {}, (msg: { extension?: string; status?: string }) => {
+      if (msg?.extension === 'postgres_changes') setLigado(msg.status === 'ok')
+    })
+    channel.subscribe(status => { if (status !== 'SUBSCRIBED') setLigado(false) })
     document.addEventListener('visibilitychange', aoMudarVisibilidade)
 
     return () => {
