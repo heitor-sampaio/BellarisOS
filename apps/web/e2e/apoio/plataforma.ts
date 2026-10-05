@@ -1,11 +1,10 @@
 import { request } from '@playwright/test'
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { totp } from './totp'
 export { totp } from './totp'
 import fs from 'node:fs'
 import path from 'node:path'
 import { banco, PREFIXO } from './banco'
-import { comPaciencia } from './sessao'
+import { sessaoDeTeste } from './sessao'
 
 /**
  * Gente da PLATAFORMA (a equipe do BellarisOS no /suporte) para os testes.
@@ -31,12 +30,6 @@ export interface AtendenteDeTeste {
 }
 
 // --- Sessão -------------------------------------------------------------------
-
-function anon(): SupabaseClient {
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  })
-}
 
 /** Grava a sessão (access + refresh) em cookies, pelo caminho do app nativo. */
 async function gravarSessao(access: string, refresh: string, estado: string): Promise<void> {
@@ -87,14 +80,10 @@ export async function criarAtendente(
     if (eS) throw new Error(`gravar na equipe da plataforma: ${eS.message}`)
     staffId = staff!.id
 
-    const { data: link, error: eL } = await comPaciencia(() => db.auth.admin.generateLink({ type: 'magiclink', email }))
-    if (eL || !link?.properties?.hashed_token) throw new Error(`emitir o link: ${eL?.message}`)
-    const cliente = anon()
-    const { data: s1, error: eO } = await comPaciencia(() => cliente.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' }))
-    if (eO || !s1.session) throw new Error(`abrir a sessão: ${eO?.message}`)
+    const { cliente, sessao: s1 } = await sessaoDeTeste(authId, email)
 
     let segredo: string | null = null
-    let sessao = s1.session
+    let sessao = s1
     if (!opcoes.semVerificacao) {
       const { data: fator, error: eF } = await cliente.auth.mfa.enroll({ factorType: 'totp', friendlyName: `e2e ${marca}` })
       if (eF || !fator) throw new Error(`cadastrar o autenticador: ${eF?.message}`)

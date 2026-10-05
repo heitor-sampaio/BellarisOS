@@ -1,5 +1,6 @@
 import { request } from '@playwright/test'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js'
+import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { banco, tenantId, PREFIXO } from './banco'
@@ -14,8 +15,8 @@ import { apagarClientes } from './limpeza'
  * teste entrava como usuário de UNIDADE, como cargo sem um módulo, ou como
  * CLIENTE FINAL. Daí os três criadores daqui.
  *
- * A sessão sai pelo mesmo caminho de `global-setup.ts` (magic link +
- * `/api/auth/session`), sem senha em lugar nenhum. O cargo é novo a cada
+ * A sessão sai por `sessaoDeTeste` (senha aleatória, ou magic link no limite
+ * do Auth) + `/api/auth/session`, o caminho do app nativo. O cargo é novo a cada
  * rodada, então o cache de permissões (`permissions:<tenant>`, por cargo) não
  * tem nada velho para servir.
  *
@@ -56,35 +57,51 @@ export interface Permissao {
 }
 
 /**
- * O Auth do Supabase limita as verificações de token por endereço de origem
- * (janela de 5 min). Um spec por vez, as sessões se espalhavam pela suíte; com
- * os isolados em paralelo (`e2e/grupos.ts`), uns 40 membros abrem sessão nos
- * primeiros minutos e o limite estoura ("Request rate limit reached"). Quem
- * bate no limite espera e tenta de novo — só nesse erro, e com teto.
+ * A sessão de um login [e2e] criado aqui, sem ficar preso no limite do Auth.
+ *
+ * O Auth limita POR IP e por tipo: a verificação de token (o magic link) é um
+ * balde, a entrada com senha é outro. Com as duas metades da completa juntas,
+ * o balde da verificação esgotava — e é o mesmo que o próprio app usa no
+ * "entrar como" do suporte (2026-10-05: até ~5 min de espera não bastaram).
+ * Então o login de teste ganha uma senha aleatória (pela API de admin, que
+ * não tem limite) e entra por ela; no limite, alterna para o magic link, e
+ * entre um e outro espera. Só vale para os logins que o apoio CRIA: o admin
+ * real (global-setup) continua no magic link e nunca tem a senha tocada.
  */
-export async function comPaciencia<T extends { error: { message: string } | null }>(fazer: () => Promise<T>): Promise<T> {
-  const esperas = [10, 20, 30, 45, 60, 60, 60] // segundos: até ~5 min, a janela do limite
-  for (let i = 0; ; i++) {
-    const r = await fazer()
-    if (!r.error || !/rate limit/i.test(r.error.message) || i >= esperas.length) return r
-    console.warn('[e2e] limite do Auth: esperando ' + esperas[i] + ' s para abrir a sessão')
-    await new Promise(ok => setTimeout(ok, esperas[i]! * 1000))
+export async function sessaoDeTeste(authId: string, email: string): Promise<{ cliente: SupabaseClient; sessao: Session }> {
+  const db = banco()
+  const senha = `E2e-${randomUUID()}`
+  const { error: erroSenha } = await db.auth.admin.updateUserById(authId, { password: senha })
+  if (erroSenha) throw new Error(`pôr a senha de teste: ${erroSenha.message}`)
+  const cliente = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  )
+  const esperas = [0, 0, 10, 15, 20, 30, 45, 60, 60, 60]
+  let motivo = ''
+  for (let i = 0; i < esperas.length; i++) {
+    if (esperas[i]) {
+      console.warn(`[e2e] limite do Auth: esperando ${esperas[i]} s para abrir a sessão`)
+      await new Promise(ok => setTimeout(ok, esperas[i]! * 1000))
+    }
+    const r = i % 2 === 0
+      ? await cliente.auth.signInWithPassword({ email, password: senha })
+      : await (async () => {
+        const { data: link, error } = await db.auth.admin.generateLink({ type: 'magiclink', email })
+        if (error || !link?.properties?.hashed_token) return { data: { session: null }, error: error ?? { message: 'o link não veio' } }
+        return cliente.auth.verifyOtp({ token_hash: link.properties.hashed_token, type: 'magiclink' })
+      })()
+    if (r.data.session) return { cliente, sessao: r.data.session }
+    motivo = r.error?.message ?? 'a sessão não veio'
+    if (!/rate limit/i.test(motivo)) break
   }
+  throw new Error(`abrir a sessão: ${motivo}`)
 }
 
-/** Magic link → sessão → cookies gravados no arquivo. O mesmo caminho do app nativo. */
-async function abrirSessao(email: string, estado: string): Promise<{ accessToken: string; destino: string }> {
-  const db = banco()
-  const { data: link, error: erroLink } = await comPaciencia(() => db.auth.admin.generateLink({ type: 'magiclink', email }))
-  if (erroLink || !link?.properties?.hashed_token) throw new Error(`emitir o link: ${erroLink?.message}`)
-  const anon = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } },
-  )
-  const { data: sessao, error: erroOtp } = await comPaciencia(() => anon.auth.verifyOtp({
-    token_hash: link.properties.hashed_token, type: 'magiclink',
-  }))
-  if (erroOtp || !sessao.session) throw new Error(`abrir a sessão: ${erroOtp?.message}`)
+/** Sessão (`sessaoDeTeste`) → cookies gravados no arquivo, pelo caminho do app nativo. */
+async function abrirSessao(authId: string, email: string, estado: string): Promise<{ accessToken: string; destino: string }> {
+  const { sessao: s } = await sessaoDeTeste(authId, email)
+  const sessao = { session: s }
 
   const ctx = await request.newContext({ baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000' })
   const res = await ctx.post('/api/auth/session', {
@@ -177,7 +194,7 @@ export async function criarMembro(
     userId = membro!.id
 
     // Sessão por último, com as claims já gravadas — o token nasce com elas.
-    const { accessToken, destino } = await abrirSessao(email, estado)
+    const { accessToken, destino } = await abrirSessao(authId!, email, estado)
     return { userId, roleId: roleId!, accessToken, destino, estado, limpar }
   } catch (e) {
     await limpar()
@@ -248,7 +265,7 @@ export async function clienteComSessao(
     const { error: erroClaims } = await db.rpc('set_client_claims', { p_auth_id: authId, p_client_id: clientId })
     if (erroClaims) throw new Error(`gravar as claims do cliente: ${erroClaims.message}`)
 
-    const { accessToken, destino } = await abrirSessao(email, estado)
+    const { accessToken, destino } = await abrirSessao(authId!, email, estado)
     return { clientId, branchId: unidade.id, slug: unidade.slug, accessToken, destino, estado, limpar }
   } catch (e) {
     await limpar()
