@@ -3,7 +3,7 @@
 Registro do desenvolvimento: o que existe hoje, como chegamos aqui e o que está
 em aberto. Documento único.
 
-**Última atualização: 2026-09-26.**
+**Última atualização: 2026-10-06.**
 
 > **Este arquivo se atualiza a cada entrega** — feature nova ou edição do que já
 > existe (CLAUDE.md §16). Não é para acumular até o fim de uma frente: foi assim
@@ -1294,6 +1294,26 @@ próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo o
 borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
+
+### 2026-10-06 — O CLAUDE.md vira índice; as regras de cada módulo vão para `docs/regras/`
+
+O CLAUDE.md chegou a 165 mil caracteres, e o Claude Code o carrega inteiro em
+toda sessão (o aviso de tamanho apareceu). Ficaram nele só as regras do sistema
+inteiro: projeto, stack, pastas, multi-tenant e RLS, portais, convenções,
+permissões (§11), comandos, o §16 e o "nunca fazer" geral. Ficou com uns 38 mil caracteres.
+
+- O resto foi para `docs/regras/`, um arquivo por área (atendimento,
+  crm-inbox, fidelidade, vendas-financeiro, comissoes, documentos,
+  whatsapp-push, automacoes, plataforma, busca, design, indicadores, infra,
+  e2e). Cada um termina com o "O que nunca fazer aqui" da área.
+- **O texto não mudou, só de lugar** — conferido linha a linha contra a
+  versão anterior. Os números de seção se mantiveram, e o §9 do CLAUDE.md é
+  o índice: arquivo, seções e os GATILHOS (arquivos, tabelas, funções, telas)
+  que mandam ler cada um antes de mexer. As citações "CLAUDE.md §9.7" no
+  código e nos specs continuam achando a seção por ele.
+- `@import` não resolveria: o importado também é carregado no início.
+- Regra nova de módulo entra no arquivo da área; no CLAUDE.md, só a que vale
+  para o sistema inteiro (§16).
 
 ### 2026-10-05 — A completa no GitHub Actions, com as duas metades juntas
 
