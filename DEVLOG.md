@@ -5442,6 +5442,13 @@ verdade. O que vale:
     ganharam os três hosts e o localhost. Sem isso, o link de e-mail que não
     casa com a lista cai no Site URL: o "esqueci minha senha" da clínica
     levava a localhost em produção;
+  - feito: o e-mail do Auth sai pelo **Resend** (SMTP próprio, remetente
+    `@bellarisos.com`, domínio verificado; o SMTP padrão do Supabase mandava
+    2 por hora para o projeto inteiro). E o template "Reset password" usa
+    `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery`: o link do
+    `/verify` com PKCE só funcionava no MESMO navegador que pediu, e o dos
+    convites e do "reenviar acesso" (cliente admin, fluxo implícito) nunca
+    funcionou — o token vinha no `#`, que não chega ao servidor;
   - quando ligar o Asaas, o webhook em `https://admin.bellarisos.com/api/webhooks/asaas`;
   - `PLATAFORMA_ADMIN_EMAIL` vai no serviço do SISTEMA, e o primeiro login é
     em admin.bellarisos.com.
