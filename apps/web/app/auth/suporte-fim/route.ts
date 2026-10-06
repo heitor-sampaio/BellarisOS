@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { opcoesDoCookieDeSessao } from '@/lib/supabase/cookie-de-sessao'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { revalidateTag } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest) {
       getAll: () => req.cookies.getAll(),
       setAll: (lista: { name: string; value: string; options?: CookieOptions }[]) =>
         lista.forEach(({ name, value, options }) => resposta.cookies.set(name, value,
-          value ? { ...options, maxAge: 60 * 60 * 24 * 7 } : { ...options, maxAge: 0 })),
+          opcoesDoCookieDeSessao(value, options))),
     },
   })
 

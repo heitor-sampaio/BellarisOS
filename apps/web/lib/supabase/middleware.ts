@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
+import { opcoesDoCookieDeSessao } from './cookie-de-sessao'
 import { inicioDaPlataforma, ehPortalDaPlataforma, ehPortalDoSistema } from '@/lib/plataforma/destino'
 
 export async function updateSession(request: NextRequest) {
@@ -29,7 +30,7 @@ export async function updateSession(request: NextRequest) {
             // não pode ganhar a validade de 7 dias.
             cookiesToSet.forEach(({ name, value, options }) =>
               supabaseResponse.cookies.set(name, value,
-                value ? { ...options, maxAge: 60 * 60 * 24 * 7 } : { ...options, maxAge: 0 })
+                opcoesDoCookieDeSessao(value, options))
             )
           },
         },

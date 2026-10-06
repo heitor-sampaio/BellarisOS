@@ -13,7 +13,8 @@ import {
  *
  * A trava é da RLS (`private.suporte_sem_clinico`, política RESTRITIVA nas
  * tabelas clínicas), porque o atendente tem o token do membro na mão — o
- * cookie do Supabase não é httpOnly. Por isso a prova é pelo PostgREST:
+ * cookie é httpOnly desde 2026-10-06, mas a página pede o access token a
+ * `/api/auth/token` para o Realtime. Por isso a prova é pelo PostgREST:
  *  - sem dado clínico na autorização: não LÊ e não GRAVA prontuário, nem na
  *    tela nem com o token;
  *  - com a autorização que o inclui (dada por quem gerencia prontuário): lê.

@@ -74,7 +74,7 @@ const AREAS = [
     specs: /^(prontuario|ficha|lgpd|portal-cliente|fase5|planejamentos|permissoes-acoes|clinico)/ },
   { nome: 'autorização e equipe',
     chaves: ['permiss', 'cargo', 'role', 'team', 'equipe', 'membro', 'login', 'register', 'password', 'senha'],
-    specs: /^(autenticacao|permissoes|fase4|membro|equipe|portais|abrangencia|rls|api-sem|privacidade|acoes-entre-redes)/ },
+    specs: /^(autenticacao|sessao-httponly|permissoes|fase4|membro|equipe|portais|abrangencia|rls|api-sem|privacidade|acoes-entre-redes)/ },
   { nome: 'configurações e rede',
     chaves: ['settings', 'configurac', 'branch', 'unidade', 'tenant', 'rede', 'integrac', 'integration'],
     specs: /^(configuracoes|estrutura|equipe|anuncios|abrangencia|credenciais|acoes-entre-redes)/ },

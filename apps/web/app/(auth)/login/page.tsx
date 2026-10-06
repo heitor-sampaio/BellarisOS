@@ -2,8 +2,6 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { loginAction } from '@/actions/auth'
-import { createClient } from '@/lib/supabase/client'
-import { nativeStore } from '@/lib/supabase/native-store'
 import Link from 'next/link'
 
 /** Por que a pessoa voltou ao login (`?acesso=`) — dito na tela, não só na URL. */
@@ -22,15 +20,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!(state && 'redirectTo' in state && state.redirectTo)) return
-    const dest = state.redirectTo
-
-    // Fire-and-forget: salva sessão no Preferences sem bloquear o redirect.
-    // CapacitorSessionSync mantém o store atualizado em segundo plano.
-    createClient().auth.getSession().then(({ data: { session } }) => {
-      if (session) nativeStore.save({ access_token: session.access_token, refresh_token: session.refresh_token })
-    }).catch(() => {})
-
-    window.location.href = dest
+    // A sessão já está nos cookies (httpOnly), gravados pela action.
+    window.location.href = state.redirectTo
   }, [state])
 
   return (

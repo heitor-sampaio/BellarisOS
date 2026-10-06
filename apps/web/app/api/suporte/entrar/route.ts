@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { opcoesDoCookieDeSessao } from '@/lib/supabase/cookie-de-sessao'
 
 import { getPlatformContext } from '@/lib/plataforma/contexto'
 import { registrarNaPlataforma } from '@/lib/plataforma/auditoria'
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
         // O pedaço que sobra da sessão antiga vem para ser APAGADO (vazio):
         // não pode ganhar a validade de 7 dias.
         lista.forEach(({ name, value, options }) => resposta.cookies.set(name, value,
-          value ? { ...options, maxAge: 60 * 60 * 24 * 7 } : { ...options, maxAge: 0 }))
+          opcoesDoCookieDeSessao(value, options)))
       },
     },
   })

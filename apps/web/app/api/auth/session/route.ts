@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { opcoesDoCookieDeSessao } from '@/lib/supabase/cookie-de-sessao'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import type { JwtClaims } from '@estetica-os/types'
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
         getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) => {
           cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, { ...options, maxAge: 60 * 60 * 24 * 7 })
+            cookieStore.set(name, value, opcoesDoCookieDeSessao(value, options))
           )
         },
       },

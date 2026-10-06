@@ -33,7 +33,13 @@ export interface AtendenteDeTeste {
 
 /** Grava a sessão (access + refresh) em cookies, pelo caminho do app nativo. */
 async function gravarSessao(access: string, refresh: string, estado: string): Promise<void> {
-  const ctx = await request.newContext({ baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000' })
+  // Contexto VAZIO: herdar a sessão padrão do config (o admin) deixava os
+  // cookies dele no arquivo da pessoa — e, com o cookie da sessão Secure no
+  // build, o do admin sobrevivia ao lado e era o que o servidor lia.
+  const ctx = await request.newContext({
+    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
+    storageState: { cookies: [], origins: [] },
+  })
   const res = await ctx.post('/api/auth/session', { data: { access_token: access, refresh_token: refresh } })
   if (!res.ok()) throw new Error(`/api/auth/session respondeu ${res.status()}`)
   fs.mkdirSync(path.dirname(estado), { recursive: true })

@@ -103,7 +103,13 @@ async function abrirSessao(authId: string, email: string, estado: string): Promi
   const { sessao: s } = await sessaoDeTeste(authId, email)
   const sessao = { session: s }
 
-  const ctx = await request.newContext({ baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000' })
+  // Contexto VAZIO: herdar a sessão padrão do config (o admin) deixava os
+  // cookies dele no arquivo da pessoa — e, com o cookie da sessão Secure no
+  // build, o do admin sobrevivia ao lado e era o que o servidor lia.
+  const ctx = await request.newContext({
+    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
+    storageState: { cookies: [], origins: [] },
+  })
   const res = await ctx.post('/api/auth/session', {
     data: { access_token: sessao.session.access_token, refresh_token: sessao.session.refresh_token },
   })

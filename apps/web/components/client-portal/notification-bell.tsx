@@ -176,13 +176,9 @@ export function NotificationBell({ initialUnread, clientId }: Props) {
         },
       )
 
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        if (!active) return
-        if (session) supabase.realtime.setAuth(session.access_token)
-        channel.subscribe()
-      })
-      .catch(() => { /* realtime is optional — app works without it */ })
+    // O token da pessoa vem do servidor (lib/supabase/client.ts): o cliente o
+    // pede sozinho antes de entrar no canal.
+    channel.subscribe()
 
     return () => {
       active = false

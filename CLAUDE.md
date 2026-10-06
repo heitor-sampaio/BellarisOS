@@ -124,6 +124,13 @@ estetica-os/                          (raiz do monorepo)
 
 ### Como o isolamento funciona
 
+⚠️ **A sessão mora só no servidor** (2026-10-06): todo cookie do Supabase passa
+por `opcoesDoCookieDeSessao` (`lib/supabase/cookie-de-sessao.ts`: httpOnly,
+lax, sem domínio). O navegador não lê nem renova a sessão — o cliente de
+`lib/supabase/client.ts` serve só ao Realtime e pega o ACCESS token em
+`/api/auth/token` (nunca o refresh). Login, saída e "quem sou eu" são do
+servidor. Prova: `e2e/sessao-httponly.spec.ts`.
+
 1. Usuário autentica via Supabase Auth
 2. JWT contém claims customizados: `tenant_id`, `branch_id`, `role`, `client_id`
 3. Middleware do Next.js (web) ou contexto do app (mobile) lê esses claims
@@ -327,8 +334,9 @@ login, leia antes: o portão da rede bloqueada e a sessão de suporte moram ali.
 
 O app é o portal web num Capacitor: as rotas são as mesmas, e o login decide o
 portal pelo contexto (rede, unidade ou cliente final). O que é nativo é pouco —
-sessão guardada no aparelho (`lib/supabase/native-store`), push (FCM) e barra
-de status. Só HTTPS (`cleartext: false`); para desenvolver contra `http`
+push (FCM), barra de status e o `CookieManager.flush()` ao pausar
+(`MainActivity`): a sessão é o cookie httpOnly do WebView, não um espelho nas
+Preferences (saiu em 2026-10-06, com o refresh token legível pelo JS). Só HTTPS (`cleartext: false`); para desenvolver contra `http`
 local, liberar só na cópia local.
 
 ---
@@ -650,6 +658,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Usar a paleta do Tailwind (red-600, green-600…) — o sistema tem a sua
 ❌ Encerrar uma entrega sem atualizar o DEVLOG e a memória (§16)
 ❌ Implementar feature sem o teste escrito antes e visto falhando (§15, TDD)
+❌ Gravar cookie de sessão sem opcoesDoCookieDeSessao, ou ler/guardar a sessão no JS (o refresh token iria junto)
 ❌ Usar o primeiro do x-forwarded-for como IP de limite (o cliente o forja) — é o X-Real-IP
 ❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, anamnese) sem podeVerClinico
 ❌ Mandar config de integração ao navegador sem mascararSegredos (ou criar chave de credencial fora da lista)

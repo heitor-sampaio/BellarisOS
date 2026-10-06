@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import './globals.css'
-import { CapacitorSessionSync }  from '@/components/capacitor-session-sync'
 import { NavigationProgress }    from '@/components/shared/navigation-progress'
 import { NativeShell }           from '@/components/native-shell'
 import { Toaster }               from 'sonner'
@@ -88,7 +87,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Aplica o estado recolhido do sidebar antes do paint (evita flash) */}
         <script dangerouslySetInnerHTML={{ __html: "(function(){try{if(localStorage.getItem('sidebar-collapsed')==='1')document.documentElement.classList.add('sidebar-collapsed')}catch(e){}})()" }} />
         {/* Mantém armazenamento nativo (Preferences) sincronizado com a sessão */}
-        <CapacitorSessionSync />
         {/* Configura shell nativo (classe .capacitor + status bar rosé/branco) */}
         <NativeShell />
         {/* Barra de progresso de navegação — aparece ao clicar em qualquer NavItem */}

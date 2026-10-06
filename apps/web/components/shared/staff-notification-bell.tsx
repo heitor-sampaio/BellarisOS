@@ -52,13 +52,9 @@ export function StaffNotificationBell({ internalUserId, initialUnread, comAjuda 
         },
       )
 
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        if (!active) return
-        if (session) supabase.realtime.setAuth(session.access_token)
-        channel.subscribe()
-      })
-      .catch(() => { /* realtime opcional */ })
+    // O token da pessoa vem do servidor (lib/supabase/client.ts): o cliente o
+    // pede sozinho antes de entrar no canal.
+    channel.subscribe()
 
     return () => { active = false; supabase.removeChannel(channel) }
   }, [internalUserId])

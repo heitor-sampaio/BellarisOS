@@ -1295,6 +1295,37 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-06 — A sessão só no servidor (cookies httpOnly)
+
+Fase 1 da separação da plataforma, mas vale para a clínica inteira. Os
+cookies do Supabase eram legíveis pelo JS da página (o padrão do
+`@supabase/ssr`): um script injetado — e a clínica desenha conteúdo de fora,
+do WhatsApp ao editor de documentos — levava o refresh token (7 dias,
+renovável) e sequestrava a conta da máquina de quem o roubou, mesmo depois da
+falha corrigida.
+
+- Todo cookie de sessão passa por `opcoesDoCookieDeSessao`
+  (`lib/supabase/cookie-de-sessao.ts`): httpOnly, lax, sem domínio, `secure`
+  em produção. Eram cinco lugares escrevendo cada um o seu (e o de
+  `lib/supabase/server.ts` dava 7 dias até ao pedaço que vinha vazio para
+  apagar).
+- O navegador não lê nem renova mais a sessão. O cliente de
+  `lib/supabase/client.ts` serve só ao Realtime e pega o ACCESS token em
+  `/api/auth/token` (até 1 h, nunca o refresh; 401 sem sessão, 403 de outro
+  site), guardado em memória e renovado um minuto antes de vencer
+  (`lib/supabase/token-do-navegador.ts`). O `supabase-js` o pede de novo a
+  cada renovação do Realtime; os sinos deixaram de chamar `setAuth` à mão.
+- O app Android deixou de espelhar access e refresh token nas Preferences
+  (`capacitor-session-sync.tsx` e `native-store.ts` saíram): a sessão é o
+  cookie do WebView, que a `MainActivity` grava em disco ao pausar
+  (`CookieManager.flush()`). O "cold start" é a landing perguntando ao
+  servidor, depois da hidratação, se há sessão. **Pede build novo do app** —
+  quem estiver só com o espelho antigo entra de novo uma vez.
+- TDD: `tests/cookie-de-sessao.test.ts`, `tests/token-do-navegador.test.ts` e
+  `e2e/sessao-httponly.spec.ts` nasceram vermelhos (o cookie
+  `sb-…-auth-token` "legível pelo JS"); o quadro em tempo real e os sinos
+  provaram que o Realtime seguiu vivo.
+
 ### 2026-10-06 — O CLAUDE.md vira índice; as regras de cada módulo vão para `docs/regras/`
 
 O CLAUDE.md chegou a 165 mil caracteres, e o Claude Code o carrega inteiro em
