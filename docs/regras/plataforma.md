@@ -55,8 +55,9 @@ um muro que não depende de cada trava do código.
     na hora); erro ao ler conta como EXIGE. Mudar fica em
     `platform_audit_log` (`plataforma.configurada`).
   - Vale em CADA host: quem é ADMIN entra nos dois, com uma sessão (e, com
-    autenticador, um código) em cada. O seletor de portal é um link absoluto
-    para o outro host (`SeletorDePortal`).
+    autenticador, um código) em cada. Não há atalho de um host para o outro
+    (o seletor saiu em 2026-10-06, a pedido do Heitor): cada um se abre pelo
+    seu endereço.
 - **URL entre hosts vem do ambiente** (`urlDoHost`, `urlDaClinica`), nunca do
   pedido. O e-mail de "definir senha" volta pela clínica para membro de rede e
   pelo host do papel para atendente (`linkDeDefinirSenha`).

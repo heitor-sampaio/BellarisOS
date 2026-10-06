@@ -59,7 +59,7 @@ async function comSessao(browser: Browser, estado: string, fn: (p: Page) => Prom
 }
 
 test.describe.serial('administração do sistema', () => {
-  test('o ADMIN abre o sistema; o seletor leva ao host do suporte, com a sessão de lá', async ({ browser }) => {
+  test('o ADMIN abre o sistema; sem seletor de portal — cada host é um serviço, com a sua sessão', async ({ browser }) => {
     await comSessao(browser, admin.estado, async p => {
       await p.goto(`${SIS()}/`)
       await expect(p.getByRole('heading', { name: 'Painel' })).toBeVisible()
@@ -68,16 +68,17 @@ test.describe.serial('administração do sistema', () => {
       await expect(p.getByRole('heading', { name: 'Equipe da plataforma' })).toBeVisible()
       await p.goto(`${SIS()}/auditoria`)
       await expect(p.getByRole('heading', { name: 'Auditoria da plataforma' })).toBeVisible()
-      // O seletor é um link para o OUTRO host: a sessão do sistema não vale lá.
-      await p.getByRole('navigation', { name: 'Portal da plataforma' }).getByRole('link', { name: 'Suporte' }).click()
-      await expect(p).toHaveURL(`${SUP()}/login`)
+      // Sem atalho para o outro host (decisão do Heitor, 2026-10-06): o
+      // sistema e o suporte são serviços separados, e quem é ADMIN abre cada
+      // um pelo endereço dele.
+      await expect(p.getByRole('navigation', { name: 'Portal da plataforma' })).toHaveCount(0)
+      await expect(p.locator(`a[href^="${SUP()}"]`)).toHaveCount(0)
     })
-    // Com a sessão do suporte (a segunda do ADMIN), o seletor volta ao sistema.
     await comSessao(browser, await admin.estadoNo('suporte'), async p => {
       await p.goto(`${SUP()}/chamados`)
       await expect(p.getByRole('heading', { name: 'Chamados' })).toBeVisible()
-      const seletor = p.getByRole('navigation', { name: 'Portal da plataforma' })
-      await expect(seletor.getByRole('link', { name: 'Sistema' })).toHaveAttribute('href', `${SIS()}/`)
+      await expect(p.getByRole('navigation', { name: 'Portal da plataforma' })).toHaveCount(0)
+      await expect(p.locator(`a[href^="${SIS()}"]`)).toHaveCount(0)
     })
   })
 

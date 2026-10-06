@@ -2,9 +2,7 @@ import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { lerClaims, marcaDaPlataforma, getCachedStaff } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { sair } from '@/actions/acesso'
-import { urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 import { NavDoSuporte } from '@/components/suporte/nav-do-suporte'
-import { SeletorDePortal } from '@estetica-os/nucleo/components/plataforma/seletor-de-portal'
 import { contagemDaFila } from '@estetica-os/nucleo/lib/suporte/chamados'
 import { verificacaoDaSessao } from '@estetica-os/nucleo/lib/plataforma/verificacao-exigida'
 
@@ -36,7 +34,6 @@ export default async function SuporteLayout({ children }: { children: ReactNode 
         </div>
         {verificado && <NavDoSuporte naFila={naFila} />}
         <div className="suporte-quem">
-          {verificado && staff?.papel === 'ADMIN' && <SeletorDePortal atual="suporte" urls={{ sistema: urlDoHost('sistema'), suporte: urlDoHost('suporte') }} />}
           {staff && <span className="suporte-quem-nome">{staff.name}</span>}
           <form action={sair}>
             <button type="submit" className="btn-ghost">Sair</button>

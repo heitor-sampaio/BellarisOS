@@ -2,9 +2,7 @@ import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { lerClaims, marcaDaPlataforma, getCachedStaff } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { sair } from '@/actions/acesso'
-import { urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 import { NavDoSistema } from '@/components/sistema/nav-do-sistema'
-import { SeletorDePortal } from '@estetica-os/nucleo/components/plataforma/seletor-de-portal'
 import { verificacaoDaSessao } from '@estetica-os/nucleo/lib/plataforma/verificacao-exigida'
 
 /**
@@ -34,7 +32,6 @@ export default async function SistemaLayout({ children }: { children: ReactNode 
         </div>
         {verificado && <NavDoSistema />}
         <div className="suporte-quem">
-          {verificado && <SeletorDePortal atual="sistema" urls={{ sistema: urlDoHost('sistema'), suporte: urlDoHost('suporte') }} />}
           {staff && <span className="suporte-quem-nome">{staff.name}</span>}
           <form action={sair}>
             <button type="submit" className="btn-ghost">Sair</button>

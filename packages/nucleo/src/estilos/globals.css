@@ -2234,18 +2234,6 @@ a.suporte-link-forte:hover { color: var(--brand); }
 }
 .suporte-nav-item[aria-current="page"] .suporte-contador { background: var(--on-brand); color: var(--brand); }
 
-/* ── Seletor entre os portais da plataforma (Sistema ⇄ Suporte), só ADMIN ── */
-.portal-seletor {
-  display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--border);
-  border-radius: var(--radius-field-token); background: var(--bg-app); height: var(--altura-controle);
-}
-.portal-seletor-item {
-  display: inline-flex; align-items: center; padding: 0 12px; border-radius: calc(var(--radius-field-token) - 3px);
-  font-size: var(--text-xs-sz); font-weight: var(--weight-bold); color: var(--text-muted); text-decoration: none;
-}
-.portal-seletor-item:hover { color: var(--brand); }
-.portal-seletor-item[aria-current="page"] { background: var(--surface); color: var(--brand); border: 1px solid var(--border); }
-
 /* ── Administração do sistema (/sistema) ─────────────────────────────────── */
 .sistema-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .sistema-kpi { display: flex; flex-direction: column; gap: 6px; }
