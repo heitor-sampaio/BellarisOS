@@ -5391,7 +5391,13 @@ verdade. O que vale:
 ### Depende do Heitor (fora do código)
 
 - **Os apps da plataforma no ar** (2026-10-06):
-  - os CNAMEs `admin` e `suporte` para os serviços novos do Railway;
+  - feito: no Railway, os serviços **Sistema** e **Suporte** (`BELLARIS_APP`,
+    variáveis por referência às da clínica, `INTERNO_SECRET` nos três apps),
+    com os domínios próprios ligados (porta 8080) e o primeiro deploy verde;
+  - os CNAMEs e TXT de `admin` e `suporte` que o Railway pediu (no painel do
+    domínio de cada serviço);
+  - depois do DNS: `SISTEMA_URL` no Notification Cron (sem ela o job
+    `assinaturas` só é pulado);
   - no Supabase (Auth → URL Configuration), os dois hosts nas Redirect URLs;
   - quando ligar o Asaas, o webhook em `https://admin.bellarisos.com/api/webhooks/asaas`;
   - `PLATAFORMA_ADMIN_EMAIL` vai no serviço do SISTEMA, e o primeiro login é
