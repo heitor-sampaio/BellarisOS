@@ -649,6 +649,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Deixar barra de rolagem à mostra em área de conteúdo (só o modal a tem)
 ❌ Usar a paleta do Tailwind (red-600, green-600…) — o sistema tem a sua
 ❌ Encerrar uma entrega sem atualizar o DEVLOG e a memória (§16)
+❌ Implementar feature sem o teste escrito antes e visto falhando (§15, TDD)
 ❌ Usar o primeiro do x-forwarded-for como IP de limite (o cliente o forja) — é o X-Real-IP
 ❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, anamnese) sem podeVerClinico
 ❌ Mandar config de integração ao navegador sem mascararSegredos (ou criar chave de credencial fora da lista)
@@ -692,6 +693,11 @@ pnpm --filter web test:e2e          # Playwright (sobe o dev sozinho)
 pnpm --filter web test:e2e:afetados # só os testes da área alterada (--listar, --desde <ref>)
 pnpm --filter web test:e2e:completa # a suíte inteira contra o build (porta 3100), em duas metades
 ```
+
+**TDD** (decisão do Heitor, 2026-10-06): o teste nasce ANTES da feature, roda e
+FALHA pelo motivo certo (o comportamento que falta, não um erro do teste) — a
+falha vai na mensagem do commit —, e só então se implementa até passar. Mudança
+que só move código, sem comportamento novo, se apoia nos testes que já existem.
 
 **Qual E2E rodar** (decisão do Heitor, 2026-09-28 — a suíte inteira passa de
 15 minutos, e esperar por ela a cada etapa tornava o desenvolvimento inviável):
