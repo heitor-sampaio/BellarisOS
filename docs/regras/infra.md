@@ -82,16 +82,17 @@ Um Dockerfile só, na raiz (o `railway.toml` o fixa para todos os serviços).
 Cada serviço escolhe o app pela variável `BELLARIS_APP` — o Railway a passa
 como build arg por estar declarada (`ARG`) no Dockerfile:
 
-| Serviço | `BELLARIS_APP` | Domínio | Só nele |
+| Serviço | `BELLARIS_APP` | Domínio | Além do comum |
 |---|---|---|---|
-| BellarisOS | `web` (padrão) | app.bellarisos.com | Meta, uazapi, VAPID/FCM |
-| Sistema | `sistema` | admin.bellarisos.com | `ASAAS_*`, `PLATAFORMA_ADMIN_EMAIL`, `CRON_SECRET` |
+| BellarisOS | `web` (padrão) | app.bellarisos.com | Meta, uazapi, `CRON_SECRET` |
+| Sistema | `sistema` | admin.bellarisos.com | `ASAAS_*`, `PLATAFORMA_ADMIN_EMAIL` (só aqui), `CRON_SECRET` |
 | Suporte | `suporte` | suporte.bellarisos.com | — |
 | Notification Cron / Automations Cron | `web` (imagem) | — | `APP_URL`, `SISTEMA_URL`, `CRON_SECRET` |
 
-Os três apps levam as chaves do Supabase, `CLINICA_URL`, `SISTEMA_URL`,
-`SUPORTE_URL` e `INTERNO_SECRET` (o mesmo valor). O sistema e o suporte
-levam também VAPID/FCM (o sino da clínica toca a partir deles). Os dois
+O COMUM, nos três apps: as chaves do Supabase, `CLINICA_URL`, `SISTEMA_URL`,
+`SUPORTE_URL`, `INTERNO_SECRET` (o mesmo valor) e VAPID/FCM (o sino da
+clínica também toca a partir do sistema e do suporte). `CRON_SECRET` é o
+mesmo valor na clínica, no sistema e nos dois serviços de cron. Os dois
 serviços novos sobem SEM domínio `*.up.railway.app`: é um segundo endereço que
 ninguém precisa (e pularia um muro na frente do domínio, se um dia houver).
 No Supabase (Auth → URL Configuration) entram os dois hosts novos nas

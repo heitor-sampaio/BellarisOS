@@ -83,6 +83,10 @@ test.describe.serial('o "entrar como" entre origens', () => {
       expect(r.codigo, 'a página traz o código').toBeTruthy()
       expect(r.codigo!.length).toBeGreaterThanOrEqual(40)
       expect(r.destino).toBe(`${CLINICA()}/auth/suporte-entrada`)
+      // A página tem de deixar o navegador mandar o Origin dela: com
+      // `no-referrer` (ou `same-origin`), o POST entre origens sai com
+      // `Origin: null` pela especificação Fetch, e a clínica o recusaria.
+      expect(['strict-origin', 'strict-origin-when-cross-origin', 'origin', 'origin-when-cross-origin']).toContain(r.referrerPolicy)
       // No banco, só o hash: o código em si não está em lugar nenhum.
       const { data: guardado } = await banco().from('support_entry_codes').select('hash, usado_em').eq('hash', sha256(r.codigo!))
       expect(guardado).toHaveLength(1)
@@ -105,6 +109,34 @@ test.describe.serial('o "entrar como" entre origens', () => {
     })
     expect(await sessoesAtivasDaRede(outra!.tenantId)).toHaveLength(1)
     await encerrarTudo()
+  })
+
+  test('o pedido de entrada só vale vindo do PRÓPRIO painel — a clínica (mesmo site) não abre sessão pelo cookie do atendente', async ({ browser }) => {
+    await comAtendente(browser, async ctx => {
+      // app.* e suporte.* são o mesmo SITE: o cookie lax do atendente vai
+      // junto num formulário que parta da clínica. Sem conferir o Origin, um
+      // script na clínica abriria sessões em outras contas pelo atendente.
+      const daClinica = await pedirEntrada(ctx, pedido(), new URL(CLINICA()).origin)
+      expect(daClinica.status).toBe(403)
+      expect(daClinica.codigo).toBeNull()
+      const semOrigem = await pedirEntrada(ctx, pedido(), null)
+      expect(semOrigem.status).toBe(403)
+    })
+    const { data } = await banco().from('support_sessions').select('id').eq('tenant_id', outra!.tenantId).in('status', ['abrindo', 'ativa'])
+    expect(data ?? []).toHaveLength(0)
+  })
+
+  test('o painel do suporte tem o token do Realtime (só o access token)', async ({ browser }) => {
+    await comAtendente(browser, async ctx => {
+      const r = await ctx.request.get(`${urlDaPlataforma('suporte')}/api/auth/token`, { headers: { 'sec-fetch-site': 'same-origin' } })
+      expect(r.status()).toBe(200)
+      const corpo = await r.json() as Record<string, unknown>
+      expect(typeof corpo.access_token).toBe('string')
+      expect(corpo).not.toHaveProperty('refresh_token')
+      // De outro site (a clínica é mesmo site, não mesma origem): recusa.
+      const deFora = await ctx.request.get(`${urlDaPlataforma('suporte')}/api/auth/token`, { headers: { 'sec-fetch-site': 'same-site' } })
+      expect(deFora.status()).toBe(403)
+    })
   })
 
   test('código vencido e código de outro site são recusados', async ({ browser }) => {

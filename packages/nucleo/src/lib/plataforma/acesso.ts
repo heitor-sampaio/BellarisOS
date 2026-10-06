@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import type { EmailOtpType, User } from '@supabase/supabase-js'
 import { LoginSchema, ResetPasswordSchema, UpdatePasswordSchema } from '@estetica-os/validators'
 import { createClient } from '../supabase/server'
-import { urlPublica } from '../origem'
+import { caminhoInterno, urlPublica } from '../origem'
 import { recusaDoHost, type HostDaPlataforma } from './destino'
 
 /**
@@ -101,8 +101,7 @@ export async function confirmarLinkDeEmail(req: NextRequest): Promise<NextRespon
   const code = url.searchParams.get('code')
   const tokenHash = url.searchParams.get('token_hash')
   const type = url.searchParams.get('type') as EmailOtpType | null
-  const pedido = url.searchParams.get('next') ?? '/'
-  const next = pedido.startsWith('/') && !pedido.startsWith('//') ? pedido : '/'
+  const next = caminhoInterno(url.searchParams.get('next'))
 
   const supabase = await createClient()
   const { error } = code

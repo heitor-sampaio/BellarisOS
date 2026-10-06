@@ -178,6 +178,8 @@ test.describe.serial('suporte: entrar como', () => {
       await expect(p.locator('tr', { hasText: `Alvo sialvo${marca}` }).getByText('Sem autorização da clínica para entrar')).toBeVisible()
       const r = await p.request.post(`${SUP()}/api/entrar`, {
         form: { tenantId: f!.outra.tenantId, userId: f!.alvo.userId, motivo: 'tentando sem autorização' }, maxRedirects: 0,
+        // O Origin que o formulário do painel leva (sem ele, a rota recusa antes).
+        headers: { origin: new URL(SUP()).origin },
       })
       expect(r.status()).toBe(303)
       expect(new URL(r.headers().location ?? 'http://x').searchParams.get('erro') ?? '').toContain('Sem autorização vigente')
@@ -195,6 +197,7 @@ test.describe.serial('suporte: entrar como', () => {
     try {
       const r = await ctx.request.post(`${SUP()}/api/entrar`, {
         form: { tenantId: f!.outra.tenantId, userId: f!.alvo.userId, motivo: 'tentando com autorização vencida' }, maxRedirects: 0,
+        headers: { origin: new URL(SUP()).origin },
       })
       expect(new URL(r.headers().location ?? 'http://x').searchParams.get('erro') ?? '').toContain('Sem autorização vigente')
     } finally { await ctx.close() }

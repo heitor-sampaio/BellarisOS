@@ -13,7 +13,7 @@ export default async function VerificacaoPage() {
   await getPlatformContext({ semVerificacao: true, papel: 'ADMIN' })
   const claims = await lerClaims()
   if (claims?.aal === 'aal2') redirect('/')
-  const estado = await estadoDaVerificacao()
+  const estado = await estadoDaVerificacao({ papel: 'ADMIN' })
   return (
     <div className="suporte-centro">
       <div className="card suporte-cartao-estreito">

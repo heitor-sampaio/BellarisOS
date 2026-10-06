@@ -1341,6 +1341,31 @@ clínica.
   sistema), `suporte-entrada.spec` (a rota que ainda respondia 303 do fluxo
   antigo), os unitários de `destino`, `interno`, `porta` e `cron`, e o
   `sistema-redes` desligando a rede — todos vistos vermelhos antes.
+- **A verificação independente** (um agente em paralelo, depois das fases)
+  achou, e foi corrigido com o teste antes:
+  - a `/api/entrar` do suporte não conferia o `Origin`. Os hosts
+    `*.bellarisos.com` são o mesmo SITE, então o cookie lax do atendente ia
+    junto num POST que partisse da clínica: um script lá abriria sessões em
+    outras contas pelo atendente. O vermelho foi um Origin da clínica
+    recebendo 200 e o código;
+  - o Realtime da fila do suporte nunca autenticava: faltava o
+    `/api/auth/token` no app do suporte (404). A rota agora mora no núcleo
+    (`rotaDoToken`), e a clínica e o suporte a reexportam;
+  - havia redirecionamento aberto no `next` do `/auth/confirm` dos três apps:
+    `/\evil.com` e `/<tab>/evil.com` passavam pelo `startsWith`. Agora é
+    `caminhoInterno` (`lib/origem`);
+  - menores:
+    - a página de erro da entrada não mostra mais o erro do Auth;
+    - o reset de senha da plataforma usa o host do app (`urlDoHost`);
+    - a verificação do sistema pede ADMIN também na action;
+    - o `CRON_SECRET` das assinaturas é comparado em tempo constante;
+    - o `/api/interno/expirar` dos três apps entrou no `api-sem-credencial`;
+    - o `sistema-redes` esquenta o cache antes de desligar (sem isso, passava
+      sem provar a expiração entre processos).
+  - Não procedia: o `no-referrer` da página do código, que pela especificação
+    tiraria o `Origin`. O `next.config` já o trocava por
+    `strict-origin-when-cross-origin`. O cabeçalho morto saiu, e o teste trava
+    a política.
 
 ### 2026-10-06 — `packages/nucleo`: o código que a clínica e a plataforma dividem
 

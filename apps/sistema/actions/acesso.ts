@@ -1,11 +1,10 @@
 'use server'
 
-import { headers } from 'next/headers'
 import {
   entrarNaPlataforma, sairDaPlataforma, pedirNovaSenhaNaPlataforma, trocarSenhaNaPlataforma,
   type EstadoDoLogin, type EstadoDoPedido,
 } from '@estetica-os/nucleo/lib/plataforma/acesso'
-import { origemPublicaDe } from '@estetica-os/nucleo/lib/origem'
+import { urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 import { promoverSeForOAdmin, criarContaDoPrimeiroAdmin } from '@/lib/plataforma/primeiro-admin'
 
 /**
@@ -28,7 +27,7 @@ export async function sair(): Promise<void> {
 }
 
 export async function pedirNovaSenha(_estado: EstadoDoPedido, formData: FormData): Promise<EstadoDoPedido> {
-  return pedirNovaSenhaNaPlataforma(formData, origemPublicaDe(await headers()), async email => { await criarContaDoPrimeiroAdmin(email) })
+  return pedirNovaSenhaNaPlataforma(formData, urlDoHost('sistema'), async email => { await criarContaDoPrimeiroAdmin(email) })
 }
 
 export async function trocarSenha(_estado: EstadoDoLogin, formData: FormData): Promise<EstadoDoLogin> {

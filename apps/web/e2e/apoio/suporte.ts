@@ -120,13 +120,18 @@ export async function entrarComo(browser: Browser, estadoDoAtendente: string, te
  * feliz — o CÓDIGO de uso único e o endereço da clínica para onde a página
  * o leva (o formulário que se envia sozinho).
  */
-export async function pedirEntrada(ctx: BrowserContext, form: Record<string, string>):
-  Promise<{ status: number; location: string | null; codigo: string | null; destino: string | null }> {
-  const r = await ctx.request.post(`${urlDaPlataforma('suporte')}/api/entrar`, { form, maxRedirects: 0 })
+export async function pedirEntrada(ctx: BrowserContext, form: Record<string, string>,
+  /** O Origin do pedido: o do próprio painel (o que o navegador põe no formulário), outro, ou nenhum (null). */
+  origem: string | null = new URL(urlDaPlataforma('suporte')).origin):
+  Promise<{ status: number; location: string | null; codigo: string | null; destino: string | null; referrerPolicy: string | null }> {
+  const r = await ctx.request.post(`${urlDaPlataforma('suporte')}/api/entrar`, {
+    form, maxRedirects: 0, headers: origem ? { origin: origem } : {},
+  })
   const html = r.status() === 200 ? await r.text() : ''
   return {
     status: r.status(),
     location: r.headers().location ?? null,
+    referrerPolicy: r.headers()['referrer-policy'] ?? null,
     codigo: /name="codigo" value="([^"]+)"/.exec(html)?.[1] ?? null,
     destino: /<form[^>]*action="([^"]+)"/.exec(html)?.[1] ?? null,
   }

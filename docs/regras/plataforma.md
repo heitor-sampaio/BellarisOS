@@ -161,7 +161,9 @@ um muro que não depende de cada trava do código.
   funcionaria. Prazo: 60 min, nunca além da autorização.
 - **Entre ORIGENS, por um código de uso único** (2026-10-06;
   `lib/suporte/entrar.ts` no núcleo, migration `20261006000001`):
-  1. no PAINEL (`apps/suporte`, `POST /api/entrar`, o form abre em aba nova):
+  1. no PAINEL (`apps/suporte`, `POST /api/entrar`, o form abre em aba nova),
+     só com o `Origin` do próprio painel (os hosts são o mesmo SITE: o cookie
+     lax do atendente iria junto num POST que partisse da clínica):
      `abrirSessaoDeSuporte` abre a sessão (`suporte_sessao_abrir`: autorização,
      motivo, uma por atendente e por conta) e cria o código (32 bytes, 60 s; só o
      SHA-256 vai a `support_entry_codes`, RLS sem política). A resposta é uma
@@ -264,7 +266,8 @@ um muro que não depende de cada trava do código.
   e contexto sem membro nunca alcançam.
 - **A fila se atualiza pelo SINAL** `support_signals` (uma linha sem dado, só
   a plataforma lê — o padrão de `crm_quadro_sinais`) e por um refresh a cada
-  minuto. A rota `/api/suporte/contagem` do plano não existe: seria mais um
+  minuto. O Realtime do painel pega o access token no `/api/auth/token` DO
+  SUPORTE (`rotaDoToken`, no núcleo, a mesma da clínica). A rota `/api/suporte/contagem` do plano não existe: seria mais um
   endpoint a defender para dizer o que o refresh já diz.
 - Um gatilho garante que o chamado de uma autorização ou sessão é da mesma rede.
 - Tabelas: RLS ligada e ZERO políticas. Prova: `e2e/chamados.spec.ts`.
@@ -284,6 +287,7 @@ um muro que não depende de cada trava do código.
 ❌ Página ou action do sistema sem getPlatformContext({ papel: 'ADMIN' }) (o proxy é a primeira parede, não a única)
 ❌ Pôr tela ou rota da plataforma no apps/web, ou código só da plataforma no núcleo (a clínica não carrega a plataforma)
 ❌ Levar a sessão do atendente ao domínio da clínica (o "entrar como" é o código de uso único; não há cookie de volta)
+❌ /api/entrar sem conferir o Origin do PRÓPRIO painel (um script na clínica abriria sessões pelo cookie do atendente)
 ❌ Montar URL de outro host a partir do pedido — é urlDoHost / urlDaClinica (o ambiente)
 ❌ Mudar no sistema/suporte um cache que a clínica guarda sem expirarNaClinica (rede:, suporte-sessao:, user:)
 ❌ Abrir /api/interno/expirar a tag fora da lista fechada de lib/interno.ts

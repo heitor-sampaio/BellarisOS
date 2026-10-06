@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getPlatformContext } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { registrarNaPlataforma } from '@estetica-os/nucleo/lib/plataforma/auditoria'
-import { urlDaClinica } from '@estetica-os/nucleo/lib/plataforma/destino'
+import { urlDaClinica, urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 import { urlPublica } from '@estetica-os/nucleo/lib/origem'
 import { abrirSessaoDeSuporte } from '@estetica-os/nucleo/lib/suporte/entrar'
 import { DIGEST_SEM_ACESSO } from '@estetica-os/nucleo/lib/sem-acesso'
@@ -24,6 +24,16 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const escapar = (v: string) => v.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!))
 
 export async function POST(req: NextRequest) {
+  // Só o formulário do PRÓPRIO painel. app.* e suporte.* são o mesmo SITE: o
+  // cookie lax do atendente vai junto num POST que parta da clínica, e o Next
+  // só confere a origem em server action, não em route handler. Sem isto, um
+  // script na clínica abriria, pelo atendente, a sessão em outra conta.
+  let origemDoPainel: string | null = null
+  try { origemDoPainel = new URL(urlDoHost('suporte')).origin } catch { /* sem SUPORTE_URL */ }
+  if (!origemDoPainel || req.headers.get('origin') !== origemDoPainel) {
+    return NextResponse.json({ error: 'Pedido recusado.' }, { status: 403 })
+  }
+
   let ctx
   try {
     ctx = await getPlatformContext()
@@ -74,7 +84,9 @@ export async function POST(req: NextRequest) {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'no-store',
-      'referrer-policy': 'no-referrer',
+      // Sem referrer-policy própria: vale a do next.config (strict-origin-when-
+      // cross-origin), que deixa o navegador mandar o Origin deste host no POST
+      // à clínica (que o confere). no-referrer ou same-origin o trocariam por null.
       // Só o script desta página roda, e o formulário só vai para a clínica.
       'content-security-policy': `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline'; form-action ${new URL(destino).origin}; frame-ancestors 'none'; base-uri 'none'`,
     },

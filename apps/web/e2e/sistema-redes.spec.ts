@@ -136,6 +136,13 @@ test.describe.serial('redes no sistema', () => {
   })
 
   test('desligar manda a equipe para /conta-suspensa e fecha o portal do paciente; religar devolve', async ({ browser }) => {
+    // O gestor abre a clínica ANTES: a situação da rede fica no cache do
+    // processo da clínica (60 s). Sem esquentá-lo, o teste passaria sem provar
+    // que o sistema expira o cache de OUTRO processo.
+    await comSessao(browser, gestor.estado, async p => {
+      await p.goto('/admin/dashboard')
+      await expect(p).toHaveURL(/\/admin\/dashboard/)
+    })
     await comSessao(browser, admin.estado, async p => {
       await p.goto(`${SIS()}/redes/${outra.tenantId}`)
       await p.getByRole('button', { name: 'Desligar rede…' }).click()
@@ -146,8 +153,9 @@ test.describe.serial('redes no sistema', () => {
     expect((await situacao(outra.tenantId)).is_active).toBe(false)
 
     await comSessao(browser, gestor.estado, async p => {
+      // Na hora — bem abaixo dos 60 s do cache, que só o aviso à clínica expira.
       await p.goto('/admin/dashboard')
-      await expect(p).toHaveURL(/\/conta-suspensa/, { timeout: 30_000 })
+      await expect(p).toHaveURL(/\/conta-suspensa/, { timeout: 10_000 })
       await expect(p.getByRole('heading', { name: 'Acesso desligado' })).toBeVisible()
     })
     await comSessao(browser, cliente!.estado, async p => {

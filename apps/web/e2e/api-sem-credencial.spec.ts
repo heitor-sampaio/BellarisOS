@@ -102,20 +102,31 @@ test('entrar como (suporte) exige alguém da plataforma, verificado', async ({ r
   expect(antiga.status()).toBe(404)
 })
 
-test('expirar cache (a conversa entre os apps) exige o segredo, e só as tags da lista', async ({ request }) => {
+test('expirar cache (a conversa entre os apps) exige o segredo, e só as tags da lista — nos TRÊS apps', async ({ request }) => {
   const rede = 'rede:2b3c4d5e-6f70-4812-9a3b-4c5d6e7f8091'
-  const semNada = await request.post('/api/interno/expirar', { data: { tags: [rede] } })
-  expect(semNada.status()).toBe(401)
-  const errado = await request.post('/api/interno/expirar', { data: { tags: [rede] }, headers: { authorization: `Bearer ${'x'.repeat(40)}` } })
-  expect(errado.status()).toBe(401)
-  // Com o segredo (só existe contra o build: playwright.build.config.ts).
-  const segredo = process.env.INTERNO_SECRET
-  if (segredo) {
-    const tagRuim = await request.post('/api/interno/expirar', { data: { tags: ['permissions:x'] }, headers: { authorization: `Bearer ${segredo}` } })
-    expect(tagRuim.status()).toBe(400)
-    const certo = await request.post('/api/interno/expirar', { data: { tags: [rede] }, headers: { authorization: `Bearer ${segredo}` } })
-    expect(certo.status()).toBe(200)
+  const bases = [''].concat(plataformaNoAr() ? [urlDaPlataforma('sistema'), urlDaPlataforma('suporte')] : [])
+  for (const base of bases) {
+    const rota = `${base}/api/interno/expirar`
+    const semNada = await request.post(rota, { data: { tags: [rede] } })
+    expect(semNada.status(), rota).toBe(401)
+    const errado = await request.post(rota, { data: { tags: [rede] }, headers: { authorization: `Bearer ${'x'.repeat(40)}` } })
+    expect(errado.status(), rota).toBe(401)
+    // Com o segredo (só existe contra o build: playwright.build.config.ts).
+    const segredo = process.env.INTERNO_SECRET
+    if (segredo) {
+      const tagRuim = await request.post(rota, { data: { tags: ['permissions:x'] }, headers: { authorization: `Bearer ${segredo}` } })
+      expect(tagRuim.status(), rota).toBe(400)
+      const certo = await request.post(rota, { data: { tags: [rede] }, headers: { authorization: `Bearer ${segredo}` } })
+      expect(certo.status(), rota).toBe(200)
+    }
   }
+})
+
+test('o token do Realtime no suporte exige a sessão de lá', async ({ request }) => {
+  test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build')
+  const r = await request.get(`${urlDaPlataforma('suporte')}/api/auth/token`, { maxRedirects: 0 })
+  expect(r.status()).not.toBe(200)
+  expect(await r.text()).not.toContain('access_token')
 })
 
 test('geocode exige sessão', async ({ request, browser }) => {

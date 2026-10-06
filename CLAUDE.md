@@ -559,6 +559,8 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Implementar feature sem o teste escrito antes e visto falhando (§15, TDD)
 ❌ Gravar cookie de sessão sem opcoesDoCookieDeSessao, ou ler/guardar a sessão no JS (o refresh token iria junto)
 ❌ Usar o primeiro do x-forwarded-for como IP de limite (o cliente o forja) — é o X-Real-IP
+❌ Route handler que AGE pela sessão (POST) sem conferir o Origin — os hosts *.bellarisos.com são o mesmo SITE, e o cookie lax vai junto
+❌ Validar o destino `next` de um link com startsWith('/') — é caminhoInterno (lib/origem; `/\x.com` e tab viram `//x.com`)
 ❌ Mandar à tela dado clínico (evolução, anexo clínico, anotação do plano, anamnese) sem podeVerClinico
 ❌ Mandar config de integração ao navegador sem mascararSegredos (ou criar chave de credencial fora da lista)
 ❌ Action que manda algo ao PACIENTE (mensagem, campanha, link, pedido de assinatura) sem bloqueioDoSuporte

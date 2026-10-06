@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { expirarNaClinica } from '@estetica-os/nucleo/lib/plataforma/expirar-na-clinica'
@@ -33,7 +34,7 @@ const expirar = async (tag: string) => {
 export async function GET(req: NextRequest) {
   const auth   = req.headers.get('authorization') ?? ''
   const secret = process.env.CRON_SECRET
-  if (!secret || auth !== `Bearer ${secret}`) {
+  if (!secret || !iguais(auth, `Bearer ${secret}`)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const admin = createAdminClient()
@@ -90,4 +91,11 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, mudancas: mudancas.length, reprocessados, sincronizadas })
+}
+
+/** Compara em tempo constante: o tempo da recusa não diz quanto do segredo bateu. */
+function iguais(a: string, b: string): boolean {
+  const x = Buffer.from(a)
+  const y = Buffer.from(b)
+  return x.length === y.length && timingSafeEqual(x, y)
 }

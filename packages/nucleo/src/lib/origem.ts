@@ -45,3 +45,21 @@ function primeiro(valor: string | null): string | null {
   const v = valor?.split(',')[0]?.trim()
   return v ? v : null
 }
+
+/**
+ * O destino `next` de um link (`/auth/confirm`), só se for caminho DESTE app;
+ * senão, `padrao`. Não basta `startsWith('/') && !startsWith('//')`: o parser
+ * de URL troca `\` por `/` e descarta tab e quebra de linha, então `/\evil.com`
+ * e `/<tab>/evil.com` viravam `//evil.com` — redirecionamento aberto com um
+ * link verdadeiro do Supabase. Prova: `tests/caminho-interno.test.ts`.
+ */
+export function caminhoInterno(pedido: string | null, padrao = '/'): string {
+  if (!pedido || !pedido.startsWith('/') || pedido.startsWith('//')) return padrao
+  if (/[\\\u0000-\u001f\u007f]/.test(pedido)) return padrao
+  const base = 'http://caminho.invalid'
+  try {
+    return new URL(pedido, base).origin === base ? pedido : padrao
+  } catch {
+    return padrao
+  }
+}

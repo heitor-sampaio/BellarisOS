@@ -44,7 +44,11 @@ export async function POST(req: NextRequest) {
   const codigo = String(form?.get('codigo') ?? '')
   const r = await ativarSessaoDeSuporte(codigo)
   if (!r) return pagina(410, 'Link expirado', 'Este acesso já foi usado ou venceu. Volte ao painel e entre de novo.')
-  if (!r.ok) return pagina(502, 'Não consegui entrar na conta', r.error)
+  if (!r.ok) {
+    // O detalhe (erro do Auth ou do banco) vai para o log, não para a página.
+    console.error('[suporte/entrada] não ativou a sessão:', r.error)
+    return pagina(502, 'Não consegui entrar na conta', 'Volte ao painel e tente de novo.')
+  }
   const s = r.valor
 
   const resposta = NextResponse.redirect(urlPublica(req, s.destino), 303)
@@ -63,7 +67,8 @@ export async function POST(req: NextRequest) {
       p_sessao: s.sessaoId, p_motivo: 'falhou ao abrir', p_falhou: true,
     })
     if (eFim) console.error('[suporte/entrada] não encerrou a sessão que falhou:', eFim.message)
-    return pagina(502, 'Não consegui entrar na conta', eSet.message)
+    console.error('[suporte/entrada] não gravou a sessão do membro:', eSet.message)
+    return pagina(502, 'Não consegui entrar na conta', 'Volte ao painel e tente de novo.')
   }
 
   await avisarAcessoDoSuporte(s.tenantId, s.alvo, { atendente: s.atendente, motivo: s.motivo, entrou: true })

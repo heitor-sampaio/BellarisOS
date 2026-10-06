@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import type { EmailOtpType } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { urlPublica } from '@/lib/origem'
+import { caminhoInterno, urlPublica } from '@/lib/origem'
 
 /**
  * A volta de um link de e-mail do Supabase (hoje, o de recuperar a senha):
@@ -23,10 +23,9 @@ export async function GET(req: NextRequest) {
   const tokenHash = url.searchParams.get('token_hash')
   const type      = url.searchParams.get('type') as EmailOtpType | null
 
-  // Só caminho interno: `//outro.site` e URL absoluta viram redirecionamento
-  // aberto para fora do app.
-  const pedido = url.searchParams.get('next') ?? '/'
-  const next   = pedido.startsWith('/') && !pedido.startsWith('//') ? pedido : '/'
+  // Só caminho interno: `//outro.site`, `/\outro.site` e URL absoluta viram
+  // redirecionamento aberto para fora do app.
+  const next = caminhoInterno(url.searchParams.get('next'))
 
   const supabase = await createClient()
   const { error } = code

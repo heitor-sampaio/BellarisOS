@@ -1,11 +1,10 @@
 'use server'
 
-import { headers } from 'next/headers'
 import {
   entrarNaPlataforma, sairDaPlataforma, pedirNovaSenhaNaPlataforma, trocarSenhaNaPlataforma,
   type EstadoDoLogin, type EstadoDoPedido,
 } from '@estetica-os/nucleo/lib/plataforma/acesso'
-import { origemPublicaDe } from '@estetica-os/nucleo/lib/origem'
+import { urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 
 /**
  * O acesso ao suporte — o núcleo faz o trabalho (`lib/plataforma/acesso.ts`).
@@ -19,7 +18,7 @@ export async function sair(): Promise<void> {
 }
 
 export async function pedirNovaSenha(_estado: EstadoDoPedido, formData: FormData): Promise<EstadoDoPedido> {
-  return pedirNovaSenhaNaPlataforma(formData, origemPublicaDe(await headers()))
+  return pedirNovaSenhaNaPlataforma(formData, urlDoHost('suporte'))
 }
 
 export async function trocarSenha(_estado: EstadoDoLogin, formData: FormData): Promise<EstadoDoLogin> {

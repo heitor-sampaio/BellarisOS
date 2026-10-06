@@ -11,14 +11,17 @@ import { getPlatformContext } from './contexto'
  * app tem as suas actions finas (`actions/verificacao.ts`) que chamam estas.
  */
 
+/** O papel que o app exige (o sistema passa ADMIN: o SUPORTE não verifica lá nem pela action). */
+interface DeQuem { papel?: 'ADMIN' }
+
 export interface EstadoDaVerificacao {
   /** Já tem autenticador cadastrado e verificado. */
   temFator: boolean
   factorId: string | null
 }
 
-export async function estadoDaVerificacao(): Promise<EstadoDaVerificacao> {
-  await getPlatformContext({ semVerificacao: true })
+export async function estadoDaVerificacao(opcoes: DeQuem = {}): Promise<EstadoDaVerificacao> {
+  await getPlatformContext({ ...opcoes, semVerificacao: true })
   const supabase = await createClient()
   const { data } = await supabase.auth.mfa.listFactors()
   const verificado = (data?.totp ?? []).find(f => f.status === 'verified')
@@ -30,10 +33,10 @@ export async function estadoDaVerificacao(): Promise<EstadoDaVerificacao> {
  * Fator não confirmado de uma tentativa anterior é descartado antes — o Auth
  * recusa dois com o mesmo nome.
  */
-export async function iniciarCadastroDoAutenticador(): Promise<
+export async function iniciarCadastroDoAutenticador(opcoes: DeQuem = {}): Promise<
   { ok: true; factorId: string; qr: string; segredo: string } | { ok: false; error: string }
 > {
-  await getPlatformContext({ semVerificacao: true })
+  await getPlatformContext({ ...opcoes, semVerificacao: true })
   const supabase = await createClient()
   const { data: fatores } = await supabase.auth.mfa.listFactors()
   if ((fatores?.totp ?? []).some(f => f.status === 'verified')) {
@@ -48,8 +51,8 @@ export async function iniciarCadastroDoAutenticador(): Promise<
 }
 
 /** Confirma o código de 6 dígitos — no cadastro ou em cada login. */
-export async function confirmarCodigo(factorId: string, codigo: string): Promise<{ ok: true } | { ok: false; error: string }> {
-  await getPlatformContext({ semVerificacao: true })
+export async function confirmarCodigo(factorId: string, codigo: string, opcoes: DeQuem = {}): Promise<{ ok: true } | { ok: false; error: string }> {
+  await getPlatformContext({ ...opcoes, semVerificacao: true })
   const code = typeof codigo === 'string' ? codigo.replace(/\D/g, '') : ''
   if (typeof factorId !== 'string' || !factorId || code.length !== 6) return { ok: false, error: 'Digite os 6 dígitos do autenticador.' }
   const supabase = await createClient()
