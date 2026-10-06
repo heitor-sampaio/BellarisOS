@@ -7,6 +7,8 @@ import Link from 'next/link'
 /** Por que a pessoa voltou ao login (`?acesso=`) — dito na tela, não só na URL. */
 const AVISOS_DE_ACESSO: Record<string, string> = {
   desativado: 'Seu acesso foi desativado pela clínica. Fale com o responsável.',
+  // A sessão de alguém da equipe da plataforma (proxy, buildContext): os apps dela são outros.
+  plataforma: 'A equipe da plataforma entra por admin.bellarisos.com ou suporte.bellarisos.com.',
 }
 
 export default function LoginPage() {

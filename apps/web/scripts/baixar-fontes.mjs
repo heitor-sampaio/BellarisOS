@@ -91,7 +91,7 @@ await writeFile(path.join(destino, 'LEIA-ME.md'), [
   '# Fontes dos documentos',
   '',
   'Embutidas nos PDFs de termos e contratos e usadas na tela (`@font-face` em',
-  '`app/globals.css`). Baixadas do Google Fonts por `scripts/baixar-fontes.mjs`.',
+  '`packages/nucleo/src/estilos/globals.css`). Baixadas do Google Fonts por `scripts/baixar-fontes.mjs`.',
   'Todas de licença livre, que permite embutir e redistribuir:',
   '',
   ...licencas,

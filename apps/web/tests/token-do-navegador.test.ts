@@ -51,12 +51,15 @@ describe('fonteDeToken', () => {
     expect(await f()).toBe('voltou')
   })
 
-  it('falha da busca não envenena a fonte: a próxima tenta de novo', async () => {
+  it('falha da busca LANÇA (não vira "sem sessão") e não envenena: a próxima tenta de novo', async () => {
+    // "Sem sessão" (null) faz o Realtime falar como anônimo; uma falha de rede
+    // passageira não pode fazer isso com quem está logado. Lançando, o
+    // realtime-js mantém o último token e tenta de novo no próximo heartbeat.
     const buscar = vi.fn()
       .mockRejectedValueOnce(new Error('rede'))
       .mockResolvedValueOnce(token(agoraSeg + 3600, 'ok'))
     const f = fonteDeToken(buscar, () => agoraSeg * 1000)
-    expect(await f()).toBeNull()
+    await expect(f()).rejects.toThrow('rede')
     expect(await f()).toBe('ok')
   })
 })

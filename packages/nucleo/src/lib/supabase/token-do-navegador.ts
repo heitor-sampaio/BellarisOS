@@ -25,8 +25,10 @@ export function fonteDeToken(
     if (emCurso) return emCurso
     emCurso = buscar()
       .then(t => { guardado = t; return t?.access_token ?? null })
-      // Falha de rede: sem token agora; a próxima chamada tenta de novo.
-      .catch(() => { guardado = null; return null })
+      // Falha de rede ou do servidor: LANÇA, não vira "sem sessão" (null faria o
+      // Realtime falar como anônimo). O realtime-js mantém o último token e a
+      // próxima chamada tenta de novo.
+      .catch((e: unknown) => { guardado = null; throw e })
       .finally(() => { emCurso = null })
     return emCurso
   }

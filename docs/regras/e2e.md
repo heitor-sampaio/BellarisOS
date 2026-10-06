@@ -29,6 +29,32 @@ só quando o Heitor pede) continuam no §15 do `CLAUDE.md`.
 - Contra o build, `chamarAcao` lê os manifestos de `.next/server`
   (`E2E_BUILD`, ligado por `playwright.build.config.ts`).
 
+**Os três apps no E2E (2026-10-06).** Contra o build sobem TRÊS servidores,
+cada um no seu host — cookie não separa porta, só host, e a sessão da clínica
+e a da plataforma não podem se encostar:
+
+| App | Endereço | Variável no teste |
+|---|---|---|
+| clínica (`apps/web`) | `http://127.0.0.1:3100` | `E2E_BASE_URL` |
+| sistema | `http://127.0.0.2:3101` | `E2E_SISTEMA_URL` |
+| suporte | `http://127.0.0.3:3102` | `E2E_SUPORTE_URL` |
+
+- `scripts/servir-build.mjs <porta> <app> <host>`; o `playwright.build.config.ts`
+  sobe os três (e passa `CLINICA_URL`, `SISTEMA_URL`, `SUPORTE_URL`,
+  `INTERNO_SECRET`); o workflow e o `test:e2e:completa` buildam os três.
+- **Specs da plataforma só rodam contra o build** (`plataformaNoAr()`, em
+  `e2e/apoio/plataforma.ts`); no `next dev` se pulam.
+- `criarAtendente` grava a sessão no host da CASA (ADMIN → sistema,
+  SUPORTE → suporte), montando os cookies com o próprio `@supabase/ssr`
+  (`gravarSessaoNoHost`, sem endpoint). `estadoNo(host)` abre uma SEGUNDA
+  sessão para o outro host — a mesma nos dois giraria o refresh token num e
+  derrubaria o outro.
+- `chamarAcao` aceita rota absoluta: no host do sistema ou do suporte, lê os
+  manifestos de `apps/<app>/.next`.
+- O "entrar como" abre a conta numa ABA NOVA (`entrarComo` devolve `page`, a
+  clínica, e `painel`, o suporte); `sessaoDoNavegador` lê só os cookies da
+  clínica. `pedirEntrada` faz o POST do painel sem a tela e devolve o código.
+
 **Sessão no E2E (2026-10-06)** — os cookies são httpOnly e, no build, Secure.
 - O arquivo de sessão de cada pessoa nasce de um `request.newContext` VAZIO
   (`storageState: { cookies: [], origins: [] }`). Herdando a sessão padrão do

@@ -18,7 +18,8 @@ let resultadoDoInsert: { data: { id: string } | null; error: { code: string; mes
   { data: { id: 'ev1' }, error: null }
 // O insert encadeia `.select('id').maybeSingle()`: o emissor precisa do id do
 // fato recém-gravado para entregá-lo ao motor de automações.
-vi.mock('@/lib/supabase/admin', () => ({
+// O insert sai do NÚCLEO (lib/events/gravar): é lá que o cliente é simulado.
+vi.mock('@estetica-os/nucleo/lib/supabase/admin', () => ({
   createAdminClient: () => ({ from: () => ({ insert }) }),
 }))
 

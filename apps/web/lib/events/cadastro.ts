@@ -2,9 +2,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEvento, atorDoContexto, ATOR_SISTEMA } from './emitir'
 import { EVENTOS } from '@estetica-os/types'
 import type {
-  NomeDeEvento, DadosDeProcedimento, DadosDeMembro, DadosDeCargo,
+  NomeDeEvento, DadosDeProcedimento, DadosDeCargo,
 } from '@estetica-os/types'
 import { ler } from '@/lib/db'
+import { retratoDoMembro } from '@estetica-os/nucleo/lib/events/gravar'
 
 type Ctx = { tenantId?: string | null; internalUserId?: string | null; userName?: string | null }
 
@@ -75,29 +76,12 @@ export async function emitirEventoDeMembro(
   try {
     if (!ctx.tenantId) return
 
-    const { data, error } = await createAdminClient()
-      .from('users')
-      .select('id, name, email, branch_id, role_id, provides_services, tenant_roles(label)')
-      .eq('id', userId)
-      .eq('tenant_id', ctx.tenantId)
-      .maybeSingle()
-
-    if (error) console.error('[eventoDeMembro] retrato:', error.message)
-
-    const cargo = data?.tenant_roles as unknown as { label?: string } | null
-
-    const dados: DadosDeMembro = {
-      nome:            (data?.name as string) ?? null,
-      email:           (data?.email as string) ?? null,
-      cargoId:         (data?.role_id as string) ?? null,
-      cargoNome:       cargo?.label ?? null,
-      unidadeId:       (data?.branch_id as string) ?? null,
-      atendeNaAgenda:  (data?.provides_services as boolean) ?? undefined,
-    }
+    // O retrato é do núcleo: a plataforma grava o mesmo evento (sem despachar).
+    const { dados, branchId } = await retratoDoMembro(userId, ctx.tenantId)
 
     await emitirEvento(nome, {
       tenantId:   ctx.tenantId,
-      branchId:   (data?.branch_id as string) ?? null,
+      branchId,
       entidadeId: userId,
       dados,
       ator:       ator(ctx),

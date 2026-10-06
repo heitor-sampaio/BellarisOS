@@ -8,7 +8,7 @@ import { semAcesso } from '../sem-acesso'
 
 /**
  * Quem é da PLATAFORMA — a equipe do BellarisOS que atende as redes
- * (`/suporte`).
+ * (os apps `sistema` e `suporte`, cada um no seu host).
  *
  * Não é membro de rede: é um login do Auth com `app_metadata.plataforma` e uma
  * linha em `platform_staff`, que é a fonte de verdade (a marca do JWT só serve
@@ -16,7 +16,7 @@ import { semAcesso } from '../sem-acesso'
  * `tenant_id`, nenhuma política de RLS de rede a alcança: o painel lê pelo
  * servidor, com o service role, e cada leitura é desta pessoa conferida aqui.
  *
- * Toda page e toda action de `/suporte` chama isto por si (o layout protege a
+  * Toda page e toda action do sistema e do suporte chama isto por si (o layout protege a
  * navegação, não a URL — §6).
  */
 export type PapelDaPlataforma = 'SUPORTE' | 'ADMIN'
@@ -74,12 +74,12 @@ export function marcaDaPlataforma(claims: ClaimsDaSessao | null): PapelDaPlatafo
 }
 
 /**
- * O contexto de quem está no `/suporte`.
+ * O contexto de quem está no sistema ou no suporte (cada um no seu host).
  *
  * - sem sessão → `/login`;
  * - sem a marca, desativado, ou numa sessão de SUPORTE (entrando como alguém
  *   de uma rede) → sem acesso;
- * - sem a verificação em duas etapas (`aal2`) → `/suporte/verificacao`, salvo
+ * - sem a verificação em duas etapas (`aal2`) → `/verificacao` do host, salvo
  *   para a própria tela de verificação (`semVerificacao`);
  * - `papel: 'ADMIN'` → só admin da plataforma.
  */
@@ -93,7 +93,7 @@ export const getPlatformContext = cache(async function getPlatformContext(
   const staff = await getCachedStaff(claims.sub)
   if (!staff || !staff.is_active) throw semAcesso()
 
-  if (!opcoes.semVerificacao && claims.aal !== 'aal2') redirect('/suporte/verificacao')
+  if (!opcoes.semVerificacao && claims.aal !== 'aal2') redirect('/verificacao')
   if (opcoes.papel === 'ADMIN' && staff.papel !== 'ADMIN') throw semAcesso()
 
   return {

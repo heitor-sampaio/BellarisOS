@@ -3,6 +3,7 @@ import { createHmac } from 'node:crypto'
 import { banco, tenantId, PREFIXO, apagarConversas } from './apoio/banco'
 import { criarMembro } from './apoio/sessao'
 import { ARQUIVO_DE_SESSAO } from '../playwright.config'
+import { plataformaNoAr, urlDaPlataforma } from './apoio/plataforma'
 
 const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
 
@@ -21,7 +22,9 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
  *   conta Meta da rede pela dele e deixava a integração inativa.
  */
 
-const CRONS = ['automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns', 'suporte-sessoes', 'assinaturas']
+const CRONS = ['automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns', 'suporte-sessoes']
+/** Os do SISTEMA (apps/sistema, outro host desde 2026-10-06): só contra o build. */
+const CRONS_DO_SISTEMA = ['assinaturas']
 
 // Sem sessão nenhuma: o `storageState` padrão do projeto é o do admin.
 test.use({ storageState: { cookies: [], origins: [] } })
@@ -33,14 +36,25 @@ test('crons recusam sem o CRON_SECRET e com um segredo errado', async ({ request
     const errado = await request.get(`/api/cron/${job}`, { headers: { authorization: 'Bearer nao-e-o-segredo' } })
     expect(errado.status(), `${job} com segredo errado`).toBe(401)
   }
+  if (!plataformaNoAr()) return
+  for (const job of CRONS_DO_SISTEMA) {
+    const url = `${urlDaPlataforma('sistema')}/api/cron/${job}`
+    expect((await request.get(url)).status(), `${job} sem cabeçalho`).toBe(401)
+    expect((await request.get(url, { headers: { authorization: 'Bearer nao-e-o-segredo' } })).status(), `${job} com segredo errado`).toBe(401)
+    // Na clínica, o cron do sistema não existe.
+    expect((await request.get(`/api/cron/${job}`)).status()).toBe(404)
+  }
 })
 
 test('o webhook do Asaas recusa sem o token (e nada é gravado)', async ({ request }) => {
+  // Mora no SISTEMA (outro host) desde 2026-10-06.
+  test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build')
+  const webhook = `${urlDaPlataforma('sistema')}/api/webhooks/asaas`
   const id = `evt_sem_token_${Date.now()}`
   const corpo = { id, event: 'PAYMENT_RECEIVED', payment: { id: 'pay_x', subscription: 'sub_x', value: 1, dueDate: '2026-01-01', status: 'RECEIVED' } }
-  const sem = await request.post('/api/webhooks/asaas', { data: corpo })
+  const sem = await request.post(webhook, { data: corpo })
   expect(sem.status()).toBe(401)
-  const errado = await request.post('/api/webhooks/asaas', { data: corpo, headers: { 'asaas-access-token': 'x'.repeat(40) } })
+  const errado = await request.post(webhook, { data: corpo, headers: { 'asaas-access-token': 'x'.repeat(40) } })
   expect(errado.status()).toBe(401)
   expect((await banco().from('asaas_events').select('id').eq('id', id)).data ?? []).toHaveLength(0)
 })
@@ -66,18 +80,41 @@ test('o link público de assinatura: sem token válido, nada abre nem assina', a
 })
 
 test('entrar como (suporte) exige alguém da plataforma, verificado', async ({ request, browser }) => {
+  // Desde 2026-10-06 a entrada mora no app do SUPORTE (outro host).
+  test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build')
+  const entrar = `${urlDaPlataforma('suporte')}/api/entrar`
   const form = { tenantId: '00000000-0000-4000-8000-000000000000', userId: '00000000-0000-4000-8000-000000000000', motivo: 'teste' }
-  const anonimo = await request.post('/api/suporte/entrar', { form, maxRedirects: 0 })
+  const anonimo = await request.post(entrar, { form, maxRedirects: 0 })
   expect([303, 307], 'sem sessão vai ao login').toContain(anonimo.status())
   expect(anonimo.headers().location ?? '').toContain('/login')
 
-  // Um membro de rede (o admin) não é da plataforma: recusado.
+  // Um membro de rede (o admin) não tem sessão lá: o cookie é da clínica.
   const ctx = await browser.newContext({ storageState: ARQUIVO_DE_SESSAO })
   try {
-    const membro = await ctx.request.post('/api/suporte/entrar', { form, maxRedirects: 0 })
-    expect(membro.status()).toBe(403)
+    const membro = await ctx.request.post(entrar, { form, maxRedirects: 0 })
+    expect([303, 307]).toContain(membro.status())
+    expect(membro.headers().location ?? '').toContain('/login')
   } finally {
     await ctx.close()
+  }
+  // E na clínica a rota antiga não existe mais.
+  const antiga = await request.post('/api/suporte/entrar', { form, maxRedirects: 0 })
+  expect(antiga.status()).toBe(404)
+})
+
+test('expirar cache (a conversa entre os apps) exige o segredo, e só as tags da lista', async ({ request }) => {
+  const rede = 'rede:2b3c4d5e-6f70-4812-9a3b-4c5d6e7f8091'
+  const semNada = await request.post('/api/interno/expirar', { data: { tags: [rede] } })
+  expect(semNada.status()).toBe(401)
+  const errado = await request.post('/api/interno/expirar', { data: { tags: [rede] }, headers: { authorization: `Bearer ${'x'.repeat(40)}` } })
+  expect(errado.status()).toBe(401)
+  // Com o segredo (só existe contra o build: playwright.build.config.ts).
+  const segredo = process.env.INTERNO_SECRET
+  if (segredo) {
+    const tagRuim = await request.post('/api/interno/expirar', { data: { tags: ['permissions:x'] }, headers: { authorization: `Bearer ${segredo}` } })
+    expect(tagRuim.status()).toBe(400)
+    const certo = await request.post('/api/interno/expirar', { data: { tags: [rede] }, headers: { authorization: `Bearer ${segredo}` } })
+    expect(certo.status()).toBe(200)
   }
 })
 

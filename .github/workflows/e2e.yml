@@ -58,6 +58,12 @@ jobs:
       PLATAFORMA_ADMIN_EMAIL: e2e-plataforma-primeiro-admin@bellaris.invalid
       # Cookie de sessão sem Secure: o servidor do build roda em http (ver playwright.build.config.ts).
       COOKIE_DE_SESSAO_SEM_SECURE: "1"
+      # Os TRÊS apps (2026-10-06), cada um no seu host — cookie não separa
+      # porta, só host. Os servidores sobem aqui (não pelo Playwright), então
+      # os endereços vão no ambiente do job.
+      CLINICA_URL: http://127.0.0.1:3100
+      SISTEMA_URL: http://127.0.0.2:3101
+      SUPORTE_URL: http://127.0.0.3:3102
     steps:
       - uses: actions/checkout@v7
 
@@ -75,6 +81,7 @@ jobs:
         run: |
           CRON=$(openssl rand -hex 32);  echo "::add-mask::$CRON"
           META=$(openssl rand -hex 32);  echo "::add-mask::$META"
+          INTERNO=$(openssl rand -hex 32); echo "::add-mask::$INTERNO"
           VAPID=$(pnpm exec web-push generate-vapid-keys --json)
           PUB=$(echo "$VAPID" | node -pe 'JSON.parse(require("fs").readFileSync(0)).publicKey')
           PRIV=$(echo "$VAPID" | node -pe 'JSON.parse(require("fs").readFileSync(0)).privateKey')
@@ -82,6 +89,7 @@ jobs:
           {
             echo "CRON_SECRET=$CRON"
             echo "META_APP_SECRET=$META"
+            echo "INTERNO_SECRET=$INTERNO"
             echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=$PUB"
             echo "VAPID_PRIVATE_KEY=$PRIV"
             echo "VAPID_SUBJECT=mailto:e2e@bellaris.invalid"
@@ -90,19 +98,28 @@ jobs:
       - name: Navegador do Playwright
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Build
-        run: pnpm exec next build
-
-      # Um servidor só para as duas metades (playwright.build.config.ts:
-      # E2E_SERVIDOR_PRONTO faz as duas o reaproveitarem).
-      - name: Servidor do build
+      - name: Build dos três apps
         run: |
-          nohup node scripts/servir-build.mjs 3100 > servidor.log 2>&1 &
-          for i in $(seq 1 60); do
-            curl -sf -o /dev/null http://127.0.0.1:3100/privacidade && exit 0
-            sleep 2
-          done
-          cat servidor.log; exit 1
+          pnpm exec next build
+          ( cd ../sistema && pnpm exec next build )
+          ( cd ../suporte && pnpm exec next build )
+
+      # Um servidor de cada app para as duas metades (playwright.build.config.ts:
+      # E2E_SERVIDOR_PRONTO faz as duas os reaproveitarem).
+      - name: Servidores do build
+        run: |
+          nohup node scripts/servir-build.mjs 3100 web 127.0.0.1 > servidor.log 2>&1 &
+          nohup node scripts/servir-build.mjs 3101 sistema 127.0.0.2 > servidor-sistema.log 2>&1 &
+          nohup node scripts/servir-build.mjs 3102 suporte 127.0.0.3 > servidor-suporte.log 2>&1 &
+          espera() {
+            for i in $(seq 1 60); do curl -sf -o /dev/null "$1" && return 0; sleep 2; done
+            return 1
+          }
+          espera http://127.0.0.1:3100/privacidade \
+            && espera http://127.0.0.2:3101/api/health \
+            && espera http://127.0.0.3:3102/api/health \
+            && exit 0
+          tail -n 50 servidor.log servidor-sistema.log servidor-suporte.log; exit 1
 
       # As duas metades (apps/web/e2e/grupos.ts) JUNTAS, desde 2026-09-30: a
       # varredura de sobras só leva o [e2e] com mais de uma hora
@@ -127,9 +144,9 @@ jobs:
           echo "isolados: saída $R1 · compartilhados: saída $R2"
           [ $R1 -eq 0 ] && [ $R2 -eq 0 ]
 
-      - name: Log do servidor
+      - name: Log dos servidores
         if: failure()
-        run: tail -n 300 servidor.log
+        run: tail -n 300 servidor.log servidor-sistema.log servidor-suporte.log
 
       - name: Relatório das falhas
         if: failure()

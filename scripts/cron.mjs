@@ -28,20 +28,26 @@
  */
 const PADRAO = ['notification-campaigns', 'lgpd-exports', 'meta-capi', 'eventos-expirados', 'estoque-minimo', 'fidelidade', 'documentos-pdf', 'suporte-sessoes', 'assinaturas']
 
-const JOBS = (process.env.CRON_JOBS ?? '')
-  .split(',')
-  .map(j => j.trim())
-  .filter(Boolean)
+/**
+ * Os jobs que moram no SISTEMA (apps/sistema, admin.*, 2026-10-06): a cobrança
+ * das assinaturas é dele (a chave do Asaas só existe lá). O resto é da clínica
+ * (`APP_URL`). O serviço de cron leva as duas variáveis: `APP_URL` e
+ * `SISTEMA_URL`.
+ */
+const DO_SISTEMA = new Set(['assinaturas'])
 
-if (JOBS.length === 0) JOBS.push(...PADRAO)
-
-const APP_URL     = process.env.APP_URL
-const CRON_SECRET = process.env.CRON_SECRET
-
-if (!APP_URL || !CRON_SECRET) {
-  console.error('APP_URL e CRON_SECRET são obrigatórios.')
-  process.exit(1)
+/**
+ * Para onde vai cada job — ou null, se o endereço do dono não está definido.
+ * @param {string} job
+ * @param {Record<string, string | undefined>} [env]
+ * @returns {string | null}
+ */
+export function baseDoJob(job, env = process.env) {
+  const base = DO_SISTEMA.has(job) ? env.SISTEMA_URL : env.APP_URL
+  return base ? base.replace(/\/+$/, '') : null
 }
+
+const CRON_SECRET = process.env.CRON_SECRET
 
 const TIMEOUT_MS = 120_000
 
@@ -60,7 +66,19 @@ const daBorda = (status, body) => [502, 503, 504].includes(status) || (status ==
 const espera = ms => new Promise(ok => setTimeout(ok, ms))
 
 async function chamar(job) {
-  const url = `${APP_URL.replace(/\/$/, '')}/api/cron/${job}`
+  const base = baseDoJob(job)
+  if (!base && DO_SISTEMA.has(job)) {
+    // O app do sistema ainda não está no ar neste ambiente (o serviço não tem
+    // SISTEMA_URL): pula com aviso em vez de deixar o cron vermelho de hora
+    // em hora. Sem o app, não há cobrança a recolher.
+    console.warn(`[pulado] ${job}: SISTEMA_URL não definida — o app do sistema não está configurado aqui`)
+    return true
+  }
+  if (!base) {
+    console.error(`[erro] ${job}: sem o endereço do app dono (APP_URL)`)
+    return false
+  }
+  const url = `${base}/api/cron/${job}`
   for (let tentativa = 0; ; tentativa++) {
     const started = Date.now()
     let res, body
@@ -92,9 +110,24 @@ async function chamar(job) {
   }
 }
 
-for (const job of JOBS) {
-  if (!(await chamar(job))) failed++
+/** Roda só quando é o script chamado (`node cron.mjs`), não quando um teste o importa. */
+async function principal() {
+  const JOBS = (process.env.CRON_JOBS ?? '')
+    .split(',')
+    .map(j => j.trim())
+    .filter(Boolean)
+  if (JOBS.length === 0) JOBS.push(...PADRAO)
+
+  if (!process.env.APP_URL || !CRON_SECRET) {
+    console.error('APP_URL e CRON_SECRET são obrigatórios.')
+    process.exit(1)
+  }
+  for (const job of JOBS) {
+    if (!(await chamar(job))) failed++
+  }
+  console.log(failed === 0 ? 'todos os jobs concluídos' : `${failed} job(s) falharam`)
+  process.exit(failed === 0 ? 0 : 1)
 }
 
-console.log(failed === 0 ? 'todos os jobs concluídos' : `${failed} job(s) falharam`)
-process.exit(failed === 0 ? 0 : 1)
+const chamadoDireto = process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop())
+if (chamadoDireto) await principal()

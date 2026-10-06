@@ -3,7 +3,6 @@ import { getTenantContext, getRedirectPath } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { lerClaims, marcaDaPlataforma } from '@/lib/plataforma/contexto'
-import { inicioDaPlataforma } from '@/lib/plataforma/destino'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +15,8 @@ export default async function AuthRedirectPage() {
   // A plataforma não tem rede: vai para o /suporte (fora do try, que engoliria
   // o redirect de `buildContext`).
   const marca = marcaDaPlataforma(await lerClaims())
-  if (marca) redirect(inicioDaPlataforma(marca))
+  // A equipe da plataforma não entra na clínica (os apps dela são outros hosts).
+  if (marca) redirect('/login?acesso=plataforma')
 
   try {
     const ctx   = await getTenantContext()

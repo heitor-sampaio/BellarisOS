@@ -2,12 +2,12 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, clienteComSessao, type MembroDeTeste, type ClienteDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { criarAtendente, type AtendenteDeTeste } from './apoio/plataforma'
+import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarRedeCriada } from './apoio/rede-criada'
 
 /**
- * As REDES no /sistema e o portão da rede bloqueada (2026-10-03).
+ * As REDES no sistema (o app do host admin.*, 2026-10-06) e o portão da rede bloqueada.
  *
  * - o ADMIN cria a rede pela tela (o responsável recebe o convite e cai no
  *   /setup no primeiro acesso) e edita os dados; o SUPORTE não cria;
@@ -16,6 +16,9 @@ import { apagarRedeCriada } from './apoio/rede-criada'
  * - a regra de tempo (teste vencido → atraso → suspensa pela carência) e o
  *   "marcar como em dia".
  */
+
+test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build (playwright.build.config.ts)')
+const SIS = () => urlDaPlataforma('sistema')
 
 const marca = Date.now().toString(36)
 const db = () => banco()
@@ -69,10 +72,11 @@ async function situacao(tenantId: string) {
   return data!
 }
 
-test.describe.serial('redes no /sistema', () => {
+test.describe.serial('redes no sistema', () => {
   test('o SUPORTE não cria rede pela action direta', async ({ browser }) => {
-    await comSessao(browser, suporte.estado, async p => {
-      await chamarAcao(p, 'actions/sistema.ts', 'criarRede', '/sistema/redes/nova', [{
+    // A sessão do SUPORTE gravada no host do sistema (como se ele tivesse o cookie).
+    await comSessao(browser, await suporte.estadoNo('sistema'), async p => {
+      await chamarAcao(p, 'actions/sistema.ts', 'criarRede', `${SIS()}/redes/nova`, [{
         nomeDaRede: `${NOME} hack`, documento: DOCUMENTO, emailDoResponsavel: `hack-${EMAIL}`, nomeDoResponsavel: 'Hack', inicio: 'teste',
       }]).catch(() => null)
     })
@@ -81,14 +85,14 @@ test.describe.serial('redes no /sistema', () => {
 
   test('o ADMIN cria a rede pela tela; o responsável entra e cai no /setup', async ({ browser }) => {
     await comSessao(browser, admin.estado, async p => {
-      await p.goto('/sistema/redes/nova')
+      await p.goto(`${SIS()}/redes/nova`)
       await p.locator('input[name="nome"]').fill(NOME)
       await p.locator('input[name="documento"]').fill(DOCUMENTO)
       await p.locator('input[name="responsavel"]').fill(`Responsável ${marca}`)
       await p.locator('input[name="email"]').fill(EMAIL)
       await p.locator('input[name="dias"]').fill('10')
       await p.getByRole('button', { name: 'Criar rede' }).click()
-      await expect(p).toHaveURL(/\/sistema\/redes\/[0-9a-f-]{36}/, { timeout: 30_000 })
+      await expect(p).toHaveURL(new RegExp(`^${SIS()}/redes/[0-9a-f-]{36}`), { timeout: 30_000 })
       redeNova = p.url().split('/').pop()!
       await expect(p.getByRole('heading', { name: NOME })).toBeVisible()
     })
@@ -122,7 +126,7 @@ test.describe.serial('redes no /sistema', () => {
 
   test('o ADMIN edita os dados da rede pela tela', async ({ browser }) => {
     await comSessao(browser, admin.estado, async p => {
-      await p.goto(`/sistema/redes/${redeNova}`)
+      await p.goto(`${SIS()}/redes/${redeNova}`)
       await p.locator('form', { hasText: 'Salvar dados' }).locator('input[name="telefone"]').fill('(48) 99999-0000')
       await p.getByRole('button', { name: 'Salvar dados' }).click()
       await expect(p.getByText('Dados da rede salvos.')).toBeVisible({ timeout: 15_000 })
@@ -133,7 +137,7 @@ test.describe.serial('redes no /sistema', () => {
 
   test('desligar manda a equipe para /conta-suspensa e fecha o portal do paciente; religar devolve', async ({ browser }) => {
     await comSessao(browser, admin.estado, async p => {
-      await p.goto(`/sistema/redes/${outra.tenantId}`)
+      await p.goto(`${SIS()}/redes/${outra.tenantId}`)
       await p.getByRole('button', { name: 'Desligar rede…' }).click()
       await p.getByLabel('Motivo para desligar').fill('Teste de desligamento')
       await p.getByRole('button', { name: 'Desligar', exact: true }).click()
@@ -168,7 +172,7 @@ test.describe.serial('redes no /sistema', () => {
     expect(await rest(), 'rede bloqueada: o token não lê nada').toBe(0)
 
     await comSessao(browser, admin.estado, async p => {
-      await p.goto(`/sistema/redes/${outra.tenantId}`)
+      await p.goto(`${SIS()}/redes/${outra.tenantId}`)
       await p.getByRole('button', { name: 'Religar rede' }).click()
       await expect(p.getByText('Rede religada.')).toBeVisible({ timeout: 15_000 })
     })
@@ -205,7 +209,7 @@ test.describe.serial('redes no /sistema', () => {
     const { data: atual } = await b.from('tenants').select('name, document, email, phone').eq('id', outra.tenantId)
       .single<{ name: string; document: string | null; email: string; phone: string | null }>()
     await comSessao(browser, admin.estado, async p => {
-      const r = await chamarAcao(p, 'actions/sistema.ts', 'editarRede', `/sistema/redes/${outra.tenantId}`,
+      const r = await chamarAcao(p, 'actions/sistema.ts', 'editarRede', `${SIS()}/redes/${outra.tenantId}`,
         [outra.tenantId, { nome: atual!.name, documento: atual!.document ?? '', email: atual!.email, telefone: atual!.phone }])
       expect(r.texto).toContain('"ok":true')
     })
@@ -216,7 +220,7 @@ test.describe.serial('redes no /sistema', () => {
     })
 
     await comSessao(browser, admin.estado, async p => {
-      const r = await chamarAcao(p, 'actions/sistema.ts', 'marcarEmDia', `/sistema/redes/${outra.tenantId}`, [outra.tenantId, 'Pagou por fora (teste)'])
+      const r = await chamarAcao(p, 'actions/sistema.ts', 'marcarEmDia', `${SIS()}/redes/${outra.tenantId}`, [outra.tenantId, 'Pagou por fora (teste)'])
       expect(r.texto).toContain('"ok":true')
     })
     expect((await situacao(outra.tenantId))).toMatchObject({ plan_status: 'active', em_atraso_desde: null })

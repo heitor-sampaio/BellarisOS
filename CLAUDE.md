@@ -25,6 +25,11 @@ unidade impossível.
 - **App Android** (`apps/native`) — o MESMO portal web dentro de um Capacitor, com push nativo. Não há
   app com código próprio, nem iOS: tela nova é tela web.
 
+E a PLATAFORMA — a equipe do BellarisOS — em dois apps próprios, cada um no seu
+host, fora da clínica (2026-10-06): o **sistema** (`apps/sistema`,
+admin.bellarisos.com, só ADMIN) e o **suporte** (`apps/suporte`,
+suporte.bellarisos.com). Regras em `docs/regras/plataforma.md`.
+
 ---
 
 ## 2. Stack
@@ -61,53 +66,21 @@ em página com streaming (#99028). Subir de versão exige a suíte contra o BUIL
 ```
 estetica-os/                          (raiz do monorepo)
 ├── apps/
-│   ├── web/                          Next.js — portais web
-│   │   ├── app/
-│   │   │   ├── (auth)/               login, cadastro, recuperação de senha
-│   │   │   ├── admin/                portal da rede (NETWORK_ADMIN)
-│   │   │   │   ├── dashboard/
-│   │   │   │   ├── branches/
-│   │   │   │   ├── reports/
-│   │   │   │   └── settings/
-│   │   │   ├── [slug]/               portal da filial
-│   │   │   │   ├── dashboard/
-│   │   │   │   ├── agenda/
-│   │   │   │   ├── clients/
-│   │   │   │   ├── procedures/
-│   │   │   │   ├── stock/
-│   │   │   │   ├── financial/
-│   │   │   │   └── settings/
-│   │   │   └── [slug]/cliente/       portal do cliente final (agendamento self-service)
-│   │   ├── components/
-│   │   │   ├── ui/                   shadcn/ui (não editar diretamente)
-│   │   │   ├── shared/               componentes reutilizáveis entre portais
-│   │   │   ├── admin/                exclusivos do portal admin
-│   │   │   └── branch/               exclusivos do portal de filial
-│   │   ├── lib/
-│   │   │   ├── supabase/             clients (server, client, middleware)
-│   │   │   ├── db.ts                 gravar / ler / tentar (§13.1)
-│   │   │   ├── auth.ts               helpers de autenticação e permissão
-│   │   │   └── utils.ts
-│   │   ├── hooks/
-│   │   └── actions/                  Server Actions (Next.js)
-│   │
-│   └── native/                       Capacitor — casca Android do portal web
-│       ├── capacitor.config.ts       URL de produção, só HTTPS
-│       └── android/
-│
+│   ├── web/                          a CLÍNICA (app.bellarisos.com): Next.js
+│   │   ├── app/                      (auth)/, admin/ (rede), [slug]/ (unidade),
+│   │   │                             [slug]/cliente/ (cliente final), api/, _shared/
+│   │   ├── components/               shared/, admin/, branch/, client-portal/
+│   │   ├── lib/                      auth.ts, permissions, metrics/, … (e os shims do núcleo)
+│   │   └── actions/                  Server Actions
+│   ├── sistema/                      a ADMINISTRAÇÃO da plataforma (admin.*, só ADMIN)
+│   ├── suporte/                      o ATENDIMENTO da plataforma (suporte.*)
+│   └── native/                       Capacitor — casca Android da clínica
 ├── packages/
-│   ├── types/                        interfaces TypeScript compartilhadas
-│   │   └── index.ts                  AppointmentWithClient, JwtClaims, etc.
-│   ├── validators/                   schemas Zod
-│   │   └── index.ts
-│   └── utils/                        helpers compartilhados
-│       └── index.ts                  formatBRL, formatDate, maskCPF, etc.
-│
-├── supabase/
-│   ├── migrations/                   migrations SQL (RLS, functions, triggers)
-│   └── seed.sql
-│
+│   ├── nucleo/                       o que os três apps dividem (§7)
+│   ├── types/  validators/  utils/
+├── supabase/migrations/              SQL (RLS, funções, gatilhos)
 ├── docs/regras/                      as regras de cada módulo (índice no §9)
+├── Dockerfile                        UMA imagem; o app sai de BELLARIS_APP (docs/regras/infra.md)
 ├── DEVLOG.md
 └── CLAUDE.md
 ```
@@ -307,11 +280,12 @@ pessoa está**. Confundir os dois foi o que fazia o `/admin` jogar quem clicava 
 
 Em `docs/regras/busca.md`.
 
-### Plataforma e suporte (`/suporte` e `/sistema`, 2026-10-03)
+### Plataforma e suporte (apps próprios desde 2026-10-06)
 
-Em `docs/regras/plataforma.md`: quem é da plataforma, o `/suporte`, o
-`/sistema`, as assinaturas pelo Asaas, a rede bloqueada, o "entrar como" e os
-chamados. ⚠️ Mexeu em `buildContext`, `jwt_claim`, no proxy ou nos destinos de
+Em `docs/regras/plataforma.md`: os apps `sistema` e `suporte` (outros hosts),
+as assinaturas pelo Asaas, a rede bloqueada, o "entrar como" entre origens, o
+cache entre processos e os chamados. ⚠️ A clínica RECUSA a marca da
+plataforma. Mexeu em `buildContext`, `jwt_claim`, no proxy ou nos destinos de
 login, leia antes: o portão da rede bloqueada e a sessão de suporte moram ali.
 
 ### App (Android)
@@ -394,7 +368,7 @@ código ou no DEVLOG cita "CLAUDE.md §9.7" acha a seção pela tabela.
 | `documentos.md` | §9.4.1 Termos e contratos | `issued_documents`, `document_*`, `consent_terms`, `lib/documentos/`, `components/admin/editor-rico/`, `/verificar`, `/assinar`, PDF assinado |
 | `whatsapp-push.md` | §9.8 Push, §9.8.0 Números de WhatsApp, §9.8.1 Coexistência × Cloud API | `whatsapp_numbers*`, `integration_configs`, `lib/whatsapp/`, `lib/channels/`, `lib/templates/`, `lib/notifications/`, `lib/integracoes/`, `actions/uazapi-connection.ts`, `/api/webhooks/whatsapp` e `/meta`, templates, push |
 | `automacoes.md` | §9.9 Eventos de domínio e automações | `domain_events`, `automation_*`, `lib/events/`, `lib/automacoes/`, `packages/types/src/eventos.ts`, campanhas |
-| `plataforma.md` | §6 Plataforma e suporte (e `/sistema`, Asaas, "entrar como", chamados) | `app/suporte`, `app/sistema`, `lib/plataforma/`, `lib/suporte/`, `lib/redes/`, `lib/asaas/`, `support_*`, `platform_*`, `tenant_subscriptions`, `subscription_invoices`, `buildContext`, `jwt_claim`, `/conta-suspensa`, Ajuda da topbar |
+| `plataforma.md` | §6 Plataforma e suporte (os apps sistema e suporte, Asaas, "entrar como", chamados) | `apps/sistema`, `apps/suporte`, `lib/plataforma/`, `lib/suporte/`, `lib/redes/`, `lib/asaas/`, `/auth/suporte-*`, `/api/interno/`, `support_*`, `platform_*`, `tenant_subscriptions`, `subscription_invoices`, `buildContext`, `jwt_claim`, `/conta-suspensa`, Ajuda da topbar |
 | `busca.md` | §6 Busca universal | `busca_universal`, `lib/busca/`, `actions/busca.ts`, `busca-universal.tsx` |
 | `design.md` | §13 Design System ("Rosé Vivo") | qualquer componente visual, `globals.css`, seletor, modal, popover, menu |
 | `indicadores.md` | §13.1 Indicadores | `lib/metrics/`, `metrics_*`, `lib/datetime.ts`, `resolvePeriod`, dashboard, relatórios, qualquer número na tela |
@@ -625,7 +599,7 @@ pnpm typecheck                      # tsc --noEmit em todos os packages
 pnpm test                           # Vitest
 pnpm --filter web test:e2e          # Playwright (sobe o dev sozinho)
 pnpm --filter web test:e2e:afetados # só os testes da área alterada (--listar, --desde <ref>)
-pnpm --filter web test:e2e:completa # a suíte inteira contra o build (porta 3100), em duas metades
+pnpm --filter web test:e2e:completa # a suíte inteira contra o build dos TRÊS apps, em duas metades
 ```
 
 **TDD** (decisão do Heitor, 2026-10-06): o teste nasce ANTES da feature, roda e

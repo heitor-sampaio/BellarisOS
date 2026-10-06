@@ -1,8 +1,7 @@
-import { createAdminClient } from '@/lib/supabase/admin'
-import { sessaoDeSuporteAtual } from '@/lib/suporte/requisicao'
-import type {
-  NomeDeEvento, EntidadeDeEvento, OrigemDeEvento, AtorDoEvento, DadosDeEvento,
-} from '@estetica-os/types'
+import { gravarEvento, entidadeDe, type EntradaDeEvento } from '@estetica-os/nucleo/lib/events/gravar'
+import type { NomeDeEvento, AtorDoEvento } from '@estetica-os/types'
+
+export type { EntradaDeEvento }
 
 /**
  * Grava um fato na corrente de eventos.
@@ -19,38 +18,6 @@ import type {
  * **Nunca lança.** Perder um evento é ruim; impedir o agendamento porque o log
  * de evento falhou é pior. O erro vai para o console, não é engolido.
  */
-export interface EntradaDeEvento {
-  tenantId:    string
-  branchId?:   string | null
-  entidadeId?: string | null
-  dados?:      DadosDeEvento
-  ator?:       AtorDoEvento
-  origem?:     OrigemDeEvento
-  /**
-   * Idempotência. Com ela preenchida, o mesmo fato não vira dois eventos ainda
-   * que o caminho rode duas vezes — reentrega de webhook, clique duplo,
-   * retentativa. Determinística a partir do fato:
-   * `agendamento.confirmado:<id>`.
-   */
-  chave?:      string
-  /** Momento do FATO, quando ele não é agora (webhook atrasado). */
-  ocorridoEm?: Date
-  /**
-   * Quantas automações houve antes deste fato.
-   *
-   * Zero quando o fato nasce de uma pessoa ou de um webhook. Uma ação de
-   * automação emite com a profundidade da execução que a gerou + 1, e o motor
-   * para no teto — é o que faz um grafo em anel fechar em três voltas em vez
-   * de mandar mensagem ao cliente em laço.
-   */
-  profundidade?: number
-}
-
-/** A entidade é sempre o prefixo do nome — não há por que pedir duas vezes. */
-function entidadeDe(nome: NomeDeEvento): EntidadeDeEvento {
-  return nome.split('.')[0] as EntidadeDeEvento
-}
-
 /**
  * Entrega o fato ao motor de automações.
  *
@@ -91,44 +58,17 @@ export async function emitirEvento(
   e:    EntradaDeEvento,
 ): Promise<void> {
   try {
-    const admin = createAdminClient()
-
-    const suporteSessaoId = e.ator?.suporteSessaoId ?? await sessaoDeSuporteAtual()
-    const { data, error } = await admin.from('domain_events').insert({
-      tenant_id:   e.tenantId,
-      branch_id:   e.branchId ?? null,
-      nome,
-      entidade:    entidadeDe(nome),
-      entidade_id: e.entidadeId ?? null,
-      dados:       e.dados ?? {},
-      ator_id:     e.ator?.id ?? null,
-      ator_nome:   e.ator?.nome ?? null,
-      ator_tipo:   e.ator?.tipo ?? 'sistema',
-      origem:      e.origem ?? 'app',
-      chave:       e.chave ?? null,
-      ocorrido_em: (e.ocorridoEm ?? new Date()).toISOString(),
-      // Fato gravado numa sessão do SUPORTE da plataforma: a clínica vê o que
-      // o suporte fez (Configurações → Suporte).
-      suporte_sessao_id: suporteSessaoId,
-    }).select('id').maybeSingle()
-
-    // 23505 = a chave de idempotência barrou uma repetição. Não é erro: é a
-    // trava fazendo o trabalho dela, e registrar como falha poluiria o log
-    // justamente no caminho que funcionou. E é também por isso que o despacho
-    // fica abaixo do `if`: repetição barrada não é fato novo, e disparar
-    // automação por ela faria a segunda tentativa de um webhook mandar a
-    // mensagem de novo.
-    if (error && error.code !== '23505') {
-      console.error('[emitirEvento]', nome, error.message)
-      return
-    }
-    if (error || !data) return
+    // O insert é do núcleo (a plataforma grava por lá, sem despachar).
+    const gravado = await gravarEvento(nome, e)
+    // Repetição barrada pela chave não é fato novo: não despacha — a segunda
+    // tentativa de um webhook não pode mandar a mensagem de novo.
+    if (!gravado) return
     // No modo suporte nada sai para o paciente — e as automações mandam
     // mensagem. O fato fica registrado (a clínica vê), mas não dispara fluxo.
-    if (suporteSessaoId) return
+    if (gravado.suporteSessaoId) return
 
     await despachar({
-      id:         data.id as string,
+      id:         gravado.id,
       nome,
       entidade:   entidadeDe(nome),
       entidadeId: e.entidadeId ?? null,

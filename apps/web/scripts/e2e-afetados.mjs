@@ -74,7 +74,7 @@ const AREAS = [
     specs: /^(prontuario|ficha|lgpd|portal-cliente|fase5|planejamentos|permissoes-acoes|clinico)/ },
   { nome: 'autorização e equipe',
     chaves: ['permiss', 'cargo', 'role', 'team', 'equipe', 'membro', 'login', 'register', 'password', 'senha'],
-    specs: /^(autenticacao|sessao-httponly|permissoes|fase4|membro|equipe|portais|abrangencia|rls|api-sem|privacidade|acoes-entre-redes)/ },
+    specs: /^(autenticacao|sessao-httponly|plataforma-hosts|permissoes|fase4|membro|equipe|portais|abrangencia|rls|api-sem|privacidade|acoes-entre-redes)/ },
   { nome: 'configurações e rede',
     chaves: ['settings', 'configurac', 'branch', 'unidade', 'tenant', 'rede', 'integrac', 'integration'],
     specs: /^(configuracoes|estrutura|equipe|anuncios|abrangencia|credenciais|acoes-entre-redes)/ },
@@ -96,6 +96,9 @@ const AREAS = [
   { nome: 'busca universal',
     chaves: ['busca', 'topbar', 'lib/configuracoes/', 'inbox/pagina'],
     specs: /^(busca-universal|inbox-paginado|inbox-nome-da-pessoa)/ },
+  { nome: 'plataforma (sistema e suporte)',
+    chaves: ['apps/sistema/', 'apps/suporte/', 'nucleo/src/lib/plataforma/', 'nucleo/src/lib/suporte/', 'nucleo/src/lib/redes/', '/auth/suporte-', 'api/interno/'],
+    specs: /^(plataforma-hosts|plataforma-primeiro-admin|suporte-|sistema-|chamados|assinaturas-asaas|api-sem)/ },
   { nome: 'visual',
     chaves: ['globals.css', 'components/ui/', 'seg-select', 'seletor'],
     specs: /^(seletores|render-limpo|smoke)/ },
@@ -109,6 +112,12 @@ const COMPARTILHADOS = [
   /apps\/web\/lib\/permissions\.ts$/, /apps\/web\/lib\/rotas\.ts$/,
   /apps\/web\/package\.json$/, /pnpm-lock\.yaml$/, /apps\/web\/next\.config\./,
   /apps\/web\/playwright(\.build)?\.config\.ts$/, /apps\/web\/e2e\/global-setup\.ts$/, /apps\/web\/e2e\/apoio\//,
+  // O NÚCLEO (2026-10-06): db, supabase, sessão, redes, suporte e plataforma
+  // agora moram lá — os caminhos do apps/web são só shims.
+  /packages\/nucleo\/src\/lib\/(db|interno)\.ts$/, /packages\/nucleo\/src\/lib\/supabase\//,
+  /packages\/nucleo\/src\/lib\/plataforma\/(proxy|porta|destino|contexto|acesso)\.ts$/,
+  /packages\/nucleo\/src\/estilos\//, /packages\/nucleo\/package\.json$/,
+  /apps\/(sistema|suporte)\/proxy\.ts$/, /apps\/(sistema|suporte)\/package\.json$/, /^Dockerfile$/,
 ]
 
 // O que não é código do app não pede teste nenhum.
@@ -174,7 +183,8 @@ for (const a of alterados) {
 }
 
 // Os testes de unidade da área, pelo grafo de imports do Vitest.
-const fontes = alterados.filter(a => /^apps\/web\/.+\.(ts|tsx)$/.test(a) && !a.includes('/e2e/'))
+// Os do núcleo também: os testes do apps/web os importam pelo pacote.
+const fontes = alterados.filter(a => /^(apps\/web|packages\/nucleo)\/.+\.(ts|tsx)$/.test(a) && !a.includes('/e2e/'))
   .map(a => path.relative(WEB, path.join(RAIZ, a)))
 
 const lista = [...escolhidos].sort()

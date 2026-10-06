@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -14,8 +18,16 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "paths": {
-      "@estetica-os/types": ["../types/src/index.ts"]
+      "@estetica-os/types": [
+        "../types/src/index.ts"
+      ],
+      "@estetica-os/validators": [
+        "../validators/src/index.ts"
+      ]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ]
 }

@@ -99,7 +99,11 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
 
 - Next.js 16 (App Router, Server Actions) + Supabase (Postgres, Auth, Storage,
   RLS) + Turborepo/pnpm. Deploy na Railway (uma réplica, us-east4); banco em
-  us-east-1.
+  us-east-1. **Três apps** desde 2026-10-06: a clínica (`apps/web`), o sistema
+  e o suporte (`apps/sistema`, `apps/suporte`, hosts próprios), uma imagem só
+  (`BELLARIS_APP`); o que dividem mora em `packages/nucleo`.
+- **Sessão só no servidor:** cookies do Supabase httpOnly; o navegador pega só
+  o access token, para o Realtime (`/api/auth/token`).
 - **Autorização dinâmica:** cargos por rede, 17 módulos com nível
   (NONE/VIEW/MANAGE), escopo (OWN/ALL) em cinco deles, abrangência pelo
   `users.branch_id`, e as abas de Relatórios liberadas uma a uma
@@ -130,12 +134,12 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   oportunidade, agendamento, equipe, catálogo e páginas, sem acento e com o
   mesmo alcance da tela de cada registro (`busca_universal` + a conta do
   inbox).
-- **Suporte da plataforma** (`/suporte`, verificação em duas etapas): fila de
+- **Suporte da plataforma** (app próprio, suporte.bellarisos.com, verificação em duas etapas): fila de
   chamados aberta pela Ajuda da topbar, painel das redes com diagnóstico e
-  ações, e **"Entrar como"** o membro — só com autorização da clínica, sem
+  ações, e **"Entrar como"** o membro (numa aba nova, na clínica, por código de uso único) — só com autorização da clínica, sem
   dado clínico salvo autorização que o inclua, nada saindo para o paciente, e
   tudo registrado "via suporte" e visível à clínica (Configurações → Suporte).
-- **Administração do sistema** (`/sistema`, só ADMIN da plataforma): painel do
+- **Administração do sistema** (app próprio, admin.bellarisos.com, só ADMIN da plataforma): painel do
   negócio (MRR, redes por situação), redes (criar, editar, desligar), planos,
   assinatura e cobrança pelo **Asaas** (webhook + regras de teste e carência),
   equipe da plataforma e auditoria. Rede bloqueada (desligada, suspensa ou
@@ -1294,6 +1298,49 @@ próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo o
 borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
+
+### 2026-10-06 — A plataforma em apps e hosts próprios: `apps/sistema` e `apps/suporte`
+
+O `/sistema` e o `/suporte` saíram do app da clínica e viraram dois apps, cada
+um no seu serviço e no seu host (decisão do Heitor): o **sistema**
+(admin.bellarisos.com, só ADMIN) e o **suporte** (suporte.bellarisos.com,
+SUPORTE e ADMIN). O motivo: na mesma origem da clínica — que desenha conteúdo
+de fora —, um script injetado alcançava a sessão de quem enxerga todas as
+redes; e o "entrar como" guardava o refresh token do atendente no domínio da
+clínica.
+
+- **Os hosts recusam na porta** (`proxyDaPlataforma`, núcleo): nega por
+  padrão; sessão de quem não é do host é desfeita ali, e o login de cada app
+  diz o motivo (`recusaDoHost`). A clínica, por sua vez, recusa a marca da
+  plataforma (proxy, `buildContext`, login, sessão). O primeiro admin
+  (`PLATAFORMA_ADMIN_EMAIL`) só é promovido no sistema.
+- **O "entrar como" é entre origens**, por um código de uso único (60 s, só
+  o SHA-256 no banco — migration `20261006000001`): o painel abre a sessão e
+  manda, numa aba nova, um POST com o código à clínica, que o consome e só
+  então cria a sessão do membro, com cookie httpOnly NELA. O cookie de volta
+  (`bellaris_suporte_volta`) acabou: a sessão do atendente nunca vai à clínica,
+  e o "Sair" leva ao painel no host do suporte.
+- **Cache entre processos**: cada app tem o seu `unstable_cache`. O que o
+  sistema ou o suporte mudam e a CLÍNICA guarda (a situação da rede, a sessão
+  de suporte, o membro) — e o atendente, cujo cache mora também no suporte —
+  vai por `/api/interno/expirar` (segredo `INTERNO_SECRET`, lista fechada de
+  tags). Visto no vermelho: desligar a rede não mandava a equipe à
+  `/conta-suspensa` enquanto o cache da clínica não vencia.
+- **CSP estrita com nonce** nos dois hosts (`politicaDeConteudo`), `noindex`,
+  e lista de IPs opcional (`PLATAFORMA_IPS`).
+- **Fato da plataforma não dispara automação** (`gravarEvento`, sem
+  despacho), e o reenviar acesso volta pela clínica (`linkDeDefinirSenha`) —
+  antes o link sairia com o host de quem clicou.
+- **Deploy**: um Dockerfile só, com `BELLARIS_APP` (web | sistema | suporte)
+  como build arg; o cron manda `assinaturas` ao sistema (`baseDoJob`). O
+  E2E sobe os três builds em hosts próprios (127.0.0.1/.2/.3), e o CI também.
+- **Decisões minhas**: reenviar acesso e reativar membro moram só no suporte
+  (o sistema manda para lá); a verificação TOTP fica DENTRO do painel de cada
+  app; o código vai no corpo de um POST (não na URL).
+- TDD: `plataforma-hosts.spec` (o "Painel" que não existia no host do
+  sistema), `suporte-entrada.spec` (a rota que ainda respondia 303 do fluxo
+  antigo), os unitários de `destino`, `interno`, `porta` e `cron`, e o
+  `sistema-redes` desligando a rede — todos vistos vermelhos antes.
 
 ### 2026-10-06 — `packages/nucleo`: o código que a clínica e a plataforma dividem
 
@@ -5317,6 +5364,24 @@ verdade. O que vale:
 ## 5. Em aberto
 
 ### Depende do Heitor (fora do código)
+
+- **Os apps da plataforma no ar** (2026-10-06):
+  - os CNAMEs `admin` e `suporte` para os serviços novos do Railway;
+  - no Supabase (Auth → URL Configuration), os dois hosts nas Redirect URLs;
+  - quando ligar o Asaas, o webhook em `https://admin.bellarisos.com/api/webhooks/asaas`;
+  - `PLATAFORMA_ADMIN_EMAIL` vai no serviço do SISTEMA, e o primeiro login é
+    em admin.bellarisos.com.
+- **Build novo do app Android** (sessão em cookie httpOnly, `CookieManager.flush`):
+  testar fechar o app, matar o processo e reabrir logado.
+- **Cloudflare Access** (fora do escopo por decisão dele, 2026-10-06): DNS do
+  `bellarisos.com` no Cloudflare (copiar TODOS os registros antes, MX e TXT
+  inclusive; `app` em "DNS only"), Zero Trust grátis com os e-mails da
+  equipe na frente de `admin` e `suporte`, bypass para `/api/webhooks/asaas`,
+  `/api/cron/*`, `/api/health` e `/api/interno/*`, e conferir o
+  `Cf-Access-Jwt-Assertion` no `proxyDaPlataforma` (senão a borda do Railway
+  é um atalho).
+- **CSP na clínica** (`apps/web`): começar em Report-Only (lá há o SDK da Meta,
+  a mídia da uazapi e mais) — a dos hosts da plataforma já é estrita.
 
 - ~~App da Meta não existe~~ **existe e é Tech Provider** (2026-09-30), com o
   cadastro incorporado no ar (v4, `config_id` em `META_ES_CONFIG_ID`). Falta:

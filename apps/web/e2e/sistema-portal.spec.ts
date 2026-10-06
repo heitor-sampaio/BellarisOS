@@ -1,18 +1,21 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
-import { criarAtendente, type AtendenteDeTeste } from './apoio/plataforma'
+import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
- * A ADMINISTRAÇÃO DO SISTEMA (/sistema), o portal só de ADMIN — ao lado do
- * /suporte, que é o atendimento (2026-10-03).
+ * A ADMINISTRAÇÃO DO SISTEMA, só de ADMIN — desde 2026-10-06 um app próprio
+ * num host próprio (admin.bellarisos.com), ao lado do suporte (outro host).
  *
- * - o ADMIN abre os dois portais e troca pelo seletor;
- * - o SUPORTE não abre o /sistema (o proxy desvia, e as actions recusam pela
+ * - o ADMIN abre o sistema; o seletor leva ao host do suporte, onde a sessão
+ *   é outra (cookie é do host): sem ela, o login de lá;
+ * - o SUPORTE não abre o sistema (o proxy recusa, e as actions recusam pela
  *   chamada direta);
- * - equipe e auditoria mudaram do /suporte para cá (as rotas antigas desviam);
  * - o ADMIN cria planos e gente da plataforma (de suporte), pela tela.
  */
+test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build (playwright.build.config.ts)')
+const SIS = () => urlDaPlataforma('sistema')
+const SUP = () => urlDaPlataforma('suporte')
 
 const marca = Date.now().toString(36)
 const db = () => banco()
@@ -56,34 +59,36 @@ async function comSessao(browser: Browser, estado: string, fn: (p: Page) => Prom
 }
 
 test.describe.serial('administração do sistema', () => {
-  test('o ADMIN abre o /sistema e troca de portal pelo seletor', async ({ browser }) => {
+  test('o ADMIN abre o sistema; o seletor leva ao host do suporte, com a sessão de lá', async ({ browser }) => {
     await comSessao(browser, admin.estado, async p => {
-      await p.goto('/sistema')
+      await p.goto(`${SIS()}/`)
       await expect(p.getByRole('heading', { name: 'Painel' })).toBeVisible()
       await expect(p.getByText('Receita recorrente (MRR)')).toBeVisible()
-      const seletor = p.getByRole('navigation', { name: 'Portal da plataforma' })
-      await seletor.getByRole('link', { name: 'Suporte' }).click()
-      await expect(p).toHaveURL(/\/suporte\/chamados/)
-      await p.getByRole('navigation', { name: 'Portal da plataforma' }).getByRole('link', { name: 'Sistema' }).click()
-      await expect(p).toHaveURL(/\/sistema$/)
-      // Equipe e auditoria moram aqui; as rotas antigas do /suporte desviam.
-      await p.goto('/suporte/equipe')
-      await expect(p).toHaveURL(/\/sistema\/equipe/)
+      await p.goto(`${SIS()}/equipe`)
       await expect(p.getByRole('heading', { name: 'Equipe da plataforma' })).toBeVisible()
-      await p.goto('/sistema/auditoria')
+      await p.goto(`${SIS()}/auditoria`)
       await expect(p.getByRole('heading', { name: 'Auditoria da plataforma' })).toBeVisible()
+      // O seletor é um link para o OUTRO host: a sessão do sistema não vale lá.
+      await p.getByRole('navigation', { name: 'Portal da plataforma' }).getByRole('link', { name: 'Suporte' }).click()
+      await expect(p).toHaveURL(`${SUP()}/login`)
+    })
+    // Com a sessão do suporte (a segunda do ADMIN), o seletor volta ao sistema.
+    await comSessao(browser, await admin.estadoNo('suporte'), async p => {
+      await p.goto(`${SUP()}/chamados`)
+      await expect(p.getByRole('heading', { name: 'Chamados' })).toBeVisible()
+      const seletor = p.getByRole('navigation', { name: 'Portal da plataforma' })
+      await expect(seletor.getByRole('link', { name: 'Sistema' })).toHaveAttribute('href', `${SIS()}/`)
     })
   })
 
-  test('o SUPORTE não abre o /sistema, nem pela action', async ({ browser }) => {
-    await comSessao(browser, suporte.estado, async p => {
-      await p.goto('/sistema')
-      await expect(p).toHaveURL(/\/suporte/)
-      await p.goto('/sistema/redes')
-      await expect(p).not.toHaveURL(/\/sistema/)
+  test('o SUPORTE não abre o sistema, nem pela action', async ({ browser }) => {
+    // A sessão do SUPORTE gravada no host do sistema (como se ele tivesse o cookie).
+    await comSessao(browser, await suporte.estadoNo('sistema'), async p => {
+      await p.goto(`${SIS()}/redes`)
+      await expect(p).toHaveURL(`${SIS()}/login`)
       await expect(p.getByRole('navigation', { name: 'Portal da plataforma' })).toHaveCount(0)
       // A action direta: qualquer que seja a resposta, nada é gravado.
-      await chamarAcao(p, 'actions/sistema.ts', 'salvarPlano', '/sistema/planos',
+      await chamarAcao(p, 'actions/sistema.ts', 'salvarPlano', `${SIS()}/planos`,
         [{ nome: `${PLANO} hack`, valorCentavos: 100, ativo: true }]).catch(() => null)
     })
     const { data } = await db().from('platform_plans').select('id').eq('nome', `${PLANO} hack`)
@@ -92,7 +97,7 @@ test.describe.serial('administração do sistema', () => {
 
   test('o ADMIN cadastra um plano pela tela', async ({ browser }) => {
     await comSessao(browser, admin.estado, async p => {
-      await p.goto('/sistema/planos')
+      await p.goto(`${SIS()}/planos`)
       const form = p.locator('form', { hasText: 'Novo plano' })
       await form.locator('input[name="nome"]').fill(PLANO)
       await form.locator('input[name="valor"]').fill('199,90')
@@ -106,14 +111,14 @@ test.describe.serial('administração do sistema', () => {
   })
 
   test('o ADMIN cria gente de suporte; o SUPORTE não', async ({ browser }) => {
-    await comSessao(browser, suporte.estado, async p => {
-      await chamarAcao(p, 'actions/plataforma.ts', 'criarAtendente', '/sistema/equipe',
+    await comSessao(browser, await suporte.estadoNo('sistema'), async p => {
+      await chamarAcao(p, 'actions/plataforma.ts', 'criarAtendente', `${SIS()}/equipe`,
         [{ nome: '[e2e] Hack', email: emailDoNovo, papel: 'ADMIN' }]).catch(() => null)
     })
     expect((await db().from('platform_staff').select('id').eq('email', emailDoNovo)).data ?? []).toHaveLength(0)
 
     await comSessao(browser, admin.estado, async p => {
-      const r = await chamarAcao(p, 'actions/plataforma.ts', 'criarAtendente', '/sistema/equipe',
+      const r = await chamarAcao(p, 'actions/plataforma.ts', 'criarAtendente', `${SIS()}/equipe`,
         [{ nome: `[e2e] Novo suporte ${marca}`, email: emailDoNovo, papel: 'SUPORTE' }])
       expect(r.texto).toContain('"ok":true')
     })

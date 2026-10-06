@@ -1,0 +1,2276 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+/* O CSS mora no núcleo (os três apps o importam). O Tailwind varre o app que
+   compila (o diretório de trabalho); os componentes do núcleo entram por aqui. */
+@source "..";
+
+/* ============================================================
+   BELLARISOS DESIGN SYSTEM — TOKENS
+   Fonte: .claude/skills/lumiere-design/tokens/
+   Não introduza cores, fontes ou sombras fora deste :root.
+   ============================================================ */
+
+@theme inline {
+  /* Mapeamento dos tokens BellarisOS para o Tailwind v4 */
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-soft: var(--brand-soft);
+  --color-surface: var(--surface);
+  --color-bg-app: var(--bg-app);
+  --color-border-card: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-info: var(--info);
+
+  --font-sans: var(--font-sans-custom);
+
+  --radius-card: var(--radius-card-token);
+  --radius-field: var(--radius-field-token);
+  --radius-chip: var(--radius-chip-token);
+}
+
+@layer base {
+  :root {
+    /* --- Brand (rosé) ------------------------------- */
+    --brand: #c34d6b;
+    --brand-deep: #a63a55;
+    --brand-soft: #fbe7ec;
+    --brand-soft-border: #f3c7d3;
+    --brand-2: #dd7f96;
+    --brand-3: #eeb0bf;
+
+    /* --- Surfaces & neutrals ------------------------
+       O fundo era nude rosado (#faf5f3) e virou off-white neutro em
+       2026-09-24, a pedido do Heitor. O trabalho dele é um só — separar o
+       card branco do resto —, e o rosa ali competia com o acento da marca,
+       que já aparece preenchido no KPI, no nav ativo e nos botões.
+
+       O calor não sumiu: ficou nos detalhes (borda, divisória, trilha),
+       que continuam nude. */
+    --bg-app: #f8f8f8;
+    --surface: #ffffff;
+    --border: #f0e6e3;
+    --hairline: #f4ebe8;
+    --track: #f7eaee;
+
+    /* --- Text --------------------------------------- */
+    --text: #221619;
+    --text-muted: #8a7a7e;
+    --text-faint: #b7a8ac;
+    --text-soft: #6b5d61;
+
+    /* --- Semantic ----------------------------------- */
+    --success: #3f9b6f;
+    --success-soft: #e2f1ea;
+    --success-bg: #f3faf5;
+    --success-border: #cfe9da;
+    --warning: #c98a1e;
+    --warning-soft: #fbeed6;
+    --warning-border: #f0dcb4;
+    --gold: #c9a227;
+
+    /* Erro e informação — ver tokens/colors.css da skill /lumiere-design.
+       Faltavam, e a falta produziu a bagunça: sem vermelho de sistema, cada
+       tela pegou o do Tailwind (red-600, 146 vezes) ou inventou o seu.
+       Terrosos de propósito: o vermelho do Tailwind é frio demais ao lado do
+       nude quente. O azul tem um papel só — estado informativo neutro
+       (Agendado, Concluída, tipo de documento). Nunca é dado; dado é rosé. */
+    --danger: #b42318;
+    --danger-soft: #fdecea;
+    --danger-border: #f5cdc7;
+    --info: #3b6cbf;
+    --info-soft: #e7f0fc;
+    --info-border: #c9dcf5;
+
+    /* ─── Escala categórica (2026-09-24) ───────────────
+       Para DISTINGUIR, não para significar: qual profissional ocupa o horário,
+       de qual canal veio a conversa. É a outra lacuna que produzia invenção —
+       seis tons de rosé seriam indistinguíveis à primeira vista, então cada
+       tela escolheu os seus.
+    
+       As três primeiras REUSAM os tokens semânticos de propósito: quem tem
+       quatro profissionais nunca chega nas outras, e a tela fica na paleta.
+       As três últimas são quentes e dessaturadas para conviver com o nude. */
+    --cat-1: var(--brand);        --cat-1-soft: var(--brand-soft);
+    --cat-2: var(--info);         --cat-2-soft: var(--info-soft);
+    --cat-3: var(--success);      --cat-3-soft: var(--success-soft);
+    --cat-4: #6a3baa;             --cat-4-soft: #f0e7fc;   /* ameixa */
+    --cat-5: #b85c1a;             --cat-5-soft: #fceee7;   /* terracota */
+    --cat-6: #1a8a73;             --cat-6-soft: #e7fcf8;   /* teal */
+
+    /* --- Aliases ------------------------------------- */
+    --on-brand: #ffffff;
+    --accent: var(--brand);
+    /* O ÚNICO gradiente de fundo do sistema (2026-09-24).
+       Era regra de texto — "só o card Pacote ativo" — e virou string copiada
+       em cinco lugares: as duas barras laterais, a home do cliente, o avatar
+       da ficha e o cabeçalho do plano. Como token, a regra fica onde ela é
+       obedecida: superfície de MARCA pode usá-lo; fundo neutro, nunca. */
+    --gradient-brand: linear-gradient(165deg, var(--brand) 0%, var(--brand-deep) 100%);
+
+    /* --- Typography ---------------------------------- */
+    --font-sans-custom: 'Hanken Grotesk', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+    --text-display: 30px;
+    --text-title: 28px;
+    --text-name: 22px;
+    --text-kpi: 28px;
+    --text-card-title: 15px;
+    --text-base-sz: 13px;
+    --text-sm-sz: 12.5px;
+    --text-xs-sz: 11.5px;
+    --text-2xs: 11px;
+    --text-overline: 10.5px;
+
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+    --weight-extrabold: 800;
+
+    --tracking-tight: -0.02em;
+    --tracking-overline: 0.12em;
+    --tracking-wordmark: 0.3em;
+
+    --leading-tight: 1;
+    --leading-snug: 1.4;
+    --leading-normal: 1.55;
+
+    /* --- Radii ---------------------------------------
+       A escala encolheu em 2026-09-21: 18px de card lia como curva demais na
+       tela cheia. O degrau entre card e campo é de propósito — o elemento de
+       dentro nunca mais redondo que o de fora, senão o canto do botão parece
+       estourar o do card que o contém.
+
+       Chip e avatar NÃO seguem a escala: 20px numa altura de 22px é pílula, e
+       pílula é o que distingue um badge de um botão à primeira vista. */
+    --radius-card-token: 12px;
+    --radius-card-sm: 11px;
+    --radius-field-token: 10px;
+    --radius-row: 10px;
+    --radius-squircle: 14px;
+    --radius-chip-token: 20px;
+    --radius-full: 9999px;
+
+    /* --- Shadows (brand-tinted) ---------------------- */
+    --shadow-brand-card: 0 16px 34px -14px rgba(195, 77, 107, .5);
+    --shadow-brand-btn: 0 10px 24px -8px rgba(195, 77, 107, .6);
+    --shadow-nav-active: 0 8px 18px -6px rgba(195, 77, 107, .55);
+    --shadow-agenda-card: 0 2px 8px -3px rgba(63, 155, 111, .25);
+    /* Elevação de overlay (2026-09-24) — a terceira lacuna.
+       "Superfície neutra usa borda, não sombra" vale para o que está NO plano
+       da página. O que flutua sobre ela — modal, dropdown, tooltip — precisa de
+       elevação, e sem token cada tela inventou a sua: sete sombras pretas
+       diferentes, de `rgba(0,0,0,.08)` a `rgba(0,0,0,.22)`.
+       Tingidas de rosé como todas as outras do sistema. */
+    --shadow-overlay: 0 18px 44px -14px rgba(122, 30, 61, .30);
+    --shadow-popover: 0 8px 22px -8px rgba(122, 30, 61, .22);
+
+
+    /* --- Layout constants ---------------------------- */
+    --sidebar-w: 244px;
+    --topbar-h: 68px;
+    --client-list-w: 336px;
+    --content-pad-y: 30px;
+    --content-pad-x: 34px;
+    --card-pad: 24px;
+    --card-pad-sm: 20px;
+    --row-pad: 12px;
+
+    /* Altura única de TODO controle de filtro: segmentado, dropdown,
+       liga/desliga e campo de busca. Era o que fazia a barra do dashboard
+       parecer desalinhada em relação à da agenda — o mesmo seletor com duas
+       alturas, porque cada tela escolhia o padding no inline style.
+       Decisão do Heitor em 2026-09-24: "preciso que tudo seja padronizado". */
+    --altura-controle: 34px;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: var(--font-sans-custom);
+    color: var(--text);
+    background-color: var(--bg-app);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-size: var(--text-base-sz);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-normal);
+    color: var(--text);
+    background-color: var(--bg-app);
+  }
+}
+
+/* ============================================================
+   COMPONENTES BASE (usados via className nos componentes React)
+   ============================================================ */
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card-token);
+    padding: var(--card-pad);
+  }
+
+  .card-hover {
+    transition: background 0.12s;
+    cursor: pointer;
+  }
+  .card-hover:hover {
+    background: var(--bg-app);
+  }
+
+  .card-sm {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card-sm);
+    padding: var(--card-pad-sm);
+  }
+
+  .card-brand {
+    background: var(--brand);
+    border-radius: var(--radius-card-token);
+    padding: var(--card-pad);
+    box-shadow: var(--shadow-brand-card);
+    color: var(--on-brand);
+  }
+
+  .overline {
+    font-size: var(--text-overline);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-overline);
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: var(--radius-chip-token);
+    font-size: var(--text-xs-sz);
+    font-weight: var(--weight-bold);
+    white-space: nowrap;
+  }
+
+  .chip-brand   { background: var(--brand-soft); color: var(--brand); }
+  .chip-success { background: var(--success-soft); color: var(--success); }
+  .chip-warning { background: var(--warning-soft); color: var(--warning); }
+  .chip-muted   { background: var(--bg-app); color: var(--text-muted); border: 1px solid var(--border); }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: var(--brand);
+    color: var(--on-brand);
+    border-radius: var(--radius-field-token);
+    font-size: var(--text-sm-sz);
+    font-weight: var(--weight-bold);
+    border: none;
+    cursor: pointer;
+    box-shadow: var(--shadow-brand-btn);
+    transition: background 120ms ease;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .btn-primary:hover { background: var(--brand-deep); }
+  /* Desabilitado tem de PARECER desabilitado: sem isto o "Iniciar atendimento"
+     travado pela falta de assinatura parecia um botão que não respondia. */
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+  .btn-primary:disabled:hover { background: var(--brand); }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: var(--bg-app);
+    color: var(--text);
+    border-radius: var(--radius-field-token);
+    font-size: var(--text-sm-sz);
+    font-weight: var(--weight-bold);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 120ms ease;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .btn-secondary:hover { background: var(--brand-soft); }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: var(--radius-field-token);
+    font-size: var(--text-sm-sz);
+    font-weight: var(--weight-semibold);
+    border: none;
+    cursor: pointer;
+    transition: color 120ms ease, background 120ms ease;
+    font-family: inherit;
+  }
+  .btn-ghost:hover { color: var(--brand); background: var(--brand-soft); }
+
+  /* Responder/editar no inbox: sempre no DOM, visíveis só no hover da linha.
+     Montar no hover faria a mensagem pular de lugar sob o cursor. */
+  .bolha-acoes {
+    opacity: 0;
+    transition: opacity 120ms ease;
+    pointer-events: none;
+  }
+  .bolha-linha:hover .bolha-acoes,
+  .bolha-acoes:focus-within {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .bolha-acoes button:hover { color: var(--brand); border-color: var(--brand); }
+
+  .field {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--bg-app);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-field-token);
+    font-family: var(--font-sans-custom);
+    font-size: var(--text-sm-sz);
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+    outline: none;
+    transition: border-color 120ms ease;
+  }
+  .field:focus { border-color: var(--brand); }
+  .field::placeholder { color: var(--text-faint); }
+
+  /* Modal (<dialog> nativo) — estilos base para todos os modais */
+  dialog.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    border: none;
+    padding: 0;
+    border-radius: var(--radius-card-token);
+    max-width: 560px;
+    width: calc(100% - 32px);
+    max-height: calc(100dvh - 48px);
+    overflow-y: auto;
+    box-shadow: 0 24px 64px rgba(34, 22, 25, .22);
+    outline: none;
+    background: var(--surface);
+    scrollbar-color: var(--brand) transparent;
+    scrollbar-width: thin;
+  }
+  dialog.modal::-webkit-scrollbar        { width: 5px; }
+  dialog.modal::-webkit-scrollbar-track  { background: transparent; }
+  dialog.modal::-webkit-scrollbar-thumb  { background: var(--brand); border-radius: 99px; }
+  dialog.modal::-webkit-scrollbar-thumb:hover { background: var(--brand-deep); }
+  dialog.modal::backdrop {
+    background: rgba(34, 22, 25, .45);
+    backdrop-filter: blur(3px);
+  }
+
+  /* Modais com layout flex (header fixo + corpo rolável):
+     adicionar classe modal-flex ao dialog para ativar este modo */
+  dialog.modal.modal-flex {
+    background: transparent;
+    overflow: visible;
+    max-height: none;
+    box-shadow: none;
+    border-radius: 0;
+  }
+  .modal-container {
+    border-radius: var(--radius-card-token);
+    overflow: hidden;
+    max-height: calc(100dvh - 48px);
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    box-shadow: 0 24px 64px rgba(34, 22, 25, .22);
+  }
+  .modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-color: var(--brand) transparent;
+    scrollbar-width: thin;
+  }
+  .modal-body::-webkit-scrollbar        { width: 5px; }
+  .modal-body::-webkit-scrollbar-track  { background: transparent; }
+  .modal-body::-webkit-scrollbar-thumb  { background: var(--brand); border-radius: 99px; }
+  .modal-body::-webkit-scrollbar-thumb:hover { background: var(--brand-deep); }
+
+  .table-row-hover { transition: background 0.1s; }
+  .table-row-hover:hover { background: var(--bg-app); }
+}
+
+/* ============================================================
+   RESPONSIVE UTILITIES
+   Breakpoints:  lg ≥ 1024px  |  md ≥ 768px  |  sm ≥ 640px
+   ============================================================ */
+
+/* -- Layout: sidebar desaparece abaixo de 1024px ----------- */
+@media (max-width: 1023px) {
+  :root {
+    --sidebar-w: 0px;
+  }
+}
+
+/* -- Espaçamento reduzido em telas menores ----------------- */
+@media (max-width: 767px) {
+  :root {
+    --content-pad-x: 20px;
+    --content-pad-y: 16px;
+    --card-pad:      14px;
+    --card-pad-sm:   12px;
+    --text-display:  26px;
+    --text-title:    22px;
+    --text-name:     18px;
+    --text-kpi:      24px;
+  }
+  /* Cards/KPIs mais densos no mobile. Duas colunas fixas em vez de `auto-fit`:
+     com `auto-fit` a contagem dependia da largura exata do aparelho, e a regra
+     do ímpar abaixo precisa saber quantas colunas existem. */
+  .kpi-grid-auto {
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Cinco KPIs em duas colunas deixavam o quinto sozinho com meia linha vazia
+     ao lado — o buraco mais visível do dashboard e do estoque. */
+  .kpi-grid-auto > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .kpi-grid { gap: 10px; }
+  /* Coluna de filial da agenda da rede: com 180px cabia uma e meia na tela e a
+     grade lia como cortada. A 138px entram duas e meia — e a terça parte
+     visível é o que diz que dá para arrastar. */
+  :root { --agenda-col: 138px; }
+
+  /* KPI com ícone à esquerda: 40px de ícone mais o respiro deixavam 81px dos
+     175px da coluna, e não era só o rótulo que saía cortado — o próprio
+     "R$ 54.150,00" do card era. Ícone menor e rótulo que pode quebrar; o
+     número continua em linha única, que é o que não se pode partir. */
+  /* 28px e não 32: com 32 sobravam 97px e o valor pedia 101 — faltavam
+     quatro. O respiro entre ícone e texto encolhe junto. */
+  .kpi-icone { width: 28px !important; height: 28px !important; }
+  .kpi-rotulo { white-space: normal !important; }
+  .kpi-grid-auto > .card:has(.kpi-icone),
+  .kpi-grid-auto > .card-brand:has(.kpi-icone) { gap: 8px !important; }
+  /* KPI hero (cards principais do dashboard): mais compactos no mobile */
+  .kpi-hero { padding: 13px 15px !important; gap: 7px !important; }
+  /* Condensação padrão de qualquer card KPI (em grades kpi) no mobile */
+  .kpi-grid > .card, .kpi-grid > .card-brand,
+  .kpi-grid-auto > .card, .kpi-grid-auto > .card-brand {
+    padding: 13px 15px !important;
+  }
+}
+
+/* Seletores segmentados (período/categoria): quebram em linha em vez de
+   estourar/cortar no mobile; ocupam a largura toda em telas estreitas. */
+.seg-bar { flex-wrap: wrap !important; }
+@media (max-width: 639px) {
+  .seg-bar { width: 100%; }
+}
+
+/* -- Barra de filtros ------------------------------------- */
+/* Uso: `className="filtros-bar"` na linha de busca + seletores de uma listagem.
+   No desktop é a mesma linha de sempre; no celular vira DUAS COLUNAS.
+
+   Cada `<select>` tinha largura de conteúdo e quebrava sozinho numa linha: o
+   estoque gastava 224px — um quarto da tela — só de filtros antes do primeiro
+   produto. Em duas colunas isso cai pela metade e nada some de vista, que é a
+   diferença para rolar na horizontal (bom para abas, ruim para filtro: filtro
+   escondido não é usado). */
+@media (max-width: 639px) {
+  .filtros-bar {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+  /* `!important` porque esses filhos carregam `minWidth` no style inline (a
+     busca do estoque pede 200px), e inline ganha da folha: sem isso a coluna
+     de 175px estourava a tela em 25px. */
+  .filtros-bar > * { min-width: 0 !important; width: auto; max-width: none; }
+  /* A busca merece a linha inteira: é o filtro mais usado e o que precisa de
+     espaço para o texto digitado. */
+  .filtros-bar > .filtro-largo { grid-column: 1 / -1; }
+  /* Último filtro sozinho numa linha ocupa as duas colunas, em vez de deixar
+     meia linha vazia. As duas formas cobrem as duas montagens reais: com a
+     busca larga na frente, e sem ela. */
+  .filtros-bar > .filtro-largo:first-child ~ :last-child:nth-child(even),
+  .filtros-bar:not(:has(.filtro-largo)) > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  /* `min-width: 0` também no campo: um `<input>` tem largura intrínseca de
+     ~20 caracteres e, mesmo dentro de uma célula de 175px, empurrava a grade
+     25px para fora da tela. Zerar só no pai não basta. */
+  .filtros-bar select,
+  .filtros-bar input { width: 100%; min-width: 0 !important; }
+  .filtros-bar .seg-root > .seg-mobile { width: 100%; justify-content: space-between; }
+}
+
+/* SegSelect: segmentado no desktop, botão dropdown no mobile.
+   O botão tem largura de conteúdo para que múltiplos seletores caibam na
+   mesma linha (não forçamos width:100%). */
+.seg-mobile { display: none; }
+@media (max-width: 639px) {
+  .seg-desktop  { display: none !important; }
+  .seg-mobile   { display: inline-flex !important; }
+}
+
+@media (max-width: 479px) {
+  :root {
+    --content-pad-x: 16px;
+    --content-pad-y: 16px;
+    --card-pad:      12px;
+  }
+}
+
+/* -- Sidebar: largura dirigida pela var + recolhimento ----- */
+/* Easing e duração únicos para sidebar + conteúdo + topbar animarem em sincronia. */
+:root { --sidebar-ease: cubic-bezier(0.22, 1, 0.36, 1); --sidebar-anim: 340ms; }
+
+.main-sidebar {
+  width: var(--sidebar-w);
+  transition: transform var(--sidebar-anim) var(--sidebar-ease),
+              width     var(--sidebar-anim) var(--sidebar-ease);
+  will-change: width, transform;
+}
+/* Desktop recolhido: trilha de ícones */
+@media (min-width: 1024px) {
+  html.sidebar-collapsed { --sidebar-w: 76px; }
+}
+/* Mobile: painel off-canvas mantém largura cheia (offset --sidebar-w = 0) */
+@media (max-width: 1023px) {
+  .main-sidebar {
+    width: 244px;
+    transform: translateX(-100%);
+    box-shadow: none;
+  }
+  .main-sidebar.sidebar-open {
+    transform: translateX(0);
+    box-shadow: 8px 0 32px rgba(34, 22, 25, .18);
+  }
+}
+
+/* Overlay que escurece o conteúdo quando o sidebar está aberto */
+.sidebar-scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(34, 22, 25, .4);
+  backdrop-filter: blur(1px);
+  z-index: 48;
+  animation: scrim-in 200ms ease;
+}
+@keyframes scrim-in { from { opacity: 0 } to { opacity: 1 } }
+
+@media (max-width: 1023px) {
+  .sidebar-scrim { display: block; }
+}
+
+/* Título de categoria do menu, que recolhe e expande a categoria
+   (components/shared/secao-do-menu.tsx). Continua lendo como overline: o
+   que avisa que é clicável é a seta e o realce ao passar o mouse. */
+.menu-secao-titulo {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  width: 100%; padding: 9px 12px 3px;
+  background: transparent; border: none; cursor: pointer;
+  border-radius: var(--radius-field-token);
+  color: var(--text-faint);
+  text-align: left;
+}
+.menu-secao-titulo:hover .overline,
+.menu-secao-titulo:hover { color: var(--brand); }
+.menu-secao-titulo:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.menu-secao-seta { flex-shrink: 0; transition: transform 150ms ease; }
+.menu-secao-seta[data-fechada] { transform: rotate(-90deg); }
+
+/* Tela que ocupa a altura toda e rola por dentro (inbox). O documento não rola;
+   quem rola é a área de mensagens. Ver `components/shared/trava-rolagem.tsx`. */
+html.trava-rolagem,
+html.trava-rolagem body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* A página do inbox sai do fluxo e ocupa o retângulo entre a topbar e o fim da
+   tela. Sem isto ela herda o `min-height` em `vh` do <main>, que no celular é
+   maior que a viewport visível — e o excedente empurrava o campo de escrever
+   para baixo da dobra. `fixed` mede pela tela de verdade, não por `vh`. */
+.inbox-page {
+  position: fixed;
+  top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+  left: var(--sidebar-w);
+  right: 0;
+  bottom: 0;
+  margin: 0 !important;
+  height: auto !important;
+  max-height: none !important;
+  /* `--sidebar-w` já é 0 abaixo de 1024px e 76px com o menu recolhido, então a
+     borda esquerda acompanha o menu sem precisar de regra própria. */
+  transition: left var(--sidebar-anim) var(--sidebar-ease);
+}
+
+/* -- Inbox: três colunas no desktop, UMA TELA POR VEZ no celular ----------
+   Lista (300px) + conversa + card (320px) não cabem em 390px de largura: as
+   duas colunas fixas comiam a tela e a conversa — o que a pessoa foi ler —
+   ficava com o que sobrasse. No celular cada painel ocupa a tela inteira e a
+   navegação é por ida e volta, como em qualquer aplicativo de mensagem. */
+@media (max-width: 1023px) {
+  .inbox-lista  { width: 100% !important; border-right: none !important; }
+  .inbox-thread { display: none !important; }
+  .inbox-painel { display: none !important; }
+
+  /* Conversa aberta: a lista sai de cena e ela assume a tela.
+     `min-height: 0` na coluna é o que faz cabeçalho e campo de escrever ficarem
+     parados enquanto só as mensagens rolam: sem ele um item flex nunca encolhe
+     abaixo do conteúdo, a área de mensagens cresce até o tamanho do histórico e
+     a rolagem passa a ser da página inteira — levando o cabeçalho junto. */
+  .inbox-root[data-aberta='1'] .inbox-lista  { display: none !important; }
+  .inbox-root[data-aberta='1'] .inbox-thread {
+    display: flex !important;
+    min-height: 0;
+    height: 100%;
+  }
+  .inbox-root .inbox-mensagens {
+    min-height: 0;
+    overscroll-behavior: contain;   /* rolar a conversa não arrasta a página */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Cada pixel de largura é da mensagem: as margens generosas do desktop
+     encolhem, senão a bolha fica estreita e o texto quebra a cada três
+     palavras. */
+  .inbox-root .bolha-linha { padding-left: 10px !important; padding-right: 10px !important; }
+
+  /* O campo de escrever é a última coisa da tela, então é ele que encosta na
+     barra de gestos do celular. A área segura entra AQUI porque a página do
+     inbox cancela o padding do layout para ocupar a tela inteira — e cancelou
+     junto o respiro que o resto do sistema tem de graça. */
+  .inbox-root .inbox-composer {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Mesmo motivo: encerrada, a conversa mostra um aviso no lugar do campo. */
+  .inbox-root .inbox-encerrada {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Cabeçalho da conversa CONDENSADO no celular (pedido do Heitor,
+     2026-09-24). Ele ocupava 163px de uma tela de 844 — 19% só para dizer com
+     quem se está falando, antes da primeira mensagem aparecer.
+
+     Duas causas. A primeira: com `flex-wrap`, o seletor de situação não cabia
+     ao lado da identidade e caía numa SEGUNDA LINHA sozinho, gastando uma
+     faixa inteira para uma pílula. A segunda: nome, canal/telefone e métricas
+     eram três linhas empilhadas, cada uma com sua margem.
+
+     Aqui o cabeçalho volta a ser uma linha só — voltar, avatar, identidade,
+     situação e o botão do card —, e tudo que é detalhe do contato vira UMA
+     fileira que flui embaixo do nome. Nada de informação sai: o telefone, a
+     unidade, a última interação, a primeira resposta e o "aguardando há"
+     continuam ali, em corpo menor e dividindo linha. Fica em torno de 80px. */
+  .inbox-root .inbox-cabecalho {
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    padding: 9px 12px !important;
+  }
+  .inbox-root .inbox-cabecalho .inbox-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    border-width: 1.5px !important;
+    font-size: var(--text-sm-sz) !important;
+  }
+
+  /* `display: contents` nas duas fileiras de detalhe: os filhos delas sobem
+     para este flex e passam a dividir as mesmas linhas, em vez de cada fileira
+     reservar a sua. É o que junta canal, telefone, unidade e métricas. */
+  .inbox-root .inbox-identidade {
+    display: flex;
+    flex: 1 1 auto !important;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 6px;
+    row-gap: 2px;
+  }
+  .inbox-root .inbox-identidade .inbox-nome {
+    flex: 1 0 100%;
+    min-width: 0;
+    font-size: var(--text-sm-sz);
+  }
+  .inbox-root .inbox-meta,
+  .inbox-root .inbox-metricas {
+    display: contents;
+  }
+  .inbox-root .inbox-metricas > span { font-size: var(--text-overline); }
+  .inbox-root .inbox-aguardando { padding: 0 6px !important; }
+
+  /* O card do contato vira folha sobre a conversa, não terceira coluna.
+     Abre puxando o cabeçalho da conversa para baixo (2026-09-27): enquanto o
+     dedo arrasta (`puxando`), a folha se revela de cima para baixo até onde
+     ele está, e ao soltar completa ou volta. É `clip-path`, não `translate`:
+     transladada para cima ela passaria por cima da topbar. */
+  .inbox-root[data-painel='1'] .inbox-painel,
+  .inbox-root[data-painel='puxando'] .inbox-painel {
+    display: block !important;
+    position: fixed;
+    top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    width: 100% !important;
+    border-left: none !important;
+    overflow-y: auto;
+    /* Rolagem que termina na barra de gestos esconde o fim do card. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 200ms ease-out;
+  }
+  .inbox-root[data-painel='puxando'] .inbox-painel {
+    clip-path: inset(0 0 calc(100% - var(--puxado, 0px)) 0);
+    transition: none;
+    overflow: hidden;
+  }
+  /* Aberta pelo toque na seta, a folha também desce — sem isto ela só
+     aparece, e o gesto e o botão pareceriam coisas diferentes. */
+  @starting-style {
+    .inbox-root[data-painel='1'] .inbox-painel { clip-path: inset(0 0 100% 0); }
+  }
+
+  /* O cabeçalho e a barra da folha são alças de arrasto. Sem `touch-action`
+     o navegador toma o gesto para si — puxar para baixo no topo da página é
+     "atualizar" no Chrome do Android. */
+  .inbox-root .inbox-cabecalho,
+  .inbox-root .inbox-painel-barra { touch-action: none; }
+
+  /* A lista também termina na borda de baixo: sem isto, a última conversa fica
+     debaixo da barra do sistema e parece que a lista acabou antes. */
+  .inbox-root .inbox-lista { padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+
+/* -- Visibilidade por breakpoint -------------------------- */
+.show-mobile { display: none !important; }
+@media (max-width: 1023px) {
+  .show-mobile { display: flex !important; }
+  .hide-mobile { display: none !important; }
+}
+
+/* -- App nativo: faixas rosé cobrindo as barras do sistema (só no app) ---- */
+/* Os ícones do SO (status bar / nav bar) desenham por cima; aqui só o fundo. */
+html.capacitor::before,
+html.capacitor::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  background: var(--brand);
+  z-index: 2000;
+  pointer-events: none;
+}
+html.capacitor::before { top: 0;    height: env(safe-area-inset-top, 0px); }
+html.capacitor::after  { bottom: 0; height: env(safe-area-inset-bottom, 0px); }
+
+/* -- Grids responsivos ------------------------------------ */
+
+/* 4 colunas → 2. NÃO cai para 1: um KPI é um rótulo curto e um número, e
+   sozinho numa linha de 350px ele vira uma faixa quase vazia — foi o que
+   deixava a ficha do cliente com quatro faixas para quatro números. */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 1199px) { .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Número ímpar de KPIs: o último ocupa a linha inteira em vez de deixar a
+   outra metade vazia. Só vale onde a grade tem 2 colunas — daí morar aqui e
+   no bloco mobile, não na regra de 4 colunas. */
+@media (max-width: 1199px) {
+  .kpi-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+/* Modificador: UM card por linha no celular.
+   Para card que carrega conteúdo de largura própria — tabela, ranking, gráfico.
+   Dois lado a lado em 390px dão 171px cada, e aí a tabela de dentro ganha
+   rolagem horizontal PRÓPRIA: rolar dentro de um card de 171px é bem pior do
+   que rolar a página, porque o gesto não é óbvio e o conteúdo fica espiado por
+   uma fresta. KPI (rótulo + número) não precisa disso e continua 2 por linha.
+   Acima de 767px dois cards já passam de 350px cada e a tabela cabe. */
+@media (max-width: 767px) {
+  .cards-1-col { grid-template-columns: minmax(0, 1fr) !important; }
+  .cards-1-col > :last-child:nth-child(odd) { grid-column: auto; }
+}
+
+/* 3 colunas → 2 → 1 */
+.rg-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1023px) { .rg-3 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 639px)  { .rg-3 { grid-template-columns: 1fr; } }
+
+/* 2 colunas → 1 */
+.rg-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (max-width: 639px) { .rg-2 { grid-template-columns: 1fr; } }
+
+/* 2 colunas para formulários (gap menor) */
+.form-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (max-width: 639px) { .form-2col { grid-template-columns: 1fr; } }
+
+/* Editor de modelo de documento: o texto de um lado, a prévia do outro. Em
+   tela estreita a prévia desce para baixo do texto. */
+.editor-documento {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 899px) { .editor-documento { grid-template-columns: minmax(0, 1fr); } }
+
+/* Tela de assinar: o documento e, ao lado, o que a equipe faz com ele. */
+.assinatura-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 899px) { .assinatura-layout { grid-template-columns: minmax(0, 1fr); } }
+
+/* 3 colunas para formulários */
+.form-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+@media (max-width: 767px) { .form-3col { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 479px) { .form-3col { grid-template-columns: 1fr; } }
+
+/* -- Header de página (título + botão de ação) ------------ */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+@media (max-width: 639px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .page-header > :last-child {
+    width: 100%;
+  }
+  /* A largura cheia acima não tinha nada dentro que a ocupasse: um seletor de
+     76px ficava perdido no meio de uma linha de 358 — era o "seletor pequeno
+     numa linha vazia". Os controles agora esticam para preencher, o que de
+     quebra dá um alvo de toque decente. Com dois ou três eles dividem a linha. */
+  .page-header > :last-child > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .page-header > :last-child .seg-root > .seg-mobile {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* -- Barra de seleção de período --------------------------- */
+.period-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.period-bar .period-btn {
+  padding: 6px 14px;
+  border-radius: 99px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 100ms;
+  white-space: nowrap;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+.period-bar .period-btn.active {
+  border: 1.5px solid var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+/* KPI/stat grid que auto-ajusta a qualquer nº de colunas (4, 5, ...) */
+.kpi-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+/* Conteúdo principal + aside fixo (ex: 1fr 360px) → empilha no mobile */
+.split-aside {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 899px) {
+  .split-aside { grid-template-columns: 1fr; }
+}
+
+/* Colapsa grids multi-coluna para 1 coluna no mobile/tablet estreito. */
+@media (max-width: 899px) {
+  .grid-stack-md { grid-template-columns: 1fr !important; }
+}
+
+/* Linha de ocupação por filial: desktop em colunas; mobile em card compacto. */
+@media (max-width: 639px) {
+  .occupancy-row {
+    grid-template-columns: 1fr auto !important;
+    grid-template-areas:
+      "name pct"
+      "bar bar"
+      "details details" !important;
+    gap: 8px 10px !important;
+    align-items: center !important;
+  }
+  .occupancy-row .occ-name    { grid-area: name; }
+  .occupancy-row .occ-pct     { grid-area: pct; justify-self: end; }
+  .occupancy-row .occ-bar     { grid-area: bar; }
+  .occupancy-row .occ-details { grid-area: details; flex-wrap: wrap; }
+}
+
+/* Voltar para a lista: só onde ela saiu da tela. No desktop a lista continua
+   ao lado, e o botão seria um convite a lugar nenhum. Não é `.show-mobile`
+   porque aquele corta em 1023px — entre 900 e 1023 as duas colunas ainda
+   aparecem, e o botão apontaria para a coluna que está bem ali. */
+.ld-voltar { display: none !important; }
+
+/* Lista + detalhe no celular: só um dos dois na tela.
+   `.master-detail` empilha, o que resolve a largura e não resolve a navegação:
+   com a lista inteira acima, tocar num nome abria o detalhe fora da vista e
+   parecia que nada acontecera. Ver `components/shared/lista-detalhe.tsx`. */
+@media (max-width: 899px) {
+  .lista-detalhe[data-detalhe='1'] .ld-lista   { display: none !important; }
+  .lista-detalhe[data-detalhe='0'] .ld-detalhe { display: none !important; }
+  .ld-voltar { display: inline-flex !important; }
+
+  /* A lista passou a viver DENTRO de `.ld-lista`, então o
+     `.master-detail > *` que a esticava não a alcança mais — ela voltava à
+     largura fixa de coluna e ficava torta no meio da tela. */
+  .lista-detalhe .ld-lista,
+  .lista-detalhe .ld-lista > * {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Sozinha na tela, ocupa a altura visível e rola POR DENTRO — como no inbox.
+     `max-height: none` deixaria a lista crescer com o número de clientes e a
+     rolagem voltaria a ser da página, levando busca e filtros junto. */
+  .lista-detalhe[data-detalhe='0'] .clients-master-list {
+    max-height: none !important;
+    height: calc(100dvh - var(--topbar-h) - 2 * var(--content-pad-y));
+  }
+}
+
+/* Barra de abas: rola na horizontal em vez de quebrar em duas linhas.
+   Sete abas não cabem em 390px, e empilhá-las empurra o conteúdo para baixo da
+   dobra — a rolagem lateral mantém a âncora onde a pessoa espera. A barra de
+   rolagem some porque a aba cortada na borda já diz que há mais. */
+.tabs-bar {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tabs-bar::-webkit-scrollbar { display: none; }
+.tabs-bar > * { flex-shrink: 0; white-space: nowrap; }
+
+/* Tabelas do admin no celular: o respiro lateral de 20px vira 12px. Em 390px de
+   largura, 40px só de padding por linha saem do nome de quem se está
+   procurando. */
+@media (max-width: 767px) {
+  .card table th,
+  .card table td { padding-left: 12px !important; padding-right: 12px !important; }
+}
+
+/* Quadro de oportunidades: a tela não rola, as COLUNAS rolam.
+   Título e barra de filtros ficam parados; cada etapa rola a própria pilha de
+   cards. Com a página rolando, procurar um lead no fim de uma coluna levava
+   embora o cabeçalho e os filtros — justamente o que se usa para achá-lo.
+   A altura vem de `dvh` porque no celular `vh` conta com a barra de endereço
+   recolhida e sobraria uma faixa fora da tela. */
+.crm-page {
+  height: calc(100dvh - var(--topbar-h) - 2 * var(--content-pad-y));
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Barra de rolagem some do quadro — a rolagem fica.
+   Pedido do Heitor em 2026-09-24: "no funil, não quero que apareça barra de
+   rolagem nas colunas". São cinco barras cinza atravessando o quadro, uma por
+   etapa, e elas competem com os cards — que é o que se está lendo ali.
+
+   O que diz que há mais para baixo passa a ser o próprio card cortado na borda
+   da coluna, mesmo raciocínio da barra de abas. Vale também para a rolagem
+   lateral do quadro: a coluna cortada na direita já avisa que há outras.
+
+   `overflow` e `overscroll-behavior` moram aqui, e não no `style` inline, pela
+   mesma razão dos seletores — no inline, a próxima tela reinventa o seu. */
+.crm-board-cols {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.crm-coluna-cards {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.crm-board-cols::-webkit-scrollbar,
+.crm-coluna-cards::-webkit-scrollbar { display: none; }
+
+/* Lista que rola POR DENTRO no celular: título, contagem e barra de busca
+   ficam parados, e só a lista anda. Pedido do Heitor em 2026-09-25 para
+   Planejamentos e Injetáveis — "scroll apenas na lista".
+
+   O motivo é o mesmo do inbox e do quadro de oportunidades: rolando a página
+   inteira, procurar um item no fim da lista leva embora a busca e o filtro,
+   que é justamente o que se usa para achá-lo. No desktop não vale a pena — lá
+   a barra de busca cabe na tela de qualquer jeito.
+
+   `.tela-de-lista` é o invólucro em coluna e `.rolagem-da-lista` é
+   o filho que rola. Os dois juntos, senão o `flex: 1` não tem de quem
+   descontar. */
+@media (max-width: 1023px) {
+  .tela-de-lista {
+    height: calc(100dvh - var(--topbar-h) - 2 * var(--content-pad-y) - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+    overflow: hidden;
+  }
+  .tela-de-lista .rolagem-da-lista {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    /* O último card não encosta na borda de baixo. */
+    padding-bottom: 8px;
+    /* Barra de rolagem em área de conteúdo é ruído (§13). */
+    scrollbar-width: none;
+  }
+  .tela-de-lista .rolagem-da-lista::-webkit-scrollbar { display: none; }
+}
+
+/* Card do quadro no celular: mesma informação, menos espaço em volta.
+   A coluna ocupa 86% da tela, então cada card é largo — o que sobra é altura, e
+   é a altura que decide quantos leads cabem sem rolar. Só respiro e escala
+   mudam; nada de informação sai, porque é do card que se decide quem atender. */
+@media (max-width: 767px) {
+  .crm-card {
+    padding: 9px 11px !important;
+    border-radius: 10px !important;
+  }
+  /* O texto encolhe meio ponto: o suficiente para caber mais uma linha por
+     card, pouco o bastante para continuar legível a um braço de distância. */
+  .crm-card p,
+  .crm-card span { line-height: 1.35; }
+}
+
+/* Quadro de oportunidades no celular: uma coluna por vez, encaixando no lugar.
+   Sem o snap, a rolagem para no meio de duas colunas e nenhuma fica legível —
+   com 248px de coluna num telefone de 390px, é o que acontece sempre. */
+@media (max-width: 767px) {
+  .crm-board-cols {
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 4px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .crm-board-cols > * {
+    scroll-snap-align: start;
+    /* Duas colunas na tela: kanban serve para comparar etapas, e com uma só de
+       cada vez ele vira uma lista com passos extras. `min-width` menor que o do
+       desktop porque 248px fixos não cabem duas vezes em 390px. */
+    flex: 0 0 calc(50% - 6px) !important;
+    min-width: 0 !important;
+    max-width: calc(50% - 6px) !important;
+  }
+}
+
+/* Editor de template: formulário + prévia. Empilha quando não cabe lado a lado. */
+.tpl-editor {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 899px) {
+  .tpl-editor { grid-template-columns: 1fr; }
+}
+
+/* Master-detail (lista fixa + detalhe): empilha e vira largura cheia no mobile */
+.master-detail {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+@media (max-width: 899px) {
+  .master-detail { flex-direction: column; }
+  .master-detail > * { width: 100% !important; max-width: 100% !important; }
+  /* Lista mestre não-sticky no mobile: `sticky` calculado a partir da topbar
+     gruda no lugar errado quando ela é a única coisa na tela.
+     O corte de altura vale só onde o detalhe divide a tela com ela — em
+     `.lista-detalhe` a regra acima devolve a altura inteira. */
+  .clients-master-list {
+    position: static !important;
+    max-height: 60vh;
+  }
+}
+
+/* -- Anamnese: linha com colunas automáticas (máx 4; máx 2 no mobile) ---- */
+.anamnesis-row {
+  display: grid;
+  gap: 8px;
+  align-items: start;
+}
+.anamnesis-row[data-cols='1'] { grid-template-columns: minmax(0, 1fr); }
+.anamnesis-row[data-cols='2'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.anamnesis-row[data-cols='3'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.anamnesis-row[data-cols='4'] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 639px) {
+  .anamnesis-row[data-cols='2'],
+  .anamnesis-row[data-cols='3'],
+  .anamnesis-row[data-cols='4'] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* No mobile a paleta de arrastar some e usamos o botão + rosé. */
+.anamnesis-add-mobile { display: none; }
+@media (max-width: 639px) {
+  .anamnesis-palette   { display: none !important; }
+  .anamnesis-add-mobile { display: flex !important; }
+  .anamnesis-canvas    { border: none !important; background: transparent !important; padding: 0 !important; }
+}
+
+/* -- Tabelas: scroll horizontal em telas pequenas ---------- */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* -- Tabela → cards no mobile ------------------------------ */
+/* Uso: <table class="cards-mobile"> com <td data-label="Rótulo"> nas células. */
+@media (max-width: 767px) {
+  table.cards-mobile thead { display: none; }
+  table.cards-mobile,
+  table.cards-mobile tbody,
+  table.cards-mobile tr,
+  table.cards-mobile td { display: block; width: 100%; }
+  table.cards-mobile { min-width: 0 !important; }
+  table.cards-mobile tr {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-row);
+    padding: 7px 11px;
+    margin-bottom: 8px;
+    background: var(--surface);
+  }
+  /* O PADDING PRECISA DE !important.
+     Cada célula carrega o respiro da TABELA no style inline ("13px 16px"), que
+     é o certo em tabela e é demais em card: inline vence classe, então a regra
+     de baixo nunca valeu e cada linha do card gastava 26px só de folga
+     vertical. Com cinco linhas por card, eram 130px por item — o que fazia o
+     Heitor pedir, em 2026-09-25, para condensar os cards de quatro telas de
+     uma vez. Aqui é o único lugar em que dá para vencer o inline.
+
+     Mesma história do lado horizontal: o card já tem o seu, e o da tabela
+     empurrava o valor para longe do rótulo. */
+  table.cards-mobile td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 0 !important;
+    border: none !important;
+    border-bottom: 1px solid var(--hairline) !important;
+    text-align: right;
+  }
+  table.cards-mobile tr td:last-child { border-bottom: none !important; }
+  table.cards-mobile td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: var(--text-overline);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    text-align: left;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  /* Células sem rótulo (nome principal / ações): ocupam a linha inteira, à esquerda. */
+  table.cards-mobile td[data-label='']::before,
+  table.cards-mobile td:not([data-label])::before { content: none; }
+  table.cards-mobile td[data-label=''],
+  table.cards-mobile td:not([data-label]) {
+    /* Empilha: a célula sem rótulo carrega um bloco (nome + descrição), não um
+       par rótulo/valor. Em linha, o nome do procedimento era espremido contra
+       a descrição e quebrava no meio da palavra ("Avaliaç/ão"). */
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 2px;
+  }
+
+  /* Duas por linha quando o valor é curto ("60 min", "R$ 200,00", "Ativo").
+     Uma linha inteira para três palavras era o que fazia cinco procedimentos
+     ocuparem 2300px de rolagem. Opt-in por `data-par` porque só quem escreve a
+     tabela sabe se o valor cabe em meia largura. */
+  /* O vao entre as duas colunas do par. Vinha, por acidente, do padding
+     horizontal que cada celula herdava da tabela; sem ele o valor da esquerda
+     encostava no rotulo da direita ("60 minPRECO"). Sao os mesmos 12px que o
+     calc(50% - 6px) abaixo ja descontava. */
+  table.cards-mobile tr { display: flex; flex-wrap: wrap; column-gap: 12px; }
+  table.cards-mobile td { flex: 1 1 100%; }
+  table.cards-mobile td[data-par] {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+    /* Rede de segurança: valor que não cabe em meia largura desce para baixo do
+       rótulo em vez de esticar a célula e voltar a rolar a tabela. */
+    flex-wrap: wrap;
+    /* Sem divisor: duas bordas lado a lado com o vão no meio viravam uma linha
+       partida no meio do card. O par já se lê como um bloco pelo alinhamento. */
+    border-bottom: none !important;
+  }
+  table.cards-mobile tr td:last-child { border-bottom: none !important; }
+  /* Coluna que só faz sentido na tabela (o número da posição, por exemplo):
+     no card ela é ruído, porque a ordem já é a da lista. */
+  table.cards-mobile td.so-desktop { display: none !important; }
+}
+
+/* -- Agenda: mês compacto no mobile ------------------------ */
+@media (max-width: 560px) {
+  .agenda-month-grid { gap: 3px !important; }
+  .agenda-month-cell {
+    min-height: 52px !important;
+    padding: 6px 5px 7px !important;
+    border-radius: 8px !important;
+  }
+  .agenda-cell-label { display: none !important; }
+  .agenda-week-strip { gap: 4px !important; }
+}
+
+/* -- Flex: empilhar em mobile ------------------------------ */
+@media (max-width: 639px) {
+  .flex-wrap-mobile {
+    flex-wrap: wrap !important;
+  }
+  .flex-col-mobile {
+    flex-direction: column !important;
+  }
+  .w-full-mobile {
+    width: 100% !important;
+    min-width: unset !important;
+  }
+}
+
+/* -- Charts: altura reduzida em mobile -------------------- */
+@media (max-width: 639px) {
+  .chart-h {
+    height: 180px !important;
+  }
+}
+
+/* -- Modais: bottom-sheet em mobile ----------------------- */
+@media (max-width: 639px) {
+  dialog.modal {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--radius-card-token) var(--radius-card-token) 0 0;
+    max-height: 92dvh;
+  }
+}
+
+/* -- Automações: o editor no celular ---------------------- */
+/* O editor nasceu em três colunas — paleta (190px), quadro e painel (320px) —
+   e em 390px de tela isso deixava ~200px para o quadro: o fluxo virava um card
+   cortado ao lado de uma lista de botões. Aqui as duas laterais saem do fluxo
+   e viram tela cheia, uma por vez, e o quadro fica com a largura inteira.
+
+   `!important` porque as medidas são `style` inline no componente (o editor é
+   todo estilizado assim) e regra de classe não vence especificidade de inline
+   — é o mesmo motivo de `.show-mobile` usar. */
+@media (max-width: 1023px) {
+  /* `dvh` e não `vh`: com a barra do navegador aparecendo e sumindo, `vh` é a
+     altura MÁXIMA, e o rodapé de problemas ficava debaixo dela. */
+  .auto-editor { height: calc(100dvh - var(--topbar-h) - 24px) !important; }
+
+  /* A paleta vira gaveta: fora do fluxo até alguém pedir um passo novo. */
+  .auto-paleta { display: none !important; }
+  .auto-paleta[data-aberta='1'] {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 60;
+    width: 100% !important;
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    border-right: none !important;
+    background: var(--surface);
+    overflow-y: auto;
+  }
+
+  /* Painel do node, limites, execuções e versões: a mesma gaveta de tela
+     cheia. Eles têm larguras diferentes (320/340/360) porque no desktop
+     convivem com o quadro; aqui nenhum convive com nada. */
+  .auto-gaveta {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 60;
+    width: 100% !important;
+    border-left: none !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Os botões da barra que não são ação principal ficam só com o ícone:
+     cinco botões com texto quebravam a barra em três linhas e comiam um terço
+     da altura útil. Salvar e Ligar mantêm o rótulo — são o que se procura. */
+  .auto-barra .auto-rotulo { display: none !important; }
+
+  /* O botão flutuante do app fica no canto de baixo À ESQUERDA e cobria o
+     começo da última linha do rodapé — justamente onde o problema do fluxo
+     está escrito. */
+  .auto-rodape { padding-left: 64px !important; }
+}
+
+/* -- Topbar: padding reduzido em mobile ------------------- */
+@media (max-width: 639px) {
+  :root {
+    --topbar-h: 60px;
+  }
+}
+
+/* -- Spin animation (used by NavItem loader) -------------- */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* -- Skeleton loading animation --------------------------- */
+@keyframes skeleton-pulse {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    var(--hairline) 50%,
+    var(--border) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+  border-radius: var(--radius-card-token);
+}
+
+/* -- Impressão -------------------------------------------------------------
+   Usado pelos termos do checkout: a folha leva só o que está dentro de
+   `.area-impressao`. Sem isto o "Imprimir" saía com menu lateral, topbar e
+   botões — por isso o passo de documentação nunca chegou a imprimir de
+   verdade e virou um botão que só destravava o seguinte. */
+@media print {
+  body:has(.area-impressao) .main-sidebar,
+  body:has(.area-impressao) header,
+  body:has(.area-impressao) .esconde-impressao {
+    display: none !important;
+  }
+
+  body:has(.area-impressao) main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .area-impressao .card {
+    border: none !important;
+    box-shadow: none !important;
+    /* Um termo por folha: o cliente assina cada um separadamente. */
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .area-impressao .card:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  /* O checkout abre numa janela (<dialog>), que na tela tem altura presa e
+     corpo rolando: impressa assim, sairia só o pedaço visível. Na folha ela
+     se solta da altura e começa no topo. A página atrás dela é recolhida com
+     altura zero, não com display: none — que esconderia também o dialog, que
+     mora dentro dela no DOM (a camada de cima não herda o recorte). */
+  body:has(dialog.modal[open] .area-impressao) main {
+    height: 0 !important; overflow: hidden !important;
+  }
+  dialog.modal[open]:has(.area-impressao) {
+    position: absolute !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important;
+    transform: none !important;
+    width: auto !important; max-width: none !important; max-height: none !important;
+    overflow: visible !important;
+  }
+  dialog.modal[open]:has(.area-impressao) .modal-container,
+  dialog.modal[open]:has(.area-impressao) .modal-body {
+    max-height: none !important; overflow: visible !important; box-shadow: none !important;
+  }
+  dialog.modal[open]:has(.area-impressao)::backdrop { display: none; }
+}
+
+/* ============================================================
+   EDITOR DE AUTOMAÇÕES
+   ============================================================ */
+
+/* Item da paleta.
+   Era um `btn-ghost` com um "+" e o rótulo em texto puro — treze linhas que
+   liam como índice, não como prateleira de peças. Agora cada item traz o
+   MESMO ícone que o card vai mostrar no quadro, no mesmo quadrado
+   arredondado: é o que liga o que se escolhe ao que aparece. */
+.item-da-paleta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--radius-field-token);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-xs-sz);
+  font-weight: var(--weight-semibold);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.item-da-paleta:hover {
+  background: var(--brand-soft);
+}
+.item-da-paleta__icone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+/* No hover o ícone vira o que ele é no quadro: a peça de marca. */
+.item-da-paleta:hover .item-da-paleta__icone {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+}
+
+/* Segmento de consulta da barra do editor (Execuções · Versões · Limites).
+   Três botões soltos ao lado de Salvar e Ligar davam a impressão de cinco
+   ações do mesmo peso. Agrupados num só bloco, lêem como o que são: abas de
+   consulta. Mesmo tratamento do seletor de período do dashboard. */
+.auto-segmento {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  padding: 3px;
+  gap: 2px;
+}
+.auto-segmento__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-xs-sz);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+}
+.auto-segmento__item:hover { color: var(--text); }
+/* Gaveta aberta = item preenchido. É a mesma hierarquia por preenchimento do
+   resto do sistema, na escala de um controle. */
+.auto-segmento__item.is-ativo {
+  background: var(--surface);
+  color: var(--brand);
+  box-shadow: var(--shadow-popover);
+}
+
+/* Campo de BUSCA: fundo branco.
+   `.field` pinta o fundo com `--bg-app` — o que funciona para um formulário
+   dentro de um card branco, onde o campo precisa se recortar do papel. A
+   busca é o contrário: mora numa barra de filtros sobre o fundo do app, e ali
+   o cinza a fazia sumir na superfície em vez de convidar a digitar.
+   Decisão do Heitor em 2026-09-24. */
+.campo-busca,
+input[type="search"].field {
+  background: var(--surface);
+}
+
+/* ============================================================
+   SELETORES — uma forma para cada função
+   ============================================================
+
+   O sistema tinha quatro aparências para a mesma ideia: segmento feito à mão,
+   pílulas soltas, `<select>` cru e botão de estado, cada um com sua altura,
+   seu raio e sua fonte. A regra passou a ser por FUNÇÃO, não por gosto de
+   quem escreveu a tela:
+
+   - escolha exclusiva, 2 a 5 opções curtas e FIXAS  → <SegSelect>
+   - opções vindas de DADOS, ou mais de 5, ou longas → .filtro-select
+   - liga/desliga de um filtro só                    → .filtro-toggle
+   - filtro que ACUMULA (tag, marcador)              → .chip
+
+   Ícone: seletor de texto NÃO leva. O rótulo já diz o que é, e o ícone vira
+   ruído repetido cinco vezes na mesma barra. O toggle pode levar — ali o
+   ícone é o próprio assunto que se liga. */
+
+/* Dropdown de filtro. Mesma altura e raio do segmentado, para os dois
+   conviverem na mesma barra sem degrau. */
+.filtro-select {
+  appearance: none;
+  height: var(--altura-controle);
+  padding: 0 30px 0 11px;
+  background: var(--surface);
+  /* A seta é do sistema, não do sistema operacional: o chevron nativo muda de
+     desenho em cada navegador e não acompanha a cor do texto. */
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a7a7e' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-sm-sz);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 120ms ease;
+}
+.filtro-select:focus { border-color: var(--brand); }
+
+/* Liga/desliga. Ligado = preenchido em brand-soft com borda de marca; não é
+   `--brand` cheio porque ele não compete com o item selecionado de um
+   segmento ao lado. */
+.filtro-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--altura-controle);
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-sm-sz);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.filtro-toggle:hover { color: var(--text); }
+/* Só de ícone (o gatilho do painel de filtros do inbox): quadrado, não pílula
+   larga com um ícone perdido no meio. */
+.filtro-toggle.so-icone {
+  width: var(--altura-controle);
+  padding: 0;
+  justify-content: center;
+}
+.filtro-toggle.is-ativo {
+  background: var(--brand-soft);
+  border-color: var(--brand-soft-border);
+  color: var(--brand);
+}
+
+/* Segmentado (<SegSelect>). A aparência morava em inline style dentro do
+   componente, em duas variantes ("compacto" ou não) que cada tela escolhia —
+   e era isso que deixava o seletor de período do dashboard mais alto que o de
+   unidade da agenda. Agora existe UMA forma, aqui, e a tela não opina.
+
+   Os chips não são mais `btn-primary`/`btn-ghost`: botão de ação carrega
+   sombra de marca e padding de ação, e dentro de um seletor essa sombra fazia
+   a opção escolhida parecer um botão de salvar. */
+.seg-desktop {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 2px;
+  min-height: var(--altura-controle);
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  /* Raio concêntrico: o invólucro é o raio do chip MAIS o respiro até ele.
+     Sem isso o canto do chip estoura o canto do invólucro. */
+  border-radius: calc(var(--radius-field-token) + 3px);
+}
+
+.seg-chip {
+  display: inline-flex;
+  align-items: center;
+  /* 34 menos os 3px de respiro e 1px de borda de cada lado do invólucro. */
+  height: calc(var(--altura-controle) - 8px);
+  padding: 0 11px;
+  border: none;
+  border-radius: var(--radius-field-token);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: var(--text-sm-sz);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 120ms ease, color 120ms ease;
+}
+.seg-chip:hover { color: var(--brand); background: var(--brand-soft); }
+.seg-chip.is-ativo,
+.seg-chip.is-ativo:hover {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+/* Gatilho do segmentado no celular — mesma altura dos outros controles. */
+.seg-mobile {
+  align-items: center;
+  gap: 6px;
+  height: var(--altura-controle);
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--text-sm-sz);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* O campo de busca de uma barra de filtros segue a mesma altura: ele fica
+   lado a lado com os seletores, e 35px contra 34px é degrau visível. Em
+   formulário o `.field` continua com a altura dele. */
+.campo-busca,
+.filtro-largo { height: var(--altura-controle); }
+.filtro-largo > input { height: 100%; }
+
+/* Gatilho do <PickerCompacto> quando ele vive DENTRO de um card (a tag do
+   contato, a origem do lead) e não numa barra de filtros. Menor que um filtro
+   de barra de propósito: ali ele é uma ação discreta no meio do conteúdo, não
+   um controle da tela.
+
+   Era um objeto de estilo inline embutido no componente, e ele vencia a classe
+   que a barra de filtros passava: o gatilho recebia a classe .filtro-toggle e
+   continuava com o tamanho de dentro do card. */
+.picker-gatilho {
+  font-size: var(--text-xs-sz);
+  padding: 4px 8px;
+  gap: 5px;
+}
+
+/* Formulário em duas colunas que vira uma no celular. Campo de formulário
+   esticado em 1200px fica com 40 caracteres de largura para um telefone — e
+   empilhado em 390px é a única coisa que cabe. */
+.grade-de-campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+/* Filtro que ACUMULA (tag, dono, marcador). É o único seletor em que a pílula
+   solta é a forma certa: não há "uma escolha" para um segmento representar —
+   marcam-se várias, ou nenhuma. Ligada em `brand-soft`, nunca em `--brand`
+   cheio: preenchimento cheio é do item escolhido de um segmento, e duas
+   ênfases iguais na mesma barra desfazem a hierarquia. */
+.chip-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip-token);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: var(--text-xs-sz);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.chip-filtro:hover { color: var(--text); }
+.chip-filtro.is-ativo {
+  background: var(--brand-soft);
+  border-color: var(--brand-soft-border);
+  color: var(--brand);
+}
+
+/* Painel de filtros do inbox. */
+.painel-de-filtros {
+  position: absolute;
+  top: 40px;
+  left: 0;
+  z-index: 41;
+  width: 288px;
+  max-height: 64vh;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-field-token);
+  /* Flutua sobre a lista: elevação é de quem flutua, borda é de quem está no
+     plano da página. Faltava, e o painel lia como um pedaço da lista. */
+  box-shadow: var(--shadow-popover);
+}
+
+/* O gatilho fica no fim da barra de busca. Abaixo de 1024px a lista ocupa a
+   tela inteira, então o gatilho encosta na borda direita — e um painel de
+   288px ancorado à ESQUERDA dele nascia metade fora da tela, com a coluna da
+   direita cortada. Ancorado à direita ele cresce para dentro. O teto de
+   largura é para o telefone estreito de verdade. */
+@media (max-width: 1023px) {
+  .painel-de-filtros {
+    left: auto;
+    right: 0;
+    width: min(288px, calc(100vw - 24px));
+  }
+}
+
+/* Num painel estreito (este tem 288px) o segmentado quebraria em duas linhas,
+   e segmentado em duas linhas deixa de ler como um controle só. Ali a escolha
+   exclusiva vira dropdown de largura cheia. */
+.painel-de-filtros .filtro-select,
+.painel-de-filtros .filtro-toggle { width: 100%; }
+.painel-de-filtros .filtro-toggle { justify-content: flex-start; }
+
+/* ── Fontes dos documentos (termos e contratos) ─────────────────────────────
+   Os MESMOS arquivos que o PDF assinado embute (lib/documentos/fontes.ts),
+   então o que se vê na tela é o que se assina. Nome prefixado (doc-*): não
+   colide com uma fonte instalada na máquina de quem lê. O navegador só baixa
+   a fonte que o documento usa. */
+@font-face { font-family: 'doc-arimo'; src: url('/fontes-documento/arimo-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-arimo'; src: url('/fontes-documento/arimo-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-arimo'; src: url('/fontes-documento/arimo-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-arimo'; src: url('/fontes-documento/arimo-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-tinos'; src: url('/fontes-documento/tinos-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-tinos'; src: url('/fontes-documento/tinos-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-tinos'; src: url('/fontes-documento/tinos-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-tinos'; src: url('/fontes-documento/tinos-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-carlito'; src: url('/fontes-documento/carlito-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-carlito'; src: url('/fontes-documento/carlito-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-carlito'; src: url('/fontes-documento/carlito-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-carlito'; src: url('/fontes-documento/carlito-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-cousine'; src: url('/fontes-documento/cousine-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-cousine'; src: url('/fontes-documento/cousine-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-cousine'; src: url('/fontes-documento/cousine-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-cousine'; src: url('/fontes-documento/cousine-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-gelasio'; src: url('/fontes-documento/gelasio-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-gelasio'; src: url('/fontes-documento/gelasio-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-gelasio'; src: url('/fontes-documento/gelasio-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-gelasio'; src: url('/fontes-documento/gelasio-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-hanken'; src: url('/fontes-documento/hanken-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-hanken'; src: url('/fontes-documento/hanken-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-hanken'; src: url('/fontes-documento/hanken-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-hanken'; src: url('/fontes-documento/hanken-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-roboto'; src: url('/fontes-documento/roboto-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-roboto'; src: url('/fontes-documento/roboto-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-roboto'; src: url('/fontes-documento/roboto-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-roboto'; src: url('/fontes-documento/roboto-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-open-sans'; src: url('/fontes-documento/open-sans-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-open-sans'; src: url('/fontes-documento/open-sans-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-open-sans'; src: url('/fontes-documento/open-sans-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-open-sans'; src: url('/fontes-documento/open-sans-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-montserrat'; src: url('/fontes-documento/montserrat-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-montserrat'; src: url('/fontes-documento/montserrat-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-montserrat'; src: url('/fontes-documento/montserrat-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-montserrat'; src: url('/fontes-documento/montserrat-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-lato'; src: url('/fontes-documento/lato-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-lato'; src: url('/fontes-documento/lato-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-lato'; src: url('/fontes-documento/lato-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-lato'; src: url('/fontes-documento/lato-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-merriweather'; src: url('/fontes-documento/merriweather-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-merriweather'; src: url('/fontes-documento/merriweather-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-merriweather'; src: url('/fontes-documento/merriweather-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-merriweather'; src: url('/fontes-documento/merriweather-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-playfair'; src: url('/fontes-documento/playfair-regular.ttf') format('truetype'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-playfair'; src: url('/fontes-documento/playfair-negrito.ttf') format('truetype'); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'doc-playfair'; src: url('/fontes-documento/playfair-italico.ttf') format('truetype'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: 'doc-playfair'; src: url('/fontes-documento/playfair-negrito-italico.ttf') format('truetype'); font-weight: 700; font-style: italic; font-display: swap; }
+
+/* A folha do documento (components/shared/documento-renderizado.tsx): as
+   medidas vêm em PONTOS, como no PDF. `--pt` é quanto vale 1pt nesta largura
+   (a A4 tem 595pt); no celular ele tem um piso, senão o texto sairia miúdo.
+   A margem segue a do PDF (56pt) até um mínimo que caiba no celular. */
+.folha-documento { container-type: inline-size; width: 100%; }
+.folha-documento-pagina {
+  --pt: max(calc(100cqw / 595.28), 1.15px);
+  padding: clamp(14px, calc(100cqw * 56 / 595.28), 75px);
+  background: #ffffff;
+  word-break: normal;
+}
+.folha-documento-cabecalho {
+  padding-bottom: calc(var(--pt) * 6);
+  margin-bottom: calc(var(--pt) * 12);
+  border-bottom: 1px solid #e6e6e6;
+}
+.folha-documento-rodape {
+  padding-top: calc(var(--pt) * 6);
+  margin-top: calc(var(--pt) * 12);
+  border-top: 1px solid #e6e6e6;
+}
+
+/* O editor rico de termos e contratos (components/admin/editor-rico). A folha
+   de edição usa as MESMAS medidas da folha acima e do PDF; as cores do texto
+   escrito são conteúdo do documento, não interface. */
+.editor-rico-caixa { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.editor-rico-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.editor-rico-folha-caixa {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card-token);
+  overflow: hidden;
+  background: var(--bg-app);
+}
+/* A folha no tamanho de uma A4 a 100% (595pt ≈ 794px), centralizada: numa
+   tela larga ela não cresce e a letra fica do tamanho que vai sair. */
+.editor-rico-folha-caixa > .folha-documento { max-width: 794px; margin-inline: auto; }
+.barra-editor {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-card-token);
+  background: var(--surface);
+}
+.barra-editor-grupo { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.barra-editor-grupo + .barra-editor-grupo { padding-left: 10px; border-left: 1px solid var(--hairline); }
+.barra-editor-grupo .filtro-select { max-width: 170px; }
+.barra-editor-botao {
+  width: var(--altura-controle); height: var(--altura-controle);
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: var(--radius-field-token);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+}
+.barra-editor-botao:hover:not(:disabled) { background: var(--bg-app); color: var(--text); }
+.barra-editor-botao[aria-pressed="true"] { background: var(--brand-soft); color: var(--brand); }
+.barra-editor-botao:disabled { opacity: 0.4; cursor: default; }
+.barra-editor-paleta {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 30;
+  display: grid; grid-template-columns: repeat(5, 24px); gap: 6px; padding: 8px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-field-token);
+  box-shadow: var(--shadow-popover); max-width: 90vw;
+}
+.barra-editor-cor { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); cursor: pointer; }
+.barra-editor-tabela {
+  width: 100%; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding-top: 6px; border-top: 1px solid var(--hairline);
+}
+.barra-editor-tabela .btn-ghost { padding: 4px 10px; font-size: var(--text-xs-sz); }
+
+.editor-rico {
+  outline: none; min-height: calc(var(--pt) * 220);
+  font-family: 'doc-arimo', sans-serif; font-size: calc(var(--pt) * 11);
+  color: #1f1f1f; line-height: 1.38; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.editor-rico p { margin: 0 0 calc(var(--pt) * 6); min-height: 1em; }
+.editor-rico h1, .editor-rico h2, .editor-rico h3 { font-weight: 700; margin: calc(var(--pt) * 10) 0 calc(var(--pt) * 6); line-height: 1.38; }
+.editor-rico h1 { font-size: calc(var(--pt) * 18); }
+.editor-rico h2 { font-size: calc(var(--pt) * 14); }
+.editor-rico h3 { font-size: calc(var(--pt) * 12); }
+.editor-rico > :first-child { margin-top: 0; }
+.editor-rico ul, .editor-rico ol { margin: 0 0 calc(var(--pt) * 6); padding-left: calc(var(--pt) * 18); }
+.editor-rico ul { list-style: disc; }
+.editor-rico ol { list-style: decimal; }
+.editor-rico li > p { margin-bottom: calc(var(--pt) * 2); }
+.editor-rico hr { border: 0; border-top: calc(var(--pt) * 0.6) solid #c8c8c8; margin: calc(var(--pt) * 4) 0 calc(var(--pt) * 8); }
+.editor-rico hr.ProseMirror-selectednode { border-top-color: var(--brand); }
+.editor-rico table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: calc(var(--pt) * 6); }
+.editor-rico td, .editor-rico th {
+  border: calc(var(--pt) * 0.6) solid #9a9a9a; padding: calc(var(--pt) * 4) calc(var(--pt) * 5);
+  vertical-align: top; text-align: left; font-weight: 400; position: relative;
+}
+.editor-rico th { background: #f2f2f2; }
+.editor-rico td > p:last-child, .editor-rico th > p:last-child { margin-bottom: 0; }
+.editor-rico .selectedCell::after { content: ''; position: absolute; inset: 0; background: var(--brand-soft); opacity: 0.5; pointer-events: none; }
+.editor-rico .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: var(--brand); pointer-events: none; }
+.editor-rico.resize-cursor { cursor: col-resize; }
+.editor-rico .tableWrapper { overflow-x: auto; scrollbar-width: none; }
+.editor-rico .doc-variavel {
+  display: inline-block; padding: 0 0.35em; margin: 0 0.05em; border-radius: 0.4em;
+  background: var(--brand-soft); color: var(--brand-deep); font-size: 0.92em; line-height: 1.3;
+  white-space: nowrap; cursor: default;
+}
+.editor-rico .doc-variavel.ProseMirror-selectednode { outline: 2px solid var(--brand); }
+.editor-rico .doc-marcador {
+  margin: calc(var(--pt) * 8) 0; padding: calc(var(--pt) * 8); text-align: center;
+  border: 1px dashed var(--border); border-radius: var(--radius-field-token);
+  font-family: var(--font-sans); font-size: var(--text-xs-sz); color: var(--text-muted); user-select: none;
+}
+.editor-rico .doc-marcador-assinatura::before { content: '✍ '; }
+.editor-rico .doc-marcador.ProseMirror-selectednode { border-color: var(--brand); color: var(--brand); }
+.editor-rico .doc-imagem { display: flex; margin-bottom: calc(var(--pt) * 6); }
+.editor-rico .doc-imagem[data-alinhar="centro"] { justify-content: center; }
+.editor-rico .doc-imagem[data-alinhar="direita"] { justify-content: flex-end; }
+
+/* ============================================================
+   BUSCA UNIVERSAL (topbar) — 2026-10-03
+   Campo fixo no meio da topbar; os resultados abrem num painel logo
+   abaixo, agrupados por tipo. No celular, a lupa abre a busca em tela
+   cheia EMBAIXO da topbar (§13 do CLAUDE.md: nada de inset: 0).
+   ============================================================ */
+
+/* A saudação cede o lugar à busca quando a topbar aperta. */
+.topbar-saudacao { white-space: nowrap; }
+@media (max-width: 1279px) { .topbar-saudacao { display: none; } }
+
+.busca-universal {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  max-width: 520px;
+  margin: 0 auto;
+}
+@media (max-width: 1023px) { .busca-universal { display: none; } }
+
+.busca-campo { position: relative; display: flex; align-items: center; flex: 1; min-width: 0; }
+.busca-campo > .busca-lupa-icone {
+  position: absolute; left: 11px; color: var(--text-faint); pointer-events: none;
+}
+.busca-campo > input.field { padding-left: 32px; padding-right: 58px; }
+.busca-atalho {
+  position: absolute; right: 7px;
+  padding: 2px 6px;
+  font-family: var(--font-sans-custom);
+  font-size: var(--text-overline);
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  background: var(--bg-app);
+  border: 1px solid var(--border);
+  /* Concêntrico com o campo: o raio de dentro nunca maior que o de fora. */
+  border-radius: calc(var(--radius-field-token) - 4px);
+  pointer-events: none;
+}
+
+.busca-painel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  z-index: 60;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card-token);
+  box-shadow: var(--shadow-popover);
+  max-height: calc(100dvh - var(--topbar-h) - 24px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.busca-painel::-webkit-scrollbar { display: none; }
+
+.busca-grupo + .busca-grupo {
+  margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--hairline);
+}
+.busca-grupo-titulo { padding: 8px 10px 4px; }
+
+.busca-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--radius-row);
+  cursor: pointer;
+  color: var(--text);
+  transition: background 120ms ease;
+}
+.busca-item[aria-selected="true"] { background: var(--brand-soft); }
+.busca-item-icone {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: calc(var(--radius-row) - 2px);
+  background: var(--bg-app);
+  color: var(--text-muted);
+}
+.busca-item[aria-selected="true"] .busca-item-icone { background: var(--surface); color: var(--brand); }
+.busca-item-texto { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.busca-item-titulo,
+.busca-item-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.busca-item-titulo { font-size: var(--text-sm-sz); font-weight: var(--weight-bold); }
+.busca-item-sub { font-size: var(--text-2xs); font-weight: var(--weight-semibold); color: var(--text-muted); }
+
+.busca-aviso {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 10px;
+  font-size: var(--text-sm-sz);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+}
+.busca-aviso.erro { color: var(--danger); }
+.busca-rodape {
+  margin-top: 4px; padding: 8px 10px 4px;
+  border-top: 1px solid var(--hairline);
+  font-size: var(--text-2xs);
+  color: var(--text-faint);
+}
+
+/* Celular: tela cheia, começando embaixo da topbar. */
+.busca-sobreposicao {
+  position: fixed;
+  top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+  left: 0; right: 0; bottom: 0;
+  z-index: 45;
+  display: flex; flex-direction: column;
+  background: var(--bg-app);
+}
+.busca-sobreposicao-cabeca {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.busca-sobreposicao-lista {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 8px;
+}
+.busca-sobreposicao-lista::-webkit-scrollbar { display: none; }
+/* A lupa do celular encosta no sino: a topbar ali é hambúrguer | lupa + sino. */
+.busca-abrir { margin-left: auto; margin-right: -8px; }
+
+/* ============================================================
+   PORTAL DO SUPORTE (/suporte) — a plataforma atendendo as redes.
+   Fora dos portais das redes: moldura própria, sem menu de rede.
+   ============================================================ */
+.suporte-shell { min-height: 100dvh; background: var(--bg-app); }
+.suporte-topo {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  padding: 12px var(--content-pad-x);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.suporte-marca { font-weight: var(--weight-extrabold); color: var(--brand); letter-spacing: var(--tracking-tight); }
+.suporte-marca-sub { color: var(--text-muted); font-weight: var(--weight-bold); }
+.suporte-nav { display: flex; gap: 4px; flex: 1; min-width: 0; flex-wrap: wrap; }
+.suporte-nav-item {
+  padding: 7px 12px; border-radius: var(--radius-field-token);
+  font-size: var(--text-sm-sz); font-weight: var(--weight-bold);
+  color: var(--text-muted); text-decoration: none;
+}
+.suporte-nav-item:hover { color: var(--brand); background: var(--brand-soft); }
+.suporte-nav-item[aria-current="page"] { color: var(--on-brand); background: var(--brand); box-shadow: var(--shadow-nav-active); }
+.suporte-quem { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.suporte-quem-nome { font-size: var(--text-sm-sz); font-weight: var(--weight-bold); color: var(--text); }
+.suporte-conteudo { padding: var(--content-pad-y) var(--content-pad-x); max-width: 1280px; margin: 0 auto; }
+
+.suporte-centro { display: flex; justify-content: center; padding-top: 40px; }
+.suporte-cartao-estreito { width: min(440px, 100%); display: flex; flex-direction: column; gap: 14px; }
+.suporte-titulo { font-size: var(--text-title); font-weight: var(--weight-extrabold); letter-spacing: var(--tracking-tight); color: var(--text); }
+.suporte-subtitulo { font-size: var(--text-card-title); font-weight: var(--weight-extrabold); color: var(--text); margin: 14px 0 8px; }
+.suporte-sub { font-size: var(--text-sm-sz); color: var(--text-muted); margin-top: 4px; }
+.suporte-pilha { display: flex; flex-direction: column; gap: 10px; }
+.suporte-pilha-larga { display: flex; flex-direction: column; gap: 16px; }
+.suporte-texto { font-size: var(--text-sm-sz); color: var(--text); }
+.suporte-texto-fraco { font-size: var(--text-xs-sz); color: var(--text-muted); font-weight: var(--weight-semibold); }
+.suporte-erro { font-size: var(--text-sm-sz); color: var(--danger); font-weight: var(--weight-semibold); }
+.suporte-ok { font-size: var(--text-sm-sz); color: var(--success); font-weight: var(--weight-semibold); }
+.suporte-alerta { color: var(--warning); font-weight: var(--weight-semibold); }
+.suporte-qr { width: 180px; height: 180px; border: 1px solid var(--border); border-radius: var(--radius-field-token); background: var(--surface); }
+.suporte-segredo { font-family: var(--font-mono); font-size: var(--text-xs-sz); word-break: break-all; }
+
+.suporte-cabecalho { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.suporte-cabecalho > div:first-child { min-width: 0; }
+.suporte-filtros { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.suporte-voltar { font-size: var(--text-xs-sz); color: var(--text-muted); text-decoration: none; font-weight: var(--weight-bold); }
+.suporte-voltar:hover { color: var(--brand); }
+.suporte-link-forte { font-size: var(--text-sm-sz); font-weight: var(--weight-bold); color: var(--text); text-decoration: none; }
+a.suporte-link-forte:hover { color: var(--brand); }
+.suporte-chip { background: var(--brand-soft); color: var(--brand); font-size: var(--text-2xs); font-weight: var(--weight-bold); }
+.suporte-vazio { padding: 40px 24px; text-align: center; color: var(--text-muted); font-size: var(--text-sm-sz); }
+
+.suporte-tabela { width: 100%; border-collapse: collapse; }
+.suporte-tabela th {
+  padding: 12px 16px; text-align: left;
+  font-size: var(--text-overline); font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-overline); text-transform: uppercase; color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.suporte-tabela td { padding: 12px 16px; font-size: var(--text-sm-sz); color: var(--text); border-bottom: 1px solid var(--hairline); vertical-align: middle; }
+.suporte-tabela tr:last-child td { border-bottom: none; }
+
+.suporte-secao { display: flex; flex-direction: column; gap: 10px; }
+.suporte-secao-titulo { padding: 16px 16px 4px; }
+.suporte-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--text-sm-sz); color: var(--text); }
+.suporte-lista-densa { gap: 3px; font-size: var(--text-xs-sz); }
+.suporte-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.suporte-acoes { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.suporte-form-linha { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.suporte-campo { display: flex; flex-direction: column; gap: 4px; min-width: 180px; flex: 1; }
+
+/* Banner do MODO SUPORTE, dentro da topbar (não muda --topbar-h). */
+.banner-suporte {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 6px 5px 12px; min-width: 0;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-radius: var(--radius-chip-token);
+  font-size: var(--text-xs-sz); font-weight: var(--weight-semibold);
+}
+.banner-suporte-texto { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.banner-suporte-sair {
+  padding: 3px 10px; border-radius: var(--radius-chip-token);
+  background: var(--danger); color: var(--on-brand);
+  font-weight: var(--weight-bold); text-decoration: none; flex-shrink: 0;
+}
+
+/* ── Chamados de suporte: a Ajuda da topbar e a fila do /suporte ─────────── */
+.chamado-situacao {
+  display: inline-flex; align-items: center; padding: 2px 9px; border-radius: var(--radius-chip-token);
+  font-size: var(--text-2xs); font-weight: var(--weight-bold); white-space: nowrap;
+  background: var(--brand-soft); color: var(--brand);
+}
+.chamado-situacao[data-situacao="em_andamento"]       { background: var(--info-soft); color: var(--info); }
+.chamado-situacao[data-situacao="aguardando_clinica"] { background: var(--warning-soft); color: var(--warning); }
+.chamado-situacao[data-situacao="resolvido"]          { background: var(--success-soft); color: var(--success); }
+
+.ajuda-cabecalho { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.ajuda-titulo { font-size: var(--text-card-title); font-weight: var(--weight-extrabold); color: var(--text); letter-spacing: var(--tracking-tight); }
+.ajuda-sub { font-size: var(--text-xs-sz); color: var(--text-muted); margin-top: 2px; }
+.ajuda-lista { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: var(--radius-card-token); overflow: hidden; }
+.ajuda-item {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--surface);
+  border: none; border-bottom: 1px solid var(--hairline); text-align: left; cursor: pointer; width: 100%;
+  font: inherit; color: var(--text);
+}
+.ajuda-item:last-child { border-bottom: none; }
+.ajuda-item:hover { background: var(--brand-soft); }
+.ajuda-item-texto { flex: 1; min-width: 0; }
+.ajuda-item-assunto { font-size: var(--text-sm-sz); font-weight: var(--weight-bold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ajuda-item-meta { font-size: var(--text-2xs); color: var(--text-muted); margin-top: 2px; }
+.ajuda-form { display: flex; flex-direction: column; gap: 12px; }
+.ajuda-rotulo { font-size: var(--text-xs-sz); font-weight: var(--weight-bold); color: var(--text-soft); display: flex; flex-direction: column; gap: 6px; }
+.ajuda-check { display: flex; gap: 8px; align-items: flex-start; font-size: var(--text-sm-sz); color: var(--text); cursor: pointer; }
+.ajuda-check input { margin-top: 3px; accent-color: var(--brand); }
+.ajuda-check-sub { margin-left: 24px; }
+.ajuda-nota { font-size: var(--text-xs-sz); color: var(--text-muted); }
+.ajuda-acoes { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.ajuda-erro { font-size: var(--text-sm-sz); color: var(--danger); font-weight: var(--weight-semibold); }
+.ajuda-aviso {
+  display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  padding: 10px 12px; border-radius: var(--radius-field-token); border: 1px solid var(--border);
+  background: var(--bg-app); font-size: var(--text-xs-sz); color: var(--text-soft);
+}
+.ajuda-aviso[data-tom="ok"] { border-color: var(--success-border); background: var(--success-bg); color: var(--success); }
+
+.chamado-conversa { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
+.chamado-msg { border: 1px solid var(--border); border-radius: var(--radius-card-token); padding: 10px 12px; background: var(--surface); }
+.chamado-msg[data-autor="suporte"] { border-color: var(--brand-soft-border); background: var(--brand-soft); }
+.chamado-msg[data-autor="sistema"] { background: var(--bg-app); }
+.chamado-msg[data-interna="true"] { border-style: dashed; border-color: var(--warning-border); background: var(--warning-soft); }
+.chamado-msg-quem { display: flex; justify-content: space-between; gap: 8px; font-size: var(--text-2xs); color: var(--text-muted); font-weight: var(--weight-bold); margin-bottom: 4px; }
+.chamado-msg-corpo { font-size: var(--text-sm-sz); color: var(--text); white-space: pre-wrap; word-break: break-word; }
+.chamado-anexos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.chamado-anexo { display: block; width: 96px; height: 72px; border-radius: var(--radius-field-token); border: 1px solid var(--border); overflow: hidden; background: var(--bg-app); }
+.chamado-anexo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.chamado-contexto { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: var(--text-xs-sz); }
+.chamado-contexto dt { color: var(--text-muted); font-weight: var(--weight-bold); }
+.chamado-contexto dd { color: var(--text); word-break: break-word; margin: 0; }
+.chamado-detalhe { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 960px) { .chamado-detalhe { grid-template-columns: 1fr; } }
+.suporte-contador {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: var(--radius-full); background: var(--brand); color: var(--on-brand);
+  font-size: var(--text-2xs); font-weight: var(--weight-extrabold); margin-left: 6px;
+}
+.suporte-nav-item[aria-current="page"] .suporte-contador { background: var(--on-brand); color: var(--brand); }
+
+/* ── Seletor entre os portais da plataforma (Sistema ⇄ Suporte), só ADMIN ── */
+.portal-seletor {
+  display: inline-flex; padding: 3px; gap: 2px; border: 1px solid var(--border);
+  border-radius: var(--radius-field-token); background: var(--bg-app); height: var(--altura-controle);
+}
+.portal-seletor-item {
+  display: inline-flex; align-items: center; padding: 0 12px; border-radius: calc(var(--radius-field-token) - 3px);
+  font-size: var(--text-xs-sz); font-weight: var(--weight-bold); color: var(--text-muted); text-decoration: none;
+}
+.portal-seletor-item:hover { color: var(--brand); }
+.portal-seletor-item[aria-current="page"] { background: var(--surface); color: var(--brand); border: 1px solid var(--border); }
+
+/* ── Administração do sistema (/sistema) ─────────────────────────────────── */
+.sistema-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.sistema-kpi { display: flex; flex-direction: column; gap: 6px; }
+.sistema-kpi-valor { font-size: var(--text-title); font-weight: var(--weight-extrabold); letter-spacing: var(--tracking-tight); color: var(--text); }
+.card-brand .sistema-kpi-valor, .card-brand .overline { color: var(--on-brand); }
+.sistema-kpi-nota { font-size: var(--text-xs-sz); color: var(--text-muted); }
+.card-brand .sistema-kpi-nota { color: var(--on-brand); opacity: 0.85; }
+.sistema-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: end; }
+.sistema-form-cheio { grid-column: 1 / -1; }
+.sistema-acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.sistema-situacao { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: var(--radius-chip-token);
+  font-size: var(--text-2xs); font-weight: var(--weight-bold); white-space: nowrap; background: var(--brand-soft); color: var(--brand); }
+.sistema-situacao[data-situacao="active"]    { background: var(--success-soft); color: var(--success); }
+.sistema-situacao[data-situacao="trial"]     { background: var(--info-soft); color: var(--info); }
+.sistema-situacao[data-situacao="past_due"]  { background: var(--warning-soft); color: var(--warning); }
+.sistema-situacao[data-situacao="suspended"],
+.sistema-situacao[data-situacao="desligada"] { background: var(--danger-soft); color: var(--danger); }
+.sistema-situacao[data-situacao="canceled"]  { background: var(--bg-app); color: var(--text-muted); }
+.sistema-perigo { border-color: var(--danger-border); }
+
+/* ── O aviso da assinatura no topo (quem administra a rede) ───────────────── */
+.aviso-assinatura {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--radius-chip-token);
+  font-size: var(--text-xs-sz); font-weight: var(--weight-bold); text-decoration: none; white-space: nowrap;
+  background: var(--info-soft); color: var(--info); border: 1px solid var(--info-border);
+}
+.aviso-assinatura[data-tom="atraso"] { background: var(--warning-soft); color: var(--warning); border-color: var(--warning-border); }
+@media (max-width: 640px) { .aviso-assinatura { white-space: normal; } }

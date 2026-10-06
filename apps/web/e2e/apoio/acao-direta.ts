@@ -24,12 +24,22 @@ import type { Page } from '@playwright/test'
  */
 
 // No build (`playwright.build.config.ts`) os manifestos moram em `.next/server`;
-// no `next dev`, em `.next/dev/server`. O formato é o mesmo.
-const RAIZ = process.env.E2E_BUILD
-  ? path.resolve(__dirname, '..', '..', '.next', 'server', 'app')
-  : path.resolve(__dirname, '..', '..', '.next', 'dev', 'server', 'app')
+// no `next dev`, em `.next/dev/server`. O formato é o mesmo. Cada app (a
+// clínica, o sistema, o suporte) tem os seus: `apps/<app>/.next/…`.
+type App = 'web' | 'sistema' | 'suporte'
+function raizDo(app: App): string {
+  const base = path.resolve(__dirname, '..', '..', '..', app, '.next')
+  return process.env.E2E_BUILD ? path.join(base, 'server', 'app') : path.join(base, 'dev', 'server', 'app')
+}
 
-function manifestos(dir = RAIZ, achados: string[] = []): string[] {
+/** De qual app é a rota: URL absoluta no host do sistema ou do suporte; o resto é a clínica. */
+export function appDaRota(rota: string): App {
+  if (process.env.E2E_SISTEMA_URL && rota.startsWith(process.env.E2E_SISTEMA_URL)) return 'sistema'
+  if (process.env.E2E_SUPORTE_URL && rota.startsWith(process.env.E2E_SUPORTE_URL)) return 'suporte'
+  return 'web'
+}
+
+function manifestos(dir: string, achados: string[] = []): string[] {
   if (!fs.existsSync(dir)) return achados
   for (const nome of fs.readdirSync(dir)) {
     const cheio = path.join(dir, nome)
@@ -39,8 +49,8 @@ function manifestos(dir = RAIZ, achados: string[] = []): string[] {
   return achados
 }
 
-function idDa(arquivo: string, funcao: string): string | null {
-  for (const m of manifestos()) {
+function idDa(arquivo: string, funcao: string, app: App): string | null {
+  for (const m of manifestos(raizDo(app))) {
     const json = JSON.parse(fs.readFileSync(m, 'utf8')) as { node?: Record<string, { exportedName?: string; filename?: string }> }
     for (const [id, e] of Object.entries(json.node ?? {})) {
       if (e.exportedName === funcao && e.filename?.split(path.sep).join('/').endsWith(arquivo)) return id
@@ -52,22 +62,25 @@ function idDa(arquivo: string, funcao: string): string | null {
 export interface RespostaDeAcao { status: number; texto: string }
 
 /**
- * @param arquivo  caminho da action a partir de `apps/web/` (ex.: `actions/procedures.ts`)
- * @param rota     URL de uma página que USA a action (é para ela que se posta)
+ * @param arquivo  caminho da action a partir da raiz do app (ex.: `actions/procedures.ts`)
+ * @param rota     URL de uma página que USA a action (é para ela que se posta).
+ *                 Absoluta no host do sistema ou do suporte para as actions de lá.
  */
 export async function chamarAcao(
   page: Page, arquivo: string, funcao: string, rota: string, args: unknown[],
 ): Promise<RespostaDeAcao> {
-  let id = idDa(arquivo, funcao)
+  const app = appDaRota(rota)
+  let id = idDa(arquivo, funcao, app)
   if (!id) {
     await page.goto(rota)
     await page.waitForLoadState('networkidle')
-    id = idDa(arquivo, funcao)
+    id = idDa(arquivo, funcao, app)
   }
   if (!id) throw new Error(`action ${arquivo}#${funcao} não está em manifesto nenhum depois de abrir ${rota}`)
 
   const corpo = JSON.stringify(args.map(a => (a === undefined ? '$undefined' : a)))
-  const r = await page.request.post(new URL(rota, 'http://localhost').pathname, {
+  const destino = app === 'web' ? new URL(rota, 'http://localhost').pathname : rota
+  const r = await page.request.post(destino, {
     headers: { 'next-action': id, accept: 'text/x-component', 'content-type': 'text/plain;charset=UTF-8' },
     data: corpo,
   })

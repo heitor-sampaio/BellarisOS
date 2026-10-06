@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { criarAtendente, type AtendenteDeTeste } from './apoio/plataforma'
+import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import { entrarComPaciencia } from './apoio/suporte'
 
@@ -22,6 +22,9 @@ import { entrarComPaciencia } from './apoio/suporte'
  *
  * Numa rede `[e2e]` própria, com o atendente criado pelo teste.
  */
+
+test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build (playwright.build.config.ts)')
+const SUP = () => urlDaPlataforma('suporte')
 
 const marca = Date.now().toString(36)
 const db = () => banco()
@@ -142,7 +145,7 @@ test.describe.serial('chamados de suporte', () => {
     const ctx = await browser.newContext({ storageState: atendente!.estado })
     try {
       const page = await ctx.newPage()
-      await page.goto('/suporte/chamados')
+      await page.goto(`${SUP()}/chamados`)
       await page.getByRole('link', { name: new RegExp(ASSUNTO) }).click()
       await expect(page.getByRole('heading', { name: new RegExp(ASSUNTO) })).toBeVisible()
       // Com a autorização do chamado, o "Entrar como" está à mão.
@@ -172,19 +175,21 @@ test.describe.serial('chamados de suporte', () => {
   test('entrar pelo chamado e sair volta ao chamado', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: atendente!.estado })
     try {
-      const page = await ctx.newPage()
-      await entrarComPaciencia(page, async () => {
-        await page.goto(`/suporte/chamados/${chamadoId}`)
-        await page.getByRole('button', { name: 'Entrar como' }).click()
-        await page.getByLabel('Motivo do acesso').fill('Ver a agenda que não abre')
-        await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+      const painel = await ctx.newPage()
+      // A conta do membro abre numa aba nova, na clínica (outro host).
+      const page = await entrarComPaciencia(painel, async () => {
+        await painel.goto(`${SUP()}/chamados/${chamadoId}`)
+        await painel.getByRole('button', { name: 'Entrar como' }).click()
+        await painel.getByLabel('Motivo do acesso').fill('Ver a agenda que não abre')
+        await painel.getByRole('button', { name: 'Entrar', exact: true }).click()
       })
       // No modo suporte não há Ajuda: quem está ali é o atendente.
       await expect(page.getByRole('button', { name: 'Ajuda', exact: true })).toHaveCount(0)
       const { data: s } = await db().from('support_sessions').select('ticket_id').eq('tenant_id', outra!.tenantId).eq('status', 'ativa')
       expect(s).toEqual([{ ticket_id: chamadoId }])
       await page.getByRole('link', { name: 'Sair' }).click()
-      await expect(page).toHaveURL(new RegExp(`/suporte/chamados/${chamadoId}`), { timeout: 30_000 })
+      // De volta ao chamado, no painel (host do suporte).
+      await expect(page).toHaveURL(`${SUP()}/chamados/${chamadoId}`, { timeout: 30_000 })
     } finally { await ctx.close() }
   })
 
@@ -193,11 +198,11 @@ test.describe.serial('chamados de suporte', () => {
     const ctx = await browser.newContext({ storageState: gestor.estado })
     try {
       const p = await ctx.newPage()
-      // A rota é do /suporte: o proxy desvia o membro, e a action confere a
-      // plataforma por si. Qualquer que seja a resposta, o banco não muda.
-      await chamarAcao(p, 'actions/chamados-suporte.ts', 'mudarSituacaoDoChamado', `/suporte/chamados/${chamadoId}`,
+      // A action mora no app do suporte (outro host, onde o membro não tem
+      // sessão), e confere a plataforma por si. Qualquer resposta: o banco não muda.
+      await chamarAcao(p, 'actions/chamados-suporte.ts', 'mudarSituacaoDoChamado', `${SUP()}/chamados/${chamadoId}`,
         [chamadoId, 'resolvido']).catch(() => null)
-      await chamarAcao(p, 'actions/chamados-suporte.ts', 'assumirChamado', `/suporte/chamados/${chamadoId}`,
+      await chamarAcao(p, 'actions/chamados-suporte.ts', 'assumirChamado', `${SUP()}/chamados/${chamadoId}`,
         [chamadoId]).catch(() => null)
     } finally { await ctx.close() }
     const depois = (await db().from('support_tickets').select('status, assigned_staff_id').eq('id', chamadoId).single()).data
@@ -237,7 +242,7 @@ test.describe.serial('chamados de suporte', () => {
     const ctx = await browser.newContext({ storageState: atendente!.estado })
     try {
       const page = await ctx.newPage()
-      await page.goto(`/suporte/chamados/${id}`)
+      await page.goto(`${SUP()}/chamados/${id}`)
       await expect(page.getByText('Sem autorização vigente: só a clínica libera o acesso.')).toBeVisible()
       await page.getByRole('button', { name: 'Pedir autorização' }).click()
       await expect(page.getByText(/pediu autorização para entrar na sua conta/)).toBeVisible({ timeout: 20_000 })

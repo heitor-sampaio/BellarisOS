@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { lerClaims, marcaDaPlataforma } from '@/lib/plataforma/contexto'
-import { inicioDaPlataforma } from '@/lib/plataforma/destino'
 import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedRolePermissions } from '@/lib/cached-queries'
 import { resolvePermissions } from '@/lib/permissions'
 import { motivoDoBloqueio } from '@/lib/redes/situacao'
@@ -28,7 +27,8 @@ export default async function ContaSuspensaPage() {
   const claims = await lerClaims()
   if (!claims) redirect('/login')
   const marca = marcaDaPlataforma(claims)
-  if (marca) redirect(inicioDaPlataforma(marca))
+  // A equipe da plataforma não entra na clínica (os apps dela são outros hosts).
+  if (marca) redirect('/login?acesso=plataforma')
 
   const meta = (claims.app_metadata ?? {}) as { tenant_id?: string | null; client_id?: string | null; role?: string; role_id?: string | null }
   const ehCliente = !meta.tenant_id && !!meta.client_id

@@ -18,7 +18,8 @@ import { rotuloDaSituacao } from './situacao'
  * Depois de cada mudança, `depoisDaMudanca` expira o cache da rede (o portão
  * vale na próxima tela), avisa quem administra a rede e registra.
  */
-export type Expirar = (tag: string) => void
+/** Expira uma tag — aqui e, se for o caso, no processo que guarda o cache (ver expirar-na-clinica). */
+export type Expirar = (tag: string) => void | Promise<void>
 
 export interface AssinaturaLida {
   rede: {
@@ -87,7 +88,7 @@ export async function registrarAutomatico(kind: string, tenantId: string, dados:
  */
 export async function depoisDaMudanca(tenantId: string, de: string | null, para: string, origem: 'pagamento' | 'regra' | 'admin', expirar: Expirar) {
   if (de === para) return
-  try { expirar(tagDaRede(tenantId)) } catch (e) { console.error('[assinatura] cache da rede:', (e as Error).message) }
+  try { await expirar(tagDaRede(tenantId)) } catch (e) { console.error('[assinatura] cache da rede:', (e as Error).message) }
   try {
     if (origem !== 'admin') {
       const kind = para === 'suspended' ? 'rede.suspensa_automatico'

@@ -1,7 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 import { opcoesDoCookieDeSessao } from './cookie-de-sessao'
-import { inicioDaPlataforma, ehPortalDaPlataforma, ehPortalDoSistema } from '@/lib/plataforma/destino'
 
 export async function updateSession(request: NextRequest) {
   try {
@@ -52,6 +51,9 @@ export async function updateSession(request: NextRequest) {
       // O fim da sessão de suporte: funciona também com a sessão já derrubada
       // (vencida ou revogada), para devolver o atendente ao painel.
       || pathname === '/auth/suporte-fim'
+      // A entrada do "entrar como": a aba nova chega do painel do suporte
+      // (outro host) com o código — ainda sem sessão aqui.
+      || pathname === '/auth/suporte-entrada'
     // Abre SEM sessão. É aqui que "página pública" se decide de verdade: a
     // página pode não chamar `getTenantContext` e ainda assim nunca ser vista,
     // porque o proxy manda para o login antes de ela renderizar.
@@ -78,23 +80,19 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // A PLATAFORMA (a equipe do BellarisOS) e as redes não se misturam: quem
-    // tem a marca fica nos portais dela (/sistema para ADMIN, /suporte), e
-    // quem não tem não entra em nenhum dos dois. O SUPORTE não abre o
-    // /sistema. É só o desvio de navegação — quem barra de verdade são
-    // `getPlatformContext` e `buildContext`, em cada página e action.
+    // A PLATAFORMA (a equipe do BellarisOS) mora em outros apps, em outros
+    // hosts (sistema e suporte, 2026-10-06): a sessão de quem tem a marca não
+    // vale aqui. Desfeita na hora (os cookies apagados vão na resposta) e de
+    // volta ao login, com o aviso de onde a equipe entra. `/api/*` se defende
+    // sozinha (`buildContext` recusa a marca também).
     const plataforma = (user?.app_metadata as { plataforma?: string } | undefined)?.plataforma
-    const naPlataforma = ehPortalDaPlataforma(pathname)
-    const desvio = user && plataforma && !naPlataforma && !isAuthRoute && !isPublicRoute && !pathname.startsWith('/auth/')
-      ? inicioDaPlataforma(plataforma)
-      : user && plataforma && plataforma !== 'ADMIN' && ehPortalDoSistema(pathname) ? '/suporte'
-      : user && !plataforma && naPlataforma ? '/' : null
-    if (desvio) {
+    if (user && plataforma && !pathname.startsWith('/api/')) {
+      await supabase.auth.signOut({ scope: 'local' })
       const url = request.nextUrl.clone()
-      url.pathname = desvio
-      url.search = ''
+      url.pathname = '/login'
+      url.search = '?acesso=plataforma'
       const resposta = NextResponse.redirect(url)
-      // Leva os cookies renovados nesta mesma requisição.
+      // Leva os cookies apagados nesta mesma resposta.
       supabaseResponse.cookies.getAll().forEach(c => resposta.cookies.set(c))
       return resposta
     }

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { criarAtendente, type AtendenteDeTeste } from './apoio/plataforma'
+import { criarAtendente, plataformaNoAr, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import {
   sessaoDoNavegador, rest, restBruto, autorizarPor, entrarComo, sessoesAtivasDaRede, limparSuporteDaRede,
@@ -20,6 +20,8 @@ import {
  *  - com a autorização que o inclui (dada por quem gerencia prontuário): lê.
  * O controle de cada recusa é o próprio membro, com o token dele.
  */
+
+test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build (playwright.build.config.ts)')
 
 const marca = Date.now().toString(36)
 const db = () => banco()

@@ -37,6 +37,19 @@ describe('criarClienteDoNavegador', () => {
     expect(rt.accessTokenValue).toBe('tok-2')
   })
 
+  it('falha passageira ao pedir o token: o Realtime MANTÉM o último, não vira anônimo', async () => {
+    let falhar = false
+    const rt = criarClienteDoNavegador('https://exemplo.supabase.co', 'anon', async () => {
+      if (falhar) throw new Error('rede')
+      return 'tok-1'
+    }).realtime as Interno
+    await esperar()
+    falhar = true
+    rt._setAuthSafely('heartbeat')
+    await esperar()
+    expect(rt.accessTokenValue).toBe('tok-1')
+  })
+
   it('sem sessão, fala como anônimo (a anon key) — e tenta de novo depois', async () => {
     let atual: string | null = null
     const rt = criarClienteDoNavegador('https://exemplo.supabase.co', 'anon', async () => atual).realtime as Interno

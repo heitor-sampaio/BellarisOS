@@ -21,13 +21,21 @@ SUPABASE_SERVICE_ROLE_KEY=         # apenas server-side
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_REST_TOKEN=
 
-# Cobrança das assinaturas das redes (Asaas, §6 "Administração do sistema")
+# Os TRÊS apps (2026-10-06) — cada serviço do Railway leva os três endereços.
+CLINICA_URL=https://app.bellarisos.com       # a clínica (apps/web)
+SISTEMA_URL=https://admin.bellarisos.com     # o sistema (apps/sistema, só ADMIN)
+SUPORTE_URL=https://suporte.bellarisos.com   # o suporte (apps/suporte)
+INTERNO_SECRET=                    # 32+ caracteres, o MESMO nos três: /api/interno/expirar (lib/interno.ts)
+PLATAFORMA_IPS=                    # opcional (sistema e suporte): IPs permitidos, por vírgula; vazio = todos
+BELLARIS_APP=web                   # o app da imagem: web | sistema | suporte (build arg, ver o Dockerfile)
+
+# Cobrança das assinaturas das redes (Asaas) — SÓ no serviço do sistema
 ASAAS_API_KEY=                     # só no servidor ($aact_hmlg_… no sandbox, $aact_prod_… em produção)
 ASAAS_AMBIENTE=sandbox             # sandbox | producao (padrão: sandbox)
 ASAAS_WEBHOOK_TOKEN=               # 32+ caracteres; o MESMO do webhook no painel do Asaas
 
-# Plataforma: o primeiro admin (o e-mail vira ADMIN ao entrar; vários por vírgula).
-# NUNCA o e-mail de um membro de rede — a marca o tiraria do portal da rede.
+# Plataforma: o primeiro admin (o e-mail vira ADMIN ao entrar NO SISTEMA; vários
+# por vírgula). SÓ no serviço do sistema. NUNCA o e-mail de um membro de rede.
 PLATAFORMA_ADMIN_EMAIL=
 
 # WhatsApp não oficial (uazapi). As caixas (uazapi e oficial) moram em
@@ -68,6 +76,27 @@ VAPID_SUBJECT=
 
 ---
 
+## Os serviços no Railway (2026-10-06)
+
+Um Dockerfile só, na raiz (o `railway.toml` o fixa para todos os serviços).
+Cada serviço escolhe o app pela variável `BELLARIS_APP` — o Railway a passa
+como build arg por estar declarada (`ARG`) no Dockerfile:
+
+| Serviço | `BELLARIS_APP` | Domínio | Só nele |
+|---|---|---|---|
+| BellarisOS | `web` (padrão) | app.bellarisos.com | Meta, uazapi, VAPID/FCM |
+| Sistema | `sistema` | admin.bellarisos.com | `ASAAS_*`, `PLATAFORMA_ADMIN_EMAIL`, `CRON_SECRET` |
+| Suporte | `suporte` | suporte.bellarisos.com | — |
+| Notification Cron / Automations Cron | `web` (imagem) | — | `APP_URL`, `SISTEMA_URL`, `CRON_SECRET` |
+
+Os três apps levam as chaves do Supabase, `CLINICA_URL`, `SISTEMA_URL`,
+`SUPORTE_URL` e `INTERNO_SECRET` (o mesmo valor). O sistema e o suporte
+levam também VAPID/FCM (o sino da clínica toca a partir deles). Os dois
+serviços novos sobem SEM domínio `*.up.railway.app`: é um segundo endereço que
+ninguém precisa (e pularia um muro na frente do domínio, se um dia houver).
+No Supabase (Auth → URL Configuration) entram os dois hosts novos nas
+Redirect URLs.
+
 ## 14.1 Jobs agendados (cron)
 
 São **dois serviços** no Railway, com ritmos diferentes, e os dois rodam o
@@ -85,6 +114,12 @@ cron possa atravessar. Por isso: rota de cron que "recolhe o que ficou para
 trás" recolhe só o que está PARADO há um tempo (`lgpd-exports`: 15 min), não
 o recém-criado, que é do `after()` — e teste que precisa de um pendente
 "esquecido" o cria com a data no passado.
+
+**Cada job vai ao app DONO dele** (2026-10-06, `baseDoJob` em
+`scripts/cron.mjs`): `assinaturas` ao sistema (`SISTEMA_URL`, que tem a chave do
+Asaas); o resto à clínica (`APP_URL`) — inclusive `suporte-sessoes`, porque o
+cache da sessão de suporte mora no processo da clínica. O serviço de cron leva
+as duas variáveis; sem `SISTEMA_URL`, o `assinaturas` é PULADO com aviso (o sistema ainda não está no ar); sem `APP_URL`, falha.
 
 | Serviço | Ritmo | `CRON_JOBS` |
 |---|---|---|

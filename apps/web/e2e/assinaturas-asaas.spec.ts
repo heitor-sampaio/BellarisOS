@@ -2,7 +2,7 @@ import { test, expect, request, type Browser, type Page } from '@playwright/test
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { criarAtendente, type AtendenteDeTeste } from './apoio/plataforma'
+import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import { subirAsaasFalso, type AsaasFalso } from './apoio/asaas-falso'
 
@@ -17,7 +17,7 @@ import { subirAsaasFalso, type AsaasFalso } from './apoio/asaas-falso'
  * - fatura vencida → em atraso, com o aviso e o "Pagar" para quem administra;
  * - paga → em dia, sozinha; cancelar encerra a assinatura no Asaas.
  */
-test.skip(!process.env.ASAAS_BASE_URL_TESTE, 'só contra o build: o servidor precisa subir com ASAAS_BASE_URL_TESTE')
+test.skip(!process.env.ASAAS_BASE_URL_TESTE || !plataformaNoAr(), 'só contra o build: o sistema precisa subir com ASAAS_BASE_URL_TESTE')
 
 const PORTA = 3198
 const marca = Date.now().toString(36)
@@ -69,7 +69,8 @@ async function comSessao(browser: Browser, estado: string, fn: (p: Page) => Prom
 
 /** O Asaas chamando o webhook: sem sessão nenhuma (é o token que vale). */
 async function webhook(corpo: Record<string, unknown>, token = TOKEN) {
-  const ctx = await request.newContext({ baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000' })
+  // O webhook mora no SISTEMA (2026-10-06), não na clínica.
+  const ctx = await request.newContext({ baseURL: urlDaPlataforma('sistema') })
   try {
     const r = await ctx.post('/api/webhooks/asaas', { headers: { 'asaas-access-token': token }, data: corpo })
     return { status: r.status(), json: await r.json().catch(() => ({})) as Record<string, unknown> }
@@ -87,7 +88,7 @@ const ontem = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Pa
 test.describe.serial('cobrança pelo Asaas', () => {
   test('ligar a cobrança cria o cliente e a assinatura no Asaas', async ({ browser }) => {
     await comSessao(browser, admin.estado, async p => {
-      const rota = `/sistema/redes/${outra.tenantId}`
+      const rota = `${urlDaPlataforma('sistema')}/redes/${outra.tenantId}`
       const { data: t } = await db().from('tenants').select('name, email').eq('id', outra.tenantId).single<{ name: string; email: string }>()
       expect((await chamarAcao(p, 'actions/sistema.ts', 'editarRede', rota,
         [outra.tenantId, { nome: t!.name, documento: DOCUMENTO, email: t!.email, telefone: null }])).texto).toContain('"ok":true')
@@ -169,7 +170,7 @@ test.describe.serial('cobrança pelo Asaas', () => {
 
   test('cancelar encerra a assinatura no Asaas e bloqueia a rede', async ({ browser }) => {
     await comSessao(browser, admin.estado, async p => {
-      const r = await chamarAcao(p, 'actions/sistema.ts', 'cancelarAssinatura', `/sistema/redes/${outra.tenantId}`, [outra.tenantId, 'Teste de cancelamento'])
+      const r = await chamarAcao(p, 'actions/sistema.ts', 'cancelarAssinatura', `${urlDaPlataforma('sistema')}/redes/${outra.tenantId}`, [outra.tenantId, 'Teste de cancelamento'])
       expect(r.texto).toContain('"ok":true')
     })
     expect(asaas.chamadas.some(c => c.metodo === 'DELETE' && c.caminho === `/subscriptions/${assinaturaId}`)).toBe(true)

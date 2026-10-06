@@ -35,6 +35,18 @@ const PORTA = process.env.E2E_PORTA ?? '3100'
 // 127.0.0.1, igual ao HOSTNAME do servidor (ver scripts/servir-build.mjs).
 process.env.E2E_BASE_URL = `http://127.0.0.1:${PORTA}`
 
+// A plataforma em DOIS apps, cada um no SEU host (cookie não separa porta, só
+// host): o sistema em 127.0.0.2 e o suporte em 127.0.0.3 — loopback no Linux e
+// no Windows. Os três servidores recebem os três endereços (CLINICA_URL,
+// SISTEMA_URL, SUPORTE_URL), como em produção, e o segredo da conversa entre
+// eles (INTERNO_SECRET).
+process.env.E2E_SISTEMA_URL = 'http://127.0.0.2:3101'
+process.env.E2E_SUPORTE_URL = 'http://127.0.0.3:3102'
+process.env.CLINICA_URL = process.env.E2E_BASE_URL
+process.env.SISTEMA_URL = process.env.E2E_SISTEMA_URL
+process.env.SUPORTE_URL = process.env.E2E_SUPORTE_URL
+process.env.INTERNO_SECRET ??= 'e2e-segredo-interno-entre-os-apps-0123456789'
+
 /**
  * `E2E_GRUPO` escolhe a metade da suíte (`e2e/grupos.ts`): `isolados` roda em
  * paralelo (`E2E_WORKERS`, 3 por padrão — um arquivo por worker, os testes de
@@ -55,13 +67,18 @@ export default defineConfig({
   // segunda metade apagaria as evidências das falhas da primeira.
   ...(grupo ? { outputDir: `test-results/${grupo}` } : {}),
   use: { ...base.use, baseURL: process.env.E2E_BASE_URL },
-  webServer: {
-    command: `node scripts/servir-build.mjs ${PORTA}`,
+  // No CI as duas metades rodam juntas contra UM servidor de cada app, que o
+  // workflow sobe antes (`E2E_SERVIDOR_PRONTO`); cada uma subir o seu
+  // disputaria a porta.
+  webServer: [
+    { app: 'web',     porta: PORTA,  host: '127.0.0.1', url: process.env.E2E_BASE_URL },
+    { app: 'sistema', porta: '3101', host: '127.0.0.2', url: `${process.env.E2E_SISTEMA_URL}/api/health` },
+    { app: 'suporte', porta: '3102', host: '127.0.0.3', url: `${process.env.E2E_SUPORTE_URL}/api/health` },
+  ].map(a => ({
+    command: `node scripts/servir-build.mjs ${a.porta} ${a.app} ${a.host}`,
     cwd: __dirname,
-    url: process.env.E2E_BASE_URL,
-    // No CI as duas metades rodam juntas contra UM servidor, que o workflow
-    // sobe antes (`E2E_SERVIDOR_PRONTO`); cada uma subir o seu disputaria a porta.
+    url: a.url,
     reuseExistingServer: !process.env.CI || process.env.E2E_SERVIDOR_PRONTO === '1',
     timeout: 120_000,
-  },
+  })),
 })

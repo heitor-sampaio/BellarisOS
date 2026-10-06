@@ -1,4 +1,6 @@
 'use server'
+import { origemPublicaDe } from '@/lib/origem'
+import { headers } from 'next/headers'
 import { emSessaoDeSuporte } from '@/lib/suporte/sessao'
 
 import { redirect } from 'next/navigation'
@@ -10,7 +12,6 @@ import type { JwtClaims } from '@estetica-os/types'
 import { ler } from '@/lib/db'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 import { semearRede, fimDoTesteParaHoje } from '@/lib/redes/criar'
-import { promoverSeForOAdmin, criarContaDoPrimeiroAdmin } from '@/lib/plataforma/primeiro-admin'
 
 export async function registerAction(
   _prevState: { error: string } | { needsConfirmation: boolean } | undefined,
@@ -65,6 +66,9 @@ export async function registerAction(
   redirect('/setup')
 }
 
+/** O que a equipe da plataforma lê quando tenta entrar na clínica. */
+const AVISO_DA_PLATAFORMA = 'A equipe da plataforma entra por admin.bellarisos.com ou suporte.bellarisos.com.'
+
 export async function loginAction(
   _prevState: { error: string } | { redirectTo: string } | undefined,
   formData: FormData,
@@ -83,14 +87,12 @@ export async function loginAction(
   const clienteId = (user?.app_metadata as JwtClaims | undefined)?.client_id
   if (clienteId) await bonusDePrimeiroAcesso(clienteId)
 
-  // O primeiro admin da plataforma (PLATAFORMA_ADMIN_EMAIL): promovido no
-  // login, e a sessão renovada para o token já vir com a marca.
-  if (user) {
-    try {
-      if (await promoverSeForOAdmin(user) === 'promovido') await supabase.auth.refreshSession()
-    } catch (e) {
-      console.error('[loginAction] primeiro admin:', (e as Error).message)
-    }
+  // A equipe da plataforma entra pelos apps dela (outros hosts): a sessão
+  // recém-aberta é desfeita e o login diz onde. O primeiro admin
+  // (PLATAFORMA_ADMIN_EMAIL) é promovido lá, no sistema — não aqui.
+  if ((user?.app_metadata as { plataforma?: string } | undefined)?.plataforma) {
+    await supabase.auth.signOut({ scope: 'local' })
+    return { error: AVISO_DA_PLATAFORMA }
   }
 
   return { redirectTo: await destinoDaSessao(supabase) }
@@ -107,8 +109,6 @@ async function destinoDaSessao(supabase: Awaited<ReturnType<typeof createClient>
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const claims = (user.app_metadata ?? {}) as JwtClaims
-      // A plataforma vai para o /suporte, que pede a verificação em duas etapas.
-      if ((claims as { plataforma?: string }).plataforma) return '/suporte/verificacao'
       const admin  = createAdminClient()
 
       if (claims.client_id) {
@@ -144,18 +144,15 @@ export async function resetPasswordAction(
   const parsed = ResetPasswordSchema.safeParse({ email: formData.get('email') })
   if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? 'E-mail inválido' }
 
-  // O primeiro admin da plataforma ainda sem conta: nasce aqui, já marcado, e
-  // o e-mail de definir senha sai logo abaixo como para qualquer um.
-  try { await criarContaDoPrimeiroAdmin(parsed.data.email) } catch (e) {
-    console.error('[resetPasswordAction] primeiro admin:', (e as Error).message)
-  }
 
   const supabase = await createClient()
   // O link volta por /auth/confirm, que troca o código por sessão e segue para
   // a tela da nova senha. Até 2026-09-28 apontava para /auth/update-password,
   // que não existia: todo "esqueci minha senha" terminava num 404.
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/confirm?next=/update-password`,
+    // O endereço público de quem pediu (lib/origem), não uma variável: o mesmo
+    // app atende app.bellarisos.com e o domínio do app Android.
+    redirectTo: `${origemPublicaDe(await headers())}/auth/confirm?next=/update-password`,
   })
 
   if (error) return { error: 'Erro ao enviar e-mail. Tente novamente.' }

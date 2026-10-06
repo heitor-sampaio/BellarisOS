@@ -5,54 +5,85 @@
 > rede e RLS, permissões, `gravar`/`ler`/`tentar`, portais — continuam no
 > `CLAUDE.md` e valem aqui. Os números de seção são os de sempre.
 
-### Plataforma e suporte (`/suporte`, 2026-10-03)
+### Plataforma e suporte (2026-10-03; em apps e hosts próprios desde 2026-10-06)
 
-A PLATAFORMA é a equipe do BellarisOS que atende as redes que assinam. Tem
-portal próprio (`/suporte`), fora dos portais das redes.
+A PLATAFORMA é a equipe do BellarisOS que atende as redes que assinam. Desde
+2026-10-06 ela mora em DOIS APPS, cada um no seu serviço e no seu host — nada
+dela fica no app da clínica:
+
+| App | Host | Quem entra | O que tem |
+|---|---|---|---|
+| `apps/sistema` | `admin.bellarisos.com` (`SISTEMA_URL`) | só ADMIN | painel, redes, planos, cobrança/Asaas, equipe, auditoria, configurações, webhook do Asaas, cron `assinaturas`, primeiro admin |
+| `apps/suporte` | `suporte.bellarisos.com` (`SUPORTE_URL`) | SUPORTE e ADMIN | chamados, redes (consulta e diagnóstico), reenviar acesso, reativar membro, a abertura do "entrar como" |
+
+Por que dois hosts: a clínica desenha conteúdo de fora (WhatsApp, editor de
+documentos), e um script injetado ali alcançava a sessão de quem é da
+plataforma na mesma origem. Origem separada = cookie separado (host-only) e
+um muro que não depende de cada trava do código.
 
 - **Quem é da plataforma não é membro de rede**: é um login do Auth com
   `app_metadata.plataforma` (`SUPORTE` | `ADMIN`) e uma linha em
   `platform_staff` — a fonte de verdade. Sem `tenant_id`, nenhuma RLS de rede
   o alcança: o painel lê pelo servidor (service role), conferindo a pessoa em
-  cada página e action com `getPlatformContext` (`lib/plataforma/contexto.ts`).
-- **Verificação em duas etapas obrigatória** (TOTP do Supabase, `aal2`):
-  sem ela, `/suporte/verificacao`. O painel enxerga todas as redes.
-- **Os dois lados não se misturam**: o proxy desvia quem tem a marca para o
-  `/suporte` e quem não tem para fora dele; `buildContext` recusa a marca
-  ANTES do padrão CLIENT (sem `role`, o atendente viraria cliente final); os
-  destinos de login (`destinoDaSessao`, `/auth/redirect`, `/api/auth/session`)
-  mandam a plataforma para a verificação.
-- **Dois portais, dois papéis:** o `/suporte` (o ATENDIMENTO: chamados,
-  redes para consulta e diagnóstico, reenviar acesso, reativar membro,
-  "entrar como") é de SUPORTE e ADMIN; o `/sistema` (a ADMINISTRAÇÃO do
-  negócio: painel, redes, planos, cobrança, equipe da plataforma, auditoria,
-  configurações) é só de ADMIN. Quem é ADMIN troca pelo seletor no topo e
-  começa no `/sistema` (`inicioDaPlataforma`, `lib/plataforma/destino.ts`); o
-  proxy desvia o SUPORTE para fora do `/sistema`, e toda página e action de
-  lá pede `getPlatformContext({ papel: 'ADMIN' })`.
+  cada página e action com `getPlatformContext`
+  (`packages/nucleo/src/lib/plataforma/contexto.ts`; `{ papel: 'ADMIN' }` em
+  todo o sistema).
+- **A porta de cada host é o proxy** (`proxyDaPlataforma`, núcleo): nega por
+  padrão; sem sessão, só o acesso e as rotas públicas do host (health, e no
+  sistema o webhook e o cron; `/api/interno/expirar` nos dois); sessão de quem
+  não é do host (membro, cliente, SUPORTE no sistema) é DESFEITA ali mesmo e
+  volta ao login. A regra é uma só: `aceitaNoHost`/`recusaDoHost`
+  (`lib/plataforma/destino.ts`). O login de cada app recusa pelo mesmo
+  motivo (`entrarNaPlataforma`, `lib/plataforma/acesso.ts`).
+- **A clínica recusa a marca da plataforma**: o proxy dela desfaz a sessão e
+  manda a `/login?acesso=plataforma` ("a equipe da plataforma entra por…"); o
+  `buildContext` (ANTES do padrão CLIENT — sem `role`, o atendente viraria
+  cliente final), o `loginAction`, `/auth/redirect`, `/conta-suspensa` e
+  `/api/auth/session` recusam também.
+- **Verificação em duas etapas obrigatória** (TOTP do Supabase, `aal2`), em
+  CADA host: sem ela, `/verificacao`. Quem é ADMIN entra nos dois, com uma
+  sessão (e um código) em cada. O seletor de portal é um link absoluto para o
+  outro host (`SeletorDePortal`).
+- **URL entre hosts vem do ambiente** (`urlDoHost`, `urlDaClinica`), nunca do
+  pedido. O e-mail de "definir senha" volta pela clínica para membro de rede e
+  pelo host do papel para atendente (`linkDeDefinirSenha`).
+- **Cache que um app muda e outro guarda** (`expirarEm`/`expirarNaClinica`,
+  `lib/plataforma/expirar-na-clinica.ts`): a situação da rede (`rede:`), a
+  sessão de suporte (`suporte-sessao:`) e o membro (`user:`) moram na CLÍNICA;
+  a pessoa da plataforma (`plataforma:`) também no SUPORTE. Quem muda chama
+  `/api/interno/expirar` do dono, com `INTERNO_SECRET` (32+, tempo constante)
+  e a lista fechada de `lib/interno.ts`. Acessório: o TTL e a RLS seguem
+  valendo se o aviso falhar.
+- **CSP estrita com nonce nos dois hosts** (`politicaDeConteudo`,
+  `lib/plataforma/porta.ts`): script só com o nonce da requisição; sem
+  moldura; `form-action` só para o próprio host (e a clínica, no suporte).
+  Lista de IPs opcional (`PLATAFORMA_IPS`, pelo `X-Real-IP`).
 - **Tudo o que a plataforma faz vai para `platform_audit_log`**
   (`registrarNaPlataforma`, só acrescenta), inclusive abrir o painel de uma
   rede ou um chamado — e a clínica vê isso. Registro DEPOIS de um efeito que
   já saiu (resposta no chamado) não devolve erro se falhar: a pessoa
   repetiria e o efeito sairia duas vezes — vai para o log.
+- **Fato que a plataforma grava na corrente da clínica não dispara
+  automação** (`gravarEvento`, `lib/events/gravar.ts`, sem despacho): é o
+  princípio do modo suporte. Hoje: `membro.reativado` pelo suporte.
 - **Diagnóstico sem segredo e sem dado de cliente**
-  (`lib/plataforma/diagnostico.ts`): das caixas e integrações só o estado
-  (lista fechada); dos eventos só nome, entidade, ator e hora (os `dados`
-  carregam retrato de cliente, e o painel não depende de autorização).
-- **O primeiro admin nasce pela variável `PLATAFORMA_ADMIN_EMAIL`**, sem
-  script (`lib/plataforma/primeiro-admin.ts`): quem entra com esse e-mail é
-  promovido no login (`loginAction` e `/api/auth/session`, com a sessão
-  renovada para o token vir com a marca); sem conta ainda, o "Esqueci minha
-  senha" cria o login já marcado. Membro de rede com esse e-mail NÃO é
-  promovido, e só e-mail CONFIRMADO é promovido (com a confirmação desligada
-  no Auth, um `signUp` direto com o e-mail da variável viraria ADMIN). Os seguintes, o ADMIN cadastra em `/sistema/equipe` (SUPORTE ou
-  ADMIN). E-mail de membro de rede é recusado.
+  (`apps/suporte/lib/plataforma/diagnostico.ts`): das caixas e integrações só
+  o estado (lista fechada); dos eventos só nome, entidade, ator e hora.
+- **O primeiro admin nasce pela variável `PLATAFORMA_ADMIN_EMAIL`** — SÓ no
+  sistema (`apps/sistema/lib/plataforma/primeiro-admin.ts`): quem entra com
+  esse e-mail no login do sistema é promovido (sessão renovada para o token
+  vir com a marca); sem conta ainda, o "Esqueci minha senha" do sistema cria o
+  login já marcado. A clínica não promove ninguém. Membro de rede com esse
+  e-mail NÃO é promovido, e só e-mail CONFIRMADO é promovido. Os seguintes, o
+  ADMIN cadastra em Equipe (SUPORTE ou ADMIN). E-mail de membro de rede é
+  recusado.
 - Tabelas da plataforma: RLS ligada e ZERO políticas, como credencial.
-- Prova: `e2e/suporte-plataforma.spec.ts` (atendentes `[e2e]` com o TOTP
-  calculado no teste, `e2e/apoio/plataforma.ts`), `e2e/sistema-portal.spec.ts`
-  e `e2e/plataforma-primeiro-admin.spec.ts` (contra o build).
+- Prova: `e2e/plataforma-hosts.spec.ts` (os três hosts, a CSP), 
+  `e2e/suporte-plataforma.spec.ts`, `e2e/sistema-portal.spec.ts` e
+  `e2e/plataforma-primeiro-admin.spec.ts` — todos contra o build, com os três
+  servidores (`docs/regras/e2e.md`).
 
-**Administração do sistema (`/sistema`) e assinaturas (2026-10-03):**
+**Administração do sistema (`apps/sistema`) e assinaturas (2026-10-03):**
 - **A rede BLOQUEADA é uma regra só** (`lib/redes/situacao.ts`, igual a
   `private.rede_bloqueada`): `tenants.is_active = false` (DESLIGADA à mão
   pelo admin — abuso, pedido; a cobrança nunca religa) OU `plan_status` em
@@ -125,12 +156,24 @@ portal próprio (`/suporte`), fora dos portais das redes.
   ou 7 dias; uma por pessoa). Autoriza o próprio membro (para si) ou quem é da
   rede com `settings: MANAGE` (Configurações → Suporte); "incluir dados
   clínicos" pede prontuário MANAGE de quem autoriza (`lib/suporte/regras.ts`).
-- **É uma sessão REAL do Auth do membro** (`lib/suporte/entrar.ts`,
-  `POST /api/suporte/entrar`): parte do app e todo o Realtime falam com o banco
-  pelo token, então trocar só o contexto do servidor não funcionaria. O token é
-  gerado no servidor (`generateLink` + `verifyOtp`) e ligado à sessão de
-  suporte (`support_sessions.auth_session_id`, com `not_after` no Auth) antes de
-  ir ao navegador. Prazo: 60 min, nunca além da autorização.
+- **É uma sessão REAL do Auth do membro**: parte do app e todo o Realtime
+  falam com o banco pelo token, então trocar só o contexto do servidor não
+  funcionaria. Prazo: 60 min, nunca além da autorização.
+- **Entre ORIGENS, por um código de uso único** (2026-10-06;
+  `lib/suporte/entrar.ts` no núcleo, migration `20261006000001`):
+  1. no PAINEL (`apps/suporte`, `POST /api/entrar`, o form abre em aba nova):
+     `abrirSessaoDeSuporte` abre a sessão (`suporte_sessao_abrir`: autorização,
+     motivo, uma por atendente e por conta) e cria o código (32 bytes, 60 s; só o
+     SHA-256 vai a `support_entry_codes`, RLS sem política). A resposta é uma
+     página com CSP própria que POSTA o código à clínica — no corpo, fora da URL;
+  2. na CLÍNICA (`POST /auth/suporte-entrada`, rota de auth no proxy): só com
+     `Origin` do host do suporte; `ativarSessaoDeSuporte` consome o código
+     (`suporte_entrada_consumir`, uma vez, atômico) e só então gera a sessão do
+     membro (`generateLink` + `verifyOtp`, ligada por `suporte_sessao_ativar`
+     com `not_after`), grava os cookies httpOnly DELE neste host e avisa a
+     clínica no sino.
+  - A sessão do atendente NUNCA vai para a clínica: não existe mais o cookie
+    de volta. Código não usado deixa a sessão "abrindo", que fecha em 2 min.
 - **Quem é o suporte se acha pelo `session_id` do JWT**
   (`lib/suporte/sessao.ts`, cache de 15 s com tag) — não por cookie. O
   `getTenantContext` monta `ctx.suporte`, troca o nome para "Ana (via suporte:
@@ -179,13 +222,13 @@ portal próprio (`/suporte`), fora dos portais das redes.
   seria acesso fora do prazo da autorização. Nem colher assinatura, marcar
   papel ou dispensar documento: `document_signatures` é evidência imutável, e
   ali o atendente apareceria como o membro.
-- **O fim** (`app/auth/suporte-fim/route.ts`, o "Sair" do banner): encerra a
-  sessão, apaga a sessão do Auth e devolve o atendente ao painel (ou ao
-  chamado de onde ele entrou) com o cookie de volta (`bellaris_suporte_volta`:
-  o refresh token dele, AES-GCM com chave derivada da service role). Revogar na
-  clínica derruba na próxima tela; o cron `suporte-sessoes` fecha as vencidas.
-  É GET (é um link): sem sessão de suporte nem cookie de volta, não faz nada —
-  um link de outro site não desloga um membro.
+- **O fim** (`app/auth/suporte-fim/route.ts` da clínica, o "Sair" do banner): encerra a
+  sessão, apaga a sessão do Auth e os cookies do membro NESTE host, e leva ao
+  painel no host do SUPORTE (`SUPORTE_URL` + o chamado ou a rede) — onde o
+  atendente segue logado na sessão dele, que nunca saiu de lá. Revogar na
+  clínica derruba na próxima tela; o cron `suporte-sessoes` (na clínica, onde
+  mora o cache da sessão) fecha as vencidas. É GET (é um link): sem sessão de
+  suporte, não faz nada — um link de outro site não desloga um membro.
 - **Transparência:** a clínica é avisada no sino quando o suporte entra e
   sai, e vê em Configurações → Suporte cada sessão, o que foi aberto e feito
   (acessos + `domain_events.suporte_sessao_id`) e o que a plataforma fez.
@@ -199,7 +242,7 @@ portal próprio (`/suporte`), fora dos portais das redes.
 
 **Chamados (o botão "Ajuda" da topbar):**
 - A clínica abre o chamado pela Ajuda (`components/shared/ajuda.tsx`,
-  `actions/chamados.ts`); o suporte atende em `/suporte/chamados` (a primeira
+  `actions/chamados.ts`); o suporte atende em Chamados, no app do suporte (a primeira
   aba, com o contador dos abertos; `actions/chamados-suporte.ts`).
 - **O contexto vem da sessão**: quem, cargo, unidade e rede pelo servidor; do
   navegador só a tela, a janela e o navegador (`contextoDoNavegador`).
@@ -231,18 +274,24 @@ portal próprio (`/suporte`), fora dos portais das redes.
 ## O que nunca fazer aqui
 
 ```
-❌ Deixar a plataforma (marca app_metadata.plataforma) cair no buildContext como CLIENT, ou abrir /suporte sem getPlatformContext
+❌ Deixar a marca da plataforma passar na clínica (proxy, buildContext, login), ou página/action do sistema ou do suporte sem getPlatformContext
 ❌ Entrar na conta de um membro sem autorização vigente (suporte_sessao_abrir) ou entregar o token ao navegador antes de suporte_sessao_ativar
 ❌ Ação do suporte que fica PERMANENTE (membro, cargo, matriz, assinatura) sem bloqueioDoSuporte
 ❌ notifyClient dentro de after() sem notificadorDoCliente() (a pergunta "é suporte?" tem de começar na requisição)
 ❌ Confiar só no marcador de React cache para saber se é sessão de suporte numa action — é sessaoDeSuporteAtual (o token)
 ❌ Mexer numa autorização de suporte sem ler antes as sessões em curso (sessoesEmCurso) e expirar o cache delas
 ❌ Mostrar nota interna do chamado à clínica, ou o suporte autorizar acesso por conta própria
-❌ Página ou action do /sistema sem getPlatformContext({ papel: 'ADMIN' }) (o SUPORTE é desviado só pela navegação)
+❌ Página ou action do sistema sem getPlatformContext({ papel: 'ADMIN' }) (o proxy é a primeira parede, não a única)
+❌ Pôr tela ou rota da plataforma no apps/web, ou código só da plataforma no núcleo (a clínica não carrega a plataforma)
+❌ Levar a sessão do atendente ao domínio da clínica (o "entrar como" é o código de uso único; não há cookie de volta)
+❌ Montar URL de outro host a partir do pedido — é urlDoHost / urlDaClinica (o ambiente)
+❌ Mudar no sistema/suporte um cache que a clínica guarda sem expirarNaClinica (rede:, suporte-sessao:, user:)
+❌ Abrir /api/interno/expirar a tag fora da lista fechada de lib/interno.ts
+❌ Gravar evento da plataforma por emitirEvento (dispara automação da clínica) — é gravarEvento
 ❌ Decidir "rede bloqueada" fora de lib/redes/situacao.ts (ou a cobrança religar uma rede DESLIGADA à mão — is_active é só do admin)
-❌ Mudar plan_status ou is_active sem expirar a marca rede:<id> (o portão seguiria a situação velha)
+❌ Mudar plan_status ou is_active sem expirar a marca rede:<id> — aqui E na clínica (o portão seguiria a situação velha)
 ❌ Mudar a situação da assinatura evento a evento no TS — é assinatura_aplicar_cobranca, por estado, no banco
-❌ Criar rede fora de semearRede (o cadastro público e o /sistema têm de nascer iguais)
+❌ Criar rede fora de semearRede (o cadastro público e o sistema têm de nascer iguais)
 ❌ Criar cliente ou assinatura no Asaas sem procurar antes pelo externalReference (o Asaas aceita duplicado)
 ❌ Webhook do Asaas que responde diferente de 200 para o que já gravou (o Asaas repete e, com 15 falhas, pausa a fila)
 ❌ Mandar automação, campanha ou push ao paciente de uma rede bloqueada (redeEstaBloqueada)

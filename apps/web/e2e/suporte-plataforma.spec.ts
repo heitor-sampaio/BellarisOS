@@ -2,7 +2,7 @@ import { test, expect, type Browser, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { criarAtendente, totp, type AtendenteDeTeste } from './apoio/plataforma'
+import { criarAtendente, plataformaNoAr, totp, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
@@ -17,6 +17,10 @@ import { chamarAcao } from './apoio/acao-direta'
  *
  * Numa rede `[e2e]` própria, com atendentes `[e2e]` criados pelo teste.
  */
+
+test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build (playwright.build.config.ts)')
+const SUP = () => urlDaPlataforma('suporte')
+const SIS = () => urlDaPlataforma('sistema')
 
 const marca = Date.now().toString(36)
 const db = () => banco()
@@ -82,42 +86,36 @@ test.describe.serial('portal da plataforma', () => {
   test('o atendente vê as redes, e abrir uma fica registrado', async ({ browser }) => {
     await comSessao(browser, f!.suporte.estado, async p => {
       // A entrada do portal é a fila de chamados (fase 3); as redes, a aba ao lado.
-      await p.goto('/suporte')
-      await expect(p).toHaveURL(/\/suporte\/chamados/)
+      await p.goto(`${SUP()}/`)
+      await expect(p).toHaveURL(`${SUP()}/chamados`)
       await p.getByRole('link', { name: 'Redes', exact: true }).click()
-      await expect(p).toHaveURL(/\/suporte\/redes/)
+      await expect(p).toHaveURL(`${SUP()}/redes`)
       // As redes de teste só com o filtro ligado.
       await expect(p.getByRole('link', { name: f!.nomeDaRede })).toHaveCount(0)
-      await p.goto('/suporte/redes?teste=1')
+      await p.goto(`${SUP()}/redes?teste=1`)
       await p.getByRole('link', { name: f!.nomeDaRede }).click()
-      await expect(p).toHaveURL(new RegExp(`/suporte/redes/${f!.outra.tenantId}`))
+      await expect(p).toHaveURL(`${SUP()}/redes/${f!.outra.tenantId}`)
       await expect(p.getByText(`Gerente plm${marca}`).first()).toBeVisible()
     })
     await expect.poll(() => registros(f!.suporte.staffId, 'rede.visualizada')).toBe(1)
   })
 
-  test('o atendente não entra nos portais das redes', async ({ browser }) => {
-    await comSessao(browser, f!.suporte.estado, async p => {
-      await p.goto('/admin/dashboard')
-      await expect(p).toHaveURL(/\/suporte/)
-      await p.goto(`/${f!.slug}/dashboard`)
-      await expect(p).toHaveURL(/\/suporte/)
-    })
-  })
+  // "O atendente não entra nos portais das redes" mora em plataforma-hosts.spec
+  // desde 2026-10-06: a clínica é outro host, e lá a marca é recusada.
 
-  test('o membro da rede não entra no /suporte', async ({ browser }) => {
+  test('o membro da rede não entra no suporte (o cookie dele é da clínica)', async ({ browser }) => {
     await comSessao(browser, f!.membro.estado, async p => {
-      await p.goto(`/suporte/redes/${f!.outra.tenantId}`)
-      await expect(p).not.toHaveURL(/\/suporte/)
+      await p.goto(`${SUP()}/redes/${f!.outra.tenantId}`)
+      await expect(p).toHaveURL(`${SUP()}/login`)
     })
   })
 
   test('sem a verificação em duas etapas, nem o painel nem as actions', async ({ browser }) => {
     await comSessao(browser, f!.semMfa.estado, async p => {
-      await p.goto('/suporte/redes')
-      await expect(p).toHaveURL(/\/suporte\/verificacao/)
+      await p.goto(`${SUP()}/redes`)
+      await expect(p).toHaveURL(`${SUP()}/verificacao`)
       // A action direta, com o mesmo login sem aal2: não reativa ninguém.
-      await chamarAcao(p, 'actions/plataforma.ts', 'reativarMembroDaRede', `/suporte/redes/${f!.outra.tenantId}`,
+      await chamarAcao(p, 'actions/membros.ts', 'reativarMembroDaRede', `${SUP()}/redes/${f!.outra.tenantId}`,
         [f!.outra.tenantId, f!.desativado.userId])
     })
     const { data } = await db().from('users').select('is_active').eq('id', f!.desativado.userId).single<{ is_active: boolean }>()
@@ -125,29 +123,30 @@ test.describe.serial('portal da plataforma', () => {
     expect(await registros(f!.semMfa.staffId, 'membro.reativado')).toBe(0)
   })
 
-  test('Equipe e Auditoria só para o admin da plataforma (moram no /sistema)', async ({ browser }) => {
+  test('Equipe e Auditoria só para o admin da plataforma (moram no sistema, outro host)', async ({ browser }) => {
     await comSessao(browser, f!.suporte.estado, async p => {
-      await p.goto('/sistema/equipe')
-      await expect(p).not.toHaveURL(/\/sistema/)
-      await p.goto('/sistema/auditoria')
-      await expect(p).not.toHaveURL(/\/sistema/)
+      await p.goto(`${SIS()}/equipe`)
+      await expect(p).toHaveURL(`${SIS()}/login`)
+      await p.goto(`${SIS()}/auditoria`)
+      await expect(p).toHaveURL(`${SIS()}/login`)
     })
     await comSessao(browser, f!.admin.estado, async p => {
-      await p.goto('/sistema/equipe')
+      await p.goto(`${SIS()}/equipe`)
       await expect(p.getByRole('heading', { name: 'Equipe da plataforma' })).toBeVisible()
-      await p.goto('/sistema/auditoria')
+      await p.goto(`${SIS()}/auditoria`)
       await expect(p.getByRole('heading', { name: 'Auditoria da plataforma' })).toBeVisible()
     })
   })
 
   test('o suporte reativa um membro pela tela; o plano é só do admin', async ({ browser }) => {
     await comSessao(browser, f!.suporte.estado, async p => {
-      await p.goto(`/suporte/redes/${f!.outra.tenantId}`)
+      await p.goto(`${SUP()}/redes/${f!.outra.tenantId}`)
       const linha = p.locator('tr', { hasText: `Desativado pld${marca}` })
       await linha.getByRole('button', { name: 'Reativar' }).click()
       await expect(p.getByText('Membro reativado.')).toBeVisible({ timeout: 15_000 })
-      // O plano: o suporte não muda, nem pela action direta (ela é do /sistema).
-      await chamarAcao(p, 'actions/sistema.ts', 'definirAssinatura', `/sistema/redes/${f!.outra.tenantId}`,
+      // O plano: o suporte não muda, nem pela action direta (ela é do sistema,
+      // outro host — onde ele nem tem sessão).
+      await chamarAcao(p, 'actions/sistema.ts', 'definirAssinatura', `${SIS()}/redes/${f!.outra.tenantId}`,
         [f!.outra.tenantId, { planoId: null, valorCentavos: 100 }]).catch(() => null)
     })
     const { data: membro } = await db().from('users').select('is_active').eq('id', f!.desativado.userId).single<{ is_active: boolean }>()
@@ -156,7 +155,7 @@ test.describe.serial('portal da plataforma', () => {
     expect((await db().from('tenant_subscriptions').select('tenant_id').eq('tenant_id', f!.outra.tenantId)).data ?? []).toHaveLength(0)
 
     await comSessao(browser, f!.admin.estado, async p => {
-      const r = await chamarAcao(p, 'actions/sistema.ts', 'definirAssinatura', `/sistema/redes/${f!.outra.tenantId}`,
+      const r = await chamarAcao(p, 'actions/sistema.ts', 'definirAssinatura', `${SIS()}/redes/${f!.outra.tenantId}`,
         [f!.outra.tenantId, { planoId: null, valorCentavos: 15900 }])
       expect(r.texto).toContain('"ok":true')
     })
@@ -168,14 +167,14 @@ test.describe.serial('portal da plataforma', () => {
 
   test('cadastrar o autenticador pela tela abre o painel', async ({ browser }) => {
     await comSessao(browser, f!.novo.estado, async p => {
-      await p.goto('/suporte')
-      await expect(p).toHaveURL(/\/suporte\/verificacao/)
+      await p.goto(`${SUP()}/`)
+      await expect(p).toHaveURL(`${SUP()}/verificacao`)
       await p.getByRole('button', { name: 'Cadastrar autenticador' }).click()
       const segredo = (await p.getByTestId('segredo-totp').textContent())?.trim() ?? ''
       expect(segredo.length).toBeGreaterThan(10)
       await p.getByLabel('Código de 6 dígitos').fill(totp(segredo))
       await p.getByRole('button', { name: 'Confirmar' }).click()
-      await expect(p).toHaveURL(/\/suporte\/chamados/, { timeout: 20_000 })
+      await expect(p).toHaveURL(`${SUP()}/chamados`, { timeout: 20_000 })
     })
   })
 })

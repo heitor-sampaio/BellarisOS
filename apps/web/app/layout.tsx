@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
-import './globals.css'
+import '@estetica-os/nucleo/estilos/globals.css'
 import { NavigationProgress }    from '@/components/shared/navigation-progress'
 import { NativeShell }           from '@/components/native-shell'
 import { Toaster }               from 'sonner'

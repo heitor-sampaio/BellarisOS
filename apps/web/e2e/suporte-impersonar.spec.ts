@@ -2,10 +2,10 @@ import { test, expect, type Browser, type BrowserContext, type Page } from '@pla
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { criarAtendente, type AtendenteDeTeste } from './apoio/plataforma'
+import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarAgendamentos, apagarClientes } from './apoio/limpeza'
-import { entrarComPaciencia } from './apoio/suporte'
+import { entrarComo } from './apoio/suporte'
 
 /**
  * "Entrar como" um membro — o suporte com impersonificação (fase 2, 2026-10-03).
@@ -20,8 +20,13 @@ import { entrarComPaciencia } from './apoio/suporte'
  *    alcançar a rede e o refresh deixa de valer;
  *  - apagar cookie não tira o aviso.
  *
- * Numa rede `[e2e]` própria, com o atendente criado pelo teste.
+ * Numa rede `[e2e]` própria, com o atendente criado pelo teste. Desde
+ * 2026-10-06 o painel (host do suporte) e a conta do membro (host da clínica)
+ * são origens diferentes: a conta abre numa aba nova, e o "Sair" volta ao
+ * painel no host do suporte.
  */
+test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build (playwright.build.config.ts)')
+const SUP = () => urlDaPlataforma('suporte')
 
 const marca = Date.now().toString(36)
 const db = () => banco()
@@ -112,7 +117,8 @@ test.afterAll(async () => {
 
 /** A sessão do Supabase guardada nos cookies do navegador (o token "capturado"). */
 async function sessaoDoNavegador(ctx: BrowserContext): Promise<{ access_token: string; refresh_token: string }> {
-  const pedacos = (await ctx.cookies())
+  // Só os da CLÍNICA: o mesmo contexto tem a sessão do atendente no host do suporte.
+  const pedacos = (await ctx.cookies(process.env.E2E_BASE_URL))
     .filter(c => /^sb-.*-auth-token(\.\d+)?$/.test(c.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
   let valor = pedacos.map(c => c.value).join('')
@@ -156,18 +162,9 @@ async function autorizar(browser: Browser, clinico = false) {
   } finally { await ctx.close() }
 }
 
-/** Entra pela tela: detalhe da rede → "Entrar como" → motivo → Entrar. */
+/** Entra pela tela: detalhe da rede no painel → "Entrar como" → motivo → Entrar → aba nova na clínica. */
 async function entrar(browser: Browser): Promise<{ ctx: BrowserContext; page: Page }> {
-  const ctx = await browser.newContext({ storageState: f!.atendente.estado })
-  const page = await ctx.newPage()
-  await entrarComPaciencia(page, async () => {
-    await page.goto(`/suporte/redes/${f!.outra.tenantId}`)
-    const linha = page.locator('tr', { hasText: `Alvo sialvo${marca}` })
-    await linha.getByRole('button', { name: 'Entrar como' }).click()
-    await linha.getByLabel('Motivo do acesso').fill('Conferir a agenda que a clínica relatou')
-    await linha.getByRole('button', { name: 'Entrar', exact: true }).click()
-  })
-  return { ctx, page }
+  return entrarComo(browser, f!.atendente.estado, f!.outra.tenantId, `Alvo sialvo${marca}`)
 }
 
 // --- provas ---------------------------------------------------------------------
@@ -177,9 +174,9 @@ test.describe.serial('suporte: entrar como', () => {
     const ctx = await browser.newContext({ storageState: f!.atendente.estado })
     try {
       const p = await ctx.newPage()
-      await p.goto(`/suporte/redes/${f!.outra.tenantId}`)
+      await p.goto(`${SUP()}/redes/${f!.outra.tenantId}`)
       await expect(p.locator('tr', { hasText: `Alvo sialvo${marca}` }).getByText('Sem autorização da clínica para entrar')).toBeVisible()
-      const r = await p.request.post('/api/suporte/entrar', {
+      const r = await p.request.post(`${SUP()}/api/entrar`, {
         form: { tenantId: f!.outra.tenantId, userId: f!.alvo.userId, motivo: 'tentando sem autorização' }, maxRedirects: 0,
       })
       expect(r.status()).toBe(303)
@@ -196,7 +193,7 @@ test.describe.serial('suporte: entrar como', () => {
     expect(error).toBeNull()
     const ctx = await browser.newContext({ storageState: f!.atendente.estado })
     try {
-      const r = await ctx.request.post('/api/suporte/entrar', {
+      const r = await ctx.request.post(`${SUP()}/api/entrar`, {
         form: { tenantId: f!.outra.tenantId, userId: f!.alvo.userId, motivo: 'tentando com autorização vencida' }, maxRedirects: 0,
       })
       expect(new URL(r.headers().location ?? 'http://x').searchParams.get('erro') ?? '').toContain('Sem autorização vigente')
@@ -258,16 +255,20 @@ test.describe.serial('suporte: entrar como', () => {
     expect(await trocarSenha(token, `Nova-${marca}-x9!`)).not.toBe(200)
   })
 
-  test('o atendente não abre o /suporte de dentro da conta do membro', async () => {
-    await sup!.page.goto('/suporte/redes')
-    await expect(sup!.page).not.toHaveURL(/\/suporte\//)
+  test('na clínica, nada do atendente: nem a sessão dele, nem cookie de volta, nem o painel', async () => {
+    const naClinica = await sup!.ctx.cookies(process.env.E2E_BASE_URL)
+    expect(naClinica.map(c => c.name)).not.toContain('bellaris_suporte_volta')
+    const r = await sup!.page.goto('/suporte/redes')
+    expect(r?.status()).toBe(404)
   })
 
   test('"Sair" encerra a sessão e devolve o atendente ao painel; o token antigo morre', async () => {
     const capturada = await sessaoDoNavegador(sup!.ctx)
     await sup!.page.goto('/admin/dashboard')
     await sup!.page.getByRole('link', { name: 'Sair' }).click()
-    await expect(sup!.page).toHaveURL(new RegExp(`/suporte/redes/${f!.outra.tenantId}`), { timeout: 30_000 })
+    // De volta ao painel, NO HOST DO SUPORTE, onde o atendente segue logado.
+    await expect(sup!.page).toHaveURL(`${SUP()}/redes/${f!.outra.tenantId}`, { timeout: 30_000 })
+    await expect(sup!.page.getByRole('heading', { level: 1 })).toBeVisible()
     expect(await sessoesAtivas()).toHaveLength(0)
     expect(await renovar(capturada.refresh_token), 'o refresh do membro gerado para o suporte morreu').toBe(false)
     expect(await rest(capturada.access_token, `clients?select=id&id=eq.${f!.clienteId}`), 'o token restante não alcança a rede').toHaveLength(0)
@@ -288,18 +289,16 @@ test.describe.serial('suporte: entrar como', () => {
       expect(r.texto).toContain('"ok":true')
     } finally { await ctx.close() }
     await sup.page.goto(`/admin/clients/${f!.clienteId}`)
-    await expect(sup.page).toHaveURL(/\/suporte\/redes\//, { timeout: 30_000 })
+    await expect(sup.page).toHaveURL(new RegExp(`^${SUP()}/redes/`), { timeout: 30_000 })
     expect(await rest(capturada.access_token, `clients?select=id&id=eq.${f!.clienteId}`)).toHaveLength(0)
     expect(await renovar(capturada.refresh_token)).toBe(false)
     await sup.ctx.close()
     sup = null
   })
 
-  test('apagar cookie não tira o aviso; vencer o prazo encerra', async ({ browser }) => {
+  test('o aviso vem do servidor; vencer o prazo encerra e devolve ao painel', async ({ browser }) => {
     await autorizar(browser)
     sup = await entrar(browser)
-    // O atendente apaga o que pode: o cookie de volta. O aviso vem do servidor.
-    await sup.ctx.clearCookies({ name: 'bellaris_suporte_volta' })
     await sup.page.reload()
     await expect(sup.page.getByRole('status', { name: 'Modo suporte' })).toBeVisible()
 
@@ -309,7 +308,7 @@ test.describe.serial('suporte: entrar como', () => {
     await expect.poll(async () => {
       await sup!.page.goto('/admin/dashboard')
       return sup!.page.url()
-    }, { timeout: 45_000, intervals: [5_000] }).toMatch(/\/login/)
+    }, { timeout: 45_000, intervals: [5_000] }).toMatch(new RegExp(`^${SUP()}/`))
     await sup.ctx.close()
     sup = null
   })

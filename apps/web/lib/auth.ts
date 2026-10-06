@@ -7,7 +7,6 @@ import type {
 import { createClient } from '@/lib/supabase/server'
 import { getCachedMember, getCachedRede, getCachedRedeDoCliente, getCachedRolePermissions, getCachedRoleReportTabs } from '@/lib/cached-queries'
 import { redeBloqueada } from '@/lib/redes/situacao'
-import { inicioDaPlataforma } from '@/lib/plataforma/destino'
 import {
   resolvePermissions, resolveScopes, resolveReportTabs, hasLevel,
   NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS,
@@ -26,7 +25,9 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   // linha, a falta de `role` o faria virar CLIENTE no padrão logo abaixo e
   // passar pelo portal do cliente. O lugar dele é o /suporte.
   const marca = (meta as { plataforma?: string }).plataforma
-  if (marca) redirect(inicioDaPlataforma(marca))
+  // A equipe da plataforma entra pelos apps dela (sistema e suporte, outros
+  // hosts): aqui, nada. O proxy já desfaz a sessão; isto é a segunda parede.
+  if (marca) redirect('/login?acesso=plataforma')
 
   const tenantId = meta.tenant_id ?? null
   const role = (meta.role ?? 'CLIENT') as UserRole

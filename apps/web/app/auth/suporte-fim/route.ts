@@ -1,27 +1,26 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { opcoesDoCookieDeSessao } from '@/lib/supabase/cookie-de-sessao'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { revalidateTag } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { urlPublica } from '@/lib/origem'
-import { COOKIE_DA_VOLTA, decifrarVolta } from '@/lib/suporte/cookie'
 import { tagDaSessao } from '@/lib/suporte/sessao'
 import { sessionIdDoToken } from '@/lib/suporte/entrar'
 import { avisarAcessoDoSuporte } from '@/lib/suporte/avisos'
+import { urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 
 /**
  * O FIM de uma sessão de suporte — o "Sair" do banner, e para onde
- * `buildContext` manda quando ela vence ou é revogada.
+ * `getTenantContext` manda quando ela vence ou é revogada.
  *
  * 1. Encerra a sessão de suporte e DERRUBA a do Auth (o refresh token some);
- * 2. devolve o atendente ao painel com o cookie de volta (refresh token dele,
- *    cifrado) — ou, sem ele, vai ao login;
- * 3. volta ao chamado, ou à rede.
+ * 2. apaga os cookies do membro NESTE host;
+ * 3. leva de volta ao painel, no host do SUPORTE (o chamado, ou a rede) —
+ *    onde o atendente continua logado na sessão DELE, que nunca veio para cá
+ *    (2026-10-06: não há mais cookie de volta).
  *
  * GET de propósito: é um link (banner, redirect). Por isso, sem sessão de
- * suporte nem cookie de volta, NÃO faz nada: um link de outro site não pode
- * deslogar um membro qualquer.
+ * suporte, NÃO faz nada: um link de outro site não pode deslogar um membro.
  */
 type SessaoLida = {
   id: string; tenant_id: string; ticket_id: string | null; target_user_id: string; auth_session_id: string | null; status: string
@@ -40,62 +39,40 @@ export async function GET(req: NextRequest) {
   const { data: { session } } = await daSessao.auth.getSession()
   if (session?.access_token) authSession = sessionIdDoToken(session.access_token)
 
-  const volta = decifrarVolta(req.cookies.get(COOKIE_DA_VOLTA)?.value)
-
-  // A sessão de suporte: pela do Auth (a fonte), ou pela volta.
-  const filtro = authSession ? { coluna: 'auth_session_id', valor: authSession } : volta ? { coluna: 'id', valor: volta.sessaoId } : null
   let sessao: SessaoLida | null = null
-  if (filtro) {
+  if (authSession) {
     const { data, error } = await admin.from('support_sessions')
       .select('id, tenant_id, ticket_id, target_user_id, auth_session_id, status, platform_staff(name), users!support_sessions_target_user_id_fkey(name)')
-      .eq(filtro.coluna, filtro.valor).maybeSingle()
+      .eq('auth_session_id', authSession).maybeSingle()
     if (error) console.error('[suporte-fim] não li a sessão de suporte:', error.message)
     sessao = data as SessaoLida | null
   }
 
-  // Nem sessão de suporte, nem volta: é um membro comum (ou um link de fora).
-  if (!sessao && !volta) return NextResponse.redirect(urlPublica(req, '/'), 303)
+  // Sem sessão de suporte: é um membro comum (ou um link de fora).
+  if (!sessao) return NextResponse.redirect(urlPublica(req, '/'), 303)
 
-  if (sessao && ['abrindo', 'ativa'].includes(sessao.status)) {
+  if (['abrindo', 'ativa'].includes(sessao.status)) {
     const { error: eFim } = await admin.rpc('suporte_sessao_encerrar', { p_sessao: sessao.id, p_motivo: motivo })
     if (eFim) console.error('[suporte-fim] não encerrou a sessão:', eFim.message)
     await avisarAcessoDoSuporte(sessao.tenant_id, { id: sessao.target_user_id, nome: sessao.users?.name ?? 'membro' },
       { atendente: sessao.platform_staff?.name ?? 'Suporte', motivo, entrou: false })
   }
-  if (sessao?.auth_session_id) revalidateTag(tagDaSessao(sessao.auth_session_id), { expire: 0 })
+  if (sessao.auth_session_id) revalidateTag(tagDaSessao(sessao.auth_session_id), { expire: 0 })
 
-  const destino = sessao
-    ? (sessao.ticket_id ? `/suporte/chamados/${sessao.ticket_id}` : `/suporte/redes/${sessao.tenant_id}`)
-    : '/login'
-  const resposta = NextResponse.redirect(urlPublica(req, destino), 303)
-  resposta.cookies.set(COOKIE_DA_VOLTA, '', { path: '/', maxAge: 0 })
+  // De volta ao painel, no host do suporte (endereço do ambiente, nunca do pedido).
+  const caminho = sessao.ticket_id ? `/chamados/${sessao.ticket_id}` : `/redes/${sessao.tenant_id}`
+  let destino: string
+  try { destino = `${urlDoHost('suporte')}${caminho}` } catch { destino = urlPublica(req, '/login').toString() }
+  const resposta = NextResponse.redirect(destino, 303)
 
   // Tira os cookies do membro (a sessão dele já foi apagada no Auth).
   const escreve = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     cookies: {
       getAll: () => req.cookies.getAll(),
       setAll: (lista: { name: string; value: string; options?: CookieOptions }[]) =>
-        lista.forEach(({ name, value, options }) => resposta.cookies.set(name, value,
-          opcoesDoCookieDeSessao(value, options))),
+        lista.forEach(({ name, value, options }) => resposta.cookies.set(name, value, opcoesDoCookieDeSessao(value, options))),
     },
   })
-
-  // A volta: o atendente com a sessão DELE de novo, sem login.
-  if (volta && (!sessao || volta.sessaoId === sessao.id)) {
-    const anon = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
-    const { data: renovada } = await anon.auth.refreshSession({ refresh_token: volta.refresh })
-    if (renovada.session) {
-      const { error } = await escreve.auth.setSession({
-        access_token: renovada.session.access_token, refresh_token: renovada.session.refresh_token,
-      })
-      if (!error) return resposta
-    }
-  }
-
-  // Sem volta (ou ela venceu): limpa a sessão e vai ao login.
   await escreve.auth.signOut({ scope: 'local' })
-  resposta.headers.set('location', urlPublica(req, '/login').toString())
   return resposta
 }

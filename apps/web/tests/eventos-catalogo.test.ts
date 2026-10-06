@@ -29,8 +29,16 @@ function arquivos(dir: string, saida: string[] = []): string[] {
   return saida
 }
 
-const fonte = PASTAS
-  .flatMap(p => arquivos(join(RAIZ, p)))
+// A plataforma (os apps sistema e suporte) e o núcleo também gravam eventos
+// (2026-10-06): um emissor lá conta.
+const OUTRAS_RAIZES = [join(RAIZ, '..', 'sistema'), join(RAIZ, '..', 'suporte'), join(RAIZ, '..', '..', 'packages', 'nucleo', 'src')]
+
+const fonte = [
+  ...PASTAS.flatMap(p => arquivos(join(RAIZ, p))),
+  ...OUTRAS_RAIZES.flatMap(r => PASTAS.concat('lib', 'components').filter((p, i, l) => l.indexOf(p) === i)
+    .map(p => join(r, p)).filter(d => { try { return statSync(d).isDirectory() } catch { return false } })
+    .flatMap(d => arquivos(d))),
+]
   // O próprio catálogo e este teste não contam como emissor.
   .filter(f => !f.includes('tests'))
   .map(f => readFileSync(f, 'utf8'))

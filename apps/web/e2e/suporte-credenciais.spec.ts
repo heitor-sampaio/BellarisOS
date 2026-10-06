@@ -2,7 +2,7 @@ import { test, expect, type BrowserContext, type Page } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
-import { criarAtendente, type AtendenteDeTeste } from './apoio/plataforma'
+import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import { apagarAgendamentos } from './apoio/limpeza'
 import {
@@ -22,6 +22,8 @@ import {
  *  - o "Sair" por link não desloga um membro comum.
  * Cada recusa tem o controle (o próprio membro, ou o admin) quando cabe.
  */
+
+test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build (playwright.build.config.ts)')
 
 const marca = Date.now().toString(36)
 const db = () => banco()
@@ -164,7 +166,8 @@ test.describe.serial('suporte: credenciais e travas', () => {
     expect(await rest(capturada.access_token, `clients?select=id&id=eq.${clienteId}`)).toHaveLength(0)
     expect(await renovar(capturada.refresh_token)).toBe(false)
     await sup!.page.goto('/admin/dashboard')
-    await expect(sup!.page).toHaveURL(/\/suporte\/|\/login/, { timeout: 30_000 })
+    // De volta ao painel, no host do suporte (ou ao login, sem a sessão de suporte).
+    await expect(sup!.page).toHaveURL(new RegExp(`^${urlDaPlataforma('suporte')}/|/login`), { timeout: 30_000 })
     await sup!.ctx.close()
     sup = null
   })

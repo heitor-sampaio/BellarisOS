@@ -6,7 +6,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRedirectPath } from '@/lib/auth'
 import type { JwtClaims } from '@estetica-os/types'
 import { ler } from '@/lib/db'
-import { promoverSeForOAdmin } from '@/lib/plataforma/primeiro-admin'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 
 // Troca um par de tokens por cookies de sessão (httpOnly) e devolve o destino.
@@ -18,7 +17,9 @@ import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 // trabalhar na conta do atacante). Só JSON — um <form> de outro site não manda
 // application/json — e nada que o navegador marque como vindo de fora.
 export async function POST(req: NextRequest) {
-  if (!(req.headers.get('content-type') ?? '').toLowerCase().includes('application/json')) {
+  // A ESSÊNCIA do tipo (antes do `;`): `text/plain; x=application/json` é
+  // text/plain, e um fetch no-cors de outro site manda exatamente isso.
+  if ((req.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase() !== 'application/json') {
     return NextResponse.json({ error: 'Só JSON' }, { status: 415 })
   }
   const site = req.headers.get('sec-fetch-site')
@@ -57,16 +58,7 @@ export async function POST(req: NextRequest) {
 
   // Computa o destino final usando as claims do JWT (sem DB extras para roles de rede).
   // Para roles com branchId/clientId, uma query mínima busca o slug da filial.
-  // O primeiro admin da plataforma (PLATAFORMA_ADMIN_EMAIL) também pelo app.
-  let usuario = data.session.user
-  try {
-    if (await promoverSeForOAdmin(usuario) === 'promovido') {
-      const { data: renovada } = await supabase.auth.refreshSession()
-      if (renovada.user) usuario = renovada.user
-    }
-  } catch (e) {
-    console.error('[api/auth/session] primeiro admin:', (e as Error).message)
-  }
+  const usuario = data.session.user
 
   const claims = usuario.app_metadata as JwtClaims
   const admin  = createAdminClient()
@@ -76,8 +68,11 @@ export async function POST(req: NextRequest) {
   if (claims.client_id) await bonusDePrimeiroAcesso(claims.client_id)
 
   let redirectTo = '/auth/redirect'  // fallback seguro
-  // A plataforma vai para o /suporte, que pede a verificação em duas etapas.
-  if ((claims as { plataforma?: string }).plataforma) return NextResponse.json({ redirectTo: '/suporte/verificacao' })
+  // A equipe da plataforma não abre sessão na clínica (os apps dela são outros hosts).
+  if ((claims as { plataforma?: string }).plataforma) {
+    await supabase.auth.signOut({ scope: 'local' })
+    return NextResponse.json({ error: 'A equipe da plataforma entra pelos apps dela.' }, { status: 403 })
+  }
   try {
     if (claims.client_id) {
       const cl = await ler(admin

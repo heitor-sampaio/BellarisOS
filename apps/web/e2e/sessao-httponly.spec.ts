@@ -139,6 +139,9 @@ test.describe.serial('sessão só no servidor', () => {
       // Um <form enctype="text/plain"> de outro site consegue mandar este corpo.
       const texto = await ctx.request.post('/api/auth/session', { headers: { 'content-type': 'text/plain' }, data: corpo })
       expect(texto.status()).toBe(415)
+      // A essência continua text/plain — um fetch no-cors de outro site manda isto.
+      const disfarce = await ctx.request.post('/api/auth/session', { headers: { 'content-type': 'text/plain; x=application/json' }, data: corpo })
+      expect(disfarce.status()).toBe(415)
       const deFora = await ctx.request.post('/api/auth/session', {
         headers: { 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' }, data: corpo,
       })

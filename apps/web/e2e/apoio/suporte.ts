@@ -1,6 +1,7 @@
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import { banco } from './banco'
 import { chamarAcao } from './acao-direta'
+import { urlDaPlataforma } from './plataforma'
 
 /**
  * Apoio dos specs do modo suporte: entrar como um membro pela tela, autorizar
@@ -10,9 +11,13 @@ import { chamarAcao } from './acao-direta'
 const URL_SUPA = () => process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON = () => process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-/** A sessão do Supabase guardada nos cookies do navegador. */
-export async function sessaoDoNavegador(ctx: BrowserContext): Promise<{ access_token: string; refresh_token: string }> {
-  const pedacos = (await ctx.cookies())
+/**
+ * A sessão do Supabase guardada nos cookies do navegador — os da CLÍNICA por
+ * padrão (`base`): o painel do suporte, no mesmo contexto, tem os seus no
+ * host dele, e misturar os dois daria uma sessão que não existe.
+ */
+export async function sessaoDoNavegador(ctx: BrowserContext, base = process.env.E2E_BASE_URL ?? 'http://localhost:3000'): Promise<{ access_token: string; refresh_token: string }> {
+  const pedacos = (await ctx.cookies(base))
     .filter(c => /^sb-.*-auth-token(\.\d+)?$/.test(c.name))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
   let valor = pedacos.map(c => c.value).join('')
@@ -67,37 +72,64 @@ export async function autorizarPor(browser: Browser, estado: string, userId: str
 }
 
 /**
- * Clica "Entrar" e espera o portal do membro. Com as duas metades da completa
- * juntas, o Auth às vezes limita (`?erro=O Auth está limitando…`): espera a
- * janela andar e tenta de novo, pela própria tela — como faria a pessoa.
+ * Clica "Entrar" no PAINEL (host do suporte) e espera a aba NOVA chegar ao
+ * portal do membro, na CLÍNICA (2026-10-06: o painel e a conta do membro são
+ * origens diferentes; a sessão do atendente nunca vai para lá). Com as duas
+ * metades da completa juntas, o Auth às vezes limita (`?erro=O Auth está
+ * limitando…`): espera a janela andar e tenta de novo, pela própria tela.
  */
-export async function entrarComPaciencia(page: Page, abrir: () => Promise<void>): Promise<void> {
+export async function entrarComPaciencia(painel: Page, clicar: () => Promise<void>): Promise<Page> {
   const esperas = [20, 40, 60, 90]
   for (let i = 0; ; i++) {
-    await abrir()
-    // O destino (o portal do membro) ou a volta com erro — a tela de partida
-    // já é /suporte/, então ela não conta.
-    await page.waitForURL(u => /\/admin\/|[?&]erro=/.test(u.toString()), { timeout: 30_000 }).catch(() => null)
-    if (!/limitando/.test(decodeURIComponent(page.url())) || i >= esperas.length) break
-    await page.waitForTimeout(esperas[i]! * 1000)
+    const [aba] = await Promise.all([painel.context().waitForEvent('page'), clicar()])
+    // O destino (o portal do membro, na clínica) ou a volta com erro (no painel).
+    await aba.waitForURL(u => /\/admin\/|[?&]erro=|\/auth\/suporte-entrada/.test(u.toString()), { timeout: 30_000 }).catch(() => null)
+    if (/limitando/.test(decodeURIComponent(aba.url())) && i < esperas.length) {
+      await aba.close()
+      await painel.waitForTimeout(esperas[i]! * 1000)
+      continue
+    }
+    await expect(aba).toHaveURL(/\/admin\/dashboard/, { timeout: 30_000 })
+    await expect(aba.getByRole('status', { name: 'Modo suporte' })).toBeVisible()
+    return aba
   }
-  await expect(page).toHaveURL(/\/admin\/dashboard/, { timeout: 30_000 })
-  await expect(page.getByRole('status', { name: 'Modo suporte' })).toBeVisible()
 }
 
-/** Entra pela tela: detalhe da rede → "Entrar como" na linha do membro → motivo → Entrar. */
+/**
+ * Entra pela tela: detalhe da rede no PAINEL → "Entrar como" na linha do
+ * membro → motivo → Entrar → a conta do membro abre numa aba nova, na clínica.
+ * `page` é essa aba (a clínica); `painel`, a do suporte, que segue aberta.
+ */
 export async function entrarComo(browser: Browser, estadoDoAtendente: string, tenantId: string, linhaDoMembro: string):
-  Promise<{ ctx: BrowserContext; page: Page }> {
+  Promise<{ ctx: BrowserContext; page: Page; painel: Page }> {
   const ctx = await browser.newContext({ storageState: estadoDoAtendente })
-  const page = await ctx.newPage()
-  await entrarComPaciencia(page, async () => {
-    await page.goto(`/suporte/redes/${tenantId}`)
-    const linha = page.locator('tr', { hasText: linhaDoMembro })
+  const painel = await ctx.newPage()
+  const page = await entrarComPaciencia(painel, async () => {
+    await painel.goto(`${urlDaPlataforma('suporte')}/redes/${tenantId}`)
+    const linha = painel.locator('tr', { hasText: linhaDoMembro })
     await linha.getByRole('button', { name: 'Entrar como' }).click()
     await linha.getByLabel('Motivo do acesso').fill('Conferir o que a clínica relatou')
     await linha.getByRole('button', { name: 'Entrar', exact: true }).click()
   })
-  return { ctx, page }
+  return { ctx, page, painel }
+}
+
+/**
+ * O pedido de entrada SEM a tela: o POST do painel ao `/api/entrar` do
+ * suporte. Devolve o status, a volta com erro (`location`) e — no caminho
+ * feliz — o CÓDIGO de uso único e o endereço da clínica para onde a página
+ * o leva (o formulário que se envia sozinho).
+ */
+export async function pedirEntrada(ctx: BrowserContext, form: Record<string, string>):
+  Promise<{ status: number; location: string | null; codigo: string | null; destino: string | null }> {
+  const r = await ctx.request.post(`${urlDaPlataforma('suporte')}/api/entrar`, { form, maxRedirects: 0 })
+  const html = r.status() === 200 ? await r.text() : ''
+  return {
+    status: r.status(),
+    location: r.headers().location ?? null,
+    codigo: /name="codigo" value="([^"]+)"/.exec(html)?.[1] ?? null,
+    destino: /<form[^>]*action="([^"]+)"/.exec(html)?.[1] ?? null,
+  }
 }
 
 /** A sessão de suporte de um token capturado (pelo `session_id` do JWT). */

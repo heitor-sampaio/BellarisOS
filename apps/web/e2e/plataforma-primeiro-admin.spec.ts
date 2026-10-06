@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
+import { plataformaNoAr, urlDaPlataforma } from './apoio/plataforma'
 
 /**
  * O PRIMEIRO admin da plataforma, sem script (2026-10-03): o e-mail mora em
@@ -11,8 +12,11 @@ import { banco } from './apoio/banco'
  *   ADMIN (e a linha da equipe), e o e-mail de definir senha sai normal;
  * - com conta comum: o login a promove, e a pessoa vai para a verificação em
  *   duas etapas da plataforma.
+ * Desde 2026-10-06 isso mora SÓ no sistema (admin.*): a clínica não promove
+ * ninguém.
  */
-test.skip(!process.env.PLATAFORMA_ADMIN_EMAIL, 'só contra o build: o servidor precisa subir com PLATAFORMA_ADMIN_EMAIL')
+test.skip(!process.env.PLATAFORMA_ADMIN_EMAIL || !plataformaNoAr(), 'só contra o build: o sistema precisa subir com PLATAFORMA_ADMIN_EMAIL')
+const SIS = () => urlDaPlataforma('sistema')
 
 const EMAIL = (process.env.PLATAFORMA_ADMIN_EMAIL ?? '').split(',')[0]!.trim().toLowerCase()
 const db = () => banco()
@@ -34,7 +38,7 @@ test.describe.serial('primeiro admin por variável', () => {
     const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
     try {
       const p = await ctx.newPage()
-      await p.goto('/reset-password')
+      await p.goto(`${SIS()}/reset-password`)
       await p.locator('input[type="email"]').fill(EMAIL)
       await p.locator('button[type="submit"]').click()
       // O e-mail pode bater no limite do Supabase; o que importa é a conta nascer marcada.
@@ -54,14 +58,34 @@ test.describe.serial('primeiro admin por variável', () => {
     const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
     try {
       const p = await ctx.newPage()
-      await p.goto('/login')
+      await p.goto(`${SIS()}/login`)
       await p.locator('#email').fill(EMAIL)
       await p.locator('#password').fill(senha)
       await p.getByRole('button', { name: 'Entrar' }).click()
-      await expect(p).toHaveURL(/\/suporte\/verificacao/, { timeout: 30_000 })
+      await expect(p).toHaveURL(`${SIS()}/verificacao`, { timeout: 30_000 })
     } finally { await ctx.close() }
     const { data: login } = await db().auth.admin.getUserById(criado.user!.id)
     expect((login.user?.app_metadata as { plataforma?: string }).plataforma).toBe('ADMIN')
     expect((await db().from('platform_staff').select('papel').eq('auth_id', criado.user!.id)).data).toEqual([{ papel: 'ADMIN' }])
+  })
+
+  test('na clínica, o e-mail da variável NÃO é promovido', async ({ browser }) => {
+    await apagarOAdmin()
+    const senha = `Senha-${Date.now().toString(36)}-8y`
+    const { data: criado, error } = await db().auth.admin.createUser({ email: EMAIL, password: senha, email_confirm: true })
+    expect(error).toBeNull()
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    try {
+      const p = await ctx.newPage()
+      await p.goto('/login')
+      await p.locator('#email').fill(EMAIL)
+      await p.locator('#password').fill(senha)
+      await p.getByRole('button', { name: 'Entrar' }).click()
+      await p.waitForLoadState('networkidle')
+    } finally { await ctx.close() }
+    const { data: login } = await db().auth.admin.getUserById(criado.user!.id)
+    expect((login.user?.app_metadata as { plataforma?: string }).plataforma).toBeUndefined()
+    expect((await db().from('platform_staff').select('id').eq('auth_id', criado.user!.id)).data ?? []).toHaveLength(0)
+    await db().auth.admin.deleteUser(criado.user!.id)
   })
 })

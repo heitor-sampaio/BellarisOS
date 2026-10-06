@@ -6,7 +6,6 @@ import {
 } from '@/lib/suporte/regras'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
 import { sessaoVigente } from '@/lib/suporte/sessao'
-import { estadoDaCaixa } from '@/lib/plataforma/diagnostico'
 
 const com = (p: Partial<ResolvedPermissions>): ResolvedPermissions => ({ ...NO_PERMISSIONS, ...p })
 
@@ -61,24 +60,20 @@ describe('o que fica registrado', () => {
       suporte: { sessaoId: 's', atendenteNome: 'H', nomeDoMembro: 'A', incluiClinico: false, expiraEm: '', chamadoId: null },
     }, 'mandar mensagem')).toMatch(/modo suporte/)
   })
-  it('o diagnóstico só mostra o estado da caixa, nunca segredo', () => {
-    expect(estadoDaCaixa({ token: 't', accessToken: 'a', pin: '1', appSecret: 's', conexao: 'cadastro_incorporado', connectedPhone: '55' }))
-      .toEqual({ conexao: 'cadastro_incorporado', connectedPhone: '55' })
-  })
 })
 
-describe('o cookie de volta do atendente', () => {
+describe('a entrada por código (o "entrar como" entre origens)', () => {
   beforeAll(() => { process.env.SUPABASE_SERVICE_ROLE_KEY ??= 'chave-de-teste' })
 
-  it('cifra e decifra; adulterado ou de outra chave dá nulo', async () => {
-    const { cifrarVolta, decifrarVolta } = await import('@/lib/suporte/cookie')
-    const c = cifrarVolta({ sessaoId: 's1', refresh: 'r1' })
-    expect(c).not.toContain('r1')
-    expect(decifrarVolta(c)).toEqual({ sessaoId: 's1', refresh: 'r1' })
-    const adulterado = c.slice(0, -2) + (c.endsWith('A') ? 'BB' : 'AA')
-    expect(decifrarVolta(adulterado)).toBeNull()
-    expect(decifrarVolta('lixo')).toBeNull()
-    expect(decifrarVolta(undefined)).toBeNull()
+  it('o código é longo, aleatório e base64url; o banco guarda só o SHA-256', async () => {
+    const { novoCodigoDeEntrada, hashDoCodigo } = await import('@/lib/suporte/entrar')
+    const um = novoCodigoDeEntrada()
+    const outro = novoCodigoDeEntrada()
+    expect(um).not.toBe(outro)
+    expect(um).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(hashDoCodigo(um)).toMatch(/^[0-9a-f]{64}$/)
+    expect(hashDoCodigo(um)).not.toContain(um)
+    expect(hashDoCodigo(um)).toBe(hashDoCodigo(um))
   })
 
   it('o session_id sai do token', async () => {
