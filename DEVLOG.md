@@ -5394,10 +5394,9 @@ verdade. O que vale:
   - feito: no Railway, os serviços **Sistema** e **Suporte** (`BELLARIS_APP`,
     variáveis por referência às da clínica, `INTERNO_SECRET` nos três apps),
     com os domínios próprios ligados (porta 8080) e o primeiro deploy verde;
-  - os CNAMEs e TXT de `admin` e `suporte` que o Railway pediu (no painel do
-    domínio de cada serviço);
-  - depois do DNS: `SISTEMA_URL` no Notification Cron (sem ela o job
-    `assinaturas` só é pulado);
+  - feito: DNS de `admin` e `suporte` propagado, certificados válidos; os
+    três hosts respondem `/api/health`, e o `/api/interno/expirar` recusa sem
+    o segredo e aceita com ele nos três; `SISTEMA_URL` no Notification Cron;
   - feito: no Supabase (Auth → URL Configuration), o Site URL passou de
     `http://localhost:3000` (o padrão, nunca trocado) para
     `https://app.bellarisos.com`, e as Redirect URLs (a lista estava VAZIA)
