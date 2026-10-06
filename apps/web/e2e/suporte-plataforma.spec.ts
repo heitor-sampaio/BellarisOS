@@ -11,7 +11,9 @@ import { chamarAcao } from './apoio/acao-direta'
  * - quem é da plataforma vê todas as redes, e abrir uma fica registrado;
  * - plataforma e redes não se misturam: o atendente não entra no /admin nem
  *   na unidade, e o membro de rede não entra no /suporte;
- * - sem a verificação em duas etapas (aal2) o painel não abre, nem as actions;
+ * - a verificação em duas etapas é OPÇÃO do admin do sistema (2026-10-06):
+ *   desligada, quem não tem autenticador entra só com a senha; ligada, ou para
+ *   quem cadastrou um, sem o código (aal2) o painel não abre, nem as actions;
  * - Equipe e Auditoria são só do admin da plataforma, e plano também;
  * - o cadastro do autenticador funciona pela tela (código calculado aqui).
  *
@@ -27,7 +29,7 @@ const db = () => banco()
 
 interface Fx {
   outra: OutraRede; membro: MembroDeTeste; desativado: MembroDeTeste
-  suporte: AtendenteDeTeste; admin: AtendenteDeTeste; semMfa: AtendenteDeTeste; novo: AtendenteDeTeste
+  suporte: AtendenteDeTeste; admin: AtendenteDeTeste; semMfa: AtendenteDeTeste; novo: AtendenteDeTeste; livre: AtendenteDeTeste
   nomeDaRede: string; slug: string
 }
 let f: Fx | null = null
@@ -53,11 +55,12 @@ test.beforeAll(async () => {
   }
   const suporte = await atendente('sup', { papel: 'SUPORTE' })
   const admin   = await atendente('adm', { papel: 'ADMIN' })
-  const semMfa  = await atendente('aal1', { papel: 'SUPORTE', semVerificacao: true })
+  const semMfa  = await atendente('aal1', { papel: 'SUPORTE', fatorSemCodigo: true })
+  const livre   = await atendente('livre', { papel: 'SUPORTE', semVerificacao: true })
   const novo    = await atendente('novo', { papel: 'SUPORTE', semVerificacao: true })
 
   const { data: rede } = await db().from('tenants').select('name').eq('id', outra.tenantId).single<{ name: string }>()
-  f = { outra, membro, desativado, suporte, admin, semMfa, novo, nomeDaRede: rede!.name, slug: `e2e-un-pl${marca}` }
+  f = { outra, membro, desativado, suporte, admin, semMfa, novo, livre, nomeDaRede: rede!.name, slug: `e2e-un-pl${marca}` }
 })
 
 test.afterAll(async () => {
@@ -110,7 +113,7 @@ test.describe.serial('portal da plataforma', () => {
     })
   })
 
-  test('sem a verificação em duas etapas, nem o painel nem as actions', async ({ browser }) => {
+  test('com autenticador cadastrado e sem o código, nem o painel nem as actions', async ({ browser }) => {
     await comSessao(browser, f!.semMfa.estado, async p => {
       await p.goto(`${SUP()}/redes`)
       await expect(p).toHaveURL(`${SUP()}/verificacao`)
@@ -167,8 +170,8 @@ test.describe.serial('portal da plataforma', () => {
 
   test('cadastrar o autenticador pela tela abre o painel', async ({ browser }) => {
     await comSessao(browser, f!.novo.estado, async p => {
-      await p.goto(`${SUP()}/`)
-      await expect(p).toHaveURL(`${SUP()}/verificacao`)
+      // Quem quiser cadastra por vontade própria, mesmo com a opção desligada.
+      await p.goto(`${SUP()}/verificacao`)
       await p.getByRole('button', { name: 'Cadastrar autenticador' }).click()
       const segredo = (await p.getByTestId('segredo-totp').textContent())?.trim() ?? ''
       expect(segredo.length).toBeGreaterThan(10)
@@ -176,5 +179,38 @@ test.describe.serial('portal da plataforma', () => {
       await p.getByRole('button', { name: 'Confirmar' }).click()
       await expect(p).toHaveURL(`${SUP()}/chamados`, { timeout: 20_000 })
     })
+  })
+
+  test('a verificação é OPÇÃO do admin do sistema: desligada entra só com a senha; ligada, pede o autenticador', async ({ browser }) => {
+    // A opção é da plataforma inteira (platform_settings): o teste devolve o
+    // valor de antes, aconteça o que acontecer.
+    const { data: antes, error } = await db().from('platform_settings').select('exigir_verificacao').eq('id', 1)
+      .single<{ exigir_verificacao: boolean }>()
+    expect(error).toBeNull()
+    const definir = async (ligada: boolean) => comSessao(browser, f!.admin.estado, async p => {
+      await p.goto(`${SIS()}/configuracoes`)
+      const caixa = p.getByLabel('Exigir a verificação em duas etapas de toda a equipe')
+      await caixa.setChecked(ligada)
+      await p.getByRole('button', { name: 'Salvar', exact: true }).click()
+      await expect(p.getByText('Configurações salvas.')).toBeVisible({ timeout: 15_000 })
+    })
+    try {
+      await definir(false)
+      await comSessao(browser, f!.livre.estado, async p => {
+        await p.goto(`${SUP()}/chamados`)
+        await expect(p).toHaveURL(`${SUP()}/chamados`)
+      })
+      await definir(true)
+      await comSessao(browser, f!.livre.estado, async p => {
+        await p.goto(`${SUP()}/chamados`)
+        await expect(p).toHaveURL(`${SUP()}/verificacao`)
+      })
+      const { data: log } = await db().from('platform_audit_log').select('dados')
+        .eq('staff_id', f!.admin.staffId).eq('kind', 'plataforma.configurada')
+      expect((log ?? []).map(l => (l.dados as { exigir_verificacao?: boolean }).exigir_verificacao)).toEqual(expect.arrayContaining([false, true]))
+    } finally {
+      const { error: eVolta } = await db().from('platform_settings').update({ exigir_verificacao: antes!.exigir_verificacao }).eq('id', 1)
+      expect(eVolta).toBeNull()
+    }
   })
 })

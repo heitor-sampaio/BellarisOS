@@ -40,10 +40,23 @@ um muro que não depende de cada trava do código.
   `buildContext` (ANTES do padrão CLIENT — sem `role`, o atendente viraria
   cliente final), o `loginAction`, `/auth/redirect`, `/conta-suspensa` e
   `/api/auth/session` recusam também.
-- **Verificação em duas etapas obrigatória** (TOTP do Supabase, `aal2`), em
-  CADA host: sem ela, `/verificacao`. Quem é ADMIN entra nos dois, com uma
-  sessão (e um código) em cada. O seletor de portal é um link absoluto para o
-  outro host (`SeletorDePortal`).
+- **Verificação em duas etapas (TOTP do Supabase, `aal2`) é OPÇÃO do admin
+  do sistema** (decisão do Heitor, 2026-10-06 — era obrigatória desde
+  2026-10-03): `platform_settings.exigir_verificacao`, em Configurações do
+  sistema, nasce DESLIGADA. A regra é uma só (`verificacaoPendente`,
+  `lib/plataforma/verificacao-exigida.ts`), usada pelo `getPlatformContext` e
+  pelos layouts:
+  - já verificada → entra; a plataforma exige → `/verificacao`;
+  - não exige, mas a pessoa TEM autenticador → `/verificacao` (o cadastro
+    não pode deixar de valer);
+  - não exige e sem autenticador → entra só com a senha. `/verificacao`
+    continua aberta para quem quiser cadastrar ("Agora não" volta ao painel).
+  - A opção é lida a cada requisição, sem cache (o sistema e o suporte a veem
+    na hora); erro ao ler conta como EXIGE. Mudar fica em
+    `platform_audit_log` (`plataforma.configurada`).
+  - Vale em CADA host: quem é ADMIN entra nos dois, com uma sessão (e, com
+    autenticador, um código) em cada. O seletor de portal é um link absoluto
+    para o outro host (`SeletorDePortal`).
 - **URL entre hosts vem do ambiente** (`urlDoHost`, `urlDaClinica`), nunca do
   pedido. O e-mail de "definir senha" volta pela clínica para membro de rede e
   pelo host do papel para atendente (`linkDeDefinirSenha`).
@@ -277,6 +290,7 @@ um muro que não depende de cada trava do código.
 ## O que nunca fazer aqui
 
 ```
+❌ Decidir se a verificação em duas etapas é pedida fora de verificacaoPendente (ou cachear a opção: o outro host não a veria mudar)
 ❌ Deixar a marca da plataforma passar na clínica (proxy, buildContext, login), ou página/action do sistema ou do suporte sem getPlatformContext
 ❌ Entrar na conta de um membro sem autorização vigente (suporte_sessao_abrir) ou entregar o token ao navegador antes de suporte_sessao_ativar
 ❌ Ação do suporte que fica PERMANENTE (membro, cargo, matriz, assinatura) sem bloqueioDoSuporte

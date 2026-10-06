@@ -417,17 +417,19 @@ export async function salvarPlano(d: { id?: string | null; nome: string; descric
   }
 }
 
-export async function salvarConfiguracoes(d: { diasDeTeste: number; diasDeCarencia: number }): Promise<Resultado> {
+export async function salvarConfiguracoes(d: { diasDeTeste: number; diasDeCarencia: number; exigirVerificacao?: boolean }): Promise<Resultado> {
   const ctx = await getPlatformContext({ papel: 'ADMIN' })
   const teste = Math.round(Number(d?.diasDeTeste))
   const carencia = Math.round(Number(d?.diasDeCarencia))
   if (!Number.isFinite(teste) || teste < 0 || teste > 90) return { ok: false, error: 'Dias de teste entre 0 e 90.' }
   if (!Number.isFinite(carencia) || carencia < 0 || carencia > 60) return { ok: false, error: 'Dias de carência entre 0 e 60.' }
+  // A verificação em duas etapas da equipe é opção (2026-10-06); só true liga.
+  const exigir = d?.exigirVerificacao === true
   try {
     await gravar(createAdminClient().from('platform_settings').update({
-      dias_de_teste: teste, dias_de_carencia: carencia, updated_at: new Date().toISOString(), updated_by: ctx.staffId,
+      dias_de_teste: teste, dias_de_carencia: carencia, exigir_verificacao: exigir, updated_at: new Date().toISOString(), updated_by: ctx.staffId,
     }).eq('id', 1).select('id').single(), 'salvar as configurações da plataforma')
-    await registrarNaPlataforma(ctx, 'plataforma.configurada', { dados: { dias_de_teste: teste, dias_de_carencia: carencia } })
+    await registrarNaPlataforma(ctx, 'plataforma.configurada', { dados: { dias_de_teste: teste, dias_de_carencia: carencia, exigir_verificacao: exigir } })
     revalidatePath('/configuracoes')
     return { ok: true }
   } catch (e) {

@@ -14,7 +14,8 @@ import { recusaDoHost, type HostDaPlataforma } from './destino'
  * O login recusa quem não é do host ANTES de qualquer tela: sem a marca da
  * plataforma (membro de rede, cliente final) ou SUPORTE no sistema, a sessão
  * recém-aberta é desfeita (`signOut` local) e a pessoa fica no login com o
- * motivo. A verificação em duas etapas vem depois, em `/verificacao`.
+ * motivo. Depois vai ao painel; se a verificação em duas etapas estiver
+ * pendente (`verificacao-exigida.ts`), o painel manda para `/verificacao`.
  */
 export type EstadoDoLogin = { error: string } | { redirectTo: string } | undefined
 export type EstadoDoPedido = { error: string } | { success: true } | undefined
@@ -43,7 +44,7 @@ export async function entrarNaPlataforma(
     await supabase.auth.signOut({ scope: 'local' })
     return { error: recusa }
   }
-  return { redirectTo: '/verificacao' }
+  return { redirectTo: '/' }
 }
 
 export async function sairDaPlataforma(): Promise<never> {
@@ -88,7 +89,7 @@ export async function trocarSenhaNaPlataforma(formData: FormData): Promise<Estad
     if (/different from the old/i.test(error.message)) return { error: 'A nova senha precisa ser diferente da atual.' }
     return { error: 'Não consegui trocar a senha. Tente novamente.' }
   }
-  return { redirectTo: '/verificacao' }
+  return { redirectTo: '/' }
 }
 
 /**

@@ -5,6 +5,7 @@ import { createClient } from '../supabase/server'
 import { createAdminClient } from '../supabase/admin'
 import { ler } from '../db'
 import { semAcesso } from '../sem-acesso'
+import { verificacaoDaSessao } from './verificacao-exigida'
 
 /**
  * Quem é da PLATAFORMA — a equipe do BellarisOS que atende as redes
@@ -79,8 +80,10 @@ export function marcaDaPlataforma(claims: ClaimsDaSessao | null): PapelDaPlatafo
  * - sem sessão → `/login`;
  * - sem a marca, desativado, ou numa sessão de SUPORTE (entrando como alguém
  *   de uma rede) → sem acesso;
- * - sem a verificação em duas etapas (`aal2`) → `/verificacao` do host, salvo
- *   para a própria tela de verificação (`semVerificacao`);
+ * - verificação em duas etapas pendente → `/verificacao` do host, salvo para a
+ *   própria tela de verificação (`semVerificacao`). Pendente é a regra de
+ *   `verificacao-exigida.ts`: a plataforma a exige (opção do admin), ou a
+ *   pessoa tem autenticador e ainda não digitou o código;
  * - `papel: 'ADMIN'` → só admin da plataforma.
  */
 export const getPlatformContext = cache(async function getPlatformContext(
@@ -93,7 +96,7 @@ export const getPlatformContext = cache(async function getPlatformContext(
   const staff = await getCachedStaff(claims.sub)
   if (!staff || !staff.is_active) throw semAcesso()
 
-  if (!opcoes.semVerificacao && claims.aal !== 'aal2') redirect('/verificacao')
+  if (!opcoes.semVerificacao && (await verificacaoDaSessao()).pendente) redirect('/verificacao')
   if (opcoes.papel === 'ADMIN' && staff.papel !== 'ADMIN') throw semAcesso()
 
   return {

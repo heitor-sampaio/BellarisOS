@@ -5,6 +5,7 @@ import { sair } from '@/actions/acesso'
 import { urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 import { NavDoSistema } from '@/components/sistema/nav-do-sistema'
 import { SeletorDePortal } from '@estetica-os/nucleo/components/plataforma/seletor-de-portal'
+import { verificacaoDaSessao } from '@estetica-os/nucleo/lib/plataforma/verificacao-exigida'
 
 /**
  * A ADMINISTRAÇÃO DO SISTEMA — o negócio BellarisOS: painel, redes (criar,
@@ -23,7 +24,7 @@ export default async function SistemaLayout({ children }: { children: ReactNode 
   if (marca !== 'ADMIN') redirect('/login')
 
   const staff = await getCachedStaff(claims.sub)
-  const verificado = claims.aal === 'aal2' && !!staff?.is_active && staff.papel === 'ADMIN'
+  const verificado = !(await verificacaoDaSessao()).pendente && !!staff?.is_active && staff.papel === 'ADMIN'
 
   return (
     <div className="suporte-shell">

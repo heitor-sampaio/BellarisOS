@@ -134,7 +134,7 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   oportunidade, agendamento, equipe, catálogo e páginas, sem acento e com o
   mesmo alcance da tela de cada registro (`busca_universal` + a conta do
   inbox).
-- **Suporte da plataforma** (app próprio, suporte.bellarisos.com, verificação em duas etapas): fila de
+- **Suporte da plataforma** (app próprio, suporte.bellarisos.com, verificação em duas etapas opcional): fila de
   chamados aberta pela Ajuda da topbar, painel das redes com diagnóstico e
   ações, e **"Entrar como"** o membro (numa aba nova, na clínica, por código de uso único) — só com autorização da clínica, sem
   dado clínico salvo autorização que o inclua, nada saindo para o paciente, e
@@ -1298,6 +1298,28 @@ próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo o
 borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
+
+### 2026-10-06 — A verificação em duas etapas da plataforma vira opção
+
+O Heitor caiu na tela do autenticador no primeiro acesso a admin.bellarisos.com
+e não quer usar autenticador por ora: a verificação (TOTP, `aal2`) deixou de
+ser obrigatória e virou OPÇÃO do admin do sistema, em Configurações
+(`platform_settings.exigir_verificacao`, migration `20261006000002`), nascendo
+DESLIGADA.
+
+- **A regra é uma só** (`verificacaoPendente`, `lib/plataforma/verificacao-exigida.ts`):
+  verificada entra; a plataforma exige → `/verificacao`; quem TEM autenticador
+  continua sendo pedido o código (o cadastro não deixa de valer); sem
+  autenticador e com a opção desligada, entra só com a senha.
+- O login e a troca de senha levam ao painel, não mais direto à verificação;
+  `/verificacao` segue aberta para quem quiser cadastrar ("Agora não").
+- A opção é lida a cada requisição, sem cache (os dois hosts a veem na hora);
+  erro ao ler conta como exige. Mudar fica na auditoria da plataforma.
+- O risco aceito: com a opção desligada, a senha sozinha abre um painel que
+  enxerga todas as redes. Ligar é um clique.
+- TDD: `tests/plataforma-verificacao-exigida.test.ts` (módulo ausente) e o
+  "OPÇÃO do admin" de `suporte-plataforma.spec` (a coluna não existia),
+  vistos vermelhos antes.
 
 ### 2026-10-06 — A plataforma em apps e hosts próprios: `apps/sistema` e `apps/suporte`
 

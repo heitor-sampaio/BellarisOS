@@ -116,8 +116,10 @@ test.describe.serial('a plataforma em hosts próprios', () => {
     }
   })
 
-  test('sem a verificação em duas etapas, o suporte manda para /verificacao', async ({ browser }) => {
-    const sem = await criarAtendente(`hs-semv-${marca}`, { papel: 'SUPORTE', semVerificacao: true })
+  test('com autenticador cadastrado e sem o código, o suporte manda para /verificacao', async ({ browser }) => {
+    // Vale com a opção da plataforma ligada ou não: quem cadastrou um
+    // autenticador continua sendo pedido (lib/plataforma/verificacao-exigida).
+    const sem = await criarAtendente(`hs-semv-${marca}`, { papel: 'SUPORTE', fatorSemCodigo: true })
     try {
       await com(browser, sem.estado, async p => {
         await p.goto(`${urlDaPlataforma('suporte')}/chamados`)

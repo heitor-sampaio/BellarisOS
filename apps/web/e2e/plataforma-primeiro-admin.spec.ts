@@ -50,7 +50,7 @@ test.describe.serial('primeiro admin por variável', () => {
     expect((login.user?.app_metadata as { plataforma?: string }).plataforma).toBe('ADMIN')
   })
 
-  test('com conta comum: o login promove e leva à verificação', async ({ browser }) => {
+  test('com conta comum: o login promove e abre o sistema', async ({ browser }) => {
     await apagarOAdmin()
     const senha = `Senha-${Date.now().toString(36)}-9x`
     const { data: criado, error } = await db().auth.admin.createUser({ email: EMAIL, password: senha, email_confirm: true })
@@ -62,7 +62,8 @@ test.describe.serial('primeiro admin por variável', () => {
       await p.locator('#email').fill(EMAIL)
       await p.locator('#password').fill(senha)
       await p.getByRole('button', { name: 'Entrar' }).click()
-      await expect(p).toHaveURL(`${SIS()}/verificacao`, { timeout: 30_000 })
+      // O painel, ou a verificação se a plataforma a exigir (opção do admin).
+      await expect(p).toHaveURL(new RegExp(`^${SIS()}/(verificacao)?$`), { timeout: 30_000 })
     } finally { await ctx.close() }
     const { data: login } = await db().auth.admin.getUserById(criado.user!.id)
     expect((login.user?.app_metadata as { plataforma?: string }).plataforma).toBe('ADMIN')

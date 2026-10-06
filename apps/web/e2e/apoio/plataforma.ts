@@ -103,12 +103,15 @@ async function sessaoVerificada(authId: string, email: string, segredo: string |
 
 /**
  * Um atendente da plataforma, com sessão no host da casa. Por padrão já
- * verificado (aal2, autenticador cadastrado); `semVerificacao` para a sessão
+ * verificado (aal2, autenticador cadastrado); `fatorSemCodigo` cadastra o
+ * autenticador mas devolve uma sessão NOVA, sem o código (aal1 com o próximo
+ * nível aal2 — é a que para em /verificacao com a opção da plataforma
+ * desligada); `semVerificacao` para a sessão
  * aal1 e sem fator.
  */
 export async function criarAtendente(
   marca: string,
-  opcoes: { papel?: 'SUPORTE' | 'ADMIN'; semVerificacao?: boolean; host?: HostDaPlataforma } = {},
+  opcoes: { papel?: 'SUPORTE' | 'ADMIN'; semVerificacao?: boolean; fatorSemCodigo?: boolean; host?: HostDaPlataforma } = {},
 ): Promise<AtendenteDeTeste> {
   const db = banco()
   const papel = opcoes.papel ?? 'SUPORTE'
@@ -156,6 +159,9 @@ export async function criarAtendente(
       const { data: s2 } = await cliente.auth.getSession()
       if (!s2.session) throw new Error('a sessão aal2 não veio')
       sessao = s2.session
+      // Com o autenticador cadastrado, uma sessão nova nasce aal1 (o próximo
+      // nível é aal2) — o login de quem ainda não digitou o código.
+      if (opcoes.fatorSemCodigo) sessao = (await sessaoDeTeste(authId, email)).sessao
     }
 
     await gravarSessaoNoHost(sessao, urlDaPlataforma(host), estado)
