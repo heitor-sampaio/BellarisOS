@@ -5398,7 +5398,12 @@ verdade. O que vale:
     domínio de cada serviço);
   - depois do DNS: `SISTEMA_URL` no Notification Cron (sem ela o job
     `assinaturas` só é pulado);
-  - no Supabase (Auth → URL Configuration), os dois hosts nas Redirect URLs;
+  - feito: no Supabase (Auth → URL Configuration), o Site URL passou de
+    `http://localhost:3000` (o padrão, nunca trocado) para
+    `https://app.bellarisos.com`, e as Redirect URLs (a lista estava VAZIA)
+    ganharam os três hosts e o localhost. Sem isso, o link de e-mail que não
+    casa com a lista cai no Site URL: o "esqueci minha senha" da clínica
+    levava a localhost em produção;
   - quando ligar o Asaas, o webhook em `https://admin.bellarisos.com/api/webhooks/asaas`;
   - `PLATAFORMA_ADMIN_EMAIL` vai no serviço do SISTEMA, e o primeiro login é
     em admin.bellarisos.com.
