@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Defina sua senha no BellarisOS</title>
+  </head>
+  <body style="margin:0; padding:0; background-color:#f8f8f8;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8f8f8;">
+      <tr>
+        <td align="center" style="padding:40px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+            <tr>
+              <td align="center" style="padding:0 0 24px 0; font-family:'Hanken Grotesk',Arial,Helvetica,sans-serif; font-size:22px; font-weight:800; letter-spacing:-0.5px; color:#c34d6b;">
+                BellarisOS <span style="color:#c34d6b;">&#10022;</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="background-color:#ffffff; border:1px solid #f0e6e3; border-radius:12px; padding:36px 32px;">
+                <h1 style="margin:0 0 12px 0; font-family:'Hanken Grotesk',Arial,Helvetica,sans-serif; font-size:24px; line-height:1.25; font-weight:800; letter-spacing:-0.5px; color:#221619;">
+                  Defina sua senha
+                </h1>
+                <p style="margin:0 0 24px 0; font-family:'Hanken Grotesk',Arial,Helvetica,sans-serif; font-size:15px; line-height:1.6; color:#6b5d61;">
+                  Recebemos um pedido para definir a senha da sua conta no BellarisOS
+                  (<strong style="color:#221619;">{{ .Email }}</strong>). Clique no botão abaixo para escolher a senha.
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+                  <tr>
+                    <td align="center" style="border-radius:10px; background-color:#c34d6b;">
+                      <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery"
+                         style="display:inline-block; padding:14px 28px; font-family:'Hanken Grotesk',Arial,Helvetica,sans-serif; font-size:15px; font-weight:700; color:#ffffff; text-decoration:none; border-radius:10px;">
+                        Definir senha
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 8px 0; font-family:'Hanken Grotesk',Arial,Helvetica,sans-serif; font-size:13px; line-height:1.6; color:#8a7a7e;">
+                  O link vale por tempo limitado e só pode ser usado uma vez. Se o botão não funcionar, copie e cole este endereço no navegador:
+                </p>
+                <p style="margin:0; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; line-height:1.5; word-break:break-all;">
+                  <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery" style="color:#c34d6b; text-decoration:underline;">{{ .RedirectTo }}&amp;token_hash={{ .TokenHash }}&amp;type=recovery</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 8px 0 8px; font-family:'Hanken Grotesk',Arial,Helvetica,sans-serif; font-size:12px; line-height:1.6; color:#b7a8ac; text-align:center;">
+                Se você não pediu isso, ignore este e-mail: sua senha continua a mesma.<br>
+                BellarisOS &middot; gestão para clínicas de estética
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

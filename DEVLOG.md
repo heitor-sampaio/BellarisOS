@@ -5449,6 +5449,11 @@ verdade. O que vale:
     `/verify` com PKCE só funcionava no MESMO navegador que pediu, e o dos
     convites e do "reenviar acesso" (cliente admin, fluxo implícito) nunca
     funcionou — o token vinha no `#`, que não chega ao servidor;
+  - feito: o e-mail "Reset password" ganhou o visual do BellarisOS e o texto
+    em português (assunto "Defina sua senha no BellarisOS"). O HTML mora em
+    `supabase/templates/redefinir-senha.html` — o painel do Supabase é cópia
+    dele: mudou um, cola no outro. Serve à recuperação e aos convites, por
+    isso fala em "definir" a senha;
   - quando ligar o Asaas, o webhook em `https://admin.bellarisos.com/api/webhooks/asaas`;
   - `PLATAFORMA_ADMIN_EMAIL` vai no serviço do SISTEMA, e o primeiro login é
     em admin.bellarisos.com.
