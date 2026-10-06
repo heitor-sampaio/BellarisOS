@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { ativarAtendente, criarAtendente, redefinirVerificacao } from '@/actions/plataforma'
+import { ativarAtendente, criarAtendente, redefinirVerificacao, reenviarConvite } from '@/actions/plataforma'
 
 export interface PessoaDaPlataforma {
   id: string; nome: string; email: string; papel: 'SUPORTE' | 'ADMIN'; ativo: boolean; euMesmo: boolean
@@ -18,11 +18,12 @@ export function EquipeDaPlataforma({ pessoas }: { pessoas: PessoaDaPlataforma[] 
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null)
   const [pendente, startTransition] = useTransition()
 
-  function rodar(fazer: () => Promise<{ ok: true } | { ok: false; error: string }>, sucesso: string, depois?: () => void) {
+  function rodar(fazer: () => Promise<{ ok: true; aviso?: string } | { ok: false; error: string }>, sucesso: string, depois?: () => void) {
     setAviso(null)
     startTransition(async () => {
       const r = await fazer()
-      setAviso(r.ok ? { ok: true, texto: sucesso } : { ok: false, texto: r.error })
+      // Deu certo com ressalva (o e-mail que não saiu): a ressalva é o que se mostra.
+      setAviso(r.ok ? (r.aviso ? { ok: false, texto: r.aviso } : { ok: true, texto: sucesso }) : { ok: false, texto: r.error })
       if (r.ok) { depois?.(); router.refresh() }
     })
   }
@@ -71,6 +72,12 @@ export function EquipeDaPlataforma({ pessoas }: { pessoas: PessoaDaPlataforma[] 
                 <td data-label="Situação" data-par>{p.ativo ? 'Ativo' : 'Desativado'}</td>
                 <td data-label="">
                   <div className="suporte-acoes">
+                    {!p.euMesmo && p.ativo && (
+                      <button type="button" className="btn-ghost" disabled={pendente}
+                        onClick={() => rodar(() => reenviarConvite(p.id), `Convite reenviado para ${p.email}.`)}>
+                        Reenviar convite
+                      </button>
+                    )}
                     {!p.euMesmo && (
                       <button type="button" className="btn-ghost" disabled={pendente}
                         onClick={() => rodar(() => ativarAtendente(p.id, !p.ativo), p.ativo ? 'Desativado.' : 'Reativado.')}>

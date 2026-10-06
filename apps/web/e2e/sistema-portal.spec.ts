@@ -128,6 +128,31 @@ test.describe.serial('administração do sistema', () => {
     expect((login.user?.app_metadata as { plataforma?: string }).plataforma).toBe('SUPORTE')
   })
 
+  test('reenviar o convite: o SUPORTE não reenvia; o ADMIN reenvia pela linha da pessoa, e fica na auditoria', async ({ browser }) => {
+    const { data: alvo } = await db().from('platform_staff').select('id').eq('email', emailDoNovo).single<{ id: string }>()
+    const reenvios = async () => ((await db().from('platform_audit_log').select('id')
+      .eq('kind', 'equipe.convite_reenviado').contains('dados', { email: emailDoNovo })).data ?? []).length
+
+    await comSessao(browser, await suporte.estadoNo('sistema'), async p => {
+      await chamarAcao(p, 'actions/plataforma.ts', 'reenviarConvite', `${SIS()}/equipe`, [alvo!.id]).catch(() => null)
+    })
+    expect(await reenvios()).toBe(0)
+
+    await comSessao(browser, admin.estado, async p => {
+      // As pessoas [e2e] só aparecem com o filtro de teste (como as redes).
+      await p.goto(`${SIS()}/equipe?teste=1`)
+      await p.locator('tr', { hasText: emailDoNovo }).getByRole('button', { name: 'Reenviar convite' }).click()
+      // O e-mail sai pelo SMTP do projeto, que o teste não controla: ou saiu
+      // (e fica na auditoria), ou a tela diz que não saiu — nunca "enviado"
+      // sem ter saído.
+      const status = p.getByRole('status')
+      await expect(status).toBeVisible({ timeout: 15_000 })
+      const texto = (await status.textContent()) ?? ''
+      if (/reenviado/i.test(texto)) expect(await reenvios()).toBe(1)
+      else { expect(texto).toMatch(/e-mail/i); expect(await reenvios()).toBe(0) }
+    })
+  })
+
   test('os indicadores saem do banco (só as redes de teste, aqui)', async () => {
     const { data, error } = await db().rpc('plataforma_indicadores', { p_somente_teste: true })
     expect(error).toBeNull()

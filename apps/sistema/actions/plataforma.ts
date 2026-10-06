@@ -6,12 +6,12 @@ import { registrarNaPlataforma } from '@estetica-os/nucleo/lib/plataforma/audito
 import { sessoesEmCurso, tagDaSessao } from '@estetica-os/nucleo/lib/suporte/sessao'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@estetica-os/nucleo/lib/db'
-import { linkDeDefinirSenha } from '@estetica-os/nucleo/lib/plataforma/destino'
 import { expirarEm, expirarNaClinica } from '@estetica-os/nucleo/lib/plataforma/expirar-na-clinica'
+import { enviarConvite } from '@/lib/equipe/convite'
 
 /**
- * A EQUIPE DA PLATAFORMA (só ADMIN): cadastrar, ativar e redefinir a
- * verificação. Reenviar acesso e reativar membro de rede são atendimento:
+ * A EQUIPE DA PLATAFORMA (só ADMIN): cadastrar, reenviar o convite, ativar e
+ * redefinir a verificação. Reenviar acesso e reativar membro de rede são atendimento:
  * moram no app do suporte (`apps/suporte/actions/membros.ts`).
  *
  * Todo export daqui é endpoint público (§6): cada um confere quem chama com
@@ -20,7 +20,8 @@ import { expirarEm, expirarNaClinica } from '@estetica-os/nucleo/lib/plataforma/
  * `platform_audit_log`, que a clínica também vê.
  */
 
-type Resultado = { ok: true } | { ok: false; error: string }
+/** `aviso`: deu certo, mas com uma parte que a pessoa precisa saber (o e-mail que não saiu). */
+type Resultado = { ok: true; aviso?: string } | { ok: false; error: string }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const ehUuid = (v: unknown): v is string => typeof v === 'string' && UUID.test(v)
@@ -31,8 +32,9 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /**
  * Cadastra alguém na equipe da plataforma. O login nasce sem senha, com a
- * marca; o e-mail de "definir senha" sai junto, e a verificação em duas
- * etapas é cadastrada no primeiro acesso.
+ * marca; o convite (o e-mail de "definir senha", `enviarConvite`) sai junto.
+ * Se o e-mail não sair, o cadastro fica e a tela AVISA — o "Reenviar convite"
+ * da Equipe manda de novo.
  *
  * E-mail de membro de rede é recusado: a mesma pessoa não pode ser as duas
  * coisas (a marca da plataforma tiraria o login dela do portal da rede).
@@ -65,12 +67,13 @@ export async function criarAtendente(dados: { nome: string; email: string; papel
       await admin.auth.admin.deleteUser(criado.user.id)
       return { ok: false, error: `Não consegui cadastrar: ${eStaff.message}` }
     }
-    await admin.auth.resetPasswordForEmail(email, {
-      redirectTo: linkDeDefinirSenha({ para: 'atendente', papel }),
-    })
-    await registrarNaPlataforma(ctx, 'equipe.criada', { dados: { email, papel } })
+    const naoSaiu = await enviarConvite(admin.auth, email, papel)
+    if (naoSaiu) console.error('[sistema] convite de', email, 'não saiu:', naoSaiu)
+    await registrarNaPlataforma(ctx, 'equipe.criada', { dados: { email, papel, convite_enviado: !naoSaiu } })
     revalidatePath('/equipe')
-    return { ok: true }
+    return naoSaiu
+      ? { ok: true, aviso: `Cadastrado, mas o e-mail para definir a senha não saiu (${naoSaiu}). Use "Reenviar convite" quando o envio de e-mail estiver funcionando.` }
+      : { ok: true }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }
   }
@@ -78,8 +81,29 @@ export async function criarAtendente(dados: { nome: string; email: string; papel
 
 async function atendente(staffId: string) {
   return await ler(createAdminClient().from('platform_staff')
-    .select('id, auth_id, email, is_active').eq('id', staffId).maybeSingle(), 'buscar a pessoa da plataforma') as
-    { id: string; auth_id: string; email: string; is_active: boolean } | null
+    .select('id, auth_id, email, papel, is_active').eq('id', staffId).maybeSingle(), 'buscar a pessoa da plataforma') as
+    { id: string; auth_id: string; email: string; papel: 'SUPORTE' | 'ADMIN'; is_active: boolean } | null
+}
+
+/**
+ * Manda o convite de novo — o e-mail que se perdeu, ou o que não saiu no
+ * cadastro. É o mesmo link de "definir senha": para quem já tem senha, serve
+ * de troca. Desativado não recebe (reative antes). Fica na auditoria.
+ */
+export async function reenviarConvite(staffId: string): Promise<Resultado> {
+  const ctx = await getPlatformContext({ papel: 'ADMIN' })
+  if (!ehUuid(staffId)) return { ok: false, error: 'Pedido inválido.' }
+  try {
+    const pessoa = await atendente(staffId)
+    if (!pessoa) return { ok: false, error: 'Pessoa não encontrada.' }
+    if (!pessoa.is_active) return { ok: false, error: 'Esta pessoa está desativada: reative antes de reenviar.' }
+    const naoSaiu = await enviarConvite(createAdminClient().auth, pessoa.email, pessoa.papel)
+    if (naoSaiu) return { ok: false, error: `O e-mail não saiu: ${naoSaiu}` }
+    await registrarNaPlataforma(ctx, 'equipe.convite_reenviado', { dados: { email: pessoa.email, papel: pessoa.papel } })
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: mensagemDoErro(e) }
+  }
 }
 
 /** Desativa ou reativa alguém da equipe — a linha e o login. Ninguém se desativa. */

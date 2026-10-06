@@ -1299,6 +1299,23 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-06 — Convite da equipe da plataforma: o e-mail conferido e o "Reenviar convite"
+
+O cadastro na Equipe do sistema não pede senha: o login nasce sem senha e o
+convite (o e-mail de "definir senha") leva ao host do papel. Mas o resultado do
+envio era DESCARTADO — com o SMTP recusando (era o caso do dia, o Gmail sem
+senha de app e o Resend ainda verificando o domínio), a tela dizia "enviado".
+
+- `enviarConvite` (`apps/sistema/lib/equipe/convite.ts`) devolve o motivo
+  quando o e-mail não sai; o cadastro fica e a tela AVISA.
+- "Reenviar convite" na linha de cada pessoa ativa (`reenviarConvite`, só
+  ADMIN, na auditoria como `equipe.convite_reenviado`). Para quem já tem
+  senha, o mesmo link serve de troca.
+- A Equipe mostra as pessoas `[e2e]` só com `?teste=1` (como as redes), e o
+  subtítulo deixou de prometer verificação em duas etapas.
+- TDD: `apps/sistema/tests/convite.test.ts` (o módulo não existia) e o
+  "reenviar o convite" de `sistema-portal.spec` (o botão não existia).
+
 ### 2026-10-06 — A verificação em duas etapas da plataforma vira opção
 
 O Heitor caiu na tela do autenticador no primeiro acesso a admin.bellarisos.com

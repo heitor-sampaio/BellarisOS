@@ -15,6 +15,7 @@ export type TipoDeRegistroDaPlataforma =
   | 'membro.reativado'
   | 'plano.alterado'
   | 'equipe.criada'
+  | 'equipe.convite_reenviado'
   | 'equipe.desativada'
   | 'equipe.reativada'
   | 'mfa.redefinido'
@@ -76,6 +77,7 @@ export const ROTULO_DO_REGISTRO: Record<TipoDeRegistroDaPlataforma, string> = {
   'membro.reativado':   'Reativou o membro',
   'plano.alterado':     'Alterou o plano',
   'equipe.criada':      'Cadastrou na equipe da plataforma',
+  'equipe.convite_reenviado': 'Reenviou o convite da equipe da plataforma',
   'equipe.desativada':  'Desativou na equipe da plataforma',
   'equipe.reativada':   'Reativou na equipe da plataforma',
   'mfa.redefinido':     'Redefiniu a verificação em duas etapas',

@@ -90,6 +90,13 @@ um muro que não depende de cada trava do código.
   e-mail NÃO é promovido, e só e-mail CONFIRMADO é promovido. Os seguintes, o
   ADMIN cadastra em Equipe (SUPORTE ou ADMIN). E-mail de membro de rede é
   recusado.
+  - **Ninguém digita senha no cadastro**: o login nasce sem senha e o
+    CONVITE (o e-mail de "definir senha", `enviarConvite` em
+    `apps/sistema/lib/equipe/convite.ts`) leva ao host do papel. O resultado
+    do envio é conferido: e-mail que não saiu vira AVISO na tela (o cadastro
+    fica), e o "Reenviar convite" da linha manda de novo (só ADMIN, só
+    ativo, `equipe.convite_reenviado` na auditoria). As pessoas `[e2e]` só
+    aparecem na Equipe com `?teste=1`.
 - Tabelas da plataforma: RLS ligada e ZERO políticas, como credencial.
 - Prova: `e2e/plataforma-hosts.spec.ts` (os três hosts, a CSP), 
   `e2e/suporte-plataforma.spec.ts`, `e2e/sistema-portal.spec.ts` e
@@ -291,6 +298,7 @@ um muro que não depende de cada trava do código.
 
 ```
 ❌ Decidir se a verificação em duas etapas é pedida fora de verificacaoPendente (ou cachear a opção: o outro host não a veria mudar)
+❌ Mandar e-mail pelo Auth (convite, reenviar acesso) e descartar o { error } — a tela diria "enviado" com o e-mail parado no SMTP
 ❌ Deixar a marca da plataforma passar na clínica (proxy, buildContext, login), ou página/action do sistema ou do suporte sem getPlatformContext
 ❌ Entrar na conta de um membro sem autorização vigente (suporte_sessao_abrir) ou entregar o token ao navegador antes de suporte_sessao_ativar
 ❌ Ação do suporte que fica PERMANENTE (membro, cargo, matriz, assinatura) sem bloqueioDoSuporte
