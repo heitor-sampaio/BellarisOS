@@ -1,0 +1,40 @@
+{
+  "name": "@estetica-os/nucleo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "O código que a clínica (apps/web), o sistema (apps/sistema) e o suporte (apps/suporte) dividem: banco, sessão, redes, suporte, plataforma e os componentes comuns.",
+  "exports": {
+    "./lib/*": "./src/lib/*.ts",
+    "./components/*": "./src/components/*.tsx",
+    "./estilos/*": "./src/estilos/*"
+  },
+  "scripts": {
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@estetica-os/types": "workspace:*",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.50.0",
+    "google-auth-library": "^9",
+    "lucide-react": "^0.511.0",
+    "web-push": "^3.6.7"
+  },
+  "peerDependencies": {
+    "next": "16.3.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/web-push": "^3.6.4",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.4",
+    "next": "16.3.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "typescript": "^5"
+  }
+}

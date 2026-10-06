@@ -11,9 +11,10 @@ import { tagDaRede } from '@/lib/cached-queries'
 import { semearRede, fimDoTesteParaHoje, soDigitos } from '@/lib/redes/criar'
 import { tagDaSessao } from '@/lib/suporte/sessao'
 import { avisarQuemAdministraARede } from '@/lib/suporte/avisos'
+import { depoisDaMudanca } from '@/lib/redes/assinatura'
 import {
-  ativarCobranca, levarValorAoAsaas, levarDadosAoAsaas, encerrarCobranca, sincronizarCobranca, depoisDaMudanca,
-} from '@/lib/redes/assinatura'
+  ativarCobranca, levarValorAoAsaas, levarDadosAoAsaas, encerrarCobranca, sincronizarCobranca,
+} from '@/lib/redes/cobranca'
 import { configDoAsaas } from '@/lib/asaas/cliente'
 
 /**

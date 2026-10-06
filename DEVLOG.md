@@ -1295,6 +1295,32 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-06 — `packages/nucleo`: o código que a clínica e a plataforma dividem
+
+Fase 2 da separação da plataforma: antes de nascerem `apps/sistema` e
+`apps/suporte`, o que os três apps usam saiu do `apps/web` para
+`packages/nucleo`, na MESMA árvore (`src/lib/…`, `src/components/…`), com
+`git mv` (o histórico segue). São 32 arquivos: `db`, os clientes do Supabase
+e o cookie da sessão, `origem`, `sem-acesso`, `texto`, `query-params`,
+`storage`, `notify`/`push`, `redes/*`, `suporte/*`,
+`plataforma/{contexto,destino,auditoria}` e três componentes comuns.
+
+- O `apps/web` guarda um shim em cada caminho antigo (`export * from
+  '@estetica-os/nucleo/…'`): nenhum dos 160+ imports mudou.
+- Dois cortes para o núcleo não puxar o resto do app: o cache da rede saiu do
+  `cached-queries` para `lib/redes/cache.ts`, e a assinatura foi dividida em
+  LEITURA (`redes/assinatura.ts`, núcleo) e COBRANÇA (`redes/cobranca.ts`,
+  que fala com o Asaas e fica fora do núcleo — vai para o `apps/sistema`).
+- O `next`, o `react` e o `@supabase/*` do núcleo são a MESMA cópia do
+  `apps/web` (conferido pelo caminho real): um `unstable_cache` de outra cópia
+  não veria as tags.
+- TDD: `tests/nucleo-sem-app.test.ts` (o núcleo existe e não importa de app
+  nenhum) nasceu vermelho; o resto é a rede dos testes que já existiam —
+  654 unitários e 45 E2E vizinhos no dev, e os da sessão, do quadro, do
+  `/sistema`, do Asaas e do "entrar como" contra o build.
+- Decisão: um pacote só (em vez de `servidor` + `ui`), porque os arquivos
+  movidos se importam entre si e a mesma árvore deixa tudo relativo.
+
 ### 2026-10-06 — A sessão só no servidor (cookies httpOnly)
 
 Fase 1 da separação da plataforma, mas vale para a clínica inteira. Os
@@ -1313,8 +1339,24 @@ falha corrigida.
   `lib/supabase/client.ts` serve só ao Realtime e pega o ACCESS token em
   `/api/auth/token` (até 1 h, nunca o refresh; 401 sem sessão, 403 de outro
   site), guardado em memória e renovado um minuto antes de vencer
-  (`lib/supabase/token-do-navegador.ts`). O `supabase-js` o pede de novo a
-  cada renovação do Realtime; os sinos deixaram de chamar `setAuth` à mão.
+  (`lib/supabase/token-do-navegador.ts`). O Realtime o pede de novo a cada
+  heartbeat; os sinos deixaram de chamar `setAuth` à mão.
+  - ⚠️ Corrigido no mesmo dia (achado do verificador): com a opção
+    `accessToken`, o construtor do supabase-js chama `realtime.setAuth(token)`
+    COM o token, e o realtime-js o trata como MANUAL — nunca mais chama a
+    função. O canal morria quando o primeiro token vencia (até 1 h), em
+    silêncio. O `setAuth` do cliente do navegador agora ignora o argumento
+    (`criarClienteDoNavegador`, `tests/realtime-token.test.ts`). Os E2E de
+    tempo real não pegam isso: duram menos que um token.
+- `/api/auth/session` (hoje só do apoio do E2E) ganhou guarda contra login
+  CSRF: só JSON, e nada marcado como vindo de outro site.
+- Os aparelhos já instalados ainda guardavam o último refresh token nas
+  Preferences: a `NativeShell` apaga a chave antiga na abertura
+  (`lib/sessao-antiga-do-aparelho.ts`).
+- No E2E contra o build (http em 127.0.0.1) o cookie vai sem `Secure`
+  (`COOKIE_DE_SESSAO_SEM_SECURE=1`, só no `playwright.build.config.ts` e no
+  workflow): o Playwright não manda cookie Secure por http nos pedidos fora do
+  navegador (`page.request`, `chamarAcao`) — eles chegavam sem sessão.
 - O app Android deixou de espelhar access e refresh token nas Preferences
   (`capacitor-session-sync.tsx` e `native-store.ts` saíram): a sessão é o
   cookie do WebView, que a `MainActivity` grava em disco ao pausar

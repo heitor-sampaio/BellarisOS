@@ -9,10 +9,22 @@ import { ler } from '@/lib/db'
 import { promoverSeForOAdmin } from '@/lib/plataforma/primeiro-admin'
 import { bonusDePrimeiroAcesso } from '@/lib/fidelidade/bonus'
 
-// Recebe tokens do armazenamento nativo (Capacitor Preferences),
-// valida com Supabase, grava cookies de sessão e retorna o destino
-// final para evitar um bounce extra via /auth/redirect.
+// Troca um par de tokens por cookies de sessão (httpOnly) e devolve o destino.
+// Era a volta do espelho nativo do app (saiu em 2026-10-06); hoje serve ao
+// apoio do E2E, que abre a sessão de cada pessoa por aqui.
+//
+// `/api/*` é público no proxy: a rota se defende sozinha contra o LOGIN CSRF
+// (outro site plantando a sessão DELE no navegador da vítima, que passaria a
+// trabalhar na conta do atacante). Só JSON — um <form> de outro site não manda
+// application/json — e nada que o navegador marque como vindo de fora.
 export async function POST(req: NextRequest) {
+  if (!(req.headers.get('content-type') ?? '').toLowerCase().includes('application/json')) {
+    return NextResponse.json({ error: 'Só JSON' }, { status: 415 })
+  }
+  const site = req.headers.get('sec-fetch-site')
+  if (site && site !== 'same-origin' && site !== 'none') {
+    return NextResponse.json({ error: 'Pedido de outro site' }, { status: 403 })
+  }
   const body = await req.json().catch(() => null)
   const { access_token, refresh_token } = (body ?? {}) as Record<string, string>
 

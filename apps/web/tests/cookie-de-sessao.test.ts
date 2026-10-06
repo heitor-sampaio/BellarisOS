@@ -27,6 +27,27 @@ describe('opcoesDoCookieDeSessao', () => {
     expect(opcoesDoCookieDeSessao('x', {}, false).secure).toBe(false)
   })
 
+  it('sem dizer, vale o ambiente: produção é secure — e só a variável do E2E contra o build tira', () => {
+    const antes = { env: process.env.NODE_ENV, flag: process.env.COOKIE_DE_SESSAO_SEM_SECURE }
+    const env = process.env as Record<string, string | undefined>
+    try {
+      env.NODE_ENV = 'production'
+      delete env.COOKIE_DE_SESSAO_SEM_SECURE
+      expect(opcoesDoCookieDeSessao('x').secure).toBe(true)
+      // O Playwright não manda cookie Secure por http://127.0.0.1 nos pedidos
+      // feitos fora do navegador (page.request): o E2E contra o build liga isto.
+      env.COOKIE_DE_SESSAO_SEM_SECURE = '1'
+      expect(opcoesDoCookieDeSessao('x').secure).toBe(false)
+      env.NODE_ENV = 'development'
+      delete env.COOKIE_DE_SESSAO_SEM_SECURE
+      expect(opcoesDoCookieDeSessao('x').secure).toBe(false)
+    } finally {
+      env.NODE_ENV = antes.env
+      if (antes.flag === undefined) delete env.COOKIE_DE_SESSAO_SEM_SECURE
+      else env.COOKIE_DE_SESSAO_SEM_SECURE = antes.flag
+    }
+  })
+
   it('nunca ganha domínio: o cookie é do host (a clínica e a plataforma não dividem sessão)', () => {
     const o = opcoesDoCookieDeSessao('x', { domain: '.bellarisos.com' }, true)
     expect(o.domain).toBeUndefined()

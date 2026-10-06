@@ -3,7 +3,7 @@ import { revalidateTag } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { tentar, mensagemDoErro } from '@/lib/db'
 import { tokenDoWebhookConfere, EVENTOS_DE_COBRANCA, EVENTOS_DE_ASSINATURA } from '@/lib/asaas/webhook'
-import { aplicarCobranca, assinaturaEncerradaNoAsaas } from '@/lib/redes/assinatura'
+import { aplicarCobranca, assinaturaEncerradaNoAsaas } from '@/lib/redes/cobranca'
 
 /**
  * O webhook do ASAAS (cobrança das assinaturas das redes). Rota de `/api/*`:

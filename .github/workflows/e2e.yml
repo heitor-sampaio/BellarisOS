@@ -56,6 +56,8 @@ jobs:
       ASAAS_API_KEY: $aact_hmlg_e2e-falsa
       ASAAS_WEBHOOK_TOKEN: e2e-token-do-webhook-do-asaas-0123456789abcdef
       PLATAFORMA_ADMIN_EMAIL: e2e-plataforma-primeiro-admin@bellaris.invalid
+      # Cookie de sessão sem Secure: o servidor do build roda em http (ver playwright.build.config.ts).
+      COOKIE_DE_SESSAO_SEM_SECURE: "1"
     steps:
       - uses: actions/checkout@v7
 

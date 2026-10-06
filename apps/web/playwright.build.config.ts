@@ -27,6 +27,10 @@ process.env.ASAAS_API_KEY ??= '$aact_hmlg_e2e-falsa'
 process.env.ASAAS_WEBHOOK_TOKEN ??= 'e2e-token-do-webhook-do-asaas-0123456789abcdef'
 // O primeiro admin da plataforma por variável (e2e/plataforma-primeiro-admin.spec.ts).
 process.env.PLATAFORMA_ADMIN_EMAIL ??= 'e2e-plataforma-primeiro-admin@bellaris.invalid'
+// O cookie da sessão sem Secure: o servidor do build roda em http://127.0.0.1, e
+// o Playwright não manda cookie Secure por http nos pedidos feitos fora do
+// navegador (page.request, chamarAcao). Produção nunca define isto.
+process.env.COOKIE_DE_SESSAO_SEM_SECURE ??= '1'
 const PORTA = process.env.E2E_PORTA ?? '3100'
 // 127.0.0.1, igual ao HOSTNAME do servidor (ver scripts/servir-build.mjs).
 process.env.E2E_BASE_URL = `http://127.0.0.1:${PORTA}`

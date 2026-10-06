@@ -63,6 +63,7 @@ VAPID_SUBJECT=
 # META_GRAPH_BASE_TESTE=http://127.0.0.1:3199   # Graph falsa do cadastro incorporado (playwright.build.config)
 # E2E_IDADE_DA_SOBRA_MIN=60                      # idade mínima de sobra [e2e] que a varredura apaga
 # ASAAS_BASE_URL_TESTE=http://127.0.0.1:3198     # o Asaas falso (e2e/apoio/asaas-falso.ts; playwright.build.config)
+# COOKIE_DE_SESSAO_SEM_SECURE=1                  # cookie de sessão sem Secure no build em http (playwright.build.config, workflow)
 ```
 
 ---

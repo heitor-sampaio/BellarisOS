@@ -29,6 +29,15 @@ só quando o Heitor pede) continuam no §15 do `CLAUDE.md`.
 - Contra o build, `chamarAcao` lê os manifestos de `.next/server`
   (`E2E_BUILD`, ligado por `playwright.build.config.ts`).
 
+**Sessão no E2E (2026-10-06)** — os cookies são httpOnly e, no build, Secure.
+- O arquivo de sessão de cada pessoa nasce de um `request.newContext` VAZIO
+  (`storageState: { cookies: [], origins: [] }`). Herdando a sessão padrão do
+  config, levava os cookies do admin junto, e o servidor lia o do admin.
+- Contra o build (http em 127.0.0.1) o servidor sobe com
+  `COOKIE_DE_SESSAO_SEM_SECURE=1`: o Playwright não manda cookie Secure por
+  http nos pedidos fora do navegador (`page.request`, `chamarAcao`), que
+  chegavam como anônimos (401, ou `{}` numa action).
+
 **Apoio do E2E** (`apps/web/e2e/apoio/`). O E2E roda contra o banco da
 produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 - `sessao.ts` — `criarMembro` (cargo com a matriz que o teste descrever, de

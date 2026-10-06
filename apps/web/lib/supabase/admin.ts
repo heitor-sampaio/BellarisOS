@@ -1,10 +1,3 @@
-import { createClient } from '@supabase/supabase-js'
-
-// Client com service role — usa HTTPS, não precisa de DATABASE_URL
-// Nunca expor no client-side
-export function createAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
-}
+// Mora em packages/nucleo (o código que a clínica, o sistema e o suporte
+// dividem). Este arquivo só mantém o caminho antigo para quem já importa daqui.
+export * from '@estetica-os/nucleo/lib/supabase/admin'

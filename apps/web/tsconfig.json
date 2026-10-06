@@ -20,6 +20,7 @@
     ],
     "paths": {
       "@/*": ["./*"],
+      "@estetica-os/nucleo/*": ["../../packages/nucleo/src/*"],
       "@estetica-os/types": ["../../packages/types/src/index.ts"],
       "@estetica-os/validators": ["../../packages/validators/src/index.ts"],
       "@estetica-os/utils": ["../../packages/utils/src/index.ts"]

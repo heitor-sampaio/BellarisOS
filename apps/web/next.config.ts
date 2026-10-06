@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
   },
   typescript: { ignoreBuildErrors: true },
   transpilePackages: [
+    '@estetica-os/nucleo',
     '@estetica-os/types',
     '@estetica-os/validators',
     '@estetica-os/utils',

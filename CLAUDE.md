@@ -189,27 +189,11 @@ interface JwtClaims {
 }
 ```
 
-### Helper de contexto (web — Server Actions e Route Handlers)
+### Contexto no servidor
 
-```typescript
-// apps/web/lib/auth.ts
-export async function getTenantContext() {
-  const supabase = createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthenticated')
-
-  const claims = user.app_metadata as JwtClaims
-  return {
-    userId: user.id,
-    tenantId: claims.tenant_id,
-    branchId: claims.branch_id,
-    role: claims.role,
-    clientId: claims.client_id,
-    isNetworkAdmin: claims.role === 'NETWORK_ADMIN',
-    isClient: claims.role === 'CLIENT',
-  }
-}
-```
+`getTenantContext()` (`lib/auth.ts`) monta o contexto de toda página e action
+a partir dos claims (`app_metadata`) e do membro no banco. O modelo de uma
+action e das consultas com filtro está em `docs/regras/convencoes.md`.
 
 ---
 
@@ -343,31 +327,24 @@ local, liberar só na cópia local.
 
 ## 7. Packages compartilhados
 
-### `packages/types`
-```typescript
-export type { JwtClaims, UserRole } from './auth'
-export type { AppointmentWithClient, AppointmentWithDetails } from './appointment'
-export type { ClientWithLoyalty } from './client'
-// ... demais tipos do domínio
-```
-
-### `packages/validators`
-Hoje só os de autenticação (`RegisterSchema`, `LoginSchema`,
-`ResetPasswordSchema`, `UpdatePasswordSchema`). Os de agendamento,
-procedimento, cliente e login do cliente nunca foram usados e saíram em
-2026-09-28 — schema novo entra aqui quando tiver quem o importe.
-
-### `packages/utils`
-```typescript
-export const formatBRL = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
-
-export const formatDate = (date: Date) =>
-  new Intl.DateTimeFormat('pt-BR').format(date)
-
-export const maskCPF = (cpf: string) =>
-  cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
-```
+- `packages/types` — os tipos do domínio (`JwtClaims`, `AppointmentWithClient`,
+  o catálogo de eventos…).
+- `packages/validators` — só os schemas de autenticação; schema novo entra
+  quando tiver quem o importe.
+- `packages/utils` — `formatBRL`, `formatDate`, `maskCPF`.
+- **`packages/nucleo`** (2026-10-06) — o código que a clínica, o sistema e o
+  suporte DIVIDEM, na mesma árvore do `apps/web` (`src/lib/…`,
+  `src/components/…`): `db`, os clientes do Supabase e o cookie da sessão,
+  `origem`, `notify`/`push`, `redes/*` (situação, cache, leitura da
+  assinatura), `suporte/*`, `plataforma/{contexto,destino,auditoria}` e os
+  componentes comuns (`seg-select`, `realtime-refresher`, `busca-na-url`).
+  - O `apps/web` mantém shims no caminho antigo (`lib/db.ts` =
+    `export * from '@estetica-os/nucleo/lib/db'`): importar de `@/lib/db`
+    continua certo. Arquivo NOVO compartilhado nasce direto no núcleo.
+  - O núcleo não importa de app nenhum (`@/` ali dentro resolveria para o
+    app que compila): `tests/nucleo-sem-app.test.ts` trava.
+  - O que fala com o Asaas NÃO é núcleo (`lib/redes/cobranca.ts`): a clínica
+    não carrega a cobrança.
 
 ---
 
@@ -385,65 +362,12 @@ Constantes:        SCREAMING_SNAKE    (MAX_BRANCH_COUNT)
 Variáveis/funções: camelCase
 ```
 
-### Estrutura de um Server Action (web)
+### Server Action e consulta
 
-```typescript
-'use server'
-import { getTenantContext, assertPermission } from '@/lib/auth'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar } from '@/lib/db'
-import { revalidatePath } from 'next/cache'
-import { z } from 'zod'
-
-const EntradaDoAgendamento = z.object({ clientId: z.string().uuid(), /* … */ })
-
-export async function createAppointment(input: unknown) {
-  const ctx = await getTenantContext()
-  assertPermission(ctx, 'agenda', 'MANAGE')
-  const data = EntradaDoAgendamento.parse(input)
-
-  const admin = createAdminClient()
-
-  // branch_id SEMPRE vem do contexto — nunca do input do cliente.
-  // `gravar` devolve a linha ou PARA o fluxo: não existe escrita que
-  // falha em silêncio (ver §13.1).
-  const appointment = await gravar(
-    admin.from('appointments')
-      .insert({ ...data, tenant_id: ctx.tenantId, branch_id: ctx.branchId })
-      .select()
-      .single(),
-    'criar o agendamento',
-  )
-
-  revalidatePath(`/${ctx.branch?.slug}/agenda`)
-  return appointment
-}
-```
-
-### Queries — filtro obrigatório
-
-```typescript
-// ✅ Usuário operacional — filtrar por branch_id
-const clients = await ler(
-  admin.from('clients').select('*').eq('branch_id', ctx.branchId),
-  'listar os clientes da unidade',
-)
-
-// ✅ Network Admin — filtrar por tenant_id
-const branches = await ler(
-  admin.from('branches').select('*').eq('tenant_id', ctx.tenantId),
-  'listar as unidades da rede',
-)
-
-// ✅ Cliente final — filtrar por client_id
-const appointments = await ler(
-  admin.from('appointments').select('*').eq('client_id', ctx.clientId),
-  'listar os agendamentos do cliente',
-)
-
-// ❌ NUNCA — sem filtro
-const clients = await admin.from('clients').select('*')
-```
+O modelo (contexto → `assertPermission` → zod → `gravar`/`ler`, `branch_id`
+do contexto e nunca do input) e os filtros obrigatórios por quem consulta
+(unidade, rede, cliente final) estão em `docs/regras/convencoes.md` — leia
+antes da primeira action ou consulta numa sessão.
 
 ---
 
@@ -476,6 +400,7 @@ código ou no DEVLOG cita "CLAUDE.md §9.7" acha a seção pela tabela.
 | `indicadores.md` | §13.1 Indicadores | `lib/metrics/`, `metrics_*`, `lib/datetime.ts`, `resolvePeriod`, dashboard, relatórios, qualquer número na tela |
 | `infra.md` | §12 Variáveis de ambiente, §14.1 Cron | env, `scripts/cron.mjs`, `app/api/cron/`, Railway, Dockerfile |
 | `e2e.md` | §15 A completa em duas metades e o apoio do E2E | `apps/web/e2e/`, `playwright*.config.ts`, `.github/workflows/e2e.yml` |
+| `convencoes.md` | §4/§8 os modelos de action e de consulta | a primeira action ou consulta nova da sessão |
 
 Regra nova de módulo vai para o arquivo da área; regra que vale para o
 sistema inteiro fica aqui. Área nova ganha arquivo e linha nesta tabela.

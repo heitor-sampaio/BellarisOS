@@ -119,20 +119,53 @@ test.describe.serial('sessão só no servidor', () => {
     })
   })
 
-  test('/api/auth/token recusa pedido vindo de outro site', async ({ browser }) => {
+  test('/api/auth/token recusa pedido vindo de outro site — inclusive de um subdomínio irmão — e não guarda cache', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: f!.membro.estado })
     try {
-      const res = await ctx.request.get('/api/auth/token', { headers: { 'sec-fetch-site': 'cross-site' } })
-      expect(res.status()).toBe(403)
+      for (const site of ['cross-site', 'same-site']) {
+        const res = await ctx.request.get('/api/auth/token', { headers: { 'sec-fetch-site': site } })
+        expect(res.status(), site).toBe(403)
+      }
+      const ok = await ctx.request.get('/api/auth/token', { headers: { 'sec-fetch-site': 'same-origin' } })
+      expect(ok.status()).toBe(200)
+      expect(ok.headers()['cache-control']).toContain('no-store')
     } finally { await ctx.close() }
   })
 
-  test('na página inicial, quem tem sessão segue para o portal sem o JS ler cookie', async ({ browser }) => {
+  test('/api/auth/session não aceita sessão plantada por outro site (login CSRF)', async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+    try {
+      const corpo = JSON.stringify({ access_token: 'x', refresh_token: 'y' })
+      // Um <form enctype="text/plain"> de outro site consegue mandar este corpo.
+      const texto = await ctx.request.post('/api/auth/session', { headers: { 'content-type': 'text/plain' }, data: corpo })
+      expect(texto.status()).toBe(415)
+      const deFora = await ctx.request.post('/api/auth/session', {
+        headers: { 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' }, data: corpo,
+      })
+      expect(deFora.status()).toBe(403)
+    } finally { await ctx.close() }
+  })
+
+  test('cold start do app: a landing chega sem cookie, pergunta ao servidor e segue para o portal', async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: f!.membro.estado })
     try {
       const p = await ctx.newPage()
+      // O WebView ainda inicializando: o PRIMEIRO pedido da página sai sem os
+      // cookies. A landing renderiza; quem leva adiante é o AuthRedirect, que
+      // pergunta a /api/auth/token depois da hidratação (o JS não lê cookie).
+      let primeiro = true
+      await p.route(/\/$/, async rota => {
+        if (primeiro && rota.request().resourceType() === 'document') {
+          primeiro = false
+          const h = { ...rota.request().headers() }
+          delete h.cookie
+          return rota.continue({ headers: h })
+        }
+        return rota.continue()
+      })
       await p.goto('/')
       await expect(p).toHaveURL(/\/admin\/dashboard/)
+      expect(primeiro).toBe(false)
     } finally { await ctx.close() }
   })
 })
