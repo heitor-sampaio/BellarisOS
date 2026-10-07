@@ -10,7 +10,7 @@ import { lerRecursos, TUDO_LIBERADO } from '@estetica-os/nucleo/lib/planos/recur
  * não se apaga, desativa.
  */
 export default async function PlanosPage() {
-  await getPlatformContext({ papel: 'ADMIN' })
+  const ctx = await getPlatformContext({ verSistema: true })
   const admin = createAdminClient()
   const [planos, usos] = await Promise.all([
     ler(admin.from('platform_plans').select('id, nome, descricao, valor_centavos, ativo, ordem, recursos').order('ordem').order('nome'), 'carregar os planos'),
@@ -26,11 +26,13 @@ export default async function PlanosPage() {
           <p className="suporte-sub">O que o BellarisOS vende: o valor, as funcionalidades e os limites de cada plano. Cada rede guarda o que combinou; mudar aqui vale para as próximas.</p>
         </div>
       </div>
+      <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
       <PlanosDoCatalogo planos={((planos ?? []) as { id: string; nome: string; descricao: string | null; valor_centavos: number; ativo: boolean; ordem: number; recursos: unknown }[])
         .map(p => ({
           id: p.id, nome: p.nome, descricao: p.descricao, valorCentavos: p.valor_centavos, ativo: p.ativo, ordem: p.ordem,
           redes: quantas.get(p.id) ?? 0, recursos: lerRecursos(p.recursos) ?? TUDO_LIBERADO,
         }))} />
+      </fieldset>
     </div>
   )
 }

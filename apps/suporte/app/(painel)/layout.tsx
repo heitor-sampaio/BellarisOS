@@ -5,6 +5,7 @@ import { sair } from '@/actions/acesso'
 import { NavDoSuporte } from '@/components/suporte/nav-do-suporte'
 import { contagemDaFila } from '@estetica-os/nucleo/lib/suporte/chamados'
 import { verificacaoDaSessao } from '@estetica-os/nucleo/lib/plataforma/verificacao-exigida'
+import { aceitaNoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 
 /**
  * O portal da PLATAFORMA — a equipe do BellarisOS atendendo as redes.
@@ -18,7 +19,8 @@ export default async function SuporteLayout({ children }: { children: ReactNode 
   const claims = await lerClaims()
   if (!claims) redirect('/login')
   // O proxy já recusa quem não é da plataforma; isto é a segunda parede.
-  if (!marcaDaPlataforma(claims)) redirect('/login')
+  // O suporte é do ATENDIMENTO: o GERENTE (só vê o sistema) não entra.
+  if (!aceitaNoHost('suporte', marcaDaPlataforma(claims))) redirect('/login')
 
   const staff = await getCachedStaff(claims.sub)
   const verificado = !(await verificacaoDaSessao()).pendente && !!staff?.is_active

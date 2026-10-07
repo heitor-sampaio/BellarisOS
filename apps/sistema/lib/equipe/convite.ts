@@ -1,4 +1,5 @@
 import { linkDeDefinirSenha } from '@estetica-os/nucleo/lib/plataforma/destino'
+import type { PapelDaPlataforma } from '@estetica-os/nucleo/lib/plataforma/contexto'
 
 /** O pedaço do Auth que o convite usa (o `auth` do cliente com service role). */
 interface AuthDoConvite {
@@ -7,8 +8,8 @@ interface AuthDoConvite {
 
 /**
  * O convite de quem entra na equipe da plataforma: o e-mail de "definir senha",
- * com o link para o host do papel (`linkDeDefinirSenha` — o ADMIN no sistema,
- * o SUPORTE no suporte). O login nasce sem senha; é por aqui que a pessoa
+ * com o link para o host do papel (`linkDeDefinirSenha` — o ADMIN e o
+ * GERENTE no sistema, o SUPORTE no suporte). O login nasce sem senha; é por aqui que a pessoa
  * escolhe a dela.
  *
  * Devolve o MOTIVO quando o e-mail não saiu (SMTP recusou, limite de envio,
@@ -18,7 +19,7 @@ interface AuthDoConvite {
 export async function enviarConvite(
   auth: AuthDoConvite,
   email: string,
-  papel: 'SUPORTE' | 'ADMIN',
+  papel: PapelDaPlataforma,
   env: Record<string, string | undefined> = process.env,
 ): Promise<string | null> {
   try {

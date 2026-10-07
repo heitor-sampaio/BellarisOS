@@ -1,4 +1,4 @@
-import { getPlatformContext } from '@estetica-os/nucleo/lib/plataforma/contexto'
+import { getPlatformContext, type PapelDaPlataforma } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { ler } from '@estetica-os/nucleo/lib/db'
 import { EquipeDaPlataforma, type PessoaDaPlataforma } from '@/components/suporte/equipe-da-plataforma'
@@ -10,11 +10,11 @@ import { EquipeDaPlataforma, type PessoaDaPlataforma } from '@/components/suport
  */
 export default async function EquipePage({ searchParams }: { searchParams: Promise<{ teste?: string }> }) {
   const { teste } = await searchParams
-  const ctx = await getPlatformContext({ papel: 'ADMIN' })
+  const ctx = await getPlatformContext({ verSistema: true })
   const pessoas = (await ler(createAdminClient().from('platform_staff')
     .select('id, name, email, papel, is_active, created_at')
     .order('name'), 'carregar a equipe da plataforma') ?? []) as {
-      id: string; name: string; email: string; papel: 'SUPORTE' | 'ADMIN'; is_active: boolean; created_at: string
+      id: string; name: string; email: string; papel: PapelDaPlataforma; is_active: boolean; created_at: string
     }[]
 
   const lista: PessoaDaPlataforma[] = pessoas
@@ -30,7 +30,9 @@ export default async function EquipePage({ searchParams }: { searchParams: Promi
           <p className="suporte-sub">Quem atende as clínicas. Cada pessoa define a senha pelo convite que chega por e-mail.</p>
         </div>
       </div>
-      <EquipeDaPlataforma pessoas={lista} />
+      <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
+        <EquipeDaPlataforma pessoas={lista} />
+      </fieldset>
     </div>
   )
 }

@@ -15,7 +15,7 @@ const quando = (iso: string | null | undefined) => iso
   : 'nunca'
 
 export default async function ConfiguracoesDoSistemaPage() {
-  await getPlatformContext({ papel: 'ADMIN' })
+  const ctx = await getPlatformContext({ verSistema: true })
   const admin = createAdminClient()
   const [cfg, ultimo] = await Promise.all([
     ler(admin.from('platform_settings').select('dias_de_teste, dias_de_carencia, exigir_verificacao').eq('id', 1).maybeSingle(), 'ler as configurações'),
@@ -35,7 +35,9 @@ export default async function ConfiguracoesDoSistemaPage() {
       </div>
       <section className="card suporte-secao">
         <h2 className="overline">Regras da plataforma</h2>
-        <ConfiguracoesDaPlataforma diasDeTeste={c.dias_de_teste} diasDeCarencia={c.dias_de_carencia} exigirVerificacao={c.exigir_verificacao} />
+        <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
+          <ConfiguracoesDaPlataforma diasDeTeste={c.dias_de_teste} diasDeCarencia={c.dias_de_carencia} exigirVerificacao={c.exigir_verificacao} />
+        </fieldset>
       </section>
       <section className="card suporte-secao">
         <h2 className="overline">Integração com o Asaas</h2>

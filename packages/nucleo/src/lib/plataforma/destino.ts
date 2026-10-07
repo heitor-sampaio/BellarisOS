@@ -5,8 +5,9 @@
  *    negócio (redes, planos, cobrança, equipe, auditoria). Só ADMIN.
  *  - o SUPORTE (`apps/suporte`, suporte.bellarisos.com): o atendimento
  *    (chamados, diagnóstico, "entrar como"). SUPORTE e ADMIN.
- * Quem é ADMIN entra nos dois, uma sessão em cada (cookie é do host). A
- * clínica (`apps/web`) recusa a marca da plataforma.
+ * Quem é ADMIN entra nos dois, uma sessão em cada (cookie é do host). O
+ * GERENTE (2026-10-07) entra só no sistema, e só VÊ. A clínica (`apps/web`)
+ * recusa a marca da plataforma.
  *
  * A marca vem de `app_metadata.plataforma`; quem barra de verdade é o proxy
  * de cada app e `getPlatformContext` em cada página e action.
@@ -15,10 +16,23 @@ export type HostDaPlataforma = 'sistema' | 'suporte'
 
 type Ambiente = Record<string, string | undefined>
 
+/**
+ * O que cada papel ALCANÇA (2026-10-07):
+ *  - `administrar`: gravar no sistema (redes, planos, cobrança, equipe) — só ADMIN;
+ *  - `ver-sistema`: abrir as telas do sistema — ADMIN e GERENTE;
+ *  - `atender`: o suporte (chamados, "entrar como") — SUPORTE e ADMIN.
+ * Papel novo não alcança nada até ser posto aqui.
+ */
+export type AlcanceDaPlataforma = 'administrar' | 'ver-sistema' | 'atender'
+export function papelAlcanca(papel: string | null | undefined, alcance: AlcanceDaPlataforma): boolean {
+  if (alcance === 'administrar') return papel === 'ADMIN'
+  if (alcance === 'ver-sistema') return papel === 'ADMIN' || papel === 'GERENTE'
+  return papel === 'ADMIN' || papel === 'SUPORTE'
+}
+
 /** A marca entra neste host? */
 export function aceitaNoHost(host: HostDaPlataforma, marca: string | null | undefined): boolean {
-  if (marca === 'ADMIN') return true
-  return host === 'suporte' && marca === 'SUPORTE'
+  return papelAlcanca(marca, host === 'sistema' ? 'ver-sistema' : 'atender')
 }
 
 /**
@@ -27,11 +41,13 @@ export function aceitaNoHost(host: HostDaPlataforma, marca: string | null | unde
  * no lugar errado), em `apps/web`.
  */
 export function recusaDoHost(host: HostDaPlataforma, marca: string | null | undefined): string | null {
-  if (marca !== 'ADMIN' && marca !== 'SUPORTE') {
+  if (marca !== 'ADMIN' && marca !== 'SUPORTE' && marca !== 'GERENTE') {
     return 'Este acesso é só da equipe do BellarisOS. A clínica entra pelo app.'
   }
-  if (!aceitaNoHost(host, marca)) return 'O Sistema é só da administração. Entre pelo suporte.'
-  return null
+  if (aceitaNoHost(host, marca)) return null
+  return host === 'sistema'
+    ? 'O Sistema é só da administração. Entre pelo suporte.'
+    : 'O suporte é só do atendimento. Entre pelo sistema.'
 }
 
 /**
@@ -59,14 +75,14 @@ export function urlDaClinica(env: Ambiente = process.env): string {
  * host de quem clicou não serve — com dois apps, o link sairia no host errado.
  */
 export function linkDeDefinirSenha(
-  quem: { para: 'membro' } | { para: 'atendente'; papel: 'ADMIN' | 'SUPORTE' },
+  quem: { para: 'membro' } | { para: 'atendente'; papel: 'ADMIN' | 'SUPORTE' | 'GERENTE' },
   env: Ambiente = process.env,
 ): string {
-  const base = quem.para === 'membro' ? urlDaClinica(env) : urlDoHost(quem.papel === 'ADMIN' ? 'sistema' : 'suporte', env)
+  const base = quem.para === 'membro' ? urlDaClinica(env) : urlDoHost(quem.papel === 'SUPORTE' ? 'suporte' : 'sistema', env)
   return `${base}/auth/confirm?next=/update-password`
 }
 
-/** Onde a pessoa da plataforma começa: o ADMIN no sistema, o SUPORTE no suporte. */
+/** Onde a pessoa da plataforma começa: o ADMIN e o GERENTE no sistema, o SUPORTE no suporte. */
 export function inicioDaPlataforma(marca: string | null | undefined, env: Ambiente = process.env): string {
-  return `${urlDoHost(marca === 'ADMIN' ? 'sistema' : 'suporte', env)}/`
+  return `${urlDoHost(marca === 'ADMIN' || marca === 'GERENTE' ? 'sistema' : 'suporte', env)}/`
 }

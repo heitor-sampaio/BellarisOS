@@ -23,7 +23,7 @@ const quando = (iso: string | null) => iso
   : '—'
 
 export default async function RedeDoSistemaPage({ params }: { params: Promise<{ id: string }> }) {
-  const ctx = await getPlatformContext({ papel: 'ADMIN' })
+  const ctx = await getPlatformContext({ verSistema: true })
   const { id } = await params
   if (!UUID.test(id)) notFound()
   const a = await lerAssinatura(id)
@@ -47,13 +47,14 @@ export default async function RedeDoSistemaPage({ params }: { params: Promise<{ 
         <div>
           <Link href="/redes" className="suporte-voltar">← Redes</Link>
           <h1 className="suporte-titulo">{a.rede.nome}</h1>
-          <p className="suporte-sub">desde {quando(a.rede.createdAt)} · <a href={`${urlDoHost('suporte')}/redes/${id}`} className="suporte-voltar">ver no suporte (diagnóstico, membros, entrar como)</a></p>
+          <p className="suporte-sub">desde {quando(a.rede.createdAt)}{ctx.podeEditar && <> · <a href={`${urlDoHost('suporte')}/redes/${id}`} className="suporte-voltar">ver no suporte (diagnóstico, membros, entrar como)</a></>}</p>
         </div>
         <SituacaoDaRede ativa={a.rede.ativa} planStatus={a.rede.planStatus} />
       </div>
 
       <section className="card suporte-secao">
         <h2 className="overline">Assinatura</h2>
+        <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
         <AssinaturaDaRede
           tenantId={id}
           rede={{ planStatus: a.rede.planStatus, trialEndsAt: a.rede.trialEndsAt, emAtrasoDesde: a.rede.emAtrasoDesde, temDocumento: !!a.rede.documento }}
@@ -63,11 +64,14 @@ export default async function RedeDoSistemaPage({ params }: { params: Promise<{ 
             .map(p => ({ id: p.id, nome: p.nome, valorCentavos: p.valor_centavos, ativo: p.ativo }))}
           asaasPronto={asaas.temChave}
         />
+        </fieldset>
       </section>
 
       <section className="card suporte-secao">
         <h2 className="overline">Dados da rede</h2>
-        <DadosDaRede tenantId={id} inicial={{ nome: a.rede.nome, documento: a.rede.documento ?? '', email: a.rede.email, telefone: a.rede.telefone ?? '' }} />
+        <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
+          <DadosDaRede tenantId={id} inicial={{ nome: a.rede.nome, documento: a.rede.documento ?? '', email: a.rede.email, telefone: a.rede.telefone ?? '' }} />
+        </fieldset>
       </section>
 
       <section className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -90,7 +94,9 @@ export default async function RedeDoSistemaPage({ params }: { params: Promise<{ 
 
       <section className="card suporte-secao sistema-perigo">
         <h2 className="overline">Acesso</h2>
-        <AcessoDaRede tenantId={id} ativa={a.rede.ativa} motivo={a.rede.desligadaMotivo} />
+        <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
+          <AcessoDaRede tenantId={id} ativa={a.rede.ativa} motivo={a.rede.desligadaMotivo} />
+        </fieldset>
       </section>
 
       <section className="card suporte-secao">

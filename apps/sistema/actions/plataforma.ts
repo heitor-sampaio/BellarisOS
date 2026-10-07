@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath, updateTag } from 'next/cache'
-import { getPlatformContext } from '@estetica-os/nucleo/lib/plataforma/contexto'
+import { getPlatformContext, type PapelDaPlataforma } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { registrarNaPlataforma } from '@estetica-os/nucleo/lib/plataforma/auditoria'
 import { sessoesEmCurso, tagDaSessao } from '@estetica-os/nucleo/lib/suporte/sessao'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
@@ -39,11 +39,12 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  * E-mail de membro de rede é recusado: a mesma pessoa não pode ser as duas
  * coisas (a marca da plataforma tiraria o login dela do portal da rede).
  */
-export async function criarAtendente(dados: { nome: string; email: string; papel: 'SUPORTE' | 'ADMIN' }): Promise<Resultado> {
+export async function criarAtendente(dados: { nome: string; email: string; papel: PapelDaPlataforma }): Promise<Resultado> {
   const ctx = await getPlatformContext({ papel: 'ADMIN' })
   const nome  = typeof dados?.nome === 'string' ? dados.nome.trim().slice(0, 80) : ''
   const email = typeof dados?.email === 'string' ? dados.email.trim().toLowerCase() : ''
-  const papel = dados?.papel === 'ADMIN' ? 'ADMIN' : 'SUPORTE'
+  // O GERENTE (2026-10-07) vê o sistema e não edita. Desconhecido vira o de menos alcance que atende.
+  const papel: PapelDaPlataforma = dados?.papel === 'ADMIN' || dados?.papel === 'GERENTE' ? dados.papel : 'SUPORTE'
   if (!nome) return { ok: false, error: 'Informe o nome.' }
   if (!EMAIL.test(email)) return { ok: false, error: 'E-mail inválido.' }
   try {
@@ -82,7 +83,7 @@ export async function criarAtendente(dados: { nome: string; email: string; papel
 async function atendente(staffId: string) {
   return await ler(createAdminClient().from('platform_staff')
     .select('id, auth_id, email, papel, is_active').eq('id', staffId).maybeSingle(), 'buscar a pessoa da plataforma') as
-    { id: string; auth_id: string; email: string; papel: 'SUPORTE' | 'ADMIN'; is_active: boolean } | null
+    { id: string; auth_id: string; email: string; papel: PapelDaPlataforma; is_active: boolean } | null
 }
 
 /**

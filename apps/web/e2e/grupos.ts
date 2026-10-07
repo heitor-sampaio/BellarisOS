@@ -69,6 +69,7 @@ export const ISOLADOS = [
   'suporte-plataforma.spec.ts',
   'planos-recursos.spec.ts',
   'planos-adicionais.spec.ts',
+  'plataforma-gerente.spec.ts',
   'vendas-desconto.spec.ts',
 ]
 

@@ -9,7 +9,7 @@ const quando = (iso: string) =>
   new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(iso))
 
 export default async function AuditoriaPage() {
-  await getPlatformContext({ papel: 'ADMIN' })
+  await getPlatformContext({ verSistema: true })
   const registros = (await ler(createAdminClient().from('platform_audit_log')
     .select('id, kind, at, dados, target_user_id, tenant_id, platform_staff(name), tenants(name)')
     .order('at', { ascending: false }).limit(200), 'carregar a auditoria') ?? []) as unknown as {

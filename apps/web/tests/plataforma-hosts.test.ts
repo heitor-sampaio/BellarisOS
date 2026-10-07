@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { aceitaNoHost, urlDoHost, inicioDaPlataforma, recusaDoHost, linkDeDefinirSenha } from '@estetica-os/nucleo/lib/plataforma/destino'
+import { aceitaNoHost, urlDoHost, inicioDaPlataforma, recusaDoHost, linkDeDefinirSenha, papelAlcanca } from '@estetica-os/nucleo/lib/plataforma/destino'
 
 /**
  * A plataforma mora em DOIS hosts (2026-10-06): o sistema
@@ -62,5 +62,35 @@ describe('urlDoHost e inicioDaPlataforma', () => {
   it('o ADMIN começa no sistema; o SUPORTE, no suporte', () => {
     expect(inicioDaPlataforma('ADMIN', env)).toBe('https://admin.bellarisos.com/')
     expect(inicioDaPlataforma('SUPORTE', env)).toBe('https://suporte.bellarisos.com/')
+  })
+})
+
+/**
+ * O GERENTE (2026-10-07, pedido do Heitor): a equipe da plataforma ganha um
+ * papel que VÊ o sistema inteiro e não edita nada. Só o sistema — o suporte
+ * (chamados, "entrar como") fica com Suporte e Admin.
+ */
+describe('o Gerente da plataforma', () => {
+  const env = { CLINICA_URL: 'https://app.bellarisos.com', SISTEMA_URL: 'https://admin.bellarisos.com', SUPORTE_URL: 'https://suporte.bellarisos.com' }
+  it('entra no sistema, não no suporte', () => {
+    expect(aceitaNoHost('sistema', 'GERENTE')).toBe(true)
+    expect(aceitaNoHost('suporte', 'GERENTE')).toBe(false)
+    expect(recusaDoHost('sistema', 'GERENTE')).toBeNull()
+    expect(recusaDoHost('suporte', 'GERENTE')).toMatch(/só do atendimento/)
+  })
+  it('o convite e o começo são no sistema', () => {
+    expect(linkDeDefinirSenha({ para: 'atendente', papel: 'GERENTE' }, env)).toBe('https://admin.bellarisos.com/auth/confirm?next=/update-password')
+    expect(inicioDaPlataforma('GERENTE', env)).toBe('https://admin.bellarisos.com/')
+  })
+  it('papelAlcanca: ver o sistema é do Admin e do Gerente; administrar, só do Admin; atender, do Suporte e do Admin', () => {
+    expect(papelAlcanca('GERENTE', 'ver-sistema')).toBe(true)
+    expect(papelAlcanca('ADMIN', 'ver-sistema')).toBe(true)
+    expect(papelAlcanca('SUPORTE', 'ver-sistema')).toBe(false)
+    expect(papelAlcanca('GERENTE', 'administrar')).toBe(false)
+    expect(papelAlcanca('ADMIN', 'administrar')).toBe(true)
+    expect(papelAlcanca('GERENTE', 'atender')).toBe(false)
+    expect(papelAlcanca('SUPORTE', 'atender')).toBe(true)
+    expect(papelAlcanca('ADMIN', 'atender')).toBe(true)
+    expect(papelAlcanca('OUTRO', 'ver-sistema')).toBe(false)
   })
 })

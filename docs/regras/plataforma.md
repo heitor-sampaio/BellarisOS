@@ -13,7 +13,7 @@ dela fica no app da clínica:
 
 | App | Host | Quem entra | O que tem |
 |---|---|---|---|
-| `apps/sistema` | `admin.bellarisos.com` (`SISTEMA_URL`) | só ADMIN | painel, redes, planos, cobrança/Asaas, equipe, auditoria, configurações, webhook do Asaas, cron `assinaturas`, primeiro admin |
+| `apps/sistema` | `admin.bellarisos.com` (`SISTEMA_URL`) | ADMIN (administra) e GERENTE (só vê) | painel, redes, planos, cobrança/Asaas, equipe, auditoria, configurações, webhook do Asaas, cron `assinaturas`, primeiro admin |
 | `apps/suporte` | `suporte.bellarisos.com` (`SUPORTE_URL`) | SUPORTE e ADMIN | chamados, redes (consulta e diagnóstico), reenviar acesso, reativar membro, a abertura do "entrar como" |
 
 Por que dois hosts: a clínica desenha conteúdo de fora (WhatsApp, editor de
@@ -22,12 +22,26 @@ plataforma na mesma origem. Origem separada = cookie separado (host-only) e
 um muro que não depende de cada trava do código.
 
 - **Quem é da plataforma não é membro de rede**: é um login do Auth com
-  `app_metadata.plataforma` (`SUPORTE` | `ADMIN`) e uma linha em
+  `app_metadata.plataforma` (`SUPORTE` | `ADMIN` | `GERENTE`) e uma linha em
   `platform_staff` — a fonte de verdade. Sem `tenant_id`, nenhuma RLS de rede
   o alcança: o painel lê pelo servidor (service role), conferindo a pessoa em
   cada página e action com `getPlatformContext`
-  (`packages/nucleo/src/lib/plataforma/contexto.ts`; `{ papel: 'ADMIN' }` em
-  todo o sistema).
+  (`packages/nucleo/src/lib/plataforma/contexto.ts`).
+- **O que cada papel alcança** é `papelAlcanca` (`lib/plataforma/destino.ts`,
+  2026-10-07): `administrar` (gravar no sistema) só o ADMIN; `ver-sistema`
+  (abrir as telas do sistema) o ADMIN e o GERENTE; `atender` (o suporte) o
+  SUPORTE e o ADMIN. No código: toda ACTION do sistema pede
+  `getPlatformContext({ papel: 'ADMIN' })`; toda PÁGINA do sistema,
+  `{ verSistema: true }` (menos `/redes/nova`, que só serve para criar); o
+  suporte usa o padrão, que é o atendimento — o padrão NEGA o Gerente, e papel
+  novo não alcança nada até entrar em `papelAlcanca`.
+- **O GERENTE** (pedido do Heitor, 2026-10-07) vê o sistema inteiro e não
+  edita nada: as telas trazem as partes editáveis num
+  `<fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>` (o
+  navegador trava todo controle de dentro; `display: contents` tira a caixa do
+  layout), sem "Nova rede" nem o link para o suporte, com o aviso "Só para
+  ver" no topo. Não entra no suporte, e o banco recusa abrir sessão de suporte
+  para ele (`suporte_sessao_abrir`). Prova: `e2e/plataforma-gerente.spec.ts`.
 - **A porta de cada host é o proxy** (`proxyDaPlataforma`, núcleo): nega por
   padrão; sem sessão, só o acesso e as rotas públicas do host (health, e no
   sistema o webhook e o cron; `/api/interno/expirar` nos dois); sessão de quem
@@ -444,7 +458,9 @@ um muro que não depende de cada trava do código.
 ❌ Confiar só no marcador de React cache para saber se é sessão de suporte numa action — é sessaoDeSuporteAtual (o token)
 ❌ Mexer numa autorização de suporte sem ler antes as sessões em curso (sessoesEmCurso) e expirar o cache delas
 ❌ Mostrar nota interna do chamado à clínica, ou o suporte autorizar acesso por conta própria
-❌ Página ou action do sistema sem getPlatformContext({ papel: 'ADMIN' }) (o proxy é a primeira parede, não a única)
+❌ Action do sistema sem getPlatformContext({ papel: 'ADMIN' }), ou página sem { verSistema: true } (o proxy é a primeira parede, não a única)
+❌ Abrir uma action do sistema ao GERENTE (ele só vê) ou o suporte a ele — o alcance de cada papel é papelAlcanca
+❌ Parte editável numa tela do sistema fora de um fieldset sistema-leitura (o Gerente veria o botão ativo)
 ❌ Pôr tela ou rota da plataforma no apps/web, ou código só da plataforma no núcleo (a clínica não carrega a plataforma)
 ❌ Levar a sessão do atendente ao domínio da clínica (o "entrar como" é o código de uso único; não há cookie de volta)
 ❌ /api/entrar sem conferir o Origin do PRÓPRIO painel (um script na clínica abriria sessões pelo cookie do atendente)

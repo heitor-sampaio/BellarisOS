@@ -12,7 +12,7 @@ import { getPlatformContext } from './contexto'
  */
 
 /** O papel que o app exige (o sistema passa ADMIN: o SUPORTE não verifica lá nem pela action). */
-interface DeQuem { papel?: 'ADMIN' }
+interface DeQuem { papel?: 'ADMIN'; verSistema?: boolean }
 
 export interface EstadoDaVerificacao {
   /** Já tem autenticador cadastrado e verificado. */

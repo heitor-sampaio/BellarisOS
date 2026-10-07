@@ -4,12 +4,13 @@ import { iniciarCadastroDoAutenticador, confirmarCodigo } from '@estetica-os/nuc
 
 /**
  * A verificação em duas etapas (o trabalho é do núcleo; ver lá). No sistema,
- * só ADMIN — o proxy já desvia o SUPORTE, e a action confere de novo.
+ * ADMIN e GERENTE (quem vê o sistema) — o proxy já desvia o SUPORTE, e a
+ * action confere de novo.
  */
 export async function iniciarVerificacao() {
-  return iniciarCadastroDoAutenticador({ papel: 'ADMIN' })
+  return iniciarCadastroDoAutenticador({ verSistema: true })
 }
 
 export async function confirmarVerificacao(factorId: string, codigo: string) {
-  return confirmarCodigo(factorId, codigo, { papel: 'ADMIN' })
+  return confirmarCodigo(factorId, codigo, { verSistema: true })
 }

@@ -31,7 +31,7 @@ export interface AtendenteDeTeste {
   staffId:     string
   authId:      string
   email:       string
-  papel:       'SUPORTE' | 'ADMIN'
+  papel:       'SUPORTE' | 'ADMIN' | 'GERENTE'
   /** O host da sessão de `estado`. */
   host:        HostDaPlataforma
   /** Arquivo de `storageState` (cookies no host da casa). */
@@ -111,11 +111,12 @@ async function sessaoVerificada(authId: string, email: string, segredo: string |
  */
 export async function criarAtendente(
   marca: string,
-  opcoes: { papel?: 'SUPORTE' | 'ADMIN'; semVerificacao?: boolean; fatorSemCodigo?: boolean; host?: HostDaPlataforma } = {},
+  opcoes: { papel?: 'SUPORTE' | 'ADMIN' | 'GERENTE'; semVerificacao?: boolean; fatorSemCodigo?: boolean; host?: HostDaPlataforma } = {},
 ): Promise<AtendenteDeTeste> {
   const db = banco()
   const papel = opcoes.papel ?? 'SUPORTE'
-  const host: HostDaPlataforma = opcoes.host ?? (papel === 'ADMIN' ? 'sistema' : 'suporte')
+  // O GERENTE (2026-10-07) só vê o sistema; o SUPORTE só atende.
+  const host: HostDaPlataforma = opcoes.host ?? (papel === 'SUPORTE' ? 'suporte' : 'sistema')
   const email = `e2e-plataforma-${marca}@bellaris.invalid`
   const estado = path.join(__dirname, '..', '.auth', `plataforma-${marca}-${host}.json`)
   const extras: string[] = []

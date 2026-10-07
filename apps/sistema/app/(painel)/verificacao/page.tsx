@@ -14,11 +14,11 @@ import { iniciarVerificacao, confirmarVerificacao } from '@/actions/verificacao'
  * A sessão é deste host — quem é ADMIN verifica no sistema e no suporte.
  */
 export default async function VerificacaoPage() {
-  await getPlatformContext({ semVerificacao: true, papel: 'ADMIN' })
+  await getPlatformContext({ semVerificacao: true, verSistema: true })
   const claims = await lerClaims()
   if (claims?.aal === 'aal2') redirect('/')
   const { pendente } = await verificacaoDaSessao()
-  const estado = await estadoDaVerificacao({ papel: 'ADMIN' })
+  const estado = await estadoDaVerificacao({ verSistema: true })
   return (
     <div className="suporte-centro">
       <div className="card suporte-cartao-estreito">

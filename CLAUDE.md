@@ -27,7 +27,7 @@ unidade impossível.
 
 E a PLATAFORMA — a equipe do BellarisOS — em dois apps próprios, cada um no seu
 host, fora da clínica (2026-10-06): o **sistema** (`apps/sistema`,
-admin.bellarisos.com, só ADMIN) e o **suporte** (`apps/suporte`,
+admin.bellarisos.com: o ADMIN administra, o GERENTE só vê) e o **suporte** (`apps/suporte`,
 suporte.bellarisos.com). Regras em `docs/regras/plataforma.md`.
 
 ---
@@ -72,7 +72,7 @@ estetica-os/                          (raiz do monorepo)
 │   │   ├── components/               shared/, admin/, branch/, client-portal/
 │   │   ├── lib/                      auth.ts, permissions, metrics/, … (e os shims do núcleo)
 │   │   └── actions/                  Server Actions
-│   ├── sistema/                      a ADMINISTRAÇÃO da plataforma (admin.*, só ADMIN)
+│   ├── sistema/                      a ADMINISTRAÇÃO da plataforma (admin.*, ADMIN; GERENTE vê)
 │   ├── suporte/                      o ATENDIMENTO da plataforma (suporte.*)
 │   └── native/                       Capacitor — casca Android da clínica
 ├── packages/

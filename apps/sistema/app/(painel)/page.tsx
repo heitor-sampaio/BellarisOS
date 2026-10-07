@@ -26,7 +26,7 @@ const quando = (iso: string | null) => iso
   : '—'
 
 export default async function PainelDoSistemaPage() {
-  await getPlatformContext({ papel: 'ADMIN' })
+  const ctx = await getPlatformContext({ verSistema: true })
   const admin = createAdminClient()
   const em7 = daquiADias(7)
   const [ind, atencao] = await Promise.all([
@@ -50,7 +50,7 @@ export default async function PainelDoSistemaPage() {
           <h1 className="suporte-titulo">Painel</h1>
           <p className="suporte-sub">{i.total ?? 0} {i.total === 1 ? 'rede' : 'redes'} no BellarisOS</p>
         </div>
-        <Link href="/redes/nova" className="btn-primary">Nova rede</Link>
+        {ctx.podeEditar && <Link href="/redes/nova" className="btn-primary">Nova rede</Link>}
       </div>
 
       <div className="sistema-kpis">

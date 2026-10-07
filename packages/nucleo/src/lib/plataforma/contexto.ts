@@ -6,6 +6,7 @@ import { createAdminClient } from '../supabase/admin'
 import { ler } from '../db'
 import { semAcesso } from '../sem-acesso'
 import { verificacaoDaSessao } from './verificacao-exigida'
+import { papelAlcanca } from './destino'
 
 /**
  * Quem é da PLATAFORMA — a equipe do BellarisOS que atende as redes
@@ -20,7 +21,8 @@ import { verificacaoDaSessao } from './verificacao-exigida'
   * Toda page e toda action do sistema e do suporte chama isto por si (o layout protege a
  * navegação, não a URL — §6).
  */
-export type PapelDaPlataforma = 'SUPORTE' | 'ADMIN'
+/** GERENTE (2026-10-07): vê o sistema inteiro, não edita nada, não entra no suporte. */
+export type PapelDaPlataforma = 'SUPORTE' | 'ADMIN' | 'GERENTE'
 
 export interface PlatformContext {
   authId:  string
@@ -29,6 +31,8 @@ export interface PlatformContext {
   email:   string
   papel:   PapelDaPlataforma
   ehAdmin: boolean
+  /** Só o ADMIN grava; o GERENTE vê. As telas do sistema travam os controles por isto. */
+  podeEditar: boolean
 }
 
 interface MembroDaPlataforma {
@@ -71,7 +75,7 @@ export const lerClaims = cache(async function lerClaims(): Promise<ClaimsDaSessa
 /** A sessão é de alguém da plataforma? (Só a marca — quem decide é o banco.) */
 export function marcaDaPlataforma(claims: ClaimsDaSessao | null): PapelDaPlataforma | null {
   const p = claims?.app_metadata?.plataforma
-  return p === 'SUPORTE' || p === 'ADMIN' ? p : null
+  return p === 'SUPORTE' || p === 'ADMIN' || p === 'GERENTE' ? p : null
 }
 
 /**
@@ -84,10 +88,14 @@ export function marcaDaPlataforma(claims: ClaimsDaSessao | null): PapelDaPlatafo
  *   própria tela de verificação (`semVerificacao`). Pendente é a regra de
  *   `verificacao-exigida.ts`: a plataforma a exige (opção do admin), ou a
  *   pessoa tem autenticador e ainda não digitou o código;
- * - `papel: 'ADMIN'` → só admin da plataforma.
+ * - o que a pessoa ALCANÇA (`papelAlcanca`, destino.ts): `papel: 'ADMIN'`
+ *   administra o sistema (toda action que grava); `verSistema` abre as telas
+ *   do sistema (ADMIN e GERENTE); sem nenhum dos dois, é o ATENDIMENTO (o
+ *   suporte: SUPORTE e ADMIN). O padrão nega o GERENTE — papel novo não passa
+ *   por descuido.
  */
 export const getPlatformContext = cache(async function getPlatformContext(
-  opcoes: { papel?: 'ADMIN'; semVerificacao?: boolean } = {},
+  opcoes: { papel?: 'ADMIN'; verSistema?: boolean; semVerificacao?: boolean } = {},
 ): Promise<PlatformContext> {
   const claims = await lerClaims()
   if (!claims) redirect('/login')
@@ -97,7 +105,8 @@ export const getPlatformContext = cache(async function getPlatformContext(
   if (!staff || !staff.is_active) throw semAcesso()
 
   if (!opcoes.semVerificacao && (await verificacaoDaSessao()).pendente) redirect('/verificacao')
-  if (opcoes.papel === 'ADMIN' && staff.papel !== 'ADMIN') throw semAcesso()
+  const alcance = opcoes.papel === 'ADMIN' ? 'administrar' : opcoes.verSistema ? 'ver-sistema' : 'atender'
+  if (!papelAlcanca(staff.papel, alcance)) throw semAcesso()
 
   return {
     authId:  claims.sub,
@@ -106,5 +115,6 @@ export const getPlatformContext = cache(async function getPlatformContext(
     email:   staff.email,
     papel:   staff.papel,
     ehAdmin: staff.papel === 'ADMIN',
+    podeEditar: staff.papel === 'ADMIN',
   }
 })

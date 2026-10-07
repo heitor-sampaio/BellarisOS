@@ -37,7 +37,7 @@ const quando = (iso: string | null) => iso
 export default async function RedesDoSistemaPage({ searchParams }: {
   searchParams: Promise<{ q?: string; teste?: string; situacao?: string }>
 }) {
-  await getPlatformContext({ papel: 'ADMIN' })
+  const ctx = await getPlatformContext({ verSistema: true })
   const { q, teste, situacao } = await searchParams
   const termo = termoDaUrl(q)
   const comTeste = teste === '1'
@@ -68,7 +68,7 @@ export default async function RedesDoSistemaPage({ searchParams }: {
           <Link href={comTeste ? '/redes' : '/redes?teste=1'} className="filtro-toggle" aria-pressed={comTeste}>
             Redes de teste
           </Link>
-          <Link href="/redes/nova" className="btn-primary">Nova rede</Link>
+          {ctx.podeEditar && <Link href="/redes/nova" className="btn-primary">Nova rede</Link>}
         </div>
       </div>
 

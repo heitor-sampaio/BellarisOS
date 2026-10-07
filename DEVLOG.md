@@ -1299,6 +1299,26 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-07 — O Gerente da equipe da plataforma: vê o sistema, não edita
+
+Pedido do Heitor: ao cadastrar alguém na equipe da plataforma, poder dar o
+papel **Gerente**, que vê tudo e não edita nada. Decisão dele: só o sistema
+(admin.bellarisos.com) — o suporte, com os chamados e o "entrar como", fica com
+Suporte e Admin.
+
+- O papel existe no banco (migration `20261007000004`) e no formulário da
+  Equipe ("Gerente (só vê o sistema)"); o convite leva ao sistema.
+- O que cada papel alcança mora num lugar só, `papelAlcanca`: administrar (só
+  Admin), ver o sistema (Admin e Gerente), atender (Suporte e Admin). As
+  páginas do sistema abrem para quem vê; as actions continuam só do Admin — é
+  por elas que o Gerente não grava nada. O padrão do contexto é o
+  atendimento, e ele NEGA o Gerente: papel novo não passa por descuido.
+- As telas vêm só para ver: as partes editáveis num fieldset desabilitado
+  (o navegador trava todo controle de dentro), sem "Nova rede" nem o link
+  para o suporte, com o aviso "Só para ver" no topo.
+- O suporte recusa o Gerente no login, na porta e na página; e o banco recusa
+  abrir sessão de suporte para ele.
+
 ### 2026-10-07 — Adicionais do plano: conexões de WhatsApp extras e o Copilot avulso
 
 Pedido do Heitor: oferecer conexões de WhatsApp além do limite do plano e o

@@ -2290,6 +2290,12 @@ a.suporte-link-forte:hover { color: var(--brand); }
 /* Os adicionais da rede, no sistema: uma linha por adicional. */
 .sistema-adicional { border: 1px solid var(--border); border-radius: var(--radius-card-token); padding: 12px 14px; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .sistema-adicional legend { padding: 0 4px; }
+/* O GERENTE da plataforma (2026-10-07): vê o sistema, não edita. O fieldset
+   desabilitado trava, pelo navegador, todo controle de dentro; aqui só sai a moldura. */
+/* display: contents — a caixa some do layout; o disabled, que é do DOM, segue valendo. */
+.sistema-leitura { display: contents; }
+.sistema-leitura:disabled :is(button, input, select, textarea) { cursor: not-allowed; }
+.sistema-somente-leitura { margin-bottom: 16px; padding: 8px 12px; border: 1px solid var(--brand-soft-border); border-radius: var(--radius-row); background: var(--brand-soft); color: var(--brand); font-size: var(--text-sm-sz); font-weight: var(--weight-semibold); }
 .sistema-adicional .field[data-largura="quantidade"] { width: 90px; }
 .sistema-adicional .field[data-largura="preco"] { width: 120px; }
 @media (max-width: 640px) {

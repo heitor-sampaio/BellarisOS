@@ -3,18 +3,19 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { ativarAtendente, criarAtendente, redefinirVerificacao, reenviarConvite } from '@/actions/plataforma'
+import type { PapelDaPlataforma } from '@estetica-os/nucleo/lib/plataforma/contexto'
 
 export interface PessoaDaPlataforma {
-  id: string; nome: string; email: string; papel: 'SUPORTE' | 'ADMIN'; ativo: boolean; euMesmo: boolean
+  id: string; nome: string; email: string; papel: PapelDaPlataforma; ativo: boolean; euMesmo: boolean
 }
 
-const PAPEL: Record<PessoaDaPlataforma['papel'], string> = { SUPORTE: 'Suporte', ADMIN: 'Admin da plataforma' }
+const PAPEL: Record<PessoaDaPlataforma['papel'], string> = { SUPORTE: 'Suporte', ADMIN: 'Admin da plataforma', GERENTE: 'Gerente (só vê o sistema)' }
 
 export function EquipeDaPlataforma({ pessoas }: { pessoas: PessoaDaPlataforma[] }) {
   const router = useRouter()
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
-  const [papel, setPapel] = useState<'SUPORTE' | 'ADMIN'>('SUPORTE')
+  const [papel, setPapel] = useState<PapelDaPlataforma>('SUPORTE')
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null)
   const [pendente, startTransition] = useTransition()
 
@@ -48,9 +49,10 @@ export function EquipeDaPlataforma({ pessoas }: { pessoas: PessoaDaPlataforma[] 
         </label>
         <label className="suporte-campo">
           <span className="field-label">Papel</span>
-          <select className="filtro-select" value={papel} onChange={e => setPapel(e.target.value as 'SUPORTE' | 'ADMIN')}>
-            <option value="SUPORTE">Suporte</option>
-            <option value="ADMIN">Admin da plataforma</option>
+          <select className="filtro-select" value={papel} onChange={e => setPapel(e.target.value as PapelDaPlataforma)}>
+            <option value="SUPORTE">{PAPEL.SUPORTE}</option>
+            <option value="GERENTE">{PAPEL.GERENTE}</option>
+            <option value="ADMIN">{PAPEL.ADMIN}</option>
           </select>
         </label>
         <button type="submit" className="btn-primary" disabled={pendente}>Cadastrar</button>
