@@ -91,6 +91,9 @@ test.describe.serial('redes no sistema', () => {
       await p.locator('input[name="responsavel"]').fill(`Responsável ${marca}`)
       await p.locator('input[name="email"]').fill(EMAIL)
       await p.locator('input[name="dias"]').fill('10')
+      // Valor explícito: o plano que vem escolhido é o primeiro da lista, e no CI pode
+      // ser um plano de teste de R$ 0,00 — que é rede de cortesia (em dia, sem teste).
+      await p.getByLabel('Valor mensal (R$)').fill('199,00')
       await p.getByRole('button', { name: 'Criar rede' }).click()
       await expect(p).toHaveURL(new RegExp(`^${SIS()}/redes/[0-9a-f-]{36}`), { timeout: 30_000 })
       redeNova = p.url().split('/').pop()!

@@ -1299,6 +1299,28 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-07 — "Adicionar número" abre uma conexão nova; o cartão do WhatsApp conta as conexões
+
+Bug relatado pelo Heitor: em Integrações, "Adicionar número" → "Conectar por
+aqui" mostrava o número JÁ conectado em vez de abrir uma instância nova. A
+tela de conexão (`UazapiConnect`) não sabia de qual caixa falava: pedia o
+estado sem id, e `getEstadoConexaoUazapi` devolvia "a única gerenciada da
+rede" — com uma, a conectada; com duas ou mais, nenhuma, e aí depois de criar
+a tela recarregava sem o id da nova e nunca chegava ao QR. Agora o id é
+obrigatório (`null` = conexão nova, sem o atalho da "única"), a tela recebe a
+caixa da lista ("Conexão" de uma linha) ou `null` (o "Adicionar número"), e
+depois de criar passa a seguir a caixa recém-criada.
+
+Pedido junto: o cartão do WhatsApp diz "Conexões de WhatsApp: X de Y em uso ·
+Z disponíveis" (o limite efetivo, plano + adicionais; "sem limite no plano"
+quando não há). Conta as ATIVAS, como `conferirLimite`: a que espera o QR
+não ocupa. Cheio, avisa que a conexão adicional se contrata na Assinatura.
+
+O E2E (`whatsapp-conexao-nova.spec.ts`) fala com a uazapi FALSA, que agora
+responde ao ciclo da instância (criar, status, QR) numa porta fixa: o build e
+o CI recebem `UAZAPI_BASE_URL` apontando para ela — à força no build, porque o
+`.env.local` traz a conta real, e cada instância criada lá é cobrada.
+
 ### 2026-10-07 — A tela da rede no sistema em blocos de leitura
 
 Pedido do Heitor: a tela da rede estava confusa — todos os formulários

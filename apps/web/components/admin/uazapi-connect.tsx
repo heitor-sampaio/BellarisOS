@@ -50,8 +50,15 @@ function Aviso({ tom, children }: { tom: 'erro' | 'ok' | 'espera'; children: Rea
   )
 }
 
-export function UazapiConnect() {
+export function UazapiConnect({ numeroId }: {
+  /** A caixa que esta tela opera; `null` = conectar um número NOVO. */
+  numeroId: string | null
+}) {
   const router = useRouter()
+  // A caixa de que se fala. Nasce da prop e passa a ser a recém-criada depois
+  // de "Conectar WhatsApp": sem isso a tela recarregava sem id e nunca chegava
+  // ao QR da conexão nova (2026-10-07).
+  const [alvo, setAlvo] = useState<string | null>(numeroId)
   const [estado,     setEstado]     = useState<EstadoConexaoUazapi | null>(null)
   const [qr,         setQr]         = useState<string | null>(null)
   const [erro,       setErro]       = useState<string | null>(null)
@@ -63,23 +70,21 @@ export function UazapiConnect() {
   const timerRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
   const tentativasRef = useRef(0)
 
-  // QUAL caixa esta tela opera. Vem do estado porque é o servidor que resolve
-  // "a conexão gerenciada desta rede" — e, quando houver mais de uma, é ele que
-  // se recusa a adivinhar. Todas as ações abaixo mandam este id, e o servidor
-  // confere que ele é mesmo desta rede: são endpoints públicos.
+  // QUAL caixa as ações operam: a que o servidor confirmou como desta rede.
+  // Todas mandam este id, e o servidor confere de novo — são endpoints públicos.
   const caixaId = estado?.numeroId ?? null
 
-  const carregarEstado = useCallback(async () => {
-    try { setEstado(await getEstadoConexaoUazapi()) }
+  const carregarEstado = useCallback(async (id: string | null) => {
+    try { setEstado(await getEstadoConexaoUazapi(id)) }
     catch (e) { setErro(erroParaTela(e, 'Não foi possível consultar a conexão.')) }
   }, [])
 
-  // Primeira leitura: o setState fica nos callbacks da promessa, não no efeito.
+  // Leitura a cada troca de alvo: o setState fica nos callbacks da promessa, não no efeito.
   useEffect(() => {
-    getEstadoConexaoUazapi()
+    getEstadoConexaoUazapi(alvo)
       .then(setEstado)
       .catch(e => setErro(erroParaTela(e, 'Não foi possível consultar a conexão.')))
-  }, [])
+  }, [alvo])
 
   // ⚠️ `tentativas` NÃO entra nas dependências.
   //
@@ -100,7 +105,7 @@ export function UazapiConnect() {
       const res = await getQrCodeUazapi(caixaId!)
       if (!vivo) return
       if (!res.ok) { setErro(res.error ?? 'Falha ao obter o QR code'); setPausado(true); return }
-      if (res.conectada) { setQr(null); await carregarEstado(); router.refresh(); return }
+      if (res.conectada) { setQr(null); await carregarEstado(caixaId); router.refresh(); return }
       if (res.qr) setQr(res.qr)
 
       tentativasRef.current += 1
@@ -125,7 +130,22 @@ export function UazapiConnect() {
       const res = await fn()
       if (!res.ok) { setErro(res.error ?? 'Não foi possível concluir'); return }
       depois?.()
-      await carregarEstado()
+      await carregarEstado(caixaId)
+      router.refresh()
+    })
+  }
+
+  // Cria a instância e passa a falar DELA. Também quando o webhook falhou
+  // depois de criada: a caixa existe, e é nela que se repara.
+  function criar() {
+    setErro(null)
+    startTransition(async () => {
+      const res = await criarConexaoUazapi()
+      if (!res.numeroId) { setErro(res.error ?? 'Não foi possível concluir'); return }
+      recomecarQr()
+      if (!res.ok) setErro(res.error ?? 'Não foi possível concluir')
+      setAlvo(res.numeroId)
+      await carregarEstado(res.numeroId)
       router.refresh()
     })
   }
@@ -185,7 +205,7 @@ export function UazapiConnect() {
         )}
         {erro && <Aviso tom="erro">{erro}</Aviso>}
 
-        <button type="button" onClick={() => comAcao(criarConexaoUazapi, recomecarQr)}
+        <button type="button" onClick={criar}
           disabled={isPending} className="btn-primary"
           style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 7 }}>
           <QrCode size={15} /> {isPending ? 'Criando…' : 'Conectar WhatsApp'}
@@ -219,7 +239,7 @@ export function UazapiConnect() {
         {erro && <Aviso tom="erro">{erro}</Aviso>}
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" onClick={carregarEstado} className="btn-ghost"
+          <button type="button" onClick={() => carregarEstado(caixaId)} className="btn-ghost"
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <RefreshCw size={14} /> Atualizar
           </button>

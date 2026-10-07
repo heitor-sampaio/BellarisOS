@@ -11,7 +11,7 @@ import {
   lerProxy, definirProxy,
 } from '@/lib/whatsapp/uazapi-admin'
 import { telefoneDoJid } from '@/lib/whatsapp/uazapi'
-import { getNumero, getNumerosDaRede } from '@/lib/whatsapp/factory'
+import { getNumero } from '@/lib/whatsapp/factory'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
 import { gravar, ler, tentar } from '@/lib/db'
 
@@ -93,19 +93,6 @@ async function numeroDaRede(
   return numero
 }
 
-/**
- * A caixa uazapi gerenciada desta rede, quando há exatamente UMA.
- *
- * Ponte para a tela que ainda não passa id. Com mais de uma caixa gerenciada
- * não existe "a" conexão da rede, e adivinhar aqui seria ressuscitar o
- * desempate silencioso — então devolve `null` e a tela precisa escolher.
- */
-async function unicaGerenciada(tenantId: string): Promise<NumeroDeWhatsApp | null> {
-  const geridas = (await getNumerosDaRede(tenantId))
-    .filter(n => n.provider === 'uazapi' && n.managed)
-  return geridas.length === 1 ? geridas[0]! : null
-}
-
 /** Quantas instâncias gerenciadas existem — conta TODAS as redes. */
 async function instanciasEmUso(): Promise<number> {
   // Coluna, não jsonb: `managed` deixou de morar dentro de `config` justamente
@@ -138,8 +125,14 @@ function baseDa(config: UazapiConfig): string {
 }
 
 export async function getEstadoConexaoUazapi(
-  /** Omitido: a rede tem UMA conexão gerenciada e é dela que se fala. */
-  numeroId?: string | null,
+  /**
+   * A caixa de que a tela fala; `null` = uma conexão NOVA (ainda sem instância).
+   *
+   * Sem "a única gerenciada da rede" quando falta o id (saiu em 2026-10-07): o
+   * "Adicionar número" pedia sem id e recebia a conexão JÁ conectada, e não
+   * havia como criar a segunda.
+   */
+  numeroId: string | null,
 ): Promise<EstadoConexaoUazapi> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
@@ -160,9 +153,7 @@ export async function getEstadoConexaoUazapi(
     teto:         tetoDeInstancias(),
   }
 
-  const numero = numeroId
-    ? await numeroDaRede(ctx.tenantId!, numeroId)
-    : await unicaGerenciada(ctx.tenantId!)
+  const numero = numeroId ? await numeroDaRede(ctx.tenantId!, numeroId) : null
 
   if (!numero?.managed) return { ...base, usadas: await instanciasEmUso() }
 

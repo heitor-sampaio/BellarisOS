@@ -55,6 +55,10 @@ jobs:
       ASAAS_BASE_URL_TESTE: http://127.0.0.1:3198
       ASAAS_API_KEY: $aact_hmlg_e2e-falsa
       ASAAS_WEBHOOK_TOKEN: e2e-token-do-webhook-do-asaas-0123456789abcdef
+      # A conexão gerenciada do WhatsApp cria instâncias na uazapi FALSA (porta
+      # fixa, e2e/apoio/uazapi-falsa.ts) — a real cobra cada uma.
+      UAZAPI_BASE_URL: http://127.0.0.1:3197
+      UAZAPI_ADMIN_TOKEN: e2e-admintoken-da-uazapi-falsa
       PLATAFORMA_ADMIN_EMAIL: e2e-plataforma-primeiro-admin@bellaris.invalid
       # Cookie de sessão sem Secure: o servidor do build roda em http (ver playwright.build.config.ts).
       COOKIE_DE_SESSAO_SEM_SECURE: "1"

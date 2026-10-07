@@ -25,6 +25,11 @@ process.env.META_GRAPH_BASE_TESTE ??= 'http://127.0.0.1:3199'
 process.env.ASAAS_BASE_URL_TESTE ??= 'http://127.0.0.1:3198'
 process.env.ASAAS_API_KEY ??= '$aact_hmlg_e2e-falsa'
 process.env.ASAAS_WEBHOOK_TOKEN ??= 'e2e-token-do-webhook-do-asaas-0123456789abcdef'
+// A uazapi FALSA (e2e/apoio/uazapi-falsa.ts, porta fixa) no lugar da real, À
+// FORÇA — não `??=`: o `.env.local` traz a conta de verdade, e cada instância
+// criada nela é cobrada. É o que a conexão gerenciada usa para criar instâncias.
+process.env.UAZAPI_BASE_URL = 'http://127.0.0.1:3197'
+process.env.UAZAPI_ADMIN_TOKEN = 'e2e-admintoken-da-uazapi-falsa'
 // O primeiro admin da plataforma por variável (e2e/plataforma-primeiro-admin.spec.ts).
 process.env.PLATAFORMA_ADMIN_EMAIL ??= 'e2e-plataforma-primeiro-admin@bellaris.invalid'
 // O cookie da sessão sem Secure: o servidor do build roda em http://127.0.0.1, e

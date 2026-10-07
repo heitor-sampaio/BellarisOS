@@ -299,6 +299,39 @@ function LinhaDoNumero({ numero, opcoes, ocupadas, onMudou, onConfigurar }: {
   )
 }
 
+/**
+ * Quantas conexões de WhatsApp o plano dá e quantas estão em uso (2026-10-07).
+ * Conta as ATIVAS, como `conferirLimite`: a que ainda espera o QR não ocupa.
+ */
+export function UsoDasConexoes({ emUso, limite }: { emUso: number; limite: number | null }) {
+  const sobra = limite === null ? null : Math.max(0, limite - emUso)
+  const cheio = sobra === 0
+  return (
+    <div data-uso-do-whatsapp style={{
+      display: 'flex', flexDirection: 'column', gap: 2,
+      padding: '9px 12px', marginBottom: 14, borderRadius: 'var(--radius-field-token)',
+      background: cheio ? 'var(--warning-soft)' : 'var(--bg-app)',
+      border: `1px solid ${cheio ? 'var(--warning-border)' : 'var(--border)'}`,
+    }}>
+      <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', margin: 0 }}>
+        Conexões de WhatsApp:{' '}
+        <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {limite === null ? `${emUso} em uso` : `${emUso} de ${limite} em uso`}
+        </strong>
+        {' · '}
+        {sobra === null
+          ? 'sem limite no plano'
+          : sobra === 0 ? 'nenhuma disponível' : `${sobra} ${sobra === 1 ? 'disponível' : 'disponíveis'}`}
+      </p>
+      {cheio && (
+        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--warning)', fontWeight: 600, margin: 0 }}>
+          Para conectar mais um número, contrate uma conexão adicional em Configurações → Assinatura.
+        </p>
+      )}
+    </div>
+  )
+}
+
 export function ListaDeNumeros({ numeros, opcoes, onAdicionar, onConfigurar }: {
   numeros: NumeroNaTela[]
   opcoes:  OpcoesDeVinculo

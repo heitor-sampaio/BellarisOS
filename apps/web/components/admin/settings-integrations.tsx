@@ -13,7 +13,7 @@ import {
   confirmMetaPageSelection, disconnectMetaMessaging,
 } from '@/actions/integrations'
 import type { IntegrationConfig, NumeroNaTela, OpcoesDeVinculo } from '@/actions/integrations'
-import { ListaDeNumeros } from '@/components/admin/lista-de-numeros'
+import { ListaDeNumeros, UsoDasConexoes } from '@/components/admin/lista-de-numeros'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { UazapiConnect } from '@/components/admin/uazapi-connect'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -1217,6 +1217,8 @@ interface SettingsIntegrationsProps {
   initialConfigs:   IntegrationConfig[]
   /** As caixas de WhatsApp — vêm de `whatsapp_numbers`, não de `integration_configs`. */
   numeros:          NumeroNaTela[]
+  /** Conexões de WhatsApp em uso (ativas) e o limite do plano (null = sem limite). */
+  usoDoWhatsapp:    { emUso: number; limite: number | null }
   /** Unidades e pessoas, para os vínculos de cada caixa. */
   opcoesDeVinculo:  OpcoesDeVinculo
   metaStep?:        string
@@ -1292,7 +1294,7 @@ function SectionCard({
   )
 }
 
-export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo, metaStep, metaError, metaErrorReason, configIdDoCadastro = null }: SettingsIntegrationsProps) {
+export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, opcoesDeVinculo, metaStep, metaError, metaErrorReason, configIdDoCadastro = null }: SettingsIntegrationsProps) {
   const [section,    setSection]    = useState<Section>(
     // Volta do OAuth: abre a seção que pede a escolha. O de anúncios volta com
     // `select`, e caía na seção do WhatsApp com a conta a escolher escondida.
@@ -1372,11 +1374,16 @@ export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo,
           cartão podia ser só o formulário; com dois, ele não conseguia nem
           dizer qual conexão estava no ar.
         */}
+        <UsoDasConexoes {...usoDoWhatsapp} />
+
         {numeros.length > 0 && (
           <ListaDeNumeros
             numeros={numeros}
             opcoes={opcoesDeVinculo}
-            onAdicionar={() => setEmEdicao("novo")}
+            onAdicionar={() => {
+              // Número novo começa pelo caminho fácil, não pelo da caixa aberta antes.
+              setWpProvider('uazapi'); setUazapiModo('gerenciada'); setEmEdicao('novo')
+            }}
             onConfigurar={configurar}
           />
         )}
@@ -1444,7 +1451,8 @@ export function SettingsIntegrations({ initialConfigs, numeros, opcoesDeVinculo,
               />
             </div>
             {uazapiModo === 'gerenciada'
-              ? <UazapiConnect />
+              // A chave remonta a tela ao trocar de caixa: cada uma tem o seu estado e o seu QR.
+              ? <UazapiConnect key={caixaEmEdicao?.id ?? 'novo'} numeroId={caixaEmEdicao?.id ?? null} />
               : <UazapiForm numero={caixaEmEdicao} />}
           </>
         ) : (

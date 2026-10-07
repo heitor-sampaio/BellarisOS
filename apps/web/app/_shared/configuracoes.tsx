@@ -1,5 +1,5 @@
 import { getTenantContext, can, temRecurso } from '@/lib/auth'
-import { lerRecursos, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
+import { lerRecursos, limiteDe, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RolesEditor } from '@/components/admin/roles-editor'
@@ -209,6 +209,14 @@ export async function Configuracoes({
   const [numerosDeWhatsApp, opcoesDeVinculo] = activeTab === 'integrations'
     ? await Promise.all([listarNumerosWhatsApp(), opcoesDeVinculoDoNumero()])
     : [[], { unidades: [], pessoas: [] }]
+  // Quantas conexões de WhatsApp o plano dá (o efetivo: plano + adicionais) e
+  // quantas estão em uso — os ATIVOS, a mesma conta de conferirLimite.
+  const usoDoWhatsapp = activeTab === 'integrations'
+    ? {
+        emUso: numerosDeWhatsApp.filter(n => n.isActive).length,
+        limite: limiteDe(lerRecursos(ctx.plano ?? null), 'whatsapp'),
+      }
+    : null
   const fichas: ItemDeFicha[] = ((formRows ?? []) as { id: string; name: string; schema: unknown; is_active: boolean | null }[]).map(r => ({
     id:       r.id,
     name:     r.name,
@@ -340,6 +348,7 @@ export async function Configuracoes({
         <SettingsIntegrations
           initialConfigs={integrationConfigs}
           numeros={numerosDeWhatsApp}
+          usoDoWhatsapp={usoDoWhatsapp ?? { emUso: 0, limite: null }}
           opcoesDeVinculo={opcoesDeVinculo}
           metaStep={metaStep}
           metaError={metaError === '1'}
