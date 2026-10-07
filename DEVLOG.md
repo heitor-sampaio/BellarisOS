@@ -1299,6 +1299,26 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-06 — Planos com funcionalidades e limites (em andamento)
+
+Pedido do Heitor: definir tudo ao criar um plano — as funcionalidades (caixa
+por funcionalidade) e os limites (slider de 1 a 10, ou ilimitado) — e o plano
+VALER na clínica. Decisões dele: definir e já aplicar; cada rede guarda o
+RETRATO do plano; limites = unidades, membros, números de WhatsApp; o Copilot
+(IA secretária) entra no catálogo como "em breve". Decisão minha: rede SEM plano
+(nenhuma rede real tem) continua com tudo liberado.
+
+- **Fase 1 — catálogo e retrato** (feita): o catálogo é fechado no código
+  (`packages/nucleo/src/lib/planos/recursos.ts`: 20 funcionalidades, 3
+  limites); `platform_plans.recursos` e `tenant_subscriptions.recursos`
+  (migration `20261006000003`; os planos antigos nasceram com tudo); a tela de
+  planos com as caixas e os sliders; atribuir o plano copia o retrato (trocar
+  só o valor não traz a versão nova); "Aplicar a versão atual do plano" na
+  tela da rede (auditoria `assinatura.plano_aplicado`); mudar o plano da rede
+  expira `rede:<id>` aqui e na clínica.
+- Fases seguintes: o corte nas permissões, as funcionalidades que são parte
+  de um módulo, os limites e a aba Assinatura da clínica.
+
 ### 2026-10-06 — Convite da equipe da plataforma: o e-mail conferido e o "Reenviar convite"
 
 O cadastro na Equipe do sistema não pede senha: o login nasce sem senha e o

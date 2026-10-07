@@ -16,6 +16,7 @@ import {
   ativarCobranca, levarValorAoAsaas, levarDadosAoAsaas, encerrarCobranca, sincronizarCobranca,
 } from '@/lib/redes/cobranca'
 import { configDoAsaas } from '@/lib/asaas/cliente'
+import { normalizarRecursos, TUDO_LIBERADO } from '@estetica-os/nucleo/lib/planos/recursos'
 
 /**
  * Expira uma tag AQUI e na CLÍNICA: a situação da rede e a sessão de suporte
@@ -63,7 +64,7 @@ function documentoValido(d: string | null): boolean {
   return !!d && (d.length === 11 || d.length === 14)
 }
 
-type PlanoDoCatalogo = { id: string; nome: string; valor_centavos: number }
+type PlanoDoCatalogo = { id: string; nome: string; valor_centavos: number; recursos: unknown }
 
 // --- Redes -------------------------------------------------------------------
 
@@ -101,7 +102,7 @@ export async function criarRede(d: NovaRedePeloSistema): Promise<Resultado<{ ten
     // Plano (se escolhido) e valor (o do plano, ou um especial).
     let plano = null as PlanoDoCatalogo | null
     if (d.planoId) {
-      plano = await ler(admin.from('platform_plans').select('id, nome, valor_centavos').eq('id', d.planoId).eq('ativo', true).maybeSingle(),
+      plano = await ler(admin.from('platform_plans').select('id, nome, valor_centavos, recursos').eq('id', d.planoId).eq('ativo', true).maybeSingle(),
         'buscar o plano') as PlanoDoCatalogo | null
       if (!plano) return { ok: false, error: 'Plano não encontrado ou desativado.' }
     }
@@ -134,7 +135,8 @@ export async function criarRede(d: NovaRedePeloSistema): Promise<Resultado<{ ten
     const avisos: string[] = []
     if (plano || valor != null) {
       const { error: eSub } = await admin.from('tenant_subscriptions').insert({
-        tenant_id: rede.tenantId, plan_id: plano?.id ?? null, valor_centavos: valor ?? 0,
+        // O RETRATO dos recursos do plano (lib/planos/recursos.ts); sem plano, nenhum (tudo liberado).
+        tenant_id: rede.tenantId, plan_id: plano?.id ?? null, valor_centavos: valor ?? 0, recursos: plano?.recursos ?? null,
       })
       if (eSub) avisos.push('O plano não foi gravado; defina-o no detalhe da rede.')
       else if (plano) await tentar(admin.from('tenants').update({ plan_name: plano.nome }).eq('id', rede.tenantId), 'gravar o nome do plano')
@@ -273,19 +275,53 @@ export async function definirAssinatura(tenantId: string, d: { planoId: string |
   try {
     const admin = createAdminClient()
     const plano = d.planoId
-      ? await ler(admin.from('platform_plans').select('id, nome').eq('id', d.planoId).maybeSingle(), 'buscar o plano') as { id: string; nome: string } | null
+      ? await ler(admin.from('platform_plans').select('id, nome, recursos').eq('id', d.planoId).maybeSingle(), 'buscar o plano') as { id: string; nome: string; recursos: unknown } | null
       : null
     if (d.planoId && !plano) return { ok: false, error: 'Plano não encontrado.' }
-    const antes = await ler(admin.from('tenant_subscriptions').select('plan_id, valor_centavos').eq('tenant_id', tenantId).maybeSingle(), 'ler a assinatura')
+    const antes = await ler(admin.from('tenant_subscriptions').select('plan_id, valor_centavos, recursos').eq('tenant_id', tenantId).maybeSingle(), 'ler a assinatura') as
+      { plan_id: string | null; valor_centavos: number; recursos: unknown } | null
+    // O RETRATO dos recursos só muda quando o PLANO muda (ou a rede ainda não
+    // tinha retrato): trocar só o valor não traz, de carona, a versão nova do
+    // plano — isso é o "Aplicar a versão atual do plano". Sem plano: nenhum
+    // retrato, tudo liberado.
+    const trocouDePlano = (antes?.plan_id ?? null) !== (plano?.id ?? null)
+    const recursos = !plano ? null : (trocouDePlano || antes?.recursos == null) ? plano.recursos : antes!.recursos
     await gravar(admin.from('tenant_subscriptions').upsert({
-      tenant_id: tenantId, plan_id: plano?.id ?? null, valor_centavos: valor, updated_at: new Date().toISOString(),
+      tenant_id: tenantId, plan_id: plano?.id ?? null, valor_centavos: valor, recursos, updated_at: new Date().toISOString(),
     }, { onConflict: 'tenant_id' }), 'gravar a assinatura')
     await gravar(admin.from('tenants').update({ plan_name: plano?.nome ?? null }).eq('id', tenantId).select('id').single(), 'gravar o nome do plano')
     let aviso: string | undefined
     try { await levarValorAoAsaas(tenantId) } catch (e) { aviso = `Gravado aqui, mas o Asaas recusou o valor novo: ${mensagemDoErro(e)}` }
-    await registrarNaPlataforma(ctx, 'assinatura.alterada', { tenantId, dados: { antes, depois: { plan_id: plano?.id ?? null, valor_centavos: valor } } })
+    await registrarNaPlataforma(ctx, 'assinatura.alterada', { tenantId, dados: { antes, depois: { plan_id: plano?.id ?? null, valor_centavos: valor, recursos } } })
+    // O plano decide o que a clínica pode usar: o portão dela lê na próxima tela.
+    await expirarAqui(tagDaRede(tenantId))
     recarregarRede(tenantId)
     return aviso ? { ok: false, error: aviso } : { ok: true }
+  } catch (e) {
+    return { ok: false, error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * "Aplicar a versão atual do plano": copia de novo os recursos do plano da
+ * rede para o retrato dela. Editar o plano no catálogo não muda quem já o
+ * assina (decisão do Heitor) — é aqui que o admin traz a mudança, rede a rede.
+ */
+export async function aplicarPlanoAtual(tenantId: string): Promise<Resultado> {
+  const ctx = await getPlatformContext({ papel: 'ADMIN' })
+  if (!ehUuid(tenantId)) return { ok: false, error: 'Pedido inválido.' }
+  try {
+    const admin = createAdminClient()
+    const sub = await ler(admin.from('tenant_subscriptions').select('plan_id, recursos').eq('tenant_id', tenantId).maybeSingle(), 'ler a assinatura') as
+      { plan_id: string | null; recursos: unknown } | null
+    if (!sub?.plan_id) return { ok: false, error: 'Esta rede não tem plano.' }
+    const plano = await ler(admin.from('platform_plans').select('recursos').eq('id', sub.plan_id).single(), 'ler o plano') as { recursos: unknown }
+    await gravar(admin.from('tenant_subscriptions').update({ recursos: plano.recursos, updated_at: new Date().toISOString() })
+      .eq('tenant_id', tenantId).select('tenant_id').single(), 'aplicar o plano à rede')
+    await registrarNaPlataforma(ctx, 'assinatura.plano_aplicado', { tenantId, dados: { plan_id: sub.plan_id, antes: sub.recursos, depois: plano.recursos } })
+    await expirarAqui(tagDaRede(tenantId))
+    recarregarRede(tenantId)
+    return { ok: true }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }
   }
@@ -392,17 +428,26 @@ export async function sincronizarComOAsaas(tenantId: string): Promise<Resultado<
 
 // --- Planos e configuração ---------------------------------------------------
 
-export async function salvarPlano(d: { id?: string | null; nome: string; descricao?: string | null; valorCentavos: number; ativo: boolean; ordem?: number }): Promise<Resultado> {
+export async function salvarPlano(d: { id?: string | null; nome: string; descricao?: string | null; valorCentavos: number; ativo: boolean; ordem?: number; recursos?: unknown }): Promise<Resultado> {
   const ctx = await getPlatformContext({ papel: 'ADMIN' })
   const nome = texto(d?.nome, 60)
   const valor = Math.round(Number(d?.valorCentavos))
   if (nome.length < 2) return { ok: false, error: 'Diga o nome do plano.' }
   if (!Number.isFinite(valor) || valor < 0) return { ok: false, error: 'Valor inválido.' }
   if (d.id != null && !ehUuid(d.id)) return { ok: false, error: 'Pedido inválido.' }
+  // O que o plano inclui (catálogo fechado): sem a lista, um plano NOVO nasce
+  // com tudo; editar sem ela não mexe no que o plano já tinha.
+  let recursos = d.id ? undefined : TUDO_LIBERADO
+  if (d.recursos !== undefined) {
+    const r = normalizarRecursos(d.recursos)
+    if (!r.ok) return { ok: false, error: r.error }
+    recursos = r.recursos
+  }
   try {
     const linha = {
       nome, descricao: texto(d.descricao, 500) || null, valor_centavos: valor, ativo: !!d.ativo,
       ordem: Number.isFinite(Number(d.ordem)) ? Math.round(Number(d.ordem)) : 0, updated_at: new Date().toISOString(),
+      ...(recursos ? { recursos } : {}),
     }
     const admin = createAdminClient()
     const { error } = d.id

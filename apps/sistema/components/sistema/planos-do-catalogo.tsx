@@ -5,14 +5,19 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { salvarPlano } from '@/actions/sistema'
 import { centavosDe, campoDeReais, reaisDe } from '@estetica-os/nucleo/lib/redes/valor'
+import { resumirRecursos, TUDO_LIBERADO, type RecursosDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
+import { RecursosDoPlanoCampos } from '@/components/sistema/recursos-do-plano'
 
-interface Plano { id: string; nome: string; descricao: string | null; valorCentavos: number; ativo: boolean; ordem: number; redes: number }
+interface Plano { id: string; nome: string; descricao: string | null; valorCentavos: number; ativo: boolean; ordem: number; redes: number; recursos: RecursosDoPlano }
 
-/** O catálogo: a lista e o formulário (novo ou editar). */
+/** O catálogo: a lista e o formulário (novo ou editar), com o que cada plano inclui. */
 export function PlanosDoCatalogo({ planos }: { planos: Plano[] }) {
   const router = useRouter()
   const [editando, setEditando] = useState<Plano | null>(null)
   const [chave, setChave] = useState(0)
+  // Plano novo nasce com tudo ligado e sem limite; editar parte do que ele tem.
+  const [recursos, setRecursos] = useState<RecursosDoPlano>(TUDO_LIBERADO)
+  const abrir = (p: Plano | null) => { setEditando(p); setRecursos(p?.recursos ?? TUDO_LIBERADO); setChave(k => k + 1) }
   const [pendente, iniciar] = useTransition()
 
   function salvar(form: FormData) {
@@ -21,11 +26,11 @@ export function PlanosDoCatalogo({ planos }: { planos: Plano[] }) {
     iniciar(async () => {
       const r = await salvarPlano({
         id: editando?.id ?? null, nome: String(form.get('nome') ?? ''), descricao: String(form.get('descricao') ?? '') || null,
-        valorCentavos: centavos, ativo: form.get('ativo') === 'on', ordem: Number(form.get('ordem') ?? 0),
+        valorCentavos: centavos, ativo: form.get('ativo') === 'on', ordem: Number(form.get('ordem') ?? 0), recursos,
       })
       if (!r.ok) { toast.error(r.error); return }
       toast.success(editando ? 'Plano salvo.' : 'Plano criado.')
-      setEditando(null); setChave(k => k + 1)
+      abrir(null)
       router.refresh()
     })
   }
@@ -39,11 +44,14 @@ export function PlanosDoCatalogo({ planos }: { planos: Plano[] }) {
             <tbody>
               {planos.map(p => (
                 <tr key={p.id}>
-                  <td data-label=""><span className="suporte-link-forte">{p.nome}</span>{p.descricao && <span className="suporte-texto-fraco"> · {p.descricao}</span>}</td>
+                  <td data-label="">
+                    <span className="suporte-link-forte">{p.nome}</span>{p.descricao && <span className="suporte-texto-fraco"> · {p.descricao}</span>}
+                    <div className="suporte-texto-fraco">{resumirRecursos(p.recursos)}</div>
+                  </td>
                   <td data-label="Valor mensal" data-par>{reaisDe(p.valorCentavos)}</td>
                   <td data-label="Redes" data-par>{p.redes}</td>
                   <td data-label="Situação" data-par>{p.ativo ? 'À venda' : 'Desativado'}</td>
-                  <td data-label=""><button type="button" className="btn-ghost" onClick={() => { setEditando(p); setChave(k => k + 1) }}>Editar</button></td>
+                  <td data-label=""><button type="button" className="btn-ghost" onClick={() => abrir(p)}>Editar</button></td>
                 </tr>
               ))}
             </tbody>
@@ -68,10 +76,12 @@ export function PlanosDoCatalogo({ planos }: { planos: Plano[] }) {
           </label>
           <label className="ajuda-check"><input type="checkbox" name="ativo" defaultChecked={editando ? editando.ativo : true} /> <span>À venda</span></label>
         </div>
-        <p className="suporte-texto-fraco">Mudar o valor aqui não muda o que as redes já combinaram — vale para as próximas.</p>
+        <h3 className="overline">O que o plano inclui</h3>
+        <RecursosDoPlanoCampos valor={recursos} mudar={setRecursos} />
+        <p className="suporte-texto-fraco">Mudar o valor ou o que o plano inclui não muda as redes que já o assinam — vale para as próximas. Para levar a mudança a uma rede, use &ldquo;Aplicar a versão atual do plano&rdquo; na tela dela.</p>
         <div className="sistema-acoes">
           <button type="submit" className="btn-primary" disabled={pendente}>{pendente ? 'Salvando…' : editando ? 'Salvar plano' : 'Criar plano'}</button>
-          {editando && <button type="button" className="btn-ghost" onClick={() => { setEditando(null); setChave(k => k + 1) }}>Cancelar</button>}
+          {editando && <button type="button" className="btn-ghost" onClick={() => abrir(null)}>Cancelar</button>}
         </div>
       </form>
     </div>

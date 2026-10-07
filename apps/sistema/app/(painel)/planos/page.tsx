@@ -2,6 +2,7 @@ import { getPlatformContext } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { ler } from '@estetica-os/nucleo/lib/db'
 import { PlanosDoCatalogo } from '@/components/sistema/planos-do-catalogo'
+import { lerRecursos, TUDO_LIBERADO } from '@estetica-os/nucleo/lib/planos/recursos'
 
 /**
  * O catálogo de planos que o BellarisOS vende. A rede guarda o RETRATO do
@@ -12,7 +13,7 @@ export default async function PlanosPage() {
   await getPlatformContext({ papel: 'ADMIN' })
   const admin = createAdminClient()
   const [planos, usos] = await Promise.all([
-    ler(admin.from('platform_plans').select('id, nome, descricao, valor_centavos, ativo, ordem').order('ordem').order('nome'), 'carregar os planos'),
+    ler(admin.from('platform_plans').select('id, nome, descricao, valor_centavos, ativo, ordem, recursos').order('ordem').order('nome'), 'carregar os planos'),
     ler(admin.from('tenant_subscriptions').select('plan_id'), 'contar as redes por plano'),
   ])
   const quantas = new Map<string, number>()
@@ -22,11 +23,14 @@ export default async function PlanosPage() {
       <div className="suporte-cabecalho">
         <div>
           <h1 className="suporte-titulo">Planos</h1>
-          <p className="suporte-sub">O que o BellarisOS vende. Cada rede guarda o valor combinado; mudar aqui vale para as próximas.</p>
+          <p className="suporte-sub">O que o BellarisOS vende: o valor, as funcionalidades e os limites de cada plano. Cada rede guarda o que combinou; mudar aqui vale para as próximas.</p>
         </div>
       </div>
-      <PlanosDoCatalogo planos={((planos ?? []) as { id: string; nome: string; descricao: string | null; valor_centavos: number; ativo: boolean; ordem: number }[])
-        .map(p => ({ id: p.id, nome: p.nome, descricao: p.descricao, valorCentavos: p.valor_centavos, ativo: p.ativo, ordem: p.ordem, redes: quantas.get(p.id) ?? 0 }))} />
+      <PlanosDoCatalogo planos={((planos ?? []) as { id: string; nome: string; descricao: string | null; valor_centavos: number; ativo: boolean; ordem: number; recursos: unknown }[])
+        .map(p => ({
+          id: p.id, nome: p.nome, descricao: p.descricao, valorCentavos: p.valor_centavos, ativo: p.ativo, ordem: p.ordem,
+          redes: quantas.get(p.id) ?? 0, recursos: lerRecursos(p.recursos) ?? TUDO_LIBERADO,
+        }))} />
     </div>
   )
 }

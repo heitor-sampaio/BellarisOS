@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   definirAssinatura, estenderTeste, marcarEmDia, cancelarAssinatura, reabrirAssinatura,
-  ativarCobrancaNoAsaas, sincronizarComOAsaas,
+  ativarCobrancaNoAsaas, sincronizarComOAsaas, aplicarPlanoAtual,
 } from '@/actions/sistema'
+import { resumirRecursos, type RecursosDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { centavosDe, campoDeReais, reaisDe } from '@estetica-os/nucleo/lib/redes/valor'
 
 /**
@@ -32,7 +33,7 @@ const vencimentoSugerido = (fimDoTeste: string | null) =>
 export function AssinaturaDaRede({ tenantId, rede, assinatura, faturas, planos, asaasPronto }: {
   tenantId: string
   rede: { planStatus: string | null; trialEndsAt: string | null; emAtrasoDesde: string | null; temDocumento: boolean }
-  assinatura: { planoId: string | null; valorCentavos: number; cobranca: 'sem_cobranca' | 'ativa' | 'cancelada'; asaasSubscriptionId: string | null; proximoVencimento: string | null } | null
+  assinatura: { planoId: string | null; valorCentavos: number; cobranca: 'sem_cobranca' | 'ativa' | 'cancelada'; asaasSubscriptionId: string | null; proximoVencimento: string | null; recursos: RecursosDoPlano | null } | null
   faturas: { id: string; valorCentavos: number; vencimento: string; situacao: string; pagoEm: string | null; url: string | null; removida: boolean }[]
   planos: { id: string; nome: string; valorCentavos: number; ativo: boolean }[]
   asaasPronto: boolean
@@ -86,6 +87,18 @@ export function AssinaturaDaRede({ tenantId, rede, assinatura, faturas, planos, 
         <div className="sistema-acoes">
           <button type="button" className="btn-secondary" disabled={pendente} onClick={salvarPlano}>Salvar plano e valor</button>
         </div>
+      </div>
+
+      {/* O que a rede pode usar: o RETRATO do plano (lib/planos/recursos.ts) */}
+      <div className="suporte-pilha">
+        <p className="suporte-texto">O que esta rede pode usar: <strong>{resumirRecursos(assinatura?.recursos ?? null)}</strong></p>
+        {assinatura?.planoId && (
+          <div className="sistema-acoes">
+            <span className="suporte-texto-fraco">A rede guarda o plano como era quando o recebeu. Mudou o plano no catálogo?</span>
+            <button type="button" className="btn-secondary" disabled={pendente}
+              onClick={() => rodar(() => aplicarPlanoAtual(tenantId), 'Plano aplicado à rede.')}>Aplicar a versão atual do plano</button>
+          </div>
+        )}
       </div>
 
       {/* Situação */}

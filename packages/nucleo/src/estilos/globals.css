@@ -2243,6 +2243,21 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .card-brand .sistema-kpi-nota { color: var(--on-brand); opacity: 0.85; }
 .sistema-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; align-items: end; }
 .sistema-form-cheio { grid-column: 1 / -1; }
+
+/* ── O que um plano inclui (/sistema/planos): funcionalidades e limites ── */
+.plano-recursos { display: flex; flex-direction: column; gap: 16px; }
+.plano-recursos-grupos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.plano-grupo { display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border); border-radius: var(--radius-card-token); padding: 12px 14px; margin: 0; min-width: 0; }
+.plano-grupo legend { padding: 0 4px; }
+.plano-em-breve { color: var(--text-muted); font-size: var(--text-xs-sz); }
+.plano-limite { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(120px, 2fr) 28px auto; gap: 12px; align-items: center; }
+.plano-limite input[type="range"] { width: 100%; accent-color: var(--brand); }
+.plano-limite input[type="range"]:disabled { opacity: .4; }
+.plano-limite-valor { font-weight: var(--weight-bold); color: var(--text); text-align: center; }
+@media (max-width: 640px) {
+  .plano-limite { grid-template-columns: 1fr 28px; }
+  .plano-limite .field-label { grid-column: 1 / -1; }
+}
 .sistema-acoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .sistema-situacao { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: var(--radius-chip-token);
   font-size: var(--text-2xs); font-weight: var(--weight-bold); white-space: nowrap; background: var(--brand-soft); color: var(--brand); }

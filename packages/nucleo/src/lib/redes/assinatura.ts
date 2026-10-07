@@ -1,4 +1,5 @@
 import 'server-only'
+import { lerRecursos, type RecursosDoPlano } from '../planos/recursos'
 import { createAdminClient } from '../supabase/admin'
 import { gravar, ler } from '../db'
 import { tagDaRede } from './cache'
@@ -30,6 +31,8 @@ export interface AssinaturaLida {
   assinatura: {
     planoId: string | null; valorCentavos: number; cobranca: 'sem_cobranca' | 'ativa' | 'cancelada'
     asaasCustomerId: string | null; asaasSubscriptionId: string | null; proximoVencimento: string | null
+    /** O RETRATO do que o plano inclui (lib/planos/recursos.ts); null = tudo liberado. */
+    recursos: RecursosDoPlano | null
   } | null
   faturas: {
     id: string; valorCentavos: number; vencimento: string; situacao: string; pagoEm: string | null
@@ -44,7 +47,7 @@ export async function lerAssinatura(tenantId: string): Promise<AssinaturaLida | 
       .select('id, name, document, email, phone, is_active, desligada_motivo, plan_status, plan_name, trial_ends_at, em_atraso_desde, created_at')
       .eq('id', tenantId).maybeSingle(), 'buscar a rede'),
     ler(admin.from('tenant_subscriptions')
-      .select('plan_id, valor_centavos, cobranca, asaas_customer_id, asaas_subscription_id, proximo_vencimento')
+      .select('plan_id, valor_centavos, cobranca, asaas_customer_id, asaas_subscription_id, proximo_vencimento, recursos')
       .eq('tenant_id', tenantId).maybeSingle(), 'buscar a assinatura'),
     ler(admin.from('subscription_invoices')
       .select('id, valor_centavos, vencimento, situacao, pago_em, invoice_url, removida')
@@ -60,7 +63,7 @@ export async function lerAssinatura(tenantId: string): Promise<AssinaturaLida | 
     assinatura: s ? {
       planoId: s.plan_id, valorCentavos: s.valor_centavos, cobranca: s.cobranca,
       asaasCustomerId: s.asaas_customer_id, asaasSubscriptionId: s.asaas_subscription_id,
-      proximoVencimento: s.proximo_vencimento,
+      proximoVencimento: s.proximo_vencimento, recursos: lerRecursos(s.recursos),
     } : null,
     faturas: ((f ?? []) as { id: string; valor_centavos: number; vencimento: string; situacao: string; pago_em: string | null; invoice_url: string | null; removida: boolean }[])
       .map(x => ({ id: x.id, valorCentavos: x.valor_centavos, vencimento: x.vencimento, situacao: x.situacao,
