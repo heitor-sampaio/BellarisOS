@@ -66,7 +66,9 @@ async function conferirSoNoServidor(p: Page) {
   const sessao = await cookiesDaSessao(p)
   expect(sessao.length).toBeGreaterThan(0)
   for (const c of sessao) expect(c.httpOnly, `${c.name} legível pelo JS`).toBe(true)
-  // E o JS da página, de fato, não enxerga nada.
+  // E o JS da página, de fato, não enxerga nada. Espera a página assentar: o
+  // login do cliente final ainda navegava, e o evaluate caía no meio (CI, 2026-10-07).
+  await p.waitForLoadState('networkidle')
   expect(await p.evaluate(() => document.cookie)).not.toContain('sb-')
 }
 

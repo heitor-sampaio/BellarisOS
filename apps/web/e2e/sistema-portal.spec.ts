@@ -105,7 +105,8 @@ test.describe.serial('administração do sistema', () => {
       await form.locator('input[name="descricao"]').fill('1 unidade')
       await form.getByRole('button', { name: 'Criar plano' }).click()
       await expect(p.getByText('Plano criado.')).toBeVisible({ timeout: 15_000 })
-      await expect(p.locator('tr', { hasText: PLANO })).toContainText('199,90')
+      // A linha da LISTA (nome e valor): o cabeçalho do comparativo, acima, também tem o nome.
+      await expect(p.locator('tr', { hasText: PLANO }).filter({ hasText: '199,90' })).toHaveCount(1)
     })
     const { data } = await db().from('platform_plans').select('valor_centavos, ativo').eq('nome', PLANO).single()
     expect(data).toEqual({ valor_centavos: 19990, ativo: true })
