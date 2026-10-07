@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ShieldOff, RotateCw, ArrowLeft } from 'lucide-react'
 import { ehSemAcesso } from '@/lib/sem-acesso'
+import { ehLimiteDoPlano } from '@estetica-os/nucleo/lib/planos/limite-digest'
 
 /**
  * Tela de erro do app.
@@ -24,11 +25,13 @@ export default function AppError({
   const router = useRouter()
   // Pelo `digest`: em produção a mensagem chega trocada (ver lib/sem-acesso).
   const forbidden = ehSemAcesso(error)
+  // O LIMITE do plano (unidades, membros, números): não é falha, é o contratado.
+  const limite = ehLimiteDoPlano(error)
 
   useEffect(() => {
     // Forbidden é esperado — não polui o log como se fosse falha.
-    if (!forbidden) console.error('[app/error]', error)
-  }, [error, forbidden])
+    if (!forbidden && !limite) console.error('[app/error]', error)
+  }, [error, forbidden, limite])
 
   return (
     <div style={{
@@ -50,7 +53,7 @@ export default function AppError({
           fontSize: 'var(--text-card-title)', fontWeight: 'var(--weight-extrabold)',
           color: 'var(--text)', marginBottom: 6,
         }}>
-          {forbidden ? 'Você não tem acesso a esta área' : 'Algo deu errado'}
+          {forbidden ? 'Você não tem acesso a esta área' : limite ? 'Limite do plano atingido' : 'Algo deu errado'}
         </h1>
 
         <p style={{
@@ -59,6 +62,8 @@ export default function AppError({
         }}>
           {forbidden
             ? 'Seu cargo não libera esta tela. Se precisar dela para trabalhar, fale com quem administra a rede.'
+            : limite
+            ? 'O plano da sua rede chegou ao limite de unidades, membros ou números de WhatsApp. Para ampliar, fale com o BellarisOS.'
             : 'A tela não conseguiu carregar. Tentar de novo costuma resolver; se insistir, avise quem administra a rede.'}
         </p>
 
@@ -66,7 +71,7 @@ export default function AppError({
           <button type="button" className="btn-secondary" onClick={() => router.back()}>
             <ArrowLeft size={14} /> Voltar
           </button>
-          {!forbidden && (
+          {!forbidden && !limite && (
             <button type="button" className="btn-primary" onClick={reset}>
               <RotateCw size={14} /> Tentar de novo
             </button>

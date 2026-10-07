@@ -1299,7 +1299,7 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
-### 2026-10-06 — Planos com funcionalidades e limites (em andamento)
+### 2026-10-06 — Planos com funcionalidades e limites
 
 Pedido do Heitor: definir tudo ao criar um plano — as funcionalidades (caixa
 por funcionalidade) e os limites (slider de 1 a 10, ou ilimitado) — e o plano
@@ -1337,7 +1337,14 @@ RETRATO do plano; limites = unidades, membros, números de WhatsApp; o Copilot
   gatilho `trg_retrato_sem_plano`, migration `…06`); os testes de "trocar só o
   valor" e "tirar o plano"; as regras em `docs/regras/plataforma.md` (chave
   nova no catálogo exige migration nova; a trava do plano é do app).
-- Fases seguintes: os limites e a aba Assinatura da clínica.
+- **Fase 4 — os limites** (feita): `conferirLimite` conta os ATIVOS e recusa
+  criar ou reativar unidade, membro (inclusive pelo suporte) e número de
+  WhatsApp (formulário, uazapi, cadastro incorporado) além do limite. O que já
+  existe acima não é apagado. O erro que atravessa até a tela tem digest
+  próprio (`BELLARIS_LIMITE_DO_PLANO`).
+- **Fase 5 — a clínica vê o plano** (feita): Configurações → Assinatura mostra
+  cada funcionalidade dentro ou fora e o uso de cada limite ("Unidades: 1 de
+  3").
 
 ### 2026-10-06 — Convite da equipe da plataforma: o e-mail conferido e o "Reenviar convite"
 

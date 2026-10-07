@@ -1,5 +1,6 @@
 'use server'
 
+import { conferirLimite } from '@estetica-os/nucleo/lib/planos/limites'
 import { revalidatePath } from 'next/cache'
 import { EVENTOS } from '@estetica-os/types'
 import { getPlatformContext } from '@estetica-os/nucleo/lib/plataforma/contexto'
@@ -60,6 +61,9 @@ export async function reativarMembroDaRede(tenantId: string, userId: string): Pr
     const membro = await membroDaRede(tenantId, userId)
     if (!membro) return { ok: false, error: 'Membro não encontrado nesta rede.' }
     if (membro.is_active) return { ok: false, error: 'Este membro já está ativo.' }
+    // O LIMITE de membros do plano vale para o suporte também (lib/planos/limites.ts).
+    const limite = await conferirLimite(tenantId, 'membros')
+    if (limite) return { ok: false, error: limite }
     const admin = createAdminClient()
     await reativarMembro(admin, { id: membro.id, tenantId, authId: membro.auth_id })
     // O fato fica na corrente da clínica como do SISTEMA (a plataforma não é

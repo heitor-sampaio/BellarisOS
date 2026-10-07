@@ -397,3 +397,111 @@ test('sem plano, sem retrato: o plano que some da rede leva o retrato junto (sem
   expect((await db().from('platform_plans').delete().eq('id', plano!.id)).error).toBeNull()
   expect((await recursosDaRede()).recursos).toBeNull()
 })
+
+/**
+ * Fase 4 — os LIMITES (unidades, membros, números de WhatsApp): criar ou
+ * reativar o que passaria do limite é recusado — inclusive para o dono; o que
+ * já existe acima dele não é apagado. Sem limite (ou sem plano), passa.
+ */
+test.describe.serial('os limites do plano — unidades, membros e números de WhatsApp', () => {
+  let dono: MembroDeTeste | null = null
+  let inativo: MembroDeTeste | null = null
+  let segundaUnidade: string | null = null
+  const LIMITE = /BELLARIS_LIMITE_DO_PLANO|O plano da sua rede permite até/
+  const comLimites = async (limites: { unidades: number | null; membros: number | null; whatsapp: number | null } | null) => {
+    const recursos = limites ? { funcionalidades: FUNCIONALIDADES.map(f => f.chave), limites } : null
+    expect((await db().from('tenant_subscriptions').upsert({ tenant_id: outra.tenantId, plan_id: planoBase, valor_centavos: 0, recursos }, { onConflict: 'tenant_id' })).error).toBeNull()
+    await expirarRede(outra.tenantId)
+  }
+  const ativos = async (tabela: 'branches' | 'users' | 'whatsapp_numbers') =>
+    ((await db().from(tabela).select('id').eq('tenant_id', outra.tenantId).eq('is_active', true)).data ?? []).length
+
+  test.beforeAll(async () => {
+    test.setTimeout(240_000)
+    expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', outra.tenantId)).error).toBeNull()
+    dono = await criarMembro(`prlim${marca}`, { tenant: outra.tenantId, donoDaRede: true, permissoes: [] })
+    inativo = await criarMembro(`prina${marca}`, { tenant: outra.tenantId, rotulo: 'Inativo', permissoes: [{ modulo: 'agenda', nivel: 'VIEW' }] })
+    expect((await db().from('users').update({ is_active: false }).eq('id', inativo.userId)).error).toBeNull()
+    const { data: b, error } = await db().from('branches').insert({ tenant_id: outra.tenantId, name: `[e2e] Unidade 2 ${marca}`, slug: `e2e-un2-${marca}`, is_active: false })
+      .select('id').single<{ id: string }>()
+    expect(error).toBeNull()
+    segundaUnidade = b!.id
+  })
+  test.afterAll(async () => {
+    await db().from('whatsapp_numbers').delete().eq('tenant_id', outra.tenantId)
+    if (segundaUnidade) await db().from('branches').delete().eq('id', segundaUnidade)
+    if (inativo) await inativo.limpar()
+    if (dono) await dono.limpar()
+  })
+
+  test('no limite: reativar unidade, reativar membro e ligar número novo são recusados', async ({ browser }) => {
+    expect((await db().from('whatsapp_numbers').insert({ tenant_id: outra.tenantId, provider: 'uazapi', label: `[e2e] Número ${marca}`, is_active: true, config: {} })).error).toBeNull()
+    await comLimites({ unidades: await ativos('branches'), membros: await ativos('users'), whatsapp: await ativos('whatsapp_numbers') })
+    await comSessao(browser, dono!.estado, async p => {
+      const u = await chamarAcao(p, 'actions/branches.ts', 'toggleBranchStatus', '/admin/settings', [segundaUnidade, true])
+      expect(u.texto, 'unidade').toMatch(LIMITE)
+      const m = await chamarAcao(p, 'actions/team.ts', 'reactivateTeamMember', '/admin/team', [inativo!.userId, '/admin/team'])
+      expect(m.texto, 'membro').toMatch(LIMITE)
+      const w = await chamarAcao(p, 'actions/integrations.ts', 'salvarNumeroWhatsApp', '/admin/settings', [null, 'uazapi', {}, true, { rotulo: `[e2e] Segundo ${marca}` }])
+      expect(w.texto, 'número').toMatch(LIMITE)
+    })
+    expect((await db().from('branches').select('is_active').eq('id', segundaUnidade!).single<{ is_active: boolean }>()).data!.is_active).toBe(false)
+    expect((await db().from('users').select('is_active').eq('id', inativo!.userId).single<{ is_active: boolean }>()).data!.is_active).toBe(false)
+    expect(await ativos('whatsapp_numbers')).toBe(1)
+  })
+
+  test('sem limite, as três passam', async ({ browser }) => {
+    await comLimites(null)
+    await comSessao(browser, dono!.estado, async p => {
+      const u = await chamarAcao(p, 'actions/branches.ts', 'toggleBranchStatus', '/admin/settings', [segundaUnidade, true])
+      expect(u.texto).not.toMatch(LIMITE)
+      const m = await chamarAcao(p, 'actions/team.ts', 'reactivateTeamMember', '/admin/team', [inativo!.userId, '/admin/team'])
+      expect(m.texto).not.toMatch(LIMITE)
+      const w = await chamarAcao(p, 'actions/integrations.ts', 'salvarNumeroWhatsApp', '/admin/settings', [null, 'uazapi', {}, true, { rotulo: `[e2e] Segundo ${marca}` }])
+      expect(w.texto).not.toMatch(LIMITE)
+    })
+    expect((await db().from('branches').select('is_active').eq('id', segundaUnidade!).single<{ is_active: boolean }>()).data!.is_active).toBe(true)
+    expect((await db().from('users').select('is_active').eq('id', inativo!.userId).single<{ is_active: boolean }>()).data!.is_active).toBe(true)
+    expect(await ativos('whatsapp_numbers')).toBe(2)
+  })
+})
+
+/**
+ * Fase 5 — a clínica vê o que o plano dela inclui (Configurações →
+ * Assinatura): cada funcionalidade, dentro ou fora, e o uso de cada limite.
+ */
+test.describe.serial('a aba Assinatura mostra o que o plano inclui', () => {
+  let dono: MembroDeTeste | null = null
+  test.beforeAll(async () => {
+    test.setTimeout(180_000)
+    expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', outra.tenantId)).error).toBeNull()
+    dono = await criarMembro(`prass${marca}`, { tenant: outra.tenantId, donoDaRede: true, permissoes: [] })
+  })
+  test.afterAll(async () => { if (dono) await dono.limpar() })
+
+  test('com plano: as funcionalidades dentro e fora, e o uso dos limites', async ({ browser }) => {
+    const funcionalidades = FUNCIONALIDADES.map(f => f.chave).filter(c => c !== 'pacotes')
+    expect((await db().from('tenant_subscriptions').upsert({ tenant_id: outra.tenantId, plan_id: planoBase, valor_centavos: 0,
+      recursos: { funcionalidades, limites: { unidades: 3, membros: null, whatsapp: 2 } } }, { onConflict: 'tenant_id' })).error).toBeNull()
+    await expirarRede(outra.tenantId)
+    const unidades = ((await db().from('branches').select('id').eq('tenant_id', outra.tenantId).eq('is_active', true)).data ?? []).length
+    await comSessao(browser, dono!.estado, async p => {
+      await p.goto('/admin/settings?tab=assinatura')
+      const card = p.locator('section', { hasText: 'O que o seu plano inclui' })
+      await expect(card).toBeVisible()
+      await expect(card.getByRole('listitem').filter({ hasText: 'Agenda' }).first()).toContainText('Incluído')
+      await expect(card.getByRole('listitem').filter({ hasText: 'Pacotes' })).toContainText('Fora do plano')
+      await expect(card.getByText(`Unidades: ${unidades} de 3`)).toBeVisible()
+      await expect(card.getByText(/Membros da equipe: \d+ · ilimitado/)).toBeVisible()
+    })
+  })
+
+  test('sem plano: tudo liberado', async ({ browser }) => {
+    expect((await db().from('tenant_subscriptions').update({ recursos: null }).eq('tenant_id', outra.tenantId)).error).toBeNull()
+    await expirarRede(outra.tenantId)
+    await comSessao(browser, dono!.estado, async p => {
+      await p.goto('/admin/settings?tab=assinatura')
+      await expect(p.locator('section', { hasText: 'O que o seu plano inclui' })).toContainText('Todas as funcionalidades, sem limite')
+    })
+  })
+})

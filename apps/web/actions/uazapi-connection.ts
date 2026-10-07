@@ -1,5 +1,6 @@
 'use server'
 
+import { conferirLimite } from '@estetica-os/nucleo/lib/planos/limites'
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -222,6 +223,9 @@ export async function criarConexaoUazapi(
   if (!conexaoGerenciadaDisponivel()) {
     return { ok: false, error: 'Conexão gerenciada indisponível nesta instalação.' }
   }
+  // O LIMITE de números de WhatsApp do plano da rede (lib/planos/limites.ts).
+  const limiteDoPlano = await conferirLimite(ctx.tenantId!, 'whatsapp')
+  if (limiteDoPlano) return { ok: false, error: limiteDoPlano }
 
   // O guard "uma por rede" saiu — é a trava que múltiplos números removem. O
   // teto por rede fica no lugar dele, porque cada instância é cobrada.

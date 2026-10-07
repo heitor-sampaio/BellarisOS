@@ -1,5 +1,6 @@
 'use server'
 
+import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, assertUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -37,6 +38,9 @@ export async function createBranch(
   const zipCode  = (formData.get('zip_code') as string)?.trim() || null
 
   if (!name) return { error: 'Nome é obrigatório.' }
+  // O LIMITE de unidades do plano da rede (lib/planos/limites.ts).
+  const limite = await conferirLimite(ctx.tenantId!, 'unidades')
+  if (limite) return { error: limite }
 
   const slug = slugRaw ? toSlug(slugRaw) : toSlug(name)
   if (!slug) return { error: 'Slug inválido.' }
@@ -92,6 +96,9 @@ export async function updateBranch(
   const zipCode           = (formData.get('zip_code') as string)?.trim() || null
 
   if (!name) return { error: 'Nome é obrigatório.' }
+  // O LIMITE de unidades do plano da rede (lib/planos/limites.ts).
+  const limite = await conferirLimite(ctx.tenantId!, 'unidades')
+  if (limite) return { error: limite }
   // Quem tem unidade fixa edita a dela; a da rede, todas (§11). Até 2026-09-28
   // a gerente da unidade A reescrevia os dados da B.
   assertUnidade(ctx, branchId)
@@ -130,6 +137,14 @@ export async function toggleBranchStatus(branchId: string, isActive: boolean) {
   if (ctx.branchId !== null) throw semAcesso()
 
   const supabase = createAdminClient()
+  // Reativar conta para o LIMITE de unidades do plano (lib/planos/limites.ts).
+  if (isActive) {
+    const atual = await ler(supabase.from('branches').select('is_active').eq('id', branchId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
+    if (atual && !atual.is_active) {
+      const limite = await conferirLimite(ctx.tenantId!, 'unidades')
+      if (limite) throw limiteDoPlano(limite)
+    }
+  }
   await gravar(supabase
     .from('branches')
     .update({ is_active: isActive })

@@ -162,6 +162,17 @@ um muro que não depende de cada trava do código.
       push ao paciente, API de Conversões, responsáveis por módulo); no banco,
       `private.rede_tem_recurso` (o ponto de fidelidade, os bônus e a emissão
       de documentos).
+  - **Os limites** (`lib/planos/limites.ts`: `conferirLimite`, que conta os
+    ATIVOS): criar e REATIVAR unidade (`createBranch`, `toggleBranchStatus`),
+    membro (`createTeamMember`, `reactivateTeamMember`, o reativar do
+    suporte) e número de WhatsApp (o formulário, a uazapi, o cadastro
+    incorporado). A action de formulário devolve `{ error }` com o limite; a
+    que é chamada por formulário que não lê o retorno lança `limiteDoPlano`
+    (digest `BELLARIS_LIMITE_DO_PLANO`, em `limite-digest.ts`, que a tela de
+    erro e `erroParaTela` reconhecem). O que já existe acima do limite não é
+    apagado — só não cresce.
+  - A clínica vê o plano em Configurações → Assinatura (`PlanoDaRede`): cada
+    funcionalidade dentro ou fora, e o uso de cada limite ("2 de 3").
   - O que só LÊ não trava (a ficha do cliente lê pacotes e planos que já
     existem), e o que JÁ foi vendido continua valendo (agendar a sessão de um
     pacote vendido). A comissão continua sendo calculada no banco; trava a

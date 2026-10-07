@@ -1,4 +1,5 @@
 import 'server-only'
+import { conferirLimite } from '@estetica-os/nucleo/lib/planos/limites'
 import { randomInt } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, tentar } from '@/lib/db'
@@ -127,6 +128,11 @@ export async function conectarPeloCadastro(
     .select('id, tenant_id').eq('phone_number_id', pedido.phoneNumberId).maybeSingle(), 'buscar a caixa do número')
   if (existente && existente.tenant_id !== tenantId) {
     return { ok: false, error: 'Este número já está conectado a outra conta do BellarisOS.' }
+  }
+  // Número NOVO na rede conta para o LIMITE do plano (lib/planos/limites.ts).
+  if (!existente) {
+    const limite = await conferirLimite(tenantId, 'whatsapp')
+    if (limite) return { ok: false, error: limite }
   }
 
   const pin = pedido.modo === 'cloud_api' ? String(randomInt(0, 1_000_000)).padStart(6, '0') : undefined

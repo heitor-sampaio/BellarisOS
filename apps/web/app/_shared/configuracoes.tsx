@@ -166,6 +166,14 @@ export async function Configuracoes({
       : null,
     ler(admin.from('platform_settings').select('dias_de_carencia').eq('id', 1).maybeSingle(), 'ler a carência'),
   ]) : null
+  // O uso de cada limite do plano (os ATIVOS), para o "2 de 3" da aba.
+  const usoDosLimites = assinatura ? Object.fromEntries(await Promise.all(
+    ([['unidades', 'branches'], ['membros', 'users'], ['whatsapp', 'whatsapp_numbers']] as const).map(async ([chave, tabela]) => {
+      const { count, error } = await admin.from(tabela).select('id', { count: 'exact', head: true }).eq('tenant_id', ctx.tenantId!).eq('is_active', true)
+      if (error) throw new Error(`contar ${chave}: ${error.message}`)
+      return [chave, count ?? 0] as const
+    }),
+  )) as Record<'unidades' | 'membros' | 'whatsapp', number> : null
 
   const modelosDeDocumento = activeTab === 'documentos' ? await modelosDaRede(ctx.tenantId!) : null
   const linkPelaConversa = activeTab === 'documentos' ? await envioPelaConversaLigado(ctx.tenantId!) : false
@@ -349,6 +357,7 @@ export async function Configuracoes({
           carencia={(extrasDaAssinatura?.[1] as { dias_de_carencia: number } | null)?.dias_de_carencia ?? 7}
           // Quem paga é a clínica, não o atendente do suporte entrando na conta.
           podePagar={!ctx.suporte}
+          uso={usoDosLimites ?? { unidades: 0, membros: 0, whatsapp: 0 }}
         />
       )}
 

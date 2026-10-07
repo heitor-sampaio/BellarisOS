@@ -1,5 +1,6 @@
 'use server'
 
+import { conferirLimite, limiteDoPlano } from '@estetica-os/nucleo/lib/planos/limites'
 import { revalidatePath, revalidateTag, updateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { bloqueioDoSuporte } from '@/lib/suporte/travas'
@@ -91,6 +92,9 @@ export async function createTeamMember(
 
   if (!name || !email || !roleId || !password) return { error: 'Preencha todos os campos.' }
   if (password.length < 8) return { error: 'A senha deve ter pelo menos 8 caracteres.' }
+  // O LIMITE de membros do plano da rede (lib/planos/limites.ts).
+  const limite = await conferirLimite(ctx.tenantId!, 'membros')
+  if (limite) return { error: limite }
 
   const admin = createAdminClient()
 
@@ -227,12 +231,12 @@ async function membroDaRede(
   userId: string,
 ) {
   const membro = await ler(admin
-    .from('users').select('id, auth_id, branch_id')
+    .from('users').select('id, auth_id, branch_id, is_active')
     .eq('id', userId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o membro')
   // E ao alcance (§11): a gerente da unidade A desativava — e bania do login —
   // gente da B e admins da rede.
   if (!membro || !alcancaUnidade(ctx, membro.branch_id as string | null)) throw new Error('Membro não encontrado.')
-  return membro as { id: string; auth_id: string | null }
+  return membro as { id: string; auth_id: string | null; is_active: boolean }
 }
 
 export async function deactivateTeamMember(userId: string, redirectPath: string = '/admin/team') {
@@ -283,6 +287,11 @@ export async function reactivateTeamMember(userId: string, redirectPath: string 
 
   const admin = createAdminClient()
   const membro = await membroDaRede(admin, ctx, userId)
+  // Reativar conta para o LIMITE de membros do plano (lib/planos/limites.ts).
+  if (!membro.is_active) {
+    const limite = await conferirLimite(ctx.tenantId!, 'membros')
+    if (limite) throw limiteDoPlano(limite)
+  }
   await gravar(admin.from('users').update({ is_active: true }).eq('id', userId).eq('tenant_id', ctx.tenantId!), 'reativar o membro')
   if (membro.auth_id) {
     const { error: erroDesbloqueio } = await admin.auth.admin.updateUserById(membro.auth_id, { ban_duration: 'none' })

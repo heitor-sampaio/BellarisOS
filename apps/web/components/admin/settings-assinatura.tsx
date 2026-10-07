@@ -1,6 +1,7 @@
 import { reaisDe } from '@/lib/redes/valor'
 import { rotuloDaSituacao } from '@/lib/redes/situacao'
 import type { AssinaturaLida } from '@/lib/redes/assinatura'
+import { PlanoDaRede } from '@/components/admin/plano-da-rede'
 
 /**
  * A assinatura do BellarisOS, do lado da CLÍNICA (Configurações → Assinatura):
@@ -16,8 +17,10 @@ const dia = (v: string | null) => v
   ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(v.length === 10 ? `${v}T12:00:00` : v))
   : '—'
 
-export function SettingsAssinatura({ dados, planoNome, carencia, podePagar }: {
+export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso }: {
   dados: AssinaturaLida; planoNome: string | null; carencia: number; podePagar: boolean
+  /** Quantos de cada limite a rede usa hoje (os ATIVOS). */
+  uso: Record<'unidades' | 'membros' | 'whatsapp', number>
 }) {
   const { rede, assinatura, faturas } = dados
   const suspendeEm = rede.emAtrasoDesde
@@ -44,6 +47,8 @@ export function SettingsAssinatura({ dados, planoNome, carencia, podePagar }: {
           A cobrança é feita pelo Asaas, por Pix, boleto ou cartão. Para mudar de plano, fale com o BellarisOS pela Ajuda.
         </p>
       </div>
+
+      <PlanoDaRede recursos={assinatura?.recursos ?? null} uso={uso} />
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <p className="overline" style={{ padding: '16px 16px 4px' }}>Faturas</p>

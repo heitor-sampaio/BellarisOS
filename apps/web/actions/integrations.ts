@@ -1,5 +1,6 @@
 ﻿'use server'
 
+import { conferirLimite } from '@estetica-os/nucleo/lib/planos/limites'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
@@ -69,6 +70,11 @@ export async function salvarNumeroWhatsApp(
     : null
 
   if (numeroId && !anterior) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
+  // Ligar um número (novo, ou que estava desligado) conta para o LIMITE do plano.
+  if (isActive && !(anterior?.is_active)) {
+    const limite = await conferirLimite(ctx.tenantId!, 'whatsapp')
+    if (limite) return { ok: false, error: limite }
+  }
 
   // Só as chaves do provedor, e sem string vazia. O segredo que a tela
   // recebeu mascarado volta como marcador: vale o que está no banco.

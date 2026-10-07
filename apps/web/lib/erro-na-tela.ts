@@ -1,4 +1,5 @@
 import { ehSemAcesso } from '@/lib/sem-acesso'
+import { ehLimiteDoPlano } from '@estetica-os/nucleo/lib/planos/limite-digest'
 
 /**
  * O texto a mostrar quando uma action LANÇOU (em vez de devolver `{ error }`).
@@ -16,6 +17,9 @@ import { ehSemAcesso } from '@/lib/sem-acesso'
 export function erroParaTela(e: unknown, padrao: string): string {
   if (e && typeof e === 'object' && ehSemAcesso(e as { message?: string; digest?: string })) {
     return 'Seu cargo não libera esta ação.'
+  }
+  if (e && typeof e === 'object' && ehLimiteDoPlano(e as { digest?: string })) {
+    return 'O plano da sua rede chegou ao limite. Para ampliar, fale com o BellarisOS.'
   }
   if (e instanceof Error && !('digest' in e) && e.message && !/server components/i.test(e.message)) {
     return e.message
