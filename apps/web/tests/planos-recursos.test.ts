@@ -90,3 +90,16 @@ describe('a migration', () => {
     expect([...lista].sort()).toEqual(FUNCIONALIDADES.map(f => f.chave).sort())
   })
 })
+
+describe('abasForaDoPlano (as abas de Relatórios)', () => {
+  it('sem retrato, nenhuma', async () => {
+    const { abasForaDoPlano } = await import('@estetica-os/nucleo/lib/planos/recursos')
+    expect(abasForaDoPlano(null)).toEqual([])
+  })
+  it('a aba de uma funcionalidade fora do plano sai: financeiro, agenda, estoque, comercial (oportunidades)', async () => {
+    const { abasForaDoPlano } = await import('@estetica-os/nucleo/lib/planos/recursos')
+    const fora = abasForaDoPlano(lerRecursos({ funcionalidades: ['relatorios', 'inbox'], limites: {} }))
+    expect([...fora].sort()).toEqual(['agenda', 'comercial', 'estoque', 'financeiro'])
+    expect(abasForaDoPlano(lerRecursos({ funcionalidades: ['relatorios', 'agenda', 'estoque', 'financeiro', 'oportunidades'], limites: {} }))).toEqual([])
+  })
+})

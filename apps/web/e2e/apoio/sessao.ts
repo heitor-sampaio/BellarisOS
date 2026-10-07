@@ -137,6 +137,12 @@ export async function criarMembro(
     rotulo?: string
     /** Outra rede `[e2e]` (`criarOutraRede`). Sem isto, a rede de teste. */
     tenant?: string
+    /**
+     * O membro entra no cargo de DONO da rede (o `NETWORK_ADMIN` que toda rede
+     * tem), em vez de um cargo novo com `permissoes`. É o que prova um corte
+     * que vale "inclusive para o dono" (o plano da rede).
+     */
+    donoDaRede?: boolean
   },
 ): Promise<MembroDeTeste> {
   const db     = banco()
@@ -147,6 +153,7 @@ export async function criarMembro(
   const branchId = opcoes.branchId ?? null
 
   let roleId: string | null = null
+  let cargoProprio = false
   let authId: string | null = null
   let userId: string | null = null
 
@@ -156,7 +163,7 @@ export async function criarMembro(
     if (userId) await db.from('appointments').update({ created_by_id: null }).eq('created_by_id', userId)
     if (userId) await db.from('users').delete().eq('id', userId)
     if (authId) await db.auth.admin.deleteUser(authId)
-    if (roleId) {
+    if (roleId && cargoProprio) {
       await db.from('role_report_tabs').delete().eq('role_id', roleId)
       await db.from('role_permissions').delete().eq('role_id', roleId)
       await db.from('tenant_roles').delete().eq('id', roleId)
@@ -165,6 +172,12 @@ export async function criarMembro(
   }
 
   try {
+    if (opcoes.donoDaRede) {
+      const { data: dono, error: erroDono } = await db.from('tenant_roles').select('id')
+        .eq('tenant_id', tenant).eq('key', 'NETWORK_ADMIN').single<{ id: string }>()
+      if (erroDono || !dono) throw new Error(`achar o cargo de dono da rede: ${erroDono?.message}`)
+      roleId = dono.id
+    } else {
     const { data: cargo, error: erroCargo } = await db.from('tenant_roles')
       .insert({
         tenant_id: tenant, key: `E2E_${marca}`.toUpperCase(), label: `${PREFIXO} ${rotulo} ${marca}`,
@@ -173,8 +186,10 @@ export async function criarMembro(
       .select('id').single<{ id: string }>()
     if (erroCargo) throw new Error(`criar o cargo: ${erroCargo.message}`)
     roleId = cargo!.id
+    cargoProprio = true
+    }
 
-    if (opcoes.permissoes.length) {
+    if (cargoProprio && opcoes.permissoes.length) {
       const { error: erroPerm } = await db.from('role_permissions').insert(opcoes.permissoes.map(p => ({
         tenant_id: tenant, role_id: roleId, module: p.modulo, level: p.nivel, scope: p.escopo ?? 'ALL',
       })))

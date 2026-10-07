@@ -12,6 +12,7 @@ import {
   NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS,
 } from '@/lib/permissions'
 import { semAcesso } from '@/lib/sem-acesso'
+import { abasForaDoPlano, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { headers } from 'next/headers'
 import { sessaoDeSuporte, sessaoVigente, registrarAcessoDoSuporte } from '@/lib/suporte/sessao'
 import { marcarSessaoDeSuporte } from '@/lib/suporte/requisicao'
@@ -52,10 +53,10 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   const redeDoContexto = isClient
     ? (meta.client_id ? await getCachedRedeDoCliente(meta.client_id) : null)
     : tenantId
-  if (redeDoContexto) {
-    const rede = await getCachedRede(redeDoContexto)
-    if (rede && redeBloqueada(rede)) redirect('/conta-suspensa')
-  }
+  const rede = redeDoContexto ? await getCachedRede(redeDoContexto) : null
+  if (rede && redeBloqueada(rede)) redirect('/conta-suspensa')
+  // O PLANO da rede (o retrato; null = sem plano = tudo liberado).
+  const plano = rede?.recursos ?? null
 
   const roleId = member?.roleId ?? meta.role_id ?? null
 
@@ -96,6 +97,18 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     reportTabs  = []
   }
 
+  // O PLANO corta por cima do cargo — inclusive o do dono da rede: módulo
+  // fora do plano vale NONE (menu, busca, configurações e toda action que
+  // passa por assertPermission/can), e a aba de Relatórios de uma
+  // funcionalidade fora também sai (lib/planos/recursos.ts).
+  if (!isClient && plano) {
+    const fora = modulosForaDoPlano(plano)
+    if (fora.length) permissions = { ...permissions, ...Object.fromEntries(fora.map(m => [m, 'NONE'])) }
+    const abasFora = abasForaDoPlano(plano)
+    reportTabs = reportTabs.filter(t => !abasFora.includes(t))
+    if (reportTabs.length === 0) permissions = { ...permissions, reports: 'NONE' }
+  }
+
   return {
     userId: authId,
     internalUserId: member?.id ?? null,
@@ -112,6 +125,7 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
     providesServices: member?.providesServices ?? false,
     isNetworkAdmin,
     isClient,
+    plano,
   }
 }
 

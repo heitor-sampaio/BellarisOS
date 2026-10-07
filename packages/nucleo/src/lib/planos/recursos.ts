@@ -154,3 +154,16 @@ export function resumirRecursos(r: RecursosDoPlano | null): string {
   const limites = LIMITES.map(l => `${l.rotulo.toLowerCase()}: ${r.limites[l.chave] ?? 'ilimitado'}`)
   return [`${r.funcionalidades.length} de ${FUNCIONALIDADES.length} funcionalidades`, ...limites].join(' · ')
 }
+
+/**
+ * As abas de Relatórios de uma funcionalidade fora do plano (a aba "estoque"
+ * sem estoque, a "comercial" sem oportunidades…). Sobram as gerais (visão
+ * geral, clientes, procedimentos, profissionais). Sem retrato, nenhuma.
+ */
+const ABA_DA_FUNCIONALIDADE: Record<string, ChaveDeFuncionalidade> = {
+  financeiro: 'financeiro', agenda: 'agenda', estoque: 'estoque', comercial: 'oportunidades',
+}
+export function abasForaDoPlano(recursos: RecursosDoPlano | null): string[] {
+  if (recursos === null) return []
+  return Object.entries(ABA_DA_FUNCIONALIDADE).filter(([, f]) => !recursos.funcionalidades.includes(f)).map(([aba]) => aba)
+}

@@ -44,6 +44,8 @@ interface RolesEditorProps {
   tabsByRole:  Record<string, ReportTab[]>
   /** Cargos e Equipe são módulos diferentes: sem `team`, o atalho não é link. */
   canSeeTeam:  boolean
+  /** Módulos que o PLANO da rede não inclui: a matriz não os oferece (lib/planos/recursos.ts). */
+  foraDoPlano?: AppModule[]
 }
 
 type Levels = Record<AppModule, PermissionLevel>
@@ -66,7 +68,7 @@ function buildScopes(perms: Partial<Record<AppModule, RoleModulePermission>>): S
   })) as Scopes
 }
 
-export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam }: RolesEditorProps) {
+export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam, foraDoPlano = [] }: RolesEditorProps) {
   const editable = roles.filter(r => !r.is_system)
   const [selectedId, setSelectedId] = useState<string | null>(editable[0]?.id ?? roles[0]?.id ?? null)
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
@@ -102,6 +104,7 @@ export function RolesEditor({ roles, permsByRole, tabsByRole, canSeeTeam }: Role
             perms={permsByRole[selected.id] ?? {}}
             tabs={tabsByRole[selected.id] ?? []}
             onDirtyChange={setDirty}
+            foraDoPlano={foraDoPlano}
           />
         )}
 
@@ -423,12 +426,13 @@ function SystemRoleCard({ role }: { role: EditorRole }) {
 // ─── Matriz de um cargo ──────────────────────────────────────────────────────
 
 function PermissionMatrix({
-  role, perms, tabs, onDirtyChange,
+  role, perms, tabs, onDirtyChange, foraDoPlano,
 }: {
   role: EditorRole
   perms: Partial<Record<AppModule, RoleModulePermission>>
   tabs: ReportTab[]
   onDirtyChange: (dirty: boolean) => void
+  foraDoPlano: AppModule[]
 }) {
   const [state, action, pending] = useActionState(saveRolePermissions, undefined)
   const [levels, setLevels] = useState<Levels>(() => buildLevels(perms))
@@ -520,7 +524,8 @@ function PermissionMatrix({
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-        {MODULE_GROUPS.map(group => (
+        {/* O que o plano da rede não inclui não aparece: daria acesso a nada. */}
+        {MODULE_GROUPS.map(g => ({ ...g, modules: g.modules.filter(m => !foraDoPlano.includes(m)) })).filter(g => g.modules.length > 0).map(group => (
           <section key={group.key}>
             <div style={{ marginBottom: 8 }}>
               <h4 className="overline">{group.label}</h4>

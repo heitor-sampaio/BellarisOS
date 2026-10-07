@@ -1,4 +1,5 @@
 import { getTenantContext, can } from '@/lib/auth'
+import { lerRecursos, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RolesEditor } from '@/components/admin/roles-editor'
@@ -306,6 +307,7 @@ export async function Configuracoes({
             permsByRole={permsByRole}
             tabsByRole={tabsByRole}
             canSeeTeam={atalhoParaEquipe && can(ctx, 'team', 'MANAGE')}
+            foraDoPlano={modulosForaDoPlano(lerRecursos(ctx.plano ?? null))}
           />
           {/* Depois da matriz: refina o escopo "só os meus" que se escolhe nela. */}
           {visibilidadeDoInbox && (

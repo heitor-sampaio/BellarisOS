@@ -93,6 +93,15 @@ export interface JwtClaims {
   client_id: string | null
 }
 
+/**
+ * O que o PLANO da rede inclui (o retrato; o catálogo e as regras moram em
+ * packages/nucleo/src/lib/planos/recursos.ts). null = rede sem plano = tudo.
+ */
+export interface RecursosNoContexto {
+  funcionalidades: readonly string[]
+  limites: { unidades: number | null; membros: number | null; whatsapp: number | null }
+}
+
 export interface TenantContext {
   userId: string          // auth.users.id (Supabase auth UUID)
   internalUserId: string | null  // public.users.id (FK usada em professional_id, created_by, etc.)
@@ -109,6 +118,12 @@ export interface TenantContext {
   providesServices: boolean         // atende clientes (profissional)
   isNetworkAdmin: boolean
   isClient: boolean
+  /**
+   * O plano da rede (o retrato). Os módulos fora dele já saíram de
+   * `permissions`; o que é PARTE de um módulo (pacotes, portal…) se confere
+   * com `temRecurso(ctx, …)`. null = sem plano = tudo liberado.
+   */
+  plano?: RecursosNoContexto | null
   /**
    * Esta sessão é do SUPORTE da plataforma entrando na conta do membro
    * (apps/web/lib/suporte). Nula numa sessão normal. Com ela, o nome que

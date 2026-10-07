@@ -1316,8 +1316,14 @@ RETRATO do plano; limites = unidades, membros, números de WhatsApp; o Copilot
   só o valor não traz a versão nova); "Aplicar a versão atual do plano" na
   tela da rede (auditoria `assinatura.plano_aplicado`); mudar o plano da rede
   expira `rede:<id>` aqui e na clínica.
-- Fases seguintes: o corte nas permissões, as funcionalidades que são parte
-  de um módulo, os limites e a aba Assinatura da clínica.
+- **Fase 2 — o corte nas permissões** (feita): o retrato vem no cache da rede
+  (`getCachedRede`, tag `rede:<id>`) e o `buildContext` derruba para NONE o
+  módulo cuja funcionalidade está fora — inclusive para o DONO da rede
+  (`NETWORK_ADMIN`), que antes tinha tudo por atalho. Saem também as abas de
+  Relatórios dessas funcionalidades (`abasForaDoPlano`), e a tela de Cargos
+  deixa de oferecer o módulo. `ctx.plano` leva o retrato adiante.
+- Fases seguintes: as funcionalidades que são parte de um módulo, os limites e
+  a aba Assinatura da clínica.
 
 ### 2026-10-06 — Convite da equipe da plataforma: o e-mail conferido e o "Reenviar convite"
 

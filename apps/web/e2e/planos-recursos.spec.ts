@@ -3,6 +3,17 @@ import { banco } from './apoio/banco'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
+import { criarMembro, type MembroDeTeste } from './apoio/sessao'
+import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
+
+/** Expira o cache da rede na clínica (`rede:<id>`), como o sistema faz depois de mudar o plano. */
+async function expirarRede(tenantId: string) {
+  const r = await fetch(`${process.env.E2E_BASE_URL}/api/interno/expirar`, {
+    method: 'POST', headers: { authorization: `Bearer ${process.env.INTERNO_SECRET}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ tags: [`rede:${tenantId}`] }),
+  })
+  expect(r.status).toBe(200)
+}
 
 /**
  * PLANOS com funcionalidades e limites (2026-10-06, decisão do Heitor).
@@ -129,5 +140,63 @@ test.describe.serial('planos com funcionalidades e limites — o catálogo e o r
       await chamarAcao(p, 'actions/sistema.ts', 'aplicarPlanoAtual', `${SIS()}/redes/${outra.tenantId}`, [outra.tenantId]).catch(() => null)
     })
     expect((await recursosDaRede()).recursos!.funcionalidades).toEqual(['agenda'])
+  })
+})
+
+/**
+ * Fase 2 — o corte nas permissões da clínica: a funcionalidade que é um
+ * MÓDULO inteiro (estoque, automações…) sai da rede quando o plano não a tem
+ * — inclusive para o DONO (NETWORK_ADMIN, que tem tudo). Sem plano, tudo.
+ */
+test.describe.serial('o plano corta módulos inteiros na clínica — inclusive para o dono', () => {
+  let dono: MembroDeTeste | null = null
+  const SEM_ACESSO = 'Você não tem acesso a esta área'
+  const retrato = (funcionalidades: string[]) => db().from('tenant_subscriptions')
+    .upsert({ tenant_id: outra.tenantId, valor_centavos: 0, recursos: { funcionalidades, limites: { unidades: null, membros: null, whatsapp: null } } }, { onConflict: 'tenant_id' })
+  const semEstoqueNemAutomacoes = () => FUNCIONALIDADES.map(f => f.chave).filter(c => c !== 'estoque' && c !== 'automacoes')
+
+  test.beforeAll(async () => {
+    test.setTimeout(180_000)
+    // A rede [e2e] já configurada: senão o dono cai no /setup em vez do portal.
+    expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', outra.tenantId)).error).toBeNull()
+    dono = await criarMembro(`prdono${marca}`, { tenant: outra.tenantId, donoDaRede: true, permissoes: [] })
+  })
+  test.afterAll(async () => { if (dono) await dono.limpar() })
+
+  test('fora do plano: some do menu, a tela e a action recusam; dentro, abre', async ({ browser }) => {
+    expect((await retrato(semEstoqueNemAutomacoes())).error).toBeNull()
+    await expirarRede(outra.tenantId)
+    await comSessao(browser, dono!.estado, async p => {
+      await p.goto('/admin/dashboard')
+      const menu = p.getByRole('complementary').getByRole('navigation')
+      await expect(menu.getByRole('button', { name: 'Agenda', exact: true })).toBeVisible()
+      await expect(menu.getByRole('button', { name: 'Estoque', exact: true })).toHaveCount(0)
+      await expect(menu.getByRole('button', { name: 'Automações', exact: true })).toHaveCount(0)
+
+      await p.goto('/admin/estoque')
+      if (new URL(p.url()).pathname === '/admin/estoque') await expect(p.getByText(SEM_ACESSO)).toBeVisible()
+
+      const r = await chamarAcao(p, 'actions/stock.ts', 'adminUpdateMinStock', '/admin/estoque',
+        ['00000000-0000-4000-8000-000000000000', outra.branchId, 9])
+      // Recusada: o digest de semAcesso(), ou o "Forbidden" de quem embrulha o erro.
+      expect(r.texto).toMatch(/BELLARIS_SEM_ACESSO|Forbidden/)
+    })
+  })
+
+  test('sem plano (sem retrato), o dono volta a ter tudo', async ({ browser }) => {
+    expect((await db().from('tenant_subscriptions').update({ recursos: null }).eq('tenant_id', outra.tenantId)).error).toBeNull()
+    // O retrato vem do cache da rede (60 s); quem muda pelo sistema expira na
+    // hora — aqui, pelo banco, expira-se pela rota interna, como o sistema faz.
+    await expirarRede(outra.tenantId)
+    await comSessao(browser, dono!.estado, async p => {
+      await p.goto('/admin/estoque')
+      await expect(p).toHaveURL(/\/admin\/estoque/)
+      await expect(p.getByText(SEM_ACESSO)).toHaveCount(0)
+      const r = await chamarAcao(p, 'actions/stock.ts', 'adminUpdateMinStock', '/admin/estoque',
+        ['00000000-0000-4000-8000-000000000000', outra.branchId, 9])
+      // Passou da trava: chega à conferência do produto (que não existe).
+      expect(r.texto).not.toMatch(/BELLARIS_SEM_ACESSO|Forbidden/)
+      expect(r.texto).toContain('Produto ou filial não encontrado')
+    })
   })
 })
