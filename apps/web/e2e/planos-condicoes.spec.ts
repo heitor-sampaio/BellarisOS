@@ -222,7 +222,9 @@ test.describe.serial('o sistema: dar cortesia e desconto na tela da rede', () =>
     const fim = daquiA(30)
     await comSessao(browser, admin.estado, async p => {
       await p.goto(`${SIS()}/redes/${outra.tenantId}`)
-      const plano = p.getByRole('group', { name: 'Condição: Plano' })
+      await p.getByRole('button', { name: 'Dar cortesia ou desconto' }).click()
+      const modal = p.getByRole('dialog', { name: 'Cortesia e desconto' })
+      const plano = modal.getByRole('group', { name: 'Condição: Plano' })
       await plano.getByRole('button', { name: 'Desconto em %' }).click()
       await plano.getByLabel('Percentual').fill('20')
       await plano.getByLabel('Até (opcional)').fill(fim)
@@ -230,7 +232,7 @@ test.describe.serial('o sistema: dar cortesia e desconto na tela da rede', () =>
       await expect(p.getByText('Condição salva.')).toBeVisible({ timeout: 15_000 })
       await expect(plano.getByText(`20% de desconto até ${br(fim)}`)).toBeVisible({ timeout: 15_000 })
 
-      const whats = p.getByRole('group', { name: 'Condição: Conexões de WhatsApp' })
+      const whats = modal.getByRole('group', { name: 'Condição: Conexões de WhatsApp' })
       await whats.getByRole('button', { name: 'Cortesia' }).click()
       await whats.getByRole('button', { name: 'Salvar' }).click()
       await expect(whats.getByText('Cortesia do BellarisOS')).toBeVisible({ timeout: 15_000 })
@@ -242,10 +244,27 @@ test.describe.serial('o sistema: dar cortesia e desconto na tela da rede', () =>
     expect((log ?? []).length).toBeGreaterThanOrEqual(2)
   })
 
+  test('a tela da rede é LEITURA: cada bloco resume, e o formulário só abre no modal (2026-10-07)', async ({ browser }) => {
+    await comSessao(browser, admin.estado, async p => {
+      await p.goto(`${SIS()}/redes/${outra.tenantId}`)
+      const assinatura = p.getByRole('region', { name: 'Assinatura' })
+      await expect(assinatura.getByText(/Total por mês/)).toBeVisible({ timeout: 20_000 })
+      await expect(p.getByRole('region', { name: 'Cortesia e desconto' }).getByText(/Conexões de WhatsApp: Cortesia do BellarisOS/)).toBeVisible()
+      for (const r of ['Adicionais', 'Situação', 'Cobrança no Asaas', 'Dados da rede', 'Acesso']) {
+        await expect(p.getByRole('region', { name: r }), r).toBeVisible()
+      }
+      // Nada de formulário aberto: o campo do valor só aparece no modal.
+      await expect(p.getByLabel('Valor mensal desta rede (R$)')).toHaveCount(0)
+      await assinatura.getByRole('button', { name: 'Mudar plano ou valor' }).click()
+      await expect(p.getByRole('dialog', { name: 'Plano e valor' }).getByLabel('Valor mensal desta rede (R$)')).toBeVisible()
+    })
+  })
+
   test('"Preço normal" tira a condição', async ({ browser }) => {
     await comSessao(browser, admin.estado, async p => {
       await p.goto(`${SIS()}/redes/${outra.tenantId}`)
-      const plano = p.getByRole('group', { name: 'Condição: Plano' })
+      await p.getByRole('button', { name: 'Dar cortesia ou desconto' }).click()
+      const plano = p.getByRole('dialog', { name: 'Cortesia e desconto' }).getByRole('group', { name: 'Condição: Plano' })
       await plano.getByRole('button', { name: 'Preço normal' }).click()
       await plano.getByRole('button', { name: 'Salvar' }).click()
       await expect(p.getByText('Condição salva.')).toBeVisible({ timeout: 15_000 })

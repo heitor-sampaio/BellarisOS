@@ -1299,6 +1299,18 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-07 — A tela da rede no sistema em blocos de leitura
+
+Pedido do Heitor: a tela da rede estava confusa — todos os formulários
+abertos ao mesmo tempo num card só, e a situação ("Em dia") sem título,
+parecendo parte da cortesia. Agora é uma grade de blocos de LEITURA —
+Assinatura (o plano, o total, o que pode usar), Adicionais, Cortesia e
+desconto, Situação, Cobrança no Asaas, Faturas, Dados da rede, Acesso — e cada
+bloco tem o botão que abre um modal só com aquele formulário ("Mudar plano ou
+valor", "Editar adicionais", "Dar cortesia ou desconto", "Estender teste",
+"Ligar cobrança", "Editar dados"…). No celular, uma coluna; o Gerente vê os
+botões travados. `BlocosDaRede` substitui `AssinaturaDaRede`.
+
 ### 2026-10-07 — Cortesia e desconto na assinatura da rede
 
 Pedido do Heitor: em Redes, poder dar como cortesia qualquer plano, conexões

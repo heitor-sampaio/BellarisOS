@@ -101,7 +101,7 @@ test.describe.serial('o Gerente da plataforma: vê o sistema, não edita', () =>
   test('as telas vêm só para ver: nenhum controle de edição ativo', async ({ browser }) => {
     await com(browser, gerente.estado, async p => {
       await p.goto(`${SIS()}/redes/${outra.tenantId}`)
-      await expect(p.getByRole('button', { name: 'Salvar plano e valor' })).toBeDisabled({ timeout: 20_000 })
+      await expect(p.getByRole('button', { name: 'Mudar plano ou valor' })).toBeDisabled({ timeout: 20_000 })
       await expect(p.getByText('Só para ver: o Gerente não edita.')).toBeVisible()
       await p.goto(`${SIS()}/planos`)
       await expect(p.getByRole('button', { name: 'Criar plano' })).toBeDisabled()

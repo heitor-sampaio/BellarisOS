@@ -33,7 +33,7 @@ export function AdicionaisDaRede({ tenantId, recursos, oferta, adicionais, valor
           cabe={adicionalCabeNoPlano(recursos, a.chave)} oferta={oferta[a.chave]?.valor_centavos ?? null} contratado={adicionais[a.chave] ?? null} />
       ))}
       <p className="suporte-texto">
-        Total por mês: <strong>{reaisDe(totalCentavos)}</strong>
+        Mensalidade com isto: <strong>{reaisDe(totalCentavos)}</strong>
         {totalCentavos !== valorCentavos + totalDosAdicionais(adicionais) ? (
           // Com cortesia ou desconto (Cortesia e desconto, logo abaixo), a soma não é mais plano + adicionais.
           <span className="suporte-texto-fraco"> (preço cheio: {reaisDe(valorCentavos + totalDosAdicionais(adicionais))})</span>

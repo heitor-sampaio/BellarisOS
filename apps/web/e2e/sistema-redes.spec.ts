@@ -127,7 +127,8 @@ test.describe.serial('redes no sistema', () => {
   test('o ADMIN edita os dados da rede pela tela', async ({ browser }) => {
     await comSessao(browser, admin.estado, async p => {
       await p.goto(`${SIS()}/redes/${redeNova}`)
-      await p.locator('form', { hasText: 'Salvar dados' }).locator('input[name="telefone"]').fill('(48) 99999-0000')
+      await p.getByRole('button', { name: 'Editar dados' }).click()
+      await p.getByRole('dialog', { name: 'Dados da rede' }).locator('input[name="telefone"]').fill('(48) 99999-0000')
       await p.getByRole('button', { name: 'Salvar dados' }).click()
       await expect(p.getByText('Dados da rede salvos.')).toBeVisible({ timeout: 15_000 })
     })

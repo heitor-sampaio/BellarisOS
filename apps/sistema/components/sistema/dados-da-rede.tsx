@@ -6,8 +6,10 @@ import { toast } from 'sonner'
 import { editarRede } from '@/actions/sistema'
 
 /** Nome, CPF/CNPJ, e-mail e telefone da rede (o slug fica). */
-export function DadosDaRede({ tenantId, inicial }: {
+export function DadosDaRede({ tenantId, inicial, onSalvo }: {
   tenantId: string; inicial: { nome: string; documento: string; email: string; telefone: string }
+  /** Salvou: quem abriu (o modal do bloco) fecha. */
+  onSalvo?: () => void
 }) {
   const router = useRouter()
   const [erro, setErro] = useState<string | null>(null)
@@ -22,6 +24,7 @@ export function DadosDaRede({ tenantId, inicial }: {
       })
       if (!r.ok) { setErro(r.error); return }
       toast.success('Dados da rede salvos.')
+      onSalvo?.()
       router.refresh()
     })
   }

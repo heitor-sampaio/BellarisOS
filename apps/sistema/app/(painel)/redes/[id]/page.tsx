@@ -7,9 +7,7 @@ import { ler } from '@estetica-os/nucleo/lib/db'
 import { lerAssinatura } from '@estetica-os/nucleo/lib/redes/assinatura'
 import { configDoAsaas } from '@/lib/asaas/cliente'
 import { SituacaoDaRede } from '@/components/sistema/situacao-da-rede'
-import { DadosDaRede } from '@/components/sistema/dados-da-rede'
-import { AssinaturaDaRede } from '@/components/sistema/assinatura-da-rede'
-import { AcessoDaRede } from '@/components/sistema/acesso-da-rede'
+import { BlocosDaRede } from '@/components/sistema/blocos-da-rede'
 import { urlDoHost } from '@estetica-os/nucleo/lib/plataforma/destino'
 
 /**
@@ -40,6 +38,8 @@ export default async function RedeDoSistemaPage({ params }: { params: Promise<{ 
   await registrarVisitaDaRede(ctx, id)
   const nomeDoCargo = new Map(((cargos ?? []) as { id: string; label: string }[]).map(c => [c.id, c.label]))
   const asaas = configDoAsaas()
+  const listaDePlanos = ((planos ?? []) as { id: string; nome: string; valor_centavos: number; ativo: boolean }[])
+    .map(p => ({ id: p.id, nome: p.nome, valorCentavos: p.valor_centavos, ativo: p.ativo }))
 
   return (
     <div className="suporte-pilha-larga">
@@ -52,27 +52,22 @@ export default async function RedeDoSistemaPage({ params }: { params: Promise<{ 
         <SituacaoDaRede ativa={a.rede.ativa} planStatus={a.rede.planStatus} />
       </div>
 
-      <section className="card suporte-secao">
-        <h2 className="overline">Assinatura</h2>
-        <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
-        <AssinaturaDaRede
+      {/* Em blocos de leitura; cada um abre o modal do que edita (2026-10-07). O Gerente vê travado. */}
+      <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
+        <BlocosDaRede
           tenantId={id}
-          rede={{ planStatus: a.rede.planStatus, trialEndsAt: a.rede.trialEndsAt, emAtrasoDesde: a.rede.emAtrasoDesde, temDocumento: !!a.rede.documento }}
+          rede={{
+            planStatus: a.rede.planStatus, trialEndsAt: a.rede.trialEndsAt, emAtrasoDesde: a.rede.emAtrasoDesde,
+            temDocumento: !!a.rede.documento, ativa: a.rede.ativa, desligadaMotivo: a.rede.desligadaMotivo,
+          }}
+          dados={{ nome: a.rede.nome, documento: a.rede.documento ?? '', email: a.rede.email, telefone: a.rede.telefone ?? '' }}
           assinatura={a.assinatura}
+          nomeDoPlano={a.assinatura?.planoId ? (listaDePlanos.find(p => p.id === a.assinatura!.planoId)?.nome ?? a.rede.planName) : null}
           faturas={a.faturas}
-          planos={((planos ?? []) as { id: string; nome: string; valor_centavos: number; ativo: boolean }[])
-            .map(p => ({ id: p.id, nome: p.nome, valorCentavos: p.valor_centavos, ativo: p.ativo }))}
+          planos={listaDePlanos}
           asaasPronto={asaas.temChave}
         />
-        </fieldset>
-      </section>
-
-      <section className="card suporte-secao">
-        <h2 className="overline">Dados da rede</h2>
-        <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
-          <DadosDaRede tenantId={id} inicial={{ nome: a.rede.nome, documento: a.rede.documento ?? '', email: a.rede.email, telefone: a.rede.telefone ?? '' }} />
-        </fieldset>
-      </section>
+      </fieldset>
 
       <section className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <h2 className="overline suporte-secao-titulo">Equipe ({(membros ?? []).length})</h2>
@@ -90,13 +85,6 @@ export default async function RedeDoSistemaPage({ params }: { params: Promise<{ 
             ))}
           </tbody>
         </table>
-      </section>
-
-      <section className="card suporte-secao sistema-perigo">
-        <h2 className="overline">Acesso</h2>
-        <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
-          <AcessoDaRede tenantId={id} ativa={a.rede.ativa} motivo={a.rede.desligadaMotivo} />
-        </fieldset>
       </section>
 
       <section className="card suporte-secao">

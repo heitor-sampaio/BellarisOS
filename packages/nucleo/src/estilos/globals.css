@@ -2294,6 +2294,22 @@ a.suporte-link-forte:hover { color: var(--brand); }
    desabilitado trava, pelo navegador, todo controle de dentro; aqui só sai a moldura. */
 /* display: contents — a caixa some do layout; o disabled, que é do DOM, segue valendo. */
 .sistema-leitura { display: contents; }
+/* A tela da rede no sistema, em blocos de leitura (2026-10-07): grade de duas
+   colunas, os largos na linha inteira; no celular, uma. */
+.rede-blocos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.rede-bloco { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.rede-bloco-largo { grid-column: 1 / -1; }
+.rede-bloco-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+.rede-bloco-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.rede-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 24px; }
+.rede-resumo-rotulo { font-size: var(--text-xs-sz); color: var(--text-muted); font-weight: var(--weight-semibold); }
+.rede-resumo-valor { font-size: var(--text-sm-sz); color: var(--text); }
+.rede-resumo-valor strong { font-size: var(--text-card-title); font-weight: var(--weight-extrabold); }
+.rede-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--text-sm-sz); color: var(--text); }
+.rede-dados { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; font-size: var(--text-sm-sz); }
+.rede-dados dt { color: var(--text-muted); font-weight: var(--weight-semibold); }
+.rede-dados dd { margin: 0; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 767px) { .rede-blocos { grid-template-columns: minmax(0, 1fr); } }
 /* Formulário dentro de um modal do sistema (JanelaModal): título, campos empilhados, ações à direita. */
 .sistema-janela { display: flex; flex-direction: column; gap: 14px; padding: 20px 24px; }
 .sistema-janela .suporte-campo { min-width: 0; flex: none; }
