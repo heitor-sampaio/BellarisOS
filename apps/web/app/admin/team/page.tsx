@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { ComissaoDoMembro } from '@/components/admin/comissao-do-membro'
 import { regrasDaRede, procedimentosParaComissao } from '@/lib/comissoes/leitura'
@@ -81,7 +81,7 @@ export default async function AdminTeamPage({
 
   // A comissão de cada um é do financeiro, não da equipe: quem gere a equipe
   // sem `financial: MANAGE` não vê nem muda quanto cada um ganha.
-  const podeComissao = can(ctx, 'financial', 'MANAGE')
+  const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes')
   const [regras, procedimentos] = podeComissao
     ? await Promise.all([regrasDaRede(ctx.tenantId!), procedimentosParaComissao(ctx.tenantId!, ctx.branchId)])
     : [null, []]

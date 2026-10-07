@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
-import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
+import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { funnelStats } from '@/lib/crm'
 import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'

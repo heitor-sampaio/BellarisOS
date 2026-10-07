@@ -1,6 +1,7 @@
 'use server'
 
-import { getTenantContext, ownerFilter, assertUnidade } from '@/lib/auth'
+import { getTenantContext, ownerFilter, assertUnidade, temRecurso } from '@/lib/auth'
+import type { ChaveDeFuncionalidade } from '@estetica-os/nucleo/lib/planos/recursos'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
@@ -56,7 +57,7 @@ export async function buscarTudo(termo: string, slug: string | null): Promise<
     }
     const unidade = ctx.branchId ?? unidadeDoPortal
 
-    const tipos = tiposPermitidos(ctx.permissions)
+    const tipos = tiposPermitidos(ctx.permissions, c => temRecurso(ctx, c as ChaveDeFuncionalidade))
     const doBanco = tipos.filter(t => t !== 'conversa')
 
     const [linhas, conversas] = await Promise.all([

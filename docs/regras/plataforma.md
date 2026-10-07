@@ -161,7 +161,13 @@ um muro que não depende de cada trava do código.
     - o que roda sem tela confere `redeTemRecurso` (automações, campanhas,
       push ao paciente, API de Conversões, responsáveis por módulo); no banco,
       `private.rede_tem_recurso` (o ponto de fidelidade, os bônus e a emissão
-      de documentos).
+      de documentos e o pendente, que sem o módulo não trava atendimento nem
+      checkout — ninguém conseguiria assinar nem dispensar);
+    - dentro do inbox, o painel da conversa esconde as oportunidades sem
+      `oportunidades` e o "Agendar" sem `agenda` (`comOportunidades`,
+      `comAgenda` no cartão); a busca tira conversa, oportunidade e pacote
+      pelo plano (`RECURSO_DO_TIPO`); a sessão de atendimento não oferece
+      montar plano sem `planos_de_tratamento`.
   - **Os limites** (`lib/planos/limites.ts`: `conferirLimite`, que conta os
     ATIVOS): criar e REATIVAR unidade (`createBranch`, `toggleBranchStatus`),
     membro (`createTeamMember`, `reactivateTeamMember`, o reativar do
@@ -170,9 +176,20 @@ um muro que não depende de cada trava do código.
     que é chamada por formulário que não lê o retorno lança `limiteDoPlano`
     (digest `BELLARIS_LIMITE_DO_PLANO`, em `limite-digest.ts`, que a tela de
     erro e `erroParaTela` reconhecem). O que já existe acima do limite não é
-    apagado — só não cresce.
+    apagado — só não cresce. EDITAR o que existe não confere limite.
+    - **O banco é a segunda linha** (`private.limite_do_plano`, gatilho
+      `trg_limite_do_plano` em `branches`, `users` e `whatsapp_numbers`):
+      toda linha que FICA ativa (insert ativo, ou inativa → ativa) trava a
+      rede com `pg_advisory_xact_lock`, conta os ativos e recusa com P0001 e
+      hint `BELLARIS_LIMITE_DO_PLANO`. Cobre a linha que nasce inativa e é
+      ligada depois (uazapi, cadastro incorporado) e dois cliques ao mesmo
+      tempo.
+    - **O dono da rede conta em membros** — é um membro ativo como os outros.
   - A clínica vê o plano em Configurações → Assinatura (`PlanoDaRede`): cada
     funcionalidade dentro ou fora, e o uso de cada limite ("2 de 3").
+  - Templates continuam utilizáveis pelo inbox mesmo com `templates` fora:
+    a funcionalidade é a TELA de criar e editar modelos; a resposta de 24 h
+    da Cloud API precisa do modelo aprovado que já existe.
   - O que só LÊ não trava (a ficha do cliente lê pacotes e planos que já
     existem), e o que JÁ foi vendido continua valendo (agendar a sessão de um
     pacote vendido). A comissão continua sendo calculada no banco; trava a
@@ -183,8 +200,8 @@ um muro que não depende de cada trava do código.
     existentes. A trava `tests/planos-recursos.test.ts` ("a migration") compara
     o catálogo com a lista da migration 20261006000003 — quando o catálogo
     crescer, ela passa a comparar com a lista mais a da migration nova.
-  - ⚠️ **A trava do plano é do APP**, como a de módulo sempre foi: a RLS não
-    conhece o plano, e um membro que fale direto com o PostgREST pela chave
+  - ⚠️ **A trava do plano é do APP** (menos os limites, que o gatilho também
+    garante), como a de módulo sempre foi: a RLS não conhece o plano, e um membro que fale direto com o PostgREST pela chave
     pública alcança as tabelas que a rede dele alcança.
   - Prova: `e2e/planos-recursos.spec.ts` e `tests/planos-recursos.test.ts`.
 - **A situação é recalculada POR ESTADO no banco**

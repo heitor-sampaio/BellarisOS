@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assertRecurso } from '@/lib/auth'
+import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assertRecurso, temRecurso } from '@/lib/auth'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
@@ -12,7 +12,7 @@ import { nomesDeAnuncios, type NomesDoAnuncio } from '@/lib/ads/ad-lookup'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
 import { emitirEventoDeLead } from '@/lib/events/lead'
 import { EVENTOS } from '@estetica-os/types'
-import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
+import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { revalidatePath } from 'next/cache'
 import { resolverCanal } from '@/lib/channels/factory'
 import { estadoDaJanela } from '@/lib/channels/window'
@@ -691,6 +691,10 @@ export interface ConversationCard {
    * cadastro a escolhe. Nesse caso as listas vêm vazias: é só o sinal.
    */
   venda: { branchId: string | null; pacotes: PacoteAVenda[]; procedimentos: ProcedimentoAVenda[] } | null
+  /** O plano da rede inclui oportunidades? Sem elas, o painel é só contato e cliente. */
+  comOportunidades: boolean
+  /** E a agenda? Sem ela, a conversa não marca horário. */
+  comAgenda: boolean
   /** Em andamento: etapa com outcome `OPEN`. */
   abertas:    Oportunidade[]
   /** Ganhas e perdidas, para consulta. */
@@ -763,8 +767,11 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   const c = conv as unknown as { contact_name: string | null; contact_phone: string | null; client_id: string | null; channel: string; contato_id: string | null; pessoa: { name: string | null } | null }
   const clientId = c.client_id
 
-  const funis  = await seedDefaultFunnel(ctx.tenantId!)
-  const stages = (await listAllStages(ctx.tenantId!)) as InboxStage[]
+  // Inbox e oportunidades são funcionalidades separadas do plano: sem as
+  // oportunidades, nem funil semeado, nem card, nem botão de criar.
+  const comOportunidades = temRecurso(ctx, 'oportunidades')
+  const funis  = comOportunidades ? await seedDefaultFunnel(ctx.tenantId!) : []
+  const stages = comOportunidades ? (await listAllStages(ctx.tenantId!)) as InboxStage[] : []
   const funnels = funis
     .filter(f => f.archived_at === null)
     .map(f => ({ id: f.id, name: f.name }))
@@ -791,7 +798,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
 
   const [cliente, oportunidades, outrasThreads, tagsDaPessoa] = await Promise.all([
     clientId ? buscarCliente(admin, ctx.tenantId!, clientId) : Promise.resolve(null),
-    buscarOportunidades(admin, ctx.tenantId!, contatoId, clientId, stages),
+    comOportunidades ? buscarOportunidades(admin, ctx.tenantId!, contatoId, clientId, stages) : Promise.resolve([]),
     buscarOutrasThreads(admin, ctx, conversationId, contatoId),
     // As tags vêm da PESSOA, não da thread (§9.2.1). `conversations.tags` é
     // semente: lida dali, a tag marcada numa thread não apareceria na outra.
@@ -831,7 +838,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       tags:     tagsDaPessoa,
       canal:    c.channel as InboxChannel,
     },
-    cliente, venda, abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
+    cliente, venda, comOportunidades, comAgenda: temRecurso(ctx, 'agenda'), abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
     outrasThreads,
   }
 }

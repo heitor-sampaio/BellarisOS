@@ -568,7 +568,7 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Ler o nome de quem agiu fora do ctx (users.name pelo auth id) — perde a marca "via suporte"
 ❌ jwt_claim que consulta tabela a cada chamada (é por linha, em toda política) ou que vira security definer
 ❌ Política que confere auth.uid() em tabela que a sessão de suporte alcança, sem a restritiva do suporte
-❌ Exportar de um arquivo 'use server' função que recebe a rede por parâmetro sem conferir quem chama (era o dispatchCampaignInline)
+❌ Exportar de um arquivo 'use server' função que recebe a rede por parâmetro sem conferir quem chama (era o dispatchCampaignInline; trava: tests/actions-sem-rede-por-parametro.test.ts)
 ```
 
 ---

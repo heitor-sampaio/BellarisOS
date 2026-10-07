@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, ownerFilter, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLeadSource, mergeTags } from '@estetica-os/utils'
-import { seedDefaultFunnel, listStages } from '@/actions/crm-funnels'
+import { seedDefaultFunnel, listStages } from '@/lib/crm/funis'
 import {
   registrarEventoLead, etapaAtualDoLead, estadoAtualDoLead,
   diferencas, listaLegivel,

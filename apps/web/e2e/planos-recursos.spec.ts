@@ -505,3 +505,123 @@ test.describe.serial('a aba Assinatura mostra o que o plano inclui', () => {
     })
   })
 })
+
+/**
+ * O que a verificação independente achou nas fases 3–5 (2026-10-06):
+ * editar a unidade no limite; o LIMITE garantido no banco (a linha que nasce
+ * inativa e é ligada depois, a corrida); documentos fora do plano não travam
+ * o atendimento nem o plano de tratamento; a funcionalidade separada da outra
+ * que divide o mesmo módulo (inbox × oportunidades, campanhas × templates).
+ */
+test.describe.serial('correções da verificação das fases 3–5', () => {
+  let dono: MembroDeTeste | null = null
+  const ZERO_ = '00000000-0000-4000-8000-000000000000'
+  const RECUSADA_ = /BELLARIS_SEM_ACESSO|Forbidden/
+  type Limites = { unidades: number | null; membros: number | null; whatsapp: number | null }
+  const com = async (funcionalidades: string[] | null, limites: Limites = { unidades: null, membros: null, whatsapp: null }) => {
+    const recursos = funcionalidades ? { funcionalidades, limites } : null
+    expect((await db().from('tenant_subscriptions').upsert({ tenant_id: outra.tenantId, plan_id: planoBase, valor_centavos: 0, recursos }, { onConflict: 'tenant_id' })).error).toBeNull()
+    await expirarRede(outra.tenantId)
+  }
+  const todas = () => FUNCIONALIDADES.map(f => f.chave)
+  const ativos = async (tabela: 'branches' | 'whatsapp_numbers') =>
+    ((await db().from(tabela).select('id').eq('tenant_id', outra.tenantId).eq('is_active', true)).data ?? []).length
+
+  test.beforeAll(async () => {
+    test.setTimeout(180_000)
+    expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', outra.tenantId)).error).toBeNull()
+    dono = await criarMembro(`prver${marca}`, { tenant: outra.tenantId, donoDaRede: true, permissoes: [] })
+  })
+  test.afterAll(async () => {
+    await db().from('whatsapp_numbers').delete().eq('tenant_id', outra.tenantId)
+    await db().from('branches').delete().eq('tenant_id', outra.tenantId).neq('id', outra.branchId)
+    if (dono) await dono.limpar()
+  })
+
+  test('no limite de unidades, EDITAR a unidade passa (a trava é de criar e reativar)', async ({ browser }) => {
+    await com(todas(), { unidades: await ativos('branches'), membros: null, whatsapp: null })
+    await comSessao(browser, dono!.estado, async p => {
+      await p.goto(`/admin/branches/${outra.branchId}`)
+      await p.locator('#be-name').fill(`[e2e] Unidade editada ${marca}`)
+      await p.getByRole('button', { name: 'Salvar alterações' }).click()
+      await expect(p.getByText('Dados salvos com sucesso.')).toBeVisible({ timeout: 15_000 })
+    })
+  })
+
+  test('o banco segura o limite: ligar uma linha inativa e inserir ativa além dele são recusados', async () => {
+    const { error: e1 } = await db().from('whatsapp_numbers').insert({ tenant_id: outra.tenantId, provider: 'uazapi', label: `[e2e] Ativo ${marca}`, is_active: true, config: {} })
+    expect(e1).toBeNull()
+    const { data: pend, error: e2 } = await db().from('whatsapp_numbers').insert({ tenant_id: outra.tenantId, provider: 'uazapi', label: `[e2e] Pendente ${marca}`, is_active: false, config: {} })
+      .select('id').single<{ id: string }>()
+    expect(e2).toBeNull()
+    await com(todas(), { unidades: await ativos('branches'), membros: null, whatsapp: await ativos('whatsapp_numbers') })
+    // A uazapi e o cadastro incorporado nascem a linha inativa e a ligam depois.
+    const ligar = await db().from('whatsapp_numbers').update({ is_active: true }).eq('id', pend!.id)
+    expect(ligar.error?.message ?? '').toMatch(/permite até/)
+    const unidade = await db().from('branches').insert({ tenant_id: outra.tenantId, name: `[e2e] Além ${marca}`, slug: `e2e-alem-${marca}`, is_active: true })
+    expect(unidade.error?.message ?? '').toMatch(/permite até/)
+    // Sem limite, passa.
+    await com(todas())
+    expect((await db().from('whatsapp_numbers').update({ is_active: true }).eq('id', pend!.id)).error).toBeNull()
+  })
+
+  test('documentos fora do plano: o pendente não trava o atendimento, e o plano de tratamento não recebe contrato', async () => {
+    const { data: modelo, error } = await db().rpc('documento_modelo_salvar', {
+      p_tenant: outra.tenantId, p_modelo: null, p_nome: `[e2e] Termo bloqueia ${marca}`, p_tipo: 'TERMO', p_origem: 'EDITOR',
+      p_momento: 'AGENDAMENTO', p_exigencia: 'BLOQUEIA', p_texto: 'Termo.', p_arquivo_path: null, p_arquivo_sha256: null,
+      p_arquivo_nome: null, p_arquivo_tamanho: null, p_arquivo_paginas: null, p_variaveis: [], p_usa_pagamento: false, p_ator: null,
+    })
+    expect(error).toBeNull()
+    expect((await db().from('procedures').update({ consent_template_id: (modelo as { id: string }).id }).eq('id', outra.procedureId)).error).toBeNull()
+    await com(null)
+    const cliente = await outra.criarCliente('Doc bloqueia')
+    const { data: ag } = await db().from('appointments').insert({
+      branch_id: outra.branchId, client_id: cliente, procedure_id: outra.procedureId, professional_id: outra.professionalId,
+      scheduled_at: new Date(Date.now() + 7_200_000).toISOString(), duration_min: 30, price: 100, status: 'SCHEDULED',
+    }).select('id').single<{ id: string }>()
+    const pendentes = async () => ((await db().rpc('documentos_pendentes_do_atendimento', { p_agendamento: ag!.id })).data as unknown[] ?? []).length
+    expect(await pendentes()).toBe(1)
+    await com(todas().filter(c => c !== 'documentos'))
+    expect(await pendentes(), 'fora do plano, o pendente não conta').toBe(0)
+
+    // O contrato de plano padrão (o que toda rede nova ganha) não é emitido.
+    expect((await db().rpc('documentos_modelos_padrao', { p_tenant: outra.tenantId })).error).toBeNull()
+    const { planId } = await outra.criarPlanoProposto('Plano doc', { semTermo: true })
+    const { data: emitidos, error: eE } = await db().rpc('documentos_emitir_do_plano', { p_plano: planId })
+    expect(eE).toBeNull()
+    expect(emitidos).toBe(0)
+    await com(null)
+    expect(await pendentes()).toBe(1)
+  })
+
+  test('plano de tratamento fora: gerar pela sessão de atendimento é recusado', async ({ browser }) => {
+    await com(todas().filter(c => c !== 'planos_de_tratamento'))
+    await comSessao(browser, dono!.estado, async p => {
+      const r = await chamarAcao(p, 'actions/treatment-plans.ts', 'generateEvaluationPlan', `/admin/agenda/${ZERO_}`, [ZERO_, '', {}, [], '', ''])
+      expect(r.texto).toMatch(RECUSADA_)
+    })
+  })
+
+  test('funcionalidades que dividem o módulo: uma fora, a outra dentro — cada uma pela sua trava', async ({ browser }) => {
+    type Chamada = [string, string, string, unknown[]]
+    const opor: Chamada = ['actions/crm-funnels.ts', 'setDefaultFunnel', '/admin/oportunidades', [ZERO_, 'admin']]
+    const inbox: Chamada = ['actions/inbox.ts', 'getMessages', '/admin/inbox', [ZERO_]]
+    const camp: Chamada = ['actions/notification-campaigns.ts', 'createCampaign', '/admin/notificacoes/nova', [{}]]
+    const tmpl: Chamada = ['actions/message-templates.ts', 'saveTemplate', '/admin/templates', [{}]]
+    const casos: { fora: string; recusa: Chamada; passa: Chamada }[] = [
+      { fora: 'oportunidades', recusa: opor, passa: inbox },
+      { fora: 'inbox', recusa: inbox, passa: opor },
+      { fora: 'campanhas', recusa: camp, passa: tmpl },
+      { fora: 'templates', recusa: tmpl, passa: camp },
+    ]
+    for (const c of casos) {
+      await com(todas().filter(x => x !== c.fora))
+      await comSessao(browser, dono!.estado, async p => {
+        const r = await chamarAcao(p, c.recusa[0], c.recusa[1], c.recusa[2], c.recusa[3])
+        expect(r.texto, `${c.fora} fora: ${c.recusa[1]} recusa`).toMatch(RECUSADA_)
+        const ok = await chamarAcao(p, c.passa[0], c.passa[1], c.passa[2], c.passa[3])
+        expect(ok.texto, `${c.fora} fora: ${c.passa[1]} passa`).not.toMatch(RECUSADA_)
+      })
+    }
+  })
+})

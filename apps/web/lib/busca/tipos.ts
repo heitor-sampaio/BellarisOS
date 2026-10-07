@@ -65,10 +65,28 @@ export const MODULO_DO_TIPO: Record<TipoDoServidor, AppModule> = {
   produto:      'stock',
 }
 
-/** O que esta pessoa pode achar pelo servidor. Decide o SERVIDOR, pelo ctx. */
-export function tiposPermitidos(permissions: ResolvedPermissions): TipoDoServidor[] {
+/**
+ * A funcionalidade do PLANO que o tipo exige, quando ela é parte de um módulo
+ * (lib/planos/recursos.ts). O módulo inteiro fora do plano já saiu das
+ * permissões; estas dividem o módulo com outra.
+ */
+export const RECURSO_DO_TIPO: Partial<Record<TipoDoServidor, string>> = {
+  conversa:     'inbox',
+  oportunidade: 'oportunidades',
+  pacote:       'pacotes',
+}
+
+/**
+ * O que esta pessoa pode achar pelo servidor. Decide o SERVIDOR, pelo ctx:
+ * o módulo do cargo e, quando há, a funcionalidade do plano da rede.
+ */
+export function tiposPermitidos(
+  permissions: ResolvedPermissions,
+  noPlano: (chave: string) => boolean = () => true,
+): TipoDoServidor[] {
   return (Object.keys(MODULO_DO_TIPO) as TipoDoServidor[])
     .filter(t => (permissions[MODULO_DO_TIPO[t]] ?? 'NONE') !== 'NONE')
+    .filter(t => { const r = RECURSO_DO_TIPO[t]; return !r || noPlano(r) })
 }
 
 /** Termo mínimo para ir ao servidor (abaixo disso, casaria quase tudo). */

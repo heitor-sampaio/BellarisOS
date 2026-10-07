@@ -10,7 +10,7 @@ import {
   resolvePeriod, getRetention, getNewClientsSeries, getLeadFunnel, percent,
   getCore, getSeries,
 } from '@/lib/metrics'
-import { seedDefaultFunnel } from '@/actions/crm-funnels'
+import { seedDefaultFunnel } from '@/lib/crm/funis'
 import type { DadosComerciais } from '@/components/admin/reports-bi-view'
 import type { LinhaLote, LinhaParcela } from '@/components/admin/reports-linhas'
 

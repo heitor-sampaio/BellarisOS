@@ -5,7 +5,7 @@
 // A filial do agendamento (branchId) é a UNIDADE onde o cliente será atendido —
 // é a dimensão de métrica por unidade (o cliente pertence à rede).
 
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { registrarEventoLead } from '@/lib/lead-events'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
@@ -152,6 +152,8 @@ export async function createCrmAppointment(
 ): Promise<{ id?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'crm', 'MANAGE')
+  // Agendar pela conversa é agenda: fora do plano da rede, não nasce agendamento.
+  assertRecurso(ctx, 'agenda')
   const admin = createAdminClient()
 
   // Os dois ids vêm do navegador, e os dois gravam: o cliente vai para a

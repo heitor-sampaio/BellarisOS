@@ -1019,6 +1019,8 @@ async function generateEvaluationPlanInterno(
 ): Promise<{ error?: string; planId?: string }> {
   const ctx   = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
+  // A avaliação grava prontuário E monta o plano: é do plano de tratamento.
+  assertRecurso(ctx, 'planos_de_tratamento')
   const admin = createAdminClient()
 
   if (!complaints.trim()) return { error: 'Registre as dores/queixas do cliente.' }

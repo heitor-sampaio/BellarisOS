@@ -131,6 +131,8 @@ interface Props {
   existingPlan:          ExistingPlan | null
   procedureProductsMap:  Record<string, { productId: string; name: string; unit: string; quantity: number }[]>
   isPartOfPlan?:         boolean
+  /** O plano da rede inclui planos de tratamento? Sem ele, a sessão é a simples. */
+  podeMontarPlano?:      boolean
   /** Sessão de pacote: já paga na venda do pacote — não se cobra de novo (2026-09-27). */
   isPackageSession?:     boolean
   /** Procedimento pré-pago: pago na venda, a recepção não cobra de novo. */
@@ -881,7 +883,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, canEditRecords, canViewRecords = true, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null,
+  isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true,
   pagamentoCombinado = null,
 }: Props) {
   const router   = useRouter()
@@ -1579,7 +1581,7 @@ export function AppointmentSession({
                 entidade em 2026-09-25. A condição que sobrou é a que sempre
                 importou de verdade: não se propõe um plano novo dentro de uma
                 sessão que já pertence a um plano. */}
-            {!isPartOfPlan ? (() => {
+            {!isPartOfPlan && podeMontarPlano ? (() => {
               // Plano já gerado e enviado para recepção → modo leitura
               const planGenerated = ['PROPOSED', 'ACCEPTED', 'COMPLETED'].includes(existingPlan?.status ?? '')
               if (planGenerated) return (

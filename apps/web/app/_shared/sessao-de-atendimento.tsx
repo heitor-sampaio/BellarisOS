@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, can, isOwnScope, podeReceber } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, isOwnScope, podeReceber, temRecurso } from '@/lib/auth'
 import { documentosDoAgendamento, pagamentoCombinadoDoAtendimento } from '@/lib/documentos/leitura'
 import { envioPelaConversaLigado } from '@/lib/documentos/link-pela-conversa'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -438,6 +438,7 @@ export async function SessaoDeAtendimento({
         existingPlan={existingPlan}
         procedureProductsMap={procedureProductsMap}
         isPartOfPlan={isPartOfPlan}
+        podeMontarPlano={temRecurso(ctx, 'planos_de_tratamento')}
         isPackageSession={!!sessaoDePacote}
         isPrePago={!!unidadePrePaga}
         podeReceber={podeReceber(ctx)}

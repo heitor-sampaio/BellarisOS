@@ -240,7 +240,6 @@ export function assertAnyPermission(
   }
 }
 
-/** Versão booleana (para esconder UI / derivar canWrite em pages) */
 /**
  * A rede tem esta FUNCIONALIDADE no plano? (lib/planos/recursos.ts; sem plano,
  * tudo.) Os módulos inteiros já saíram de `ctx.permissions` em buildContext;
@@ -256,6 +255,7 @@ export function assertRecurso(ctx: TenantContext, chave: ChaveDeFuncionalidade):
   if (!temRecurso(ctx, chave)) throw semAcesso()
 }
 
+/** Versão booleana (para esconder UI / derivar canWrite em pages) */
 export function can(ctx: TenantContext, module: AppModule, required: 'VIEW' | 'MANAGE' = 'VIEW'): boolean {
   return hasLevel(ctx.permissions[module], required)
 }

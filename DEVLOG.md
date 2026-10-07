@@ -1345,6 +1345,24 @@ RETRATO do plano; limites = unidades, membros, números de WhatsApp; o Copilot
 - **Fase 5 — a clínica vê o plano** (feita): Configurações → Assinatura mostra
   cada funcionalidade dentro ou fora e o uso de cada limite ("Unidades: 1 de
   3").
+- **Do verificador das fases 3–5** (migration `20261006000007`): EDITAR a
+  unidade no limite voltou a passar (a trava tinha caído no `updateBranch`);
+  o LIMITE agora também é do banco — gatilho `trg_limite_do_plano` em
+  unidades, membros e números, com trava por rede, que cobre a linha da
+  uazapi e do cadastro incorporado que nasce inativa e é ligada depois, e a
+  corrida de dois cliques; documentos fora do plano não emitem o contrato do
+  plano de tratamento nem deixam pendente travando atendimento e checkout
+  (antes travariam para sempre: sem o módulo ninguém assina);
+  `generateEvaluationPlan` exige planos de tratamento, e a sessão não oferece
+  montar plano sem eles; `rede_tem_recurso` falha fechada como `lerRecursos`;
+  o painel do inbox esconde oportunidades e o "Agendar" quando estão fora;
+  `createCrmAppointment` exige a agenda; a busca tira conversa, oportunidade
+  e pacote pelo plano; o botão de comissão da equipe some sem comissões.
+  Fora do escopo, mas achado ali: `seedDefaultFunnel`, `listStages` e
+  `listAllStages` eram exports de `'use server'` recebendo a rede por
+  parâmetro — qualquer pessoa logada lia (e semeava) os funis de outra rede.
+  Foram para `lib/crm/funis.ts`, e `tests/actions-sem-rede-por-parametro.test.ts`
+  trava a classe inteira.
 
 ### 2026-10-06 — Convite da equipe da plataforma: o e-mail conferido e o "Reenviar convite"
 

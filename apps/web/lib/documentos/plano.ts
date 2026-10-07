@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { pagamentoNormalizado, mesmoPagamento, type PagamentoDoPlano } from '@/lib/checkout/pagamento'
 import { garantirRenderizado, COLUNAS_DO_DOCUMENTO, type DocumentoEmitido } from './renderizar'
 
@@ -39,6 +40,8 @@ export async function prepararDocumentosDoPlano(
   /** O desconto do checkout, em reais — parte do combinado que o contrato cita. */
   desconto = 0,
 ): Promise<DocumentoEmitido[]> {
+  // Termos e contratos fora do plano da rede: o fechamento segue sem documento.
+  if (!(await redeTemRecurso(tenantId, 'documentos'))) return []
   const admin = createAdminClient()
   await gravar(admin.rpc('documentos_emitir_do_plano', { p_plano: planId }), 'emitir os documentos do plano')
 
@@ -71,6 +74,8 @@ export async function prepararDocumentosDoPlano(
 export async function recusaDosDocumentosDoPlano(
   tenantId: string, planId: string, pagamento: PagamentoDoPlano | null, desconto = 0,
 ): Promise<string | null> {
+  // Sem o módulo, ninguém assinaria nem dispensaria: não trava o checkout.
+  if (!(await redeTemRecurso(tenantId, 'documentos'))) return null
   const admin = createAdminClient()
   await gravar(admin.rpc('documentos_emitir_do_plano', { p_plano: planId }), 'emitir os documentos do plano')
   const pendentes = await ler(admin.rpc('documentos_pendentes_do_plano', { p_plano: planId }), 'conferir os documentos do plano')

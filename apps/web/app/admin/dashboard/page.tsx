@@ -18,7 +18,7 @@ import {
   getTopClients, getLeadFunnel, getRankingDeComissao,
 } from '@/lib/metrics'
 import { getDemografia, getGiroDeEstoque, type Demografia } from '@/lib/metrics/demografia'
-import { seedDefaultFunnel } from '@/actions/crm-funnels'
+import { seedDefaultFunnel } from '@/lib/crm/funis'
 import { ler, contar } from '@/lib/db'
 
 // -- Linhas como os selects as pedem ---------------------------------

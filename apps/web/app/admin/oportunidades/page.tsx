@@ -1,7 +1,7 @@
 import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { filiaisAtivas } from '@/lib/branches'
-import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
+import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
 import { funnelStats } from '@/lib/crm'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'

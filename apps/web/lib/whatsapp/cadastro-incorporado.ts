@@ -1,5 +1,5 @@
 import 'server-only'
-import { conferirLimite } from '@estetica-os/nucleo/lib/planos/limites'
+import { conferirLimite, DIGEST_LIMITE_DO_PLANO } from '@estetica-os/nucleo/lib/planos/limites'
 import { randomInt } from 'node:crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, tentar } from '@/lib/db'
@@ -125,12 +125,13 @@ export async function conectarPeloCadastro(
   //    o mesmo número em outra rede é recusado aqui, antes de mexer na Meta.
   const admin = createAdminClient()
   const existente = await ler(admin.from('whatsapp_numbers')
-    .select('id, tenant_id').eq('phone_number_id', pedido.phoneNumberId).maybeSingle(), 'buscar a caixa do número')
+    .select('id, tenant_id, is_active').eq('phone_number_id', pedido.phoneNumberId).maybeSingle(), 'buscar a caixa do número')
   if (existente && existente.tenant_id !== tenantId) {
     return { ok: false, error: 'Este número já está conectado a outra conta do BellarisOS.' }
   }
-  // Número NOVO na rede conta para o LIMITE do plano (lib/planos/limites.ts).
-  if (!existente) {
+  // Número que entra no ar (novo, ou o inativo que volta) conta para o LIMITE
+  // do plano (lib/planos/limites.ts). O gatilho do banco é a segunda linha.
+  if (!existente?.is_active) {
     const limite = await conferirLimite(tenantId, 'whatsapp')
     if (limite) return { ok: false, error: limite }
   }
@@ -187,7 +188,11 @@ export async function conectarPeloCadastro(
   //    se outro ganhou a corrida, esta simplesmente não vira padrão).
   const ativa = await admin.from('whatsapp_numbers')
     .update({ is_active: true, updated_at: new Date().toISOString() }).eq('id', numeroId)
-  if (ativa.error) return { ok: false, error: 'Não consegui ativar a conexão.' }
+  if (ativa.error) {
+    // O limite do plano no banco (corrida com outra conexão): a mensagem é dele.
+    const doPlano = ativa.error.hint === DIGEST_LIMITE_DO_PLANO
+    return { ok: false, error: doPlano ? ativa.error.message : 'Não consegui ativar a conexão.' }
+  }
   const padrao = await ler(admin.from('whatsapp_numbers').select('id')
     .eq('tenant_id', tenantId).eq('is_default', true).limit(1), 'buscar o padrão da rede')
   if (!padrao?.length) {

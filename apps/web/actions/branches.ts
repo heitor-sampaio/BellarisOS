@@ -96,9 +96,6 @@ export async function updateBranch(
   const zipCode           = (formData.get('zip_code') as string)?.trim() || null
 
   if (!name) return { error: 'Nome é obrigatório.' }
-  // O LIMITE de unidades do plano da rede (lib/planos/limites.ts).
-  const limite = await conferirLimite(ctx.tenantId!, 'unidades')
-  if (limite) return { error: limite }
   // Quem tem unidade fixa edita a dela; a da rede, todas (§11). Até 2026-09-28
   // a gerente da unidade A reescrevia os dados da B.
   assertUnidade(ctx, branchId)

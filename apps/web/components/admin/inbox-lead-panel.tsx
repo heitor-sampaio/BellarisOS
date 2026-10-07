@@ -449,11 +449,13 @@ export function InboxLeadPanel({
                 de marcar um horário parava o agendamento justo na etapa em que
                 a pessoa ainda está decidindo — nome e telefone bastam, e são o
                 que a conversa já tem. */}
-            <button type="button" className="btn-ghost"
-              style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}
-              onClick={() => setScheduling('')}>
-              <CalendarPlus size={12} /> Agendar
-            </button>
+            {card.comAgenda && (
+              <button type="button" className="btn-ghost"
+                style={{ fontSize: 'var(--text-2xs)', padding: '4px 7px' }}
+                onClick={() => setScheduling('')}>
+                <CalendarPlus size={12} /> Agendar
+              </button>
+            )}
           </div>
         )}
       </section>
@@ -467,8 +469,9 @@ export function InboxLeadPanel({
         </p>
       )}
 
-      {/* ---------------- Oportunidades ---------------- */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
+      {/* ---------------- Oportunidades ----------------
+          Só com elas no plano da rede (o inbox é outra funcionalidade). */}
+      {card.comOportunidades && <section style={{ display: 'flex', flexDirection: 'column', gap: 8, borderTop: '1px solid var(--hairline)', paddingTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span style={{ ...labelStyle, fontSize: 'var(--text-xs-sz)', color: 'var(--text)' }}>
             Oportunidades{card.abertas.length > 0 ? ` (${card.abertas.length})` : ''}
@@ -503,7 +506,7 @@ export function InboxLeadPanel({
             onToggle={() => setExpandida(e => (e === o.id ? null : o.id))}
             onConcluir={d => comAcao(() => definirSituacaoOportunidade(o.id, d))}
             onMudou={() => { void recarregar(); setHistoricoKey(k => k + 1); onLeadChanged?.() }}
-            onAgendar={() => setScheduling(o.id)}
+            onAgendar={card.comAgenda ? () => setScheduling(o.id) : undefined}
           />
         ))}
 
@@ -592,7 +595,7 @@ export function InboxLeadPanel({
             )}
           </div>
         )}
-      </section>
+      </section>}
 
       {/* ---------------- Histórico ----------------
           Do CONTATO, não de uma oportunidade: a pessoa pode ter dois negócios, e
@@ -698,7 +701,8 @@ function OportunidadeItem({
   onToggle:   () => void
   onConcluir: (situacao: 'OPEN' | 'WON' | 'LOST') => void
   onMudou:    () => void
-  onAgendar:  () => void
+  /** Ausente: a agenda está fora do plano da rede. */
+  onAgendar?: () => void
 }) {
   const [stageId, setStageId] = useState(o.crm_stage_id ?? '')
   const [notes,   setNotes]   = useState(o.notes ?? '')
@@ -902,10 +906,12 @@ function OportunidadeItem({
 
               {/* Agenda, não desfecho: marca um atendimento e o registra na
                   linha do tempo desta oportunidade. */}
-              <button type="button" className="btn-ghost" onClick={onAgendar}
-                style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}>
-                <CalendarPlus size={12} /> Agendar atendimento
-              </button>
+              {onAgendar && (
+                <button type="button" className="btn-ghost" onClick={onAgendar}
+                  style={{ alignSelf: 'flex-start', fontSize: 'var(--text-xs-sz)' }}>
+                  <CalendarPlus size={12} /> Agendar atendimento
+                </button>
+              )}
             </>
           )}
         </div>

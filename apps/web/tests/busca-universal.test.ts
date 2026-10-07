@@ -27,6 +27,15 @@ describe('tiposPermitidos — a busca não abre exceção de alcance', () => {
   it('com tudo, procura tudo', () => {
     expect(tiposPermitidos(ALL_PERMISSIONS)).toHaveLength(8)
   })
+
+  it('a funcionalidade fora do plano sai, mesmo com o módulo (inbox, oportunidades, pacotes)', () => {
+    const plano = (fora: string[]) => (chave: string) => !fora.includes(chave)
+    expect(tiposPermitidos(ALL_PERMISSIONS, plano(['inbox']))).not.toContain('conversa')
+    expect(tiposPermitidos(ALL_PERMISSIONS, plano(['inbox']))).toContain('oportunidade')
+    expect(tiposPermitidos(ALL_PERMISSIONS, plano(['oportunidades']))).not.toContain('oportunidade')
+    expect(tiposPermitidos(ALL_PERMISSIONS, plano(['pacotes']))).toEqual(
+      ['cliente', 'conversa', 'oportunidade', 'agendamento', 'membro', 'procedimento', 'produto'])
+  })
 })
 
 describe('paginasDaBusca — o catálogo vem do menu e das abas', () => {
