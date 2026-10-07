@@ -358,6 +358,10 @@ export async function Configuracoes({
           // Quem paga é a clínica, não o atendente do suporte entrando na conta.
           podePagar={!ctx.suporte}
           uso={usoDosLimites ?? { unidades: 0, membros: 0, whatsapp: 0 }}
+          // A mensalidade é da REDE: contrata quem é dela, com configurações; o suporte não.
+          semContratar={ctx.suporte ? 'No modo suporte não dá para contratar: isto é feito pela própria clínica.'
+            : ctx.branchId === null && can(ctx, 'settings', 'MANAGE') ? null
+            : 'Para contratar ou cancelar, fale com quem administra a rede.'}
         />
       )}
 

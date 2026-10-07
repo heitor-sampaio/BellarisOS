@@ -1,16 +1,44 @@
 'use client'
 
+import { useState } from 'react'
 import {
-  FUNCIONALIDADES, LIMITES, LIMITE_MAXIMO,
-  type ChaveDeFuncionalidade, type RecursosDoPlano,
+  FUNCIONALIDADES, LIMITES, LIMITE_MAXIMO, ADICIONAIS, adicionalCabeNoPlano,
+  type ChaveDeFuncionalidade, type ChaveDeAdicional, type RecursosDoPlano,
 } from '@estetica-os/nucleo/lib/planos/recursos'
+import { centavosDe, campoDeReais } from '@estetica-os/nucleo/lib/redes/valor'
 
 /**
  * O que o plano inclui (2026-10-06): uma caixa por funcionalidade do catálogo,
  * em grupos, e um slider de 1 a 10 por limite, com "ilimitado" ao lado. O
  * catálogo é o de `lib/planos/recursos.ts` — a lista não se escreve aqui.
+ *
+ * Embaixo, os ADICIONAIS à venda (2026-10-07): o plano oferece, com o preço,
+ * a conexão de WhatsApp além do limite e o Copilot avulso. A oferta que deixa
+ * de caber (o WhatsApp ficou ilimitado, o Copilot entrou no plano) sai sozinha.
  */
-export function RecursosDoPlanoCampos({ valor, mudar }: { valor: RecursosDoPlano; mudar: (r: RecursosDoPlano) => void }) {
+export function RecursosDoPlanoCampos({ valor, mudar: mudarCru }: { valor: RecursosDoPlano; mudar: (r: RecursosDoPlano) => void }) {
+  // O texto de cada preço, como a pessoa digita ("49,90").
+  const [precos, setPrecos] = useState<Record<string, string>>(() => Object.fromEntries(
+    ADICIONAIS.map(a => [a.chave, campoDeReais(valor.adicionais?.[a.chave]?.valor_centavos ?? null)])))
+
+  function mudar(r: RecursosDoPlano) {
+    const adicionais = { ...(r.adicionais ?? {}) }
+    for (const a of ADICIONAIS) if (adicionais[a.chave] && !adicionalCabeNoPlano(r, a.chave)) delete adicionais[a.chave]
+    mudarCru({ ...r, adicionais })
+  }
+
+  function oferecer(chave: ChaveDeAdicional, sim: boolean) {
+    const adicionais = { ...(valor.adicionais ?? {}) }
+    if (sim) adicionais[chave] = { valor_centavos: centavosDe(precos[chave]) ?? 0 }
+    else delete adicionais[chave]
+    mudar({ ...valor, adicionais })
+  }
+
+  function mudarPreco(chave: ChaveDeAdicional, texto: string) {
+    setPrecos(p => ({ ...p, [chave]: texto }))
+    if (valor.adicionais?.[chave]) mudar({ ...valor, adicionais: { ...valor.adicionais, [chave]: { valor_centavos: centavosDe(texto) ?? 0 } } })
+  }
+
   const grupos = [...new Set(FUNCIONALIDADES.map(f => f.grupo))]
   const marcadas = new Set<string>(valor.funcionalidades)
 
@@ -57,6 +85,36 @@ export function RecursosDoPlanoCampos({ valor, mudar }: { valor: RecursosDoPlano
                 />
                 <span>Ilimitado</span>
               </label>
+            </div>
+          )
+        })}
+      </fieldset>
+
+      <fieldset className="plano-grupo">
+        <legend className="overline">Adicionais à venda</legend>
+        <p className="suporte-texto-fraco">A rede contrata além do plano, e o valor soma na mensalidade. Quem já contratou mantém o preço da época.</p>
+        {ADICIONAIS.map(a => {
+          const cabe = adicionalCabeNoPlano(valor, a.chave)
+          const oferecido = !!valor.adicionais?.[a.chave]
+          return (
+            <div key={a.chave} className="plano-adicional">
+              <label className="ajuda-check">
+                <input type="checkbox" checked={oferecido} disabled={!cabe} aria-label={`Oferecer: ${a.rotulo}`}
+                  onChange={e => oferecer(a.chave, e.target.checked)} />
+                <span>{a.rotulo}{'emBreve' in a && a.emBreve ? <span className="plano-em-breve"> · em breve</span> : null}</span>
+              </label>
+              {cabe ? (
+                <label className="plano-adicional-preco">
+                  <span className="suporte-texto-fraco">R$</span>
+                  <input className="field" inputMode="decimal" placeholder="0,00" value={precos[a.chave] ?? ''} disabled={!oferecido}
+                    aria-label={`Preço por mês: ${a.rotulo}`} onChange={e => mudarPreco(a.chave, e.target.value)} />
+                  <span className="suporte-texto-fraco">{a.chave === 'whatsapp' ? 'por conexão, por mês' : 'por mês'}</span>
+                </label>
+              ) : (
+                <span className="suporte-texto-fraco">
+                  {a.chave === 'whatsapp' ? 'O plano já tem números de WhatsApp ilimitados.' : 'O plano já inclui o Copilot.'}
+                </span>
+              )}
             </div>
           )
         })}

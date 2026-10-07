@@ -4,7 +4,7 @@ import { revalidateTag } from 'next/cache'
 import { expirarNaClinica } from '@estetica-os/nucleo/lib/plataforma/expirar-na-clinica'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { depoisDaMudanca } from '@estetica-os/nucleo/lib/redes/assinatura'
-import { aplicarCobranca, assinaturaEncerradaNoAsaas, sincronizarCobranca } from '@/lib/redes/cobranca'
+import { aplicarCobranca, assinaturaEncerradaNoAsaas, sincronizarCobranca, levarValoresPendentes } from '@/lib/redes/cobranca'
 import { EVENTOS_DE_ASSINATURA } from '@/lib/asaas/webhook'
 import { configDoAsaas } from '@/lib/asaas/cliente'
 import { mensagemDoErro, tentar } from '@estetica-os/nucleo/lib/db'
@@ -20,7 +20,8 @@ import { mensagemDoErro, tentar } from '@estetica-os/nucleo/lib/db'
  * De reserva, reprocessa os eventos do Asaas parados há mais de 15 minutos
  * (o `after()` do webhook que não chegou ao fim) e reconcilia, uma vez por
  * dia, as faturas de cada assinatura ligada (um webhook perdido não deixa a
- * clínica sem fatura).
+ * clínica sem fatura). E leva ao Asaas o valor que mudou e não chegou lá (o
+ * adicional contratado pela clínica quando o pedido ao sistema falhou).
  */
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -90,7 +91,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, mudancas: mudancas.length, reprocessados, sincronizadas })
+  // Valor mudado que não chegou ao Asaas (adicional, preço): leva o total.
+  const valoresLevados = configDoAsaas().temChave ? await levarValoresPendentes() : 0
+
+  return NextResponse.json({ ok: true, mudancas: mudancas.length, reprocessados, sincronizadas, valoresLevados })
 }
 
 /** Compara em tempo constante: o tempo da recusa não diz quanto do segredo bateu. */

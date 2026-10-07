@@ -23,7 +23,7 @@ describe('o catálogo', () => {
 describe('normalizarRecursos (o que vem do navegador)', () => {
   it('aceita funcionalidades do catálogo e limites de 1 a 10 ou ilimitado', () => {
     const r = normalizarRecursos({ funcionalidades: ['agenda', 'inbox', 'agenda'], limites: { unidades: 3, membros: null, whatsapp: 1 } })
-    expect(r).toEqual({ ok: true, recursos: { funcionalidades: ['agenda', 'inbox'], limites: { unidades: 3, membros: null, whatsapp: 1 } } })
+    expect(r).toEqual({ ok: true, recursos: { funcionalidades: ['agenda', 'inbox'], limites: { unidades: 3, membros: null, whatsapp: 1 }, adicionais: {} } })
   })
   it('recusa funcionalidade fora do catálogo', () => {
     expect(normalizarRecursos({ funcionalidades: ['agenda', 'inventada'], limites: { unidades: 1, membros: 1, whatsapp: 1 } }).ok).toBe(false)

@@ -5,6 +5,7 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { chamarAcao } from './apoio/acao-direta'
 import { subirAsaasFalso, type AsaasFalso } from './apoio/asaas-falso'
+import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
 /**
  * A cobrança das assinaturas pelo ASAAS, de ponta a ponta — contra o BUILD,
@@ -180,5 +181,91 @@ test.describe.serial('cobrança pelo Asaas', () => {
       await expect(p).toHaveURL(/\/conta-suspensa/, { timeout: 30_000 })
       await expect(p.getByRole('heading', { name: 'Assinatura cancelada' })).toBeVisible()
     })
+  })
+})
+
+/**
+ * Os ADICIONAIS do plano (2026-10-07) na cobrança: a mensalidade é plano +
+ * adicionais, e é o TOTAL que vai ao Asaas — ao ligar a cobrança, quando o
+ * sistema muda um adicional e quando a CLÍNICA contrata (ela pede ao sistema,
+ * por /api/interno/levar-valor). Numa rede própria, no mesmo Asaas falso.
+ */
+test.describe.serial('os adicionais levam o total ao Asaas', () => {
+  const DOC2 = `7${String(Date.now()).slice(-10)}`
+  let rede2: OutraRede
+  let dono2: MembroDeTeste
+  let sub2 = ''
+  const rota = () => `${urlDaPlataforma('sistema')}/redes/${rede2.tenantId}`
+  const valores = async () => (await db().from('tenant_subscriptions').select('valor_total_centavos, valor_no_asaas_centavos, asaas_subscription_id')
+    .eq('tenant_id', rede2.tenantId).single<{ valor_total_centavos: number; valor_no_asaas_centavos: number | null; asaas_subscription_id: string | null }>()).data!
+  const ultimoPut = () => [...asaas.chamadas].reverse().find(c => c.metodo === 'PUT' && c.caminho === `/subscriptions/${sub2}`)
+
+  test.beforeAll(async () => {
+    test.setTimeout(300_000)
+    rede2 = await criarOutraRede(`asad2${marca}`)
+    expect((await db().from('tenants').update({ onboarding_completed_at: new Date().toISOString() }).eq('id', rede2.tenantId)).error).toBeNull()
+    dono2 = await criarMembro(`asdono${marca}`, { tenant: rede2.tenantId, donoDaRede: true, permissoes: [] })
+  })
+  test.afterAll(async () => {
+    const b = db()
+    if (rede2) {
+      for (const t of ['subscription_invoices', 'tenant_subscriptions', 'platform_audit_log'] as const) await b.from(t).delete().eq('tenant_id', rede2.tenantId)
+    }
+    await b.from('platform_plans').delete().like('nome', `[e2e]%${marca}%`)
+    if (dono2) await dono2.limpar()
+    if (rede2) await rede2.limpar()
+  })
+
+  test('ligar a cobrança com adicional já contratado cobra o total', async ({ browser }) => {
+    const { data: plano } = await db().from('platform_plans').insert({
+      nome: `[e2e] Plano com oferta ${marca}`, valor_centavos: 10000,
+      recursos: {
+        funcionalidades: FUNCIONALIDADES.map(f => f.chave).filter(c => c !== 'copilot'),
+        limites: { unidades: null, membros: null, whatsapp: 1 },
+        adicionais: { whatsapp: { valor_centavos: 4900 }, copilot: { valor_centavos: 5000 } },
+      },
+    }).select('id').single<{ id: string }>()
+    await comSessao(browser, admin.estado, async p => {
+      const { data: t } = await db().from('tenants').select('name, email').eq('id', rede2.tenantId).single<{ name: string; email: string }>()
+      expect((await chamarAcao(p, 'actions/sistema.ts', 'editarRede', rota(), [rede2.tenantId, { nome: t!.name, documento: DOC2, email: t!.email, telefone: null }])).texto).toContain('"ok":true')
+      expect((await chamarAcao(p, 'actions/sistema.ts', 'definirAssinatura', rota(), [rede2.tenantId, { planoId: plano!.id, valorCentavos: 10000 }])).texto).toContain('"ok":true')
+      expect((await chamarAcao(p, 'actions/sistema.ts', 'definirAdicional', rota(), [rede2.tenantId, { chave: 'whatsapp', quantidade: 2, valorCentavos: null }])).texto).toContain('"ok":true')
+      const vencimento = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 5 * 86_400_000))
+      expect((await chamarAcao(p, 'actions/sistema.ts', 'ativarCobrancaNoAsaas', rota(), [rede2.tenantId, vencimento])).texto).toContain('"ok":true')
+    })
+    const v = await valores()
+    sub2 = v.asaas_subscription_id!
+    const criada = [...asaas.chamadas].reverse().find(c => c.metodo === 'POST' && c.caminho === '/subscriptions' && c.corpo.externalReference === rede2.tenantId)
+    expect(criada?.corpo).toMatchObject({ value: 198 })
+    expect(String(criada?.corpo.description)).toContain('+ 2 conexões de WhatsApp')
+    expect(v.valor_no_asaas_centavos).toBe(19800)
+  })
+
+  test('o sistema muda o adicional: o Asaas recebe o total novo', async ({ browser }) => {
+    await comSessao(browser, admin.estado, async p => {
+      expect((await chamarAcao(p, 'actions/sistema.ts', 'definirAdicional', rota(), [rede2.tenantId, { chave: 'whatsapp', quantidade: 1, valorCentavos: null }])).texto).toContain('"ok":true')
+    })
+    expect(ultimoPut()?.corpo).toMatchObject({ value: 149, updatePendingPayments: true })
+    expect((await valores()).valor_no_asaas_centavos).toBe(14900)
+  })
+
+  test('a clínica contrata: o sistema leva o total ao Asaas', async ({ browser }) => {
+    await comSessao(browser, dono2.estado, async p => {
+      const r = await chamarAcao(p, 'actions/assinatura.ts', 'contratarAdicional', '/admin/settings?tab=assinatura', ['copilot', 1])
+      expect(r.texto).toContain('"ok":true')
+    })
+    await expect.poll(() => ultimoPut()?.corpo.value, { timeout: 15_000 }).toBe(199)
+    expect(String(ultimoPut()?.corpo.description)).toContain('+ Copilot')
+    expect((await valores()).valor_no_asaas_centavos).toBe(19900)
+  })
+
+  test('a rota interna se defende pelo segredo, e só aceita o id de uma rede', async () => {
+    const ctx = await request.newContext({ baseURL: urlDaPlataforma('sistema') })
+    try {
+      expect((await ctx.post('/api/interno/levar-valor', { data: { tenantId: rede2.tenantId } })).status()).toBe(401)
+      const auth = { authorization: `Bearer ${process.env.INTERNO_SECRET}` }
+      expect((await ctx.post('/api/interno/levar-valor', { headers: auth, data: { tenantId: 'x' } })).status()).toBe(400)
+      expect((await ctx.post('/api/interno/levar-valor', { headers: auth, data: { tenantId: rede2.tenantId } })).status()).toBe(200)
+    } finally { await ctx.dispose() }
   })
 })

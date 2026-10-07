@@ -7,9 +7,12 @@ import { FUNCIONALIDADES, LIMITES, type RecursosDoPlano } from '@estetica-os/nuc
  * cada limite ("2 de 3"). Sem plano, tudo liberado. Mudar de plano é com o
  * BellarisOS — a tela não oferece nada além de mostrar.
  */
-export function PlanoDaRede({ recursos, uso }: {
+export function PlanoDaRede({ recursos, uso, extras = { whatsapp: 0, copilot: false } }: {
+  /** O que a rede usa DE FATO: o retrato do plano mais os adicionais (recursosEfetivos). */
   recursos: RecursosDoPlano | null
   uso: Record<'unidades' | 'membros' | 'whatsapp', number>
+  /** O que veio de adicional: para dizer "1 do plano + 2 adicionais" e "contratado à parte". */
+  extras?: { whatsapp: number; copilot: boolean }
 }) {
   const grupos = [...new Set(FUNCIONALIDADES.map(f => f.grupo))]
   return (
@@ -25,6 +28,9 @@ export function PlanoDaRede({ recursos, uso }: {
               return (
                 <li key={l.chave}>
                   {limite === null ? `${l.rotulo}: ${uso[l.chave]} · ilimitado` : `${l.rotulo}: ${uso[l.chave]} de ${limite}`}
+                  {l.chave === 'whatsapp' && limite !== null && extras.whatsapp > 0 && (
+                    <span className="plano-da-rede-estado"> ({limite - extras.whatsapp} do plano + {extras.whatsapp} {extras.whatsapp === 1 ? 'adicional' : 'adicionais'})</span>
+                  )}
                 </li>
               )
             })}
@@ -41,7 +47,9 @@ export function PlanoDaRede({ recursos, uso }: {
                         {dentro ? <Check size={14} aria-hidden /> : <Minus size={14} aria-hidden />}
                         <span>{f.rotulo}</span>
                         <span className="plano-da-rede-estado">
-                          {dentro ? ('emBreve' in f && f.emBreve ? 'Incluído · em breve' : 'Incluído') : 'Fora do plano'}
+                          {!dentro ? 'Fora do plano'
+                            : f.chave === 'copilot' && extras.copilot ? 'Contratado à parte · em breve'
+                            : 'emBreve' in f && f.emBreve ? 'Incluído · em breve' : 'Incluído'}
                         </span>
                       </li>
                     )

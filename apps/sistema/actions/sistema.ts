@@ -16,7 +16,7 @@ import {
   ativarCobranca, levarValorAoAsaas, levarDadosAoAsaas, encerrarCobranca, sincronizarCobranca,
 } from '@/lib/redes/cobranca'
 import { configDoAsaas } from '@/lib/asaas/cliente'
-import { normalizarRecursos, TUDO_LIBERADO } from '@estetica-os/nucleo/lib/planos/recursos'
+import { normalizarRecursos, TUDO_LIBERADO, ADICIONAIS } from '@estetica-os/nucleo/lib/planos/recursos'
 
 /**
  * Expira uma tag AQUI e na CLÍNICA: a situação da rede e a sessão de suporte
@@ -278,24 +278,28 @@ export async function definirAssinatura(tenantId: string, d: { planoId: string |
       ? await ler(admin.from('platform_plans').select('id, nome, recursos').eq('id', d.planoId).maybeSingle(), 'buscar o plano') as { id: string; nome: string; recursos: unknown } | null
       : null
     if (d.planoId && !plano) return { ok: false, error: 'Plano não encontrado.' }
-    const antes = await ler(admin.from('tenant_subscriptions').select('plan_id, valor_centavos, recursos').eq('tenant_id', tenantId).maybeSingle(), 'ler a assinatura') as
-      { plan_id: string | null; valor_centavos: number; recursos: unknown } | null
+    const antes = await ler(admin.from('tenant_subscriptions').select('plan_id, valor_centavos, recursos, adicionais').eq('tenant_id', tenantId).maybeSingle(), 'ler a assinatura') as
+      { plan_id: string | null; valor_centavos: number; recursos: unknown; adicionais: unknown } | null
     // O RETRATO dos recursos só muda quando o PLANO muda (ou a rede ainda não
     // tinha retrato): trocar só o valor não traz, de carona, a versão nova do
     // plano — isso é o "Aplicar a versão atual do plano". Sem plano: nenhum
     // retrato, tudo liberado.
     const trocouDePlano = (antes?.plan_id ?? null) !== (plano?.id ?? null)
     const recursos = !plano ? null : (trocouDePlano || antes?.recursos == null) ? plano.recursos : antes!.recursos
+    // Trocou de plano: o adicional que o novo já inclui sai — quem tira é o
+    // gatilho do banco (trg_retrato_sem_plano), no mesmo comando. A lista não
+    // é regravada daqui: o que a clínica contratou no meio não some.
     await gravar(admin.from('tenant_subscriptions').upsert({
       tenant_id: tenantId, plan_id: plano?.id ?? null, valor_centavos: valor, recursos, updated_at: new Date().toISOString(),
     }, { onConflict: 'tenant_id' }), 'gravar a assinatura')
+    const depois = await ler(admin.from('tenant_subscriptions').select('adicionais').eq('tenant_id', tenantId).single(), 'ler os adicionais') as { adicionais: unknown }
     await gravar(admin.from('tenants').update({ plan_name: plano?.nome ?? null }).eq('id', tenantId).select('id').single(), 'gravar o nome do plano')
     let aviso: string | undefined
     try { await levarValorAoAsaas(tenantId) } catch (e) { aviso = `Gravado aqui, mas o Asaas recusou o valor novo: ${mensagemDoErro(e)}` }
     // O plano decide o que a clínica pode usar: o portão dela lê na próxima tela.
     // Expira ANTES de registrar: falhar no registro não deixa a clínica com o velho.
     await expirarAqui(tagDaRede(tenantId))
-    await registrarNaPlataforma(ctx, 'assinatura.alterada', { tenantId, dados: { antes, depois: { plan_id: plano?.id ?? null, valor_centavos: valor, recursos } } })
+    await registrarNaPlataforma(ctx, 'assinatura.alterada', { tenantId, dados: { antes, depois: { plan_id: plano?.id ?? null, valor_centavos: valor, recursos, adicionais: depois.adicionais } } })
     recarregarRede(tenantId)
     return aviso ? { ok: false, error: aviso } : { ok: true }
   } catch (e) {
@@ -313,16 +317,53 @@ export async function aplicarPlanoAtual(tenantId: string): Promise<Resultado> {
   if (!ehUuid(tenantId)) return { ok: false, error: 'Pedido inválido.' }
   try {
     const admin = createAdminClient()
-    const sub = await ler(admin.from('tenant_subscriptions').select('plan_id, recursos').eq('tenant_id', tenantId).maybeSingle(), 'ler a assinatura') as
-      { plan_id: string | null; recursos: unknown } | null
+    const sub = await ler(admin.from('tenant_subscriptions').select('plan_id, recursos, adicionais').eq('tenant_id', tenantId).maybeSingle(), 'ler a assinatura') as
+      { plan_id: string | null; recursos: unknown; adicionais: unknown } | null
     if (!sub?.plan_id) return { ok: false, error: 'Esta rede não tem plano.' }
     const plano = await ler(admin.from('platform_plans').select('recursos').eq('id', sub.plan_id).single(), 'ler o plano') as { recursos: unknown }
-    await gravar(admin.from('tenant_subscriptions').update({ recursos: plano.recursos, updated_at: new Date().toISOString() })
-      .eq('tenant_id', tenantId).select('tenant_id').single(), 'aplicar o plano à rede')
+    // A versão nova pode incluir o que a rede comprava avulso: o gatilho do
+    // banco tira, no mesmo comando (trg_retrato_sem_plano).
+    const aplicada = await gravar(admin.from('tenant_subscriptions').update({ recursos: plano.recursos, updated_at: new Date().toISOString() })
+      .eq('tenant_id', tenantId).select('adicionais').single(), 'aplicar o plano à rede') as { adicionais: unknown }
+    try { await levarValorAoAsaas(tenantId) } catch (e) { console.error('[aplicarPlanoAtual] Asaas:', mensagemDoErro(e)) }
     await expirarAqui(tagDaRede(tenantId))
-    await registrarNaPlataforma(ctx, 'assinatura.plano_aplicado', { tenantId, dados: { plan_id: sub.plan_id, antes: sub.recursos, depois: plano.recursos } })
+    await registrarNaPlataforma(ctx, 'assinatura.plano_aplicado', { tenantId, dados: { plan_id: sub.plan_id, antes: sub.recursos, depois: plano.recursos, adicionaisAntes: sub.adicionais, adicionaisDepois: aplicada.adicionais } })
     recarregarRede(tenantId)
     return { ok: true }
+  } catch (e) {
+    return { ok: false, error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * Contrata, muda ou tira um ADICIONAL da rede (2026-10-07): conexões de
+ * WhatsApp além do limite e o Copilot avulso. `valorCentavos` é o preço
+ * especial; null mantém o contratado, ou usa o que o plano oferece. A regra
+ * inteira (cabe no plano? a quantidade? tirar com números em uso?) mora na
+ * função do banco, a mesma que a clínica usa. Com a cobrança ligada, o Asaas
+ * recebe o total.
+ */
+export async function definirAdicional(
+  tenantId: string, d: { chave: string; quantidade: number; valorCentavos: number | null },
+): Promise<Resultado> {
+  const ctx = await getPlatformContext({ papel: 'ADMIN' })
+  const quantidade = Number(d?.quantidade)
+  const valor = d?.valorCentavos == null ? null : Math.round(Number(d.valorCentavos))
+  if (!ehUuid(tenantId) || !ADICIONAIS.some(a => a.chave === d?.chave) || !Number.isInteger(quantidade)
+    || (valor !== null && !Number.isFinite(valor))) return { ok: false, error: 'Pedido inválido.' }
+  try {
+    const r = await gravar(createAdminClient().rpc('assinatura_adicional_definir', {
+      p_tenant: tenantId, p_chave: d.chave, p_quantidade: quantidade, p_valor_centavos: valor,
+    }), 'definir o adicional') as { antes: unknown; depois: unknown; pendente_no_asaas: boolean }
+    // O limite e as funcionalidades da clínica mudam: o portão lê na próxima tela.
+    await expirarAqui(tagDaRede(tenantId))
+    let aviso: string | undefined
+    if (r.pendente_no_asaas) {
+      try { await levarValorAoAsaas(tenantId) } catch (e) { aviso = `Gravado aqui, mas o Asaas recusou o valor novo (o cron tenta de novo): ${mensagemDoErro(e)}` }
+    }
+    await registrarNaPlataforma(ctx, 'assinatura.adicional', { tenantId, dados: { chave: d.chave, origem: 'sistema', antes: r.antes, depois: r.depois } })
+    recarregarRede(tenantId)
+    return aviso ? { ok: false, error: aviso } : { ok: true }
   } catch (e) {
     return { ok: false, error: mensagemDoErro(e) }
   }

@@ -23,7 +23,11 @@ const ROTULO: Record<ChaveDeLimite, [string, string]> = {
 
 export function mensagemDoLimite(chave: ChaveDeLimite, limite: number): string {
   const [um, varios] = ROTULO[chave]
-  return `O plano da sua rede permite até ${limite} ${limite === 1 ? um : varios}. Para ampliar, fale com o BellarisOS.`
+  // O WhatsApp a clínica amplia sozinha: a conexão adicional (2026-10-07).
+  const caminho = chave === 'whatsapp'
+    ? 'contrate uma conexão adicional em Configurações → Assinatura ou fale com o BellarisOS.'
+    : 'fale com o BellarisOS.'
+  return `O plano da sua rede permite até ${limite} ${limite === 1 ? um : varios}. Para ampliar, ${caminho}`
 }
 
 /**

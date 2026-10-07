@@ -204,6 +204,65 @@ um muro que não depende de cada trava do código.
     garante), como a de módulo sempre foi: a RLS não conhece o plano, e um membro que fale direto com o PostgREST pela chave
     pública alcança as tabelas que a rede dele alcança.
   - Prova: `e2e/planos-recursos.spec.ts` e `tests/planos-recursos.test.ts`.
+- **Os ADICIONAIS do plano** (2026-10-07, decisão do Heitor): conexões de
+  WhatsApp além do limite e o Copilot avulso, SOMADOS à mensalidade — uma
+  assinatura só no Asaas, com o total.
+  - **O plano oferece** (`recursos.adicionais`, `{ whatsapp: { valor_centavos },
+    copilot: { valor_centavos } }`), no editor do plano ("Adicionais à
+    venda"). Ausente = não oferece. A oferta vale pelo plano do CATÁLOGO (não
+    pelo retrato): oferecer depois num plano vale para quem já o assina.
+    WhatsApp extra só em plano COM limite de
+    números; Copilot avulso só em plano que NÃO o inclui
+    (`adicionalCabeNoPlano`). O catálogo é `ADICIONAIS` em
+    `lib/planos/recursos.ts`; o contratado, `lib/planos/adicionais.ts`.
+  - **A rede contrata** (`tenant_subscriptions.adicionais`,
+    `{ chave: { quantidade, valor_centavos } }`) pelos DOIS lados: o sistema
+    (tela da rede, `definirAdicional`, pode dar preço especial) e a clínica
+    (Configurações → Assinatura, `contratarAdicional`, sempre o preço do
+    plano). A ÚNICA porta de escrita é `assinatura_adicional_definir` (banco,
+    só service role): confere se cabe no plano, a quantidade (WhatsApp 0–10,
+    Copilot 0–1) e, ao tirar conexão, se os números ativos cabem — sob a
+    mesma trava do gatilho do limite.
+  - **O preço é RETRATADO** ao contratar: aumentar a quantidade mantém o
+    contratado; mudar o preço no catálogo vale para quem contratar depois.
+  - **Preço especial** (o sistema deu um preço diferente da oferta: cortesia,
+    desconto) fica marcado (`especial: true`): a clínica cancela, mas não
+    aumenta a quantidade dele — senão uma conexão de cortesia virava dez de
+    graça. Com a cobrança ligada, nenhum adicional deixa a mensalidade em
+    R$ 0 (o Asaas não cobra zero; encerrar é com o BellarisOS).
+  - **Na clínica contrata quem é da rede** (sem unidade fixa) com
+    configurações MANAGE; a sessão de suporte não contrata
+    (`bloqueioDoSuporte`). Rede cancelada não contrata. Cada mudança vai à
+    auditoria da plataforma (`assinatura.adicional`, com a origem).
+  - **O que a rede usa é o EFETIVO** (`recursosEfetivos`): o limite de
+    WhatsApp do retrato + as conexões extras, e o Copilot contratado entra nas
+    funcionalidades. `getCachedRede` já devolve o efetivo (é o que o
+    `buildContext`, `conferirLimite` e a aba Assinatura leem); no banco,
+    `limite_do_plano` soma o extra e `rede_tem_recurso` conta o avulso.
+  - **Trocar de plano** (ou aplicar a versão nova) tira o adicional que o
+    plano novo já inclui; o resto fica, com o preço contratado. Sem plano (ou
+    sem retrato), saem todos. Quem tira é o gatilho `trg_retrato_sem_plano`,
+    no MESMO comando que muda o plano — o app não regrava a lista (um
+    adicional contratado pela clínica no meio sumiria).
+  - **A mensalidade** é `valor_total_centavos` (coluna GERADA: `valor_centavos`
+    + os adicionais) — `AssinaturaLida.totalCentavos`. `valor_centavos` é só a
+    base (o plano ou o preço especial). O Asaas recebe o total ao ligar a
+    cobrança e em cada mudança (`levarValorAoAsaas`, com
+    `updatePendingPayments`: a fatura em aberto também muda), e
+    `valor_no_asaas_centavos` anota o que foi levado — só se o total ainda for
+    aquele: duas levadas ao mesmo tempo chegam fora de ordem, então, depois de
+    levar, relê e leva de novo se o total mudou.
+  - **A clínica não fala com o Asaas**: grava pela função do banco e pede ao
+    sistema (`pedirAoSistemaLevarValor` → `POST /api/interno/levar-valor`,
+    `INTERNO_SECRET`; só o id da rede vai no pedido, o valor sai do banco).
+    Falhou: a clínica é avisada ("chega à cobrança em até uma hora"), e o
+    cron `assinaturas` do sistema leva o que ficou pendente
+    (`levarValoresPendentes` / `pendentesNoAsaas`: total ≠ valor no Asaas).
+  - ⚠️ **Adicional novo exige migration**: a coluna gerada, a função de
+    escrita e o rótulo do banco conhecem as chaves pelo nome.
+  - Prova: `e2e/planos-adicionais.spec.ts`, o bloco "os adicionais levam o
+    total ao Asaas" de `e2e/assinaturas-asaas.spec.ts` e
+    `tests/planos-adicionais.test.ts`.
 - **A situação é recalculada POR ESTADO no banco**
   (`assinatura_aplicar_cobranca`): os eventos do Asaas chegam fora de ordem e
   repetidos, então a função olha as faturas (`subscription_invoices`) — em
@@ -371,6 +430,11 @@ um muro que não depende de cada trava do código.
 ❌ Tela ou action de funcionalidade que é PARTE de um módulo (pacotes, inbox, campanhas…) sem assertRecurso, ou rotina sem tela sem redeTemRecurso
 ❌ Acrescentar chave ao catálogo de lib/planos/recursos.ts sem migration nova decidindo os planos e retratos que já existem
 ❌ Gravar retrato (tenant_subscriptions.recursos) fora de definirAssinatura/criarRede/aplicarPlanoAtual
+❌ Gravar tenant_subscriptions.adicionais fora de assinatura_adicional_definir — nem na troca de plano (quem tira o que não cabe é o gatilho trg_retrato_sem_plano)
+❌ Deixar a clínica (p_valor_centavos null) aumentar adicional com preço especial
+❌ Ler valor_centavos como a mensalidade — é a base; o que se cobra é valor_total_centavos (plano + adicionais)
+❌ Levar valor ao Asaas pela clínica (ela não tem a chave) — é o sistema, por /api/interno/levar-valor ou pelo cron
+❌ Decidir limite ou funcionalidade pelo retrato cru quando há adicional — é o efetivo (recursosEfetivos, getCachedRede)
 ❌ Decidir se a verificação em duas etapas é pedida fora de verificacaoPendente (ou cachear a opção: o outro host não a veria mudar)
 ❌ Mandar e-mail pelo Auth (convite, reenviar acesso) e descartar o { error } — a tela diria "enviado" com o e-mail parado no SMTP
 ❌ Deixar a marca da plataforma passar na clínica (proxy, buildContext, login), ou página/action do sistema ou do suporte sem getPlatformContext

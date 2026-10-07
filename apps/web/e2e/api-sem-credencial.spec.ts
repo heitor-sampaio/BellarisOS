@@ -122,6 +122,16 @@ test('expirar cache (a conversa entre os apps) exige o segredo, e só as tags da
   }
 })
 
+test('levar o valor ao Asaas (a clínica pede ao sistema) exige o segredo', async ({ request }) => {
+  test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build')
+  const rota = `${urlDaPlataforma('sistema')}/api/interno/levar-valor`
+  const rede = '2b3c4d5e-6f70-4812-9a3b-4c5d6e7f8091'
+  expect((await request.post(rota, { data: { tenantId: rede } })).status()).toBe(401)
+  expect((await request.post(rota, { data: { tenantId: rede }, headers: { authorization: `Bearer ${'x'.repeat(40)}` } })).status()).toBe(401)
+  // Na clínica, a rota não existe.
+  expect((await request.post('/api/interno/levar-valor', { data: { tenantId: rede } })).status()).toBe(404)
+})
+
 test('o token do Realtime no suporte exige a sessão de lá', async ({ request }) => {
   test.skip(!plataformaNoAr(), 'a plataforma roda em apps próprios: só contra o build')
   const r = await request.get(`${urlDaPlataforma('suporte')}/api/auth/token`, { maxRedirects: 0 })

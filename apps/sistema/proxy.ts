@@ -9,6 +9,8 @@ export async function proxy(request: NextRequest) {
   return proxyDaPlataforma(request, 'sistema', caminho => caminho === '/api/health'
     // Se defende pelo segredo entre os apps (lib/interno no núcleo).
     || caminho === '/api/interno/expirar'
+    // A clínica pede que o total novo (adicional contratado) vá ao Asaas.
+    || caminho === '/api/interno/levar-valor'
     // Cada uma se defende sozinha: o webhook pelo token do Asaas, o cron pelo CRON_SECRET.
     || caminho === '/api/webhooks/asaas'
     || caminho.startsWith('/api/cron/'))

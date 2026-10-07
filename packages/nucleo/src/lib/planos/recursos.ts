@@ -64,10 +64,34 @@ export type ChaveDeLimite = (typeof LIMITES)[number]['chave']
 /** O teto do slider; acima disso, "ilimitado" (null). */
 export const LIMITE_MAXIMO = 10
 
+/**
+ * Os ADICIONAIS (2026-10-07): o que a rede contrata além do plano, somado à
+ * mensalidade. O plano OFERECE (e diz o preço, em `adicionais`); o que a rede
+ * contratou mora em `tenant_subscriptions.adicionais` (`lib/planos/adicionais.ts`).
+ *  - `whatsapp`: conexões além do limite do plano (só em plano COM limite);
+ *  - `copilot`: o Copilot avulso (só em plano que não o inclui).
+ * Chave nova aqui exige migration: a coluna `valor_total_centavos` e as
+ * funções do banco conhecem as duas pelo nome.
+ */
+export const ADICIONAIS = [
+  { chave: 'whatsapp', rotulo: 'Conexão de WhatsApp adicional', maximo: 10 },
+  { chave: 'copilot',  rotulo: 'Copilot (IA secretária)',       maximo: 1, emBreve: true },
+] as const
+
+export type ChaveDeAdicional = (typeof ADICIONAIS)[number]['chave']
+
+/** O preço que o plano pede por unidade do adicional, em centavos. Ausente = não oferece. */
+export type OfertaDosAdicionais = Partial<Record<ChaveDeAdicional, { valor_centavos: number }>>
+
+/** Teto do preço de um adicional (R$ 100.000,00): erro de digitação não vira cobrança. */
+export const PRECO_MAXIMO_CENTAVOS = 10_000_000
+
 export interface RecursosDoPlano {
   funcionalidades: ChaveDeFuncionalidade[]
   /** null = ilimitado. */
   limites: Record<ChaveDeLimite, number | null>
+  /** Os adicionais que o plano oferece, com o preço. */
+  adicionais: OfertaDosAdicionais
 }
 
 const CHAVES = new Set<string>(FUNCIONALIDADES.map(f => f.chave))
@@ -76,7 +100,20 @@ const CHAVES = new Set<string>(FUNCIONALIDADES.map(f => f.chave))
 export const TUDO_LIBERADO: RecursosDoPlano = {
   funcionalidades: FUNCIONALIDADES.map(f => f.chave),
   limites: { unidades: null, membros: null, whatsapp: null },
+  adicionais: {},
 }
+
+/**
+ * O plano pode oferecer este adicional? O WhatsApp extra só faz sentido com
+ * limite de números; o Copilot avulso, só quando o plano não o inclui.
+ */
+export function adicionalCabeNoPlano(r: Pick<RecursosDoPlano, 'funcionalidades' | 'limites'>, chave: ChaveDeAdicional): boolean {
+  return chave === 'whatsapp' ? r.limites.whatsapp !== null : !(r.funcionalidades as string[]).includes('copilot')
+}
+
+const precoValido = (v: unknown): v is number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= PRECO_MAXIMO_CENTAVOS
+const CHAVES_DE_ADICIONAL = new Set<string>(ADICIONAIS.map(a => a.chave))
 
 const limiteValido = (v: unknown): v is number | null =>
   v === null || (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= LIMITE_MAXIMO)
@@ -99,10 +136,27 @@ export function normalizarRecursos(entrada: unknown):
   }
   // Na ordem do catálogo, sem repetição.
   const marcadas = new Set(e.funcionalidades as string[])
-  return {
-    ok: true,
-    recursos: { funcionalidades: FUNCIONALIDADES.map(f => f.chave).filter(c => marcadas.has(c)), limites: saida },
+  const funcionalidades = FUNCIONALIDADES.map(f => f.chave).filter(c => marcadas.has(c))
+
+  // A oferta de adicionais: opcional; o que vier, estrito.
+  const adicionais: OfertaDosAdicionais = {}
+  const pedidos = (e as { adicionais?: unknown }).adicionais
+  if (pedidos != null) {
+    if (typeof pedidos !== 'object' || Array.isArray(pedidos)) return { ok: false, error: 'Adicionais inválidos.' }
+    for (const [chave, oferta] of Object.entries(pedidos as Record<string, unknown>)) {
+      if (!CHAVES_DE_ADICIONAL.has(chave)) return { ok: false, error: `Adicional desconhecido: ${chave}.` }
+      const a = ADICIONAIS.find(x => x.chave === chave)!
+      const valor = (oferta as { valor_centavos?: unknown } | null)?.valor_centavos
+      if (!precoValido(valor)) return { ok: false, error: `${a.rotulo}: preço inválido.` }
+      if (!adicionalCabeNoPlano({ funcionalidades, limites: saida }, a.chave)) {
+        return { ok: false, error: a.chave === 'whatsapp'
+          ? 'A conexão de WhatsApp adicional só vale para plano com limite de números.'
+          : 'O Copilot avulso só vale para plano que não inclui o Copilot.' }
+      }
+      adicionais[a.chave] = { valor_centavos: valor }
+    }
   }
+  return { ok: true, recursos: { funcionalidades, limites: saida, adicionais } }
 }
 
 /**
@@ -114,14 +168,24 @@ export function lerRecursos(gravado: unknown): RecursosDoPlano | null {
   const g = gravado as { funcionalidades?: unknown; limites?: unknown }
   const marcadas = new Set(Array.isArray(g.funcionalidades) ? g.funcionalidades.filter((f): f is string => typeof f === 'string') : [])
   const limites = (g.limites && typeof g.limites === 'object' ? g.limites : {}) as Record<string, unknown>
-  return {
+  const lido: RecursosDoPlano = {
     funcionalidades: FUNCIONALIDADES.map(f => f.chave).filter(c => marcadas.has(c)),
     limites: {
       unidades: limiteValido(limites.unidades) ? limites.unidades : null,
       membros:  limiteValido(limites.membros)  ? limites.membros  : null,
       whatsapp: limiteValido(limites.whatsapp) ? limites.whatsapp : null,
     },
+    adicionais: {},
   }
+  // A oferta: só o que é válido E cabe no plano lido.
+  const ofertas = ((g as { adicionais?: unknown }).adicionais ?? {}) as Record<string, { valor_centavos?: unknown } | null>
+  if (ofertas && typeof ofertas === 'object') {
+    for (const a of ADICIONAIS) {
+      const v = ofertas[a.chave]?.valor_centavos
+      if (precoValido(v) && adicionalCabeNoPlano(lido, a.chave)) lido.adicionais[a.chave] = { valor_centavos: v }
+    }
+  }
+  return lido
 }
 
 /** A rede pode usar a funcionalidade? Sem retrato, sim. */

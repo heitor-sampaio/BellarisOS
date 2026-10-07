@@ -2,12 +2,16 @@ import { reaisDe } from '@/lib/redes/valor'
 import { rotuloDaSituacao } from '@/lib/redes/situacao'
 import type { AssinaturaLida } from '@/lib/redes/assinatura'
 import { PlanoDaRede } from '@/components/admin/plano-da-rede'
+import { AdicionaisDaClinica } from '@/components/admin/adicionais-da-clinica'
+import { ADICIONAIS } from '@estetica-os/nucleo/lib/planos/recursos'
+import { recursosEfetivos } from '@estetica-os/nucleo/lib/planos/adicionais'
 
 /**
  * A assinatura do BellarisOS, do lado da CLÍNICA (Configurações → Assinatura):
  * o plano, o valor, a situação, o próximo vencimento e as faturas, cada uma
  * com o link do Asaas (Pix, boleto ou cartão — a clínica escolhe). Mudar de
- * plano é com o BellarisOS.
+ * plano é com o BellarisOS; os ADICIONAIS (WhatsApp extra, Copilot avulso) a
+ * própria rede contrata aqui (2026-10-07).
  */
 const ROTULO_DA_FATURA: Record<string, string> = {
   PENDING: 'Em aberto', OVERDUE: 'Vencida', CONFIRMED: 'Paga', RECEIVED: 'Paga', RECEIVED_IN_CASH: 'Paga',
@@ -17,8 +21,10 @@ const dia = (v: string | null) => v
   ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(v.length === 10 ? `${v}T12:00:00` : v))
   : '—'
 
-export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso }: {
+export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso, semContratar }: {
   dados: AssinaturaLida; planoNome: string | null; carencia: number; podePagar: boolean
+  /** Por que esta pessoa não contrata adicional (null = contrata): unidade fixa, sem configurações, suporte. */
+  semContratar: string | null
   /** Quantos de cada limite a rede usa hoje (os ATIVOS). */
   uso: Record<'unidades' | 'membros' | 'whatsapp', number>
 }) {
@@ -36,7 +42,7 @@ export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso 
         </p>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
           {planoNome ? <>Plano <strong>{planoNome}</strong></> : 'Sem plano definido'}
-          {assinatura && assinatura.valorCentavos > 0 && <> · {reaisDe(assinatura.valorCentavos)} por mês</>}
+          {assinatura && assinatura.totalCentavos > 0 && <> · {reaisDe(assinatura.totalCentavos)} por mês</>}
         </p>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
           {rede.planStatus === 'trial' && <>Período de teste até {dia(rede.trialEndsAt)}.</>}
@@ -48,7 +54,26 @@ export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso 
         </p>
       </div>
 
-      <PlanoDaRede recursos={assinatura?.recursos ?? null} uso={uso} />
+      <PlanoDaRede
+        recursos={assinatura ? recursosEfetivos(assinatura.recursos, assinatura.adicionais) : null}
+        extras={{ whatsapp: assinatura?.adicionais.whatsapp?.quantidade ?? 0, copilot: !!assinatura?.adicionais.copilot }}
+        uso={uso}
+      />
+
+      {assinatura?.recursos && (
+        <AdicionaisDaClinica
+          semContratar={rede.planStatus === 'canceled' ? 'A assinatura está cancelada. Para voltar a contratar, fale com o BellarisOS pela Ajuda.' : semContratar}
+          totalCentavos={assinatura.totalCentavos}
+          cobrancaLigada={assinatura.cobranca === 'ativa'}
+          adicionais={ADICIONAIS.map(a => ({
+            chave: a.chave, rotulo: a.rotulo, maximo: a.maximo, emBreve: 'emBreve' in a && !!a.emBreve,
+            quantidade: assinatura.adicionais[a.chave]?.quantidade ?? 0,
+            especial: !!assinatura.adicionais[a.chave]?.especial,
+            // A próxima unidade: o preço contratado (retrato), ou o que o plano oferece hoje.
+            precoCentavos: assinatura.adicionais[a.chave]?.valor_centavos ?? assinatura.oferta[a.chave]?.valor_centavos ?? null,
+          }))}
+        />
+      )}
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <p className="overline" style={{ padding: '16px 16px 4px' }}>Faturas</p>

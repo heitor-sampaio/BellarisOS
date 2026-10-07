@@ -1299,6 +1299,61 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-07 — Adicionais do plano: conexões de WhatsApp extras e o Copilot avulso
+
+Pedido do Heitor: oferecer conexões de WhatsApp além do limite do plano e o
+Copilot avulso. Decisões dele: o preço de cada adicional mora NO PLANO;
+contratam a plataforma (sistema) E a própria clínica; o valor SOMA na
+mensalidade (uma assinatura só no Asaas); o Copilot avulso já pode ser
+vendido (pré-venda, "em breve").
+
+- **O plano oferece**: "Adicionais à venda" no editor do plano, com o preço
+  de cada um (`recursos.adicionais`). WhatsApp extra só em plano com limite;
+  Copilot avulso só em plano que não o inclui — a oferta que deixa de caber sai
+  sozinha.
+- **A rede contrata** (`tenant_subscriptions.adicionais`, migration
+  `20261007000001`): pela tela da rede no sistema (com preço especial, se
+  quiser) ou pela aba Assinatura da clínica (sempre o preço do plano, com a
+  confirmação mostrando a mensalidade de antes e a de depois). Uma porta só
+  de escrita, `assinatura_adicional_definir`, para os dois.
+- **O que vale na clínica é o efetivo**: o limite de WhatsApp soma as
+  conexões extras e o Copilot contratado entra nas funcionalidades — no app
+  (`recursosEfetivos`, já no cache da rede) e no banco (`limite_do_plano`,
+  `rede_tem_recurso`).
+- **A mensalidade é o total** (`valor_total_centavos`, coluna gerada): o Asaas
+  recebe plano + adicionais ao ligar a cobrança e a cada mudança, e a fatura
+  diz o que cobra ("plano Pro + 2 conexões de WhatsApp + Copilot"). A clínica
+  não fala com o Asaas: pede ao sistema (`/api/interno/levar-valor`); se o
+  pedido falha, o cron `assinaturas` leva o pendente. O MRR do painel e a
+  lista de redes passaram a mostrar o total (migration `20261007000002`).
+- **Decisões minhas**: o preço é retratado ao contratar (aumentar a
+  quantidade mantém o preço; mudar o catálogo vale para quem contratar
+  depois); WhatsApp extra de 0 a 10 e Copilot 0 ou 1; tirar conexão com os
+  números em uso é recusado ("desative um número antes"); trocar para um plano
+  que já inclui o adicional o encerra (sem cobrar duas vezes), e sem plano
+  saem todos; na clínica contrata quem é da rede com Configurações, e a sessão
+  de suporte não contrata; rede cancelada não contrata; tudo vai à auditoria
+  da plataforma com a origem (sistema ou clínica).
+- De passagem: o gatilho do limite lia o limite ANTES de pegar a trava; uma
+  redução concorrente podia passar com o limite velho. Agora trava antes.
+- **Do verificador independente** (migration `20261007000003`): o preço
+  especial dado pelo sistema (cortesia, desconto) se estendia ao que a clínica
+  comprasse depois — uma conexão grátis virava dez; agora fica marcado e a
+  clínica só cancela. A oferta passou a valer pelo plano do CATÁLOGO (oferecer
+  depois vale para quem já assina; antes só para quem recebesse o plano de
+  novo). Trocar de plano tirava os adicionais regravando a lista no app — um
+  adicional contratado pela clínica no mesmo instante sumia; agora quem tira é
+  o gatilho, no mesmo comando. Duas levadas ao Asaas fora de ordem podiam
+  deixar o valor velho lá sem aparecer como pendente; agora relê e leva de
+  novo. Mensalidade zerada por um adicional com a cobrança ligada é recusada.
+  A clínica é avisada quando o valor não chegou ao Asaas na hora. Textos: o
+  limite de WhatsApp aponta a conexão adicional; a confirmação distingue
+  cobrança ligada ou não, e a pré-venda do Copilot diz que a cobrança começa
+  já.
+- Fica sem teste de ponta a ponta a reserva do cron (`levarValoresPendentes`):
+  chamar o cron num spec o tira do grupo dos isolados, e o Asaas falso só
+  sobe numa porta; o filtro das pendentes tem teste de unidade.
+
 ### 2026-10-06 — Planos com funcionalidades e limites
 
 Pedido do Heitor: definir tudo ao criar um plano — as funcionalidades (caixa

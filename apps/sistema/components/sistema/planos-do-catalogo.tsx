@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { salvarPlano } from '@/actions/sistema'
 import { centavosDe, campoDeReais, reaisDe } from '@estetica-os/nucleo/lib/redes/valor'
-import { resumirRecursos, TUDO_LIBERADO, type RecursosDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
+import { resumirRecursos, TUDO_LIBERADO, ADICIONAIS, type RecursosDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { RecursosDoPlanoCampos } from '@/components/sistema/recursos-do-plano'
 
 interface Plano { id: string; nome: string; descricao: string | null; valorCentavos: number; ativo: boolean; ordem: number; redes: number; recursos: RecursosDoPlano }
@@ -23,6 +23,9 @@ export function PlanosDoCatalogo({ planos }: { planos: Plano[] }) {
   function salvar(form: FormData) {
     const centavos = centavosDe(String(form.get('valor') ?? ''))
     if (centavos == null) { toast.error('Valor inválido.'); return }
+    // Adicional oferecido sem preço: o aviso aqui, perto do campo, e não o "preço inválido" do servidor.
+    const semPreco = ADICIONAIS.find(x => recursos.adicionais?.[x.chave] && !(recursos.adicionais[x.chave]!.valor_centavos > 0))
+    if (semPreco) { toast.error(`Dê o preço por mês de: ${semPreco.rotulo}.`); return }
     iniciar(async () => {
       const r = await salvarPlano({
         id: editando?.id ?? null, nome: String(form.get('nome') ?? ''), descricao: String(form.get('descricao') ?? '') || null,

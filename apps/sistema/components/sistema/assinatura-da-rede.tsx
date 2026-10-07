@@ -7,8 +7,10 @@ import {
   definirAssinatura, estenderTeste, marcarEmDia, cancelarAssinatura, reabrirAssinatura,
   ativarCobrancaNoAsaas, sincronizarComOAsaas, aplicarPlanoAtual,
 } from '@/actions/sistema'
-import { resumirRecursos, type RecursosDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
+import { resumirRecursos, type OfertaDosAdicionais, type RecursosDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { centavosDe, campoDeReais, reaisDe } from '@estetica-os/nucleo/lib/redes/valor'
+import type { AdicionaisContratados } from '@estetica-os/nucleo/lib/planos/adicionais'
+import { AdicionaisDaRede } from '@/components/sistema/adicionais-da-rede'
 
 /**
  * A assinatura de uma rede no /sistema: plano e valor (preço especial), teste,
@@ -33,7 +35,7 @@ const vencimentoSugerido = (fimDoTeste: string | null) =>
 export function AssinaturaDaRede({ tenantId, rede, assinatura, faturas, planos, asaasPronto }: {
   tenantId: string
   rede: { planStatus: string | null; trialEndsAt: string | null; emAtrasoDesde: string | null; temDocumento: boolean }
-  assinatura: { planoId: string | null; valorCentavos: number; cobranca: 'sem_cobranca' | 'ativa' | 'cancelada'; asaasSubscriptionId: string | null; proximoVencimento: string | null; recursos: RecursosDoPlano | null } | null
+  assinatura: { planoId: string | null; valorCentavos: number; cobranca: 'sem_cobranca' | 'ativa' | 'cancelada'; asaasSubscriptionId: string | null; proximoVencimento: string | null; recursos: RecursosDoPlano | null; oferta: OfertaDosAdicionais; adicionais: AdicionaisContratados; totalCentavos: number } | null
   faturas: { id: string; valorCentavos: number; vencimento: string; situacao: string; pagoEm: string | null; url: string | null; removida: boolean }[]
   planos: { id: string; nome: string; valorCentavos: number; ativo: boolean }[]
   asaasPronto: boolean
@@ -101,6 +103,15 @@ export function AssinaturaDaRede({ tenantId, rede, assinatura, faturas, planos, 
         )}
       </div>
 
+      {/* Os adicionais: WhatsApp além do limite, Copilot avulso (somam na mensalidade) */}
+      {assinatura?.planoId && (
+        <div className="suporte-pilha">
+          <h3 className="suporte-subtitulo">Adicionais</h3>
+          <AdicionaisDaRede tenantId={tenantId} recursos={assinatura.recursos} oferta={assinatura.oferta} adicionais={assinatura.adicionais}
+            valorCentavos={assinatura.valorCentavos} totalCentavos={assinatura.totalCentavos} />
+        </div>
+      )}
+
       {/* Situação */}
       <div className="suporte-pilha">
         <p className="suporte-texto">
@@ -145,7 +156,7 @@ export function AssinaturaDaRede({ tenantId, rede, assinatura, faturas, planos, 
               Sincronizar faturas
             </button>
           </div>
-        ) : !assinatura || assinatura.valorCentavos <= 0 ? (
+        ) : !assinatura || assinatura.totalCentavos <= 0 ? (
           <p className="suporte-texto-fraco">Defina o plano e o valor para ligar a cobrança.</p>
         ) : !rede.temDocumento ? (
           <p className="suporte-texto-fraco">A rede precisa de CPF ou CNPJ (Dados da rede) para ser cobrada.</p>

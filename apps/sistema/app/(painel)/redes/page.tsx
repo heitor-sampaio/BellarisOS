@@ -46,9 +46,9 @@ export default async function RedesDoSistemaPage({ searchParams }: {
   const admin = createAdminClient()
   const [todas, subs] = await Promise.all([
     ler(admin.rpc('suporte_resumo_redes'), 'carregar as redes'),
-    ler(admin.from('tenant_subscriptions').select('tenant_id, valor_centavos, proximo_vencimento, cobranca'), 'carregar as assinaturas'),
+    ler(admin.from('tenant_subscriptions').select('tenant_id, valor_total_centavos, proximo_vencimento, cobranca'), 'carregar as assinaturas'),
   ])
-  const assinatura = new Map(((subs ?? []) as { tenant_id: string; valor_centavos: number; proximo_vencimento: string | null; cobranca: string }[])
+  const assinatura = new Map(((subs ?? []) as { tenant_id: string; valor_total_centavos: number; proximo_vencimento: string | null; cobranca: string }[])
     .map(s => [s.tenant_id, s]))
   const redes = ((todas ?? []) as Rede[])
     .filter(r => comTeste || !r.name.startsWith('[e2e]'))
@@ -89,7 +89,7 @@ export default async function RedesDoSistemaPage({ searchParams }: {
                     </td>
                     <td data-label="Situação" data-par><SituacaoDaRede ativa={r.is_active} planStatus={r.plan_status} /></td>
                     <td data-label="Plano" data-par>{r.plan_name ?? '—'}</td>
-                    <td data-label="Valor" data-par>{s ? reaisDe(s.valor_centavos) : '—'}</td>
+                    <td data-label="Valor" data-par>{s ? reaisDe(s.valor_total_centavos) : '—'}</td>
                     <td data-label="Próx. vencimento" data-par>
                       {s?.proximo_vencimento ? quando(`${s.proximo_vencimento}T12:00:00`) : r.plan_status === 'trial' ? `teste até ${quando(r.trial_ends_at)}` : '—'}
                     </td>

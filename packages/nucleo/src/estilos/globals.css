@@ -2261,7 +2261,37 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .plano-da-rede-lista li[data-dentro="false"] { color: var(--text-muted); }
 .plano-da-rede-lista li[data-dentro="false"] svg { color: var(--text-faint); }
 .plano-da-rede-estado { font-size: var(--text-xs-sz); color: var(--text-muted); }
+/* Os adicionais do plano, na aba Assinatura da clínica (2026-10-07). */
+.adicionais-da-clinica { display: flex; flex-direction: column; gap: 12px; }
+.adicionais-da-clinica-ajuda { font-size: var(--text-xs-sz); color: var(--text-muted); }
+.adicionais-da-clinica-lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.adicionais-da-clinica-lista li { display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-row); padding: 12px 14px; }
+.adicionais-da-clinica-icone { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: var(--radius-row); background: var(--brand-soft); color: var(--brand); }
+.adicionais-da-clinica-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.adicionais-da-clinica-nome { font-size: var(--text-sm-sz); font-weight: var(--weight-bold); color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.adicionais-da-clinica-preco { font-size: var(--text-sm-sz); color: var(--text); }
+.adicionais-da-clinica-estado { font-size: var(--text-xs-sz); color: var(--text-muted); }
+.adicionais-da-clinica-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.chip-em-breve { font-size: var(--text-xs-sz); font-weight: var(--weight-semibold); color: var(--brand); background: var(--brand-soft); border: 1px solid var(--brand-soft-border); border-radius: var(--radius-chip); padding: 1px 8px; }
+.adicionais-da-clinica-janela { display: flex; flex-direction: column; gap: 14px; padding: 20px 24px; font-size: var(--text-sm-sz); color: var(--text); }
+.adicionais-da-clinica-janela-topo { display: flex; align-items: center; gap: 10px; }
+.adicionais-da-clinica-janela-topo h2 { flex: 1; font-size: var(--text-card-title); font-weight: var(--weight-extrabold); color: var(--text); }
+.adicionais-da-clinica-janela-acoes { display: flex; gap: 8px; justify-content: flex-end; }
+.adicionais-da-clinica-erro { font-size: var(--text-sm-sz); font-weight: var(--weight-semibold); color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger-border); border-radius: var(--radius-row); padding: 8px 10px; }
+@media (max-width: 640px) {
+  .adicionais-da-clinica-lista li { grid-template-columns: 32px 1fr; }
+  .adicionais-da-clinica-acoes { grid-column: 1 / -1; justify-content: flex-start; }
+}
 .plano-limite-valor { font-weight: var(--weight-bold); color: var(--text); text-align: center; }
+/* Adicionais à venda (2026-10-07): a caixa de oferecer e o preço ao lado. */
+.plano-adicional { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.plano-adicional-preco { display: inline-flex; align-items: center; gap: 8px; }
+.plano-adicional-preco .field { width: 110px; }
+/* Os adicionais da rede, no sistema: uma linha por adicional. */
+.sistema-adicional { border: 1px solid var(--border); border-radius: var(--radius-card-token); padding: 12px 14px; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.sistema-adicional legend { padding: 0 4px; }
+.sistema-adicional .field[data-largura="quantidade"] { width: 90px; }
+.sistema-adicional .field[data-largura="preco"] { width: 120px; }
 @media (max-width: 640px) {
   .plano-limite { grid-template-columns: 1fr 28px; }
   .plano-limite .field-label { grid-column: 1 / -1; }

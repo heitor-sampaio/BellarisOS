@@ -26,6 +26,7 @@ describe('mensagemDoLimite', () => {
   it('diz o limite e o caminho, no singular e no plural', () => {
     expect(mensagemDoLimite('unidades', 1)).toBe('O plano da sua rede permite até 1 unidade. Para ampliar, fale com o BellarisOS.')
     expect(mensagemDoLimite('membros', 5)).toBe('O plano da sua rede permite até 5 membros na equipe. Para ampliar, fale com o BellarisOS.')
-    expect(mensagemDoLimite('whatsapp', 2)).toBe('O plano da sua rede permite até 2 números de WhatsApp. Para ampliar, fale com o BellarisOS.')
+    // O WhatsApp a clínica pode ampliar sozinha (adicional, 2026-10-07).
+    expect(mensagemDoLimite('whatsapp', 2)).toBe('O plano da sua rede permite até 2 números de WhatsApp. Para ampliar, contrate uma conexão adicional em Configurações → Assinatura ou fale com o BellarisOS.')
   })
 })

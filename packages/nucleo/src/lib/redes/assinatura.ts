@@ -1,5 +1,6 @@
 import 'server-only'
-import { lerRecursos, type RecursosDoPlano } from '../planos/recursos'
+import { lerRecursos, adicionalCabeNoPlano, ADICIONAIS, type RecursosDoPlano, type OfertaDosAdicionais } from '../planos/recursos'
+import { lerAdicionais, type AdicionaisContratados } from '../planos/adicionais'
 import { createAdminClient } from '../supabase/admin'
 import { gravar, ler } from '../db'
 import { tagDaRede } from './cache'
@@ -33,6 +34,17 @@ export interface AssinaturaLida {
     asaasCustomerId: string | null; asaasSubscriptionId: string | null; proximoVencimento: string | null
     /** O RETRATO do que o plano inclui (lib/planos/recursos.ts); null = tudo liberado. */
     recursos: RecursosDoPlano | null
+    /** O contratado além do plano (lib/planos/adicionais.ts), com o preço retratado. */
+    adicionais: AdicionaisContratados
+    /** A mensalidade: `valorCentavos` (o plano, ou o preço especial) + os adicionais. É o que o Asaas cobra. */
+    totalCentavos: number
+    /** O que foi levado ao Asaas por último; diferente do total = pendente (o cron do sistema leva). */
+    valorNoAsaasCentavos: number | null
+    /**
+     * O que o plano oferece HOJE à parte (o do catálogo, não o do retrato:
+     * oferecer num plano vale para quem já o assina), só o que cabe no retrato.
+     */
+    oferta: OfertaDosAdicionais
   } | null
   faturas: {
     id: string; valorCentavos: number; vencimento: string; situacao: string; pagoEm: string | null
@@ -47,13 +59,21 @@ export async function lerAssinatura(tenantId: string): Promise<AssinaturaLida | 
       .select('id, name, document, email, phone, is_active, desligada_motivo, plan_status, plan_name, trial_ends_at, em_atraso_desde, created_at')
       .eq('id', tenantId).maybeSingle(), 'buscar a rede'),
     ler(admin.from('tenant_subscriptions')
-      .select('plan_id, valor_centavos, cobranca, asaas_customer_id, asaas_subscription_id, proximo_vencimento, recursos')
+      .select('plan_id, valor_centavos, cobranca, asaas_customer_id, asaas_subscription_id, proximo_vencimento, recursos, adicionais, valor_total_centavos, valor_no_asaas_centavos')
       .eq('tenant_id', tenantId).maybeSingle(), 'buscar a assinatura'),
     ler(admin.from('subscription_invoices')
       .select('id, valor_centavos, vencimento, situacao, pago_em, invoice_url, removida')
       .eq('tenant_id', tenantId).order('vencimento', { ascending: false }).limit(24), 'buscar as faturas'),
   ])
   if (!t) return null
+  // A oferta de adicionais é a do plano no CATÁLOGO (2026-10-07).
+  const doCatalogo = s?.plan_id
+    ? await ler(admin.from('platform_plans').select('recursos').eq('id', s.plan_id).maybeSingle(), 'ler a oferta do plano') as { recursos: unknown } | null
+    : null
+  const retrato = s ? lerRecursos(s.recursos) : null
+  const ofertado = lerRecursos(doCatalogo?.recursos ?? null)?.adicionais ?? {}
+  const oferta: OfertaDosAdicionais = {}
+  if (retrato) for (const a of ADICIONAIS) if (ofertado[a.chave] && adicionalCabeNoPlano(retrato, a.chave)) oferta[a.chave] = ofertado[a.chave]
   return {
     rede: {
       id: t.id, nome: t.name, documento: t.document, email: t.email, telefone: t.phone,
@@ -63,7 +83,9 @@ export async function lerAssinatura(tenantId: string): Promise<AssinaturaLida | 
     assinatura: s ? {
       planoId: s.plan_id, valorCentavos: s.valor_centavos, cobranca: s.cobranca,
       asaasCustomerId: s.asaas_customer_id, asaasSubscriptionId: s.asaas_subscription_id,
-      proximoVencimento: s.proximo_vencimento, recursos: lerRecursos(s.recursos),
+      proximoVencimento: s.proximo_vencimento, recursos: retrato, oferta,
+      adicionais: lerAdicionais(s.adicionais), totalCentavos: s.valor_total_centavos ?? s.valor_centavos,
+      valorNoAsaasCentavos: s.valor_no_asaas_centavos ?? null,
     } : null,
     faturas: ((f ?? []) as { id: string; valor_centavos: number; vencimento: string; situacao: string; pago_em: string | null; invoice_url: string | null; removida: boolean }[])
       .map(x => ({ id: x.id, valorCentavos: x.valor_centavos, vencimento: x.vencimento, situacao: x.situacao,
