@@ -7,6 +7,7 @@ import { lerAssinatura, faturaEmAberto } from '@/lib/redes/assinatura'
 import { reaisDe } from '@/lib/redes/valor'
 import { logoutAction } from '@/actions/auth'
 import { sessaoDeSuporteAtual } from '@/lib/suporte/requisicao'
+import { temFuncionalidade } from '@estetica-os/nucleo/lib/planos/recursos'
 
 /**
  * A tela de quem é de uma rede BLOQUEADA (desligada, assinatura suspensa ou
@@ -35,7 +36,9 @@ export default async function ContaSuspensaPage() {
   const tenantId = ehCliente ? await getCachedRedeDoCliente(meta.client_id!) : meta.tenant_id ?? null
   const rede = tenantId ? await getCachedRede(tenantId) : null
   const motivo = rede ? motivoDoBloqueio(rede) : null
-  if (!rede || !motivo) redirect('/auth/redirect')
+  // O paciente também chega aqui quando o PORTAL não está no plano da rede.
+  const portalForaDoPlano = ehCliente && !!rede && !temFuncionalidade(rede.recursos, 'portal')
+  if (!rede || (!motivo && !portalForaDoPlano)) redirect('/auth/redirect')
 
   // Quem administra a rede: o cargo de admin, ou rede + configurações MANAGE.
   let administra = false

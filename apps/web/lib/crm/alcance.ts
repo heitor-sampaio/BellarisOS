@@ -1,6 +1,6 @@
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { can, ownerFilter } from '@/lib/auth'
+import { can, ownerFilter, temRecurso } from '@/lib/auth'
 
 /**
  * Esta pessoa pode mexer nesta oportunidade?
@@ -23,6 +23,8 @@ export async function leadAoAlcance(
   leadId: string,
 ): Promise<boolean> {
   if (!can(ctx, 'crm', 'VIEW')) return false
+  // As oportunidades são uma funcionalidade do PLANO (lib/planos/recursos.ts).
+  if (!temRecurso(ctx, 'oportunidades')) return false
 
   let q = admin.from('leads').select('id').eq('id', leadId).eq('tenant_id', ctx.tenantId!)
   const owner = ownerFilter(ctx, 'crm')

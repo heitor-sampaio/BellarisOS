@@ -1,4 +1,4 @@
-import type { AppModule } from '@estetica-os/types'
+import type { AppModule, ReportTab } from '@estetica-os/types'
 
 /**
  * O que um PLANO da plataforma inclui (2026-10-06, decisão do Heitor): as
@@ -88,7 +88,8 @@ export function normalizarRecursos(entrada: unknown):
   if (!e || !Array.isArray(e.funcionalidades)) return { ok: false, error: 'Funcionalidades inválidas.' }
   const desconhecida = e.funcionalidades.find(f => typeof f !== 'string' || !CHAVES.has(f))
   if (desconhecida !== undefined) return { ok: false, error: `Funcionalidade desconhecida: ${String(desconhecida)}.` }
-  const limites = (e.limites ?? {}) as Record<string, unknown>
+  if (e.limites == null || typeof e.limites !== 'object' || Array.isArray(e.limites)) return { ok: false, error: 'Limites inválidos.' }
+  const limites = e.limites as Record<string, unknown>
   const saida = {} as RecursosDoPlano['limites']
   for (const l of LIMITES) {
     if (!(l.chave in limites)) return { ok: false, error: `Falta o limite de ${l.rotulo.toLowerCase()}.` }
@@ -160,7 +161,7 @@ export function resumirRecursos(r: RecursosDoPlano | null): string {
  * sem estoque, a "comercial" sem oportunidades…). Sobram as gerais (visão
  * geral, clientes, procedimentos, profissionais). Sem retrato, nenhuma.
  */
-const ABA_DA_FUNCIONALIDADE: Record<string, ChaveDeFuncionalidade> = {
+const ABA_DA_FUNCIONALIDADE: Partial<Record<ReportTab, ChaveDeFuncionalidade>> = {
   financeiro: 'financeiro', agenda: 'agenda', estoque: 'estoque', comercial: 'oportunidades',
 }
 export function abasForaDoPlano(recursos: RecursosDoPlano | null): string[] {

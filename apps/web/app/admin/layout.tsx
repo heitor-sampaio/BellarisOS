@@ -37,8 +37,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <SidebarProvider>
-      <AdminSidebar permissions={ctx.permissions} />
-      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={null} permissions={ctx.permissions} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} />
+      <AdminSidebar permissions={ctx.permissions} plano={ctx.plano ?? null} />
+      <Topbar userName={ctx.userName || 'Usuário'} userRole={ctx.role} roleLabel={ctx.roleLabel} internalUserId={ctx.internalUserId} initialUnread={initialUnread} slug={null} permissions={ctx.permissions} plano={ctx.plano ?? null} suporte={ctx.suporte ?? null} assinatura={await avisoDaAssinatura(ctx)} />
       <main style={{
         marginLeft:    'var(--sidebar-w)',
         marginTop:     'calc(var(--topbar-h) + env(safe-area-inset-top, 0px))',

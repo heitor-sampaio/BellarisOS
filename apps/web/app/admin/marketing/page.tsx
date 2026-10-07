@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
 import { MarketingOverview } from '@/components/admin/marketing-overview'
@@ -71,6 +71,8 @@ export default async function AdminMarketingPage({
   searchParams: Promise<{ view?: string; period?: string }>
 }) {
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'marketing', 'VIEW')
 
   const { view: rawView, period: rawPeriod } = await searchParams

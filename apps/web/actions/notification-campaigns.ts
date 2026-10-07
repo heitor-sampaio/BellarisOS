@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, contar } from '@/lib/db'
 import { dispatchCampaignInline } from '@/lib/notifications/disparo-de-campanha'
@@ -125,6 +125,7 @@ export async function createCampaign(
   input: CreateCampaignInput,
 ): Promise<{ id: string } | { error: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
@@ -161,6 +162,7 @@ export async function updateCampaign(
   input: Partial<CreateCampaignInput>,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
@@ -204,6 +206,7 @@ export async function updateCampaign(
 
 export async function activateCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'disparar campanha')
@@ -243,6 +246,7 @@ export async function activateCampaign(id: string): Promise<{ error?: string }> 
 
 export async function pauseCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
@@ -261,6 +265,7 @@ export async function pauseCampaign(id: string): Promise<{ error?: string }> {
 
 export async function archiveCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()
@@ -277,6 +282,7 @@ export async function archiveCampaign(id: string): Promise<{ error?: string }> {
 
 export async function deleteCampaign(id: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()

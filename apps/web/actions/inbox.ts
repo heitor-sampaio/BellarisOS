@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, assertPermission, podeReceber, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assertRecurso } from '@/lib/auth'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
 import type { PacoteAVenda } from '@/components/shared/vender-pacote'
@@ -222,6 +222,7 @@ export async function getConversations(opcoes: {
   limite?:    number
 } = {}): Promise<PaginaDoInbox> {
   const ctx   = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
   const vazia: PaginaDoInbox = { conversas: [], temMais: false, cursor: null }
@@ -283,6 +284,7 @@ export interface OpcoesDoInbox {
 
 export async function opcoesDoInbox(): Promise<OpcoesDoInbox> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'VIEW')
   const data = await ler(createAdminClient().rpc('inbox_opcoes', { p_tenant: ctx.tenantId! }), 'carregar as opções do inbox')
   const o = (data ?? {}) as Partial<OpcoesDoInbox>
@@ -510,6 +512,7 @@ async function anexarCitacoes(
  */
 export async function getMessageMediaUrl(messageId: string): Promise<string | null> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'VIEW')
   // A foto de uma cliente vale o alcance da conversa dela, não só a rede.
   if (!(await mensagemAoAlcance(createAdminClient(), ctx, messageId))) return null
@@ -529,6 +532,7 @@ export async function getMessageMediaUrl(messageId: string): Promise<string | nu
 
 export async function getMessages(conversationId: string): Promise<Message[]> {
   const ctx   = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
 
@@ -741,6 +745,7 @@ export interface ThreadDoContato {
  */
 export async function getConversationCard(conversationId: string): Promise<ConversationCard | null> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) return null
@@ -1016,6 +1021,7 @@ export async function criarOportunidade(
   confirmarDuplicata = false,
 ): Promise<{ ok: boolean; leadId?: string; jaExisteAberta?: string; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada.' }
@@ -1127,6 +1133,7 @@ export async function atualizarContato(
   dados: { nome?: string; telefone?: string; tags?: string[] },
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) return { ok: false, error: 'Conversa não encontrada.' }
@@ -1203,6 +1210,7 @@ export async function definirSituacaoOportunidade(
   desfecho: 'OPEN' | 'WON' | 'LOST',
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
   // Marcar ganho/perdido na oportunidade de outro dono: o funil recusa mover
@@ -1264,6 +1272,7 @@ export async function openLeadConversation(
   leadId: string,
 ): Promise<{ conversationId: string | null; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
   // Sem isto, o card de outro dono abria (e até CRIAVA) a conversa da pessoa.
@@ -1367,6 +1376,7 @@ export async function sendMessage(
   pelaCaixaDaConversa?: boolean,
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
@@ -1435,6 +1445,7 @@ export async function editMessage(
   texto: string,
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'editar mensagem enviada ao cliente')
@@ -1511,6 +1522,7 @@ export async function editMessage(
 
 export async function markConversationRead(conversationId: string) {
   const ctx   = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'VIEW')
   const admin = createAdminClient()
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) return
@@ -1533,6 +1545,7 @@ export async function markConversationRead(conversationId: string) {
 
 export async function setConversationStatus(conversationId: string, status: ConvStatus) {
   const ctx   = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) throw new Error('Conversa não encontrada.')
@@ -1551,6 +1564,7 @@ export async function createConversationForLead(
   channel: InboxChannel,
 ): Promise<{ conversationId?: string; error?: string }> {
   const ctx   = await getTenantContext()
+  assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
   if (!(await leadAoAlcance(admin, ctx, leadId))) return { error: 'Lead não encontrado' }
@@ -1660,6 +1674,7 @@ export async function getTemplatesParaConversa(
   conversationId: string,
 ): Promise<TemplateDaConversa[]> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
   if (!(await conversaAoAlcance(admin, ctx, conversationId))) return []
@@ -1745,6 +1760,7 @@ export async function sendTemplateMessage(
   valores:        Record<string, string>,
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'mandar mensagem ao cliente')
@@ -1906,6 +1922,7 @@ export async function sendMediaMessage(
   form: FormData,
 ): Promise<{ ok: boolean; message?: Message; error?: string }> {
   const ctx   = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
   // No modo suporte nada sai para o paciente (decisão do Heitor).
   const travado = bloqueioDoSuporte(ctx, 'mandar arquivo ao cliente')

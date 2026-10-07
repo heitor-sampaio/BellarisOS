@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getNumerosDaRede } from '@/lib/whatsapp/factory'
 import type { OfficialConfig } from '@/lib/whatsapp/types'
@@ -109,6 +109,7 @@ export async function saveTemplate(
   input: TemplateInput,
 ): Promise<{ ok: boolean; id?: string; error?: string; erros?: string[] }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
   const admin = createAdminClient()
 
@@ -218,6 +219,7 @@ export async function submitTemplate(
   id: string,
 ): Promise<{ ok: boolean; status?: TemplateStatus; error?: string; erros?: string[] }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
   const admin = createAdminClient()
 
@@ -280,6 +282,7 @@ export async function submitTemplate(
  */
 export async function deleteTemplate(id: string): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
   const admin = createAdminClient()
 
@@ -326,6 +329,7 @@ export async function deleteTemplate(id: string): Promise<{ ok: boolean; error?:
  */
 export async function syncTemplates(): Promise<{ ok: boolean; atualizados?: number; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'MANAGE')
   const admin = createAdminClient()
 

@@ -134,6 +134,48 @@ um muro que não depende de cada trava do código.
   guarda o RETRATO do valor em `tenant_subscriptions.valor_centavos` — é o
   preço especial e o que o catálogo novo não muda. `tenants.plan_name` é a
   cópia do nome para leitura.
+- **O plano define o que a rede USA** (2026-10-06, decisão do Heitor): as
+  funcionalidades (liga/desliga) e os limites (unidades, membros, números de
+  WhatsApp; 1 a 10 ou ilimitado). O catálogo é FECHADO em
+  `packages/nucleo/src/lib/planos/recursos.ts`; o plano guarda
+  `platform_plans.recursos`, e a rede, o RETRATO
+  (`tenant_subscriptions.recursos`).
+  - **Sem plano, sem retrato = tudo liberado** (nenhuma rede antiga tinha
+    plano). O gatilho `trg_retrato_sem_plano` zera o retrato quando o
+    `plan_id` vira nulo.
+  - O retrato só muda quando o PLANO da rede muda (trocar só o valor não traz
+    a versão nova) ou no "Aplicar a versão atual do plano"
+    (`aplicarPlanoAtual`). Mudar o plano da rede expira `rede:<id>` aqui e na
+    clínica — o retrato vem no `getCachedRede`.
+  - **Onde vale, na clínica:**
+    - funcionalidade que é um MÓDULO inteiro: `buildContext` derruba o módulo
+      para NONE (`modulosForaDoPlano`) — inclusive para o dono da rede; somem
+      também as abas de Relatórios dela (`abasForaDoPlano`) e o módulo da tela
+      de Cargos;
+    - o que é PARTE de um módulo (pacotes, pré-pago, planos de tratamento,
+      inbox, oportunidades, templates, campanhas, anúncios, comissões):
+      `assertRecurso(ctx, …)` na página e na action que cria ou altera; o
+      item do menu, a aba de Configurações e a página da busca declaram o
+      `recurso` e somem;
+    - o portal do cliente: o paciente vai para "Portal indisponível";
+    - o que roda sem tela confere `redeTemRecurso` (automações, campanhas,
+      push ao paciente, API de Conversões, responsáveis por módulo); no banco,
+      `private.rede_tem_recurso` (o ponto de fidelidade, os bônus e a emissão
+      de documentos).
+  - O que só LÊ não trava (a ficha do cliente lê pacotes e planos que já
+    existem), e o que JÁ foi vendido continua valendo (agendar a sessão de um
+    pacote vendido). A comissão continua sendo calculada no banco; trava a
+    tela, a configuração e o fechamento.
+  - ⚠️ **Chave nova no catálogo exige migration NOVA**: retratos e planos
+    antigos não a têm, e `lerRecursos` a trata como fora (falha fechada). A
+    migration decide, com `jsonb_set`, se ela entra nos planos e retratos
+    existentes. A trava `tests/planos-recursos.test.ts` ("a migration") compara
+    o catálogo com a lista da migration 20261006000003 — quando o catálogo
+    crescer, ela passa a comparar com a lista mais a da migration nova.
+  - ⚠️ **A trava do plano é do APP**, como a de módulo sempre foi: a RLS não
+    conhece o plano, e um membro que fale direto com o PostgREST pela chave
+    pública alcança as tabelas que a rede dele alcança.
+  - Prova: `e2e/planos-recursos.spec.ts` e `tests/planos-recursos.test.ts`.
 - **A situação é recalculada POR ESTADO no banco**
   (`assinatura_aplicar_cobranca`): os eventos do Asaas chegam fora de ordem e
   repetidos, então a função olha as faturas (`subscription_invoices`) — em
@@ -298,6 +340,9 @@ um muro que não depende de cada trava do código.
 ## O que nunca fazer aqui
 
 ```
+❌ Tela ou action de funcionalidade que é PARTE de um módulo (pacotes, inbox, campanhas…) sem assertRecurso, ou rotina sem tela sem redeTemRecurso
+❌ Acrescentar chave ao catálogo de lib/planos/recursos.ts sem migration nova decidindo os planos e retratos que já existem
+❌ Gravar retrato (tenant_subscriptions.recursos) fora de definirAssinatura/criarRede/aplicarPlanoAtual
 ❌ Decidir se a verificação em duas etapas é pedida fora de verificacaoPendente (ou cachear a opção: o outro host não a veria mudar)
 ❌ Mandar e-mail pelo Auth (convite, reenviar acesso) e descartar o { error } — a tela diria "enviado" com o e-mail parado no SMTP
 ❌ Deixar a marca da plataforma passar na clínica (proxy, buildContext, login), ou página/action do sistema ou do suporte sem getPlatformContext

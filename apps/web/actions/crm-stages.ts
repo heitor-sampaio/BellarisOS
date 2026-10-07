@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isStageOutcome, type StageOutcome } from '@/lib/crm'
 import { gravar, ler } from '@/lib/db'
@@ -30,6 +30,7 @@ export async function createStage(
 ): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const name     = (formData.get('name')       as string)?.trim()
@@ -82,6 +83,7 @@ export async function createStage(
 export async function renameStage(stageId: string, name: string, slug: string) {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
     if (!name.trim()) return
 
@@ -102,6 +104,7 @@ export async function renameStage(stageId: string, name: string, slug: string) {
 export async function updateStageColor(stageId: string, color: string, slug: string) {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const { error } = await createAdminClient()
@@ -127,6 +130,7 @@ export async function updateStageOutcome(
 ): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
     if (!isStageOutcome(outcome)) return { error: 'Resultado inválido.' }
 
@@ -149,6 +153,7 @@ export async function updateStageOutcome(
 export async function deleteStage(stageId: string, slug: string): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
@@ -202,6 +207,7 @@ export async function deleteStage(stageId: string, slug: string): Promise<Result
 export async function reorderStages(orderedIds: string[], slug: string) {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()

@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { configDaRede } from '@/lib/fidelidade/leitura'
@@ -17,6 +17,7 @@ import { voucherEmitido } from '@/lib/events/fidelidade'
  */
 export async function trocarPontosNoPortal(entrada: { slug: string; rewardId: string }): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'fidelidade')
   if (!ctx.isClient || !ctx.clientId) return { error: 'Sem acesso.' }
   if (typeof entrada?.slug !== 'string' || typeof entrada?.rewardId !== 'string') return { error: 'Dados inválidos.' }
 

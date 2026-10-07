@@ -25,6 +25,7 @@ import { resumoDoNo } from './resumo'
 import { chaveDoPasso } from './passos'
 import { gravar, ler, contar } from '@/lib/db'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 
 /**
  * O executor: um passo por vez, dirigido por `automation_runs`.
@@ -122,6 +123,8 @@ export async function despacharEvento(
     if (profundidadeDoGatilho >= PROFUNDIDADE_MAXIMA) return
     // Rede bloqueada (assinatura): automação não dispara.
     if (await redeEstaBloqueada(tenantId)) return
+    // Automações fora do PLANO da rede (lib/planos/recursos.ts): não disparam.
+    if (!(await redeTemRecurso(tenantId, 'automacoes'))) return
 
     const admin = createAdminClient()
 
@@ -225,6 +228,10 @@ export async function executarRun(
     await gravar(admin.from('automation_runs').update({ status: 'esperando', tentativas: Math.max(0, run.tentativas - 1) })
       .eq('id', run.id), 'devolver a execução à fila')
     return 'esperando'
+  }
+  // Automações fora do PLANO da rede: o que estava na fila para, com o motivo.
+  if (!opcoes?.ignorarStatus && !(await redeTemRecurso(run.tenant_id, 'automacoes'))) {
+    return await encerrar(run.id, 'parado', 'Automações não estão no plano da rede.')
   }
 
   await gravar(admin.from('automation_runs').update({

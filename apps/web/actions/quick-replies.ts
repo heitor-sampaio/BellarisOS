@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 
@@ -48,6 +48,7 @@ export async function saveQuickReply(
   input: QuickReplyInput,
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
   const admin = createAdminClient()
 
@@ -90,6 +91,7 @@ export async function saveQuickReply(
 
 export async function deleteQuickReply(id: string): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'MANAGE')
 
   const { error } = await createAdminClient()

@@ -1,6 +1,6 @@
 ﻿'use server'
 
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
@@ -292,6 +292,7 @@ export async function saveAdsConfig(
   isActive: boolean,
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()
@@ -326,6 +327,7 @@ export async function testAdsConnection(
   provider: 'meta_ads' | 'google_ads',
 ): Promise<{ ok: boolean; detail?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const { getAdsConfig, resolveAdsProvider } = await import('@/lib/ads/factory')
@@ -344,6 +346,7 @@ export async function confirmMetaAdsSelection(
   pixelName?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()
@@ -398,6 +401,7 @@ export async function fetchMetaAdAccounts(): Promise<{
   error?: string
 }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()
@@ -455,6 +459,7 @@ export async function fetchMetaAdAccounts(): Promise<{
 
 export async function disconnectMetaAds(): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const admin = createAdminClient()

@@ -7,6 +7,7 @@ import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { gravar, ler } from '@/lib/db'
 import { partsInTZ, startOfDayTZ, endOfDayTZ, addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 
 /** Cliente de uma campanha: quem recebe, e o nome para o {{first_name}}. */
 type Destinatario = { id: string; name: string }
@@ -55,6 +56,8 @@ export async function GET(req: NextRequest) {
     // Rede bloqueada (desligada, suspensa, cancelada): nada sai, e a campanha
     // ESPERA — a agendada não é marcada como concluída.
     if (await redeEstaBloqueada(camp.tenant_id)) { results.push({ id: camp.id, type: camp.type, sent: 0, skipped: true }); continue }
+    // Campanhas fora do PLANO da rede: nada sai, e a campanha espera (como a da rede bloqueada).
+    if (!(await redeTemRecurso(camp.tenant_id, 'campanhas'))) { results.push({ id: camp.id, type: camp.type, sent: 0, skipped: true }); continue }
 
     // -- SCHEDULED --------------------------------------------
     if (camp.type === 'SCHEDULED') {

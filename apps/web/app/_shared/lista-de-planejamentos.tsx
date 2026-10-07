@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, assertRecurso } from '@/lib/auth'
 import { listarPlanejamentos } from '@/actions/treatment-plans'
 import { getCachedNetworkBranches } from '@/lib/cached-queries'
 import { PlanejamentosClient } from '@/components/branch/planejamentos-client'
@@ -24,6 +24,8 @@ export async function ListaDePlanejamentos({
   basePath:   string
 }) {
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'agenda', 'VIEW')
 
   // Na rede não existe "a filial atual", e o plano precisa de uma: é ela que

@@ -1,4 +1,6 @@
 import 'server-only'
+import { getCachedRede } from '@estetica-os/nucleo/lib/redes/cache'
+import { modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notifyUser, type NotifyPayload } from '@/lib/notifications/notify'
 import { ler } from '@/lib/db'
@@ -65,6 +67,10 @@ async function responsaveisPeloModulo(
     'descobrir a rede da unidade')
   const tenantId = filial?.tenant_id as string | undefined
   if (!tenantId) return []
+  // Módulo fora do PLANO da rede (lib/planos/recursos.ts): ninguém responde
+  // por ele — o mesmo corte que o buildContext faz nas permissões.
+  const rede = await getCachedRede(tenantId)
+  if (modulosForaDoPlano(rede?.recursos ?? null).includes(modulo)) return []
 
   const cargos = await ler(admin
     .from('role_permissions')

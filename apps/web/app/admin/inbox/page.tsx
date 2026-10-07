@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { filiaisAtivas } from '@/lib/branches'
 import { getConversations, opcoesDoInbox } from '@/actions/inbox'
@@ -22,6 +22,8 @@ export default async function AdminInboxPage({
   searchParams: Promise<{ c?: string }>
 }) {
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'VIEW')
 
   // `?c=` é o deep-link do card de Oportunidades para a conversa.

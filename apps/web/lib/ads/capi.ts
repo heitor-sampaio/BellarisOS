@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig } from './factory'
 import type { MetaAdsConfig } from './types'
@@ -108,6 +109,8 @@ export function montarPayload(input: CapiInput) {
  * falha fica com `status='falhou'` e o cron recolhe.
  */
 export async function enviarEventoCapi(input: CapiInput): Promise<void> {
+  // Anúncios fora do PLANO da rede (lib/planos/recursos.ts): a Meta não recebe nada.
+  if (!(await redeTemRecurso(input.tenantId, 'anuncios'))) return
   const admin = createAdminClient()
 
   try {

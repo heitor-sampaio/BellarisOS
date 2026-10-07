@@ -38,6 +38,8 @@ interface BranchSidebarProps {
   slug:            string
   branchName:      string
   permissions:     ResolvedPermissions
+  /** O plano da rede (`ctx.plano`): item de funcionalidade fora dele some. */
+  plano?:          { funcionalidades: readonly string[] } | null
   isNetworkAdmin?: boolean
   allBranches?:    { name: string; slug: string }[]
 }
@@ -45,7 +47,7 @@ interface BranchSidebarProps {
 const SIDEBAR_GRADIENT = 'var(--gradient-brand)'
 
 export function BranchSidebar({
-  slug, branchName, permissions, isNetworkAdmin, allBranches = [],
+  slug, branchName, permissions, plano = null, isNetworkAdmin, allBranches = [],
 }: BranchSidebarProps) {
   const base = `/${slug}`
   const [switcherOpen, setSwitcherOpen] = useState(false)
@@ -186,7 +188,7 @@ export function BranchSidebar({
         >
           {/* Cada categoria recolhe pelo título; com a barra recolhida em
               ícones, o título vira um filete. */}
-          {menuSectionsFor(BRANCH_MENU, permissions).map(secao => (
+          {menuSectionsFor(BRANCH_MENU, permissions, plano).map(secao => (
             <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
               entradas={secao.entries.map(e => ({ ...e, href: `${base}${e.href}` }))}
               icones={ICONS} recolhida={collapsed} filete={separatorBg} />

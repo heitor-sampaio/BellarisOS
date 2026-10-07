@@ -38,7 +38,7 @@ const ICONS: Record<string, React.ReactNode> = {
   automations:  <Workflow   size={18} />,
 }
 
-export function AdminSidebar({ permissions }: { permissions: ResolvedPermissions }) {
+export function AdminSidebar({ permissions, plano = null }: { permissions: ResolvedPermissions; plano?: { funcionalidades: readonly string[] } | null }) {
   const { isOpen, close, collapsed, toggleCollapsed } = useSidebar()
 
   // Recolhido = rosé; expandido = branco (original)
@@ -108,7 +108,7 @@ export function AdminSidebar({ permissions }: { permissions: ResolvedPermissions
         >
           {/* Cada categoria recolhe pelo título; com a barra recolhida em
               ícones, o título vira um filete que ainda separa os blocos. */}
-          {menuSectionsFor(ADMIN_MENU, permissions).map(secao => (
+          {menuSectionsFor(ADMIN_MENU, permissions, plano).map(secao => (
             <SecaoDoMenu key={secao.key ?? '_topo'} chave={secao.key} titulo={secao.label}
               entradas={secao.entries} icones={ICONS} recolhida={collapsed} filete={separatorBg} />
           ))}

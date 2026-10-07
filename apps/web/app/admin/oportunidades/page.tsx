@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { filiaisAtivas } from '@/lib/branches'
 import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
@@ -36,6 +36,8 @@ export default async function AdminOportunidadesPage({
   searchParams: Promise<{ funil?: string; lead?: string }>
 }) {
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'VIEW')
 
   const { funil: rawFunil, lead: rawLead } = await searchParams

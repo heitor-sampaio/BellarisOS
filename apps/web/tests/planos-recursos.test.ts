@@ -33,6 +33,11 @@ describe('normalizarRecursos (o que vem do navegador)', () => {
       expect(normalizarRecursos({ funcionalidades: [], limites: { unidades: v, membros: null, whatsapp: null } }).ok, String(v)).toBe(false)
     }
   })
+  it('recusa limites que não são objeto (sem estourar)', () => {
+    for (const limites of ['x', 5, null, [1, 2, 3]]) {
+      expect(normalizarRecursos({ funcionalidades: [], limites }).ok, JSON.stringify(limites)).toBe(false)
+    }
+  })
   it('recusa limite que falta', () => {
     expect(normalizarRecursos({ funcionalidades: [], limites: { unidades: 1, membros: 1 } }).ok).toBe(false)
   })

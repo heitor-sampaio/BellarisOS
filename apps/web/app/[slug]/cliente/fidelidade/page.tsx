@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getTenantContext, assertClient } from '@/lib/auth'
+import { getTenantContext, assertClient, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import {
@@ -21,6 +21,8 @@ export default async function FidelidadeDoClientePage({ params }: { params: Prom
   const { slug } = await params
   const ctx = await getTenantContext()
   assertClient(ctx)
+  // A fidelidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'fidelidade')
 
   const admin = createAdminClient()
   const cliente = await ler(admin.from('clients').select('tenant_id').eq('id', ctx.clientId!).single(),

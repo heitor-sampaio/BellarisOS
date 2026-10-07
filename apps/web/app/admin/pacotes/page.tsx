@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { PacotesDaRede } from '@/app/_shared/pacotes'
 import { termoDaUrl } from '@/lib/texto'
 
@@ -9,6 +9,8 @@ export default async function PacotesPage({
   searchParams: Promise<{ q?: string | string[] }>
 }) {
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'pacotes')
   assertPermission(ctx, 'procedures', 'VIEW')
   return <PacotesDaRede ctx={ctx} busca={termoDaUrl((await searchParams).q)} />
 }

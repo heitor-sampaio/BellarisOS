@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { seedDefaultFunnel, listAllStages } from '@/actions/crm-funnels'
 import { funnelStats } from '@/lib/crm'
@@ -32,6 +32,8 @@ export default async function BranchOportunidadesPage({
   // id; o alcance é o da lista abaixo — lead que ela não carrega não abre.
   const leadAberto = rawLead && UUID.test(rawLead) ? rawLead : null
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'oportunidades')
   assertPermission(ctx, 'crm', 'VIEW')
 
   const supabase = await createSupabase()

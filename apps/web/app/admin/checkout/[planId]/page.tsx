@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { CheckoutDePlano } from '@/app/_shared/checkout-de-plano'
 
@@ -15,6 +15,8 @@ export default async function AdminCheckoutPage({
 }) {
   const { planId } = await params
   const ctx        = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'planos_de_tratamento')
 
   const admin = createAdminClient()
   const { data: plan, error: planErr } = await admin

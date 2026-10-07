@@ -10,7 +10,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { getTenantContext, assertPermission, alcancaUnidade, podeReceber } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, podeReceber, assertRecurso } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -39,6 +39,7 @@ const EntradaDoPacote = z.object({
 export async function salvarPacote(entrada: unknown): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'pacotes')
     assertPermission(ctx, 'procedures', 'MANAGE')
     if (ctx.branchId !== null) return { error: 'O catálogo de pacotes é da rede: quem muda é quem administra a rede.' }
     const lido = EntradaDoPacote.safeParse(entrada)
@@ -79,6 +80,7 @@ export async function venderPacote(
 ): Promise<{ error?: string; clientPackageId?: string }> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'pacotes')
     if (!podeReceber(ctx)) throw semAcesso()
     const uuid = /^[0-9a-f-]{36}$/i
     if (![clienteId, pacoteId, branchId].every(v => typeof v === 'string' && uuid.test(v))) return { error: 'Dados inválidos.' }

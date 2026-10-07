@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   DEFAULT_FUNNEL_NAME, DEFAULT_STAGES, NEW_FUNNEL_STAGES,
@@ -109,6 +109,7 @@ export async function createFunnel(
 ): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const name = (formData.get('name') as string)?.trim()
@@ -159,6 +160,7 @@ export async function createFunnel(
 export async function renameFunnel(funnelId: string, name: string, slug: string) {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
     if (!name.trim()) return
 
@@ -182,6 +184,7 @@ export async function renameFunnel(funnelId: string, name: string, slug: string)
 export async function setDefaultFunnel(funnelId: string, slug: string): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
@@ -223,6 +226,7 @@ export async function setFunnelArchived(
 ): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
@@ -267,6 +271,7 @@ export async function setFunnelArchived(
 export async function deleteFunnel(funnelId: string, slug: string): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()
@@ -330,6 +335,7 @@ export async function deleteFunnel(funnelId: string, slug: string): Promise<Resu
 export async function reorderFunnels(orderedIds: string[], slug: string) {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const admin = createAdminClient()

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, assertRecurso } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { CheckoutDePlano } from '@/app/_shared/checkout-de-plano'
 import { ler } from '@/lib/db'
@@ -11,6 +11,8 @@ export default async function CheckoutPage({
 }) {
   const { slug, planId } = await params
   const ctx              = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'planos_de_tratamento')
 
   const supabase = await createSupabase()
   const branch = await ler(supabase

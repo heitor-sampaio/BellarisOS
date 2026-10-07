@@ -1322,8 +1322,22 @@ RETRATO do plano; limites = unidades, membros, números de WhatsApp; o Copilot
   (`NETWORK_ADMIN`), que antes tinha tudo por atalho. Saem também as abas de
   Relatórios dessas funcionalidades (`abasForaDoPlano`), e a tela de Cargos
   deixa de oferecer o módulo. `ctx.plano` leva o retrato adiante.
-- Fases seguintes: as funcionalidades que são parte de um módulo, os limites e
-  a aba Assinatura da clínica.
+- **Fase 3 — o que é parte de um módulo, e o que roda sozinho** (feita):
+  `assertRecurso(ctx, …)` nas telas e nas actions que criam ou alteram
+  (pacotes, pré-pago, planos de tratamento, inbox, oportunidades, templates,
+  campanhas, anúncios, comissões, fidelidade); o menu, as abas de
+  Configurações e a busca declaram o `recurso`; o portal do cliente vai para
+  "Portal indisponível"; as listas do "Vender" vêm vazias. Sem tela:
+  `redeTemRecurso` nas automações, campanhas, push ao paciente, API de
+  Conversões e responsáveis por módulo; no banco, `private.rede_tem_recurso`
+  no ponto de fidelidade, nos bônus e na emissão de documentos (migrations
+  `20261006000004` e `…05`). O que só lê e o que já foi vendido seguem valendo.
+- Do verificador das fases 1–2: `normalizarRecursos` não estoura com limites
+  primitivos; expirar o cache ANTES da auditoria; sem plano, sem retrato (o
+  gatilho `trg_retrato_sem_plano`, migration `…06`); os testes de "trocar só o
+  valor" e "tirar o plano"; as regras em `docs/regras/plataforma.md` (chave
+  nova no catálogo exige migration nova; a trava do plano é do app).
+- Fases seguintes: os limites e a aba Assinatura da clínica.
 
 ### 2026-10-06 — Convite da equipe da plataforma: o e-mail conferido e o "Reenviar convite"
 

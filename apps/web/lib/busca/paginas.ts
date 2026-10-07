@@ -1,6 +1,6 @@
 import type { ResolvedPermissions } from '@estetica-os/types'
 import { ADMIN_MENU, BRANCH_MENU, menuEntriesFor } from '@/lib/menu'
-import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE } from '@/lib/configuracoes/abas'
+import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano } from '@/lib/configuracoes/abas'
 import { casaComTermo } from '@/lib/busca/texto'
 import type { ResultadoDaBusca } from '@/lib/busca/tipos'
 
@@ -63,12 +63,16 @@ const APELIDOS_DA_ABA: Record<string, readonly string[]> = {
  * Todas as páginas que esta pessoa abre, com o endereço do portal em que ela
  * está. `slug` nulo = portal da rede.
  */
-export function paginasDaBusca(slug: string | null, permissions: ResolvedPermissions): PaginaDaBusca[] {
+export function paginasDaBusca(
+  slug: string | null, permissions: ResolvedPermissions,
+  /** O plano da rede (`ctx.plano`): página de funcionalidade fora dele não é oferecida. */
+  plano?: { funcionalidades: readonly string[] } | null,
+): PaginaDaBusca[] {
   const naRede = slug === null
   const prefixo = naRede ? '' : `/${slug}`
   const base = naRede ? '/admin' : `/${slug}`
 
-  const menu = menuEntriesFor(naRede ? ADMIN_MENU : BRANCH_MENU, permissions)
+  const menu = menuEntriesFor(naRede ? ADMIN_MENU : BRANCH_MENU, permissions, plano)
   const paginas: PaginaDaBusca[] = menu.map(e => ({
     key:      e.key,
     titulo:   e.label,
@@ -82,6 +86,7 @@ export function paginasDaBusca(slug: string | null, permissions: ResolvedPermiss
   for (const aba of ABAS_DE_CONFIGURACAO) {
     if (!abasDoPortal.includes(aba.key)) continue
     if (permissions[aba.module] !== 'MANAGE') continue
+    if (!abaNoPlano(aba, plano)) continue
     paginas.push({
       key:      `settings:${aba.key}`,
       titulo:   `Configurações → ${aba.label}`,

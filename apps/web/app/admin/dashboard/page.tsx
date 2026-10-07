@@ -1,4 +1,4 @@
-import { getTenantContext, isOwnScope } from '@/lib/auth'
+import { getTenantContext, isOwnScope, temRecurso } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAdsConfig, resolveAdsProvider } from '@/lib/ads/factory'
@@ -488,7 +488,8 @@ export default async function AdminDashboardPage({
       period === 'today' ? 'today' : period === '7d' ? '7d' : period === 'all' ? 'all' : '30d'
     let spend = 0, reach = 0, activeCampaigns = 0, totalCampaigns = 0, connected = false
     try {
-      const cfg = await getAdsConfig(ctx.tenantId!, 'meta_ads')
+      // Anúncios fora do PLANO da rede: o quadro não consulta a Meta.
+      const cfg = temRecurso(ctx, 'anuncios') ? await getAdsConfig(ctx.tenantId!, 'meta_ads') : null
       if (cfg) {
         connected = true
         const campaigns = await resolveAdsProvider(cfg).getCampaigns({ preset: adsPreset })

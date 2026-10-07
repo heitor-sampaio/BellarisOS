@@ -6,6 +6,7 @@ import { estaNaHora } from './tempo'
 import { partsInTZ } from '@/lib/datetime'
 import { gravar } from '@/lib/db'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 
 /**
  * O que o cron faz a cada cinco minutos.
@@ -148,6 +149,8 @@ async function dispararAgendas(): Promise<number> {
     const cfg = gatilho.config as ConfigGatilhoAgenda
     if (!estaNaHora(cfg, a.ultimo_disparo_agenda as string | null)) continue
     if (await redeEstaBloqueada(a.tenant_id as string)) continue
+    // Automações fora do PLANO da rede: o gatilho de tempo não dispara.
+    if (!(await redeTemRecurso(a.tenant_id as string, 'automacoes'))) continue
 
     // Marca ANTES de executar. Se a execução demorar mais que a passagem
     // seguinte do cron — uma busca de quinhentos clientes leva —, a próxima

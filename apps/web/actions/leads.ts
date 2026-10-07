@@ -1,7 +1,7 @@
 ﻿'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveLeadSource, mergeTags } from '@estetica-os/utils'
 import { seedDefaultFunnel, listStages } from '@/actions/crm-funnels'
@@ -111,6 +111,7 @@ export async function createLead(
 ) {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const slug       = str(formData, '_slug') ?? ''
@@ -197,6 +198,7 @@ export async function updateLead(
 ) {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     const leadId     = str(formData, '_leadId')
@@ -347,6 +349,7 @@ export async function updateLead(
 export async function updateLeadStage(leadId: string, crm_stage_id: string, slug: string) {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
     if (!(await etapaDaRede(ctx.tenantId!, crm_stage_id))) return

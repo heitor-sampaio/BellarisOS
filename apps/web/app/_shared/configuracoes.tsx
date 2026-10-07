@@ -38,7 +38,7 @@ import { configDaRede, redeTemLancamentos } from '@/lib/fidelidade/leitura'
 import { SettingsComissoes } from '@/components/admin/settings-comissoes'
 import { configDeComissaoDaRede, taxasDaRede, profissionaisSemComissao } from '@/lib/comissoes/leitura'
 import {
-  ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, type ChaveDeAba,
+  ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, type ChaveDeAba,
 } from '@/lib/configuracoes/abas'
 
 /**
@@ -91,7 +91,7 @@ export async function Configuracoes({
 }: Props) {
   const ctx = await getTenantContext()
 
-  const tabs = TABS.filter(t => abas.includes(t.key) && can(ctx, t.module, 'MANAGE'))
+  const tabs = TABS.filter(t => abas.includes(t.key) && can(ctx, t.module, 'MANAGE') && abaNoPlano(t, ctx.plano))
   if (tabs.length === 0) {
     return (
       <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>

@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDaConfig, type ConfigFidelidade } from '@/lib/fidelidade/config'
@@ -34,6 +34,7 @@ export async function lerConfigFidelidade(): Promise<ConfigFidelidade> {
 
 export async function salvarConfigFidelidade(entrada: unknown): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'fidelidade')
   assertPermission(ctx, 'settings', 'MANAGE')
   if (ctx.branchId !== null) return { error: 'Só quem é da rede configura a fidelidade.' }
 
@@ -89,6 +90,7 @@ export async function ajustarPontos(entrada: {
   motivo:   string
 }): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'fidelidade')
   assertPermission(ctx, 'loyalty', 'MANAGE')
 
   const pontos = Math.trunc(Number(entrada?.pontos))
@@ -168,6 +170,7 @@ export async function catalogoDeRecompensas(): Promise<{
 
 export async function salvarRecompensa(entrada: unknown): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'fidelidade')
   assertPermission(ctx, 'settings', 'MANAGE')
   if (ctx.branchId !== null) return { error: 'Só quem é da rede mexe no catálogo.' }
 
@@ -227,6 +230,7 @@ export async function resgatarRecompensa(entrada: {
   clientId: string; rewardId: string; branchId: string
 }): Promise<{ error?: string; voucherId?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'fidelidade')
   assertPermission(ctx, 'loyalty', 'MANAGE')
   if (!entrada?.clientId || !entrada?.rewardId || !entrada?.branchId) return { error: 'Dados inválidos.' }
   if (!alcancaUnidade(ctx, entrada.branchId)) return { error: 'Unidade não encontrada.' }

@@ -1,4 +1,4 @@
-import { getTenantContext } from '@/lib/auth'
+import { getTenantContext, assertRecurso } from '@/lib/auth'
 import { filiaisAtivas } from '@/lib/branches'
 import { ListaDeCheckout } from '@/app/_shared/lista-de-checkout'
 
@@ -10,6 +10,8 @@ import { ListaDeCheckout } from '@/app/_shared/lista-de-checkout'
  */
 export default async function AdminCheckoutListPage() {
   const ctx   = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'planos_de_tratamento')
   // `treatment_plans` não tem `tenant_id`: a rede é o conjunto das filiais ativas.
   const branchIds = (await filiaisAtivas(ctx.tenantId!)).map(b => b.id)
 

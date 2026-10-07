@@ -4,6 +4,7 @@ import { sendFcmToTokens, sendWebPushToSubs } from './push'
 import { ler, tentar } from '../db'
 import { sessaoDeSuporteAtual } from '../suporte/requisicao'
 import { redeEstaBloqueada } from '../redes/bloqueio'
+import { redeTemRecurso } from '../planos/da-rede'
 import { getCachedRedeDoCliente } from '../redes/cache'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -32,7 +33,8 @@ export function notificadorDoCliente(): typeof notifyClient {
 async function clienteDeRedeBloqueada(clientId: string): Promise<boolean> {
   try {
     const tenantId = await getCachedRedeDoCliente(clientId)
-    return tenantId ? await redeEstaBloqueada(tenantId) : false
+    // Rede bloqueada, ou sem o PORTAL no plano (o paciente não usa o app): nada sai.
+    return tenantId ? (await redeEstaBloqueada(tenantId) || !(await redeTemRecurso(tenantId, 'portal'))) : false
   } catch { return false }
 }
 

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { getCachedNetworkProcedures } from '@/lib/cached-queries'
@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function NovaCampanhaPage() {
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'MANAGE')
 
   const admin = createAdminClient()

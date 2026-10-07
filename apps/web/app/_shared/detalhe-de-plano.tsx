@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { getTenantContext, assertPermission, can, podeReceber } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, podeReceber, assertRecurso } from '@/lib/auth'
 import { getCabecalhoDoPlano } from '@/actions/treatment-plans'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { PlanoAberto } from '@/components/branch/plano-aberto'
@@ -19,6 +19,8 @@ export async function DetalheDePlano({
   basePath: string
 }) {
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'agenda', 'VIEW')
 
   const [{ plano, error }, procs] = await Promise.all([

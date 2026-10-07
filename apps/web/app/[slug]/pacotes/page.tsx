@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { PacotesDaRede } from '@/app/_shared/pacotes'
@@ -15,6 +15,8 @@ export default async function PacotesDaUnidadePage({
   const { slug } = await params
   const busca    = termoDaUrl((await searchParams).q)
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'pacotes')
   assertPermission(ctx, 'procedures', 'VIEW')
   const unidade = await ler(createAdminClient().from('branches').select('id')
     .eq('slug', slug).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')

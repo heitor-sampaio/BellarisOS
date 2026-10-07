@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getTenantContext, assertPermission, ownerFilter, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, can, assertRecurso } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getConversations, opcoesDoInbox } from '@/actions/inbox'
@@ -28,6 +28,10 @@ export default async function BranchInboxPage({
   const { c: convParam } = await searchParams
 
   const ctx = await getTenantContext()
+
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+
+  assertRecurso(ctx, 'inbox')
   assertPermission(ctx, 'crm', 'VIEW')
 
   const supabase = await createSupabase()

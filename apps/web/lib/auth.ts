@@ -12,7 +12,7 @@ import {
   NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES, ALL_REPORT_TABS,
 } from '@/lib/permissions'
 import { semAcesso } from '@/lib/sem-acesso'
-import { abasForaDoPlano, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
+import { abasForaDoPlano, modulosForaDoPlano, type ChaveDeFuncionalidade } from '@estetica-os/nucleo/lib/planos/recursos'
 import { headers } from 'next/headers'
 import { sessaoDeSuporte, sessaoVigente, registrarAcessoDoSuporte } from '@/lib/suporte/sessao'
 import { marcarSessaoDeSuporte } from '@/lib/suporte/requisicao'
@@ -57,6 +57,9 @@ async function buildContext(authId: string, meta: Partial<JwtClaims>): Promise<T
   if (rede && redeBloqueada(rede)) redirect('/conta-suspensa')
   // O PLANO da rede (o retrato; null = sem plano = tudo liberado).
   const plano = rede?.recursos ?? null
+  // O portal do cliente é uma funcionalidade do plano: fora dele, o paciente
+  // vê "Portal indisponível" (a mesma tela da rede bloqueada).
+  if (isClient && plano && !plano.funcionalidades.includes('portal')) redirect('/conta-suspensa')
 
   const roleId = member?.roleId ?? meta.role_id ?? null
 
@@ -238,6 +241,21 @@ export function assertAnyPermission(
 }
 
 /** Versão booleana (para esconder UI / derivar canWrite em pages) */
+/**
+ * A rede tem esta FUNCIONALIDADE no plano? (lib/planos/recursos.ts; sem plano,
+ * tudo.) Os módulos inteiros já saíram de `ctx.permissions` em buildContext;
+ * isto é para o que é PARTE de um módulo — pacotes, pré-pago, planos de
+ * tratamento, inbox, oportunidades, templates, campanhas, anúncios, comissões.
+ */
+export function temRecurso(ctx: TenantContext, chave: ChaveDeFuncionalidade): boolean {
+  return !ctx.plano || ctx.plano.funcionalidades.includes(chave)
+}
+
+/** Barra a action/página de uma funcionalidade fora do plano — para o dono também. */
+export function assertRecurso(ctx: TenantContext, chave: ChaveDeFuncionalidade): void {
+  if (!temRecurso(ctx, chave)) throw semAcesso()
+}
+
 export function can(ctx: TenantContext, module: AppModule, required: 'VIEW' | 'MANAGE' = 'VIEW'): boolean {
   return hasLevel(ctx.permissions[module], required)
 }

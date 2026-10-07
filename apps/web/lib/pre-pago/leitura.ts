@@ -1,4 +1,5 @@
 import 'server-only'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import type { ProcedimentoAVenda } from '@/components/shared/vender'
@@ -11,6 +12,8 @@ import type { ProcedimentoAVenda } from '@/components/shared/vender'
 /** Os procedimentos que a ficha oferece para vender: os ativos, ao alcance da unidade. */
 export async function procedimentosAVenda(tenantId: string, branchId: string | null): Promise<ProcedimentoAVenda[]> {
   if (!branchId) return []
+  // Pré-pago fora do PLANO da rede: nada a oferecer (lib/planos/recursos.ts).
+  if (!(await redeTemRecurso(tenantId, 'pre_pago'))) return []
   const linhas = await ler(createAdminClient().from('procedures')
     .select('id, name, price')
     .eq('tenant_id', tenantId).eq('is_active', true)

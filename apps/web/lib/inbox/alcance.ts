@@ -1,6 +1,6 @@
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { can, ownerFilter } from '@/lib/auth'
+import { can, ownerFilter, temRecurso } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import {
   lerVisibilidade, lerCaixas, passaNasCaixas, passaNoAlcanceDoDono,
@@ -109,6 +109,8 @@ export async function conversaAoAlcance(
   // O inbox é do CRM. Sem ele, nenhuma conversa — é o caso de quem cadastra
   // cliente ou marca horário e mandaria um id de conversa junto.
   if (!can(ctx, 'crm', 'VIEW')) return false
+  // A inbox é uma funcionalidade do PLANO (lib/planos/recursos.ts).
+  if (!temRecurso(ctx, 'inbox')) return false
   try {
     const conv = await ler(
       admin.from('conversations')

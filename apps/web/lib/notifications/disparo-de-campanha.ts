@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
 import type { NotificationCampaign } from '@/actions/notification-campaigns'
 import { redeEstaBloqueada } from '@/lib/redes/bloqueio'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 
 /**
  * O DISPARO de uma campanha (notificação + Web Push + FCM) para o público dela.
@@ -34,6 +35,7 @@ export async function dispatchCampaignInline(
 ): Promise<{ sent: number; error?: string }> {
   // Rede bloqueada (assinatura): campanha não sai.
   if (await redeEstaBloqueada(tenantId)) return { sent: 0, error: 'A rede está bloqueada (assinatura).' }
+  if (!(await redeTemRecurso(tenantId, 'campanhas'))) return { sent: 0, error: 'Campanhas não estão no plano da rede.' }
   const admin = createAdminClient()
   const rules = campaign.audience_rules
 

@@ -10,7 +10,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, alcancaUnidade, podeReceber, assertPermission } from '@/lib/auth'
+import { getTenantContext, alcancaUnidade, podeReceber, assertPermission, assertRecurso } from '@/lib/auth'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -38,6 +38,7 @@ export async function venderProcedimento(
 ): Promise<{ error?: string; saleId?: string; primeiraUnidadeId?: string }> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'pre_pago')
     if (!podeReceber(ctx)) throw semAcesso()
     if (![clienteId, procedimentoId, branchId].every(v => typeof v === 'string' && UUID.test(v))) return { error: 'Dados inválidos.' }
     const qtd = Number(quantidade)

@@ -1,4 +1,5 @@
 import 'server-only'
+import { redeTemRecurso } from '@estetica-os/nucleo/lib/planos/da-rede'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { composicaoDoPacote, type ItemDoPacote } from './rateio'
@@ -37,6 +38,8 @@ export async function catalogoDePacotes(tenantId: string, opcoes: { branchId?: s
 /** O que a ficha oferece para vender: os ativos, ao alcance da unidade. */
 export async function pacotesAVenda(tenantId: string, branchId: string | null): Promise<PacoteAVenda[]> {
   if (!branchId) return []
+  // Pacotes fora do PLANO da rede: nada a oferecer (lib/planos/recursos.ts).
+  if (!(await redeTemRecurso(tenantId, 'pacotes'))) return []
   return (await catalogoDePacotes(tenantId, { branchId, soAtivos: true })).map(p => ({
     id: p.id, name: p.name, price: p.price, totalSessions: p.totalSessions,
     composicao: p.composicao, validityDays: p.validityDays,

@@ -15,7 +15,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras } from '@/lib/comissoes/config'
@@ -33,6 +33,7 @@ function revalidar() {
 export async function salvarConfigDeComissao(entrada: unknown): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
     if (ctx.branchId !== null) return { error: 'A configuração de comissões vale para a rede inteira: quem muda é quem administra a rede.' }
     const lido = EntradaDaConfigDeComissao.safeParse(entrada)
@@ -54,6 +55,7 @@ export async function salvarConfigDeComissao(entrada: unknown): Promise<Resultad
 export async function salvarTaxasDaMaquininha(entrada: unknown): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
     if (ctx.branchId !== null) return { error: 'As taxas valem para a rede inteira: quem muda é quem administra a rede.' }
     const lido = EntradaDasTaxas.safeParse(entrada)
@@ -70,6 +72,7 @@ export async function salvarTaxasDaMaquininha(entrada: unknown): Promise<Resulta
 export async function salvarRegrasDoProfissional(profissionalId: string, entrada: unknown): Promise<Resultado> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
     if (typeof profissionalId !== 'string' || !/^[0-9a-f-]{36}$/i.test(profissionalId)) return { error: 'Profissional não encontrado.' }
     const lido = EntradaDasRegras.safeParse(entrada)
@@ -106,6 +109,7 @@ export async function fecharComissoes(
 ): Promise<{ error?: string; ok?: true }> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
     // Quem só vê as próprias não fecha nem as próprias.
     if (ownerFilter(ctx, 'financial')) return { error: 'Seu cargo vê só as próprias comissões: quem fecha é o financeiro.' }
@@ -148,6 +152,7 @@ export async function fecharComissoes(
 export async function estornarFechamento(fechamentoId: string, motivo: string): Promise<{ error?: string; ok?: true }> {
   try {
     const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
     assertPermission(ctx, 'financial', 'MANAGE')
     if (ownerFilter(ctx, 'financial')) return { error: 'Seu cargo vê só as próprias comissões: quem estorna é o financeiro.' }
     if (typeof fechamentoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(fechamentoId)) return { error: 'Fechamento não encontrado.' }

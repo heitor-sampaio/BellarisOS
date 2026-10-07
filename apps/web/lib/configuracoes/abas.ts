@@ -19,11 +19,11 @@ export const ABAS_DE_CONFIGURACAO = [
   { key: 'permissions',   label: 'Cargos',       module: 'roles'    },
   { key: 'fichas',        label: 'Fichas',       module: 'forms'    },
   // Termos e contratos: autoria de rede, como as fichas (módulo 'forms').
-  { key: 'documentos',    label: 'Documentos',   module: 'forms'    },
+  { key: 'documentos',    label: 'Documentos',   module: 'forms',     recurso: 'documentos' },
   { key: 'integrations',  label: 'Integrações',  module: 'settings' },
-  { key: 'fidelidade',    label: 'Fidelidade',   module: 'settings' },
+  { key: 'fidelidade',    label: 'Fidelidade',   module: 'settings',  recurso: 'fidelidade' },
   // Como a comissão acontece e as taxas da maquininha: é dinheiro, 'financial'.
-  { key: 'comissoes',     label: 'Comissões',    module: 'financial' },
+  { key: 'comissoes',     label: 'Comissões',    module: 'financial', recurso: 'comissoes' },
   { key: 'lgpd',          label: 'LGPD',         module: 'settings' },
   // A assinatura do BellarisOS (plano, faturas, pagar). Da rede.
   { key: 'assinatura',    label: 'Assinatura',   module: 'settings' },
@@ -31,7 +31,16 @@ export const ABAS_DE_CONFIGURACAO = [
   { key: 'suporte',       label: 'Suporte',      module: 'settings' },
   { key: 'eventos',       label: 'Eventos',      module: 'settings' },
   { key: 'general',       label: 'Geral',        module: 'settings' },
-] as const satisfies readonly { key: string; label: string; module: AppModule }[]
+] as const satisfies readonly { key: string; label: string; module: AppModule; recurso?: string }[]
+
+/**
+ * A aba é de uma funcionalidade do PLANO (lib/planos/recursos.ts)? Fora dele,
+ * a aba some — `plano` é o `ctx.plano` (null = sem plano = tudo).
+ */
+export function abaNoPlano(aba: object, plano: { funcionalidades: readonly string[] } | null | undefined): boolean {
+  const recurso = (aba as { recurso?: string }).recurso
+  return !recurso || !plano || plano.funcionalidades.includes(recurso)
+}
 
 export type ChaveDeAba = typeof ABAS_DE_CONFIGURACAO[number]['key']
 

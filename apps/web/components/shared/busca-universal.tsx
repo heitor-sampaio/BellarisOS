@@ -63,7 +63,8 @@ function ehCampoDeTexto(el: EventTarget | null): boolean {
   return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)
 }
 
-export function BuscaUniversal({ slug, permissions }: {
+export function BuscaUniversal({ slug, permissions, plano = null }: {
+  plano?: { funcionalidades: readonly string[] } | null
   /** Slug do portal da unidade; nulo no portal da rede. */
   slug:        string | null
   permissions: ResolvedPermissions
@@ -90,7 +91,7 @@ export function BuscaUniversal({ slug, permissions }: {
   const campoRef   = useRef<HTMLInputElement>(null)
   const campoCelRef = useRef<HTMLInputElement>(null)
 
-  const paginas = useMemo(() => paginasDaBusca(slug, permissions), [slug, permissions])
+  const paginas = useMemo(() => paginasDaBusca(slug, permissions, plano), [slug, permissions, plano])
 
   // -- O que aparece -----------------------------------------------------------
   const limpo = termo.trim()

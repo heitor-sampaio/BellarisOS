@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { listCampaigns } from '@/actions/notification-campaigns'
 import { NotificationCampaignsList } from '@/components/admin/notification-campaigns-list'
 
@@ -6,6 +6,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function AdminNotificacoesPage() {
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'campanhas')
   assertPermission(ctx, 'marketing', 'VIEW')
 
   const { campaigns, totalSent, activeCount } = await listCampaigns()

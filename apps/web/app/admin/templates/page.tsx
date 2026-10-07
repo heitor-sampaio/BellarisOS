@@ -1,9 +1,11 @@
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, assertRecurso } from '@/lib/auth'
 import { listTemplates, getTemplateSetup } from '@/actions/message-templates'
 import { TemplatesManager } from '@/components/admin/templates-manager'
 
 export default async function AdminTemplatesPage() {
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'templates')
   assertPermission(ctx, 'marketing', 'VIEW')
 
   const [templates, setup] = await Promise.all([listTemplates(), getTemplateSetup()])

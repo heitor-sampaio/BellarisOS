@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { getCampaignDetail } from '@/actions/meta-campaign'
 import { CampaignDetailContent } from '@/components/admin/campaign-detail-content'
 import type { DatePreset } from '@/lib/ads/types'
@@ -88,6 +88,8 @@ export default async function CampaignDetailPage({
   // A action também confere, mas a página monta título e navegação antes dela:
   // toda page.tsx responde pela própria permissão, e não pela do layout acima.
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'marketing', 'VIEW')
 
   const result = await getCampaignDetail(id, period)

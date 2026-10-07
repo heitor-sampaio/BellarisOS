@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, ownerFilter } from '@/lib/auth'
+import { getTenantContext, assertPermission, ownerFilter, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ler } from '@/lib/db'
 import { ComissoesDaEquipe } from '@/app/_shared/comissoes-da-equipe'
@@ -10,6 +10,8 @@ export default async function ComissoesDaRedePage({
   searchParams: Promise<{ periodo?: string; unidade?: string }>
 }) {
   const ctx = await getTenantContext()
+  // A funcionalidade é do PLANO da rede (lib/planos/recursos.ts).
+  assertRecurso(ctx, 'comissoes')
   assertPermission(ctx, 'financial', 'VIEW')
   const sp = await searchParams
 

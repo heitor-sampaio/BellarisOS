@@ -41,7 +41,17 @@ export type MenuEntry = {
   /** Rota absoluta na rede; sufixo depois de `/[slug]` na filial. */
   href:    string
   visible: (p: ResolvedPermissions) => boolean
+  /**
+   * A funcionalidade do PLANO a que o item pertence (lib/planos/recursos.ts),
+   * quando ela é parte de um módulo: pacotes dentro de procedimentos, a inbox
+   * e as oportunidades dentro do CRM. Fora do plano, o item some.
+   */
+  recurso?: string
 }
+
+/** O plano da rede, como o contexto o traz (`ctx.plano`); null = tudo. */
+type PlanoDoMenu = { funcionalidades: readonly string[] } | null | undefined
+const noPlano = (e: MenuEntry, plano: PlanoDoMenu) => !e.recurso || !plano || plano.funcionalidades.includes(e.recurso)
 
 const has = (p: ResolvedPermissions, m: keyof ResolvedPermissions) => p[m] !== 'NONE'
 
@@ -62,22 +72,22 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // tarefa sem dono, esperando uma decisão do cliente. O dinheiro passou a ser
   // recebido no check-in do atendimento, e o que sobrava da fila virou o filtro
   // "Aguardando aceite" desta tela.
-  { key: 'planejamentos',group: 'planejamento', label: 'Tratamentos',   href: '/admin/planejamentos',  visible: p => has(p, 'medical_records') || recebe(p) },
+  { key: 'planejamentos', recurso: 'planos_de_tratamento',group: 'planejamento', label: 'Tratamentos',   href: '/admin/planejamentos',  visible: p => has(p, 'medical_records') || recebe(p) },
   // O mapa de injetáveis era alcançável só por dentro da ficha de um cliente.
   // É clínico (vira registro de prontuário), daí o módulo ser outro.
   { key: 'injetaveis',   group: 'planejamento', label: 'Injetáveis',    href: '/admin/injetaveis',     visible: p => has(p, 'medical_records') },
 
-  { key: 'inbox',        group: 'vendas',       label: 'Inbox',         href: '/admin/inbox',          visible: p => has(p, 'crm') },
-  { key: 'oportunidades',group: 'vendas',       label: 'Oportunidades', href: '/admin/oportunidades',  visible: p => has(p, 'crm') },
+  { key: 'inbox', recurso: 'inbox',        group: 'vendas',       label: 'Inbox',         href: '/admin/inbox',          visible: p => has(p, 'crm') },
+  { key: 'oportunidades', recurso: 'oportunidades',group: 'vendas',       label: 'Oportunidades', href: '/admin/oportunidades',  visible: p => has(p, 'crm') },
   // O que se vende: o catálogo de procedimentos e os pacotes (decisão do
   // Heitor, 2026-09-30 — antes, Procedimentos ficava em Gestão).
   { key: 'procedures',   group: 'vendas',       label: 'Procedimentos', href: '/admin/procedures',     visible: p => has(p, 'procedures') },
-  { key: 'pacotes',      group: 'vendas',       label: 'Pacotes',       href: '/admin/pacotes',        visible: p => has(p, 'procedures') },
-  { key: 'notificacoes', group: 'marketing',      label: 'Notificações',  href: '/admin/notificacoes',   visible: p => has(p, 'marketing') },
-  { key: 'marketing',    group: 'marketing',      label: 'Marketing',     href: '/admin/marketing',      visible: p => has(p, 'marketing') },
+  { key: 'pacotes', recurso: 'pacotes',      group: 'vendas',       label: 'Pacotes',       href: '/admin/pacotes',        visible: p => has(p, 'procedures') },
+  { key: 'notificacoes', recurso: 'campanhas', group: 'marketing',      label: 'Notificações',  href: '/admin/notificacoes',   visible: p => has(p, 'marketing') },
+  { key: 'marketing', recurso: 'anuncios',    group: 'marketing',      label: 'Marketing',     href: '/admin/marketing',      visible: p => has(p, 'marketing') },
   // Templates do WhatsApp oficial. Ficam aqui, e não em Configurações, porque
   // quem escreve a mensagem é o time comercial — não quem conecta a API.
-  { key: 'templates',    group: 'marketing',      label: 'Templates',     href: '/admin/templates',      visible: p => has(p, 'marketing') },
+  { key: 'templates', recurso: 'templates',    group: 'marketing',      label: 'Templates',     href: '/admin/templates',      visible: p => has(p, 'marketing') },
 
   { key: 'financial',    group: 'dinheiro',     label: 'Financeiro',    href: '/admin/financeiro',     visible: p => has(p, 'financial') },
   { key: 'stock',        group: 'dinheiro',     label: 'Estoque',       href: '/admin/estoque',        visible: p => has(p, 'stock') },
@@ -102,13 +112,13 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 
   { key: 'agenda',        group: 'atendimento', label: 'Agenda',        href: '/agenda',        visible: p => has(p, 'agenda') },
   { key: 'clients',       group: 'atendimento', label: 'Clientes',      href: '/clients',       visible: p => has(p, 'clients') },
-  { key: 'planejamentos', group: 'planejamento', label: 'Tratamentos', href: '/planejamentos', visible: p => has(p, 'medical_records') || recebe(p) },
+  { key: 'planejamentos', recurso: 'planos_de_tratamento', group: 'planejamento', label: 'Tratamentos', href: '/planejamentos', visible: p => has(p, 'medical_records') || recebe(p) },
   { key: 'injetaveis',    group: 'planejamento', label: 'Injetáveis',  href: '/injetaveis',    visible: p => has(p, 'medical_records') },
 
-  { key: 'inbox',         group: 'vendas',      label: 'Inbox',         href: '/inbox',         visible: p => has(p, 'crm') },
-  { key: 'oportunidades', group: 'vendas',      label: 'Oportunidades', href: '/oportunidades', visible: p => has(p, 'crm') },
+  { key: 'inbox', recurso: 'inbox',         group: 'vendas',      label: 'Inbox',         href: '/inbox',         visible: p => has(p, 'crm') },
+  { key: 'oportunidades', recurso: 'oportunidades', group: 'vendas',      label: 'Oportunidades', href: '/oportunidades', visible: p => has(p, 'crm') },
   { key: 'procedures',    group: 'vendas',      label: 'Procedimentos', href: '/procedures',    visible: p => has(p, 'procedures') },
-  { key: 'pacotes',       group: 'vendas',      label: 'Pacotes',       href: '/pacotes',       visible: p => has(p, 'procedures') },
+  { key: 'pacotes', recurso: 'pacotes',       group: 'vendas',      label: 'Pacotes',       href: '/pacotes',       visible: p => has(p, 'procedures') },
 
   // Só `financial`. O módulo `cashier` governa RECEBER — no atendimento e no
   // checkout do plano —, e desde que o caixa de abrir/fechar saiu não há mais
@@ -130,9 +140,10 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 export function menuEntriesFor(
   menu: readonly MenuEntry[],
   permissions: ResolvedPermissions,
+  plano?: PlanoDoMenu,
 ): { key: string; label: string; href: string }[] {
   return menu
-    .filter(e => e.visible(permissions))
+    .filter(e => e.visible(permissions) && noPlano(e, plano))
     .map(e => ({
       key:   e.key,
       label: typeof e.label === 'function' ? e.label(permissions) : e.label,
@@ -156,8 +167,9 @@ export interface MenuSection {
 export function menuSectionsFor(
   menu: readonly MenuEntry[],
   permissions: ResolvedPermissions,
+  plano?: PlanoDoMenu,
 ): MenuSection[] {
-  const visiveis = menu.filter(e => e.visible(permissions))
+  const visiveis = menu.filter(e => e.visible(permissions) && noPlano(e, plano))
   const resolver = (e: MenuEntry) => ({
     key:   e.key,
     label: typeof e.label === 'function' ? e.label(permissions) : e.label,

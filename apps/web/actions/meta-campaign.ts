@@ -1,6 +1,6 @@
 'use server'
 
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { getAdsConfig } from '@/lib/ads/factory'
 import { addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import type { AdSet, Ad, CampaignDetail, CampaignSummary, AgeBreakdown, GeoBreakdown, PlacementBreakdown, DailyInsight, PreviousPeriod, AdSetTargeting } from '@/lib/ads/types'
@@ -64,6 +64,7 @@ export async function getCampaignDetail(
   preset: string,
 ): Promise<{ ok: true; data: CampaignDetail } | { ok: false; error: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'anuncios')
   assertPermission(ctx, 'marketing', 'VIEW')
 
   const config = await getAdsConfig(ctx.tenantId!, 'meta_ads')

@@ -292,9 +292,10 @@ export async function definirAssinatura(tenantId: string, d: { planoId: string |
     await gravar(admin.from('tenants').update({ plan_name: plano?.nome ?? null }).eq('id', tenantId).select('id').single(), 'gravar o nome do plano')
     let aviso: string | undefined
     try { await levarValorAoAsaas(tenantId) } catch (e) { aviso = `Gravado aqui, mas o Asaas recusou o valor novo: ${mensagemDoErro(e)}` }
-    await registrarNaPlataforma(ctx, 'assinatura.alterada', { tenantId, dados: { antes, depois: { plan_id: plano?.id ?? null, valor_centavos: valor, recursos } } })
     // O plano decide o que a clínica pode usar: o portão dela lê na próxima tela.
+    // Expira ANTES de registrar: falhar no registro não deixa a clínica com o velho.
     await expirarAqui(tagDaRede(tenantId))
+    await registrarNaPlataforma(ctx, 'assinatura.alterada', { tenantId, dados: { antes, depois: { plan_id: plano?.id ?? null, valor_centavos: valor, recursos } } })
     recarregarRede(tenantId)
     return aviso ? { ok: false, error: aviso } : { ok: true }
   } catch (e) {
@@ -318,8 +319,8 @@ export async function aplicarPlanoAtual(tenantId: string): Promise<Resultado> {
     const plano = await ler(admin.from('platform_plans').select('recursos').eq('id', sub.plan_id).single(), 'ler o plano') as { recursos: unknown }
     await gravar(admin.from('tenant_subscriptions').update({ recursos: plano.recursos, updated_at: new Date().toISOString() })
       .eq('tenant_id', tenantId).select('tenant_id').single(), 'aplicar o plano à rede')
-    await registrarNaPlataforma(ctx, 'assinatura.plano_aplicado', { tenantId, dados: { plan_id: sub.plan_id, antes: sub.recursos, depois: plano.recursos } })
     await expirarAqui(tagDaRede(tenantId))
+    await registrarNaPlataforma(ctx, 'assinatura.plano_aplicado', { tenantId, dados: { plan_id: sub.plan_id, antes: sub.recursos, depois: plano.recursos } })
     recarregarRede(tenantId)
     return { ok: true }
   } catch (e) {

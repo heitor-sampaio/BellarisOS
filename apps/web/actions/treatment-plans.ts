@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
-import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso } from '@/lib/auth'
 import { conferirPecasDoAgendamento } from '@/lib/appointments/core'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -194,6 +194,7 @@ async function saveTreatmentPlanInterno(
   slug: string,
 ): Promise<{ planId?: string; error?: string }> {
   const ctx   = await getTenantContext()
+  assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
@@ -293,6 +294,7 @@ export async function criarPlanoDoCliente(
   nome?: string,
 ): Promise<{ planId?: string; error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
@@ -347,6 +349,7 @@ export async function vincularClienteAoPlano(
   clientId: string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
@@ -408,6 +411,7 @@ export async function buscarClientesParaPlano(termo: string): Promise<{
 /** Renomeia o plano. */
 export async function renomearPlano(planId: string, nome: string): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
@@ -636,6 +640,7 @@ async function salvarPlanoDoClienteInterno(
   notes: string,
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'medical_records', 'MANAGE')
   const admin = createAdminClient()
 
@@ -733,6 +738,7 @@ export async function getTreatmentPlanSessions(planId: string): Promise<{
 
 export async function proposeTreatmentPlan(planId: string, slug: string) {
   const ctx = await getTenantContext()
+  assertRecurso(ctx, 'planos_de_tratamento')
   assertPermission(ctx, 'medical_records', 'MANAGE')
 
   const admin = createAdminClient()
@@ -1190,6 +1196,7 @@ async function checkoutTreatmentPlanInterno(
   desconto?:        unknown,
 ) {
   const ctx   = await getTenantContext()
+  assertRecurso(ctx, 'planos_de_tratamento')
   // Aceitar é gesto de quem monta o plano; receber, de quem recebe na recepção.
   if (pagamento) assertPodeReceber(ctx)
   else           assertPodeFecharPlano(ctx)

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
-import { getTenantContext, can } from '@/lib/auth'
+import { getTenantContext, can, temRecurso } from '@/lib/auth'
 import { origemPublica } from '@/lib/origem'
 
 /**
@@ -42,6 +42,10 @@ export async function GET(req: NextRequest) {
 
   const bruto   = req.nextUrl.searchParams.get('produto')
   const produto: ProdutoMeta = bruto === 'mensagens' ? 'mensagens' : 'ads'
+  // Anúncios e mensagens (Instagram/Messenger, na inbox) são do PLANO da rede.
+  if (!temRecurso(ctx, produto === 'ads' ? 'anuncios' : 'inbox')) {
+    return new NextResponse('Esta funcionalidade não está no plano da rede.', { status: 403 })
+  }
 
   const state       = randomBytes(16).toString('hex')
   const cookieStore = await cookies()
