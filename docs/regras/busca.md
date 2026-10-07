@@ -40,6 +40,10 @@ embaixo da topbar. Só ACHA — as ações ("Agendar", "Vender") são a fase 2.
 - A guarda do inbox no navegador (`conversaCasaComBusca`, `lib/inbox/busca.ts`)
   compara como o banco — sem acento, telefone por dígitos —, senão esconde o
   que `inbox_pagina` achou.
+- **Telefone por dígitos só quando o termo é um telefone — sem letra.** Vale
+  para `busca_universal`, `inbox_pagina` (migration `20261007000010`) e a
+  guarda do navegador. Até 2026-10-07 o inbox pegava os dígitos soltos de um
+  termo de texto: "Nome da pessoa muyl997q" achava todo telefone com "997".
 - Prova: `e2e/busca-universal.spec.ts` (rede `[e2e]` própria; recusas pela
   action direta, com o admin como controle).
 

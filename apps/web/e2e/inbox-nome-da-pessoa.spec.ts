@@ -49,3 +49,38 @@ test('lista, busca e card mostram o nome da pessoa', async ({ page }) => {
   await linha.click()
   await expect(page.getByText(NOVO).first()).toBeVisible()
 })
+
+/**
+ * Os dígitos soltos de um termo de TEXTO não buscam telefone (2026-10-07). Era
+ * a causa do vermelho intermitente acima: o sufixo aleatório trazia "997", e
+ * a busca achava também a conversa de outra pessoa cujo telefone tinha "997".
+ * Telefone pelos dígitos, só quando o termo é um telefone.
+ */
+test('a busca do banco não casa telefone pelos dígitos de um termo de texto', async () => {
+  const db = banco()
+  const tenant = await tenantId()
+  const fone = '5548' + String(Date.now()).slice(-9)
+  const pagina = async (busca: string) => {
+    const { data, error } = await db.rpc('inbox_pagina', {
+      p_tenant: tenant, p_dono: null, p_modo: 'pessoa', p_caixas: null, p_filtros: {},
+      p_busca: busca, p_antes_em: null, p_antes_id: null, p_limite: 500,
+    })
+    expect(error, 'inbox_pagina').toBeNull()
+    return ((data ?? []) as { id: string }[]).map(l => l.id)
+  }
+  const { data, error } = await db.from('conversations').insert({
+    tenant_id: tenant, channel: 'whatsapp', status: 'open', provider: 'uazapi',
+    contact_name: `${PREFIXO} Telefone ${marca}`, contact_phone: fone, contact_external_id: fone,
+    contact_aliases: [fone], last_message_at: new Date().toISOString(), last_message: 'oi',
+  }).select('id').single<{ id: string }>()
+  expect(error, 'criar a conversa').toBeNull()
+  try {
+    const trecho = fone.slice(-6)
+    // Pelo telefone, com pontuação: acha.
+    expect(await pagina(`(${trecho.slice(0, 2)}) ${trecho.slice(2)}`)).toContain(data!.id)
+    // O mesmo trecho no meio de um texto: não acha.
+    expect(await pagina(`zzz${trecho}qq`)).not.toContain(data!.id)
+  } finally {
+    await apagarConversas([data!.id])
+  }
+})

@@ -1299,6 +1299,18 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-07 — A busca do inbox não casa telefone pelos dígitos de um texto
+
+A falha do `inbox-nome-da-pessoa` na completa não era instabilidade: o termo
+buscado tem um sufixo aleatório ("muyl997q"), e a busca do inbox
+(`inbox_pagina` e a guarda do navegador, `conversaCasaComBusca`) tirava os
+dígitos de QUALQUER termo e procurava no telefone — achava também a conversa
+de outra pessoa cujo telefone tinha "997". Para a clínica, "Maria 99" listava
+todo telefone com 99. Agora os dígitos só valem quando o termo é um telefone
+(sem letra), a regra que a busca universal já seguia. Migration
+`20261007000010`; prova em `tests/inbox-busca.test.ts` e no
+`inbox-nome-da-pessoa.spec.ts` (a busca do banco, direto).
+
 ### 2026-10-07 — "Adicionar número" abre uma conexão nova; o cartão do WhatsApp conta as conexões
 
 Bug relatado pelo Heitor: em Integrações, "Adicionar número" → "Conectar por
