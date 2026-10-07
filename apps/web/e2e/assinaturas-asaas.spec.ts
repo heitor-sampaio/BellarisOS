@@ -259,6 +259,55 @@ test.describe.serial('os adicionais levam o total ao Asaas', () => {
     expect((await valores()).valor_no_asaas_centavos).toBe(19900)
   })
 
+  // Cortesia e desconto (2026-10-07): o Asaas recebe o total COM as condições;
+  // a rede toda de cortesia tem a cobrança encerrada e fica ativa.
+  test('desconto com a cobrança ligada: o Asaas recebe o total com o desconto', async ({ browser }) => {
+    await comSessao(browser, admin.estado, async p => {
+      const r = await chamarAcao(p, 'actions/sistema.ts', 'definirCondicao', rota(),
+        [rede2.tenantId, { item: 'plano', condicao: { tipo: 'percentual', percentual: 50 } }])
+      expect(r.texto).toContain('"ok":true')
+    })
+    // plano 10000 → 5000; WhatsApp 4900; Copilot 5000
+    expect(ultimoPut()?.corpo).toMatchObject({ value: 149 })
+    expect((await valores()).valor_no_asaas_centavos).toBe(14900)
+  })
+
+  test('a rede toda de cortesia: a cobrança no Asaas é encerrada, e a rede fica ativa', async ({ browser }) => {
+    await db().from('tenants').update({ plan_status: 'past_due' }).eq('id', rede2.tenantId)
+    await comSessao(browser, admin.estado, async p => {
+      for (const item of ['plano', 'whatsapp', 'copilot']) {
+        const r = await chamarAcao(p, 'actions/sistema.ts', 'definirCondicao', rota(), [rede2.tenantId, { item, condicao: { tipo: 'cortesia' } }])
+        expect(r.texto, item).toContain('"ok":true')
+      }
+    })
+    expect(asaas.chamadas.some(c => c.metodo === 'DELETE' && c.caminho === `/subscriptions/${sub2}`)).toBe(true)
+    // Pausa, não cancelamento: não entra em "canceladas no mês", e volta sozinha.
+    const { data: s } = await db().from('tenant_subscriptions').select('cobranca, valor_total_centavos, cancelada_em, asaas_subscription_id, proximo_vencimento').eq('tenant_id', rede2.tenantId)
+      .single<{ cobranca: string; valor_total_centavos: number; cancelada_em: string | null; asaas_subscription_id: string | null; proximo_vencimento: string | null }>()
+    expect(s).toEqual({ cobranca: 'cortesia', valor_total_centavos: 0, cancelada_em: null, asaas_subscription_id: null, proximo_vencimento: null })
+    const { data: t } = await db().from('tenants').select('plan_status').eq('id', rede2.tenantId).single<{ plan_status: string }>()
+    expect(t!.plan_status).toBe('active')
+  })
+
+  test('quando a cortesia do plano acaba, a cobrança volta sozinha no Asaas, com o preço normal', async () => {
+    // O plano com fim ontem (gravado direto); o cron tira a condição e leva o valor.
+    const { data: s } = await db().from('tenant_subscriptions').select('condicoes').eq('tenant_id', rede2.tenantId).single<{ condicoes: Record<string, unknown> }>()
+    await db().from('tenant_subscriptions').update({ condicoes: { ...s!.condicoes, plano: { tipo: 'cortesia', ate: '2020-01-01' } } }).eq('tenant_id', rede2.tenantId)
+    expect((await db().rpc('assinaturas_encerrar_condicoes_vencidas', { p_tenant: rede2.tenantId })).error).toBeNull()
+    const antes = asaas.chamadas.length
+    // O passo do cron que leva os pendentes (a rota interna faz o mesmo para uma rede).
+    const ctx = await request.newContext({ baseURL: urlDaPlataforma('sistema') })
+    try {
+      const r = await ctx.post('/api/interno/levar-valor', { headers: { authorization: `Bearer ${process.env.INTERNO_SECRET}` }, data: { tenantId: rede2.tenantId } })
+      expect(r.status()).toBe(200)
+    } finally { await ctx.dispose() }
+    const nova = asaas.chamadas.slice(antes).find(c => c.metodo === 'POST' && c.caminho === '/subscriptions')
+    expect(nova?.corpo, 'uma assinatura nova, com o plano cheio (os adicionais seguem de cortesia)').toMatchObject({ value: 100 })
+    const { data: depois } = await db().from('tenant_subscriptions').select('cobranca, valor_no_asaas_centavos').eq('tenant_id', rede2.tenantId)
+      .single<{ cobranca: string; valor_no_asaas_centavos: number }>()
+    expect(depois).toEqual({ cobranca: 'ativa', valor_no_asaas_centavos: 10000 })
+  })
+
   test('a rota interna se defende pelo segredo, e só aceita o id de uma rede', async () => {
     const ctx = await request.newContext({ baseURL: urlDaPlataforma('sistema') })
     try {

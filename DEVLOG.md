@@ -1299,6 +1299,40 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-07 — Cortesia e desconto na assinatura da rede
+
+Pedido do Heitor: em Redes, poder dar como cortesia qualquer plano, conexões
+de WhatsApp ou o Copilot, ou desconto na assinatura ou em qualquer adicional.
+Decisões dele: desconto em percentual OU em reais, à escolha; data de fim
+opcional; a rede toda de cortesia fica ativa e sem cobrança, nunca suspensa
+por falta de pagamento; a clínica vê a condição.
+
+- Na tela da rede do sistema, "Cortesia e desconto": um bloco por item (o
+  plano, as conexões de WhatsApp, o Copilot), com Preço normal / Desconto em
+  % / Desconto em R$ / Cortesia, o "até" opcional e quanto fica.
+- A mensalidade (`valor_total_centavos`) passou a ser o líquido, por item;
+  deixou de ser coluna gerada e virou coluna mantida por gatilho (migrations
+  `20261007000006` e `…07`). A conta do app e a do banco são comparadas caso
+  a caso no E2E.
+- O Asaas recebe o total com as condições; a rede toda de cortesia tem a
+  cobrança encerrada lá e vai a "em dia"; a regra de atraso não a move.
+- No dia seguinte ao fim, o cron tira a condição e leva o preço normal ao
+  Asaas na mesma passagem — se era cortesia total, a cobrança religa sozinha
+  (ver a verificação, abaixo).
+- A clínica vê "Condições do BellarisOS" na aba Assinatura (preço cheio
+  riscado e o que fica); item com condição é condição especial (cancela, não
+  aumenta).
+- **Do verificador independente** (migration `20261007000008`): a cortesia que
+  vencia deixava a rede ativa e SEM cobrança para sempre (a cobrança tinha ido a
+  "cancelada" e nada religava); e 100% de desconto zerava sem contar como
+  cortesia — a rede acabava suspensa. Agora "rede de cortesia" é ter plano e
+  nada a pagar (por qualquer caminho); a cobrança PAUSA (estado `cortesia`, não
+  cancelamento) e RELIGA sozinha quando volta a haver valor — não dando, vira
+  "sem cobrança" e fica registrado. Também: o atraso é perdoado ao virar
+  cortesia; trocar de plano tira a condição do plano; a mensalidade é zero ou
+  pelo menos R$ 5,00 (o mínimo do Asaas); total zero sem plano dá erro em vez
+  de encerrar a cobrança em silêncio; data inexistente é recusada.
+
 ### 2026-10-07 — Planejador de injetáveis e personalização de fichas entram no plano; "Inbox omnichannel"
 
 Pedido do Heitor: faltavam no catálogo dos planos o planejador de injetáveis

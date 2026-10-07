@@ -271,8 +271,10 @@ um muro que não depende de cada trava do código.
     sem retrato), saem todos. Quem tira é o gatilho `trg_retrato_sem_plano`,
     no MESMO comando que muda o plano — o app não regrava a lista (um
     adicional contratado pela clínica no meio sumiria).
-  - **A mensalidade** é `valor_total_centavos` (coluna GERADA: `valor_centavos`
-    + os adicionais) — `AssinaturaLida.totalCentavos`. `valor_centavos` é só a
+  - **A mensalidade** é `valor_total_centavos` — cada item (o plano e os
+    adicionais) já com a cortesia ou o desconto dele, mantida pelo gatilho
+    `trg_total_da_assinatura` (deixou de ser coluna gerada em 2026-10-07) —
+    `AssinaturaLida.totalCentavos`. `valor_centavos` é só a
     base (o plano ou o preço especial). O Asaas recebe o total ao ligar a
     cobrança e em cada mudança (`levarValorAoAsaas`, com
     `updatePendingPayments`: a fatura em aberto também muda), e
@@ -285,11 +287,51 @@ um muro que não depende de cada trava do código.
     Falhou: a clínica é avisada ("chega à cobrança em até uma hora"), e o
     cron `assinaturas` do sistema leva o que ficou pendente
     (`levarValoresPendentes` / `pendentesNoAsaas`: total ≠ valor no Asaas).
-  - ⚠️ **Adicional novo exige migration**: a coluna gerada, a função de
+  - ⚠️ **Adicional novo exige migration**: o gatilho do total, a função de
     escrita e o rótulo do banco conhecem as chaves pelo nome.
   - Prova: `e2e/planos-adicionais.spec.ts`, o bloco "os adicionais levam o
     total ao Asaas" de `e2e/assinaturas-asaas.spec.ts` e
     `tests/planos-adicionais.test.ts`.
+- **Cortesia e desconto** (2026-10-07, decisões do Heitor), na tela da rede do
+  sistema ("Cortesia e desconto"): por ITEM — o plano, as conexões de
+  WhatsApp, o Copilot avulso —, desconto em percentual (1 a 100) ou em reais,
+  ou cortesia (de graça), com data de fim opcional (vale o dia inteiro).
+  - Mora em `tenant_subscriptions.condicoes`; a conta é
+    `lib/planos/condicoes.ts` e, no banco, `private.valor_com_condicao` — o
+    E2E compara as duas caso a caso. A escrita é
+    `assinatura_condicao_definir` (service role), pela action
+    `definirCondicao` (ADMIN), que leva o total ao Asaas e registra
+    (`assinatura.condicao`).
+  - **Rede de cortesia = TEM PLANO e NADA A PAGAR**, seja por cortesia, por
+    100% de desconto, por desconto do tamanho do preço ou por preço zero
+    (verificação de 2026-10-07). O gatilho `trg_cortesia_pela_mensalidade`
+    (depois de gravar, venha a mudança de onde vier) a põe "active", perdoa o
+    atraso (`atraso_perdoado_ate`) e, sem cobrança ligada, marca a cobrança
+    `cortesia`. Com cobrança ligada, `levarValorAoAsaas` PAUSA: tira a
+    assinatura do Asaas e marca `cortesia` — sem `cancelada_em` (não é
+    cancelamento, não entra em "canceladas no mês"). `assinaturas_aplicar_regras`
+    não move rede com plano e total zero.
+  - **Voltou a ter valor** (a cortesia acabou, a clínica contratou algo pago,
+    o plano mudou): `levarValorAoAsaas` RELIGA a cobrança sozinha
+    (`religarDepoisDaCortesia`, primeiro vencimento em 3 dias). Não deu (sem
+    CPF/CNPJ, o Asaas recusou): a cobrança vira "sem cobrança" (o painel conta),
+    fica registrado (`assinatura.cortesia_sem_cobranca`) e o erro sobe a quem
+    pediu.
+  - **O mínimo do Asaas (R$ 5,00)**: a mensalidade é zero ou pelo menos isso —
+    o gatilho do total recusa o meio, em qualquer caminho (o Asaas recusaria e
+    seguiria cobrando o valor antigo). Boleto pode exigir mais (R$ 10,00).
+  - **Trocar de plano** tira a condição do PLANO (cortesia no Básico não deixa
+    o Pro de graça); as dos adicionais ficam.
+  - **O fim**: no dia seguinte, o cron `assinaturas` tira a condição
+    (`assinaturas_encerrar_condicoes_vencidas`, registrado como
+    `assinatura.condicao_vencida`) ANTES de levar os valores pendentes — o
+    Asaas recebe o preço normal na mesma passagem.
+  - Item com condição é condição especial: a clínica cancela, não aumenta. Tirar
+    o adicional tira a condição dele; sem plano, nenhuma.
+  - A clínica vê cada condição na aba Assinatura ("Condições do BellarisOS"),
+    com o preço cheio riscado e o que fica.
+  - Prova: `e2e/planos-condicoes.spec.ts`, o fim do bloco dos adicionais em
+    `e2e/assinaturas-asaas.spec.ts` e `tests/planos-condicoes.test.ts`.
 - **A situação é recalculada POR ESTADO no banco**
   (`assinatura_aplicar_cobranca`): os eventos do Asaas chegam fora de ordem e
   repetidos, então a função olha as faturas (`subscription_invoices`) — em
@@ -459,7 +501,9 @@ um muro que não depende de cada trava do código.
 ❌ Gravar retrato (tenant_subscriptions.recursos) fora de definirAssinatura/criarRede/aplicarPlanoAtual
 ❌ Gravar tenant_subscriptions.adicionais fora de assinatura_adicional_definir — nem na troca de plano (quem tira o que não cabe é o gatilho trg_retrato_sem_plano)
 ❌ Deixar a clínica (p_valor_centavos null) aumentar adicional com preço especial
-❌ Ler valor_centavos como a mensalidade — é a base; o que se cobra é valor_total_centavos (plano + adicionais)
+❌ Ler valor_centavos como a mensalidade — é a base; o que se cobra é valor_total_centavos (plano + adicionais, com cortesia e desconto)
+❌ Calcular desconto ou cortesia fora de lib/planos/condicoes.ts / private.valor_com_condicao (as duas contas têm de bater)
+❌ Gravar tenant_subscriptions.condicoes fora de assinatura_condicao_definir (o vencimento é assinaturas_encerrar_condicoes_vencidas)
 ❌ Levar valor ao Asaas pela clínica (ela não tem a chave) — é o sistema, por /api/interno/levar-valor ou pelo cron
 ❌ Decidir limite ou funcionalidade pelo retrato cru quando há adicional — é o efetivo (recursosEfetivos, getCachedRede)
 ❌ Decidir se a verificação em duas etapas é pedida fora de verificacaoPendente (ou cachear a opção: o outro host não a veria mudar)

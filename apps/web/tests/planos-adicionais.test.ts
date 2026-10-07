@@ -118,20 +118,25 @@ describe('verificação de 2026-10-07', () => {
     expect(lerAdicionais({ whatsapp: { quantidade: 1, valor_centavos: 4900, especial: 'sim' } }))
       .toEqual({ whatsapp: { quantidade: 1, valor_centavos: 4900 } })
   })
-  it('pendentesNoAsaas: a assinatura ligada cujo total não chegou ao Asaas', () => {
+  it('pendentesNoAsaas: a ligada cujo total não chegou ao Asaas, e a de cortesia que voltou a ter valor', () => {
     expect(pendentesNoAsaas([
-      { tenant_id: 'a', valor_total_centavos: 14900, valor_no_asaas_centavos: 10000 },
-      { tenant_id: 'b', valor_total_centavos: 10000, valor_no_asaas_centavos: 10000 },
-      { tenant_id: 'c', valor_total_centavos: 10000, valor_no_asaas_centavos: null },
-    ])).toEqual(['a', 'c'])
+      { tenant_id: 'a', cobranca: 'ativa', valor_total_centavos: 14900, valor_no_asaas_centavos: 10000 },
+      { tenant_id: 'b', cobranca: 'ativa', valor_total_centavos: 10000, valor_no_asaas_centavos: 10000 },
+      { tenant_id: 'c', cobranca: 'ativa', valor_total_centavos: 10000, valor_no_asaas_centavos: null },
+      { tenant_id: 'd', cobranca: 'cortesia', valor_total_centavos: 19900, valor_no_asaas_centavos: null },
+      { tenant_id: 'e', cobranca: 'cortesia', valor_total_centavos: 0, valor_no_asaas_centavos: null },
+      // Ligada e zerada: sempre pendente (o sistema pausa), mesmo com a anotação igual.
+      { tenant_id: 'f', cobranca: 'ativa', valor_total_centavos: 0, valor_no_asaas_centavos: 0 },
+    ])).toEqual(['a', 'c', 'd', 'f'])
   })
   it('o catálogo de adicionais é o que o banco conhece (a coluna gerada e a função de escrita)', () => {
     const dir = path.resolve(__dirname, '..', '..', '..', 'supabase', 'migrations')
     const textos = fs.readdirSync(dir).filter(n => n >= '20261007').sort().map(n => fs.readFileSync(path.join(dir, n), 'utf8'))
-    const coluna = textos.filter(t => t.includes('valor_total_centavos integer generated')).at(-1) ?? ''
+    // O total deixou de ser coluna gerada (2026-10-07): é o gatilho private.total_da_assinatura.
+    const coluna = textos.filter(t => t.includes('create or replace function private.total_da_assinatura')).at(-1) ?? ''
     const funcao = textos.filter(t => t.includes('function public.assinatura_adicional_definir')).at(-1) ?? ''
     for (const a of ADICIONAIS) {
-      expect(coluna, `coluna gerada: ${a.chave}`).toContain(`adicionais -> '${a.chave}'`)
+      expect(coluna, `gatilho do total: ${a.chave}`).toContain(`new.adicionais -> '${a.chave}'`)
       expect(funcao, `função de escrita: ${a.chave}`).toContain(`when '${a.chave}' then`)
     }
   })

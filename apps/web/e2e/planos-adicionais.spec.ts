@@ -214,11 +214,15 @@ test.describe.serial('o banco: contratar e tirar adicional', () => {
     expect((await assinatura()).adicionais).toEqual({ whatsapp: { quantidade: 2, valor_centavos: 4900 } })
   })
 
-  test('com a cobrança ligada, a mensalidade não zera por um adicional (o Asaas não cobra R$ 0)', async () => {
+  // Até a verificação de 2026-10-07 isto era recusado. Agora, plano e nada a
+  // pagar é REDE DE CORTESIA: o banco aceita e marca a pendência — o sistema
+  // pausa a cobrança no Asaas (planos-condicoes e assinaturas-asaas provam).
+  test('com a cobrança ligada, tirar o único item pago vira cortesia: aceito, e o sistema pausa a cobrança', async () => {
     await redeCom({ cobranca: 'ativa', base: 0 })
     expect((await definir('whatsapp', 1)).error).toBeNull()
-    expect((await definir('whatsapp', 0)).error?.message ?? '').toMatch(/R\$ 0,00/)
-    expect((await assinatura()).adicionais.whatsapp?.quantidade).toBe(1)
+    const { data, error } = await definir('whatsapp', 0)
+    expect(error).toBeNull()
+    expect(data as { total_centavos: number; pendente_no_asaas: boolean }).toMatchObject({ total_centavos: 0, pendente_no_asaas: true })
   })
 })
 

@@ -78,9 +78,13 @@ export function adicionaisAposTrocarDePlano(c: AdicionaisContratados, novo: Recu
 }
 
 /**
- * As assinaturas ligadas cujo total não chegou ao Asaas (`valor_no_asaas_centavos`
- * diferente do total): o que a reserva do cron do sistema leva.
+ * O que a reserva do cron do sistema leva ao Asaas: a cobrança ligada cujo
+ * total não chegou lá (`valor_no_asaas_centavos` diferente do total), e a
+ * pausada por cortesia que voltou a ter valor (religa).
  */
-export function pendentesNoAsaas(linhas: { tenant_id: string; valor_total_centavos: number; valor_no_asaas_centavos: number | null }[]): string[] {
-  return linhas.filter(l => l.valor_no_asaas_centavos !== l.valor_total_centavos).map(l => l.tenant_id)
+export function pendentesNoAsaas(linhas: { tenant_id: string; cobranca: string; valor_total_centavos: number; valor_no_asaas_centavos: number | null }[]): string[] {
+  return linhas.filter(l => l.cobranca === 'ativa'
+    // Ligada e zerada: sempre (o sistema pausa pela cortesia).
+    ? l.valor_no_asaas_centavos !== l.valor_total_centavos || l.valor_total_centavos === 0
+    : l.cobranca === 'cortesia' && l.valor_total_centavos > 0).map(l => l.tenant_id)
 }

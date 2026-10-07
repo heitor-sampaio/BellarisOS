@@ -35,6 +35,11 @@ export type TipoDeRegistroDaPlataforma =
   | 'assinatura.alterada'
   | 'assinatura.plano_aplicado'
   | 'assinatura.adicional'
+  | 'assinatura.condicao'
+  | 'assinatura.condicao_vencida'
+  | 'assinatura.cortesia_pausada'
+  | 'assinatura.cortesia_religada'
+  | 'assinatura.cortesia_sem_cobranca'
   | 'assinatura.teste_estendido'
   | 'assinatura.em_dia'
   | 'assinatura.cancelada'
@@ -99,6 +104,11 @@ export const ROTULO_DO_REGISTRO: Record<TipoDeRegistroDaPlataforma, string> = {
   'assinatura.alterada':        'Alterou o plano ou o valor da assinatura',
   'assinatura.plano_aplicado':   'Aplicou a versão atual do plano à rede',
   'assinatura.adicional':        'Mudou um adicional da assinatura (WhatsApp extra, Copilot)',
+  'assinatura.condicao':         'Deu ou tirou cortesia ou desconto na assinatura',
+  'assinatura.condicao_vencida': 'Uma cortesia ou um desconto chegou ao fim (automático)',
+  'assinatura.cortesia_pausada': 'Cobrança pausada: a rede não tem nada a pagar (automático)',
+  'assinatura.cortesia_religada': 'Cobrança religada depois da cortesia (automático)',
+  'assinatura.cortesia_sem_cobranca': 'A cortesia acabou e a cobrança NÃO religou — ligar à mão (automático)',
   'assinatura.teste_estendido': 'Estendeu o período de teste',
   'assinatura.em_dia':          'Marcou a assinatura como em dia',
   'assinatura.cancelada':       'Cancelou a assinatura',

@@ -11,6 +11,8 @@ import { resumirRecursos, type OfertaDosAdicionais, type RecursosDoPlano } from 
 import { centavosDe, campoDeReais, reaisDe } from '@estetica-os/nucleo/lib/redes/valor'
 import type { AdicionaisContratados } from '@estetica-os/nucleo/lib/planos/adicionais'
 import { AdicionaisDaRede } from '@/components/sistema/adicionais-da-rede'
+import { CondicoesDaRede } from '@/components/sistema/condicoes-da-rede'
+import type { Condicoes } from '@estetica-os/nucleo/lib/planos/condicoes'
 
 /**
  * A assinatura de uma rede no /sistema: plano e valor (preço especial), teste,
@@ -35,7 +37,7 @@ const vencimentoSugerido = (fimDoTeste: string | null) =>
 export function AssinaturaDaRede({ tenantId, rede, assinatura, faturas, planos, asaasPronto }: {
   tenantId: string
   rede: { planStatus: string | null; trialEndsAt: string | null; emAtrasoDesde: string | null; temDocumento: boolean }
-  assinatura: { planoId: string | null; valorCentavos: number; cobranca: 'sem_cobranca' | 'ativa' | 'cancelada'; asaasSubscriptionId: string | null; proximoVencimento: string | null; recursos: RecursosDoPlano | null; oferta: OfertaDosAdicionais; adicionais: AdicionaisContratados; totalCentavos: number } | null
+  assinatura: { planoId: string | null; valorCentavos: number; cobranca: 'sem_cobranca' | 'ativa' | 'cancelada' | 'cortesia'; asaasSubscriptionId: string | null; proximoVencimento: string | null; recursos: RecursosDoPlano | null; oferta: OfertaDosAdicionais; adicionais: AdicionaisContratados; condicoes: Condicoes; totalCentavos: number } | null
   faturas: { id: string; valorCentavos: number; vencimento: string; situacao: string; pagoEm: string | null; url: string | null; removida: boolean }[]
   planos: { id: string; nome: string; valorCentavos: number; ativo: boolean }[]
   asaasPronto: boolean
@@ -112,6 +114,15 @@ export function AssinaturaDaRede({ tenantId, rede, assinatura, faturas, planos, 
         </div>
       )}
 
+      {/* Cortesia e desconto por item (2026-10-07) */}
+      {assinatura?.planoId && (
+        <div className="suporte-pilha">
+          <h3 className="suporte-subtitulo">Cortesia e desconto</h3>
+          <CondicoesDaRede tenantId={tenantId} valorCentavos={assinatura.valorCentavos}
+            adicionais={assinatura.adicionais} condicoes={assinatura.condicoes} />
+        </div>
+      )}
+
       {/* Situação */}
       <div className="suporte-pilha">
         <p className="suporte-texto">
@@ -156,6 +167,9 @@ export function AssinaturaDaRede({ tenantId, rede, assinatura, faturas, planos, 
               Sincronizar faturas
             </button>
           </div>
+        ) : assinatura?.planoId && assinatura.totalCentavos <= 0 ? (
+          // Nada a pagar: a rede de cortesia (cobrança pausada, volta sozinha quando houver valor).
+          <p className="suporte-ok">Rede de cortesia: nada a cobrar. A cobrança volta sozinha quando houver valor.</p>
         ) : !assinatura || assinatura.totalCentavos <= 0 ? (
           <p className="suporte-texto-fraco">Defina o plano e o valor para ligar a cobrança.</p>
         ) : !rede.temDocumento ? (

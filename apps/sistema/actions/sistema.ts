@@ -17,6 +17,7 @@ import {
 } from '@/lib/redes/cobranca'
 import { configDoAsaas } from '@/lib/asaas/cliente'
 import { normalizarRecursos, TUDO_LIBERADO, ADICIONAIS } from '@estetica-os/nucleo/lib/planos/recursos'
+import { normalizarCondicao, ITENS_DA_ASSINATURA } from '@estetica-os/nucleo/lib/planos/condicoes'
 
 /**
  * Expira uma tag AQUI e na CLÍNICA: a situação da rede e a sessão de suporte
@@ -362,6 +363,43 @@ export async function definirAdicional(
       try { await levarValorAoAsaas(tenantId) } catch (e) { aviso = `Gravado aqui, mas o Asaas recusou o valor novo (o cron tenta de novo): ${mensagemDoErro(e)}` }
     }
     await registrarNaPlataforma(ctx, 'assinatura.adicional', { tenantId, dados: { chave: d.chave, origem: 'sistema', antes: r.antes, depois: r.depois } })
+    recarregarRede(tenantId)
+    return aviso ? { ok: false, error: aviso } : { ok: true }
+  } catch (e) {
+    return { ok: false, error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * CORTESIA ou DESCONTO num item da assinatura (2026-10-07, decisões do
+ * Heitor): o plano, as conexões de WhatsApp ou o Copilot; em percentual, em
+ * reais, ou de graça; com fim opcional. `condicao: null` volta ao preço
+ * normal. A regra mora em `assinatura_condicao_definir` (banco). Depois:
+ *  - a rede toda de cortesia vai a ativa (o banco muda; aqui, o aviso e o cache);
+ *  - o Asaas recebe o total novo — e, se o total zerou, a cobrança lá é
+ *    encerrada (`levarValorAoAsaas`).
+ */
+export async function definirCondicao(
+  tenantId: string, d: { item: string; condicao: unknown },
+): Promise<Resultado> {
+  const ctx = await getPlatformContext({ papel: 'ADMIN' })
+  if (!ehUuid(tenantId) || !ITENS_DA_ASSINATURA.some(i => i === d?.item)) return { ok: false, error: 'Pedido inválido.' }
+  const n = normalizarCondicao(d.condicao ?? null, hojeEmSP())
+  if (!n.ok) return { ok: false, error: n.error }
+  try {
+    const r = await gravar(createAdminClient().rpc('assinatura_condicao_definir', {
+      p_tenant: tenantId, p_item: d.item, p_condicao: n.condicao,
+    }), 'definir a condição') as {
+      antes: unknown; depois: unknown; pendente_no_asaas: boolean; cortesia_total: boolean
+      situacao_antes: string | null; situacao_depois: string | null
+    }
+    if (r.situacao_depois) await depoisDaMudanca(tenantId, r.situacao_antes, r.situacao_depois, 'admin', expirarAqui)
+    await expirarAqui(tagDaRede(tenantId))
+    let aviso: string | undefined
+    if (r.pendente_no_asaas) {
+      try { await levarValorAoAsaas(tenantId) } catch (e) { aviso = `Gravado aqui, mas o Asaas recusou o valor novo (o cron tenta de novo): ${mensagemDoErro(e)}` }
+    }
+    await registrarNaPlataforma(ctx, 'assinatura.condicao', { tenantId, dados: { item: d.item, antes: r.antes, depois: r.depois, cortesiaTotal: r.cortesia_total } })
     recarregarRede(tenantId)
     return aviso ? { ok: false, error: aviso } : { ok: true }
   } catch (e) {

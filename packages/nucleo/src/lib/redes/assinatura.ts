@@ -1,6 +1,7 @@
 import 'server-only'
 import { lerRecursos, adicionalCabeNoPlano, ADICIONAIS, type RecursosDoPlano, type OfertaDosAdicionais } from '../planos/recursos'
 import { lerAdicionais, type AdicionaisContratados } from '../planos/adicionais'
+import { lerCondicoes, type Condicoes } from '../planos/condicoes'
 import { createAdminClient } from '../supabase/admin'
 import { gravar, ler } from '../db'
 import { tagDaRede } from './cache'
@@ -30,13 +31,17 @@ export interface AssinaturaLida {
     trialEndsAt: string | null; emAtrasoDesde: string | null; createdAt: string
   }
   assinatura: {
-    planoId: string | null; valorCentavos: number; cobranca: 'sem_cobranca' | 'ativa' | 'cancelada'
+    planoId: string | null; valorCentavos: number
+    /** 'cortesia': pausada porque nada se cobra (a rede de cortesia); volta sozinha quando houver valor. */
+    cobranca: 'sem_cobranca' | 'ativa' | 'cancelada' | 'cortesia'
     asaasCustomerId: string | null; asaasSubscriptionId: string | null; proximoVencimento: string | null
     /** O RETRATO do que o plano inclui (lib/planos/recursos.ts); null = tudo liberado. */
     recursos: RecursosDoPlano | null
     /** O contratado além do plano (lib/planos/adicionais.ts), com o preço retratado. */
     adicionais: AdicionaisContratados
-    /** A mensalidade: `valorCentavos` (o plano, ou o preço especial) + os adicionais. É o que o Asaas cobra. */
+    /** Cortesia e desconto por item (lib/planos/condicoes.ts, 2026-10-07). */
+    condicoes: Condicoes
+    /** A mensalidade: cada item (o plano e os adicionais) já com a condição dele. É o que o Asaas cobra. */
     totalCentavos: number
     /** O que foi levado ao Asaas por último; diferente do total = pendente (o cron do sistema leva). */
     valorNoAsaasCentavos: number | null
@@ -59,7 +64,7 @@ export async function lerAssinatura(tenantId: string): Promise<AssinaturaLida | 
       .select('id, name, document, email, phone, is_active, desligada_motivo, plan_status, plan_name, trial_ends_at, em_atraso_desde, created_at')
       .eq('id', tenantId).maybeSingle(), 'buscar a rede'),
     ler(admin.from('tenant_subscriptions')
-      .select('plan_id, valor_centavos, cobranca, asaas_customer_id, asaas_subscription_id, proximo_vencimento, recursos, adicionais, valor_total_centavos, valor_no_asaas_centavos')
+      .select('plan_id, valor_centavos, cobranca, asaas_customer_id, asaas_subscription_id, proximo_vencimento, recursos, adicionais, condicoes, valor_total_centavos, valor_no_asaas_centavos')
       .eq('tenant_id', tenantId).maybeSingle(), 'buscar a assinatura'),
     ler(admin.from('subscription_invoices')
       .select('id, valor_centavos, vencimento, situacao, pago_em, invoice_url, removida')
@@ -84,7 +89,7 @@ export async function lerAssinatura(tenantId: string): Promise<AssinaturaLida | 
       planoId: s.plan_id, valorCentavos: s.valor_centavos, cobranca: s.cobranca,
       asaasCustomerId: s.asaas_customer_id, asaasSubscriptionId: s.asaas_subscription_id,
       proximoVencimento: s.proximo_vencimento, recursos: retrato, oferta,
-      adicionais: lerAdicionais(s.adicionais), totalCentavos: s.valor_total_centavos ?? s.valor_centavos,
+      adicionais: lerAdicionais(s.adicionais), condicoes: lerCondicoes(s.condicoes), totalCentavos: s.valor_total_centavos ?? s.valor_centavos,
       valorNoAsaasCentavos: s.valor_no_asaas_centavos ?? null,
     } : null,
     faturas: ((f ?? []) as { id: string; valor_centavos: number; vencimento: string; situacao: string; pago_em: string | null; invoice_url: string | null; removida: boolean }[])

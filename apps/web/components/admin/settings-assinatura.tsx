@@ -5,6 +5,7 @@ import { PlanoDaRede } from '@/components/admin/plano-da-rede'
 import { AdicionaisDaClinica } from '@/components/admin/adicionais-da-clinica'
 import { ADICIONAIS } from '@estetica-os/nucleo/lib/planos/recursos'
 import { recursosEfetivos } from '@estetica-os/nucleo/lib/planos/adicionais'
+import { brutoDosItens, descreverCondicao, totalComCondicoes, valorComCondicao, ITENS_DA_ASSINATURA } from '@estetica-os/nucleo/lib/planos/condicoes'
 
 /**
  * A assinatura do BellarisOS, do lado da CLÍNICA (Configurações → Assinatura):
@@ -20,6 +21,27 @@ const ROTULO_DA_FATURA: Record<string, string> = {
 const dia = (v: string | null) => v
   ? new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'America/Sao_Paulo' }).format(new Date(v.length === 10 ? `${v}T12:00:00` : v))
   : '—'
+
+const ROTULO_DO_ITEM = { plano: 'Plano', whatsapp: 'Conexões de WhatsApp', copilot: 'Copilot avulso' } as const
+
+/** A mensalidade com uma unidade a mais e a menos do adicional — com as condições, como o banco conta. */
+function mensalidadeComMaisOuMenos(
+  a: NonNullable<AssinaturaLida['assinatura']>, chave: 'whatsapp' | 'copilot', maximo: number,
+): { totalSeMais: number | null; totalSeMenos: number | null } {
+  const atual = a.adicionais[chave]
+  const q = atual?.quantidade ?? 0
+  const preco = atual?.valor_centavos ?? a.oferta[chave]?.valor_centavos ?? null
+  const com = (n: number) => {
+    const adicionais = { ...a.adicionais }
+    if (n <= 0) delete adicionais[chave]
+    else adicionais[chave] = { quantidade: n, valor_centavos: preco ?? 0 }
+    return totalComCondicoes(a.valorCentavos, adicionais, a.condicoes)
+  }
+  return {
+    totalSeMais: preco != null && q < maximo ? com(q + 1) : null,
+    totalSeMenos: q > 0 ? com(q - 1) : null,
+  }
+}
 
 export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso, semContratar }: {
   dados: AssinaturaLida; planoNome: string | null; carencia: number; podePagar: boolean
@@ -50,9 +72,31 @@ export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso,
           {rede.planStatus === 'past_due' && <>Pagamento em atraso desde {dia(rede.emAtrasoDesde)}. Regularize até {dia(suspendeEm)} para o acesso não ser suspenso.</>}
         </p>
         <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-muted)' }}>
-          A cobrança é feita pelo Asaas, por Pix, boleto ou cartão. Para mudar de plano, fale com o BellarisOS pela Ajuda.
+          {assinatura?.planoId && assinatura.totalCentavos === 0
+            ? 'Cortesia do BellarisOS: sem mensalidade. Para mudar de plano, fale com o BellarisOS pela Ajuda.'
+            : 'A cobrança é feita pelo Asaas, por Pix, boleto ou cartão. Para mudar de plano, fale com o BellarisOS pela Ajuda.'}
         </p>
       </div>
+
+      {assinatura && ITENS_DA_ASSINATURA.some(i => assinatura.condicoes[i]) && (
+        <section className="card" aria-label="Condições do BellarisOS" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p className="overline">Condições do BellarisOS</p>
+          <ul className="plano-da-rede-limites" style={{ flexDirection: 'column' }}>
+            {ITENS_DA_ASSINATURA.filter(i => assinatura.condicoes[i]).map(i => {
+              const bruto = brutoDosItens(assinatura.valorCentavos, assinatura.adicionais)[i]
+              const c = assinatura.condicoes[i]!
+              return (
+                <li key={i}>
+                  {ROTULO_DO_ITEM[i]}: {descreverCondicao(c)}
+                  {bruto != null && (
+                    <span className="plano-da-rede-estado"> · de <s>{reaisDe(bruto)}</s> por {reaisDe(valorComCondicao(bruto, c))}</span>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
 
       <PlanoDaRede
         recursos={assinatura ? recursosEfetivos(assinatura.recursos, assinatura.adicionais) : null}
@@ -64,11 +108,13 @@ export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso,
         <AdicionaisDaClinica
           semContratar={rede.planStatus === 'canceled' ? 'A assinatura está cancelada. Para voltar a contratar, fale com o BellarisOS pela Ajuda.' : semContratar}
           totalCentavos={assinatura.totalCentavos}
-          cobrancaLigada={assinatura.cobranca === 'ativa'}
+          cobranca={assinatura.cobranca}
           adicionais={ADICIONAIS.map(a => ({
             chave: a.chave, rotulo: a.rotulo, maximo: a.maximo, emBreve: 'emBreve' in a && !!a.emBreve,
             quantidade: assinatura.adicionais[a.chave]?.quantidade ?? 0,
-            especial: !!assinatura.adicionais[a.chave]?.especial,
+            // Preço do sistema, cortesia ou desconto: condição especial.
+            especial: !!assinatura.adicionais[a.chave]?.especial || !!assinatura.condicoes[a.chave],
+            ...mensalidadeComMaisOuMenos(assinatura, a.chave, a.maximo),
             // A próxima unidade: o preço contratado (retrato), ou o que o plano oferece hoje.
             precoCentavos: assinatura.adicionais[a.chave]?.valor_centavos ?? assinatura.oferta[a.chave]?.valor_centavos ?? null,
           }))}

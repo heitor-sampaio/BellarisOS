@@ -116,11 +116,26 @@ export async function levarValorAoAsaas(tenantId: string): Promise<void> {
   // levado se o total ainda for ele (um update condicional).
   for (let tentativa = 0; tentativa < 3; tentativa++) {
     const a = await lerAssinatura(tenantId)
-    if (!a?.assinatura?.asaasSubscriptionId || a.assinatura.cobranca !== 'ativa') return
+    if (!a?.assinatura) return
+    // Pausada por cortesia e voltou a ter valor (a cortesia acabou, a clínica
+    // contratou algo): a cobrança volta sozinha (verificação de 2026-10-07).
+    if (a.assinatura.cobranca === 'cortesia') {
+      if (a.assinatura.totalCentavos > 0) await religarDepoisDaCortesia(tenantId)
+      return
+    }
+    if (!a.assinatura.asaasSubscriptionId || a.assinatura.cobranca !== 'ativa') return
     const plano = a.assinatura.planoId
       ? await ler(createAdminClient().from('platform_plans').select('nome').eq('id', a.assinatura.planoId).maybeSingle(), 'ler o plano') as { nome: string } | null
       : null
     const total = a.assinatura.totalCentavos
+    // Nada a cobrar: o Asaas não cobra R$ 0. Com plano, é a rede de cortesia —
+    // a cobrança PAUSA (não é cancelamento) e volta sozinha. Sem plano, é erro
+    // de quem definiu o valor: aparece, não some em silêncio.
+    if (total <= 0) {
+      if (!a.assinatura.planoId) throw new Error('A assinatura ficou sem plano e sem valor: o Asaas não cobra R$ 0,00. Defina o valor ou cancele a assinatura.')
+      await pausarPorCortesia(tenantId, a.assinatura.asaasSubscriptionId)
+      return
+    }
     await atualizarValorDaAssinatura(a.assinatura.asaasSubscriptionId, total, descricaoDaAssinatura(plano?.nome ?? null, a.assinatura.adicionais))
     const anotada = await gravar(createAdminClient().from('tenant_subscriptions').update({ valor_no_asaas_centavos: total })
       .eq('tenant_id', tenantId).eq('valor_total_centavos', total).select('tenant_id'), 'anotar o valor levado ao Asaas') as unknown[] | null
@@ -136,10 +151,11 @@ export async function levarValorAoAsaas(tenantId: string): Promise<void> {
  * levou; a que falha de novo fica para a próxima passagem.
  */
 export async function levarValoresPendentes(): Promise<number> {
+  // As ligadas e as pausadas por cortesia (que religam se voltaram a ter valor).
   const ligadas = await ler(createAdminClient().from('tenant_subscriptions')
-    .select('tenant_id, valor_total_centavos, valor_no_asaas_centavos')
-    .eq('cobranca', 'ativa').not('asaas_subscription_id', 'is', null), 'buscar as assinaturas ligadas') as
-    { tenant_id: string; valor_total_centavos: number; valor_no_asaas_centavos: number | null }[] | null
+    .select('tenant_id, cobranca, valor_total_centavos, valor_no_asaas_centavos')
+    .in('cobranca', ['ativa', 'cortesia']), 'buscar as assinaturas ligadas') as
+    { tenant_id: string; cobranca: string; valor_total_centavos: number; valor_no_asaas_centavos: number | null }[] | null
   let levadas = 0
   for (const tenantId of pendentesNoAsaas(ligadas ?? [])) {
     try { await levarValorAoAsaas(tenantId); levadas++ } catch (e) {
@@ -147,6 +163,40 @@ export async function levarValoresPendentes(): Promise<number> {
     }
   }
   return levadas
+}
+
+/**
+ * A rede de cortesia (nada a pagar): a assinatura no Asaas sai (lá não se
+ * cobra R$ 0) e a cobrança fica 'cortesia' — uma PAUSA: sem cancelada_em (não
+ * entra em "canceladas no mês"), sem próximo vencimento.
+ */
+async function pausarPorCortesia(tenantId: string, asaasSubscriptionId: string): Promise<void> {
+  await removerAssinatura(asaasSubscriptionId)
+  await gravar(createAdminClient().from('tenant_subscriptions').update({
+    cobranca: 'cortesia', asaas_subscription_id: null, proximo_vencimento: null, valor_no_asaas_centavos: null,
+    updated_at: new Date().toISOString(),
+  }).eq('tenant_id', tenantId).select('tenant_id'), 'pausar a cobrança pela cortesia')
+  await registrarAutomatico('assinatura.cortesia_pausada', tenantId, { asaasSubscriptionId })
+}
+
+/**
+ * A cortesia acabou (ou a clínica contratou algo pago): liga a cobrança de
+ * novo, com o primeiro vencimento daqui a 3 dias. Não deu (sem CPF/CNPJ, o
+ * Asaas recusou): a cobrança vira "sem cobrança" — o painel conta — e fica
+ * registrado; o erro sobe para quem pediu ver.
+ */
+async function religarDepoisDaCortesia(tenantId: string): Promise<void> {
+  const vencimento = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() + 3 * 86_400_000))
+  try {
+    await ativarCobranca(tenantId, vencimento)
+    await registrarAutomatico('assinatura.cortesia_religada', tenantId, { primeiroVencimento: vencimento })
+  } catch (e) {
+    const motivo = (e as Error).message
+    await gravar(createAdminClient().from('tenant_subscriptions').update({ cobranca: 'sem_cobranca', updated_at: new Date().toISOString() })
+      .eq('tenant_id', tenantId).eq('cobranca', 'cortesia').select('tenant_id'), 'marcar a rede sem cobrança')
+    await registrarAutomatico('assinatura.cortesia_sem_cobranca', tenantId, { motivo })
+    throw new Error(`A cortesia acabou, mas a cobrança não religou: ${motivo}`)
+  }
 }
 
 /** A assinatura foi encerrada/inativada NO Asaas (pelo painel de lá). */

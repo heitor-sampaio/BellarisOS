@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { definirAdicional } from '@/actions/sistema'
 import { ADICIONAIS, adicionalCabeNoPlano, type ChaveDeAdicional, type OfertaDosAdicionais, type RecursosDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
-import type { AdicionaisContratados } from '@estetica-os/nucleo/lib/planos/adicionais'
+import { totalDosAdicionais, type AdicionaisContratados } from '@estetica-os/nucleo/lib/planos/adicionais'
 import { centavosDe, campoDeReais, reaisDe } from '@estetica-os/nucleo/lib/redes/valor'
 
 /**
@@ -34,7 +34,10 @@ export function AdicionaisDaRede({ tenantId, recursos, oferta, adicionais, valor
       ))}
       <p className="suporte-texto">
         Total por mês: <strong>{reaisDe(totalCentavos)}</strong>
-        {totalCentavos !== valorCentavos && (
+        {totalCentavos !== valorCentavos + totalDosAdicionais(adicionais) ? (
+          // Com cortesia ou desconto (Cortesia e desconto, logo abaixo), a soma não é mais plano + adicionais.
+          <span className="suporte-texto-fraco"> (preço cheio: {reaisDe(valorCentavos + totalDosAdicionais(adicionais))})</span>
+        ) : totalCentavos !== valorCentavos && (
           <span className="suporte-texto-fraco"> (plano {reaisDe(valorCentavos)} + adicionais {reaisDe(totalCentavos - valorCentavos)})</span>
         )}
       </p>

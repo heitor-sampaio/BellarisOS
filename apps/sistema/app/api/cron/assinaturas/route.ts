@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { expirarNaClinica } from '@estetica-os/nucleo/lib/plataforma/expirar-na-clinica'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
-import { depoisDaMudanca } from '@estetica-os/nucleo/lib/redes/assinatura'
+import { depoisDaMudanca, registrarAutomatico } from '@estetica-os/nucleo/lib/redes/assinatura'
 import { aplicarCobranca, assinaturaEncerradaNoAsaas, sincronizarCobranca, levarValoresPendentes } from '@/lib/redes/cobranca'
 import { EVENTOS_DE_ASSINATURA } from '@/lib/asaas/webhook'
 import { configDoAsaas } from '@/lib/asaas/cliente'
@@ -91,10 +91,22 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Cortesia e desconto que chegaram ao fim (2026-10-07): o item volta ao
+  // preço normal — antes de levar os valores, para o Asaas receber o novo.
+  const { data: vencidas, error: eVencidas } = await admin.rpc('assinaturas_encerrar_condicoes_vencidas', {})
+  if (eVencidas) console.error('[cron/assinaturas] condições vencidas:', eVencidas.message)
+  for (const v of (vencidas ?? []) as { tenant_id: string; itens: string[] }[]) {
+    try {
+      // Expira antes de registrar: falhar no registro não deixa a clínica com o velho.
+      await expirar(`rede:${v.tenant_id}`)
+      await registrarAutomatico('assinatura.condicao_vencida', v.tenant_id, { itens: v.itens })
+    } catch (e) { console.error('[cron/assinaturas] registrar condição vencida:', v.tenant_id, mensagemDoErro(e)) }
+  }
+
   // Valor mudado que não chegou ao Asaas (adicional, preço): leva o total.
   const valoresLevados = configDoAsaas().temChave ? await levarValoresPendentes() : 0
 
-  return NextResponse.json({ ok: true, mudancas: mudancas.length, reprocessados, sincronizadas, valoresLevados })
+  return NextResponse.json({ ok: true, mudancas: mudancas.length, reprocessados, sincronizadas, valoresLevados, condicoesVencidas: (vencidas ?? []).length })
 }
 
 /** Compara em tempo constante: o tempo da recusa não diz quanto do segredo bateu. */

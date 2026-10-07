@@ -24,8 +24,11 @@ export interface AdicionalNaTela {
   /** O preço da PRÓXIMA unidade: o contratado (retrato) ou o que o plano oferece. */
   precoCentavos: number | null
   quantidade: number
-  /** Condição especial combinada com o BellarisOS: a clínica cancela, mas não aumenta. */
+  /** Condição especial combinada com o BellarisOS (preço, cortesia, desconto): a clínica cancela, mas não aumenta. */
   especial: boolean
+  /** A mensalidade com uma unidade a mais / a menos — já com as condições (o servidor calcula). */
+  totalSeMais: number | null
+  totalSeMenos: number | null
 }
 
 type Pedido = { chave: ChaveDeAdicional; quantidade: number; contratar: boolean }
@@ -39,11 +42,11 @@ const FEITO: Record<ChaveDeAdicional, [string, string]> = {
   copilot:  ['Copilot contratado.', 'Copilot cancelado.'],
 }
 
-export function AdicionaisDaClinica({ adicionais, totalCentavos, cobrancaLigada, semContratar }: {
+export function AdicionaisDaClinica({ adicionais, totalCentavos, cobranca, semContratar }: {
   adicionais: AdicionalNaTela[]
   totalCentavos: number
-  /** A cobrança no Asaas está ligada (há fatura a mudar)? */
-  cobrancaLigada: boolean
+  /** O estado da cobrança: ligada (há fatura a mudar), pausada pela cortesia (volta ao haver valor), ou nenhuma. */
+  cobranca: 'sem_cobranca' | 'ativa' | 'cancelada' | 'cortesia'
   /** Por que esta pessoa não contrata (null = contrata): o recado certo para cada caso. */
   semContratar: string | null
 }) {
@@ -101,21 +104,20 @@ export function AdicionaisDaClinica({ adicionais, totalCentavos, cobrancaLigada,
       {semContratar && <p className="adicionais-da-clinica-ajuda">{semContratar}</p>}
       {pedido && (
         <Confirmacao pedido={pedido} adicional={adicionais.find(a => a.chave === pedido.chave)!}
-          totalCentavos={totalCentavos} cobrancaLigada={cobrancaLigada} onFechar={() => setPedido(null)} />
+          totalCentavos={totalCentavos} cobranca={cobranca} onFechar={() => setPedido(null)} />
       )}
     </section>
   )
 }
 
-function Confirmacao({ pedido, adicional, totalCentavos, cobrancaLigada, onFechar }: {
-  pedido: Pedido; adicional: AdicionalNaTela; totalCentavos: number; cobrancaLigada: boolean; onFechar: () => void
+function Confirmacao({ pedido, adicional, totalCentavos, cobranca, onFechar }: {
+  pedido: Pedido; adicional: AdicionalNaTela; totalCentavos: number; cobranca: 'sem_cobranca' | 'ativa' | 'cancelada' | 'cortesia'; onFechar: () => void
 }) {
   const router = useRouter()
   const [erro, setErro] = useState<string | null>(null)
   const [pendente, iniciar] = useTransition()
   const titulo = TITULO[pedido.chave][pedido.contratar ? 0 : 1]
-  const preco = adicional.precoCentavos ?? 0
-  const depois = totalCentavos + (pedido.contratar ? preco : -preco)
+  const depois = (pedido.contratar ? adicional.totalSeMais : adicional.totalSeMenos) ?? totalCentavos
 
   function confirmar() {
     setErro(null)
@@ -137,9 +139,11 @@ function Confirmacao({ pedido, adicional, totalCentavos, cobrancaLigada, onFecha
         </div>
         <p>
           A mensalidade passa de <strong>{reaisDe(totalCentavos)}</strong> para <strong>{reaisDe(depois)}</strong>.{' '}
-          {cobrancaLigada
+          {cobranca === 'ativa'
             ? 'O valor novo vale para a fatura em aberto e as próximas.'
-            : 'O valor entra na mensalidade quando a cobrança começar.'}
+            : cobranca === 'cortesia' && depois > 0
+              ? 'Hoje a assinatura é cortesia do BellarisOS: com isto, a cobrança volta, com a primeira fatura em 3 dias.'
+              : 'O valor entra na mensalidade quando a cobrança começar.'}
         </p>
         {pedido.contratar && pedido.chave === 'copilot' && adicional.emBreve && (
           <p className="adicionais-da-clinica-ajuda">
