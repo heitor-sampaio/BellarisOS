@@ -95,8 +95,19 @@ jobs:
             echo "VAPID_SUBJECT=mailto:e2e@bellaris.invalid"
           } >> "$GITHUB_ENV"
 
+      # Normalmente leva ~20 s. Em 2026-10-07 travou duas vezes seguidas (30 min
+      # e 7 min parado, sem erro — a instalação das dependências do sistema
+      # pendurada). Cada tentativa tem 4 min; três tentativas, e a etapa inteira
+      # falha em 14 min em vez de prender a rodada.
       - name: Navegador do Playwright
-        run: pnpm exec playwright install --with-deps chromium
+        timeout-minutes: 14
+        run: |
+          for tentativa in 1 2 3; do
+            if timeout 240 pnpm exec playwright install --with-deps chromium; then exit 0; fi
+            echo "::warning::instalação do navegador falhou ou travou (tentativa $tentativa)"
+            sleep 15
+          done
+          exit 1
 
       - name: Build dos três apps
         run: |
