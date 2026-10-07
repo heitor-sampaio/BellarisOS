@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { UserPlus, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { JanelaModal } from '@estetica-os/nucleo/components/shared/janela-modal'
 import { ativarAtendente, criarAtendente, redefinirVerificacao, reenviarConvite } from '@/actions/plataforma'
 import type { PapelDaPlataforma } from '@estetica-os/nucleo/lib/plataforma/contexto'
@@ -13,13 +14,9 @@ export interface PessoaDaPlataforma {
 
 const PAPEL: Record<PessoaDaPlataforma['papel'], string> = { SUPORTE: 'Suporte', ADMIN: 'Admin da plataforma', GERENTE: 'Gerente (só vê o sistema)' }
 
-/**
- * A equipe da plataforma: a lista, e "Adicionar pessoa" num modal (2026-10-07:
- * o formulário solto na página ocupava um card enorme, alinhado à direita).
- */
+/** A equipe da plataforma: a lista e as ações de cada pessoa. O "Adicionar pessoa" mora no cabeçalho da página. */
 export function EquipeDaPlataforma({ pessoas }: { pessoas: PessoaDaPlataforma[] }) {
   const router = useRouter()
-  const [adicionando, setAdicionando] = useState(false)
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null)
   const [pendente, startTransition] = useTransition()
 
@@ -35,17 +32,6 @@ export function EquipeDaPlataforma({ pessoas }: { pessoas: PessoaDaPlataforma[] 
 
   return (
     <div className="suporte-pilha-larga">
-      <div className="sistema-acoes">
-        <button type="button" className="btn-primary" disabled={pendente} onClick={() => { setAviso(null); setAdicionando(true) }}>
-          <UserPlus size={15} aria-hidden /> Adicionar pessoa
-        </button>
-      </div>
-      {adicionando && (
-        <NovaPessoa
-          onFechar={() => setAdicionando(false)}
-          onCadastrada={(texto, ok) => { setAdicionando(false); setAviso({ ok, texto }); router.refresh() }}
-        />
-      )}
 
       {aviso && <p className={aviso.ok ? 'suporte-ok' : 'suporte-erro'} role="status">{aviso.texto}</p>}
 
@@ -87,6 +73,33 @@ export function EquipeDaPlataforma({ pessoas }: { pessoas: PessoaDaPlataforma[] 
         </table>
       </div>
     </div>
+  )
+}
+
+/**
+ * "Adicionar pessoa" (2026-10-07): o botão, na linha do título da página, à
+ * direita, e o cadastro num modal — o formulário solto na página ocupava um
+ * card enorme, alinhado à direita. O resultado sai em toast.
+ */
+export function AdicionarPessoa() {
+  const router = useRouter()
+  const [aberto, setAberto] = useState(false)
+  return (
+    <>
+      <button type="button" className="btn-primary" onClick={() => setAberto(true)}>
+        <UserPlus size={15} aria-hidden /> Adicionar pessoa
+      </button>
+      {aberto && (
+        <NovaPessoa
+          onFechar={() => setAberto(false)}
+          onCadastrada={(texto, ok) => {
+            setAberto(false)
+            if (ok) toast.success(texto); else toast.warning(texto)
+            router.refresh()
+          }}
+        />
+      )}
+    </>
   )
 }
 

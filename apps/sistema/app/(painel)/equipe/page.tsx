@@ -1,7 +1,7 @@
 import { getPlatformContext, type PapelDaPlataforma } from '@estetica-os/nucleo/lib/plataforma/contexto'
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { ler } from '@estetica-os/nucleo/lib/db'
-import { EquipeDaPlataforma, type PessoaDaPlataforma } from '@/components/suporte/equipe-da-plataforma'
+import { EquipeDaPlataforma, AdicionarPessoa, type PessoaDaPlataforma } from '@/components/suporte/equipe-da-plataforma'
 
 /**
  * Quem atende pela plataforma. Só admin: cadastrar, reenviar o convite,
@@ -29,6 +29,10 @@ export default async function EquipePage({ searchParams }: { searchParams: Promi
           <h1 className="suporte-titulo">Equipe da plataforma</h1>
           <p className="suporte-sub">Quem atende as clínicas. Cada pessoa define a senha pelo convite que chega por e-mail.</p>
         </div>
+        {/* Na linha do título, à direita. O Gerente vê travado. */}
+        <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
+          <AdicionarPessoa />
+        </fieldset>
       </div>
       <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
         <EquipeDaPlataforma pessoas={lista} />

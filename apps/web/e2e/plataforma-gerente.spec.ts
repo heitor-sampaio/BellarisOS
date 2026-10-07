@@ -63,13 +63,19 @@ test.describe.serial('o Gerente da plataforma: vê o sistema, não edita', () =>
       await p.goto(`${SIS()}/equipe`)
       // O cadastro abre num modal pelo botão (2026-10-07: o formulário solto na
       // página ficava num card enorme, alinhado à direita).
+      // Na mesma linha do título, à direita (pedido do Heitor).
+      const titulo = (await p.getByRole('heading', { name: 'Equipe da plataforma', level: 1 }).boundingBox())!
+      const botao = (await p.getByRole('button', { name: 'Adicionar pessoa' }).boundingBox())!
+      expect(botao.y, 'na linha do título').toBeLessThan(titulo.y + titulo.height)
+      expect(botao.y + botao.height, 'na linha do título').toBeGreaterThan(titulo.y)
+      expect(botao.x, 'à direita do título').toBeGreaterThan(titulo.x + titulo.width)
       await p.getByRole('button', { name: 'Adicionar pessoa' }).click()
       const form = p.getByRole('dialog', { name: 'Adicionar pessoa à equipe' })
       await form.getByLabel('Nome').fill(`[e2e] Gerente novo ${marca}`)
       await form.getByLabel('E-mail').fill(email)
       await form.getByLabel('Papel').selectOption({ label: 'Gerente (só vê o sistema)' })
       await form.getByRole('button', { name: 'Cadastrar' }).click()
-      await expect(p.getByRole('status')).toContainText(/Cadastrado/, { timeout: 15_000 })
+      await expect(p.getByText(/Cadastrado/)).toBeVisible({ timeout: 15_000 })
       await expect(form, 'o modal fecha ao cadastrar').toHaveCount(0)
     })
     const { data } = await db().from('platform_staff').select('papel, auth_id').eq('email', email).single<{ papel: string; auth_id: string }>()
