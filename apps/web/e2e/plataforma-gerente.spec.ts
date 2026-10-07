@@ -61,12 +61,16 @@ test.describe.serial('o Gerente da plataforma: vê o sistema, não edita', () =>
     const email = `e2e-gerente-novo-${marca}@bellaris.invalid`
     await com(browser, admin.estado, async p => {
       await p.goto(`${SIS()}/equipe`)
-      const form = p.locator('form', { has: p.getByRole('button', { name: 'Cadastrar' }) })
+      // O cadastro abre num modal pelo botão (2026-10-07: o formulário solto na
+      // página ficava num card enorme, alinhado à direita).
+      await p.getByRole('button', { name: 'Adicionar pessoa' }).click()
+      const form = p.getByRole('dialog', { name: 'Adicionar pessoa à equipe' })
       await form.getByLabel('Nome').fill(`[e2e] Gerente novo ${marca}`)
       await form.getByLabel('E-mail').fill(email)
       await form.getByLabel('Papel').selectOption({ label: 'Gerente (só vê o sistema)' })
       await form.getByRole('button', { name: 'Cadastrar' }).click()
       await expect(p.getByRole('status')).toContainText(/Cadastrado/, { timeout: 15_000 })
+      await expect(form, 'o modal fecha ao cadastrar').toHaveCount(0)
     })
     const { data } = await db().from('platform_staff').select('papel, auth_id').eq('email', email).single<{ papel: string; auth_id: string }>()
     expect(data!.papel).toBe('GERENTE')
@@ -96,7 +100,7 @@ test.describe.serial('o Gerente da plataforma: vê o sistema, não edita', () =>
       await p.goto(`${SIS()}/planos`)
       await expect(p.getByRole('button', { name: 'Criar plano' })).toBeDisabled()
       await p.goto(`${SIS()}/equipe`)
-      await expect(p.getByRole('button', { name: 'Cadastrar' })).toBeDisabled()
+      await expect(p.getByRole('button', { name: 'Adicionar pessoa' })).toBeDisabled()
       // Criar rede é escrita: a entrada nem aparece, e a página recusa.
       await p.goto(`${SIS()}/redes`)
       await expect(p.getByRole('link', { name: /Nova rede/ })).toHaveCount(0)

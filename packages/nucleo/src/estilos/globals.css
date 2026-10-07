@@ -2294,6 +2294,12 @@ a.suporte-link-forte:hover { color: var(--brand); }
    desabilitado trava, pelo navegador, todo controle de dentro; aqui só sai a moldura. */
 /* display: contents — a caixa some do layout; o disabled, que é do DOM, segue valendo. */
 .sistema-leitura { display: contents; }
+/* Formulário dentro de um modal do sistema (JanelaModal): título, campos empilhados, ações à direita. */
+.sistema-janela { display: flex; flex-direction: column; gap: 14px; padding: 20px 24px; }
+.sistema-janela .suporte-campo { min-width: 0; flex: none; }
+.sistema-janela-topo { display: flex; align-items: center; gap: 10px; }
+.sistema-janela-topo h2 { flex: 1; font-size: var(--text-card-title); font-weight: var(--weight-extrabold); color: var(--text); }
+.sistema-janela-acoes { display: flex; gap: 8px; justify-content: flex-end; }
 /* O comparativo dos planos, no sistema (2026-10-07): uma coluna por plano. */
 /* clip, não hidden: hidden faria do card o rolador, e o cabeçalho fixo deixaria de prender. */
 .comparativo-planos-card { padding: 0; overflow: clip; }
