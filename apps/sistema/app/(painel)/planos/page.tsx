@@ -3,11 +3,14 @@ import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { ler } from '@estetica-os/nucleo/lib/db'
 import { PlanosDoCatalogo } from '@/components/sistema/planos-do-catalogo'
 import { lerRecursos, TUDO_LIBERADO } from '@estetica-os/nucleo/lib/planos/recursos'
+import { comparativoDosPlanos } from '@/lib/planos/comparativo'
+import { ComparativoDePlanos } from '@/components/sistema/comparativo-de-planos'
 
 /**
  * O catálogo de planos que o BellarisOS vende. A rede guarda o RETRATO do
  * valor ao escolher um plano (mudar o catálogo não muda o combinado); plano
- * não se apaga, desativa.
+ * não se apaga, desativa. No topo, o COMPARATIVO (2026-10-07): tudo o que
+ * cada plano inclui, lado a lado — os à venda primeiro, os desativados no fim.
  */
 export default async function PlanosPage() {
   const ctx = await getPlatformContext({ verSistema: true })
@@ -18,6 +21,9 @@ export default async function PlanosPage() {
   ])
   const quantas = new Map<string, number>()
   for (const u of (usos ?? []) as { plan_id: string | null }[]) if (u.plan_id) quantas.set(u.plan_id, (quantas.get(u.plan_id) ?? 0) + 1)
+  const lidos = ((planos ?? []) as { id: string; nome: string; valor_centavos: number; ativo: boolean; recursos: unknown }[])
+    .map(p => ({ id: p.id, nome: p.nome, valorCentavos: p.valor_centavos, ativo: p.ativo, recursos: lerRecursos(p.recursos) ?? TUDO_LIBERADO }))
+  const comparativo = comparativoDosPlanos([...lidos.filter(p => p.ativo), ...lidos.filter(p => !p.ativo)])
   return (
     <div className="suporte-pilha-larga">
       <div className="suporte-cabecalho">
@@ -26,6 +32,7 @@ export default async function PlanosPage() {
           <p className="suporte-sub">O que o BellarisOS vende: o valor, as funcionalidades e os limites de cada plano. Cada rede guarda o que combinou; mudar aqui vale para as próximas.</p>
         </div>
       </div>
+      <ComparativoDePlanos comparativo={comparativo} />
       <fieldset className="sistema-leitura" disabled={!ctx.podeEditar}>
       <PlanosDoCatalogo planos={((planos ?? []) as { id: string; nome: string; descricao: string | null; valor_centavos: number; ativo: boolean; ordem: number; recursos: unknown }[])
         .map(p => ({

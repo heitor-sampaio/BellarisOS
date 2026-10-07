@@ -2294,6 +2294,35 @@ a.suporte-link-forte:hover { color: var(--brand); }
    desabilitado trava, pelo navegador, todo controle de dentro; aqui só sai a moldura. */
 /* display: contents — a caixa some do layout; o disabled, que é do DOM, segue valendo. */
 .sistema-leitura { display: contents; }
+/* O comparativo dos planos, no sistema (2026-10-07): uma coluna por plano. */
+/* clip, não hidden: hidden faria do card o rolador, e o cabeçalho fixo deixaria de prender. */
+.comparativo-planos-card { padding: 0; overflow: clip; }
+.comparativo-planos-titulo { padding: 16px 16px 4px; }
+.comparativo-planos thead th:not(:first-child) { text-align: center; color: var(--text); }
+.comparativo-planos thead th[data-ativo="false"] { color: var(--text-muted); }
+.comparativo-planos td { text-align: center; }
+/* A tabela é longa (~30 linhas): no computador, os nomes dos planos ficam presos
+   logo abaixo da barra do topo (que ali tem uma linha só). */
+@media (min-width: 1024px) {
+  .comparativo-planos thead th { position: sticky; top: 56px; z-index: 1; background: var(--surface); }
+}
+.comparativo-planos tbody th[scope="row"] { padding: 10px 16px; text-align: left; text-transform: none; letter-spacing: 0; font-size: var(--text-sm-sz); font-weight: var(--weight-semibold); color: var(--text); border-bottom: 1px solid var(--hairline); }
+.comparativo-planos tbody th[scope="row"] .chip-em-breve { margin-left: 8px; }
+.comparativo-planos tbody tr:last-child th { border-bottom: none; }
+.comparativo-planos tr.comparativo-grupo th { background: var(--bg-app); padding: 8px 16px; }
+.comparativo-marca { display: inline-flex; align-items: center; justify-content: center; }
+.comparativo-marca[data-dentro="true"] { color: var(--brand); }
+.comparativo-marca[data-dentro="false"] { color: var(--text-faint); }
+/* Texto para leitor de tela e para o card do celular; some da vista na tabela. */
+.comparativo-oculto { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 767px) {
+  .comparativo-planos-rolagem { padding: 0 12px 12px; }
+  table.cards-mobile.comparativo-planos tbody th { display: block; width: 100%; padding: 4px 0 6px; border: none; }
+  table.cards-mobile.comparativo-planos tr.comparativo-grupo { border: none; background: none; padding: 12px 0 0; margin: 0; }
+  table.cards-mobile.comparativo-planos tr.comparativo-grupo th { background: none; padding: 0; }
+  /* No card, o valor diz com palavras o que a marca diz na tabela. */
+  table.cards-mobile.comparativo-planos .comparativo-oculto { position: static; width: auto; height: auto; margin: 0 0 0 6px; clip: auto; overflow: visible; }
+}
 .sistema-leitura:disabled :is(button, input, select, textarea) { cursor: not-allowed; }
 .sistema-somente-leitura { margin-bottom: 16px; padding: 8px 12px; border: 1px solid var(--brand-soft-border); border-radius: var(--radius-row); background: var(--brand-soft); color: var(--brand); font-size: var(--text-sm-sz); font-weight: var(--weight-semibold); }
 .sistema-adicional .field[data-largura="quantidade"] { width: 90px; }

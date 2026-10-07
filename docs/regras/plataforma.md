@@ -218,6 +218,15 @@ um muro que não depende de cada trava do código.
     garante), como a de módulo sempre foi: a RLS não conhece o plano, e um membro que fale direto com o PostgREST pela chave
     pública alcança as tabelas que a rede dele alcança.
   - Prova: `e2e/planos-recursos.spec.ts` e `tests/planos-recursos.test.ts`.
+- **O comparativo dos planos** (2026-10-07): no topo da tela de Planos do
+  sistema, tudo o que cada plano inclui, lado a lado — preço, funcionalidades
+  por grupo, limites e adicionais à venda. A montagem é pura
+  (`comparativoDosPlanos`, `apps/sistema/lib/planos/comparativo.ts`) e sai do
+  catálogo: item novo em `recursos.ts` aparece sozinho. Só lê (o Gerente vê).
+  No celular é `cards-mobile` (um bloco por linha, o plano no `data-label`),
+  sem rolagem lateral; no computador, os nomes dos planos ficam presos no topo
+  (o card usa `overflow: clip`, não `hidden`, para o `sticky` funcionar).
+  Prova: `e2e/planos-comparativo.spec.ts` e `apps/sistema/tests/comparativo.test.ts`.
 - **Os ADICIONAIS do plano** (2026-10-07, decisão do Heitor): conexões de
   WhatsApp além do limite e o Copilot avulso, SOMADOS à mensalidade — uma
   assinatura só no Asaas, com o total.

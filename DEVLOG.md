@@ -1299,6 +1299,18 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-07 — O comparativo dos planos
+
+Pedido do Heitor: ver tudo o que cada plano inclui, numa tabela comparativa,
+na tela de Planos do sistema. Ficou no topo da tela: uma coluna por plano (os
+à venda primeiro, os desativados no fim, marcados) e uma linha por item —
+preço, cada funcionalidade por grupo (✓ ou —, com o "em breve"), os limites
+(número ou "Ilimitado") e os adicionais à venda (o preço, "—" quando o plano
+não oferece, ou "Ilimitado no plano" / "Incluído no plano"). Só lê: o Gerente
+vê igual. No computador, os nomes dos planos ficam presos no topo ao rolar; no
+celular, sem rolagem lateral, cada linha vira um bloco com o valor de cada
+plano rotulado. A lista com "Editar" e o formulário seguem embaixo.
+
 ### 2026-10-07 — O Gerente da equipe da plataforma: vê o sistema, não edita
 
 Pedido do Heitor: ao cadastrar alguém na equipe da plataforma, poder dar o
