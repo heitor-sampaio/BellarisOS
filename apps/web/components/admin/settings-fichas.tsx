@@ -29,6 +29,8 @@ function fieldCount(rows: AnamnesisRow[]): number {
 
 interface Props {
   forms: ItemDeFicha[]
+  /** O planejador de injetáveis fora do plano: o construtor não oferece o campo. */
+  semInjetaveis?: boolean
 }
 
 type View =
@@ -36,7 +38,7 @@ type View =
   | { mode: 'new' }
   | { mode: 'edit'; form: ExistingForm }
 
-export function SettingsFichas({ forms }: Props) {
+export function SettingsFichas({ forms, semInjetaveis = false }: Props) {
   const router = useRouter()
   const [view, setView] = useState<View>({ mode: 'list' })
   const [busy, setBusy] = useState<string | null>(null)
@@ -69,6 +71,7 @@ export function SettingsFichas({ forms }: Props) {
           onDone={done}
           createAction={criarFicha}
           updateAction={atualizarFicha}
+          semInjetaveis={semInjetaveis}
         />
       </div>
     )

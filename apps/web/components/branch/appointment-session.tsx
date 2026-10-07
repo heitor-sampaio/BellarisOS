@@ -133,6 +133,8 @@ interface Props {
   isPartOfPlan?:         boolean
   /** O plano da rede inclui planos de tratamento? Sem ele, a sessão é a simples. */
   podeMontarPlano?:      boolean
+  /** E o planejador de injetáveis? Sem ele, o campo da ficha fica só para ver. */
+  podeInjetaveis?:       boolean
   /** Sessão de pacote: já paga na venda do pacote — não se cobra de novo (2026-09-27). */
   isPackageSession?:     boolean
   /** Procedimento pré-pago: pago na venda, a recepção não cobra de novo. */
@@ -883,7 +885,7 @@ export function AppointmentSession({
   professionals, history, branchId, slug,
   canCheckin, canManage, canEditRecords, canViewRecords = true, canReassign, canPayment, isProfessional, paymentTransaction,
   treatmentProcedures, treatmentPackages, existingPlan, procedureProductsMap,
-  isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true,
+  isPartOfPlan = false, isPackageSession = false, isPrePago = false, podeReceber = false, planoEmAberto = null, documentos = null, podeMontarPlano = true, podeInjetaveis = true,
   pagamentoCombinado = null,
 }: Props) {
   const router   = useRouter()
@@ -1181,6 +1183,7 @@ export function AppointmentSession({
             initial={respostasDaFicha as AnamnesisAnswers} canEdit={canEditRecords}
             saveAction={salvarFichaDoProcedimento}
             hideSaveButton={unified}
+            semInjetaveis={!podeInjetaveis}
           />
         ),
       } : null}

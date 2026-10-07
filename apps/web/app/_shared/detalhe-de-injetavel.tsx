@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso, can } from '@/lib/auth'
 import { procedimentosParaPlano } from '@/lib/checkout/procedimentos-do-plano'
 import { InjetavelAberto } from '@/components/branch/injetavel-aberto'
 
@@ -20,6 +20,7 @@ export async function DetalheDeInjetavel({
 }) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'VIEW')
+  assertRecurso(ctx, 'injetaveis')
 
   const catalogo = await procedimentosParaPlano(ctx.tenantId!)
 

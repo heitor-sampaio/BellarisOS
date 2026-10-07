@@ -29,6 +29,8 @@ interface Props {
   // Ações de persistência injetáveis — default: a ficha do procedimento.
   createAction?: (input: { name: string; schema: unknown }) => Promise<SaveResult>
   updateAction?: (input: { id: string; name: string; schema: unknown }) => Promise<SaveResult>
+  /** O planejador de injetáveis fora do plano da rede: o tipo de campo não é oferecido (2026-10-07). */
+  semInjetaveis?: boolean
 }
 
 const TYPE_ICON: Record<AnamnesisFieldType, ComponentType<{ size?: number }>> = {
@@ -45,7 +47,8 @@ function newField(type: AnamnesisFieldType = 'text'): AnamnesisField {
   return { id: newId(), type, label: '', required: false, ...(OPTION_TYPES.includes(type) ? { options: [''] } : {}) }
 }
 
-export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction }: Props) {
+export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction, semInjetaveis = false }: Props) {
+  const tipos = semInjetaveis ? FIELD_TYPES.filter(t => t.value !== 'injectable_map') : FIELD_TYPES
   const createFn = createAction ?? criarFicha
   const updateFn = updateAction ?? atualizarFicha
   const [name, setName] = useState(existing?.name ?? '')
@@ -241,7 +244,7 @@ export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction
         <aside className="anamnesis-palette" style={{ flex: '0 0 200px', minWidth: 180 }}>
           <p style={{ fontSize: 'var(--text-2xs)', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Blocos</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {FIELD_TYPES.map(t => {
+            {tipos.map(t => {
               const Icon = TYPE_ICON[t.value]
               return (
                 <div
@@ -347,7 +350,7 @@ export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction
                   </button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-                  {FIELD_TYPES.map(t => {
+                  {tipos.map(t => {
                     const Icon = TYPE_ICON[t.value]
                     return (
                       <button
@@ -378,6 +381,7 @@ export function ConstrutorDeFicha({ existing, onDone, createAction, updateAction
       {editingField && (
         <FieldSettingsModal
           field={editingField}
+          tipos={tipos}
           onChangeType={type => changeType(editingField.id, type)}
           onPatch={ch => patch(editingField.id, ch)}
           onSetOption={(i, v) => setOption(editingField.id, i, v)}
@@ -465,8 +469,10 @@ function ModalField({ label, children }: { label: string; children: React.ReactN
 }
 
 // Configurações específicas do campo — modal.
-function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAddOption, onRemoveOption, onClose }: {
+function FieldSettingsModal({ field: f, tipos, onChangeType, onPatch, onSetOption, onAddOption, onRemoveOption, onClose }: {
   field: AnamnesisField
+  /** Os tipos que o plano da rede oferece (sem o planejador de injetáveis, se fora). */
+  tipos: typeof FIELD_TYPES
   onChangeType: (t: AnamnesisFieldType) => void
   onPatch: (ch: Partial<AnamnesisField>) => void
   onSetOption: (i: number, v: string) => void
@@ -489,7 +495,7 @@ function FieldSettingsModal({ field: f, onChangeType, onPatch, onSetOption, onAd
         <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <ModalField label="Tipo do campo">
             <select className="field" value={f.type} onChange={e => onChangeType(e.target.value as AnamnesisFieldType)}>
-              {FIELD_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              {tipos.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </ModalField>
 

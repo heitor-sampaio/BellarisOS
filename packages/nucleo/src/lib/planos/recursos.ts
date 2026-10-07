@@ -10,8 +10,10 @@ import type { AppModule, ReportTab } from '@estetica-os/types'
  *   plano no catálogo vale para as próximas atribuições, não corta ninguém.
  * - Rede sem retrato (nenhuma rede antiga tem plano) = TUDO LIBERADO. É o
  *   `null` que atravessa `temFuncionalidade`, `limiteDe` e `modulosForaDoPlano`.
- * - Clientes, procedimentos, equipe, configurações, recebimentos e modelos
- *   (`forms`) não estão no catálogo: são o mínimo para a clínica funcionar.
+ * - Clientes, procedimentos, equipe, configurações e recebimentos não estão no
+ *   catálogo: são o mínimo para a clínica funcionar. Do módulo `forms`, só a
+ *   PERSONALIZAÇÃO de fichas (`fichas`, 2026-10-07) é do plano — as fichas que
+ *   existem seguem no atendimento, e os modelos de documento são `documentos`.
  */
 
 export interface Funcionalidade {
@@ -31,6 +33,10 @@ export interface Funcionalidade {
 export const FUNCIONALIDADES = [
   { chave: 'agenda',               rotulo: 'Agenda',                                   grupo: 'Atendimento', modulos: ['agenda'] },
   { chave: 'prontuario',           rotulo: 'Prontuário e fichas',                      grupo: 'Atendimento', modulos: ['medical_records'] },
+  // 2026-10-07: partes de módulo — sem elas, o prontuário e os modelos de
+  // documento (que também são do módulo forms) seguem valendo.
+  { chave: 'injetaveis',           rotulo: 'Planejador de injetáveis',                 grupo: 'Atendimento', modulos: [] },
+  { chave: 'fichas',               rotulo: 'Personalização de fichas de atendimento',  grupo: 'Atendimento', modulos: [] },
   { chave: 'documentos',           rotulo: 'Termos e contratos (assinatura eletrônica)', grupo: 'Atendimento', modulos: ['documents'] },
   { chave: 'estoque',              rotulo: 'Estoque e lotes',                          grupo: 'Atendimento', modulos: ['stock'] },
   { chave: 'portal',               rotulo: 'Portal e app do cliente',                  grupo: 'Clientes',    modulos: [] },
@@ -38,7 +44,7 @@ export const FUNCIONALIDADES = [
   { chave: 'pacotes',              rotulo: 'Pacotes',                                  grupo: 'Vendas',      modulos: [] },
   { chave: 'pre_pago',             rotulo: 'Procedimento pré-pago',                    grupo: 'Vendas',      modulos: [] },
   { chave: 'planos_de_tratamento', rotulo: 'Planos de tratamento',                     grupo: 'Vendas',      modulos: [] },
-  { chave: 'inbox',                rotulo: 'Inbox (WhatsApp, Instagram e Messenger)',  grupo: 'Comercial',   modulos: ['crm'] },
+  { chave: 'inbox',                rotulo: 'Inbox omnichannel',                        grupo: 'Comercial',   modulos: ['crm'] },
   { chave: 'oportunidades',        rotulo: 'Oportunidades (funil)',                    grupo: 'Comercial',   modulos: ['crm'] },
   { chave: 'campanhas',            rotulo: 'Campanhas e notificações',                 grupo: 'Marketing',   modulos: ['marketing'] },
   { chave: 'templates',            rotulo: 'Templates de WhatsApp',                    grupo: 'Marketing',   modulos: ['marketing'] },

@@ -1,4 +1,4 @@
-import { getTenantContext, can } from '@/lib/auth'
+import { getTenantContext, can, temRecurso } from '@/lib/auth'
 import { lerRecursos, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -328,7 +328,7 @@ export async function Configuracoes({
       )}
 
       {activeTab === 'fichas' && (
-        <SettingsFichas forms={fichas} />
+        <SettingsFichas forms={fichas} semInjetaveis={!temRecurso(ctx, 'injetaveis')} />
       )}
 
       {activeTab === 'documentos' && modelosDeDocumento && (

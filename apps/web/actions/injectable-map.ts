@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
+import { getTenantContext, assertPermission, alcancaUnidade, assertRecurso } from '@/lib/auth'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { emitirEventoClinico } from '@/lib/events/clinico'
@@ -115,6 +115,7 @@ export async function criarPlanejamentoInjetavel({
 }): Promise<{ id?: string; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
   const titulo = nome.trim()
@@ -237,6 +238,7 @@ export async function salvarPlanejamentoInjetavel(
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
   const plano = await mapaDoTenant(admin, mapId, ctx)
@@ -264,6 +266,7 @@ export async function renomearPlanejamentoInjetavel(
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
   const plano = await mapaDoTenant(admin, mapId, ctx)
@@ -288,6 +291,7 @@ export async function vincularClienteAoPlanejamento(
 ): Promise<{ error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
   const plano = await mapaDoTenant(admin, mapId, ctx)
@@ -329,6 +333,7 @@ export async function registrarAplicacao(
 ): Promise<{ error?: string; id?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'MANAGE')
+  assertRecurso(ctx, 'injetaveis')
   const admin = createAdminClient()
 
   const plano = await mapaDoTenant(admin, mapId, ctx)

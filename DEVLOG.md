@@ -1299,6 +1299,25 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-07 — Planejador de injetáveis e personalização de fichas entram no plano; "Inbox omnichannel"
+
+Pedido do Heitor: faltavam no catálogo dos planos o planejador de injetáveis
+e a personalização de fichas de atendimento, e o inbox passa a se chamar
+"Inbox omnichannel".
+
+- As duas são partes de módulo: sem elas, o prontuário e os modelos de
+  documento (que também são do módulo de fichas) seguem valendo.
+- **Sem o planejador**: some do menu, a tela recusa, criar e alterar
+  planejamento é recusado; o construtor de fichas não oferece o campo
+  "Planejador de injetáveis", e numa ficha que já o tem o campo fica só para
+  ver no atendimento.
+- **Sem a personalização de fichas**: a aba Fichas some e criar, editar,
+  ativar ou apagar ficha é recusado; as fichas que existem seguem no
+  atendimento.
+- Decisão minha (migration `20261007000005`): os planos e as redes que já
+  existiam GANHARAM as duas, porque até hoje todo mundo as tinha — nada some
+  para ninguém; tirar é no plano.
+
 ### 2026-10-07 — O comparativo dos planos
 
 Pedido do Heitor: ver tudo o que cada plano inclui, numa tabela comparativa,

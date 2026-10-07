@@ -11,7 +11,7 @@
  */
 
 import { revalidatePath } from 'next/cache'
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizeFormSchema, validateFormSchema } from '@/lib/anamnesis'
 
@@ -27,6 +27,8 @@ export async function criarFicha(input: { name: string; schema: unknown }): Prom
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
+    // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
+    assertRecurso(ctx, 'fichas')
 
     const name = (input.name ?? '').trim()
     if (!name) return { error: 'Informe um nome para a ficha.' }
@@ -56,6 +58,8 @@ export async function atualizarFicha(input: {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
+    // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
+    assertRecurso(ctx, 'fichas')
 
     const name = (input.name ?? '').trim()
     if (!name) return { error: 'Informe um nome para a ficha.' }
@@ -86,6 +90,8 @@ export async function definirFichaAtiva(id: string, isActive: boolean): Promise<
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
+    // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
+    assertRecurso(ctx, 'fichas')
     const admin = createAdminClient()
     const { error } = await admin
       .from('forms')
@@ -104,6 +110,8 @@ export async function apagarFicha(id: string): Promise<Result> {
   try {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'forms', 'MANAGE')
+    // Personalizar fichas é do PLANO da rede; as que existem seguem no atendimento.
+    assertRecurso(ctx, 'fichas')
     const admin = createAdminClient()
     // FK procedures.form_id é ON DELETE SET NULL — remoção é segura.
     const { error } = await admin

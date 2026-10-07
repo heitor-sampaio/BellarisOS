@@ -1,4 +1,4 @@
-import { getTenantContext, assertPermission, can } from '@/lib/auth'
+import { getTenantContext, assertPermission, assertRecurso, can } from '@/lib/auth'
 import { listarMapasDeInjetaveis } from '@/actions/injectable-map'
 import { ListaDetalhe } from '@/components/shared/lista-detalhe'
 import { InjetaveisLista } from '@/components/branch/injetaveis-lista'
@@ -23,6 +23,7 @@ export async function ListaDeInjetaveis({
 }) {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'medical_records', 'VIEW')
+  assertRecurso(ctx, 'injetaveis')
 
   const { mapas, error } = await listarMapasDeInjetaveis({ branchId })
 

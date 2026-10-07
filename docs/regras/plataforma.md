@@ -167,7 +167,8 @@ um muro que não depende de cada trava do código.
       também as abas de Relatórios dela (`abasForaDoPlano`) e o módulo da tela
       de Cargos;
     - o que é PARTE de um módulo (pacotes, pré-pago, planos de tratamento,
-      inbox, oportunidades, templates, campanhas, anúncios, comissões):
+      inbox, oportunidades, templates, campanhas, anúncios, comissões, e desde
+      2026-10-07 o planejador de injetáveis e a personalização de fichas):
       `assertRecurso(ctx, …)` na página e na action que cria ou altera; o
       item do menu, a aba de Configurações e a página da busca declaram o
       `recurso` e somem;
@@ -181,7 +182,10 @@ um muro que não depende de cada trava do código.
       `oportunidades` e o "Agendar" sem `agenda` (`comOportunidades`,
       `comAgenda` no cartão); a busca tira conversa, oportunidade e pacote
       pelo plano (`RECURSO_DO_TIPO`); a sessão de atendimento não oferece
-      montar plano sem `planos_de_tratamento`.
+      montar plano sem `planos_de_tratamento`; sem `injetaveis`, o construtor
+      de fichas não oferece o campo do planejador e o campo das fichas que já o
+      têm fica só para ver; sem `fichas`, a aba Fichas some e criar/editar
+      ficha é recusado — as fichas que existem seguem no atendimento.
   - **Os limites** (`lib/planos/limites.ts`: `conferirLimite`, que conta os
     ATIVOS): criar e REATIVAR unidade (`createBranch`, `toggleBranchStatus`),
     membro (`createTeamMember`, `reactivateTeamMember`, o reativar do

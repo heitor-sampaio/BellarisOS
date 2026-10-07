@@ -17,7 +17,8 @@ import type { AppModule } from '@estetica-os/types'
 export const ABAS_DE_CONFIGURACAO = [
   { key: 'unidades',      label: 'Unidades',     module: 'settings' },
   { key: 'permissions',   label: 'Cargos',       module: 'roles'    },
-  { key: 'fichas',        label: 'Fichas',       module: 'forms'    },
+  // Personalizar fichas é do PLANO da rede (2026-10-07).
+  { key: 'fichas',        label: 'Fichas',       module: 'forms',     recurso: 'fichas' },
   // Termos e contratos: autoria de rede, como as fichas (módulo 'forms').
   { key: 'documentos',    label: 'Documentos',   module: 'forms',     recurso: 'documentos' },
   { key: 'integrations',  label: 'Integrações',  module: 'settings' },

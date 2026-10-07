@@ -439,6 +439,7 @@ export async function SessaoDeAtendimento({
         procedureProductsMap={procedureProductsMap}
         isPartOfPlan={isPartOfPlan}
         podeMontarPlano={temRecurso(ctx, 'planos_de_tratamento')}
+        podeInjetaveis={temRecurso(ctx, 'injetaveis')}
         isPackageSession={!!sessaoDePacote}
         isPrePago={!!unidadePrePaga}
         podeReceber={podeReceber(ctx)}

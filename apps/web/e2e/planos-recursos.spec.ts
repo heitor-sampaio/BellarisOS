@@ -260,6 +260,11 @@ const SUBFUNCIONALIDADES: {
     acao: { arquivo: 'actions/integrations.ts', funcao: 'saveAdsConfig', rota: '/admin/settings', args: () => ['meta_ads', {}, false] } },
   { chave: 'comissoes', tela: '/admin/financeiro/comissoes',
     acao: { arquivo: 'actions/comissoes.ts', funcao: 'salvarConfigDeComissao', rota: '/admin/settings', args: () => [{}] } },
+  // 2026-10-07: o planejador de injetáveis e a personalização de fichas.
+  { chave: 'injetaveis', menu: 'Injetáveis', tela: '/admin/injetaveis',
+    acao: { arquivo: 'actions/injectable-map.ts', funcao: 'criarPlanejamentoInjetavel', rota: '/admin/injetaveis', args: () => [{}] } },
+  { chave: 'fichas',
+    acao: { arquivo: 'actions/fichas.ts', funcao: 'criarFicha', rota: '/admin/settings', args: () => [{ name: '', schema: null }] } },
 ]
 const ZERO = '00000000-0000-4000-8000-000000000000'
 const RECUSADA = /BELLARIS_SEM_ACESSO|Forbidden/
@@ -294,6 +299,9 @@ test.describe.serial('o plano corta o que é parte de um módulo — inclusive p
         }
         for (const s of SUBFUNCIONALIDADES.filter(x => x.tela)) {
           await p.goto(s.tela!)
+          // isVisible() não espera: com a suíte carregada, a tela ainda não
+          // tinha desenhado o "sem acesso" (instável em 2026-10-07).
+          await p.waitForLoadState('networkidle')
           const barrada = new URL(p.url()).pathname !== s.tela || await p.getByText(SEM_ACESSO).isVisible()
           expect(barrada, `tela: ${s.chave}`).toBe(!comPlano)
         }
@@ -305,6 +313,30 @@ test.describe.serial('o plano corta o que é parte de um módulo — inclusive p
       })
     })
   }
+
+  test('a aba Fichas sai sem a personalização; o construtor só oferece o planejador de injetáveis com ele no plano', async ({ browser }) => {
+    const todas = FUNCIONALIDADES.map(f => f.chave)
+    const com = async (fora: string[]) => {
+      expect((await db().from('tenant_subscriptions').upsert({ tenant_id: outra.tenantId, plan_id: planoBase, valor_centavos: 0,
+        recursos: { funcionalidades: todas.filter(c => !fora.includes(c)), limites: { unidades: null, membros: null, whatsapp: null } } }, { onConflict: 'tenant_id' })).error).toBeNull()
+      await expirarRede(outra.tenantId)
+    }
+    await com(['fichas'])
+    await comSessao(browser, dono!.estado, async p => {
+      await p.goto('/admin/settings?tab=fichas')
+      await expect(p.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
+      await expect(p.getByRole('button', { name: 'Nova ficha' }), 'sem a personalização, nada de criar ficha').toHaveCount(0)
+    })
+    for (const [fora, oferece] of [[['injetaveis'], false], [[], true]] as const) {
+      await com([...fora])
+      await comSessao(browser, dono!.estado, async p => {
+        await p.goto('/admin/settings?tab=fichas')
+        await p.getByRole('button', { name: 'Nova ficha' }).click()
+        await expect(p.getByRole('textbox').first()).toBeVisible({ timeout: 15_000 })
+        await expect(p.getByText('Planejador de injetáveis', { exact: true }), `com injetáveis: ${oferece}`).toHaveCount(oferece ? 1 : 0)
+      })
+    }
+  })
 
   test('o portal do cliente: fora do plano, o paciente não usa; dentro, usa', async ({ browser }) => {
     const funcionalidades = FUNCIONALIDADES.map(f => f.chave).filter(c => c !== 'portal')

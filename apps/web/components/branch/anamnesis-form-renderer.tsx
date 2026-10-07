@@ -31,10 +31,12 @@ interface Props {
   saveAction?:   (args: SaveArgs) => Promise<{ error?: string; ok?: true }>
   // Oculta o botão de salvar interno (quando um botão externo salva tudo).
   hideSaveButton?: boolean
+  /** O planejador de injetáveis fora do plano da rede: o campo dele fica só para ver (2026-10-07). */
+  semInjetaveis?: boolean
 }
 
 export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(function AnamnesisFormRenderer(
-  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton }, ref,
+  { appointmentId, slug, rows, initial, canEdit, saveAction, hideSaveButton, semInjetaveis = false }, ref,
 ) {
   const doSave = saveAction ?? salvarFichaDoProcedimento
   const [answers, setAnswers] = useState<AnamnesisAnswers>(initial ?? {})
@@ -94,7 +96,7 @@ export const AnamnesisFormRenderer = forwardRef<AnamnesisFormHandle, Props>(func
           <div key={row.id} className="anamnesis-row" data-cols={row.fields.length}>
             {row.fields.map(f => (
               <FieldView
-                key={f.id} field={f} value={answers[f.id]} canEdit={canEdit}
+                key={f.id} field={f} value={answers[f.id]} canEdit={canEdit && !(semInjetaveis && f.type === 'injectable_map')}
                 appointmentId={appointmentId}
                 photoUrl={typeof answers[f.id] === 'string' ? photoUrls[answers[f.id] as string] : undefined}
                 onPhotoUploaded={(path, url) => setPhotoUrls(m => ({ ...m, [path]: url }))}
