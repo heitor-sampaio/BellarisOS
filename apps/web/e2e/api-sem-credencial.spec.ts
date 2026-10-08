@@ -194,6 +194,9 @@ test('webhooks: token, verify token e assinatura errados não entram', async ({ 
   // desligar o webhook) e não processa nada.
   const uaz = await request.post('/api/webhooks/uazapi', { data: { token: 'token-que-nao-existe', message: { text: 'oi' } } })
   expect(uaz.status()).toBe(200)
+  // O mesmo webhook pelo endereço sem o nome do fornecedor (2026-10-08).
+  const web = await request.post('/api/webhooks/whatsapp-web', { data: { token: 'token-que-nao-existe', message: { text: 'oi' } } })
+  expect(web.status()).toBe(200)
 
   // Meta (Messenger/Instagram): handshake e entrega.
   const hand = await request.get('/api/webhooks/meta?hub.mode=subscribe&hub.verify_token=errado&hub.challenge=123')

@@ -533,7 +533,7 @@ export async function removerConexaoUazapi(
   } catch (e) {
     return {
       ok: false,
-      error: `A uazapi recusou remover: ${e instanceof Error ? e.message : 'erro desconhecido'}. `
+      error: `O servidor do WhatsApp Web recusou remover: ${e instanceof Error ? e.message : 'erro desconhecido'}. `
            + 'A conexão foi mantida para não gerar cobrança sem dono.',
     }
   }

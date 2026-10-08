@@ -14,7 +14,8 @@ const TIMEOUT_MS = 30_000
 function baseUrl(): string {
   const url = process.env.UAZAPI_BASE_URL
   if (!url) {
-    throw new Error('Conexão gerenciada indisponível: falta UAZAPI_BASE_URL no ambiente.')
+    console.error('[uazapi-admin] falta UAZAPI_BASE_URL no ambiente')
+    throw new Error('A conexão por QR code não está configurada nesta instalação. Fale com o suporte do BellarisOS.')
   }
   return url.replace(/\/$/, '')
 }
@@ -22,7 +23,8 @@ function baseUrl(): string {
 function adminToken(): string {
   const token = process.env.UAZAPI_ADMIN_TOKEN
   if (!token) {
-    throw new Error('Conexão gerenciada indisponível: falta UAZAPI_ADMIN_TOKEN no ambiente.')
+    console.error('[uazapi-admin] falta UAZAPI_ADMIN_TOKEN no ambiente')
+    throw new Error('A conexão por QR code não está configurada nesta instalação. Fale com o suporte do BellarisOS.')
   }
   return token
 }
@@ -60,12 +62,12 @@ async function chamar(
     // não diz nada a quem está olhando a tela.
     if (res.status === 401 || res.status === 403) {
       console.error(`${contexto} [credencial]:`, texto)
-      throw new Error('A uazapi recusou a credencial. Confira UAZAPI_ADMIN_TOKEN no ambiente.')
+      throw new Error('O servidor do WhatsApp Web recusou a credencial da instalação. Fale com o suporte do BellarisOS.')
     }
     // O plano da conta tem limite de instâncias; sem traduzir, vira um HTTP nu
     // que ninguém liga à causa.
     if (res.status === 429) {
-      throw new Error('O plano da uazapi atingiu o limite de instâncias ou de requisições.')
+      throw new Error('O servidor do WhatsApp Web atingiu o limite de conexões ou de requisições. Tente de novo em instantes.')
     }
     throw new Error(`${contexto}: ${body?.error ?? body?.message ?? texto ?? `HTTP ${res.status}`}`)
   }
@@ -100,7 +102,7 @@ export async function criarInstancia(nome: string): Promise<InstanciaCriada> {
   )
 
   const token = body?.token ?? body?.instance?.token
-  if (!token) throw new Error('A uazapi não devolveu o token da instância.')
+  if (!token) throw new Error('O servidor do WhatsApp Web não devolveu a credencial da conexão.')
 
   return {
     token:        String(token),

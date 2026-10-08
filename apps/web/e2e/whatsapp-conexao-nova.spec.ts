@@ -62,7 +62,7 @@ test.afterAll(async () => {
 test('"Adicionar número" cria uma instância nova e mostra o QR dela, não a conectada', async ({ page }) => {
   await abrirOCartao(page)
   await page.getByRole('button', { name: 'Adicionar número' }).click()
-  await page.getByRole('button', { name: /^uazapi/ }).click()
+  await page.getByRole('button', { name: /^WhatsApp Web/ }).click()
   await page.getByRole('button', { name: 'Conectar por aqui', exact: true }).click()
 
   // A conexão nova começa do zero — não é a que já está no ar.

@@ -1299,6 +1299,19 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-08 — A clínica não vê "uazapi": a conexão por QR é "WhatsApp Web"
+
+Pedido do Heitor: tirar a referência ao fornecedor, para a conexão parecer
+solução do BellarisOS. Na tela da clínica o provedor é "WhatsApp Web"
+(`nomeDoProvedor`, `lib/whatsapp/nome-do-provedor.ts`) — no seletor, no
+subtítulo do cartão, na lista de números e no resumo da aba Eventos; "Já tenho
+conta uazapi" virou "Usar conta própria", sem o link da documentação; os
+avisos e os erros do servidor que chegam à tela também. O valor gravado
+(`provider`, o `provedor` dos eventos) continua `uazapi`: automações e
+consultas o leem. O webhook ganhou o endereço `/api/webhooks/whatsapp-web`
+(o que a conta própria mostra); o `/api/webhooks/uazapi` segue no ar, porque
+as instâncias criadas apontam para ele. Prova: `e2e/whatsapp-sem-marca.spec.ts`.
+
 ### 2026-10-08 — Página de um deploy anterior recarrega em vez de travar
 
 Relato do Heitor: "Conectar por aqui" ficava em "Carregando…" para sempre.

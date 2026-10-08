@@ -161,7 +161,7 @@ export function UazapiConnect({ numeroId }: {
 
   function remover() {
     if (!confirm(
-      'Remover a conexão? A instância é apagada na uazapi de forma permanente e '
+      'Remover a conexão? Ela é apagada de forma permanente e '
       + 'imediata. Para voltar, será preciso parear de novo.',
     )) return
     comAcao(() => removerConexaoUazapi(caixaId!), () => setQr(null))
@@ -192,8 +192,8 @@ export function UazapiConnect({ numeroId }: {
   if (!estado.disponivel) {
     return (
       <Aviso tom="espera">
-        A conexão automática não está habilitada nesta instalação. Faltam
-        <code> UAZAPI_BASE_URL </code> e <code>UAZAPI_ADMIN_TOKEN</code> no ambiente.
+        A conexão por QR code não está habilitada nesta instalação. Fale com o
+        suporte do BellarisOS.
       </Aviso>
     )
   }
@@ -246,7 +246,7 @@ export function UazapiConnect({ numeroId }: {
           }}>
             <ShieldCheck size={13} />
             {estado.proxyModo === 'internal'
-              ? <>Saída por IP gerenciado pela uazapi{estado.proxyPais ? ` (${estado.proxyPais.toUpperCase()})` : ''}</>
+              ? <>Saída por IP gerenciado{estado.proxyPais ? ` (${estado.proxyPais.toUpperCase()})` : ''}</>
               : <>Saída por IP próprio ({estado.proxyModo})</>}
           </div>
         )}

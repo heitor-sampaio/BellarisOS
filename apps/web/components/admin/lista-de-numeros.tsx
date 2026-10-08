@@ -9,6 +9,7 @@ import {
   definirNumeroPadrao, atualizarVinculosDoNumero, removerNumeroWhatsApp,
   type NumeroNaTela, type OpcoesDeVinculo,
 } from '@/actions/integrations'
+import { nomeDoProvedor } from '@/lib/whatsapp/nome-do-provedor'
 
 /**
  * As caixas de WhatsApp da rede, uma por linha.
@@ -135,7 +136,7 @@ function LinhaDoNumero({ numero, opcoes, ocupadas, onMudou, onConfigurar }: {
           </div>
 
           <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 3 }}>
-            {numero.provider === 'uazapi' ? 'uazapi' : 'WhatsApp Oficial'}
+            {nomeDoProvedor(numero.provider)}
             {numero.phone ? ` · ${numero.phone}` : ''}
             {numero.managed ? ' · gerenciada por nós' : ''}
           </p>

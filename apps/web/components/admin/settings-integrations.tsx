@@ -14,6 +14,7 @@ import {
 } from '@/actions/integrations'
 import type { IntegrationConfig, NumeroNaTela, OpcoesDeVinculo } from '@/actions/integrations'
 import { ListaDeNumeros, UsoDasConexoes } from '@/components/admin/lista-de-numeros'
+import { nomeDoProvedor } from '@/lib/whatsapp/nome-do-provedor'
 import type { WhatsAppConfig } from '@/lib/whatsapp/types'
 import { UazapiConnect } from '@/components/admin/uazapi-connect'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -124,15 +125,15 @@ function UazapiForm({ numero }: { numero?: NumeroNaTela }) {
         value={token}
         onChange={setToken}
         type="password"
-        placeholder="Token da instância na uazapi"
+        placeholder="Token da instância"
       />
       <Field
         label="Servidor (URL base)"
         name="baseUrl"
         value={baseUrl}
         onChange={setBaseUrl}
-        placeholder="https://suaconta.uazapi.com"
-        hint="O subdomínio da sua conta na uazapi. Sem ele, usa o servidor padrão da instalação."
+        placeholder="https://servidor.da.sua.conta"
+        hint="O endereço do servidor da sua conta. Sem ele, usa o servidor padrão do BellarisOS."
       />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
@@ -144,7 +145,7 @@ function UazapiForm({ numero }: { numero?: NumeroNaTela }) {
           style={{ width: 16, height: 16, cursor: 'pointer' }}
         />
         <label htmlFor="uazapi-active" style={{ fontSize: 'var(--text-base-sz)', cursor: 'pointer', color: 'var(--text)' }}>
-          Ativar integração uazapi
+          Ativar esta conexão
         </label>
       </div>
 
@@ -177,19 +178,10 @@ function UazapiForm({ numero }: { numero?: NumeroNaTela }) {
         </button>
       </div>
 
-      <a
-        href="https://docs.uazapi.com/"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--brand)', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
-      >
-        <ExternalLink size={12} />
-        Documentação da uazapi →
-      </a>
-      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', marginTop: -8 }}>
+      <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
         URL do webhook:{' '}
         <code style={{ background: 'var(--bg-app)', padding: '2px 6px', borderRadius: 4, fontSize: 'var(--text-2xs)' }}>
-          {origem}/api/webhooks/uazapi
+          {origem}/api/webhooks/whatsapp-web
         </code>
       </p>
     </div>
@@ -1366,7 +1358,7 @@ export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, o
         icon={<Phone size={18} color="#25D366" />}
         iconBg="#25D36615" iconColor="#25D366"
         title="WhatsApp"
-        subtitle={hasWhatsApp ? `Conectado via ${uazapiNumero?.isActive ? 'uazapi' : 'WhatsApp Oficial'}` : 'Não configurado'}
+        subtitle={hasWhatsApp ? `Conectado via ${nomeDoProvedor(uazapiNumero?.isActive ? 'uazapi' : 'official')}` : 'Não configurado'}
         isActive={!!hasWhatsApp}
       >
         {/*
@@ -1427,9 +1419,9 @@ export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, o
                   transition: 'all 120ms',
                 }}
               >
-                {p === 'uazapi' ? 'uazapi' : 'WhatsApp Oficial'}
+                {nomeDoProvedor(p)}
                 <p style={{ fontSize: 'var(--text-overline)', fontWeight: 500, marginTop: 3, color: 'inherit', opacity: 0.75 }}>
-                  {p === 'uazapi' ? 'Via WhatsApp Web — mais fácil de configurar' : 'Meta Cloud API — requer aprovação da Meta'}
+                  {p === 'uazapi' ? 'Conecta por QR code — mais fácil de configurar' : 'Meta Cloud API — requer aprovação da Meta'}
                 </p>
               </button>
             ))}
@@ -1443,7 +1435,7 @@ export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, o
               <SegSelect
                 options={[
                   { key: 'gerenciada', label: 'Conectar por aqui' },
-                  { key: 'propria',    label: 'Já tenho conta uazapi' },
+                  { key: 'propria',    label: 'Usar conta própria' },
                 ]}
                 value={uazapiModo}
                 onSelect={m => setUazapiModo(m as 'gerenciada' | 'propria')}

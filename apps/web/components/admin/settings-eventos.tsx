@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { nomeDoProvedor } from '@/lib/whatsapp/nome-do-provedor'
 import { Activity, ChevronDown, ChevronRight, CircleSlash, RefreshCw } from 'lucide-react'
 import {
   listarEventosDeDominio, resumoDoCatalogo,
@@ -58,7 +59,8 @@ function resumir(dados: Record<string, unknown>): string {
   const pedacos: string[] = []
   for (const chave of ['clienteNome', 'nome', 'produtoNome', 'profissionalNome', 'provedor', 'rotulo']) {
     const v = dados[chave]
-    if (typeof v === 'string' && v.trim()) { pedacos.push(v); break }
+    // O provedor vai com o nome que a clínica vê ("WhatsApp Web", não o fornecedor).
+    if (typeof v === 'string' && v.trim()) { pedacos.push(chave === 'provedor' ? nomeDoProvedor(v) : v); break }
   }
   if (typeof dados.valor === 'number')  pedacos.push(`R$ ${dados.valor.toLocaleString('pt-BR')}`)
   if (typeof dados.status === 'string') pedacos.push(dados.status)
