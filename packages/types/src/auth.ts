@@ -38,6 +38,10 @@ export const APP_MODULES = [
   // A automação mexe em agenda, CRM e financeiro: espremê-la em 'marketing'
   // faria quem cuida de anúncio herdar o poder de mover oportunidade.
   'automations',
+  // O Copilot (2026-10-08): o plano diz se a REDE o tem; o cargo, quem o usa —
+  // Ver só consulta, Gerenciar também prepara gravações (cada uma ainda exige
+  // o módulo dela).
+  'copilot',
 ] as const
 
 export type AppModule = typeof APP_MODULES[number]

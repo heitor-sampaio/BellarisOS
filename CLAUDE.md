@@ -404,9 +404,11 @@ Escopo e abrangência são coisas diferentes: o escopo é do **cargo**, a abrang
 é do **membro**. Um mesmo cargo "Profissional" serve para alguém de uma filial e
 para alguém da rede.
 
-Os 17 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `documents`,
+Os 18 módulos: `agenda`, `clients`, `loyalty`, `medical_records`, `documents`,
 `procedures`, `stock`, `financial`, `cashier`, `crm`, `marketing`, `reports`, `team`,
-`forms`, `roles`, `settings`, `automations`. Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
+`forms`, `roles`, `settings`, `automations`, `copilot`. Módulo novo entra num grupo
+de `MODULE_GROUPS` (`lib/permissions-copy.ts`) — fora de grupo ele não aparece na
+tela de Cargos (`tests/permissions.test.ts` trava). Nem todo módulo distingue os três níveis — `MODULE_LEVELS`
 (`lib/permissions.ts`) declara o que cada um aceita, e a tela de cargos só
 oferece esses. O escopo aparece apenas em `SCOPED_MODULES`: `agenda`,
 `medical_records`, `financial`, `crm` e `reports` (em `reports` o escopo é "só

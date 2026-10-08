@@ -115,13 +115,15 @@ test('a foto grande do celular é reduzida no navegador antes de subir', async (
       const img = g.createImageData(2600, 2000)
       for (let i = 0; i < img.data.length; i++) img.data[i] = (i % 4 === 3) ? 255 : Math.floor(Math.random() * 256)
       g.putImageData(img, 0, 0)
-      const blob: Blob = await new Promise(r => c.toBlob(b => r(b!), 'image/png'))
-      return Array.from(new Uint8Array(await blob.arrayBuffer()))
+      // Em base64 (o dataURL): devolver um array de ~20 milhões de números ao
+      // Node levava quase o tempo inteiro do teste.
+      return c.toDataURL('image/png').split(',')[1]!
     })
-    expect(grande.length).toBeGreaterThan(5 * 1024 * 1024)
+    const bytes = Buffer.from(grande, 'base64')
+    expect(bytes.length).toBeGreaterThan(5 * 1024 * 1024)
     await p.getByRole('button', { name: 'Copilot', exact: true }).click()
     const painel = p.getByRole('dialog', { name: 'Copilot' })
-    await painel.getByLabel('Arquivo para o Copilot').setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: Buffer.from(grande) })
+    await painel.getByLabel('Arquivo para o Copilot').setInputFiles({ name: 'foto.png', mimeType: 'image/png', buffer: bytes })
     // Reduzida: o anexo vira um .jpg antes de subir.
     await expect(painel.locator('.copilot-anexos-pendentes').getByText('foto.jpg')).toBeVisible({ timeout: 20_000 })
     await painel.getByRole('textbox', { name: 'Mensagem para o Copilot' }).fill('veja a foto')

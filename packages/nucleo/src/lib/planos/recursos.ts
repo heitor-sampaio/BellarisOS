@@ -54,7 +54,7 @@ export const FUNCIONALIDADES = [
   { chave: 'comissoes',            rotulo: 'Comissões',                                grupo: 'Gestão',      modulos: [] },
   { chave: 'relatorios',           rotulo: 'Relatórios',                               grupo: 'Gestão',      modulos: ['reports'] },
   { chave: 'cargos',               rotulo: 'Cargos personalizados',                    grupo: 'Gestão',      modulos: ['roles'] },
-  { chave: 'copilot',              rotulo: 'Copilot (IA secretária)',                  grupo: 'Novidades',   modulos: [] },
+  { chave: 'copilot',              rotulo: 'Copilot (IA secretária)',                  grupo: 'Novidades',   modulos: ['copilot'] },
 ] as const satisfies readonly Funcionalidade[]
 
 export type ChaveDeFuncionalidade = (typeof FUNCIONALIDADES)[number]['chave']

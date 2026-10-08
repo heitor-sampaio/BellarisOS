@@ -36,6 +36,7 @@ export const MODULE_LABELS: Record<AppModule, string> = {
   roles:           'Cargos e permissões',
   settings:        'Configurações da rede',
   automations:     'Automações',
+  copilot:         'Copilot',
 }
 
 // O que cada módulo ABRANGE — ao lado do nome, na tela de Cargos. (O que cada
@@ -58,6 +59,7 @@ export const MODULE_HINTS: Partial<Record<AppModule, string>> = {
   roles:           'Criar cargos e definir o que cada um acessa',
   settings:        'Dados da rede, unidades e integrações',
   automations:     'Fluxos que reagem sozinhos ao que acontece',
+  copilot:         'A secretária virtual: consultar e pedir gravações conversando',
 }
 
 /** Rótulo do escopo, por módulo — o que "só os meus" significa em cada um. */
@@ -92,6 +94,7 @@ export const MODULE_LEVELS: Record<AppModule, readonly PermissionLevel[]> = {
   roles:           ['NONE', 'MANAGE'],
   settings:        ['NONE', 'MANAGE'],
   automations:     ['NONE', 'VIEW', 'MANAGE'],
+  copilot:         ['NONE', 'VIEW', 'MANAGE'],
 }
 
 // ─── Níveis ──────────────────────────────────────────────────────────────────

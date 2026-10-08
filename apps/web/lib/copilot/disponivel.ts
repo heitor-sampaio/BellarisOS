@@ -1,5 +1,6 @@
 import 'server-only'
 import type { TenantContext } from '@estetica-os/types'
+import { can } from '@/lib/auth'
 import { copilotConfigurado } from '@/lib/copilot/openai'
 
 /**
@@ -15,11 +16,20 @@ export function copilotNoPlano(ctx: TenantContext): boolean {
 }
 
 /**
+ * O CARGO desta pessoa tem o Copilot? O módulo `copilot` da matriz de Cargos
+ * (pedido do Heitor, 2026-10-08): Ver só consulta; Gerenciar também prepara
+ * gravações (o executor confere). O plano decide se a rede tem; o cargo, quem usa.
+ */
+export function copilotNoCargo(ctx: TenantContext): boolean {
+  return can(ctx, 'copilot', 'VIEW')
+}
+
+/**
  * O Copilot aparece para esta pessoa? Membro da equipe (nunca o cliente final),
- * com o Copilot no plano da rede, a instalação configurada (a chave da OpenAI)
+ * com o Copilot no plano da rede E no cargo, a instalação configurada (a chave da OpenAI)
  * e fora da sessão de suporte. A rota e as actions conferem o mesmo.
  */
 export function copilotNaTela(ctx: TenantContext): boolean {
   return !ctx.isClient && !!ctx.tenantId && !!ctx.internalUserId
-    && copilotNoPlano(ctx) && copilotConfigurado() && !ctx.suporte
+    && copilotNoPlano(ctx) && copilotNoCargo(ctx) && copilotConfigurado() && !ctx.suporte
 }

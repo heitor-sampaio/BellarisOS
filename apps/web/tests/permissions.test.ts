@@ -4,6 +4,7 @@ import {
   MODULE_LEVELS, ALL_MODULES, NO_PERMISSIONS, ALL_PERMISSIONS,
   resolveReportTabs, ALL_REPORT_TABS, REPORT_TAB_LABELS, REPORT_TAB_HINTS,
 } from '@/lib/permissions'
+import { MODULE_GROUPS, LEVEL_COPY } from '@/lib/permissions-copy'
 
 describe('hasLevel', () => {
   it('trata módulo sem linha como NONE', () => {
@@ -87,9 +88,26 @@ describe('MODULE_LEVELS', () => {
     }
   })
 
-  it('declara níveis para os 17 módulos, sem sobra', () => {
+  it('declara níveis para os 18 módulos, sem sobra', () => {
     expect(Object.keys(MODULE_LEVELS).sort()).toEqual([...ALL_MODULES].sort())
-    expect(ALL_MODULES).toHaveLength(17)
+    expect(ALL_MODULES).toHaveLength(18)
+  })
+
+  it('o Copilot é um módulo do cargo: Sem acesso, Ver (consultas) e Gerenciar (gravações)', () => {
+    expect(ALL_MODULES).toContain('copilot')
+    expect(MODULE_LEVELS.copilot).toEqual(['NONE', 'VIEW', 'MANAGE'])
+    expect(LEVEL_COPY.copilot.VIEW).toBeTruthy()
+    expect(LEVEL_COPY.copilot.MANAGE).toBeTruthy()
+  })
+})
+
+describe('MODULE_GROUPS (a tela de Cargos)', () => {
+  // Módulo fora de todo grupo não aparece na tela: ninguém consegue ligá-lo
+  // num cargo. Era o caso de Automações até 2026-10-08.
+  it('todo módulo está em exatamente um grupo', () => {
+    const vistos = MODULE_GROUPS.flatMap(g => [...g.modules])
+    expect([...vistos].sort()).toEqual([...ALL_MODULES].sort())
+    expect(new Set(vistos).size).toBe(vistos.length)
   })
 })
 

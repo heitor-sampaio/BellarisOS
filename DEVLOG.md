@@ -1365,6 +1365,12 @@ estão em `docs/regras/copilot.md`.
     conversa que segue em uso;
   - as funções de estoque tratavam embalagem 0 / unidade vazia como
     rendimento (migration `20261008000006`, a regra do `getUpp`).
+- **O acesso é do cargo** (pedido do Heitor): o módulo `copilot` na tela de
+  Cargos — Sem acesso, Ver (só consultas) e Gerenciar (também gravações, cada
+  uma ainda com o módulo dela). Os cargos existentes ficaram em Gerenciar
+  (menos o "Não definido"). De carona: **Automações não aparecia na tela de
+  Cargos** (estava fora de todo grupo da matriz) — entrou em Marketing, e um
+  teste trava módulo sem grupo. Prova: `e2e/copilot-cargo.spec.ts`.
 - **No app Android** (achado no teste do Heitor): a folha do celular ia até o
   fim da tela e o rodapé (campo, microfone, aviso) ficava atrás da barra de
   navegação. O rodapé sobe `env(safe-area-inset-bottom)`; a prova simula a

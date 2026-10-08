@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import type { TenantContext } from '@estetica-os/types'
 import { getTenantContext } from '@/lib/auth'
-import { copilotNoPlano } from '@/lib/copilot/disponivel'
+import { copilotNoCargo, copilotNoPlano } from '@/lib/copilot/disponivel'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { origemPublica } from '@/lib/origem'
 import { getCachedRede } from '@/lib/cached-queries'
@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
   if (!origemConfere(req)) return recusa(403, 'Pedido de outra origem.')
   if (ctxDaPessoa.isClient || !ctxDaPessoa.tenantId || !ctxDaPessoa.internalUserId) return recusa(403, 'O Copilot é da equipe da clínica.')
   if (!copilotNoPlano(ctxDaPessoa)) return recusa(403, 'O Copilot não faz parte do plano da sua clínica.')
+  if (!copilotNoCargo(ctxDaPessoa)) return recusa(403, 'O seu cargo não tem acesso ao Copilot.')
   if (ctxDaPessoa.suporte) return recusa(403, 'No modo suporte o Copilot fica desligado.')
   if (!copilotConfigurado()) return recusa(503, 'O Copilot não está configurado nesta instalação.')
 

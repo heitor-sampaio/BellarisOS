@@ -23,8 +23,11 @@ export const contraAFalsa = () => process.env.OPENAI_BASE_URL_TESTE === OPENAI_F
 export interface RedeDoCopilot {
   outra: OutraRede
   dono: MembroDeTeste
-  /** Um membro da MESMA rede com o cargo que o teste descrever. */
-  membro(marca: string, permissoes: Permissao[], opcoes?: { branchId?: string | null }): Promise<MembroDeTeste>
+  /**
+   * Um membro da MESMA rede com o cargo que o teste descrever. O módulo
+   * `copilot` entra em Gerenciar se o teste não o citar (`semCopilot` tira).
+   */
+  membro(marca: string, permissoes: Permissao[], opcoes?: { branchId?: string | null; semCopilot?: boolean }): Promise<MembroDeTeste>
   /** Grava um retrato de plano (funcionalidades) na rede; `null` volta a "sem plano". */
   plano(funcionalidades: string[] | null, cotaDoCopilot?: number | null): Promise<void>
   /** `antesDaRede`: o que o teste criou na rede (outra unidade…), depois dos membros e antes da rede. */
@@ -43,7 +46,9 @@ export async function redeDoCopilot(marca: string): Promise<RedeDoCopilot> {
   const rede: RedeDoCopilot = {
     outra, dono,
     async membro(m, permissoes, opcoes = {}) {
-      const novo = await criarMembro(`copm${m}${marca}`, { tenant: outra.tenantId, permissoes, branchId: opcoes.branchId ?? null })
+      const comCopilot = opcoes.semCopilot || permissoes.some(p => p.modulo === 'copilot')
+        ? permissoes : [...permissoes, { modulo: 'copilot' as const, nivel: 'MANAGE' as const }]
+      const novo = await criarMembro(`copm${m}${marca}`, { tenant: outra.tenantId, permissoes: comCopilot, branchId: opcoes.branchId ?? null })
       membros.push(novo)
       return novo
     },

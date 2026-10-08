@@ -24,8 +24,15 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
 
 - **Liberação** (`lib/copilot/disponivel.ts`): membro da equipe, o Copilot NO
   PLANO (o efetivo: plano ou adicional) — **sem plano não libera**, ao contrário
-  das outras funcionalidades: ele custa por uso —, `OPENAI_API_KEY` configurada
-  e fora da sessão de suporte. A rota, as actions e o layout conferem o mesmo.
+  das outras funcionalidades: ele custa por uso —, o Copilot NO CARGO, a
+  `OPENAI_API_KEY` configurada e fora da sessão de suporte. A rota, as actions
+  e o layout conferem o mesmo.
+- **O cargo** (o módulo `copilot` da matriz, pedido do Heitor de 2026-10-08):
+  Sem acesso, **Ver** (só as consultas: o modelo nem recebe as gravações) e
+  **Gerenciar** (também as gravações — cada uma ainda exige o módulo dela). O
+  plano diz se a REDE tem; o cargo, QUEM usa. Os cargos que já existiam
+  ficaram em Gerenciar (menos o "Não definido"), para ninguém perder o que
+  usava (migration `20261008000007`).
 - **A rota `POST /api/copilot`** (SSE): sessão (401), Origin da clínica (403),
   plano, suporte, configuração, cota (429). Laço "modelo → ferramentas →
   modelo" de até 8 voltas (4 com anexo). Grava a fala, as chamadas (sem o id do
@@ -97,6 +104,7 @@ completo e o dono. Os specs `copilot-*` são COMPARTILHADOS (porta fixa).
 ❌ Guardar o anexo (áudio, foto, documento) — lido no pedido e descartado
 ❌ Mandar a chamada de ferramenta ao histórico com o id do item (a API recusa sem o raciocínio)
 ❌ Liberar o Copilot para rede sem plano (ele custa por uso)
+❌ Liberar o Copilot (ou uma gravação dele) sem conferir o módulo copilot do cargo (Ver / Gerenciar)
 ❌ Chamar a OpenAI (resposta, transcrição) sem somar o gasto na cota — também quando falha ou cai
 ❌ Devolver ao modelo documento (CPF) que ele não precisa reler — o resumo vai por resumoParaOModelo
 ❌ E2E falando com a OpenAI real (é a falsa, porta 3196)

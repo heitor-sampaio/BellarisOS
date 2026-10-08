@@ -48,7 +48,7 @@ export interface ClienteDeTeste extends SessaoDeTeste {
 type Modulo =
   | 'agenda' | 'clients' | 'loyalty' | 'medical_records' | 'documents' | 'procedures' | 'stock' | 'financial'
   | 'cashier' | 'crm' | 'marketing' | 'reports' | 'team' | 'forms' | 'roles'
-  | 'settings' | 'automations'
+  | 'settings' | 'automations' | 'copilot'
 
 export interface Permissao {
   modulo: Modulo

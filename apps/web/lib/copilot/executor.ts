@@ -33,6 +33,8 @@ export function contextoDoCopilot(ctx: TenantContext): TenantContext {
 }
 
 export function ferramentaLiberada(ctx: TenantContext, f: Ferramenta): boolean {
+  // O cargo tem o Copilot (Ver = consultas; Gerenciar = também gravações).
+  if (!can(ctx, 'copilot', f.tipo === 'escrita' ? 'MANAGE' : 'VIEW')) return false
   if (f.modulo && !can(ctx, f.modulo, f.nivel ?? 'VIEW')) return false
   if (f.recurso && !temRecurso(ctx, f.recurso)) return false
   if (f.pode && !f.pode(ctx)) return false

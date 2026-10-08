@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
 import { NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
 import { ferramentasDoCargo, paraOModelo, contextoDoCopilot, canonico, resumoParaOModelo } from '@/lib/copilot/executor'
-import { copilotNoPlano } from '@/lib/copilot/disponivel'
+import { copilotNoPlano, copilotNoCargo } from '@/lib/copilot/disponivel'
 import { cotaDoCopilot, normalizarRecursos, lerRecursos, FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
 /**
@@ -12,12 +12,14 @@ import { cotaDoCopilot, normalizarRecursos, lerRecursos, FUNCIONALIDADES } from 
  */
 
 const TODAS = FUNCIONALIDADES.map(f => f.chave)
+// O acesso ao Copilot é do cargo (o módulo `copilot`): os casos abaixo partem de quem o tem por inteiro.
+const SEM_NADA = { ...NO_PERMISSIONS, copilot: 'MANAGE' } as ResolvedPermissions
 
 function ctx(over: Partial<TenantContext> = {}): TenantContext {
   return {
     userId: 'auth', internalUserId: 'u1', userName: 'Ana', roleLabel: 'Recepção',
     tenantId: 't1', branchId: null, role: 'RECEPTIONIST', roleId: 'r1', clientId: null,
-    permissions: NO_PERMISSIONS, scopes: ALL_SCOPES, reportTabs: [], providesServices: false,
+    permissions: SEM_NADA, scopes: ALL_SCOPES, reportTabs: [], providesServices: false,
     isNetworkAdmin: false, isClient: false,
     plano: { funcionalidades: TODAS, limites: { unidades: null, membros: null, whatsapp: null } },
     ...over,
@@ -31,14 +33,14 @@ describe('ferramentasDoCargo', () => {
   })
 
   it('agenda VIEW libera as leituras da agenda e o catálogo, sem financeiro nem estoque', () => {
-    const n = nomes(ctx({ permissions: { ...NO_PERMISSIONS, agenda: 'VIEW' } as ResolvedPermissions }))
+    const n = nomes(ctx({ permissions: { ...SEM_NADA, agenda: 'VIEW' } as ResolvedPermissions }))
     expect(n).toEqual(expect.arrayContaining(['agendamentos', 'horarios_livres', 'procedimentos']))
     expect(n).not.toContain('lancamentos')
     expect(n).not.toContain('estoque')
   })
 
   it('financeiro "só as próprias comissões" não recebe os lançamentos da clínica', () => {
-    const base = { permissions: { ...NO_PERMISSIONS, financial: 'VIEW' } as ResolvedPermissions }
+    const base = { permissions: { ...SEM_NADA, financial: 'VIEW' } as ResolvedPermissions }
     expect(nomes(ctx(base))).toContain('lancamentos')
     expect(nomes(ctx({ ...base, scopes: { ...ALL_SCOPES, financial: 'OWN' } }))).not.toContain('lancamentos')
   })
@@ -48,6 +50,30 @@ describe('ferramentasDoCargo', () => {
     expect(nomes(ctx(dono))).toContain('oportunidades')
     const semOportunidades = ctx({ ...dono, plano: { funcionalidades: TODAS.filter(f => f !== 'oportunidades'), limites: { unidades: null, membros: null, whatsapp: null } } })
     expect(nomes(semOportunidades)).not.toContain('oportunidades')
+  })
+})
+
+describe('o acesso ao Copilot pelo cargo (módulo copilot)', () => {
+  const agenda = (copilot: 'NONE' | 'VIEW' | 'MANAGE') =>
+    ctx({ permissions: { ...NO_PERMISSIONS, agenda: 'MANAGE', clients: 'MANAGE', copilot } as ResolvedPermissions })
+
+  it('Sem acesso: o painel não aparece e nenhuma ferramenta vai ao modelo', () => {
+    expect(copilotNoCargo(agenda('NONE'))).toBe(false)
+    expect(nomes(agenda('NONE'))).toEqual([])
+  })
+
+  it('Ver: só as consultas — nenhuma gravação, mesmo com a agenda em Gerenciar', () => {
+    expect(copilotNoCargo(agenda('VIEW'))).toBe(true)
+    const n = nomes(agenda('VIEW'))
+    expect(n).toEqual(expect.arrayContaining(['agendamentos', 'horarios_livres', 'cliente']))
+    expect(n).not.toContain('agendar')
+    expect(n).not.toContain('cadastrar_cliente')
+  })
+
+  it('Gerenciar: consultas e gravações (cada gravação ainda exige o módulo dela)', () => {
+    const n = nomes(agenda('MANAGE'))
+    expect(n).toEqual(expect.arrayContaining(['agendamentos', 'agendar', 'cadastrar_cliente']))
+    expect(n).not.toContain('lancar')
   })
 })
 

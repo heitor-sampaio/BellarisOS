@@ -44,7 +44,9 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
     key:     'marketing',
     label:   'Marketing',
     hint:    'Captação: campanhas, notificações e templates',
-    modules: ['marketing'],
+    // Automações ficavam fora de todo grupo — e por isso fora da tela: nenhum
+    // cargo conseguia ligá-las (até 2026-10-08).
+    modules: ['marketing', 'automations'],
   },
   {
     key:     'dinheiro',
@@ -57,6 +59,12 @@ export const MODULE_GROUPS: readonly ModuleGroup[] = [
     label:   'Gestão e configuração',
     hint:    'Números da rede, fichas e quem pode o quê',
     modules: ['reports', 'team', 'forms', 'roles', 'settings'],
+  },
+  {
+    key:     'copilot',
+    label:   'Copilot',
+    hint:    'A secretária virtual, num chat sobre todas as telas',
+    modules: ['copilot'],
   },
 ]
 
@@ -144,6 +152,11 @@ export const LEVEL_COPY: Record<AppModule, Partial<Record<PermissionLevel, strin
     NONE:   SEM_ACESSO,
     VIEW:   'Abre as automações e vê o que cada uma fez — sem poder mudar nem ligar.',
     MANAGE: 'Tudo do Ver, mais montar o fluxo, escolher o que ele faz e ligar ou desligar. Automação ligada manda mensagem e mexe no CRM sozinha.',
+  },
+  copilot: {
+    NONE:   'O Copilot não aparece para esta pessoa.',
+    VIEW:   'Conversa com o Copilot para consultar — agenda, clientes, números — só do que o cargo já enxerga. Não prepara gravação nenhuma.',
+    MANAGE: 'Tudo do Ver, mais pedir gravações (agendar, cadastrar, lançar…), sempre com o cartão de confirmação. Cada gravação ainda exige o módulo dela em Gerenciar.',
   },
 }
 
