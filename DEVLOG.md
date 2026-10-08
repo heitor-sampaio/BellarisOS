@@ -1301,6 +1301,10 @@ sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
 ### 2026-10-08 — Busca universal, fase 2: as ações
 
+**Suíte completa verde depois de tudo de 2026-10-08** (run 37842548049):
+278 isolados + 402 compartilhados, 1 pulado — com o estoque, o Copilot
+completo, a trava do suporte, o CSP em aviso e as ações da busca.
+
 Pedido do Heitor ("faz a fase 2 da busca universal", combinada em
 2026-10-03). A busca agora também AGE, sempre abrindo o modal que já existe:
 sem termo, "Novo agendamento" e "Cadastrar cliente" no topo; no cliente
