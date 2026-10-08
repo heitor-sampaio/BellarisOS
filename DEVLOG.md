@@ -1299,6 +1299,17 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-08 — Página de um deploy anterior recarrega em vez de travar
+
+Relato do Heitor: "Conectar por aqui" ficava em "Carregando…" para sempre.
+Os logs do Railway mostraram `Failed to find Server Action`: a aba tinha
+sido aberta antes do último deploy, e os ids das actions mudam a cada build.
+O script do layout já recarregava nesse caso, mas só quando o erro ESCAPA sem
+tratamento — a tela de conexão pegava o erro, e sem estado ela só sabia
+mostrar o "Carregando…". Agora `erroParaTela` reconhece a action de outro
+deploy e recarrega a página (uma vez a cada 30 s, para não virar laço), e a
+conexão mostra o erro com "Tentar de novo" quando a leitura falha.
+
 ### 2026-10-07 — A busca do inbox não casa telefone pelos dígitos de um texto
 
 A falha do `inbox-nome-da-pessoa` na completa não era instabilidade: o termo

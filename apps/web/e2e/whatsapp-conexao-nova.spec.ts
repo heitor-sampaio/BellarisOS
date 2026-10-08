@@ -112,3 +112,48 @@ test('o cartão diz quantas conexões estão em uso e quantas sobram', async ({ 
     await expect(uso).toContainText(sobra === 0 ? 'nenhuma disponível' : `${sobra} disponíve`)
   }
 })
+
+/**
+ * A página aberta antes de um deploy (2026-10-08, relatado pelo Heitor): a
+ * action tem o id do build velho, o servidor responde "não encontrada", e o
+ * "Conectar por aqui" girava em "Carregando…" para sempre — o erro era
+ * pego e não aparecia. Agora a página recarrega (e pega o build novo).
+ * A resposta é a que o servidor dá a um id desconhecido: 404 com
+ * `x-nextjs-action-not-found: 1`.
+ */
+test('página de um deploy anterior: a conexão recarrega a página em vez de girar', async ({ page }) => {
+  await abrirOCartao(page)
+  let respondidas = 0
+  await page.route('**/admin/settings**', async route => {
+    const r = route.request()
+    if (r.method() === 'POST' && r.headers()['next-action'] && respondidas++ === 0) {
+      return route.fulfill({
+        status: 404, contentType: 'text/plain', body: 'Server action not found.',
+        headers: { 'x-nextjs-action-not-found': '1' },
+      })
+    }
+    return route.fallback()
+  })
+
+  const recarregou = page.waitForEvent('load')
+  await page.getByRole('button', { name: 'Adicionar número' }).click()
+  await recarregou
+  expect(respondidas, 'a action do build velho foi chamada').toBeGreaterThan(0)
+})
+
+test('a leitura da conexão falhou: a tela diz e deixa tentar de novo, não gira', async ({ page }) => {
+  await abrirOCartao(page)
+  let respondidas = 0
+  await page.route('**/admin/settings**', async route => {
+    const r = route.request()
+    if (r.method() === 'POST' && r.headers()['next-action'] && respondidas++ === 0) {
+      return route.fulfill({ status: 500, contentType: 'text/plain', body: 'fora do ar' })
+    }
+    return route.fallback()
+  })
+
+  await page.getByRole('button', { name: 'Adicionar número' }).click()
+  await expect(page.getByRole('button', { name: 'Tentar de novo' })).toBeVisible()
+  await page.getByRole('button', { name: 'Tentar de novo' }).click()
+  await expect(page.getByRole('button', { name: 'Conectar WhatsApp' })).toBeVisible()
+})

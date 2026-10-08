@@ -167,6 +167,20 @@ export function UazapiConnect({ numeroId }: {
     comAcao(() => removerConexaoUazapi(caixaId!), () => setQr(null))
   }
 
+  // A leitura falhou: diz, e deixa tentar de novo. Sem isto o erro ficava
+  // guardado e a tela girava em "Carregando…" para sempre (2026-10-08).
+  if (!estado && erro) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <Aviso tom="erro">{erro}</Aviso>
+        <button type="button" onClick={() => { setErro(null); void carregarEstado(alvo) }}
+          className="btn-ghost" style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <RefreshCw size={14} /> Tentar de novo
+        </button>
+      </div>
+    )
+  }
+
   if (!estado) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--text-base-sz)', color: 'var(--text-muted)' }}>
