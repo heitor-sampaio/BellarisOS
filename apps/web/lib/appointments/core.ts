@@ -46,6 +46,50 @@ const IGNORED_STATUS = '("CANCELLED","NO_SHOW")'
  * os outros gravavam a unidade e o profissional que o navegador mandasse.
  * Campo ausente não é conferido (quem chama decide o que é obrigatório).
  */
+/** O agendamento mais longo que a conferência de horário considera (12 h). */
+const DURACAO_MAXIMA_MS = 12 * 60 * 60_000
+
+/**
+ * O horário [inicio, inicio + duracaoMin) bate com outro agendamento ativo do
+ * PROFISSIONAL (em qualquer unidade da rede — o profissional da rede atende em
+ * várias) ou da SALA (na unidade dela)?
+ *
+ * Sobreposição de verdade, com a duração de CADA agendamento: até 2026-10-08 a
+ * janela usava a duração do novo dos dois lados — um atendimento de 2 h às
+ * 09:00 não bloqueava um novo às 10:00, e um de 30 min às 09:00 bloqueava um
+ * longo às 10:00 —, e olhava só a unidade.
+ */
+export async function horarioOcupado(admin: Admin, a: {
+  tenantId: string
+  inicio: Date
+  duracaoMin: number
+  professionalId?: string | null
+  roomId?: string | null
+  /** A unidade da sala (obrigatória com `roomId`). */
+  branchId?: string | null
+  /** O próprio agendamento, na remarcação. */
+  excluir?: string | null
+}): Promise<boolean> {
+  if (!a.professionalId && !a.roomId) return false
+  const ini = a.inicio.getTime()
+  const fim = ini + Math.max(1, a.duracaoMin) * 60000
+  let q = admin.from('appointments')
+    .select('id, scheduled_at, duration_min, branches!inner(tenant_id)')
+    .eq('branches.tenant_id', a.tenantId)
+    .not('status', 'in', IGNORED_STATUS)
+    .lt('scheduled_at', new Date(fim).toISOString())
+    .gt('scheduled_at', new Date(ini - DURACAO_MAXIMA_MS).toISOString())
+  if (a.professionalId) q = q.eq('professional_id', a.professionalId)
+  else q = q.eq('room_id', a.roomId!).eq('branch_id', a.branchId!)
+  if (a.excluir) q = q.neq('id', a.excluir)
+  const candidatos = (await ler(q.limit(200), 'conferir o horário') as { scheduled_at: string; duration_min: number | null }[] | null) ?? []
+  return candidatos.some(c => {
+    const oIni = new Date(c.scheduled_at).getTime()
+    const oFim = oIni + (c.duration_min || 60) * 60000
+    return ini < oFim && fim > oIni
+  })
+}
+
 export async function conferirPecasDoAgendamento(
   admin: Admin,
   ctx: TenantContext,
@@ -128,38 +172,19 @@ export async function createAppointmentCore(
 
   const durationMin = procedure?.duration_min ?? 60
   const start       = new Date(input.scheduledAt)
-  const windowEnd   = new Date(start.getTime() + durationMin * 60000).toISOString()
-  const windowStart = new Date(start.getTime() - durationMin * 60000).toISOString()
 
   // Conflito de SALA (quando há sala + duração)
-  if (input.roomId && procedure) {
-    const conflict = await ler(admin
-      .from('appointments')
-      .select('id')
-      .eq('branch_id', input.branchId)
-      .eq('room_id', input.roomId)
-      .not('status', 'in', IGNORED_STATUS)
-      .lt('scheduled_at', windowEnd)
-      .gt('scheduled_at', windowStart)
-      .limit(1), 'buscar o agendamento')
-    if (conflict?.length) return { error: 'Esta sala já está ocupada nesse horário.' }
+  if (input.roomId && procedure && await horarioOcupado(admin, {
+    tenantId: ctx.tenantId!, roomId: input.roomId, branchId: input.branchId, inicio: start, duracaoMin: durationMin,
+  })) {
+    return { error: 'Esta sala já está ocupada nesse horário.' }
   }
 
   // Conflito de PROFISSIONAL (sempre) — impede duplo-agendamento do mesmo profissional
-  {
-    const conflict = await ler(admin
-      .from('appointments')
-      .select('id')
-      .eq('branch_id', input.branchId)
-      .eq('professional_id', input.professionalId)
-      .not('status', 'in', IGNORED_STATUS)
-      .lt('scheduled_at', windowEnd)
-      .gt('scheduled_at', windowStart)
-      // limit(1), não maybeSingle(): o horário pode encostar em DOIS
-      // agendamentos, e o maybeSingle dava erro ("Não consegui buscar o
-      // agendamento") em vez de dizer que o horário está ocupado.
-      .limit(1), 'buscar o agendamento')
-    if (conflict?.length) return { error: 'Este profissional já tem agendamento nesse horário.' }
+  if (await horarioOcupado(admin, {
+    tenantId: ctx.tenantId!, professionalId: input.professionalId, inicio: start, duracaoMin: durationMin,
+  })) {
+    return { error: 'Este profissional já tem agendamento nesse horário.' }
   }
 
   const { data, error } = await admin

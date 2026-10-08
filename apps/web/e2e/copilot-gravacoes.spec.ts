@@ -50,6 +50,7 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
+  if (!clienteId) { await rede?.limpar(); await falsa?.fechar(); return }
   const falhas = await apagarAgendamentos((await doCopilot()).map(a => a.id))
   const { data: novos } = await db().from('clients').select('id').eq('tenant_id', rede.outra.tenantId).neq('id', clienteId)
   await apagarClientes((novos ?? []).map(c => c.id as string), falhas)
@@ -178,4 +179,99 @@ test('cargo que só VÊ a agenda nem recebe "agendar"', async ({ browser }) => {
     expect(String((falsa.saidasDeFerramenta().at(-1)?.saida as { erro?: string })?.erro)).toContain('não está liberada')
   })
   expect((await doCopilot()).filter(a => new Date(a.scheduled_at).getUTCHours() === 20)).toHaveLength(0)
+})
+
+/** Um agendamento direto no banco (o que "a tela" marcou), para o teste mexer. */
+async function agendamentoNoBanco(hora: string, opcoes: { duracao?: number; branchId?: string } = {}) {
+  const { data, error } = await db().from('appointments').insert({
+    branch_id: opcoes.branchId ?? rede.outra.branchId, client_id: clienteId, procedure_id: rede.outra.procedureId,
+    professional_id: rede.outra.professionalId, scheduled_at: new Date(`${AMANHA}T${hora}:00-03:00`).toISOString(),
+    duration_min: opcoes.duracao ?? 30, price: 0, status: 'SCHEDULED', source: 'INTERNAL',
+  }).select('id').single<{ id: string }>()
+  expect(error, 'criar o agendamento').toBeNull()
+  return data!.id
+}
+
+test('atendimento LONGO bloqueia o horário seguinte: 2 h às 12:00 ocupa as 13:00', async ({ browser }) => {
+  await agendamentoNoBanco('12:00', { duracao: 120 })
+  await comSessao(browser, rede.dono.estado, async p => {
+    await p.goto('/admin/agenda')
+    falsa.zerar()
+    falsa.roteiro.push({ chamar: [{ nome: 'agendar', args: { cliente: clienteId, procedimento: rede.outra.procedureId, profissional: rede.outra.professionalId, data: AMANHA, hora: '13:00' } }] }, { texto: 'Ocupado.' })
+    await falarComOCopilot(p, 'agende 13h')
+    await esperarResposta(p)
+    expect(String((falsa.saidasDeFerramenta().at(-1)?.saida as { erro?: string })?.erro)).toContain('já tem agendamento')
+  })
+})
+
+test('remarcar, confirmar presença e cancelar: o Confirmar grava, com histórico e evento', async ({ browser }) => {
+  const id = await agendamentoNoBanco('16:00')
+  await comSessao(browser, rede.dono.estado, async p => {
+    await p.goto('/admin/agenda')
+    const remarcar = await pedir(p, 'remarcar', { agendamento: id, data: AMANHA, hora: '17:00' })
+    await remarcar.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(remarcar.getByRole('status')).toContainText('Feito')
+    const { data: depois } = await db().from('appointments').select('scheduled_at').eq('id', id).single()
+    expect(new Date(depois!.scheduled_at).toISOString()).toBe(new Date(`${AMANHA}T17:00:00-03:00`).toISOString())
+
+    const confirmar = await pedir(p, 'confirmar_agendamento', { agendamento: id })
+    await confirmar.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(confirmar.getByRole('status')).toContainText('Feito')
+    expect((await db().from('appointments').select('status').eq('id', id).single()).data!.status).toBe('CONFIRMED')
+
+    const cancelar = await pedir(p, 'cancelar_agendamento', { agendamento: id, motivo: 'Cliente pediu' })
+    await cancelar.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(cancelar.getByRole('status')).toContainText('Feito')
+    const { data: cancelado } = await db().from('appointments').select('status, cancellation_reason').eq('id', id).single()
+    expect(cancelado).toEqual({ status: 'CANCELLED', cancellation_reason: 'Cliente pediu' })
+  })
+  const { data: eventos } = await db().from('domain_events').select('nome, ator_nome').eq('entidade_id', id).order('created_at')
+  expect(eventos!.map(e => e.nome)).toEqual(['agendamento.remarcado', 'agendamento.confirmado', 'agendamento.cancelado'])
+  for (const e of eventos!) expect(e.ator_nome).toMatch(/\(via Copilot\)$/)
+  const { data: historico } = await db().from('appointment_history').select('action').eq('appointment_id', id).order('created_at')
+  expect(historico!.map(h => h.action)).toEqual(['RESCHEDULED', 'CONFIRMED', 'CANCELLED'])
+})
+
+test('o profissional da rede ocupado em OUTRA unidade: o Confirmar recusa', async ({ browser }) => {
+  const id = await agendamentoNoBanco('08:00')
+  const { data: b, error } = await db().from('branches').insert({ tenant_id: rede.outra.tenantId, name: `${PREFIXO} Unidade C ${marca}`, slug: `e2e-unc-${marca}` }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  try {
+    // O profissional passa a ser da REDE (atende nas duas unidades).
+    expect((await db().from('users').update({ branch_id: null }).eq('id', rede.outra.professionalId)).error).toBeNull()
+    await comSessao(browser, rede.dono.estado, async p => {
+      await p.goto('/admin/agenda')
+      const cartao = await pedir(p, 'remarcar', { agendamento: id, data: AMANHA, hora: '18:00' })
+      await expect(cartao.getByText('Remarcar atendimento')).toBeVisible()
+      // Na OUTRA unidade, alguém marca o mesmo profissional às 18:00.
+      const outro = await agendamentoNoBanco('18:00', { branchId: b!.id })
+      await cartao.getByRole('button', { name: 'Confirmar' }).click()
+      await expect(cartao.getByRole('status')).toContainText('já tem agendamento')
+      await apagarAgendamentos([outro])
+    })
+    expect(new Date((await db().from('appointments').select('scheduled_at').eq('id', id).single()).data!.scheduled_at).toISOString())
+      .toBe(new Date(`${AMANHA}T08:00:00-03:00`).toISOString())
+  } finally {
+    await db().from('users').update({ branch_id: rede.outra.branchId }).eq('id', rede.outra.professionalId)
+    await db().from('branches').delete().eq('id', b!.id)
+  }
+})
+
+test('cadastrar com CPF grava o CPF; atualizar contato mostra De → Para e grava', async ({ browser }) => {
+  const telefone = '5548' + String(Date.now()).slice(-9)
+  const cpf = '52998224725'
+  await comSessao(browser, rede.dono.estado, async p => {
+    await p.goto('/admin/clients')
+    const cartao = await pedir(p, 'cadastrar_cliente', { nome: `${PREFIXO} Doc copg${marca}`, telefone, cpf, email: `DOC${marca}@Bellaris.invalid` })
+    await cartao.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(cartao.getByRole('status')).toContainText('Feito')
+    const { data: criado } = await db().from('clients').select('id, document, email').eq('tenant_id', rede.outra.tenantId).eq('document', cpf).single()
+    expect(criado!.email).toBe(`doc${marca}@bellaris.invalid`)
+
+    const atualizar = await pedir(p, 'atualizar_contato', { cliente: criado!.id, email: `novo${marca}@bellaris.invalid` })
+    await expect(atualizar.getByText(`doc${marca}@bellaris.invalid → novo${marca}@bellaris.invalid`)).toBeVisible()
+    await atualizar.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(atualizar.getByRole('status')).toContainText('Feito')
+    expect((await db().from('clients').select('email').eq('id', criado!.id).single()).data!.email).toBe(`novo${marca}@bellaris.invalid`)
+  })
 })

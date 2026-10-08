@@ -5,6 +5,7 @@ import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
+import { lancarCore, marcarPagoCore } from '@/lib/financeiro/lancamento'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -134,20 +135,12 @@ export async function createTransactionAdvanced(
 
     // -- Único (comportamento padrão) ------------------------------
     } else {
-      const { error } = await admin.from('financial_transactions').insert({
-        branch_id:      branchId,
-        type,
-        category,
-        description,
-        amount,
-        payment_method: paymentMethod,
-        due_date:       dueDate,
-        is_paid:        isPaid,
-        paid_at:        isPaid ? new Date().toISOString() : null,
-        notes,
-        created_by:     ctx.internalUserId,
+      // O núcleo (lib/financeiro/lancamento.ts) é o mesmo do Copilot.
+      const r = await lancarCore(admin, ctx, {
+        branchId, tipo: type, categoria: category, descricao: description, valor: amount,
+        formaDePagamento: paymentMethod, vencimento: dueDate, pago: isPaid, observacoes: notes,
       })
-      if (error) return { error: error.message }
+      if ('error' in r) return { error: r.error }
     }
 
     if (slug) revalidatePath(`/${slug}/financeiro`)
@@ -163,26 +156,10 @@ export async function markTransactionPaid(transactionId: string, slug: string) {
     const ctx = await getTenantContext()
     assertPermission(ctx, 'cashier', 'MANAGE')
 
-    const admin = createAdminClient()
-
-    // Confere a filial antes de escrever: sem isso o id sozinho bastava para
-    // marcar como paga a transação de outra rede.
-    const tx = await ler(admin
-      .from('financial_transactions')
-      .select('branch_id, branches!inner(tenant_id)')
-      .eq('id', transactionId)
-      .maybeSingle(), 'buscar o lançamento')
-    const txTenant = (tx?.branches as unknown as { tenant_id: string } | null)?.tenant_id
-    // E a unidade ao alcance (§11): a recepção da A não dá baixa na B.
-    if (!tx || txTenant !== ctx.tenantId || !alcancaUnidade(ctx, tx.branch_id as string)) return { error: 'Lançamento não encontrado.' }
-
-    const { error } = await admin.from('financial_transactions').update({
-      is_paid:    true,
-      paid_at:    new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }).eq('id', transactionId)
-
-    if (error) return { error: error.message }
+    // O núcleo (lib/financeiro/lancamento.ts) é o mesmo do Copilot: confere a
+    // rede e a unidade ao alcance antes de escrever.
+    const r = await marcarPagoCore(createAdminClient(), ctx, transactionId)
+    if ('error' in r) return { error: r.error }
 
     // Os dois portais operam o mesmo caixa: quem abre pela rede precisa ver o
     // estado mudar lá, não só na tela da unidade.

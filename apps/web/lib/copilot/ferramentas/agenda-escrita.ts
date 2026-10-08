@@ -3,7 +3,7 @@ import { z } from 'zod/v4'
 import { revalidateTag } from 'next/cache'
 import { isOwnScope } from '@/lib/auth'
 import { ler, gravar } from '@/lib/db'
-import { createAppointmentCore, conferirPecasDoAgendamento } from '@/lib/appointments/core'
+import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { agendamentoAoAlcance, cancelarCore, remarcarCore } from '@/lib/appointments/alteracoes'
 import { getUserName, logHistory, notifyCancelledAppointment, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { garantirClienteRapido, digitosDoTelefone } from '@/lib/clients/cliente-rapido'
@@ -22,21 +22,9 @@ import {
  * com os mesmos avisos ao paciente e à equipe.
  */
 
-const IGNORADOS = '("CANCELLED","NO_SHOW")'
-
-/**
- * O profissional está livre de `inicio` por `duracaoMin`? (sem contar `excluir`)
- * Em QUALQUER unidade da rede: o profissional da rede atende em várias.
- */
-async function livre(c: ContextoDaFerramenta, a: { branchId: string; professionalId: string; inicio: Date; duracaoMin: number; excluir?: string }): Promise<boolean> {
-  const fim = new Date(a.inicio.getTime() + a.duracaoMin * 60000).toISOString()
-  const comeco = new Date(a.inicio.getTime() - a.duracaoMin * 60000).toISOString()
-  let q = c.admin.from('appointments').select('id, branches!inner(tenant_id)')
-    .eq('branches.tenant_id', c.ctx.tenantId!).eq('professional_id', a.professionalId)
-    .not('status', 'in', IGNORADOS).lt('scheduled_at', fim).gt('scheduled_at', comeco).limit(1)
-  if (a.excluir) q = q.neq('id', a.excluir)
-  const achados = await ler(q, 'conferir o horário') as { id: string }[] | null
-  return !achados?.length
+/** O profissional está livre? A mesma conferência da tela (horarioOcupado, no núcleo). */
+async function livre(c: ContextoDaFerramenta, a: { professionalId: string; inicio: Date; duracaoMin: number; excluir?: string }): Promise<boolean> {
+  return !(await horarioOcupado(c.admin, { tenantId: c.ctx.tenantId!, professionalId: a.professionalId, inicio: a.inicio, duracaoMin: a.duracaoMin, excluir: a.excluir }))
 }
 
 interface ArgsAgendar {
@@ -85,7 +73,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     let nomeDoCliente: string
     let clienteNovo: PayloadAgendar['clienteNovo'] = null
     if (a.cliente) {
-      const cl = await resolverCliente(c, a.cliente)
+      const cl = await resolverCliente(c, a.cliente, { apenasAtivos: true })
       if ('erro' in cl) return { erro: cl.erro }
       clientId = cl.id
       nomeDoCliente = cl.name
@@ -93,11 +81,13 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
       const telefone = digitosDoTelefone(a.clienteNovo!.telefone)
       if (telefone.length < 10) return { erro: 'O telefone do cliente novo precisa do DDD.' }
       // Telefone que já é de alguém: é esse cliente (o cadastro rápido faria o mesmo).
-      const { data: existente } = await c.admin.rpc('cliente_por_telefone', { p_tenant: c.ctx.tenantId!, p_digitos: telefone })
+      const { data: existente, error: erroTel } = await c.admin.rpc('cliente_por_telefone', { p_tenant: c.ctx.tenantId!, p_digitos: telefone })
+      if (erroTel) return { erro: 'Não consegui conferir o telefone agora.' }
       if (existente) {
         const nomes = await nomesPorId(c, 'clients', [existente as string])
         clientId = existente as string
-        nomeDoCliente = nomes.get(clientId) ?? a.clienteNovo!.nome
+        // Diz que achou pelo telefone: pode ser a mãe de quem vai ser atendida.
+        nomeDoCliente = `${nomes.get(clientId) ?? a.clienteNovo!.nome} (já cadastrada com este telefone)`
       } else {
         clienteNovo = { nome: a.clienteNovo!.nome.trim(), telefone }
         nomeDoCliente = `${clienteNovo.nome} (cliente novo)`
@@ -108,7 +98,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
     if (inicio.getTime() < Date.now() - 5 * 60_000) return { erro: 'Esse horário já passou.' }
     const recusa = await conferirPecasDoAgendamento(c.admin, c.ctx, { branchId: unidade.id, professionalId: prof.id, clientId, roomId: null })
     if (recusa) return { erro: recusa }
-    if (!(await livre(c, { branchId: unidade.id, professionalId: prof.id, inicio, duracaoMin: proc.duration_min || 60 }))) {
+    if (!(await livre(c, { professionalId: prof.id, inicio, duracaoMin: proc.duration_min || 60 }))) {
       return { erro: `${prof.name} já tem agendamento nesse horário. Veja os horários livres.` }
     }
 
@@ -191,7 +181,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
     const inicio = instanteDe(a.data, a.hora)
     if (inicio.getTime() < Date.now() - 5 * 60_000) return { erro: 'Esse horário já passou.' }
     const quem = professionalId ?? ag.professional_id
-    if (quem && !(await livre(c, { branchId: ag.branch_id, professionalId: quem, inicio, duracaoMin: ag.duration_min || 60, excluir: ag.id }))) {
+    if (quem && !(await livre(c, { professionalId: quem, inicio, duracaoMin: ag.duration_min || 60, excluir: ag.id }))) {
       return { erro: `${nomeDoProfissional} já tem agendamento nesse horário.` }
     }
     return {

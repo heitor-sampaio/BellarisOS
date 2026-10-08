@@ -50,6 +50,12 @@ export interface ClienteRapidoInput {
   branchId:        string
   /** Conversa do inbox de onde o agendamento saiu, quando houver. */
   conversationId?: string | null
+  /**
+   * O que mais a pessoa deu (o Copilot, 2026-10-08): entra no MESMO insert —
+   * com um update depois, uma falha no meio deixava o cliente criado sem eles,
+   * e o evento "cliente criado" saía antes deles existirem. Não cria login.
+   */
+  complemento?: { email?: string | null; document?: string | null; birthDate?: string | null }
 }
 
 export interface ClienteRapidoResult {
@@ -114,6 +120,9 @@ export async function garantirClienteRapido(
       // clientes de cada filial filtra.
       tags:      [unitTag(branch.name as string)],
       is_active: true,
+      ...(input.complemento?.email ? { email: input.complemento.email } : {}),
+      ...(input.complemento?.document ? { document: input.complemento.document } : {}),
+      ...(input.complemento?.birthDate ? { birth_date: input.complemento.birthDate } : {}),
     })
     .select('id')
     .single()

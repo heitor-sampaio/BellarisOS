@@ -7,7 +7,7 @@ import { garantirClienteRapido, digitosDoTelefone } from '@/lib/clients/cliente-
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
 import { camposAlterados } from '@/lib/events/emitir'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, resolverCliente, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
+import { DATA, hojeEmBrasilia, resolverCliente, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
 
 /**
  * As GRAVAÇÕES de clientes.
@@ -44,9 +44,18 @@ async function conferirComplemento(c: ContextoDaFerramenta, x: Complemento, clie
     const dup = await ler(q.maybeSingle(), 'conferir o CPF') as { id: string; name: string } | null
     if (dup) return `CPF já cadastrado para ${dup.name}.`
   }
-  if (x.nascimento && (x.nascimento > new Date().toISOString().slice(0, 10) || x.nascimento < '1900-01-01')) return 'Data de nascimento inválida.'
+  if (x.email) {
+    // Único na rede (o login do portal, criado depois pela tela, é o e-mail).
+    let q = c.admin.from('clients').select('id, name').eq('tenant_id', c.ctx.tenantId!).ilike('email', x.email.trim())
+    if (clienteId) q = q.neq('id', clienteId)
+    const dup = await ler(q.limit(1), 'conferir o e-mail') as { id: string; name: string }[] | null
+    if (dup?.length) return `E-mail já cadastrado para ${dup[0]!.name}.`
+  }
+  if (x.nascimento && (x.nascimento > hojeEmBrasilia() || x.nascimento < '1900-01-01')) return 'Data de nascimento inválida.'
   return null
 }
+
+const emailNormalizado = (e?: string) => e?.trim().toLowerCase() || null
 
 function linhasDoComplemento(x: Complemento) {
   return [
@@ -97,26 +106,24 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
       },
       payload: {
         nome: a.nome.trim(), telefone, branchId: u.unidade!.id,
-        email: a.email?.trim() || null, cpf: a.cpf?.replace(/\D/g, '') || null, nascimento: a.nascimento ?? null,
+        email: emailNormalizado(a.email), cpf: a.cpf?.replace(/\D/g, '') || null, nascimento: a.nascimento ?? null,
       },
     }
   },
   async efetivar(c, p) {
-    const r = await garantirClienteRapido(c.admin, c.ctx, { nome: p.nome, telefone: p.telefone, branchId: p.branchId })
+    // Num insert só: e-mail, CPF e nascimento entram junto (sem update depois).
+    const r = await garantirClienteRapido(c.admin, c.ctx, {
+      nome: p.nome, telefone: p.telefone, branchId: p.branchId,
+      complemento: { email: p.email, document: p.cpf, birthDate: p.nascimento },
+    })
     if (r.error || !r.clientId) return { erro: r.error ?? 'Não foi possível cadastrar.' }
     if (!r.criado) return { erro: 'Esse telefone acabou de ser cadastrado para outro cliente.' }
-    if (p.email || p.cpf || p.nascimento) {
-      await gravar(c.admin.from('clients').update({
-        ...(p.email ? { email: p.email } : {}),
-        ...(p.cpf ? { document: p.cpf } : {}),
-        ...(p.nascimento ? { birth_date: p.nascimento } : {}),
-        updated_at: new Date().toISOString(),
-      }).eq('id', r.clientId).eq('tenant_id', c.ctx.tenantId!).select('id'), 'completar o cadastro')
-    }
     revalidateTag(`clients:${c.ctx.tenantId!}`, 'max')
     return { mensagem: `${p.nome} cadastrado.`, href: rota(c, `/clients/${r.clientId}`), rotuloDoLink: 'Abrir a ficha' }
   },
 }
+
+const deP = (de: string | null, para: string) => (de ? `${de} → ${para}` : para)
 
 interface ArgsContato { cliente: string; nome?: string; telefone?: string; email?: string; cpf?: string; nascimento?: string }
 interface PayloadContato { clientId: string; campos: Record<string, string> }
@@ -135,8 +142,12 @@ export const atualizarContato: FerramentaDeEscrita<ArgsContato, PayloadContato> 
     nascimento: DATA.optional(),
   }),
   async preparar(c, a) {
-    const cl = await resolverCliente(c, a.cliente)
+    const cl = await resolverCliente(c, a.cliente, { apenasAtivos: true })
     if ('erro' in cl) return { erro: cl.erro }
+    const atual = await ler(c.admin.from('clients').select('name, phone, email, document, birth_date')
+      .eq('id', cl.id).eq('tenant_id', c.ctx.tenantId!).single(), 'ler o cliente') as {
+        name: string; phone: string | null; email: string | null; document: string | null; birth_date: string | null
+      }
     const campos: Record<string, string> = {}
     if (a.nome) campos.name = a.nome.trim()
     if (a.telefone) {
@@ -144,7 +155,7 @@ export const atualizarContato: FerramentaDeEscrita<ArgsContato, PayloadContato> 
       if (t.length < 10) return { erro: 'O telefone precisa do DDD.' }
       campos.phone = t
     }
-    if (a.email) campos.email = a.email.trim()
+    if (a.email) campos.email = emailNormalizado(a.email)!
     if (a.cpf) campos.document = a.cpf.replace(/\D/g, '')
     if (a.nascimento) campos.birth_date = a.nascimento
     if (!Object.keys(campos).length) return { erro: 'O que mudar? (nome, telefone, e-mail, CPF ou nascimento)' }
@@ -153,11 +164,14 @@ export const atualizarContato: FerramentaDeEscrita<ArgsContato, PayloadContato> 
     return {
       resumo: {
         titulo: 'Atualizar dados do cliente',
+        // De → Para: a pessoa vê o que vai ser sobrescrito.
         linhas: [
           { rotulo: 'Cliente', valor: cl.name },
-          ...(a.nome ? [{ rotulo: 'Nome', valor: campos.name! }] : []),
-          ...(a.telefone ? [{ rotulo: 'Telefone', valor: campos.phone! }] : []),
-          ...linhasDoComplemento(a),
+          ...(a.nome ? [{ rotulo: 'Nome', valor: deP(atual.name, campos.name!) }] : []),
+          ...(a.telefone ? [{ rotulo: 'Telefone', valor: deP(atual.phone, campos.phone!) }] : []),
+          ...(a.email ? [{ rotulo: 'E-mail', valor: deP(atual.email, campos.email!) }] : []),
+          ...(a.cpf ? [{ rotulo: 'CPF', valor: deP(atual.document ? '(já tinha)' : null, linhasDoComplemento({ cpf: a.cpf })[0]!.valor) }] : []),
+          ...(a.nascimento ? [{ rotulo: 'Nascimento', valor: deP(atual.birth_date?.slice(0, 10).split('-').reverse().join('/') ?? null, a.nascimento.split('-').reverse().join('/')) }] : []),
         ],
       },
       payload: { clientId: cl.id, campos },

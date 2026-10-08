@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
+import { ajusteDeEstoqueCore, entradaDeEstoqueCore, getUpp, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -16,28 +17,6 @@ function skuPrefix(category: string | null): string {
     .replace(/[^A-Za-z0-9]/g, '')      // só alfanumérico
     .toUpperCase()
     .slice(0, 3) || 'OUT'
-}
-
-/**
- * O produto e as unidades vieram do formulário: são desta rede?
- *
- * Sem isto, quem é da rede (`ctx.branchId` nulo — a trava de "fora da sua
- * filial" não o alcança) dava entrada, transferia e ajustava estoque de
- * produto e unidade de QUALQUER rede. Achado em 2026-09-27.
- */
-async function produtoEUnidadesDaRede(
-  admin: ReturnType<typeof createAdminClient>,
-  tenantId: string,
-  productId: string,
-  branchIds: string[],
-): Promise<boolean> {
-  const [produto, unidades] = await Promise.all([
-    ler(admin.from('products').select('id').eq('id', productId).eq('tenant_id', tenantId).maybeSingle(),
-      'conferir o produto'),
-    ler(admin.from('branches').select('id').in('id', branchIds).eq('tenant_id', tenantId),
-      'conferir as unidades'),
-  ])
-  return !!produto && (unidades ?? []).length === new Set(branchIds).size
 }
 
 async function nextSku(tenantId: string, category: string | null): Promise<string> {
@@ -63,17 +42,6 @@ function num(fd: FormData, key: string): number | null {
   if (!v) return null
   const n = parseFloat(v.replace(',', '.'))
   return isNaN(n) ? null : n
-}
-
-// Busca units_per_package do produto para cálculo de rendimento
-async function getUpp(admin: ReturnType<typeof createAdminClient>, productId: string): Promise<number | null> {
-  const data = await ler(admin
-    .from('products')
-    .select('units_per_package, consumption_unit')
-    .eq('id', productId)
-    .maybeSingle(), 'carregar os produtos')
-  if (!data?.units_per_package || !data?.consumption_unit) return null
-  return Number(data.units_per_package)
 }
 
 // --- Catálogo de produtos ------------------------------------------
@@ -491,69 +459,15 @@ async function adminAddStockInterno(
     const qty = parseFloat(qtyRaw.replace(',', '.'))
     if (isNaN(qty) || qty <= 0) return { error: 'Quantidade deve ser maior que zero.' }
 
-    const unitCost    = num(formData, 'unit_cost')
-    const notes       = str(formData, 'notes')
-    const batchNumber = str(formData, 'batch_number')
-    const expiresAt   = str(formData, 'expires_at')
-
-    const admin = createAdminClient()
-    if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
-      return { error: 'Produto ou filial não encontrado.' }
-
-    // `maybeSingle`: unidade sem linha de saldo é saldo 0 (a primeira entrada).
-    // Falha de leitura é outra coisa — não pode virar 0 e gravar um saldo falso.
-    const [bps, upp] = await Promise.all([
-      ler(admin
-        .from('branch_product_stock')
-        .select('current_stock, min_stock, current_rendimento')
-        .eq('product_id', productId)
-        .eq('branch_id', branchId)
-        .maybeSingle(), 'buscar o saldo do produto'),
-      getUpp(admin, productId),
-    ])
-
-    const currentStock      = Number(bps?.current_stock ?? 0)
-    const balanceAfter      = currentStock + qty
-    const currentRendimento = bps?.current_rendimento != null ? Number(bps.current_rendimento) : (upp ? currentStock * upp : null)
-    const newRendimento     = upp && currentRendimento != null ? currentRendimento + qty * upp : null
-
-    await gravar(admin.from('stock_movements').insert({
-      branch_id:     branchId,
-      product_id:    productId,
-      type:          'PURCHASE',
-      quantity:      qty,
-      balance_after: balanceAfter,
-      unit_cost:     unitCost,
-      notes,
-      created_by:    ctx.internalUserId,
-    }), 'registrar a entrada de estoque')
-
-    await gravar(admin.from('branch_product_stock').upsert({
-      product_id:         productId,
-      branch_id:          branchId,
-      current_stock:      balanceAfter,
-      current_rendimento: newRendimento,
-      min_stock:          Number(bps?.min_stock ?? 0),
-      updated_at:         new Date().toISOString(),
-    }, { onConflict: 'product_id,branch_id' }), 'atualizar o saldo da unidade')
-
-    if (batchNumber) {
-      await gravar(admin.from('product_batches').insert({
-        product_id:   productId,
-        branch_id:    branchId,
-        batch_number: batchNumber,
-        expires_at:   expiresAt ?? null,
-        quantity:     qty,
-      }), 'registrar o lote do produto')
-    }
-
-    // Atualiza o cost_price do produto com o custo desta compra (preço da última entrada)
-    if (unitCost && unitCost > 0) {
-      await gravar(admin
-        .from('products')
-        .update({ cost_price: unitCost, updated_at: new Date().toISOString() })
-        .eq('id', productId), 'atualizar o custo do produto')
-    }
+    // O núcleo (lib/estoque/movimentos.ts) é o mesmo do Copilot.
+    const r = await entradaDeEstoqueCore(createAdminClient(), ctx, {
+      productId, branchId, quantidade: qty,
+      custoUnitario: num(formData, 'unit_cost'),
+      observacao:    str(formData, 'notes'),
+      lote:          str(formData, 'batch_number'),
+      validade:      str(formData, 'expires_at'),
+    })
+    if ('error' in r) return { error: r.error }
 
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)
@@ -726,50 +640,9 @@ async function adminAdjustStockInterno(
     const newQty = parseFloat(qtyRaw.replace(',', '.'))
     if (isNaN(newQty) || newQty < 0) return { error: 'Novo estoque não pode ser negativo.' }
 
-    const admin = createAdminClient()
-    if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [branchId])))
-      return { error: 'Produto ou filial não encontrado.' }
-
-    // Sem linha de saldo = saldo 0; falha de leitura não pode virar 0 (o ajuste
-    // gravaria um delta sobre um número inventado).
-    const [bps, upp] = await Promise.all([
-      ler(admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', branchId).maybeSingle(), 'buscar o saldo do produto'),
-      getUpp(admin, productId),
-    ])
-
-    const currentStock = Number(bps?.current_stock ?? 0)
-    const delta        = newQty - currentStock
-
-    // Preserva o consumo acumulado ao ajustar a quantidade de embalagens.
-    // Ex.: 100 frascos × 100ml/frasco = 10.000ml totais; disponível = 9.999ml → consumido = 1ml.
-    // Ajuste para 20 frascos → 2.000ml totais − 1ml consumido = 1.999ml disponíveis.
-    let newRendimento: number | null = null
-    if (upp !== null && upp > 0) {
-      const currentTotal    = currentStock * upp
-      const currentAvail    = bps?.current_rendimento != null ? Number(bps.current_rendimento) : currentTotal
-      const consumed        = Math.max(0, currentTotal - currentAvail)
-      const newTotal        = newQty * upp
-      newRendimento         = Math.max(0, newTotal - consumed)
-    }
-
-    await gravar(admin.from('stock_movements').insert({
-      branch_id:     branchId,
-      product_id:    productId,
-      type:          'MANUAL_ADJUSTMENT',
-      quantity:      delta,
-      balance_after: newQty,
-      notes:         reason,
-      created_by:    ctx.internalUserId,
-    }), 'registrar o ajuste de estoque')
-
-    await gravar(admin.from('branch_product_stock').upsert({
-      product_id:         productId,
-      branch_id:          branchId,
-      current_stock:      newQty,
-      current_rendimento: newRendimento,
-      min_stock:          Number(bps?.min_stock ?? 0),
-      updated_at:         new Date().toISOString(),
-    }, { onConflict: 'product_id,branch_id' }), 'atualizar o saldo da unidade')
+    // O núcleo (lib/estoque/movimentos.ts) é o mesmo do Copilot.
+    const r = await ajusteDeEstoqueCore(createAdminClient(), ctx, { productId, branchId, novoSaldo: newQty, motivo: reason })
+    if ('error' in r) return { error: r.error }
 
     revalidatePath('/admin/estoque')
     if (ctx.branchId) revalidatePath(`/*/stock`)

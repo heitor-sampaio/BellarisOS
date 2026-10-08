@@ -182,12 +182,15 @@ export async function resolverProcedimento(
 /** Acha o cliente ativo pelo id, ou pelo nome/telefone (tem de ser um só). */
 export async function resolverCliente(
   c: ContextoDaFerramenta, pedido: string,
+  /** Para GRAVAR: cliente inativo (ou anonimizado pela LGPD) não se agenda nem se edita. */
+  opcoes: { apenasAtivos?: boolean } = {},
 ): Promise<{ id: string; name: string; phone: string | null } | { erro: string }> {
   const id = UUID.safeParse(pedido)
   if (id.success) {
-    const um = await ler(c.admin.from('clients').select('id, name, phone')
-      .eq('id', pedido).eq('tenant_id', c.ctx.tenantId!).maybeSingle(), 'ler o cliente') as { id: string; name: string; phone: string | null } | null
-    return um ?? { erro: 'Cliente não encontrado.' }
+    let q = c.admin.from('clients').select('id, name, phone').eq('id', pedido).eq('tenant_id', c.ctx.tenantId!)
+    if (opcoes.apenasAtivos) q = q.eq('is_active', true)
+    const um = await ler(q.maybeSingle(), 'ler o cliente') as { id: string; name: string; phone: string | null } | null
+    return um ?? { erro: opcoes.apenasAtivos ? 'Cliente não encontrado (ou inativo).' : 'Cliente não encontrado.' }
   }
   const termo = pedido.trim()
   const digitos = termo.replace(/\D/g, '')

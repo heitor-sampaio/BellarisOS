@@ -4,7 +4,7 @@ import { EVENTOS } from '@estetica-os/types'
 import { alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
-import { conferirPecasDoAgendamento } from '@/lib/appointments/core'
+import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { getUserName, logHistory } from '@/lib/appointments/avisos'
 
@@ -20,7 +20,8 @@ import { getUserName, logHistory } from '@/lib/appointments/avisos'
 
 type Admin = ReturnType<typeof createAdminClient>
 
-const IGNORADOS = '("CANCELLED","NO_SHOW")'
+/** Os status que já não se remarcam nem se cancelam. */
+const ABERTOS_NAO = '("COMPLETED","CANCELLED","NO_SHOW")'
 const FINALIZADOS = ['COMPLETED', 'CANCELLED', 'NO_SHOW']
 
 export interface AgendamentoAoAlcance {
@@ -36,23 +37,6 @@ export async function agendamentoAoAlcance(admin: Admin, ctx: TenantContext, id:
   const branch = a?.branches as unknown as { id: string; tenant_id: string } | null
   if (!a || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, branch.id)) return null
   return a as unknown as AgendamentoAoAlcance
-}
-
-/**
- * O profissional tem outro agendamento que encosta neste horário? (O mesmo
- * critério do `createAppointmentCore`, sem contar o próprio agendamento.)
- */
-async function conflitoDoProfissional(admin: Admin, a: {
-  id: string; branchId: string; professionalId: string; inicio: Date; duracaoMin: number
-}): Promise<boolean> {
-  const fim = new Date(a.inicio.getTime() + a.duracaoMin * 60000).toISOString()
-  const comeco = new Date(a.inicio.getTime() - a.duracaoMin * 60000).toISOString()
-  const achados = await ler(admin.from('appointments').select('id')
-    .eq('branch_id', a.branchId).eq('professional_id', a.professionalId)
-    .not('status', 'in', IGNORADOS).neq('id', a.id)
-    .lt('scheduled_at', fim).gt('scheduled_at', comeco)
-    .limit(1), 'conferir o horário do profissional') as { id: string }[] | null
-  return !!achados?.length
 }
 
 export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
@@ -73,20 +57,23 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
   if (recusa) return { error: recusa }
 
   // Conflito: remarcar para cima de outro agendamento do mesmo profissional
-  // passava (a criação conferia; a remarcação, não — até 2026-10-08).
+  // passava (a criação conferia; a remarcação, não — até 2026-10-08). Em
+  // qualquer unidade da rede, com a duração de cada um (horarioOcupado).
   const profissional = input.professionalId || existente.professional_id
-  if (profissional && await conflitoDoProfissional(admin, {
-    id: existente.id, branchId: existente.branch_id, professionalId: profissional,
+  if (profissional && await horarioOcupado(admin, {
+    tenantId: ctx.tenantId!, professionalId: profissional, excluir: existente.id,
     inicio, duracaoMin: existente.duration_min || 60,
   })) {
     return { error: 'Este profissional já tem agendamento nesse horário.' }
   }
 
-  await gravar(admin.from('appointments').update({
+  // Com a guarda do status: concluído entre a leitura e a escrita não remarca.
+  const remarcadas = await gravar(admin.from('appointments').update({
     scheduled_at:    inicio.toISOString(),
     professional_id: input.professionalId || undefined,
     updated_at:      new Date().toISOString(),
-  }).eq('id', existente.id).select('id'), 'reagendar')
+  }).eq('id', existente.id).not('status', 'in', ABERTOS_NAO).select('id'), 'reagendar') as { id: string }[] | null
+  if (!remarcadas?.length) return { error: 'Este agendamento já foi finalizado.' }
 
   const userName = ctx.userName || await getUserName(admin, ctx.userId)
   const dtStr = inicio.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
@@ -107,9 +94,10 @@ export async function cancelarCore(admin: Admin, ctx: TenantContext, input: {
   if (!existente) return { error: 'Agendamento não encontrado.' }
   if (FINALIZADOS.includes(existente.status)) return { error: 'Agendamento já finalizado.' }
 
-  await gravar(admin.from('appointments').update({
+  const canceladas = await gravar(admin.from('appointments').update({
     status: 'CANCELLED', cancelled_at: new Date().toISOString(), cancellation_reason: motivo,
-  }).eq('id', existente.id).select('id'), 'cancelar a sessão')
+  }).eq('id', existente.id).not('status', 'in', ABERTOS_NAO).select('id'), 'cancelar a sessão') as { id: string }[] | null
+  if (!canceladas?.length) return { error: 'Agendamento já finalizado.' }
 
   const userName = ctx.userName || await getUserName(admin, ctx.userId)
   await logHistory(admin, existente.id, ctx.internalUserId, userName, 'CANCELLED', `Cancelado: ${motivo}`)

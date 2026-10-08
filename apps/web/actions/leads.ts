@@ -3,61 +3,17 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, ownerFilter, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { resolveLeadSource, mergeTags } from '@estetica-os/utils'
-import { seedDefaultFunnel, listStages } from '@/lib/crm/funis'
 import {
-  registrarEventoLead, etapaAtualDoLead, estadoAtualDoLead,
+  registrarEventoLead, estadoAtualDoLead,
   diferencas, listaLegivel,
 } from '@/lib/lead-events'
-import { emitirEventoDeLead, eventoDoDesfecho, etapaDeCrm } from '@/lib/events/lead'
-import { EVENTOS } from '@estetica-os/types'
 import { isUnitTag, unitTagName } from '@estetica-os/utils'
-import { gravar, ler } from '@/lib/db'
+import { ler } from '@/lib/db'
+import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentosDeInteresse } from '@/lib/crm/oportunidade'
 import { propagarDadosDaPessoa, digitosDoTelefone } from '@/lib/contatos/propagar'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
-}
-
-/**
- * Lead sempre nasce com etapa.
- *
- * O fallback antigo era `crm_stage_id ?? null`, e o quadro tratava nulo como
- * "primeira coluna". Com mais de um funil esse lead apareceria na primeira
- * coluna de todos eles ao mesmo tempo — então a etapa passou a ser resolvida
- * aqui: a informada, ou a primeira do funil indicado, ou a primeira do padrão.
- */
-/**
- * A etapa é DA REDE?
- *
- * O id da etapa vem do formulário e do arrasto do quadro. Sem esta conferência,
- * um card movido para a etapa de outra rede sumia de todos os quadros desta.
- */
-async function etapaDaRede(tenantId: string, stageId: string): Promise<boolean> {
-  const etapa = await ler(createAdminClient()
-    .from('crm_stages').select('id')
-    .eq('id', stageId).eq('tenant_id', tenantId).maybeSingle(), 'buscar a etapa')
-  return !!etapa
-}
-
-async function resolverEtapa(
-  tenantId: string,
-  crmStageId: string | null,
-  funnelId: string | null,
-): Promise<string | null> {
-  if (crmStageId) {
-    if (!(await etapaDaRede(tenantId, crmStageId))) throw new Error('Etapa não encontrada.')
-    return crmStageId
-  }
-
-  const funis  = await seedDefaultFunnel(tenantId)
-  const alvo   = funis.find(f => f.id === funnelId)
-    ?? funis.find(f => f.is_default)
-    ?? funis[0]
-  if (!alvo) return null
-
-  const etapas = await listStages(tenantId, alvo.id)
-  return etapas[0]?.id ?? null
 }
 
 function parseStringArray(fd: FormData, key: string): string[] {
@@ -91,19 +47,6 @@ async function nomesDeProcedimentos(
   return (data ?? []).map(p => p.name as string)
 }
 
-async function saveProcedures(
-  admin: ReturnType<typeof createAdminClient>,
-  leadId: string,
-  procedureIds: string[],
-) {
-  await gravar(admin.from('lead_procedures').delete().eq('lead_id', leadId), 'limpar os procedimentos de interesse')
-  if (procedureIds.length > 0) {
-    await gravar(admin.from('lead_procedures').insert(
-      procedureIds.map(pid => ({ lead_id: leadId, procedure_id: pid })),
-    ), 'salvar os procedimentos de interesse')
-  }
-}
-
 // --- Criar lead ---------------------------------------------------
 export async function createLead(
   _prev: { error?: string; success?: boolean } | undefined,
@@ -135,53 +78,14 @@ export async function createLead(
     if (!name)                       return { error: 'Nome é obrigatório.' }
     if (!phone && !email && !social) return { error: 'Informe pelo menos um contato: telefone, e-mail ou rede social.' }
 
-    // Origem canônica: se há atribuição, deriva; senão respeita o dropdown; sem nada -> Orgânico.
-    const derived = resolveLeadSource(
-      { fbclid, gclid, utm_source: utmSource, utm_medium: utmMedium },
-      source,
-    )
-    const tags = mergeTags(derived.tags, manualTags)
-
-    const etapaInicial = await resolverEtapa(ctx.tenantId!, crmStageId, funnelId)
-
-    const admin = createAdminClient()
-    const { data: lead, error } = await admin
-      .from('leads')
-      .insert({
-        tenant_id: ctx.tenantId!,
-        // Lead é SEMPRE da rede. A unidade é a tag `Unidade: <nome>`, dimensão
-        // de métrica e recorte de tela — não fronteira de dado.
-        branch_id: null,
-        name, phone, email, social_media: social,
-        source: derived.source, notes,
-        crm_stage_id: etapaInicial,
-        fbclid, gclid,
-        utm_source: utmSource, utm_medium: utmMedium, utm_campaign: utmCampaign,
-        ctwa_clid: derived.ctwa_clid ?? null,
-        tags,
-        // Atribui o lead ao vendedor que o criou (base para KPIs por vendedor)
-        owner_id: ctx.internalUserId,
-      })
-      .select('id, created_at')
-      .single()
-
-    if (error || !lead) {
-      console.error('[createLead]', error?.message)
-      return { error: `Erro ao criar lead: ${error?.message ?? 'desconhecido'}` }
-    }
-
-    await saveProcedures(admin, lead.id, procedureIds)
-
-    await registrarEventoLead({
-      tenantId:    ctx.tenantId!,
-      leadId:      lead.id,
-      type:        'CREATED',
-      toStageId:   etapaInicial,
-      actorUserId: ctx.internalUserId,
-      actorName:   ctx.userName || null,
+    // O núcleo (lib/crm/oportunidade.ts) é o mesmo do Copilot.
+    const r = await criarOportunidadeCore(createAdminClient(), ctx, {
+      nome: name, telefone: phone, email, social, origem: source, observacoes: notes,
+      crmStageId, funnelId, procedureIds, tags: manualTags,
+      fbclid, gclid, utmSource, utmMedium, utmCampaign,
     })
-
-    await emitirEventoDeLead(EVENTOS.LEAD_CRIADO, lead.id as string, ctx)
+    if ('error' in r) return { error: r.error }
+    const lead = { id: r.leadId, created_at: r.createdAt }
 
     revalidatePath(`/${slug}/oportunidades`)
     revalidatePath('/admin/oportunidades')
@@ -262,7 +166,7 @@ export async function updateLead(
       return { error: `Erro ao atualizar lead: ${error.message}` }
     }
 
-    await saveProcedures(admin, leadId, procedureIds)
+    await salvarProcedimentosDeInteresse(admin, ctx.tenantId!, leadId, procedureIds)
 
     // Nome e telefone do card são cópia da PESSOA: a pessoa, as conversas e as
     // outras oportunidades dela acompanham (`propagarDadosDaPessoa`). Até
@@ -352,47 +256,9 @@ export async function updateLeadStage(leadId: string, crm_stage_id: string, slug
     assertRecurso(ctx, 'oportunidades')
     assertPermission(ctx, 'crm', 'MANAGE')
 
-    if (!(await etapaDaRede(ctx.tenantId!, crm_stage_id))) return
-
-    // Antes do update: é a única chance de saber de onde o card saiu.
-    const etapaAnterior = await etapaAtualDoLead(ctx.tenantId!, leadId)
-
-    const admin = createAdminClient()
-    let q = admin
-      .from('leads')
-      .update({ crm_stage_id })
-      .eq('id', leadId)
-      .eq('tenant_id', ctx.tenantId!)
-    const owner = ownerFilter(ctx, 'crm')
-    if (owner) q = q.or(`owner_id.is.null,owner_id.eq.${owner}`)
-    const { error } = await q
-
-    // Erro aqui era descartado: o card voltava sozinho para a coluna antiga no
-    // próximo refresh, sem nada dizer que o movimento não foi gravado.
-    if (error) { console.error('[updateLeadStage]', error.message); return }
-
-    if (etapaAnterior !== crm_stage_id) {
-      await registrarEventoLead({
-        tenantId:    ctx.tenantId!,
-        leadId,
-        type:        'STAGE_CHANGED',
-        fromStageId: etapaAnterior,
-        toStageId:   crm_stage_id,
-        actorUserId: ctx.internalUserId,
-        actorName:   ctx.userName || null,
-      })
-
-      // A corrente de eventos, ao lado da linha do tempo do card. O movimento
-      // sempre emite; chegar numa etapa de desfecho emite TAMBÉM o ganho ou o
-      // perdido — ver `lib/events/lead.ts` para o porquê de serem dois.
-      const de      = await etapaDeCrm(ctx.tenantId!, etapaAnterior)
-      const destino = await etapaDeCrm(ctx.tenantId!, crm_stage_id)
-
-      await emitirEventoDeLead(EVENTOS.LEAD_ETAPA_MUDOU, leadId, ctx, { deEtapaNome: de.nome })
-
-      const evento = eventoDoDesfecho(destino.desfecho)
-      if (evento) await emitirEventoDeLead(evento, leadId, ctx, { deEtapaNome: de.nome })
-    }
+    // O núcleo (lib/crm/oportunidade.ts) é o mesmo do Copilot.
+    const r = await moverEtapaCore(createAdminClient(), ctx, leadId, crm_stage_id)
+    if ('error' in r) { console.error('[updateLeadStage]', r.error); return }
 
     revalidatePath(`/${slug}/oportunidades`)
     revalidatePath('/admin/oportunidades')

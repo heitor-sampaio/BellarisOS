@@ -7,6 +7,7 @@ import { procedimentos, indicadores } from '@/lib/copilot/ferramentas/indicadore
 import { lancamentos, estoque, oportunidades } from '@/lib/copilot/ferramentas/gestao'
 import { agendar, remarcar, cancelar, confirmarAgendamento } from '@/lib/copilot/ferramentas/agenda-escrita'
 import { cadastrarCliente, atualizarContato } from '@/lib/copilot/ferramentas/clientes-escrita'
+import { lancar, marcarPago, entradaDeEstoque, ajusteDeEstoque, criarOportunidade, moverEtapa } from '@/lib/copilot/ferramentas/gestao-escrita'
 
 /**
  * O catálogo do Copilot. Ferramenta nova entra aqui e declara o que exige
@@ -22,4 +23,7 @@ export const FERRAMENTAS: Ferramenta[] = [
   // Gravação (só com o Confirmar do cartão)
   agendar, remarcar, cancelar, confirmarAgendamento,
   cadastrarCliente, atualizarContato,
+  lancar, marcarPago,
+  entradaDeEstoque, ajusteDeEstoque,
+  criarOportunidade, moverEtapa,
 ]

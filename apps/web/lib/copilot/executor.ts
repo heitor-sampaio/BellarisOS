@@ -100,7 +100,7 @@ export async function executarChamada(
       ferramenta:  ferramenta.nome,
       // Os ARGUMENTOS ficam: o "Confirmar" prepara de novo com eles (o mundo
       // pode ter mudado) e só então grava.
-      payload:     { args: args.data },
+      payload:     { args: args.data, preparado: preparo.payload },
       resumo:      preparo.resumo,
     }).select('id').single(), 'preparar a ação do Copilot') as { id: string }
 
@@ -122,7 +122,7 @@ export async function executarChamada(
 }
 
 interface LinhaDaAcao {
-  id: string; conversa_id: string; ferramenta: string; payload: { args: unknown }
+  id: string; conversa_id: string; ferramenta: string; payload: { args: unknown; preparado?: unknown }
   resumo: ResumoDaAcao; status: StatusDaAcao; resultado: ResultadoDaAcao | null; expira_em: string
   decidida_em: string | null
 }
@@ -231,7 +231,9 @@ async function efetivarAcao(
     if ('erro' in preparo) return falhou(preparo.erro)
     // E grava o que a pessoa VIU: se o preparo de agora resolveu outra coisa
     // (outra cliente com o mesmo nome, outro valor), não grava.
-    if (canonico(preparo.resumo) !== canonico(atual.resumo)) {
+    // O texto E os ids: dois homônimos dão o mesmo resumo e outro registro.
+    if (canonico(preparo.resumo) !== canonico(atual.resumo)
+      || (atual.payload?.preparado !== undefined && canonico(preparo.payload) !== canonico(atual.payload.preparado))) {
       return falhou('A situação mudou desde o cartão. Peça de novo ao Copilot para conferir.')
     }
     const r = await ferramenta.efetivar(cf, preparo.payload)
