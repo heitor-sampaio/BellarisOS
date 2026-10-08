@@ -4,12 +4,12 @@ import { unitTag } from '@estetica-os/utils'
 import { can, ownerFilter, podeReceber, temRecurso } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { creditosDoCliente } from '@/lib/creditos/credito'
-import { saldoDoCliente } from '@/lib/fidelidade/leitura'
+import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { getClientesParaReativar } from '@/lib/metrics/unidade'
 import { addDaysTZ } from '@/lib/datetime'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
-  STATUS_DO_AGENDAMENTO, dinheiro, nomesPorId, quandoLegivel, resolverCliente, resolverUnidade, rota, unidadesDaRede,
+  BUSINESS_TZ, STATUS_DO_AGENDAMENTO, dinheiro, hojeEmBrasilia, nomesPorId, quandoLegivel, resolverCliente, resolverUnidade, rota, unidadesDaRede,
 } from '@/lib/copilot/ferramentas/comum'
 
 /**
@@ -25,12 +25,13 @@ function cpfMascarado(doc: string | null): string | null {
   return d.length === 11 ? `***.${d.slice(3, 6)}.${d.slice(6, 9)}-**` : null
 }
 
+/** A idade hoje, no dia de Brasília (o nascimento é gravado como meia-noite UTC). */
 function idade(nascimento: string | null): number | null {
   if (!nascimento) return null
-  const n = new Date(nascimento)
-  const hoje = new Date()
-  let a = hoje.getUTCFullYear() - n.getUTCFullYear()
-  if (hoje.getUTCMonth() < n.getUTCMonth() || (hoje.getUTCMonth() === n.getUTCMonth() && hoje.getUTCDate() < n.getUTCDate())) a--
+  const [na, nm, nd] = nascimento.slice(0, 10).split('-').map(Number)
+  const [ha, hm, hd] = hojeEmBrasilia().split('-').map(Number)
+  let a = ha! - na!
+  if (hm! < nm! || (hm === nm && hd! < nd!)) a--
   return a
 }
 
@@ -73,7 +74,10 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
       podeReceber(c.ctx) || can(c.ctx, 'financial', 'VIEW')
         ? ler(c.admin.from('internal_credits').select('amount, branch_id').eq('client_id', ficha.id), 'ler o crédito interno')
         : Promise.resolve(null),
-      can(c.ctx, 'loyalty', 'VIEW') && temRecurso(c.ctx, 'fidelidade') ? saldoDoCliente(ficha.id, null, c.admin) : Promise.resolve(null),
+      // Pontos por unidade quando a rede configurou assim (a mesma regra da agenda).
+      can(c.ctx, 'loyalty', 'VIEW') && temRecurso(c.ctx, 'fidelidade')
+        ? configDaRede(c.ctx.tenantId!, c.admin).then(cfg => saldoDoCliente(ficha.id, cfg.scope_per_branch ? (c.ctx.branchId ?? null) : null, c.admin))
+        : Promise.resolve(null),
     ])
     type Ag = { id: string; scheduled_at: string; status: string; procedure_id: string; professional_id: string | null; branch_id: string }
     const ags = [...((proximos ?? []) as Ag[]), ...((ultimos ?? []) as Ag[])]
@@ -88,10 +92,9 @@ export const cliente: FerramentaDeLeitura<{ cliente: string }> = {
     })
     const nomesDeUnidade = new Set(unidades.map(u => unitTag(u.name)))
     const href = rota(c, `/clients/${ficha.id}`)
+    // O crédito interno é da REDE (o gatilho do uso soma por cliente, e a ficha não recorta).
     const creditoInterno = internos === null ? undefined
-      : ((internos ?? []) as { amount: number; branch_id: string }[])
-          .filter(i => !c.ctx.branchId || i.branch_id === c.ctx.branchId)
-          .reduce((s, i) => s + Number(i.amount), 0)
+      : ((internos ?? []) as { amount: number }[]).reduce((s, i) => s + Number(i.amount), 0)
 
     return {
       dados: {
@@ -133,34 +136,45 @@ export const clientes: FerramentaDeLeitura<{
     let lista: Lin[] = []
     let total: number | null = null
 
+    // A unidade (a da pessoa, se fixa): as listas da unidade recortam pela tag dela.
+    const u = await resolverUnidade(c, args.unidade)
+    if ('erro' in u) return { dados: { erro: u.erro } }
+    const tagDaUnidade = u.unidade ? unitTag(u.unidade.name) : null
+
     if (args.filtro === 'sem_visita') {
-      const u = await resolverUnidade(c, args.unidade)
-      if ('erro' in u) return { dados: { erro: u.erro } }
       const alvo = u.unidade ? [u.unidade] : await unidadesDaRede(c)
       const desde = addDaysTZ(new Date(), -(args.dias ?? 90))
       const partes = await Promise.all(alvo.map(un => getClientesParaReativar({ tenantId: tenant, branchId: un.id, tag: unitTag(un.name), desde, limite: 50 })))
-      total = partes.reduce((s, p) => s + p.total, 0)
-      lista = partes.flatMap(p => p.lista).slice(0, 50).map(x => ({ id: x.id, name: x.name, phone: x.phone, detalhe: x.ultimaVisita ? `última visita ${x.ultimaVisita.slice(0, 10)}` : 'nunca veio' }))
+      // Na rede: quem está em duas unidades aparece uma vez, há mais tempo sem vir primeiro.
+      const unicos = new Map<string, (typeof partes)[number]['lista'][number]>()
+      for (const x of partes.flatMap(p => p.lista)) {
+        const ja = unicos.get(x.id)
+        if (!ja || (x.ultimaVisita ?? '') > (ja.ultimaVisita ?? '')) unicos.set(x.id, x)
+      }
+      total = alvo.length === 1 ? partes[0]!.total : null
+      lista = [...unicos.values()].sort((a, b) => (a.ultimaVisita ?? '') < (b.ultimaVisita ?? '') ? -1 : 1).slice(0, 50).map(x => ({ id: x.id, name: x.name, phone: x.phone, detalhe: x.ultimaVisita ? `última visita ${x.ultimaVisita.slice(0, 10)}` : 'nunca veio' }))
     } else if (args.filtro === 'novos') {
       const desde = addDaysTZ(new Date(), -(args.dias ?? 30)).toISOString()
-      lista = ((await ler(c.admin.from('clients').select('id, name, phone, created_at').eq('tenant_id', tenant).eq('is_active', true)
-        .gte('created_at', desde).order('created_at', { ascending: false }).limit(50), 'ler os clientes novos')) as (Lin & { created_at: string })[] | null ?? [])
+      let q = c.admin.from('clients').select('id, name, phone, created_at').eq('tenant_id', tenant).eq('is_active', true)
+        .gte('created_at', desde).order('created_at', { ascending: false }).limit(50)
+      if (tagDaUnidade) q = q.contains('tags', [tagDaUnidade])
+      lista = ((await ler(q, 'ler os clientes novos')) as (Lin & { created_at: string })[] | null ?? [])
         .map(x => ({ ...x, detalhe: `desde ${x.created_at.slice(0, 10)}` }))
     } else if (args.filtro === 'tag') {
       if (!args.tag) return { dados: { erro: 'Qual tag?' } }
       lista = (await ler(c.admin.from('clients').select('id, name, phone').eq('tenant_id', tenant).eq('is_active', true)
-        .contains('tags', [args.tag]).order('name').limit(50), 'ler os clientes da tag') as Lin[] | null) ?? []
+        .contains('tags', tagDaUnidade ? [args.tag, tagDaUnidade] : [args.tag]).order('name').limit(50), 'ler os clientes da tag') as Lin[] | null) ?? []
     } else {
-      const mes = args.mes ?? Number(new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', month: '2-digit' }).format(new Date()))
+      const mes = args.mes ?? Number(new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TZ, month: '2-digit' }).format(new Date()))
       // No banco (copilot_aniversariantes): ler a rede toda cortaria em mil linhas.
-      const achados = (await ler(c.admin.rpc('copilot_aniversariantes', { p_tenant: tenant, p_mes: mes, p_limite: 50 }), 'ler os aniversariantes') as
+      const achados = (await ler(c.admin.rpc('copilot_aniversariantes', { p_tenant: tenant, p_mes: mes, p_limite: 50, p_tag: tagDaUnidade }), 'ler os aniversariantes') as
         { id: string; name: string; phone: string | null; dia: number }[] | null) ?? []
       lista = achados.map(x => ({ id: x.id, name: x.name, phone: x.phone, detalhe: `dia ${String(x.dia).padStart(2, '0')}` }))
     }
 
     const itens = lista.map(x => ({ id: x.id, nome: x.name, telefone: x.phone, detalhe: x.detalhe ?? null, href: rota(c, `/clients/${x.id}`) }))
     return {
-      dados: { filtro: args.filtro, ...(total !== null ? { total } : {}), clientes: itens },
+      dados: { filtro: args.filtro, unidade: u.unidade?.name ?? 'todas as unidades', ...(total !== null ? { total } : {}), clientes: itens },
       cartao: itens.length ? { tipo: 'links', itens: itens.slice(0, 12).map(i => ({ texto: i.nome, detalhe: [i.detalhe, i.telefone].filter(Boolean).join(' · ') || undefined, href: i.href })) } : undefined,
     }
   },

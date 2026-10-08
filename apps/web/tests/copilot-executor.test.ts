@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
 import { NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
-import { ferramentasDoCargo, paraOModelo, contextoDoCopilot } from '@/lib/copilot/executor'
+import { ferramentasDoCargo, paraOModelo, contextoDoCopilot, canonico } from '@/lib/copilot/executor'
 import { copilotNoPlano } from '@/lib/copilot/disponivel'
 import { cotaDoCopilot, normalizarRecursos, lerRecursos, FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
@@ -86,5 +86,14 @@ describe('liberação e cota pelo plano', () => {
     expect(ok).toMatchObject({ ok: true, recursos: { cotas: { copilot: 1_000_000 } } })
     const ruim = normalizarRecursos({ funcionalidades: [], limites: { unidades: null, membros: null, whatsapp: null }, cotas: { copilot: 'muito' } })
     expect(ruim.ok).toBe(false)
+  })
+})
+
+describe('canonico', () => {
+  it('o resumo que voltou do jsonb (chaves reordenadas) é o MESMO cartão', () => {
+    const visto = { titulo: 'Agendar', linhas: [{ rotulo: 'Cliente', valor: 'Bia' }], aviso: 'x' }
+    const doBanco = { aviso: 'x', linhas: [{ valor: 'Bia', rotulo: 'Cliente' }], titulo: 'Agendar' }
+    expect(canonico(doBanco)).toBe(canonico(visto))
+    expect(canonico({ ...visto, linhas: [{ rotulo: 'Cliente', valor: 'Ana' }] })).not.toBe(canonico(visto))
   })
 })

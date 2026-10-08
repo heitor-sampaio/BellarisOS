@@ -4,6 +4,7 @@ import { alcancaUnidade } from '@/lib/auth'
 import { getCachedNetworkBranches } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
 import { zonedToUtc, BUSINESS_TZ } from '@/lib/datetime'
+export { BUSINESS_TZ }
 import { rotaNoPortal } from '@/lib/rotas'
 import type { ContextoDaFerramenta } from '@/lib/copilot/ferramentas/tipos'
 
@@ -104,6 +105,21 @@ export async function nomesPorId(c: ContextoDaFerramenta, tabela: 'users' | 'pro
   return new Map((linhas ?? []).map(l => [l.id, l.name]))
 }
 
+/**
+ * Os horários do profissional ocupados em OUTRAS unidades no dia (o
+ * profissional da rede atende em várias): `computeAvailableSlots` só olha a
+ * unidade pedida.
+ */
+export async function ocupadosEmOutrasUnidades(c: ContextoDaFerramenta, professionalId: string, unidadeId: string, data: string): Promise<{ inicio: number; fim: number }[]> {
+  const { inicio, fim } = janelaDoDia(data)
+  const linhas = (await ler(c.admin.from('appointments').select('scheduled_at, duration_min, branches!inner(tenant_id)')
+    .eq('professional_id', professionalId).neq('branch_id', unidadeId).eq('branches.tenant_id', c.ctx.tenantId!)
+    .not('status', 'in', '("CANCELLED","NO_SHOW")')
+    .gte('scheduled_at', inicio.toISOString()).lte('scheduled_at', fim.toISOString()), 'ler a agenda do profissional') as
+    { scheduled_at: string; duration_min: number }[] | null) ?? []
+  return linhas.map(l => ({ inicio: new Date(l.scheduled_at).getTime(), fim: new Date(l.scheduled_at).getTime() + (l.duration_min || 60) * 60000 }))
+}
+
 /** O texto curto do status do agendamento. */
 export const STATUS_DO_AGENDAMENTO: Record<string, string> = {
   SCHEDULED: 'agendado', CONFIRMED: 'confirmado', IN_PROGRESS: 'em atendimento',
@@ -129,14 +145,32 @@ export async function resolverProfissional(
   return { erro: `Mais de um profissional com "${pedido}": ${parecidos.map(u => u.name).join(', ')}. Qual?` }
 }
 
-/** Acha o procedimento ativo pelo id ou pelo nome. */
+/**
+ * Os procedimentos ativos que a unidade OFERECE: os dela, os da rede sem
+ * disponibilidade cadastrada, e os da rede com a unidade na disponibilidade
+ * (`procedure_branch_availability` — a regra do quadro e da busca universal).
+ */
+export async function procedimentosDaUnidade(c: ContextoDaFerramenta, unidadeId?: string | null, busca?: string) {
+  let q = c.admin.from('procedures').select('id, name, category, duration_min, price, branch_id, procedure_branch_availability(branch_id)')
+    .eq('tenant_id', c.ctx.tenantId!).eq('is_active', true).order('name').limit(300)
+  if (unidadeId) q = q.or(`branch_id.is.null,branch_id.eq.${unidadeId}`)
+  if (busca) q = q.ilike('name', `%${busca.replace(/[%_\\]/g, '')}%`)
+  const todos = (await ler(q, 'ler os procedimentos') as {
+    id: string; name: string; category: string | null; duration_min: number; price: number; branch_id: string | null
+    procedure_branch_availability: { branch_id: string }[] | null
+  }[] | null) ?? []
+  return todos.filter(p => {
+    if (!unidadeId) return true
+    const av = p.procedure_branch_availability ?? []
+    return !av.length || av.some(a => a.branch_id === unidadeId)
+  })
+}
+
+/** Acha o procedimento ativo pelo id ou pelo nome (entre os que a unidade oferece). */
 export async function resolverProcedimento(
   c: ContextoDaFerramenta, pedido: string, unidadeId?: string | null,
 ): Promise<{ id: string; name: string; duration_min: number; price: number } | { erro: string }> {
-  let q = c.admin.from('procedures').select('id, name, duration_min, price, branch_id')
-    .eq('tenant_id', c.ctx.tenantId!).eq('is_active', true)
-  if (unidadeId) q = q.or(`branch_id.is.null,branch_id.eq.${unidadeId}`)
-  const todos = (await ler(q.limit(300), 'ler os procedimentos') as { id: string; name: string; duration_min: number; price: number }[] | null) ?? []
+  const todos = await procedimentosDaUnidade(c, unidadeId)
   const p = pedido.trim().toLowerCase()
   const exatos = todos.filter(x => x.id === pedido || x.name.toLowerCase() === p)
   const parecidos = exatos.length ? exatos : todos.filter(x => x.name.toLowerCase().includes(p))
@@ -158,8 +192,16 @@ export async function resolverCliente(
   const termo = pedido.trim()
   const digitos = termo.replace(/\D/g, '')
   const letras = /\p{L}/u.test(termo)
-  let q = c.admin.from('clients').select('id, name, phone').eq('tenant_id', c.ctx.tenantId!).eq('is_active', true)
-  q = !letras && digitos.length >= 8 ? q.ilike('phone', `%${digitos.slice(-8)}%`) : q.ilike('name', `%${termo.replace(/[%_\\]/g, '')}%`)
+  // Telefone: por DÍGITOS, no banco (cliente_por_telefone) — o telefone é
+  // gravado como foi digitado, com ou sem máscara.
+  if (!letras && digitos.length >= 10) {
+    const { data: achado, error } = await c.admin.rpc('cliente_por_telefone', { p_tenant: c.ctx.tenantId!, p_digitos: digitos })
+    if (error) return { erro: 'Não consegui procurar o cliente agora.' }
+    if (!achado) return { erro: `Nenhum cliente com o telefone ${termo}.` }
+    return await ler(c.admin.from('clients').select('id, name, phone').eq('id', achado as string).single(), 'ler o cliente') as { id: string; name: string; phone: string | null }
+  }
+  const q = c.admin.from('clients').select('id, name, phone').eq('tenant_id', c.ctx.tenantId!).eq('is_active', true)
+    .ilike('name', `%${termo.replace(/[%_\\]/g, '')}%`)
   const achados = (await ler(q.limit(6), 'procurar o cliente') as { id: string; name: string; phone: string | null }[] | null) ?? []
   if (achados.length === 1) return achados[0]!
   if (!achados.length) return { erro: `Nenhum cliente com "${termo}".` }

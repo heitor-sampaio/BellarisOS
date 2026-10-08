@@ -186,8 +186,12 @@ export async function decidirAcao(
   // não pode virar "falhou" de algo que foi gravado.
   const resultado = await efetivarAcao(c, ctx, atual)
 
-  await gravar(admin.from('copilot_acoes').update({ status: resultado.status, resultado: resultado.resultado })
-    .eq('id', acaoId).select('id'), 'registrar o resultado da ação')
+  // Registrar o resultado NÃO pode lançar: a gravação já aconteceu (ou não), e
+  // a pessoa precisa saber. Uma nova tentativa; falhando as duas, fica no log e
+  // a ação aparece "executando" até a varredura dos 5 minutos.
+  const registrar = () => tentar(admin.from('copilot_acoes')
+    .update({ status: resultado.status, resultado: resultado.resultado }).eq('id', acaoId), 'registrar o resultado da ação')
+  if (!(await registrar())) await registrar()
   await tentar(admin.from('copilot_mensagens').insert({
     conversa_id: atual.conversa_id, tenant_id: ctx.tenantId!, papel: 'nota',
     conteudo: {
@@ -197,6 +201,16 @@ export async function decidirAcao(
     },
   }), 'anotar o resultado na conversa')
   return resultado
+}
+
+/** O JSON com as chaves em ordem: o jsonb do banco reordena as chaves do que guardou. */
+export function canonico(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonico).join(',')}]`
+  if (v && typeof v === 'object') {
+    return `{${Object.keys(v as object).sort().filter(k => (v as Record<string, unknown>)[k] !== undefined)
+      .map(k => `${JSON.stringify(k)}:${canonico((v as Record<string, unknown>)[k])}`).join(',')}}`
+  }
+  return JSON.stringify(v)
 }
 
 async function efetivarAcao(
@@ -217,7 +231,7 @@ async function efetivarAcao(
     if ('erro' in preparo) return falhou(preparo.erro)
     // E grava o que a pessoa VIU: se o preparo de agora resolveu outra coisa
     // (outra cliente com o mesmo nome, outro valor), não grava.
-    if (JSON.stringify(preparo.resumo) !== JSON.stringify(atual.resumo)) {
+    if (canonico(preparo.resumo) !== canonico(atual.resumo)) {
       return falhou('A situação mudou desde o cartão. Peça de novo ao Copilot para conferir.')
     }
     const r = await ferramenta.efetivar(cf, preparo.payload)

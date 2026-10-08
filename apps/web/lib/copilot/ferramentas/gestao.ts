@@ -5,7 +5,7 @@ import { ler } from '@/lib/db'
 import { addDaysTZ } from '@/lib/datetime'
 import { rotaOportunidade } from '@/lib/rotas'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, UUID, dinheiro, idsDasUnidades, janelaDoDia, nomesPorId, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
+import { DATA, UUID, dinheiro, hojeEmBrasilia, idsDasUnidades, janelaDoDia, nomesPorId, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 
 /**
  * As leituras de FINANCEIRO, ESTOQUE e OPORTUNIDADES.
@@ -40,29 +40,40 @@ export const lancamentos: FerramentaDeLeitura<{
     const situacao = args.situacao ?? 'em_aberto'
     const campoDaData = situacao === 'pagos' ? 'paid_at' : 'due_date'
 
+    // O vencimento é um DIA, gravado como meia-noite UTC ("AAAA-MM-DD"): compara
+    // pelo dia UTC. O pagamento é um instante: pela janela do dia em Brasília.
+    const hoje = hojeEmBrasilia()
+    const diaSeguinte = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString()
+
     let q = c.admin.from('financial_transactions')
-      .select('id, type, category, description, amount, payment_method, due_date, paid_at, is_paid, client_id, branch_id, parcela_numero, parcela_total')
+      .select('id, type, category, description, amount, payment_method, due_date, paid_at, is_paid, client_id, branch_id, parcela_numero, parcela_total, notes')
       .in('branch_id', unidades)
+      // O mesmo da tela do financeiro: sem o saldo zerado que o check-in substitui.
+      .or('is_paid.eq.true,amount.neq.0')
       .order(campoDaData, { ascending: situacao !== 'pagos', nullsFirst: false })
       .limit(50)
     if (args.tipo) q = q.eq('type', args.tipo === 'receita' ? 'INCOME' : 'EXPENSE')
     if (situacao === 'em_aberto') q = q.eq('is_paid', false)
-    if (situacao === 'vencidos') q = q.eq('is_paid', false).lt('due_date', new Date().toISOString())
+    if (situacao === 'vencidos') q = q.eq('is_paid', false).lt('due_date', `${hoje}T00:00:00Z`)
     if (situacao === 'pagos') q = q.eq('is_paid', true)
-    if (args.de) q = q.gte(campoDaData, janelaDoDia(args.de).inicio.toISOString())
-    if (args.ate) q = q.lte(campoDaData, janelaDoDia(args.ate).fim.toISOString())
+    if (campoDaData === 'due_date') {
+      if (args.de) q = q.gte('due_date', `${args.de}T00:00:00Z`)
+      if (args.ate) q = q.lt('due_date', diaSeguinte(args.ate))
+    } else {
+      if (args.de) q = q.gte('paid_at', janelaDoDia(args.de).inicio.toISOString())
+      if (args.ate) q = q.lte('paid_at', janelaDoDia(args.ate).fim.toISOString())
+    }
     if (args.cliente) q = q.eq('client_id', args.cliente)
 
     const linhas = (await ler(q, 'ler os lançamentos') as {
       id: string; type: string; category: string | null; description: string | null; amount: number; payment_method: string | null
       due_date: string | null; paid_at: string | null; is_paid: boolean; client_id: string | null; branch_id: string
-      parcela_numero: number | null; parcela_total: number | null
+      parcela_numero: number | null; parcela_total: number | null; notes: string | null
     }[] | null) ?? []
     const [clientes, filiais] = await Promise.all([
       nomesPorId(c, 'clients', linhas.map(l => l.client_id)),
       nomesPorId(c, 'branches', linhas.map(l => l.branch_id)),
     ])
-    const agora = Date.now()
     return {
       dados: {
         situacao, quantidade: linhas.length,
@@ -70,7 +81,9 @@ export const lancamentos: FerramentaDeLeitura<{
           id: l.id, tipo: l.type === 'INCOME' ? 'receita' : 'despesa',
           descricao: l.description ?? l.category, categoria: l.category, valor: dinheiro(l.amount),
           vencimento: l.due_date?.slice(0, 10) ?? null, pagoEm: l.paid_at?.slice(0, 10) ?? null,
-          situacao: l.is_paid ? 'pago' : (l.due_date && new Date(l.due_date).getTime() < agora ? 'vencido' : 'em aberto'),
+          situacao: l.notes === 'Estornada' ? 'estornado'
+            : l.is_paid ? 'pago'
+            : (l.due_date && l.due_date.slice(0, 10) < hoje ? 'vencido' : 'em aberto'),
           forma: l.payment_method ? (FORMA[l.payment_method] ?? l.payment_method) : null,
           cliente: l.client_id ? (clientes.get(l.client_id) ?? null) : null,
           unidade: filiais.get(l.branch_id) ?? null,
@@ -115,7 +128,26 @@ export const estoque: FerramentaDeLeitura<{
       return {
         dados: {
           filtro, ateODia: ate.slice(0, 10),
-          lotes: lotes.map(l => ({ produto: l.products.name, lote: l.batch_number, vence: l.expires_at.slice(0, 10), quantidade: `${Number(l.quantity)} ${l.products.unit ?? ''}`.trim(), unidade: filiais.get(l.branch_id) ?? null })),
+          lotes: lotes.map(l => ({
+            produto: l.products.name, lote: l.batch_number, vence: l.expires_at.slice(0, 10),
+            jaVenceu: new Date(l.expires_at).getTime() < Date.now(),
+            quantidade: `${Number(l.quantity)} ${l.products.unit ?? ''}`.trim(), unidade: filiais.get(l.branch_id) ?? null,
+          })),
+        },
+      }
+    }
+
+    if (filtro === 'abaixo_do_minimo') {
+      // No banco (copilot_estoque_critico): saldo <= mínimo, a régua da tela.
+      const criticos = (await ler(c.admin.rpc('copilot_estoque_critico', { p_tenant: c.ctx.tenantId!, p_branch_ids: unidades, p_limite: 60 }), 'ler o estoque crítico') as
+        { product_id: string; name: string; unit: string | null; branch_id: string; current_stock: number; min_stock: number }[] | null) ?? []
+      return {
+        dados: {
+          filtro,
+          itens: criticos.map(l => ({
+            produto: l.name, produtoId: l.product_id, unidade: filiais.get(l.branch_id) ?? null,
+            saldo: `${Number(l.current_stock)} ${l.unit ?? ''}`.trim(), minimo: Number(l.min_stock),
+          })),
         },
       }
     }
@@ -123,7 +155,7 @@ export const estoque: FerramentaDeLeitura<{
     let q = c.admin.from('branch_product_stock')
       .select('current_stock, min_stock, branch_id, products!inner(id, name, unit, tenant_id, is_active)')
       .in('branch_id', unidades).eq('products.tenant_id', c.ctx.tenantId!).eq('products.is_active', true)
-      .limit(300)
+      .order('current_stock').limit(60)
     if (filtro === 'produto') {
       if (!args.produto) return { dados: { erro: 'Qual produto?' } }
       q = q.ilike('products.name', `%${args.produto.replace(/[%_\\]/g, '')}%`)
@@ -132,13 +164,10 @@ export const estoque: FerramentaDeLeitura<{
     const linhas = (await ler(q, 'ler o estoque') as unknown as {
       current_stock: number; min_stock: number | null; branch_id: string; products: { id: string; name: string; unit: string | null }
     }[] | null) ?? []
-    const filtradas = filtro === 'abaixo_do_minimo'
-      ? linhas.filter(l => Number(l.min_stock ?? 0) > 0 && Number(l.current_stock) < Number(l.min_stock))
-      : linhas
     return {
       dados: {
         filtro,
-        itens: filtradas.slice(0, 60).map(l => ({
+        itens: linhas.map(l => ({
           produto: l.products.name, produtoId: l.products.id, unidade: filiais.get(l.branch_id) ?? null,
           saldo: `${Number(l.current_stock)} ${l.products.unit ?? ''}`.trim(), minimo: l.min_stock != null ? Number(l.min_stock) : null,
         })),
@@ -184,8 +213,14 @@ export const oportunidades: FerramentaDeLeitura<{ funil?: string; etapa?: string
     const dono = ownerFilter(c.ctx, 'crm')
     if (dono) q = q.or(`owner_id.is.null,owner_id.eq.${dono}`)
     if (args.busca) {
-      const t = args.busca.replace(/[%_\\,()]/g, '')
-      q = q.or(`name.ilike.%${t}%,phone.ilike.%${t.replace(/\D/g, '') || t}%`)
+      // Sem os caracteres que mexem no filtro do PostgREST (vírgula, parênteses, aspas).
+      const t = args.busca.replace(/[%_\\,()"'.:]/g, '').trim()
+      const digitos = t.replace(/\D/g, '')
+      // Telefone pelos dígitos só quando o termo é um telefone (sem letra): a
+      // regra da busca (docs/regras/busca.md) — "Maria 11" não acha todo 11.
+      q = !/\p{L}/u.test(t) && digitos.length >= 8
+        ? q.ilike('phone', `%${digitos.slice(-8)}%`)
+        : q.ilike('name', `%${t}%`)
     }
     const linhas = (await ler(q, 'ler as oportunidades') as { id: string; name: string; phone: string | null; value: number | null; owner_id: string | null; crm_stage_id: string }[] | null) ?? []
     const donos = await nomesPorId(c, 'users', linhas.map(l => l.owner_id))

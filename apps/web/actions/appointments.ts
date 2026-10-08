@@ -2,17 +2,16 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { after } from 'next/server'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import { getTenantContext, assertClient, assertPermission, isOwnScope, alcancaUnidade, can } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { gravar, ler, tentar, contar, mensagemDoErro } from '@/lib/db'
+import { gravar, ler, contar, mensagemDoErro } from '@/lib/db'
 import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
-import { notificadorDoCliente, notifyUser } from '@/lib/notifications/notify'
+import { notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento } from '@/lib/appointments/core'
+import { cancelarCore, remarcarCore } from '@/lib/appointments/alteracoes'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
 import { emitirEventoClinico } from '@/lib/events/clinico'
@@ -20,7 +19,6 @@ import { EVENTOS, type NomeDeEvento } from '@estetica-os/types'
 import { garantirClienteRapido } from '@/lib/clients/cliente-rapido'
 import { periodRef, dayKeyTZ, partsInTZ } from '@/lib/datetime'
 import { linhasDoAtendimento } from '@/lib/comissoes/leitura'
-import { notificarInteressados } from '@/lib/notifications/interessados'
 import { semAcesso } from '@/lib/sem-acesso'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { calcularDescontoComPontos, maximoDePontos } from '@/lib/fidelidade/resgate'
@@ -29,193 +27,9 @@ import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import { lerCredito } from '@/lib/creditos/credito'
 
-// --- Helpers internos ---------------------------------------------
-async function getUserName(admin: ReturnType<typeof createAdminClient>, authId: string): Promise<string> {
-  const data = await ler(admin.from('users').select('name').eq('auth_id', authId).maybeSingle(), 'buscar o usuário')
-  return data?.name ?? 'Usuário'
-}
-
-async function logHistory(
-  admin: ReturnType<typeof createAdminClient>,
-  appointmentId: string,
-  internalUserId: string | null,
-  userName: string,
-  action: string,
-  description: string,
-  metadata?: Record<string, unknown>,
-): Promise<void> {
-  if (!internalUserId) return
-  await tentar(admin.from('appointment_history').insert({
-    appointment_id:  appointmentId,
-    changed_by_id:   internalUserId,
-    changed_by_name: userName,
-    action,
-    description,
-    metadata: metadata ?? null,
-  }), 'registrar no histórico do agendamento')
-}
-
-// ─── Notificações de eventos de agendamento ───────────────────────────────────
-// Disparadas via after() — rodam APÓS a resposta da action, sem atrasá-la.
-
-function fmtDateTime(iso: string): string {
-  try { return format(new Date(iso), "dd/MM 'às' HH:mm", { locale: ptBR }) } catch { return '' }
-}
-
-type ApptCtx = {
-  clientId: string; professionalId: string | null
-  /** Unidade onde o fato aconteceu — e ela que define quem e responsavel. */
-  branchId: string | null
-  clientName: string; procedureName: string; scheduledAt: string
-  slug: string
-}
-
-async function loadApptCtx(
-  admin: ReturnType<typeof createAdminClient>,
-  appointmentId: string,
-): Promise<ApptCtx | null> {
-  const data = await ler(admin
-    .from('appointments')
-    .select('client_id, professional_id, branch_id, scheduled_at, clients(name), procedures(name), branches(slug)')
-    .eq('id', appointmentId)
-    .maybeSingle(), 'buscar o agendamento')
-  if (!data) return null
-  return {
-    clientId:       data.client_id as string,
-    professionalId: (data.professional_id ?? null) as string | null,
-    branchId:       (data.branch_id ?? null) as string | null,
-    clientName:     ((data.clients as unknown as { name?: string } | null)?.name ?? 'Cliente'),
-    procedureName:  ((data.procedures as unknown as { name?: string } | null)?.name ?? 'Atendimento'),
-    scheduledAt:    data.scheduled_at as string,
-    slug:           ((data.branches as unknown as { slug?: string } | null)?.slug ?? ''),
-  }
-}
-
-/**
- * Novo agendamento → cliente ('confirmado') + as partes interessadas.
- *
- * "Interessadas" não é mais só o profissional: quem gerencia a agenda da
- * unidade também precisa saber que entrou horário novo. Quem MARCOU sai da
- * lista — ver `interessadosNoFato`. Pedido do Heitor em 2026-09-25.
- */
-function notifyNewAppointment(appointmentId: string, ator?: string | null): void {
-  const avisarCliente = notificadorDoCliente()
-  after(async () => {
-    const admin = createAdminClient()
-    const c = await loadApptCtx(admin, appointmentId)
-    if (!c) return
-    const when = fmtDateTime(c.scheduledAt)
-    const data = { appointment_id: appointmentId }
-    await avisarCliente(admin, c.clientId, {
-      type: 'appointment_confirmed', title: 'Agendamento confirmado',
-      body: `${c.procedureName} em ${when}.`, data,
-    })
-    await notificarInteressados(admin,
-      { modulo: 'agenda', branchId: c.branchId, envolvidos: [c.professionalId], ator },
-      {
-        type: 'appointment_new', title: 'Novo agendamento',
-        body: `${c.clientName} — ${c.procedureName} em ${when}.`, data,
-      })
-  })
-}
-
-/** Cancelamento → cliente + as partes interessadas. */
-function notifyCancelledAppointment(appointmentId: string, reason?: string | null, ator?: string | null): void {
-  const avisarCliente = notificadorDoCliente()
-  after(async () => {
-    const admin = createAdminClient()
-    const c = await loadApptCtx(admin, appointmentId)
-    if (!c) return
-    const when = fmtDateTime(c.scheduledAt)
-    const motivo = reason?.trim() ? ` Motivo: ${reason.trim()}.` : ''
-    const data = { appointment_id: appointmentId }
-    await avisarCliente(admin, c.clientId, {
-      type: 'appointment_cancelled', title: 'Agendamento cancelado',
-      body: `${c.procedureName} de ${when} foi cancelado.${motivo}`, data,
-    })
-    await notificarInteressados(admin,
-      { modulo: 'agenda', branchId: c.branchId, envolvidos: [c.professionalId], ator },
-      {
-        type: 'appointment_cancelled', title: 'Agendamento cancelado',
-        body: `${c.clientName} — ${c.procedureName} de ${when} foi cancelado.${motivo}`, data,
-      })
-  })
-}
-
-/** Remarcação → cliente + as partes interessadas, com o novo horário. */
-function notifyRescheduledAppointment(appointmentId: string, ator?: string | null): void {
-  const avisarCliente = notificadorDoCliente()
-  after(async () => {
-    const admin = createAdminClient()
-    const c = await loadApptCtx(admin, appointmentId)
-    if (!c) return
-    const when = fmtDateTime(c.scheduledAt)
-    const data = { appointment_id: appointmentId }
-    await avisarCliente(admin, c.clientId, {
-      type: 'appointment_rescheduled', title: 'Agendamento remarcado',
-      body: `Novo horário: ${c.procedureName} em ${when}.`, data,
-    })
-    await notificarInteressados(admin,
-      { modulo: 'agenda', branchId: c.branchId, envolvidos: [c.professionalId], ator },
-      {
-        type: 'appointment_rescheduled', title: 'Agendamento remarcado',
-        body: `${c.clientName} — novo horário: ${when}.`, data,
-      })
-  })
-}
-
-/**
- * Check-in → profissional, e só ele.
- *
- * Aqui a parte interessada é uma: quem vai atender precisa saber que a pessoa
- * chegou. Avisar a gerência de cada chegada seria um sino tocando o dia
- * inteiro — e sino que toca sempre deixa de ser lido.
- */
-function notifyCheckin(appointmentId: string): void {
-  after(async () => {
-    const admin = createAdminClient()
-    const c = await loadApptCtx(admin, appointmentId)
-    if (!c?.professionalId) return
-    await notifyUser(admin, c.professionalId, {
-      type: 'client_checkin', title: 'Cliente chegou',
-      body: `${c.clientName} fez check-in para ${c.procedureName}.`,
-      data: { appointment_id: appointmentId },
-    })
-  })
-}
-
-/** Conclusão → cliente: pedir confirmação + avaliação do atendimento. */
-function notifyCompleted(appointmentId: string): void {
-  const avisarCliente = notificadorDoCliente()
-  after(async () => {
-    const admin = createAdminClient()
-    const c = await loadApptCtx(admin, appointmentId)
-    if (!c) return
-    await avisarCliente(admin, c.clientId, {
-      type: 'appointment_completed', title: 'Confirme seu atendimento',
-      body: `Seu ${c.procedureName} foi concluído. Confirme e avalie pelo app.`,
-      data: {
-        appointment_id: appointmentId,
-        link: c.slug ? `/${c.slug}/cliente/atendimentos/${appointmentId}/confirmar` : undefined,
-      },
-    })
-  })
-}
-
-/** Pagamento confirmado → cliente. */
-function notifyPayment(appointmentId: string): void {
-  const avisarCliente = notificadorDoCliente()
-  after(async () => {
-    const admin = createAdminClient()
-    const c = await loadApptCtx(admin, appointmentId)
-    if (!c) return
-    await avisarCliente(admin, c.clientId, {
-      type: 'payment_received', title: 'Pagamento confirmado',
-      body: `Pagamento do ${c.procedureName} confirmado.`,
-      data: { appointment_id: appointmentId },
-    })
-  })
-}
+import {
+  getUserName, logHistory, fmtDateTime, loadApptCtx, notifyNewAppointment, notifyCancelledAppointment, notifyRescheduledAppointment, notifyCheckin, notifyCompleted, notifyPayment,
+} from '@/lib/appointments/avisos'
 
 // --- Criar agendamento --------------------------------------------
 export async function addAppointment(
@@ -727,27 +541,9 @@ async function cancelAppointmentSessionInterno(
 
     if (!cancellationReason) return { error: 'Informe o motivo do cancelamento.' }
 
-    const admin = createAdminClient()
-    const appt = await ler(admin
-      .from('appointments')
-      .select('id, status, branches!inner(id, tenant_id)')
-      .eq('id', appointmentId)
-      .single(), 'buscar o agendamento')
-
-    const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, apptBranch.id)) return { error: 'Agendamento não encontrado.' }
-    if (['COMPLETED', 'CANCELLED', 'NO_SHOW'].includes(appt.status as string)) return { error: 'Agendamento já finalizado.' }
-
-    await gravar(admin.from('appointments').update({
-      status:               'CANCELLED',
-      cancelled_at:         new Date().toISOString(),
-      cancellation_reason:  cancellationReason,
-    }).eq('id', appointmentId), 'cancelar a sessão')
-
-    const userName = ctx.userName || await getUserName(admin, ctx.userId)
-    await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'CANCELLED',
-      `Cancelado: ${cancellationReason}`)
-    await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CANCELADO, appointmentId, { ...ctx, userName }, { motivo: cancellationReason })
+    // O núcleo (lib/appointments/alteracoes.ts) é o mesmo do Copilot.
+    const r = await cancelarCore(createAdminClient(), ctx, { appointmentId, motivo: cancellationReason })
+    if ('error' in r) return { error: r.error }
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)
@@ -1204,44 +1000,10 @@ export async function rescheduleAppointment(
 
     if (!appointmentId || !scheduledAt) return { error: 'Dados inválidos.' }
 
-    const admin = createAdminClient()
-
-    // Verifica que o agendamento pertence ao tenant antes de atualizar
-    const existing = await ler(admin
-      .from('appointments')
-      // `scheduled_at` entra aqui para o evento poder dizer DE QUANDO para
-      // quando: uma automação de remarcação quase sempre quer comparar os dois.
-      .select('id, branch_id, scheduled_at, branches!inner(id, tenant_id)')
-      .eq('id', appointmentId)
-      .single(), 'buscar o agendamento')
-
-    const branch = existing?.branches as unknown as { id: string; tenant_id: string } | null
-    if (!existing || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, branch.id)) {
-      return { error: 'Agendamento não encontrado.' }
-    }
-    // O profissional novo vinha do formulário sem conferência nenhuma.
-    const recusa = await conferirPecasDoAgendamento(admin, ctx, { professionalId: professionalId || null })
-    if (recusa) return { error: recusa }
-
-    const { error } = await admin
-      .from('appointments')
-      .update({
-        scheduled_at:    scheduledAt,
-        professional_id: professionalId || undefined,
-        updated_at:      new Date().toISOString(),
-      })
-      .eq('id', appointmentId)
-
-    if (error) return { error: `Erro ao reagendar: ${error.message}` }
-
-    const userName = ctx.userName || await getUserName(admin, ctx.userId)
-    const dt = new Date(scheduledAt)
-    const dtStr = dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-    await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'RESCHEDULED',
-      `Reagendado para ${dtStr}`, { scheduled_at: scheduledAt })
-    await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_REMARCADO, appointmentId, { ...ctx, userName }, {
-      deAgendadoPara: (existing?.scheduled_at as string) ?? null,
-    })
+    // O núcleo (lib/appointments/alteracoes.ts) é o mesmo do Copilot — e
+    // agora confere o conflito do profissional, que a remarcação não conferia.
+    const r = await remarcarCore(createAdminClient(), ctx, { appointmentId, scheduledAt, professionalId: professionalId || null })
+    if ('error' in r) return { error: r.error }
 
     if (slug) revalidatePath(`/${slug}/agenda`)
     revalidatePath('/admin/agenda')

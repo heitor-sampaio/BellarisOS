@@ -2,12 +2,11 @@ import 'server-only'
 import { z } from 'zod/v4'
 import { REPORT_TABS, type ReportTab } from '@estetica-os/types'
 import { can, isOwnScope, podeVerRelatorio } from '@/lib/auth'
-import { ler } from '@/lib/db'
 import { resolvePeriod } from '@/lib/metrics/period'
 import { getCore, getLeadFunnel } from '@/lib/metrics/queries'
 import { getRelatorio } from '@/lib/metrics/relatorio'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, dinheiro, idsDasUnidades, nomesPorId, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
+import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 
 /**
  * PROCEDIMENTOS (o catálogo) e INDICADORES.
@@ -26,11 +25,8 @@ export const procedimentos: FerramentaDeLeitura<{ busca?: string; unidade?: stri
   async executar(c, args) {
     const u = await resolverUnidade(c, args.unidade)
     if ('erro' in u) return { dados: { erro: u.erro } }
-    let q = c.admin.from('procedures').select('id, name, category, duration_min, price, branch_id')
-      .eq('tenant_id', c.ctx.tenantId!).eq('is_active', true).order('name').limit(150)
-    if (u.unidade) q = q.or(`branch_id.is.null,branch_id.eq.${u.unidade.id}`)
-    if (args.busca) q = q.ilike('name', `%${args.busca.replace(/[%_\\]/g, '')}%`)
-    const linhas = (await ler(q, 'ler os procedimentos') as { id: string; name: string; category: string | null; duration_min: number; price: number }[] | null) ?? []
+    // Os que a unidade OFERECE (disponibilidade por unidade incluída).
+    const linhas = (await procedimentosDaUnidade(c, u.unidade?.id ?? c.ctx.branchId, args.busca)).slice(0, 150)
     return {
       dados: {
         procedimentos: linhas.map(p => ({ id: p.id, nome: p.name, categoria: p.category, duracaoMin: p.duration_min, preco: dinheiro(p.price) })),

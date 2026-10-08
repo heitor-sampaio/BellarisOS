@@ -1,0 +1,118 @@
+import 'server-only'
+import type { TenantContext } from '@estetica-os/types'
+import { EVENTOS } from '@estetica-os/types'
+import { alcancaUnidade } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { gravar, ler } from '@/lib/db'
+import { conferirPecasDoAgendamento } from '@/lib/appointments/core'
+import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
+import { getUserName, logHistory } from '@/lib/appointments/avisos'
+
+/**
+ * REMARCAR e CANCELAR um agendamento — os núcleos que a agenda (actions/
+ * appointments.ts) e o Copilot dividem (2026-10-08). Como o
+ * `createAppointmentCore`: não conferem o MÓDULO (quem chama confere — a tela
+ * com `assertPermission`, o Copilot pelo executor), conferem tudo o mais
+ * (rede, unidade ao alcance, peças, conflito). Não avisam: o aviso é do
+ * chamador (`notifyRescheduledAppointment`/`notifyCancelledAppointment`),
+ * depois que a resposta sai.
+ */
+
+type Admin = ReturnType<typeof createAdminClient>
+
+const IGNORADOS = '("CANCELLED","NO_SHOW")'
+const FINALIZADOS = ['COMPLETED', 'CANCELLED', 'NO_SHOW']
+
+export interface AgendamentoAoAlcance {
+  id: string; branch_id: string; status: string; scheduled_at: string
+  professional_id: string | null; duration_min: number
+}
+
+/** O agendamento, se for da rede E de uma unidade ao alcance. */
+export async function agendamentoAoAlcance(admin: Admin, ctx: TenantContext, id: string): Promise<AgendamentoAoAlcance | null> {
+  const a = await ler(admin.from('appointments')
+    .select('id, branch_id, status, scheduled_at, professional_id, duration_min, branches!inner(id, tenant_id)')
+    .eq('id', id).maybeSingle(), 'buscar o agendamento')
+  const branch = a?.branches as unknown as { id: string; tenant_id: string } | null
+  if (!a || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, branch.id)) return null
+  return a as unknown as AgendamentoAoAlcance
+}
+
+/**
+ * O profissional tem outro agendamento que encosta neste horário? (O mesmo
+ * critério do `createAppointmentCore`, sem contar o próprio agendamento.)
+ */
+async function conflitoDoProfissional(admin: Admin, a: {
+  id: string; branchId: string; professionalId: string; inicio: Date; duracaoMin: number
+}): Promise<boolean> {
+  const fim = new Date(a.inicio.getTime() + a.duracaoMin * 60000).toISOString()
+  const comeco = new Date(a.inicio.getTime() - a.duracaoMin * 60000).toISOString()
+  const achados = await ler(admin.from('appointments').select('id')
+    .eq('branch_id', a.branchId).eq('professional_id', a.professionalId)
+    .not('status', 'in', IGNORADOS).neq('id', a.id)
+    .lt('scheduled_at', fim).gt('scheduled_at', comeco)
+    .limit(1), 'conferir o horário do profissional') as { id: string }[] | null
+  return !!achados?.length
+}
+
+export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
+  appointmentId: string
+  /** ISO, em UTC. */
+  scheduledAt: string
+  /** Vazio: fica o profissional de antes. */
+  professionalId?: string | null
+}): Promise<{ ok: true; deAgendadoPara: string } | { error: string }> {
+  const existente = await agendamentoAoAlcance(admin, ctx, input.appointmentId)
+  if (!existente) return { error: 'Agendamento não encontrado.' }
+  if (FINALIZADOS.includes(existente.status)) return { error: 'Este agendamento já foi finalizado.' }
+  const inicio = new Date(input.scheduledAt)
+  if (Number.isNaN(inicio.getTime())) return { error: 'Data inválida.' }
+
+  // O profissional novo vinha do formulário sem conferência nenhuma.
+  const recusa = await conferirPecasDoAgendamento(admin, ctx, { professionalId: input.professionalId || null })
+  if (recusa) return { error: recusa }
+
+  // Conflito: remarcar para cima de outro agendamento do mesmo profissional
+  // passava (a criação conferia; a remarcação, não — até 2026-10-08).
+  const profissional = input.professionalId || existente.professional_id
+  if (profissional && await conflitoDoProfissional(admin, {
+    id: existente.id, branchId: existente.branch_id, professionalId: profissional,
+    inicio, duracaoMin: existente.duration_min || 60,
+  })) {
+    return { error: 'Este profissional já tem agendamento nesse horário.' }
+  }
+
+  await gravar(admin.from('appointments').update({
+    scheduled_at:    inicio.toISOString(),
+    professional_id: input.professionalId || undefined,
+    updated_at:      new Date().toISOString(),
+  }).eq('id', existente.id).select('id'), 'reagendar')
+
+  const userName = ctx.userName || await getUserName(admin, ctx.userId)
+  const dtStr = inicio.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  await logHistory(admin, existente.id, ctx.internalUserId, userName, 'RESCHEDULED',
+    `Reagendado para ${dtStr}`, { scheduled_at: inicio.toISOString() })
+  await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_REMARCADO, existente.id, { ...ctx, userName }, {
+    deAgendadoPara: existente.scheduled_at ?? null,
+  })
+  return { ok: true, deAgendadoPara: existente.scheduled_at }
+}
+
+export async function cancelarCore(admin: Admin, ctx: TenantContext, input: {
+  appointmentId: string; motivo: string
+}): Promise<{ ok: true } | { error: string }> {
+  const motivo = input.motivo.trim()
+  if (!motivo) return { error: 'Informe o motivo do cancelamento.' }
+  const existente = await agendamentoAoAlcance(admin, ctx, input.appointmentId)
+  if (!existente) return { error: 'Agendamento não encontrado.' }
+  if (FINALIZADOS.includes(existente.status)) return { error: 'Agendamento já finalizado.' }
+
+  await gravar(admin.from('appointments').update({
+    status: 'CANCELLED', cancelled_at: new Date().toISOString(), cancellation_reason: motivo,
+  }).eq('id', existente.id).select('id'), 'cancelar a sessão')
+
+  const userName = ctx.userName || await getUserName(admin, ctx.userId)
+  await logHistory(admin, existente.id, ctx.internalUserId, userName, 'CANCELLED', `Cancelado: ${motivo}`)
+  await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CANCELADO, existente.id, { ...ctx, userName }, { motivo })
+  return { ok: true }
+}
