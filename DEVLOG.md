@@ -1340,6 +1340,31 @@ estão em `docs/regras/copilot.md`.
     uma; agora numa transação com a linha travada;
   - o proxy cortava corpos acima de 10 MB (o anexo de 16 MB do inbox chegava
     truncado): `proxyClientMaxBodySize` 25 MB.
+- **A revisão final** (o agente paralelo, sobre o conjunto) achou mais, e saiu
+  junto:
+  - três caminhos da agenda gravavam por cima de horário ocupado: trocar o
+    profissional, marcar a sessão de um plano e o checkout do plano (este
+    agora recusa ANTES do dinheiro) — `e2e/agenda-conflito-caminhos.spec.ts`;
+  - confirmar e atualizar o cadastro tinham a lógica copiada no Copilot:
+    viraram `confirmarCore` (`lib/appointments/alteracoes.ts`, com a guarda
+    do status) e `atualizarClienteCore` (`lib/clients/atualizar.ts`), que a
+    tela também usa; o Copilot passou a revalidar a agenda dos dois portais;
+  - a despesa RECORRENTE ainda gravava o vencimento à meia-noite UTC (e
+    contava os meses no fuso do servidor): `vencimentosRecorrentes`
+    (`lib/financeiro/vencimentos.ts`), meio-dia de Brasília, e o dia 31 cai
+    no último dia do mês curto. Nenhum lançamento do banco estava à
+    meia-noite UTC — sem migration de acerto;
+  - a cota não contava a transcrição da voz nem a volta que falha ou cai no
+    meio (a OpenAI cobra): agora conta (`aoGastar`, com estimativa quando
+    não vem o `usage`); o percentual arredonda para baixo; o campo da cota
+    no sistema lê "2.5" como 2,5 milhões (era 25) e mostra o total em tokens;
+  - a política de privacidade prometia demais: o que a equipe ANEXA vai
+    inteiro à OpenAI (o texto diz isso, e o aviso de não mandar material
+    clínico); o CPF do cartão volta ao modelo mascarado;
+  - a retenção tira também a mensagem e a ação de mais de 90 dias de uma
+    conversa que segue em uso;
+  - as funções de estoque tratavam embalagem 0 / unidade vazia como
+    rendimento (migration `20261008000006`, a regra do `getUpp`).
 - **Testes**: a OpenAI falsa (porta 3196) roteirizada; specs `copilot-*`
   (esqueleto, leituras, gravações, gestão, mídia, voz, suporte, cota).
 
@@ -5851,6 +5876,17 @@ verdade. O que vale:
   trocar o próprio plano.
 
 ### Dívida técnica conhecida
+
+- **O que a revisão do Copilot deixou para depois** (2026-10-08):
+  - a TRANSFERÊNCIA de estoque e a baixa do `concluir_atendimento` ainda gravam
+    o saldo absoluto (ler → gravar): duas ao mesmo tempo perdem uma, como era
+    a entrada. O caminho é o mesmo de `estoque_entrada`: a linha travada numa
+    função do banco;
+  - o expurgo da LGPD não procura o cliente nas conversas do Copilot (o nome
+    pode estar no texto); a retenção de 90 dias é o limite;
+  - do plano original ficaram de fora: o check-in pelo Copilot, o cadastro
+    completo com acesso ao portal, a leitura de docx/xlsx ("mande em PDF") e
+    o custo estimado em reais no uso do mês.
 
 - ~~**Comissões, fases 2 e 3**~~ **concluídas em 2026-09-30** (ver a linha do
   tempo). O que ficou de fora de propósito:

@@ -1,6 +1,6 @@
 import { createAdminClient } from '../supabase/admin'
 import { ler } from '../db'
-import { cotaDoCopilot } from './recursos'
+import { cotaDoCopilot, percentualDaCota } from './recursos'
 
 /**
  * O consumo do Copilot no mês (de Brasília) — `copilot_uso_mensal`, somado a
@@ -30,7 +30,7 @@ export async function usoDoCopilot(admin: Admin, tenantId: string, recursos: { c
     .eq('tenant_id', tenantId).eq('mes', mesDeBrasilia()).maybeSingle(), 'ler o uso do Copilot') as { tokens: number } | null
   const tokens = Number(linha?.tokens ?? 0)
   const cota = cotaDoCopilot(recursos)
-  return { tokens, cota, percentual: cota === null ? null : Math.min(100, Math.round((tokens / cota) * 100)) }
+  return { tokens, cota, percentual: percentualDaCota(tokens, cota) }
 }
 
 /** "600 tokens · 100% da cota" / "1,2 mi tokens · sem limite". */

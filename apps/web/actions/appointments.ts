@@ -10,8 +10,8 @@ import {
   getCachedBranchProfessionals, getCachedBranchProcedures, getCachedRoomsByBranch,
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
-import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento } from '@/lib/appointments/core'
-import { cancelarCore, remarcarCore } from '@/lib/appointments/alteracoes'
+import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
+import { cancelarCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
 import { emitirEventoClinico } from '@/lib/events/clinico'
@@ -109,7 +109,6 @@ export async function updateAppointmentStatus(
   const now = new Date().toISOString()
   const fields: Record<string, unknown> = { status }
 
-  if (status === 'CONFIRMED')   fields.confirmed_at  = now
   if (status === 'IN_PROGRESS') fields.started_at    = now
   if (status === 'CANCELLED')   { fields.cancelled_at = now; fields.cancellation_reason = cancellationReason }
 
@@ -117,6 +116,14 @@ export async function updateAppointmentStatus(
 
   if (status === 'COMPLETED') {
     await completeAppointment(appointmentId, slug, ctx)
+    return
+  }
+
+  // Confirmar é o núcleo que a agenda e o Copilot dividem (lib/appointments/alteracoes.ts).
+  if (status === 'CONFIRMED') {
+    const r = await confirmarCore(createAdminClient(), ctx, appointmentId)
+    if ('error' in r) throw new Error(r.error)
+    revalidarAgendamento(ctx, appointmentId, slug)
     return
   }
 
@@ -173,13 +180,7 @@ export async function updateAppointmentStatus(
 
   // Os dois portais olham a mesma agenda: confirmar pela rede tem de aparecer
   // na unidade, e vice-versa.
-  if (slug) {
-    revalidatePath(`/${slug}/agenda`)
-    revalidatePath(`/${slug}/agenda/${appointmentId}`)
-  }
-  revalidatePath('/admin/agenda')
-  revalidatePath(`/admin/agenda/${appointmentId}`)
-  revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
+  revalidarAgendamento(ctx, appointmentId, slug)
   if (status === 'CANCELLED') notifyCancelledAppointment(appointmentId, cancellationReason, ctx.internalUserId)
 }
 
@@ -456,7 +457,7 @@ async function reassignProfessionalInterno(
     const admin = createAdminClient()
     const appt = await ler(admin
       .from('appointments')
-      .select('id, status, professional_id, branches!inner(id, tenant_id)')
+      .select('id, status, professional_id, scheduled_at, duration_min, branches!inner(id, tenant_id)')
       .eq('id', appointmentId)
       .single(), 'buscar o agendamento')
 
@@ -469,6 +470,14 @@ async function reassignProfessionalInterno(
     // O profissional novo tem de ser da rede — vinha do navegador sem conferência.
     const recusaProf = await conferirPecasDoAgendamento(admin, ctx, { professionalId })
     if (recusaProf) return { error: recusaProf }
+    // E livre no horário do agendamento (revisão de 2026-10-08: a troca punha
+    // o atendimento por cima de outro do profissional novo).
+    if (professionalId !== appt.professional_id && await horarioOcupado(admin, {
+      tenantId: ctx.tenantId!, professionalId, inicio: new Date(appt.scheduled_at as string),
+      duracaoMin: (appt.duration_min as number | null) ?? 60, excluir: appointmentId,
+    })) {
+      return { error: 'Este profissional já tem agendamento nesse horário.' }
+    }
 
     const oldProfId = (appt.professional_id ?? null) as string | null
     const newProf = await ler(admin.from('users').select('name').eq('id', professionalId).single(), 'buscar o usuário')
@@ -1309,6 +1318,13 @@ async function schedulePlanSessionInterno(params: {
     branchId: params.branchId, professionalId: params.professionalId, clientId: params.clientId,
   }) ?? await procedimentoDaRedeOuRecusa(admin, params.procedureId, ctx.tenantId!)
   if (recusa) return { error: recusa }
+  // E o horário livre (revisão de 2026-10-08: marcava por cima de outro).
+  if (await horarioOcupado(admin, {
+    tenantId: ctx.tenantId!, professionalId: params.professionalId,
+    inicio: new Date(params.scheduledAt), duracaoMin: params.durationMin || 60,
+  })) {
+    return { error: 'Este profissional já tem agendamento nesse horário.' }
+  }
 
   const { data: appt, error: apptErr } = await admin
     .from('appointments')

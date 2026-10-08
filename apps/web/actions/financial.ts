@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { dividirEmParcelas, rotuloDaParcela } from '@/lib/checkout/parcelas'
 import { lancarCore, marcarPagoCore } from '@/lib/financeiro/lancamento'
+import { vencimentoDoDia, vencimentosRecorrentes, type FrequenciaRecorrente } from '@/lib/financeiro/vencimentos'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -21,21 +22,6 @@ function num(fd: FormData, key: string): number | null {
 //
 // (Aqui havia um `createTransaction` sem conferência de unidade e sem nenhum
 // chamador: endpoint aberto que lançava em qualquer rede. Saiu em 2026-09-27.)
-
-type RecurringFreq = 'weekly' | 'biweekly' | 'monthly' | 'bimonthly' | 'quarterly' | 'yearly'
-
-function addFrequency(date: Date, freq: RecurringFreq, n: number): Date {
-  const d = new Date(date)
-  switch (freq) {
-    case 'weekly':     d.setDate(d.getDate() + 7 * n);   break
-    case 'biweekly':   d.setDate(d.getDate() + 14 * n);  break
-    case 'monthly':    d.setMonth(d.getMonth() + n);      break
-    case 'bimonthly':  d.setMonth(d.getMonth() + 2 * n); break
-    case 'quarterly':  d.setMonth(d.getMonth() + 3 * n); break
-    case 'yearly':     d.setFullYear(d.getFullYear() + n); break
-  }
-  return d
-}
 
 export async function createTransactionAdvanced(
   _prev: { error?: string; success?: boolean } | undefined,
@@ -84,9 +70,7 @@ export async function createTransactionAdvanced(
       // Cada parcela, um lançamento com o seu vencimento (2026-09-30): a despesa
       // inteira num lançamento só aparecia no mês da compra e se pagava de uma vez.
       const grupo = crypto.randomUUID()
-      const primeiro = /^\d{4}-\d{2}-\d{2}$/.test(firstDue)
-        ? new Date(`${firstDue}T12:00:00-03:00`).toISOString()
-        : new Date(firstDue).toISOString()
+      const primeiro = vencimentoDoDia(firstDue)!
       const { error: txErr } = await admin.from('financial_transactions').insert(
         dividirEmParcelas(amount, count, primeiro).map(parcela => ({
           branch_id:      branchId,
@@ -108,23 +92,25 @@ export async function createTransactionAdvanced(
 
     // -- Recorrente ------------------------------------------------
     } else if (scheduleMode === 'recurring' && type === 'EXPENSE') {
-      const freq       = (str(formData, 'recurring_freq') ?? 'monthly') as RecurringFreq
+      const freq       = (str(formData, 'recurring_freq') ?? 'monthly') as FrequenciaRecorrente
       const count      = parseInt(str(formData, 'recurring_count') ?? '2', 10)
       const firstDue   = str(formData, 'first_due_date')
       if (!count || count < 2 || count > 60) return { error: 'Número de repetições inválido (2–60).' }
       if (!firstDue) return { error: 'Informe o primeiro vencimento.' }
 
-      const validFreqs: RecurringFreq[] = ['weekly', 'biweekly', 'monthly', 'bimonthly', 'quarterly', 'yearly']
+      const validFreqs: FrequenciaRecorrente[] = ['weekly', 'biweekly', 'monthly', 'bimonthly', 'quarterly', 'yearly']
       if (!validFreqs.includes(freq)) return { error: 'Frequência inválida.' }
 
-      const baseDate = new Date(firstDue)
+      // Ao meio-dia de Brasília, contando em UTC: era meia-noite UTC, e na tela
+      // cada vencimento caía um dia antes (revisão de 2026-10-08).
+      const vencimentos = vencimentosRecorrentes(firstDue, freq, count)
       const rows = Array.from({ length: count }, (_, i) => ({
         branch_id:   branchId,
         type,
         category,
         description: `${description} (${i + 1}/${count})`,
         amount,
-        due_date:    addFrequency(baseDate, freq, i).toISOString(),
+        due_date:    vencimentos[i],
         is_paid:     false,
         notes:       notes ?? null,
         created_by:  ctx.internalUserId,

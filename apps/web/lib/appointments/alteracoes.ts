@@ -1,4 +1,5 @@
 import 'server-only'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import type { TenantContext } from '@estetica-os/types'
 import { EVENTOS } from '@estetica-os/types'
 import { alcancaUnidade } from '@/lib/auth'
@@ -110,4 +111,36 @@ export async function cancelarCore(admin: Admin, ctx: TenantContext, input: {
   await logHistory(admin, existente.id, ctx.internalUserId, userName, 'CANCELLED', `Cancelado: ${motivo}`)
   await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CANCELADO, existente.id, { ...ctx, userName }, { motivo })
   return { ok: true }
+}
+
+/**
+ * CONFIRMAR a presença — o núcleo da agenda e do Copilot. Só de "agendado":
+ * com a guarda do status na própria escrita, o que mudou no meio não confirma.
+ */
+export async function confirmarCore(admin: Admin, ctx: TenantContext, appointmentId: string): Promise<{ ok: true } | { error: string }> {
+  const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
+  if (!existente) return { error: 'Agendamento não encontrado.' }
+  const confirmadas = await gravar(admin.from('appointments')
+    .update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() })
+    .eq('id', existente.id).eq('status', 'SCHEDULED').select('id'), 'confirmar o agendamento') as { id: string }[] | null
+  if (!confirmadas?.length) return { error: 'O agendamento mudou de situação. Confira na agenda.' }
+
+  const userName = ctx.userName || await getUserName(admin, ctx.userId)
+  await logHistory(admin, existente.id, ctx.internalUserId, userName, 'CONFIRMED', 'Agendamento confirmado')
+  await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CONFIRMADO, existente.id, { ...ctx, userName })
+  return { ok: true }
+}
+
+/**
+ * Depois de mexer num agendamento: os dois portais olham a mesma agenda
+ * (confirmar pela rede aparece na unidade, e vice-versa) e o cache da rede.
+ */
+export function revalidarAgendamento(ctx: TenantContext, appointmentId: string, slug?: string | null): void {
+  if (slug) {
+    revalidatePath(`/${slug}/agenda`)
+    revalidatePath(`/${slug}/agenda/${appointmentId}`)
+  }
+  revalidatePath('/admin/agenda')
+  revalidatePath(`/admin/agenda/${appointmentId}`)
+  revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
 }

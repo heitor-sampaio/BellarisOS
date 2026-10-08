@@ -3,6 +3,7 @@ import type { TenantContext } from '@estetica-os/types'
 import { alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
+import { vencimentoDoDia } from '@/lib/financeiro/vencimentos'
 
 /**
  * LANÇAR (receita ou despesa, à vista ou com vencimento) e DAR BAIXA — os
@@ -31,16 +32,8 @@ export interface NovoLancamento {
   observacoes?: string | null
 }
 
-/**
- * O vencimento é um DIA: gravado ao meio-dia de Brasília, como o parcelado já
- * faz. "AAAA-MM-DD" cru virava meia-noite UTC — 21h do dia ANTERIOR em
- * Brasília: a tela mostrava o vencimento um dia antes e o recorte por mês
- * jogava o dia 1º no mês anterior (até 2026-10-08).
- */
-export function vencimentoDoDia(dia?: string | null): string | null {
-  if (!dia) return null
-  return /^\d{4}-\d{2}-\d{2}$/.test(dia) ? new Date(`${dia}T12:00:00-03:00`).toISOString() : new Date(dia).toISOString()
-}
+// O vencimento é um DIA, gravado ao meio-dia de Brasília (lib/financeiro/vencimentos.ts).
+export { vencimentoDoDia }
 
 export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancamento): Promise<{ id: string } | { error: string }> {
   // A unidade vem de quem pede. Sem conferir, o lançamento caía na unidade de

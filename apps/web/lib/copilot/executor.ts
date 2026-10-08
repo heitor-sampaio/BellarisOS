@@ -107,7 +107,7 @@ export async function executarChamada(
     return {
       paraOModelo: {
         status: 'aguardando_confirmacao',
-        acao: preparo.resumo,
+        acao: resumoParaOModelo(preparo.resumo),
         instrucao: 'Nada foi gravado ainda. Um cartão com Confirmar/Cancelar apareceu para a pessoa. Diga em uma frase o que vai ser feito e peça para ela confirmar no cartão. Não diga que já fez.',
       },
       cartao: { tipo: 'acao', acaoId: acao.id, resumo: preparo.resumo, status: 'pendente' },
@@ -243,5 +243,19 @@ async function efetivarAcao(
     if (ehSemAcesso(e as { message?: string; digest?: string })) return falhou('O seu cargo não libera esta ação.')
     console.error(`[copilot] efetivar ${ferramenta.nome}:`, e)
     return falhou(mensagemDoErro(e))
+  }
+}
+
+/**
+ * O resumo do cartão como volta ao MODELO: o CPF mascarado (só os dois
+ * dígitos do fim). A pessoa vê inteiro no cartão; a OpenAI não precisa ler de
+ * novo um documento para dizer "confirme no cartão" (revisão de 2026-10-08).
+ */
+export function resumoParaOModelo(resumo: ResumoDaAcao): ResumoDaAcao {
+  return {
+    ...resumo,
+    linhas: resumo.linhas.map(l => l.rotulo === 'CPF'
+      ? { ...l, valor: l.valor.replace(/\d{3}\.?\d{3}\.?\d{3}-?(\d{2})/g, '***.***.***-$1') }
+      : l),
   }
 }

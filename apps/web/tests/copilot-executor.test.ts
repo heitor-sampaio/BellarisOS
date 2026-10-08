@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { TenantContext, ResolvedPermissions } from '@estetica-os/types'
 import { NO_PERMISSIONS, ALL_PERMISSIONS, ALL_SCOPES } from '@/lib/permissions'
-import { ferramentasDoCargo, paraOModelo, contextoDoCopilot, canonico } from '@/lib/copilot/executor'
+import { ferramentasDoCargo, paraOModelo, contextoDoCopilot, canonico, resumoParaOModelo } from '@/lib/copilot/executor'
 import { copilotNoPlano } from '@/lib/copilot/disponivel'
 import { cotaDoCopilot, normalizarRecursos, lerRecursos, FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
 
@@ -95,5 +95,24 @@ describe('canonico', () => {
     const doBanco = { aviso: 'x', linhas: [{ valor: 'Bia', rotulo: 'Cliente' }], titulo: 'Agendar' }
     expect(canonico(doBanco)).toBe(canonico(visto))
     expect(canonico({ ...visto, linhas: [{ rotulo: 'Cliente', valor: 'Ana' }] })).not.toBe(canonico(visto))
+  })
+})
+
+describe('resumoParaOModelo', () => {
+  it('o CPF do cartão volta ao modelo MASCARADO; a pessoa vê inteiro no cartão', () => {
+    const resumo = {
+      titulo: 'Cadastrar cliente',
+      linhas: [
+        { rotulo: 'Nome', valor: 'Maria' },
+        { rotulo: 'CPF', valor: '123.456.789-09' },
+        { rotulo: 'CPF', valor: '(já tinha) → 987.654.321-00' },
+      ],
+    }
+    expect(resumoParaOModelo(resumo).linhas).toEqual([
+      { rotulo: 'Nome', valor: 'Maria' },
+      { rotulo: 'CPF', valor: '***.***.***-09' },
+      { rotulo: 'CPF', valor: '(já tinha) → ***.***.***-00' },
+    ])
+    expect(resumo.linhas[1]!.valor, 'o cartão não muda').toBe('123.456.789-09')
   })
 })

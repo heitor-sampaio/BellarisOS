@@ -10,11 +10,11 @@ import { unitTag } from '@estetica-os/utils'
 import { after } from 'next/server'
 import { enviarEventoCapi } from '@/lib/ads/capi'
 import { emitirEventoDeCliente } from '@/lib/events/cliente'
-import { camposAlterados } from '@/lib/events/emitir'
 import { EVENTOS } from '@estetica-os/types'
 import { registrarEventoLead } from '@/lib/lead-events'
 import { ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
 import { gravar, ler } from '@/lib/db'
+import { atualizarClienteCore } from '@/lib/clients/atualizar'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
@@ -321,71 +321,26 @@ export async function updateClientContactData(
     return { error: 'Informe o nome do cliente.' }
   }
 
-  // Verifica duplicidade de CPF no tenant (exceto o próprio cliente)
-  if (data.document) {
-    const cpfDigits = data.document.replace(/\D/g, '')
-    const dup = await ler(admin
-      .from('clients')
-      .select('id, name')
-      .eq('tenant_id', ctx.tenantId!)
-      .eq('document', cpfDigits)
-      .neq('id', clientId)
-      .maybeSingle(), 'buscar o cliente')
-    if (dup) return { error: `CPF já cadastrado para ${dup.name}.` }
-  }
-
-  // O estado ANTERIOR, para o evento poder dizer O QUE mudou. Sem isto a
-  // automação só saberia que "o cliente mudou", e não que foi o telefone — que
-  // é a pergunta que ela realmente faz.
-  const antes = await ler(admin
-    .from('clients')
-    .select('name, phone, email, birth_date, document, tags, gender, notes, city')
-    .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente')
-
-  const { error } = await admin
-    .from('clients')
-    .update({
-      document:            data.document?.replace(/\D/g, '') || null,
-      phone:               data.phone?.replace(/\D/g, '') || null,
-      email:               data.email?.trim() || null,
-      birth_date:          data.birthDate || null,
-      zip_code:            data.zipCode?.replace(/\D/g, '') || null,
-      address:             data.address || null,
-      address_number:      data.addressNumber || null,
-      address_complement:  data.addressComplement || null,
-      neighborhood:        data.neighborhood || null,
-      city:                data.city || null,
-      state:               data.state || null,
-      ...(data.name   !== undefined ? { name: data.name.trim() } : {}),
-      ...(data.gender !== undefined ? { gender: data.gender || null } : {}),
-      ...(data.tags   !== undefined ? { tags: data.tags } : {}),
-      // Só quando o campo veio: a tela de dados não edita notas, e mandar
-      // `undefined` aqui apagaria o que a recepção escreveu em outra tela.
-      ...(data.notes !== undefined ? { notes: data.notes?.trim() || null } : {}),
-      updated_at:          new Date().toISOString(),
-    })
-    .eq('id', clientId)
-    .eq('tenant_id', ctx.tenantId!)
-
-  if (error) return { error: error.message }
-
-  const depois = await ler(admin
-    .from('clients')
-    .select('name, phone, email, birth_date, document, tags, gender, notes, city')
-    .eq('id', clientId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o cliente')
-
-  const alterou = camposAlterados(antes ?? {}, depois ?? {})
-  // Salvar sem mexer em nada é comum — abriu a aba, clicou em salvar. Emitir
-  // aí faria toda automação de "dados alterados" disparar à toa.
-  if (alterou.length > 0) {
-    await emitirEventoDeCliente(EVENTOS.CLIENTE_DADOS_ALTERADOS, clientId, ctx, { alterou })
-  }
-
-  // A ficha existe nos dois portais; o slug só vem quando a edição saiu da unidade.
-  if (slug) revalidatePath(`/${slug}/clients/${clientId}`)
-  revalidatePath(`/admin/clients/${clientId}`)
-  revalidateTag(`clients:${ctx.tenantId!}`, 'max')
-  return {}
+  // O núcleo que a ficha e o Copilot dividem (lib/clients/atualizar.ts).
+  return atualizarClienteCore(admin, ctx, clientId, {
+    document:            data.document?.replace(/\D/g, '') || null,
+    phone:               data.phone?.replace(/\D/g, '') || null,
+    email:               data.email?.trim() || null,
+    birth_date:          data.birthDate || null,
+    zip_code:            data.zipCode?.replace(/\D/g, '') || null,
+    address:             data.address || null,
+    address_number:      data.addressNumber || null,
+    address_complement:  data.addressComplement || null,
+    neighborhood:        data.neighborhood || null,
+    city:                data.city || null,
+    state:               data.state || null,
+    ...(data.name   !== undefined ? { name: data.name.trim() } : {}),
+    ...(data.gender !== undefined ? { gender: data.gender || null } : {}),
+    ...(data.tags   !== undefined ? { tags: data.tags } : {}),
+    // Só quando o campo veio: a tela de dados não edita notas, e mandar
+    // `undefined` aqui apagaria o que a recepção escreveu em outra tela.
+    ...(data.notes !== undefined ? { notes: data.notes?.trim() || null } : {}),
+  }, slug)
 }
 
 // --- Buscar cliente por CPF (para autocomplete interno) -----------

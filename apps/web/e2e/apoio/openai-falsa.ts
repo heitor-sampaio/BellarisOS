@@ -38,6 +38,8 @@ export interface PassoDoRoteiro {
   tokens?: { entrada: number; saida: number }
   /** Responde erro HTTP (o provedor fora do ar). */
   status?: number
+  /** Começa a responder e CAI no meio, sem `response.completed` (sem `usage`). */
+  cair?: boolean
 }
 
 interface ItemDeEntrada {
@@ -70,6 +72,8 @@ export interface OpenaiFalsa {
   pedidos: PedidoRecebido[]
   roteiro: PassoDoRoteiro[]
   transcricao: string
+  /** Os tokens que a transcrição informa no `usage` (como o gpt-4o-mini-transcribe). */
+  tokensDaTranscricao: number
   /** As respostas ao modelo (`/responses`), na ordem. */
   respostas(): PedidoRecebido[]
   /** Os nomes das ferramentas oferecidas no pedido `i` (padrão: o último). */
@@ -87,6 +91,7 @@ export async function subirOpenaiFalsa(porta = PORTA_DA_OPENAI_FALSA): Promise<O
     pedidos: [],
     roteiro: [],
     transcricao: 'Transcrição de teste.',
+    tokensDaTranscricao: 50,
     respostas: () => estado.pedidos.filter(p => p.caminho.endsWith('/responses')),
     ferramentasOferecidas(i) {
       const lista = estado.respostas()
@@ -122,7 +127,10 @@ export async function subirOpenaiFalsa(porta = PORTA_DA_OPENAI_FALSA): Promise<O
       if (caminho.endsWith('/audio/transcriptions')) {
         estado.pedidos.push({ caminho, autorizacao, corpo: {}, bytes: bruto.length })
         res.writeHead(200, { 'content-type': 'application/json' })
-        res.end(JSON.stringify({ text: estado.transcricao }))
+        res.end(JSON.stringify({
+          text: estado.transcricao,
+          usage: { type: 'tokens', input_tokens: estado.tokensDaTranscricao, output_tokens: 0, total_tokens: estado.tokensDaTranscricao },
+        }))
         return
       }
 
@@ -167,6 +175,11 @@ export async function subirOpenaiFalsa(porta = PORTA_DA_OPENAI_FALSA): Promise<O
         res.write(`event: ${tipo}\ndata: ${JSON.stringify({ type: tipo, ...dados })}\n\n`)
 
       evento('response.created', { response: { id, status: 'in_progress' } })
+      if (passo.cair) {
+        evento('response.output_text.delta', { delta: 'Começando a respo' })
+        setTimeout(() => res.destroy(), 100)
+        return
+      }
       if (passo.chamar?.length) {
         const item = { type: 'reasoning', id: `rs_${++contador}`, summary: [], encrypted_content: 'cifrado-de-mentira' }
         saida.push(item)

@@ -176,11 +176,12 @@ export default function PoliticaDePrivacidade() {
             O paciente não conversa com o Copilot.
           </P>
           <Lista itens={[
-            <><B>Nada do prontuário vai à OpenAI:</B> o Copilot não lê prontuário, evolução, anamnese, fotos clínicas nem anotações clínicas de plano de tratamento. Para isso, só a tela do sistema.</>,
-            <><B>Vai apenas o necessário para o pedido:</B> o que a pessoa da equipe escreveu e o que o sistema consultou para responder (por exemplo, nome, telefone e horário de um agendamento). O CPF vai mascarado.</>,
+            <><B>O Copilot não lê o prontuário:</B> nenhuma consulta dele busca prontuário, evolução, anamnese, fotos clínicas ou anotações clínicas de plano de tratamento — isso só se vê na tela do sistema.</>,
+            <><B>O que a equipe envia vai como está:</B> o texto escrito, o áudio gravado (transcrito pela OpenAI) e as imagens e documentos anexados são enviados à OpenAI inteiros, para que o modelo os leia. O painel avisa, de forma fixa, para <B>não enviar material clínico</B> (fotos de procedimento, prontuário, exames) — a responsabilidade pelo que é anexado é da clínica.</>,
+            <><B>Do sistema, vai o necessário para o pedido:</B> o que foi consultado para responder (por exemplo, nome, telefone e horário de um agendamento). Um CPF que a equipe digita para um cadastro vai no pedido; o resumo da confirmação volta ao modelo com o CPF mascarado.</>,
             <><B>Toda gravação é confirmada por uma pessoa:</B> o Copilot prepara (um agendamento, um cadastro) e só grava depois que a pessoa da equipe confirma.</>,
             <><B>A OpenAI não usa os dados para treinar modelos</B> e o pedido é feito sem guardar histórico do lado dela (pela política da OpenAI, o conteúdo pode ser retido por até 30 dias só para monitorar abuso). Áudios, imagens e documentos enviados ao Copilot são lidos na hora e não ficam guardados no sistema.</>,
-            <><B>A conversa fica no sistema por 90 dias</B> sem uso e depois é apagada automaticamente. A pessoa da equipe pode apagar a sua a qualquer momento.</>,
+            <><B>A conversa fica no sistema por até 90 dias:</B> a conversa parada há 90 dias é apagada, e numa conversa em uso cada mensagem sai quando faz 90 dias. A pessoa da equipe pode apagar a sua a qualquer momento.</>,
           ]} />
         </Secao>
 
@@ -191,7 +192,7 @@ export default function PoliticaDePrivacidade() {
             <><B>Cadastro, conversas e histórico comercial:</B> enquanto durar a relação com a clínica e pelos prazos legais depois dela.</>,
             <><B>Registro interno de eventos do sistema</B> (a trilha técnica que o sistema usa para reagir a fatos e para automações): <B>30 dias</B>, e depois é apagado automaticamente.</>,
             <><B>Pacote de exportação de dados:</B> fica disponível por <B>30 dias</B> a partir da geração e depois expira.</>,
-            <><B>Conversas da equipe com o Copilot:</B> <B>90 dias</B> sem uso, e depois são apagadas automaticamente.</>,
+            <><B>Conversas da equipe com o Copilot:</B> cada mensagem por até <B>90 dias</B>, e depois é apagada automaticamente.</>,
           ]} />
         </Secao>
 

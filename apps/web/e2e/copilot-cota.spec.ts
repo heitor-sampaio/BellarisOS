@@ -77,6 +77,29 @@ test('passou da cota: o painel avisa e a rota recusa; o consumo aparece na Assin
   })
 })
 
+test('a voz e a volta que cai no meio também contam na cota', async ({ browser }) => {
+  // Revisão de 2026-10-08: só a resposta COMPLETA somava; a transcrição e a
+  // volta interrompida (a OpenAI cobra o que processou) passavam de graça.
+  await rede.plano(TODAS, null)
+  await db().from('copilot_uso_mensal').delete().eq('tenant_id', rede.outra.tenantId)
+  const uso = async () => Number((await db().from('copilot_uso_mensal').select('tokens')
+    .eq('tenant_id', rede.outra.tenantId).maybeSingle<{ tokens: number }>()).data?.tokens ?? 0)
+  const WEBM = Buffer.concat([Buffer.from([0x1a, 0x45, 0xdf, 0xa3]), Buffer.alloc(2000, 1)])
+  falsa.tokensDaTranscricao = 300
+  falsa.roteiro.push({ texto: 'Ouvi.', tokens: { entrada: 100, saida: 20 } })
+  await comSessao(browser, rede.dono.estado, async p => {
+    await p.goto('/admin/dashboard')
+    const postar = (campos: Record<string, string | { name: string; mimeType: string; buffer: Buffer }>) =>
+      p.request.post('/api/copilot', { headers: { origin: process.env.E2E_BASE_URL! }, multipart: { pagina: '/admin/dashboard', ...campos } })
+    expect(await (await postar({ anexos: { name: 'audio.webm', mimeType: 'audio/webm', buffer: WEBM } })).text()).toContain('"tipo":"fim"')
+    expect(await uso(), 'a transcrição soma com a resposta').toBe(420)
+
+    falsa.roteiro.push({ cair: true })
+    await (await postar({ texto: 'quantos agendamentos tenho amanhã?' })).text()
+    expect(await uso(), 'a volta que caiu conta o que foi mandado').toBeGreaterThan(420)
+  })
+})
+
 test('a retenção: conversa parada há mais de 90 dias sai; a recente fica', async ({ request }) => {
   const velha = await db().from('copilot_conversas').insert({ tenant_id: rede.outra.tenantId, user_id: rede.dono.userId, titulo: `${PREFIXO} velha`, atualizada_em: new Date(Date.now() - 91 * 86_400_000).toISOString() }).select('id').single<{ id: string }>()
   const nova = await db().from('copilot_conversas').insert({ tenant_id: rede.outra.tenantId, user_id: rede.dono.userId, titulo: `${PREFIXO} nova` }).select('id').single<{ id: string }>()
@@ -87,6 +110,21 @@ test('a retenção: conversa parada há mais de 90 dias sai; a recente fica', as
   expect(restam).toEqual([nova.data!.id])
 })
 
+test('a retenção também tira a MENSAGEM de mais de 90 dias de uma conversa que segue em uso', async ({ request }) => {
+  const conversa = await db().from('copilot_conversas').insert({ tenant_id: rede.outra.tenantId, user_id: rede.dono.userId, titulo: `${PREFIXO} em uso` }).select('id').single<{ id: string }>()
+  expect(conversa.error).toBeNull()
+  const msg = (dias: number, texto: string) => ({
+    conversa_id: conversa.data!.id, tenant_id: rede.outra.tenantId, papel: 'user', conteudo: { texto },
+    criada_em: new Date(Date.now() - dias * 86_400_000).toISOString(),
+  })
+  const ins = await db().from('copilot_mensagens').insert([msg(120, 'antiga'), msg(1, 'recente')]).select('id')
+  expect(ins.error).toBeNull()
+  const r = await request.get('/api/cron/copilot-retencao', { headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } })
+  expect(r.status()).toBe(200)
+  const restam = (await db().from('copilot_mensagens').select('conteudo').eq('conversa_id', conversa.data!.id)).data!
+  expect(restam.map(m => (m.conteudo as { texto: string }).texto)).toEqual(['recente'])
+})
+
 test('a política de privacidade fala da OpenAI e de que nada clínico vai a ela', async ({ browser }) => {
   const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   try {
@@ -95,6 +133,9 @@ test('a política de privacidade fala da OpenAI e de que nada clínico vai a ela
     await expect(p.getByRole('heading', { name: /Copilot/ })).toBeVisible()
     await expect(p.getByText(/OpenAI/).first()).toBeVisible()
     await expect(p.getByText(/prontuário/i).first()).toBeVisible()
+    // E não promete demais (revisão de 2026-10-08): o que a equipe anexa vai inteiro.
+    await expect(p.getByText('O que a equipe envia vai como está:')).toBeVisible()
+    await expect(p.getByText(/não enviar material clínico/)).toBeVisible()
   } finally {
     await ctx.close()
   }

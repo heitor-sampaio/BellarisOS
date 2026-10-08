@@ -112,8 +112,10 @@ export function paraOModelo(lidos: AnexoLido[]): ConteudoDeEntrada[] {
   })
 }
 
-export async function transcrever(a: AnexoLido): Promise<string> {
-  const texto = await transcreverNoModelo(new File([new Uint8Array(a.bytes)], a.nome || 'audio.webm', { type: a.mime }))
+/** A voz em texto. `aoGastar` recebe o custo da transcrição (a cota) — também quando ela não entende nada. */
+export async function transcrever(a: AnexoLido, aoGastar: (tokens: number) => void): Promise<string> {
+  const { texto, tokens } = await transcreverNoModelo(new File([new Uint8Array(a.bytes)], a.nome || 'audio.webm', { type: a.mime }))
+  aoGastar(tokens)
   if (!texto) throw new ErroDeAnexo('Não entendi o áudio. Tente de novo, mais perto do microfone, ou escreva.')
   return texto
 }

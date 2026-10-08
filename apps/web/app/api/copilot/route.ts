@@ -103,13 +103,17 @@ export async function POST(req: NextRequest) {
       }
       let tokensEntrada = 0
       let tokensSaida = 0
+      // O que vai para a COTA: cada volta (completa, falha ou interrompida) e a
+      // transcrição da voz — não só a resposta que terminou.
+      let gasto = 0
+      const aoGastar = (tokens: number) => { gasto += tokens }
       let conversaId: string | null = conversaExistente?.id ?? null
       let resposta = ''
       const cartoes: Cartao[] = []
       let respostaGravada = false
       try {
         // A voz vira texto antes de tudo (a tela mostra o que foi entendido).
-        const { transcricao, conteudo, descricao } = await prepararEntrada(anexos)
+        const { transcricao, conteudo, descricao } = await prepararEntrada(anexos, aoGastar)
         if (transcricao) enviar({ tipo: 'transcricao', texto: transcricao })
         const fala = [texto, transcricao].filter(Boolean).join('\n')
 
@@ -149,6 +153,7 @@ export async function POST(req: NextRequest) {
           const r = await perguntarAoModelo({
             instrucoes, itens, ferramentas, sinal: req.signal,
             aoTexto: delta => { resposta += delta; enviar({ tipo: 'texto', delta }) },
+            aoGastar,
           })
           tokensEntrada += r.tokensEntrada
           tokensSaida += r.tokensSaida
@@ -205,7 +210,7 @@ export async function POST(req: NextRequest) {
             })
           } catch (e) { console.error('[copilot] gravar a resposta parcial:', e) }
         }
-        if (tokensEntrada + tokensSaida > 0) await registrarUso(admin, ctx.tenantId!, tokensEntrada + tokensSaida)
+        if (gasto > 0) await registrarUso(admin, ctx.tenantId!, gasto)
         enviar({ tipo: 'fim' })
         try { controle.close() } catch { /* a tela já fechou */ }
       }
@@ -220,9 +225,9 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  async function prepararEntrada(lidos: AnexoLido[]) {
+  async function prepararEntrada(lidos: AnexoLido[], aoGastar: (tokens: number) => void) {
     const voz = lidos.find(a => a.tipo === 'audio')
-    const transcricao = voz ? await transcrever(voz) : ''
+    const transcricao = voz ? await transcrever(voz, aoGastar) : ''
     return {
       transcricao,
       conteudo: conteudoDosAnexos(lidos.filter(a => a.tipo !== 'audio')),

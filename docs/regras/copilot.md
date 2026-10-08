@@ -42,8 +42,9 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
     reordena as chaves);
   - o Copilot age com o nome "Fulana (via Copilot)" nos eventos e no histórico.
 - **As ferramentas** (`lib/copilot/ferramentas/`) chamam os MESMOS núcleos da
-  tela: `createAppointmentCore`, `remarcarCore`/`cancelarCore`
-  (`lib/appointments/alteracoes.ts`), `garantirClienteRapido`, `lancarCore`/
+  tela: `createAppointmentCore`, `remarcarCore`/`cancelarCore`/`confirmarCore`
+  (`lib/appointments/alteracoes.ts`), `garantirClienteRapido`, `atualizarClienteCore`
+  (`lib/clients/atualizar.ts`), `lancarCore`/
   `marcarPagoCore` (`lib/financeiro/lancamento.ts`), `estoque_entrada`/
   `estoque_ajuste` (`lib/estoque/movimentos.ts`), `criarOportunidadeCore`/
   `moverEtapaCore` (`lib/crm/oportunidade.ts`), `lib/metrics`.
@@ -54,8 +55,17 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
 - **Texto do modelo** vira blocos React (`lib/copilot/texto.ts`), nunca HTML;
   link só para TELA interna (não `/api`, `/auth`…), sem prefetch.
 - **Dados**: `copilot_conversas`, `copilot_mensagens`, `copilot_acoes`,
-  `copilot_uso_mensal` — RLS sem política (só o servidor). Retenção: 90 dias
-  sem uso (`/api/cron/copilot-retencao`).
+  `copilot_uso_mensal` — RLS sem política (só o servidor). Retenção
+  (`/api/cron/copilot-retencao`): a conversa parada há 90 dias, e a mensagem
+  e a ação de mais de 90 dias numa conversa em uso.
+- **A cota conta TUDO que a OpenAI cobra**: cada volta (a completa pelo
+  `usage`; a que falha ou cai no meio depois de aceita, por `estimarTokens`) e
+  a transcrição da voz (`aoGastar`, `lib/copilot/openai.ts`). Pedido recusado
+  antes (rede, 4xx/5xx) não conta.
+- **O resumo do cartão volta ao modelo com o CPF mascarado**
+  (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
+  vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,
+  e a política de privacidade diz isso.
 
 ## Ferramenta nova
 
@@ -87,5 +97,7 @@ completo e o dono. Os specs `copilot-*` são COMPARTILHADOS (porta fixa).
 ❌ Guardar o anexo (áudio, foto, documento) — lido no pedido e descartado
 ❌ Mandar a chamada de ferramenta ao histórico com o id do item (a API recusa sem o raciocínio)
 ❌ Liberar o Copilot para rede sem plano (ele custa por uso)
+❌ Chamar a OpenAI (resposta, transcrição) sem somar o gasto na cota — também quando falha ou cai
+❌ Devolver ao modelo documento (CPF) que ele não precisa reler — o resumo vai por resumoParaOModelo
 ❌ E2E falando com a OpenAI real (é a falsa, porta 3196)
 ```

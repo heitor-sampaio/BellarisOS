@@ -117,6 +117,29 @@ export function cotaDoCopilot(recursos: { cotas?: { copilot: number | null } } |
   return cotaValida(v) ? v : null
 }
 
+/**
+ * A cota como se digita no sistema, em MILHÕES de tokens ("2,5", "2.5",
+ * "1.000,5") → tokens, ou null (vazio, zero, inválido = sem limite). Com
+ * vírgula, o ponto é milhar; sem vírgula, um ponto só é a decimal — "2.5" era
+ * lido como 25 milhões.
+ */
+export function tokensDaCotaDigitada(texto: string): number | null {
+  const t = texto.trim()
+  if (!t) return null
+  const normal = t.includes(',') ? t.replace(/\./g, '').replace(',', '.')
+    : (t.match(/\./g)?.length ?? 0) > 1 ? t.replace(/\./g, '') : t
+  const n = Number(normal)
+  return Number.isFinite(n) && n > 0 ? Math.min(COTA_MAXIMA_DO_COPILOT, Math.round(n * 1_000_000)) : null
+}
+
+/**
+ * Quanto da cota já foi (0 a 100), arredondado para BAIXO: "100%" só quando
+ * esgotou — com 99,6% o Copilot ainda responde. Sem cota, null.
+ */
+export function percentualDaCota(tokens: number, cota: number | null): number | null {
+  return cota === null ? null : Math.min(100, Math.floor((tokens / cota) * 100))
+}
+
 const CHAVES = new Set<string>(FUNCIONALIDADES.map(f => f.chave))
 
 /** Tudo ligado e sem limite — o padrão de um plano novo. */

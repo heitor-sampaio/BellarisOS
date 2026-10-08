@@ -1,11 +1,9 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import { revalidateTag } from 'next/cache'
-import { EVENTOS } from '@estetica-os/types'
-import { ler, gravar } from '@/lib/db'
+import { ler } from '@/lib/db'
+import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { garantirClienteRapido, digitosDoTelefone } from '@/lib/clients/cliente-rapido'
-import { emitirEventoDeCliente } from '@/lib/events/cliente'
-import { camposAlterados } from '@/lib/events/emitir'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, hojeEmBrasilia, resolverCliente, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
 
@@ -178,15 +176,9 @@ export const atualizarContato: FerramentaDeEscrita<ArgsContato, PayloadContato> 
     }
   },
   async efetivar(c, p) {
-    const colunas = 'name, phone, email, birth_date, document, tags, gender, notes, city'
-    const antes = await ler(c.admin.from('clients').select(colunas).eq('id', p.clientId).eq('tenant_id', c.ctx.tenantId!).maybeSingle(), 'ler o cliente')
-    if (!antes) return { erro: 'Cliente não encontrado.' }
-    await gravar(c.admin.from('clients').update({ ...p.campos, updated_at: new Date().toISOString() })
-      .eq('id', p.clientId).eq('tenant_id', c.ctx.tenantId!).select('id'), 'atualizar o cliente')
-    const depois = await ler(c.admin.from('clients').select(colunas).eq('id', p.clientId).maybeSingle(), 'ler o cliente')
-    const alterou = camposAlterados(antes ?? {}, depois ?? {})
-    if (alterou.length) await emitirEventoDeCliente(EVENTOS.CLIENTE_DADOS_ALTERADOS, p.clientId, c.ctx, { alterou })
-    revalidateTag(`clients:${c.ctx.tenantId!}`, 'max')
+    // O mesmo núcleo da ficha (lib/clients/atualizar.ts).
+    const r = await atualizarClienteCore(c.admin, c.ctx, p.clientId, p.campos)
+    if (r.error) return { erro: r.error }
     return { mensagem: 'Dados atualizados.', href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha' }
   },
 }

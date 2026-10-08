@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import {
-  FUNCIONALIDADES, LIMITES, LIMITE_MAXIMO, ADICIONAIS, adicionalCabeNoPlano,
+  FUNCIONALIDADES, LIMITES, LIMITE_MAXIMO, ADICIONAIS, adicionalCabeNoPlano, tokensDaCotaDigitada,
   type ChaveDeFuncionalidade, type ChaveDeAdicional, type RecursosDoPlano,
 } from '@estetica-os/nucleo/lib/planos/recursos'
 import { centavosDe, campoDeReais } from '@estetica-os/nucleo/lib/redes/valor'
@@ -46,8 +46,7 @@ export function RecursosDoPlanoCampos({ valor, mudar: mudarCru }: { valor: Recur
   })
   function mudarCota(texto: string) {
     setCota(texto)
-    const n = Number(texto.replace(/\./g, '').replace(',', '.'))
-    const tokens = texto.trim() && Number.isFinite(n) && n > 0 ? Math.round(n * 1_000_000) : null
+    const tokens = tokensDaCotaDigitada(texto)
     const { cotas: _antes, ...resto } = valor
     void _antes
     mudar(tokens ? { ...resto, cotas: { copilot: tokens } } : resto)
@@ -116,6 +115,10 @@ export function RecursosDoPlanoCampos({ valor, mudar: mudarCru }: { valor: Recur
             onChange={e => mudarCota(e.target.value)} />
           <span className="suporte-texto-fraco">milhões de tokens por mês</span>
         </label>
+        {/* O que vale de fato, para "2.5" e "2,5" não deixarem dúvida. */}
+        {valor.cotas?.copilot ? (
+          <p className="suporte-texto-fraco" aria-live="polite">= {valor.cotas.copilot.toLocaleString('pt-BR')} tokens por mês</p>
+        ) : null}
       </fieldset>
 
       <fieldset className="plano-grupo">

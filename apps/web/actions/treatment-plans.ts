@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { planoCriado, planoProposto, planoAceito } from '@/lib/events/plano'
 import { getTenantContext, assertPermission, assertPodeReceber, podeReceber, can, alcancaUnidade, podeVerClinico, assertRecurso } from '@/lib/auth'
-import { conferirPecasDoAgendamento } from '@/lib/appointments/core'
+import { conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import type { TenantContext } from '@estetica-os/types'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, tentar, contar, mensagemDoErro } from '@/lib/db'
@@ -1276,6 +1276,14 @@ async function checkoutTreatmentPlanInterno(
         branchId: sched.branchId, professionalId: sched.professionalId,
       })
       if (recusa) return { error: recusa }
+      // E o horário livre (revisão de 2026-10-08) — aqui, antes do dinheiro.
+      const sess = sessions.find(s => s.id === sched.planSessionId)
+      if (sess?.mainProcedureId && await horarioOcupado(admin, {
+        tenantId: ctx.tenantId!, professionalId: sched.professionalId,
+        inicio: new Date(sched.scheduledAt), duracaoMin: sess.mainDurationMin || 60,
+      })) {
+        return { error: 'Este profissional já tem agendamento nesse horário.' }
+      }
     }
   }
 

@@ -2,13 +2,11 @@ import 'server-only'
 import { z } from 'zod/v4'
 import { revalidateTag } from 'next/cache'
 import { isOwnScope } from '@/lib/auth'
-import { ler, gravar } from '@/lib/db'
+import { ler } from '@/lib/db'
 import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
-import { agendamentoAoAlcance, cancelarCore, remarcarCore } from '@/lib/appointments/alteracoes'
-import { getUserName, logHistory, notifyCancelledAppointment, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
+import { agendamentoAoAlcance, cancelarCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
+import { notifyCancelledAppointment, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { garantirClienteRapido, digitosDoTelefone } from '@/lib/clients/cliente-rapido'
-import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
-import { EVENTOS } from '@estetica-os/types'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import {
   DATA, HORA, UUID, dinheiro, instanteDe, quandoLegivel, resolverCliente, resolverProcedimento,
@@ -135,7 +133,7 @@ export const agendar: FerramentaDeEscrita<ArgsAgendar, PayloadAgendar> = {
       scheduledAt: p.scheduledAt, notes: p.notes, source: 'INTERNAL',
     })
     if ('error' in r) return { erro: r.error }
-    revalidateTag(`appointments:${c.ctx.tenantId!}`, 'max')
+    revalidarAgendamento(c.ctx, r.id)
     notifyNewAppointment(r.id, c.ctx.internalUserId)
     return { mensagem: `Agendado para ${quandoLegivel(p.scheduledAt)}.`, href: rota(c, `/agenda/${r.id}`), rotuloDoLink: 'Ver agendamento' }
   },
@@ -202,7 +200,7 @@ export const remarcar: FerramentaDeEscrita<{ agendamento: string; data: string; 
   async efetivar(c, p) {
     const r = await remarcarCore(c.admin, c.ctx, p)
     if ('error' in r) return { erro: r.error }
-    revalidateTag(`appointments:${c.ctx.tenantId!}`, 'max')
+    revalidarAgendamento(c.ctx, p.appointmentId)
     notifyRescheduledAppointment(p.appointmentId, c.ctx.internalUserId)
     return { mensagem: `Remarcado para ${quandoLegivel(p.scheduledAt)}.`, href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
   },
@@ -236,7 +234,7 @@ export const cancelar: FerramentaDeEscrita<{ agendamento: string; motivo: string
   async efetivar(c, p) {
     const r = await cancelarCore(c.admin, c.ctx, p)
     if ('error' in r) return { erro: r.error }
-    revalidateTag(`appointments:${c.ctx.tenantId!}`, 'max')
+    revalidarAgendamento(c.ctx, p.appointmentId)
     notifyCancelledAppointment(p.appointmentId, p.motivo, c.ctx.internalUserId)
     return { mensagem: 'Agendamento cancelado.', href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
   },
@@ -266,16 +264,10 @@ export const confirmarAgendamento: FerramentaDeEscrita<{ agendamento: string }, 
     }
   },
   async efetivar(c, p) {
-    const ag = await agendamentoAoAlcance(c.admin, c.ctx, p.appointmentId)
-    if (!ag) return { erro: 'Agendamento não encontrado.' }
-    const feitas = await gravar(c.admin.from('appointments')
-      .update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() })
-      .eq('id', ag.id).eq('status', 'SCHEDULED').select('id'), 'confirmar o agendamento') as { id: string }[] | null
-    if (!feitas?.length) return { erro: 'O agendamento mudou de situação. Confira na agenda.' }
-    const userName = c.ctx.userName || await getUserName(c.admin, c.ctx.userId)
-    await logHistory(c.admin, ag.id, c.ctx.internalUserId, userName, 'CONFIRMED', 'Agendamento confirmado')
-    await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CONFIRMADO, ag.id, { ...c.ctx, userName })
-    revalidateTag(`appointments:${c.ctx.tenantId!}`, 'max')
-    return { mensagem: 'Presença confirmada.', href: rota(c, `/agenda/${ag.id}`), rotuloDoLink: 'Ver agendamento' }
+    // O mesmo núcleo da agenda (lib/appointments/alteracoes.ts).
+    const r = await confirmarCore(c.admin, c.ctx, p.appointmentId)
+    if ('error' in r) return { erro: r.error }
+    revalidarAgendamento(c.ctx, p.appointmentId)
+    return { mensagem: 'Presença confirmada.', href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
   },
 }

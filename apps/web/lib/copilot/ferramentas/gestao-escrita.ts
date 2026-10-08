@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { isOwnScope, ownerFilter } from '@/lib/auth'
 import { LEAD_SOURCE_KEYS, maskPhone, unitTag } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
+import { dayKeyTZ } from '@/lib/datetime'
 import { lancarCore, marcarPagoCore, lancamentoAoAlcance, CATEGORIAS_DE_DESPESA, CATEGORIAS_DE_RECEITA, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { entradaDeEstoqueCore, ajusteDeEstoqueCore } from '@/lib/estoque/movimentos'
 import { criarOportunidadeCore, moverEtapaCore } from '@/lib/crm/oportunidade'
@@ -122,7 +123,7 @@ export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: strin
         linhas: [
           { rotulo: 'Lançamento', valor: tx.description ?? tx.category ?? '—' },
           { rotulo: 'Valor', valor: dinheiro(tx.amount) },
-          ...(tx.due_date ? [{ rotulo: 'Vencimento', valor: tx.due_date.slice(0, 10).split('-').reverse().join('/') }] : []),
+          ...(tx.due_date ? [{ rotulo: 'Vencimento', valor: dayKeyTZ(tx.due_date).split('-').reverse().join('/') }] : []),
           ...(forma ? [{ rotulo: 'Forma', valor: FORMA_LEGIVEL[forma as string]! }] : []),
         ],
       },
