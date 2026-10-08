@@ -1299,6 +1299,19 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-08 — Sessão de suporte que vence num clique do menu volta ao painel
+
+A completa (run 37810075410) pegou uma falha em `suporte-impersonar` que
+parecia instável e era defeito: pelo trace, a sessão de suporte venceu numa
+navegação INTERNA do Next (o pedido RSC de um clique no menu), e o
+`/auth/suporte-fim` rodou nesse pedido — encerrou e apagou os cookies; o Next
+refez como navegação inteira, já sem sessão, e o atendente caiu no login da
+clínica em vez de voltar ao painel do suporte. Em produção era o caso comum
+(vencer enquanto clica). Agora a rota não age em pedido RSC/prefetch
+(`pedidoInternoDoNext`): responde sem RSC, o Next navega de verdade até ela,
+e é essa navegação que encerra. Provas novas em `e2e/suporte-impersonar.spec.ts`
+(o pedido RSC não encerra; vencer clicando no menu volta ao painel).
+
 ### 2026-10-08 — O Copilot: a secretária virtual da clínica
 
 Pedido do Heitor: uma secretária virtual dentro do sistema, num chat que

@@ -450,6 +450,13 @@ um muro que não depende de cada trava do código.
   clínica derruba na próxima tela; o cron `suporte-sessoes` (na clínica, onde
   mora o cache da sessão) fecha as vencidas. É GET (é um link): sem sessão de
   suporte, não faz nada — um link de outro site não desloga um membro.
+  - ⚠️ **O pedido INTERNO do Next (RSC de um clique no menu, prefetch) não
+    roda o fim** (`pedidoInternoDoNext`): responde 200 sem RSC, e o Next faz a
+    navegação inteira até a rota — é ELA que encerra. Rodando no pedido RSC, o
+    fim apagava os cookies, o Next refazia como navegação inteira já sem
+    sessão, e o atendente caía no /login da clínica (a completa de
+    2026-10-08 pegou pelo trace; o `goto` do teste antigo não passava por aí).
+    Vale para toda rota com efeito chamada por `redirect()` de uma página.
 - **Transparência:** a clínica é avisada no sino quando o suporte entra e
   sai, e vê em Configurações → Suporte cada sessão, o que foi aberto e feito
   (acessos + `domain_events.suporte_sessao_id`) e o que a plataforma fez.
@@ -496,6 +503,7 @@ um muro que não depende de cada trava do código.
 ## O que nunca fazer aqui
 
 ```
+❌ Route handler com efeito (encerrar, deslogar, gravar) que roda no pedido RSC/prefetch do Next — responda 200 sem RSC e deixe a navegação inteira agir (pedidoInternoDoNext)
 ❌ Tela ou action de funcionalidade que é PARTE de um módulo (pacotes, inbox, campanhas…) sem assertRecurso, ou rotina sem tela sem redeTemRecurso
 ❌ Acrescentar chave ao catálogo de lib/planos/recursos.ts sem migration nova decidindo os planos e retratos que já existem
 ❌ Gravar retrato (tenant_subscriptions.recursos) fora de definirAssinatura/criarRede/aplicarPlanoAtual

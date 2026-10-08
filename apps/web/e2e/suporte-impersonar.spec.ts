@@ -315,4 +315,46 @@ test.describe.serial('suporte: entrar como', () => {
     await sup.ctx.close()
     sup = null
   })
+
+  // Achado na completa de 2026-10-08 (o trace do CI): a sessão venceu numa
+  // navegação DENTRO do app (o pedido RSC do Next), e o fim rodou nesse pedido
+  // — encerrou e apagou os cookies; o Next refez o pedido como navegação
+  // inteira, já sem sessão, e o atendente caiu no /login da clínica.
+  test('o pedido interno do Next (RSC, prefetch) ao fim NÃO encerra: só a navegação de verdade', async ({ browser }) => {
+    await autorizar(browser)
+    sup = await entrar(browser)
+    // (O Next acerta o `_rsc` com um 307 para o hash dele; o pedido segue.)
+    const r = await sup.page.request.get('/auth/suporte-fim?motivo=venceu&_rsc=x', {
+      headers: { rsc: '1' },
+    })
+    expect(r.status()).toBe(200)
+    expect(r.url(), 'não foi levado ao painel por este pedido').toMatch(new RegExp(`^${process.env.E2E_BASE_URL}/auth/suporte-fim`))
+    expect(r.headers()['content-type'] ?? '', 'e não é RSC: o Next faz a navegação inteira').not.toContain('text/x-component')
+    expect(await sessoesAtivas(), 'a sessão segue').toHaveLength(1)
+    // A navegação inteira, sim, encerra e devolve ao painel.
+    await sup.page.goto('/auth/suporte-fim?motivo=venceu')
+    await expect(sup.page).toHaveURL(new RegExp(`^${SUP()}/`), { timeout: 30_000 })
+    expect(await sessoesAtivas()).toHaveLength(0)
+    await sup.ctx.close()
+    sup = null
+  })
+
+  test('vencer o prazo no meio de uma navegação pelo menu também devolve ao painel', async ({ browser }) => {
+    await autorizar(browser)
+    sup = await entrar(browser)
+    await sup.page.goto('/admin/dashboard')
+    const [sessao] = await sessoesAtivas()
+    await db().from('support_sessions').update({ expires_at: new Date(Date.now() - 1000).toISOString() }).eq('id', sessao!.id)
+    // Clicando no menu (navegação do Next, não `goto`), até o cache de 15 s cair.
+    await expect.poll(async () => {
+      const p = sup!.page
+      if (!p.url().startsWith(process.env.E2E_BASE_URL!)) return p.url()
+      const destino = p.url().includes('/admin/agenda') ? 'Dashboard' : 'Agenda'
+      await p.locator('aside nav').getByText(destino, { exact: true }).first().click({ timeout: 3_000 }).catch(() => {})
+      await p.waitForLoadState('networkidle').catch(() => {})
+      return p.url()
+    }, { timeout: 60_000, intervals: [4_000] }).toMatch(new RegExp(`^${SUP()}/`))
+    await sup.ctx.close()
+    sup = null
+  })
 })

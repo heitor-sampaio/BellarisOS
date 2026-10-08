@@ -27,7 +27,23 @@ type SessaoLida = {
   platform_staff: { name: string } | null; users: { name: string } | null
 }
 
+/**
+ * Pedido INTERNO do Next (a navegação RSC de um clique no menu, um prefetch):
+ * não é o atendente chegando aqui, e o fim não roda nele. Rodava: o pedido RSC
+ * encerrava a sessão e apagava os cookies, o Next refazia como navegação
+ * inteira — já sem sessão — e o atendente caía no /login da clínica, não no
+ * painel (achado na completa de 2026-10-08). Respondendo sem RSC, o Next faz
+ * a navegação inteira até aqui, e é ela que encerra e leva ao painel.
+ */
+function pedidoInternoDoNext(req: NextRequest): boolean {
+  return req.headers.get('rsc') === '1' || req.headers.has('next-router-prefetch')
+    || req.headers.has('next-router-state-tree') || req.nextUrl.searchParams.has('_rsc')
+}
+
 export async function GET(req: NextRequest) {
+  if (pedidoInternoDoNext(req)) {
+    return new NextResponse(null, { status: 200, headers: { 'cache-control': 'no-store' } })
+  }
   const admin = createAdminClient()
   const motivo = req.nextUrl.searchParams.get('motivo') === 'venceu' ? 'venceu' : 'saiu'
 
