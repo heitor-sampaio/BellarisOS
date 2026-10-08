@@ -154,6 +154,7 @@ export default function PoliticaDePrivacidade() {
               ['Meta (WhatsApp, Instagram, Messenger)', 'Envio e recebimento de mensagens pelos canais oficiais e medição de campanhas, quando a clínica conecta a conta dela', 'Estados Unidos'],
               ['uazapi', 'Envio e recebimento pelo WhatsApp em conexão não oficial, quando a clínica escolhe esse caminho', 'Brasil'],
               ['Google (Firebase Cloud Messaging)', 'Entrega das notificações no aplicativo', 'Estados Unidos'],
+              ['OpenAI', 'O Copilot, o assistente da equipe da clínica (ver a seção 6.1), quando a clínica o usa', 'Estados Unidos'],
             ]}
           />
           <P>
@@ -167,6 +168,22 @@ export default function PoliticaDePrivacidade() {
           </Nota>
         </Secao>
 
+        <Secao titulo="6.1 O Copilot, o assistente da equipe">
+          <P>
+            O Copilot é um assistente com que a <B>equipe da clínica</B> conversa dentro do
+            sistema para consultar e registrar informações (agenda, cadastro, financeiro,
+            estoque, comercial). Ele funciona com um modelo de linguagem da <B>OpenAI</B>.
+            O paciente não conversa com o Copilot.
+          </P>
+          <Lista itens={[
+            <><B>Nada do prontuário vai à OpenAI:</B> o Copilot não lê prontuário, evolução, anamnese, fotos clínicas nem anotações clínicas de plano de tratamento. Para isso, só a tela do sistema.</>,
+            <><B>Vai apenas o necessário para o pedido:</B> o que a pessoa da equipe escreveu e o que o sistema consultou para responder (por exemplo, nome, telefone e horário de um agendamento). O CPF vai mascarado.</>,
+            <><B>Toda gravação é confirmada por uma pessoa:</B> o Copilot prepara (um agendamento, um cadastro) e só grava depois que a pessoa da equipe confirma.</>,
+            <><B>A OpenAI não usa os dados para treinar modelos</B> e o pedido é feito sem guardar histórico do lado dela (pela política da OpenAI, o conteúdo pode ser retido por até 30 dias só para monitorar abuso). Áudios, imagens e documentos enviados ao Copilot são lidos na hora e não ficam guardados no sistema.</>,
+            <><B>A conversa fica no sistema por 90 dias</B> sem uso e depois é apagada automaticamente. A pessoa da equipe pode apagar a sua a qualquer momento.</>,
+          ]} />
+        </Secao>
+
         <Secao titulo="7. Por quanto tempo guardamos">
           <Lista itens={[
             <><B>Prontuário e registro clínico:</B> pelo prazo que a legislação e a regulação profissional exigem. <B>Não são apagados a pedido</B> — ver a seção 9.</>,
@@ -174,6 +191,7 @@ export default function PoliticaDePrivacidade() {
             <><B>Cadastro, conversas e histórico comercial:</B> enquanto durar a relação com a clínica e pelos prazos legais depois dela.</>,
             <><B>Registro interno de eventos do sistema</B> (a trilha técnica que o sistema usa para reagir a fatos e para automações): <B>30 dias</B>, e depois é apagado automaticamente.</>,
             <><B>Pacote de exportação de dados:</B> fica disponível por <B>30 dias</B> a partir da geração e depois expira.</>,
+            <><B>Conversas da equipe com o Copilot:</B> <B>90 dias</B> sem uso, e depois são apagadas automaticamente.</>,
           ]} />
         </Secao>
 

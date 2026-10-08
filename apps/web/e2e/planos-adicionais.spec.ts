@@ -237,7 +237,7 @@ test.describe.serial('o sistema: a oferta no plano e os adicionais da rede', () 
       const form = p.locator('form', { hasText: 'Novo plano' })
       await form.locator('input[name="nome"]').fill(PLANO)
       await form.locator('input[name="valor"]').fill('199,00')
-      await form.getByRole('checkbox', { name: 'Copilot (IA secretária) · em breve', exact: true }).uncheck()
+      await form.getByRole('checkbox', { name: 'Copilot (IA secretária)', exact: true }).uncheck()
       await form.getByRole('checkbox', { name: 'Números de WhatsApp: ilimitado' }).uncheck()
       await form.getByRole('slider', { name: 'Números de WhatsApp' }).fill('1')
       await form.getByRole('checkbox', { name: 'Oferecer: Conexão de WhatsApp adicional' }).check()
@@ -353,14 +353,15 @@ test.describe.serial('a clínica: ver e contratar o adicional pela aba Assinatur
     expect((log ?? []).some(l => (l.dados as { origem?: string }).origem === 'clinica')).toBe(true)
   })
 
-  test('o Copilot avulso: contratado, aparece incluído (em breve); cancelar volta', async ({ browser }) => {
+  test('o Copilot avulso: contratado, aparece incluído; cancelar volta', async ({ browser }) => {
     await comSessao(browser, dono!.estado, async p => {
       await p.goto('/admin/settings?tab=assinatura')
       const card = p.getByRole('region', { name: 'Adicionais' })
       await card.getByRole('button', { name: 'Contratar o Copilot' }).click()
       await p.getByRole('alertdialog', { name: 'Contratar o Copilot' }).getByRole('button', { name: 'Confirmar contratação' }).click()
       await expect(p.getByText('Copilot contratado.')).toBeVisible({ timeout: 15_000 })
-      await expect(card.getByText('Contratado · em breve')).toBeVisible({ timeout: 15_000 })
+      // Lançado em 2026-10-08: sem o "em breve".
+      await expect(card.getByText('Contratado', { exact: true })).toBeVisible({ timeout: 15_000 })
 
       await card.getByRole('button', { name: 'Cancelar o Copilot' }).click()
       await p.getByRole('alertdialog', { name: 'Cancelar o Copilot' }).getByRole('button', { name: 'Confirmar cancelamento' }).click()

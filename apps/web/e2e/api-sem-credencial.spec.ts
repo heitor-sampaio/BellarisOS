@@ -22,7 +22,7 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
  *   conta Meta da rede pela dele e deixava a integração inativa.
  */
 
-const CRONS = ['automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns', 'suporte-sessoes']
+const CRONS = ['copilot-retencao', 'automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns', 'suporte-sessoes']
 /** Os do SISTEMA (apps/sistema, outro host desde 2026-10-06): só contra o build. */
 const CRONS_DO_SISTEMA = ['assinaturas']
 

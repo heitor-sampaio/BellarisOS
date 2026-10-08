@@ -1,5 +1,7 @@
 import { getTenantContext, can, temRecurso } from '@/lib/auth'
 import { lerRecursos, limiteDe, modulosForaDoPlano } from '@estetica-os/nucleo/lib/planos/recursos'
+import { usoDoCopilot } from '@estetica-os/nucleo/lib/planos/uso-do-copilot'
+import { copilotNoPlano } from '@/lib/copilot/disponivel'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { RolesEditor } from '@/components/admin/roles-editor'
@@ -174,6 +176,9 @@ export async function Configuracoes({
       return [chave, count ?? 0] as const
     }),
   )) as Record<'unidades' | 'membros' | 'whatsapp', number> : null
+
+  // O consumo do Copilot no mês, para a aba (só com o Copilot no plano).
+  const usoDoCopilotNaAba = assinatura && copilotNoPlano(ctx) ? await usoDoCopilot(admin, ctx.tenantId!, ctx.plano ?? null) : null
 
   const modelosDeDocumento = activeTab === 'documentos' ? await modelosDaRede(ctx.tenantId!) : null
   const linkPelaConversa = activeTab === 'documentos' ? await envioPelaConversaLigado(ctx.tenantId!) : false
@@ -367,6 +372,7 @@ export async function Configuracoes({
           // Quem paga é a clínica, não o atendente do suporte entrando na conta.
           podePagar={!ctx.suporte}
           uso={usoDosLimites ?? { unidades: 0, membros: 0, whatsapp: 0 }}
+          copilot={usoDoCopilotNaAba}
           // A mensalidade é da REDE: contrata quem é dela, com configurações; o suporte não.
           semContratar={ctx.suporte ? 'No modo suporte não dá para contratar: isto é feito pela própria clínica.'
             : ctx.branchId === null && can(ctx, 'settings', 'MANAGE') ? null

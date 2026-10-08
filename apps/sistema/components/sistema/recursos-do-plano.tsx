@@ -39,6 +39,20 @@ export function RecursosDoPlanoCampos({ valor, mudar: mudarCru }: { valor: Recur
     if (valor.adicionais?.[chave]) mudar({ ...valor, adicionais: { ...valor.adicionais, [chave]: { valor_centavos: centavosDe(texto) ?? 0 } } })
   }
 
+  // A cota do Copilot, como a pessoa digita ("2,5" milhões de tokens).
+  const [cota, setCota] = useState(() => {
+    const t = valor.cotas?.copilot
+    return t ? String(t / 1_000_000).replace('.', ',') : ''
+  })
+  function mudarCota(texto: string) {
+    setCota(texto)
+    const n = Number(texto.replace(/\./g, '').replace(',', '.'))
+    const tokens = texto.trim() && Number.isFinite(n) && n > 0 ? Math.round(n * 1_000_000) : null
+    const { cotas: _antes, ...resto } = valor
+    void _antes
+    mudar(tokens ? { ...resto, cotas: { copilot: tokens } } : resto)
+  }
+
   const grupos = [...new Set(FUNCIONALIDADES.map(f => f.grupo))]
   const marcadas = new Set<string>(valor.funcionalidades)
 
@@ -88,6 +102,20 @@ export function RecursosDoPlanoCampos({ valor, mudar: mudarCru }: { valor: Recur
             </div>
           )
         })}
+      </fieldset>
+
+      <fieldset className="plano-grupo">
+        <legend className="overline">Copilot</legend>
+        <p className="suporte-texto-fraco">
+          A cota mensal da rede, em milhões de tokens (a OpenAI cobra por token). Vazio, sem limite.
+          Um pedido comum gasta de 3 a 10 mil tokens — 1 milhão dá umas 150 conversas.
+        </p>
+        <label className="plano-adicional-preco">
+          <input className="field" inputMode="decimal" placeholder="sem limite" value={cota}
+            aria-label="Cota mensal do Copilot (milhões de tokens)"
+            onChange={e => mudarCota(e.target.value)} />
+          <span className="suporte-texto-fraco">milhões de tokens por mês</span>
+        </label>
       </fieldset>
 
       <fieldset className="plano-grupo">

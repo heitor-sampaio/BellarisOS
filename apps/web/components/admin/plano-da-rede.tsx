@@ -48,7 +48,7 @@ export function PlanoDaRede({ recursos, uso, extras = { whatsapp: 0, copilot: fa
                         <span>{f.rotulo}</span>
                         <span className="plano-da-rede-estado">
                           {!dentro ? 'Fora do plano'
-                            : f.chave === 'copilot' && extras.copilot ? 'Contratado à parte · em breve'
+                            : f.chave === 'copilot' && extras.copilot ? 'Contratado à parte'
                             : 'emBreve' in f && f.emBreve ? 'Incluído · em breve' : 'Incluído'}
                         </span>
                       </li>

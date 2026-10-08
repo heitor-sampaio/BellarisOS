@@ -29,7 +29,7 @@ export const CONTROLADOR = {
 } as const
 
 /** Data da última revisão do texto. Mudou o texto, muda aqui. */
-export const ATUALIZADA_EM = '2026-09-25'
+export const ATUALIZADA_EM = '2026-10-08'
 
 export function faltaPreencher(): string[] {
   const faltando: string[] = []

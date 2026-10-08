@@ -5,6 +5,7 @@ import { registrarVisitaDaRede, ROTULO_DO_REGISTRO, type TipoDeRegistroDaPlatafo
 import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import { ler } from '@estetica-os/nucleo/lib/db'
 import { lerAssinatura } from '@estetica-os/nucleo/lib/redes/assinatura'
+import { usoDoCopilot, descreverUsoDoCopilot } from '@estetica-os/nucleo/lib/planos/uso-do-copilot'
 import { configDoAsaas } from '@/lib/asaas/cliente'
 import { SituacaoDaRede } from '@/components/sistema/situacao-da-rede'
 import { BlocosDaRede } from '@/components/sistema/blocos-da-rede'
@@ -28,12 +29,16 @@ export default async function RedeDoSistemaPage({ params }: { params: Promise<{ 
   if (!a) notFound()
 
   const admin = createAdminClient()
-  const [planos, membros, cargos, registros] = await Promise.all([
+  const [planos, membros, cargos, registros, copilot] = await Promise.all([
     ler(admin.from('platform_plans').select('id, nome, valor_centavos, ativo').order('ordem').order('nome'), 'carregar os planos'),
     ler(admin.from('users').select('id, name, email, is_active, branch_id, role_id').eq('tenant_id', id).order('name'), 'carregar a equipe da rede'),
     ler(admin.from('tenant_roles').select('id, label').eq('tenant_id', id), 'carregar os cargos'),
     ler(admin.from('platform_audit_log').select('id, kind, at, platform_staff(name)').eq('tenant_id', id)
       .order('at', { ascending: false }).limit(15), 'carregar o registro da rede'),
+    // O consumo do Copilot no mês (só quando o plano o inclui).
+    a.assinatura?.recursos && (a.assinatura.recursos.funcionalidades.includes('copilot') || a.assinatura.adicionais.copilot)
+      ? usoDoCopilot(admin, id, a.assinatura.recursos).then(descreverUsoDoCopilot)
+      : Promise.resolve(null),
   ])
   await registrarVisitaDaRede(ctx, id)
   const nomeDoCargo = new Map(((cargos ?? []) as { id: string; label: string }[]).map(c => [c.id, c.label]))
@@ -66,6 +71,7 @@ export default async function RedeDoSistemaPage({ params }: { params: Promise<{ 
           faturas={a.faturas}
           planos={listaDePlanos}
           asaasPronto={asaas.temChave}
+          copilot={copilot}
         />
       </fieldset>
 

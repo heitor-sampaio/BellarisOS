@@ -150,4 +150,7 @@ O resto do fluxo:
 ❌ Calcular saldo de estoque depois de uma saída fora de lib/estoque/baixa.ts
 ❌ Criar agendamento sem procedure_id (a avaliação era a exceção e não existe mais)
 ❌ Confundir a ficha do PROCEDIMENTO (forms/form_data) com a anamnese GERAL do cliente
+❌ Conferir conflito de horário fora de horarioOcupado (lib/appointments/core.ts): a duração de CADA agendamento, e o profissional em qualquer unidade da rede
+❌ Remarcar ou cancelar fora de remarcarCore/cancelarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem
+❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_ajuste (a linha do saldo travada; duas entradas juntas perdiam uma)
 ```

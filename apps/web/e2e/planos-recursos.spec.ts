@@ -87,7 +87,7 @@ test.describe.serial('planos com funcionalidades e limites — o catálogo e o r
       await form.locator('input[name="valor"]').fill('299,00')
       // Plano novo nasce com tudo ligado; aqui, sem pacotes e sem Copilot.
       await form.getByRole('checkbox', { name: 'Pacotes', exact: true }).uncheck()
-      await form.getByRole('checkbox', { name: 'Copilot (IA secretária) · em breve', exact: true }).uncheck()
+      await form.getByRole('checkbox', { name: 'Copilot (IA secretária)', exact: true }).uncheck()
       // Unidades: 3; membros: ilimitado; WhatsApp: 1.
       await form.getByRole('checkbox', { name: 'Unidades: ilimitado' }).uncheck()
       await form.getByRole('slider', { name: 'Unidades' }).fill('3')

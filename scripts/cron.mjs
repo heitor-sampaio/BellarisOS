@@ -26,7 +26,7 @@
  * notificação e a exportação de LGPD varrem a base inteira. De hora em hora é
  * de propósito.
  */
-const PADRAO = ['notification-campaigns', 'lgpd-exports', 'meta-capi', 'eventos-expirados', 'estoque-minimo', 'fidelidade', 'documentos-pdf', 'suporte-sessoes', 'assinaturas']
+const PADRAO = ['notification-campaigns', 'lgpd-exports', 'meta-capi', 'eventos-expirados', 'estoque-minimo', 'fidelidade', 'documentos-pdf', 'suporte-sessoes', 'copilot-retencao', 'assinaturas']
 
 /**
  * Os jobs que moram no SISTEMA (apps/sistema, admin.*, 2026-10-06): a cobrança

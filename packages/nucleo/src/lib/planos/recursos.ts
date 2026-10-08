@@ -54,7 +54,7 @@ export const FUNCIONALIDADES = [
   { chave: 'comissoes',            rotulo: 'Comissões',                                grupo: 'Gestão',      modulos: [] },
   { chave: 'relatorios',           rotulo: 'Relatórios',                               grupo: 'Gestão',      modulos: ['reports'] },
   { chave: 'cargos',               rotulo: 'Cargos personalizados',                    grupo: 'Gestão',      modulos: ['roles'] },
-  { chave: 'copilot',              rotulo: 'Copilot (IA secretária)',                  grupo: 'Novidades',   modulos: [], emBreve: true },
+  { chave: 'copilot',              rotulo: 'Copilot (IA secretária)',                  grupo: 'Novidades',   modulos: [] },
 ] as const satisfies readonly Funcionalidade[]
 
 export type ChaveDeFuncionalidade = (typeof FUNCIONALIDADES)[number]['chave']
@@ -81,7 +81,7 @@ export const LIMITE_MAXIMO = 10
  */
 export const ADICIONAIS = [
   { chave: 'whatsapp', rotulo: 'Conexão de WhatsApp adicional', maximo: 10 },
-  { chave: 'copilot',  rotulo: 'Copilot (IA secretária)',       maximo: 1, emBreve: true },
+  { chave: 'copilot',  rotulo: 'Copilot (IA secretária)',       maximo: 1 },
 ] as const
 
 export type ChaveDeAdicional = (typeof ADICIONAIS)[number]['chave']
@@ -252,7 +252,9 @@ export function modulosForaDoPlano(recursos: RecursosDoPlano | null): AppModule[
 export function resumirRecursos(r: RecursosDoPlano | null): string {
   if (r === null) return 'Tudo liberado (sem plano)'
   const limites = LIMITES.map(l => `${l.rotulo.toLowerCase()}: ${r.limites[l.chave] ?? 'ilimitado'}`)
-  return [`${r.funcionalidades.length} de ${FUNCIONALIDADES.length} funcionalidades`, ...limites].join(' · ')
+  const cota = cotaDoCopilot(r)
+  const copilot = cota ? [`Copilot: ${(cota / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} mi tokens/mês`] : []
+  return [`${r.funcionalidades.length} de ${FUNCIONALIDADES.length} funcionalidades`, ...limites, ...copilot].join(' · ')
 }
 
 /**

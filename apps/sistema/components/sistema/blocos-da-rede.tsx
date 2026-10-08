@@ -84,7 +84,7 @@ function Janela({ titulo, onFechar, travado, children, largura = 520 }: {
 
 type Aberta = null | 'plano' | 'adicionais' | 'condicoes' | 'teste' | 'em-dia' | 'cancelar' | 'cobranca' | 'dados'
 
-export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, faturas, planos, asaasPronto }: {
+export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, faturas, planos, asaasPronto, copilot = null }: {
   tenantId: string
   rede: { planStatus: string | null; trialEndsAt: string | null; emAtrasoDesde: string | null; temDocumento: boolean; ativa: boolean; desligadaMotivo: string | null }
   dados: { nome: string; documento: string; email: string; telefone: string }
@@ -93,6 +93,8 @@ export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, f
   faturas: Fatura[]
   planos: { id: string; nome: string; valorCentavos: number; ativo: boolean }[]
   asaasPronto: boolean
+  /** O consumo do Copilot no mês ("600 tokens · 100% da cota"); null sem o Copilot. */
+  copilot?: string | null
 }) {
   const router = useRouter()
   const [aberta, setAberta] = useState<Aberta>(null)
@@ -152,6 +154,7 @@ export function BlocosDaRede({ tenantId, rede, dados, assinatura, nomeDoPlano, f
           </div>
         </div>
         <p className="suporte-texto-fraco">O que pode usar: {resumirRecursos(assinatura?.recursos ?? null)}</p>
+        {copilot && <p className="suporte-texto-fraco">Copilot este mês: {copilot}</p>}
         {temPlano && <p className="suporte-texto-fraco">A rede guarda o plano como era quando o recebeu; mudou o plano no catálogo, use &ldquo;Aplicar a versão atual do plano&rdquo;.</p>}
       </Bloco>
 

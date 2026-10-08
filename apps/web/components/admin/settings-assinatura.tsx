@@ -43,12 +43,14 @@ function mensalidadeComMaisOuMenos(
   }
 }
 
-export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso, semContratar }: {
+export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso, semContratar, copilot = null }: {
   dados: AssinaturaLida; planoNome: string | null; carencia: number; podePagar: boolean
   /** Por que esta pessoa não contrata adicional (null = contrata): unidade fixa, sem configurações, suporte. */
   semContratar: string | null
   /** Quantos de cada limite a rede usa hoje (os ATIVOS). */
   uso: Record<'unidades' | 'membros' | 'whatsapp', number>
+  /** O consumo do Copilot no mês (null: a rede não tem o Copilot). */
+  copilot?: { tokens: number; cota: number | null; percentual: number | null } | null
 }) {
   const { rede, assinatura, faturas } = dados
   const suspendeEm = rede.emAtrasoDesde
@@ -103,6 +105,22 @@ export function SettingsAssinatura({ dados, planoNome, carencia, podePagar, uso,
         extras={{ whatsapp: assinatura?.adicionais.whatsapp?.quantidade ?? 0, copilot: !!assinatura?.adicionais.copilot }}
         uso={uso}
       />
+
+      {copilot && (
+        <div className="card" data-uso-do-copilot style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <p className="overline" style={{ margin: 0 }}>Copilot este mês</p>
+          <p style={{ margin: 0, fontSize: 'var(--text-sm-sz)', color: 'var(--text)' }}>
+            {copilot.percentual === null
+              ? 'Sem limite de uso no seu plano.'
+              : <><strong>{copilot.percentual}% da cota usada</strong>{copilot.percentual >= 100 ? ' — o Copilot volta no começo do próximo mês.' : '.'}</>}
+          </p>
+          {copilot.percentual !== null && (
+            <div aria-hidden style={{ height: 6, borderRadius: 'var(--radius-full)', background: 'var(--bg-app)', overflow: 'hidden' }}>
+              <div style={{ width: `${copilot.percentual}%`, height: '100%', background: copilot.percentual >= 100 ? 'var(--danger)' : 'var(--brand)' }} />
+            </div>
+          )}
+        </div>
+      )}
 
       {assinatura?.recursos && (
         <AdicionaisDaClinica

@@ -28,12 +28,13 @@ describe('comparativoDosPlanos', () => {
     expect(c.secoes[0]!.titulo).toBe('Preço')
     expect(linha('Valor mensal').celulas.map(texto)).toEqual(['R$ 199,00', 'R$ 499,00'])
   })
-  it('toda funcionalidade do catálogo, por grupo, incluída ou não; a "em breve" marcada', () => {
+  it('toda funcionalidade do catálogo, por grupo, incluída ou não; o Copilot já lançado', () => {
     const rotulos = c.secoes.flatMap(s => s.linhas).map(l => l.rotulo)
     for (const f of FUNCIONALIDADES) expect(rotulos).toContain(f.rotulo)
     expect(linha('Agenda').celulas.map(x => x.tipo)).toEqual(['sim', 'sim'])
     expect(linha('Pacotes').celulas.map(x => x.tipo)).toEqual(['nao', 'sim'])
-    expect(linha('Copilot (IA secretária)').emBreve).toBe(true)
+    // Lançado em 2026-10-08: sem o "em breve".
+    expect(linha('Copilot (IA secretária)').emBreve).toBeUndefined()
     expect(c.secoes.map(s => s.titulo)).toContain('Atendimento')
   })
   it('os limites: o número ou "Ilimitado"', () => {

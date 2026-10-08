@@ -1299,6 +1299,50 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-08 — O Copilot: a secretária virtual da clínica
+
+Pedido do Heitor: uma secretária virtual dentro do sistema, num chat que
+flutua sobre todas as telas, para pedir qualquer coisa — consultar um dado,
+cadastrar um cliente, agendar —, com texto, voz, imagem e documento, pela API
+da OpenAI. Decisões dele: **toda gravação passa por um cartão** com
+Confirmar/Cancelar; **nada clínico vai à OpenAI**; **o máximo de módulos** já
+na primeira entrega; **cota mensal por rede** no plano. As regras da área
+estão em `docs/regras/copilot.md`.
+
+- **O painel**: botão no canto (Ctrl+J), janela à direita no computador e
+  folha abaixo da topbar no celular; conversas guardadas (90 dias sem uso),
+  resposta em streaming, cartões de links e de ação, voz, anexos (a foto
+  grande é reduzida no navegador). Só para a equipe, só com o Copilot no
+  plano, só com a chave configurada, nunca na sessão de suporte.
+- **O que ele faz** (cada ferramenta com a trava da tela, oferecida ao modelo
+  só para o cargo que pode): busca universal; agenda (agendamentos, horários
+  livres; agendar, remarcar, cancelar, confirmar presença); clientes (ficha
+  sem dado clínico e com CPF mascarado, listas; cadastrar, atualizar contato);
+  procedimentos; indicadores (lib/metrics, as abas do cargo); financeiro
+  (lançamentos; lançar, dar baixa — do caixa); estoque (crítico, vencendo,
+  saldo; entrada, ajuste); oportunidades (listar; criar, mover de etapa).
+  Fora: mandar mensagem ao paciente, estorno, exclusão, configurações.
+- **Os núcleos da tela foram extraídos** e a tela passou a usá-los:
+  remarcar/cancelar (`lib/appointments/alteracoes.ts`), lançar/dar baixa
+  (`lib/financeiro/lancamento.ts`), entrada/ajuste de estoque (agora funções
+  do banco), criar/mover oportunidade (`lib/crm/oportunidade.ts`).
+- **Correções que saíram junto, na TELA também** (achadas pelas revisões do
+  agente paralelo a cada fase):
+  - o conflito de horário usava a duração do agendamento novo dos dois lados
+    (um atendimento de 2 h não bloqueava o seguinte; um curto antes bloqueava
+    um longo depois) e olhava só a unidade — agora `horarioOcupado`, com a
+    duração de cada um e o profissional em qualquer unidade (também nos
+    horários livres da agenda, do CRM e do app do cliente);
+  - a remarcação pela tela não conferia conflito nenhum (nem a sala);
+  - o vencimento de lançamento avulso era gravado à meia-noite UTC — a tela
+    mostrava um dia antes; agora ao meio-dia de Brasília;
+  - entrada e ajuste de estoque soltos no app: duas entradas juntas perdiam
+    uma; agora numa transação com a linha travada;
+  - o proxy cortava corpos acima de 10 MB (o anexo de 16 MB do inbox chegava
+    truncado): `proxyClientMaxBodySize` 25 MB.
+- **Testes**: a OpenAI falsa (porta 3196) roteirizada; specs `copilot-*`
+  (esqueleto, leituras, gravações, gestão, mídia, voz, suporte, cota).
+
 ### 2026-10-08 — A clínica não vê "uazapi": a conexão por QR é "WhatsApp Web"
 
 Pedido do Heitor: tirar a referência ao fornecedor, para a conexão parecer
@@ -5704,6 +5748,11 @@ verdade. O que vale:
 
 ### Depende do Heitor (fora do código)
 
+- **O Copilot no ar** (2026-10-08): colar a `OPENAI_API_KEY` no serviço
+  BellarisOS do Railway (sem ela o Copilot não aparece para ninguém); conferir
+  o modelo (`OPENAI_MODEL`, padrão `gpt-5-mini`); definir a cota de cada plano
+  no editor de planos (sem cota = sem limite — a rede de teste está assim);
+  e testar à mão numa rede `[e2e]` com a chave real.
 - **Os apps da plataforma no ar** (2026-10-06):
   - feito: no Railway, os serviços **Sistema** e **Suporte** (`BELLARIS_APP`,
     variáveis por referência às da clínica, `INTERNO_SECRET` nos três apps),

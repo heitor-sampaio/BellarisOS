@@ -10,13 +10,13 @@ import {
  * (o retrato da rede) por `lerRecursos`.
  */
 describe('o catálogo', () => {
-  it('tem as funcionalidades do sistema e o Copilot (em breve)', () => {
+  it('tem as funcionalidades do sistema e o Copilot (lançado em 2026-10-08)', () => {
     const chaves = FUNCIONALIDADES.map(f => f.chave)
     for (const c of ['agenda', 'prontuario', 'documentos', 'estoque', 'portal', 'fidelidade', 'pacotes', 'pre_pago',
       'planos_de_tratamento', 'inbox', 'oportunidades', 'campanhas', 'templates', 'automacoes', 'anuncios',
       'financeiro', 'comissoes', 'relatorios', 'cargos', 'copilot']) expect(chaves).toContain(c)
     expect(new Set(chaves).size).toBe(chaves.length)
-    expect(FUNCIONALIDADES.find(f => f.chave === 'copilot')?.emBreve).toBe(true)
+    expect('emBreve' in FUNCIONALIDADES.find(f => f.chave === 'copilot')!).toBe(false)
   })
 })
 
