@@ -31,6 +31,17 @@ export interface NovoLancamento {
   observacoes?: string | null
 }
 
+/**
+ * O vencimento é um DIA: gravado ao meio-dia de Brasília, como o parcelado já
+ * faz. "AAAA-MM-DD" cru virava meia-noite UTC — 21h do dia ANTERIOR em
+ * Brasília: a tela mostrava o vencimento um dia antes e o recorte por mês
+ * jogava o dia 1º no mês anterior (até 2026-10-08).
+ */
+export function vencimentoDoDia(dia?: string | null): string | null {
+  if (!dia) return null
+  return /^\d{4}-\d{2}-\d{2}$/.test(dia) ? new Date(`${dia}T12:00:00-03:00`).toISOString() : new Date(dia).toISOString()
+}
+
 export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancamento): Promise<{ id: string } | { error: string }> {
   // A unidade vem de quem pede. Sem conferir, o lançamento caía na unidade de
   // QUALQUER rede — e quem é de unidade lançava na unidade vizinha.
@@ -49,7 +60,7 @@ export async function lancarCore(admin: Admin, ctx: TenantContext, l: NovoLancam
     description:    l.descricao,
     amount:         l.valor,
     payment_method: l.formaDePagamento || null,
-    due_date:       l.vencimento || null,
+    due_date:       vencimentoDoDia(l.vencimento),
     is_paid:        l.pago,
     paid_at:        l.pago ? new Date().toISOString() : null,
     notes:          l.observacoes ?? null,
@@ -76,9 +87,11 @@ export async function marcarPagoCore(admin: Admin, ctx: TenantContext, transacti
   const tx = await lancamentoAoAlcance(admin, ctx, transactionId)
   if (!tx) return { error: 'Lançamento não encontrado.' }
   const agora = new Date().toISOString()
-  await gravar(admin.from('financial_transactions').update({
+  // Com a guarda: o já pago (ou estornado) não tem o pagamento sobrescrito.
+  const feitas = await gravar(admin.from('financial_transactions').update({
     is_paid: true, paid_at: agora, updated_at: agora,
     ...(forma ? { payment_method: forma } : {}),
-  }).eq('id', transactionId).select('id'), 'dar baixa no lançamento')
+  }).eq('id', transactionId).eq('is_paid', false).or('notes.is.null,notes.neq.Estornada').select('id'), 'dar baixa no lançamento') as { id: string }[] | null
+  if (!feitas?.length) return { error: 'Esse lançamento já está pago (ou foi estornado).' }
   return { ok: true }
 }

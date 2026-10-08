@@ -105,21 +105,6 @@ export async function nomesPorId(c: ContextoDaFerramenta, tabela: 'users' | 'pro
   return new Map((linhas ?? []).map(l => [l.id, l.name]))
 }
 
-/**
- * Os horários do profissional ocupados em OUTRAS unidades no dia (o
- * profissional da rede atende em várias): `computeAvailableSlots` só olha a
- * unidade pedida.
- */
-export async function ocupadosEmOutrasUnidades(c: ContextoDaFerramenta, professionalId: string, unidadeId: string, data: string): Promise<{ inicio: number; fim: number }[]> {
-  const { inicio, fim } = janelaDoDia(data)
-  const linhas = (await ler(c.admin.from('appointments').select('scheduled_at, duration_min, branches!inner(tenant_id)')
-    .eq('professional_id', professionalId).neq('branch_id', unidadeId).eq('branches.tenant_id', c.ctx.tenantId!)
-    .not('status', 'in', '("CANCELLED","NO_SHOW")')
-    .gte('scheduled_at', inicio.toISOString()).lte('scheduled_at', fim.toISOString()), 'ler a agenda do profissional') as
-    { scheduled_at: string; duration_min: number }[] | null) ?? []
-  return linhas.map(l => ({ inicio: new Date(l.scheduled_at).getTime(), fim: new Date(l.scheduled_at).getTime() + (l.duration_min || 60) * 60000 }))
-}
-
 /** O texto curto do status do agendamento. */
 export const STATUS_DO_AGENDAMENTO: Record<string, string> = {
   SCHEDULED: 'agendado', CONFIRMED: 'confirmado', IN_PROGRESS: 'em atendimento',

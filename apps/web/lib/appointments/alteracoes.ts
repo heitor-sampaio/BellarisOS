@@ -26,13 +26,13 @@ const FINALIZADOS = ['COMPLETED', 'CANCELLED', 'NO_SHOW']
 
 export interface AgendamentoAoAlcance {
   id: string; branch_id: string; status: string; scheduled_at: string
-  professional_id: string | null; duration_min: number
+  professional_id: string | null; duration_min: number; room_id: string | null
 }
 
 /** O agendamento, se for da rede E de uma unidade ao alcance. */
 export async function agendamentoAoAlcance(admin: Admin, ctx: TenantContext, id: string): Promise<AgendamentoAoAlcance | null> {
   const a = await ler(admin.from('appointments')
-    .select('id, branch_id, status, scheduled_at, professional_id, duration_min, branches!inner(id, tenant_id)')
+    .select('id, branch_id, status, scheduled_at, professional_id, duration_min, room_id, branches!inner(id, tenant_id)')
     .eq('id', id).maybeSingle(), 'buscar o agendamento')
   const branch = a?.branches as unknown as { id: string; tenant_id: string } | null
   if (!a || branch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, branch.id)) return null
@@ -65,6 +65,13 @@ export async function remarcarCore(admin: Admin, ctx: TenantContext, input: {
     inicio, duracaoMin: existente.duration_min || 60,
   })) {
     return { error: 'Este profissional já tem agendamento nesse horário.' }
+  }
+  // E a sala, quando o agendamento tem uma.
+  if (existente.room_id && await horarioOcupado(admin, {
+    tenantId: ctx.tenantId!, roomId: existente.room_id, branchId: existente.branch_id, excluir: existente.id,
+    inicio, duracaoMin: existente.duration_min || 60,
+  })) {
+    return { error: 'Esta sala já está ocupada nesse horário.' }
   }
 
   // Com a guarda do status: concluído entre a leitura e a escrita não remarca.

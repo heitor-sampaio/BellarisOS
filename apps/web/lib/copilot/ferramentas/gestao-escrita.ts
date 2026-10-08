@@ -1,7 +1,8 @@
 import 'server-only'
 import { z } from 'zod/v4'
 import { revalidatePath } from 'next/cache'
-import { isOwnScope, podeReceber, ownerFilter } from '@/lib/auth'
+import { isOwnScope, ownerFilter } from '@/lib/auth'
+import { LEAD_SOURCE_KEYS, maskPhone, unitTag } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
 import { lancarCore, marcarPagoCore, lancamentoAoAlcance, CATEGORIAS_DE_DESPESA, CATEGORIAS_DE_RECEITA, FORMAS_DE_PAGAMENTO } from '@/lib/financeiro/lancamento'
 import { entradaDeEstoqueCore, ajusteDeEstoqueCore } from '@/lib/estoque/movimentos'
@@ -36,7 +37,9 @@ function categoria(tipo: 'receita' | 'despesa', pedida: string): string | { erro
   const achada = lista.find(c => semAcento(c) === semAcento(pedida)) ?? lista.find(c => semAcento(c).includes(semAcento(pedida)))
   return achada ?? { erro: `Categoria de ${tipo} "${pedida}" não existe. Categorias: ${lista.join(', ')}.` }
 }
-const revalidarFinanceiro = () => { revalidatePath('/admin/financeiro') }
+// Os dois portais: a rede e a unidade (o mesmo que a tela revalida).
+const revalidar = (tela: string) => { revalidatePath(`/admin/${tela}`); revalidatePath(`/[slug]/${tela}`, 'page') }
+const revalidarFinanceiro = () => revalidar('financeiro')
 
 interface ArgsLancar { tipo: 'receita' | 'despesa'; descricao: string; valor: number; categoria: string; vencimento?: string; pago?: boolean; forma?: string; unidade?: string }
 interface PayloadLancar { branchId: string; tipo: 'INCOME' | 'EXPENSE'; categoria: string; descricao: string; valor: number; forma: string | null; vencimento: string | null; pago: boolean }
@@ -99,7 +102,10 @@ export const lancar: FerramentaDeEscrita<ArgsLancar, PayloadLancar> = {
 export const marcarPago: FerramentaDeEscrita<{ lancamento: string; forma?: string }, { transactionId: string; forma: string | null }> = {
   nome: 'marcar_pago',
   tipo: 'escrita',
-  pode: podeReceber,
+  // Dar baixa é do CAIXA, como na tela (markTransactionPaid). Com o
+  // podeReceber, quem só tem o financeiro — até o "só as próprias comissões" —
+  // dava baixa em qualquer lançamento da unidade.
+  modulo: 'cashier', nivel: 'MANAGE',
   recurso: 'financeiro',
   descricao: 'Dá baixa (marca como pago agora) num lançamento em aberto (id, da ferramenta lancamentos), com a forma de pagamento opcional (dinheiro, Pix, débito, crédito).',
   parametros: z.object({ lancamento: UUID, forma: z.string().max(30).optional() }),
@@ -174,7 +180,8 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
     if ('erro' in u) return { erro: u.erro }
     const p = await resolverProduto(c, a.produto)
     if ('erro' in p) return { erro: p.erro }
-    const saldo = await saldoNaUnidade(c, p.id, u.unidade!.id)
+    // Sem o saldo no cartão: ele muda com o consumo até o Confirmar, e a entrada
+    // continua valendo (o saldo novo vem na mensagem do resultado).
     const un = p.unit ?? ''
     return {
       resumo: {
@@ -182,7 +189,6 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
         linhas: [
           { rotulo: 'Produto', valor: p.name },
           { rotulo: 'Quantidade', valor: `+${a.quantidade} ${un}`.trim() },
-          { rotulo: 'Saldo', valor: `${saldo} → ${saldo + a.quantidade} ${un}`.trim() },
           ...(a.custoUnitario ? [{ rotulo: 'Custo unitário', valor: dinheiro(a.custoUnitario) }] : []),
           ...(a.lote ? [{ rotulo: 'Lote', valor: `${a.lote}${a.validade ? ` · vence ${a.validade.split('-').reverse().join('/')}` : ''}` }] : []),
           { rotulo: 'Unidade', valor: u.unidade!.name },
@@ -197,7 +203,7 @@ export const entradaDeEstoque: FerramentaDeEscrita<ArgsEntrada, PayloadEntrada> 
   async efetivar(c, p) {
     const r = await entradaDeEstoqueCore(c.admin, c.ctx, p)
     if ('error' in r) return { erro: r.error }
-    revalidatePath('/admin/estoque')
+    revalidar('estoque')
     return { mensagem: `Entrada registrada. Saldo agora: ${r.saldo}.` }
   },
 }
@@ -237,13 +243,13 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
   async efetivar(c, p) {
     const r = await ajusteDeEstoqueCore(c.admin, c.ctx, p)
     if ('error' in r) return { erro: r.error }
-    revalidatePath('/admin/estoque')
+    revalidar('estoque')
     return { mensagem: `Saldo ajustado de ${r.de} para ${p.novoSaldo}.` }
   },
 }
 
 interface ArgsOportunidade { nome: string; telefone?: string; email?: string; origem?: string; interesse?: string[]; observacao?: string; funil?: string }
-interface PayloadOportunidade { nome: string; telefone: string | null; email: string | null; origem: string | null; procedureIds: string[]; observacoes: string | null; funnelId: string | null }
+interface PayloadOportunidade { nome: string; telefone: string | null; email: string | null; origem: string | null; procedureIds: string[]; observacoes: string | null; funnelId: string | null; tags: string[] }
 
 export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOportunidade> = {
   nome: 'criar_oportunidade',
@@ -262,6 +268,16 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
   }),
   async preparar(c, a) {
     if (!a.telefone && !a.email) return { erro: 'Qual o telefone ou o e-mail?' }
+    // A origem é a da lista da tela: fora dela, o indicador por origem quebra.
+    let origem: string | null = null
+    if (a.origem) {
+      origem = LEAD_SOURCE_KEYS.find(k => semAcento(k) === semAcento(a.origem!)) ?? null
+      if (!origem) return { erro: `Origem "${a.origem}" não existe. Origens: ${LEAD_SOURCE_KEYS.join(', ')}.` }
+    }
+    // Criada no portal de uma unidade (ou por quem é de uma): nasce com a tag dela, como na tela.
+    const u = c.ctx.branchId || c.slugDoPortal ? await resolverUnidade(c, null) : { unidade: null }
+    const tags = 'unidade' in u && u.unidade ? [unitTag(u.unidade.name)] : []
+    const digitos = a.telefone?.replace(/[^0-9]/g, '') ?? ''
     const procs: { id: string; name: string }[] = []
     for (const nome of a.interesse ?? []) {
       const p = await resolverProcedimento(c, nome)
@@ -279,26 +295,26 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
         titulo: 'Criar oportunidade',
         linhas: [
           { rotulo: 'Nome', valor: a.nome.trim() },
-          ...(a.telefone ? [{ rotulo: 'Telefone', valor: a.telefone.replace(/\D/g, '') }] : []),
+          ...(digitos ? [{ rotulo: 'Telefone', valor: maskPhone(digitos) }] : []),
           ...(a.email ? [{ rotulo: 'E-mail', valor: a.email.trim() }] : []),
           ...(procs.length ? [{ rotulo: 'Interesse', valor: procs.map(p => p.name).join(', ') }] : []),
-          ...(a.origem ? [{ rotulo: 'Origem', valor: a.origem }] : []),
+          ...(origem ? [{ rotulo: 'Origem', valor: origem }] : []),
           ...(funil ? [{ rotulo: 'Funil', valor: funil.name }] : []),
         ],
       },
       payload: {
-        nome: a.nome.trim(), telefone: a.telefone?.replace(/\D/g, '') || null, email: a.email?.trim() || null,
-        origem: a.origem ?? null, procedureIds: procs.map(p => p.id), observacoes: a.observacao?.trim() || null, funnelId: funil?.id ?? null,
+        nome: a.nome.trim(), telefone: digitos ? maskPhone(digitos) : null, email: a.email?.trim().toLowerCase() || null,
+        origem, procedureIds: procs.map(p => p.id), observacoes: a.observacao?.trim() || null, funnelId: funil?.id ?? null, tags,
       },
     }
   },
   async efetivar(c, p) {
     const r = await criarOportunidadeCore(c.admin, c.ctx, {
       nome: p.nome, telefone: p.telefone, email: p.email, origem: p.origem, observacoes: p.observacoes,
-      procedureIds: p.procedureIds, funnelId: p.funnelId,
+      procedureIds: p.procedureIds, funnelId: p.funnelId, tags: p.tags,
     })
     if ('error' in r) return { erro: r.error }
-    revalidatePath('/admin/oportunidades')
+    revalidar('oportunidades')
     return { mensagem: 'Oportunidade criada.', href: rotaOportunidade(c.pagina, c.slugDoPortal, r.leadId, p.funnelId), rotuloDoLink: 'Abrir no quadro' }
   },
 }
@@ -338,7 +354,7 @@ export const moverEtapa: FerramentaDeEscrita<{ oportunidade: string; etapa: stri
     if (ownerFilter(c.ctx, 'crm') && !(await leadAoAlcance(c.admin, c.ctx, p.leadId))) return { erro: 'Oportunidade não encontrada.' }
     const r = await moverEtapaCore(c.admin, c.ctx, p.leadId, p.stageId)
     if ('error' in r) return { erro: r.error }
-    revalidatePath('/admin/oportunidades')
+    revalidar('oportunidades')
     return { mensagem: 'Oportunidade movida.', href: rotaOportunidade(c.pagina, c.slugDoPortal, p.leadId, p.funnelId), rotuloDoLink: 'Abrir no quadro' }
   },
 }

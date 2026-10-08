@@ -36,16 +36,6 @@ export interface CreateAppointmentInput {
 
 const IGNORED_STATUS = '("CANCELLED","NO_SHOW")'
 
-/**
- * As peças de um agendamento que vêm do navegador são DA REDE, e a unidade
- * está ao alcance de quem agenda (§11). Devolve a mensagem de recusa, ou null.
- *
- * Mora aqui para servir a TODO caminho que cria ou move agendamento: o núcleo
- * (agenda e comercial), o checkout do plano, a sessão de pacote e de plano, a
- * remarcação e a troca de profissional. Até 2026-09-28 só o núcleo conferia —
- * os outros gravavam a unidade e o profissional que o navegador mandasse.
- * Campo ausente não é conferido (quem chama decide o que é obrigatório).
- */
 /** O agendamento mais longo que a conferência de horário considera (12 h). */
 const DURACAO_MAXIMA_MS = 12 * 60 * 60_000
 
@@ -82,7 +72,7 @@ export async function horarioOcupado(admin: Admin, a: {
   if (a.professionalId) q = q.eq('professional_id', a.professionalId)
   else q = q.eq('room_id', a.roomId!).eq('branch_id', a.branchId!)
   if (a.excluir) q = q.neq('id', a.excluir)
-  const candidatos = (await ler(q.limit(200), 'conferir o horário') as { scheduled_at: string; duration_min: number | null }[] | null) ?? []
+  const candidatos = (await ler(q.order('scheduled_at', { ascending: false }).limit(200), 'conferir o horário') as { scheduled_at: string; duration_min: number | null }[] | null) ?? []
   return candidatos.some(c => {
     const oIni = new Date(c.scheduled_at).getTime()
     const oFim = oIni + (c.duration_min || 60) * 60000
@@ -90,6 +80,16 @@ export async function horarioOcupado(admin: Admin, a: {
   })
 }
 
+/**
+ * As peças de um agendamento que vêm do navegador são DA REDE, e a unidade
+ * está ao alcance de quem agenda (§11). Devolve a mensagem de recusa, ou null.
+ *
+ * Mora aqui para servir a TODO caminho que cria ou move agendamento: o núcleo
+ * (agenda e comercial), o checkout do plano, a sessão de pacote e de plano, a
+ * remarcação e a troca de profissional. Até 2026-09-28 só o núcleo conferia —
+ * os outros gravavam a unidade e o profissional que o navegador mandasse.
+ * Campo ausente não é conferido (quem chama decide o que é obrigatório).
+ */
 export async function conferirPecasDoAgendamento(
   admin: Admin,
   ctx: TenantContext,
@@ -264,12 +264,15 @@ export async function computeAvailableSlots(
   const dayStart = new Date(`${date}T08:00:00-03:00`).toISOString()
   const dayEnd   = new Date(`${date}T20:00:00-03:00`).toISOString()
 
+  // O profissional em QUALQUER unidade (o da rede atende em várias; o id do
+  // profissional já é de uma rede só), e o que começou antes das 8h e ainda
+  // ocupa a manhã (2026-10-08). `branchId` fica na assinatura dos chamadores.
+  void branchId
   const booked = await ler(admin
     .from('appointments')
     .select('scheduled_at, duration_min')
-    .eq('branch_id', branchId)
     .eq('professional_id', professionalId)
-    .gte('scheduled_at', dayStart)
+    .gte('scheduled_at', new Date(new Date(dayStart).getTime() - DURACAO_MAXIMA_MS).toISOString())
     .lt('scheduled_at', dayEnd)
     .not('status', 'in', IGNORED_STATUS), 'carregar os agendamentos')
 
@@ -282,7 +285,7 @@ export async function computeAvailableSlots(
 
   const occupied = (booked ?? []).map((b) => ({
     start: new Date(b.scheduled_at as string).getTime(),
-    end:   new Date(b.scheduled_at as string).getTime() + Number(b.duration_min) * 60000,
+    end:   new Date(b.scheduled_at as string).getTime() + (Number(b.duration_min) || 60) * 60000,
   }))
 
   const cutoff = new Date(`${date}T20:00:00-03:00`).getTime()

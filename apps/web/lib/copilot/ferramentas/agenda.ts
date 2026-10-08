@@ -5,8 +5,8 @@ import { computeAvailableSlots } from '@/lib/appointments/core'
 import { ler } from '@/lib/db'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
-  BUSINESS_TZ, DATA, UUID, STATUS_DO_AGENDAMENTO, hojeEmBrasilia, idsDasUnidades, instanteDe, janelaDoDia, nomesPorId,
-  ocupadosEmOutrasUnidades, quandoLegivel,
+  BUSINESS_TZ, DATA, UUID, STATUS_DO_AGENDAMENTO, hojeEmBrasilia, idsDasUnidades, janelaDoDia, nomesPorId,
+  quandoLegivel,
   resolverProcedimento, resolverProfissional, resolverUnidade, rota,
 } from '@/lib/copilot/ferramentas/comum'
 
@@ -128,16 +128,6 @@ export const horariosLivres: FerramentaDeLeitura<{ data: string; profissional: s
       procedimento = pr.name
     }
     let livres = await computeAvailableSlots(c.admin, unidadeId, p.id, args.data, duracao)
-    // O profissional da rede atende em várias unidades: o horário marcado em
-    // OUTRA unidade também ocupa.
-    const fora = await ocupadosEmOutrasUnidades(c, p.id, unidadeId, args.data)
-    if (fora.length) {
-      livres = livres.filter(h => {
-        const ini = instanteDe(args.data, h).getTime()
-        const fim = ini + duracao * 60000
-        return !fora.some(o => ini < o.fim && fim > o.inicio)
-      })
-    }
     // Hoje: o que já passou não é livre.
     if (args.data === hojeEmBrasilia()) {
       const agora = new Intl.DateTimeFormat('pt-BR', { timeZone: BUSINESS_TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date())

@@ -56,6 +56,33 @@ function IconeDoAnexo({ tipo }: { tipo: AnexoNaTela['tipo'] }) {
   return <FileText size={12} />
 }
 
+/** O teto da imagem no servidor é 5 MB; acima de ~3 MB a foto é reduzida. */
+const FOTO_GRANDE = 3 * 1024 * 1024
+const LADO_MAXIMO = 2048
+
+/**
+ * A foto grande vira um JPEG de até 2048 px no maior lado — o modelo lê bem
+ * assim, e o pedido fica leve. Falhando (formato que o navegador não abre),
+ * vai como está, e o servidor diz se passou do limite.
+ */
+async function reduzirFoto(f: File): Promise<File> {
+  if (!f.type.startsWith('image/') || f.size <= FOTO_GRANDE || typeof createImageBitmap === 'undefined') return f
+  try {
+    const bitmap = await createImageBitmap(f)
+    const escala = Math.min(1, LADO_MAXIMO / Math.max(bitmap.width, bitmap.height))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(bitmap.width * escala)
+    canvas.height = Math.round(bitmap.height * escala)
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+    bitmap.close()
+    const blob: Blob | null = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.85))
+    if (!blob) return f
+    return new File([blob], f.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' })
+  } catch {
+    return f
+  }
+}
+
 function quando(iso: string): string {
   const d = new Date(iso)
   const hoje = new Date()
@@ -325,11 +352,13 @@ export function Copilot() {
     void enviarRef.current({ texto: '', anexos: [arquivo] })
   }, []))
 
-  function escolherArquivos(lista: FileList | null) {
+  async function escolherArquivos(lista: FileList | null) {
     if (!lista) return
-    const novos = [...anexos, ...Array.from(lista)].slice(0, ANEXOS_MAXIMOS)
-    if (anexos.length + lista.length > ANEXOS_MAXIMOS) setErro(`No máximo ${ANEXOS_MAXIMOS} anexos por vez.`)
-    setAnexos(novos)
+    const escolhidos = Array.from(lista)
+    if (anexos.length + escolhidos.length > ANEXOS_MAXIMOS) setErro(`No máximo ${ANEXOS_MAXIMOS} anexos por vez.`)
+    // A foto do celular passa fácil do limite: reduzida aqui, antes de subir.
+    const prontos = await Promise.all(escolhidos.slice(0, ANEXOS_MAXIMOS - anexos.length).map(reduzirFoto))
+    setAnexos(a => [...a, ...prontos].slice(0, ANEXOS_MAXIMOS))
   }
 
   async function microfone() {
@@ -444,7 +473,7 @@ export function Copilot() {
             )}
             <form className="copilot-compositor" onSubmit={e => { e.preventDefault(); void enviar({ texto, anexos }) }}>
               <input ref={arquivoRef} type="file" accept={ACEITOS} multiple hidden aria-label="Arquivo para o Copilot"
-                onChange={e => { escolherArquivos(e.target.files); e.target.value = '' }} />
+                onChange={e => { const lista = e.target.files; void escolherArquivos(lista).finally(() => { e.target.value = '' }) }} />
               <button type="button" className="copilot-compositor-botao" aria-label="Anexar arquivo" title="Anexar imagem ou documento"
                 disabled={enviando || gravador.gravando} onClick={() => arquivoRef.current?.click()}>
                 <Paperclip size={16} />

@@ -2,7 +2,7 @@ import 'server-only'
 import { z } from 'zod/v4'
 import { isOwnScope, ownerFilter } from '@/lib/auth'
 import { ler } from '@/lib/db'
-import { addDaysTZ } from '@/lib/datetime'
+import { addDaysTZ, dayKeyTZ } from '@/lib/datetime'
 import { rotaOportunidade } from '@/lib/rotas'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, UUID, dinheiro, hojeEmBrasilia, idsDasUnidades, janelaDoDia, nomesPorId, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
@@ -40,10 +40,10 @@ export const lancamentos: FerramentaDeLeitura<{
     const situacao = args.situacao ?? 'em_aberto'
     const campoDaData = situacao === 'pagos' ? 'paid_at' : 'due_date'
 
-    // O vencimento é um DIA, gravado como meia-noite UTC ("AAAA-MM-DD"): compara
-    // pelo dia UTC. O pagamento é um instante: pela janela do dia em Brasília.
+    // Vencimento e pagamento pelo DIA de Brasília, como a tela mostra (o
+    // vencimento é gravado ao meio-dia de Brasília — vencimentoDoDia).
     const hoje = hojeEmBrasilia()
-    const diaSeguinte = (d: string) => new Date(Date.parse(`${d}T00:00:00Z`) + 86_400_000).toISOString()
+    const diaDe = (iso: string | null) => (iso ? dayKeyTZ(iso) : null)
 
     let q = c.admin.from('financial_transactions')
       .select('id, type, category, description, amount, payment_method, due_date, paid_at, is_paid, client_id, branch_id, parcela_numero, parcela_total, notes')
@@ -54,15 +54,10 @@ export const lancamentos: FerramentaDeLeitura<{
       .limit(50)
     if (args.tipo) q = q.eq('type', args.tipo === 'receita' ? 'INCOME' : 'EXPENSE')
     if (situacao === 'em_aberto') q = q.eq('is_paid', false)
-    if (situacao === 'vencidos') q = q.eq('is_paid', false).lt('due_date', `${hoje}T00:00:00Z`)
+    if (situacao === 'vencidos') q = q.eq('is_paid', false).lt('due_date', janelaDoDia(hoje).inicio.toISOString())
     if (situacao === 'pagos') q = q.eq('is_paid', true)
-    if (campoDaData === 'due_date') {
-      if (args.de) q = q.gte('due_date', `${args.de}T00:00:00Z`)
-      if (args.ate) q = q.lt('due_date', diaSeguinte(args.ate))
-    } else {
-      if (args.de) q = q.gte('paid_at', janelaDoDia(args.de).inicio.toISOString())
-      if (args.ate) q = q.lte('paid_at', janelaDoDia(args.ate).fim.toISOString())
-    }
+    if (args.de) q = q.gte(campoDaData, janelaDoDia(args.de).inicio.toISOString())
+    if (args.ate) q = q.lte(campoDaData, janelaDoDia(args.ate).fim.toISOString())
     if (args.cliente) q = q.eq('client_id', args.cliente)
 
     const linhas = (await ler(q, 'ler os lançamentos') as {
@@ -80,10 +75,10 @@ export const lancamentos: FerramentaDeLeitura<{
         lancamentos: linhas.map(l => ({
           id: l.id, tipo: l.type === 'INCOME' ? 'receita' : 'despesa',
           descricao: l.description ?? l.category, categoria: l.category, valor: dinheiro(l.amount),
-          vencimento: l.due_date?.slice(0, 10) ?? null, pagoEm: l.paid_at?.slice(0, 10) ?? null,
+          vencimento: diaDe(l.due_date), pagoEm: diaDe(l.paid_at),
           situacao: l.notes === 'Estornada' ? 'estornado'
             : l.is_paid ? 'pago'
-            : (l.due_date && l.due_date.slice(0, 10) < hoje ? 'vencido' : 'em aberto'),
+            : (l.due_date && diaDe(l.due_date)! < hoje ? 'vencido' : 'em aberto'),
           forma: l.payment_method ? (FORMA[l.payment_method] ?? l.payment_method) : null,
           cliente: l.client_id ? (clientes.get(l.client_id) ?? null) : null,
           unidade: filiais.get(l.branch_id) ?? null,

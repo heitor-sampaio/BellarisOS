@@ -234,6 +234,7 @@ test('remarcar, confirmar presença e cancelar: o Confirmar grava, com históric
 
 test('o profissional da rede ocupado em OUTRA unidade: o Confirmar recusa', async ({ browser }) => {
   const id = await agendamentoNoBanco('08:00')
+  let outroNaUnidadeC: string | null = null
   const { data: b, error } = await db().from('branches').insert({ tenant_id: rede.outra.tenantId, name: `${PREFIXO} Unidade C ${marca}`, slug: `e2e-unc-${marca}` }).select('id').single<{ id: string }>()
   expect(error).toBeNull()
   try {
@@ -244,14 +245,15 @@ test('o profissional da rede ocupado em OUTRA unidade: o Confirmar recusa', asyn
       const cartao = await pedir(p, 'remarcar', { agendamento: id, data: AMANHA, hora: '18:00' })
       await expect(cartao.getByText('Remarcar atendimento')).toBeVisible()
       // Na OUTRA unidade, alguém marca o mesmo profissional às 18:00.
-      const outro = await agendamentoNoBanco('18:00', { branchId: b!.id })
+      outroNaUnidadeC = await agendamentoNoBanco('18:00', { branchId: b!.id })
       await cartao.getByRole('button', { name: 'Confirmar' }).click()
       await expect(cartao.getByRole('status')).toContainText('já tem agendamento')
-      await apagarAgendamentos([outro])
     })
     expect(new Date((await db().from('appointments').select('scheduled_at').eq('id', id).single()).data!.scheduled_at).toISOString())
       .toBe(new Date(`${AMANHA}T08:00:00-03:00`).toISOString())
   } finally {
+    // O agendamento da unidade C sai antes dela (a FK), mesmo se o teste falhou no meio.
+    if (outroNaUnidadeC) await apagarAgendamentos([outroNaUnidadeC])
     await db().from('users').update({ branch_id: rede.outra.branchId }).eq('id', rede.outra.professionalId)
     await db().from('branches').delete().eq('id', b!.id)
   }
@@ -273,5 +275,25 @@ test('cadastrar com CPF grava o CPF; atualizar contato mostra De → Para e grav
     await atualizar.getByRole('button', { name: 'Confirmar' }).click()
     await expect(atualizar.getByRole('status')).toContainText('Feito')
     expect((await db().from('clients').select('email').eq('id', criado!.id).single()).data!.email).toBe(`novo${marca}@bellaris.invalid`)
+  })
+})
+
+test('na TELA (a agenda do CRM): o longo bloqueia o seguinte, e o curto antes não bloqueia o longo depois', async ({ browser }) => {
+  const { data: cli } = await db().from('clients').select('name, phone').eq('id', clienteId).single<{ name: string; phone: string }>()
+  const { data: longo, error } = await db().from('procedures').insert({ tenant_id: rede.outra.tenantId, name: `${PREFIXO} Longo ${marca}`, category: 'e2e', duration_min: 120, price: 0 }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const marcar = (p: Page, hora: string, procedureId: string) => chamarAcao(p, 'actions/crm-scheduling.ts', 'createCrmAppointment', '/admin/inbox', [{
+    leadId: '', branchId: rede.outra.branchId, professionalId: rede.outra.professionalId, procedureId,
+    scheduledAt: new Date(`${AMANHA}T${hora}:00-03:00`).toISOString(), contato: { nome: cli!.name, telefone: cli!.phone },
+  }])
+  await comSessao(browser, rede.dono.estado, async p => {
+    await p.goto('/admin/inbox')
+    // 12:00 tem um atendimento de 2 h (do teste "LONGO"): às 13:30, ocupado.
+    expect((await marcar(p, '13:30', rede.outra.procedureId)).texto).toContain('já tem agendamento')
+    // Um de 30 min às 19:30 (termina 20:00) não bloqueia um de 2 h às 20:00.
+    await agendamentoNoBanco('19:30')
+    const r = await marcar(p, '20:00', longo!.id)
+    expect(r.texto).not.toContain('já tem agendamento')
+    expect(r.texto).toMatch(/"id":"[0-9a-f-]{36}"/)
   })
 })

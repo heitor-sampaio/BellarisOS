@@ -54,7 +54,9 @@ test('lançar despesa e dar baixa: o cartão, nada antes; o Confirmar grava', as
     expect((await db().from('financial_transactions').select('id').eq('description', descricao)).data).toEqual([])
     await cartao.getByRole('button', { name: 'Confirmar' }).click()
     await expect(cartao.getByRole('status')).toContainText('Feito')
-    const { data: lancado } = await db().from('financial_transactions').select('id, type, category, amount, is_paid, created_by').eq('description', descricao).single()
+    const { data: lancado } = await db().from('financial_transactions').select('id, type, category, amount, is_paid, created_by, due_date').eq('description', descricao).single()
+    // O vencimento é o DIA, ao meio-dia de Brasília (não meia-noite UTC = véspera).
+    expect(new Date(lancado!.due_date).toISOString()).toBe('2030-01-10T15:00:00.000Z')
     expect(lancado).toMatchObject({ type: 'EXPENSE', category: 'Manutenção', amount: 245.9, is_paid: false, created_by: rede.dono.userId })
 
     const baixa = await pedir(p, 'marcar_pago', { lancamento: lancado!.id, forma: 'pix' })
@@ -81,9 +83,10 @@ test('estoque: entrada soma, ajuste corrige para o contado — com o saldo De �
   await comSessao(browser, rede.dono.estado, async p => {
     await p.goto('/admin/estoque')
     const entrada = await pedir(p, 'entrada_de_estoque', { produto: produto, quantidade: 7, lote: `L${marca}`, validade: '2031-05-01' })
-    await expect(entrada.getByText('3 → 10 un')).toBeVisible()
+    // Sem o saldo no cartão (ele muda até o Confirmar); o saldo novo vem no resultado.
+    await expect(entrada.getByText('+7 un')).toBeVisible()
     await entrada.getByRole('button', { name: 'Confirmar' }).click()
-    await expect(entrada.getByRole('status')).toContainText('Feito')
+    await expect(entrada.getByRole('status')).toContainText('Saldo agora: 10')
     const saldo = async () => Number((await db().from('branch_product_stock').select('current_stock').eq('product_id', produto).single()).data!.current_stock)
     expect(await saldo()).toBe(10)
     expect((await db().from('product_batches').select('batch_number').eq('product_id', produto)).data).toEqual([{ batch_number: `L${marca}` }])
@@ -124,7 +127,21 @@ test('oportunidade: cria no funil e move de etapa — com o evento "via Copilot"
   })
 })
 
-test('as travas: o caixa dá baixa mas não lança; quem só vê o CRM não move; quem não tem estoque nem recebe', async ({ browser }) => {
+test('as travas: o caixa dá baixa (de verdade) mas não lança; o financeiro sem caixa não dá baixa', async ({ browser }) => {
+  const { data: tx, error } = await db().from('financial_transactions').insert({
+    branch_id: rede.outra.branchId, type: 'INCOME', category: 'Outro', description: `${PREFIXO} A receber copges${marca}`,
+    amount: 80, is_paid: false, created_by: 'e2e',
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+
+  // Só o financeiro (e "só as próprias comissões"): nem baixa nem lançamento.
+  const comissoes = await rede.membro('fin', [{ modulo: 'financial', nivel: 'MANAGE', escopo: 'OWN' }])
+  await comSessao(browser, comissoes.estado, async p => {
+    await p.goto('/admin/dashboard')
+    await pedir(p, 'marcar_pago', { lancamento: tx!.id })
+    for (const fora of ['marcar_pago', 'lancar', 'lancamentos']) expect(falsa.ferramentasOferecidas(0)).not.toContain(fora)
+  })
+
   const caixa = await rede.membro('cx', [{ modulo: 'cashier', nivel: 'MANAGE' }, { modulo: 'crm', nivel: 'VIEW' }])
   await comSessao(browser, caixa.estado, async p => {
     await p.goto('/admin/dashboard')
@@ -133,5 +150,41 @@ test('as travas: o caixa dá baixa mas não lança; quem só vê o CRM não move
     expect(oferecidas).toContain('marcar_pago')
     for (const fora of ['lancar', 'entrada_de_estoque', 'ajuste_de_estoque', 'criar_oportunidade', 'mover_etapa']) expect(oferecidas).not.toContain(fora)
     expect(ultimaSaida()?.erro).toContain('não está liberada')
+
+    const baixa = await pedir(p, 'marcar_pago', { lancamento: tx!.id, forma: 'dinheiro' })
+    await baixa.getByRole('button', { name: 'Confirmar' }).click()
+    await expect(baixa.getByRole('status')).toContainText('Feito')
+  })
+  expect((await db().from('financial_transactions').select('is_paid, payment_method').eq('id', tx!.id).single()).data).toEqual({ is_paid: true, payment_method: 'CASH' })
+})
+
+test('o caixa de OUTRA unidade não dá baixa no lançamento desta', async ({ browser }) => {
+  const { data: b, error } = await db().from('branches').insert({ tenant_id: rede.outra.tenantId, name: `${PREFIXO} Unidade B ${marca}`, slug: `e2e-ung-${marca}` }).select('id, slug').single<{ id: string; slug: string }>()
+  expect(error).toBeNull()
+  const { data: tx } = await db().from('financial_transactions').insert({
+    branch_id: rede.outra.branchId, type: 'INCOME', category: 'Outro', description: `${PREFIXO} Da A copges${marca}`,
+    amount: 50, is_paid: false, created_by: 'e2e',
+  }).select('id').single<{ id: string }>()
+  const deB = await rede.membro('cxb', [{ modulo: 'cashier', nivel: 'MANAGE' }], { branchId: b!.id })
+  try {
+    await comSessao(browser, deB.estado, async p => {
+      await p.goto(`/${b!.slug}/dashboard`)
+      await pedir(p, 'marcar_pago', { lancamento: tx!.id })
+      expect(ultimaSaida()?.erro).toContain('não encontrado')
+    })
+    expect((await db().from('financial_transactions').select('is_paid').eq('id', tx!.id).single()).data!.is_paid).toBe(false)
+  } finally {
+    await deB.limpar()
+    await db().from('branches').delete().eq('id', b!.id)
+  }
+})
+
+test('CRM "só os meus": não move a oportunidade de outra pessoa', async ({ browser }) => {
+  const { data: lead } = await db().from('leads').select('id').eq('tenant_id', rede.outra.tenantId).limit(1).single<{ id: string }>()
+  const sdr = await rede.membro('sdr', [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }])
+  await comSessao(browser, sdr.estado, async p => {
+    await p.goto('/admin/dashboard')
+    await pedir(p, 'mover_etapa', { oportunidade: lead!.id, etapa: 'qualquer' })
+    expect(ultimaSaida()?.erro).toContain('não encontrada')
   })
 })

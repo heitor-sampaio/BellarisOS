@@ -58,56 +58,14 @@ export async function entradaDeEstoqueCore(admin: Admin, ctx: TenantContext, e: 
     return { error: 'Produto ou filial não encontrado.' }
   }
 
-  // `maybeSingle`: unidade sem linha de saldo é saldo 0 (a primeira entrada).
-  // Falha de leitura é outra coisa — não pode virar 0 e gravar um saldo falso.
-  const [bps, upp] = await Promise.all([
-    ler(admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento')
-      .eq('product_id', e.productId).eq('branch_id', e.branchId).maybeSingle(), 'buscar o saldo do produto'),
-    getUpp(admin, e.productId),
-  ])
-
-  const currentStock      = Number(bps?.current_stock ?? 0)
-  const balanceAfter      = currentStock + e.quantidade
-  const currentRendimento = bps?.current_rendimento != null ? Number(bps.current_rendimento) : (upp ? currentStock * upp : null)
-  const newRendimento     = upp && currentRendimento != null ? currentRendimento + e.quantidade * upp : null
-
-  await gravar(admin.from('stock_movements').insert({
-    branch_id:     e.branchId,
-    product_id:    e.productId,
-    type:          'PURCHASE',
-    quantity:      e.quantidade,
-    balance_after: balanceAfter,
-    unit_cost:     e.custoUnitario ?? null,
-    notes:         e.observacao ?? null,
-    created_by:    ctx.internalUserId,
-  }), 'registrar a entrada de estoque')
-
-  await gravar(admin.from('branch_product_stock').upsert({
-    product_id:         e.productId,
-    branch_id:          e.branchId,
-    current_stock:      balanceAfter,
-    current_rendimento: newRendimento,
-    min_stock:          Number(bps?.min_stock ?? 0),
-    updated_at:         new Date().toISOString(),
-  }, { onConflict: 'product_id,branch_id' }), 'atualizar o saldo da unidade')
-
-  if (e.lote) {
-    await gravar(admin.from('product_batches').insert({
-      product_id:   e.productId,
-      branch_id:    e.branchId,
-      batch_number: e.lote,
-      expires_at:   e.validade ?? null,
-      quantity:     e.quantidade,
-    }), 'registrar o lote do produto')
-  }
-
-  // O custo do produto passa a ser o desta compra (preço da última entrada).
-  if (e.custoUnitario && e.custoUnitario > 0) {
-    await gravar(admin.from('products')
-      .update({ cost_price: e.custoUnitario, updated_at: new Date().toISOString() })
-      .eq('id', e.productId), 'atualizar o custo do produto')
-  }
-  return { ok: true, saldo: balanceAfter }
+  // Numa transação só, com a linha do saldo travada (estoque_entrada): duas
+  // entradas ao mesmo tempo (a tela e o Copilot) não se perdem mais.
+  const saldo = await gravar(admin.rpc('estoque_entrada', {
+    p_produto: e.productId, p_unidade: e.branchId, p_quantidade: e.quantidade,
+    p_custo: e.custoUnitario ?? null, p_observacao: e.observacao ?? null,
+    p_lote: e.lote || null, p_validade: e.validade || null, p_autor: ctx.internalUserId,
+  }), 'registrar a entrada de estoque') as number
+  return { ok: true, saldo: Number(saldo) }
 }
 
 export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
@@ -120,45 +78,9 @@ export async function ajusteDeEstoqueCore(admin: Admin, ctx: TenantContext, a: {
     return { error: 'Produto ou filial não encontrado.' }
   }
 
-  // Sem linha de saldo = saldo 0; falha de leitura não pode virar 0 (o ajuste
-  // gravaria um delta sobre um número inventado).
-  const [bps, upp] = await Promise.all([
-    ler(admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento')
-      .eq('product_id', a.productId).eq('branch_id', a.branchId).maybeSingle(), 'buscar o saldo do produto'),
-    getUpp(admin, a.productId),
-  ])
-
-  const currentStock = Number(bps?.current_stock ?? 0)
-  const delta        = a.novoSaldo - currentStock
-
-  // Preserva o consumo acumulado ao ajustar a quantidade de embalagens.
-  // Ex.: 100 frascos × 100ml/frasco = 10.000ml totais; disponível = 9.999ml → consumido = 1ml.
-  // Ajuste para 20 frascos → 2.000ml totais − 1ml consumido = 1.999ml disponíveis.
-  let newRendimento: number | null = null
-  if (upp !== null && upp > 0) {
-    const currentTotal = currentStock * upp
-    const currentAvail = bps?.current_rendimento != null ? Number(bps.current_rendimento) : currentTotal
-    const consumed     = Math.max(0, currentTotal - currentAvail)
-    newRendimento      = Math.max(0, a.novoSaldo * upp - consumed)
-  }
-
-  await gravar(admin.from('stock_movements').insert({
-    branch_id:     a.branchId,
-    product_id:    a.productId,
-    type:          'MANUAL_ADJUSTMENT',
-    quantity:      delta,
-    balance_after: a.novoSaldo,
-    notes:         a.motivo.trim(),
-    created_by:    ctx.internalUserId,
-  }), 'registrar o ajuste de estoque')
-
-  await gravar(admin.from('branch_product_stock').upsert({
-    product_id:         a.productId,
-    branch_id:          a.branchId,
-    current_stock:      a.novoSaldo,
-    current_rendimento: newRendimento,
-    min_stock:          Number(bps?.min_stock ?? 0),
-    updated_at:         new Date().toISOString(),
-  }, { onConflict: 'product_id,branch_id' }), 'atualizar o saldo da unidade')
-  return { ok: true, de: currentStock }
+  // Numa transação só, com a linha do saldo travada (estoque_ajuste).
+  const anterior = await gravar(admin.rpc('estoque_ajuste', {
+    p_produto: a.productId, p_unidade: a.branchId, p_novo_saldo: a.novoSaldo, p_motivo: a.motivo.trim(), p_autor: ctx.internalUserId,
+  }), 'registrar o ajuste de estoque') as number
+  return { ok: true, de: Number(anterior) }
 }
