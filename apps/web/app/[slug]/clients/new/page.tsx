@@ -4,9 +4,15 @@ import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { ClientForm } from '@/components/branch/client-form'
+import { prefillDaBusca } from '@/lib/busca/acoes'
 import { ler } from '@/lib/db'
 
-export default async function NewClientPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function NewClientPage({ params, searchParams }: {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ nome?: string; telefone?: string }>
+}) {
+  // A busca universal manda o termo que não achou ninguém (`?nome=` ou `?telefone=`).
+  const prefill = prefillDaBusca(await searchParams)
   const { slug } = await params
   const ctx      = await getTenantContext()
   assertPermission(ctx, 'clients', 'MANAGE')
@@ -41,7 +47,7 @@ export default async function NewClientPage({ params }: { params: Promise<{ slug
       </div>
 
       <div className="card">
-        <ClientForm branchId={branch.id} slug={slug} branchName={branch.name} />
+        <ClientForm branchId={branch.id} slug={slug} branchName={branch.name} prefill={prefill} />
       </div>
     </div>
   )

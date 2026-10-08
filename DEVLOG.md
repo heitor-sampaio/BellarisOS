@@ -1299,6 +1299,20 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-08 — Busca universal, fase 2: as ações
+
+Pedido do Heitor ("faz a fase 2 da busca universal", combinada em
+2026-10-03). A busca agora também AGE, sempre abrindo o modal que já existe:
+sem termo, "Novo agendamento" e "Cadastrar cliente" no topo; no cliente
+achado, "Agendar" e "Vender" na própria linha (→ entra nelas pelo teclado);
+e o termo que não achou ninguém vira "Cadastrar «termo» como cliente", no
+fim, com o nome (ou o telefone) já preenchido. Cada ação só aparece para quem
+a tela de destino libera. As portas por URL que faltavam nasceram: a agenda
+abre o novo agendamento com `?novo=1&cliente=` (o nome do cliente vem do
+servidor), a ficha abre a venda com `?acao=vender`, o cadastro lê `?nome=` e
+`?telefone=`. De carona, o "+ Agendar" da ficha já abre com o cliente. Regras
+em `docs/regras/busca.md`; provas em `e2e/busca-acoes.spec.ts`.
+
 ### 2026-10-08 — CSP na clínica, em modo de aviso
 
 O CSP diz ao navegador de onde a página pode carregar e executar coisas; é a
@@ -5926,10 +5940,7 @@ verdade. O que vale:
 
 ### Próximas fases já combinadas
 
-- **Busca universal, fase 2 — ações** (decisão do Heitor, 2026-10-03: a
-  primeira fase só acha). "Novo agendamento", "Cadastrar cliente" e, no
-  cliente achado, "Agendar"/"Vender", cada uma reaproveitando o modal que já
-  existe — o que pede uma porta de entrada por URL em cada modal.
+- ~~Busca universal, fase 2 — ações~~ **feita em 2026-10-08** (ver a linha do tempo).
 
 ### Suporte — o que depende do Heitor
 

@@ -24,6 +24,8 @@ interface TopbarProps {
   permissions:    ResolvedPermissions
   /** O plano da rede (`ctx.plano`): a busca não oferece página de funcionalidade fora dele. */
   plano?:         { funcionalidades: readonly string[] } | null
+  /** A agenda do cargo é "só a própria": a busca não oferece os atalhos de agendar. */
+  agendaPropria?: boolean
   /** A sessão é do suporte da plataforma: mostra o aviso fixo com o "Sair". */
   suporte?:       SuporteNoContexto | null
   /** Teste acabando ou pagamento em atraso — só para quem administra a rede. */
@@ -41,7 +43,7 @@ const ROLE_LABELS: Record<string, string> = {
   GERENTE_COMERCIAL: 'Gerente comercial',
 }
 
-export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, plano = null, suporte = null, assinatura = null }: TopbarProps) {
+export function Topbar({ userName, userRole, roleLabel, internalUserId, initialUnread, slug, permissions, plano = null, suporte = null, assinatura = null, agendaPropria = false }: TopbarProps) {
   const firstName  = userName.split(' ')[0] ?? userName
   const { toggle } = useSidebar()
 
@@ -101,7 +103,7 @@ export function Topbar({ userName, userRole, roleLabel, internalUserId, initialU
       </p>}
 
       {/* Busca universal — no celular vira a lupa do bloco da direita */}
-      <BuscaUniversal slug={slug} permissions={permissions} plano={plano} />
+      <BuscaUniversal slug={slug} permissions={permissions} plano={plano} agendaPropria={agendaPropria} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {/* Ajuda: chamado com o suporte. No modo suporte quem está aqui é o atendente */}

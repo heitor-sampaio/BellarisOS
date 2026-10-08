@@ -2553,3 +2553,21 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .uso-barra { display: block; height: 6px; border-radius: var(--radius-full); background: var(--bg-app); overflow: hidden; }
 .uso-barra > span { display: block; height: 100%; background: var(--brand); }
 .uso-barra[data-cheia] > span { background: var(--danger); }
+
+/* -- Busca universal: as ações da linha (fase 2, 2026-10-08) -------------- */
+/* O registro à esquerda e, ao lado, as ações dele — cada uma uma opção da
+   lista (o teclado chega com →). Pílula com borda, como os chips; a escolhida
+   ganha o rosé suave, como a linha ativa. */
+.busca-linha { display: flex; align-items: center; gap: 4px; }
+.busca-linha > .busca-item { flex: 1; min-width: 0; }
+.busca-linha-acoes { display: flex; gap: 4px; flex-shrink: 0; padding-right: 4px; }
+.busca-acao {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 28px; padding: 0 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-full);
+  background: var(--surface); color: var(--text-muted);
+  font-size: var(--text-2xs); font-weight: var(--weight-bold);
+  cursor: pointer; white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.busca-acao[aria-selected="true"] { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }

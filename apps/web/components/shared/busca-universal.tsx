@@ -6,14 +6,15 @@ import {
 } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  ArrowRight, CalendarClock, Filter, Layers, Loader2, MessageCircle, Package,
-  Search, Sparkles, User, UserRound, X,
+  ArrowRight, CalendarClock, CalendarPlus, Filter, Layers, Loader2, MessageCircle, Package,
+  Search, ShoppingBag, Sparkles, User, UserPlus, UserRound, X,
 } from 'lucide-react'
 import type { ResolvedPermissions } from '@estetica-os/types'
 import { buscarTudo } from '@/actions/busca'
 import { emitNavStart } from '@/components/shared/navigation-progress'
 import { paginasDaBusca, paginasQueCasam } from '@/lib/busca/paginas'
 import { destinoDoResultado } from '@/lib/busca/destino'
+import { acaoDeCadastrar, acoesDoCliente, acoesGerais, type AcaoDaBusca, type IdDaAcao } from '@/lib/busca/acoes'
 import {
   GRUPOS, TERMO_MAXIMO, TERMO_MINIMO,
   type GrupoDaBusca, type ResultadoDaBusca, type TipoDaBusca,
@@ -29,9 +30,15 @@ import {
  *   registro não mostraria.
  * - `Ctrl/⌘+K` foca de qualquer lugar; `/` também, fora de campo de texto.
  * - No celular, a lupa abre a busca em tela cheia, embaixo da topbar (§13).
+ * - AÇÕES (fase 2, 2026-10-08, `lib/busca/acoes.ts`): sem termo, "Novo
+ *   agendamento" e "Cadastrar cliente" no topo; no cliente achado, "Agendar" e
+ *   "Vender" na própria linha (→ entra nelas, ← volta); o termo que não achou
+ *   ninguém vira "Cadastrar «termo» como cliente", no fim. Cada uma abre o
+ *   modal que já existe, pela URL — e só aparece para quem a tela libera.
  */
 
 const ICONES: Record<TipoDaBusca, ReactNode> = {
+  acao:         <ArrowRight size={15} />,
   cliente:      <User size={15} />,
   conversa:     <MessageCircle size={15} />,
   oportunidade: <Filter size={15} />,
@@ -43,9 +50,20 @@ const ICONES: Record<TipoDaBusca, ReactNode> = {
   pagina:       <ArrowRight size={15} />,
 }
 
+const ICONE_DA_ACAO: Record<IdDaAcao, ReactNode> = {
+  'novo-agendamento': <CalendarPlus size={15} />,
+  'cadastrar-cliente': <UserPlus size={15} />,
+  'cadastrar-termo':  <UserPlus size={15} />,
+  agendar:            <CalendarPlus size={13} />,
+  vender:             <ShoppingBag size={13} />,
+}
+
 const ROTULO_DO_GRUPO = new Map(GRUPOS.map(g => [g.tipo, g.rotulo]))
 const ID_DA_LISTA = 'busca-universal-lista'
 const idDoItem = (i: number) => `busca-universal-item-${i}`
+const idDaAcao = (i: number, a: number) => `busca-universal-item-${i}-acao-${a}`
+const comoItem = (a: AcaoDaBusca): ResultadoDaBusca =>
+  ({ tipo: 'acao', id: a.id, titulo: a.rotulo, subtitulo: null, href: a.href })
 
 /** Mac mostra ⌘; o resto, Ctrl. Lido só no navegador (o servidor não sabe). */
 function useEhMac(): boolean {
@@ -63,8 +81,10 @@ function ehCampoDeTexto(el: EventTarget | null): boolean {
   return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)
 }
 
-export function BuscaUniversal({ slug, permissions, plano = null }: {
+export function BuscaUniversal({ slug, permissions, plano = null, agendaPropria = false }: {
   plano?: { funcionalidades: readonly string[] } | null
+  /** A agenda do cargo é "só a própria" (outra tela, sem o modal de criar): sem os atalhos de agendar. */
+  agendaPropria?: boolean
   /** Slug do portal da unidade; nulo no portal da rede. */
   slug:        string | null
   permissions: ResolvedPermissions
@@ -82,6 +102,8 @@ export function BuscaUniversal({ slug, permissions, plano = null }: {
   const aberto    = abertoEm === pathname
   const noCelular = celularEm === pathname
   const [ativo, setAtivo]             = useState(0)
+  // A ação da linha ativa em que o teclado está (→/←); nulo = a linha em si.
+  const [subAtivo, setSubAtivo]       = useState<number | null>(null)
   const [achados, setAchados]         = useState<GrupoDaBusca[]>([])
   const [procurando, setProcurando]   = useState(false)
   const [erro, setErro]               = useState<string | null>(null)
@@ -92,22 +114,38 @@ export function BuscaUniversal({ slug, permissions, plano = null }: {
   const campoCelRef = useRef<HTMLInputElement>(null)
 
   const paginas = useMemo(() => paginasDaBusca(slug, permissions, plano), [slug, permissions, plano])
+  const quem = useMemo(() => ({ pathname, slug, permissoes: permissions, agendaPropria }), [pathname, slug, permissions, agendaPropria])
 
   // -- O que aparece -----------------------------------------------------------
   const limpo = termo.trim()
   const curto = limpo.length < TERMO_MINIMO
   const grupos: { tipo: TipoDaBusca; rotulo: string; itens: ResultadoDaBusca[] }[] = useMemo(() => {
     if (!limpo) {
-      // Sem termo: as páginas do menu como atalhos (sem as abas, que são muitas).
+      // Sem termo: as ações e as páginas do menu como atalhos (sem as abas, que são muitas).
+      const gerais = acoesGerais({ ...quem, termo: '' }).map(comoItem)
       const atalhos = paginas.filter(p => !p.key.includes(':')).slice(0, 8)
         .map(p => ({ tipo: 'pagina' as const, id: p.key, titulo: p.titulo, subtitulo: null, href: p.href }))
-      return atalhos.length > 0 ? [{ tipo: 'pagina', rotulo: 'Atalhos', itens: atalhos }] : []
+      return [
+        ...(gerais.length > 0 ? [{ tipo: 'acao' as const, rotulo: 'Ações', itens: gerais }] : []),
+        ...(atalhos.length > 0 ? [{ tipo: 'pagina' as const, rotulo: 'Atalhos', itens: atalhos }] : []),
+      ]
     }
-    const doServidor = curto ? [] : achados
+    // O cliente achado leva as ações dele na linha.
+    const doServidor = (curto ? [] : achados).map(g => g.tipo !== 'cliente' ? g
+      : { ...g, itens: g.itens.map(r => ({ ...r, acoes: acoesDoCliente(quem, r.id) })) })
+    const gerais = acoesGerais({ ...quem, termo: limpo }).map(comoItem)
     const dasPaginas = paginasQueCasam(paginas, limpo)
-    const todos = dasPaginas.length > 0 ? [...doServidor, { tipo: 'pagina' as const, itens: dasPaginas }] : doServidor
-    return todos.map(g => ({ ...g, rotulo: ROTULO_DO_GRUPO.get(g.tipo) ?? '' }))
-  }, [limpo, curto, achados, paginas])
+    // Não achou cliente nenhum (com a busca já de volta): o atalho de cadastrar
+    // o termo, no FIM — no topo, o Enter cadastraria em vez de abrir a conversa achada.
+    const achouCliente = doServidor.some(g => g.tipo === 'cliente' && g.itens.length > 0)
+    const cadastrar = !curto && !procurando && !achouCliente ? acaoDeCadastrar(quem, limpo) : null
+    const todos = [
+      ...(gerais.length > 0 ? [{ tipo: 'acao' as const, itens: gerais }] : []),
+      ...doServidor,
+      ...(dasPaginas.length > 0 ? [{ tipo: 'pagina' as const, itens: dasPaginas }] : []),
+    ].map(g => ({ ...g, rotulo: ROTULO_DO_GRUPO.get(g.tipo) ?? '' }))
+    return cadastrar ? [...todos, { tipo: 'acao' as const, rotulo: 'Não achou?', itens: [comoItem(cadastrar)] }] : todos
+  }, [limpo, curto, achados, paginas, quem, procurando])
 
   const itens = useMemo(() => grupos.flatMap(g => g.itens), [grupos])
   // Onde cada grupo começa na lista corrida (é por ela que o teclado anda).
@@ -126,6 +164,7 @@ export function BuscaUniversal({ slug, permissions, plano = null }: {
     const novo = texto.slice(0, TERMO_MAXIMO)
     setTermo(novo)
     setAtivo(0)
+    setSubAtivo(null)
     setErro(null)
     if (novo.trim().length >= TERMO_MINIMO) setProcurando(true)
     else setAchados([])
@@ -213,7 +252,10 @@ export function BuscaUniversal({ slug, permissions, plano = null }: {
 
   // -- Navegar -----------------------------------------------------------------
   function ir(r: ResultadoDaBusca) {
-    const href = destinoDoResultado(pathname, slug, r)
+    irPara(destinoDoResultado(pathname, slug, r))
+  }
+
+  function irPara(href: string) {
     fechar()
     mudarTermo('')
     emitNavStart()
@@ -221,16 +263,29 @@ export function BuscaUniversal({ slug, permissions, plano = null }: {
   }
 
   function aoTeclarNoCampo(e: KeyboardEvent<HTMLInputElement>) {
+    const atual = itens[ativoValido]
+    const acoesDaLinha = atual?.acoes ?? []
     if (e.key === 'ArrowDown') {
       e.preventDefault()
+      setSubAtivo(null)
       if (itens.length > 0) setAtivo((ativoValido + 1) % itens.length)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
+      setSubAtivo(null)
       if (itens.length > 0) setAtivo((ativoValido - 1 + itens.length) % itens.length)
+    } else if (e.key === 'ArrowRight' && acoesDaLinha.length > 0
+      // Só no fim do texto: no meio dele, a seta é do cursor.
+      && (e.currentTarget.selectionStart ?? 0) >= e.currentTarget.value.length) {
+      e.preventDefault()
+      setSubAtivo(s => s === null ? 0 : Math.min(s + 1, acoesDaLinha.length - 1))
+    } else if (e.key === 'ArrowLeft' && subAtivo !== null) {
+      e.preventDefault()
+      setSubAtivo(s => (s === null || s === 0 ? null : s - 1))
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      const r = itens[ativoValido]
-      if (r) ir(r)
+      const acao = subAtivo !== null ? acoesDaLinha[subAtivo] : undefined
+      if (acao) irPara(acao.href)
+      else if (atual) ir(atual)
     } else if (e.key === 'Escape') {
       e.preventDefault()
       // O Esc do campo é este (limpa, depois fecha); o da janela é para quando
@@ -259,7 +314,9 @@ export function BuscaUniversal({ slug, permissions, plano = null }: {
     'aria-expanded': listaAberta,
     'aria-controls': ID_DA_LISTA,
     'aria-autocomplete': 'list' as const,
-    'aria-activedescendant': listaAberta && ativoValido >= 0 ? idDoItem(ativoValido) : undefined,
+    'aria-activedescendant': listaAberta && ativoValido >= 0
+      ? (subAtivo !== null && itens[ativoValido]?.acoes?.[subAtivo] ? idDaAcao(ativoValido, subAtivo) : idDoItem(ativoValido))
+      : undefined,
     onChange:  (e: ChangeEvent<HTMLInputElement>) => mudarTermo(e.target.value),
     onKeyDown: aoTeclarNoCampo,
   }
@@ -289,26 +346,52 @@ export function BuscaUniversal({ slug, permissions, plano = null }: {
           <p className="overline busca-grupo-titulo">{g.rotulo}</p>
           {g.itens.map((r, ri) => {
             const i = (inicioDoGrupo[gi] ?? 0) + ri
-            return (
+            const linhaAtiva = i === ativoValido
+            const item = (
               <div
                 key={`${r.tipo}:${r.id}`}
                 id={idDoItem(i)}
                 role="option"
-                aria-selected={i === ativoValido}
+                aria-selected={linhaAtiva && subAtivo === null}
                 className="busca-item"
                 data-tipo={r.tipo}
-                onPointerMove={() => { if (i !== ativoValido) setAtivo(i) }}
+                onPointerMove={() => { if (!linhaAtiva || subAtivo !== null) { setAtivo(i); setSubAtivo(null) } }}
                 // O mousedown não tira o foco do campo; quem navega é o click —
                 // no celular, o pointerdown de um arrasto para rolar a lista
                 // abriria o item em que o dedo encostou.
                 onMouseDown={e => e.preventDefault()}
                 onClick={() => ir(r)}
               >
-                <span className="busca-item-icone" aria-hidden>{ICONES[r.tipo]}</span>
+                <span className="busca-item-icone" aria-hidden>{r.tipo === 'acao' ? ICONE_DA_ACAO[r.id as IdDaAcao] ?? ICONES.acao : ICONES[r.tipo]}</span>
                 <span className="busca-item-texto">
                   <span className="busca-item-titulo">{r.titulo}</span>
                   {r.subtitulo && <span className="busca-item-sub">{r.subtitulo}</span>}
                 </span>
+              </div>
+            )
+            if (!r.acoes?.length) return item
+            // A linha com ações: o registro e, ao lado, as ações dele — cada uma
+            // uma opção da lista (o teclado chega nelas com →).
+            return (
+              <div key={`${r.tipo}:${r.id}`} role="none" className="busca-linha">
+                {item}
+                <div role="none" className="busca-linha-acoes">
+                  {r.acoes.map((a, ai) => (
+                    <div
+                      key={a.id}
+                      id={idDaAcao(i, ai)}
+                      role="option"
+                      aria-selected={linhaAtiva && subAtivo === ai}
+                      aria-label={`${a.rotulo} para ${r.titulo}`}
+                      className="busca-acao"
+                      onPointerMove={() => { if (!linhaAtiva || subAtivo !== ai) { setAtivo(i); setSubAtivo(ai) } }}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => irPara(a.href)}
+                    >
+                      <span aria-hidden>{ICONE_DA_ACAO[a.id]}</span>{a.rotulo}
+                    </div>
+                  ))}
+                </div>
               </div>
             )
           })}
@@ -344,7 +427,7 @@ export function BuscaUniversal({ slug, permissions, plano = null }: {
             {estado}
             {lista}
             <p className="busca-rodape" aria-hidden>
-              ↑↓ para escolher · Enter para abrir · Esc para fechar
+              ↑↓ para escolher · → para as ações · Enter para abrir · Esc para fechar
             </p>
           </div>
         )}

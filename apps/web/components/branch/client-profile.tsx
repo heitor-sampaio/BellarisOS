@@ -1,6 +1,7 @@
 ﻿'use client'
 
-import React, { useActionState, useState, useRef } from 'react'
+import React, { useActionState, useEffect, useEffectEvent, useState, useRef } from 'react'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Phone, Mail, Calendar, ChevronLeft, MoreHorizontal, Stethoscope, Plus, X, Loader2, Clock, CheckCircle2, Receipt, Check, UserPlus, Smartphone, CalendarPlus, XCircle, AlertCircle, CreditCard, ClipboardList, ClipboardCheck, Package, FileCheck, type LucideIcon } from 'lucide-react'
@@ -1039,6 +1040,22 @@ export function ClientProfile({
    */
   const params = useSearchParams()
 
+  // `?acao=vender` (a busca universal, 2026-10-08): abre a venda ao chegar e
+  // tira o parâmetro da URL (recarregar não reabre). O sinal sai da própria
+  // URL: o Vender abre quando ele passa de 0 a 1. Sem nada a vender aqui, ou
+  // sem poder receber, avisa em vez de não fazer nada.
+  const acaoDaUrl = params.get('acao')
+  const podeVenderAqui = podeReceber && !!currentBranchId && (pacotesAVenda.length > 0 || procedimentosAVenda.length > 0)
+  const sinalDaVenda = acaoDaUrl === 'vender' && podeVenderAqui ? 1 : 0
+  const aoPedirVenda = useEffectEvent(() => {
+    if (!podeVenderAqui) toast.info(podeReceber ? 'Não há procedimento nem pacote à venda para este cliente.' : 'Seu cargo não recebe pagamentos.')
+    const q = new URLSearchParams(params.toString())
+    q.delete('acao')
+    const resto = q.toString()
+    router.replace(resto ? `${pathname}?${resto}` : pathname, { scroll: false })
+  })
+  useEffect(() => { if (acaoDaUrl === 'vender') aoPedirVenda() }, [acaoDaUrl])
+
   // Menu do cabeçalho: desativar e reativar o cliente.
   const [menuAberto,      setMenuAberto]      = useState(false)
   const [alterandoStatus, setAlterandoStatus] = useState(false)
@@ -1170,11 +1187,12 @@ export function ClientProfile({
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
             {podeReceber && currentBranchId && (
               <Vender clienteId={client.id} branchId={currentBranchId} pacotes={pacotesAVenda} procedimentos={procedimentosAVenda}
-                podeAgendar={podeAgendar} />
+                podeAgendar={podeAgendar} abrirSinal={sinalDaVenda} />
             )}
             <button
               type="button"
-              onClick={() => router.push(rotaAgenda(pathname, slug))}
+              // Já com este cliente escolhido no modal (era a agenda vazia).
+              onClick={() => router.push(`${rotaAgenda(pathname, slug)}?novo=1&cliente=${client.id}`)}
               className="btn-primary"
             >
               + Agendar

@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react'
 import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ClientForm } from '@/components/branch/client-form'
+import { prefillDaBusca } from '@/lib/busca/acoes'
 
 /**
  * Cadastro de cliente pelo portal da rede.
@@ -12,7 +13,9 @@ import { ClientForm } from '@/components/branch/client-form'
  * há unidade corrente, então a unidade de cadastro é escolhida no formulário:
  * é ela que vira a tag `Unidade: X`, por onde a lista de cada filial filtra.
  */
-export default async function AdminNewClientPage() {
+export default async function AdminNewClientPage({ searchParams }: { searchParams: Promise<{ nome?: string; telefone?: string }> }) {
+  // A busca universal manda o termo que não achou ninguém (`?nome=` ou `?telefone=`).
+  const prefill = prefillDaBusca(await searchParams)
   const ctx = await getTenantContext()
   assertPermission(ctx, 'clients', 'MANAGE')
 
@@ -52,7 +55,7 @@ export default async function AdminNewClientPage() {
         </div>
       ) : (
         <div className="card">
-          <ClientForm branchId="" slug="" branches={branches} />
+          <ClientForm branchId="" slug="" branches={branches} prefill={prefill} />
         </div>
       )}
     </div>

@@ -1667,6 +1667,21 @@ export async function dadosParaAgendar(branchId: string): Promise<DadosParaAgend
  * digita "47991234567". E porque carregar a rede inteira na tela para filtrar
  * em JavaScript para de funcionar assim que a base cresce.
  */
+/**
+ * O cliente que chega pela URL do novo agendamento (`?cliente=`, a busca
+ * universal e a ficha). O id é do navegador: o nome sai daqui, da rede da
+ * sessão — nunca da URL. O agendamento confere de novo ao gravar.
+ */
+export async function clienteParaAgendar(clienteId: string): Promise<{ cliente: { id: string; name: string; phone: string } | null }> {
+  const ctx = await getTenantContext()
+  assertPermission(ctx, 'agenda', 'VIEW')
+  if (typeof clienteId !== 'string' || !/^[0-9a-f-]{36}$/i.test(clienteId)) return { cliente: null }
+  const c = await ler(createAdminClient().from('clients').select('id, name, phone')
+    .eq('id', clienteId).eq('tenant_id', ctx.tenantId!).eq('is_active', true).maybeSingle(), 'buscar o cliente') as
+    { id: string; name: string; phone: string | null } | null
+  return { cliente: c ? { id: c.id, name: c.name, phone: c.phone ?? '' } : null }
+}
+
 export async function buscarClientesParaAgendar(termo: string): Promise<{
   clientes: { id: string; name: string; phone: string }[]
 }> {

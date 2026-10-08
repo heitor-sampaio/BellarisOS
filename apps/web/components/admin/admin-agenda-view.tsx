@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { AppointmentModal } from '@/components/branch/appointment-modal'
+import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from '@/components/branch/appointment-sheet'
 
 // -- Tipos ---------------------------------------------------------------------
@@ -456,6 +457,9 @@ export function AdminAgendaView({
   // objeto = veio de um horário vazio da grade.
   const [agendando, setAgendando] = useState<true | { branchId: string; quando: string } | null>(null)
   const [selecionado, setSelecionado] = useState<Appointment | null>(null)
+  const [clienteInicial, setClienteInicial] = useState<string | null>(null)
+  // `?novo=1&cliente=`: a busca universal e a ficha abrem o modal por aqui.
+  useNovoAgendamentoDaUrl(podeAgendar, cliente => { setClienteInicial(cliente); setAgendando(true) })
 
   const mondayStr = getMondayOf(selectedDate)
 
@@ -660,8 +664,9 @@ export function AdminAgendaView({
           professionals={[]}
           rooms={[]}
           unidades={todasUnidades}
-          onClose={() => setAgendando(null)}
-          onSuccess={() => { setAgendando(null); router.refresh() }}
+          clienteInicialId={clienteInicial}
+          onClose={() => { setAgendando(null); setClienteInicial(null) }}
+          onSuccess={() => { setAgendando(null); setClienteInicial(null); router.refresh() }}
         />
       )}
 

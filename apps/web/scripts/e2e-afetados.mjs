@@ -98,7 +98,7 @@ const AREAS = [
     specs: /^(menu|busca-universal)/ },
   { nome: 'busca universal',
     chaves: ['busca', 'topbar', 'lib/configuracoes/', 'inbox/pagina'],
-    specs: /^(busca-universal|inbox-paginado|inbox-nome-da-pessoa)/ },
+    specs: /^(busca-universal|busca-acoes|inbox-paginado|inbox-nome-da-pessoa)/ },
   { nome: 'plataforma (sistema e suporte)',
     chaves: ['apps/sistema/', 'apps/suporte/', 'nucleo/src/lib/plataforma/', 'nucleo/src/lib/suporte/', 'nucleo/src/lib/redes/', '/auth/suporte-', 'api/interno/'],
     specs: /^(plataforma-hosts|plataforma-gerente|plataforma-primeiro-admin|plataforma-recuperar-senha|planos-recursos|planos-adicionais|planos-comparativo|suporte-|sistema-|chamados|assinaturas-asaas|api-sem)/ },

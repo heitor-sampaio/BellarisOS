@@ -11,6 +11,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 
 import { AppointmentModal } from './appointment-modal'
+import { useNovoAgendamentoDaUrl } from '@/components/shared/novo-agendamento-da-url'
 import { AppointmentSheet } from './appointment-sheet'
 import { AgendaDayView } from './agenda-day-view'
 import { AgendaWeekView } from './agenda-week-view'
@@ -123,6 +124,9 @@ export function AgendaCalendar({
   const [currentDate,   setCurrentDate]   = useState(new Date())
   const [showCreate,    setShowCreate]    = useState(false)
   const [defaultDate,   setDefaultDate]   = useState('')
+  const [clienteInicial, setClienteInicial] = useState<string | null>(null)
+  // `?novo=1&cliente=`: a busca universal e a ficha abrem o modal por aqui.
+  useNovoAgendamentoDaUrl(canWrite, cliente => { setDefaultDate(''); setClienteInicial(cliente); setShowCreate(true) })
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
   const [dropError,     setDropError]     = useState<string | null>(null)
 
@@ -320,8 +324,9 @@ export function AgendaCalendar({
           professionals={professionals}
           rooms={rooms}
           defaultDate={defaultDate}
-          onClose={() => setShowCreate(false)}
-          onSuccess={() => { setShowCreate(false); router.refresh() }}
+          clienteInicialId={clienteInicial}
+          onClose={() => { setShowCreate(false); setClienteInicial(null) }}
+          onSuccess={() => { setShowCreate(false); setClienteInicial(null); router.refresh() }}
         />
       )}
 

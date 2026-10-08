@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useEffectEvent, useState, useMemo, useRef } from 'react'
-import { addAppointment, dadosParaAgendar, buscarClientesParaAgendar } from '@/actions/appointments'
+import { addAppointment, dadosParaAgendar, buscarClientesParaAgendar, clienteParaAgendar } from '@/actions/appointments'
 import { creditosParaAgendar } from '@/actions/creditos'
 import { formatBRL } from '@estetica-os/utils'
 import type { CreditoParaAgendar } from '@/lib/creditos/credito'
@@ -28,6 +28,8 @@ interface AppointmentModalProps {
    */
   unidades?:     Unidade[]
   defaultDate?:  string   // ISO datetime hint (from calendar click)
+  /** O cliente já escolhido (`?cliente=` da busca universal e da ficha): o nome vem do servidor. */
+  clienteInicialId?: string | null
   onClose:       () => void
   onSuccess:     () => void
 }
@@ -45,12 +47,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export function AppointmentModal({
   branchId, slug, procedures, professionals, rooms,
-  unidades, defaultDate, onClose, onSuccess,
+  unidades, defaultDate, clienteInicialId = null, onClose, onSuccess,
 }: AppointmentModalProps) {
   const [state, formAction, pending] = useActionState(addAppointment, undefined)
   const [clientSearch, setClientSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [showClientList, setShowClientList] = useState(false)
+
+  // O cliente que veio escolhido: confere no servidor e já deixa selecionado.
+  useEffect(() => {
+    if (!clienteInicialId) return
+    let vivo = true
+    clienteParaAgendar(clienteInicialId).then(r => { if (vivo && r.cliente) setSelectedClient(r.cliente) }).catch(() => { /* escolhe à mão */ })
+    return () => { vivo = false }
+  }, [clienteInicialId])
 
   // Segunda via para dizer quem será atendido: nome e telefone, sem ficha.
   // A ficha completa cria o login do portal (e-mail + CPF) — pedir isso para

@@ -56,7 +56,8 @@ const noPlano = (e: MenuEntry, plano: PlanoDoMenu) => !e.recurso || !plano || pl
 const has = (p: ResolvedPermissions, m: keyof ResolvedPermissions) => p[m] !== 'NONE'
 
 /** Pode receber dinheiro do cliente — caixa ou financeiro. Igual a lib/auth. */
-const recebe = (p: ResolvedPermissions) => p.cashier === 'MANAGE' || p.financial === 'MANAGE'
+/** Recebe pagamento (caixa ou financeiro em Gerenciar) — o `podeReceber` de lib/auth, pelas permissões. */
+export const recebe = (p: ResolvedPermissions) => p.cashier === 'MANAGE' || p.financial === 'MANAGE'
 
 // O CRM era uma tela só com abas "Funil" e "Inbox". Virou duas entradas: as
 // duas coisas têm ritmo diferente — a caixa de entrada se responde o dia

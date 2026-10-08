@@ -1,4 +1,5 @@
 import type { AppModule, ResolvedPermissions } from '@estetica-os/types'
+import type { AcaoDaBusca } from '@/lib/busca/acoes'
 
 /**
  * O que a busca universal acha.
@@ -8,11 +9,11 @@ import type { AppModule, ResolvedPermissions } from '@estetica-os/types'
  * `busca_universal` (migration 20261003000001).
  */
 export type TipoDaBusca =
-  | 'pagina' | 'cliente' | 'conversa' | 'oportunidade' | 'agendamento'
+  | 'acao' | 'pagina' | 'cliente' | 'conversa' | 'oportunidade' | 'agendamento'
   | 'membro' | 'procedimento' | 'pacote' | 'produto'
 
-/** Os tipos que o SERVIDOR procura (página não passa por ele). */
-export type TipoDoServidor = Exclude<TipoDaBusca, 'pagina'>
+/** Os tipos que o SERVIDOR procura (página e ação não passam por ele). */
+export type TipoDoServidor = Exclude<TipoDaBusca, 'pagina' | 'acao'>
 
 /** Um resultado, já com o texto pronto para a tela. */
 export interface ResultadoDaBusca {
@@ -22,8 +23,10 @@ export interface ResultadoDaBusca {
   subtitulo: string | null
   /** Só a oportunidade: o funil em que o quadro abre. */
   funilId?:  string | null
-  /** Só a página: o endereço pronto (já com o portal). */
+  /** A página e a ação: o endereço pronto (já com o portal). */
   href?:     string
+  /** As ações do registro (o cliente: agendar, vender — lib/busca/acoes.ts). */
+  acoes?:    AcaoDaBusca[]
 }
 
 export interface GrupoDaBusca {
@@ -39,6 +42,7 @@ export interface GrupoDaBusca {
  * para baixo o cliente que a pessoa está digitando.
  */
 export const GRUPOS: readonly { tipo: TipoDaBusca; rotulo: string }[] = [
+  { tipo: 'acao',         rotulo: 'Ações' },
   { tipo: 'cliente',      rotulo: 'Clientes' },
   { tipo: 'conversa',     rotulo: 'Conversas' },
   { tipo: 'oportunidade', rotulo: 'Oportunidades' },

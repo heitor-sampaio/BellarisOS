@@ -17,6 +17,7 @@ export function destinoDoResultado(
     `${rotaNoPortal(pathname, slug, sufixo)}?q=${encodeURIComponent(r.titulo)}`
 
   switch (r.tipo) {
+    case 'acao':         return r.href ?? rotaNoPortal(pathname, slug, '/dashboard')
     case 'pagina':       return r.href ?? rotaNoPortal(pathname, slug, '/dashboard')
     case 'cliente':      return rotaCliente(pathname, slug, r.id)
     case 'conversa':     return rotaInbox(pathname, slug, r.id)
