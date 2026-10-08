@@ -149,6 +149,8 @@ export function Copilot() {
   const [pensando, setPensando] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [carregando, setCarregando] = useState(false)
+  // O que o leitor de tela anuncia: a resposta INTEIRA, quando termina (não cada pedaço).
+  const [anuncio, setAnuncio] = useState('')
   const corpoRef = useRef<HTMLDivElement>(null)
   const campoRef = useRef<HTMLTextAreaElement>(null)
   const arquivoRef = useRef<HTMLInputElement>(null)
@@ -187,9 +189,13 @@ export function Copilot() {
     if (id) void carregarConversa(id)
   }, [carregarConversa])
 
-  // Atalho: Ctrl/Cmd + J abre e fecha.
+  // Atalho: Ctrl/Cmd + J abre e fecha; Esc fecha.
   useEffect(() => {
     const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('dialog[open]')) {
+        setAberto(a => { if (a) guardar(CHAVE_DO_PAINEL, null); return false })
+        return
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') {
         e.preventDefault()
         setAberto(a => { guardar(CHAVE_DO_PAINEL, a ? null : '1'); return !a })
@@ -258,6 +264,7 @@ export function Copilot() {
     ])
     setTexto('')
     setAnexos([])
+    if (campoRef.current) campoRef.current.style.height = 'auto'
     rolarParaOFim()
 
     const form = new FormData()
@@ -296,7 +303,11 @@ export function Copilot() {
         }
       })
       // Resposta sem texto nem cartão (o erro já foi dito): some o balão vazio.
-      setMensagens(ms => ms.filter(m => m.id !== idResposta || m.texto.trim() || (m.cartoes?.length ?? 0) > 0))
+      setMensagens(ms => {
+        const final = ms.find(m => m.id === idResposta)
+        if (final?.texto.trim()) setAnuncio(final.texto.replace(/\*\*/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1'))
+        return ms.filter(m => m.id !== idResposta || m.texto.trim() || (m.cartoes?.length ?? 0) > 0)
+      })
     } catch {
       setErro('A conexão caiu no meio da resposta. Tente de novo.')
     } finally {
@@ -306,9 +317,13 @@ export function Copilot() {
     }
   }, [conversaId, enviando, pagina, rolarParaOFim])
 
+  // O áudio vai para a conversa ABERTA quando a gravação termina, não para a
+  // de quando começou: o envio mais recente fica num ref.
+  const enviarRef = useRef(enviar)
+  useEffect(() => { enviarRef.current = enviar }, [enviar])
   const gravador = useGravador(useCallback((arquivo: File) => {
-    void enviar({ texto: '', anexos: [arquivo] })
-  }, [enviar]))
+    void enviarRef.current({ texto: '', anexos: [arquivo] })
+  }, []))
 
   function escolherArquivos(lista: FileList | null) {
     if (!lista) return
@@ -329,7 +344,7 @@ export function Copilot() {
   if (!aberto) {
     return (
       <button type="button" className="copilot-botao" data-subir={subir ? 'sim' : 'nao'}
-        onClick={() => abrirOuFechar(true)} aria-label="Copilot" title="Copilot (Ctrl+J)">
+        onClick={() => abrirOuFechar(true)} aria-label="Copilot" aria-expanded="false" title="Copilot (Ctrl+J)">
         <Sparkles size={18} />
         <span className="copilot-botao-rotulo">Copilot</span>
       </button>
@@ -383,7 +398,8 @@ export function Copilot() {
         </div>
       ) : (
         <>
-          <div className="copilot-corpo" ref={corpoRef} aria-live="polite">
+          <div className="copilot-anuncio" aria-live="polite">{anuncio}</div>
+          <div className="copilot-corpo" ref={corpoRef}>
             {carregando && <span className="copilot-pensando"><Loader2 size={13} className="animate-spin" /> Carregando…</span>}
             {!carregando && mensagens.length === 0 && (
               <div className="copilot-vazio">
@@ -447,7 +463,9 @@ export function Copilot() {
                   e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`
                 }}
                 onKeyDown={e => {
-                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void enviar({ texto, anexos }) }
+                  // No celular, Enter é quebra de linha (o teclado não tem Shift+Enter à mão).
+                  const toque = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+                  if (e.key === 'Enter' && !e.shiftKey && !toque) { e.preventDefault(); void enviar({ texto, anexos }) }
                 }}
               />
               {!texto.trim() && anexos.length === 0 ? (

@@ -36,6 +36,18 @@ export function modeloDoChat(): string {
   return process.env.OPENAI_MODEL || 'gpt-5-mini'
 }
 
+/**
+ * O esforço de raciocínio (`OPENAI_RACIOCINIO`: minimal, low, medium, high, ou
+ * "nenhum" para modelo que não raciocina). Sem a variável: `low` nos modelos
+ * que raciocinam (gpt-5*, o*), nada nos outros — `gpt-5-chat` não aceita.
+ */
+function raciocinio(modelo: string): string | null {
+  const v = (process.env.OPENAI_RACIOCINIO ?? '').trim().toLowerCase()
+  if (v === 'nenhum') return null
+  if (v) return v
+  return /^(gpt-5(?!-chat)|o\d)/.test(modelo) ? 'low' : null
+}
+
 function modeloDeVoz(): string {
   return process.env.OPENAI_MODELO_DE_VOZ || 'gpt-4o-mini-transcribe'
 }
@@ -90,7 +102,11 @@ export async function perguntarAoModelo(entrada: {
   sinal?: AbortSignal
 }): Promise<RespostaDoModelo> {
   const modelo = modeloDoChat()
-  const raciocina = /^(gpt-5|o\d)/.test(modelo)
+  const esforco = raciocinio(modelo)
+  // A pessoa fechou a tela (o sinal do pedido) ou o modelo demorou demais.
+  const sinal = entrada.sinal
+    ? AbortSignal.any([entrada.sinal, AbortSignal.timeout(TEMPO_MAXIMO_MS)])
+    : AbortSignal.timeout(TEMPO_MAXIMO_MS)
   let res: Response
   try {
     res = await fetch(`${base()}/responses`, {
@@ -103,9 +119,9 @@ export async function perguntarAoModelo(entrada: {
         tools: entrada.ferramentas,
         stream: true,
         store: false,
-        ...(raciocina ? { include: ['reasoning.encrypted_content'], reasoning: { effort: 'low' } } : {}),
+        ...(esforco ? { include: ['reasoning.encrypted_content'], reasoning: { effort: esforco } } : {}),
       }),
-      signal: entrada.sinal ?? AbortSignal.timeout(TEMPO_MAXIMO_MS),
+      signal: sinal,
     })
   } catch (e) {
     console.error('[copilot] OpenAI fora do ar:', e instanceof Error ? e.message : e)
@@ -124,6 +140,7 @@ export async function perguntarAoModelo(entrada: {
   type Concluida = { output?: ItemDaConversa[]; usage?: { input_tokens?: number; output_tokens?: number } }
   let concluida = null as Concluida | null
   const feitos: ItemDaConversa[] = []
+  let incompleta = false
 
   for await (const evento of eventosSSE(res.body)) {
     const tipo = evento.type as string | undefined
@@ -132,8 +149,10 @@ export async function perguntarAoModelo(entrada: {
       entrada.aoTexto?.(evento.delta)
     } else if (tipo === 'response.output_item.done' && evento.item) {
       feitos.push(evento.item as ItemDaConversa)
-    } else if (tipo === 'response.completed') {
+    } else if (tipo === 'response.completed' || tipo === 'response.incomplete') {
+      // Incompleta (teto de tokens, filtro): vale o que veio — e o uso conta.
       concluida = (evento.response ?? null) as Concluida | null
+      if (tipo === 'response.incomplete') incompleta = true
     } else if (tipo === 'response.failed' || tipo === 'error') {
       console.error('[copilot] OpenAI falhou:', JSON.stringify(evento).slice(0, 500))
       throw new ErroDoModelo('O assistente não conseguiu responder. Tente de novo.')
@@ -151,6 +170,12 @@ export async function perguntarAoModelo(entrada: {
       const m = i as { type?: string; content?: { type: string; text?: string }[] }
       if (m.type === 'message') texto += (m.content ?? []).filter(c => c.type === 'output_text').map(c => c.text ?? '').join('')
     }
+  }
+
+  if (incompleta && !chamadas.length) {
+    const aviso = '\n\n(A resposta foi cortada. Peça a continuação, se precisar.)'
+    texto += aviso
+    entrada.aoTexto?.(aviso)
   }
 
   return {

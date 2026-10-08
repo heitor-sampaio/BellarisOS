@@ -3,7 +3,7 @@ import { toJSONSchema } from 'zod/v4'
 import type { TenantContext } from '@estetica-os/types'
 import { can, temRecurso } from '@/lib/auth'
 import { ehSemAcesso } from '@/lib/sem-acesso'
-import { mensagemDoErro, ler, gravar } from '@/lib/db'
+import { mensagemDoErro, ler, gravar, tentar } from '@/lib/db'
 import { FERRAMENTAS } from '@/lib/copilot/ferramentas'
 import type { ContextoDaFerramenta, Ferramenta } from '@/lib/copilot/ferramentas/tipos'
 import type { FerramentaParaOModelo } from '@/lib/copilot/openai'
@@ -124,6 +124,7 @@ export async function executarChamada(
 interface LinhaDaAcao {
   id: string; conversa_id: string; ferramenta: string; payload: { args: unknown }
   resumo: ResumoDaAcao; status: StatusDaAcao; resultado: ResultadoDaAcao | null; expira_em: string
+  decidida_em: string | null
 }
 
 /**
@@ -139,7 +140,7 @@ export async function decidirAcao(
   const { admin } = c
   const ctx = contextoDoCopilot(c.ctx)
   const atual = await ler(admin.from('copilot_acoes')
-    .select('id, conversa_id, ferramenta, payload, resumo, status, resultado, expira_em')
+    .select('id, conversa_id, ferramenta, payload, resumo, status, resultado, expira_em, decidida_em')
     .eq('id', acaoId).eq('tenant_id', ctx.tenantId!).eq('user_id', ctx.internalUserId!)
     .maybeSingle(), 'ler a ação do Copilot') as LinhaDaAcao | null
   if (!atual) return { status: 'falhou', error: 'Ação não encontrada.' }
@@ -156,53 +157,75 @@ export async function decidirAcao(
     return { status: 'cancelada' }
   }
 
-  const agora = new Date().toISOString()
+  const agora = new Date()
+  // Presa em "executando" (o processo caiu no meio): depois de 5 minutos, falhou.
+  if (atual.status === 'executando' && atual.decidida_em && agora.getTime() - new Date(atual.decidida_em).getTime() > 5 * 60_000) {
+    await tentar(admin.from('copilot_acoes')
+      .update({ status: 'falhou', resultado: { mensagem: 'A gravação não terminou. Confira na tela e, se faltou, peça de novo.' } })
+      .eq('id', acaoId).eq('status', 'executando'), 'encerrar a ação presa')
+    return { status: 'falhou', resultado: { mensagem: 'A gravação não terminou. Confira na tela e, se faltou, peça de novo.' } }
+  }
+
   const reivindicada = await ler(admin.from('copilot_acoes')
-    .update({ status: 'executando', decidida_em: agora })
-    .eq('id', acaoId).eq('status', 'pendente').gt('expira_em', agora)
+    .update({ status: 'executando', decidida_em: agora.toISOString() })
+    .eq('id', acaoId).eq('status', 'pendente').gt('expira_em', agora.toISOString())
     .select('id'), 'reivindicar a ação') as { id: string }[] | null
 
   if (!reivindicada?.length) {
-    if (atual.status === 'pendente') {
-      // Pendente e não reivindicada: venceu.
-      await admin.from('copilot_acoes').update({ status: 'vencida' }).eq('id', acaoId).eq('status', 'pendente')
+    // Não reivindicou: ou venceu (pelo relógio), ou outro clique já levou.
+    if (new Date(atual.expira_em).getTime() <= agora.getTime()) {
+      await tentar(admin.from('copilot_acoes').update({ status: 'vencida' }).eq('id', acaoId).eq('status', 'pendente'), 'marcar a ação vencida')
       return { status: 'vencida', error: 'Este cartão venceu. Peça de novo ao Copilot.' }
     }
-    return { status: atual.status, resultado: atual.resultado }
+    const agoraLida = await ler(admin.from('copilot_acoes').select('status, resultado')
+      .eq('id', acaoId).maybeSingle(), 'reler a ação') as { status: StatusDaAcao; resultado: ResultadoDaAcao | null } | null
+    return { status: agoraLida?.status ?? atual.status, resultado: agoraLida?.resultado ?? atual.resultado }
   }
 
-  const terminar = async (status: StatusDaAcao, resultado: ResultadoDaAcao) => {
-    await gravar(admin.from('copilot_acoes').update({ status, resultado }).eq('id', acaoId).select('id'), 'registrar o resultado da ação')
-    await gravarMensagem(admin, {
-      conversaId: atual.conversa_id, tenantId: ctx.tenantId!, papel: 'nota',
-      conteudo: {
-        texto: status === 'feita'
-          ? `A pessoa CONFIRMOU e foi gravado: "${atual.resumo.titulo}". ${resultado.mensagem}`
-          : `A pessoa confirmou "${atual.resumo.titulo}", mas NÃO foi gravado: ${resultado.mensagem}`,
-      },
-    })
-    return { status, resultado }
-  }
+  // O RESULTADO se calcula no try; o registro dele, fora: uma falha ao anotar
+  // não pode virar "falhou" de algo que foi gravado.
+  const resultado = await efetivarAcao(c, ctx, atual)
 
+  await gravar(admin.from('copilot_acoes').update({ status: resultado.status, resultado: resultado.resultado })
+    .eq('id', acaoId).select('id'), 'registrar o resultado da ação')
+  await tentar(admin.from('copilot_mensagens').insert({
+    conversa_id: atual.conversa_id, tenant_id: ctx.tenantId!, papel: 'nota',
+    conteudo: {
+      texto: resultado.status === 'feita'
+        ? `A pessoa CONFIRMOU e foi gravado: "${atual.resumo.titulo}". ${resultado.resultado.mensagem}`
+        : `A pessoa confirmou "${atual.resumo.titulo}", mas NÃO foi gravado: ${resultado.resultado.mensagem}`,
+    },
+  }), 'anotar o resultado na conversa')
+  return resultado
+}
+
+async function efetivarAcao(
+  c: Omit<ContextoDaFerramenta, 'ctx'>,
+  ctx: TenantContext,
+  atual: LinhaDaAcao,
+): Promise<{ status: 'feita' | 'falhou'; resultado: ResultadoDaAcao }> {
+  const falhou = (mensagem: string) => ({ status: 'falhou' as const, resultado: { mensagem } })
   const ferramenta = ferramentasDoCargo(ctx).find(f => f.nome === atual.ferramenta)
-  if (!ferramenta || ferramenta.tipo !== 'escrita') {
-    return terminar('falhou', { mensagem: 'O seu cargo não libera mais esta ação.' })
-  }
+  if (!ferramenta || ferramenta.tipo !== 'escrita') return falhou('O seu cargo não libera mais esta ação.')
   const args = ferramenta.parametros.safeParse(atual.payload?.args)
-  if (!args.success) return terminar('falhou', { mensagem: 'A ação guardada é inválida.' })
+  if (!args.success) return falhou('A ação guardada é inválida.')
 
-  const cf: ContextoDaFerramenta = { ctx, admin, pagina: c.pagina, slugDoPortal: c.slugDoPortal }
+  const cf: ContextoDaFerramenta = { ctx, admin: c.admin, pagina: c.pagina, slugDoPortal: c.slugDoPortal }
   try {
+    // Prepara de NOVO: o mundo pode ter mudado (o horário foi ocupado).
     const preparo = await ferramenta.preparar(cf, args.data)
-    if ('erro' in preparo) return terminar('falhou', { mensagem: preparo.erro })
-    const r = await ferramenta.efetivar(cf, preparo.payload)
-    if ('erro' in r) return terminar('falhou', { mensagem: r.erro })
-    return terminar('feita', r)
-  } catch (e) {
-    if (ehSemAcesso(e as { message?: string; digest?: string })) {
-      return terminar('falhou', { mensagem: 'O seu cargo não libera esta ação.' })
+    if ('erro' in preparo) return falhou(preparo.erro)
+    // E grava o que a pessoa VIU: se o preparo de agora resolveu outra coisa
+    // (outra cliente com o mesmo nome, outro valor), não grava.
+    if (JSON.stringify(preparo.resumo) !== JSON.stringify(atual.resumo)) {
+      return falhou('A situação mudou desde o cartão. Peça de novo ao Copilot para conferir.')
     }
+    const r = await ferramenta.efetivar(cf, preparo.payload)
+    if ('erro' in r) return falhou(r.erro)
+    return { status: 'feita', resultado: r }
+  } catch (e) {
+    if (ehSemAcesso(e as { message?: string; digest?: string })) return falhou('O seu cargo não libera esta ação.')
     console.error(`[copilot] efetivar ${ferramenta.nome}:`, e)
-    return terminar('falhou', { mensagem: mensagemDoErro(e) })
+    return falhou(mensagemDoErro(e))
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import type { TenantContext } from '@estetica-os/types'
-import { getTenantContext, temRecurso } from '@/lib/auth'
+import { getTenantContext } from '@/lib/auth'
+import { copilotNoPlano } from '@/lib/copilot/disponivel'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { origemPublica } from '@/lib/origem'
 import { getCachedRede } from '@/lib/cached-queries'
@@ -33,6 +34,9 @@ import { TEXTO_MAXIMO, type Cartao, type EventoDoCopilot } from '@/lib/copilot/t
 export const dynamic = 'force-dynamic'
 
 const VOLTAS_MAXIMAS = 8
+const VOLTAS_COM_ANEXO = 4
+/** Todos os anexos de um pedido, somados (o proxy guarda até 25MB). */
+const ANEXOS_NO_TOTAL = 20 * 1024 * 1024
 
 function recusa(status: number, mensagem: string) {
   return NextResponse.json({ error: mensagem }, { status })
@@ -60,7 +64,7 @@ export async function POST(req: NextRequest) {
   }
   if (!origemConfere(req)) return recusa(403, 'Pedido de outra origem.')
   if (ctxDaPessoa.isClient || !ctxDaPessoa.tenantId || !ctxDaPessoa.internalUserId) return recusa(403, 'O Copilot é da equipe da clínica.')
-  if (!temRecurso(ctxDaPessoa, 'copilot')) return recusa(403, 'O Copilot não faz parte do plano da sua clínica.')
+  if (!copilotNoPlano(ctxDaPessoa)) return recusa(403, 'O Copilot não faz parte do plano da sua clínica.')
   if (ctxDaPessoa.suporte) return recusa(403, 'No modo suporte o Copilot fica desligado.')
   if (!copilotConfigurado()) return recusa(503, 'O Copilot não está configurado nesta instalação.')
 
@@ -77,7 +81,9 @@ export async function POST(req: NextRequest) {
 
   let anexos: AnexoLido[]
   try {
-    anexos = await lerAnexos(form.getAll('anexos').filter((a): a is File => a instanceof File))
+    const arquivos = form.getAll('anexos').filter((a): a is File => a instanceof File)
+    if (arquivos.reduce((s, a) => s + a.size, 0) > ANEXOS_NO_TOTAL) return recusa(413, 'Os anexos passam de 20 MB somados.')
+    anexos = await lerAnexos(arquivos)
   } catch (e) {
     return recusa(400, e instanceof ErroDeAnexo ? e.message : 'Anexo inválido.')
   }
@@ -98,6 +104,9 @@ export async function POST(req: NextRequest) {
       let tokensEntrada = 0
       let tokensSaida = 0
       let conversaId: string | null = conversaExistente?.id ?? null
+      let resposta = ''
+      const cartoes: Cartao[] = []
+      let respostaGravada = false
       try {
         // A voz vira texto antes de tudo (a tela mostra o que foi entendido).
         const { transcricao, conteudo, descricao } = await prepararEntrada(anexos)
@@ -132,11 +141,13 @@ export async function POST(req: NextRequest) {
         const ferramentas = paraOModelo(disponiveis)
         const cf = { ctx, admin, pagina, slugDoPortal, conversaId: conversa.id }
 
-        let resposta = ''
-        const cartoes: Cartao[] = []
-        for (let volta = 0; volta < VOLTAS_MAXIMAS; volta++) {
+        // Com imagem ou PDF, cada volta reenvia o arquivo (e paga por ele): menos voltas.
+        const voltas = conteudo.length ? VOLTAS_COM_ANEXO : VOLTAS_MAXIMAS
+        for (let volta = 0; volta < voltas; volta++) {
+          // A pessoa fechou a tela: para de gastar.
+          if (req.signal.aborted) break
           const r = await perguntarAoModelo({
-            instrucoes, itens, ferramentas,
+            instrucoes, itens, ferramentas, sinal: req.signal,
             aoTexto: delta => { resposta += delta; enviar({ tipo: 'texto', delta }) },
           })
           tokensEntrada += r.tokensEntrada
@@ -148,7 +159,10 @@ export async function POST(req: NextRequest) {
           if (resposta && !resposta.endsWith('\n')) { resposta += '\n\n'; enviar({ tipo: 'texto', delta: '\n\n' }) }
 
           itens.push(...r.itens)
-          const daVolta: ItemDaConversa[] = r.itens.filter(i => (i as { type?: string }).type === 'function_call')
+          // No histórico, a chamada vai SEM o id do item: na próxima pergunta o
+          // raciocínio (cifrado) desta volta não volta junto, e a API recusa
+          // um function_call com id sem o reasoning dele.
+          const daVolta: ItemDaConversa[] = r.chamadas.map(ch => ({ type: 'function_call', call_id: ch.callId, name: ch.nome, arguments: ch.argumentos }))
           for (const chamada of r.chamadas) {
             const disponivel = disponiveis.find(f => f.nome === chamada.nome)
             enviar({ tipo: 'pensando', rotulo: disponivel?.tipo === 'escrita' ? 'Preparando…' : 'Consultando…' })
@@ -162,7 +176,7 @@ export async function POST(req: NextRequest) {
           // pergunta o modelo ainda sabe ("agende o primeiro horário").
           await gravarMensagem(admin, { conversaId: conversa.id, tenantId: ctx.tenantId!, papel: 'ferramenta', conteudo: { itens: daVolta } })
 
-          if (volta === VOLTAS_MAXIMAS - 1) {
+          if (volta === voltas - 1) {
             const aviso = 'Parei por aqui para não demorar demais. Se faltou algo, peça de novo em partes.'
             resposta += aviso
             enviar({ tipo: 'texto', delta: aviso })
@@ -173,17 +187,27 @@ export async function POST(req: NextRequest) {
           conversaId: conversa.id, tenantId: ctx.tenantId!, papel: 'assistant',
           conteudo: { texto: resposta.trim(), cartoes }, tokensEntrada, tokensSaida,
         })
+        respostaGravada = true
       } catch (e) {
         const mensagem = e instanceof ErroDoModelo || e instanceof ErroDeAnexo
           ? e.message
           : 'Algo deu errado do nosso lado. Tente de novo.'
-        if (!(e instanceof ErroDoModelo)) console.error('[copilot] pedido:', e)
+        if (!(e instanceof ErroDoModelo) && !req.signal.aborted) console.error('[copilot] pedido:', e)
         enviar({ tipo: 'erro', mensagem })
       } finally {
+        // O que já saiu (texto e cartões) fica na conversa mesmo com erro no
+        // meio: o cartão preparado continua confirmável e precisa reaparecer.
+        if (!respostaGravada && conversaId && (resposta.trim() || cartoes.length)) {
+          try {
+            await gravarMensagem(admin, {
+              conversaId, tenantId: ctx.tenantId!, papel: 'assistant',
+              conteudo: { texto: resposta.trim(), cartoes }, tokensEntrada, tokensSaida,
+            })
+          } catch (e) { console.error('[copilot] gravar a resposta parcial:', e) }
+        }
         if (tokensEntrada + tokensSaida > 0) await registrarUso(admin, ctx.tenantId!, tokensEntrada + tokensSaida)
-        void conversaId
         enviar({ tipo: 'fim' })
-        controle.close()
+        try { controle.close() } catch { /* a tela já fechou */ }
       }
     },
   })

@@ -2534,3 +2534,11 @@ a.suporte-link-forte:hover { color: var(--brand); }
 .copilot-compositor-botao[data-gravando="sim"] { background: var(--danger-soft); color: var(--danger); border-color: var(--danger-border); }
 .copilot-compositor-botao.enviar { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
 .copilot-compositor-botao:disabled { opacity: .5; cursor: not-allowed; }
+
+/* O anúncio do leitor de tela: a resposta inteira, quando termina (fora da vista). */
+.copilot-anuncio { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* No celular a folha fica ABAIXO da gaveta do menu (48/50) e da busca (45):
+   o hambúrguer abre a gaveta por cima dela, não escondida por trás. */
+@media (max-width: 1023px) {
+  .copilot-painel, .copilot-botao { z-index: 44; }
+}

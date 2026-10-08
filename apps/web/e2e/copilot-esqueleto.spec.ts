@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { subirOpenaiFalsa, type OpenaiFalsa } from './apoio/openai-falsa'
-import { redeDoCopilot, contraAFalsa, comSessao, falarComOCopilot, esperarResposta, type RedeDoCopilot } from './apoio/copilot'
+import { redeDoCopilot, contraAFalsa, comSessao, falarComOCopilot, esperarResposta, TODAS, type RedeDoCopilot } from './apoio/copilot'
+import { chamarAcao } from './apoio/acao-direta'
 import { clienteComSessao } from './apoio/sessao'
 
 /**
@@ -42,8 +43,8 @@ test('o painel conversa: a ferramenta lê o dado real, a resposta chega aos pouc
     await p.goto('/admin/dashboard')
     const painel = await falarComOCopilot(p, 'procure a Maria')
     await esperarResposta(p)
-    await expect(painel.getByText('Quer que eu abra a ficha?')).toBeVisible()
-    await expect(painel.locator('strong', { hasText: 'Maria Copilot' })).toBeVisible()
+    await expect(painel.locator('.copilot-corpo').getByText('Quer que eu abra a ficha?')).toBeVisible()
+    await expect(painel.locator('.copilot-corpo strong', { hasText: 'Maria Copilot' })).toBeVisible()
 
     // A ferramenta rodou de verdade, no banco: o que voltou ao modelo tem a cliente.
     const [saida] = falsa.saidasDeFerramenta()
@@ -58,10 +59,21 @@ test('o painel conversa: a ferramenta lê o dado real, a resposta chega aos pouc
     expect(primeiro!.corpo.instructions).toContain('NADA CLÍNICO')
     expect(falsa.ferramentasOferecidas(0)).toContain('buscar')
 
+    // A SEGUNDA pergunta da mesma conversa leva o histórico com a chamada de
+    // antes — no formato que a API real aceita sem o raciocínio daquela vez
+    // (a falsa, como a real, recusa function_call com id sem o reasoning).
+    falsa.roteiro.push({ texto: 'O telefone está na ficha.' })
+    await falarComOCopilot(p, 'e o telefone dela?')
+    await esperarResposta(p)
+    await expect(painel.locator('.copilot-corpo').getByText('O telefone está na ficha.')).toBeVisible()
+    const historico = falsa.respostas().at(-1)!.corpo.input ?? []
+    expect(historico.some(i => i.type === 'function_call' && i.name === 'buscar')).toBe(true)
+    expect(historico.some(i => i.type === 'function_call_output')).toBe(true)
+
     // Recarregar não perde o painel nem a conversa.
     await p.reload()
     const depois = p.getByRole('dialog', { name: 'Copilot' })
-    await expect(depois.getByText('Quer que eu abra a ficha?')).toBeVisible()
+    await expect(depois.locator('.copilot-corpo').getByText('Quer que eu abra a ficha?')).toBeVisible()
     await depois.getByRole('button', { name: 'Conversas' }).click()
     await expect(depois.getByRole('list', { name: 'Conversas do Copilot' }).getByText('procure a Maria')).toBeVisible()
   })
@@ -71,9 +83,10 @@ test('o painel conversa: a ferramenta lê o dado real, a resposta chega aos pouc
   const { data: conversas } = await db.from('copilot_conversas').select('id').eq('tenant_id', rede.outra.tenantId)
   expect(conversas).toHaveLength(1)
   const { data: msgs } = await db.from('copilot_mensagens').select('papel').eq('conversa_id', conversas![0]!.id).order('criada_em')
-  expect(msgs!.map(m => m.papel)).toEqual(['user', 'ferramenta', 'assistant'])
+  expect(msgs!.map(m => m.papel)).toEqual(['user', 'ferramenta', 'assistant', 'user', 'assistant'])
+  // Duas perguntas: a primeira em 2 voltas (240 tokens), a segunda em 1 (120).
   const { data: uso } = await db.from('copilot_uso_mensal').select('tokens, pedidos').eq('tenant_id', rede.outra.tenantId).single()
-  expect(uso).toEqual({ tokens: 240, pedidos: 1 })
+  expect(uso).toEqual({ tokens: 360, pedidos: 2 })
 })
 
 test('o portal do cliente não tem o Copilot', async ({ browser }) => {
@@ -92,8 +105,10 @@ test('o portal do cliente não tem o Copilot', async ({ browser }) => {
   }
 })
 
-test('rede sem o Copilot no plano: nem botão, nem rota — para o dono também', async ({ browser }) => {
-  await rede.plano(['agenda', 'clientes'])
+test('rede sem o Copilot no plano — ou sem plano nenhum: nem botão, nem rota, para o dono também', async ({ browser }) => {
+  // Sem plano (que libera todo o resto) o Copilot NÃO vem: ele custa por uso.
+  for (const plano of [TODAS.filter(f => f !== 'copilot'), null]) {
+  await rede.plano(plano)
   try {
     await comSessao(browser, rede.dono.estado, async p => {
       await p.goto('/admin/dashboard')
@@ -104,8 +119,32 @@ test('rede sem o Copilot no plano: nem botão, nem rota — para o dono também'
     })
     expect(falsa.respostas()).toHaveLength(0)
   } finally {
-    await rede.plano(null)
+    await rede.plano(TODAS)
   }
+  }
+})
+
+test('a conversa é de quem a abriu: outra pessoa da MESMA rede não lê, não continua, não confirma', async ({ browser }) => {
+  const db = banco()
+  const { data: conversa } = await db.from('copilot_conversas').select('id').eq('tenant_id', rede.outra.tenantId).limit(1).single<{ id: string }>()
+  const { data: acao, error } = await db.from('copilot_acoes').insert({
+    conversa_id: conversa!.id, tenant_id: rede.outra.tenantId, user_id: rede.dono.userId,
+    ferramenta: 'buscar', payload: { args: {} }, resumo: { titulo: 'x', linhas: [] },
+  }).select('id').single<{ id: string }>()
+  expect(error).toBeNull()
+  const colega = await rede.membro('colega', [{ modulo: 'clients', nivel: 'VIEW' }, { modulo: 'agenda', nivel: 'MANAGE' }])
+  await comSessao(browser, colega.estado, async p => {
+    await p.goto('/admin/dashboard')
+    const r = await p.request.post('/api/copilot', { headers: { origin: process.env.E2E_BASE_URL! }, multipart: { texto: 'oi', pagina: '/admin', conversaId: conversa!.id } })
+    expect(r.status()).toBe(404)
+    const aberta = await chamarAcao(p, 'actions/copilot.ts', 'abrirConversaDoCopilot', '/admin/dashboard', [conversa!.id])
+    expect(aberta.texto).toContain('Conversa não encontrada')
+    const decidida = await chamarAcao(p, 'actions/copilot.ts', 'decidirAcaoDoCopilot', '/admin/dashboard', [acao!.id, 'confirmar', '/admin'])
+    expect(decidida.texto).toContain('Ação não encontrada')
+  })
+  const { data: depois } = await db.from('copilot_acoes').select('status').eq('id', acao!.id).single()
+  expect(depois!.status).toBe('pendente')
+  expect(falsa.respostas()).toHaveLength(0)
 })
 
 test('a rota recusa pedido de outra origem, mesmo com a sessão', async ({ browser }) => {

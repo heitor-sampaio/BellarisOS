@@ -18,6 +18,9 @@ import type { AddressInfo } from 'node:net'
  * que o servidor devolveu ao modelo (é o que prova o que a ferramenta leu).
  *
  * Fala o subconjunto da Responses API que o Copilot usa, com streaming:
+ * (como um modelo que RACIOCINA: as chamadas vêm depois de um item
+ * `reasoning` cifrado — e, como a API de verdade com `store: false`, um
+ * `function_call` com `id` na entrada sem um `reasoning` antes é recusado com 400.)
  * `response.output_text.delta`, `response.output_item.done` e
  * `response.completed` (com `usage`). E `/v1/audio/transcriptions`, que
  * devolve `transcricao`.
@@ -138,6 +141,16 @@ export async function subirOpenaiFalsa(porta = PORTA_DA_OPENAI_FALSA): Promise<O
         return
       }
 
+      // A regra da API real (store:false): a chamada com id precisa do raciocínio dela.
+      const entrada = corpo.input ?? []
+      const semRaciocinio = entrada.findIndex((i, n) => i.type === 'function_call' && (i as { id?: string }).id
+        && !entrada.slice(0, n).some(x => x.type === 'reasoning'))
+      if (semRaciocinio >= 0) {
+        res.writeHead(400, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ error: { message: "Item of type 'function_call' was provided without its required 'reasoning' item." } }))
+        return
+      }
+
       const passo = estado.roteiro.shift() ?? { texto: 'Certo.' }
       if (passo.status) {
         res.writeHead(passo.status, { 'content-type': 'application/json' })
@@ -154,6 +167,11 @@ export async function subirOpenaiFalsa(porta = PORTA_DA_OPENAI_FALSA): Promise<O
         res.write(`event: ${tipo}\ndata: ${JSON.stringify({ type: tipo, ...dados })}\n\n`)
 
       evento('response.created', { response: { id, status: 'in_progress' } })
+      if (passo.chamar?.length) {
+        const item = { type: 'reasoning', id: `rs_${++contador}`, summary: [], encrypted_content: 'cifrado-de-mentira' }
+        saida.push(item)
+        evento('response.output_item.done', { output_index: saida.length - 1, item })
+      }
       for (const c of passo.chamar ?? []) {
         const n = ++contador
         const item = { type: 'function_call', id: `fc_${n}`, call_id: `call_${n}`, name: c.nome, arguments: JSON.stringify(c.args), status: 'completed' }

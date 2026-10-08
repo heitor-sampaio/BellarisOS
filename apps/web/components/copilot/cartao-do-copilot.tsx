@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Check, Loader2, X } from 'lucide-react'
 import { decidirAcaoDoCopilot } from '@/actions/copilot'
 import { erroParaTela } from '@/lib/erro-na-tela'
-import { caminhoInterno } from '@/lib/origem'
+import { linkSeguro } from '@/lib/copilot/texto'
 import type { Cartao } from '@/lib/copilot/tipos'
 
 /**
@@ -23,7 +23,7 @@ const ESTADO: Record<string, string> = {
   vencida:    'Este cartão venceu. Peça de novo ao Copilot.',
 }
 
-const hrefSeguro = (href?: string) => (href ? caminhoInterno(href, '') || null : null)
+const hrefSeguro = (href?: string) => (href ? linkSeguro(href) : null)
 
 export function CartaoDoCopilot({ cartao, pagina, aoNavegar, aoMudar }: {
   cartao: Cartao
@@ -46,7 +46,7 @@ export function CartaoDoCopilot({ cartao, pagina, aoNavegar, aoMudar }: {
             return (
               <li key={i}>
                 {href
-                  ? <Link href={href} onClick={aoNavegar}>{conteudo}</Link>
+                  ? <Link href={href} prefetch={false} onClick={aoNavegar}>{conteudo}</Link>
                   : <span className="copilot-link-sem-href">{conteudo}</span>}
               </li>
             )
@@ -106,7 +106,7 @@ export function CartaoDoCopilot({ cartao, pagina, aoNavegar, aoMudar }: {
         <div className="copilot-cartao-estado" data-status={status} role="status">
           <span>{ESTADO[status]}{status === 'feita' || status === 'falhou' ? (resultado?.mensagem ? ` · ${resultado.mensagem}` : '') : ''}</span>
           {status === 'feita' && linkDoResultado && (
-            <Link href={linkDoResultado} onClick={aoNavegar}>{resultado?.rotuloDoLink ?? 'Abrir'} →</Link>
+            <Link href={linkDoResultado} prefetch={false} onClick={aoNavegar}>{resultado?.rotuloDoLink ?? 'Abrir'} →</Link>
           )}
         </div>
       )}

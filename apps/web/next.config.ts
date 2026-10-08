@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
     // qualquer foto de celular — e o erro chega como falha genérica de rede.
     // 20MB cobre o limite de vídeo e áudio da Meta (16MB) com folga.
     serverActions: { bodySizeLimit: '20mb' },
+    // O proxy guarda o corpo do pedido para relê-lo, e por padrão só até 10MB:
+    // passou disso, CORTA — o anexo de 16MB do inbox e o áudio/documento do
+    // Copilot (/api/copilot, até 20MB no total) chegavam truncados.
+    proxyClientMaxBodySize: '25mb',
   },
   typescript: { ignoreBuildErrors: true },
   transpilePackages: [

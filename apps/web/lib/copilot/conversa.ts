@@ -94,8 +94,10 @@ export async function historicoParaOModelo(admin: Admin, conversaId: string): Pr
 export async function mensagensParaATela(admin: Admin, ctx: TenantContext, conversaId: string): Promise<MensagemNaTela[]> {
   const linhas = await ler(admin.from('copilot_mensagens').select('id, papel, conteudo, criada_em')
     .eq('conversa_id', conversaId).eq('tenant_id', ctx.tenantId!)
-    .in('papel', ['user', 'assistant']).order('criada_em', { ascending: true })
+    .in('papel', ['user', 'assistant']).order('criada_em', { ascending: false })
     .limit(200), 'ler as mensagens do Copilot') as LinhaDeMensagem[] | null
+  // As 200 MAIS RECENTES, na ordem da conversa.
+  linhas?.reverse()
 
   const acoes = await ler(admin.from('copilot_acoes').select('id, status, resultado, expira_em')
     .eq('conversa_id', conversaId).eq('tenant_id', ctx.tenantId!), 'ler as ações do Copilot') as

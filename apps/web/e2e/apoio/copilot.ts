@@ -3,13 +3,17 @@ import { banco } from './banco'
 import { criarOutraRede, type OutraRede } from './outra-rede'
 import { criarMembro, type MembroDeTeste, type Permissao } from './sessao'
 import { PORTA_DA_OPENAI_FALSA } from './openai-falsa'
+import { FUNCIONALIDADES } from '@estetica-os/nucleo/lib/planos/recursos'
+
+/** Todas as funcionalidades do catálogo (o plano "tudo liberado", com o Copilot). */
+export const TODAS: string[] = FUNCIONALIDADES.map(f => f.chave)
 
 /**
  * O apoio dos specs do Copilot.
  *
- * Cada spec roda numa rede `[e2e]` própria (`criarOutraRede`), sem retrato de
- * plano — sem plano, tudo liberado, inclusive o Copilot — com o DONO dela
- * logado. A OpenAI é a falsa (porta fixa): os specs do Copilot ficam nos
+ * Cada spec roda numa rede `[e2e]` própria (`criarOutraRede`), com um plano
+ * que tem TUDO (`TODAS`) — o Copilot exige o plano; "sem plano" não o libera —
+ * e o DONO dela logado. A OpenAI é a falsa (porta fixa): os specs do Copilot ficam nos
  * COMPARTILHADOS, um por vez.
  */
 
@@ -23,7 +27,8 @@ export interface RedeDoCopilot {
   membro(marca: string, permissoes: Permissao[], opcoes?: { branchId?: string | null }): Promise<MembroDeTeste>
   /** Grava um retrato de plano (funcionalidades) na rede; `null` volta a "sem plano". */
   plano(funcionalidades: string[] | null, cotaDoCopilot?: number | null): Promise<void>
-  limpar(): Promise<void>
+  /** `antesDaRede`: o que o teste criou na rede (outra unidade…), depois dos membros e antes da rede. */
+  limpar(antesDaRede?: () => Promise<void>): Promise<void>
 }
 
 export async function redeDoCopilot(marca: string): Promise<RedeDoCopilot> {
@@ -35,7 +40,7 @@ export async function redeDoCopilot(marca: string): Promise<RedeDoCopilot> {
   const membros: MembroDeTeste[] = []
   let planoBase: string | null = null
 
-  return {
+  const rede: RedeDoCopilot = {
     outra, dono,
     async membro(m, permissoes, opcoes = {}) {
       const novo = await criarMembro(`copm${m}${marca}`, { tenant: outra.tenantId, permissoes, branchId: opcoes.branchId ?? null })
@@ -61,15 +66,18 @@ export async function redeDoCopilot(marca: string): Promise<RedeDoCopilot> {
       }
       await expirarRede(outra.tenantId)
     },
-    async limpar() {
+    async limpar(antesDaRede) {
       for (const m of membros) await m.limpar()
       await dono.limpar()
+      if (antesDaRede) await antesDaRede()
       await db.from('platform_audit_log').delete().eq('tenant_id', outra.tenantId)
       await db.from('tenant_subscriptions').delete().eq('tenant_id', outra.tenantId)
       await outra.limpar()
       if (planoBase) await db.from('platform_plans').delete().eq('id', planoBase)
     },
   }
+  await rede.plano(TODAS)
+  return rede
 }
 
 /** Expira o cache da rede na clínica (`rede:<id>`), como o sistema faz depois de mudar o plano. */

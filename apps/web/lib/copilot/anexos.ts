@@ -48,10 +48,11 @@ function mimeDaImagem(b: Buffer): string | null {
   return null
 }
 
-function ehAudio(b: Buffer): boolean {
+function ehAudio(b: Buffer, declarado: string): boolean {
   if (comeca(b, 0x1a, 0x45, 0xdf, 0xa3)) return true                  // webm / matroska
   if (b.subarray(0, 4).toString('latin1') === 'OggS') return true      // ogg
-  if (b.subarray(4, 8).toString('latin1') === 'ftyp') return true      // mp4 / m4a
+  // mp4/m4a: o mesmo contêiner do vídeo e do HEIC — só vale se veio como áudio.
+  if (b.subarray(4, 8).toString('latin1') === 'ftyp') return declarado.startsWith('audio/')
   if (b.subarray(0, 3).toString('latin1') === 'ID3' || comeca(b, 0xff, 0xfb) || comeca(b, 0xff, 0xf3)) return true // mp3
   if (b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WAVE') return true
   return false
@@ -77,7 +78,7 @@ export async function lerAnexos(arquivos: File[]): Promise<AnexoLido[]> {
     let lido: AnexoLido | null = null
     if (mimeImagem) {
       lido = { nome, tipo: 'imagem', mime: mimeImagem, bytes, caminho: null }
-    } else if (ehAudio(bytes)) {
+    } else if (ehAudio(bytes, declarado)) {
       lido = { nome, tipo: 'audio', mime: declarado.startsWith('audio/') ? declarado.split(';')[0]! : 'audio/webm', bytes, caminho: null }
     } else if (bytes.subarray(0, 5).toString('latin1') === '%PDF-') {
       lido = { nome, tipo: 'documento', mime: 'application/pdf', bytes, caminho: null }

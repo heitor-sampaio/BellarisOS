@@ -14,7 +14,7 @@ function Trechos({ trechos, aoNavegar }: { trechos: Trecho[]; aoNavegar?: () => 
     <>
       {trechos.map((t, i) => {
         if (t.tipo === 'negrito') return <strong key={i}>{t.texto}</strong>
-        if (t.tipo === 'link') return <Link key={i} href={t.href} onClick={aoNavegar}>{t.texto}</Link>
+        if (t.tipo === 'link') return <Link key={i} href={t.href} prefetch={false} onClick={aoNavegar}>{t.texto}</Link>
         return <span key={i}>{t.texto}</span>
       })}
     </>

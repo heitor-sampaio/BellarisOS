@@ -21,10 +21,14 @@ export type Bloco =
 
 const ITEM = /^\s*(?:[-*•]|(\d+)[.)])\s+(.*)$/
 
-function linkSeguro(href: string): string | null {
+/** Rotas que não são TELA: um link do modelo para elas faria um GET que age. */
+const NAO_E_TELA = /^\/(api|auth|login|logout|assinar|verificar|conta-suspensa|_next)(\/|$|\?)/
+
+export function linkSeguro(href: string): string | null {
   if (!href.startsWith('/')) return null
   const seguro = caminhoInterno(href, '')
-  return seguro && seguro === href ? seguro : null
+  if (!seguro || seguro !== href || NAO_E_TELA.test(seguro)) return null
+  return seguro
 }
 
 export function trechosDaLinha(linha: string): Trecho[] {

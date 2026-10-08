@@ -25,7 +25,8 @@ describe('blocosDoTexto', () => {
   })
 
   it('link para fora, protocolo javascript e // não viram link', () => {
-    for (const href of ['https://evil.example', 'javascript:alert(1)', '//evil.example', '/\\evil.example']) {
+    // E rota que não é tela (um GET que age): /api, /auth…
+    for (const href of ['https://evil.example', 'javascript:alert(1)', '//evil.example', '/\\evil.example', '/api/oauth/meta', '/auth/suporte-fim', '/login']) {
       const b = blocosDoTexto(`[clique](${href})`)
       expect(trechos(b[0]).some(t => t.tipo === 'link')).toBe(false)
     }

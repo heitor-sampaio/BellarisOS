@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import type { TenantContext } from '@estetica-os/types'
-import { getTenantContext, temRecurso } from '@/lib/auth'
+import { getTenantContext } from '@/lib/auth'
+import { copilotNoPlano } from '@/lib/copilot/disponivel'
 import { semAcesso } from '@/lib/sem-acesso'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { mensagemDoErro } from '@/lib/db'
@@ -20,7 +21,7 @@ import type { ConversaNaLista, MensagemNaTela, ResultadoDaAcao, StatusDaAcao } f
 async function contextoDoPainel(): Promise<TenantContext> {
   const ctx = await getTenantContext()
   if (ctx.isClient || !ctx.tenantId || !ctx.internalUserId) throw semAcesso()
-  if (!temRecurso(ctx, 'copilot') || !copilotConfigurado()) throw semAcesso()
+  if (!copilotNoPlano(ctx) || !copilotConfigurado()) throw semAcesso()
   // No modo suporte o Copilot fica desligado (custo e responsabilidade de quem pede).
   if (ctx.suporte) throw semAcesso()
   return ctx

@@ -16,8 +16,10 @@ export const buscar: FerramentaDeLeitura<{ termo: string }> = {
   async executar(c, { termo }) {
     const r = await buscarTudo(termo, c.slugDoPortal)
     if (r.error) return { dados: { erro: r.error } }
+    // Da CONVERSA vai só o nome: o subtítulo é o trecho da última mensagem do
+    // paciente, que costuma ter queixa de saúde — não vai à OpenAI.
     const itens = (r.grupos ?? []).flatMap(g => g.itens).map(i => ({
-      tipo: i.tipo, id: i.id, titulo: i.titulo, detalhe: i.subtitulo,
+      tipo: i.tipo, id: i.id, titulo: i.titulo, detalhe: i.tipo === 'conversa' ? null : i.subtitulo,
       href: destinoDoResultado(c.pagina, c.slugDoPortal, i),
     }))
     return {
