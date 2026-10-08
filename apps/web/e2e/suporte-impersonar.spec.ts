@@ -258,6 +258,27 @@ test.describe.serial('suporte: entrar como', () => {
     expect(await trocarSenha(token, `Nova-${marca}-x9!`)).not.toBe(200)
   })
 
+  // O risco aceito que virou trava (2026-10-08): o atendente tem o token da
+  // sessão no navegador e falava direto com o PostgREST — gravava o que a RLS
+  // deixa ao membro, fora do registro de acesso. Agora a sessão de suporte não
+  // grava pelo PostgREST (política RESTRICTIVE `suporte_sem_escrita`); o que
+  // ela muda, muda pelo app, que registra.
+  test('o token da sessão de suporte NÃO grava pelo PostgREST; o do próprio membro grava', async () => {
+    const patch = (token: string, notas: string) => fetch(`${URL_SUPA}/rest/v1/clients?id=eq.${f!.clienteId}`, {
+      method: 'PATCH',
+      headers: { apikey: ANON, Authorization: `Bearer ${token}`, 'content-type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ notes: notas }),
+    }).then(async r => { const c = await r.json().catch(() => null); return Array.isArray(c) ? c.length : 0 })
+    const notas = async () => (await db().from('clients').select('notes').eq('id', f!.clienteId).single()).data!.notes as string | null
+
+    const doSuporte = (await sessaoDoNavegador(sup!.ctx)).access_token
+    expect(await patch(doSuporte, `escrito pelo suporte ${marca}`), 'nenhuma linha').toBe(0)
+    expect(await notas()).not.toBe(`escrito pelo suporte ${marca}`)
+    // Controle: o membro, com a sessão DELE, grava (a RLS deixa).
+    expect(await patch(f!.alvo.accessToken, `escrito pelo membro ${marca}`), 'o membro grava').toBe(1)
+    expect(await notas()).toBe(`escrito pelo membro ${marca}`)
+  })
+
   test('na clínica, nada do atendente: nem a sessão dele, nem cookie de volta, nem o painel', async () => {
     const naClinica = await sup!.ctx.cookies(process.env.E2E_BASE_URL)
     expect(naClinica.map(c => c.name)).not.toContain('bellaris_suporte_volta')

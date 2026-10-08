@@ -1299,6 +1299,36 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-08 — A dívida técnica: estoque sem perder saída, o Copilot completo, o suporte sem gravar pelo PostgREST
+
+Pedido do Heitor: "resolve as dívidas técnicas".
+- **Estoque sem perder saída ao mesmo tempo.** A transferência virou função do
+  banco (`estoque_transferir`, as duas linhas travadas na mesma ordem). A
+  conclusão do atendimento e a entrega do produto de voucher seguem calculando
+  no app (`lib/estoque/baixa.ts`), mas mandam o saldo LIDO, e o banco trava a
+  linha e confere (`private.estoque_conferir_lido`): mudou → PT409, nada
+  gravado, e o app relê e tenta de novo (`comNovaTentativa`). O código era
+  40001, e o log mostrou o PostgREST REPETINDO a chamada sozinho dezenas de
+  vezes, sem reler. Provas: `e2e/estoque-concorrencia.spec.ts`, o saldo velho
+  em `conclusao-atomica` e `fidelidade-vouchers`.
+- **O Copilot completo.** Check-in (`fazer_check_in`, pelo núcleo que a agenda
+  passou a usar: `checkinCore`); o acesso ao app do cliente no cadastro
+  (`criar_acesso`) ou para quem já é cliente (`criar_acesso_ao_app`), pelo
+  núcleo da tela (`lib/clients/acesso.ts`); docx e xlsx lidos como texto
+  (`lib/copilot/documentos.ts`, sem biblioteca). Prova: `e2e/copilot-extras.spec.ts`.
+- **O suporte não grava pelo PostgREST.** O atendente tinha o token da sessão no
+  navegador e gravava direto o que a RLS deixa ao membro, fora do registro.
+  Agora uma política RESTRICTIVE em toda tabela (`suporte_sem_escrita`,
+  migration `20261008000010`) recusa insert, update e delete com token de
+  sessão de suporte; o app grava pelo cliente de serviço (o status do
+  agendamento era a única gravação do suporte pela sessão). Prova: o token
+  do suporte não grava e o do membro grava (`suporte-impersonar`).
+- **LGPD nas conversas do Copilot**: não havia o que ligar — a exclusão a
+  pedido está fora de escopo (§9.2). A regra para quando houver ficou em
+  `docs/regras/copilot.md`.
+- **Fica**: os 76 specs do E2E que rodam um por vez (migrar para rede própria
+  é trabalho spec a spec, à parte).
+
 ### 2026-10-08 — Uso do Copilot no sistema: o mês de cada rede, a cota e o custo
 
 Pedido do Heitor: ver o uso de IA de cada rede. O sistema ganhou a aba
@@ -5901,10 +5931,9 @@ verdade. O que vale:
 - **(Opcional) ligar o hook de token**: Supabase → Authentication → Hooks →
   Custom Access Token → `public.suporte_hook_do_token`. Nada depende dele.
 - ~~Vale uma rodada completa do E2E~~ **rodou** várias vezes desde então (a última em 2026-10-08).
-- **Risco aceito, que continua**: dentro da janela ativa o atendente pode
-  escrever pelo PostgREST o que a RLS deixa ao membro (menos o clínico, a
-  credencial e o aparelho), e isso não entra no registro de acesso — o plano
-  já previa; a mitigação seria exigir um cabeçalho que só o servidor manda.
+- ~~Risco aceito: o atendente gravava pelo PostgREST o que a RLS deixa ao
+  membro~~ **fechado em 2026-10-08**: a sessão de suporte não grava pelo
+  PostgREST em tabela nenhuma (`suporte_sem_escrita`, ver a linha do tempo).
 - **Depois**: impersonar o cliente final do portal; e-mail transacional
   (chamado respondido, acesso do suporte); push para o suporte; host próprio
   para trabalhar lado a lado; gente de unidade autorizar outros. Na cobrança:
@@ -5913,16 +5942,12 @@ verdade. O que vale:
 
 ### Dívida técnica conhecida
 
-- **O que a revisão do Copilot deixou para depois** (2026-10-08):
-  - a TRANSFERÊNCIA de estoque e a baixa do `concluir_atendimento` ainda gravam
-    o saldo absoluto (ler → gravar): duas ao mesmo tempo perdem uma, como era
-    a entrada. O caminho é o mesmo de `estoque_entrada`: a linha travada numa
-    função do banco;
-  - o expurgo da LGPD não procura o cliente nas conversas do Copilot (o nome
-    pode estar no texto); a retenção de 90 dias é o limite;
-  - do plano original ficaram de fora: o check-in pelo Copilot, o cadastro
-    completo com acesso ao portal e a leitura de docx/xlsx ("mande em PDF").
-    ~~O custo estimado no uso do mês~~ **feito** (a aba Copilot do sistema).
+- ~~**O que a revisão do Copilot deixou para depois**~~ **resolvido em
+  2026-10-08** (ver a linha do tempo): a transferência, a conclusão e o voucher
+  sem perder saída; o check-in, o acesso ao app e o docx/xlsx pelo Copilot; o
+  custo no sistema. A "LGPD nas conversas" partia de uma premissa errada: não
+  há expurgo (a exclusão está fora de escopo, §9.2) — a regra de quando houver
+  está em `docs/regras/copilot.md`.
 
 - ~~**Comissões, fases 2 e 3**~~ **concluídas em 2026-09-30** (ver a linha do
   tempo). O que ficou de fora de propósito:

@@ -426,6 +426,13 @@ um muro que não depende de cada trava do código.
   autorização lê as sessões em curso ANTES (`sessoesEmCurso`) para expirar o
   cache delas (`updateTag(tagDaSessao(…))`). Desativar o atendente também
   derruba a dele, e `sessaoVigente` confere que ele segue na equipe.
+- **A sessão de suporte não GRAVA pelo PostgREST** (2026-10-08): o token
+  dela está no navegador do atendente (httpOnly não esconde das ferramentas
+  de desenvolvedor), e ele gravava direto o que a RLS deixa ao membro, fora do
+  registro. Política RESTRICTIVE `suporte_sem_escrita_ins/_upd/_del` em toda
+  tabela de `public` com RLS (o laço da migration `20261008000010`; tabela
+  nova entra nele). O que o suporte muda, muda pelo app, que grava pelo
+  cliente de serviço. Ler continua como o membro (menos o clínico).
 - **No modo suporte nada sai para o paciente**: `bloqueioDoSuporte(ctx, …)`
   (`lib/suporte/travas.ts`) nas actions de envio do inbox (texto, template,
   mídia), campanha, pedido de assinatura e link de assinatura (gerar e pela

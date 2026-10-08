@@ -77,9 +77,10 @@ const procedures = await ler(
 ### 9.5 Estoque
 - `currentStock` nunca atualizado diretamente — sempre via `StockMovement` em transação
 - `StockMovement.balanceAfter`: saldo snapshot no momento da movimentação (imutável)
-- **Transferência entre unidades é imediata** (`adminTransferStock`): as duas
-  pernas (`TRANSFER_OUT` e `TRANSFER_IN`) no mesmo insert, ligadas por uma
-  `reference` aleatória. A tabela `stock_transfers` com confirmação do destino
+- **Transferência entre unidades é imediata** (`adminTransferStock` →
+  `estoque_transferir`, numa transação com as duas linhas de saldo travadas,
+  desde 2026-10-08): as duas pernas (`TRANSFER_OUT` e `TRANSFER_IN`) no mesmo
+  insert, ligadas por uma `reference` aleatória. A tabela `stock_transfers` com confirmação do destino
   não é usada.
 - **O lote é DA UNIDADE e BAIXA com a saída** (`product_batches.branch_id`,
   migration `20260928000001`). A baixa é GATILHO (`trg_lote_do_movimento`),
@@ -154,4 +155,7 @@ O resto do fluxo:
 ❌ Remarcar, cancelar ou confirmar fora de remarcarCore/cancelarCore/confirmarCore (lib/appointments/alteracoes.ts) — a tela e o Copilot dividem
 ❌ Caminho que cria ou move agendamento (troca de profissional, sessão de plano, checkout do plano…) sem horarioOcupado — no checkout, ANTES do dinheiro
 ❌ Gravar entrada ou ajuste de estoque fora de estoque_entrada/estoque_ajuste (a linha do saldo travada; duas entradas juntas perdiam uma)
+❌ Transferir estoque fora de estoque_transferir (as duas linhas travadas na mesma ordem)
+❌ Saída calculada no app (conclusão, voucher) sem mandar o saldo LIDO (antes_embalagens/antes_rendimento) e sem comNovaTentativa — o banco confere e recusa com PT409
+❌ Usar 40001 para "tente de novo" numa função chamada pelo PostgREST (ele repete sozinho, sem reler) — é PT409
 ```

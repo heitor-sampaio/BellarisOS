@@ -568,6 +568,8 @@ do arquivo dele em `docs/regras/` ("O que nunca fazer aqui").
 ❌ Mandar config de integração ao navegador sem mascararSegredos (ou criar chave de credencial fora da lista)
 ❌ Action que manda algo ao PACIENTE (mensagem, campanha, link, pedido de assinatura) sem bloqueioDoSuporte
 ❌ Tabela clínica nova sem a política RESTRICTIVE suporte_sem_clinico
+❌ Tabela nova sem as políticas RESTRICTIVE suporte_sem_escrita_ins/_upd/_del (a sessão de suporte gravaria pelo PostgREST; o laço está em 20261008000010)
+❌ Gravação que o suporte faz pela tela usando o cliente da SESSÃO (é recusada no banco): o servidor grava pelo cliente de serviço, depois de conferir permissão e alcance
 ❌ Ler o nome de quem agiu fora do ctx (users.name pelo auth id) — perde a marca "via suporte"
 ❌ jwt_claim que consulta tabela a cada chamada (é por linha, em toda política) ou que vira security definer
 ❌ Política que confere auth.uid() em tabela que a sessão de suporte alcança, sem a restritiva do suporte

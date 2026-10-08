@@ -142,7 +142,11 @@ export async function updateAppointmentStatus(
   // O erro deste update era descartado, e o histórico logo abaixo é escrito
   // pelo admin client: quando a escrita falhava, a linha do tempo registrava a
   // mudança, a tela dizia que deu certo e o status continuava o mesmo.
-  const { data: atualizadas, error: updErr } = await supabase
+  //
+  // Pelo cliente de serviço (2026-10-08), com o alcance conferido antes
+  // (resolveBranchId): a sessão de suporte não grava pelo PostgREST
+  // (`suporte_sem_escrita`), e o suporte muda status de agendamento pela tela.
+  const { data: atualizadas, error: updErr } = await createAdminClient()
     .from('appointments')
     .update(fields)
     .eq('id', appointmentId)

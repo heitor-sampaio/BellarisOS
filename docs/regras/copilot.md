@@ -54,11 +54,14 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   (`lib/clients/atualizar.ts`), `lancarCore`/
   `marcarPagoCore` (`lib/financeiro/lancamento.ts`), `estoque_entrada`/
   `estoque_ajuste` (`lib/estoque/movimentos.ts`), `criarOportunidadeCore`/
-  `moverEtapaCore` (`lib/crm/oportunidade.ts`), `lib/metrics`.
+  `moverEtapaCore` (`lib/crm/oportunidade.ts`), `checkinCore`, o acesso ao app
+  (`lib/clients/acesso.ts`), `lib/metrics`.
 - **Anexos** (`lib/copilot/anexos.ts`) são lidos no pedido e DESCARTADOS (a
   conversa guarda nome e tipo). Tipo pelo conteúdo. Imagem ≤ 5 MB (a foto
   grande é reduzida no navegador), PDF como arquivo, txt/csv como texto, voz
-  transcrita (`OPENAI_MODELO_DE_VOZ`). docx/xlsx: "mande em PDF".
+  transcrita (`OPENAI_MODELO_DE_VOZ`). docx/xlsx viram texto no servidor
+  (`lib/copilot/documentos.ts`, um leitor de zip sem biblioteca); doc/xls
+  antigos, não.
 - **Texto do modelo** vira blocos React (`lib/copilot/texto.ts`), nunca HTML;
   link só para TELA interna (não `/api`, `/auth`…), sem prefetch.
 - **Dados**: `copilot_conversas`, `copilot_mensagens`, `copilot_acoes`,
@@ -112,6 +115,7 @@ completo e o dono. Os specs `copilot-*` são COMPARTILHADOS (porta fixa).
 ❌ Guardar o anexo (áudio, foto, documento) — lido no pedido e descartado
 ❌ Mandar a chamada de ferramenta ao histórico com o id do item (a API recusa sem o raciocínio)
 ❌ Liberar o Copilot para rede sem plano (ele custa por uso)
+❌ Criar exclusão/anonimização de cliente (LGPD) sem levar as conversas do Copilot que o citam (copilot_mensagens, copilot_acoes) — hoje não há exclusão, e a retenção de 90 dias é o limite
 ❌ Liberar o Copilot (ou uma gravação dele) sem conferir o módulo copilot do cargo (Ver / Gerenciar)
 ❌ Chamar a OpenAI (resposta, transcrição) sem somar o gasto na cota — também quando falha ou cai
 ❌ Trocar OPENAI_MODEL / OPENAI_MODELO_DE_VOZ sem o preço do modelo em custo-do-copilot.ts (o custo some da tela)
