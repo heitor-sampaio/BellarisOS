@@ -1299,6 +1299,19 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-08 — CSP na clínica, em modo de aviso
+
+O CSP diz ao navegador de onde a página pode carregar e executar coisas; é a
+segunda linha contra script injetado. Os hosts da plataforma já tinham um
+estrito; a clínica não, porque carrega muita coisa de fora e uma lista
+incompleta bloqueando quebraria tela em produção. Agora toda página da
+clínica leva `Content-Security-Policy-Report-Only` com a política que um dia
+vai bloquear (script só com o nonce da requisição, como a plataforma), e o
+navegador AVISA em `/api/csp-relatorio`, que escreve uma linha por violação no
+log (sem repetir, sem caminho nem consulta da URL). Nada é bloqueado ainda.
+Prova: `e2e/csp-clinica.spec.ts` (o cabeçalho, o nonce nos scripts do Next, a
+rota que só aceita relatório).
+
 ### 2026-10-08 — A dívida técnica: estoque sem perder saída, o Copilot completo, o suporte sem gravar pelo PostgREST
 
 Pedido do Heitor: "resolve as dívidas técnicas".
@@ -5883,8 +5896,12 @@ verdade. O que vale:
   `/api/cron/*`, `/api/health` e `/api/interno/*`, e conferir o
   `Cf-Access-Jwt-Assertion` no `proxyDaPlataforma` (senão a borda do Railway
   é um atalho).
-- **CSP na clínica** (`apps/web`): começar em Report-Only (lá há o SDK da Meta,
-  a mídia da uazapi e mais) — a dos hosts da plataforma já é estrita.
+- **CSP na clínica**: ~~começar em Report-Only~~ **ligado em Report-Only em
+  2026-10-08** (`lib/seguranca/csp.ts`, avisos em `/api/csp-relatorio` →
+  linhas `[csp] … bloquearia …` no log do serviço BellarisOS). Falta: deixar
+  alguns dias com uso real, juntar os avisos, liberar na política o que for
+  legítimo (o SDK da Meta, a mídia do WhatsApp…) e trocar o cabeçalho para o
+  que bloqueia (`content-security-policy`).
 
 - ~~App da Meta não existe~~ **existe e é Tech Provider** (2026-09-30), com o
   cadastro incorporado no ar (v4, `config_id` em `META_ES_CONFIG_ID`). Falta:

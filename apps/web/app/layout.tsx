@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
+import { headers } from 'next/headers'
 import '@estetica-os/nucleo/estilos/globals.css'
 import { NavigationProgress }    from '@/components/shared/navigation-progress'
 import { NativeShell }           from '@/components/native-shell'
@@ -21,7 +22,10 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // O nonce do CSP desta requisição (o proxy o põe em `x-nonce`): os scripts
+  // embutidos abaixo o levam, senão o CSP — hoje só avisando — os bloquearia.
+  const nonce = (await headers()).get('x-nonce') ?? undefined
   // Lidos em runtime pelo servidor — não dependem de build-time inlining
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? ''
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
@@ -79,13 +83,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR" suppressHydrationWarning>
       <body suppressHydrationWarning>
         {/* MessageChannel polyfill must be first — before any deferred script (React) runs */}
-        <script dangerouslySetInnerHTML={{ __html: mcPolyfill }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: mcPolyfill }} />
         {/* Auto-reload on stale Server Action IDs (WebView cache after deploy) */}
-        <script dangerouslySetInnerHTML={{ __html: staleActionGuard }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: staleActionGuard }} />
         {/* Injeta config em runtime antes de qualquer componente React */}
-        <script dangerouslySetInnerHTML={{ __html: runtimeConfig }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: runtimeConfig }} />
         {/* Aplica o estado recolhido do sidebar antes do paint (evita flash) */}
-        <script dangerouslySetInnerHTML={{ __html: "(function(){try{if(localStorage.getItem('sidebar-collapsed')==='1')document.documentElement.classList.add('sidebar-collapsed')}catch(e){}})()" }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: "(function(){try{if(localStorage.getItem('sidebar-collapsed')==='1')document.documentElement.classList.add('sidebar-collapsed')}catch(e){}})()" }} />
         {/* Configura shell nativo (classe .capacitor + status bar rosé/branco) */}
         <NativeShell />
         {/* Barra de progresso de navegação — aparece ao clicar em qualquer NavItem */}
@@ -104,6 +108,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           id="facebook-jssdk"
           src="https://connect.facebook.net/en_US/sdk.js"
           strategy="lazyOnload"
+          nonce={nonce}
         />
       </body>
     </html>

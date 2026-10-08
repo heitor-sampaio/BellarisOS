@@ -332,3 +332,9 @@ test.describe('webhook do WhatsApp pelo app da plataforma (Tech Provider)', () =
     await expect.poll(conversas, { message: 'a entrega assinada pelo app entra' }).toBe(1)
   })
 })
+
+test('os avisos do CSP são públicos de propósito (o navegador manda sem sessão), mas só aceitam relatório', async ({ request }) => {
+  // Nada é gravado no banco: a rota só escreve uma linha no log (lib/seguranca/csp.ts).
+  expect((await request.post('/api/csp-relatorio', { headers: { 'content-type': 'text/plain' }, data: 'oi' })).status()).toBe(415)
+  expect((await request.get('/api/csp-relatorio')).status()).toBe(405)
+})

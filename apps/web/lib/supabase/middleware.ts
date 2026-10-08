@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 import { opcoesDoCookieDeSessao } from './cookie-de-sessao'
+import { politicaDaClinica } from '@/lib/seguranca/csp'
 
 export async function updateSession(request: NextRequest) {
   try {
@@ -9,7 +10,24 @@ export async function updateSession(request: NextRequest) {
     // cabeçalho vindo do navegador é sobrescrito — não dá para forjar o registro.
     const cabecalhos = new Headers(request.headers)
     cabecalhos.set('x-bellaris-caminho', `${request.method} ${request.nextUrl.pathname}${request.nextUrl.search}`)
-    const seguir = () => NextResponse.next({ request: { headers: cabecalhos } })
+
+    // O CSP da clínica, por enquanto só AVISANDO (lib/seguranca/csp.ts): o
+    // nonce vai no cabeçalho do PEDIDO (o Next o lê e o põe nos scripts dele) e
+    // no da resposta. As /api/* não levam (não são páginas).
+    let csp: string | null = null
+    if (!request.nextUrl.pathname.startsWith('/api/')) {
+      const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+      csp = politicaDaClinica({
+        nonce, supabase: process.env.NEXT_PUBLIC_SUPABASE_URL ?? '', dev: process.env.NODE_ENV === 'development',
+      })
+      cabecalhos.set('content-security-policy-report-only', csp)
+      cabecalhos.set('x-nonce', nonce)
+    }
+    const seguir = () => {
+      const r = NextResponse.next({ request: { headers: cabecalhos } })
+      if (csp) r.headers.set('content-security-policy-report-only', csp)
+      return r
+    }
     let supabaseResponse = seguir()
 
     const supabase = createServerClient(
