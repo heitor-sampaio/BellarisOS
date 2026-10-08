@@ -5773,8 +5773,8 @@ verdade. O que vale:
 
 ### Depende do Heitor (fora do código)
 
-- **O Copilot no ar** (2026-10-08): colar a `OPENAI_API_KEY` no serviço
-  BellarisOS do Railway (sem ela o Copilot não aparece para ninguém); conferir
+- **O Copilot no ar** (2026-10-08): ~~colar a `OPENAI_API_KEY` no serviço
+  BellarisOS do Railway~~ **feito** (o deploy com ela subiu às 13h27); conferir
   o modelo (`OPENAI_MODEL`, padrão `gpt-5-mini`); definir a cota de cada plano
   no editor de planos (sem cota = sem limite — a rede de teste está assim);
   e testar à mão numa rede `[e2e]` com a chave real.
