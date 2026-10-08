@@ -5841,10 +5841,11 @@ verdade. O que vale:
 ### Depende do Heitor (fora do código)
 
 - **O Copilot no ar** (2026-10-08): ~~colar a `OPENAI_API_KEY` no serviço
-  BellarisOS do Railway~~ **feito** (o deploy com ela subiu às 13h27); conferir
-  o modelo (`OPENAI_MODEL`, padrão `gpt-5-mini`); definir a cota de cada plano
-  no editor de planos (sem cota = sem limite — a rede de teste está assim);
-  e testar à mão numa rede `[e2e]` com a chave real.
+  BellarisOS do Railway~~ **feito** (o deploy com ela subiu às 13h27);
+  ~~testar à mão com a chave real~~ **feito** pelo Heitor ("deu boa"). Falta:
+  definir a cota do Copilot nos planos (hoje só o ULTRA o inclui, e SEM cota =
+  sem limite) e, se for vender o Copilot avulso no Starter e no PRO, o preço
+  do adicional nesses planos.
 - **Os apps da plataforma no ar** (2026-10-06):
   - feito: no Railway, os serviços **Sistema** e **Suporte** (`BELLARIS_APP`,
     variáveis por referência às da clínica, `INTERNO_SECRET` nos três apps),
@@ -5926,8 +5927,8 @@ verdade. O que vale:
   para `https://admin.bellarisos.com/api/webhooks/asaas` (mora no SISTEMA desde 2026-10-06), envio **sequencial**,
   eventos de cobrança e de assinatura, com o mesmo token. Depois, cadastrar os
   planos em `/sistema/planos` e ligar a cobrança de cada rede no detalhe dela.
-- **A rede real de hoje** está `active`, sem plano nem assinatura: não é
-  cobrada nem bloqueada até alguém definir o plano e ligar a cobrança.
+- ~~A rede real de hoje está sem plano nem assinatura~~ **feito**: a Bellaris
+  está no plano ULTRA, de cortesia (conferido em 2026-10-08).
 - **(Opcional) ligar o hook de token**: Supabase → Authentication → Hooks →
   Custom Access Token → `public.suporte_hook_do_token`. Nada depende dele.
 - ~~Vale uma rodada completa do E2E~~ **rodou** várias vezes desde então (a última em 2026-10-08).
