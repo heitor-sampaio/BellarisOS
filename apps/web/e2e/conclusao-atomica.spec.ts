@@ -136,4 +136,25 @@ test.describe.serial('conclusão do atendimento numa transação', () => {
     const e = await estado(outro)
     expect([e.status, e.comissoes, e.movimentos]).toEqual(['COMPLETED', 1, 1])
   })
+
+  // A dívida da revisão do Copilot (2026-10-08): o app calcula a baixa sobre o
+  // saldo que LEU, e a função gravava o resultado por cima — duas conclusões
+  // (ou uma conclusão e uma transferência) ao mesmo tempo perdiam uma saída.
+  // Agora o app manda o saldo lido, e a função trava a linha e confere.
+  test('o saldo mudou entre a leitura do app e a gravação: recusa (PT409) sem gravar nada', async () => {
+    const outro = await novoAgendamento(f!.outra, f!.cliente)
+    const atual = (await estado(outro)).saldo
+    const lido = atual + 3   // o app leu antes de outra saída
+    const insumo = (base: number) => ({
+      produto: f!.produto, quantidade: -1, saldo_apos: base - 1, embalagens: base - 1, rendimento: null,
+      custo: 5, minimo: 0, antes_embalagens: base, antes_rendimento: null,
+    })
+    const velho = await concluir(outro, [insumo(lido)])
+    expect(velho.error?.code, 'o banco recusa o saldo velho').toBe('PT409')
+    expect(await estado(outro)).toEqual({ status: 'IN_PROGRESS', entradas: 0, comissoes: 0, movimentos: 0, saldo: atual })
+    // Com o saldo de agora (o que o app faz ao tentar de novo), grava.
+    const certo = await concluir(outro, [insumo(atual)])
+    expect(certo.error).toBeNull()
+    expect((await estado(outro)).saldo).toBe(atual - 1)
+  })
 })

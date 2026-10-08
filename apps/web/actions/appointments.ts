@@ -12,6 +12,7 @@ import {
 import { notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
 import { cancelarCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
+import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
 import { emitirEventoClinico } from '@/lib/events/clinico'
@@ -652,7 +653,6 @@ async function finishSessionInterno(
     // (decisão do Heitor, 2026-09-27). Mas também não some: o saldo fica
     // NEGATIVO e a tela recebe `avisos` dizendo o que faltou. O mínimo cruzado
     // e a baixa do lote saem dos gatilhos do banco, como qualquer saída.
-    const avisos: string[] = []
     let productsUsed: { productId: string; quantity: number }[] = []
     try {
       productsUsed = JSON.parse((formData.get('products_used') as string | null) ?? '[]')
@@ -666,64 +666,81 @@ async function finishSessionInterno(
       porProduto.set(item.productId, (porProduto.get(item.productId) ?? 0) + item.quantity)
     }
 
-    const insumos: {
+    type Insumo = {
       produto: string; quantidade: number; saldo_apos: number
       embalagens: number; rendimento: number | null; custo: number | null; minimo: number
-    }[] = []
+      /** O saldo LIDO para a conta: o banco confere que ainda é este (PT409 se não). */
+      antes_embalagens: number; antes_rendimento: number | null
+    }
+    // Lê o saldo e calcula a baixa de cada insumo. Chamada de novo a cada
+    // tentativa: se outra saída mudar o saldo no meio, o banco recusa e a
+    // conta é refeita sobre o saldo novo (lib/estoque/nova-tentativa.ts).
+    const montarInsumos = async (): Promise<{ insumos: Insumo[]; avisos: string[] }> => {
+      const avisos: string[] = []
+      const insumos: Insumo[] = []
+      for (const [productId, quantity] of porProduto) {
+        // Leitura que falha não pode virar "saldo 0": a baixa seria calculada
+        // sobre um número inventado e gravada como verdade no movimento.
+        const [bps, prod] = await Promise.all([
+          ler(admin.from('branch_product_stock')
+            .select('current_stock, min_stock, current_rendimento')
+            .eq('product_id', productId)
+            .eq('branch_id', appt.branch_id)
+            .maybeSingle(), 'buscar o saldo do insumo'),
+          // Da rede: o id vem do navegador (`products_used`), e um produto de
+          // outra rede ganharia saldo e movimento nesta unidade.
+          ler(admin.from('products')
+            .select('name, unit, units_per_package, consumption_unit, cost_price')
+            .eq('id', productId)
+            .eq('tenant_id', ctx.tenantId!)
+            .maybeSingle(), 'buscar o insumo'),
+        ])
+        if (!prod) continue
 
-    for (const [productId, quantity] of porProduto) {
-      // Leitura que falha não pode virar "saldo 0": a baixa seria calculada
-      // sobre um número inventado e gravada como verdade no movimento.
-      const [bps, prod] = await Promise.all([
-        ler(admin.from('branch_product_stock')
-          .select('current_stock, min_stock, current_rendimento')
-          .eq('product_id', productId)
-          .eq('branch_id', appt.branch_id)
-          .maybeSingle(), 'buscar o saldo do insumo'),
-        // Da rede: o id vem do navegador (`products_used`), e um produto de
-        // outra rede ganharia saldo e movimento nesta unidade.
-        ler(admin.from('products')
-          .select('name, unit, units_per_package, consumption_unit, cost_price')
-          .eq('id', productId)
-          .eq('tenant_id', ctx.tenantId!)
-          .maybeSingle(), 'buscar o insumo'),
-      ])
-      if (!prod) continue
+        const currentStock = Number(bps?.current_stock ?? 0)
+        const upp          = prod?.units_per_package && prod?.consumption_unit ? Number(prod.units_per_package) : null
 
-      const currentStock = Number(bps?.current_stock ?? 0)
-      const upp          = prod?.units_per_package && prod?.consumption_unit ? Number(prod.units_per_package) : null
+        // A conta do saldo depois da saída é a mesma da entrega de produto de
+        // voucher (lib/estoque/baixa.ts): uma cópia só.
+        const { embalagens, rendimento, saldoApos } = saldoDepoisDaSaida({
+          embalagens:           currentStock,
+          rendimento:           bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
+          unidadesPorEmbalagem: upp,
+        }, quantity)
 
-      // A conta do saldo depois da saída é a mesma da entrega de produto de
-      // voucher (lib/estoque/baixa.ts): uma cópia só.
-      const { embalagens, rendimento, saldoApos } = saldoDepoisDaSaida({
-        embalagens:           currentStock,
-        rendimento:           bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
-        unidadesPorEmbalagem: upp,
-      }, quantity)
+        insumos.push({
+          produto: productId, quantidade: -quantity, saldo_apos: saldoApos,
+          embalagens, rendimento,
+          custo:   prod.cost_price != null ? Number(prod.cost_price) : null,
+          minimo:  Number(bps?.min_stock ?? 0),
+          antes_embalagens: currentStock,
+          antes_rendimento: bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
+        })
 
-      insumos.push({
-        produto: productId, quantidade: -quantity, saldo_apos: saldoApos,
-        embalagens, rendimento,
-        custo:   prod.cost_price != null ? Number(prod.cost_price) : null,
-        minimo:  Number(bps?.min_stock ?? 0),
-      })
-
-      if (saldoApos < 0) {
-        const unidade = upp ? (prod.consumption_unit as string) : (prod.unit as string)
-        const falta = (-saldoApos).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
-        avisos.push(`${prod.name as string}: faltaram ${falta} ${unidade} no estoque da unidade`)
+        if (saldoApos < 0) {
+          const unidade = upp ? (prod.consumption_unit as string) : (prod.unit as string)
+          const falta = (-saldoApos).toLocaleString('pt-BR', { maximumFractionDigits: 3 })
+          avisos.push(`${prod.name as string}: faltaram ${falta} ${unidade} no estoque da unidade`)
+        }
       }
+      return { insumos, avisos }
     }
 
     // ─── Grava, tudo ou nada ──────────────────────────────────────────────
     const userName = ctx.userName || await getUserName(admin, ctx.userId)
-    const gravado = await gravar(admin.rpc('concluir_atendimento', {
-      p_agendamento: appointmentId,
-      p_tenant:      ctx.tenantId!,
-      p_ator:        ctx.internalUserId,
-      p_ator_nome:   userName,
-      p_dados:       { notas: notes, intercorrencias: intercurrences, comissoes, insumos },
-    }), 'concluir o atendimento') as {
+    let avisos: string[] = []
+    const resposta = await comNovaTentativa(async () => {
+      const m = await montarInsumos()
+      avisos = m.avisos
+      return admin.rpc('concluir_atendimento', {
+        p_agendamento: appointmentId,
+        p_tenant:      ctx.tenantId!,
+        p_ator:        ctx.internalUserId,
+        p_ator_nome:   userName,
+        p_dados:       { notas: notes, intercorrencias: intercurrences, comissoes, insumos: m.insumos },
+      })
+    })
+    const gravado = await gravar(Promise.resolve(resposta), 'concluir o atendimento') as {
       comissao_criada: boolean; pacote: string | null
       comissoes: { linha: string; procedure_id: string | null; liberado: number }[]
     } | null

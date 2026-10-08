@@ -11,6 +11,7 @@ import {
 } from '@/lib/fidelidade/leitura'
 import { EntradaDaRecompensa } from '@/lib/fidelidade/recompensa'
 import { saldoDepoisDaSaida } from '@/lib/estoque/baixa'
+import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { voucherEmitido } from '@/lib/events/fidelidade'
 
 /**
@@ -277,30 +278,35 @@ export async function entregarVoucherProduto(entrada: { voucherId: string; branc
   if (voucher.type !== 'PRODUTO' || !voucher.product_id) return { error: 'Este voucher não é de produto.' }
 
   const admin = createAdminClient()
-  const [bps, prod] = await Promise.all([
-    ler(admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento')
-      .eq('product_id', voucher.product_id).eq('branch_id', entrada.branchId).maybeSingle(), 'buscar o saldo do produto'),
-    ler(admin.from('products').select('name, unit, units_per_package, consumption_unit, cost_price')
-      .eq('id', voucher.product_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o produto'),
-  ])
+  const prod = await ler(admin.from('products').select('name, unit, units_per_package, consumption_unit, cost_price')
+    .eq('id', voucher.product_id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o produto')
   if (!prod) return { error: 'Produto não encontrado.' }
   const upp = prod.units_per_package && prod.consumption_unit ? Number(prod.units_per_package) : null
-  // Uma embalagem inteira: em unidades de consumo, se o produto tem.
-  const depois = saldoDepoisDaSaida({
-    embalagens:           Number(bps?.current_stock ?? 0),
-    rendimento:           bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
-    unidadesPorEmbalagem: upp,
-  }, upp ?? 1)
 
+  // Lê o saldo e calcula a cada tentativa: o banco confere que o saldo lido
+  // ainda é o de agora (PT409 se outra saída mudou no meio; lib/estoque/nova-tentativa.ts).
+  let depois = { embalagens: 0, rendimento: null as number | null, saldoApos: 0 }
   try {
-    await gravar(admin.rpc('entregar_voucher_produto', {
-      p_tenant: ctx.tenantId!, p_voucher: entrada.voucherId, p_unidade: entrada.branchId,
-      p_ator: ctx.internalUserId ?? 'sistema',
-      p_dados: {
-        quantidade: -1, saldo_apos: depois.embalagens, embalagens: depois.embalagens, rendimento: depois.rendimento,
-        custo: prod.cost_price != null ? Number(prod.cost_price) : null, minimo: Number(bps?.min_stock ?? 0),
-      },
-    }), 'entregar o produto do voucher')
+    const resposta = await comNovaTentativa(async () => {
+      const bps = await ler(admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento')
+        .eq('product_id', voucher.product_id).eq('branch_id', entrada.branchId).maybeSingle(), 'buscar o saldo do produto')
+      const antes = {
+        embalagens: Number(bps?.current_stock ?? 0),
+        rendimento: bps?.current_rendimento != null ? Number(bps.current_rendimento) : null,
+      }
+      // Uma embalagem inteira: em unidades de consumo, se o produto tem.
+      depois = saldoDepoisDaSaida({ ...antes, unidadesPorEmbalagem: upp }, upp ?? 1)
+      return admin.rpc('entregar_voucher_produto', {
+        p_tenant: ctx.tenantId!, p_voucher: entrada.voucherId, p_unidade: entrada.branchId,
+        p_ator: ctx.internalUserId ?? 'sistema',
+        p_dados: {
+          quantidade: -1, saldo_apos: depois.embalagens, embalagens: depois.embalagens, rendimento: depois.rendimento,
+          custo: prod.cost_price != null ? Number(prod.cost_price) : null, minimo: Number(bps?.min_stock ?? 0),
+          antes_embalagens: antes.embalagens, antes_rendimento: antes.rendimento,
+        },
+      })
+    })
+    await gravar(Promise.resolve(resposta), 'entregar o produto do voucher')
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
-import { ajusteDeEstoqueCore, entradaDeEstoqueCore, getUpp, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
+import { ajusteDeEstoqueCore, entradaDeEstoqueCore, produtoEUnidadesDaRede } from '@/lib/estoque/movimentos'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -523,74 +523,19 @@ async function adminTransferStockInterno(
     if (!(await produtoEUnidadesDaRede(admin, ctx.tenantId!, productId, [fromBranchId, toBranchId])))
       return { error: 'Produto ou filial não encontrado.' }
 
-    // Sem linha de saldo na unidade = saldo 0; falha de leitura para o fluxo.
-    const [fromBps, toBps, upp] = await Promise.all([
-      ler(admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', fromBranchId).maybeSingle(), 'buscar o saldo da origem'),
-      ler(admin.from('branch_product_stock').select('current_stock, min_stock, current_rendimento').eq('product_id', productId).eq('branch_id', toBranchId).maybeSingle(), 'buscar o saldo do destino'),
-      getUpp(admin, productId),
-    ])
-
-    const fromCurrent = Number(fromBps?.current_stock ?? 0)
-    if (qty > fromCurrent) return { error: `Estoque insuficiente na filial de origem. Disponível: ${fromCurrent}` }
-
-    const fromAfter  = fromCurrent - qty
-    const toCurrent  = Number(toBps?.current_stock ?? 0)
-    const toAfter    = toCurrent + qty
-    const now        = new Date().toISOString()
-    // Liga a saída à entrada — e é por ela que o gatilho leva os lotes da
-    // origem para o destino. Com o relógio, duas transferências do mesmo
-    // produto no mesmo milissegundo trocariam lotes entre si.
-    const ref        = `TRANSFER-${crypto.randomUUID()}`
-
-    // Rendimento: transfere qty embalagens inteiras (sempre cheias)
-    const fromRendimento      = fromBps?.current_rendimento != null ? Number(fromBps.current_rendimento) : (upp ? fromCurrent * upp : null)
-    const toRendimento        = toBps?.current_rendimento   != null ? Number(toBps.current_rendimento)   : (upp ? toCurrent  * upp : null)
-    const fromRendimentoAfter = upp && fromRendimento != null ? Math.max(0, fromRendimento - qty * upp) : null
-    const toRendimentoAfter   = upp && toRendimento   != null ? toRendimento + qty * upp                : null
-
-    await gravar(admin.from('stock_movements').insert([
-      {
-        branch_id:     fromBranchId,
-        product_id:    productId,
-        type:          'TRANSFER_OUT',
-        quantity:      -qty,
-        balance_after: fromAfter,
-        notes:         notes ? `Transferência → destino. ${notes}` : 'Transferência para filial destino.',
-        reference:     ref,
-        created_by:    ctx.internalUserId,
-        created_at:    now,
-      },
-      {
-        branch_id:     toBranchId,
-        product_id:    productId,
-        type:          'TRANSFER_IN',
-        quantity:      qty,
-        balance_after: toAfter,
-        notes:         notes ? `Transferência ← origem. ${notes}` : 'Transferência da filial de origem.',
-        reference:     ref,
-        created_by:    ctx.internalUserId,
-        created_at:    now,
-      },
-    ]), 'registrar a transferência')
-
-    await gravar(admin.from('branch_product_stock').upsert([
-      {
-        product_id:         productId,
-        branch_id:          fromBranchId,
-        current_stock:      fromAfter,
-        current_rendimento: fromRendimentoAfter,
-        min_stock:          Number(fromBps?.min_stock ?? 0),
-        updated_at:         now,
-      },
-      {
-        product_id:         productId,
-        branch_id:          toBranchId,
-        current_stock:      toAfter,
-        current_rendimento: toRendimentoAfter,
-        min_stock:          Number(toBps?.min_stock ?? 0),
-        updated_at:         now,
-      },
-    ], { onConflict: 'product_id,branch_id' }), 'atualizar os saldos das unidades')
+    // As duas pernas, os dois saldos e o rendimento numa transação, com as
+    // linhas travadas (estoque_transferir, 2026-10-08). Era ler os dois saldos
+    // aqui e gravar os valores absolutos: duas transferências ao mesmo tempo
+    // (ou uma transferência e uma conclusão) perdiam uma. O "estoque
+    // insuficiente" também é conferido lá dentro, com a linha travada.
+    const { error } = await admin.rpc('estoque_transferir', {
+      p_produto: productId, p_origem: fromBranchId, p_destino: toBranchId,
+      p_quantidade: qty, p_observacao: notes ?? null, p_autor: ctx.internalUserId,
+    })
+    if (error) {
+      if (error.code === 'P0001') return { error: error.message }
+      throw new Error(`Não consegui transferir: ${error.message}`)
+    }
 
     revalidatePath('/admin/estoque')
     return { success: true }

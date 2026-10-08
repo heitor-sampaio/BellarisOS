@@ -5885,12 +5885,12 @@ verdade. O que vale:
 
 ### Suporte — o que depende do Heitor
 
-- **Virar o primeiro admin da plataforma** (sem script desde 2026-10-03): pôr
+- ~~Virar o primeiro admin da plataforma~~ **feito** (o Heitor entra no sistema, 2026-10-08). Era: pôr
   `PLATAFORMA_ADMIN_EMAIL` no Railway com um e-mail que **não** seja de
   membro de rede (ex.: `heitor+admin@…`), ir em "Esqueci minha senha" com ele,
   definir a senha pelo e-mail, entrar e cadastrar o autenticador. Cai no
   `/sistema`; a equipe de suporte se cadastra em `/sistema/equipe`.
-- **Asaas**: criar a conta (sandbox primeiro), gerar a chave de API e pôr no
+- ~~Asaas~~ **resolvido pelo Heitor em 2026-10-08**. Era: criar a conta (sandbox primeiro), gerar a chave de API e pôr no
   Railway `ASAAS_API_KEY`, `ASAAS_AMBIENTE` (`sandbox`/`producao`) e
   `ASAAS_WEBHOOK_TOKEN` (32+ caracteres). No painel do Asaas, criar o webhook
   para `https://admin.bellarisos.com/api/webhooks/asaas` (mora no SISTEMA desde 2026-10-06), envio **sequencial**,

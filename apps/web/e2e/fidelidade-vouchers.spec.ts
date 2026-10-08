@@ -217,4 +217,23 @@ test.describe.serial('fidelidade: recompensas e vouchers', () => {
     const { data: lotes } = await db().from('stock_movement_batches').select('quantity').eq('movement_id', vv!.used_stock_movement_id)
     expect((lotes ?? []).map(l => Number(l.quantity)), 'o lote baixa pelo gatilho').toEqual([1])
   })
+
+  test('entregar com o saldo lido VELHO é recusado (PT409): o voucher segue ativo e o estoque intacto', async () => {
+    const c = await rede!.criarCliente('Produto velho')
+    await dar(c, 100)
+    const produto = await rede!.criarProduto('Protetor velho', 5)
+    const r = await recompensa({ name: `${PREFIXO} Protetor velho ${marca}`, type: 'PRODUTO', product_id: produto, points_cost: 60 })
+    const v = await resgatar(c, r)
+    const entregar = (lido: number) => db().rpc('entregar_voucher_produto', {
+      p_tenant: rede!.tenantId, p_voucher: v, p_unidade: rede!.branchId, p_ator: 'e2e',
+      p_dados: { quantidade: -1, saldo_apos: lido - 1, embalagens: lido - 1, rendimento: null, custo: null, minimo: 0,
+        antes_embalagens: lido, antes_rendimento: null },
+    })
+    expect((await entregar(9)).error?.code, 'o app leu 9; são 5').toBe('PT409')
+    const { data: vv } = await db().from('loyalty_vouchers').select('status').eq('id', v).single()
+    expect(vv!.status).toBe('ATIVO')
+    expect((await entregar(5)).error).toBeNull()
+    const { data: est } = await db().from('branch_product_stock').select('current_stock').eq('product_id', produto).eq('branch_id', rede!.branchId).single()
+    expect(Number(est!.current_stock)).toBe(4)
+  })
 })
