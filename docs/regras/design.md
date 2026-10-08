@@ -56,6 +56,11 @@ Princípios inegociáveis:
   A topbar desenha por cima dos primeiros 68px do documento, e o que costuma
   ficar escondido ali é o cabeçalho da folha — que é onde mora o botão de
   fechar. Foi o que deixou o card do contato do inbox sem saída no celular.
+  E a que vai até o FIM da tela sobe o rodapé com
+  `env(safe-area-inset-bottom)`: no app Android a barra de navegação é
+  transparente (com a faixa rosé por cima), e o campo e o botão do fim
+  ficavam atrás dela — o Copilot, em 2026-10-08. Prova com a barra simulada
+  pelo CDP (`Emulation.setSafeAreaInsetsOverride`): `e2e/copilot-celular.spec.ts`.
 - **Modal é o `<dialog className="modal">` aberto por `showModal()`**, com
   `.modal-flex` + `.modal-container` + `.modal-body` quando tem cabeçalho
   fixo. Ele vai para a camada de cima do navegador, acima de qualquer

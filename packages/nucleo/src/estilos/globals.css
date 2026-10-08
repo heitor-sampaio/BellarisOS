@@ -2411,6 +2411,11 @@ a.suporte-link-forte:hover { color: var(--brand); }
     right: 0; left: 0; bottom: 0; width: auto; height: auto;
     border-radius: 0; border-left: none; border-right: none; border-bottom: none;
   }
+  /* A folha vai até o fim da tela; no app Android, o fim é a barra de
+     navegação (transparente, com a faixa rosé por cima): o rodapé sobe a
+     altura dela, senão o campo e o aviso ficavam atrás. */
+  /* (com o painel na frente: a regra base do rodapé vem depois, mais abaixo) */
+  .copilot-painel .copilot-rodape { padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   .copilot-botao { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 50px; padding: 0; justify-content: center; }
   .copilot-botao .copilot-botao-rotulo { display: none; }
 }

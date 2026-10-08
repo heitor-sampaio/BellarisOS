@@ -1365,8 +1365,12 @@ estão em `docs/regras/copilot.md`.
     conversa que segue em uso;
   - as funções de estoque tratavam embalagem 0 / unidade vazia como
     rendimento (migration `20261008000006`, a regra do `getUpp`).
+- **No app Android** (achado no teste do Heitor): a folha do celular ia até o
+  fim da tela e o rodapé (campo, microfone, aviso) ficava atrás da barra de
+  navegação. O rodapé sobe `env(safe-area-inset-bottom)`; a prova simula a
+  barra pelo CDP (`e2e/copilot-celular.spec.ts`).
 - **Testes**: a OpenAI falsa (porta 3196) roteirizada; specs `copilot-*`
-  (esqueleto, leituras, gravações, gestão, mídia, voz, suporte, cota).
+  (esqueleto, leituras, gravações, gestão, mídia, voz, suporte, cota, celular).
 
 ### 2026-10-08 — A clínica não vê "uazapi": a conexão por QR é "WhatsApp Web"
 
