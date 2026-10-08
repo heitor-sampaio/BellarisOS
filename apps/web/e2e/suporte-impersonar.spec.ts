@@ -308,7 +308,11 @@ test.describe.serial('suporte: entrar como', () => {
     const [sessao] = await sessoesAtivas()
     await db().from('support_sessions').update({ expires_at: new Date(Date.now() - 1000).toISOString() }).eq('id', sessao!.id)
     // O servidor guarda a sessão por até 15 s; depois disso, vencida, cai.
+    // Já voltou ao painel (o dashboard se atualiza sozinho e pode cair entre
+    // duas voltas)? Então não navega de novo: o `goto` tirava o atendente do
+    // painel e o levava ao login da clínica, já sem sessão (completa de 2026-10-08).
     await expect.poll(async () => {
+      if (sup!.page.url().startsWith(SUP())) return sup!.page.url()
       await sup!.page.goto('/admin/dashboard')
       return sup!.page.url()
     }, { timeout: 45_000, intervals: [5_000] }).toMatch(new RegExp(`^${SUP()}/`))

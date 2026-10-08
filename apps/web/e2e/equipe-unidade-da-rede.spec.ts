@@ -47,6 +47,11 @@ test('editar o membro não aceita unidade de outra rede', async ({ page }) => {
   const chamada = capturarAcao(page, corpo => corpo.includes(alvo!.userId))
   await page.getByRole('button', { name: 'Salvar' }).click()
   const req = await chamada
+  // A RESPOSTA do salvar, antes dos reenvios: o membro já nasce nesta unidade,
+  // então o poll abaixo passava na hora — e no CI lento o salvar terminava
+  // DEPOIS do reenvio de controle, devolvendo a unidade antiga (completa de
+  // 2026-10-08).
+  await req.response()
   await expect.poll(unidadeDoMembro).toBe(unidade!.id)
 
   // O ataque: a unidade de OUTRA rede.
