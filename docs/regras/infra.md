@@ -54,6 +54,12 @@ META_APP_SECRET=                   # troca de código por token + assinatura dos
 META_VERIFY_TOKEN=                 # handshake dos webhooks (/api/webhooks/whatsapp e /meta)
 META_ES_CONFIG_ID=                 # config_id do cadastro incorporado (lido no servidor)
 
+# Copilot (a secretária virtual, docs/regras/copilot.md) — SÓ no serviço da clínica.
+# Sem a chave, o Copilot não aparece (nem para rede que o tem no plano).
+OPENAI_API_KEY=                    # só no servidor
+OPENAI_MODEL=gpt-5-mini            # o modelo do chat (function calling + visão)
+OPENAI_MODELO_DE_VOZ=gpt-4o-mini-transcribe  # a transcrição dos áudios
+
 # Cron (as rotas /api/cron/* conferem; ver §14.1)
 CRON_SECRET=
 
@@ -72,6 +78,7 @@ VAPID_SUBJECT=
 # E2E_IDADE_DA_SOBRA_MIN=60                      # idade mínima de sobra [e2e] que a varredura apaga
 # ASAAS_BASE_URL_TESTE=http://127.0.0.1:3198     # o Asaas falso (e2e/apoio/asaas-falso.ts; playwright.build.config)
 # COOKIE_DE_SESSAO_SEM_SECURE=1                  # cookie de sessão sem Secure no build em http (playwright.build.config, workflow)
+# OPENAI_BASE_URL_TESTE=http://127.0.0.1:3196/v1 # a OpenAI falsa do Copilot (e2e/apoio/openai-falsa.ts; playwright.build.config, workflow)
 ```
 
 ---
@@ -84,7 +91,7 @@ como build arg por estar declarada (`ARG`) no Dockerfile:
 
 | Serviço | `BELLARIS_APP` | Domínio | Além do comum |
 |---|---|---|---|
-| BellarisOS | `web` (padrão) | app.bellarisos.com | Meta, uazapi, `CRON_SECRET` |
+| BellarisOS | `web` (padrão) | app.bellarisos.com | Meta, uazapi, OpenAI (Copilot), `CRON_SECRET` |
 | Sistema | `sistema` | admin.bellarisos.com | `ASAAS_*`, `PLATAFORMA_ADMIN_EMAIL` (só aqui), `CRON_SECRET` |
 | Suporte | `suporte` | suporte.bellarisos.com | — |
 | Notification Cron / Automations Cron | `web` (imagem) | — | `APP_URL`, `SISTEMA_URL`, `CRON_SECRET` |

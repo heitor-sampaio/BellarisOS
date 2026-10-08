@@ -6,6 +6,9 @@ import { BranchSidebar } from '@/components/branch/sidebar'
 import { Topbar } from '@/components/shared/topbar'
 import { avisoDaAssinatura } from '@/lib/redes/aviso'
 import { SidebarProvider } from '@/components/shared/sidebar-context'
+import { Suspense } from 'react'
+import { Copilot } from '@/components/copilot/copilot'
+import { copilotNaTela } from '@/lib/copilot/disponivel'
 import { getCachedBranchBySlug } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
 
@@ -98,6 +101,8 @@ export default async function BranchLayout({
       }}>
         {children}
       </main>
+      {/* A secretária virtual, por cima de todas as telas da equipe (docs/regras/copilot.md). */}
+      {copilotNaTela(ctx) && <Suspense fallback={null}><Copilot /></Suspense>}
     </SidebarProvider>
   )
 }

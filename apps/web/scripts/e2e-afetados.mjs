@@ -33,6 +33,9 @@ const RAIZ = path.resolve(WEB, '..', '..')
 // palavra do arquivo que testa) — senão só a completa o roda. O script avisa
 // no fim quais specs nenhuma área cobre.
 const AREAS = [
+  { nome: 'Copilot',
+    chaves: ['copilot', 'openai'],
+    specs: /^(copilot|api-sem-credencial)/ },
   { nome: 'inbox e WhatsApp',
     chaves: ['inbox', 'conversa', 'conversation', 'mensag', 'message', 'whatsapp', 'uazapi', 'contato', 'contact', 'templat', 'messaging', 'webhook'],
     specs: /^(inbox|contato|mensagens|whatsapp|templates|oportunidade-da-pessoa|eventos-webhook|crm-alcance)/ },

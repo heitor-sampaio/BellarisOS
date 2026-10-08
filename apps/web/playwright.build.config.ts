@@ -30,6 +30,10 @@ process.env.ASAAS_WEBHOOK_TOKEN ??= 'e2e-token-do-webhook-do-asaas-0123456789abc
 // criada nela é cobrada. É o que a conexão gerenciada usa para criar instâncias.
 process.env.UAZAPI_BASE_URL = 'http://127.0.0.1:3197'
 process.env.UAZAPI_ADMIN_TOKEN = 'e2e-admintoken-da-uazapi-falsa'
+// A OpenAI FALSA do Copilot (e2e/apoio/openai-falsa.ts, porta fixa), também À
+// FORÇA: a chave real, quando estiver no `.env.local`, nunca é usada por teste.
+process.env.OPENAI_BASE_URL_TESTE = 'http://127.0.0.1:3196/v1'
+process.env.OPENAI_API_KEY = 'e2e-chave-da-openai-falsa'
 // O primeiro admin da plataforma por variável (e2e/plataforma-primeiro-admin.spec.ts).
 process.env.PLATAFORMA_ADMIN_EMAIL ??= 'e2e-plataforma-primeiro-admin@bellaris.invalid'
 // O cookie da sessão sem Secure: o servidor do build roda em http://127.0.0.1, e

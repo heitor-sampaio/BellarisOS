@@ -139,6 +139,11 @@ test('o token do Realtime no suporte exige a sessão de lá', async ({ request }
   expect(await r.text()).not.toContain('access_token')
 })
 
+test('o Copilot exige sessão (e, com ela, a origem da clínica — e2e/copilot-esqueleto.spec.ts)', async ({ request }) => {
+  const anonimo = await request.post('/api/copilot', { multipart: { texto: 'oi', pagina: '/admin' } })
+  expect(anonimo.status()).toBe(401)
+})
+
 test('geocode exige sessão', async ({ request, browser }) => {
   const anonimo = await request.post('/api/geocode', { data: { cities: [], ceps: [] } })
   expect(anonimo.status()).toBe(401)

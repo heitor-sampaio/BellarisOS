@@ -2372,3 +2372,165 @@ a.suporte-link-forte:hover { color: var(--brand); }
 }
 .aviso-assinatura[data-tom="atraso"] { background: var(--warning-soft); color: var(--warning); border-color: var(--warning-border); }
 @media (max-width: 640px) { .aviso-assinatura { white-space: normal; } }
+
+/* -- Copilot: a secretária virtual (apps/web/components/copilot, 2026-10-08) --
+   Flutua sobre TODAS as telas da equipe (nunca no portal do cliente). No
+   computador, janela ancorada à direita que não bloqueia a página; no
+   celular, folha da topbar até o fim (a regra: nunca em inset: 0).
+   As camadas ganharam nome: abaixo do dialog modal (camada de cima do
+   navegador), acima do conteúdo e da topbar, abaixo do popover do sino. */
+:root { --z-topbar: 40; --z-copilot: 250; --z-popover: 300; }
+
+.copilot-botao {
+  position: fixed; z-index: var(--z-copilot);
+  right: 20px; bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 46px; padding: 0 18px 0 14px; border: none; cursor: pointer;
+  border-radius: var(--radius-full);
+  background: var(--brand); color: var(--on-brand);
+  font: inherit; font-size: var(--text-sm-sz); font-weight: var(--weight-bold);
+  box-shadow: var(--shadow-brand-btn);
+}
+.copilot-botao:hover { background: var(--brand-deep); }
+/* No inbox, o botão sobe: embaixo, à direita, mora o Enviar da conversa. */
+.copilot-botao[data-subir="sim"] { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+
+.copilot-painel {
+  position: fixed; z-index: var(--z-copilot);
+  right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  width: min(420px, calc(100vw - 32px));
+  height: min(680px, calc(100dvh - var(--topbar-h) - env(safe-area-inset-top, 0px) - 32px));
+  display: flex; flex-direction: column;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-card);
+  box-shadow: var(--shadow-overlay); overflow: hidden;
+}
+@media (max-width: 1023px) {
+  .copilot-painel {
+    top: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+    right: 0; left: 0; bottom: 0; width: auto; height: auto;
+    border-radius: 0; border-left: none; border-right: none; border-bottom: none;
+  }
+  .copilot-botao { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 50px; padding: 0; justify-content: center; }
+  .copilot-botao .copilot-botao-rotulo { display: none; }
+}
+
+.copilot-cabecalho {
+  display: flex; align-items: center; gap: 4px;
+  padding: 10px 10px 10px 14px; border-bottom: 1px solid var(--border);
+}
+.copilot-titulo { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.copilot-titulo div { min-width: 0; display: flex; flex-direction: column; }
+.copilot-titulo strong { font-size: var(--text-base-sz); font-weight: var(--weight-extrabold); letter-spacing: var(--tracking-tight); }
+.copilot-titulo span { font-size: var(--text-xs-sz); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.copilot-icone {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: var(--radius-full);
+  background: var(--brand-soft); color: var(--brand);
+}
+.copilot-acao-topo {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: var(--radius-field); border: none; cursor: pointer;
+  background: transparent; color: var(--text-muted);
+}
+.copilot-acao-topo:hover, .copilot-acao-topo[aria-pressed="true"] { background: var(--bg-app); color: var(--text); }
+
+.copilot-corpo {
+  flex: 1; min-height: 0; overflow-y: auto; padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+  scrollbar-width: none;
+}
+.copilot-corpo::-webkit-scrollbar { display: none; }
+
+.copilot-msg { max-width: 92%; display: flex; flex-direction: column; gap: 8px; }
+.copilot-msg[data-papel="user"] { align-self: flex-end; align-items: flex-end; }
+.copilot-msg[data-papel="assistant"] { align-self: flex-start; width: 92%; }
+.copilot-balao {
+  padding: 9px 12px; border-radius: var(--radius-field);
+  font-size: var(--text-sm-sz); line-height: var(--leading-normal);
+  overflow-wrap: anywhere;
+}
+.copilot-msg[data-papel="user"] .copilot-balao { background: var(--brand); color: var(--on-brand); white-space: pre-wrap; }
+.copilot-msg[data-papel="assistant"] .copilot-balao { background: var(--bg-app); color: var(--text); border: 1px solid var(--border); }
+.copilot-balao p { margin: 0; white-space: pre-wrap; }
+.copilot-balao p + p, .copilot-balao p + ul, .copilot-balao ul + p, .copilot-balao p + ol, .copilot-balao ol + p { margin-top: 6px; }
+.copilot-balao ul, .copilot-balao ol { margin: 0; padding-left: 18px; }
+.copilot-balao ul { list-style: disc; }
+.copilot-balao ol { list-style: decimal; }
+.copilot-balao a { color: var(--brand); font-weight: var(--weight-bold); }
+.copilot-anexos-da-msg { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.copilot-pensando { font-size: var(--text-xs-sz); color: var(--text-faint); display: inline-flex; align-items: center; gap: 6px; }
+
+.copilot-cartao {
+  border: 1px solid var(--border); border-radius: var(--radius-field); background: var(--surface);
+  padding: 12px; display: flex; flex-direction: column; gap: 8px; font-size: var(--text-sm-sz);
+}
+.copilot-cartao[data-status="pendente"] { border-color: var(--brand-soft-border); }
+.copilot-cartao h4 { margin: 0; font-size: var(--text-sm-sz); font-weight: var(--weight-extrabold); }
+.copilot-cartao dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; }
+.copilot-cartao dt { color: var(--text-muted); font-size: var(--text-xs-sz); }
+.copilot-cartao dd { margin: 0; font-weight: var(--weight-semibold); overflow-wrap: anywhere; }
+.copilot-cartao-aviso { font-size: var(--text-xs-sz); color: var(--warning); }
+.copilot-cartao-botoes { display: flex; gap: 8px; }
+.copilot-cartao-estado { font-size: var(--text-xs-sz); font-weight: var(--weight-bold); display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.copilot-cartao-estado[data-status="feita"] { color: var(--success); }
+.copilot-cartao-estado[data-status="falhou"], .copilot-cartao-estado[data-status="vencida"] { color: var(--danger); }
+.copilot-cartao-estado[data-status="cancelada"] { color: var(--text-faint); }
+.copilot-cartao-estado a { color: var(--brand); }
+.copilot-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.copilot-links a, .copilot-links .copilot-link-sem-href {
+  display: flex; flex-direction: column; padding: 6px 8px; border-radius: var(--radius-row);
+  text-decoration: none; color: var(--text);
+}
+.copilot-links a:hover { background: var(--bg-app); }
+.copilot-links small { color: var(--text-faint); font-size: var(--text-xs-sz); }
+
+.copilot-vazio { margin: auto 0; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.copilot-vazio p { margin: 0; color: var(--text-muted); font-size: var(--text-sm-sz); }
+.copilot-sugestao {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: var(--radius-chip); padding: 6px 12px; cursor: pointer;
+  font: inherit; font-size: var(--text-xs-sz); text-align: left;
+}
+.copilot-sugestao:hover { border-color: var(--brand-soft-border); color: var(--brand); }
+
+.copilot-conversas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.copilot-conversas li { display: flex; align-items: center; gap: 4px; border-radius: var(--radius-row); }
+.copilot-conversas li:hover { background: var(--bg-app); }
+.copilot-conversa {
+  flex: 1; min-width: 0; text-align: left; border: none; background: transparent; cursor: pointer;
+  padding: 8px; font: inherit; color: var(--text); display: flex; flex-direction: column;
+}
+.copilot-conversa span { font-size: var(--text-sm-sz); font-weight: var(--weight-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.copilot-conversa small { font-size: var(--text-xs-sz); color: var(--text-faint); }
+
+.copilot-rodape { border-top: 1px solid var(--border); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.copilot-aviso-clinico { font-size: var(--text-2xs); color: var(--text-faint); margin: 0; }
+.copilot-erro { font-size: var(--text-xs-sz); color: var(--danger); background: var(--danger-soft); border: 1px solid var(--danger-border); border-radius: var(--radius-field); padding: 6px 10px; }
+.copilot-anexos-pendentes { display: flex; flex-wrap: wrap; gap: 6px; }
+.copilot-anexo {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+  padding: 3px 4px 3px 8px; border-radius: var(--radius-chip);
+  background: var(--bg-app); border: 1px solid var(--border); font-size: var(--text-xs-sz); color: var(--text);
+}
+.copilot-msg[data-papel="user"] .copilot-anexo { padding-right: 8px; }
+.copilot-anexo span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+.copilot-anexo button { border: none; background: transparent; cursor: pointer; color: var(--text-faint); display: inline-flex; padding: 2px; }
+.copilot-compositor { display: flex; align-items: flex-end; gap: 6px; }
+.copilot-compositor textarea {
+  flex: 1; min-width: 0; resize: none; max-height: 140px;
+  font: inherit; font-size: var(--text-sm-sz); line-height: var(--leading-normal);
+  padding: 8px 10px; border-radius: var(--radius-field);
+  border: 1px solid var(--border); background: var(--bg-app); color: var(--text);
+  scrollbar-width: none;
+}
+.copilot-compositor textarea:focus { outline: none; border-color: var(--brand); background: var(--surface); }
+.copilot-compositor-botao {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 36px; height: 36px; border-radius: var(--radius-field); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-muted); cursor: pointer;
+}
+.copilot-compositor-botao:hover { color: var(--text); }
+.copilot-compositor-botao[data-gravando="sim"] { background: var(--danger-soft); color: var(--danger); border-color: var(--danger-border); }
+.copilot-compositor-botao.enviar { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }
+.copilot-compositor-botao:disabled { opacity: .5; cursor: not-allowed; }

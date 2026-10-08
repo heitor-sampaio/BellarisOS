@@ -59,6 +59,9 @@ jobs:
       # fixa, e2e/apoio/uazapi-falsa.ts) — a real cobra cada uma.
       UAZAPI_BASE_URL: http://127.0.0.1:3197
       UAZAPI_ADMIN_TOKEN: e2e-admintoken-da-uazapi-falsa
+      # O Copilot fala com a OpenAI FALSA (porta fixa, e2e/apoio/openai-falsa.ts).
+      OPENAI_BASE_URL_TESTE: http://127.0.0.1:3196/v1
+      OPENAI_API_KEY: e2e-chave-da-openai-falsa
       PLATAFORMA_ADMIN_EMAIL: e2e-plataforma-primeiro-admin@bellaris.invalid
       # Cookie de sessão sem Secure: o servidor do build roda em http (ver playwright.build.config.ts).
       COOKIE_DE_SESSAO_SEM_SECURE: "1"

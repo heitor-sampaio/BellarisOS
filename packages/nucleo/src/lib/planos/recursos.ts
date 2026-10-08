@@ -98,6 +98,23 @@ export interface RecursosDoPlano {
   limites: Record<ChaveDeLimite, number | null>
   /** Os adicionais que o plano oferece, com o preço. */
   adicionais: OfertaDosAdicionais
+  /**
+   * As COTAS mensais (2026-10-08): o Copilot, em tokens por mês (null ou
+   * ausente = sem limite). Opcional: plano gravado antes dela não tem.
+   */
+  cotas?: { copilot: number | null }
+}
+
+/** Teto da cota do Copilot (1 bilhão de tokens por mês): erro de digitação não vira conta. */
+export const COTA_MAXIMA_DO_COPILOT = 1_000_000_000
+
+const cotaValida = (v: unknown): v is number | null =>
+  v === null || (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= COTA_MAXIMA_DO_COPILOT)
+
+/** A cota mensal do Copilot da rede, em tokens (null = sem limite; sem retrato, sem limite). */
+export function cotaDoCopilot(recursos: { cotas?: { copilot: number | null } } | null): number | null {
+  const v = recursos?.cotas?.copilot
+  return cotaValida(v) ? v : null
 }
 
 const CHAVES = new Set<string>(FUNCIONALIDADES.map(f => f.chave))
@@ -162,7 +179,17 @@ export function normalizarRecursos(entrada: unknown):
       adicionais[a.chave] = { valor_centavos: valor }
     }
   }
-  return { ok: true, recursos: { funcionalidades, limites: saida, adicionais } }
+  // A cota do Copilot: opcional; o que vier, estrito.
+  const cotas = (e as { cotas?: unknown }).cotas
+  let copilot: number | null = null
+  if (cotas != null) {
+    const v = (cotas as { copilot?: unknown }).copilot
+    if (typeof cotas !== 'object' || Array.isArray(cotas) || !cotaValida(v ?? null)) {
+      return { ok: false, error: 'Cota do Copilot inválida.' }
+    }
+    copilot = (v ?? null) as number | null
+  }
+  return { ok: true, recursos: { funcionalidades, limites: saida, adicionais, ...(copilot !== null ? { cotas: { copilot } } : {}) } }
 }
 
 /**
@@ -183,6 +210,8 @@ export function lerRecursos(gravado: unknown): RecursosDoPlano | null {
     },
     adicionais: {},
   }
+  const copilot = (g as { cotas?: { copilot?: unknown } }).cotas?.copilot
+  if (cotaValida(copilot) && copilot !== null) lido.cotas = { copilot }
   // A oferta: só o que é válido E cabe no plano lido.
   const ofertas = ((g as { adicionais?: unknown }).adicionais ?? {}) as Record<string, { valor_centavos?: unknown } | null>
   if (ofertas && typeof ofertas === 'object') {

@@ -100,6 +100,8 @@ export interface JwtClaims {
 export interface RecursosNoContexto {
   funcionalidades: readonly string[]
   limites: { unidades: number | null; membros: number | null; whatsapp: number | null }
+  /** Cotas mensais (o Copilot: tokens por mês; null = sem limite). */
+  cotas?: { copilot: number | null }
 }
 
 export interface TenantContext {
