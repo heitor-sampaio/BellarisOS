@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarAtendente, plataformaNoAr, urlDaPlataforma, type AtendenteDeTeste } from './apoio/plataforma'
 import { redeDoCopilot, comSessao, TODAS, type RedeDoCopilot } from './apoio/copilot'
+import { subirOpenaiFalsa, type OpenaiFalsa } from './apoio/openai-falsa'
 
 /**
  * O USO DO COPILOT de todas as redes, no sistema (pedido do Heitor,
@@ -21,6 +22,7 @@ let admin: AtendenteDeTeste
 let gerente: AtendenteDeTeste
 let a: RedeDoCopilot
 let b: RedeDoCopilot
+let falsa: OpenaiFalsa
 
 function mes(deslocamento = 0): string {
   const [ano, m] = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' })
@@ -31,6 +33,10 @@ function mes(deslocamento = 0): string {
 
 test.beforeAll(async () => {
   test.setTimeout(300_000)
+  falsa = await subirOpenaiFalsa()
+  // A OpenAI cobrou US$ 1,20 neste mês. Antes da primeira tela: o sistema
+  // guarda o custo real por 1 h.
+  falsa.custos = [{ dia: `${mes().slice(0, 8)}01`, usd: 0.7 }, { dia: new Date().toISOString().slice(0, 10), usd: 0.5 }]
   admin = await criarAtendente(`ucad${marca}`, { papel: 'ADMIN' })
   gerente = await criarAtendente(`ucge${marca}`, { papel: 'GERENTE' })
   a = await redeDoCopilot(`uA${marca}`)
@@ -50,6 +56,7 @@ test.afterAll(async () => {
   await b?.limpar()
   await admin?.limpar()
   await gerente?.limpar()
+  await falsa?.fechar()
 })
 
 test('o ADMIN vê o mês: da rede que mais gasta para a que menos, com a cota e o custo', async ({ browser }) => {
@@ -88,4 +95,22 @@ test('o GERENTE também vê (é leitura)', async ({ browser }) => {
     await expect(p.getByRole('heading', { name: 'Uso do Copilot' })).toBeVisible()
     await expect(p.locator('[data-uso-por-rede] tbody tr', { hasText: `uA${marca}` })).toBeVisible()
   })
+})
+
+test('o custo REAL da OpenAI no mês, e o rateio dele por rede (na proporção do estimado)', async ({ browser }) => {
+  await comSessao(browser, admin.estado, async p => {
+    await p.goto(`${SIS()}/copilot?teste=1`)
+    const real = p.locator('[data-custo-real]')
+    await expect(real).toContainText('US$ 1,20')
+    const linha = (m: string) => p.locator('[data-uso-por-rede] tbody tr', { hasText: m })
+    const valor = async (m: string) => {
+      // O valor sem arredondar (o texto mostra 2 casas).
+      return Number(await linha(m).locator('[data-custo-rateado]').getAttribute('data-custo-rateado'))
+    }
+    // A estimou US$ 0,50 e B US$ 0,10: o real se divide 5 para 1 entre os dois.
+    const [va, vb] = [await valor(`uA${marca}`), await valor(`uB${marca}`)]
+    expect(vb).toBeGreaterThan(0)
+    expect(va / vb).toBeCloseTo(5, 3)
+  })
+  expect(falsa.pedidos.some(x => x.caminho.endsWith('/organization/costs') && x.autorizacao === 'Bearer e2e-chave-admin-da-openai-falsa')).toBe(true)
 })

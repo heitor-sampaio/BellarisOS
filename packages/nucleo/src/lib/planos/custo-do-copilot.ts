@@ -51,3 +51,53 @@ export function cotacaoDoDolar(valor: string | undefined): number {
   const n = Number((valor ?? '').replace(',', '.'))
   return Number.isFinite(n) && n > 0 ? n : 5.5
 }
+
+// ─── O custo REAL (a Costs API da OpenAI) e o rateio por rede ────────────────
+
+/** Um dia da Costs API (`/v1/organization/costs`, `bucket_width=1d`). */
+export interface BaldeDeCusto {
+  start_time: number
+  results: { amount?: { value?: number; currency?: string } }[]
+}
+
+/**
+ * O custo real por mês (`AAAA-MM-01`), somando os dias. O mês do dia é o do
+ * UTC, como a OpenAI separa — na virada, até 3 h de diferença para o mês de
+ * Brasília em que o uso é contado.
+ */
+export function custoPorMes(baldes: BaldeDeCusto[]): Map<string, number> {
+  const porMes = new Map<string, number>()
+  for (const b of baldes) {
+    const mes = `${new Date(b.start_time * 1000).toISOString().slice(0, 7)}-01`
+    const soma = (b.results ?? []).reduce((s, r) => s + Number(r.amount?.value ?? 0), 0)
+    porMes.set(mes, (porMes.get(mes) ?? 0) + soma)
+  }
+  return porMes
+}
+
+/**
+ * O custo real do mês dividido entre as redes. A OpenAI não sabe quais são as
+ * redes; o peso de cada uma é o custo ESTIMADO dela (que já pesa entrada e
+ * saída pelo preço). Rede sem custo estimado (o uso de antes da coluna) entra
+ * pelos tokens, ao preço médio das que têm; sem custo em nenhuma, pelos
+ * tokens. A soma das partes fecha com o real.
+ */
+export function ratearCusto(
+  realUsd: number,
+  redes: { tenantId: string; custoUsd: number | null; tokens: number }[],
+): Map<string, number> {
+  const comCusto = redes.filter(r => r.custoUsd !== null)
+  const custoConhecido = comCusto.reduce((s, r) => s + (r.custoUsd ?? 0), 0)
+  const tokensConhecidos = comCusto.reduce((s, r) => s + r.tokens, 0)
+  const precoMedio = custoConhecido > 0 && tokensConhecidos > 0 ? custoConhecido / tokensConhecidos : null
+  const peso = (r: { custoUsd: number | null; tokens: number }) =>
+    precoMedio === null ? r.tokens : (r.custoUsd ?? r.tokens * precoMedio)
+  const total = redes.reduce((s, r) => s + peso(r), 0)
+  const partes = new Map<string, number>()
+  if (total <= 0) return partes
+  for (const r of redes) {
+    const p = peso(r)
+    if (p > 0) partes.set(r.tenantId, realUsd * p / total)
+  }
+  return partes
+}

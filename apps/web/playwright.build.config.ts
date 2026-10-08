@@ -34,6 +34,8 @@ process.env.UAZAPI_ADMIN_TOKEN = 'e2e-admintoken-da-uazapi-falsa'
 // FORÇA: a chave real, quando estiver no `.env.local`, nunca é usada por teste.
 process.env.OPENAI_BASE_URL_TESTE = 'http://127.0.0.1:3196/v1'
 process.env.OPENAI_API_KEY = 'e2e-chave-da-openai-falsa'
+// O custo REAL no sistema (a Costs API da OpenAI, com a chave de administração).
+process.env.OPENAI_ADMIN_KEY = 'e2e-chave-admin-da-openai-falsa'
 // O primeiro admin da plataforma por variável (e2e/plataforma-primeiro-admin.spec.ts).
 process.env.PLATAFORMA_ADMIN_EMAIL ??= 'e2e-plataforma-primeiro-admin@bellaris.invalid'
 // O cookie da sessão sem Secure: o servidor do build roda em http://127.0.0.1, e

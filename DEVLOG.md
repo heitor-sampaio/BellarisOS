@@ -1299,6 +1299,21 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-08 — O custo REAL da OpenAI no sistema, rateado por rede
+
+Pedido do Heitor: os valores de custo direto da OpenAI, com rateio por rede.
+A aba Copilot do sistema lê a Costs API da OpenAI (o número da fatura, antes
+de impostos e do IOF) com a chave de ADMINISTRAÇÃO da organização
+(`OPENAI_ADMIN_KEY`, só no serviço Sistema), guardada por 1 h. O destaque passa
+a ser o custo real do mês, com o estimado ao lado e quanto o real difere
+dele (o termômetro da tabela de preços); cada rede ganha a coluna "Custo real
+(rateio)" — a OpenAI não sabe quais são as redes, então o real se divide na
+proporção do custo estimado de cada uma, sobre todas as que usaram; e o
+histórico mostra o real de cada mês. Sem a chave, a tela segue só com a
+estimativa; com a OpenAI fora, avisa e mostra a estimativa. Provas:
+`tests/copilot-custo-real.test.ts` (o mês, o rateio) e
+`e2e/sistema-uso-do-copilot.spec.ts` (a Costs API falsa).
+
 ### 2026-10-08 — Busca universal, fase 2: as ações
 
 **Suíte completa verde depois de tudo de 2026-10-08** (run 37842548049):
@@ -5871,6 +5886,10 @@ verdade. O que vale:
 
 ### Depende do Heitor (fora do código)
 
+- **O custo real da OpenAI no sistema** (2026-10-08): criar na OpenAI uma
+  chave de ADMINISTRAÇÃO da organização, só leitura (Settings → Organization →
+  Admin keys), e colar no serviço **Sistema** do Railway como
+  `OPENAI_ADMIN_KEY`. Sem ela, a aba Copilot mostra só a estimativa.
 - **O Copilot no ar** (2026-10-08): ~~colar a `OPENAI_API_KEY` no serviço
   BellarisOS do Railway~~ **feito** (o deploy com ela subiu às 13h27);
   ~~testar à mão com a chave real~~ **feito** pelo Heitor ("deu boa"). Falta:

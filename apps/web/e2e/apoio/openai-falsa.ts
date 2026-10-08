@@ -74,6 +74,11 @@ export interface OpenaiFalsa {
   transcricao: string
   /** Os tokens que a transcrição informa no `usage` (como o gpt-4o-mini-transcribe). */
   tokensDaTranscricao: number
+  /**
+   * O custo REAL que a Costs API (`/v1/organization/costs`, chave de
+   * administração) devolve: um valor por dia, em dólar.
+   */
+  custos: { dia: string; usd: number }[]
   /** As respostas ao modelo (`/responses`), na ordem. */
   respostas(): PedidoRecebido[]
   /** Os nomes das ferramentas oferecidas no pedido `i` (padrão: o último). */
@@ -92,6 +97,7 @@ export async function subirOpenaiFalsa(porta = PORTA_DA_OPENAI_FALSA): Promise<O
     roteiro: [],
     transcricao: 'Transcrição de teste.',
     tokensDaTranscricao: 50,
+    custos: [],
     respostas: () => estado.pedidos.filter(p => p.caminho.endsWith('/responses')),
     ferramentasOferecidas(i) {
       const lista = estado.respostas()
@@ -123,6 +129,26 @@ export async function subirOpenaiFalsa(porta = PORTA_DA_OPENAI_FALSA): Promise<O
       const bruto = Buffer.concat(partes)
       const caminho = (req.url ?? '').split('?')[0]!
       const autorizacao = (req.headers['authorization'] as string | undefined) ?? null
+
+      if (caminho.endsWith('/organization/costs')) {
+        estado.pedidos.push({ caminho, autorizacao, corpo: {} })
+        if (!autorizacao?.startsWith('Bearer ')) {
+          res.writeHead(401, { 'content-type': 'application/json' })
+          res.end(JSON.stringify({ error: { message: 'sem chave de administração' } }))
+          return
+        }
+        const q = new URL(req.url ?? '', 'http://x').searchParams
+        const ini = Number(q.get('start_time') ?? 0)
+        const fim = Number(q.get('end_time') ?? Number.MAX_SAFE_INTEGER)
+        const data = estado.custos
+          .map(c => ({ t: Math.floor(Date.parse(`${c.dia}T00:00:00Z`) / 1000), usd: c.usd }))
+          .filter(c => c.t >= ini && c.t < fim)
+          .map(c => ({ object: 'bucket', start_time: c.t, end_time: c.t + 86_400,
+            results: [{ object: 'organization.costs.result', amount: { value: c.usd, currency: 'usd' }, line_item: null, project_id: null }] }))
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ object: 'page', data, has_more: false, next_page: null }))
+        return
+      }
 
       if (caminho.endsWith('/audio/transcriptions')) {
         estado.pedidos.push({ caminho, autorizacao, corpo: {}, bytes: bruto.length })

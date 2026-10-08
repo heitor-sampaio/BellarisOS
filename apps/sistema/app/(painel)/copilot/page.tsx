@@ -4,7 +4,8 @@ import { createAdminClient } from '@estetica-os/nucleo/lib/supabase/admin'
 import {
   mesDeBrasilia, mesesAte, nomeDoMes, usoDoCopilotDasRedes, historicoDoCopilot, type UsoDaRede,
 } from '@estetica-os/nucleo/lib/planos/uso-do-copilot'
-import { cotacaoDoDolar, dolares, reaisEstimados } from '@estetica-os/nucleo/lib/planos/custo-do-copilot'
+import { cotacaoDoDolar, dolares, ratearCusto, reaisEstimados } from '@estetica-os/nucleo/lib/planos/custo-do-copilot'
+import { custoRealDaOpenai } from '@estetica-os/nucleo/lib/planos/custo-real-da-openai'
 import { FiltroNaUrl } from '@/components/sistema/filtro-na-url'
 
 /**
@@ -12,6 +13,11 @@ import { FiltroNaUrl } from '@/components/sistema/filtro-na-url'
  * escolhido, da rede que mais gasta para a que menos — pedidos, tokens, a cota
  * e o custo ESTIMADO (o preço do modelo, em dólar, que a clínica soma a cada
  * chamada; em reais pela cotação de `COTACAO_DOLAR`). E os últimos meses.
+ *
+ * Com a chave de administração da OpenAI (`OPENAI_ADMIN_KEY`), também o custo
+ * REAL (a Costs API, o número da fatura) — no destaque, com o estimado ao lado
+ * e a diferença — e o RATEIO dele por rede, na proporção do estimado de cada
+ * uma (`ratearCusto`): a OpenAI não sabe quais são as redes.
  * As redes de teste ([e2e]) só com `?teste=1`. O ADMIN e o GERENTE veem.
  */
 
@@ -35,7 +41,16 @@ export default async function UsoDoCopilotPage({ searchParams }: {
   const cotacao = cotacaoDoDolar(process.env.COTACAO_DOLAR)
 
   const admin = createAdminClient()
-  const todas = await usoDoCopilotDasRedes(admin, mes)
+  const [todas, real] = await Promise.all([
+    usoDoCopilotDasRedes(admin, mes),
+    // Desde o mês mais antigo do seletor: uma leitura serve a tela inteira.
+    custoRealDaOpenai(meses[meses.length - 1]!),
+  ])
+  const realPorMes = real && 'porMes' in real ? real.porMes : null
+  const realDoMes = realPorMes ? realPorMes[mes] ?? 0 : null
+  // O rateio é sobre TODAS as redes que usaram (as de teste também gastaram),
+  // não só as que a tela mostra.
+  const rateio = realDoMes !== null ? ratearCusto(realDoMes, todas) : null
   const deTeste = new Set(todas.filter(r => r.nome.startsWith('[e2e]')).map(r => r.tenantId))
   const redes = todas.filter(r => comTeste || !deTeste.has(r.tenantId))
   // O histórico conta as redes que a tela conta (sem as de teste, salvo o filtro).
@@ -48,6 +63,10 @@ export default async function UsoDoCopilotPage({ searchParams }: {
   const pedidos = redes.reduce((s, r) => s + r.pedidos, 0)
   const comCusto = redes.filter(r => r.custoUsd !== null)
   const custo = comCusto.length ? comCusto.reduce((s, r) => s + r.custoUsd!, 0) : null
+  // A estimativa de TODAS as redes (a base do rateio), para comparar com o real.
+  const estimadoTotal = todas.reduce((s, r) => s + (r.custoUsd ?? 0), 0)
+  const diferenca = realDoMes !== null && estimadoTotal > 0
+    ? Math.round(((realDoMes - estimadoTotal) / estimadoTotal) * 100) : null
   const noPlano = redes.filter(r => r.noPlano).length
 
   return (
@@ -68,14 +87,32 @@ export default async function UsoDoCopilotPage({ searchParams }: {
       </div>
 
       <div className="sistema-kpis">
-        {/* O custo é o que importa aqui: ele é o preenchido (§13). */}
-        <div className="card-brand sistema-kpi">
-          <p className="overline">Custo estimado no mês</p>
-          <p className="sistema-kpi-valor">{custo === null ? '—' : dolares(custo)}</p>
-          <p className="sistema-kpi-nota">
-            {custo === null ? 'sem custo registrado' : `≈ ${reaisEstimados(custo, cotacao)} (dólar a ${reaisEstimados(1, cotacao)})`}
-          </p>
-        </div>
+        {/* O custo é o que importa aqui: ele é o preenchido (§13) — o REAL,
+            quando a OpenAI o dá; senão, o estimado. */}
+        {realDoMes !== null ? (
+          <>
+            <div className="card-brand sistema-kpi" data-custo-real>
+              <p className="overline">Custo real no mês (OpenAI)</p>
+              <p className="sistema-kpi-valor">{dolares(realDoMes)}</p>
+              <p className="sistema-kpi-nota">≈ {reaisEstimados(realDoMes, cotacao)} (dólar a {reaisEstimados(1, cotacao)}), sem impostos nem IOF</p>
+            </div>
+            <div className="card sistema-kpi">
+              <p className="overline">Custo estimado no mês</p>
+              <p className="sistema-kpi-valor">{dolares(estimadoTotal)}</p>
+              <p className="sistema-kpi-nota">
+                {diferenca === null ? 'todas as redes' : `todas as redes · o real é ${diferenca >= 0 ? '+' : ''}${diferenca}% do estimado`}
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="card-brand sistema-kpi">
+            <p className="overline">Custo estimado no mês</p>
+            <p className="sistema-kpi-valor">{custo === null ? '—' : dolares(custo)}</p>
+            <p className="sistema-kpi-nota">
+              {custo === null ? 'sem custo registrado' : `≈ ${reaisEstimados(custo, cotacao)} (dólar a ${reaisEstimados(1, cotacao)})`}
+            </p>
+          </div>
+        )}
         <div className="card sistema-kpi">
           <p className="overline">Tokens no mês</p>
           <p className="sistema-kpi-valor">{tokensCurtos(tokens)}</p>
@@ -92,7 +129,7 @@ export default async function UsoDoCopilotPage({ searchParams }: {
         {redes.length === 0 ? <p className="suporte-vazio">Nenhuma rede com o Copilot neste mês.</p> : (
           <table className="cards-mobile suporte-tabela">
             <thead>
-              <tr><th>Rede</th><th>Plano</th><th>Pedidos</th><th>Tokens</th><th>Cota</th><th>Custo estimado</th></tr>
+              <tr><th>Rede</th><th>Plano</th><th>Pedidos</th><th>Tokens</th><th>Cota</th><th>Custo estimado</th>{rateio && <th>Custo real (rateio)</th>}</tr>
             </thead>
             <tbody>
               {redes.map(r => (
@@ -108,6 +145,14 @@ export default async function UsoDoCopilotPage({ searchParams }: {
                   <td data-label="Custo estimado" data-par>
                     {r.custoUsd === null ? '—' : <>{dolares(r.custoUsd)}<span className="suporte-texto-fraco"> · ≈ {reaisEstimados(r.custoUsd, cotacao)}</span></>}
                   </td>
+                  {rateio && (
+                    <td data-label="Custo real (rateio)" data-par>
+                      {rateio.has(r.tenantId) ? <>
+                        <span data-custo-rateado={rateio.get(r.tenantId)!.toFixed(6)}>{dolares(rateio.get(r.tenantId)!)}</span>
+                        <span className="suporte-texto-fraco"> · ≈ {reaisEstimados(rateio.get(r.tenantId)!, cotacao)}</span>
+                      </> : '—'}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -121,7 +166,7 @@ export default async function UsoDoCopilotPage({ searchParams }: {
         </div>
         <table className="cards-mobile suporte-tabela">
           <thead>
-            <tr><th>Mês</th><th>Redes que usaram</th><th>Pedidos</th><th>Tokens</th><th>Custo estimado</th></tr>
+            <tr><th>Mês</th><th>Redes que usaram</th><th>Pedidos</th><th>Tokens</th><th>Custo estimado</th>{realPorMes && <th>Custo real (OpenAI)</th>}</tr>
           </thead>
           <tbody>
             {historico.map(h => (
@@ -134,15 +179,20 @@ export default async function UsoDoCopilotPage({ searchParams }: {
                 <td data-label="Pedidos" data-par>{numero(h.pedidos)}</td>
                 <td data-label="Tokens" data-par>{numero(h.tokens)}</td>
                 <td data-label="Custo estimado" data-par>{h.custoUsd === null ? '—' : dolares(h.custoUsd)}</td>
+                {realPorMes && <td data-label="Custo real (OpenAI)" data-par>{dolares(realPorMes[h.mes] ?? 0)}</td>}
               </tr>
             ))}
           </tbody>
         </table>
       </section>
 
+      {real && 'erro' in real && <p className="suporte-texto-fraco" role="status">Custo real indisponível: {real.erro} Mostrando só a estimativa.</p>}
       <p className="suporte-texto-fraco">
         Custo estimado pelo preço público de cada modelo da OpenAI (entrada e saída), somado a cada chamada.
-        A cobrança real é a da conta da OpenAI. Meses antes de 08/10/2026 não têm custo registrado.
+        {realPorMes
+          ? ' O real vem da OpenAI (atualizado a cada hora, por dia em UTC) e é rateado entre as redes na proporção do estimado de cada uma — o histórico real conta toda a conta da OpenAI, as redes de teste também.'
+          : ' Com a chave de administração da OpenAI (OPENAI_ADMIN_KEY no serviço Sistema), aparece também o custo real da fatura, rateado por rede.'}
+        {' '}Meses antes de 08/10/2026 não têm custo estimado registrado.
       </p>
     </div>
   )

@@ -80,6 +80,13 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   um número inventado. O sistema mostra tudo em **Copilot** (`/copilot`): o
   mês por rede, a cota, o custo (US$ e R$ pela `COTACAO_DOLAR`) e os últimos
   meses.
+- **O custo REAL** (2026-10-08): com `OPENAI_ADMIN_KEY` no serviço Sistema (a
+  chave de administração da organização, só leitura), a aba lê a Costs API
+  da OpenAI (`custoRealDaOpenai`, `packages/nucleo/src/lib/planos/custo-real-da-openai.ts`,
+  guardada 1 h; o erro não é guardado) e mostra o real no destaque, com o
+  estimado e a diferença. A OpenAI não sabe as redes: o real é RATEADO na
+  proporção do custo estimado de cada uma (`ratearCusto`; sem estimado, pelos
+  tokens ao preço médio), sobre todas as que usaram, as de teste também.
 - **O resumo do cartão volta ao modelo com o CPF mascarado**
   (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
   vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,

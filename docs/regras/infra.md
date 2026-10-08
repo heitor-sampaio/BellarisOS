@@ -64,6 +64,8 @@ OPENAI_MODELO_DE_VOZ=gpt-4o-mini-transcribe  # a transcrição dos áudios
 
 # Uso do Copilot (a tela do sistema) — SÓ no serviço Sistema. Opcional.
 COTACAO_DOLAR=5.50                 # a cotação da ESTIMATIVA em reais; sem ela, 5,50
+OPENAI_ADMIN_KEY=                  # a chave de ADMINISTRAÇÃO da OpenAI (só leitura): o custo REAL
+                                   # da fatura (Costs API) e o rateio por rede. Sem ela, só a estimativa.
 
 # Cron (as rotas /api/cron/* conferem; ver §14.1)
 CRON_SECRET=
@@ -97,7 +99,7 @@ como build arg por estar declarada (`ARG`) no Dockerfile:
 | Serviço | `BELLARIS_APP` | Domínio | Além do comum |
 |---|---|---|---|
 | BellarisOS | `web` (padrão) | app.bellarisos.com | Meta, uazapi, OpenAI (Copilot), `CRON_SECRET` |
-| Sistema | `sistema` | admin.bellarisos.com | `ASAAS_*`, `PLATAFORMA_ADMIN_EMAIL` (só aqui), `CRON_SECRET`, `COTACAO_DOLAR` (opcional) |
+| Sistema | `sistema` | admin.bellarisos.com | `ASAAS_*`, `PLATAFORMA_ADMIN_EMAIL` (só aqui), `CRON_SECRET`, `COTACAO_DOLAR` e `OPENAI_ADMIN_KEY` (opcionais) |
 | Suporte | `suporte` | suporte.bellarisos.com | — |
 | Notification Cron / Automations Cron | `web` (imagem) | — | `APP_URL`, `SISTEMA_URL`, `CRON_SECRET` |
 
