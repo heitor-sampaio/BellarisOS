@@ -5893,15 +5893,14 @@ verdade. O que vale:
 - **Asaas**: criar a conta (sandbox primeiro), gerar a chave de API e pôr no
   Railway `ASAAS_API_KEY`, `ASAAS_AMBIENTE` (`sandbox`/`producao`) e
   `ASAAS_WEBHOOK_TOKEN` (32+ caracteres). No painel do Asaas, criar o webhook
-  para `https://app.bellarisos.com/api/webhooks/asaas`, envio **sequencial**,
+  para `https://admin.bellarisos.com/api/webhooks/asaas` (mora no SISTEMA desde 2026-10-06), envio **sequencial**,
   eventos de cobrança e de assinatura, com o mesmo token. Depois, cadastrar os
   planos em `/sistema/planos` e ligar a cobrança de cada rede no detalhe dela.
 - **A rede real de hoje** está `active`, sem plano nem assinatura: não é
   cobrada nem bloqueada até alguém definir o plano e ligar a cobrança.
 - **(Opcional) ligar o hook de token**: Supabase → Authentication → Hooks →
   Custom Access Token → `public.suporte_hook_do_token`. Nada depende dele.
-- **Vale uma rodada completa do E2E**: `jwt_claim`, `buildContext`, o proxy e
-  o emissor de eventos mudaram — é o centro do sistema. Os vizinhos passaram.
+- ~~Vale uma rodada completa do E2E~~ **rodou** várias vezes desde então (a última em 2026-10-08).
 - **Risco aceito, que continua**: dentro da janela ativa o atendente pode
   escrever pelo PostgREST o que a RLS deixa ao membro (menos o clínico, a
   credencial e o aparelho), e isso não entra no registro de acesso — o plano
@@ -5922,8 +5921,8 @@ verdade. O que vale:
   - o expurgo da LGPD não procura o cliente nas conversas do Copilot (o nome
     pode estar no texto); a retenção de 90 dias é o limite;
   - do plano original ficaram de fora: o check-in pelo Copilot, o cadastro
-    completo com acesso ao portal, a leitura de docx/xlsx ("mande em PDF") e
-    o custo estimado em reais no uso do mês.
+    completo com acesso ao portal e a leitura de docx/xlsx ("mande em PDF").
+    ~~O custo estimado no uso do mês~~ **feito** (a aba Copilot do sistema).
 
 - ~~**Comissões, fases 2 e 3**~~ **concluídas em 2026-09-30** (ver a linha do
   tempo). O que ficou de fora de propósito:
