@@ -89,7 +89,7 @@ test('a voz é transcrita e vai como texto; o PDF vai como arquivo; o txt, como 
   })
 })
 
-test('o tipo é pelo conteúdo e há limite: texto chamado .png, docx e imagem grande demais são recusados', async ({ browser }) => {
+test('o tipo é pelo conteúdo e há limite: texto chamado .png, docx corrompido e imagem grande demais são recusados', async ({ browser }) => {
   await comSessao(browser, rede.dono.estado, async p => {
     await p.goto('/admin/dashboard')
     const disfarcado = await postar(p, { anexos: { name: 'foto.png', mimeType: 'image/png', buffer: Buffer.from('<script>não sou imagem</script>') } })

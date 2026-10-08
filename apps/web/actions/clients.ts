@@ -15,6 +15,7 @@ import { registrarEventoLead } from '@/lib/lead-events'
 import { ligarContatoAoCliente, clienteRapidoDoTelefone } from '@/lib/clients/cliente-rapido'
 import { gravar, ler } from '@/lib/db'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
+import { criarLoginDoCliente, desfazerLogin, ligarLoginAoCliente } from '@/lib/clients/acesso'
 
 // --- Helper: valida que o branchId pertence ao tenant ------------
 async function resolveBranch(tenantId: string, branchId: string) {
@@ -128,16 +129,10 @@ export async function addClient(
   const jaExiste = await clienteRapidoDoTelefone(admin, ctx.tenantId!, phone)
 
   // 1) Conta de login PRIMEIRO (login = e-mail, senha = CPF). E-mail já usado → aborta sem criar cliente órfão.
-  const { data: authUser, error: authErr } = await admin.auth.admin.createUser({
-    email,
-    password: document,
-    email_confirm: true,
-  })
-  if (authErr || !authUser?.user) {
-    const already = /already|registered|exists/i.test(authErr?.message ?? '')
-    return { error: already ? 'Este e-mail já está em uso por outra conta.' : `Erro ao criar login do cliente: ${authErr?.message ?? 'desconhecido'}` }
-  }
-  const authId = authUser.user.id
+  // O núcleo do acesso (lib/clients/acesso.ts), o mesmo do Copilot.
+  const login = await criarLoginDoCliente(admin, email, document)
+  if ('error' in login) return { error: login.error }
+  const authId = login.authId
 
   // 2) Cliente — completa a ficha rápida quando ela existe, senão cria.
   const dadosDoCliente = {
@@ -154,12 +149,12 @@ export async function addClient(
     : await admin.from('clients').insert(dadosDoCliente).select('id').single()
 
   if (error || !client) {
-    await admin.auth.admin.deleteUser(authId).catch(() => {})  // rollback do login órfão
+    await desfazerLogin(admin, authId)  // rollback do login órfão
     return { error: 'Erro ao cadastrar cliente. Tente novamente.' }
   }
 
   // 3) Claims do cliente + conta de fidelidade
-  await gravar(admin.rpc('set_client_claims', { p_auth_id: authId, p_client_id: client.id }), 'gravar os dados de acesso do cliente')
+  await ligarLoginAoCliente(admin, authId, client.id)
   // A conta de pontos: pela função do banco, que não duplica e não cala erro.
   if (!jaExiste) await gravar(admin.rpc('fidelidade_conta', { p_cliente: client.id }), 'abrir a conta de fidelidade')
 

@@ -144,3 +144,23 @@ export function revalidarAgendamento(ctx: TenantContext, appointmentId: string, 
   revalidatePath(`/admin/agenda/${appointmentId}`)
   revalidateTag(`appointments:${ctx.tenantId!}`, 'max')
 }
+
+/**
+ * O CHECK-IN ("o cliente chegou") — o núcleo da agenda e do Copilot
+ * (2026-10-08). Só de "agendado", com a guarda do status na própria escrita.
+ * O aviso (`notifyCheckin`) é do chamador.
+ */
+export async function checkinCore(admin: Admin, ctx: TenantContext, appointmentId: string): Promise<{ ok: true } | { error: string }> {
+  const existente = await agendamentoAoAlcance(admin, ctx, appointmentId)
+  if (!existente) return { error: 'Agendamento não encontrado.' }
+  if (existente.status !== 'SCHEDULED') return { error: 'Check-in só é possível em agendamentos com status Agendado.' }
+  const feitas = await gravar(admin.from('appointments')
+    .update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() })
+    .eq('id', existente.id).eq('status', 'SCHEDULED').select('id'), 'registrar a chegada do cliente') as { id: string }[] | null
+  if (!feitas?.length) return { error: 'O agendamento mudou de situação. Confira na agenda.' }
+
+  const userName = ctx.userName || await getUserName(admin, ctx.userId)
+  await logHistory(admin, existente.id, ctx.internalUserId, userName, 'CHECKIN', 'Check-in realizado — cliente chegou')
+  await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CHECK_IN, existente.id, { ...ctx, userName })
+  return { ok: true }
+}

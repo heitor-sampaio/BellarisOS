@@ -3,6 +3,7 @@ import { z } from 'zod/v4'
 import { revalidateTag } from 'next/cache'
 import { ler } from '@/lib/db'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
+import { darAcessoAoCliente } from '@/lib/clients/acesso'
 import { garantirClienteRapido, digitosDoTelefone } from '@/lib/clients/cliente-rapido'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, hojeEmBrasilia, resolverCliente, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
@@ -12,9 +13,11 @@ import { DATA, hojeEmBrasilia, resolverCliente, resolverUnidade, rota } from '@/
  *
  * Decisão de 2026-10-08: o Copilot cadastra pelo caminho RÁPIDO (o mesmo do
  * agendar e do inbox: `garantirClienteRapido`, nome + telefone) e completa
- * e-mail, CPF e nascimento quando a pessoa der. O LOGIN do portal (usuário =
- * e-mail, senha = CPF) continua só na tela "Cadastrar cliente": criar acesso
- * de alguém é gesto que a recepção faz olhando a ficha, não por conversa.
+ * e-mail, CPF e nascimento quando a pessoa der. O ACESSO ao app (login =
+ * e-mail, senha inicial = CPF) também, quando pedido (a dívida da primeira
+ * entrega, 2026-10-08): no cadastro (`criar_acesso`) ou para quem já é cliente
+ * (`criar_acesso_ao_app`), sempre pelo cartão e pelo núcleo da tela
+ * (`lib/clients/acesso.ts`).
  */
 
 function cpfValido(cpf: string): boolean {
@@ -63,14 +66,16 @@ function linhasDoComplemento(x: Complemento) {
   ]
 }
 
-interface ArgsCadastro { nome: string; telefone: string; email?: string; cpf?: string; nascimento?: string; unidade?: string }
-interface PayloadCadastro { nome: string; telefone: string; branchId: string; email: string | null; cpf: string | null; nascimento: string | null }
+interface ArgsCadastro { nome: string; telefone: string; email?: string; cpf?: string; nascimento?: string; unidade?: string; criar_acesso?: boolean }
+interface PayloadCadastro { nome: string; telefone: string; branchId: string; email: string | null; cpf: string | null; nascimento: string | null; criarAcesso?: boolean }
+
+const linhaDoAcesso = (email: string) => ({ rotulo: 'Acesso ao app', valor: `login ${email}, senha inicial = o CPF` })
 
 export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro> = {
   nome: 'cadastrar_cliente',
   tipo: 'escrita',
   modulo: 'clients', nivel: 'MANAGE',
-  descricao: 'Cadastra um cliente novo: nome e telefone com DDD (obrigatórios); e-mail, CPF e data de nascimento (AAAA-MM-DD) se a pessoa der. Não cria o acesso ao app do cliente (isso é na tela de cadastro). Se o telefone já for de um cliente, diz quem é em vez de duplicar.',
+  descricao: 'Cadastra um cliente novo: nome e telefone com DDD (obrigatórios); e-mail, CPF e data de nascimento (AAAA-MM-DD) se a pessoa der. Com criar_acesso, também cria o acesso ao app do cliente (precisa de e-mail e CPF; a senha inicial é o CPF). Se o telefone já for de um cliente, diz quem é em vez de duplicar.',
   parametros: z.object({
     nome: z.string().min(2).max(120),
     telefone: z.string().min(10).max(20),
@@ -78,8 +83,10 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
     cpf: z.string().max(20).optional(),
     nascimento: DATA.optional(),
     unidade: z.string().max(80).optional(),
+    criar_acesso: z.boolean().optional(),
   }),
   async preparar(c, a) {
+    if (a.criar_acesso && (!a.email || !a.cpf)) return { erro: 'Para criar o acesso ao app, preciso do e-mail e do CPF do cliente.' }
     const telefone = digitosDoTelefone(a.telefone)
     if (telefone.length < 10) return { erro: 'Informe o telefone com DDD.' }
     const u = await resolverUnidade(c, a.unidade, { exigir: true })
@@ -100,11 +107,13 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
           { rotulo: 'Telefone', valor: telefone },
           ...linhasDoComplemento(a),
           { rotulo: 'Unidade', valor: u.unidade!.name },
+          ...(a.criar_acesso ? [linhaDoAcesso(emailNormalizado(a.email)!)] : []),
         ],
       },
       payload: {
         nome: a.nome.trim(), telefone, branchId: u.unidade!.id,
         email: emailNormalizado(a.email), cpf: a.cpf?.replace(/\D/g, '') || null, nascimento: a.nascimento ?? null,
+        ...(a.criar_acesso ? { criarAcesso: true } : {}),
       },
     }
   },
@@ -117,7 +126,15 @@ export const cadastrarCliente: FerramentaDeEscrita<ArgsCadastro, PayloadCadastro
     if (r.error || !r.clientId) return { erro: r.error ?? 'Não foi possível cadastrar.' }
     if (!r.criado) return { erro: 'Esse telefone acabou de ser cadastrado para outro cliente.' }
     revalidateTag(`clients:${c.ctx.tenantId!}`, 'max')
-    return { mensagem: `${p.nome} cadastrado.`, href: rota(c, `/clients/${r.clientId}`), rotuloDoLink: 'Abrir a ficha' }
+    const ficha = { href: rota(c, `/clients/${r.clientId}`), rotuloDoLink: 'Abrir a ficha' }
+    // O acesso ao app, depois da ficha: falhar aqui não desfaz o cadastro (o
+    // acesso sai depois, pela ficha ou de novo pelo Copilot).
+    if (p.criarAcesso && p.email && p.cpf) {
+      const acesso = await darAcessoAoCliente(c.admin, c.ctx, r.clientId, p.email, p.cpf)
+      if ('error' in acesso) return { mensagem: `${p.nome} cadastrado, mas o acesso ao app não saiu: ${acesso.error}`, ...ficha }
+      return { mensagem: `${p.nome} cadastrado, com acesso ao app.`, ...ficha }
+    }
+    return { mensagem: `${p.nome} cadastrado.`, ...ficha }
   },
 }
 
@@ -180,5 +197,51 @@ export const atualizarContato: FerramentaDeEscrita<ArgsContato, PayloadContato> 
     const r = await atualizarClienteCore(c.admin, c.ctx, p.clientId, p.campos)
     if (r.error) return { erro: r.error }
     return { mensagem: 'Dados atualizados.', href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha' }
+  },
+}
+
+interface ArgsAcesso { cliente: string; email?: string; cpf?: string }
+interface PayloadAcesso { clientId: string; email: string; cpf: string }
+
+export const criarAcessoAoApp: FerramentaDeEscrita<ArgsAcesso, PayloadAcesso> = {
+  nome: 'criar_acesso_ao_app',
+  tipo: 'escrita',
+  modulo: 'clients', nivel: 'MANAGE',
+  descricao: 'Cria o acesso ao app de quem JÁ é cliente (id, nome ou telefone) e ainda não tem: login = e-mail, senha inicial = o CPF. Usa o e-mail e o CPF da ficha, ou os informados (que passam para a ficha).',
+  parametros: z.object({
+    cliente: z.string().min(2).max(120),
+    email: EMAIL.optional(),
+    cpf: z.string().max(20).optional(),
+  }),
+  async preparar(c, a) {
+    const cl = await resolverCliente(c, a.cliente, { apenasAtivos: true })
+    if ('erro' in cl) return { erro: cl.erro }
+    const ficha = await ler(c.admin.from('clients').select('email, document, auth_id')
+      .eq('id', cl.id).eq('tenant_id', c.ctx.tenantId!).single(), 'ler o cliente') as { email: string | null; document: string | null; auth_id: string | null }
+    if (ficha.auth_id) return { erro: `${cl.name} já tem acesso ao app.` }
+    const email = emailNormalizado(a.email) ?? ficha.email
+    const cpf = a.cpf?.replace(/\D/g, '') || ficha.document
+    if (!email || !cpf) return { erro: 'Para criar o acesso, preciso do e-mail e do CPF do cliente.' }
+    if (!cpfValido(cpf)) return { erro: 'CPF inválido.' }
+    const recusa = await conferirComplemento(c, { email: a.email ? email : undefined, cpf: a.cpf ? cpf : undefined }, cl.id)
+    if (recusa) return { erro: recusa }
+    return {
+      resumo: {
+        titulo: 'Acesso ao app do cliente',
+        linhas: [
+          { rotulo: 'Cliente', valor: cl.name },
+          ...linhasDoComplemento({ email, cpf }),
+          linhaDoAcesso(email),
+        ],
+      },
+      payload: { clientId: cl.id, email, cpf },
+    }
+  },
+  async efetivar(c, p) {
+    // O mesmo núcleo da tela de cadastro (lib/clients/acesso.ts).
+    const r = await darAcessoAoCliente(c.admin, c.ctx, p.clientId, p.email, p.cpf)
+    if ('error' in r) return { erro: r.error }
+    revalidateTag(`clients:${c.ctx.tenantId!}`, 'max')
+    return { mensagem: 'Acesso ao app criado.', href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha' }
   },
 }

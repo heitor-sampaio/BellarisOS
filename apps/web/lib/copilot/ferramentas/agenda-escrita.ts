@@ -4,8 +4,8 @@ import { revalidateTag } from 'next/cache'
 import { isOwnScope } from '@/lib/auth'
 import { ler } from '@/lib/db'
 import { createAppointmentCore, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
-import { agendamentoAoAlcance, cancelarCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
-import { notifyCancelledAppointment, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
+import { agendamentoAoAlcance, cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
+import { notifyCancelledAppointment, notifyCheckin, notifyNewAppointment, notifyRescheduledAppointment } from '@/lib/appointments/avisos'
 import { garantirClienteRapido, digitosDoTelefone } from '@/lib/clients/cliente-rapido'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import {
@@ -269,5 +269,37 @@ export const confirmarAgendamento: FerramentaDeEscrita<{ agendamento: string }, 
     if ('error' in r) return { erro: r.error }
     revalidarAgendamento(c.ctx, p.appointmentId)
     return { mensagem: 'Presença confirmada.', href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
+  },
+}
+
+export const fazerCheckIn: FerramentaDeEscrita<{ agendamento: string }, { appointmentId: string }> = {
+  nome: 'fazer_check_in',
+  tipo: 'escrita',
+  modulo: 'agenda', nivel: 'MANAGE',
+  descricao: 'Faz o CHECK-IN de um agendamento (id): o cliente chegou à clínica. Só de agendamento "agendado".',
+  parametros: z.object({ agendamento: UUID }),
+  async preparar(c, a) {
+    const ag = await agendamentoParaResumo(c, a.agendamento)
+    if (!ag) return { erro: 'Agendamento não encontrado.' }
+    if (ag.status !== 'SCHEDULED') return { erro: `Este agendamento está ${STATUS_DO_AGENDAMENTO[ag.status]}.` }
+    return {
+      resumo: {
+        titulo: 'Check-in — o cliente chegou',
+        linhas: [
+          { rotulo: 'Cliente', valor: ag.cliente },
+          { rotulo: 'Procedimento', valor: ag.procedimento },
+          { rotulo: 'Quando', valor: quandoLegivel(ag.scheduled_at) },
+        ],
+      },
+      payload: { appointmentId: ag.id },
+    }
+  },
+  async efetivar(c, p) {
+    // O mesmo núcleo da agenda (lib/appointments/alteracoes.ts).
+    const r = await checkinCore(c.admin, c.ctx, p.appointmentId)
+    if ('error' in r) return { erro: r.error }
+    revalidarAgendamento(c.ctx, p.appointmentId)
+    notifyCheckin(p.appointmentId)
+    return { mensagem: 'Check-in feito.', href: rota(c, `/agenda/${p.appointmentId}`), rotuloDoLink: 'Ver agendamento' }
   },
 }

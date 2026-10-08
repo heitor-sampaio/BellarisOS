@@ -11,7 +11,7 @@ import {
 } from '@/lib/cached-queries'
 import { notifyUser } from '@/lib/notifications/notify'
 import { createAppointmentCore, computeAvailableSlots, conferirPecasDoAgendamento, horarioOcupado } from '@/lib/appointments/core'
-import { cancelarCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
+import { cancelarCore, checkinCore, confirmarCore, remarcarCore, revalidarAgendamento } from '@/lib/appointments/alteracoes'
 import { comNovaTentativa } from '@/lib/estoque/nova-tentativa'
 import { emitirEventoDeAgendamento } from '@/lib/events/agendamento'
 import { emitirSessaoDePacoteUsada, emitirComissaoGerada } from '@/lib/events/atendimento-financeiro'
@@ -337,25 +337,9 @@ async function checkinAppointmentInterno(
     const ctx = await getTenantContext()
     assertPermission(ctx, 'agenda', 'MANAGE')
 
-    const admin = createAdminClient()
-    const appt = await ler(admin
-      .from('appointments')
-      .select('id, status, branches!inner(id, tenant_id)')
-      .eq('id', appointmentId)
-      .single(), 'buscar o agendamento')
-
-    const apptBranch = appt?.branches as unknown as { id: string; tenant_id: string } | null
-    if (!appt || apptBranch?.tenant_id !== ctx.tenantId || !alcancaUnidade(ctx, apptBranch.id)) return { error: 'Agendamento não encontrado.' }
-    if (appt.status !== 'SCHEDULED') return { error: 'Check-in só é possível em agendamentos com status Agendado.' }
-
-    await gravar(admin
-      .from('appointments')
-      .update({ status: 'CONFIRMED', confirmed_at: new Date().toISOString() })
-      .eq('id', appointmentId), 'registrar a chegada do cliente')
-
-    const userName = ctx.userName || await getUserName(admin, ctx.userId)
-    await logHistory(admin, appointmentId, ctx.internalUserId, userName, 'CHECKIN', 'Check-in realizado — cliente chegou')
-    await emitirEventoDeAgendamento(EVENTOS.AGENDAMENTO_CHECK_IN, appointmentId, { ...ctx, userName })
+    // O núcleo que a agenda e o Copilot dividem (lib/appointments/alteracoes.ts).
+    const r = await checkinCore(createAdminClient(), ctx, appointmentId)
+    if ('error' in r) return { error: r.error }
 
     revalidatePath(`/${slug}/agenda`)
     revalidatePath(`/${slug}/agenda/${appointmentId}`)

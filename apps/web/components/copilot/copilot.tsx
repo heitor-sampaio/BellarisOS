@@ -25,7 +25,7 @@ import {
 
 const CHAVE_DA_CONVERSA = 'bellaris:copilot:conversa'
 const CHAVE_DO_PAINEL = 'bellaris:copilot:aberto'
-const ACEITOS = 'image/jpeg,image/png,image/webp,application/pdf,.txt,.csv'
+const ACEITOS = 'image/jpeg,image/png,image/webp,application/pdf,.txt,.csv,.docx,.xlsx'
 
 const SUGESTOES = [
   'Quais são os horários livres amanhã?',

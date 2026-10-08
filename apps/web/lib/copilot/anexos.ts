@@ -1,6 +1,7 @@
 import 'server-only'
 import { transcrever as transcreverNoModelo, type AoGastar, type ConteudoDeEntrada } from '@/lib/copilot/openai'
 import { ANEXOS_MAXIMOS } from '@/lib/copilot/tipos'
+import { ErroDoDocumento, textoDaPlanilha, textoDoDocx } from '@/lib/copilot/documentos'
 
 /**
  * O que a pessoa manda ao Copilot além do texto: voz, imagem e documento.
@@ -13,9 +14,9 @@ import { ANEXOS_MAXIMOS } from '@/lib/copilot/tipos'
  * - voz: transcrita (a tela mostra o que foi entendido) e vira texto;
  * - imagem (jpeg, png, webp): vai como imagem ao modelo;
  * - PDF: vai como arquivo ao modelo;
- * - txt e csv: vão como texto.
- * docx e xlsx ficam de fora por ora ("mande em PDF"): ler os dois pediria duas
- * bibliotecas a mais só para isto.
+ * - txt e csv: vão como texto;
+ * - docx e xlsx: viram texto no servidor (`documentos.ts`, 2026-10-08); o
+ *   doc e o xls antigos (binários), não: "salve em docx, xlsx ou PDF".
  *
  * O tipo é conferido pelo CONTEÚDO (os primeiros bytes), não pela extensão.
  */
@@ -84,10 +85,21 @@ export async function lerAnexos(arquivos: File[]): Promise<AnexoLido[]> {
       lido = { nome, tipo: 'documento', mime: 'application/pdf', bytes, caminho: null }
     } else if ((extensao === 'txt' || extensao === 'csv') && pareceTexto(bytes)) {
       lido = { nome, tipo: 'documento', mime: extensao === 'csv' ? 'text/csv' : 'text/plain', bytes, caminho: null }
-    } else if (extensao === 'docx' || extensao === 'xlsx' || extensao === 'doc' || extensao === 'xls') {
-      throw new ErroDeAnexo(`"${nome}": por enquanto o Copilot lê PDF, imagem, txt e csv. Salve em PDF e mande de novo.`)
+    } else if ((extensao === 'docx' || extensao === 'xlsx') && comeca(bytes, 0x50, 0x4b, 0x03, 0x04)) {
+      // O arquivo do Office é um zip: vira TEXTO aqui, e vai ao modelo como o txt.
+      let texto: string
+      try {
+        texto = extensao === 'docx' ? textoDoDocx(bytes) : textoDaPlanilha(bytes)
+      } catch (e) {
+        const motivo = e instanceof ErroDoDocumento ? e.message : 'não consegui ler este arquivo'
+        throw new ErroDeAnexo(`"${nome}": ${motivo}. Salve em PDF e mande de novo.`)
+      }
+      if (!texto.trim()) throw new ErroDeAnexo(`"${nome}" não tem texto. Se for uma imagem colada, mande a imagem.`)
+      lido = { nome, tipo: 'documento', mime: 'text/plain', bytes: Buffer.from(texto, 'utf8'), caminho: null }
+    } else if (['docx', 'xlsx', 'doc', 'xls'].includes(extensao)) {
+      throw new ErroDeAnexo(`"${nome}": o Copilot não lê este formato antigo do Office. Salve em .docx, .xlsx ou PDF e mande de novo.`)
     } else {
-      throw new ErroDeAnexo(`"${nome}": tipo de arquivo que o Copilot não lê (use imagem, PDF, txt, csv ou áudio).`)
+      throw new ErroDeAnexo(`"${nome}": tipo de arquivo que o Copilot não lê (use imagem, PDF, Word, Excel, txt, csv ou áudio).`)
     }
 
     if (bytes.length > LIMITE[lido.tipo]) {
