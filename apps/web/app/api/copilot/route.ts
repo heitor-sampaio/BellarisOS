@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { origemPublica } from '@/lib/origem'
 import { getCachedRede } from '@/lib/cached-queries'
 import { ler } from '@/lib/db'
-import { copilotConfigurado, perguntarAoModelo, ErroDoModelo, type ItemDaConversa } from '@/lib/copilot/openai'
+import { copilotConfigurado, perguntarAoModelo, ErroDoModelo, type AoGastar, type ItemDaConversa } from '@/lib/copilot/openai'
 import { contextoDoCopilot, executarChamada, ferramentasDoCargo, paraOModelo } from '@/lib/copilot/executor'
 import { conversaDaPessoa, criarConversa, gravarMensagem, historicoParaOModelo, type ConteudoDoUsuario } from '@/lib/copilot/conversa'
 import { instrucoesDoCopilot } from '@/lib/copilot/prompt'
@@ -107,7 +107,12 @@ export async function POST(req: NextRequest) {
       // O que vai para a COTA: cada volta (completa, falha ou interrompida) e a
       // transcrição da voz — não só a resposta que terminou.
       let gasto = 0
-      const aoGastar = (tokens: number) => { gasto += tokens }
+      // O custo em dólar (o sistema mostra); null enquanto nenhuma chamada tiver preço conhecido.
+      let custoUsd: number | null = null
+      const aoGastar: AoGastar = (tokens, custo) => {
+        gasto += tokens
+        if (custo !== null) custoUsd = (custoUsd ?? 0) + custo
+      }
       let conversaId: string | null = conversaExistente?.id ?? null
       let resposta = ''
       const cartoes: Cartao[] = []
@@ -211,7 +216,7 @@ export async function POST(req: NextRequest) {
             })
           } catch (e) { console.error('[copilot] gravar a resposta parcial:', e) }
         }
-        if (gasto > 0) await registrarUso(admin, ctx.tenantId!, gasto)
+        if (gasto > 0) await registrarUso(admin, ctx.tenantId!, gasto, custoUsd)
         enviar({ tipo: 'fim' })
         try { controle.close() } catch { /* a tela já fechou */ }
       }
@@ -226,7 +231,7 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  async function prepararEntrada(lidos: AnexoLido[], aoGastar: (tokens: number) => void) {
+  async function prepararEntrada(lidos: AnexoLido[], aoGastar: AoGastar) {
     const voz = lidos.find(a => a.tipo === 'audio')
     const transcricao = voz ? await transcrever(voz, aoGastar) : ''
     return {

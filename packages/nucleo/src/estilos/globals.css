@@ -2547,3 +2547,9 @@ a.suporte-link-forte:hover { color: var(--brand); }
 @media (max-width: 1023px) {
   .copilot-painel, .copilot-botao { z-index: 44; }
 }
+
+/* -- Uso da cota (o Uso do Copilot no sistema, 2026-10-08) ---------------- */
+.uso-da-cota { display: inline-flex; flex-direction: column; gap: 4px; min-width: 110px; }
+.uso-barra { display: block; height: 6px; border-radius: var(--radius-full); background: var(--bg-app); overflow: hidden; }
+.uso-barra > span { display: block; height: 100%; background: var(--brand); }
+.uso-barra[data-cheia] > span { background: var(--danger); }

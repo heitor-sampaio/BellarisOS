@@ -69,6 +69,14 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   `usage`; a que falha ou cai no meio depois de aceita, por `estimarTokens`) e
   a transcrição da voz (`aoGastar`, `lib/copilot/openai.ts`). Pedido recusado
   antes (rede, 4xx/5xx) não conta.
+- **O custo estimado** (2026-10-08): cada chamada calcula o custo em dólar
+  pelo preço do modelo, de entrada e de saída (`custoEmDolar`,
+  `packages/nucleo/src/lib/planos/custo-do-copilot.ts`, a tabela da página de
+  preços da OpenAI) e soma em `copilot_uso_mensal.custo_usd` com os tokens
+  (`copilot_registrar_uso`). Modelo fora da tabela: custo nulo ("—"), nunca
+  um número inventado. O sistema mostra tudo em **Copilot** (`/copilot`): o
+  mês por rede, a cota, o custo (US$ e R$ pela `COTACAO_DOLAR`) e os últimos
+  meses.
 - **O resumo do cartão volta ao modelo com o CPF mascarado**
   (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
   vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,
@@ -106,6 +114,7 @@ completo e o dono. Os specs `copilot-*` são COMPARTILHADOS (porta fixa).
 ❌ Liberar o Copilot para rede sem plano (ele custa por uso)
 ❌ Liberar o Copilot (ou uma gravação dele) sem conferir o módulo copilot do cargo (Ver / Gerenciar)
 ❌ Chamar a OpenAI (resposta, transcrição) sem somar o gasto na cota — também quando falha ou cai
+❌ Trocar OPENAI_MODEL / OPENAI_MODELO_DE_VOZ sem o preço do modelo em custo-do-copilot.ts (o custo some da tela)
 ❌ Devolver ao modelo documento (CPF) que ele não precisa reler — o resumo vai por resumoParaOModelo
 ❌ E2E falando com a OpenAI real (é a falsa, porta 3196)
 ```

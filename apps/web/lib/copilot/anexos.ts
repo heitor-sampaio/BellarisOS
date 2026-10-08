@@ -1,5 +1,5 @@
 import 'server-only'
-import { transcrever as transcreverNoModelo, type ConteudoDeEntrada } from '@/lib/copilot/openai'
+import { transcrever as transcreverNoModelo, type AoGastar, type ConteudoDeEntrada } from '@/lib/copilot/openai'
 import { ANEXOS_MAXIMOS } from '@/lib/copilot/tipos'
 
 /**
@@ -113,9 +113,9 @@ export function paraOModelo(lidos: AnexoLido[]): ConteudoDeEntrada[] {
 }
 
 /** A voz em texto. `aoGastar` recebe o custo da transcrição (a cota) — também quando ela não entende nada. */
-export async function transcrever(a: AnexoLido, aoGastar: (tokens: number) => void): Promise<string> {
-  const { texto, tokens } = await transcreverNoModelo(new File([new Uint8Array(a.bytes)], a.nome || 'audio.webm', { type: a.mime }))
-  aoGastar(tokens)
+export async function transcrever(a: AnexoLido, aoGastar: AoGastar): Promise<string> {
+  const { texto, tokens, custoUsd } = await transcreverNoModelo(new File([new Uint8Array(a.bytes)], a.nome || 'audio.webm', { type: a.mime }))
+  aoGastar(tokens, custoUsd)
   if (!texto) throw new ErroDeAnexo('Não entendi o áudio. Tente de novo, mais perto do microfone, ou escreva.')
   return texto
 }

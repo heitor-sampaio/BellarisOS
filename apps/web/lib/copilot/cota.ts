@@ -20,6 +20,7 @@ export async function cotaEsgotada(admin: Admin, ctx: TenantContext): Promise<bo
   return u.cota !== null && u.tokens >= u.cota
 }
 
-export async function registrarUso(admin: Admin, tenantId: string, tokens: number): Promise<void> {
-  await tentar(admin.rpc('copilot_registrar_uso', { p_tenant: tenantId, p_tokens: Math.round(tokens) }), 'registrar o uso do Copilot')
+/** Soma os tokens (a cota) e o custo em dólar (null = sem preço conhecido; não zera o que havia). */
+export async function registrarUso(admin: Admin, tenantId: string, tokens: number, custoUsd: number | null = null): Promise<void> {
+  await tentar(admin.rpc('copilot_registrar_uso', { p_tenant: tenantId, p_tokens: Math.round(tokens), p_custo_usd: custoUsd }), 'registrar o uso do Copilot')
 }

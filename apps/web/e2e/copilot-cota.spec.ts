@@ -93,6 +93,12 @@ test('a voz e a volta que cai no meio também contam na cota', async ({ browser 
       p.request.post('/api/copilot', { headers: { origin: process.env.E2E_BASE_URL! }, multipart: { pagina: '/admin/dashboard', ...campos } })
     expect(await (await postar({ anexos: { name: 'audio.webm', mimeType: 'audio/webm', buffer: WEBM } })).text()).toContain('"tipo":"fim"')
     expect(await uso(), 'a transcrição soma com a resposta').toBe(420)
+    // E o CUSTO estimado, pelo preço de cada modelo (o sistema mostra): 300 de
+    // áudio na transcrição (US$ 3/M) + 100 de entrada e 20 de saída no
+    // gpt-5-mini (US$ 0,25/M e US$ 2/M).
+    const custo = Number((await db().from('copilot_uso_mensal').select('custo_usd')
+      .eq('tenant_id', rede.outra.tenantId).maybeSingle<{ custo_usd: number | null }>()).data?.custo_usd ?? 0)
+    expect(custo).toBeCloseTo(0.000965, 7)
 
     falsa.roteiro.push({ cair: true })
     await (await postar({ texto: 'quantos agendamentos tenho amanhã?' })).text()

@@ -1,4 +1,5 @@
 import 'server-only'
+import { custoEmDolar } from '@estetica-os/nucleo/lib/planos/custo-do-copilot'
 
 /**
  * A conversa com a OpenAI (a Responses API), por `fetch` — sem o SDK.
@@ -105,7 +106,7 @@ export async function perguntarAoModelo(entrada: {
    * o `usage`, vai a estimativa de `estimarTokens`). Pedido recusado antes
    * (rede, 4xx/5xx) não é cobrado e não conta.
    */
-  aoGastar?: (tokens: number) => void
+  aoGastar?: AoGastar
   sinal?: AbortSignal
 }): Promise<RespostaDoModelo> {
   const modelo = modeloDoChat()
@@ -151,7 +152,12 @@ export async function perguntarAoModelo(entrada: {
   let incompleta = false
 
   let gastou = false
-  const gastar = (tokens: number) => { if (!gastou) { gastou = true; entrada.aoGastar?.(tokens) } }
+  // Uma vez por volta, com o custo pelo preço do modelo (entrada e saída).
+  const gastar = ({ entrada: e, saida: s }: { entrada: number; saida: number }) => {
+    if (gastou) return
+    gastou = true
+    entrada.aoGastar?.(e + s, custoEmDolar(modelo, e, s))
+  }
   try {
     for await (const evento of eventosSSE(res.body)) {
       const tipo = evento.type as string | undefined
@@ -167,7 +173,7 @@ export async function perguntarAoModelo(entrada: {
       } else if (tipo === 'response.failed' || tipo === 'error') {
         console.error('[copilot] OpenAI falhou:', JSON.stringify(evento).slice(0, 500))
         const uso = (evento.response as Concluida | undefined)?.usage
-        gastar(uso ? (uso.input_tokens ?? 0) + (uso.output_tokens ?? 0) : estimarTokens(pedido, texto))
+        gastar(uso ? { entrada: uso.input_tokens ?? 0, saida: uso.output_tokens ?? 0 } : estimarTokens(pedido, texto))
         throw new ErroDoModelo('O assistente não conseguiu responder. Tente de novo.')
       }
     }
@@ -178,7 +184,7 @@ export async function perguntarAoModelo(entrada: {
   }
   // Terminou sem o "concluída" (e sem o uso): também a estimativa.
   gastar(concluida?.usage
-    ? (concluida.usage.input_tokens ?? 0) + (concluida.usage.output_tokens ?? 0)
+    ? { entrada: concluida.usage.input_tokens ?? 0, saida: concluida.usage.output_tokens ?? 0 }
     : estimarTokens(pedido, texto))
 
   const itens = (concluida?.output?.length ? concluida.output : feitos)
@@ -214,10 +220,13 @@ export async function perguntarAoModelo(entrada: {
  * pedido e do que já saiu. O anexo em base64 conta como ~1.000 tokens (o
  * modelo cobra a imagem pelo tamanho em pixels, não pelos caracteres).
  */
-export function estimarTokens(pedido: unknown, saida: string): number {
+export function estimarTokens(pedido: unknown, saida: string): { entrada: number; saida: number } {
   const semAnexo = JSON.stringify(pedido).replace(/data:[^"]{200,}/g, () => 'x'.repeat(4000))
-  return Math.ceil(semAnexo.length / 4) + Math.ceil(saida.length / 4)
+  return { entrada: Math.ceil(semAnexo.length / 4), saida: Math.ceil(saida.length / 4) }
 }
+
+/** O que uma chamada gastou: tokens (a cota) e o custo em dólar (null = modelo fora da tabela de preços). */
+export type AoGastar = (tokens: number, custoUsd: number | null) => void
 
 /** Lê um corpo `text/event-stream` e devolve os `data:` já em JSON. */
 async function* eventosSSE(corpo: ReadableStream<Uint8Array>): AsyncGenerator<Record<string, unknown>> {
@@ -244,7 +253,7 @@ async function* eventosSSE(corpo: ReadableStream<Uint8Array>): AsyncGenerator<Re
  * cota): o `usage` em tokens (gpt-4o-*-transcribe) ou em segundos (whisper,
  * ~10 tokens por segundo); sem nenhum, pelo tamanho do arquivo (opus ~2 kB/s).
  */
-export async function transcrever(arquivo: File): Promise<{ texto: string; tokens: number }> {
+export async function transcrever(arquivo: File): Promise<{ texto: string; tokens: number; custoUsd: number | null }> {
   const form = new FormData()
   form.append('file', arquivo, arquivo.name || 'audio.webm')
   form.append('model', modeloDeVoz())
@@ -265,8 +274,12 @@ export async function transcrever(arquivo: File): Promise<{ texto: string; token
     console.error(`[copilot] transcrição ${res.status}:`, (await res.text().catch(() => '')).slice(0, 300))
     throw new ErroDoModelo('Não consegui ouvir o áudio. Tente de novo ou escreva.')
   }
-  const json = await res.json().catch(() => null) as { text?: string; usage?: { total_tokens?: number; seconds?: number } } | null
-  const tokens = json?.usage?.total_tokens
-    ?? (json?.usage?.seconds ? Math.ceil(json.usage.seconds * 10) : Math.ceil(arquivo.size / 200))
-  return { texto: (json?.text ?? '').trim(), tokens }
+  const json = await res.json().catch(() => null) as { text?: string; usage?: unknown } | null
+  const uso = json?.usage as { total_tokens?: number; input_tokens?: number; output_tokens?: number; seconds?: number } | undefined
+  const tokens = uso?.total_tokens
+    ?? (uso?.seconds ? Math.ceil(uso.seconds * 10) : Math.ceil(arquivo.size / 200))
+  // O custo: a entrada é o áudio; sem a divisão, tudo como entrada.
+  const entradaDeAudio = uso?.input_tokens ?? tokens
+  const custoUsd = custoEmDolar(modeloDeVoz(), entradaDeAudio, uso?.output_tokens ?? 0)
+  return { texto: (json?.text ?? '').trim(), tokens, custoUsd }
 }

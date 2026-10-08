@@ -59,6 +59,11 @@ META_ES_CONFIG_ID=                 # config_id do cadastro incorporado (lido no 
 OPENAI_API_KEY=                    # só no servidor
 OPENAI_MODEL=gpt-5-mini            # o modelo do chat (function calling + visão)
 OPENAI_MODELO_DE_VOZ=gpt-4o-mini-transcribe  # a transcrição dos áudios
+# Trocou o modelo? O custo estimado sai da tabela de preços em
+# packages/nucleo/src/lib/planos/custo-do-copilot.ts — modelo fora dela fica sem custo.
+
+# Uso do Copilot (a tela do sistema) — SÓ no serviço Sistema. Opcional.
+COTACAO_DOLAR=5.50                 # a cotação da ESTIMATIVA em reais; sem ela, 5,50
 
 # Cron (as rotas /api/cron/* conferem; ver §14.1)
 CRON_SECRET=
@@ -92,7 +97,7 @@ como build arg por estar declarada (`ARG`) no Dockerfile:
 | Serviço | `BELLARIS_APP` | Domínio | Além do comum |
 |---|---|---|---|
 | BellarisOS | `web` (padrão) | app.bellarisos.com | Meta, uazapi, OpenAI (Copilot), `CRON_SECRET` |
-| Sistema | `sistema` | admin.bellarisos.com | `ASAAS_*`, `PLATAFORMA_ADMIN_EMAIL` (só aqui), `CRON_SECRET` |
+| Sistema | `sistema` | admin.bellarisos.com | `ASAAS_*`, `PLATAFORMA_ADMIN_EMAIL` (só aqui), `CRON_SECRET`, `COTACAO_DOLAR` (opcional) |
 | Suporte | `suporte` | suporte.bellarisos.com | — |
 | Notification Cron / Automations Cron | `web` (imagem) | — | `APP_URL`, `SISTEMA_URL`, `CRON_SECRET` |
 

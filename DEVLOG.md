@@ -1299,6 +1299,20 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-08 — Uso do Copilot no sistema: o mês de cada rede, a cota e o custo
+
+Pedido do Heitor: ver o uso de IA de cada rede. O sistema ganhou a aba
+**Copilot** (`/copilot`, ADMIN e GERENTE): o mês escolhido (até 12 para trás),
+da rede que mais gastou para a que menos — pedidos, tokens, a cota (com a
+barra) e o custo estimado —, as redes com o Copilot no plano mesmo com zero, e
+os últimos 6 meses somados. O custo é ESTIMADO pela clínica a cada chamada (o
+preço público do modelo, entrada e saída, em dólar: `custo-do-copilot.ts`) e
+somado em `copilot_uso_mensal.custo_usd` (migration `20261008000008`); a tela
+mostra em US$ e em R$ pela `COTACAO_DOLAR` (opcional no serviço Sistema;
+sem ela, 5,50). Antes de hoje não há custo registrado ("—"). Provas:
+`e2e/sistema-uso-do-copilot.spec.ts`, o custo gravado em
+`e2e/copilot-cota.spec.ts`, `tests/copilot-custo.test.ts`.
+
 ### 2026-10-08 — Sessão de suporte que vence num clique do menu volta ao painel
 
 A completa (run 37810075410) pegou uma falha em `suporte-impersonar` que
