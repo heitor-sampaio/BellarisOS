@@ -93,6 +93,7 @@ jobs:
         run: |
           CRON=$(openssl rand -hex 32);  echo "::add-mask::$CRON"
           META=$(openssl rand -hex 32);  echo "::add-mask::$META"
+          VERIFY=$(openssl rand -hex 16); echo "::add-mask::$VERIFY"
           INTERNO=$(openssl rand -hex 32); echo "::add-mask::$INTERNO"
           VAPID=$(pnpm exec web-push generate-vapid-keys --json)
           PUB=$(echo "$VAPID" | node -pe 'JSON.parse(require("fs").readFileSync(0)).publicKey')
@@ -101,6 +102,7 @@ jobs:
           {
             echo "CRON_SECRET=$CRON"
             echo "META_APP_SECRET=$META"
+            echo "META_VERIFY_TOKEN=$VERIFY"
             echo "INTERNO_SECRET=$INTERNO"
             echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=$PUB"
             echo "VAPID_PRIVATE_KEY=$PRIV"

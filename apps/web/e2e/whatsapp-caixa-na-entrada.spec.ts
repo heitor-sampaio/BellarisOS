@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, apagarConversas } from './apoio/banco'
+import { banco, apagarConversas, tenantId, PREFIXO } from './apoio/banco'
 
 /**
  * A mensagem que entra carrega POR QUAL CAIXA entrou.
@@ -24,25 +24,28 @@ import { banco, apagarConversas } from './apoio/banco'
 
 const telefone = '5548' + String(Date.now()).slice(-9)
 let convId: string | null = null
+let caixaCriada: string | null = null
 
 test.afterAll(async () => {
   if (convId) {
     await apagarConversas([convId])
   }
+  if (caixaCriada) await banco().from('whatsapp_numbers').delete().eq('id', caixaCriada)
 })
 
 test('a conversa e a mensagem nascem carimbadas com a caixa que recebeu', async ({ request }) => {
   const db = banco()
 
   // A credencial mora em `whatsapp_numbers` — é de lá que o webhook rotea.
-  const { data: caixa } = await db.from('whatsapp_numbers')
-    .select('id, label, config')
-    .eq('provider', 'uazapi')
-    .eq('is_active', true)
-    .maybeSingle<{ id: string; label: string; config: Record<string, string> }>()
-
-  const token = caixa?.config?.token
-  test.skip(!token, 'a rede não tem caixa uazapi ativa neste banco')
+  // A caixa é DESTE teste (2026-10-09): a uazapi real da rede de teste saiu
+  // quando o Heitor trocou os números dela, e o teste passava a se pular.
+  const token = `e2e-entrada-${Date.now().toString(36)}`
+  const { data: caixa, error: erroCaixa } = await db.from('whatsapp_numbers').insert({
+    tenant_id: await tenantId(), provider: 'uazapi', label: `${PREFIXO} entrada ${token}`,
+    is_active: true, config: { token, baseUrl: 'https://e2e.invalido' },
+  }).select('id, label, config').single<{ id: string; label: string; config: Record<string, string> }>()
+  expect(erroCaixa, 'criar a caixa do teste').toBeNull()
+  caixaCriada = caixa!.id
 
   const res = await request.post('/api/webhooks/uazapi', {
     data: {

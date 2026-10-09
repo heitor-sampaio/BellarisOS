@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { banco, tenantId, PREFIXO } from './apoio/banco'
+import { criarOutraRede } from './apoio/outra-rede'
 
 /**
  * A rede enxerga as caixas que tem, e escolhe qual é o padrão.
@@ -73,11 +74,16 @@ test('a lista mostra as caixas, e trocar o padrão move o selo', async ({ page }
 
 test('o banco recusa dois padrões, mesmo que a tela tente', async () => {
   const db     = banco()
-  const tenant = await tenantId()
-
-  const { data: jaTem } = await db.from('whatsapp_numbers')
-    .select('id').eq('tenant_id', tenant).eq('is_default', true).maybeSingle<Linha>()
-  test.skip(!jaTem, 'a rede não tem padrão para conflitar')
+  // Numa rede própria, com o padrão posto aqui (2026-10-09): a rede de teste
+  // ficou sem padrão quando o Heitor trocou os números dela, e o teste se
+  // pulava em silêncio.
+  const outra  = await criarOutraRede(`padt${marca}`)
+  const tenant = outra.tenantId
+  const { error: erroPadrao } = await db.from('whatsapp_numbers').insert({
+    tenant_id: tenant, provider: 'uazapi', label: `${PREFIXO} padrão ${marca}`,
+    is_active: true, is_default: true, config: { token: `e2e-pad-${marca}` },
+  })
+  expect(erroPadrao, 'a rede ganha o seu padrão').toBeNull()
 
   let criada: string | null = null
   try {
@@ -97,7 +103,9 @@ test('o banco recusa dois padrões, mesmo que a tela tente', async () => {
     // de uma migração, do próximo caminho de escrita — não passa por ela.
     expect(error?.code, 'o índice único parcial é quem garante').toBe('23505')
   } finally {
-    if (criada) await db.from('whatsapp_numbers').delete().eq('id', criada)
+    // Só a rede própria deste caso (o tenant aqui é o dela, nunca a de teste).
+    await db.from('whatsapp_numbers').delete().eq('tenant_id', outra.tenantId)
+    await outra.limpar()
   }
 })
 
