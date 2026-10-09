@@ -5888,8 +5888,11 @@ verdade. O que vale:
 
 - **O custo real da OpenAI no sistema** (2026-10-08): criar na OpenAI uma
   chave de ADMINISTRAÇÃO da organização, só leitura (Settings → Organization →
-  Admin keys), e colar no serviço **Sistema** do Railway como
-  `OPENAI_ADMIN_KEY`. Sem ela, a aba Copilot mostra só a estimativa.
+  Admin keys; restrita à leitura da Usage API), e colar no serviço **Sistema**
+  do Railway como `OPENAI_ADMIN_KEY`. Ela é da ORGANIZAÇÃO (a conta inteira):
+  pôr também `OPENAI_PROJECT_ID` com o `proj_…` do projeto do BellarisOS (o da
+  chave do Copilot), senão o real soma os outros projetos da conta. Sem a
+  chave, a aba Copilot mostra só a estimativa.
 - **O Copilot no ar** (2026-10-08): ~~colar a `OPENAI_API_KEY` no serviço
   BellarisOS do Railway~~ **feito** (o deploy com ela subiu às 13h27);
   ~~testar à mão com a chave real~~ **feito** pelo Heitor ("deu boa"). Falta:

@@ -15,10 +15,18 @@ import { custoPorMes, type BaldeDeCusto } from './custo-do-copilot'
  *   leitura o lança, e o cache não guarda o que foi lançado): uma queda de um
  *   minuto não esconde o real por uma hora.
  *
+ * A chave de administração é da ORGANIZAÇÃO, não de um projeto: sem filtro, o
+ * custo é o da conta inteira — os outros projetos dela também. Com
+ * `OPENAI_PROJECT_ID` (o `proj_…` do projeto do BellarisOS, onde mora a chave do
+ * Copilot), só o dele (`project_ids`). Sem ele, a tela avisa que soma tudo.
+ *
  * A OpenAI não sabe quais são as redes: o rateio é `ratearCusto`.
  */
 
 export type CustoReal = { porMes: Record<string, number> } | { erro: string } | null
+
+/** O custo real é só do projeto do BellarisOS (`OPENAI_PROJECT_ID`), ou da organização inteira. */
+export const custoRealDoProjeto = (): boolean => !!process.env.OPENAI_PROJECT_ID?.trim()
 
 const URL_DA_OPENAI = 'https://api.openai.com/v1'
 
@@ -33,6 +41,8 @@ async function lerDaOpenai(desde: string): Promise<{ porMes: Record<string, numb
   // Um ano de dias cabe em 3 páginas de 180; o teto evita laço sem fim.
   for (let i = 0; i < 6; i++) {
     const q = new URLSearchParams({ start_time: String(inicio), bucket_width: '1d', limit: '180' })
+    const projeto = process.env.OPENAI_PROJECT_ID?.trim()
+    if (projeto) q.append('project_ids', projeto)
     if (pagina) q.set('page', pagina)
     let r: Response
     try {
@@ -59,7 +69,7 @@ async function lerDaOpenai(desde: string): Promise<{ porMes: Record<string, numb
 export async function custoRealDaOpenai(desde: string): Promise<CustoReal> {
   if (!process.env.OPENAI_ADMIN_KEY) return null
   try {
-    return await unstable_cache(() => lerDaOpenai(desde), ['openai-custo-real', desde], { revalidate: 3600 })()
+    return await unstable_cache(() => lerDaOpenai(desde), ['openai-custo-real', process.env.OPENAI_PROJECT_ID ?? 'organizacao', desde], { revalidate: 3600 })()
   } catch (e) {
     if (e instanceof ErroDaOpenai) return { erro: e.message }
     console.error('[custo-real-da-openai]', e)

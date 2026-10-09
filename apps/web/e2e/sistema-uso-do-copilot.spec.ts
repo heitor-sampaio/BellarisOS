@@ -36,7 +36,13 @@ test.beforeAll(async () => {
   falsa = await subirOpenaiFalsa()
   // A OpenAI cobrou US$ 1,20 neste mês. Antes da primeira tela: o sistema
   // guarda o custo real por 1 h.
-  falsa.custos = [{ dia: `${mes().slice(0, 8)}01`, usd: 0.7 }, { dia: new Date().toISOString().slice(0, 10), usd: 0.5 }]
+  // A admin key é da ORGANIZAÇÃO: o custo de outro projeto da mesma conta não
+  // entra (o filtro por OPENAI_PROJECT_ID).
+  falsa.custos = [
+    { dia: `${mes().slice(0, 8)}01`, usd: 0.7, projeto: 'proj_e2e_bellaris' },
+    { dia: new Date().toISOString().slice(0, 10), usd: 0.5, projeto: 'proj_e2e_bellaris' },
+    { dia: new Date().toISOString().slice(0, 10), usd: 9.99, projeto: 'proj_outro_projeto' },
+  ]
   admin = await criarAtendente(`ucad${marca}`, { papel: 'ADMIN' })
   gerente = await criarAtendente(`ucge${marca}`, { papel: 'GERENTE' })
   a = await redeDoCopilot(`uA${marca}`)

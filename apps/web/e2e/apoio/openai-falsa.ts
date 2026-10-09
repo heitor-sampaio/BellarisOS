@@ -78,7 +78,7 @@ export interface OpenaiFalsa {
    * O custo REAL que a Costs API (`/v1/organization/costs`, chave de
    * administração) devolve: um valor por dia, em dólar.
    */
-  custos: { dia: string; usd: number }[]
+  custos: { dia: string; usd: number; projeto?: string }[]
   /** As respostas ao modelo (`/responses`), na ordem. */
   respostas(): PedidoRecebido[]
   /** Os nomes das ferramentas oferecidas no pedido `i` (padrão: o último). */
@@ -140,7 +140,10 @@ export async function subirOpenaiFalsa(porta = PORTA_DA_OPENAI_FALSA): Promise<O
         const q = new URL(req.url ?? '', 'http://x').searchParams
         const ini = Number(q.get('start_time') ?? 0)
         const fim = Number(q.get('end_time') ?? Number.MAX_SAFE_INTEGER)
+        // `project_ids` filtra os projetos (repetido, um por id), como a API real.
+        const projetos = q.getAll('project_ids')
         const data = estado.custos
+          .filter(c => !projetos.length || projetos.includes(c.projeto ?? ''))
           .map(c => ({ t: Math.floor(Date.parse(`${c.dia}T00:00:00Z`) / 1000), usd: c.usd }))
           .filter(c => c.t >= ini && c.t < fim)
           .map(c => ({ object: 'bucket', start_time: c.t, end_time: c.t + 86_400,

@@ -87,6 +87,8 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   estimado e a diferença. A OpenAI não sabe as redes: o real é RATEADO na
   proporção do custo estimado de cada uma (`ratearCusto`; sem estimado, pelos
   tokens ao preço médio), sobre todas as que usaram, as de teste também.
+  ⚠️ A admin key é da ORGANIZAÇÃO: sem `OPENAI_PROJECT_ID` (o `proj_…` do
+  projeto do BellarisOS), o real soma os outros projetos da conta — a tela avisa.
 - **O resumo do cartão volta ao modelo com o CPF mascarado**
   (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
   vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,

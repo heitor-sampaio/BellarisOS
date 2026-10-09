@@ -5,7 +5,7 @@ import {
   mesDeBrasilia, mesesAte, nomeDoMes, usoDoCopilotDasRedes, historicoDoCopilot, type UsoDaRede,
 } from '@estetica-os/nucleo/lib/planos/uso-do-copilot'
 import { cotacaoDoDolar, dolares, ratearCusto, reaisEstimados } from '@estetica-os/nucleo/lib/planos/custo-do-copilot'
-import { custoRealDaOpenai } from '@estetica-os/nucleo/lib/planos/custo-real-da-openai'
+import { custoRealDaOpenai, custoRealDoProjeto } from '@estetica-os/nucleo/lib/planos/custo-real-da-openai'
 import { FiltroNaUrl } from '@/components/sistema/filtro-na-url'
 
 /**
@@ -187,6 +187,12 @@ export default async function UsoDoCopilotPage({ searchParams }: {
       </section>
 
       {real && 'erro' in real && <p className="suporte-texto-fraco" role="status">Custo real indisponível: {real.erro} Mostrando só a estimativa.</p>}
+      {realPorMes && !custoRealDoProjeto() && (
+        <p className="suporte-texto-fraco" role="status" data-custo-da-organizacao>
+          O custo real soma TODOS os projetos da conta da OpenAI. Defina OPENAI_PROJECT_ID no serviço Sistema
+          (o id proj_… do projeto do BellarisOS) para contar só o dele.
+        </p>
+      )}
       <p className="suporte-texto-fraco">
         Custo estimado pelo preço público de cada modelo da OpenAI (entrada e saída), somado a cada chamada.
         {realPorMes
