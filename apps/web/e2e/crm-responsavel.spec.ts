@@ -28,10 +28,10 @@ const leads: string[] = []
 
 const nomeDe = async (m: MembroDeTeste) => (await db().from('users').select('name').eq('id', m.userId).single()).data!.name as string
 
-async function lead(nome: string, owner: string | null) {
+async function lead(nome: string, owner: string | null, criadoEm?: string) {
   const { data, error } = await db().from('leads').insert({
     tenant_id: outra.tenantId, name: `${PREFIXO} ${nome} ${marca}`, phone: '5548' + String(Date.now() + leads.length).slice(-9),
-    crm_stage_id: etapa, owner_id: owner, source: 'Instagram',
+    crm_stage_id: etapa, owner_id: owner, source: 'Instagram', ...(criadoEm ? { created_at: criadoEm } : {}),
   }).select('id').single<{ id: string }>()
   expect(error, 'criar a oportunidade').toBeNull()
   leads.push(data!.id)
@@ -131,16 +131,37 @@ test('quem tem "só os meus" VÊ o responsável, mas não troca', async ({ brows
 
 // "Convertido" se lia como "ganho", e o filtro só olha se a oportunidade tem um
 // CLIENTE ligado (leads.client_id) — não a etapa. A tela diz isso (2026-10-09).
-test('o filtro de situação fala de cliente, não de "convertido"', async ({ browser }) => {
+// E situação e período têm a forma dos outros filtros da barra (o gatilho que
+// abre a lista), não a de um <select> solto.
+test('a situação fala de cliente, com o seletor dos outros filtros', async ({ browser }) => {
   await lead('Sem Cadastro Sara', gestor.userId)
   await como(browser, gestor, async p => {
     await p.goto(quadro())
-    const filtro = p.locator('select.filtro-select', { has: p.locator('option[value="converted"]') })
-    await expect(filtro.locator('option')).toHaveText(['Todos os leads', 'Ainda não é cliente', 'Já é cliente'])
+    await expect(p.locator('select.filtro-select', { has: p.locator('option[value="converted"]') })).toHaveCount(0)
     await expect(card(p, 'Sem Cadastro Sara')).toBeVisible()
-    await filtro.selectOption({ label: 'Já é cliente' })
+    await p.getByRole('button', { name: 'Situação', exact: true }).click()
+    await p.getByRole('button', { name: 'Já é cliente', exact: true }).click()
     await expect(card(p, 'Sem Cadastro Sara')).toHaveCount(0)
-    await filtro.selectOption({ label: 'Ainda não é cliente' })
+    await p.getByRole('button', { name: 'Já é cliente', exact: true }).click()   // o gatilho diz o escolhido
+    await p.getByRole('button', { name: 'Ainda não é cliente', exact: true }).click()
     await expect(card(p, 'Sem Cadastro Sara')).toBeVisible()
+  })
+})
+
+test('o período aceita um intervalo personalizado', async ({ browser }) => {
+  await lead('Janeiro Joana', gestor.userId, '2026-01-15T15:00:00Z')
+  await lead('Agora Alice', gestor.userId)
+  await como(browser, gestor, async p => {
+    await p.goto(quadro())
+    await expect(card(p, 'Janeiro Joana')).toBeVisible()
+    await p.getByRole('button', { name: 'Período', exact: true }).click()
+    await expect(p.getByRole('button', { name: 'Últimos 7 dias', exact: true })).toBeVisible()
+    await p.getByRole('button', { name: 'Personalizado', exact: true }).click()
+    await p.getByLabel('De', { exact: true }).fill('2026-01-01')
+    await p.getByLabel('Até', { exact: true }).fill('2026-01-31')
+    await p.getByRole('button', { name: 'Aplicar', exact: true }).click()
+    await expect(card(p, 'Agora Alice')).toHaveCount(0)
+    await expect(card(p, 'Janeiro Joana')).toBeVisible()
+    await expect(p.getByRole('button', { name: '01/01/26 – 31/01/26', exact: true })).toBeVisible()
   })
 })

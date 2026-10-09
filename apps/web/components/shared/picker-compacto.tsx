@@ -24,7 +24,7 @@ export interface OpcaoPicker {
 export function PickerCompacto({
   rotuloBotao, icone, opcoes, selecionadas, multiplo = false,
   textoListaVazia, larguraPainel = 232, disabled = false,
-  classeBotao = 'btn-ghost', estiloBotao, onEscolher,
+  classeBotao = 'btn-ghost', estiloBotao, mantemAbertoEm = [], rodape, onEscolher,
 }: {
   rotuloBotao:      string
   /** Opcional: em barra de FILTRO o rótulo já diz o que é, e quatro ícones
@@ -41,6 +41,11 @@ export function PickerCompacto({
   /** Para o gatilho combinar com a barra onde ele vive (filtros, card…). */
   classeBotao?:     string
   estiloBotao?:     React.CSSProperties
+  /** No único, as opções que NÃO fecham o painel ao escolher — a que abre o
+   *  rodapé (o "Personalizado" do período, que ainda pede as datas). */
+  mantemAbertoEm?:  string[]
+  /** Abaixo da lista, no mesmo painel; recebe como fechá-lo. */
+  rodape?:          (fechar: () => void) => React.ReactNode
   onEscolher:       (valor: string) => void
 }) {
   const [aberto, setAberto] = useState(false)
@@ -127,7 +132,7 @@ export function PickerCompacto({
                     type="button"
                     onClick={() => {
                       onEscolher(o.valor)
-                      if (!multiplo) setAberto(false)
+                      if (!multiplo && !mantemAbertoEm.includes(o.valor)) setAberto(false)
                     }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6, width: '100%',
@@ -154,6 +159,7 @@ export function PickerCompacto({
                 )
               })}
             </div>
+            {rodape?.(() => setAberto(false))}
           </div>
         </>
       )}

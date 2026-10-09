@@ -190,6 +190,10 @@ conceito não pode ter dois nomes) — no código segue `owner`.
 Olha só se a oportunidade tem um cliente ligado (`leads.client_id`, gravado
 ao cadastrar o cliente pelo card, pelo inbox ou ao agendar pelo CRM) — não a
 etapa nem o desfecho: há card ganho sem cliente e card perdido com cliente.
+Situação e período têm a forma dos outros filtros da barra (`PickerCompacto`
+de escolha única, o gatilho mostra a escolhida), e o período tem
+"Personalizado": De/Até no rodapé do painel, que só filtra ao aplicar e
+compara o DIA da criação no fuso do negócio (`dayKeyTZ`).
 
 **Nome e telefone são da pessoa, e as cópias acompanham** (2026-09-28). A conversa
 e a oportunidade guardam cópia, e a edição em qualquer

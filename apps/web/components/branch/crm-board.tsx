@@ -11,6 +11,7 @@ import { updateLeadStage } from '@/actions/leads'
 import { ClientForm } from './client-form'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
 import { rotaCliente } from '@/lib/rotas'
+import { dayKeyTZ } from '@/lib/datetime'
 import { rotaComParams } from '@/lib/query-params'
 import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lead-modal'
 import {
@@ -33,11 +34,35 @@ interface FiltersState {
   owners:       string[]
   procedureIds: string[]
   situation:    'all' | 'converted' | 'not_converted'
-  period:       'all' | '7d' | '30d' | '90d'
+  period:       'all' | '7d' | '30d' | '90d' | 'custom'
+  /** O intervalo do "Personalizado", em dias do fuso do negócio (AAAA-MM-DD). */
+  periodoDe:    string
+  periodoAte:   string
 }
 type SortOrder = 'newest' | 'oldest' | 'name_asc' | 'name_desc'
 
-const DEFAULT_FILTERS: FiltersState = { sources: [], tags: [], owners: [], procedureIds: [], situation: 'all', period: 'all' }
+const DEFAULT_FILTERS: FiltersState = {
+  sources: [], tags: [], owners: [], procedureIds: [], situation: 'all', period: 'all', periodoDe: '', periodoAte: '',
+}
+
+const SITUACOES: { valor: FiltersState['situation']; rotulo: string }[] = [
+  { valor: 'all',           rotulo: 'Todos os leads' },
+  { valor: 'not_converted', rotulo: 'Ainda não é cliente' },
+  { valor: 'converted',     rotulo: 'Já é cliente' },
+]
+const PERIODOS: { valor: FiltersState['period']; rotulo: string }[] = [
+  { valor: 'all',    rotulo: 'Qualquer período' },
+  { valor: '7d',     rotulo: 'Últimos 7 dias' },
+  { valor: '30d',    rotulo: 'Últimos 30 dias' },
+  { valor: '90d',    rotulo: 'Últimos 90 dias' },
+  { valor: 'custom', rotulo: 'Personalizado' },
+]
+
+/** '2026-01-15' → '15/01/26' — curto, para caber no gatilho. */
+function diaCurto(dia: string): string {
+  const [a = '', m = '', d = ''] = dia.split('-')
+  return `${d}/${m}/${a.slice(2)}`
+}
 
 function FiltersBar({
   leads, filters, sort, funnels, funnelId,
@@ -115,6 +140,23 @@ function FiltersBar({
       : [...filters.owners, nome]
     onFiltersChange({ ...filters, owners: next })
   }
+
+  // O "Personalizado" abre as datas no rodapé do painel e só vale ao aplicar:
+  // escolher a opção sozinha não pode filtrar por um intervalo vazio.
+  const [personalizado, setPersonalizado] = useState(false)
+  const [de,  setDe]  = useState(filters.periodoDe)
+  const [ate, setAte] = useState(filters.periodoAte)
+  const podeAplicar = !!de && !!ate && de <= ate
+
+  function escolherPeriodo(valor: string) {
+    if (valor === 'custom') { setPersonalizado(true); return }
+    setPersonalizado(false)
+    onFiltersChange({ ...filters, period: valor as FiltersState['period'], periodoDe: '', periodoAte: '' })
+  }
+
+  const rotuloPeriodo = filters.period === 'custom'
+    ? `${diaCurto(filters.periodoDe)} – ${diaCurto(filters.periodoAte)}`
+    : filters.period === 'all' ? 'Período' : PERIODOS.find(p => p.valor === filters.period)!.rotulo
 
   function toggleProcedure(id: string) {
     const next = filters.procedureIds.includes(id)
@@ -217,29 +259,54 @@ function FiltersBar({
       )}
 
 
-      {/* Separador antes dos selects */}
+      {/* Separador: à esquerda os filtros que acumulam, à direita os de escolha única */}
       <div style={{ width: 1, height: 20, background: 'var(--hairline)', flexShrink: 0 }} />
 
-      {/* Situação */}
-      <select className="filtro-select"
-        value={filters.situation}
-        onChange={e => onFiltersChange({ ...filters, situation: e.target.value as FiltersState['situation'] })}
-      >
-        <option value="all">Todos os leads</option>
-        <option value="not_converted">Ainda não é cliente</option>
-        <option value="converted">Já é cliente</option>
-      </select>
+      {/* Situação e período: a mesma forma dos filtros acima (pedido do
+          Heitor, 2026-10-09). Escolha única — o gatilho mostra a escolhida. */}
+      <PickerCompacto
+        rotuloBotao={filters.situation === 'all' ? 'Situação' : SITUACOES.find(s => s.valor === filters.situation)!.rotulo}
+        opcoes={SITUACOES}
+        selecionadas={[filters.situation]}
+        textoListaVazia=""
+        classeBotao={classeGatilho(filters.situation !== 'all')}
+        onEscolher={v => onFiltersChange({ ...filters, situation: v as FiltersState['situation'] })}
+      />
 
-      {/* Período */}
-      <select className="filtro-select"
-        value={filters.period}
-        onChange={e => onFiltersChange({ ...filters, period: e.target.value as FiltersState['period'] })}
-      >
-        <option value="all">Qualquer período</option>
-        <option value="7d">Últimos 7 dias</option>
-        <option value="30d">Últimos 30 dias</option>
-        <option value="90d">Últimos 90 dias</option>
-      </select>
+      <PickerCompacto
+        rotuloBotao={rotuloPeriodo}
+        opcoes={PERIODOS}
+        selecionadas={[personalizado ? 'custom' : filters.period]}
+        textoListaVazia=""
+        classeBotao={classeGatilho(filters.period !== 'all')}
+        mantemAbertoEm={['custom']}
+        onEscolher={escolherPeriodo}
+        rodape={fechar => (personalizado || filters.period === 'custom') && (
+          <div style={{
+            borderTop: '1px solid var(--hairline)', marginTop: 6, paddingTop: 8,
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            {([['De', de, setDe, { max: ate || undefined }], ['Até', ate, setAte, { min: de || undefined }]] as const).map(([rotulo, valor, mudar, limite]) => (
+              <label key={rotulo} style={{
+                display: 'flex', flexDirection: 'column', gap: 3,
+                fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)',
+              }}>
+                {rotulo}
+                <input type="date" className="field" value={valor} {...limite}
+                  onChange={e => mudar(e.target.value)} />
+              </label>
+            ))}
+            <button type="button" className="btn-primary" disabled={!podeAplicar}
+              onClick={() => {
+                onFiltersChange({ ...filters, period: 'custom', periodoDe: de, periodoAte: ate })
+                setPersonalizado(false)
+                fechar()
+              }}>
+              Aplicar
+            </button>
+          </div>
+        )}
+      />
 
       {/* Ordenação */}
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -943,7 +1010,14 @@ export function CRMBoard({
     else if (filters.situation === 'not_converted')
       result = result.filter(l => !l.client_id)
 
-    if (filters.period !== 'all') {
+    if (filters.period === 'custom') {
+      // O dia da criação no fuso do negócio: o servidor roda em UTC, e um lead
+      // das 22h cairia no dia seguinte.
+      result = result.filter(l => {
+        const dia = dayKeyTZ(l.created_at)
+        return dia >= filters.periodoDe && dia <= filters.periodoAte
+      })
+    } else if (filters.period !== 'all') {
       const days   = filters.period === '7d' ? 7 : filters.period === '30d' ? 30 : 90
       const cutoff = new Date((nowMs ?? montadoEm) - days * 864e5)
       result = result.filter(l => new Date(l.created_at) >= cutoff)

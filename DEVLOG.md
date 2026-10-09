@@ -1316,7 +1316,9 @@ responsável") e a busca universal ("sem responsável"); o código segue
 No mesmo dia, o filtro de situação do quadro passou de "Convertidos / Não
 convertidos" para "Já é cliente / Ainda não é cliente": ele olha só se a
 oportunidade tem um cliente ligado, não se foi ganha — e "convertido" se lia
-como venda fechada.
+como venda fechada. Situação e período passaram a ter a forma dos outros
+filtros da barra (o gatilho que abre a lista, em vez de um select solto), e o
+período ganhou "Personalizado" (De/Até, pelo dia no fuso do negócio).
 
 ### 2026-10-08 — O custo REAL da OpenAI no sistema, rateado por rede
 
