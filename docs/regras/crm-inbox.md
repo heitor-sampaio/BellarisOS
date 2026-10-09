@@ -191,7 +191,8 @@ Olha só se a oportunidade tem um cliente ligado (`leads.client_id`, gravado
 ao cadastrar o cliente pelo card, pelo inbox ou ao agendar pelo CRM) — não a
 etapa nem o desfecho: há card ganho sem cliente e card perdido com cliente.
 Situação e período têm a forma dos outros filtros da barra (`PickerCompacto`
-de escolha única, o gatilho mostra a escolhida), e o período tem
+de escolha única com o MESMO marcador quadrado dos vizinhos — `marcadorQuadrado` —,
+o gatilho mostra a escolhida, e sem divisor entre eles), e o período tem
 "Personalizado": De/Até no rodapé do painel, que só filtra ao aplicar e
 compara o DIA da criação no fuso do negócio (`dayKeyTZ`).
 

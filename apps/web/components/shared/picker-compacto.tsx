@@ -24,7 +24,7 @@ export interface OpcaoPicker {
 export function PickerCompacto({
   rotuloBotao, icone, opcoes, selecionadas, multiplo = false,
   textoListaVazia, larguraPainel = 232, disabled = false,
-  classeBotao = 'btn-ghost', estiloBotao, mantemAbertoEm = [], rodape, onEscolher,
+  classeBotao = 'btn-ghost', estiloBotao, mantemAbertoEm = [], rodape, marcadorQuadrado = multiplo, onEscolher,
 }: {
   rotuloBotao:      string
   /** Opcional: em barra de FILTRO o rótulo já diz o que é, e quatro ícones
@@ -46,6 +46,10 @@ export function PickerCompacto({
   mantemAbertoEm?:  string[]
   /** Abaixo da lista, no mesmo painel; recebe como fechá-lo. */
   rodape?:          (fechar: () => void) => React.ReactNode
+  /** O marcador: quadrado (padrão do múltiplo) ou bolinha (padrão do único).
+   *  Numa barra em que os vizinhos são múltiplos, o único usa o quadrado para
+   *  a barra ler como uma coisa só (pedido do Heitor, 2026-10-09). */
+  marcadorQuadrado?: boolean
   onEscolher:       (valor: string) => void
 }) {
   const [aberto, setAberto] = useState(false)
@@ -145,7 +149,7 @@ export function PickerCompacto({
                   >
                     <span style={{
                       width: 13, height: 13, flexShrink: 0,
-                      borderRadius: multiplo ? 4 : 99,
+                      borderRadius: marcadorQuadrado ? 4 : 99,
                       border: marcada ? 'none' : '1.5px solid var(--border)',
                       background: marcada ? 'var(--brand)' : 'transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',

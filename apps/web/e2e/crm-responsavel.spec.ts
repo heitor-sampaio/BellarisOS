@@ -165,3 +165,31 @@ test('o período aceita um intervalo personalizado', async ({ browser }) => {
     await expect(p.getByRole('button', { name: '01/01/26 – 31/01/26', exact: true })).toBeVisible()
   })
 })
+
+// A barra é uma só: situação e período marcam com o MESMO quadradinho dos
+// outros filtros (era a bolinha de rádio), e nada os separa do responsável.
+test('situação e período têm o marcador dos outros filtros, sem divisor antes', async ({ browser }) => {
+  await lead('Barra Bia', gestor.userId)
+  await como(browser, gestor, async p => {
+    await p.goto(quadro())
+    // O vizinho de antes da situação é o responsável — não um divisor.
+    await expect(card(p, 'Barra Bia')).toBeVisible()
+    const anterior = await p.getByRole('button', { name: 'Situação', exact: true })
+      .evaluate(b => b.parentElement?.previousElementSibling?.textContent ?? '')
+    expect(anterior).toBe('Responsável')
+    const raio = async (gatilho: string, opcao: string) => {
+      const botao = p.getByRole('button', { name: gatilho, exact: true })
+      await botao.click()
+      const r = await p.getByRole('button', { name: opcao, exact: true }).locator('span').first()
+        .evaluate(e => getComputedStyle(e).borderRadius)
+      // Fecha clicando de novo no gatilho (o clique cai no fundo do painel, que o fecha).
+      const caixa = (await botao.boundingBox())!
+      await p.mouse.click(caixa.x + 4, caixa.y + 4)
+      await expect(p.getByRole('button', { name: opcao, exact: true })).toHaveCount(0)
+      return r
+    }
+    const daOrigem = await raio('Origem', 'Instagram')
+    expect(await raio('Situação', 'Todos os leads')).toBe(daOrigem)
+    expect(await raio('Período', 'Qualquer período')).toBe(daOrigem)
+  })
+})
