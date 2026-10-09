@@ -50,7 +50,9 @@ function Aviso({ tom, children }: { tom: 'erro' | 'ok' | 'espera'; children: Rea
   )
 }
 
-export function UazapiConnect({ numeroId }: {
+export function UazapiConnect({ numeroId, nomeDoNumero }: {
+  /** O nome escolhido para o número novo (sem ele, o do perfil do WhatsApp). */
+  nomeDoNumero?: string
   /** A caixa que esta tela opera; `null` = conectar um número NOVO. */
   numeroId: string | null
 }) {
@@ -140,7 +142,7 @@ export function UazapiConnect({ numeroId }: {
   function criar() {
     setErro(null)
     startTransition(async () => {
-      const res = await criarConexaoUazapi()
+      const res = await criarConexaoUazapi(nomeDoNumero?.trim() ? { rotulo: nomeDoNumero } : undefined)
       if (!res.numeroId) { setErro(res.error ?? 'Não foi possível concluir'); return }
       recomecarQr()
       if (!res.ok) setErro(res.error ?? 'Não foi possível concluir')

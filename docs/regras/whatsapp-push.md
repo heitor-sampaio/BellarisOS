@@ -52,6 +52,15 @@ tabela veio remover.
   pessoa de outra. A única escrita é `definir_vinculos_do_numero` (nome,
   unidade e pessoas numa transação). A antiga `whatsapp_numbers.user_id` saiu
   em 2026-09-28 (migration `20260928000010`).
+- **O nome da conexão (`label`) é escolhido ao conectar** (2026-10-09): o
+  campo "Nome do número" no topo de "Novo número" vale nos quatro caminhos
+  (conexão gerenciada, WhatsApp Web com conta própria, cadastro pela Meta e
+  credencial colada). Sem escolha: o nome que a conexão já tem (reconectar e
+  salvar credencial não renomeiam) e, sem nome de verdade, o da conta na Meta
+  ("nome verificado · telefone"; na colada à mão, `nomeDoNumeroNaMeta`) —
+  NUNCA o id técnico do número, que o formulário manual gravava. A regra é
+  `rotuloDaConexao` (`lib/whatsapp/rotulo.ts`). Renomear depois é o "Nome da
+  conexão" da lista. Prova: `e2e/whatsapp-nome-do-numero.spec.ts`.
 - **`branch_id` no número é RÓTULO**, não escopo (decisão do Heitor,
   2026-09-25). Não entra em RLS, não entra em `ownerFilter`, e a conversa
   continua nascendo com `branch_id` nulo — a unidade vira tag depois.
@@ -258,6 +267,7 @@ servidor), e a escolha da tela vira o `featureType` —
 ❌ Ligar, desligar ou remover um número oficial sem acompanharCatalogos (o catálogo fica de outra conta)
 ❌ Apagar template NA META ao desligar um número (só daqui; na Meta é o "Apagar" do template)
 ❌ Oferecer ou enviar template com nao_suportado (a Meta recusa ou o cliente recebe {{1}})
+❌ Gravar o id técnico do número (phoneNumberId) como nome da conexão — é rotuloDaConexao
 ❌ Pedir o estado da conexão gerenciada sem dizer QUAL caixa (era o "Adicionar número" que reabria a conectada) — null é conexão nova
 ❌ Mostrar "uazapi" à clínica (tela, aviso, erro que chega à tela) — é "WhatsApp Web", por nomeDoProvedor; o nome fica no código e nos dados
 ❌ E2E que cria instância gerenciada contra a uazapi real (cada uma é cobrada) — é a falsa, UAZAPI_BASE_URL na porta 3197

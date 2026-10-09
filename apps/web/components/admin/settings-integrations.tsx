@@ -87,7 +87,7 @@ function ConnectionStatus({ ok, detail }: { ok: boolean; detail?: string }) {
 
 // --- uazapi: conta própria (formulário manual) --------------------------------------------------------
 
-function UazapiForm({ numero }: { numero?: NumeroNaTela }) {
+function UazapiForm({ numero, nomeDoNumero }: { numero?: NumeroNaTela; nomeDoNumero?: string }) {
   const origem = useOrigem()
   const existing = (numero?.config ?? {}) as Record<string, string>
   const [token,      setToken]      = useState(existing.token ?? '')
@@ -101,7 +101,7 @@ function UazapiForm({ numero }: { numero?: NumeroNaTela }) {
   function handleSave() {
     setSaved(false)
     startTransition(async () => {
-      const res = await salvarNumeroWhatsApp(numero?.id ?? null, 'uazapi', { token, baseUrl }, isActive)
+      const res = await salvarNumeroWhatsApp(numero?.id ?? null, 'uazapi', { token, baseUrl }, isActive, nomeDoNumero ? { rotulo: nomeDoNumero } : undefined)
       if (res.ok) setSaved(true)
     })
   }
@@ -110,7 +110,7 @@ function UazapiForm({ numero }: { numero?: NumeroNaTela }) {
     setTestResult(null)
     startTest(async () => {
       // Save first, then test
-      await salvarNumeroWhatsApp(numero?.id ?? null, 'uazapi', { token, baseUrl }, true)
+      await salvarNumeroWhatsApp(numero?.id ?? null, 'uazapi', { token, baseUrl }, true, nomeDoNumero ? { rotulo: nomeDoNumero } : undefined)
       const res = await testWhatsAppConnection('uazapi')
       setTestResult(res)
     })
@@ -339,7 +339,9 @@ function CaixaDoCadastro({ numero, configId }: { numero: NumeroNaTela; configId:
   )
 }
 
-function OfficialForm({ numero, configIdDoCadastro }: { numero?: NumeroNaTela; configIdDoCadastro: string | null }) {
+function OfficialForm({ numero, configIdDoCadastro, nomeDoNumero }: {
+  numero?: NumeroNaTela; configIdDoCadastro: string | null; nomeDoNumero?: string
+}) {
   const origem = useOrigem()
   const existing = (numero?.config ?? {}) as Record<string, string>
   const [phoneNumberId, setPhoneNumberId] = useState(existing.phoneNumberId ?? '')
@@ -363,7 +365,7 @@ function OfficialForm({ numero, configIdDoCadastro }: { numero?: NumeroNaTela; c
   function handleSave() {
     setSaved(false)
     startTransition(async () => {
-      const res = await salvarNumeroWhatsApp(numero?.id ?? null, 'official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, isActive)
+      const res = await salvarNumeroWhatsApp(numero?.id ?? null, 'official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, isActive, nomeDoNumero ? { rotulo: nomeDoNumero } : undefined)
       if (res.ok) setSaved(true)
     })
   }
@@ -371,7 +373,7 @@ function OfficialForm({ numero, configIdDoCadastro }: { numero?: NumeroNaTela; c
   function handleTest() {
     setTestResult(null)
     startTest(async () => {
-      await salvarNumeroWhatsApp(numero?.id ?? null, 'official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, true)
+      await salvarNumeroWhatsApp(numero?.id ?? null, 'official', { phoneNumberId, accessToken, verifyToken, appSecret, wabaId, modo }, true, nomeDoNumero ? { rotulo: nomeDoNumero } : undefined)
       const res = await testWhatsAppConnection('official')
       setTestResult(res)
     })
@@ -392,7 +394,7 @@ function OfficialForm({ numero, configIdDoCadastro }: { numero?: NumeroNaTela; c
             Abre uma janela da Meta: você entra com o Facebook da clínica, escolhe a conta do
             WhatsApp e o número, e volta com tudo pronto — sem copiar token nenhum.
           </p>
-          <ConectarWhatsAppPelaMeta configId={configIdDoCadastro} modo={modo} />
+          <ConectarWhatsAppPelaMeta configId={configIdDoCadastro} modo={modo} nomeDoNumero={nomeDoNumero} />
         </div>
       )}
 
@@ -1318,6 +1320,8 @@ export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, o
     () => (numeros.length === 0 ? 'novo' : null),
   )
   const adicionando = emEdicao === 'novo'
+  /** O nome do número NOVO, escolhido antes do provedor — vale nos quatro caminhos. */
+  const [nomeNovo, setNomeNovo] = useState('')
   const caixaEmEdicao = adicionando ? undefined : numeros.find(n => n.id === emEdicao)
 
   function configurar(numeroId: string) {
@@ -1374,7 +1378,7 @@ export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, o
             opcoes={opcoesDeVinculo}
             onAdicionar={() => {
               // Número novo começa pelo caminho fácil, não pelo da caixa aberta antes.
-              setWpProvider('uazapi'); setUazapiModo('gerenciada'); setEmEdicao('novo')
+              setWpProvider('uazapi'); setUazapiModo('gerenciada'); setEmEdicao('novo'); setNomeNovo('')
             }}
             onConfigurar={configurar}
           />
@@ -1396,6 +1400,23 @@ export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, o
             <button type="button" className="btn-ghost" onClick={() => setEmEdicao(null)}>
               Cancelar
             </button>
+          </div>
+        )}
+
+        {/* O nome vem primeiro: é como a clínica vai reconhecer o número no
+            inbox, nos templates e nas configurações (pedido do Heitor,
+            2026-10-09). Sem nome, vale o da conta — nunca o id técnico. */}
+        {adicionando && (
+          <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <label htmlFor="whatsapp-nome-novo" style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+              Nome do número
+            </label>
+            <input id="whatsapp-nome-novo" className="field" value={nomeNovo} maxLength={60}
+              onChange={e => setNomeNovo(e.target.value)}
+              placeholder="Ex.: Recepção, Comercial, Dra. Ana" />
+            <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0 }}>
+              É como ele aparece no inbox, nos templates e nas configurações. Dá para mudar depois.
+            </p>
           </div>
         )}
 
@@ -1444,11 +1465,11 @@ export function SettingsIntegrations({ initialConfigs, numeros, usoDoWhatsapp, o
             </div>
             {uazapiModo === 'gerenciada'
               // A chave remonta a tela ao trocar de caixa: cada uma tem o seu estado e o seu QR.
-              ? <UazapiConnect key={caixaEmEdicao?.id ?? 'novo'} numeroId={caixaEmEdicao?.id ?? null} />
-              : <UazapiForm numero={caixaEmEdicao} />}
+              ? <UazapiConnect key={caixaEmEdicao?.id ?? 'novo'} numeroId={caixaEmEdicao?.id ?? null} nomeDoNumero={adicionando ? nomeNovo : undefined} />
+              : <UazapiForm numero={caixaEmEdicao} nomeDoNumero={adicionando ? nomeNovo : undefined} />}
           </>
         ) : (
-          <OfficialForm numero={caixaEmEdicao} configIdDoCadastro={configIdDoCadastro} />
+          <OfficialForm numero={caixaEmEdicao} configIdDoCadastro={configIdDoCadastro} nomeDoNumero={adicionando ? nomeNovo : undefined} />
         )}
         </>
         )}

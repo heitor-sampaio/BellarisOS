@@ -75,6 +75,7 @@ export const ISOLADOS = [
   'crm-responsavel.spec.ts',
   'templates-por-numero.spec.ts',
   'whatsapp-modo-oficial.spec.ts',
+  'whatsapp-nome-do-numero.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

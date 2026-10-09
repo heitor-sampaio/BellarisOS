@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ler, tentar } from '@/lib/db'
 import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
 import type { OfficialConfig } from '@/lib/whatsapp/types'
+import { nomeDaMeta, rotuloDaConexao } from './rotulo'
 
 /**
  * O cadastro incorporado da Meta (Embedded Signup), do lado do servidor.
@@ -45,6 +46,8 @@ export interface PedidoDeConexao {
   phoneNumberId: string
   businessId?:   string | null
   modo:          ModoOficial
+  /** O nome escolhido para o número; sem ele, o que já tinha ou o da Meta. */
+  rotulo?:       string | null
 }
 
 export type ResultadoDaConexao =
@@ -119,16 +122,21 @@ export async function conectarPeloCadastro(
   if (!numero) return { ok: false, error: 'O número escolhido não pertence à conta do WhatsApp autorizada.' }
 
   const telefone = (numero.display_phone_number ?? '').replace(/\D/g, '') || null
-  const rotulo = [numero.verified_name, numero.display_phone_number].filter(Boolean).join(' · ') || 'WhatsApp Oficial'
 
   // 3. A caixa, ainda inativa. O índice único em `phone_number_id` é global:
   //    o mesmo número em outra rede é recusado aqui, antes de mexer na Meta.
   const admin = createAdminClient()
   const existente = await ler(admin.from('whatsapp_numbers')
-    .select('id, tenant_id, is_active').eq('phone_number_id', pedido.phoneNumberId).maybeSingle(), 'buscar a caixa do número')
+    .select('id, tenant_id, is_active, label').eq('phone_number_id', pedido.phoneNumberId).maybeSingle(), 'buscar a caixa do número')
   if (existente && existente.tenant_id !== tenantId) {
     return { ok: false, error: 'Este número já está conectado a outra conta do BellarisOS.' }
   }
+  // O nome escolhido; reconectar sem escolher mantém o que a clínica deu;
+  // sem nada, o da conta na Meta (lib/whatsapp/rotulo.ts).
+  const rotulo = rotuloDaConexao({
+    escolhido: pedido.rotulo, atual: existente?.label as string | undefined,
+    daMeta: nomeDaMeta(numero), tecnico: pedido.phoneNumberId, padrao: 'WhatsApp Oficial',
+  })
   // Número que entra no ar (novo, ou o inativo que volta) conta para o LIMITE
   // do plano (lib/planos/limites.ts). O gatilho do banco é a segunda linha.
   if (!existente?.is_active) {

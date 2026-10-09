@@ -12,6 +12,8 @@ import { mascararSegredos, mesclarSegredos } from '@/lib/integracoes/sem-segredo
 import { conectarPeloCadastro } from '@/lib/whatsapp/cadastro-incorporado'
 import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
 import { acompanharCatalogos } from '@/lib/templates/catalogo'
+import { rotuloDaConexao } from '@/lib/whatsapp/rotulo'
+import { nomeDoNumeroNaMeta } from '@/lib/whatsapp/nome-na-meta'
 
 export interface IntegrationConfig {
   id:         string
@@ -111,10 +113,16 @@ export async function salvarNumeroWhatsApp(
     return { ok: true, numeroId: anterior!.id as string, avisos }
   }
 
-  const rotulo = extras?.rotulo?.trim()
-    || (anterior?.label as string | undefined)
-    || cleanConfig.phoneNumberId
-    || (provider === 'uazapi' ? 'WhatsApp' : 'WhatsApp Oficial')
+  // O nome escolhido; sem ele, o que a conexão já tem; sem nome de verdade, o
+  // da conta na Meta (a oficial) — nunca o id técnico (lib/whatsapp/rotulo.ts).
+  const nome = {
+    escolhido: extras?.rotulo, atual: anterior?.label as string | undefined,
+    tecnico: cleanConfig.phoneNumberId, padrao: provider === 'uazapi' ? 'WhatsApp' : 'WhatsApp Oficial',
+  }
+  let rotulo = rotuloDaConexao(nome)
+  if (provider === 'official' && rotulo === nome.padrao) {
+    rotulo = rotuloDaConexao({ ...nome, daMeta: await nomeDoNumeroNaMeta(cleanConfig) })
+  }
 
   const campos = {
     tenant_id:       ctx.tenantId!,
@@ -226,6 +234,8 @@ export async function conectarWhatsAppPelaMeta(pedido: {
   phoneNumberId: string
   businessId?:   string | null
   modo:          ModoOficial
+  /** O nome que a clínica escolheu para o número (sem ele, o da conta na Meta). */
+  rotulo?:       string | null
 }): Promise<{ ok: true; numeroId: string; avisos: string[] } | { ok: false; error: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')

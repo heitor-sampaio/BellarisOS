@@ -44,7 +44,9 @@ const EVENTOS_DE_SUCESSO = new Set([
   'FINISH_OBO_MIGRATION', 'FINISH_GRANT_ONLY_API_ACCESS',
 ])
 
-export function ConectarWhatsAppPelaMeta({ configId, modo, rotulo = 'Conectar pela Meta' }: {
+export function ConectarWhatsAppPelaMeta({ configId, modo, rotulo = 'Conectar pela Meta', nomeDoNumero }: {
+  /** O nome escolhido para o número (sem ele, o que já tinha ou o da conta na Meta). */
+  nomeDoNumero?: string
   configId: string
   modo:     ModoOficial
   rotulo?:  string
@@ -92,7 +94,7 @@ export function ConectarWhatsAppPelaMeta({ configId, modo, rotulo = 'Conectar pe
       return
     }
     setEstado({ fase: 'gravando' })
-    const r = await conectarWhatsAppPelaMeta({ code, wabaId: s.wabaId, phoneNumberId: s.phoneNumberId, businessId: s.businessId, modo })
+    const r = await conectarWhatsAppPelaMeta({ code, wabaId: s.wabaId, phoneNumberId: s.phoneNumberId, businessId: s.businessId, modo, rotulo: nomeDoNumero?.trim() || null })
     if (!r.ok) { setEstado({ fase: 'erro', texto: r.error }); return }
     setEstado({ fase: 'ok', avisos: r.avisos })
     router.refresh()

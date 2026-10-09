@@ -14,6 +14,7 @@ import { telefoneDoJid } from '@/lib/whatsapp/uazapi'
 import { getNumero } from '@/lib/whatsapp/factory'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
 import { gravar, ler, tentar } from '@/lib/db'
+import { MAX_ROTULO } from '@/lib/whatsapp/rotulo'
 
 /**
  * Conexão de WhatsApp gerenciada pelo BellarisOS.
@@ -242,7 +243,7 @@ export async function criarConexaoUazapi(
     .insert({
       tenant_id: ctx.tenantId!,
       provider:  'uazapi',
-      label:     dados?.rotulo?.trim() || 'WhatsApp',
+      label:     (dados?.rotulo?.trim() || 'WhatsApp').slice(0, MAX_ROTULO),
       branch_id: dados?.branchId ?? null,
       managed:   true,
       is_active: false,

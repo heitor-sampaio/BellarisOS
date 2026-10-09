@@ -1299,6 +1299,19 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-09 — O nome do número, escolhido ao conectar
+
+Pedido do Heitor: o número aparecia pelo id técnico ("1372302949310529") nos
+templates. Agora "Novo número" começa pelo campo "Nome do número" (Recepção,
+Comercial…), que vale para os quatro jeitos de conectar — WhatsApp Web
+gerenciado ou com conta própria, API oficial pela Meta ou colada à mão. Sem
+nome escolhido, vale o que a conexão já tem e, sem nome de verdade, o da
+conta na Meta ("nome verificado · telefone"), nunca o id. Reconectar não
+renomeia. Prova: `e2e/whatsapp-nome-do-numero.spec.ts`,
+`tests/whatsapp-rotulo.test.ts`. O número que o Heitor já conectou ficou com o
+id: renomeia-se no "Nome da conexão" da lista (ou some sozinho ao salvar a
+conexão de novo, que agora busca o nome na Meta).
+
 ### 2026-10-09 — Templates a partir dos números oficiais conectados
 
 Pedido do Heitor, depois de conectar o número da API oficial pelo formulário
