@@ -62,6 +62,11 @@ jobs:
       # O Copilot fala com a OpenAI FALSA (porta fixa, e2e/apoio/openai-falsa.ts).
       OPENAI_BASE_URL_TESTE: http://127.0.0.1:3196/v1
       OPENAI_API_KEY: e2e-chave-da-openai-falsa
+      # O custo REAL do Copilot no sistema (Costs API na falsa) e o filtro pelo
+      # projeto — os mesmos da playwright.build.config. Aqui o servidor sobe
+      # pelo workflow, e o que só a config tinha não chegava a ele.
+      OPENAI_ADMIN_KEY: e2e-chave-admin-da-openai-falsa
+      OPENAI_PROJECT_ID: proj_e2e_bellaris
       PLATAFORMA_ADMIN_EMAIL: e2e-plataforma-primeiro-admin@bellaris.invalid
       # Cookie de sessão sem Secure: o servidor do build roda em http (ver playwright.build.config.ts).
       COOKIE_DE_SESSAO_SEM_SECURE: "1"

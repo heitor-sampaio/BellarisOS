@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, nomeDeTeste, tenantId, apagarConversas } from './apoio/banco'
+import { banco, nomeDeTeste, tenantId, apagarConversas, PREFIXO } from './apoio/banco'
 
 /**
  * O fluxo que o Heitor pediu e que **não era montável**: decidir pelo texto da
@@ -26,6 +26,7 @@ const telefone = '5548' + String(Date.now()).slice(-9)
 
 let automationId: string | null = null
 let convId: string | null = null
+let caixaId: string | null = null
 
 test.beforeAll(async () => {
   const db = banco()
@@ -84,15 +85,23 @@ test.afterAll(async () => {
   if (convId) {
     await apagarConversas([convId])
   }
+  if (caixaId) await db.from('whatsapp_numbers').delete().eq('id', caixaId)
 })
 
 test('o IF decide pelo texto da mensagem e o aviso cita o passo anterior', async ({ request }) => {
   const db = banco()
 
-  const { data: cfg } = await db.from('integration_configs')
-    .select('config').eq('provider', 'uazapi').eq('is_active', true).maybeSingle()
-  const token = (cfg?.config as Record<string, string> | null)?.token
-  test.skip(!token, 'uazapi não configurada neste banco')
+  // A caixa é DESTE teste (2026-10-09): o token vinha da `integration_configs`
+  // legada da rede de teste, que apontava para a caixa uazapi real dela — e a
+  // caixa saiu quando o Heitor trocou os números da rede. Sem caixa com o
+  // token, o webhook descarta a mensagem.
+  const token = `e2e-propagacao-${Date.now().toString(36)}`
+  const { data: cx, error: erroCx } = await db.from('whatsapp_numbers').insert({
+    tenant_id: await tenantId(), provider: 'uazapi', label: `${PREFIXO} propagacao ${token}`,
+    is_active: true, config: { token, baseUrl: 'https://e2e.invalido' },
+  }).select('id').single<{ id: string }>()
+  expect(erroCx, 'criar a caixa do teste').toBeNull()
+  caixaId = cx!.id
 
   const res = await request.post('/api/webhooks/uazapi', {
     data: {

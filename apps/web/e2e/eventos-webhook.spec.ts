@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { banco, apagarConversas } from './apoio/banco'
+import { banco, apagarConversas, tenantId, PREFIXO } from './apoio/banco'
 
 /**
  * O caso mais difícil da Fase 2: o fato nasce no WEBHOOK, sem ninguém logado.
@@ -9,19 +9,28 @@ import { banco, apagarConversas } from './apoio/banco'
  */
 const telefone = '5548' + String(Date.now()).slice(-9)
 let convId: string | null = null
+let caixaId: string | null = null
 
 test.afterAll(async () => {
   if (convId) {
     await apagarConversas([convId])
   }
+  if (caixaId) await banco().from('whatsapp_numbers').delete().eq('id', caixaId)
 })
 
 test('mensagem de anúncio pelo webhook vira conversa + 3 eventos', async ({ request }) => {
   const db = banco()
-  const { data: cfg } = await db.from('integration_configs')
-    .select('config').eq('provider', 'uazapi').eq('is_active', true).maybeSingle()
-  const token = (cfg?.config as Record<string, string> | null)?.token
-  test.skip(!token, 'uazapi não configurada neste banco')
+  // A caixa é DESTE teste (2026-10-09): o token vinha da `integration_configs`
+  // legada da rede de teste, que apontava para a caixa uazapi real dela — e a
+  // caixa saiu quando o Heitor trocou os números da rede. Sem caixa com o
+  // token, o webhook descarta a mensagem.
+  const token = `e2e-anuncio-${Date.now().toString(36)}`
+  const { data: cx, error: erroCx } = await db.from('whatsapp_numbers').insert({
+    tenant_id: await tenantId(), provider: 'uazapi', label: `${PREFIXO} anuncio ${token}`,
+    is_active: true, config: { token, baseUrl: 'https://e2e.invalido' },
+  }).select('id').single<{ id: string }>()
+  expect(erroCx, 'criar a caixa do teste').toBeNull()
+  caixaId = cx!.id
 
   const res = await request.post('/api/webhooks/uazapi', {
     data: {
