@@ -133,7 +133,7 @@ function derivarOpcoes(conversas: Conversation[]): Opcoes {
   for (const c of conversas) {
     canais.add(c.channel)
     for (const t of c.lead_tags ?? []) tags.add(t)
-    if (c.owner_ids.length === 0) donos.set(SEM_DONO, 'Sem dono')
+    if (c.owner_ids.length === 0) donos.set(SEM_DONO, 'Sem responsável')
     c.owner_ids.forEach((id, i) => donos.set(id, c.owner_names[i] ?? 'Sem nome'))
     c.funnel_ids.forEach((id, i) => funis.set(id, c.funnel_names[i] ?? 'Funil'))
     c.stage_ids.forEach((id, i) => {
@@ -167,7 +167,7 @@ function juntarOpcoes(carregadas: Opcoes, rede?: OpcoesDoInbox | null): Opcoes {
   return {
     canais:   carregadas.canais,
     tags:     [...new Set([...rede.tags, ...carregadas.tags])].sort((a, b) => a.localeCompare(b, 'pt-BR')),
-    donos:    unir([{ id: SEM_DONO, nome: 'Sem dono' }, ...rede.donos], carregadas.donos),
+    donos:    unir([{ id: SEM_DONO, nome: 'Sem responsável' }, ...rede.donos], carregadas.donos),
     funis:    unir(rede.funis, carregadas.funis),
     etapas:   unir(rede.etapas, carregadas.etapas),
     unidades: unir([{ id: SEM_UNIDADE, nome: 'Rede (sem unidade)' }, ...rede.unidades], carregadas.unidades),
@@ -387,7 +387,7 @@ export function InboxFiltros({
             </Secao>
 
             {opcoes.donos.length > 1 && (
-              <Secao titulo="Dono da oportunidade">
+              <Secao titulo="Responsável">
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                   {opcoes.donos.map(d => (
                     <Pastilha
@@ -514,7 +514,7 @@ export function ChipsDeFiltro({
 
   for (const id of filtros.donos) {
     chips.push({
-      rotulo: opcoes.donos.find(d => d.id === id)?.nome ?? 'Dono',
+      rotulo: opcoes.donos.find(d => d.id === id)?.nome ?? 'Responsável',
       limpar: () => onChange({ ...filtros, donos: filtros.donos.filter(d => d !== id) }),
     })
   }

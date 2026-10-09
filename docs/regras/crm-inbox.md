@@ -169,6 +169,22 @@ pessoa (`lib/crm/atividade-da-pessoa.ts`).
     `_leadId`). Os dois portões exigem `crm: VIEW`: `clients: MANAGE` não é
     passe para mexer em card nem em conversa.
 
+**O RESPONSÁVEL da oportunidade** (`leads.owner_id`, 2026-10-09). Na tela e no
+histórico é sempre "Responsável", nunca "Dono" (decisão do Heitor: o mesmo
+conceito não pode ter dois nomes) — no código segue `owner`.
+- Nasce de quem cria o lead; o card mostra as iniciais (o nome no `title`), e
+  o modal do lead tem o campo "Responsável" (os membros ATIVOS da rede, mais
+  "Sem responsável" — que devolve o card ao bolo comum).
+- **Troca só quem tem o CRM em Gerenciar com escopo "todos"**
+  (`podeTrocarResponsavel`, `lib/crm/responsavel.ts`). O "só os meus" vê o
+  nome e não troca: passar o card adiante o tiraria do próprio alcance, e
+  pegar o de outro é o que o escopo impede. O servidor confere de novo — quem
+  não pode e manda `owner_id` no form não muda nada.
+- Tela e automação ("Definir responsável") passam pelo MESMO núcleo,
+  `trocarResponsavelCore`: a pessoa é da rede e ativa, e a linha do tempo diz
+  DE quem PARA quem (até 2026-10-09 a automação gravava sempre "de: —").
+  Prova: `e2e/crm-responsavel.spec.ts`.
+
 **Nome e telefone são da pessoa, e as cópias acompanham** (2026-09-28). A conversa
 e a oportunidade guardam cópia, e a edição em qualquer
 um dos dois lugares — painel do inbox (`atualizarContato`) ou card da
@@ -210,4 +226,6 @@ o contato junto.
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Mostrar o nome da conversa (contact_name) em vez do da pessoa (contacts.name)
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
+❌ Escrever "Dono" na tela para o responsável da oportunidade (é "Responsável" em todo lugar)
+❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")
 ```

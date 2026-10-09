@@ -51,7 +51,7 @@ export async function alcanceDoDono(admin: Admin, ctx: TenantContext): Promise<A
     // do PostgREST), e as conversas dos leads além disso sumiam sem aviso.
     const meus = await ler(
       admin.rpc('leads_do_dono', { p_tenant: tenantId, p_owner: owner }),
-      'carregar os leads do dono',
+      'carregar os leads do responsável',
     )
     return { modo, meusLeads: (meus ?? []) as string[] }
   }
@@ -61,7 +61,7 @@ export async function alcanceDoDono(admin: Admin, ctx: TenantContext): Promise<A
   // voltaria a aparecer sem nada acusar.
   const ocultas = await ler(
     admin.rpc('contatos_ocultos_do_dono', { p_tenant: tenantId, p_owner: owner }),
-    'calcular quem é de outro dono',
+    'calcular quem é de outro responsável',
   )
   return { modo, ocultas: (ocultas ?? []) as string[] }
 }

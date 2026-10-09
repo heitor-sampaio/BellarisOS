@@ -11,6 +11,7 @@ import { isUnitTag, unitTagName } from '@estetica-os/utils'
 import { ler } from '@/lib/db'
 import { criarOportunidadeCore, etapaDaRede, moverEtapaCore, salvarProcedimentosDeInteresse } from '@/lib/crm/oportunidade'
 import { propagarDadosDaPessoa, digitosDoTelefone } from '@/lib/contatos/propagar'
+import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 
 function str(fd: FormData, key: string) {
   return (fd.get(key) as string | null)?.trim() || null
@@ -25,6 +26,15 @@ function parseStringArray(fd: FormData, key: string): string[] {
   } catch {
     return []
   }
+}
+
+/**
+ * O responsável escolhido no form: `undefined` quando o campo não veio (quem
+ * não pode trocar nem o recebe), `null` para "Sem responsável".
+ */
+function responsavelDoForm(fd: FormData): string | null | undefined {
+  if (!fd.has('owner_id')) return undefined
+  return str(fd, 'owner_id')
 }
 
 function parseProcedureIds(fd: FormData): string[] {
@@ -87,12 +97,44 @@ export async function createLead(
     if ('error' in r) return { error: r.error }
     const lead = { id: r.leadId, created_at: r.createdAt }
 
+    // O lead nasce de quem o criou; outro responsável escolhido no form troca
+    // em seguida (e a linha do tempo diz de quem para quem). Quem não pode
+    // trocar não muda nada, mesmo que o campo venha.
+    const responsavel = responsavelDoForm(formData)
+    if (responsavel !== undefined && podeTrocarResponsavel(ctx)) {
+      const t = await trocarResponsavelCore(createAdminClient(), ctx.tenantId!, r.leadId, responsavel, {
+        actorUserId: ctx.internalUserId, actorName: ctx.userName || null,
+      })
+      if (!t.trocado && t.motivo) return { error: `Lead criado, mas o responsável não mudou: ${t.motivo}` }
+    }
+
     revalidatePath(`/${slug}/oportunidades`)
     revalidatePath('/admin/oportunidades')
     return { success: true, leadId: lead.id as string, createdAt: lead.created_at as string }
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Erro inesperado.' }
   }
+}
+
+// --- Responsável ----------------------------------------------------
+/**
+ * Quem pode ser responsável por uma oportunidade (os membros ATIVOS da rede),
+ * e se quem pergunta pode trocar. O modal busca ao abrir; quem não pode trocar
+ * recebe a lista vazia — vê só o nome que já está no card.
+ */
+export async function responsaveisParaOportunidade(): Promise<{
+  pode: boolean; eu: string | null; pessoas: { id: string; name: string }[]
+}> {
+  const ctx = await getTenantContext()
+  assertRecurso(ctx, 'oportunidades')
+  assertPermission(ctx, 'crm', 'VIEW')
+  const pode = podeTrocarResponsavel(ctx)
+  if (!pode) return { pode, eu: ctx.internalUserId ?? null, pessoas: [] }
+  const pessoas = await ler(createAdminClient()
+    .from('users').select('id, name')
+    .eq('tenant_id', ctx.tenantId!).eq('is_active', true)
+    .order('name'), 'listar os responsáveis') as { id: string; name: string }[] | null
+  return { pode, eu: ctx.internalUserId ?? null, pessoas: pessoas ?? [] }
 }
 
 // --- Editar lead --------------------------------------------------
@@ -239,6 +281,15 @@ export async function updateLead(
           tenantId: ctx.tenantId!, leadId, type: 'UPDATED', changes: mudou, ...autor,
         })
       }
+    }
+
+    // O responsável: só quem tem o CRM em Gerenciar com escopo "todos"
+    // (`podeTrocarResponsavel`). O núcleo confere a rede e se a pessoa está
+    // ativa, e grava de quem para quem.
+    const responsavel = responsavelDoForm(formData)
+    if (responsavel !== undefined && podeTrocarResponsavel(ctx)) {
+      const t = await trocarResponsavelCore(admin, ctx.tenantId!, leadId, responsavel, autor)
+      if (!t.trocado && t.motivo) return { error: t.motivo }
     }
 
     revalidatePath(`/${slug}/oportunidades`)

@@ -2,11 +2,11 @@
 
 import {
   useRef, useCallback, useActionState, useEffect, useEffectEvent, useMemo,
-  useState, forwardRef, useImperativeHandle,
+  useState, forwardRef, useImperativeHandle, useId,
 } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { X, UserPlus, CheckCircle2, Check, Plus, MessageSquare } from 'lucide-react'
-import { createLead, updateLead } from '@/actions/leads'
+import { createLead, updateLead, responsaveisParaOportunidade } from '@/actions/leads'
 import { openLeadConversation } from '@/actions/inbox'
 import { rotaInbox } from '@/lib/rotas'
 import type { CRMFunnel, CRMStage } from '@/lib/crm'
@@ -29,7 +29,11 @@ interface ExistingLead {
   crm_stage_id?:  string | null
   tags?:          string[] | null
   lead_procedures?: { procedure_id: string }[]
+  owner_id?:      string | null
+  owner_name?:    string | null
 }
+
+type Responsaveis = Awaited<ReturnType<typeof responsaveisParaOportunidade>>
 
 export interface CRMLeadModalHandle {
   open: () => void
@@ -106,6 +110,15 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [tagDraft,  setTagDraft]  = useState('')
 
     /**
+     * O RESPONSÁVEL. A lista (e se quem abriu pode trocar) vem do servidor ao
+     * abrir — o quadro monta um modal por card, e buscar na montagem seria uma
+     * consulta por lead. Quem não pode trocar vê só o nome.
+     */
+    const [responsaveis, setResponsaveis] = useState<Responsaveis | null>(null)
+    const [ownerId,      setOwnerId]      = useState(existing?.owner_id ?? '')
+    const idResponsavel = useId()
+
+    /**
      * Sugestões de tag: origens canônicas + unidades da rede.
      *
      * A unidade é uma tag como outra qualquer — não é dona do lead e não decide
@@ -155,8 +168,16 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
       setTags(tagsIniciais)
       setTagDraft('')
       setErroConversa(null)
+      setOwnerId(existing?.owner_id ?? '')
       setAberto(true)
       dialogRef.current?.showModal()
+      responsaveisParaOportunidade()
+        .then(r => {
+          setResponsaveis(r)
+          // Lead novo nasce de quem o cria (é o que o servidor faz sem o campo).
+          if (!existing) setOwnerId(r.eu ?? '')
+        })
+        .catch(() => setResponsaveis(null))
     }, [existing, initialStageId, stages, branchName])
 
     const close = useCallback(() => dialogRef.current?.close(), [])
@@ -410,6 +431,35 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
                   </select>
                 </div>
               </div>
+
+              {/* Responsável */}
+              {responsaveis?.pode ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <label htmlFor={idResponsavel} style={{
+                    fontSize: 'var(--text-xs-sz)', fontWeight: 700,
+                    color: 'var(--text-muted)', letterSpacing: '0.04em',
+                  }}>
+                    Responsável
+                  </label>
+                  <select id={idResponsavel} name="owner_id" className="field"
+                    value={ownerId} onChange={e => setOwnerId(e.target.value)}>
+                    <option value="">Sem responsável</option>
+                    {/* Responsável que saiu da lista (desativado) segue como
+                        opção: salvar sem mexer não pode tirá-lo em silêncio. */}
+                    {existing?.owner_id && !responsaveis.pessoas.some(p => p.id === existing.owner_id) && (
+                      <option value={existing.owner_id}>{existing.owner_name ?? 'Pessoa desativada'}</option>
+                    )}
+                    {responsaveis.pessoas.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+              ) : isEdit && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  <Label>Responsável</Label>
+                  <p style={{ fontSize: 'var(--text-sm-sz)', color: existing?.owner_name ? 'var(--text)' : 'var(--text-faint)' }}>
+                    {existing?.owner_name ?? 'Sem responsável'}
+                  </p>
+                </div>
+              )}
 
               {/* Tags */}
               <div>

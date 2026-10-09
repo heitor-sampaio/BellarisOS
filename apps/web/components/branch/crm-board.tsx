@@ -16,7 +16,7 @@ import { CRMLeadModal, type Procedure, type CRMLeadModalHandle } from './crm-lea
 import {
   sourceStyle,
   secondsSince, agingLevel, AGING_STYLE,
-  AWAITING_THRESHOLDS, STALE_THRESHOLDS, formatDurationShort,
+  AWAITING_THRESHOLDS, STALE_THRESHOLDS, formatDurationShort, iniciaisDoNome,
 } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
 import { FunnelSelect } from '@/components/shared/funnel-select'
@@ -192,13 +192,13 @@ function FiltersBar({
 
       {availableOwners.length > 0 && (
         <PickerCompacto
-          rotuloBotao={rotuloFiltro('Dono', filters.owners.length)}
+          rotuloBotao={rotuloFiltro('Responsável', filters.owners.length)}
           opcoes={availableOwners.map(n => ({
-            valor: n, rotulo: n === SEM_DONO ? 'Sem dono' : n,
+            valor: n, rotulo: n === SEM_DONO ? 'Sem responsável' : n,
           }))}
           selecionadas={filters.owners}
           multiplo
-          textoListaVazia="Nenhum dono nos leads carregados."
+          textoListaVazia="Nenhum responsável nos leads carregados."
           classeBotao={classeGatilho(filters.owners.length > 0)}
           onEscolher={toggleOwner}
         />
@@ -294,7 +294,8 @@ export interface Lead {
   client_id:    string | null
   created_at:   string
   tags:         string[]
-  /** Dono do negócio: quem está trabalhando o lead. Nulo = bolo comum. */
+  /** O RESPONSÁVEL: quem está trabalhando o lead. Nulo = bolo comum. */
+  owner_id?:    string | null
   owner_name?:  string | null
   last_interaction_at?: string | null
   awaiting_since?:      string | null
@@ -522,6 +523,7 @@ function LeadCard({
           crm_stage_id: lead.crm_stage_id,
           tags: lead.tags,
           lead_procedures: lead.lead_procedures.map(lp => ({ procedure_id: lp.procedure_id })),
+          owner_id: lead.owner_id ?? null, owner_name: lead.owner_name ?? null,
         }}
       />
 
@@ -781,8 +783,27 @@ function LeadCard({
         )}
 
         {/* Footer */}
-        <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{ageLabel}</span>
+        <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+            {/* O responsável, em iniciais (o nome inteiro no title e no leitor de tela). */}
+            {lead.owner_name && (
+              <span
+                role="img"
+                aria-label={`Responsável: ${lead.owner_name}`}
+                title={`Responsável: ${lead.owner_name}`}
+                style={{
+                  width: 20, height: 20, borderRadius: 99, flexShrink: 0,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--brand-soft)', color: 'var(--brand)',
+                  border: '1px solid var(--brand-soft-border)',
+                  fontSize: 'var(--text-overline)', fontWeight: 800, letterSpacing: '0.02em',
+                }}
+              >
+                {iniciaisDoNome(lead.owner_name)}
+              </span>
+            )}
+            <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{ageLabel}</span>
+          </span>
           {lead.client_id ? (
             <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--success)', fontWeight: 700 }}>✓ Cliente</span>
           ) : networkMode ? (

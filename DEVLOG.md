@@ -1299,6 +1299,20 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-09 — O responsável da oportunidade, na tela
+
+A automação "Definir responsável" trocava `leads.owner_id`, mas a tela não
+mostrava nem deixava trocar — só o filtro do quadro, chamado "Dono". Agora o
+card mostra as iniciais do responsável, e o modal do lead tem o campo
+"Responsável" (membros ativos da rede, ou "Sem responsável"). Troca quem tem
+o CRM em Gerenciar com escopo "todos"; o "só os meus" vê o nome e não troca. Tela e
+automação passam pelo mesmo núcleo (`trocarResponsavelCore`), que confere
+rede e membro ativo e grava na linha do tempo de quem para quem — a
+automação gravava "de: —" sempre. E, por decisão do Heitor, "Dono" saiu de
+toda a tela: filtro do quadro, filtros do inbox ("Responsável", "Sem
+responsável") e a busca universal ("sem responsável"); o código segue
+`owner`. Prova: `e2e/crm-responsavel.spec.ts`.
+
 ### 2026-10-08 — O custo REAL da OpenAI no sistema, rateado por rede
 
 Pedido do Heitor: os valores de custo direto da OpenAI, com rateio por rede.

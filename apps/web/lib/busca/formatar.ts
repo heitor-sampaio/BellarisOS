@@ -62,7 +62,7 @@ export function resultadoDaLinha(l: LinhaDaBusca): ResultadoDaBusca | null {
         tipo, id: l.id, titulo,
         subtitulo: juntar([
           texto(l.subtitulo) ? `${texto(l.subtitulo)}${desfecho ? ` (${desfecho})` : ''}` : desfecho ?? null,
-          texto(x.dono) ?? 'sem dono',
+          texto(x.dono) ?? 'sem responsável',
         ]),
         funilId: texto(x.funilId),
       }

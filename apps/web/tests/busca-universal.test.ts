@@ -134,7 +134,7 @@ describe('resultadoDaLinha', () => {
     expect(resultadoDaLinha({
       tipo: 'oportunidade', id: 'l1', titulo: 'Ana', subtitulo: 'Proposta',
       extra: { funilId: 'f1', desfecho: 'LOST', dono: null },
-    })).toEqual({ tipo: 'oportunidade', id: 'l1', titulo: 'Ana', subtitulo: 'Proposta (perdida) · sem dono', funilId: 'f1' })
+    })).toEqual({ tipo: 'oportunidade', id: 'l1', titulo: 'Ana', subtitulo: 'Proposta (perdida) · sem responsável', funilId: 'f1' })
   })
 
   it('membro desativado é dito', () => {

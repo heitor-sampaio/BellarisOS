@@ -6,6 +6,7 @@ import { EVENTOS } from '@estetica-os/types'
 import type { OrigemDeEvento, AtorDoEvento } from '@estetica-os/types'
 import type { ContextoDaExecucao } from './contexto'
 import { ler } from '@/lib/db'
+import { trocarResponsavelCore } from '@/lib/crm/responsavel'
 
 /**
  * As ações que mexem no CRM.
@@ -204,30 +205,13 @@ export async function definirResponsavel(
   const leadId = leadDo(contexto)
   if (!leadId) return { atribuido: false, motivo: 'Este fluxo não tem oportunidade no contexto.' }
 
-  const admin = createAdminClient()
-
-  let nome: string | null = null
-  if (usuarioId) {
-    // O responsável tem de ser da REDE. Sem esta conferência, um id de outra
-    // clínica viraria dono de um card que essa pessoa nunca vai ver.
-    const membro = await ler(admin
-      .from('users').select('id, name').eq('id', usuarioId).eq('tenant_id', ator.tenantId).maybeSingle(), 'buscar o usuário')
-    if (!membro) return { atribuido: false, motivo: 'Pessoa não encontrada nesta rede.' }
-    nome = membro.name as string
-  }
-
-  const { error } = await admin
-    .from('leads').update({ owner_id: usuarioId }).eq('id', leadId).eq('tenant_id', ator.tenantId)
-
-  if (error) throw new Error(`Não consegui definir o responsável: ${error.message}`)
-
-  await registrarEventoLead({
-    tenantId:  ator.tenantId,
-    leadId,
-    type:      'OWNER_CHANGED',
+  // O núcleo da tela: confere a rede E se a pessoa está ativa, e a linha do
+  // tempo diz DE quem PARA quem (até 2026-10-09 o "de" era sempre vazio).
+  const r = await trocarResponsavelCore(createAdminClient(), ator.tenantId, leadId, usuarioId, {
     actorName: `Automação · ${ator.nome}`,
-    changes:   [{ campo: 'Responsável', de: null, para: nome }],
   })
-
-  return { atribuido: true, responsavel: nome ?? 'ninguém' }
+  if (!r.trocado) {
+    return r.motivo ? { atribuido: false, motivo: r.motivo } : { atribuido: true, responsavel: 'sem mudança' }
+  }
+  return { atribuido: true, responsavel: r.para ?? 'ninguém' }
 }

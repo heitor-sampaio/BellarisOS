@@ -95,6 +95,10 @@ nomeados pela **intenção** (`agendamento.nao_compareceu`), catálogo tipado em
   mais recente da PESSOA. Até 2026-09-27 mover etapa, desfecho, responsável e
   anotar num fluxo de "mensagem recebida" terminavam sempre em "sem
   oportunidade" — e o editor oferecia os quatro.
+- **"Definir responsável"** (`acao.atribuir`) usa o núcleo da tela,
+  `trocarResponsavelCore` (`lib/crm/responsavel.ts`): a pessoa é da rede e
+  ATIVA, e a linha do tempo diz de quem para quem (até 2026-10-09 o "de" era
+  sempre vazio). Regra do responsável em `crm-inbox.md`.
 - O node guarda o desfecho em português (`ganho`/`perdido`); a etapa, no
   código do banco (`WON`/`LOST`). Comparar os dois direto nunca acha etapa.
 - Prova de ponta a ponta: `e2e/mensagens-saida.spec.ts` — webhook real →
