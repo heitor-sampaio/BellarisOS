@@ -42,10 +42,14 @@ const rotulos = async () => ((await banco().from('whatsapp_numbers')
 
 async function novoNumero(p: Page) {
   await p.goto('/admin/settings?tab=integrations')
-  const cartao = p.locator('#whatsapp')
-  if (await cartao.count()) await cartao.first().click()
+  await p.waitForLoadState('networkidle')
+  const nome = p.getByLabel('Nome do número')
   const adicionar = p.getByRole('button', { name: /Adicionar número/ })
-  if (await adicionar.count()) await adicionar.click()
+  // O cartão do WhatsApp abre e FECHA no clique: só se clica nele se nada
+  // dele estiver à vista (no CI ele já vinha aberto, e o clique o fechava).
+  if (!(await nome.isVisible()) && !(await adicionar.isVisible())) await p.locator('#whatsapp').first().click()
+  if (await adicionar.isVisible()) await adicionar.click()
+  await expect(nome).toBeVisible()
 }
 
 test('WhatsApp Web (conta própria): o número nasce com o nome escolhido', async ({ browser }) => {

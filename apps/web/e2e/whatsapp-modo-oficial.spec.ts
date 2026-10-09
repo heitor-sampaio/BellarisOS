@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Browser } from '@playwright/test'
+import { test, expect, type Page, type Browser, type BrowserContext } from '@playwright/test'
 import { banco } from './apoio/banco'
 import { criarMembro, type MembroDeTeste } from './apoio/sessao'
 import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
@@ -48,8 +48,18 @@ test.afterAll(async () => {
   await membro?.limpar()
   await outra?.limpar()
 })
-/** A página como o membro da rede própria (não como o admin da rede de teste). */
-const comoMembro = async (browser: Browser) => (await browser.newContext({ storageState: membro.estado })).newPage()
+/**
+ * A página como o membro da rede própria (não como o admin da rede de teste).
+ * O contexto fecha no fim de cada caso: aberto, ele ficava no worker e entrava
+ * nas capturas de falha dos specs seguintes, como se fosse deles.
+ */
+const abertos: BrowserContext[] = []
+const comoMembro = async (browser: Browser) => {
+  const ctx = await browser.newContext({ storageState: membro.estado })
+  abertos.push(ctx)
+  return ctx.newPage()
+}
+test.afterEach(async () => { for (const c of abertos.splice(0)) await c.close() })
 
 type Linha = {
   id: string; config: Record<string, unknown>; is_active: boolean
