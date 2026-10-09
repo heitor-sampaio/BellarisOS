@@ -226,8 +226,8 @@ function FiltersBar({
         onChange={e => onFiltersChange({ ...filters, situation: e.target.value as FiltersState['situation'] })}
       >
         <option value="all">Todos os leads</option>
-        <option value="not_converted">Não convertidos</option>
-        <option value="converted">Convertidos</option>
+        <option value="not_converted">Ainda não é cliente</option>
+        <option value="converted">Já é cliente</option>
       </select>
 
       {/* Período */}

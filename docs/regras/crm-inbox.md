@@ -185,6 +185,12 @@ conceito não pode ter dois nomes) — no código segue `owner`.
   DE quem PARA quem (até 2026-10-09 a automação gravava sempre "de: —").
   Prova: `e2e/crm-responsavel.spec.ts`.
 
+**O filtro de situação do quadro** é "Já é cliente / Ainda não é cliente"
+(2026-10-09; era "Convertidos / Não convertidos", que se lia como "ganho").
+Olha só se a oportunidade tem um cliente ligado (`leads.client_id`, gravado
+ao cadastrar o cliente pelo card, pelo inbox ou ao agendar pelo CRM) — não a
+etapa nem o desfecho: há card ganho sem cliente e card perdido com cliente.
+
 **Nome e telefone são da pessoa, e as cópias acompanham** (2026-09-28). A conversa
 e a oportunidade guardam cópia, e a edição em qualquer
 um dos dois lugares — painel do inbox (`atualizarContato`) ou card da

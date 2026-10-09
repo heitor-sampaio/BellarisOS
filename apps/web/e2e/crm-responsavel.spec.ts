@@ -128,3 +128,19 @@ test('quem tem "só os meus" VÊ o responsável, mas não troca', async ({ brows
     expect(r.texto).toContain('"pode":false')
   })
 })
+
+// "Convertido" se lia como "ganho", e o filtro só olha se a oportunidade tem um
+// CLIENTE ligado (leads.client_id) — não a etapa. A tela diz isso (2026-10-09).
+test('o filtro de situação fala de cliente, não de "convertido"', async ({ browser }) => {
+  await lead('Sem Cadastro Sara', gestor.userId)
+  await como(browser, gestor, async p => {
+    await p.goto(quadro())
+    const filtro = p.locator('select.filtro-select', { has: p.locator('option[value="converted"]') })
+    await expect(filtro.locator('option')).toHaveText(['Todos os leads', 'Ainda não é cliente', 'Já é cliente'])
+    await expect(card(p, 'Sem Cadastro Sara')).toBeVisible()
+    await filtro.selectOption({ label: 'Já é cliente' })
+    await expect(card(p, 'Sem Cadastro Sara')).toHaveCount(0)
+    await filtro.selectOption({ label: 'Ainda não é cliente' })
+    await expect(card(p, 'Sem Cadastro Sara')).toBeVisible()
+  })
+})

@@ -1313,6 +1313,11 @@ toda a tela: filtro do quadro, filtros do inbox ("Responsável", "Sem
 responsável") e a busca universal ("sem responsável"); o código segue
 `owner`. Prova: `e2e/crm-responsavel.spec.ts`.
 
+No mesmo dia, o filtro de situação do quadro passou de "Convertidos / Não
+convertidos" para "Já é cliente / Ainda não é cliente": ele olha só se a
+oportunidade tem um cliente ligado, não se foi ganha — e "convertido" se lia
+como venda fechada.
+
 ### 2026-10-08 — O custo REAL da OpenAI no sistema, rateado por rede
 
 Pedido do Heitor: os valores de custo direto da OpenAI, com rateio por rede.
