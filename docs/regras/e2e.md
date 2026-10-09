@@ -26,6 +26,13 @@ só quando o Heitor pede) continuam no §15 do `CLAUDE.md`.
   derrubava a metade inteira antes do primeiro teste).
   Spec novo com rede própria entra na lista; migrar um compartilhado
   para rede própria é o que encurta a suíte.
+- ⚠️ **A rede de teste "Bellaris" tem conexões REAIS no ar** — desde
+  2026-10-09, o número da API oficial do Heitor (antes, uma caixa gerenciada).
+  Spec que grava numa caixa de WhatsApp da rede real, mesmo "restaurando" no
+  `finally`, troca a credencial de um número no ar e o webhook perde o dono
+  dele no meio da rodada: é numa rede própria (`criarOutraRede`), como o
+  `whatsapp-modo-oficial` passou a ser. E nada de supor que a rede real tem
+  um número padrão.
 - Contra o build, `chamarAcao` lê os manifestos de `.next/server`
   (`E2E_BUILD`, ligado por `playwright.build.config.ts`).
 

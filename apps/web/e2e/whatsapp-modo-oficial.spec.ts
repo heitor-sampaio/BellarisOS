@@ -1,5 +1,7 @@
-import { test, expect } from '@playwright/test'
-import { banco, tenantId } from './apoio/banco'
+import { test, expect, type Page, type Browser } from '@playwright/test'
+import { banco } from './apoio/banco'
+import { criarMembro, type MembroDeTeste } from './apoio/sessao'
+import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 
 /**
  * A escolha entre coexistência e Cloud API é real, não decorativa.
@@ -20,11 +22,34 @@ import { banco, tenantId } from './apoio/banco'
  * pior que falhar: a asserção quebra e a configuração real fica com os valores
  * de teste dentro, sem ninguém ver.
  *
- * Este teste mexe na configuração real da rede, então guarda o estado anterior
- * e devolve no `finally` — a regra é não alterar o que eu não criei.
+ * ⚠️ **Numa rede `[e2e]` própria** (2026-10-09). Até então mexia na caixa
+ * oficial da rede de teste e "restaurava" no `finally` — e a caixa oficial
+ * dela passou a ser o número REAL do Heitor: o formulário gravava token e id
+ * de teste por cima, e o webhook perdia o dono do número no meio da rodada.
+ * Restaurar não basta quando o que se troca está no ar.
  */
 
+test.describe.configure({ mode: 'serial' })
+
 const TAB = '/admin/settings?tab=integrations'
+const marca = Date.now().toString(36)
+let outra: OutraRede
+let membro: MembroDeTeste
+
+test.beforeAll(async () => {
+  test.setTimeout(240_000)
+  outra = await criarOutraRede(`modo${marca}`)
+  membro = await criarMembro(`modo${marca}`, {
+    tenant: outra.tenantId, rotulo: 'Config', permissoes: [{ modulo: 'settings', nivel: 'MANAGE' }],
+  })
+})
+test.afterAll(async () => {
+  await banco().from('whatsapp_numbers').delete().eq('tenant_id', outra.tenantId)
+  await membro?.limpar()
+  await outra?.limpar()
+})
+/** A página como o membro da rede própria (não como o admin da rede de teste). */
+const comoMembro = async (browser: Browser) => (await browser.newContext({ storageState: membro.estado })).newPage()
 
 type Linha = {
   id: string; config: Record<string, unknown>; is_active: boolean
@@ -35,26 +60,8 @@ const CAMPOS = 'id, config, is_active, label, phone_number_id, waba_id'
 
 async function caixaOficial(): Promise<Linha | null> {
   const { data } = await banco().from('whatsapp_numbers')
-    .select(CAMPOS).eq('provider', 'official').eq('tenant_id', await tenantId()).not('label', 'like', '[e2e]%').maybeSingle<Linha>()
+    .select(CAMPOS).eq('provider', 'official').eq('tenant_id', outra.tenantId).maybeSingle<Linha>()
   return data ?? null
-}
-
-/** Devolve a linha exatamente como estava — inclusive a ausência dela. */
-async function restaurar(antes: Linha | null) {
-  const db = banco()
-  if (antes) {
-    await db.from('whatsapp_numbers').update({
-      config:          antes.config,
-      is_active:       antes.is_active,
-      label:           antes.label,
-      phone_number_id: antes.phone_number_id,
-      waba_id:         antes.waba_id,
-    }).eq('id', antes.id)
-  } else {
-    // Só a da rede real: sem o filtro, apagava a caixa oficial das redes [e2e]
-    // dos specs que rodam ao lado.
-    await db.from('whatsapp_numbers').delete().eq('provider', 'official').eq('tenant_id', await tenantId()).not('label', 'like', '[e2e]%')
-  }
 }
 
 /**
@@ -65,7 +72,7 @@ async function restaurar(antes: Linha | null) {
  * era a primeira coisa do cartão. Não é detalhe de teste: é o fluxo real, e foi
  * a falta desse botão que quebrou estas três specs quando a lista entrou.
  */
-async function abrirOficial(page: import('@playwright/test').Page) {
+async function abrirOficial(page: Page) {
   const caixa = await caixaOficial()
   await page.goto(TAB)
   await page.waitForLoadState('networkidle')
@@ -85,7 +92,8 @@ async function abrirOficial(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: /WhatsApp Oficial/ }).first().click()
 }
 
-test('os dois modos aparecem, e cada um explica o que significa', async ({ page }) => {
+test('os dois modos aparecem, e cada um explica o que significa', async ({ browser }) => {
+  const page = await comoMembro(browser)
   await abrirOficial(page)
 
   const coexistencia = page.getByRole('button', { name: 'Coexistência', exact: true })
@@ -104,13 +112,17 @@ test('os dois modos aparecem, e cada um explica o que significa', async ({ page 
   await expect(page.getByText(/PARA de funcionar com esse número/)).toBeVisible()
 })
 
-test('o modo escolhido é gravado junto com a credencial', async ({ page }) => {
-  const antes = await caixaOficial()
-
-  try {
+test('o modo escolhido é gravado junto com a credencial', async ({ browser }) => {
+  const page = await comoMembro(browser)
+  {
     await abrirOficial(page)
 
     await page.getByRole('button', { name: 'Cloud API', exact: true }).click()
+
+    // Rede sem caixa: com o cadastro pela Meta disponível, a credencial colada
+    // à mão fica no "avançado" recolhido (o caminho de quem tem app próprio).
+    const avancado = page.getByText(/credenciais de um app próprio da Meta \(avançado\)/)
+    if (await avancado.count()) await avancado.click()
 
     // O formulário só salva com as credenciais preenchidas.
     await page.locator('input[name="wabaId"]').fill('[e2e] waba')
@@ -131,16 +143,16 @@ test('o modo escolhido é gravado junto com a credencial', async ({ page }) => {
     expect(depois?.phone_number_id,
       'o id do número é a chave de roteamento, não um detalhe do formulário',
     ).toBe('[e2e] phone')
-  } finally {
-    await restaurar(antes)
   }
 })
 
-test('quem já tem configuração volta no modo que escolheu', async ({ page }) => {
+test('quem já tem configuração volta no modo que escolheu', async ({ browser }) => {
+  const page = await comoMembro(browser)
+  // A caixa que o caso anterior gravou (os casos rodam em série).
   const antes = await caixaOficial()
-  test.skip(!antes, 'a rede não tem caixa oficial para reabrir')
+  expect(antes, 'o caso anterior gravou a caixa oficial').not.toBeNull()
 
-  try {
+  {
     await banco().from('whatsapp_numbers')
       .update({ config: { ...antes!.config, modo: 'cloud_api' } })
       .eq('id', antes!.id)
@@ -149,7 +161,5 @@ test('quem já tem configuração volta no modo que escolheu', async ({ page }) 
 
     // Reabriu no modo gravado, não no padrão.
     await expect(page.getByText(/número passa a viver só no sistema/i)).toBeVisible()
-  } finally {
-    await restaurar(antes)
   }
 })

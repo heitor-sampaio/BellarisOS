@@ -27,10 +27,20 @@ type Linha = { id: string }
 test.describe('whatsapp_numbers: o banco recusa o ambíguo', () => {
   test('duas linhas não podem ser o padrão da mesma rede', async () => {
     const db = banco()
-    const tenant = await tenantId()
+    // Numa rede própria, com o padrão posto aqui: a rede de teste deixou de ter
+    // padrão quando o Heitor trocou os números dela (2026-10-09), e o teste
+    // contava com o de lá.
+    const outra = await criarOutraRede(`pad${Date.now().toString(36)}`)
+    const tenant = outra.tenantId
     const criadas: string[] = []
 
     try {
+      const { data: p0, error: erroP0 } = await db.from('whatsapp_numbers')
+        .insert({ tenant_id: tenant, provider: 'uazapi', label: `${PREFIXO} caixa padrão`, is_default: true })
+        .select('id').single<Linha>()
+      expect(erroP0, 'a rede ganha o seu padrão').toBeNull()
+      criadas.push(p0!.id)
+
       const { data: a, error: erroA } = await db.from('whatsapp_numbers')
         .insert({
           tenant_id: tenant, provider: 'uazapi',
@@ -50,6 +60,7 @@ test.describe('whatsapp_numbers: o banco recusa o ambíguo', () => {
       ).toBe('23505')
     } finally {
       if (criadas.length) await db.from('whatsapp_numbers').delete().in('id', criadas)
+      await outra.limpar()
     }
   })
 
@@ -165,7 +176,7 @@ test.describe('whatsapp_numbers: o banco recusa o ambíguo', () => {
     }
   })
 
-  test('a migração elegeu como padrão a mesma linha que o sistema já usava', async () => {
+  test('a rede de teste tem no máximo um número padrão', async () => {
     const db = banco()
     const { data, error } = await db.from('whatsapp_numbers')
       .select('id, provider, is_active, is_default')
@@ -180,9 +191,11 @@ test.describe('whatsapp_numbers: o banco recusa o ambíguo', () => {
     // `data[0]`. Se a migração tivesse elegido outra linha, no dia em que ela
     // rodou a rede teria passado a falar por um número diferente sem ninguém
     // ter pedido.
+    // A eleição da migração (2026-09-25) foi conferida enquanto as linhas eram
+    // as daquele dia. Desde que o Heitor trocou os números da rede de teste
+    // (2026-10-09) o que sobra para conferir aqui é a garantia: no MÁXIMO um
+    // padrão — ficar sem nenhum é estado que a tela avisa, não erro do banco.
     const padroes = data!.filter(n => n.is_default)
-    expect(padroes.length, 'a rede precisa de exatamente um padrão').toBe(1)
-    expect(padroes[0]!.id, 'o padrão tem de ser a linha que o desempate antigo escolhia')
-      .toBe(data![0]!.id)
+    expect(padroes.length, 'a rede tem no máximo um padrão').toBeLessThanOrEqual(1)
   })
 })
