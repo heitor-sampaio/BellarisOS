@@ -1301,6 +1301,14 @@ sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
 ### 2026-10-09 — O nome do número, escolhido ao conectar
 
+**Suíte completa verde depois de tudo de 2026-10-09** (run 37983381064):
+294 isolados + 398 compartilhados, 3 pulados — com o responsável da
+oportunidade, os filtros do quadro, os templates pelos números e o nome do
+número. As duas rodadas antes dela pegaram só ambiente: specs que liam a
+caixa uazapi real da rede de teste (saiu com a troca de números), as chaves
+da OpenAI de custo que o workflow não tinha, e o cartão do WhatsApp que o
+teste fechava ao tentar abrir.
+
 Pedido do Heitor: o número aparecia pelo id técnico ("1372302949310529") nos
 templates. Agora "Novo número" começa pelo campo "Nome do número" (Recepção,
 Comercial…), que vale para os quatro jeitos de conectar — WhatsApp Web
