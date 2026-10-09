@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition, useMemo, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -8,8 +8,9 @@ import {
 } from 'lucide-react'
 import {
   saveTemplate, submitTemplate, deleteTemplate, syncTemplates,
-  type MessageTemplate, type TemplateInput,
+  type MessageTemplate, type TemplateInput, type NumeroDoTemplate,
 } from '@/actions/message-templates'
+import { PickerCompacto } from '@/components/shared/picker-compacto'
 import {
   CATEGORIAS, STATUS_META, LIMITES, extrairVariaveis, interpolar, normalizarNome,
   type TemplateButton, type TemplateCategoria, type TemplateStatus,
@@ -43,11 +44,13 @@ function StatusChip({ status }: { status: TemplateStatus }) {
 }
 
 /** Rascunho vazio — corpo já com uma variável, que é o caso comum. */
-function novoRascunho(): TemplateInput {
+function novoRascunho(numeros: NumeroDoTemplate[]): TemplateInput {
   return {
     name: '', category: 'UTILITY', language: 'pt_BR',
     header_text: null, body_text: '', footer_text: null,
     buttons: [], example_values: {},
+    // Com um número só não há o que escolher; com mais, a pessoa escolhe.
+    numeroId: numeros.length === 1 ? numeros[0]!.id : '',
   }
 }
 
@@ -165,16 +168,19 @@ function Aviso({ tom, children }: { tom: 'erro' | 'ok' | 'espera'; children: Rea
 // --- Tela --------------------------------------------------------------------
 
 export function TemplatesManager({
-  initial, oficialAtivo, temWaba, podeEditar,
+  initial, numeros, podeEditar,
 }: {
-  initial:      MessageTemplate[]
-  oficialAtivo: boolean
-  temWaba:      boolean
-  podeEditar:   boolean
+  initial:    MessageTemplate[]
+  /** Os números oficiais LIGADOS. Sem nenhum, não há template para ver nem criar. */
+  numeros:    NumeroDoTemplate[]
+  podeEditar: boolean
 }) {
   const router = useRouter()
+  const idNumero = useId()
   const [selId,  setSelId]  = useState<string | 'novo' | null>(null)
-  const [form,   setForm]   = useState<TemplateInput>(novoRascunho)
+  const [form,   setForm]   = useState<TemplateInput>(() => novoRascunho(numeros))
+  /** O filtro da lista: o id de um número, ou '' para todos. */
+  const [filtroNumero, setFiltroNumero] = useState('')
   const [erros,  setErros]  = useState<string[]>([])
   const [aviso,  setAviso]  = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -183,6 +189,14 @@ export function TemplatesManager({
   const selecionado = initial.find(t => t.id === selId) ?? null
   // Nome, idioma e categoria são imutáveis na Meta depois da submissão.
   const jaSubmetido = !!selecionado?.meta_template_id
+  // Importado da Meta e que o sistema não envia: só se olha (e se apaga).
+  const somenteLeitura = !!selecionado?.nao_suportado
+  const editavel = podeEditar && !somenteLeitura
+
+  /** O template é da CONTA; "os números dele" são os ligados dessa conta. */
+  const numerosDaConta = (waba: string | null) => numeros.filter(n => n.wabaId === waba)
+  const wabaDoFiltro = numeros.find(n => n.id === filtroNumero)?.wabaId
+  const lista = wabaDoFiltro ? initial.filter(t => t.waba_id === wabaDoFiltro) : initial
 
   const variaveis = useMemo(
     () => extrairVariaveis(form.header_text, form.body_text),
@@ -191,7 +205,7 @@ export function TemplatesManager({
 
   function abrir(t: MessageTemplate | 'novo') {
     setErros([]); setAviso(null)
-    if (t === 'novo') { setSelId('novo'); setForm(novoRascunho()) }
+    if (t === 'novo') { setSelId('novo'); setForm(novoRascunho(numeros)) }
     else              { setSelId(t.id);   setForm(paraInput(t)) }
   }
 
@@ -260,23 +274,34 @@ export function TemplatesManager({
     })
   }
 
+  // Sem número oficial ligado não há template para ver, editar nem criar
+  // (pedido do Heitor, 2026-10-09): o catálogo é da conta de um número.
+  if (numeros.length === 0) {
+    return (
+      <Aviso tom="espera">
+        Conecte um número da API oficial do WhatsApp para ver e criar templates. Ao
+        conectar, os templates que a conta já tem na Meta vêm junto.{' '}
+        <Link href="/admin/settings?tab=integrations" style={{ color: 'inherit', fontWeight: 800 }}>
+          Ir para as integrações →
+        </Link>
+      </Aviso>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {!oficialAtivo && (
-        <Aviso tom="erro">
-          Templates são um recurso da <strong>API oficial do WhatsApp</strong>. A rede está
-          sem ela conectada — pelo WhatsApp Web não existe janela de 24 horas para contornar,
-          então o envio normal já resolve.{' '}
-          <Link href="/admin/settings?tab=integrations" style={{ color: 'inherit', fontWeight: 800 }}>
-            Ver integrações →
-          </Link>
-        </Aviso>
-      )}
-      {oficialAtivo && !temWaba && (
-        <Aviso tom="espera">
-          Falta o <strong>ID da conta do WhatsApp Business (WABA)</strong> nas integrações.
-          Dá para escrever e guardar templates, mas não para enviar à Meta sem ele.
-        </Aviso>
+      {numeros.length > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <PickerCompacto
+            rotuloBotao={numeros.find(n => n.id === filtroNumero)?.label ?? 'Número'}
+            opcoes={[{ valor: '', rotulo: 'Todos os números' }, ...numeros.map(n => ({ valor: n.id, rotulo: n.label }))]}
+            selecionadas={[filtroNumero]}
+            textoListaVazia=""
+            marcadorQuadrado
+            classeBotao={filtroNumero ? 'filtro-toggle is-ativo' : 'filtro-toggle'}
+            onEscolher={setFiltroNumero}
+          />
+        </div>
       )}
 
       {/* `master-detail` já empilha e vira largura cheia abaixo de 900px — mas
@@ -296,26 +321,28 @@ export function TemplatesManager({
                 <Plus size={14} /> Novo
               </button>
             )}
-            {podeEditar && oficialAtivo && (
+            {podeEditar && (
               <button type="button" onClick={sincronizar} disabled={isSync} className="btn-ghost"
-                title="Reler os status na Meta"
+                title="Reler as contas na Meta (status e templates novos)"
                 style={{ height: 34, padding: '0 10px' }}>
                 <RefreshCw size={14} className={isSync ? 'animate-spin' : undefined} />
               </button>
             )}
           </div>
 
-          {initial.length === 0 ? (
+          {lista.length === 0 ? (
             <p style={{ padding: 20, fontSize: 'var(--text-sm-sz)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
-              Nenhum template ainda. Eles servem para retomar conversa que passou de
-              24 horas — lembrete de consulta, retorno, resposta a quem sumiu.
+              {initial.length === 0
+                ? 'Nenhum template ainda. Eles servem para retomar conversa que passou de 24 horas — lembrete de consulta, retorno, resposta a quem sumiu.'
+                : 'Nenhum template neste número.'}
             </p>
-          ) : initial.map(t => {
+          ) : lista.map(t => {
             const ativo = t.id === selId
             return (
               <button
                 key={t.id}
                 type="button"
+                data-template={t.name}
                 onClick={() => abrir(t)}
                 style={{
                   width: '100%', textAlign: 'left', cursor: 'pointer',
@@ -340,6 +367,13 @@ export function TemplatesManager({
                 }}>
                   {t.body_text}
                 </p>
+                <p style={{
+                  margin: '3px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', fontWeight: 600,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {numerosDaConta(t.waba_id).map(n => n.label).join(' · ')}
+                  {t.nao_suportado && ' · só leitura'}
+                </p>
               </button>
             )
           })}
@@ -355,6 +389,11 @@ export function TemplatesManager({
           </div>
         ) : (
           <div className="card" style={{ flex: 1, minWidth: 0, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {somenteLeitura && (
+              <Aviso tom="espera">
+                Este template veio da Meta e não dá para enviar pelo BellarisOS. {selecionado!.nao_suportado}
+              </Aviso>
+            )}
             {selecionado?.status === 'REJECTED' && (
               <Aviso tom="erro">
                 A Meta recusou este template
@@ -382,12 +421,34 @@ export function TemplatesManager({
                 mostra como a mensagem chega. */}
             <div className="tpl-editor">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* O número (a conta) em que o template vive: escolhido ao
+                    criar, quando há mais de um; fixo depois. */}
+                {selId === 'novo' && numeros.length > 1 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <label htmlFor={idNumero} className="overline" style={{ color: 'var(--text-muted)' }}>Número do WhatsApp</label>
+                    <select id={idNumero} className="field" value={form.numeroId ?? ''}
+                      onChange={e => set('numeroId', e.target.value)}>
+                      <option value="" disabled>Escolha o número</option>
+                      {numeros.map(n => <option key={n.id} value={n.id}>{n.label}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <span className="overline" style={{ color: 'var(--text-muted)' }}>Número do WhatsApp</span>
+                    <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text)', fontWeight: 600 }}>
+                      {(selId === 'novo'
+                        ? numeros
+                        : numerosDaConta(selecionado?.waba_id ?? null)).map(n => n.label).join(' · ')}
+                    </span>
+                  </div>
+                )}
+
                 <Campo
                   label="Nome"
                   value={form.name}
                   onChange={v => set('name', v)}
                   placeholder="lembrete_consulta"
-                  disabled={!podeEditar || jaSubmetido}
+                  disabled={!editavel || jaSubmetido}
                   hint={jaSubmetido
                     ? 'Não dá para mudar: a Meta identifica o template por este nome.'
                     : form.name && normalizarNome(form.name) !== form.name
@@ -404,11 +465,11 @@ export function TemplatesManager({
                         <button
                           key={c.value}
                           type="button"
-                          disabled={!podeEditar || jaSubmetido}
+                          disabled={!editavel || jaSubmetido}
                           onClick={() => set('category', c.value as TemplateCategoria)}
                           style={{
                             flex: 1, padding: '8px 10px', borderRadius: 9,
-                            cursor: podeEditar && !jaSubmetido ? 'pointer' : 'default',
+                            cursor: editavel && !jaSubmetido ? 'pointer' : 'default',
                             border: ativo ? '2px solid var(--brand)' : '1.5px solid var(--border)',
                             background: ativo ? 'var(--brand-soft)' : 'var(--bg-app)',
                             color: ativo ? 'var(--brand)' : 'var(--text-muted)',
@@ -429,7 +490,7 @@ export function TemplatesManager({
                   <label className="overline" style={{ color: 'var(--text-muted)' }}>Idioma</label>
                   <select
                     value={form.language}
-                    disabled={!podeEditar || jaSubmetido}
+                    disabled={!editavel || jaSubmetido}
                     onChange={e => set('language', e.target.value)}
                     className="field"
                     style={{ fontSize: 'var(--text-base-sz)' }}
@@ -444,7 +505,7 @@ export function TemplatesManager({
                   onChange={v => set('header_text', v || null)}
                   placeholder="Sua consulta está chegando"
                   max={LIMITES.cabecalho}
-                  disabled={!podeEditar}
+                  disabled={!editavel}
                   hint="Uma linha em negrito no topo. Aceita no máximo uma variável."
                 />
 
@@ -456,9 +517,9 @@ export function TemplatesManager({
                     placeholder="Olá, {{nome}}! Passando para lembrar do seu horário em {{data}}."
                     max={LIMITES.corpo}
                     multiline
-                    disabled={!podeEditar}
+                    disabled={!editavel}
                   />
-                  {podeEditar && (
+                  {editavel && (
                     <button type="button" onClick={inserirVariavel} className="btn-ghost"
                       style={{ alignSelf: 'flex-start', height: 28, fontSize: 'var(--text-xs-sz)', padding: '0 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
                       <Braces size={12} /> Inserir variável
@@ -472,7 +533,7 @@ export function TemplatesManager({
                   onChange={v => set('footer_text', v || null)}
                   placeholder="Responda SAIR para não receber mais"
                   max={LIMITES.rodape}
-                  disabled={!podeEditar}
+                  disabled={!editavel}
                   hint="Linha pequena e cinza no fim. Não aceita variáveis."
                 />
 
@@ -485,7 +546,7 @@ export function TemplatesManager({
                     <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <select
                         value={b.type}
-                        disabled={!podeEditar}
+                        disabled={!editavel}
                         onChange={e => {
                           const tipo = e.target.value as TemplateButton['type']
                           set('buttons', form.buttons.map((x, j) =>
@@ -499,7 +560,7 @@ export function TemplatesManager({
                       </select>
                       <input
                         value={b.text}
-                        disabled={!podeEditar}
+                        disabled={!editavel}
                         onChange={e => set('buttons', form.buttons.map((x, j) => j === i ? { ...x, text: e.target.value } : x))}
                         placeholder="Texto do botão"
                         className="field"
@@ -508,14 +569,14 @@ export function TemplatesManager({
                       {b.type === 'URL' && (
                         <input
                           value={b.url ?? ''}
-                          disabled={!podeEditar}
+                          disabled={!editavel}
                           onChange={e => set('buttons', form.buttons.map((x, j) => j === i ? { ...x, url: e.target.value } : x))}
                           placeholder="https://"
                           className="field"
                           style={{ fontSize: 'var(--text-sm-sz)', flex: 1 }}
                         />
                       )}
-                      {podeEditar && (
+                      {editavel && (
                         <button type="button" onClick={() => set('buttons', form.buttons.filter((_, j) => j !== i))}
                           className="btn-ghost" style={{ height: 30, padding: '0 8px' }}>
                           <X size={13} />
@@ -523,7 +584,7 @@ export function TemplatesManager({
                       )}
                     </div>
                   ))}
-                  {podeEditar && form.buttons.length < LIMITES.botoes && (
+                  {editavel && form.buttons.length < LIMITES.botoes && (
                     <button type="button" className="btn-ghost"
                       onClick={() => set('buttons', [...form.buttons, { type: 'QUICK_REPLY', text: '' }])}
                       style={{ alignSelf: 'flex-start', height: 28, fontSize: 'var(--text-xs-sz)', padding: '0 10px' }}>
@@ -559,7 +620,7 @@ export function TemplatesManager({
                         </code>
                         <input
                           value={form.example_values[v] ?? ''}
-                          disabled={!podeEditar}
+                          disabled={!editavel}
                           onChange={e => set('example_values', { ...form.example_values, [v]: e.target.value })}
                           placeholder="Ex.: Ana"
                           className="field"
@@ -578,15 +639,16 @@ export function TemplatesManager({
                 display: 'flex', gap: 8, alignItems: 'center',
                 borderTop: '1px solid var(--hairline)', paddingTop: 14,
               }}>
-                <button type="button" onClick={() => salvar()} disabled={isPending} className="btn-primary">
-                  {isPending ? 'Salvando…' : 'Salvar'}
-                </button>
+                {!somenteLeitura && (
+                  <button type="button" onClick={() => salvar()} disabled={isPending} className="btn-primary">
+                    {isPending ? 'Salvando…' : 'Salvar'}
+                  </button>
+                )}
 
-                {!jaSubmetido && (
+                {!jaSubmetido && !somenteLeitura && (
                   <button type="button" onClick={enviarParaAprovacao}
-                    disabled={isPending || !oficialAtivo || !temWaba}
+                    disabled={isPending}
                     className="btn-ghost"
-                    title={!temWaba ? 'Falta o ID da WABA nas integrações' : undefined}
                     style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Send size={14} /> Enviar para aprovação
                   </button>

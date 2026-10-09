@@ -11,6 +11,7 @@ import { enderecoPublico } from '@/lib/whatsapp/endereco-publico'
 import { mascararSegredos, mesclarSegredos } from '@/lib/integracoes/sem-segredo'
 import { conectarPeloCadastro } from '@/lib/whatsapp/cadastro-incorporado'
 import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
+import { acompanharCatalogos } from '@/lib/templates/catalogo'
 
 export interface IntegrationConfig {
   id:         string
@@ -50,7 +51,7 @@ export async function salvarNumeroWhatsApp(
   // Quem fala pelo número NÃO entra aqui: é `atualizarVinculosDoNumero`, a
   // única escrita em `whatsapp_number_users`.
   extras?:   { rotulo?: string; branchId?: string | null },
-): Promise<{ ok: boolean; numeroId?: string; error?: string }> {
+): Promise<{ ok: boolean; numeroId?: string; error?: string; avisos?: string[] }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
 
@@ -63,7 +64,7 @@ export async function salvarNumeroWhatsApp(
   const anterior = numeroId
     ? await ler(admin
         .from('whatsapp_numbers')
-        .select('id, is_active, label, config')
+        .select('id, is_active, label, config, waba_id')
         .eq('id', numeroId)
         .eq('tenant_id', ctx.tenantId!)
         .maybeSingle(), 'buscar a caixa de WhatsApp')
@@ -101,8 +102,13 @@ export async function salvarNumeroWhatsApp(
         ? integracaoConectada(provider, ctx, anterior!.label as string, anterior!.id as string)
         : integracaoDesconectada(provider, ctx, 'pedido', anterior!.label as string, anterior!.id as string))
     }
+    // Ligar puxa os templates da conta; desligar tira os da conta que ficou
+    // sem número (lib/templates/catalogo.ts).
+    const { avisos } = await acompanharCatalogos(ctx.tenantId!,
+      isActive && !anterior?.is_active ? [anterior!.waba_id as string | null] : [])
     revalidatePath('/admin/settings')
-    return { ok: true, numeroId: anterior!.id as string }
+    revalidatePath('/admin/templates')
+    return { ok: true, numeroId: anterior!.id as string, avisos }
   }
 
   const rotulo = extras?.rotulo?.trim()
@@ -142,8 +148,18 @@ export async function salvarNumeroWhatsApp(
       : integracaoDesconectada(provider, ctx, 'pedido', rotulo, id))
   }
 
+  // O catálogo de templates acompanha o número oficial: ligado (ou com a conta
+  // trocada), puxa a conta da Meta; desligado, tira os da conta que ficou sem
+  // número. Só daqui — na Meta não se apaga nada.
+  let avisos: string[] = []
+  if (provider === 'official') {
+    const contaNova = isActive && (!anterior?.is_active || anterior?.waba_id !== campos.waba_id)
+    avisos = (await acompanharCatalogos(ctx.tenantId!, contaNova ? [campos.waba_id] : [])).avisos
+    revalidatePath('/admin/templates')
+  }
+
   revalidatePath('/admin/settings')
-  return { ok: true, numeroId: id }
+  return { ok: true, numeroId: id, avisos }
 }
 
 /**
@@ -219,8 +235,11 @@ export async function conectarWhatsAppPelaMeta(pedido: {
   if (!r.ok) return r
 
   await integracaoConectada('official', ctx, r.rotulo, r.numeroId)
+  // Conectou: os templates que a conta já tem na Meta vêm junto.
+  const catalogo = await acompanharCatalogos(ctx.tenantId!, [pedido.wabaId])
   revalidatePath('/admin/settings')
-  return { ok: true, numeroId: r.numeroId, avisos: r.avisos }
+  revalidatePath('/admin/templates')
+  return { ok: true, numeroId: r.numeroId, avisos: [...r.avisos, ...catalogo.avisos] }
 }
 
 /**
@@ -664,6 +683,10 @@ export async function removerNumeroWhatsApp(
 
   const { error } = await admin.from('whatsapp_numbers').delete().eq('id', numeroId)
   if (error) return { ok: false, error: error.message }
+
+  // Os templates da conta que ficou sem número saem daqui (na Meta ficam).
+  await acompanharCatalogos(ctx.tenantId!)
+  revalidatePath('/admin/templates')
 
   // Ficar sem padrão é estado que a rede precisa resolver, e o sistema avisa em
   // vez de eleger um sozinho — eleger seria o `data[0]` de novo, com outro nome.

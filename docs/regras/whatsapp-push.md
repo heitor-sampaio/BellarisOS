@@ -128,6 +128,31 @@ número: escopar por número duplicaria o catálogo e faria submeter o mesmo nom
 duas vezes à Meta, que recusa por colisão. Oferecer um template de outra conta
 dá 404 no clique; lista vazia é melhor resposta.
 
+**O catálogo SEGUE os números oficiais ligados** (2026-10-09, pedido do Heitor;
+`lib/templates/catalogo.ts`). Sem número oficial ligado, a tela de templates
+não mostra, não edita e não cria nada — e a lista só traz os das contas com
+número ligado.
+- **Ligar um número puxa da Meta tudo o que a conta dele tem**
+  (`importarCatalogoDaWaba`, com o conteúdo): no cadastro pela Meta
+  (`conectarWhatsAppPelaMeta`), ao ligar a caixa ou trocar a conta
+  (`salvarNumeroWhatsApp`). Falha da Meta NÃO desfaz a conexão: vira aviso, e
+  o "Sincronizar" da tela faz o mesmo caminho (status + os criados no painel).
+- **Desligar ou remover tira DAQUI os templates da conta que ficou sem número
+  ligado** (`limparCatalogosSemNumero`) — inclusive rascunhos. Na Meta nada se
+  apaga (ligar de novo os traz); apagar na Meta é só o botão "Apagar" de um
+  template. Dois números da mesma conta: desligar um não apaga nada.
+- **"De qual número é"** é a conta: a lista mostra os números ligados da conta
+  do template e filtra por número (pela conta dele); o template novo nasce na
+  conta do número escolhido (com um só, ele). Toda conversa com a Meta sobre um
+  template usa a credencial de um número ligado DA CONTA dele (`configDaWaba`),
+  nunca "a config oficial da rede".
+- **O importado que o sistema não envia entra marcado** (`nao_suportado`, o
+  motivo; `lib/templates/importar.ts`): cabeçalho de mídia, variáveis
+  numeradas, botão de telefone/código/link com variável, autenticação,
+  carrossel. A tela o mostra só leitura (apaga-se, não se edita), e o inbox não
+  o oferece nem o envia. Prova: `e2e/templates-por-numero.spec.ts` e
+  `tests/templates-importar.test.ts`.
+
 ⚠️ **Credencial de integração não vai ao navegador** (2026-10-03). O que a
 tela de integrações recebe passa por `mascararSegredos`
 (`lib/integracoes/sem-segredo.ts`, lista FECHADA de chaves secretas, também
@@ -229,6 +254,10 @@ servidor), e a escolha da tela vira o `featureType` —
 ❌ Pedir à Meta a sincronização da coexistência antes de gravar a caixa (o histórico chega uma vez só)
 ❌ Importar histórico ou mensagem do aplicativo emitindo evento de conversa (dispara automação para o passado) ou sem importada = true
 ❌ Gravar o formulário manual por cima da caixa do cadastro incorporado (apaga o token da Meta)
+❌ Falar com a Meta sobre um template pela "config oficial da rede" — é configDaWaba(template.waba_id)
+❌ Ligar, desligar ou remover um número oficial sem acompanharCatalogos (o catálogo fica de outra conta)
+❌ Apagar template NA META ao desligar um número (só daqui; na Meta é o "Apagar" do template)
+❌ Oferecer ou enviar template com nao_suportado (a Meta recusa ou o cliente recebe {{1}})
 ❌ Pedir o estado da conexão gerenciada sem dizer QUAL caixa (era o "Adicionar número" que reabria a conectada) — null é conexão nova
 ❌ Mostrar "uazapi" à clínica (tela, aviso, erro que chega à tela) — é "WhatsApp Web", por nomeDoProvedor; o nome fica no código e nos dados
 ❌ E2E que cria instância gerenciada contra a uazapi real (cada uma é cobrada) — é a falsa, UAZAPI_BASE_URL na porta 3197

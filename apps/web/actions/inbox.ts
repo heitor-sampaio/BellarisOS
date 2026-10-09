@@ -1724,6 +1724,8 @@ export async function getTemplatesParaConversa(
     .eq('tenant_id', ctx.tenantId!)
     .eq('waba_id', numero.wabaId)
     .eq('status', 'APPROVED')
+    // O importado que o sistema não monta (mídia, {{1}}…) não se oferece.
+    .is('nao_suportado', null)
     .order('name')
 
   if (error) { console.error('[getTemplatesParaConversa]', error.message); return [] }
@@ -1790,7 +1792,7 @@ export async function sendTemplateMessage(
 
   const { data: tpl, error: erroTpl } = await admin
     .from('message_templates')
-    .select('id, name, language, status, header_text, body_text, footer_text, waba_id')
+    .select('id, name, language, status, header_text, body_text, footer_text, waba_id, nao_suportado')
     .eq('id', templateId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -1805,6 +1807,8 @@ export async function sendTemplateMessage(
   if (t.status !== 'APPROVED') {
     return { ok: false, error: 'Este template ainda não foi aprovado pela Meta.' }
   }
+  const naoSuportado = (tpl as { nao_suportado: string | null }).nao_suportado
+  if (naoSuportado) return { ok: false, error: naoSuportado }
 
   // Variável em branco vira um buraco visível na mensagem do cliente
   // ("Olá, , seu horário"). Melhor barrar aqui.

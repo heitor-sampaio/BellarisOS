@@ -1299,6 +1299,23 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-09 — Templates a partir dos números oficiais conectados
+
+Pedido do Heitor, depois de conectar o número da API oficial pelo formulário
+avançado: a tela de templates passa a depender de ter número oficial ligado,
+e o catálogo acompanha os números. Sem número oficial ligado, a tela só manda
+conectar. Ligar um número puxa da Meta todos os templates da conta dele (com
+o conteúdo); desligar ou remover tira do BellarisOS os da conta que ficou sem
+número — na Meta continuam, e ligar de novo os traz. A lista diz de qual
+número é cada template e filtra por número; com mais de um número, o novo
+template nasce no escolhido. O catálogo segue sendo da conta (WABA): dois
+números da mesma conta dividem os templates. O que a Meta tem e o sistema não
+envia (cabeçalho com imagem, `{{1}}`, botão de telefone…) entra só leitura,
+com o motivo, e o inbox não o oferece. Junto, um defeito que existia: com dois
+números em contas diferentes, salvar, enviar e apagar template falavam com a
+conta do número padrão, não com a do template (`configDaWaba`). Provas:
+`e2e/templates-por-numero.spec.ts`, `tests/templates-importar.test.ts`.
+
 ### 2026-10-09 — O responsável da oportunidade, na tela
 
 A automação "Definir responsável" trocava `leads.owner_id`, mas a tela não

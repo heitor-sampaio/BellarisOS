@@ -72,6 +72,9 @@ export const ISOLADOS = [
   'plataforma-gerente.spec.ts',
   'planos-comparativo.spec.ts',
   'vendas-desconto.spec.ts',
+  'crm-responsavel.spec.ts',
+  'templates-por-numero.spec.ts',
+  'whatsapp-modo-oficial.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */

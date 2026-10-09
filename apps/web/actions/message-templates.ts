@@ -3,14 +3,15 @@
 import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getNumerosDaRede } from '@/lib/whatsapp/factory'
-import type { OfficialConfig } from '@/lib/whatsapp/types'
+import {
+  numerosOficiais, configDaWaba, importarCatalogoDaWaba, limparCatalogosSemNumero,
+} from '@/lib/templates/catalogo'
 import {
   validarTemplate, normalizarNome, extrairVariaveis,
   type TemplateRascunho, type TemplateStatus, type TemplateButton, type TemplateCategoria,
 } from '@/lib/templates/core'
 import {
-  criarTemplateNaMeta, editarTemplateNaMeta, apagarTemplateNaMeta, listarTemplatesDaMeta,
+  criarTemplateNaMeta, editarTemplateNaMeta, apagarTemplateNaMeta,
 } from '@/lib/templates/meta-api'
 import { gravar, ler } from '@/lib/db'
 
@@ -29,6 +30,10 @@ export interface MessageTemplate {
   rejection_reason: string | null
   created_at:  string
   submitted_at: string | null
+  /** A conta (WABA) dona do template — é por ela que se sabe de qual número é. */
+  waba_id:     string | null
+  /** Importado da Meta e que o BellarisOS não envia: o motivo (só leitura). */
+  nao_suportado: string | null
 }
 
 export interface TemplateInput {
@@ -41,60 +46,55 @@ export interface TemplateInput {
   footer_text: string | null
   buttons:     TemplateButton[]
   example_values: Record<string, string>
+  /** No template NOVO: o número (oficial, ligado) em cuja conta ele nasce. */
+  numeroId?:   string | null
 }
 
 const CAMPOS = `id, name, category, language, header_text, body_text, footer_text,
                 buttons, example_values, status, meta_template_id, rejection_reason,
-                created_at, submitted_at`
+                created_at, submitted_at, waba_id, nao_suportado`
 
 /**
- * A configuração do WhatsApp oficial desta rede.
- *
- * Template é coisa da API oficial: a uazapi manda pelo WhatsApp Web, que não tem
- * janela de 24h nem aprovação da Meta. Dizer isso explicitamente evita a tela
- * oferecer um recurso que não vai funcionar.
+ * Template é coisa da API oficial: a uazapi manda pelo WhatsApp Web, que não
+ * tem janela de 24h nem aprovação da Meta. E é coisa de UMA conta (WABA): toda
+ * conversa com a Meta usa a credencial de um número ligado da conta do
+ * template (`configDaWaba`), não "a config oficial da rede" — com dois números
+ * em contas diferentes, a de antes falava com a conta errada.
  */
-async function configOficial(tenantId: string): Promise<OfficialConfig | null> {
-  const oficiais = (await getNumerosDaRede(tenantId))
-    .filter(n => n.isActive && n.provider === 'official')
-
-  if (oficiais.length === 0) return null
-
-  // Com UMA caixa oficial não há ambiguidade. Com mais de uma, vale o padrão —
-  // e se nem ele for oficial, esta função não adivinha: o catálogo pertence a
-  // uma WABA, e servir a lista da WABA errada faz o envio dar 404 na Meta sem
-  // explicação. O seletor de WABA na tela é o que resolve isso de fato.
-  const escolhida = oficiais.length === 1
-    ? oficiais[0]!
-    : oficiais.find(n => n.isDefault)
-
-  return (escolhida?.config as OfficialConfig | undefined) ?? null
-}
 
 export async function listTemplates(): Promise<MessageTemplate[]> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'marketing', 'VIEW')
 
+  // Só os das contas com número oficial LIGADO: sem número, a tela não mostra
+  // template nenhum (pedido do Heitor, 2026-10-09).
+  const contas = [...new Set((await numerosOficiais(ctx.tenantId!)).map(n => n.wabaId))]
+  if (contas.length === 0) return []
+
   const { data, error } = await createAdminClient()
     .from('message_templates')
     .select(CAMPOS)
     .eq('tenant_id', ctx.tenantId!)
+    .in('waba_id', contas)
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(`Falha ao carregar os templates: ${error.message}`)
   return (data ?? []) as unknown as MessageTemplate[]
 }
 
-/** A tela precisa saber se dá para submeter, e por que não, quando não dá. */
-export async function getTemplateSetup(): Promise<{
-  oficialAtivo: boolean
-  temWaba:      boolean
-}> {
+export interface NumeroDoTemplate { id: string; label: string; phone: string | null; wabaId: string }
+
+/**
+ * Os números oficiais ligados — a tela escolhe em qual o template nasce, diz de
+ * qual número é cada um e filtra por eles. Sem credencial (rótulo e conta).
+ */
+export async function getTemplateSetup(): Promise<{ numeros: NumeroDoTemplate[] }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'marketing', 'VIEW')
-
-  const config = await configOficial(ctx.tenantId!)
-  return { oficialAtivo: !!config, temWaba: !!config?.wabaId }
+  return {
+    numeros: (await numerosOficiais(ctx.tenantId!))
+      .map(n => ({ id: n.id, label: n.label, phone: n.phone, wabaId: n.wabaId })),
+  }
 }
 
 /**
@@ -129,17 +129,25 @@ export async function saveTemplate(
   if (erros.length > 0) return { ok: false, erros }
 
   if (!input.id) {
-    // O template nasce DENTRO de uma WABA. Sem carimbar aqui, ele ficaria com
-    // `waba_id` nulo e a conversa nunca o ofereceria — o filtro por WABA é
-    // estrito de propósito, e template invisível é pior que template recusado.
-    const config = await configOficial(ctx.tenantId!)
+    // O template nasce DENTRO de uma WABA: a do número escolhido (com um só,
+    // ele). Sem carimbar, a conversa nunca o ofereceria — o filtro por WABA é
+    // estrito. E sem número oficial ligado não há onde nascer.
+    const numeros = await numerosOficiais(ctx.tenantId!)
+    const numero = input.numeroId
+      ? numeros.find(n => n.id === input.numeroId)
+      : numeros.length === 1 ? numeros[0] : undefined
+    if (!numero) {
+      return { ok: false, error: numeros.length
+        ? 'Escolha o número do WhatsApp em que o template vai nascer.'
+        : 'Conecte um número da API oficial em Configurações → Integrações.' }
+    }
 
     const { data, error } = await admin
       .from('message_templates')
       .insert({
         ...rascunho,
         tenant_id:  ctx.tenantId!,
-        waba_id:    config?.wabaId ?? null,
+        waba_id:    numero.wabaId,
         created_by: await membroId(ctx),
       })
       .select('id')
@@ -152,7 +160,7 @@ export async function saveTemplate(
 
   const { data: atual, error: erroAtual } = await admin
     .from('message_templates')
-    .select('status, meta_template_id')
+    .select('status, meta_template_id, waba_id, nao_suportado')
     .eq('id', input.id)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -160,7 +168,9 @@ export async function saveTemplate(
   if (erroAtual) return { ok: false, error: erroAtual.message }
   if (!atual)    return { ok: false, error: 'Template não encontrado.' }
 
-  const jaFoiParaMeta = !!(atual as { meta_template_id: string | null }).meta_template_id
+  const t = atual as { meta_template_id: string | null; waba_id: string | null; nao_suportado: string | null }
+  if (t.nao_suportado) return { ok: false, error: `Este template não se edita pelo BellarisOS: ${t.nao_suportado}` }
+  const jaFoiParaMeta = !!t.meta_template_id
 
   const patch: Record<string, unknown> = {
     header_text: rascunho.header_text,
@@ -187,14 +197,10 @@ export async function saveTemplate(
   // Editar um template que já vive na Meta só vale se a mudança chegar lá —
   // senão a rede edita o texto, a tela mostra o novo e o cliente recebe o velho.
   if (jaFoiParaMeta) {
-    const config = await configOficial(ctx.tenantId!)
-    if (!config) return { ok: false, error: 'WhatsApp oficial não está conectado.' }
+    const config = await configDaWaba(ctx.tenantId!, t.waba_id)
+    if (!config) return { ok: false, error: 'Nenhum número oficial desta conta está conectado.' }
     try {
-      await editarTemplateNaMeta(
-        config,
-        (atual as { meta_template_id: string }).meta_template_id,
-        rascunho,
-      )
+      await editarTemplateNaMeta(config, t.meta_template_id!, rascunho)
       // Toda edição reabre a análise.
       await gravar(admin
         .from('message_templates')
@@ -237,13 +243,14 @@ export async function submitTemplate(
   if (t.meta_template_id) {
     return { ok: false, error: 'Este template já foi enviado. Edite-o para reabrir a análise.' }
   }
+  if (t.nao_suportado) return { ok: false, error: t.nao_suportado }
 
   const erros = validarTemplate(t as unknown as TemplateRascunho)
   if (erros.length > 0) return { ok: false, erros }
 
-  const config = await configOficial(ctx.tenantId!)
+  const config = await configDaWaba(ctx.tenantId!, t.waba_id)
   if (!config) {
-    return { ok: false, error: 'Conecte o WhatsApp Oficial em Configurações → Integrações.' }
+    return { ok: false, error: 'Conecte um número oficial desta conta em Configurações → Integrações.' }
   }
 
   try {
@@ -278,7 +285,8 @@ export async function submitTemplate(
  *
  * A ordem importa: apagar na Meta primeiro. Se só apagássemos aqui, o template
  * continuaria ocupando o nome na conta dela e a rede não conseguiria recriar
- * outro igual — sem entender por quê.
+ * outro igual — sem entender por quê. (Desligar um número é outra coisa: tira
+ * daqui e deixa na Meta — `lib/templates/catalogo.ts`.)
  */
 export async function deleteTemplate(id: string): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
@@ -288,7 +296,7 @@ export async function deleteTemplate(id: string): Promise<{ ok: boolean; error?:
 
   const { data, error } = await admin
     .from('message_templates')
-    .select('name, meta_template_id')
+    .select('name, meta_template_id, waba_id')
     .eq('id', id)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -296,11 +304,11 @@ export async function deleteTemplate(id: string): Promise<{ ok: boolean; error?:
   if (error) return { ok: false, error: error.message }
   if (!data)  return { ok: false, error: 'Template não encontrado.' }
 
-  const t = data as { name: string; meta_template_id: string | null }
+  const t = data as { name: string; meta_template_id: string | null; waba_id: string | null }
 
   if (t.meta_template_id) {
-    const config = await configOficial(ctx.tenantId!)
-    if (!config) return { ok: false, error: 'WhatsApp oficial não está conectado.' }
+    const config = await configDaWaba(ctx.tenantId!, t.waba_id)
+    if (!config) return { ok: false, error: 'Nenhum número oficial desta conta está conectado.' }
     try {
       await apagarTemplateNaMeta(config, t.meta_template_id, t.name)
     } catch (e) {
@@ -321,11 +329,11 @@ export async function deleteTemplate(id: string): Promise<{ ok: boolean; error?:
 }
 
 /**
- * Relê os status na Meta.
+ * Relê as contas na Meta.
  *
  * A aprovação sai em até 24h e não avisa; um template aprovado também pode ser
- * pausado depois, por reclamação de quem recebe. Sem isto a tela mostraria
- * "em análise" para sempre e a rede tentaria enviar o que já não vale.
+ * pausado depois, por reclamação de quem recebe. E o que foi criado direto no
+ * painel da Meta entra aqui também — o mesmo caminho de ligar um número.
  */
 export async function syncTemplates(): Promise<{ ok: boolean; atualizados?: number; error?: string }> {
   const ctx = await getTenantContext()
@@ -333,59 +341,18 @@ export async function syncTemplates(): Promise<{ ok: boolean; atualizados?: numb
   assertPermission(ctx, 'marketing', 'MANAGE')
   const admin = createAdminClient()
 
-  const config = await configOficial(ctx.tenantId!)
-  if (!config) return { ok: false, error: 'WhatsApp oficial não está conectado.' }
-
-  let daMeta
-  try {
-    daMeta = await listarTemplatesDaMeta(config)
-  } catch (e) {
-    return { ok: false, error: msg(e) }
-  }
-
-  const { data: locais, error } = await admin
-    .from('message_templates')
-    .select('id, name, language, status, meta_template_id')
-    .eq('tenant_id', ctx.tenantId!)
-
-  if (error) return { ok: false, error: error.message }
+  const contas = [...new Set((await numerosOficiais(ctx.tenantId!)).map(n => n.wabaId))]
+  if (contas.length === 0) return { ok: false, error: 'Nenhum número da API oficial está conectado.' }
 
   let atualizados = 0
-  for (const local of (locais ?? []) as Array<{
-    id: string; name: string; language: string
-    status: TemplateStatus; meta_template_id: string | null
-  }>) {
-    // Casa pelo id quando existe; pelo par nome+idioma quando o template foi
-    // criado direto no painel da Meta ou o id se perdeu numa falha de gravação.
-    const remoto = local.meta_template_id
-      ? daMeta.find(r => r.id === local.meta_template_id)
-      : daMeta.find(r => r.name === local.name && r.language === local.language)
-
-    if (!remoto) {
-      // Sumiu de lá (apagado pelo painel). Vira rascunho de novo em vez de
-      // continuar oferecido no inbox como se desse para enviar.
-      if (local.meta_template_id) {
-        await gravar(admin.from('message_templates')
-          .update({ status: 'DRAFT', meta_template_id: null })
-          .eq('id', local.id), 'salvar o modelo de mensagem')
-        atualizados++
-      }
-      continue
+  try {
+    for (const waba of contas) {
+      const r = await importarCatalogoDaWaba(admin, ctx.tenantId!, waba)
+      atualizados += r.novos + r.atualizados
     }
-
-    if (remoto.status === local.status && remoto.id === local.meta_template_id) continue
-
-    const { error: erroUp } = await admin
-      .from('message_templates')
-      .update({
-        status:           remoto.status,
-        meta_template_id: remoto.id,
-        rejection_reason: remoto.rejected_reason ?? null,
-      })
-      .eq('id', local.id)
-
-    if (erroUp) console.error('[syncTemplates]', erroUp.message)
-    else atualizados++
+    await limparCatalogosSemNumero(admin, ctx.tenantId!)
+  } catch (e) {
+    return { ok: false, error: msg(e) }
   }
 
   revalidatePath('/admin/templates')
@@ -414,7 +381,7 @@ async function membroId(ctx: Awaited<ReturnType<typeof getTenantContext>>): Prom
 
 function mensagemDeErro(error: { code?: string; message: string }): string {
   if (error.code === '23505') {
-    return 'Já existe um template com esse nome neste idioma.'
+    return 'Já existe um template com esse nome neste idioma, nesta conta.'
   }
   return error.message
 }

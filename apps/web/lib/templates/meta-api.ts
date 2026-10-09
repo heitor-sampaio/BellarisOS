@@ -1,7 +1,17 @@
 import type { OfficialConfig } from '@/lib/whatsapp/types'
 import { montarComponentesMeta, type TemplateRascunho, type TemplateStatus } from './core'
+import type { TemplateDaMetaCompleto } from './importar'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
+
+/**
+ * A Graph da caixa — a da Meta, ou a falsa do E2E (`config.graphBase`, que só
+ * o teste põe; `META_GRAPH_BASE_TESTE` no build de teste). Sem isto, conectar
+ * um número no teste puxaria os templates da Meta de verdade.
+ */
+function graph(config: OfficialConfig): string {
+  return (config.graphBase ?? process.env.META_GRAPH_BASE_TESTE ?? GRAPH).replace(/\/$/, '')
+}
 
 /**
  * Gestão de templates na Graph API.
@@ -83,7 +93,7 @@ export async function criarTemplateNaMeta(
 ): Promise<{ id: string; status: TemplateStatus }> {
   const waba = exigirWaba(config)
 
-  const body = await chamar(`${GRAPH}/${waba}/message_templates`, {
+  const body = await chamar(`${graph(config)}/${waba}/message_templates`, {
     method:  'POST',
     headers: auth(config),
     body: JSON.stringify({
@@ -113,7 +123,7 @@ export async function editarTemplateNaMeta(
   metaTemplateId: string,
   t: TemplateRascunho,
 ): Promise<void> {
-  await chamar(`${GRAPH}/${metaTemplateId}`, {
+  await chamar(`${graph(config)}/${metaTemplateId}`, {
     method:  'POST',
     headers: auth(config),
     body: JSON.stringify({ components: montarComponentesMeta(t) }),
@@ -135,44 +145,30 @@ export async function apagarTemplateNaMeta(
   const waba  = exigirWaba(config)
   const query = new URLSearchParams({ hsm_id: metaTemplateId, name })
 
-  await chamar(`${GRAPH}/${waba}/message_templates?${query}`, {
+  await chamar(`${graph(config)}/${waba}/message_templates?${query}`, {
     method:  'DELETE',
     headers: auth(config),
   })
 }
 
 /**
- * Lista o que a Meta tem hoje.
- *
- * O status muda do lado dela — aprovação sai em até 24h, e um template pode ser
- * pausado depois por reclamação de quem recebe. Sem reler, a tela mostraria
- * "em análise" para sempre.
+ * O catálogo INTEIRO da conta, com o conteúdo (`components`) — o que a
+ * importação ao conectar um número precisa (`lib/templates/catalogo.ts`).
  */
-export async function listarTemplatesDaMeta(
-  config: OfficialConfig,
-): Promise<TemplateNaMeta[]> {
-  const waba   = exigirWaba(config)
-  const campos = 'id,name,status,category,language,rejected_reason'
-  const todos: TemplateNaMeta[] = []
-
-  let url: string | null = `${GRAPH}/${waba}/message_templates?fields=${campos}&limit=100`
-
-  // Paginação por cursor: uma rede com muitos templates não cabe numa página, e
-  // ler só a primeira faria os demais aparecerem como "some da Meta".
+export async function listarCatalogoDaMeta(config: OfficialConfig): Promise<TemplateDaMetaCompleto[]> {
+  const waba = exigirWaba(config)
+  const campos = 'id,name,status,category,language,rejected_reason,components'
+  const todos: TemplateDaMetaCompleto[] = []
+  let url: string | null = `${graph(config)}/${waba}/message_templates?fields=${campos}&limit=100`
   while (url) {
-    const body = await chamar(url, { method: 'GET', headers: auth(config) })
-    for (const t of (body.data ?? [])) {
-      todos.push({
-        id:       String(t.id),
-        name:     t.name,
-        status:   t.status as TemplateStatus,
-        category: t.category,
-        language: t.language,
-        rejected_reason: t.rejected_reason ?? undefined,
-      })
+    const res = await fetch(url, { method: 'GET', headers: auth(config) })
+    const body = await res.json().catch(() => null) as
+      (ErroMeta & { data?: TemplateDaMetaCompleto[]; paging?: { next?: string } }) | null
+    if (!res.ok || body?.error) {
+      throw new Error(body?.error?.error_user_msg ?? body?.error?.message ?? `HTTP ${res.status}`)
     }
-    url = body.paging?.next ?? null
+    todos.push(...(body?.data ?? []))
+    url = body?.paging?.next ?? null
   }
-
   return todos
 }

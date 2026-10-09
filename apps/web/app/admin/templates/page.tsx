@@ -31,8 +31,7 @@ export default async function AdminTemplatesPage() {
 
       <TemplatesManager
         initial={templates}
-        oficialAtivo={setup.oficialAtivo}
-        temWaba={setup.temWaba}
+        numeros={setup.numeros}
         podeEditar={can(ctx, 'marketing', 'MANAGE')}
       />
     </div>
