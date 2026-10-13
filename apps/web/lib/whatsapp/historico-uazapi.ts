@@ -1,4 +1,5 @@
 import 'server-only'
+import { after } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getNumero } from '@/lib/whatsapp/factory'
 import { UazapiProvider, emMilissegundos, type ChatDoHistorico } from '@/lib/whatsapp/uazapi'
@@ -12,14 +13,16 @@ import { gravar } from '@/lib/db'
  *
  * Ao parear, o WhatsApp manda à instância um recorte recente das conversas
  * (o WhatsApp decide quanto); a uazapi o guarda. Aqui ele é BUSCADO
- * (\`/chat/find\` + \`/message/find\`, formato documentado) em vez de lido dos
- * lotes \`history\` do webhook, cujo formato não é. Grava como o histórico da
+ * (`/chat/find` + `/message/find`, formato documentado) em vez de lido dos
+ * lotes `history` do webhook, cujo formato não é. Grava como o histórico da
  * coexistência: importado, lido, sem evento de conversa (a automação de
  * boas-vindas responderia a conversas de semanas atrás) e sem baixar mídia.
  * Trazer de novo não duplica (dedup pelo id da mensagem).
  *
- * Cada pedido é uma linha de \`whatsapp_historicos\`: só uma em aberto por
- * caixa (índice), e a passagem REIVINDICA a linha antes de rodar.
+ * Cada pedido é uma linha de `whatsapp_historicos`: só uma em aberto por
+ * caixa (índice), e a passagem REIVINDICA a linha antes de rodar. O andamento
+ * (etapa, "12 de 80", sinal de vida) é o que Configurações → Ações em lote
+ * mostra (`lib/lotes/acoes.ts`).
  */
 
 /** Até onde se volta — o mesmo da coexistência. */
@@ -31,11 +34,31 @@ const PAGINA_MENSAGENS = 100
 /** O histórico inicial chega aos poucos depois do pareamento: espera até ele fechar. */
 const ESPERA_MAX_MS = 10 * 60_000
 const ESPERA_ENTRE_MS = 20_000
+/** Sem sinal de vida há tanto tempo, a passagem morreu (deploy no meio). */
+const SEM_SINAL_MS = 15 * 60_000
+/** O começo do erro de quem foi interrompido — é por ele que a tela o distingue. */
+export const INTERROMPIDA = 'Interrompida'
 
-type Admin = ReturnType<typeof createAdminClient>
+const agora = () => new Date().toISOString()
+
+/**
+ * A passagem roda em `after()`, e um deploy no meio a mata sem aviso. Sem sinal
+ * de vida há 15 min, a linha vira falha "interrompida" — senão o índice de uma
+ * em aberto por caixa travaria a próxima importação para sempre.
+ */
+export async function liberarInterrompidas(filtro: { tenantId?: string; numeroId?: string }): Promise<void> {
+  let q = createAdminClient().from('whatsapp_historicos').update({
+    status: 'falhou', concluida_em: agora(),
+    erro: `${INTERROMPIDA}: a importação parou no meio (o servidor reiniciou). Traga de novo.`,
+  }).in('status', ['pendente', 'importando']).lt('atualizada_em', new Date(Date.now() - SEM_SINAL_MS).toISOString())
+  if (filtro.tenantId) q = q.eq('tenant_id', filtro.tenantId)
+  if (filtro.numeroId) q = q.eq('whatsapp_number_id', filtro.numeroId)
+  await gravar(q, 'liberar as importações interrompidas')
+}
 
 /** Abre um pedido para a caixa. `null` quando já há um em aberto. */
 export async function pedirHistoricoUazapi(tenantId: string, numeroId: string): Promise<string | null> {
+  await liberarInterrompidas({ numeroId })
   const { data, error } = await createAdminClient().from('whatsapp_historicos')
     .insert({ tenant_id: tenantId, whatsapp_number_id: numeroId })
     .select('id').single<{ id: string }>()
@@ -46,16 +69,35 @@ export async function pedirHistoricoUazapi(tenantId: string, numeroId: string): 
   return data.id
 }
 
+/**
+ * Abre o pedido e o roda depois da resposta. Já havendo um em aberto para a
+ * caixa, não abre outro (`false`). Falha aqui não derruba quem chamou — vira
+ * log, e a tela oferece trazer de novo.
+ */
+export async function dispararHistoricoUazapi(tenantId: string, numeroId: string): Promise<boolean> {
+  try {
+    const id = await pedirHistoricoUazapi(tenantId, numeroId)
+    if (!id) return false
+    after(() => importarHistoricoUazapi(id))
+    return true
+  } catch (e) {
+    console.error('[historico-uazapi] disparar:', e)
+    return false
+  }
+}
+
 /** Roda um pedido (em `after()`): reivindica, espera o histórico fechar, importa. */
 export async function importarHistoricoUazapi(historicoId: string): Promise<void> {
   const admin = createAdminClient()
   const { data: linha } = await admin.from('whatsapp_historicos')
-    .update({ status: 'importando', iniciada_em: new Date().toISOString() })
+    .update({ status: 'importando', etapa: 'aguardando_whatsapp', iniciada_em: agora(), atualizada_em: agora() })
     .eq('id', historicoId).eq('status', 'pendente')
     .select('tenant_id, whatsapp_number_id').maybeSingle<{ tenant_id: string; whatsapp_number_id: string }>()
   if (!linha) return   // outra passagem já pegou
 
   const placar = { conversas: 0, mensagens: 0 }
+  const sinal = (extra: Record<string, unknown> = {}) =>
+    admin.from('whatsapp_historicos').update({ ...placar, ...extra, atualizada_em: agora() }).eq('id', historicoId)
   try {
     const numero = await getNumero(linha.whatsapp_number_id)
     if (!numero || numero.provider !== 'uazapi' || numero.tenantId !== linha.tenant_id) {
@@ -66,13 +108,20 @@ export async function importarHistoricoUazapi(historicoId: string): Promise<void
 
     for (const inicio = Date.now(); Date.now() - inicio < ESPERA_MAX_MS;) {
       if (await provider.historicoInicialPronto()) break
+      await sinal()
       await new Promise(ok => setTimeout(ok, ESPERA_ENTRE_MS))
     }
+    await sinal({ etapa: 'importando' })
 
     const corte = Date.now() - DIAS * 86_400_000
     let offset = 0
+    let totalGravado = false
     pagina: for (;;) {
-      const { chats, temMais } = await provider.buscarConversas(offset, PAGINA_CONVERSAS)
+      const { chats, temMais, total } = await provider.buscarConversas(offset, PAGINA_CONVERSAS)
+      if (!totalGravado && total !== null) {
+        await sinal({ total_conversas: Math.min(total, MAX_CONVERSAS) })
+        totalGravado = true
+      }
       for (const chat of chats) {
         const ultima = emMilissegundos(chat.wa_lastMsgTimestamp)
         // Vêm da mais recente para a mais antiga: a primeira velha encerra.
@@ -81,26 +130,20 @@ export async function importarHistoricoUazapi(historicoId: string): Promise<void
         if (n === null) continue
         placar.conversas++
         placar.mensagens += n
+        await sinal()
         if (placar.conversas >= MAX_CONVERSAS) break pagina
-        if (placar.conversas % 10 === 0) await atualizar(admin, historicoId, placar)
       }
       if (!temMais || chats.length === 0) break
       offset += chats.length
     }
-    await gravar(admin.from('whatsapp_historicos').update({
-      status: 'concluida', ...placar, concluida_em: new Date().toISOString(),
-    }).eq('id', historicoId), 'concluir a importação do histórico')
+    await gravar(sinal({ status: 'concluida', etapa: null, concluida_em: agora() }), 'concluir a importação do histórico')
   } catch (e) {
     console.error('[historico-uazapi]', historicoId, e)
-    await admin.from('whatsapp_historicos').update({
-      status: 'falhou', ...placar, erro: e instanceof Error ? e.message.slice(0, 500) : 'erro',
-      concluida_em: new Date().toISOString(),
-    }).eq('id', historicoId)
+    await sinal({
+      status: 'falhou', etapa: null, concluida_em: agora(),
+      erro: e instanceof Error ? e.message.slice(0, 500) : 'erro',
+    })
   }
-}
-
-async function atualizar(admin: Admin, id: string, placar: { conversas: number; mensagens: number }) {
-  await admin.from('whatsapp_historicos').update(placar).eq('id', id)
 }
 
 /**
@@ -146,10 +189,11 @@ async function importarConversa(
   return novas
 }
 
-/** A última importação da caixa, para a tela. */
+/** A última importação da caixa, para o bloco da conexão. */
 export async function ultimaImportacaoDoHistorico(numeroId: string): Promise<{
   status: string; conversas: number; mensagens: number; erro: string | null; concluida_em: string | null
 } | null> {
+  await liberarInterrompidas({ numeroId })
   const { data } = await createAdminClient().from('whatsapp_historicos')
     .select('status, conversas, mensagens, erro, concluida_em')
     .eq('whatsapp_number_id', numeroId).order('criada_em', { ascending: false }).limit(1)

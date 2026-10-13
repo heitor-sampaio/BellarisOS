@@ -1314,6 +1314,17 @@ mensagens novas") e tem "Trazer de novo", que não duplica. Quanto vem é o
 WhatsApp que decide: em geral as conversas recentes, não tudo. Provas:
 `e2e/whatsapp-historico-uazapi.spec.ts`, `tests/uazapi-historico.test.ts`.
 
+Logo depois, a pedido dele, **Configurações → Ações em lote**: o lugar de
+acompanhar o que roda em segundo plano e demora. Cada ação mostra o estado
+(aguardando, em andamento, concluída, falhou, interrompida), a etapa
+("Esperando o WhatsApp terminar de mandar…", "Trazendo as conversas"), a
+barra de "12 de 80 conversas", o resultado e o erro, e se tenta de novo dali;
+a tela se atualiza sozinha enquanto algo roda. Hoje entra o histórico do
+WhatsApp; o formato é comum para os próximos (`lib/lotes/acoes.ts`). Junto,
+um furo fechado: a importação roda depois da resposta e um deploy no meio a
+deixava "em andamento" para sempre, travando a próxima da caixa — sem sinal
+de vida há 15 minutos, vira "Interrompida". Prova: `e2e/acoes-em-lote.spec.ts`.
+
 ### 2026-10-09 — O nome do número, escolhido ao conectar
 
 **Suíte completa verde depois de tudo de 2026-10-09** (run 37983381064):

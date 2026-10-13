@@ -101,7 +101,7 @@ export async function subirUazapiFalsa(porta = 0): Promise<UazapiFalsa> {
       const pagina = <T,>(lista: T[]) => {
         const offset = Number(corpo.offset ?? 0), limit = Number(corpo.limit ?? 100)
         const fatia = lista.slice(offset, offset + limit)
-        return { fatia, pagination: { limit, offset, hasMore: offset + limit < lista.length, nextOffset: offset + fatia.length } }
+        return { fatia, pagination: { limit, offset, totalRecords: lista.length, hasMore: offset + limit < lista.length, nextOffset: offset + fatia.length } }
       }
       if (caminho === '/instance/history-sync/status') return responder(200, estado.historico.status ?? { diagnosis: ['no_trace'] })
       if (caminho === '/chat/find') {

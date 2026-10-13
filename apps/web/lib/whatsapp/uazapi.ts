@@ -417,12 +417,13 @@ export class UazapiProvider implements WhatsAppProvider {
   // -- O histórico (2026-10-13, lib/whatsapp/historico-uazapi.ts) -------------
 
   /** As conversas individuais, da mais recente para a mais antiga. */
-  async buscarConversas(offset: number, limite: number): Promise<{ chats: ChatDoHistorico[]; temMais: boolean }> {
+  async buscarConversas(offset: number, limite: number): Promise<{ chats: ChatDoHistorico[]; temMais: boolean; total: number | null }> {
     const r = await this.chamar('/chat/find', {
       wa_isGroup: false, sort: '-wa_lastMsgTimestamp', limit: limite, offset, compact: true,
-    }) as unknown as { chats?: ChatDoHistorico[]; pagination?: { hasMore?: boolean } } | null
+    }) as unknown as { chats?: ChatDoHistorico[]; pagination?: { hasMore?: boolean; totalRecords?: number } } | null
     const chats = r?.chats ?? []
-    return { chats, temMais: r?.pagination?.hasMore ?? chats.length === limite }
+    const total = r?.pagination?.totalRecords
+    return { chats, temMais: r?.pagination?.hasMore ?? chats.length === limite, total: typeof total === 'number' ? total : null }
   }
 
   /** As mensagens guardadas de uma conversa, da mais recente para a mais antiga. */

@@ -15,8 +15,7 @@ import { getNumero } from '@/lib/whatsapp/factory'
 import { integracaoConectada, integracaoDesconectada } from '@/lib/events/integracao'
 import { gravar, ler, tentar } from '@/lib/db'
 import { MAX_ROTULO } from '@/lib/whatsapp/rotulo'
-import { after } from 'next/server'
-import { pedirHistoricoUazapi, importarHistoricoUazapi, ultimaImportacaoDoHistorico } from '@/lib/whatsapp/historico-uazapi'
+import { dispararHistoricoUazapi, ultimaImportacaoDoHistorico } from '@/lib/whatsapp/historico-uazapi'
 
 /**
  * Conexão de WhatsApp gerenciada pelo BellarisOS.
@@ -97,23 +96,6 @@ async function numeroDaRede(
 }
 
 /**
- * Abre o pedido de importação do histórico e o roda depois da resposta. Já
- * havendo um em aberto para a caixa, não abre outro. Falha aqui não derruba a
- * conexão — vira log, e a tela oferece trazer de novo.
- */
-async function trazerHistoricoDepois(tenantId: string, numeroId: string): Promise<boolean> {
-  try {
-    const id = await pedirHistoricoUazapi(tenantId, numeroId)
-    if (!id) return false
-    after(() => importarHistoricoUazapi(id))
-    return true
-  } catch (e) {
-    console.error('[uazapi-connection] histórico:', e)
-    return false
-  }
-}
-
-/**
  * "Trazer histórico" da caixa: as conversas que a instância guardou do
  * pareamento, gravadas como importadas. Trazer de novo não duplica.
  */
@@ -123,7 +105,7 @@ export async function trazerHistoricoUazapi(numeroId: string): Promise<{ ok: boo
   const numero = await numeroDaRede(ctx.tenantId!, numeroId)
   if (!numero) return { ok: false, error: 'Conexão não encontrada nesta rede.' }
   if (!numero.isActive) return { ok: false, error: 'Conecte o número antes de trazer o histórico.' }
-  const aberto = await trazerHistoricoDepois(ctx.tenantId!, numero.id)
+  const aberto = await dispararHistoricoUazapi(ctx.tenantId!, numero.id)
   if (!aberto) return { ok: false, error: 'O histórico deste número já está sendo trazido.' }
   return { ok: true }
 }
@@ -517,7 +499,7 @@ async function marcarConectada(
     // Conectou: o histórico que o WhatsApp mandou ao parear vem para o inbox
     // (lib/whatsapp/historico-uazapi.ts). Depois da resposta — ele espera o
     // pareamento terminar de mandar tudo, e leva minutos.
-    await trazerHistoricoDepois(numero.tenantId, numero.id)
+    await dispararHistoricoUazapi(numero.tenantId, numero.id)
   }
 
   // Sem `revalidatePath` aqui: quem chama decide. Esta função roda dentro de

@@ -31,6 +31,8 @@ export const ABAS_DE_CONFIGURACAO = [
   // O suporte do BellarisOS: autorizar o acesso e ver o que ele fez. Da rede.
   { key: 'suporte',       label: 'Suporte',      module: 'settings' },
   { key: 'eventos',       label: 'Eventos',      module: 'settings' },
+  // O que roda em segundo plano e demora (o histórico do WhatsApp…). Da rede.
+  { key: 'lotes',         label: 'Ações em lote', module: 'settings' },
   { key: 'general',       label: 'Geral',        module: 'settings' },
 ] as const satisfies readonly { key: string; label: string; module: AppModule; recurso?: string }[]
 

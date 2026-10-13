@@ -126,6 +126,15 @@ um recorte recente das conversas (ele decide quanto) e a uazapi o guarda.
   (índice), reivindicada antes de rodar. Trazer de novo não duplica (dedup pelo
   id da mensagem). Prova: `e2e/whatsapp-historico-uazapi.spec.ts`, o caso
   "sozinho" do `whatsapp-conexao-nova` e `tests/uazapi-historico.test.ts`.
+- **O andamento aparece em Configurações → Ações em lote** (`lib/lotes/acoes.ts`,
+  o formato comum das ações demoradas): a etapa (`aguardando_whatsapp` ×
+  `importando`), "12 de 80 conversas" (`total_conversas`, quando a uazapi diz
+  o total) e o sinal de vida (`atualizada_em`, a cada conversa e a cada volta
+  da espera). ⚠️ A passagem roda em `after()` e morre num deploy: sem sinal há
+  15 min, `liberarInterrompidas` a marca como falha "Interrompida" — senão o
+  índice de uma em aberto por caixa travaria a próxima para sempre. Tipo novo
+  de ação demorada entra em `lib/lotes/acoes.ts` com o seu tradutor e o seu
+  "tentar de novo" (`actions/acoes-em-lote.ts`). Prova: `e2e/acoes-em-lote.spec.ts`.
 
 **O dedup usa DOIS índices parciais**, não um total: num índice único direto,
 `NULL` nunca colide, e Instagram, Messenger e manual ficariam sem dedup nenhum
@@ -291,6 +300,7 @@ servidor), e a escolha da tela vira o `featureType` —
 ❌ Oferecer ou enviar template com nao_suportado (a Meta recusa ou o cliente recebe {{1}})
 ❌ Gravar o id técnico do número (phoneNumberId) como nome da conexão — é rotuloDaConexao
 ❌ Importar o histórico da uazapi pelo parseInbound (ele descarta o fromMe e tira a identidade do remetente) — é lerDoHistorico
+❌ Trabalho em after() com linha "em aberto" sem sinal de vida (um deploy no meio a deixa aberta e trava a próxima)
 ❌ Pedir o estado da conexão gerenciada sem dizer QUAL caixa (era o "Adicionar número" que reabria a conectada) — null é conexão nova
 ❌ Mostrar "uazapi" à clínica (tela, aviso, erro que chega à tela) — é "WhatsApp Web", por nomeDoProvedor; o nome fica no código e nos dados
 ❌ E2E que cria instância gerenciada contra a uazapi real (cada uma é cobrada) — é a falsa, UAZAPI_BASE_URL na porta 3197

@@ -19,6 +19,8 @@ import { listarNumerosWhatsApp, opcoesDeVinculoDoNumero } from '@/actions/integr
 import { SettingsLgpd } from '@/components/admin/settings-lgpd'
 import { listDataRequests } from '@/actions/lgpd'
 import { SettingsEventos } from '@/components/admin/settings-eventos'
+import { SettingsAcoesEmLote } from '@/components/admin/settings-acoes-em-lote'
+import { acoesEmLote } from '@/lib/lotes/acoes'
 import { listarEventosDeDominio, resumoDoCatalogo } from '@/actions/eventos'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { SegSelect } from '@/components/shared/seg-select'
@@ -201,6 +203,7 @@ export async function Configuracoes({
   const [resumo, primeiraPagina] = activeTab === 'eventos'
     ? await Promise.all([resumoDoCatalogo(), listarEventosDeDominio()])
     : [null, null]
+  const lotes = activeTab === 'lotes' ? await acoesEmLote(ctx.tenantId!) : null
 
   // Credencial não vai ao navegador: o segredo guardado vira o marcador
   // (lib/integracoes/sem-segredo.ts), e salvar com ele mantém o do banco.
@@ -394,6 +397,8 @@ export async function Configuracoes({
           canReviewMedical={ctx.permissions.medical_records === 'MANAGE'}
         />
       )}
+
+      {activeTab === 'lotes' && lotes && <SettingsAcoesEmLote iniciais={lotes} />}
 
       {activeTab === 'eventos' && resumo && primeiraPagina && (
         <>

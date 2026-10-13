@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { ehPortalDaRede } from '@/lib/rotas'
 import { History, Loader2 } from 'lucide-react'
 import { historicoDaCaixaUazapi, trazerHistoricoUazapi } from '@/actions/uazapi-connection'
 
@@ -18,6 +21,8 @@ export function HistoricoDaCaixa({ numeroId }: { numeroId: string }) {
   const [erro, setErro] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const aberto = emAberto(estado ?? null)
+  // A aba Ações em lote é da rede: na unidade, o atalho não leva a lugar nenhum.
+  const naRede = ehPortalDaRede(usePathname())
 
   // Lê ao abrir e, enquanto estiver trazendo, a cada 5 s.
   useEffect(() => {
@@ -63,6 +68,7 @@ export function HistoricoDaCaixa({ numeroId }: { numeroId: string }) {
       <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
         Ao conectar, o WhatsApp manda um recorte recente das conversas (ele decide quanto).
         O que é mais antigo fica só no celular. Grupos não entram.
+        {naRede && <> O andamento também fica em <Link href="/admin/settings?tab=lotes" style={{ color: 'var(--brand)', fontWeight: 700 }}>Ações em lote</Link>.</>}
       </p>
       {erro && <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 700, margin: 0 }}>{erro}</p>}
 

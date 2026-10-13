@@ -77,6 +77,7 @@ export const ISOLADOS = [
   'whatsapp-modo-oficial.spec.ts',
   'whatsapp-nome-do-numero.spec.ts',
   'whatsapp-historico-uazapi.spec.ts',
+  'acoes-em-lote.spec.ts',
 ]
 
 /** As quatro regras sobre o texto de um spec. `null` = isolado; senão, o motivo. */
