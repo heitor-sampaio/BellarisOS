@@ -1,5 +1,6 @@
 'use server'
 
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { getTenantContext, assertPermission, podeReceber, alcancaUnidade, assertRecurso, temRecurso } from '@/lib/auth'
 import { pacotesAVenda } from '@/lib/pacotes/leitura'
 import { procedimentosAVenda } from '@/lib/pre-pago/leitura'
@@ -779,10 +780,8 @@ export async function getConversationCard(conversationId: string): Promise<Conve
     .filter(f => f.archived_at === null)
     .map(f => ({ id: f.id, name: f.name }))
 
-  const { data: tagRows, error: erroTags } = await admin
-    .rpc('lead_tags_da_rede', { p_tenant: ctx.tenantId! })
-  if (erroTags) console.error('[getConversationCard] tags:', erroTags.message)
-  const tagsDaRede = ((tagRows ?? []) as { tag: string }[]).map(r => r.tag)
+  // O vocabulário da rede (Configurações → Tags), o mesmo da ficha.
+  const tagsDaRede = await tagsAtivasDaRede(ctx.tenantId!)
 
   // Catálogo da rede e das unidades (branch_id null = base da rede), como em
   // qualquer leitura de procedimento — ver CLAUDE.md §9.3.

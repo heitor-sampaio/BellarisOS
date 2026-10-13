@@ -9,7 +9,35 @@
 - CPF (`document`) único por `tenantId` — constraint `@@unique([tenantId, document])`
 - `authId` em `Client` é opcional — preenchido apenas quando o cliente cria conta no app
 - A conta de pontos (`loyalty_accounts`) nasce com o cliente, por `fidelidade_conta` — e sob demanda, se faltar. A fidelidade tem seção própria: §9.2.2.
-- Tags como `String[]` — constantes em `packages/utils/client-tags.ts`
+- Tags como `String[]` no registro; o VOCABULÁRIO é da rede (`tags`, abaixo).
+  `CLIENT_TAGS` (`packages/utils/client-tags.ts`) virou só as oito com que a
+  rede nova nasce.
+
+**As tags da rede** (2026-10-13, pedido do Heitor; **Configurações → Tags**,
+nos dois portais, para quem tem `clients` OU `crm` em Gerenciar). Até aqui a
+ficha oferecia oito tags fixas no código, e a tag que vinha de fora
+(importação, automação, o card) ficava gravada e INVISÍVEL na ficha.
+- **Um vocabulário só para a ficha e o CRM** (decisão: a tag descreve a
+  pessoa). A ficha, o cadastro, o painel do inbox, o card da oportunidade
+  (sugestões), as automações e as campanhas oferecem as ATIVAS
+  (`tagsAtivasDaRede`, `useTagsDaRede` no navegador). A ficha mostra também a
+  tag que o cliente já tem fora do vocabulário (`opcoesDeTag`).
+- ⚠️ **O vocabulário cresce por GATILHO** (`trg_registrar_tags` em clients,
+  contacts e leads): toda tag gravada entra, fora as `Unidade: …`. Gravar tag
+  por um caminho novo não precisa registrar nada — e não deve.
+- **Um nome por rede, sem caixa** (índice em `lower(nome)`): "VIP" e "vip" são
+  a mesma. Marcar usa o nome do vocabulário; desmarcar tira qualquer grafia
+  (`lib/tags/escolha.ts`).
+- **Renomear troca em todo lugar numa transação** (`renomear_tag`: clients,
+  contacts, leads e a semente das conversas). Nome que já existe JUNTA as duas
+  (fica a que existia, com o nome dela, sem repetir na pessoa). O fluxo de
+  automação que cita o nome antigo NÃO é reescrito (versão publicada não muda
+  sozinha): a tela lista quais ajustar (`automacoes_que_citam_tag`).
+- **Arquivar** tira das opções; quem já tem continua com ela, e a ficha a
+  mostra marcada. Não há apagar.
+- Rede nova nasce com as oito padrão (`trg_rede_ganha_tags`,
+  `private.tags_padrao()` — espelha `CLIENT_TAGS`).
+- Prova: `e2e/tags-da-rede.spec.ts`, `tests/tags.test.ts`.
 - `InternalCredit`: saldo de crédito do cliente (concessão manual, cancelamento de plano pago, estorno de um pagamento feito com crédito); usado como método de pagamento `INTERNAL_CREDIT`, que o desconta (§9.6)
 - `LgpdRequest`: pedido de acesso aos dados pelo titular. Só `type: "export"`
   está implementado — a exclusão continua fora de escopo por conflitar com a
@@ -323,4 +351,6 @@ o contato junto.
 ❌ Gravar telefone importado fora do formato do WhatsApp (55 + DDD + número, só dígitos) — a pessoa não se acha depois
 ❌ Escrever "Dono" na tela para o responsável da oportunidade (é "Responsável" em todo lugar)
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")
+❌ Oferecer tag de uma lista fixa (CLIENT_TAGS) ou do que está em uso — é o vocabulário da rede (tagsAtivasDaRede)
+❌ Renomear tag com update à mão em uma tabela só (é renomear_tag, nas quatro, numa transação)
 ```

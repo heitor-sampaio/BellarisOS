@@ -21,6 +21,8 @@ import { listDataRequests } from '@/actions/lgpd'
 import { SettingsEventos } from '@/components/admin/settings-eventos'
 import { SettingsAcoesEmLote } from '@/components/admin/settings-acoes-em-lote'
 import { ImportarContatos } from '@/app/_shared/importar-contatos'
+import { SettingsTags } from '@/components/admin/settings-tags'
+import { listarTagsComUso } from '@/actions/tags'
 import { acoesEmLote } from '@/lib/lotes/acoes'
 import { listarEventosDeDominio, resumoDoCatalogo } from '@/actions/eventos'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -207,6 +209,7 @@ export async function Configuracoes({
     ? await Promise.all([resumoDoCatalogo(), listarEventosDeDominio()])
     : [null, null]
   const lotes = activeTab === 'lotes' ? await acoesEmLote(ctx.tenantId!) : null
+  const tagsDaRede = activeTab === 'tags' ? await listarTagsComUso() : null
 
   // Credencial não vai ao navegador: o segredo guardado vira o marcador
   // (lib/integracoes/sem-segredo.ts), e salvar com ele mantém o do banco.
@@ -402,6 +405,8 @@ export async function Configuracoes({
       )}
 
       {activeTab === 'lotes' && lotes && <SettingsAcoesEmLote iniciais={lotes} />}
+
+      {activeTab === 'tags' && tagsDaRede && <SettingsTags iniciais={tagsDaRede} />}
 
       {activeTab === 'importacoes' && <ImportarContatos unidadeFixa={unidadeDaTela ?? null} />}
 

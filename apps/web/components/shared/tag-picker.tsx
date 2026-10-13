@@ -4,11 +4,11 @@ import { Tag as TagIcon } from 'lucide-react'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
 
 /**
- * Escolha de tags a partir do que a rede já usa.
+ * Escolha de tags a partir do vocabulário da rede (Configurações → Tags).
  *
  * Não cria tag: quem atende escolhe entre as existentes, senão a mesma ideia
  * vira "botox", "Botox" e "botox " em três atendimentos e o filtro por tag
- * deixa de servir. Criar e renomear é na tela de Oportunidades.
+ * deixa de servir. Criar, renomear e arquivar é em Configurações → Tags.
  */
 export function TagPicker({
   selecionadas, disponiveis, disabled = false, onChange,
@@ -26,7 +26,7 @@ export function TagPicker({
       selecionadas={selecionadas}
       multiplo
       disabled={disabled}
-      textoListaVazia="A rede ainda não tem tags. Elas são criadas na tela de Oportunidades."
+      textoListaVazia="A rede ainda não tem tags. Elas são criadas em Configurações → Tags."
       onEscolher={t => onChange(
         selecionadas.includes(t)
           ? selecionadas.filter(x => x !== t)

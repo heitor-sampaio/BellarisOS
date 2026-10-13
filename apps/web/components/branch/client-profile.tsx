@@ -19,7 +19,9 @@ import { LeadTimeline } from './lead-timeline'
 import { PainelPlanejamento } from '@/components/branch/painel-planejamento'
 import { rotaAgenda, rotaClientes } from '@/lib/rotas'
 import { rotaComParams } from '@/lib/query-params'
-import { CLIENT_TAGS, isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
+import { isUnitTag, unitTag, unitTagName } from '@estetica-os/utils'
+import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
+import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 import { format, isSameDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { FidelidadeDoCliente } from '@/components/branch/fidelidade-do-cliente'
@@ -448,6 +450,9 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
   const [state,      setState]      = useState(client.state ?? '')
 
   const [selectedTags, setSelectedTags] = useState<string[]>(client.tags ?? [])
+  // As tags da rede (Configurações → Tags) — e as que o cliente já tem fora
+  // dela (importadas, arquivadas), que antes ficavam gravadas e invisíveis.
+  const vocabulario = useTagsDaRede()
 
   const [cpfStatus,  setCpfStatus]  = useState<'idle' | 'checking' | 'ok' | 'self' | 'dup'>('idle')
   const [cpfDupName, setCpfDupName] = useState('')
@@ -657,8 +662,8 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
       <div>
         <p style={{ fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-faint)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Tags</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {CLIENT_TAGS.map(tag => {
-            const active = selectedTags.includes(tag)
+          {opcoesDeTag(vocabulario ?? [], selectedTags).map(tag => {
+            const active = temTag(selectedTags, tag)
             return (
               <button
                 key={tag}
@@ -666,7 +671,7 @@ function DadosTab({ client, slug, branches }: { client: ProfileClient; slug: str
                 className={active ? 'chip-filtro is-ativo' : 'chip-filtro'}
                 aria-pressed={active}
                 onClick={() => {
-                  setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
+                  setSelectedTags(prev => alternarTag(prev, tag))
                   setSaved(false)
                 }}
               >

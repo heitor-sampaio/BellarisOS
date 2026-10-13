@@ -1299,6 +1299,23 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-13 — As tags da rede (Configurações → Tags)
+
+Pergunta do Heitor: "essas tags que podem ser adicionadas ao cliente, onde
+configuro?". Não configurava: a ficha oferecia oito fixas no código, o CRM as
+que já estavam em uso nas oportunidades, e a tag que vinha da importação ficava
+gravada no cliente e invisível na ficha. Agora a rede tem UM vocabulário, o
+mesmo na ficha e no CRM (a minha recomendação; ele pediu para fazer), na aba
+nova **Configurações → Tags**: criar, renomear — troca em todos os clientes,
+contatos e oportunidades, e junta se o nome já existe — e arquivar (sai das
+opções, fica em quem tem). A ficha, o cadastro, o inbox, o card, as automações
+e as campanhas (que antes pediam a tag digitada à mão) oferecem o vocabulário.
+Ele cresce sozinho por gatilho, e cada aba mostra quantos clientes, contatos
+e oportunidades usam a tag. A rede nova nasce com as oito de sempre; as
+existentes ganharam essas mais tudo o que já estava em uso. Automação que cita
+o nome antigo não é reescrita — a tela avisa quais ajustar. Migration
+`20261013000006`.
+
 ### 2026-10-13 — O importador de contatos (CSV)
 
 Pedido do Heitor: importar uma planilha e relacionar as colunas com os campos

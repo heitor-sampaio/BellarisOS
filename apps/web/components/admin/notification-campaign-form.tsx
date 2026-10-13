@@ -9,6 +9,8 @@ import {
 } from 'lucide-react'
 import { createCampaign, updateCampaign, activateCampaign } from '@/actions/notification-campaigns'
 import { AudiencePreview } from '@/components/admin/audience-preview'
+import { TagPicker } from '@/components/shared/tag-picker'
+import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 import type { CampaignType, TriggerType, AudienceRules, CreateCampaignInput, NotificationCampaign } from '@/actions/notification-campaigns'
 
 // -- Types --------------------------------------------------------------
@@ -82,7 +84,9 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
   const [genders,       setGenders]       = useState<('M'|'F'|'O')[]>(regras.genders ?? [])
   const [procIds,       setProcIds]       = useState<string[]>(regras.procedure_ids ?? [])
   const [tags,          setTags]          = useState<string[]>(regras.tags ?? [])
-  const [tagInput,      setTagInput]      = useState('')
+  // As tags da rede (Configurações → Tags): digitada à mão, uma grafia
+  // diferente ("vip") deixava a campanha sem ninguém.
+  const vocabulario = useTagsDaRede()
   const [hasApp,        setHasApp]        = useState(regras.has_app_account ?? false)
   const [maxDays,       setMaxDays]       = useState<number | null>(regras.max_days_since_visit ?? null)
 
@@ -464,23 +468,7 @@ export function NotificationCampaignForm({ branches, procedures, existing }: Pro
                 </span>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                className="field"
-                placeholder="Digitar tag e pressionar Enter"
-                value={tagInput}
-                onChange={e => setTagInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && tagInput.trim()) {
-                    e.preventDefault()
-                    const t = tagInput.trim()
-                    if (!tags.includes(t)) setTags([...tags, t])
-                    setTagInput('')
-                  }
-                }}
-                style={{ flex: 1 }}
-              />
-            </div>
+            <TagPicker selecionadas={tags} disponiveis={vocabulario ?? []} onChange={setTags} />
           </div>
 
           {/* Has app account */}

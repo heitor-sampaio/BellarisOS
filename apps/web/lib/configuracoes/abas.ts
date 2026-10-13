@@ -35,6 +35,8 @@ export const ABAS_DE_CONFIGURACAO = [
   { key: 'lotes',         label: 'Ações em lote', module: 'settings' },
   // O importador de contatos (CSV, 2026-10-13): quem cadastra clientes OU
   // trabalha o CRM — a SDR que só tem o CRM importa a lista de leads dela.
+  // As tags da rede (2026-10-13): um vocabulário só para a ficha e o CRM.
+  { key: 'tags',          label: 'Tags',         module: 'clients',   alternativas: ['crm'] },
   { key: 'importacoes',   label: 'Importações',  module: 'clients',   alternativas: ['crm'] },
   { key: 'general',       label: 'Geral',        module: 'settings' },
 ] as const satisfies readonly { key: string; label: string; module: AppModule; recurso?: string; alternativas?: readonly AppModule[] }[]
@@ -68,4 +70,4 @@ export const ABAS_DA_REDE: readonly ChaveDeAba[] =
 
 /** O que a unidade governa sem sair do próprio portal nem ver outra unidade. */
 export const ABAS_DA_UNIDADE: readonly ChaveDeAba[] =
-  ['permissions', 'fichas', 'documentos', 'integrations', 'importacoes', 'general']
+  ['permissions', 'fichas', 'documentos', 'integrations', 'tags', 'importacoes', 'general']

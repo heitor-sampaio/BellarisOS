@@ -15,6 +15,7 @@ import { LeadTimeline } from './lead-timeline'
 import type { Lead } from './crm-board'
 import { LEAD_SOURCES, unitTag } from '@estetica-os/utils'
 import { TagBadge } from '@/components/shared/tag-badge'
+import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
 
 export interface Procedure { id: string; name: string }
 
@@ -118,20 +119,6 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
     const [ownerId,      setOwnerId]      = useState(existing?.owner_id ?? '')
     const idResponsavel = useId()
 
-    /**
-     * Sugestões de tag: origens canônicas + unidades da rede.
-     *
-     * A unidade é uma tag como outra qualquer — não é dona do lead e não decide
-     * quem o enxerga. Ela existe como sugestão só para não virar texto digitado
-     * à mão ("Unidade: centro" minúsculo não casa com a métrica por unidade).
-     * Quem decide de quem é o lead são as pessoas, pela tag e pelo dono; a
-     * distribuição automática fica para as automações.
-     */
-    const suggestedTags = useMemo(() => [
-      ...LEAD_SOURCES.map(s => s.key),
-      ...(unidades ?? []).map(u => unitTag(u.name)),
-    ], [unidades])
-
     /** Origem gravada que não existe na lista canônica (base legada). */
     const origemForaDaLista =
       existing?.source && !LEAD_SOURCES.some(s => s.key === existing.source)
@@ -146,6 +133,23 @@ export const CRMLeadModal = forwardRef<CRMLeadModalHandle, CRMLeadModalProps>(
      * abrir em seguida mostrava o estado anterior ao arraste.
      */
     const [aberto, setAberto] = useState(false)
+
+    /**
+     * Sugestões de tag: as da rede (Configurações → Tags — lidas só ao abrir:
+     * o quadro monta um modal por card), as origens canônicas e as unidades.
+     *
+     * A unidade é uma tag como outra qualquer — não é dona do lead e não decide
+     * quem o enxerga. Ela existe como sugestão só para não virar texto digitado
+     * à mão ("Unidade: centro" minúsculo não casa com a métrica por unidade).
+     * Quem decide de quem é o lead são as pessoas, pela tag e pelo dono; a
+     * distribuição automática fica para as automações.
+     */
+    const vocabulario = useTagsDaRede(aberto)
+    const suggestedTags = useMemo(() => [...new Set([
+      ...(vocabulario ?? []),
+      ...LEAD_SOURCES.map(s => s.key),
+      ...(unidades ?? []).map(u => unitTag(u.name)),
+    ])], [unidades, vocabulario])
 
     const networkMode = !!branches && branches.length > 0
     // Sem filial no lead, o portal da rede não tem slug de unidade para

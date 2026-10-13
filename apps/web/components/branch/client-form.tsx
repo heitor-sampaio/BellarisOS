@@ -6,7 +6,9 @@ import { addClient } from '@/actions/clients'
 import { rotaCliente } from '@/lib/rotas'
 import { UserPlus, CheckCircle2 } from 'lucide-react'
 import { TagBadge } from '@/components/shared/tag-badge'
-import { CLIENT_TAGS, isUnitTag, unitTagName } from '@estetica-os/utils'
+import { isUnitTag, unitTagName } from '@estetica-os/utils'
+import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
+import { alternarTag, opcoesDeTag, temTag } from '@/lib/tags/escolha'
 
 const GENDERS = [
   { value: 'F', label: 'Feminino' },
@@ -81,8 +83,10 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
     if (state?.success) aoCadastrar()
   }, [state?.success])
 
+  // As tags da rede (Configurações → Tags), não mais uma lista fixa.
+  const vocabulario = useTagsDaRede()
   function toggleTag(tag: string) {
-    setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])
+    setSelectedTags(prev => alternarTag(prev, tag))
   }
 
   return (
@@ -169,8 +173,8 @@ export function ClientForm({ branchId, slug, branchName, branches, prefill, lead
       {/* Tags */}
       <Field label="Tags">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {CLIENT_TAGS.map(tag => {
-            const active = selectedTags.includes(tag)
+          {opcoesDeTag(vocabulario ?? [], selectedTags).map(tag => {
+            const active = temTag(selectedTags, tag)
             return (
               <button
                 key={tag} type="button"

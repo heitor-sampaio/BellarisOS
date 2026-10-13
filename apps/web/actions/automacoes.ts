@@ -10,7 +10,7 @@ import type {
 } from '@estetica-os/types'
 import { validarGrafo, podeAtivar, gatilhosDoGrafo } from '@/lib/automacoes/validar'
 import { achatarDados, type CampoVisto } from '@/lib/automacoes/disponiveis'
-import { CLIENT_TAGS, isUnitTag } from '@estetica-os/utils'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
 import { ler, tentar } from '@/lib/db'
 
 /**
@@ -493,26 +493,20 @@ export async function opcoesDoEditor(): Promise<OpcoesDoEditor> {
   const admin = createAdminClient()
   const tenant = ctx.tenantId!
 
-  const [funis, etapas, cargos, pessoas, clientes, unidades] = await Promise.all([
+  const [funis, etapas, cargos, pessoas, vocabulario, unidades] = await Promise.all([
     admin.from('crm_funnels').select('id, name, archived_at').eq('tenant_id', tenant).order('position'),
     admin.from('crm_stages').select('id, name, funnel_id, position').eq('tenant_id', tenant).order('position'),
     admin.from('tenant_roles').select('id, label').eq('tenant_id', tenant).order('label'),
     admin.from('users').select('id, name').eq('tenant_id', tenant).eq('is_active', true).order('name'),
-    // As tags que a rede realmente usa, não só o vocabulário padrão: quem
-    // criou "Pós-operatório" à mão deveria poder automatizar em cima dela.
-    admin.from('clients').select('tags').eq('tenant_id', tenant).not('tags', 'eq', '{}').limit(500),
+    // O vocabulário da rede (Configurações → Tags), que já traz as que ela
+    // criou à mão ("Pós-operatório"): o gatilho registra toda tag gravada. A
+    // de unidade não entra — é derivada dos agendamentos, e oferecê-la como
+    // ação faria a automação brigar com o gatilho que a mantém.
+    tagsAtivasDaRede(tenant),
     admin.from('branches').select('id, name').eq('tenant_id', tenant).eq('is_active', true).order('name'),
   ])
 
-  const tags = new Set<string>(CLIENT_TAGS)
-  for (const c of clientes.data ?? []) {
-    for (const t of (c.tags as string[] | null) ?? []) {
-      // A tag de unidade é derivada dos agendamentos, não escolhida: oferecer
-      // "Unidade: Centro" como ação faria a automação brigar com o gatilho que
-      // a mantém.
-      if (!isUnitTag(t)) tags.add(t)
-    }
-  }
+  const tags = new Set<string>(vocabulario)
 
   const listaDeFunis = (funis.data ?? []).map(f => ({
     id:        f.id as string,
