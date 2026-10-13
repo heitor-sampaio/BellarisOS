@@ -104,7 +104,9 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
   // e quem administra o financeiro da rede, à aba de comissões.
   {
     key: 'settings', group: 'gestao', label: 'Configurações', href: '/admin/settings',
-    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || p.financial === 'MANAGE',
+    // Importações abre também com clientes ou CRM em Gerenciar (a aba delas).
+    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms') || p.financial === 'MANAGE'
+      || p.clients === 'MANAGE' || p.crm === 'MANAGE',
   },
 ]
 
@@ -134,7 +136,8 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
   // `settings`, `roles` ou `forms` em MANAGE não valiam nada numa gerente.
   {
     key: 'settings', group: 'gestao', label: 'Configurações', href: '/settings',
-    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms'),
+    visible: p => has(p, 'settings') || has(p, 'roles') || has(p, 'forms')
+      || p.clients === 'MANAGE' || p.crm === 'MANAGE',
   },
 ]
 

@@ -1334,6 +1334,12 @@ o celular que o WhatsApp guarda sem o nono dígito não era achado (a pessoa
 dobrava); erros de consulta descartados; e o "Linha N" desalinhava da
 planilha. Provas: `e2e/importacao-contatos.spec.ts`, `tests/importacao.test.ts`.
 
+Depois, a pedido dele, o importador foi para **Configurações → Importações**
+(nos dois portais), e os botões de Clientes e de Oportunidades saíram; o
+caminho antigo redireciona para a aba. A aba abre para quem tem clientes ou
+CRM em Gerenciar — quem só tem o CRM passa a ver Configurações no menu, só
+com ela.
+
 ### 2026-10-13 — O histórico do WhatsApp Web vem para o inbox
 
 Pedido do Heitor: "quando conecta qualquer API, não tem como puxar parte do

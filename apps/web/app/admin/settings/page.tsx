@@ -1,4 +1,5 @@
 import { getTenantContext, assertAnyPermission } from '@/lib/auth'
+import { MODULOS_DAS_ABAS } from '@/lib/configuracoes/abas'
 import { Configuracoes, ABAS_DA_REDE } from '@/app/_shared/configuracoes'
 
 export default async function AdminSettingsPage({
@@ -7,8 +8,9 @@ export default async function AdminSettingsPage({
   searchParams: Promise<{ tab?: string; meta_step?: string; meta_error?: string; meta_error_reason?: string }>
 }) {
   const ctx = await getTenantContext()
-  // `financial` só alcança a aba de comissões (cada aba confere o seu módulo).
-  assertAnyPermission(ctx, ['settings', 'roles', 'forms', 'financial'], 'MANAGE')
+  // `financial` só alcança a aba de comissões, `clients`/`crm` a de Importações
+  // (cada aba confere o seu módulo).
+  assertAnyPermission(ctx, MODULOS_DAS_ABAS, 'MANAGE')
 
   const { tab, meta_step, meta_error, meta_error_reason } = await searchParams
 

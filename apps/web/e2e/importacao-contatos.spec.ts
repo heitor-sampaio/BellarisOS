@@ -5,7 +5,8 @@ import { criarOutraRede, type OutraRede } from './apoio/outra-rede'
 import { chamarAcao } from './apoio/acao-direta'
 
 /**
- * O importador de contatos (pedido do Heitor, 2026-10-13): um CSV, as colunas
+ * O importador de contatos (pedido do Heitor, 2026-10-13) — em Configurações →
+ * Importações (a pedido dele, saiu de Clientes e de Oportunidades): um CSV, as colunas
  * relacionadas com os campos do sistema, a prévia com os erros, e a importação
  * em segundo plano.
  *  - Destino escolhido a cada importação: clientes (a ficha) ou contatos do CRM.
@@ -93,8 +94,8 @@ function csv1252(texto: string): Buffer {
 }
 
 async function abrirArquivo(p: Page, nome: string, conteudo: Buffer) {
-  await p.goto('/admin/importar-contatos')
-  await expect(p.getByRole('heading', { name: 'Importar contatos' })).toBeVisible()
+  await p.goto('/admin/settings?tab=importacoes')
+  await expect(p.getByRole('link', { name: 'Importações', exact: true })).toBeVisible()
   await p.getByLabel('Arquivo CSV').setInputFiles({ name: nome, mimeType: 'text/csv', buffer: conteudo })
 }
 
@@ -217,7 +218,7 @@ test('aparece em Ações em lote', async ({ browser }) => {
 
 test('quem só vê clientes não importa (nem pela action direta)', async ({ browser }) => {
   await como(browser, soVe, async p => {
-    const r = await chamarAcao(p, 'actions/importacao.ts', 'importarContatos', '/admin/importar-contatos', [{
+    const r = await chamarAcao(p, 'actions/importacao.ts', 'importarContatos', '/admin/settings', [{
       destino: 'clientes', branchId: outra.branchId, nomeArquivo: `furo-${marca}.csv`,
       mapeamento: ['name', 'phone'], linhas: [['Furo', '48999990000']], oportunidade: null,
     }])
@@ -259,7 +260,7 @@ test('quem só tem o CRM importa contatos; "Sem responsável" vale; e o contato 
 test('a importação de clientes não se lê por quem só tem o CRM', async ({ browser }) => {
   const r = await importacao(`clientes-${marca}.csv`)
   await como(browser, soCrm, async p => {
-    const resp = await chamarAcao(p, 'actions/importacao.ts', 'andamentoDaImportacao', '/admin/importar-contatos', [r!.id])
+    const resp = await chamarAcao(p, 'actions/importacao.ts', 'andamentoDaImportacao', '/admin/settings', [r!.id])
     expect(resp.texto).not.toContain('CPF inválido')
     expect(resp.texto).not.toContain('"status"')
     expect((await p.request.get(`/api/importacoes/${r!.id}/erros`)).status()).toBe(403)
@@ -268,11 +269,30 @@ test('a importação de clientes não se lê por quem só tem o CRM', async ({ b
 
 test('a etapa de um funil arquivado não recebe oportunidade', async ({ browser }) => {
   await como(browser, admin, async p => {
-    const r = await chamarAcao(p, 'actions/importacao.ts', 'importarContatos', '/admin/importar-contatos', [{
+    const r = await chamarAcao(p, 'actions/importacao.ts', 'importarContatos', '/admin/settings', [{
       destino: 'contatos', nomeArquivo: `arquivado-${marca}.csv`, mapeamento: ['name', 'phone'],
       linhas: [['X', '21966660000']], oportunidade: { etapaId: etapaArquivada, responsavelId: null },
     }])
     expect(r.texto).toContain('Etapa do funil não encontrada')
   })
   expect(await importacao(`arquivado-${marca}.csv`)).toBeUndefined()
+})
+
+test('as importações moram em Configurações: os botões de Clientes e de Oportunidades saíram, e o caminho antigo leva à aba', async ({ browser }) => {
+  await como(browser, admin, async p => {
+    await p.goto('/admin/clients')
+    await expect(p.getByRole('button', { name: 'Importar contatos' })).toHaveCount(0)
+    await p.goto(`/admin/oportunidades?funil=${funil}`)
+    await expect(p.getByRole('link', { name: /Importar/ })).toHaveCount(0)
+    await p.goto('/admin/importar-contatos')
+    await expect(p).toHaveURL(/\/admin\/settings\?tab=importacoes/)
+  })
+  // Quem só tem o CRM chega pelo menu: Configurações, só com a aba dele.
+  await como(browser, soCrm, async p => {
+    await p.goto('/admin/dashboard')
+    await expect(p.getByRole('navigation').getByText('Configurações', { exact: true })).toBeVisible()
+    await p.goto('/admin/settings')
+    await expect(p.getByRole('link', { name: 'Importações', exact: true })).toBeVisible()
+    await expect(p.getByRole('link', { name: 'Integrações', exact: true })).toHaveCount(0)
+  })
 })

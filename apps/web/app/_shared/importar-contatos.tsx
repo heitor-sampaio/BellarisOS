@@ -6,16 +6,15 @@ import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
 import { ImportadorDeContatos } from '@/components/branch/importador-de-contatos'
 
 /**
- * O corpo da tela "Importar contatos" (2026-10-13), dividido pelos dois
- * portais: a página da rede escolhe a unidade dos clientes; a da unidade
- * importa para ela. Cada destino aparece só para quem tem o módulo dele em
+ * O corpo da aba Configurações → Importações (2026-10-13), dividido pelos dois
+ * portais: na rede escolhe-se a unidade dos clientes; na unidade, importa-se
+ * para ela. Cada destino aparece só para quem tem o módulo dele em
  * Gerenciar (clientes → `clients`, contatos → `crm`), e a oportunidade, para
  * quem tem o CRM e o recurso do plano.
  */
-export async function ImportarContatos({ unidadeFixa, voltarPara }: {
+export async function ImportarContatos({ unidadeFixa }: {
   /** No portal da unidade: a unidade dos clientes, sem escolha. */
   unidadeFixa: { id: string; nome: string } | null
-  voltarPara: string
 }) {
   const ctx = await getTenantContext()
   assertAnyPermission(ctx, ['clients', 'crm'], 'MANAGE')
@@ -66,7 +65,6 @@ export async function ImportarContatos({ unidadeFixa, voltarPara }: {
       etapaPadrao={etapaPadrao}
       responsaveis={(pessoas as { id: string; name: string }[] | null) ?? null}
       eu={ctx.internalUserId ?? null}
-      voltarPara={voltarPara}
     />
   )
 }

@@ -1,9 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FileUp, ChevronLeft, Download, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { FileUp, Download, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { SegSelect } from '@/components/shared/seg-select'
 import { StageOptions } from './stage-options'
 import { decodificar, lerCsv } from '@/lib/importacao/csv'
@@ -46,7 +45,6 @@ interface Props {
   /** Quem pode ser responsável (null: só quem importa). */
   responsaveis: { id: string; name: string }[] | null
   eu: string | null
-  voltarPara: string
 }
 
 function Aviso({ tom, children }: { tom: 'erro' | 'ok' | 'espera'; children: React.ReactNode }) {
@@ -152,16 +150,13 @@ export function ImportadorDeContatos(p: Props) {
   const exemplo = (i: number) => arquivo?.linhas.find(l => (l[i] ?? '').trim())?.[i]?.trim() ?? ''
 
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 820 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 820 }}>
       <div>
-        <Link href={p.voltarPara} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', fontWeight: 600 }}>
-          <ChevronLeft size={14} /> Clientes
-        </Link>
-        <h1 style={{ fontSize: 'var(--text-title)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)', marginTop: 6 }}>
+        <h2 style={{ fontSize: 'var(--text-card-title)', fontWeight: 800, color: 'var(--text)' }}>
           Importar contatos
-        </h1>
+        </h2>
         <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', marginTop: 4 }}>
-          De uma planilha em CSV. Passo {passo} de 4 · {['Arquivo', 'Colunas', 'Prévia', 'Importação'][passo - 1]}
+          De uma planilha em CSV, como clientes ou como contatos do CRM. Passo {passo} de 4 · {['Arquivo', 'Colunas', 'Prévia', 'Importação'][passo - 1]}
         </p>
       </div>
 

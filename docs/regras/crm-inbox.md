@@ -25,12 +25,15 @@
   LGPD de `/admin/settings`. Aprovar recoloca o pedido em `pending` e o pacote
   é regerado com a parte clínica.
 
-**O importador de contatos (CSV)** (2026-10-13; "Importar" em Clientes e em
-Oportunidades → `/admin/importar-contatos` e `/[slug]/importar-contatos`,
-corpo em `app/_shared/importar-contatos.tsx`, `lib/importacao/`): arquivo →
-colunas → prévia → importação em segundo plano. ⚠️ A rota fica FORA de
-`clients/`: o layout de lá pede `clients: VIEW`, e a SDR que só tem o CRM
-também importa a lista de leads dela.
+**O importador de contatos (CSV)** (2026-10-13; **Configurações → Importações**,
+nos dois portais — pedido do Heitor, saiu de Clientes e de Oportunidades;
+`/importar-contatos` só redireciona para a aba; corpo em
+`app/_shared/importar-contatos.tsx`, `lib/importacao/`): arquivo → colunas →
+prévia → importação em segundo plano. ⚠️ A aba abre com `clients` OU `crm` em
+Gerenciar (`alternativas` em `lib/configuracoes/abas.ts`, lidas por
+`abaLiberada` na tela, na busca e no menu; a página de Configurações aceita
+`MODULOS_DAS_ABAS`): a SDR que só tem o CRM também importa a lista de leads
+dela — e vê Configurações só com essa aba.
 - **O destino é escolhido a cada importação**: *clientes* (a ficha, na unidade
   escolhida — na unidade, a dela; `clients: MANAGE`) ou *contatos do CRM* (só a
   pessoa: nome, telefone, tags; `crm: MANAGE`). Oportunidade no funil é

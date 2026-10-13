@@ -1,4 +1,8 @@
-import { getTenantContext, assertAnyPermission } from '@/lib/auth'
+import { notFound } from 'next/navigation'
+import { getTenantContext, assertAnyPermission, alcancaUnidade } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
+import { MODULOS_DAS_ABAS } from '@/lib/configuracoes/abas'
 import { Configuracoes, ABAS_DA_UNIDADE } from '@/app/_shared/configuracoes'
 
 /**
@@ -22,7 +26,11 @@ export default async function BranchSettingsPage({
 }) {
   const { slug } = await params
   const ctx = await getTenantContext()
-  assertAnyPermission(ctx, ['settings', 'roles', 'forms'], 'MANAGE')
+  assertAnyPermission(ctx, MODULOS_DAS_ABAS.filter(m => m !== 'financial'), 'MANAGE')
+  // A unidade da tela: é para ela que a aba Importações cadastra os clientes.
+  const unidade = await ler(createAdminClient().from('branches').select('id, name')
+    .eq('slug', slug).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a unidade')
+  if (!unidade || !alcancaUnidade(ctx, unidade.id as string)) notFound()
 
   const { tab, meta_step, meta_error, meta_error_reason } = await searchParams
 
@@ -34,6 +42,7 @@ export default async function BranchSettingsPage({
       subtitulo="Cargos, modelos de ficha e integrações da rede"
       aviso="Estas configurações valem para a rede inteira. Alterar aqui muda para todas as unidades."
       atalhoParaEquipe={false}
+      unidadeDaTela={{ id: unidade.id as string, nome: unidade.name as string }}
       metaStep={meta_step}
       metaError={meta_error}
       metaErrorReason={meta_error_reason}

@@ -1,6 +1,6 @@
 import type { ResolvedPermissions } from '@estetica-os/types'
 import { ADMIN_MENU, BRANCH_MENU, menuEntriesFor } from '@/lib/menu'
-import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano } from '@/lib/configuracoes/abas'
+import { ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, abaLiberada } from '@/lib/configuracoes/abas'
 import { casaComTermo } from '@/lib/busca/texto'
 import type { ResultadoDaBusca } from '@/lib/busca/tipos'
 
@@ -85,7 +85,7 @@ export function paginasDaBusca(
   const abasDoPortal = naRede ? ABAS_DA_REDE : ABAS_DA_UNIDADE
   for (const aba of ABAS_DE_CONFIGURACAO) {
     if (!abasDoPortal.includes(aba.key)) continue
-    if (permissions[aba.module] !== 'MANAGE') continue
+    if (!abaLiberada(aba, m => permissions[m] === 'MANAGE')) continue
     if (!abaNoPlano(aba, plano)) continue
     paginas.push({
       key:      `settings:${aba.key}`,

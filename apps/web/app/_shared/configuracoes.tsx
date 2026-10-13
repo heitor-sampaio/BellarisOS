@@ -20,6 +20,7 @@ import { SettingsLgpd } from '@/components/admin/settings-lgpd'
 import { listDataRequests } from '@/actions/lgpd'
 import { SettingsEventos } from '@/components/admin/settings-eventos'
 import { SettingsAcoesEmLote } from '@/components/admin/settings-acoes-em-lote'
+import { ImportarContatos } from '@/app/_shared/importar-contatos'
 import { acoesEmLote } from '@/lib/lotes/acoes'
 import { listarEventosDeDominio, resumoDoCatalogo } from '@/actions/eventos'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -42,7 +43,7 @@ import { configDaRede, redeTemLancamentos } from '@/lib/fidelidade/leitura'
 import { SettingsComissoes } from '@/components/admin/settings-comissoes'
 import { configDeComissaoDaRede, taxasDaRede, profissionaisSemComissao } from '@/lib/comissoes/leitura'
 import {
-  ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, type ChaveDeAba,
+  ABAS_DE_CONFIGURACAO, ABAS_DA_REDE, ABAS_DA_UNIDADE, abaNoPlano, abaLiberada, type ChaveDeAba,
 } from '@/lib/configuracoes/abas'
 
 /**
@@ -80,6 +81,8 @@ interface Props {
   metaStep?:        string
   metaError?:       string
   metaErrorReason?: string
+  /** No portal da unidade: a unidade da tela (a de Importações cadastra nela). */
+  unidadeDaTela?:   { id: string; nome: string }
 }
 
 type PermissionRow = {
@@ -91,11 +94,11 @@ type PermissionRow = {
 
 export async function Configuracoes({
   basePath, abas, abaPedida, subtitulo, aviso, atalhoParaEquipe,
-  metaStep, metaError, metaErrorReason,
+  metaStep, metaError, metaErrorReason, unidadeDaTela,
 }: Props) {
   const ctx = await getTenantContext()
 
-  const tabs = TABS.filter(t => abas.includes(t.key) && can(ctx, t.module, 'MANAGE') && abaNoPlano(t, ctx.plano))
+  const tabs = TABS.filter(t => abas.includes(t.key) && abaLiberada(t, m => can(ctx, m, 'MANAGE')) && abaNoPlano(t, ctx.plano))
   if (tabs.length === 0) {
     return (
       <div style={{ padding: 40, color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)' }}>
@@ -399,6 +402,8 @@ export async function Configuracoes({
       )}
 
       {activeTab === 'lotes' && lotes && <SettingsAcoesEmLote iniciais={lotes} />}
+
+      {activeTab === 'importacoes' && <ImportarContatos unidadeFixa={unidadeDaTela ?? null} />}
 
       {activeTab === 'eventos' && resumo && primeiraPagina && (
         <>

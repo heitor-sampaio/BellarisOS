@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Search, UserPlus, FileUp } from 'lucide-react'
+import { Search, UserPlus } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { unitTag, isUnitTag } from '@estetica-os/utils'
@@ -26,8 +26,6 @@ interface Props {
   basePath:          string          // e.g. "/bellaris-sp/clients" or "/admin/clients"
   totalActive:       number
   newClientHref?:    string | null   // null = hide button; undefined = basePath + "/new"
-  /** "Importar contatos" (CSV): null esconde. */
-  importHref?:       string | null
   availableBranches?: { id: string; name: string }[]  // admin-only: shows branch filter
 }
 
@@ -52,7 +50,7 @@ export function ClientsSidebar({
   clients,
   basePath,
   totalActive,
-  newClientHref, importHref,
+  newClientHref,
   availableBranches,
 }: Props) {
   const pathname = usePathname()
@@ -144,22 +142,6 @@ export function ClientsSidebar({
               {totalActive.toLocaleString('pt-BR')} ativos
             </span>
           </div>
-          {importHref && (
-            <button
-              type="button"
-              onClick={() => router.push(importHref)}
-              aria-label="Importar contatos"
-              title="Importar contatos (CSV)"
-              style={{
-                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                background: 'var(--bg-app)', color: 'var(--text-muted)',
-                border: '1px solid var(--border)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <FileUp size={14} />
-            </button>
-          )}
           {addHref !== null && (
             <button
               type="button"

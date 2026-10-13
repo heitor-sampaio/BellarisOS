@@ -1,13 +1,6 @@
-import { getTenantContext, assertAnyPermission, can } from '@/lib/auth'
-import { ImportarContatos } from '@/app/_shared/importar-contatos'
+import { redirect } from 'next/navigation'
 
-/**
- * Importar contatos pelo portal da rede: a unidade dos clientes é escolhida.
- * Fora de `clients/` de propósito: o layout de lá pede `clients: VIEW`, e quem
- * só tem o CRM (a SDR com uma lista de leads) também importa.
- */
-export default async function AdminImportarContatosPage() {
-  const ctx = await getTenantContext()
-  assertAnyPermission(ctx, ['clients', 'crm'], 'MANAGE')
-  return <ImportarContatos unidadeFixa={null} voltarPara={can(ctx, 'clients', 'VIEW') ? '/admin/clients' : '/admin/oportunidades'} />
+/** O importador mora em Configurações → Importações (2026-10-13). */
+export default function AdminImportarContatosPage() {
+  redirect('/admin/settings?tab=importacoes')
 }

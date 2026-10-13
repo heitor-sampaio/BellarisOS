@@ -7,8 +7,7 @@ import { CRMBoard } from '@/components/branch/crm-board'
 import { CRMLeadModal } from '@/components/branch/crm-lead-modal'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { CRMStageSettings } from '@/components/branch/crm-stage-settings'
-import { UserPlus, FileUp } from 'lucide-react'
-import Link from 'next/link'
+import { UserPlus } from 'lucide-react'
 import { ler } from '@/lib/db'
 import { atividadeDasPessoas } from '@/lib/crm/atividade-da-pessoa'
 
@@ -166,13 +165,6 @@ export default async function BranchOportunidadesPage({
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* A lista de leads de um evento entra por aqui (o importador, 2026-10-13). */}
-          {podeConfigurar && (
-            <Link href={`/${slug}/importar-contatos`} className="btn-ghost" title="Importar contatos (CSV)"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <FileUp size={15} /> Importar
-            </Link>
-          )}
           {podeConfigurar && (
             <CRMStageSettings
               slug={slug}

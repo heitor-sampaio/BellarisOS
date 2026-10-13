@@ -33,8 +33,23 @@ export const ABAS_DE_CONFIGURACAO = [
   { key: 'eventos',       label: 'Eventos',      module: 'settings' },
   // O que roda em segundo plano e demora (o histórico do WhatsApp…). Da rede.
   { key: 'lotes',         label: 'Ações em lote', module: 'settings' },
+  // O importador de contatos (CSV, 2026-10-13): quem cadastra clientes OU
+  // trabalha o CRM — a SDR que só tem o CRM importa a lista de leads dela.
+  { key: 'importacoes',   label: 'Importações',  module: 'clients',   alternativas: ['crm'] },
   { key: 'general',       label: 'Geral',        module: 'settings' },
-] as const satisfies readonly { key: string; label: string; module: AppModule; recurso?: string }[]
+] as const satisfies readonly { key: string; label: string; module: AppModule; recurso?: string; alternativas?: readonly AppModule[] }[]
+
+/**
+ * A aba abre para quem tem o módulo dela em MANAGE — ou um dos alternativos
+ * (a de Importações: `clients` ou `crm`). A tela, a busca e o menu usam esta.
+ */
+export function abaLiberada(aba: object, gerencia: (m: AppModule) => boolean): boolean {
+  const a = aba as { module: AppModule; alternativas?: readonly AppModule[] }
+  return gerencia(a.module) || (a.alternativas ?? []).some(gerencia)
+}
+
+/** Os módulos que abrem alguma aba (a página de Configurações confere isto). */
+export const MODULOS_DAS_ABAS: AppModule[] = ['settings', 'roles', 'forms', 'financial', 'clients', 'crm']
 
 /**
  * A aba é de uma funcionalidade do PLANO (lib/planos/recursos.ts)? Fora dele,
@@ -53,4 +68,4 @@ export const ABAS_DA_REDE: readonly ChaveDeAba[] =
 
 /** O que a unidade governa sem sair do próprio portal nem ver outra unidade. */
 export const ABAS_DA_UNIDADE: readonly ChaveDeAba[] =
-  ['permissions', 'fichas', 'documentos', 'integrations', 'general']
+  ['permissions', 'fichas', 'documentos', 'integrations', 'importacoes', 'general']
