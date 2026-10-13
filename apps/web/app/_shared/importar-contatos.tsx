@@ -1,0 +1,72 @@
+import { getTenantContext, assertAnyPermission, can, temRecurso } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { ler } from '@/lib/db'
+import { seedDefaultFunnel, listAllStages } from '@/lib/crm/funis'
+import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
+import { ImportadorDeContatos } from '@/components/branch/importador-de-contatos'
+
+/**
+ * O corpo da tela "Importar contatos" (2026-10-13), dividido pelos dois
+ * portais: a página da rede escolhe a unidade dos clientes; a da unidade
+ * importa para ela. Cada destino aparece só para quem tem o módulo dele em
+ * Gerenciar (clientes → `clients`, contatos → `crm`), e a oportunidade, para
+ * quem tem o CRM e o recurso do plano.
+ */
+export async function ImportarContatos({ unidadeFixa, voltarPara }: {
+  /** No portal da unidade: a unidade dos clientes, sem escolha. */
+  unidadeFixa: { id: string; nome: string } | null
+  voltarPara: string
+}) {
+  const ctx = await getTenantContext()
+  assertAnyPermission(ctx, ['clients', 'crm'], 'MANAGE')
+  const admin = createAdminClient()
+
+  const podeClientes = can(ctx, 'clients', 'MANAGE')
+  const podeContatos = can(ctx, 'crm', 'MANAGE')
+  const podeOportunidade = podeContatos && temRecurso(ctx, 'oportunidades')
+
+  // A unidade: a da sessão vence (quem é de unidade só importa para a dela).
+  let unidades: { id: string; nome: string }[] = []
+  if (unidadeFixa) unidades = [unidadeFixa]
+  else if (ctx.branchId) {
+    const b = await ler(admin.from('branches').select('id, name').eq('id', ctx.branchId).maybeSingle(), 'buscar a unidade')
+    if (b) unidades = [{ id: b.id as string, nome: b.name as string }]
+  } else {
+    const bs = await ler(admin.from('branches').select('id, name').eq('tenant_id', ctx.tenantId!)
+      .eq('is_active', true).order('name'), 'listar as unidades') as { id: string; name: string }[] | null
+    unidades = (bs ?? []).map(b => ({ id: b.id, nome: b.name }))
+  }
+
+  const [funis, etapas, pessoas] = podeOportunidade
+    ? await Promise.all([
+        seedDefaultFunnel(ctx.tenantId!),
+        listAllStages(ctx.tenantId!),
+        podeTrocarResponsavel(ctx)
+          ? ler(admin.from('users').select('id, name').eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'listar os responsáveis')
+          : Promise.resolve(null),
+      ])
+    : [[], [], null]
+
+  // Só funis ATIVOS (a etapa de um arquivado criaria a oportunidade fora do
+  // quadro), começando pela primeira etapa do funil padrão.
+  const ativos = funis.filter(f => !f.archived_at)
+  const doQuadro = etapas.filter(e => ativos.some(f => f.id === e.funnel_id))
+  const padrao = ativos.find(f => f.is_default) ?? ativos[0]
+  const etapaPadrao = doQuadro.find(e => e.funnel_id === padrao?.id)?.id ?? doQuadro[0]?.id ?? ''
+
+  return (
+    <ImportadorDeContatos
+      podeClientes={podeClientes}
+      podeContatos={podeContatos}
+      podeOportunidade={podeOportunidade}
+      unidades={unidades}
+      unidadeFixa={!!unidadeFixa || !!ctx.branchId}
+      funis={ativos.map(f => ({ id: f.id, name: f.name }))}
+      etapas={doQuadro.map(e => ({ id: e.id, funnel_id: e.funnel_id, name: e.name }))}
+      etapaPadrao={etapaPadrao}
+      responsaveis={(pessoas as { id: string; name: string }[] | null) ?? null}
+      eu={ctx.internalUserId ?? null}
+      voltarPara={voltarPara}
+    />
+  )
+}

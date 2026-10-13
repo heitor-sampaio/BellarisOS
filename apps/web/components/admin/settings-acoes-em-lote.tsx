@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { History, Loader2, RotateCcw } from 'lucide-react'
+import { History, Loader2, RotateCcw, FileUp, Download } from 'lucide-react'
 import { listarAcoesEmLote, repetirAcaoEmLote } from '@/actions/acoes-em-lote'
 import type { AcaoEmLote, EstadoDaAcao } from '@/lib/lotes/acoes'
 
@@ -39,11 +39,12 @@ export function SettingsAcoesEmLote({ iniciais }: { iniciais: AcaoEmLote[] }) {
     return () => clearInterval(t)
   }, [relendo])
 
-  function repetir(id: string) {
+  function repetir(a: AcaoEmLote) {
+    const id = a.id
     setErros(e => ({ ...e, [id]: '' }))
     setEmCurso(id)
     startTransition(async () => {
-      const r = await repetirAcaoEmLote(id)
+      const r = await repetirAcaoEmLote(id, a.tipo)
       if (!r.ok) setErros(e => ({ ...e, [id]: r.error ?? 'Não foi possível tentar de novo.' }))
       setAcoes(await listarAcoesEmLote())
       setEmCurso(null)
@@ -53,8 +54,9 @@ export function SettingsAcoesEmLote({ iniciais }: { iniciais: AcaoEmLote[] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
       <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.55 }}>
-        O que o sistema faz em segundo plano e demora — como trazer o histórico de conversas
-        ao conectar um número do WhatsApp Web. Pode sair desta tela: a ação continua.
+        O que o sistema faz em segundo plano e demora — trazer o histórico de conversas ao
+        conectar um número do WhatsApp Web, importar uma planilha de contatos. Pode sair desta
+        tela: a ação continua.
       </p>
 
       {acoes.length === 0 && (
@@ -70,7 +72,9 @@ export function SettingsAcoesEmLote({ iniciais }: { iniciais: AcaoEmLote[] }) {
           <div key={a.id} data-acao-em-lote className="card" style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                <History size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                {a.tipo === 'importacao_contatos'
+                  ? <FileUp size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                  : <History size={15} color="var(--text-muted)" style={{ flexShrink: 0 }} />}
                 <span style={{ fontSize: 'var(--text-base-sz)', fontWeight: 700, color: 'var(--text)' }}>{a.titulo}</span>
                 <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   · {a.alvo}
@@ -105,14 +109,21 @@ export function SettingsAcoesEmLote({ iniciais }: { iniciais: AcaoEmLote[] }) {
             )}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
-                {a.concluidaEm ? `Terminou em ${quando(a.concluidaEm)}` : `Começou em ${quando(a.iniciadaEm ?? a.criadaEm)}`}
+              <span style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+                  {a.concluidaEm ? `Terminou em ${quando(a.concluidaEm)}` : `Começou em ${quando(a.iniciadaEm ?? a.criadaEm)}`}
+                </span>
+                {a.linkDosErros && (
+                  <a href={a.linkDosErros} download style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 700, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <Download size={12} /> Baixar os erros ({a.errosNoRelatorio})
+                  </a>
+                )}
               </span>
               {a.podeRepetir && (
-                <button type="button" onClick={() => repetir(a.id)} disabled={isPending} className="btn-ghost"
+                <button type="button" onClick={() => repetir(a)} disabled={isPending} className="btn-ghost"
                   style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {emCurso === a.id ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
-                  {a.estado === 'concluida' ? 'Trazer de novo' : 'Tentar de novo'}
+                  {a.tipo === 'historico_whatsapp' && a.estado === 'concluida' ? 'Trazer de novo' : 'Tentar de novo'}
                 </button>
               )}
             </div>

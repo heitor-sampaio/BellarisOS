@@ -59,6 +59,7 @@ export default async function ClientsLayout({
           // Com só "Ver", o botão "+ novo cliente" aparecia e a rota
           // /clients/new recusava. `null` esconde; `undefined` usa o padrão.
           newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
+          importHref={can(ctx, 'clients', 'MANAGE') || can(ctx, 'crm', 'MANAGE') ? `/${slug}/importar-contatos` : null}
           clients={clients}
           basePath={`/${slug}/clients`}
           totalActive={totalActive}

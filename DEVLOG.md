@@ -1299,6 +1299,41 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-13 — O importador de contatos (CSV)
+
+Pedido do Heitor: importar uma planilha e relacionar as colunas com os campos
+do sistema. Em Clientes, o botão "Importar" (ao lado de "Novo cliente", nos
+dois portais) abre um assistente de quatro passos: o arquivo (CSV do Excel
+brasileiro — `;` e Windows-1252 — ou de outros programas), as colunas (o
+sistema sugere pelo cabeçalho: "Celular" → Telefone, "Data de nasc." →
+Nascimento), a prévia (quantas linhas entram e quais têm erro, com o motivo:
+CPF inválido, telefone sem DDD, data ilegível, repetida na planilha) e a
+importação em segundo plano, acompanhada na tela e em Configurações → Ações
+em lote, com o relatório de erros para baixar.
+
+As decisões dele: o destino é escolhido a cada importação — *clientes* (a
+ficha, na unidade) ou *contatos do CRM* (só a pessoa); quem já existe só tem
+o vazio completado; não se cria acesso ao portal; e a oportunidade no funil é
+opcional (com etapa e responsável), sem duplicar quem já tem uma aberta. As
+minhas, anotadas: a importação não dispara evento (uma planilha não pode virar
+mil boas-vindas); o telefone vai no formato do WhatsApp, para quem foi
+importado cair na mesma pessoa quando escrever; campo preenchido e ilegível
+recusa a linha em vez de sumir com o dado; importar clientes não cria o
+contato do CRM (a ficha se liga à pessoa pela conversa, como no cadastro
+manual); o relatório de erros expira em 7 dias.
+
+Um agente revisor leu tudo antes do commit e achou dez problemas reais, todos
+corrigidos com teste: "Sem responsável" virava quem importou; a SDR que só tem
+o CRM não chegava ao importador (a rota estava dentro de Clientes — saiu para
+`/importar-contatos`, com o botão também em Oportunidades); o relatório da
+importação que falhou nunca expirava (agora expira sempre, e um cron varre);
+ler e retomar não conferiam o módulo do destino nem a unidade; duas passagens
+podiam gravar juntas (agora cada uma tem a sua `execucao`); upload que falha
+no meio deixava meio arquivo retomável; a etapa podia ser de funil arquivado;
+o celular que o WhatsApp guarda sem o nono dígito não era achado (a pessoa
+dobrava); erros de consulta descartados; e o "Linha N" desalinhava da
+planilha. Provas: `e2e/importacao-contatos.spec.ts`, `tests/importacao.test.ts`.
+
 ### 2026-10-13 — O histórico do WhatsApp Web vem para o inbox
 
 Pedido do Heitor: "quando conecta qualquer API, não tem como puxar parte do

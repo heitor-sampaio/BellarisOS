@@ -6,6 +6,8 @@ import { ler } from '@/lib/db'
 import { acoesEmLote, type AcaoEmLote } from '@/lib/lotes/acoes'
 import { dispararHistoricoUazapi } from '@/lib/whatsapp/historico-uazapi'
 import { getNumero } from '@/lib/whatsapp/factory'
+import type { TipoDeAcao } from '@/lib/lotes/acoes'
+import { retomarImportacao } from '@/actions/importacao'
 
 /** Configurações → Ações em lote: a lista (a tela relê enquanto algo roda). */
 export async function listarAcoesEmLote(): Promise<AcaoEmLote[]> {
@@ -18,9 +20,11 @@ export async function listarAcoesEmLote(): Promise<AcaoEmLote[]> {
  * "Tentar de novo" de uma ação. O id vem do navegador: a linha tem de ser da
  * rede da sessão, e a caixa, ainda do WhatsApp Web, desta rede e ligada.
  */
-export async function repetirAcaoEmLote(id: string): Promise<{ ok: boolean; error?: string }> {
+export async function repetirAcaoEmLote(id: string, tipo: TipoDeAcao = 'historico_whatsapp'): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertPermission(ctx, 'settings', 'MANAGE')
+  // A importação: continua de onde parou (a action confere o módulo do destino).
+  if (tipo === 'importacao_contatos') return retomarImportacao(id)
   const linha = await ler(createAdminClient().from('whatsapp_historicos')
     .select('whatsapp_number_id').eq('id', id).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar a ação') as
     { whatsapp_number_id: string } | null

@@ -25,6 +25,58 @@
   LGPD de `/admin/settings`. Aprovar recoloca o pedido em `pending` e o pacote
   é regerado com a parte clínica.
 
+**O importador de contatos (CSV)** (2026-10-13; "Importar" em Clientes e em
+Oportunidades → `/admin/importar-contatos` e `/[slug]/importar-contatos`,
+corpo em `app/_shared/importar-contatos.tsx`, `lib/importacao/`): arquivo →
+colunas → prévia → importação em segundo plano. ⚠️ A rota fica FORA de
+`clients/`: o layout de lá pede `clients: VIEW`, e a SDR que só tem o CRM
+também importa a lista de leads dela.
+- **O destino é escolhido a cada importação**: *clientes* (a ficha, na unidade
+  escolhida — na unidade, a dela; `clients: MANAGE`) ou *contatos do CRM* (só a
+  pessoa: nome, telefone, tags; `crm: MANAGE`). Oportunidade no funil é
+  opcional (`crm: MANAGE` + recurso `oportunidades`; responsável que não é
+  quem importa só com `podeTrocarResponsavel`) e não duplica: quem já tem uma
+  aberta no mesmo funil não ganha outra.
+- **O arquivo é lido no navegador** (`csv.ts`: UTF-8 ou Windows-1252, `;` `,`
+  ou tabulação, aspas RFC 4180; `campos.ts` sugere a coluna pelo cabeçalho);
+  **o servidor valida cada linha de novo** com o MESMO `normalizar.ts` — a
+  prévia não é confiável. Até 5 MB e 10 mil linhas.
+- **Telefone no formato do WhatsApp** (só dígitos, 55 + DDD + número): é o que
+  `contacts.identifiers` guarda e o webhook manda. Sem DDD é erro (não se
+  adivinha a cidade). ⚠️ Para ACHAR a pessoa, as duas formas do celular
+  (`variantesDoTelefone`): o WhatsApp guarda muito número SEM o nono dígito, e
+  a planilha o traz COM — procurar uma só dobrava a pessoa. A oportunidade vai
+  com o telefone da pessoa ACHADA (o gatilho a liga pelo número exato).
+- **Quem já existe só tem o VAZIO completado** e as tags juntadas — nunca se
+  troca o que a clínica tem; importar de novo é seguro. Cliente: pelo CPF; sem
+  achar, a ficha SEM CPF do mesmo telefone (`cliente_por_telefone`,
+  `p_sem_cpf`) — a regra do cadastro manual (telefone de ficha com CPF pode
+  ser de outra pessoa). Contato: pelo telefone exato.
+- **Cliente novo**: tag da unidade (é por ela que a lista filtra) e conta de
+  fidelidade (`fidelidade_conta`); **SEM acesso ao portal** (cria-se na ficha).
+  A importação de clientes não cria contato do CRM: a ficha se liga à pessoa
+  quando a conversa começar, como no cadastro manual.
+- ⚠️ **Nenhum evento de domínio** (`criarOportunidadeCore(…, { semEventos })`,
+  e cliente/contato gravados direto): uma planilha não pode virar mil
+  automações de boas-vindas.
+- Campo opcional preenchido e ilegível (CPF, e-mail, data, UF…) **recusa a
+  linha** com o motivo — sumir com o dado em silêncio seria pior.
+- Roda em `after()` (`lib/importacao/processar.ts`), no padrão do histórico do
+  WhatsApp: `importacoes` reivindicada com uma `execucao` nova, e TODO sinal de
+  vida e a gravação final filtram por ela — a passagem que perdeu a vez para de
+  gravar. Sinal a cada 100 linhas, ANTES de tirar o pedaço de
+  `importacao_linhas` (cair no meio regrava o pedaço, o que é seguro; o
+  contrário perderia as contagens). Interrompida, "Tentar de novo" continua de
+  onde parou; upload que falha no meio apaga a importação inteira (retomar uma
+  truncada importaria meio arquivo em silêncio).
+- **Ler, retomar e baixar os erros** conferem o módulo do DESTINO e, nos
+  clientes, a unidade (`importacaoAoAlcance`). O relatório guarda o valor
+  errado (dado pessoal): expira em 7 dias, também na falha, conferido na leitura
+  e varrido pelo cron `importacoes` (hora em hora). O "Linha N" é o da
+  planilha (`lerCsv` devolve `numeros`: linha em branco e célula de várias
+  linhas contam). A etapa da oportunidade é de funil ATIVO.
+- Prova: `e2e/importacao-contatos.spec.ts`, `tests/importacao.test.ts`.
+
 ### 9.2.1 Contato, conversa, oportunidade e cliente — quem é quem
 
 São quatro entidades e é fácil confundi-las. A regra é:
@@ -237,6 +289,8 @@ o contato junto.
 ❌ Filtrar por canal ou caixa ao procurar o contato (é o cruzamento que interessa)
 ❌ Mostrar o nome da conversa (contact_name) em vez do da pessoa (contacts.name)
 ❌ Oferecer apagar oportunidade (lead) — a que não vai adiante é marcada perdida
+❌ Importar (planilha, lote) emitindo evento de domínio, ou trocando dado que a ficha já tem
+❌ Gravar telefone importado fora do formato do WhatsApp (55 + DDD + número, só dígitos) — a pessoa não se acha depois
 ❌ Escrever "Dono" na tela para o responsável da oportunidade (é "Responsável" em todo lugar)
 ❌ Trocar leads.owner_id fora de trocarResponsavelCore (o histórico perde o "de")
 ```

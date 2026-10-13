@@ -54,6 +54,7 @@ export default async function AdminClientsLayout({
           // A rede passa a cadastrar pela própria rede: antes o botão era
           // escondido aqui e só existia dentro do portal de uma unidade.
           newClientHref={can(ctx, 'clients', 'MANAGE') ? undefined : null}
+          importHref={can(ctx, 'clients', 'MANAGE') || can(ctx, 'crm', 'MANAGE') ? '/admin/importar-contatos' : null}
           availableBranches={branches}
         />
       }

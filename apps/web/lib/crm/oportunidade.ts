@@ -80,7 +80,20 @@ export interface NovaOportunidade {
   utmCampaign?: string | null
 }
 
-export async function criarOportunidadeCore(admin: Admin, ctx: TenantContext, o: NovaOportunidade): Promise<{ leadId: string; createdAt: string } | { error: string }> {
+/**
+ * Opções de quem cria por fora da tela — a importação (2026-10-13):
+ * `semEventos` não emite `lead.criado` (uma planilha não pode disparar mil
+ * automações), `responsavelId` (já conferido por quem chama) e `clientId`.
+ */
+export interface OpcoesDaCriacao {
+  semEventos?:    boolean
+  responsavelId?: string | null
+  clientId?:      string | null
+}
+
+export async function criarOportunidadeCore(
+  admin: Admin, ctx: TenantContext, o: NovaOportunidade, opcoes: OpcoesDaCriacao = {},
+): Promise<{ leadId: string; createdAt: string } | { error: string }> {
   const nome = o.nome?.trim()
   if (!nome) return { error: 'Nome é obrigatório.' }
   if (!o.telefone && !o.email && !o.social) return { error: 'Informe pelo menos um contato: telefone, e-mail ou rede social.' }
@@ -102,8 +115,10 @@ export async function criarOportunidadeCore(admin: Admin, ctx: TenantContext, o:
     utm_source: o.utmSource ?? null, utm_medium: o.utmMedium ?? null, utm_campaign: o.utmCampaign ?? null,
     ctwa_clid: derived.ctwa_clid ?? null,
     tags,
-    // Atribui o lead a quem o criou (base para KPIs por vendedor).
-    owner_id: ctx.internalUserId,
+    // Atribui o lead a quem o criou (base para KPIs por vendedor) — ou ao
+    // responsável que quem chama escolheu e conferiu.
+    owner_id: opcoes.responsavelId !== undefined ? opcoes.responsavelId : ctx.internalUserId,
+    ...(opcoes.clientId ? { client_id: opcoes.clientId } : {}),
   }).select('id, created_at').single()
   if (error || !lead) {
     console.error('[criarOportunidadeCore]', error?.message)
@@ -115,7 +130,7 @@ export async function criarOportunidadeCore(admin: Admin, ctx: TenantContext, o:
     tenantId: ctx.tenantId!, leadId: lead.id as string, type: 'CREATED', toStageId: etapaInicial,
     actorUserId: ctx.internalUserId, actorName: ctx.userName || null,
   })
-  await emitirEventoDeLead(EVENTOS.LEAD_CRIADO, lead.id as string, ctx)
+  if (!opcoes.semEventos) await emitirEventoDeLead(EVENTOS.LEAD_CRIADO, lead.id as string, ctx)
   return { leadId: lead.id as string, createdAt: lead.created_at as string }
 }
 

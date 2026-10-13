@@ -22,7 +22,7 @@ const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
  *   conta Meta da rede pela dele e deixava a integração inativa.
  */
 
-const CRONS = ['copilot-retencao', 'automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns', 'suporte-sessoes']
+const CRONS = ['copilot-retencao', 'automacoes', 'documentos-pdf', 'estoque-minimo', 'eventos-expirados', 'fidelidade', 'lgpd-exports', 'meta-capi', 'notification-campaigns', 'suporte-sessoes', 'importacoes']
 /** Os do SISTEMA (apps/sistema, outro host desde 2026-10-06): só contra o build. */
 const CRONS_DO_SISTEMA = ['assinaturas']
 
@@ -57,6 +57,11 @@ test('o webhook do Asaas recusa sem o token (e nada é gravado)', async ({ reque
   const errado = await request.post(webhook, { data: corpo, headers: { 'asaas-access-token': 'x'.repeat(40) } })
   expect(errado.status()).toBe(401)
   expect((await banco().from('asaas_events').select('id').eq('id', id)).data ?? []).toHaveLength(0)
+})
+
+test('o relatório de erros de uma importação exige sessão', async ({ request }) => {
+  const r = await request.get('/api/importacoes/00000000-0000-4000-8000-000000000000/erros', { maxRedirects: 0 })
+  expect(r.status()).toBe(401)
 })
 
 test('o PDF de um documento assinado exige sessão', async ({ request }) => {
