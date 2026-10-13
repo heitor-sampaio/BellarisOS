@@ -14,6 +14,8 @@ import type { ModoOficial } from '@/lib/whatsapp/modo-oficial'
 import { acompanharCatalogos } from '@/lib/templates/catalogo'
 import { rotuloDaConexao } from '@/lib/whatsapp/rotulo'
 import { nomeDoNumeroNaMeta } from '@/lib/whatsapp/nome-na-meta'
+import { after } from 'next/server'
+import { pedirHistoricoUazapi, importarHistoricoUazapi } from '@/lib/whatsapp/historico-uazapi'
 
 export interface IntegrationConfig {
   id:         string
@@ -154,6 +156,17 @@ export async function salvarNumeroWhatsApp(
     await (isActive
       ? integracaoConectada(provider, ctx, rotulo, id)
       : integracaoDesconectada(provider, ctx, 'pedido', rotulo, id))
+  }
+
+  // WhatsApp Web com conta própria ligado agora: o histórico do pareamento vem
+  // para o inbox, depois da resposta (lib/whatsapp/historico-uazapi.ts).
+  if (provider === 'uazapi' && isActive && !anterior?.is_active) {
+    try {
+      const pedido = await pedirHistoricoUazapi(ctx.tenantId!, id)
+      if (pedido) after(() => importarHistoricoUazapi(pedido))
+    } catch (e) {
+      console.error('[salvarNumeroWhatsApp] histórico:', e)
+    }
   }
 
   // O catálogo de templates acompanha o número oficial: ligado (ou com a conta

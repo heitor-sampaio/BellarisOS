@@ -41,6 +41,23 @@ interface MensagemCrua {
   status?: Cru; ack?: Cru; messageStatus?: Cru; key?: { id?: Cru }
 }
 
+/** A mensagem guardada pela instância, como o `/message/find` a devolve. */
+export type MensagemDoHistorico = MensagemCrua & { messageType?: Cru }
+
+/** A conversa, como o `/chat/find` a devolve — só o que o histórico lê. */
+export interface ChatDoHistorico {
+  wa_chatid?: string; wa_chatlid?: string; phone?: string
+  wa_contactName?: Cru; wa_name?: Cru; name?: Cru
+  wa_isGroup?: Cru; wa_lastMsgTimestamp?: Cru
+}
+
+/** Timestamp da uazapi (segundos ou milissegundos) em milissegundos. */
+export function emMilissegundos(valor: Cru): number | null {
+  const n = Number(valor)
+  if (!Number.isFinite(n) || n <= 0) return null
+  return n > 1e12 ? n : n * 1000
+}
+
 /** Recibo no formato nativo do Baileys: `[{ key, update }]`. */
 interface AtualizacaoCrua { key?: { id?: Cru }; update?: { status?: Cru } }
 
@@ -397,6 +414,44 @@ export class UazapiProvider implements WhatsAppProvider {
     }
   }
 
+  // -- O histórico (2026-10-13, lib/whatsapp/historico-uazapi.ts) -------------
+
+  /** As conversas individuais, da mais recente para a mais antiga. */
+  async buscarConversas(offset: number, limite: number): Promise<{ chats: ChatDoHistorico[]; temMais: boolean }> {
+    const r = await this.chamar('/chat/find', {
+      wa_isGroup: false, sort: '-wa_lastMsgTimestamp', limit: limite, offset, compact: true,
+    }) as unknown as { chats?: ChatDoHistorico[]; pagination?: { hasMore?: boolean } } | null
+    const chats = r?.chats ?? []
+    return { chats, temMais: r?.pagination?.hasMore ?? chats.length === limite }
+  }
+
+  /** As mensagens guardadas de uma conversa, da mais recente para a mais antiga. */
+  async buscarMensagens(chatid: string, offset: number, limite: number): Promise<{ mensagens: MensagemDoHistorico[]; temMais: boolean }> {
+    const r = await this.chamar('/message/find', { chatid, limit: limite, offset }) as unknown as
+      { messages?: MensagemDoHistorico[]; pagination?: { hasMore?: boolean } } | null
+    const mensagens = r?.messages ?? []
+    return { mensagens, temMais: r?.pagination?.hasMore ?? mensagens.length === limite }
+  }
+
+  /**
+   * O histórico inicial do pareamento já terminou de chegar à instância? Sem
+   * rastreamento (pareamento antigo, ou a rota não respondeu), vale "sim": o
+   * que está guardado é o que há.
+   */
+  async historicoInicialPronto(): Promise<boolean> {
+    try {
+      const res = await fetch(`${this.base}/instance/history-sync/status`, {
+        headers: { token: this.token }, signal: AbortSignal.timeout(15_000),
+      })
+      if (!res.ok) return true
+      const d = await res.json() as { processingComplete?: boolean; processingStopped?: boolean; progress?: number; diagnosis?: string[] }
+      if (d.diagnosis?.includes('no_trace')) return true
+      return d.processingComplete === true || d.processingStopped === true || (d.progress ?? 0) >= 100
+    } catch {
+      return true
+    }
+  }
+
   /**
    * Lê uma entrega do webhook.
    *
@@ -424,6 +479,39 @@ export class UazapiProvider implements WhatsAppProvider {
     const identidade = montarIdentidade([m.sender_pn, c?.phone, m.chatid, m.sender])
     if (!identidade) return null
 
+    return this.montarMensagem(m, raiz!, identidade, c?.name ?? m.senderName ?? m.pushName, true)
+  }
+
+  /**
+   * Uma mensagem do HISTÓRICO que a instância guardou do pareamento
+   * (`/message/find`), 2026-10-13. Ao contrário do webhook ao vivo, a enviada
+   * pela clínica (`fromMe`) entra — como saída —, e a identidade é sempre a do
+   * CLIENTE, tirada da conversa: na enviada, o `sender_pn` é a própria clínica.
+   * O anúncio de origem não entra (atribuir agora uma conversa de semanas atrás
+   * mexeria na conta das campanhas).
+   */
+  lerDoHistorico(m: MensagemDoHistorico, chat: ChatDoHistorico): { msg: InboundMsg; daClinica: boolean } | null {
+    const chatid = String(m.chatid ?? chat.wa_chatid ?? '')
+    if (m.isGroup === true || chat.wa_isGroup === true) return null
+    if (ehConversaDeGrupo(chatid, chat.wa_chatid, chat.phone)) return null
+    if (['@broadcast', '@newsletter'].some(f => chatid.endsWith(f) || (chat.wa_chatid ?? '').endsWith(f))) return null
+    // A que não abriu no aparelho vem só com o id e o horário.
+    if (String(m.messageType ?? '').toLowerCase() === 'error') return null
+
+    const identidade = montarIdentidade([chat.phone, chat.wa_chatid, m.chatid, chat.wa_chatlid])
+    if (!identidade) return null
+    const daClinica = m.fromMe === true
+    const nome = chat.wa_contactName ?? chat.wa_name ?? chat.name ?? (daClinica ? undefined : (m.senderName ?? m.pushName))
+    const msg = this.montarMensagem(m, { message: m }, identidade, nome, false)
+    return msg ? { msg, daClinica } : null
+  }
+
+  /** A mensagem no formato da entrada de conversa — o mesmo para o ao vivo e o histórico. */
+  private montarMensagem(
+    m: MensagemCrua, raiz: EntregaCrua,
+    identidade: { externalUserId: string; phone: string | null; aliases: string[] },
+    nome: Cru, comAnuncio: boolean,
+  ): InboundMsg | null {
     const kind = m.mediaType ? TIPO_DE_MIDIA[String(m.mediaType).toLowerCase()] : undefined
     const media: InboundMedia | undefined = kind
       ? {
@@ -461,7 +549,6 @@ export class UazapiProvider implements WhatsAppProvider {
       media,
     }
 
-    const nome = c?.name ?? m.senderName ?? m.pushName
     if (nome) out.displayName = String(nome)
 
     // Resposta a uma mensagem anterior. Vem no id curto ou composto; guardamos
@@ -469,7 +556,7 @@ export class UazapiProvider implements WhatsAppProvider {
     const citada = m.quoted ?? m.quotedMsgId ?? m.contextInfo?.stanzaId
     if (citada) out.replyToExternalId = idCurto(citada)
 
-    const anuncio = lerAnuncio(m, raiz!)
+    const anuncio = comAnuncio ? lerAnuncio(m, raiz) : undefined
     if (anuncio) out.referral = anuncio
 
     return out

@@ -105,6 +105,28 @@ um default deixaria um webhook novo voltar a jogar o número fora em silêncio. 
   a assinatura confere com o `META_APP_SECRET`. Sem nenhum dos dois, recusa —
   HMAC com chave vazia qualquer um calcula. Prova: `e2e/api-sem-credencial.spec.ts`.
 
+**O histórico do WhatsApp Web vem ao conectar** (2026-10-13,
+`lib/whatsapp/historico-uazapi.ts`). Ao parear, o WhatsApp manda à instância
+um recorte recente das conversas (ele decide quanto) e a uazapi o guarda.
+- O BellarisOS o BUSCA (`/chat/find` + `/message/find`, formato documentado),
+  não lê os lotes `history` do webhook (formato não documentado; o webhook
+  segue sem esse evento). Espera o pareamento fechar
+  (`/instance/history-sync/status`: `processingComplete`, até 10 min) e volta
+  até 180 dias, 500 conversas, 300 mensagens por conversa. Grupo, status e
+  canal ficam de fora.
+- Grava como o histórico da coexistência: `importada`, lida, sem evento de
+  conversa (`semEventos`), sem anúncio de origem, sem baixar mídia; a enviada
+  pela clínica (`fromMe`) entra como saída, com a identidade do CLIENTE (a da
+  conversa — no `fromMe` o `sender_pn` é a clínica). `lerDoHistorico` e o
+  `parseInbound` dividem `montarMensagem`.
+- Dispara sozinho na travessia para conectada (`marcarConectada`; a conta
+  própria, em `salvarNumeroWhatsApp`), depois da resposta (`after`), e a tela
+  da caixa conectada acompanha e traz de novo (`trazerHistoricoUazapi`). Cada
+  pedido é uma linha de `whatsapp_historicos` — uma em aberto por caixa
+  (índice), reivindicada antes de rodar. Trazer de novo não duplica (dedup pelo
+  id da mensagem). Prova: `e2e/whatsapp-historico-uazapi.spec.ts`, o caso
+  "sozinho" do `whatsapp-conexao-nova` e `tests/uazapi-historico.test.ts`.
+
 **O dedup usa DOIS índices parciais**, não um total: num índice único direto,
 `NULL` nunca colide, e Instagram, Messenger e manual ficariam sem dedup nenhum
 sem erro nenhum. O ramo `IS NULL` preserva a garantia antiga; o ramo
@@ -268,6 +290,7 @@ servidor), e a escolha da tela vira o `featureType` —
 ❌ Apagar template NA META ao desligar um número (só daqui; na Meta é o "Apagar" do template)
 ❌ Oferecer ou enviar template com nao_suportado (a Meta recusa ou o cliente recebe {{1}})
 ❌ Gravar o id técnico do número (phoneNumberId) como nome da conexão — é rotuloDaConexao
+❌ Importar o histórico da uazapi pelo parseInbound (ele descarta o fromMe e tira a identidade do remetente) — é lerDoHistorico
 ❌ Pedir o estado da conexão gerenciada sem dizer QUAL caixa (era o "Adicionar número" que reabria a conectada) — null é conexão nova
 ❌ Mostrar "uazapi" à clínica (tela, aviso, erro que chega à tela) — é "WhatsApp Web", por nomeDoProvedor; o nome fica no código e nos dados
 ❌ E2E que cria instância gerenciada contra a uazapi real (cada uma é cobrada) — é a falsa, UAZAPI_BASE_URL na porta 3197

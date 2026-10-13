@@ -1299,6 +1299,21 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-13 — O histórico do WhatsApp Web vem para o inbox
+
+Pedido do Heitor: "quando conecta qualquer API, não tem como puxar parte do
+histórico?". Na API oficial, a coexistência já trazia até 180 dias; a Cloud
+API não tem como (a Meta não entrega). No WhatsApp Web (uazapi), a pesquisa
+na documentação dela mostrou que, ao parear, o WhatsApp manda à instância um
+recorte recente das conversas e ela o guarda. Agora, ao conectar, o BellarisOS
+espera o pareamento terminar de mandar, busca as conversas e as mensagens
+guardadas e grava no inbox como importadas — lidas, sem disparar automação,
+sem grupos —, com as respostas que a clínica deu pelo celular como saída. A
+caixa conectada mostra o andamento ("Histórico trazido: 12 conversas, 340
+mensagens novas") e tem "Trazer de novo", que não duplica. Quanto vem é o
+WhatsApp que decide: em geral as conversas recentes, não tudo. Provas:
+`e2e/whatsapp-historico-uazapi.spec.ts`, `tests/uazapi-historico.test.ts`.
+
 ### 2026-10-09 — O nome do número, escolhido ao conectar
 
 **Suíte completa verde depois de tudo de 2026-10-09** (run 37983381064):

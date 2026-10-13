@@ -23,6 +23,11 @@ import type { AddressInfo } from 'node:net'
  * `/instance/connect` devolve o QR. O build sobe com `UAZAPI_BASE_URL` na
  * porta fixa `PORTA_DA_UAZAPI_FALSA` (playwright.build.config.ts) — criar uma
  * instância de verdade é COBRADO, e o E2E nunca deve falar com a uazapi real.
+ *
+ * O HISTÓRICO (2026-10-13): `historico` diz o que a instância "guardou" do
+ * pareamento — `/chat/find` e `/message/find` paginam por `offset`/`limit`
+ * como a real (mensagens da mais recente para a mais antiga), e
+ * `/instance/history-sync/status` devolve `historico.status`.
  */
 
 /** A porta fixa da uazapi falsa que o build conhece pelo ambiente. */
@@ -43,6 +48,12 @@ export interface UazapiFalsa {
   modo: 'ok' | 'erro'
   /** Token da instância → o número pareado. Fora daqui, a instância espera o QR. */
   conectadas: Map<string, { jid: string; nome: string }>
+  /** O que a instância guardou do pareamento (o histórico). */
+  historico: {
+    status?:   Record<string, unknown>
+    chats:     Record<string, unknown>[]
+    mensagens: Record<string, Record<string, unknown>[]>
+  }
   /** As chamadas para um caminho, na ordem em que chegaram. */
   para(caminho: string): ChamadaRecebida[]
   fechar(): Promise<void>
@@ -55,6 +66,7 @@ export async function subirUazapiFalsa(porta = 0): Promise<UazapiFalsa> {
     chamadas: [],
     modo: 'ok',
     conectadas: new Map(),
+    historico: { chats: [], mensagens: {} },
     para: caminho => estado.chamadas.filter(c => c.caminho === caminho),
     fechar: () => new Promise(resolve => servidor.close(() => resolve())),
   }
@@ -84,6 +96,22 @@ export async function subirUazapiFalsa(porta = 0): Promise<UazapiFalsa> {
           : { status: { connected: false, loggedIn: false }, instance: { qrcode: QR_FALSO } })
       }
       if (caminho === '/instance/connect') return responder(200, { instance: { qrcode: QR_FALSO } })
+
+      // O histórico: a página pedida (offset/limit) e se há mais.
+      const pagina = <T,>(lista: T[]) => {
+        const offset = Number(corpo.offset ?? 0), limit = Number(corpo.limit ?? 100)
+        const fatia = lista.slice(offset, offset + limit)
+        return { fatia, pagination: { limit, offset, hasMore: offset + limit < lista.length, nextOffset: offset + fatia.length } }
+      }
+      if (caminho === '/instance/history-sync/status') return responder(200, estado.historico.status ?? { diagnosis: ['no_trace'] })
+      if (caminho === '/chat/find') {
+        const { fatia, pagination } = pagina(estado.historico.chats)
+        return responder(200, { chats: fatia, pagination })
+      }
+      if (caminho === '/message/find') {
+        const { fatia, pagination } = pagina(estado.historico.mensagens[String(corpo.chatid ?? '')] ?? [])
+        return responder(200, { messages: fatia, pagination })
+      }
 
       const enviando = caminho.startsWith('/send/') || caminho === '/message/edit'
       if (enviando && estado.modo === 'erro') return responder(500, { error: 'fora do ar (uazapi falsa)' })

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useTransition, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { HistoricoDaCaixa } from './historico-da-caixa'
 import Image from 'next/image'
 import {
   QrCode, CheckCircle2, AlertCircle, Loader2, RefreshCw, Smartphone, Unplug, ShieldCheck,
@@ -252,6 +253,7 @@ export function UazapiConnect({ numeroId, nomeDoNumero }: {
               : <>Saída por IP próprio ({estado.proxyModo})</>}
           </div>
         )}
+        {caixaId && <HistoricoDaCaixa numeroId={caixaId} />}
         {erro && <Aviso tom="erro">{erro}</Aviso>}
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

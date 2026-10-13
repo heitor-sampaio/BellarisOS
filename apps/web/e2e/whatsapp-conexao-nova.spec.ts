@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { banco, tenantId, PREFIXO } from './apoio/banco'
+import { banco, tenantId, PREFIXO, apagarConversas } from './apoio/banco'
 import { subirUazapiFalsa, PORTA_DA_UAZAPI_FALSA, type UazapiFalsa } from './apoio/uazapi-falsa'
 
 /**
@@ -53,6 +53,9 @@ test.beforeAll(async () => {
 })
 
 test.afterAll(async () => {
+  // As conversas do histórico trazido (a caixa não sai com conversa presa a ela).
+  const { data: convs } = await banco().from('conversations').select('id').eq('contact_phone', FONE_DO_HISTORICO)
+  if (convs?.length) await apagarConversas(convs.map(c => c.id as string))
   // A conectada e toda caixa que o teste criou (as da uazapi falsa).
   await banco().from('whatsapp_numbers').delete()
     .eq('tenant_id', await tenantId()).eq('config->>baseUrl', URL_FALSA)
@@ -81,6 +84,41 @@ test('"Adicionar número" cria uma instância nova e mostra o QR dela, não a co
   expect(data, 'a caixa nova, gerenciada e ainda não pareada').toEqual([
     expect.objectContaining({ managed: true, is_active: false }),
   ])
+})
+
+const FONE_DO_HISTORICO = `5549${String(Date.now()).slice(-9)}`
+
+// O histórico do pareamento vem SOZINHO ao conectar (2026-10-13): a caixa
+// passa a conectada (marcarConectada) e a importação abre e roda depois da
+// resposta. A tela mostra o bloco do histórico na caixa conectada.
+test('conectar traz o histórico do pareamento para o inbox, sozinho', async ({ page }) => {
+  const token = `e2e-pareando-${marca}`
+  const { data, error } = await banco().from('whatsapp_numbers').insert({
+    tenant_id: await tenantId(), provider: 'uazapi', label: `${PREFIXO} Pareando ${marca}`,
+    managed: true, is_active: false,
+    config: { token, baseUrl: URL_FALSA, managed: true, instanceId: token, instanceName: token },
+  }).select('id').single<{ id: string }>()
+  expect(error, 'criar a caixa ainda não pareada').toBeNull()
+  const caixa = data!.id
+  falsa.historico = {
+    status: { processingComplete: true, progress: 100, diagnosis: [] },
+    chats: [{ wa_chatid: `${FONE_DO_HISTORICO}@s.whatsapp.net`, phone: FONE_DO_HISTORICO, wa_contactName: `${PREFIXO} Histórico ${marca}`, wa_isGroup: false, wa_lastMsgTimestamp: Date.now() }],
+    mensagens: { [`${FONE_DO_HISTORICO}@s.whatsapp.net`]: [
+      { messageid: `HP${marca}`, chatid: `${FONE_DO_HISTORICO}@s.whatsapp.net`, fromMe: false, sender_pn: `${FONE_DO_HISTORICO}@s.whatsapp.net`, text: 'Mensagem de antes de conectar', messageTimestamp: Date.now() - 60_000 },
+    ] },
+  }
+  // O celular leu o QR.
+  falsa.conectadas.set(token, { jid: '5511987651111@s.whatsapp.net', nome: 'Pareando E2E' })
+
+  await abrirOCartao(page)
+  await page.locator(`[data-numero="${caixa}"]`).getByRole('button', { name: 'Conexão' }).click()
+  await expect(page.locator('[data-historico-da-caixa]')).toBeVisible()
+  await expect.poll(async () => (await banco().from('whatsapp_historicos').select('status')
+    .eq('whatsapp_number_id', caixa)).data?.[0]?.status, { timeout: 60_000 }).toBe('concluida')
+  const { data: msgs } = await banco().from('messages').select('content, importada')
+    .eq('whatsapp_number_id', caixa)
+  expect(msgs).toEqual([{ content: 'Mensagem de antes de conectar', importada: true }])
+  await expect(page.locator('[data-historico-da-caixa]')).toContainText('1 conversa, 1 mensagem nova')
 })
 
 test('"Conexão" de uma caixa existente mostra ELA', async ({ page }) => {
