@@ -1340,6 +1340,21 @@ caminho antigo redireciona para a aba. A aba abre para quem tem clientes ou
 CRM em Gerenciar — quem só tem o CRM passa a ver Configurações no menu, só
 com ela.
 
+E ficou mais completo ("quanto mais completa, melhor"). A caixa "Criar
+oportunidade" subiu para o primeiro passo, e com ela a planilha pode trazer os
+campos do card: origem (com apelidos — "facebook" é Meta Ads; o desconhecido
+vira "Outro"), valor estimado, observações, procedimento de interesse, etapa e
+responsável por linha (pelo nome; o responsável também pelo e-mail),
+campanha (UTM) e tags da oportunidade. O que não se acha pelo nome recusa a
+linha com o motivo, e a coluna de responsável só existe para quem pode
+distribuir leads. A pessoa do CRM ganhou **e-mail e rede social** (migration
+`20261013000005`) — importados mesmo sem oportunidade, e editáveis no painel
+do contato no inbox. No destino clientes, a rede importa a **unidade de cada
+linha** e a **situação** (ativo/inativo) de quem nasce. Ficou de fora, de
+propósito: nascimento e cidade na pessoa do CRM (são da ficha — a pessoa
+viraria uma ficha paralela), e completar a oportunidade que já estava aberta
+(a planilha não mexe num card em andamento).
+
 ### 2026-10-13 — O histórico do WhatsApp Web vem para o inbox
 
 Pedido do Heitor: "quando conecta qualquer API, não tem como puxar parte do

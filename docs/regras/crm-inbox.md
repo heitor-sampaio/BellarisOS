@@ -36,10 +36,30 @@ Gerenciar (`alternativas` em `lib/configuracoes/abas.ts`, lidas por
 dela — e vê Configurações só com essa aba.
 - **O destino é escolhido a cada importação**: *clientes* (a ficha, na unidade
   escolhida — na unidade, a dela; `clients: MANAGE`) ou *contatos do CRM* (só a
-  pessoa: nome, telefone, tags; `crm: MANAGE`). Oportunidade no funil é
+  pessoa: nome, telefone, e-mail, rede social, tags; `crm: MANAGE`). Oportunidade no funil é
   opcional (`crm: MANAGE` + recurso `oportunidades`; responsável que não é
   quem importa só com `podeTrocarResponsavel`) e não duplica: quem já tem uma
-  aberta no mesmo funil não ganha outra.
+  aberta no mesmo funil não ganha outra — e a que já existe NÃO é completada
+  (a planilha não mexe no card que alguém está trabalhando).
+- **Os campos que se oferecem dependem da importação** (`camposDoDestino`,
+  2026-10-13 — "quanto mais completa, melhor"): a oportunidade se decide no
+  PASSO 1, antes das colunas, porque com ela entram os campos do CARD —
+  origem (no vocabulário de `LEAD_SOURCES`, com apelidos: "facebook" é Meta
+  Ads; o desconhecido vira "Outro", não erro), valor estimado ("R$ 1.500,00"),
+  observações, procedimento de interesse, etapa (do funil escolhido), responsável
+  (nome ou e-mail da equipe ativa), UTM source/medium/campaign e tags da
+  oportunidade. Etapa e responsável da linha vencem os da tela; vazio, valem os
+  da tela. ⚠️ A COLUNA de responsável distribui leads: a action a recusa para
+  quem não tem `podeTrocarResponsavel` (a tela nem a oferece).
+- **O que a linha cita por nome** (unidade, etapa, responsável, procedimento) é
+  resolvido sem acento nem caixa; não achado — ou ambíguo, como dois membros
+  com o mesmo nome — recusa a linha com o motivo. A prévia usa as listas que a
+  página manda; o servidor monta as suas (`referenciasDaRede`,
+  `lib/importacao/referencias.ts`).
+- **No cliente**: a situação (ativo/inativo) vale só para quem NASCE (quem já
+  existe fica como a clínica tem); a unidade POR LINHA só na rede (quem é de
+  unidade importa para a dela), e a escolhida na tela vale para as linhas sem.
+  A rede social não é da ficha: no destino clientes ela só vai para o card.
 - **O arquivo é lido no navegador** (`csv.ts`: UTF-8 ou Windows-1252, `;` `,`
   ou tabulação, aspas RFC 4180; `campos.ts` sugere a coluna pelo cabeçalho);
   **o servidor valida cada linha de novo** com o MESMO `normalizar.ts` — a
@@ -127,6 +147,13 @@ duas conversas.
   apaga. O que é defeito é a mesma pessoa cadastrada duas vezes, ou seja, dois
   contatos com identificador em comum — nenhum índice proíbe sobreposição de
   array, então a trava é `e2e/contato-espinha.spec.ts`.
+
+**E-mail e rede social também são da pessoa** (`contacts.email`,
+`contacts.social_media`, 2026-10-13): o importador os grava nela (só o vazio)
+mesmo sem oportunidade, e o painel do inbox os mostra e edita na seção do
+contato (`atualizarContato`). Não propagam: a oportunidade tem a SUA cópia
+(`leads.email`, `social_media`), que é o card e se edita no card. Prova:
+`e2e/inbox-contato-email.spec.ts`.
 
 **As TAGS são da pessoa** (`contacts.tags`), e sempre eram — o comentário em
 `conversations.tags` já dizia "Tags do CONTATO: descrevem a pessoa, não o

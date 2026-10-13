@@ -2,16 +2,20 @@
  * Os campos do sistema para onde uma coluna do CSV pode ir (2026-10-13).
  *
  * Dois destinos, escolhidos a cada importação: **clientes** (a ficha na
- * clínica) e **contatos** do CRM (só a pessoa — nome, telefone, tags). Puro,
- * dividido pela tela e pelo servidor.
+ * clínica) e **contatos** do CRM (a pessoa — nome, telefone, e-mail, rede
+ * social, tags). Com "Criar oportunidade" ligado, entram também os campos do
+ * CARD (origem, valor, etapa, responsável…); na rede, o cliente pode trazer a
+ * unidade de cada linha. Puro, dividido pela tela e pelo servidor.
  */
 
 export type Destino = 'clientes' | 'contatos'
 
 export type ChaveDeCampo =
-  | 'name' | 'phone' | 'document' | 'email' | 'birth_date' | 'gender'
+  | 'name' | 'phone' | 'document' | 'email' | 'social_media' | 'birth_date' | 'gender'
   | 'zip_code' | 'address' | 'address_number' | 'address_complement' | 'neighborhood'
-  | 'city' | 'state' | 'referred_by' | 'tags' | 'notes'
+  | 'city' | 'state' | 'referred_by' | 'tags' | 'notes' | 'unidade' | 'ativo'
+  | 'op_origem' | 'op_valor' | 'op_observacoes' | 'op_procedimentos' | 'op_etapa' | 'op_responsavel'
+  | 'op_utm_source' | 'op_utm_medium' | 'op_utm_campaign' | 'op_tags'
 
 export interface CampoDoSistema {
   chave:       ChaveDeCampo
@@ -19,56 +23,101 @@ export interface CampoDoSistema {
   obrigatorio: boolean
   /** Como o cabeçalho costuma vir (comparado sem acento, caixa nem pontuação). */
   sinonimos:   string[]
+  /** Da pessoa (cliente ou contato) ou do card no funil. */
+  grupo:       'pessoa' | 'oportunidade'
 }
 
-const NOME: CampoDoSistema = { chave: 'name', rotulo: 'Nome', obrigatorio: true,
-  sinonimos: ['nome', 'nome completo', 'cliente', 'paciente', 'name', 'nome do cliente', 'nome do paciente'] }
-const TELEFONE: CampoDoSistema = { chave: 'phone', rotulo: 'Telefone', obrigatorio: true,
-  sinonimos: ['telefone', 'celular', 'fone', 'whatsapp', 'whats', 'tel', 'phone', 'telefone celular', 'contato', 'numero de telefone'] }
-const TAGS: CampoDoSistema = { chave: 'tags', rotulo: 'Tags', obrigatorio: false,
-  sinonimos: ['tags', 'tag', 'etiquetas', 'etiqueta', 'marcadores', 'categoria', 'categorias'] }
+/** Quais campos a importação oferece além dos da pessoa. */
+export interface OpcoesDosCampos {
+  /** "Criar oportunidade no funil" ligado: os campos do card. */
+  oportunidade?:    boolean
+  /** Clientes importados pela REDE: a unidade de cada linha. */
+  unidadePorLinha?: boolean
+}
 
-export const CAMPOS: Record<Destino, CampoDoSistema[]> = {
+const p = (chave: ChaveDeCampo, rotulo: string, sinonimos: string[], obrigatorio = false): CampoDoSistema =>
+  ({ chave, rotulo, obrigatorio, sinonimos, grupo: 'pessoa' })
+const o = (chave: ChaveDeCampo, rotulo: string, sinonimos: string[]): CampoDoSistema =>
+  ({ chave, rotulo, obrigatorio: false, sinonimos, grupo: 'oportunidade' })
+
+const NOME = p('name', 'Nome', ['nome', 'nome completo', 'cliente', 'paciente', 'name', 'nome do cliente', 'nome do paciente', 'lead', 'nome do lead'], true)
+const TELEFONE = p('phone', 'Telefone', ['telefone', 'celular', 'fone', 'whatsapp', 'whats', 'tel', 'phone', 'telefone celular', 'contato', 'numero de telefone'], true)
+const EMAIL = p('email', 'E-mail', ['email', 'e mail', 'mail', 'endereco de email'])
+const SOCIAL_SINONIMOS = ['rede social', 'redes sociais', 'instagram', 'insta', 'perfil', 'perfil do instagram', 'social', 'arroba']
+const TAGS = p('tags', 'Tags', ['tags', 'tag', 'etiquetas', 'etiqueta', 'marcadores', 'categoria', 'categorias'])
+
+const DA_PESSOA: Record<Destino, CampoDoSistema[]> = {
   clientes: [
     NOME,
     TELEFONE,
-    { chave: 'document', rotulo: 'CPF', obrigatorio: false, sinonimos: ['cpf', 'documento', 'doc', 'cpf do cliente'] },
-    { chave: 'email', rotulo: 'E-mail', obrigatorio: false, sinonimos: ['email', 'e mail', 'mail', 'endereco de email'] },
-    { chave: 'birth_date', rotulo: 'Nascimento', obrigatorio: false,
-      sinonimos: ['nascimento', 'data de nascimento', 'data nascimento', 'data nasc', 'dt nasc', 'dt nascimento', 'aniversario', 'birth', 'birthday'] },
-    { chave: 'gender', rotulo: 'Gênero', obrigatorio: false, sinonimos: ['genero', 'sexo', 'gender'] },
-    { chave: 'zip_code', rotulo: 'CEP', obrigatorio: false, sinonimos: ['cep', 'codigo postal'] },
-    { chave: 'address', rotulo: 'Endereço', obrigatorio: false, sinonimos: ['endereco', 'logradouro', 'rua', 'address'] },
-    { chave: 'address_number', rotulo: 'Número', obrigatorio: false, sinonimos: ['numero', 'n', 'no', 'num', 'nº', 'n°'] },
-    { chave: 'address_complement', rotulo: 'Complemento', obrigatorio: false, sinonimos: ['complemento'] },
-    { chave: 'neighborhood', rotulo: 'Bairro', obrigatorio: false, sinonimos: ['bairro'] },
-    { chave: 'city', rotulo: 'Cidade', obrigatorio: false, sinonimos: ['cidade', 'municipio', 'city'] },
-    { chave: 'state', rotulo: 'UF', obrigatorio: false, sinonimos: ['uf', 'estado', 'state'] },
-    { chave: 'referred_by', rotulo: 'Indicado por', obrigatorio: false, sinonimos: ['indicado por', 'indicacao', 'quem indicou'] },
+    p('document', 'CPF', ['cpf', 'documento', 'doc', 'cpf do cliente']),
+    EMAIL,
+    p('birth_date', 'Nascimento', ['nascimento', 'data de nascimento', 'data nascimento', 'data nasc', 'dt nasc', 'dt nascimento', 'aniversario', 'birth', 'birthday']),
+    p('gender', 'Gênero', ['genero', 'sexo', 'gender']),
+    p('zip_code', 'CEP', ['cep', 'codigo postal']),
+    p('address', 'Endereço', ['endereco', 'logradouro', 'rua', 'address']),
+    p('address_number', 'Número', ['numero', 'n', 'no', 'num', 'nº', 'n°']),
+    p('address_complement', 'Complemento', ['complemento']),
+    p('neighborhood', 'Bairro', ['bairro']),
+    p('city', 'Cidade', ['cidade', 'municipio', 'city']),
+    p('state', 'UF', ['uf', 'estado', 'state']),
+    p('referred_by', 'Indicado por', ['indicado por', 'indicacao', 'quem indicou']),
     TAGS,
-    { chave: 'notes', rotulo: 'Observações', obrigatorio: false,
-      sinonimos: ['observacoes', 'observacao', 'obs', 'notas', 'nota', 'anotacoes', 'comentarios'] },
+    p('notes', 'Observações', ['observacoes', 'observacao', 'obs', 'notas', 'nota', 'anotacoes', 'comentarios']),
+    p('ativo', 'Situação (ativo/inativo)', ['situacao', 'ativo', 'status', 'ativo inativo', 'inativo']),
   ],
   contatos: [
     { ...NOME, obrigatorio: false },
     TELEFONE,
+    EMAIL,
+    p('social_media', 'Rede social', SOCIAL_SINONIMOS),
     TAGS,
   ],
+}
+
+const UNIDADE = p('unidade', 'Unidade', ['unidade', 'filial', 'loja', 'clinica', 'unidade de atendimento'])
+
+const DA_OPORTUNIDADE: CampoDoSistema[] = [
+  o('op_origem', 'Origem', ['origem', 'fonte', 'canal', 'como conheceu', 'como nos conheceu', 'midia', 'origem do lead']),
+  o('op_valor', 'Valor estimado', ['valor', 'valor estimado', 'ticket', 'orcamento', 'valor da oportunidade', 'valor do orcamento']),
+  o('op_observacoes', 'Observações da oportunidade', ['observacoes da oportunidade', 'observacoes do lead', 'observacoes', 'observacao', 'obs', 'notas', 'anotacoes', 'comentarios']),
+  o('op_procedimentos', 'Procedimento de interesse', ['procedimento', 'procedimentos', 'procedimento de interesse', 'interesse', 'servico', 'servicos', 'tratamento']),
+  o('op_etapa', 'Etapa do funil', ['etapa', 'fase', 'estagio', 'etapa do funil']),
+  o('op_responsavel', 'Responsável', ['responsavel', 'vendedor', 'vendedora', 'sdr', 'consultor', 'consultora', 'atendente', 'dono']),
+  o('op_utm_source', 'UTM source', ['utm source', 'source']),
+  o('op_utm_medium', 'UTM medium', ['utm medium', 'medium']),
+  o('op_utm_campaign', 'Campanha (UTM campaign)', ['utm campaign', 'campanha', 'campaign']),
+  o('op_tags', 'Tags da oportunidade', ['tags da oportunidade', 'tags do lead', 'etiquetas da oportunidade']),
+]
+
+/**
+ * Os campos que esta importação oferece, na ordem da tela: os da pessoa, a
+ * unidade (se por linha) e os do card (se há oportunidade). No cliente a rede
+ * social não é da ficha — vai só para o card.
+ */
+export function camposDoDestino(destino: Destino, opcoes: OpcoesDosCampos = {}): CampoDoSistema[] {
+  const lista = [...DA_PESSOA[destino]]
+  if (destino === 'clientes' && opcoes.unidadePorLinha) lista.push(UNIDADE)
+  if (opcoes.oportunidade) {
+    if (destino === 'clientes') lista.push({ ...p('social_media', 'Rede social', SOCIAL_SINONIMOS), grupo: 'oportunidade' })
+    lista.push(...DA_OPORTUNIDADE)
+  }
+  return lista
 }
 
 /** "Data de Nascimento:" → "data de nascimento". */
 export function chaveDoCabecalho(texto: string): string {
   return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-    .replace(/[^a-z0-9º°]+/g, ' ').trim()
+    .replace(/[^a-z0-9º°@]+/g, ' ').trim()
 }
 
 /**
  * Para cada coluna, o campo sugerido (ou null). Primeiro o sinônimo exato,
- * depois o cabeçalho que CONTÉM um sinônimo de duas letras ou mais (por
+ * depois o cabeçalho que CONTÉM um sinônimo de três letras ou mais (por
  * palavra). Cada campo vai para uma coluna só — a primeira.
  */
-export function sugerirMapeamento(cabecalho: string[], destino: Destino): (ChaveDeCampo | null)[] {
-  const campos = CAMPOS[destino]
+export function sugerirMapeamento(cabecalho: string[], destino: Destino, opcoes: OpcoesDosCampos = {}): (ChaveDeCampo | null)[] {
+  const campos = camposDoDestino(destino, opcoes)
   const usados = new Set<ChaveDeCampo>()
   const chaves = cabecalho.map(chaveDoCabecalho)
   const saida: (ChaveDeCampo | null)[] = chaves.map(() => null)

@@ -15,6 +15,9 @@ import { chamarAcao } from './apoio/acao-direta'
  *    virar mil mensagens de boas-vindas).
  *  - Oportunidade no funil, opcional — e importar de novo não a duplica.
  *  - O relatório de erros se baixa.
+ *  - Os campos da oportunidade (origem, valor, etapa, responsável, procedimento,
+ *    UTM…) e, no cliente, a unidade e a situação por linha (2026-10-13, "quanto
+ *    mais completa, melhor").
  *
  * Numa rede `[e2e]` própria.
  */
@@ -32,6 +35,11 @@ let etapaArquivada: string
 let unidadeNome: string
 let funil: string
 let etapa: string
+let etapa2: string
+let unidadeNorte: string
+const NORTE = `${PREFIXO} Norte ${marca}`
+/** Membro do CRM com "só os meus": não escolhe o responsável de ninguém. */
+let soOsMeus: MembroDeTeste
 const sufixo = String(Date.now()).slice(-7)
 const FONE_ANA = `48 9${sufixo.slice(0, 4)}-${sufixo.slice(-4)}`
 const FONE_ANA_DIG = `55489${sufixo}`
@@ -51,6 +59,13 @@ test.beforeAll(async () => {
   funil = f.data!.id
   const e = await db().from('crm_stages').insert({ tenant_id: outra.tenantId, funnel_id: funil, name: 'Importados', position: 0 }).select('id').single<{ id: string }>()
   etapa = e.data!.id
+  const e2 = await db().from('crm_stages').insert({ tenant_id: outra.tenantId, funnel_id: funil, name: 'Qualificados', position: 1 }).select('id').single<{ id: string }>()
+  etapa2 = e2.data!.id
+  // A segunda unidade: a planilha diz em qual unidade está cada cliente.
+  const un = await db().from('branches').insert({ tenant_id: outra.tenantId, name: NORTE, slug: `e2e-norte-${marca}` }).select('id').single<{ id: string }>()
+  expect(un.error).toBeNull()
+  unidadeNorte = un.data!.id
+  soOsMeus = await criarMembro(`impo${marca}`, { tenant: outra.tenantId, rotulo: 'SDR só os meus', permissoes: [{ modulo: 'crm', nivel: 'MANAGE', escopo: 'OWN' }] })
   // Um funil arquivado: a etapa dele não recebe oportunidade (some do quadro).
   const fa = await db().from('crm_funnels').insert({ tenant_id: outra.tenantId, name: `${PREFIXO} Arquivado ${marca}`, archived_at: new Date().toISOString() }).select('id').single<{ id: string }>()
   const ea = await db().from('crm_stages').insert({ tenant_id: outra.tenantId, funnel_id: fa.data!.id, name: 'Velha', position: 0 }).select('id').single<{ id: string }>()
@@ -68,7 +83,11 @@ test.afterAll(async () => {
   if (outra) {
     const t = outra.tenantId
     const { data: ls } = await b.from('leads').select('id').eq('tenant_id', t)
-    if (ls?.length) { await b.from('lead_events').delete().in('lead_id', ls.map(l => l.id)); await b.from('leads').delete().in('id', ls.map(l => l.id)) }
+    if (ls?.length) {
+      await b.from('lead_events').delete().in('lead_id', ls.map(l => l.id))
+      await b.from('lead_procedures').delete().in('lead_id', ls.map(l => l.id))
+      await b.from('leads').delete().in('id', ls.map(l => l.id))
+    }
     await b.from('contacts').delete().eq('tenant_id', t)
     await b.from('crm_stages').delete().eq('tenant_id', t)
     await b.from('crm_funnels').delete().eq('tenant_id', t)
@@ -77,8 +96,9 @@ test.afterAll(async () => {
     await b.from('domain_events').delete().eq('tenant_id', t)
     const { data: cs } = await b.from('clients').select('id').eq('tenant_id', t)
     if (cs?.length) { await b.from('loyalty_accounts').delete().in('client_id', cs.map(x => x.id)); await b.from('clients').delete().in('id', cs.map(x => x.id)) }
+    if (unidadeNorte) await b.from('branches').delete().eq('id', unidadeNorte)
   }
-  await admin?.limpar(); await soVe?.limpar(); await soCrm?.limpar()
+  await admin?.limpar(); await soVe?.limpar(); await soCrm?.limpar(); await soOsMeus?.limpar()
   await outra?.limpar()
 })
 
@@ -116,7 +136,7 @@ test('importar como clientes: completa o vazio de quem existe, cria o novo e rel
   await como(browser, admin, async p => {
     await abrirArquivo(p, nome, arquivo)
     await p.getByRole('button', { name: 'Como clientes', exact: true }).click()
-    await p.getByLabel('Unidade').selectOption({ label: unidadeNome })
+    await p.getByLabel('Unidade', { exact: true }).selectOption({ label: unidadeNome })
     await p.getByRole('button', { name: 'Continuar', exact: true }).click()
 
     // As colunas sugeridas pelo cabeçalho.
@@ -181,11 +201,11 @@ test('importar como contatos, com oportunidade no funil — e de novo não dupli
     await como(browser, admin, async p => {
       await abrirArquivo(p, nome, arquivo)
       await p.getByRole('button', { name: 'Como contatos do CRM', exact: true }).click()
+      await p.getByLabel('Criar oportunidade no funil').check()
+      await p.getByLabel('Etapa', { exact: true }).selectOption(etapa)
       await p.getByRole('button', { name: 'Continuar', exact: true }).click()
       await expect(p.getByLabel('Campo da coluna WhatsApp')).toHaveValue('phone')
       await p.getByRole('button', { name: 'Continuar', exact: true }).click()
-      await p.getByLabel('Criar oportunidade no funil').check()
-      await p.getByLabel('Etapa').selectOption(etapa)
       await p.getByRole('button', { name: /Importar 2 linhas/ }).click()
       await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
     })
@@ -240,11 +260,11 @@ test('quem só tem o CRM importa contatos; "Sem responsável" vale; e o contato 
     await abrirArquivo(p, nome, Buffer.from(`Nome;Celular\n${PREFIXO} Mel ${marca};(21) 97777-${s4}\n`, 'utf-8'))
     // Só o destino que o cargo alcança.
     await expect(p.getByRole('button', { name: 'Como clientes', exact: true })).toHaveCount(0)
-    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
-    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
     await p.getByLabel('Criar oportunidade no funil').check()
-    await p.getByLabel('Etapa').selectOption(etapa)
-    await p.getByLabel('Responsável').selectOption({ label: 'Sem responsável' })
+    await p.getByLabel('Etapa', { exact: true }).selectOption(etapa)
+    await p.getByLabel('Responsável', { exact: true }).selectOption({ label: 'Sem responsável' })
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
     await p.getByRole('button', { name: /Importar 1 linha/ }).click()
     await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
   })
@@ -295,4 +315,98 @@ test('as importações moram em Configurações: os botões de Clientes e de Opo
     await expect(p.getByRole('link', { name: 'Importações', exact: true })).toBeVisible()
     await expect(p.getByRole('link', { name: 'Integrações', exact: true })).toHaveCount(0)
   })
+})
+
+test('contatos com os campos da oportunidade: e-mail e rede social na pessoa; origem, valor, etapa, responsável, procedimento, campanha e observações no card', async ({ browser }) => {
+  const nome = `completo-${marca}.csv`
+  const s4 = sufixo.slice(-4)
+  const emailDoProf = `e2e-prof-imp${marca}@bellaris.invalid`
+  const procedimento = `${PREFIXO} Proc imp${marca}`
+  const arquivo = Buffer.from([
+    'Nome,Celular,E-mail,Instagram,Origem,Valor,Etapa,Vendedor,Procedimento,utm_campaign,Obs',
+    `${PREFIXO} Rica ${marca},(31) 99999-${s4},rica@exemplo.com,@rica,facebook,"R$ 1.500,00",qualificados,${emailDoProf},${procedimento},black-friday,Quer na sexta`,
+    `${PREFIXO} Sem Etapa ${marca},(31) 98888-${s4},,,,,Perdidos,,,,`,
+  ].join('\n'), 'utf-8')
+
+  await como(browser, admin, async p => {
+    await abrirArquivo(p, nome, arquivo)
+    await p.getByRole('button', { name: 'Como contatos do CRM', exact: true }).click()
+    await p.getByLabel('Criar oportunidade no funil').check()
+    await p.getByLabel('Etapa', { exact: true }).selectOption(etapa)
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+
+    await expect(p.getByLabel('Campo da coluna Instagram')).toHaveValue('social_media')
+    await expect(p.getByLabel('Campo da coluna Origem')).toHaveValue('op_origem')
+    await expect(p.getByLabel('Campo da coluna Vendedor')).toHaveValue('op_responsavel')
+    await expect(p.getByLabel('Campo da coluna Etapa')).toHaveValue('op_etapa')
+    await expect(p.getByLabel('Campo da coluna Procedimento')).toHaveValue('op_procedimentos')
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+
+    const previa = p.locator('[data-previa]')
+    await expect(previa).toContainText('1 linha pronta')
+    await expect(previa).toContainText('Etapa não encontrada no funil escolhido: "Perdidos"')
+    await p.getByRole('button', { name: /Importar 1 linha/ }).click()
+    await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
+  })
+  expect(await importacao(nome)).toMatchObject({ novas: 1, oportunidades: 1, com_erro: 1 })
+
+  const { data: pessoa } = await db().from('contacts').select('id, email, social_media')
+    .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Rica ${marca}`).single()
+  expect(pessoa).toMatchObject({ email: 'rica@exemplo.com', social_media: '@rica' })
+  const { data: lead } = await db().from('leads')
+    .select('id, email, social_media, source, value, crm_stage_id, owner_id, notes, utm_campaign, contato_id')
+    .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Rica ${marca}`).single()
+  expect(lead).toMatchObject({
+    email: 'rica@exemplo.com', social_media: '@rica', source: 'Meta Ads', crm_stage_id: etapa2,
+    owner_id: outra.professionalId, notes: 'Quer na sexta', utm_campaign: 'black-friday', contato_id: pessoa!.id,
+  })
+  expect(Number(lead!.value)).toBe(1500)
+  const { data: procs } = await db().from('lead_procedures').select('procedure_id').eq('lead_id', lead!.id)
+  expect(procs).toEqual([{ procedure_id: outra.procedureId }])
+})
+
+test('clientes com a unidade e a situação de cada linha', async ({ browser }) => {
+  const nome = `unidades-${marca}.csv`
+  const s4 = sufixo.slice(-4)
+  const arquivo = csv1252([
+    'Nome;Celular;Unidade;Situação',
+    `${PREFIXO} Nortista ${marca};(51) 99999-${s4};${NORTE.toLowerCase()};Inativo`,
+    `${PREFIXO} Padrão ${marca};(51) 98888-${s4};;Ativo`,
+    `${PREFIXO} Marciano ${marca};(51) 97777-${s4};Marte;`,
+  ].join('\r\n'))
+
+  await como(browser, admin, async p => {
+    await abrirArquivo(p, nome, arquivo)
+    await p.getByRole('button', { name: 'Como clientes', exact: true }).click()
+    await p.getByLabel('Unidade', { exact: true }).selectOption({ label: unidadeNome })
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    await expect(p.getByLabel('Campo da coluna Unidade')).toHaveValue('unidade')
+    await expect(p.getByLabel('Campo da coluna Situação')).toHaveValue('ativo')
+    await p.getByRole('button', { name: 'Continuar', exact: true }).click()
+    const previa = p.locator('[data-previa]')
+    await expect(previa).toContainText('2 linhas prontas')
+    await expect(previa).toContainText('Unidade não encontrada: "Marte"')
+    await p.getByRole('button', { name: /Importar 2 linhas/ }).click()
+    await expect(p.locator('[data-importacao]')).toContainText('Concluída', { timeout: 60_000 })
+  })
+
+  const { data: nortista } = await db().from('clients').select('branch_id, is_active, tags')
+    .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Nortista ${marca}`).single()
+  expect(nortista).toMatchObject({ branch_id: unidadeNorte, is_active: false })
+  expect(nortista!.tags).toContain(`Unidade: ${NORTE}`)
+  const { data: padrao } = await db().from('clients').select('branch_id, is_active, tags')
+    .eq('tenant_id', outra.tenantId).eq('name', `${PREFIXO} Padrão ${marca}`).single()
+  expect(padrao).toMatchObject({ branch_id: outra.branchId, is_active: true })
+  expect(padrao!.tags).toContain(`Unidade: ${unidadeNome}`)
+})
+
+test('a coluna de responsável pede o "todos" do CRM (o "só os meus" não distribui leads)', async ({ browser }) => {
+  await como(browser, soOsMeus, async p => {
+    const r = await chamarAcao(p, 'actions/importacao.ts', 'importarContatos', '/admin/settings', [{
+      destino: 'contatos', nomeArquivo: `distribui-${marca}.csv`, mapeamento: ['name', 'phone', 'op_responsavel'],
+      linhas: [['X', '21955550000', `e2e-prof-imp${marca}@bellaris.invalid`]], oportunidade: { etapaId: etapa },
+    }])
+    expect(r.texto).toContain('Seu cargo não define o responsável de outra pessoa')
+  })
+  expect(await importacao(`distribui-${marca}.csv`)).toBeUndefined()
 })

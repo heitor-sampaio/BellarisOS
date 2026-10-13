@@ -654,6 +654,9 @@ export interface ContatoDaConversa {
   nome:     string | null
   telefone: string | null
   tags:     string[]
+  /** E-mail e rede social são da PESSOA (2026-10-13), sem cópia na conversa. */
+  email:    string | null
+  social:   string | null
   canal:    InboxChannel
 }
 
@@ -756,7 +759,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
 
   const { data: conv, error: erroConv } = await admin
     .from('conversations')
-    .select('id, contact_name, contact_phone, client_id, channel, contato_id, pessoa:contacts!conversations_contato_id_fkey(name)')
+    .select('id, contact_name, contact_phone, client_id, channel, contato_id, pessoa:contacts!conversations_contato_id_fkey(name, email, social_media)')
     .eq('id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .maybeSingle()
@@ -764,7 +767,7 @@ export async function getConversationCard(conversationId: string): Promise<Conve
   if (erroConv) { console.error('[getConversationCard]', erroConv.message); return null }
   if (!conv) return null
 
-  const c = conv as unknown as { contact_name: string | null; contact_phone: string | null; client_id: string | null; channel: string; contato_id: string | null; pessoa: { name: string | null } | null }
+  const c = conv as unknown as { contact_name: string | null; contact_phone: string | null; client_id: string | null; channel: string; contato_id: string | null; pessoa: { name: string | null; email: string | null; social_media: string | null } | null }
   const clientId = c.client_id
 
   // Inbox e oportunidades são funcionalidades separadas do plano: sem as
@@ -836,6 +839,8 @@ export async function getConversationCard(conversationId: string): Promise<Conve
       nome:     c.pessoa?.name ?? c.contact_name ?? null,
       telefone: c.contact_phone ?? null,
       tags:     tagsDaPessoa,
+      email:    c.pessoa?.email ?? null,
+      social:   c.pessoa?.social_media ?? null,
       canal:    c.channel as InboxChannel,
     },
     cliente, venda, comOportunidades, comAgenda: temRecurso(ctx, 'agenda'), abertas, concluidas, stages, funnels, procedimentos, tagsDaRede,
@@ -1137,7 +1142,7 @@ export async function criarOportunidade(
  */
 export async function atualizarContato(
   conversationId: string,
-  dados: { nome?: string; telefone?: string; tags?: string[] },
+  dados: { nome?: string; telefone?: string; tags?: string[]; email?: string; social?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   const ctx = await getTenantContext()
   assertRecurso(ctx, 'inbox')
@@ -1169,15 +1174,19 @@ export async function atualizarContato(
   // não na outra — marcar "botox" atendendo pela recepção não apareceria para
   // quem abre a do marketing, que é a mesma pessoa.
   const contatoId = (atualizada as { contato_id: string | null } | null)?.contato_id ?? null
-  if (dados.tags !== undefined) {
-    if (contatoId) {
-      const { error: erroTags } = await admin
-        .from('contacts')
-        .update({ tags: dados.tags, updated_at: new Date().toISOString() })
-        .eq('id', contatoId)
-        .eq('tenant_id', ctx.tenantId!)
-      if (erroTags) return { ok: false, error: erroTags.message }
-    }
+  // E-mail e rede social também são só da pessoa (2026-10-13): a oportunidade
+  // tem a cópia dela, que é o card e se edita lá.
+  const daPessoa: Record<string, unknown> = {}
+  if (dados.tags !== undefined) daPessoa.tags = dados.tags
+  if (typeof dados.email === 'string') daPessoa.email = dados.email.trim().toLowerCase().slice(0, 200) || null
+  if (typeof dados.social === 'string') daPessoa.social_media = dados.social.trim().slice(0, 200) || null
+  if (Object.keys(daPessoa).length && contatoId) {
+    const { error: erroPessoa } = await admin
+      .from('contacts')
+      .update({ ...daPessoa, updated_at: new Date().toISOString() })
+      .eq('id', contatoId)
+      .eq('tenant_id', ctx.tenantId!)
+    if (erroPessoa) return { ok: false, error: erroPessoa.message }
   }
 
   const mudouNome = patch.contact_name !== undefined

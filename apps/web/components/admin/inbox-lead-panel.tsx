@@ -144,6 +144,9 @@ const CANAL: Record<string, string> = {
   email: 'E-mail', manual: 'Nota interna',
 }
 
+/** O que se edita do contato no painel (salvo sozinho, meio segundo depois). */
+type DadosDoContato = { nome: string; telefone: string; tags: string[]; email: string; social: string }
+
 /**
  * Painel lateral do inbox: contato, oportunidades e cliente.
  *
@@ -197,9 +200,11 @@ export function InboxLeadPanel({
   const [nome,     setNome]     = useState('')
   const [telefone, setTelefone] = useState('')
   const [tags,     setTags]     = useState<string[]>([])
+  const [email,    setEmail]    = useState('')
+  const [social,   setSocial]   = useState('')
 
   const salvoRef    = useRef('')
-  const pendenteRef = useRef<{ nome: string; telefone: string; tags: string[] } | null>(null)
+  const pendenteRef = useRef<DadosDoContato | null>(null)
   const [salvando,   setSalvando]   = useState(false)
   const [salvoEm,    setSalvoEm]    = useState<number | null>(null)
 
@@ -218,8 +223,11 @@ export function InboxLeadPanel({
       setNome(res.contato.nome ?? '')
       setTelefone(res.contato.telefone ?? '')
       setTags(res.contato.tags)
+      setEmail(res.contato.email ?? '')
+      setSocial(res.contato.social ?? '')
       salvoRef.current = JSON.stringify({
         nome: res.contato.nome ?? '', telefone: res.contato.telefone ?? '', tags: res.contato.tags,
+        email: res.contato.email ?? '', social: res.contato.social ?? '',
       })
     }
   }, [])
@@ -254,12 +262,12 @@ export function InboxLeadPanel({
   }, [conversation.id, aplicarCard])
 
   // -- Salvamento automático do contato --------------------------------------
-  const estadoAtual = JSON.stringify({ nome, telefone, tags })
+  const estadoAtual = JSON.stringify({ nome, telefone, tags, email, social })
 
   // O salvamento em si é um evento: lê a conversa e o aviso ao pai de agora,
   // sem que mudar qualquer um deles reagende o salvamento.
   const salvarContato = useEffectEvent(async (
-    dados: { nome: string; telefone: string; tags: string[] }, estado: string,
+    dados: DadosDoContato, estado: string,
   ) => {
     setSalvando(true)
     const res = await atualizarContato(conversation.id, dados)
@@ -277,7 +285,7 @@ export function InboxLeadPanel({
     if (estadoAtual === salvoRef.current) return
 
     // Os dados saem de `estadoAtual` — é ele que decide quando salvar.
-    const dados = JSON.parse(estadoAtual) as { nome: string; telefone: string; tags: string[] }
+    const dados = JSON.parse(estadoAtual) as DadosDoContato
     setSalvoEm(null)
     pendenteRef.current = dados
 
@@ -379,6 +387,16 @@ export function InboxLeadPanel({
         <input className="field" value={telefone} disabled={disabled} placeholder="Telefone"
           onChange={e => setTelefone(e.target.value)}
           style={{ fontSize: 'var(--text-sm-sz)', padding: '6px 10px' }} />
+        {/* Da pessoa, como o nome (2026-10-13): o importador os traz, e a
+            oportunidade tem a cópia dela. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 6 }}>
+          <input className="field" type="email" value={email} disabled={disabled} placeholder="E-mail"
+            aria-label="E-mail do contato" onChange={e => setEmail(e.target.value)}
+            style={{ fontSize: 'var(--text-sm-sz)', padding: '6px 10px' }} />
+          <input className="field" value={social} disabled={disabled} placeholder="@ ou link"
+            aria-label="Rede social do contato" onChange={e => setSocial(e.target.value)}
+            style={{ fontSize: 'var(--text-sm-sz)', padding: '6px 10px' }} />
+        </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
           {tags.map(t => (

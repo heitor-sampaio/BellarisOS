@@ -8,6 +8,7 @@ import { criarOportunidadeCore } from '@/lib/crm/oportunidade'
 import { propagarDadosDaPessoa } from '@/lib/contatos/propagar'
 import type { ChaveDeCampo, Destino } from './campos'
 import { validarLinha, chaveDaPessoa, variantesDoTelefone, type DadosDaLinha } from './normalizar'
+import { referenciasDaRede } from './referencias'
 
 /**
  * Grava uma importação de contatos em segundo plano (2026-10-13).
@@ -17,6 +18,9 @@ import { validarLinha, chaveDaPessoa, variantesDoTelefone, type DadosDaLinha } f
  * clínica tem), cria quem não existe e, se pedido, a oportunidade — sem evento
  * de domínio nenhum: uma planilha não pode disparar mil automações de
  * boas-vindas. Acesso ao portal não é criado (a clínica cria na ficha).
+ *
+ * O que a linha cita por nome (unidade, etapa, responsável, procedimento) é
+ * resolvido contra as listas da rede montadas AQUI (`referenciasDaRede`).
  *
  * Mesmo padrão do histórico do WhatsApp: reivindica a linha antes de rodar
  * (carimbando a `execucao`), dá sinal de vida a cada pedaço — e todo sinal
@@ -105,10 +109,21 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
   }
 
   try {
-    const unidade = p.branch_id
-      ? await ler(admin.from('branches').select('name').eq('id', p.branch_id).eq('tenant_id', p.tenant_id).maybeSingle(), 'buscar a unidade')
-      : null
-    const tagDaUnidade = unidade ? unitTag(unidade.name as string) : null
+    const usa = (c: ChaveDeCampo) => p.mapeamento.includes(c)
+    const refs = await referenciasDaRede(admin, p.tenant_id, {
+      // A unidade da importação também entra: é dela a tag do cliente novo.
+      unidades:      p.destino === 'clientes',
+      etapaId:       usa('op_etapa') ? p.oportunidade?.etapaId : null,
+      membros:       usa('op_responsavel'),
+      procedimentos: usa('op_procedimentos'),
+    })
+    // A tag de cada unidade (é por ela que a lista de clientes filtra).
+    const nomesDasUnidades = new Map((refs.unidades ?? []).map(u => [u.id, u.nome]))
+    if (p.branch_id && !nomesDasUnidades.has(p.branch_id)) {
+      const u = await ler(admin.from('branches').select('name').eq('id', p.branch_id).eq('tenant_id', p.tenant_id).maybeSingle(), 'buscar a unidade')
+      if (u) nomesDasUnidades.set(p.branch_id, u.name as string)
+    }
+    const tagDaUnidade = (id: string | null) => (id && nomesDasUnidades.has(id) ? unitTag(nomesDasUnidades.get(id)!) : null)
 
     for (;;) {
       const linhas = await ler(admin.from('importacao_linhas').select('numero, valores')
@@ -117,7 +132,7 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
       if (!linhas?.length) break
 
       for (const l of linhas) {
-        const { dados, erros: problemas } = validarLinha(p.destino, p.mapeamento, l.valores)
+        const { dados, erros: problemas } = validarLinha(p.destino, p.mapeamento, l.valores, refs)
         if (!problemas.length) {
           const chave = chaveDaPessoa(p.destino, dados)
           const primeira = vistas.get(chave)
@@ -162,15 +177,17 @@ export async function processarImportacao(importacaoId: string, ctx: TenantConte
 }
 
 /** A pessoa do CRM com este telefone — com ou sem o nono dígito. */
-async function pessoaDoTelefone(admin: Admin, tenantId: string, fone: string): Promise<{ id: string; name: string | null; phone: string | null; tags: string[] | null } | null> {
-  return await ler(admin.from('contacts').select('id, name, phone, tags')
+async function pessoaDoTelefone(admin: Admin, tenantId: string, fone: string): Promise<{
+  id: string; name: string | null; phone: string | null; email: string | null; social_media: string | null; tags: string[] | null
+} | null> {
+  return await ler(admin.from('contacts').select('id, name, phone, email, social_media, tags')
     .eq('tenant_id', tenantId).overlaps('identifiers', variantesDoTelefone(fone))
     .order('created_at').limit(1).maybeSingle(), 'buscar a pessoa pelo telefone') as never
 }
 
 /** Uma linha válida: a pessoa (nova, completada ou igual) e a oportunidade, se pedida. */
 async function gravarLinha(
-  admin: Admin, p: Pedido, ctx: TenantContext, dados: DadosDaLinha, tagDaUnidade: string | null,
+  admin: Admin, p: Pedido, ctx: TenantContext, dados: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null,
 ): Promise<{ resultado: Resultado; oportunidade: boolean }> {
   const fone = dados.phone as string
   let resultado: Resultado
@@ -192,10 +209,19 @@ async function gravarLinha(
     return { resultado, oportunidade: false }
   }
   const nome = (dados.name as string | undefined) ?? fone
+  const texto = (c: ChaveDeCampo) => (dados[c] as string | undefined) ?? null
+  // A etapa e o responsável da LINHA vencem os da tela (vazio = os da tela).
+  // O responsável da linha já passou pela trava do cargo (a action recusa a
+  // coluna para quem não troca responsável) e é da equipe ativa (refs).
   const criada = await criarOportunidadeCore(admin, ctx, {
-    nome, telefone: pessoa?.phone || fone, email: (dados.email as string | undefined) ?? null,
-    crmStageId: p.oportunidade.etapaId,
-  }, { semEventos: true, responsavelId: p.oportunidade.responsavelId, clientId })
+    nome, telefone: pessoa?.phone || fone, email: texto('email'), social: texto('social_media'),
+    origem: texto('op_origem'), observacoes: texto('op_observacoes'),
+    valor: dados.op_valor ? Number(dados.op_valor) : null,
+    crmStageId: texto('op_etapa') ?? p.oportunidade.etapaId,
+    procedureIds: (dados.op_procedimentos as string[] | undefined) ?? [],
+    tags: (dados.op_tags as string[] | undefined) ?? [],
+    utmSource: texto('op_utm_source'), utmMedium: texto('op_utm_medium'), utmCampaign: texto('op_utm_campaign'),
+  }, { semEventos: true, responsavelId: texto('op_responsavel') ?? p.oportunidade.responsavelId, clientId })
   if ('error' in criada) throw new Error(`Oportunidade: ${criada.error}`)
   return { resultado, oportunidade: true }
 }
@@ -216,13 +242,14 @@ function soOVazio(atual: Record<string, unknown>, dados: DadosDaLinha, campos: C
   return patch
 }
 
+/** O que vai para a ficha (unidade e situação são tratadas à parte). */
 const CAMPOS_DO_CLIENTE: ChaveDeCampo[] = [
   'name', 'phone', 'document', 'email', 'birth_date', 'gender', 'zip_code', 'address', 'address_number',
   'address_complement', 'neighborhood', 'city', 'state', 'referred_by', 'notes', 'tags',
 ]
 
 async function gravarCliente(
-  admin: Admin, p: Pedido, dados: DadosDaLinha, tagDaUnidade: string | null,
+  admin: Admin, p: Pedido, dados: DadosDaLinha, tagDaUnidade: (id: string | null) => string | null,
 ): Promise<{ resultado: Resultado; clientId: string }> {
   // Quem já existe: pelo CPF; sem achar, a ficha SEM CPF do mesmo telefone (o
   // cadastro rápido de quem marcou às pressas) — a regra do cadastro manual.
@@ -248,8 +275,12 @@ async function gravarCliente(
     return { resultado: 'completada', clientId: existente.id as string }
   }
 
-  const tags = [...new Set([...((dados.tags as string[] | undefined) ?? []), ...(tagDaUnidade ? [tagDaUnidade] : [])])]
-  const linha: Record<string, unknown> = { tenant_id: p.tenant_id, branch_id: p.branch_id, is_active: true, tags }
+  // A unidade da LINHA (só a rede importa assim) ou a escolhida na tela; a
+  // situação vale só para quem nasce — quem já existe mantém a da clínica.
+  const branchId = (dados.unidade as string | undefined) ?? p.branch_id
+  const tag = tagDaUnidade(branchId)
+  const tags = [...new Set([...((dados.tags as string[] | undefined) ?? []), ...(tag ? [tag] : [])])]
+  const linha: Record<string, unknown> = { tenant_id: p.tenant_id, branch_id: branchId, is_active: dados.ativo !== 'false', tags }
   for (const c of CAMPOS_DO_CLIENTE) if (c !== 'tags' && dados[c]) linha[c] = dados[c]
   const { data: novo, error } = await admin.from('clients').insert(linha).select('id').single<{ id: string }>()
   if (error) {
@@ -269,19 +300,21 @@ async function gravarContato(admin: Admin, tenantId: string, ctx: TenantContext,
     const atual = pessoa.name?.trim() ?? ''
     // Sem nome = vazio, ou só o número (o que a conversa põe quando o WhatsApp não manda nome).
     const semNome = !atual || /^[\d\s+().-]+$/.test(atual)
-    const patch = soOVazio({ name: semNome ? null : atual, tags: pessoa.tags }, dados, ['name', 'tags'])
+    const patch = soOVazio({ ...pessoa, name: semNome ? null : atual }, dados, ['name', 'email', 'social_media', 'tags'])
     if (!Object.keys(patch).length) return 'sem_mudanca'
     // O nome é da PESSOA, e as cópias acompanham (conversas, oportunidades) —
     // a mesma porta da edição pela tela.
-    if (patch.name) await propagarDadosDaPessoa(admin, ctx, pessoa.id, { nome: patch.name as string })
-    if (patch.tags) {
-      await gravar(admin.from('contacts').update({ tags: patch.tags, updated_at: agora() })
-        .eq('id', pessoa.id).eq('tenant_id', tenantId), 'juntar as tags do contato')
+    const { name, ...resto } = patch
+    if (name) await propagarDadosDaPessoa(admin, ctx, pessoa.id, { nome: name as string })
+    if (Object.keys(resto).length) {
+      await gravar(admin.from('contacts').update({ ...resto, updated_at: agora() })
+        .eq('id', pessoa.id).eq('tenant_id', tenantId), 'completar o contato')
     }
     return 'completada'
   }
   await gravar(admin.from('contacts').insert({
     tenant_id: tenantId, name: (dados.name as string | undefined) ?? null, phone: fone,
+    email: (dados.email as string | undefined) ?? null, social_media: (dados.social_media as string | undefined) ?? null,
     identifiers: [fone], tags: (dados.tags as string[] | undefined) ?? [],
   }), 'criar o contato')
   return 'nova'

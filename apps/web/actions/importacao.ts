@@ -5,7 +5,7 @@ import { updateTag } from 'next/cache'
 import { getTenantContext, assertPermission, assertRecurso, can, alcancaUnidade } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler } from '@/lib/db'
-import { CAMPOS, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
+import { camposDoDestino, type ChaveDeCampo, type Destino } from '@/lib/importacao/campos'
 import { processarImportacao, manterImportacoes } from '@/lib/importacao/processar'
 import { podeTrocarResponsavel } from '@/lib/crm/responsavel'
 
@@ -52,12 +52,17 @@ export async function importarContatos(pedido: PedidoDeImportacao): Promise<{ ok
   assertPermission(ctx, destino === 'clientes' ? 'clients' : 'crm', 'MANAGE')
 
   // O mapeamento: só campos do destino, cada um uma vez, e os obrigatórios.
-  const permitidos = new Set(CAMPOS[destino].map(c => c.chave))
+  // Os do card só com oportunidade; a unidade por linha, só a rede importando
+  // clientes (quem é de unidade importa para a dela).
+  const campos = camposDoDestino(destino, {
+    oportunidade: !!pedido?.oportunidade, unidadePorLinha: destino === 'clientes' && !ctx.branchId,
+  })
+  const permitidos = new Set(campos.map(c => c.chave))
   const mapa = Array.isArray(pedido?.mapeamento) ? pedido.mapeamento.slice(0, MAX_COLUNAS) : []
   const mapeamento = mapa.map(c => (typeof c === 'string' && permitidos.has(c as ChaveDeCampo) ? c as ChaveDeCampo : null))
   const usados = mapeamento.filter(Boolean)
   if (new Set(usados).size !== usados.length) return { ok: false, error: 'Cada campo do sistema vai para uma coluna só.' }
-  for (const c of CAMPOS[destino]) {
+  for (const c of campos) {
     if (c.obrigatorio && !mapeamento.includes(c.chave)) return { ok: false, error: `Escolha a coluna de ${c.rotulo}.` }
   }
 
@@ -99,6 +104,11 @@ export async function importarContatos(pedido: PedidoDeImportacao): Promise<{ ok
           .eq('id', responsavelId).eq('tenant_id', ctx.tenantId!).maybeSingle(), 'buscar o responsável')
         if (!membro || !(membro as { is_active: boolean }).is_active) return { ok: false, error: 'Responsável não encontrado nesta rede.' }
       }
+    }
+    // A coluna de responsável distribui os leads entre a equipe: a mesma trava
+    // de escolher outro na tela.
+    if (mapeamento.includes('op_responsavel') && !podeTrocarResponsavel(ctx)) {
+      return { ok: false, error: 'Seu cargo não define o responsável de outra pessoa.' }
     }
     oportunidade = { etapaId, responsavelId }
   }

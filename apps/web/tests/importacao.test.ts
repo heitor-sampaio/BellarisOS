@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { decodificar, lerCsv } from '@/lib/importacao/csv'
-import { sugerirMapeamento, CAMPOS } from '@/lib/importacao/campos'
+import { sugerirMapeamento, camposDoDestino } from '@/lib/importacao/campos'
 import {
   normalizarTelefone, normalizarCpf, normalizarData, normalizarGenero, separarTags,
-  validarLinha, marcarRepetidas,
+  normalizarOrigem, normalizarValor, normalizarAtivo,
+  validarLinha, marcarRepetidas, type Referencias,
 } from '@/lib/importacao/normalizar'
 
 /**
@@ -48,9 +49,33 @@ describe('sugerirMapeamento', () => {
   it('cada campo vai para uma coluna só (a primeira)', () => {
     expect(sugerirMapeamento(['Telefone', 'Celular'], 'clientes')).toEqual(['phone', null])
   })
-  it('no contato do CRM só existem nome, telefone e tags', () => {
-    expect(CAMPOS.contatos.map(c => c.chave)).toEqual(['name', 'phone', 'tags'])
-    expect(sugerirMapeamento(['Nome', 'WhatsApp', 'CPF'], 'contatos')).toEqual(['name', 'phone', null])
+  it('no contato do CRM: nome, telefone, e-mail, rede social e tags — a ficha (CPF…) não', () => {
+    expect(camposDoDestino('contatos').map(c => c.chave)).toEqual(['name', 'phone', 'email', 'social_media', 'tags'])
+    expect(sugerirMapeamento(['Nome', 'WhatsApp', 'CPF', 'E-mail', 'Instagram'], 'contatos')).toEqual(['name', 'phone', null, 'email', 'social_media'])
+  })
+  it('com oportunidade, os campos dela entram (e só então)', () => {
+    const chaves = camposDoDestino('contatos', { oportunidade: true }).map(c => c.chave)
+    expect(chaves).toEqual(expect.arrayContaining([
+      'op_origem', 'op_valor', 'op_observacoes', 'op_procedimentos', 'op_etapa', 'op_responsavel',
+      'op_utm_source', 'op_utm_medium', 'op_utm_campaign', 'op_tags',
+    ]))
+    expect(new Set(chaves).size).toBe(chaves.length)
+    expect(camposDoDestino('contatos').some(c => c.grupo === 'oportunidade')).toBe(false)
+    expect(sugerirMapeamento(
+      ['Nome', 'Celular', 'Origem', 'Valor', 'Etapa', 'Vendedor', 'Procedimento de interesse', 'utm_campaign', 'Obs'],
+      'contatos', { oportunidade: true },
+    )).toEqual(['name', 'phone', 'op_origem', 'op_valor', 'op_etapa', 'op_responsavel', 'op_procedimentos', 'op_utm_campaign', 'op_observacoes'])
+  })
+  it('no cliente: situação sempre; unidade por linha só quando pedida; rede social só na oportunidade', () => {
+    expect(camposDoDestino('clientes').map(c => c.chave)).toContain('ativo')
+    expect(camposDoDestino('clientes').map(c => c.chave)).not.toContain('unidade')
+    expect(camposDoDestino('clientes').map(c => c.chave)).not.toContain('social_media')
+    expect(camposDoDestino('clientes', { unidadePorLinha: true }).map(c => c.chave)).toContain('unidade')
+    const op = camposDoDestino('clientes', { oportunidade: true })
+    expect(op.find(c => c.chave === 'social_media')?.grupo).toBe('oportunidade')
+    // As observações vão para a ficha; as da oportunidade, só se outra coluna.
+    expect(sugerirMapeamento(['Nome', 'Celular', 'Observações', 'Unidade', 'Status'], 'clientes', { oportunidade: true, unidadePorLinha: true }))
+      .toEqual(['name', 'phone', 'notes', 'unidade', 'ativo'])
   })
 })
 
@@ -82,6 +107,69 @@ describe('normalizar', () => {
     expect(normalizarGenero('m')).toBe('M')
     expect(normalizarGenero('xyz')).toBeNull()
     expect(separarTags('vip; botox, retorno,, ')).toEqual(['vip', 'botox', 'retorno'])
+  })
+})
+
+describe('os campos novos', () => {
+  it('origem: o nome da lista, os apelidos comuns, e o resto vira "Outro"', () => {
+    expect(normalizarOrigem('facebook')).toBe('Meta Ads')
+    expect(normalizarOrigem('Instagram')).toBe('Instagram')
+    expect(normalizarOrigem('indicacao')).toBe('Indicação')
+    expect(normalizarOrigem('GOOGLE')).toBe('Google Ads')
+    expect(normalizarOrigem('organico')).toBe('Orgânico')
+    expect(normalizarOrigem('Feira de noivas')).toBe('Outro')
+  })
+  it('valor em reais, do jeito que a planilha traz', () => {
+    expect(normalizarValor('R$ 1.500,00')).toBe(1500)
+    expect(normalizarValor('1500,5')).toBe(1500.5)
+    expect(normalizarValor('1.500')).toBe(1500)
+    expect(normalizarValor('2300.90')).toBe(2300.9)
+    expect(normalizarValor('1,234.56')).toBe(1234.56)
+    expect(normalizarValor('abc')).toBeNull()
+    expect(normalizarValor('-10')).toBeNull()
+  })
+  it('situação do cliente', () => {
+    expect(normalizarAtivo('Ativo')).toBe(true)
+    expect(normalizarAtivo('sim')).toBe(true)
+    expect(normalizarAtivo('Inativo')).toBe(false)
+    expect(normalizarAtivo('Não')).toBe(false)
+    expect(normalizarAtivo('0')).toBe(false)
+    expect(normalizarAtivo('talvez')).toBeNull()
+  })
+
+  const refs: Referencias = {
+    unidades: [{ id: 'u1', nome: 'Centro' }, { id: 'u2', nome: 'São José' }],
+    etapas: [{ id: 'e1', nome: 'Novos' }, { id: 'e2', nome: 'Qualificados' }],
+    membros: [
+      { id: 'm1', nome: 'Bia Souza', email: 'bia@x.com' },
+      { id: 'm2', nome: 'Ana Lima', email: 'ana1@x.com' },
+      { id: 'm3', nome: 'Ana Lima', email: 'ana2@x.com' },
+    ],
+    procedimentos: [{ id: 'p1', nome: 'Botox' }, { id: 'p2', nome: 'Preenchimento labial' }],
+  }
+  it('etapa, responsável, procedimentos e unidade pelo NOME (sem acento nem caixa)', () => {
+    const mapa = ['phone', 'op_etapa', 'op_responsavel', 'op_procedimentos', 'op_valor', 'op_origem', 'social_media'] as const
+    expect(validarLinha('contatos', [...mapa], ['48999990000', 'qualificados', 'BIA@X.COM', 'botox; preenchimento LABIAL', 'R$ 1.200,00', 'facebook', '@bia'], refs)).toEqual({
+      dados: { phone: '5548999990000', op_etapa: 'e2', op_responsavel: 'm1', op_procedimentos: ['p1', 'p2'], op_valor: '1200', op_origem: 'Meta Ads', social_media: '@bia' },
+      erros: [],
+    })
+    expect(validarLinha('contatos', ['phone', 'op_responsavel'], ['48999990000', 'bia souza'], refs).dados.op_responsavel).toBe('m1')
+    expect(validarLinha('clientes', ['name', 'phone', 'unidade', 'ativo'], ['Ana', '48999990000', 'sao jose', 'inativo'], refs).dados)
+      .toMatchObject({ unidade: 'u2', ativo: 'false' })
+  })
+  it('o que não se acha é erro da linha, com o motivo', () => {
+    const r = validarLinha('contatos', ['phone', 'op_etapa', 'op_responsavel', 'op_procedimentos', 'op_valor'],
+      ['48999990000', 'Perdidos', 'Ana Lima', 'Botox, Laser', 'muito'], refs)
+    expect(r.erros).toEqual([
+      'Valor ilegível: "muito".',
+      'Procedimento não encontrado: "Laser".',
+      'Etapa não encontrada no funil escolhido: "Perdidos".',
+      'Mais de uma pessoa da equipe se chama "Ana Lima" — use o e-mail.',
+    ])
+    expect(validarLinha('clientes', ['name', 'phone', 'unidade'], ['Ana', '48999990000', 'Norte'], refs).erros)
+      .toEqual(['Unidade não encontrada: "Norte".'])
+    expect(validarLinha('contatos', ['phone', 'op_responsavel'], ['48999990000', 'zé'], refs).erros)
+      .toEqual(['Responsável não encontrado na equipe: "zé".'])
   })
 })
 

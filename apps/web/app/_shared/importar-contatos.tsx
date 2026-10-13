@@ -36,15 +36,18 @@ export async function ImportarContatos({ unidadeFixa }: {
     unidades = (bs ?? []).map(b => ({ id: b.id, nome: b.name }))
   }
 
-  const [funis, etapas, pessoas] = podeOportunidade
+  // A prévia resolve os nomes da planilha (etapa, responsável, procedimento)
+  // com estas listas; o servidor monta as dele de novo.
+  const [funis, etapas, pessoas, procedimentos] = podeOportunidade
     ? await Promise.all([
         seedDefaultFunnel(ctx.tenantId!),
         listAllStages(ctx.tenantId!),
         podeTrocarResponsavel(ctx)
-          ? ler(admin.from('users').select('id, name').eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'listar os responsáveis')
+          ? ler(admin.from('users').select('id, name, email').eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'listar os responsáveis')
           : Promise.resolve(null),
+        ler(admin.from('procedures').select('id, name').eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'listar os procedimentos'),
       ])
-    : [[], [], null]
+    : [[], [], null, null]
 
   // Só funis ATIVOS (a etapa de um arquivado criaria a oportunidade fora do
   // quadro), começando pela primeira etapa do funil padrão.
@@ -63,7 +66,8 @@ export async function ImportarContatos({ unidadeFixa }: {
       funis={ativos.map(f => ({ id: f.id, name: f.name }))}
       etapas={doQuadro.map(e => ({ id: e.id, funnel_id: e.funnel_id, name: e.name }))}
       etapaPadrao={etapaPadrao}
-      responsaveis={(pessoas as { id: string; name: string }[] | null) ?? null}
+      responsaveis={(pessoas as { id: string; name: string; email: string | null }[] | null) ?? null}
+      procedimentos={(procedimentos as { id: string; name: string }[] | null) ?? []}
       eu={ctx.internalUserId ?? null}
     />
   )

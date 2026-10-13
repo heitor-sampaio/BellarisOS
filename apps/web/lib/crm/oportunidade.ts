@@ -69,6 +69,8 @@ export interface NovaOportunidade {
   social?: string | null
   origem?: string | null
   observacoes?: string | null
+  /** O valor estimado do card (a importação o traz; a tela edita depois). */
+  valor?: number | null
   crmStageId?: string | null
   funnelId?: string | null
   procedureIds?: string[]
@@ -110,6 +112,7 @@ export async function criarOportunidadeCore(
     branch_id: null,
     name: nome, phone: o.telefone ?? null, email: o.email ?? null, social_media: o.social ?? null,
     source: derived.source, notes: o.observacoes ?? null,
+    ...(o.valor !== undefined && o.valor !== null ? { value: o.valor } : {}),
     crm_stage_id: etapaInicial,
     fbclid: o.fbclid ?? null, gclid: o.gclid ?? null,
     utm_source: o.utmSource ?? null, utm_medium: o.utmMedium ?? null, utm_campaign: o.utmCampaign ?? null,
