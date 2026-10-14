@@ -1316,6 +1316,10 @@ existentes ganharam essas mais tudo o que já estava em uso. Automação que cit
 o nome antigo não é reescrita — a tela avisa quais ajustar. Migration
 `20261013000006`.
 
+Depois (2026-10-14), a lista de clientes trocou o segmento fixo "Todos / VIP /
+Novos / Inativos" por dois filtros no padrão do quadro: Situação e Tags, esta
+com o vocabulário da rede (inclusive a tag que ninguém usa ainda).
+
 ### 2026-10-13 — O importador de contatos (CSV)
 
 Pedido do Heitor: importar uma planilha e relacionar as colunas com os campos

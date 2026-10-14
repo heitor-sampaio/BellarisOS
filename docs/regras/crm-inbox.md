@@ -33,6 +33,10 @@ ficha oferecia oito tags fixas no código, e a tag que vinha de fora
   (fica a que existia, com o nome dela, sem repetir na pessoa). O fluxo de
   automação que cita o nome antigo NÃO é reescrito (versão publicada não muda
   sozinha): a tela lista quais ajustar (`automacoes_que_citam_tag`).
+- **A lista de clientes filtra pelo vocabulário** (2026-10-14): Situação
+  (Ativos, Novos, Inativos — escolha única) e Tags (várias, todas valem juntas,
+  sem caixa) no `PickerCompacto`, como o quadro. O segmento fixo "Todos / VIP /
+  Novos / Inativos" saiu: VIP é uma tag como as outras.
 - **Arquivar** tira das opções; quem já tem continua com ela, e a ficha a
   mostra marcada. Não há apagar.
 - Rede nova nasce com as oito padrão (`trg_rede_ganha_tags`,

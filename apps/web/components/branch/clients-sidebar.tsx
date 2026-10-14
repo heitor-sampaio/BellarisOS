@@ -7,7 +7,8 @@ import { formatDistanceToNow } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { unitTag, isUnitTag } from '@estetica-os/utils'
 import { PickerCompacto } from '@/components/shared/picker-compacto'
-import { SegSelect } from '@/components/shared/seg-select'
+import { useTagsDaRede } from '@/components/shared/use-tags-da-rede'
+import { opcoesDeTag, temTag, alternarTag } from '@/lib/tags/escolha'
 
 interface ClientItem {
   id:         string
@@ -29,7 +30,7 @@ interface Props {
   availableBranches?: { id: string; name: string }[]  // admin-only: shows branch filter
 }
 
-type Filter = 'todos' | 'vip' | 'novos' | 'inativos'
+type Filter = 'ativos' | 'novos' | 'inativos'
 
 function getInitials(name: string) {
   const parts = name.trim().split(' ')
@@ -57,7 +58,7 @@ export function ClientsSidebar({
   const router   = useRouter()
 
   const [search,           setSearch]           = useState('')
-  const [filter,           setFilter]           = useState<Filter>('todos')
+  const [filter,           setFilter]           = useState<Filter>('ativos')
   const [selectedBranchId, setSelectedBranchId] = useState<string>('')
   const [tagsEscolhidas,   setTagsEscolhidas]   = useState<string[]>([])
 
@@ -65,33 +66,32 @@ export function ClientsSidebar({
   const selectedBranchName = availableBranches?.find(b => b.id === selectedBranchId)?.name
 
   /**
-   * Tags dos clientes carregados, menos as de unidade.
+   * As tags da rede (Configurações → Tags), mais as que algum cliente carregado
+   * tem fora dela (arquivada) — menos as de unidade.
    *
    * As de unidade saem porque já têm filtro próprio: apareceriam duas vezes,
    * uma como "Unidade: Centro" na lista de tags e outra no seletor de unidade,
    * fazendo a mesma pergunta em dois lugares.
    */
-  const tagsDisponiveis = useMemo(() => {
-    const todas = new Set<string>()
-    for (const c of clients) {
-      for (const t of c.tags) if (!isUnitTag(t)) todas.add(t)
-    }
-    return [...todas].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  }, [clients])
+  const vocabulario = useTagsDaRede()
+  const tagsDisponiveis = useMemo(
+    () => opcoesDeTag(vocabulario ?? [], clients.flatMap(c => c.tags.filter(t => !isUnitTag(t)))),
+    [vocabulario, clients],
+  )
 
   const filtered = clients.filter(c => {
     const matchSearch = !search ||
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.phone.includes(search)
     const matchFilter =
-      filter === 'todos'    ? c.isActive :
-      filter === 'vip'      ? c.isActive && c.tags.includes('VIP') :
+      filter === 'ativos'   ? c.isActive :
       filter === 'novos'    ? c.isActive && c.isNew :
       filter === 'inativos' ? !c.isActive : true
     const matchBranch = !selectedBranchId
       || (selectedBranchName ? c.tags.includes(unitTag(selectedBranchName)) : c.branchId === selectedBranchId)
     // TODAS as tags marcadas, como no inbox: marcar duas estreita a busca.
-    const matchTags = tagsEscolhidas.every(t => c.tags.includes(t))
+    // Sem caixa: "VIP" e "vip" são a mesma tag (Configurações → Tags).
+    const matchTags = tagsEscolhidas.every(t => temTag(c.tags, t))
     return matchSearch && matchFilter && matchBranch && matchTags
   })
 
@@ -99,11 +99,13 @@ export function ClientsSidebar({
   const pathParts  = pathname.split('/')
   const selectedId = pathParts[pathParts.indexOf('clients') + 1] ?? null
 
-  const filterOptions: { key: Filter; label: string }[] = [
-    { key: 'todos',    label: 'Todos' },
-    { key: 'vip',      label: 'VIP' },
-    { key: 'novos',    label: 'Novos' },
-    { key: 'inativos', label: 'Inativos' },
+  // A situação: escolha única, e "Ativos" é o normal (o gatilho só fica rosé
+  // fora dele). O "VIP" que morava aqui era uma tag fixa — vai pelo filtro de
+  // tags, como qualquer outra (pedido do Heitor, 2026-10-14).
+  const situacoes: { valor: Filter; rotulo: string }[] = [
+    { valor: 'ativos',   rotulo: 'Ativos' },
+    { valor: 'novos',    rotulo: 'Novos' },
+    { valor: 'inativos', rotulo: 'Inativos' },
   ]
 
   const addHref = newClientHref === undefined ? `${basePath}/new` : newClientHref
@@ -172,52 +174,47 @@ export function ClientsSidebar({
           />
         </div>
 
-        {/* Todos / VIP / Novos / Inativos: escolha EXCLUSIVA entre opções
-            fixas e curtas — é segmento, não pílula solta. A pílula solta é
-            para filtro que acumula (tag), e usá-la aqui prometia que dava
-            para marcar VIP e Novos ao mesmo tempo. */}
-        <SegSelect
-          ariaLabel="Filtrar clientes"
-          value={filter}
-          onSelect={k => setFilter(k as typeof filter)}
-          options={filterOptions.map(f => ({ key: f.key, label: f.label }))}
-        />
+        {/* Situação, unidade e tags no mesmo padrão do resto do sistema (o
+            quadro de oportunidades): um gatilho que abre a lista, com o
+            escolhido no rótulo. Aqui isso importa mais que em outras telas — a
+            coluna tem 336px, e despejar as tags como chips empurraria a lista
+            de clientes para fora da tela. */}
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          <PickerCompacto
+            rotuloBotao={filter === 'ativos' ? 'Situação' : situacoes.find(o => o.valor === filter)!.rotulo}
+            opcoes={situacoes}
+            selecionadas={[filter]}
+            textoListaVazia=""
+            marcadorQuadrado
+            larguraPainel={180}
+            classeBotao={classeGatilho(filter !== 'ativos')}
+            onEscolher={v => setFilter(v as Filter)}
+          />
+          {temFiltroDeUnidade && (
+            <PickerCompacto
+              rotuloBotao={selectedBranchName ?? 'Unidade'}
+              opcoes={availableBranches!.map(b => ({ valor: b.id, rotulo: b.name }))}
+              selecionadas={selectedBranchId ? [selectedBranchId] : []}
+              textoListaVazia="Nenhuma unidade."
+              larguraPainel={220}
+              classeBotao={classeGatilho(!!selectedBranchId)}
+              // Escolher a que já está marcada limpa: é como desmarcar um
+              // rádio, e sem isso a única saída seria recarregar a página.
+              onEscolher={id => setSelectedBranchId(prev => (prev === id ? '' : id))}
+            />
+          )}
 
-        {/* Unidade e tags no mesmo padrão do resto do sistema: um gatilho que
-            abre a lista, com o escolhido no rótulo. Aqui isso importa mais que
-            em outras telas — a coluna tem 336px, e despejar as tags como chips
-            empurraria a lista de clientes para fora da tela. */}
-        {(temFiltroDeUnidade || tagsDisponiveis.length > 0) && (
-          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 8 }}>
-            {temFiltroDeUnidade && (
-              <PickerCompacto
-                rotuloBotao={selectedBranchName ?? 'Unidade'}
-                opcoes={availableBranches!.map(b => ({ valor: b.id, rotulo: b.name }))}
-                selecionadas={selectedBranchId ? [selectedBranchId] : []}
-                textoListaVazia="Nenhuma unidade."
-                larguraPainel={220}
-                classeBotao={classeGatilho(!!selectedBranchId)}
-                // Escolher a que já está marcada limpa: é como desmarcar um
-                // rádio, e sem isso a única saída seria recarregar a página.
-                onEscolher={id => setSelectedBranchId(prev => (prev === id ? '' : id))}
-              />
-            )}
-
-            {tagsDisponiveis.length > 0 && (
-              <PickerCompacto
-                rotuloBotao={tagsEscolhidas.length > 0 ? `Tags · ${tagsEscolhidas.length}` : 'Tags'}
-                opcoes={tagsDisponiveis.map(t => ({ valor: t, rotulo: t }))}
-                selecionadas={tagsEscolhidas}
-                multiplo
-                textoListaVazia="Nenhuma tag nos clientes."
-                larguraPainel={220}
-                classeBotao={classeGatilho(tagsEscolhidas.length > 0)}
-                onEscolher={t => setTagsEscolhidas(prev =>
-                  prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])}
-              />
-            )}
-          </div>
-        )}
+          <PickerCompacto
+            rotuloBotao={tagsEscolhidas.length > 0 ? `Tags · ${tagsEscolhidas.length}` : 'Tags'}
+            opcoes={tagsDisponiveis.map(t => ({ valor: t, rotulo: t }))}
+            selecionadas={tagsEscolhidas}
+            multiplo
+            textoListaVazia="A rede ainda não tem tags (Configurações → Tags)."
+            larguraPainel={220}
+            classeBotao={classeGatilho(tagsEscolhidas.length > 0)}
+            onEscolher={t => setTagsEscolhidas(prev => alternarTag(prev, t))}
+          />
+        </div>
       </div>
 
       {/* A lista rola por dentro; cabeçalho, busca e filtros ficam parados.
