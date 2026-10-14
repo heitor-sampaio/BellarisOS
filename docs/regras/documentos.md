@@ -183,6 +183,25 @@ DEVLOG ("Termos e contratos").
     Não exige `crm`: quem manda não lê a conversa. Janela de 24h fechada: não
     sai, e o link volta para copiar. Sem conversa: recusa ANTES de gerar
     (não revoga o link que existe).
+- **A tela de Documentos** (`/admin/documentos` e `/[slug]/documentos`, corpo
+  em `app/_shared/documentos-emitidos.tsx`, menu Atendimento; pedido do
+  Heitor, 2026-10-14): todo termo e contrato emitido no período, com a
+  SITUAÇÃO — faltam dados, a enviar, enviado, assinado, dispensado,
+  cancelado (o substituído só pelo filtro). A situação e os números são do
+  banco (`documentos_emitidos*`, migration `20261014000002`): o status mais a
+  trilha. "Enviado" = há `LINK_GERADO`, `NOTIFICADO_PORTAL` ou
+  `LINK_ENVIADO_CONVERSA`; a coluna mostra o envio mais recente, o link
+  valendo (ou vencido) e se o cliente abriu (`IDENTIDADE_OK`).
+  - É só LEITURA (`documents: VIEW`); quem tem unidade fixa vê a dela. A
+    janela do documento mostra a trilha (`trilhaDoDocumento`, sem o CPF de
+    quem assinou), o PDF e "Abrir na ficha" — as ações ficam na ficha.
+  - O A_GERAR da página é montado ao listar (`renderizarPendentes`), como na
+    ficha: sem isso ele não saberia se falta dado.
+  - Os rótulos da trilha são UM só (`lib/documentos/situacao.ts`), na tela e
+    na página de evidências do PDF.
+  - Canal de envio novo grava o seu evento em `issued_document_events` e
+    entra na lista de envios da função — senão o documento fica "a enviar".
+  - Prova: `e2e/documentos-painel.spec.ts`.
 - O que os canais têm em comum mora em `lib/documentos/assinar.ts` (IP,
   assinante, o evento e o PDF depois de assinar), fora de `actions/`.
 - O export da LGPD traz os termos e contratos na parte GERAL (sem dado

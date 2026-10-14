@@ -32,6 +32,7 @@ import { ipEAparelho, dadosDoAssinante, depoisDeAssinar, COLUNAS_ASSINAVEIS, typ
 import { notifyClient } from '@/lib/notifications/notify'
 import { documentoParaExibir, resumirDocumentos, type ResumoDeDocumento } from '@/lib/documentos/leitura'
 import type { PagamentoDoPlano } from '@/lib/checkout/pagamento'
+import { ROTULO_DO_EVENTO, ROTULO_DO_CANAL } from '@/lib/documentos/situacao'
 import { precosDoPlano, descontoDoPlano } from '@/lib/checkout/desconto-do-plano'
 import { EntradaDoDesconto, descontoEmReais, recusaDoDesconto } from '@/lib/vendas/desconto'
 import type { DocumentoNaTela } from '@/components/shared/tela-de-assinatura'
@@ -520,6 +521,65 @@ export async function montarDocumentoDeNovo(id: string): Promise<Resultado & { f
     if (!doc) return { error: 'Documento não encontrado.' }
     const novo = await garantirRenderizado(ctx.tenantId!, doc.id, { forcar: true })
     return { faltando: novo?.status === 'INCOMPLETO' ? 1 : 0 }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+// ─── A trilha de um documento (a tela de Documentos) ─────────────────────────
+
+export interface TrilhaDoDocumento {
+  titulo:     string
+  eventos:    { quando: string; rotulo: string; quem: string | null }[]
+  assinatura: { nome: string; canal: string; identidade: string; em: string } | null
+  codigo:     string | null
+}
+
+/**
+ * Cada passo do documento, do mais antigo ao mais novo: emitido, montado,
+ * link gerado ou revogado, pedido no portal, identidade conferida, assinado,
+ * PDF. Só leitura (`documents: VIEW`), da rede e da unidade ao alcance. O CPF
+ * de quem assinou não sai daqui.
+ */
+export async function trilhaDoDocumento(id: string): Promise<{ trilha?: TrilhaDoDocumento; error?: string }> {
+  try {
+    const ctx = await getTenantContext()
+    assertPermission(ctx, 'documents', 'VIEW')
+    const doc = await documentoAoAlcance(ctx, id)
+    if (!doc) return { error: 'Documento não encontrado.' }
+    const admin = createAdminClient()
+    const [linha, eventos, assinaturas] = await Promise.all([
+      ler(admin.from('issued_documents').select('title, verification_code').eq('id', doc.id).single(), 'buscar o documento'),
+      ler(admin.from('issued_document_events').select('kind, actor_user_id, actor_is_client, created_at')
+        .eq('issued_document_id', doc.id).order('created_at').order('id').limit(200), 'buscar a trilha do documento'),
+      ler(admin.from('document_signatures').select('signer_name, channel, identity_method, signed_at')
+        .eq('issued_document_id', doc.id).order('signed_at', { ascending: false }).limit(1), 'buscar a assinatura'),
+    ])
+    const atores = [...new Set((eventos ?? []).map(e => e.actor_user_id as string | null).filter((x): x is string => !!x))]
+    const nomes = atores.length
+      ? new Map(((await ler(admin.from('users').select('id, name').eq('tenant_id', ctx.tenantId!).in('id', atores), 'buscar quem agiu')) ?? [])
+          .map(u => [u.id as string, u.name as string]))
+      : new Map<string, string>()
+    const IDENTIDADE: Record<string, string> = {
+      PRESENCIAL: 'documento conferido pela equipe', SESSAO_PORTAL: 'sessão do cliente no portal',
+      CPF: 'CPF informado pelo cliente', NASCIMENTO: 'data de nascimento informada', LEGADO: 'assinatura anterior aos modelos',
+    }
+    const a = assinaturas?.[0]
+    return {
+      trilha: {
+        titulo: linha!.title as string,
+        codigo: (linha!.verification_code as string | null) ?? null,
+        eventos: (eventos ?? []).map(e => ({
+          quando: e.created_at as string,
+          rotulo: ROTULO_DO_EVENTO[e.kind as string] ?? (e.kind as string),
+          quem:   e.actor_is_client ? 'Cliente' : e.actor_user_id ? nomes.get(e.actor_user_id as string) ?? null : null,
+        })),
+        assinatura: a ? {
+          nome: a.signer_name as string, canal: ROTULO_DO_CANAL[a.channel as string] ?? (a.channel as string),
+          identidade: IDENTIDADE[a.identity_method as string] ?? (a.identity_method as string), em: a.signed_at as string,
+        } : null,
+      },
+    }
   } catch (e) {
     return { error: mensagemDoErro(e) }
   }

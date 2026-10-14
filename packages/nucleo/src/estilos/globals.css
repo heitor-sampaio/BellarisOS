@@ -271,6 +271,8 @@
   .chip-success { background: var(--success-soft); color: var(--success); }
   .chip-warning { background: var(--warning-soft); color: var(--warning); }
   .chip-muted   { background: var(--bg-app); color: var(--text-muted); border: 1px solid var(--border); }
+  /* Em andamento, fora das mãos da clínica (o documento enviado, esperando o cliente). */
+  .chip-info    { background: var(--info-soft); color: var(--info); }
 
   .btn-primary {
     display: inline-flex;

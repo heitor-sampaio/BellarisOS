@@ -68,6 +68,8 @@ export const ADMIN_MENU: readonly MenuEntry[] = [
 
   { key: 'agenda',       group: 'atendimento',  label: 'Agenda',        href: '/admin/agenda',         visible: p => has(p, 'agenda') },
   { key: 'clients',      group: 'atendimento',  label: 'Clientes',      href: '/admin/clients',        visible: p => has(p, 'clients') },
+  // Todo termo e contrato emitido, com a situação (a enviar, enviado, assinado…).
+  { key: 'documentos', recurso: 'documentos', group: 'atendimento', label: 'Documentos', href: '/admin/documentos', visible: p => has(p, 'documents') },
   // Onde os planos de tratamento vivem — os que estão sendo montados, os que
   // esperam aceite e os aceitos. A entrada "Checkout" saiu daqui: a fila era uma
   // tarefa sem dono, esperando uma decisão do cliente. O dinheiro passou a ser
@@ -115,6 +117,7 @@ export const BRANCH_MENU: readonly MenuEntry[] = [
 
   { key: 'agenda',        group: 'atendimento', label: 'Agenda',        href: '/agenda',        visible: p => has(p, 'agenda') },
   { key: 'clients',       group: 'atendimento', label: 'Clientes',      href: '/clients',       visible: p => has(p, 'clients') },
+  { key: 'documentos', recurso: 'documentos', group: 'atendimento', label: 'Documentos', href: '/documentos', visible: p => has(p, 'documents') },
   { key: 'planejamentos', recurso: 'planos_de_tratamento', group: 'planejamento', label: 'Tratamentos', href: '/planejamentos', visible: p => has(p, 'medical_records') || recebe(p) },
   { key: 'injetaveis', recurso: 'injetaveis',    group: 'planejamento', label: 'Injetáveis',  href: '/injetaveis',    visible: p => has(p, 'medical_records') },
 

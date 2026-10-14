@@ -20,6 +20,12 @@
 -- E o que NÃO aparece: a sessão de pacote feita, a sessão de plano feita, o
 -- atendimento cancelado, a avaliação de cortesia e o plano em rascunho.
 -- No mês anterior: 1 pacote (1.500) e 1 massagem (200).
+--
+-- E a tela de DOCUMENTOS (mesma data): 8 termos e contratos dos mesmos clientes.
+-- Nascem A_GERAR, como o gatilho os cria — a tela monta o texto ao abrir (e
+-- cada um vira "a enviar" ou "faltam dados", conforme o cadastro). Na trilha:
+-- 2 com link gerado (valendo 7 dias), 1 pedido no portal, 1 contrato de plano
+-- enviado pelo WhatsApp e 1 dispensado. Os assinados são os 6 antigos da rede.
 
 do $seed$
 declare
@@ -47,6 +53,9 @@ begin
   -- Toda data é "dia X do mês corrente" limitada a AGORA (v_hoje): no começo
   -- do mês as vendas se amontoam em hoje, mas nunca nascem no futuro.
   -- ── Limpeza do seed anterior ───────────────────────────────────────────────
+  delete from public.document_sign_links    where issued_document_id in
+         (select id from public.issued_documents where id::text like 'dddddd5a%' or client_id::text like 'dddddd5a%');
+  delete from public.issued_documents       where id::text like 'dddddd5a%' or client_id::text like 'dddddd5a%';
   delete from public.financial_transactions where id::text like 'dddddd5a%';
   delete from public.package_sessions       where client_package_id::text like 'dddddd5a%';
   delete from public.client_packages        where id::text like 'dddddd5a%';
@@ -220,5 +229,46 @@ begin
   insert into public.appointments (id, branch_id, client_id, procedure_id, professional_id, status, source, scheduled_at, duration_min, price, completed_at)
   values ('dddddd5a-4000-0000-0000-000000000099', v_bm, c[1], v_massagem, p2, 'COMPLETED', 'INTERNAL',
           v_mes - interval '8 days', 60, 200, v_mes - interval '8 days' + interval '1 hour');
+
+  -- ── Documentos ─────────────────────────────────────────────────────────────
+  -- Os termos dos atendimentos avulsos (modelo "Teste 2") e o contrato do plano 1.
+  for i in 1..7 loop
+    insert into public.issued_documents (id, tenant_id, branch_id, client_id, template_id, template_version_id,
+                                         appointment_id, procedure_id, kind, source, title, moment, enforcement, status,
+                                         closed_reason, closed_at, created_at)
+    values (('dddddd5a-9000-0000-0000-0000000000' || lpad(i::text, 2, '0'))::uuid, v_tenant,
+            case when i <= 6 then v_bm else v_sj end, c[i],
+            'f98f677f-f064-4a3a-a604-5c8c5714be9b', 'b7c7ac43-ae23-4c80-a9b0-c21f92dc9ab9',
+            ('dddddd5a-4000-0000-0000-0000000000' || lpad(i::text, 2, '0'))::uuid,
+            case when i <= 5 then v_massagem else v_botox end,
+            'TERMO', 'EDITOR', 'Teste 2', 'AGENDAMENTO', 'BLOQUEIA',
+            case when i = 7 then 'DISPENSADO' else 'A_GERAR' end,
+            case when i = 7 then 'Cliente assinou o termo em papel na outra unidade' end,
+            case when i = 7 then v_hoje end,
+            least(v_mes + ((i - 1) || ' days')::interval + interval '9 hours', v_hoje));
+  end loop;
+  insert into public.issued_documents (id, tenant_id, branch_id, client_id, template_id, template_version_id,
+                                       treatment_plan_id, kind, source, title, moment, enforcement, status, created_at)
+  values ('dddddd5a-9000-0000-0000-000000000008', v_tenant, v_bm, c[7],
+          'b937a637-5ffe-4d8c-9e55-93d39386581a', '140dd35e-66c8-40ba-a2c3-82e908383229',
+          'dddddd5a-8000-0000-0000-000000000001', 'CONTRATO_PLANO', 'EDITOR',
+          'Termo / Contrato de Prestação de Serviços', 'FECHAMENTO_PLANO', 'BLOQUEIA', 'A_GERAR',
+          least(v_mes + interval '5 days 10 hours', v_hoje));
+
+  insert into public.issued_document_events (issued_document_id, tenant_id, kind, actor_user_id, channel, created_at)
+  select d.id, v_tenant, 'EMITIDO', null, null, d.created_at
+    from public.issued_documents d where d.id::text like 'dddddd5a%';
+  insert into public.issued_document_events (issued_document_id, tenant_id, kind, actor_user_id, channel, details, created_at)
+  values
+    ('dddddd5a-9000-0000-0000-000000000002', v_tenant, 'LINK_GERADO', p1, 'LINK', null, least(v_mes + interval '1 day 11 hours', v_hoje)),
+    ('dddddd5a-9000-0000-0000-000000000003', v_tenant, 'LINK_GERADO', p1, 'LINK', null, least(v_mes + interval '2 days 11 hours', v_hoje)),
+    ('dddddd5a-9000-0000-0000-000000000004', v_tenant, 'NOTIFICADO_PORTAL', p2, null, null, least(v_mes + interval '3 days 11 hours', v_hoje)),
+    ('dddddd5a-9000-0000-0000-000000000008', v_tenant, 'LINK_GERADO', p1, 'LINK', null, least(v_mes + interval '5 days 11 hours', v_hoje)),
+    ('dddddd5a-9000-0000-0000-000000000008', v_tenant, 'LINK_ENVIADO_CONVERSA', p1, 'LINK', null, least(v_mes + interval '5 days 11 hours', v_hoje));
+  -- Os links valendo (o token é aleatório e não se mostra: é só para a tela).
+  insert into public.document_sign_links (tenant_id, issued_document_id, token_hash, expires_at, created_by, created_at)
+  select v_tenant, d, md5(random()::text) || md5(random()::text), now() + interval '7 days', p1, now()
+    from unnest(array['dddddd5a-9000-0000-0000-000000000002', 'dddddd5a-9000-0000-0000-000000000003',
+                      'dddddd5a-9000-0000-0000-000000000008']::uuid[]) d;
 end
 $seed$;

@@ -1300,6 +1300,29 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-14 — A tela de Documentos: a situação de cada assinatura
+
+Pedido do Heitor: "algum lugar para visualizar a lista de assinaturas com
+status — o que foi gerado, o que foi enviado, se já foi assinado". Até aqui
+cada documento só aparecia na ficha do seu cliente. Agora há **Atendimento →
+Documentos**, nos dois portais: todo termo e contrato emitido no período, com
+a situação — **faltam dados** (e o quê), **a enviar** (ninguém mandou),
+**enviado** (por link, portal ou WhatsApp, quando, o link valendo ou vencido,
+se o cliente abriu), **assinado** (quando e por onde), dispensado (com o
+motivo) e cancelado. No topo, quantos aguardam assinatura, quantos a enviar,
+enviados e assinados; filtros de período, situação, tipo, unidade e busca.
+Clicar num documento abre a trilha inteira (emitido, link, identidade,
+assinatura, PDF), com o PDF, a verificação e "Abrir na ficha do cliente",
+onde ficam as ações.
+
+Nada novo a gravar: a trilha (`issued_document_events`) já registrava cada
+envio desde a fase 2. A situação é calculada no banco (migration
+`20261014000002`). Os rótulos da trilha viraram um só, na tela e no PDF.
+
+Dados de demonstração para ver as duas telas: `supabase/seed_demo_vendas.sql`
+(15 vendas no mês corrente e 8 documentos nas várias situações, nos mesmos
+clientes "(demo)").
+
 ### 2026-10-14 — Relatórios → Vendas: cada venda do período
 
 Pedido do Heitor: "um relatório completo de vendas — todas as vendas,

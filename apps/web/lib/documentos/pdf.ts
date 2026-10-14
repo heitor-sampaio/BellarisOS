@@ -13,6 +13,7 @@ import {
   diagramarDocumento, fontesDoDocumento, itensDeTexto, Paginador, type Contexto, type Item,
 } from './pdf/diagramacao'
 import { sha256 } from './renderizar'
+import { ROTULO_DO_EVENTO } from './situacao'
 
 /**
  * O PDF final de um documento assinado: o documento (desenhado da MESMA árvore
@@ -38,11 +39,8 @@ const IDENTIDADE: Record<string, string> = {
   CPF: 'CPF informado pelo cliente', NASCIMENTO: 'Data de nascimento informada pelo cliente',
   LEGADO: 'Assinatura colhida antes dos modelos de documento',
 }
-const EVENTO: Record<string, string> = {
-  EMITIDO: 'Emitido', GERADO: 'Texto montado', INCOMPLETO: 'Aguardando dados do cadastro', VISUALIZADO: 'Aberto pelo cliente',
-  LINK_GERADO: 'Link de assinatura gerado', LINK_REVOGADO: 'Link de assinatura revogado', LINK_ENVIADO_CONVERSA: 'Link enviado pela conversa do WhatsApp', IDENTIDADE_OK: 'Identidade conferida', IDENTIDADE_FALHOU: 'Identidade recusada',
-  ASSINADO: 'Assinado', SUBSTITUIDO: 'Substituído', PDF_GERADO: 'PDF gerado',
-}
+// Os mesmos rótulos da trilha na tela de Documentos.
+const EVENTO = ROTULO_DO_EVENTO
 
 const quando = (iso: string, tz: string) =>
   new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium', timeZone: tz }).format(new Date(iso))
