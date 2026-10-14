@@ -56,7 +56,7 @@ const AREAS = [
     specs: /^(fidelidade|credito|financeiro-estorno|portal-cliente|lgpd)/ },
   { nome: 'procedimentos',
     chaves: ['procedure', 'procedimento'],
-    specs: /^(procedimento|eventos-cadastro|ficha-unica|documentos)/ },
+    specs: /^(procedimento|categorias-de-procedimento|eventos-cadastro|ficha-unica|documentos)/ },
   { nome: 'termos e contratos',
     chaves: ['documento', 'document', 'termo', 'consent', 'contrato', 'assinatura', 'assinar', 'signature', 'pdf'],
     specs: /^(documentos|checkout|permissoes-acoes|rls)/ },

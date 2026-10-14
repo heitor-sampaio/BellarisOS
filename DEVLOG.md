@@ -1300,6 +1300,20 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-14 — As categorias de procedimento da rede
+
+O Heitor não achava onde cadastrar categorias de procedimento: nunca houve —
+eram quinze fixas no formulário desde o primeiro commit. E o procedimento numa
+categoria de fora delas ("Avaliação", "Facial", "Injetável", vindas de dados
+antigos) abria a edição em "Selecione…": salvar obrigava a trocar.
+
+Agora **Procedimentos → Categorias** (no desenho das tags da rede): cada
+categoria com quantos procedimentos a usam; criar, renomear (troca em todos os
+procedimentos, e junta se o nome já existe) e arquivar. A rede ganhou as
+quinze mais as que já usava; a gravada por outro caminho entra sozinha. O
+cadastro oferece as da rede e mantém sempre a do procedimento. Migration
+`20261014000003`.
+
 ### 2026-10-14 — A tela de Documentos: a situação de cada assinatura
 
 Pedido do Heitor: "algum lugar para visualizar a lista de assinaturas com

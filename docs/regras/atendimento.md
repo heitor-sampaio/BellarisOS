@@ -28,6 +28,17 @@
 - `visibleOnClientApp`: controla se o procedimento aparece para o cliente agendar pelo app
 - `ProcedurePriceHistory`: criada automaticamente ao alterar `price` de um procedimento
 - `ProcedureProduct`: insumos consumidos por execução — base do consumo automático de estoque
+- **Categorias da rede** (`procedure_categories`, 2026-10-14; Procedimentos →
+  Categorias): eram quinze fixas no código. `procedures.category` continua
+  TEXTO (relatórios agrupam pelo nome); a tabela é o vocabulário — cresce
+  sozinho por gatilho em `procedures`, sem caixa, e a rede nova nasce com as
+  quinze (`private.categorias_de_procedimento_padrao`). Renomear troca em todos
+  os procedimentos e junta se o nome já existe
+  (`renomear_categoria_de_procedimento`); arquivar tira das opções. O cadastro
+  sempre oferece a categoria ATUAL do procedimento, mesmo arquivada ou de fora
+  — senão abria em "Selecione…" e salvar a trocava. Gerencia quem tem
+  `procedures: MANAGE` e abrangência de rede. Prova:
+  `e2e/categorias-de-procedimento.spec.ts`.
 
 Query correta para buscar procedimentos de uma filial — o catálogo base da
 rede (`branch_id` nulo) MAIS o que é local da unidade:

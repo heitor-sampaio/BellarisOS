@@ -36,9 +36,11 @@ interface ProcedureModalProps {
   trigger?: React.ReactNode
   pontosDeFidelidade?: boolean
   modelos?: ModelosDoProcedimento
+  /** As categorias ativas da rede (Procedimentos → Categorias). */
+  categorias?: string[]
 }
 
-export function ProcedureModal({ branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false, modelos }: ProcedureModalProps) {
+export function ProcedureModal({ branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false, modelos, categorias }: ProcedureModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
 
@@ -121,6 +123,7 @@ export function ProcedureModal({ branches, products, fichas = [], existing, trig
               existing={existing}
               pontosDeFidelidade={pontosDeFidelidade}
               modelos={modelos}
+              categorias={categorias}
               onSuccess={handleSuccess}
               onCancel={close}
             />

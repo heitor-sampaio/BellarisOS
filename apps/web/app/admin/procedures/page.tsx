@@ -2,6 +2,8 @@ import { getTenantContext, assertPermission } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference } from '@/lib/cached-queries'
 import { ProcedureModal } from '@/components/admin/procedure-modal'
+import { CategoriasDeProcedimento } from '@/components/admin/categorias-de-procedimento'
+import { categoriasAtivasDaRede } from '@/lib/procedimentos/categorias'
 import { ToggleProcedureBtn } from '@/components/admin/toggle-procedure-btn'
 import { Pencil, Smartphone } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -47,6 +49,7 @@ export default async function AdminProceduresPage({
     procedures,
     products,
     fichaRows,
+    categorias,
   ] = await Promise.all([
     ler(admin.from('branches').select('id, name')
       .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as unidades'),
@@ -60,6 +63,9 @@ export default async function AdminProceduresPage({
 
     ler(admin.from('forms').select('id, name')
       .eq('tenant_id', ctx.tenantId!).eq('is_active', true).order('name'), 'carregar as fichas'),
+
+    // O vocabulário da rede (Procedimentos → Categorias).
+    categoriasAtivasDaRede(ctx.tenantId!),
   ])
 
   const fichas = (fichaRows ?? []) as { id: string; name: string }[]
@@ -137,7 +143,13 @@ export default async function AdminProceduresPage({
             {totalActive} ativos · {totalInactive} inativos · catálogo da rede
           </p>
         </div>
-        {canEdit && <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} />}
+        {canEdit && (
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* O catálogo é da rede: as categorias também (a mesma trava de criar procedimento). */}
+            {ctx.branchId === null && <CategoriasDeProcedimento ativas={categorias.length} />}
+            <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} />
+          </div>
+        )}
       </div>
 
       {procList.length > 0 && (
@@ -262,6 +274,7 @@ export default async function AdminProceduresPage({
                               existing={existingForEdit}
                               pontosDeFidelidade={pontosPorProcedimento}
                               modelos={modelos}
+                              categorias={categorias}
                               trigger={
                                 <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <Pencil size={13} /> Editar
@@ -289,7 +302,7 @@ export default async function AdminProceduresPage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 16 }}>
             Nenhum procedimento cadastrado na rede ainda.
           </p>
-          <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} />
+          <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} />
         </div>
       )}
     </div>

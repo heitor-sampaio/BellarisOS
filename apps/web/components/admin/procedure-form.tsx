@@ -4,12 +4,16 @@ import { useActionState, useState, useEffect, useEffectEvent } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
 
-const CATEGORIES = [
-  'Toxina botulínica', 'Preenchimento', 'Fios', 'Bioestimuladores',
-  'Limpeza de pele', 'Peeling', 'Microagulhamento', 'Laser',
-  'Depilação', 'Massagem', 'Drenagem linfática', 'Corpo',
-  'Estética íntima', 'Tricologia', 'Outros',
-]
+/**
+ * As categorias vêm da REDE (Procedimentos → Categorias, 2026-10-14). Eram
+ * quinze fixas aqui, e o procedimento numa categoria de fora delas abria como
+ * "Selecione…" — salvar trocava a categoria. A do procedimento entra sempre,
+ * mesmo arquivada.
+ */
+function opcoesDeCategoria(categorias: string[], atual: string | undefined): string[] {
+  if (!atual || categorias.some(c => c.toLowerCase() === atual.toLowerCase())) return categorias
+  return [...categorias, atual].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+}
 
 interface Branch { id: string; name: string }
 interface Product {
@@ -72,6 +76,8 @@ interface ProcedureFormProps {
   pontosDeFidelidade?: boolean
   /** Termos e contratos da rede (Configurações → Documentos). */
   modelos?: ModelosDoProcedimento
+  /** As categorias ativas da rede. */
+  categorias?: string[]
 }
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
@@ -108,7 +114,7 @@ export function ProcedureForm(props: ProcedureFormProps) {
   return props.existing ? <EditProcedureForm {...props} /> : <CreateProcedureForm {...props} />
 }
 
-function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos }: InnerProps) {
+function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos, categorias }: InnerProps) {
 
   const [selectedBranches, setSelectedBranches] = useState<string[]>(existing?.branch_ids ?? [])
   const [insumos, setInsumos] = useState<{ product_id: string; quantity: number; unit_cost: number }[]>(
@@ -266,7 +272,7 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
         <Field label="Categoria *">
           <select name="category" required className="field" defaultValue={existing?.category ?? ''}>
             <option value="" disabled>Selecione…</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {opcoesDeCategoria(categorias ?? [], existing?.category).map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </Field>
 
