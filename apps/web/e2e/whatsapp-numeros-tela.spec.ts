@@ -140,8 +140,10 @@ test('um número pode ter várias pessoas falando por ele', async ({ page }) => 
     const linha = page.locator(`[data-numero="${criada}"]`)
     await linha.getByRole('button', { name: /Nome e vínculos/ }).click()
     await linha.getByRole('button', { name: /Escolher pessoas/ }).click()
+    // As opções ficam no painel flutuante (fora da linha, por cima da página).
+    const painel = page.locator('[data-painel-picker]')
     for (const p of livres) {
-      await linha.getByRole('button', { name: p.name as string, exact: true }).click()
+      await painel.getByRole('button', { name: p.name as string, exact: true }).click()
     }
     if (process.env.PRINT_DIR) await page.screenshot({ path: `${process.env.PRINT_DIR}/pessoas.png`, fullPage: true })
     // Fecha o seletor: o clique fora cai no fundo transparente dele.

@@ -108,6 +108,14 @@ test('os seletores da barra têm o MESMO marcador (quadrado), e abrir as tags n�
       const caixa = (await p.locator('[data-painel-picker]').boundingBox())!
       expect(caixa.x).toBeGreaterThanOrEqual(0)
       expect(caixa.x + caixa.width).toBeLessThanOrEqual(largura)
+      // E nada o cobre: nos quatro cantos, o que está por cima é o painel (a
+      // coluna do meio era desenhada por cima do pedaço que saía da lista).
+      const coberto = await p.locator('[data-painel-picker]').evaluate(el => {
+        const r = el.getBoundingClientRect()
+        const pontos = [[r.left + 6, r.top + 6], [r.right - 6, r.top + 6], [r.left + 6, r.bottom - 6], [r.right - 6, r.bottom - 6]]
+        return pontos.filter(([x, y]) => !el.contains(document.elementFromPoint(x!, y!))).length
+      })
+      expect(coberto, `cantos cobertos do painel de ${gatilho}`).toBe(0)
 
       const g = (await p.getByRole('button', { name: gatilho, exact: true }).boundingBox())!
       await p.mouse.click(g.x + 5, g.y + 5)

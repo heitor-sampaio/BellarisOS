@@ -31,8 +31,12 @@ Princípios inegociáveis:
     `<PickerCompacto>`, e duas coisas nele NÃO são escolha da tela (decisão
     do Heitor, 2026-10-14, depois de a barra de clientes misturar bolinha e
     quadrado): o marcador é **sempre quadrado**, no único e no múltiplo (a
-    prop que escolhia saiu), e o painel **abre para o lado que cabe** — mede a
-    tela e o contêiner que corta, e foca a busca sem rolar (`preventScroll`).
+    prop que escolhia saiu), e o painel **flutua por cima de tudo, inteiro na
+    tela**: vai num portal (no `body`, ou no `<dialog>` aberto), em posição
+    fixa medida do gatilho — para o lado e para cima/baixo que cabem —, e foca
+    a busca sem rolar (`preventScroll`). Dentro da coluna, ele era cortado e a
+    coluna vizinha era desenhada por cima. Em teste, as opções se acham em
+    `[data-painel-picker]`, não dentro da linha do gatilho.
     Painel escrito à mão para a mesma função é o defeito de volta.
   - **Seletor de texto não leva ícone** — o rótulo já diz, e o ícone repetido
     cinco vezes na mesma barra vira ruído. O toggle pode levar: ali o ícone é

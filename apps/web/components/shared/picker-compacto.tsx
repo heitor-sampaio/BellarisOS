@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, Search } from 'lucide-react'
 
 /**
@@ -18,19 +19,26 @@ import { Check, Search } from 'lucide-react'
  * E dois que a tela NÃO escolhe (pedido do Heitor, 2026-10-14):
  * - **O marcador é sempre quadrado**, no único e no múltiplo. Era bolinha no
  *   único, e a barra de filtros misturava os dois desenhos lado a lado.
- * - **O painel abre para o lado que cabe.** Medido ao abrir contra a tela e o
- *   contêiner que corta (a coluna da lista de clientes): `left: 0` de um
- *   gatilho perto da borda saía para fora, e o foco na busca ROLAVA a coluna
- *   para mostrá-lo, empurrando a lista para a esquerda.
+ * - **O painel flutua por cima de TUDO, inteiro na tela.** Ele é renderizado
+ *   fora da tela que o contém (portal no `body`, ou no `<dialog>` aberto —
+ *   senão ficaria atrás do modal), em posição fixa medida a partir do gatilho:
+ *   abre para a direita se cabe, senão alinha pela borda direita dele; para
+ *   baixo, senão para cima. Dentro da coluna da lista de clientes ele era
+ *   cortado e a coluna do meio era desenhada por cima; antes disso, o foco na
+ *   busca ROLAVA a coluna e empurrava a lista para a esquerda.
  */
 
-/** O primeiro ancestral que corta o que transborda (a coluna, o card…). */
-function limiteQueCorta(el: HTMLElement | null): DOMRect | null {
-  for (let a = el?.parentElement ?? null; a; a = a.parentElement) {
-    const st = getComputedStyle(a)
-    if (st.overflowX !== 'visible' || st.overflow !== 'visible') return a.getBoundingClientRect()
-  }
-  return null
+/** Onde o painel cabe: abaixo (ou acima) do gatilho, inteiro na tela. */
+interface Posicao { left: number; largura: number; top?: number; bottom?: number }
+const ALTURA_ESTIMADA = 260
+function posicaoDoPainel(gatilho: DOMRect, larguraPainel: number): Posicao {
+  const largura = Math.min(larguraPainel, window.innerWidth - 16)
+  let left = gatilho.left
+  if (left + largura > window.innerWidth - 8) left = Math.max(8, gatilho.right - largura)
+  const embaixo = window.innerHeight - gatilho.bottom
+  return embaixo < ALTURA_ESTIMADA && gatilho.top > embaixo
+    ? { left, largura, bottom: window.innerHeight - gatilho.top + 4 }
+    : { left, largura, top: gatilho.bottom + 4 }
 }
 
 export interface OpcaoPicker {
@@ -69,23 +77,40 @@ export function PickerCompacto({
   const [busca,  setBusca]  = useState('')
   const campoRef = useRef<HTMLInputElement>(null)
   const ancoraRef = useRef<HTMLDivElement>(null)
-  const [aDireita, setADireita] = useState(false)
+  const [pos, setPos] = useState<Posicao | null>(null)
+  const [destino, setDestino] = useState<Element | null>(null)
+
+  function medir() {
+    const r = ancoraRef.current?.getBoundingClientRect()
+    if (r) setPos(posicaoDoPainel(r, larguraPainel))
+  }
 
   function abrirOuFechar() {
     if (!aberto) {
-      // Cabe à direita do gatilho? Senão, alinha pela borda direita dele.
-      const r = ancoraRef.current?.getBoundingClientRect()
-      if (r) {
-        const corte = limiteQueCorta(ancoraRef.current)
-        const fim = Math.min(window.innerWidth, corte?.right ?? Infinity) - 8
-        setADireita(r.left + larguraPainel > fim && r.right - larguraPainel >= Math.max(0, corte?.left ?? 0))
-      }
+      medir()
+      // Dentro de um modal (<dialog>, camada do topo), o painel vai nele.
+      setDestino(ancoraRef.current?.closest('dialog') ?? document.body)
     }
     setAberto(a => !a)
     setBusca('')
     // Sem rolar: focar um campo fora da vista rola o contêiner até ele.
     setTimeout(() => campoRef.current?.focus({ preventScroll: true }), 0)
   }
+
+  // Aberto, acompanha o gatilho se a página rolar ou a janela mudar.
+  useEffect(() => {
+    if (!aberto) return
+    const acompanhar = () => {
+      const r = ancoraRef.current?.getBoundingClientRect()
+      if (r) setPos(posicaoDoPainel(r, larguraPainel))
+    }
+    window.addEventListener('resize', acompanhar)
+    window.addEventListener('scroll', acompanhar, true)
+    return () => {
+      window.removeEventListener('resize', acompanhar)
+      window.removeEventListener('scroll', acompanhar, true)
+    }
+  }, [aberto, larguraPainel])
 
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase()
@@ -118,14 +143,14 @@ export function PickerCompacto({
         {rotuloBotao}
       </button>
 
-      {aberto && (
+      {aberto && pos && destino && createPortal(
         <>
-          <div style={{ position: 'fixed', inset: 0, zIndex: 30 }} onClick={() => setAberto(false)} />
+          <div style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-popover)' }} onClick={() => setAberto(false)} />
 
           <div data-painel-picker style={{
-            position: 'absolute', top: 30, zIndex: 31,
-            ...(aDireita ? { right: 0 } : { left: 0 }),
-            width: larguraPainel, maxWidth: 'calc(100vw - 16px)', background: 'var(--surface)',
+            position: 'fixed', zIndex: 'calc(var(--z-popover) + 1)',
+            left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.largura,
+            background: 'var(--surface)', boxShadow: 'var(--shadow-popover)',
             border: '1px solid var(--border)', borderRadius: 10, padding: 8,
           }}>
             {/* Busca só quando há o que garimpar: em cinco opções ela é ruído. */}
@@ -193,7 +218,8 @@ export function PickerCompacto({
             </div>
             {rodape?.(() => setAberto(false))}
           </div>
-        </>
+        </>,
+        destino,
       )}
     </div>
   )
