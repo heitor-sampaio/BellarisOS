@@ -12,7 +12,7 @@ import { ler } from '@/lib/db'
  * daqui sai de `metrics_receitas_pagas`, a mesma regra de `metrics_core`.
  */
 
-export type Aba = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
+export type Aba = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
 
 export interface Relatorio {
   receitaPorUnidade:   { branchId: string; atual: number; anterior: number }[]

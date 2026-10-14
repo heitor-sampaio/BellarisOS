@@ -31,6 +31,18 @@ describe('resolvePeriod', () => {
     expect(p.fullTo.getTime()).toBeGreaterThan(p.to.getTime())
   })
 
+  it('personalizado já encerrado: a lista fecha no último dia escolhido, não hoje', () => {
+    // Era o fim de HOJE: a lista de março de 2021 trazia tudo até agora.
+    const p = resolvePeriod('custom', '2021-03-01', '2021-03-31', AGORA)
+    expect(p.fullTo.toISOString()).toBe('2021-04-01T02:59:59.999Z')
+    expect(p.fullTo.getTime()).toBe(p.to.getTime())
+  })
+
+  it('aberto até agora (7 dias): a lista vai até o fim de hoje', () => {
+    const p = resolvePeriod('7d', undefined, undefined, AGORA)
+    expect(p.fullTo.toISOString()).toBe('2026-09-19T02:59:59.999Z')
+  })
+
   it('o período anterior tem a MESMA duração decorrida — nunca o mês inteiro', () => {
     const p = resolvePeriod('month', undefined, undefined, AGORA)
     const atual   = p.to.getTime() - p.from.getTime()

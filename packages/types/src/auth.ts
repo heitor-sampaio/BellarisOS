@@ -79,6 +79,7 @@ export type ResolvedScopes      = Record<AppModule, PermissionScope>
 export const REPORT_TABS = [
   'overview',
   'financeiro',
+  'vendas',
   'agenda',
   'clientes',
   'procedimentos',

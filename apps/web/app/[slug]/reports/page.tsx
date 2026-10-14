@@ -21,10 +21,10 @@ export default async function BranchReportsPage({
   searchParams,
 }: {
   params:       Promise<{ slug: string }>
-  searchParams: Promise<{ tab?: string; period?: string; from?: string; to?: string }>
+  searchParams: Promise<{ tab?: string; period?: string; from?: string; to?: string; tipo?: string; pagina?: string }>
 }) {
   const { slug } = await params
-  const { tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo } = await searchParams
+  const { tab: rawTab, period: rawPeriod, from: rawFrom, to: rawTo, tipo: rawTipo, pagina: rawPagina } = await searchParams
 
   const ctx = await getTenantContext()
   assertPermission(ctx, 'reports', 'VIEW')
@@ -56,6 +56,8 @@ export default async function BranchReportsPage({
       period={(rawPeriod ?? 'month') as ReportsPeriod}
       rawFrom={rawFrom}
       rawTo={rawTo}
+      rawTipo={rawTipo}
+      rawPagina={rawPagina}
       scopeLabel={branch.name}
     />
   )

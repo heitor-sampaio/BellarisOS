@@ -79,8 +79,9 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
 - **Fidelidade** — programa da rede (nasce desligado): pontos no pagamento,
   desconto em pontos, recompensas e vouchers, validade, bônus de aniversário e
   de primeiro acesso.
-- **Relatórios (BI)** — oito abas: visão geral, financeiro, agenda, clientes,
-  procedimentos, profissionais, estoque e comercial.
+- **Relatórios (BI)** — nove abas: visão geral, financeiro, vendas (cada
+  venda do período, com exportação em CSV), agenda, clientes, procedimentos,
+  profissionais, estoque e comercial.
 - **Configurações** — unidades, cargos, fichas, documentos, integrações,
   fidelidade, comissões, LGPD e **Eventos** (a corrente de fatos do
   sistema, com o catálogo cruzado com o que já ocorreu na rede).
@@ -1298,6 +1299,34 @@ próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo o
 borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
+
+### 2026-10-14 — Relatórios → Vendas: cada venda do período
+
+Pedido do Heitor: "um relatório completo de vendas — todas as vendas,
+procedimentos, pacotes e planos realizados no período, com data, descrição,
+cliente, profissional e valor". Virou a aba **Vendas** dos Relatórios, nos dois
+portais: o total vendido e o de cada tipo no topo, a lista paginada de 50 em
+50 (filtro por tipo: procedimento, pacote, pré-pago, plano) e **Exportar CSV**
+com todas as vendas do recorte. No celular, cada venda é um bloco.
+
+A decisão que define o relatório: **venda é o fato comercial, não o
+dinheiro**. O pacote parcelado é uma linha só (as parcelas são o financeiro);
+a sessão do pacote, a unidade pré-paga e a sessão do plano que a cliente vem
+fazer depois não são venda de novo. O avulso é o atendimento concluído que não
+consumiu nada disso, e vale o preço menos o desconto da recepção. No pacote e
+no pré-pago, "profissional" é quem vendeu.
+
+O plano não sabia QUANDO foi fechado (`updated_at` muda a cada sessão
+agendada): ganhou `aceito_em`, gravado por gatilho na passagem para ACCEPTED;
+os já aceitos herdaram o evento, o primeiro lançamento ou a última
+atualização. A conta é toda no Postgres (`metrics_vendas*`, migration
+`20261014000001`). A aba nasce para os cargos que já viam o Financeiro, e o
+Copilot também a lê.
+
+**Achado no caminho:** num período personalizado já encerrado, o fim usado
+pelas listas (`fullTo`) era o fim de HOJE — a lista de março trazia tudo até
+agora. Afetava também a lista do Financeiro e o "mês passado". Corrigido em
+`resolvePeriod`, com teste.
 
 ### 2026-10-13 — As tags da rede (Configurações → Tags)
 

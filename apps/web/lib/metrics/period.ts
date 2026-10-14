@@ -161,8 +161,11 @@ export function resolvePeriod(
 
   return {
     key, from, to,
-    // Sem fim natural definido, o período já é fechado ou aberto até agora.
-    fullTo: fullTo ?? (to > now ? to : endOfDayTZ(now)),
+    // Sem fim natural definido: aberto até agora vai até o fim de hoje; o que
+    // tem fim escolhido (o personalizado) fecha nele. Era `to > now ? to :
+    // hoje`, e o personalizado JÁ ENCERRADO caía no "hoje": a lista de março
+    // de 2021 trazia tudo até agora (achado no relatório de vendas, 2026-10-14).
+    fullTo: fullTo ?? (to.getTime() === now.getTime() ? endOfDayTZ(now) : to),
     prevFrom, prevTo, comparable: key !== 'all', label, granularity,
   }
 }

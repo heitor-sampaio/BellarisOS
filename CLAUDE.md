@@ -372,7 +372,7 @@ código ou no DEVLOG cita "CLAUDE.md §9.7" acha a seção pela tabela.
 | `copilot.md` | O Copilot (a secretária virtual, 2026-10-08) | `lib/copilot/`, `components/copilot/`, `/api/copilot`, `actions/copilot.ts`, `copilot_*`, ferramenta nova do Copilot, `lib/appointments/alteracoes.ts`, `lib/financeiro/lancamento.ts`, `lib/estoque/movimentos.ts`, `lib/crm/oportunidade.ts` |
 | `busca.md` | §6 Busca universal | `busca_universal`, `lib/busca/`, `actions/busca.ts`, `busca-universal.tsx` |
 | `design.md` | §13 Design System ("Rosé Vivo") | qualquer componente visual, `globals.css`, seletor, modal, popover, menu |
-| `indicadores.md` | §13.1 Indicadores | `lib/metrics/`, `metrics_*`, `lib/datetime.ts`, `resolvePeriod`, dashboard, relatórios, qualquer número na tela |
+| `indicadores.md` | §13.1 Indicadores | `lib/metrics/`, `metrics_*`, `lib/datetime.ts`, `resolvePeriod`, dashboard, relatórios (inclusive o de vendas), qualquer número na tela |
 | `infra.md` | §12 Variáveis de ambiente, §14.1 Cron | env, `scripts/cron.mjs`, `app/api/cron/`, Railway, Dockerfile |
 | `e2e.md` | §15 A completa em duas metades e o apoio do E2E | `apps/web/e2e/`, `playwright*.config.ts`, `.github/workflows/e2e.yml` |
 | `convencoes.md` | §4/§8 os modelos de action e de consulta | a primeira action ou consulta nova da sessão |

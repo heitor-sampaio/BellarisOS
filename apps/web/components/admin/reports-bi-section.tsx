@@ -13,8 +13,11 @@ import {
 import { seedDefaultFunnel } from '@/lib/crm/funis'
 import type { DadosComerciais } from '@/components/admin/reports-bi-view'
 import type { LinhaLote, LinhaParcela } from '@/components/admin/reports-linhas'
+import {
+  getVendas, getResumoDeVendas, ehTipoDeVenda, POR_PAGINA, type Venda, type ResumoDeVendas, type TipoDeVenda,
+} from '@/lib/metrics/vendas'
 
-export type ReportsTab    = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
+export type ReportsTab    = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
 export type ReportsPeriod = 'today' | '7d' | '15d' | 'month' | 'all' | 'custom'
 
 type Tab    = ReportsTab
@@ -30,7 +33,7 @@ type Period = ReportsPeriod
  */
 export async function ReportsBiSection({
   tenantId, branches, todasAsUnidades, selectedBranchId, allowNetwork, showBranchFilter,
-  tab, period, rawFrom, rawTo, rawFunil, scopeLabel,
+  tab, period, rawFrom, rawTo, rawFunil, rawTipo, rawPagina, scopeLabel,
 }: {
   tenantId:   string
   /** Unidades que entram no cálculo. Uma só quando há recorte. */
@@ -46,6 +49,9 @@ export async function ReportsBiSection({
   rawTo?:     string
   /** Funil escolhido na aba Comercial. A rede pode ter mais de um. */
   rawFunil?:  string
+  /** Aba Vendas: o tipo escolhido e a página da lista. */
+  rawTipo?:   string
+  rawPagina?: string
   /** Overline do cabeçalho: 'Rede' ou o nome da unidade. */
   scopeLabel: string
 }) {
@@ -183,6 +189,23 @@ export async function ReportsBiSection({
     ? await painelComercial({ tenantId, branchIds, from: startDate, to: periodInfo.fullTo, rawFunil })
     : undefined
 
+  // -- Aba Vendas ----------------------------------------------------
+  // Uma linha por venda, da mais recente para a mais antiga, paginada no
+  // banco; o total vem do resumo (a tela não soma). Lista: fecha no FIM do
+  // período (fullTo), e o resumo no mesmo recorte, para os dois baterem.
+  const vendas = tab === 'vendas'
+    ? await (async (): Promise<DadosDeVendas> => {
+        const tipo   = ehTipoDeVenda(rawTipo) ? rawTipo : null
+        const recorte = { tenantId, branchIds, from: startDate, to: periodInfo.fullTo }
+        const resumo = await getResumoDeVendas(recorte)
+        const totalDoFiltro = tipo ? resumo.porTipo[tipo].quantidade : resumo.geral.quantidade
+        const paginas = Math.max(1, Math.ceil(totalDoFiltro / POR_PAGINA))
+        const pagina  = Math.min(paginas, Math.max(1, Number.parseInt(rawPagina ?? '1', 10) || 1))
+        const linhas  = await getVendas({ ...recorte, tipo, offset: (pagina - 1) * POR_PAGINA })
+        return { tipo, pagina, paginas, linhas, resumo }
+      })()
+    : undefined
+
   // -- Gráfico de evolução (mesmo padrão do dashboard) ---------------
 
   // Os buckets vêm prontos do Postgres, com a MESMA regra do KPI: só pago,
@@ -236,6 +259,9 @@ export async function ReportsBiSection({
         'installments',
         'product_batches',
         'procedure_products',
+        'client_packages',
+        'procedure_sales',
+        'treatment_plans',
       ]} />
       <ReportsBiView
         scopeLabel={scopeLabel}
@@ -261,9 +287,19 @@ export async function ReportsBiSection({
         corePrev={corePrev}
         verComissoes={verComissoes}
         comercial={comercial}
+        vendas={vendas}
       />
     </>
   )
+}
+
+/** A aba Vendas, pronta para desenhar. */
+export interface DadosDeVendas {
+  tipo:    TipoDeVenda | null
+  pagina:  number
+  paginas: number
+  linhas:  Venda[]
+  resumo:  ResumoDeVendas
 }
 
 /**

@@ -65,7 +65,7 @@ const AREAS = [
     specs: /^(estoque|lotes|fase3|injetaveis|conclusao)/ },
   { nome: 'indicadores',
     chaves: ['metric', 'relatorio', 'report', 'dashboard', 'indicador'],
-    specs: /^(indicadores|relatorios|fase1)/ },
+    specs: /^(indicadores|relatorio|fase1)/ },
   { nome: 'automações e eventos',
     chaves: ['automac', 'evento', 'events', 'domain_event'],
     specs: /^(automacoes|eventos|campanha|mensagens-saida)/ },

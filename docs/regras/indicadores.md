@@ -69,6 +69,11 @@
   Supabase —, então o lançamento feito neste segundo nasce no futuro e some da
   tela que acabou de criá-lo. Preso em
   `e2e/financeiro-lancamento-aparece.spec.ts`.
+  - Com fim escolhido (personalizado, mês passado), `fullTo` é o fim
+    ESCOLHIDO; só o período aberto até agora (7 dias, todo o período) vai até
+    o fim de hoje. Até 2026-10-14 o personalizado já encerrado caía no fim de
+    hoje, e a lista de março trazia tudo até agora
+    (`tests/metrics-period.test.ts`).
 - **Erro de query nunca é descartado — e isso vale no sistema inteiro, não só
   aqui.** `lib/db.ts` dá os três jeitos de terminar uma consulta, e nenhum é o
   silêncio: `gravar` (escreve, ou para o fluxo), `ler` (lê, ou para o fluxo) e
@@ -112,6 +117,27 @@ KPI que não fazia nenhum dos dois.
 - ⚠️ **Migration que cria função termina com `notify pgrst, 'reload schema'`.**
   Sem isso, parte das réplicas do PostgREST não conhece a função nova por um
   tempo e a chamada falha às vezes (visto em 2026-09-27: 1 em 3 rodadas).
+
+**Relatório de vendas** (aba Vendas, 2026-10-14): cada venda do período, uma
+linha — `metrics_vendas` (migration `20261014000001`), paginada por
+`metrics_vendas_pagina` e totalizada por `metrics_vendas_resumo` (por tipo e
+geral; a tela não soma). Venda é o fato COMERCIAL, não o dinheiro:
+- **Procedimento** avulso: atendimento concluído, com preço, que não consumiu
+  nada já vendido. A sessão de pacote, a unidade pré-paga e a sessão de plano
+  não são venda de novo. Data `scheduled_at` (o eixo de `serviceRevenue`);
+  vale o preço menos o desconto comercial da recepção (`sale_discount`; ponto
+  é forma de pagamento, não desconto).
+- **Pacote** (`purchased_at`, o vendido, quem vendeu) e **pré-pago**
+  (`sold_at`, o vendido, quem vendeu). O parcelado é UMA venda.
+- **Plano**: `treatment_plans.aceito_em` (gatilho `trg_plano_aceito_em` na
+  passagem para ACCEPTED; os antigos herdaram o evento `plano.aceito`, o
+  primeiro lançamento ou o `updated_at`), e vale a soma dos procedimentos dele
+  (já com o desconto rateado). Cancelado depois de aceito sai.
+- A lista e o total fecham no `fullTo`. A exportação (`/api/relatorios/vendas`,
+  CSV) leva o mesmo recorte sem página e se defende sozinha: sessão, a aba no
+  cargo, a unidade ao alcance; a rede inteira só para quem vê o consolidado.
+- Quem já via a aba Financeiro ganhou a Vendas na migration; daí em diante ela
+  se marca em Cargos. Prova: `e2e/relatorio-vendas.spec.ts`.
 
 Dados de demonstração para conferir os números na mão: `supabase/seed_demo.sql`
 (idempotente; os valores esperados estão no cabeçalho do arquivo).

@@ -5,6 +5,7 @@ import { can, isOwnScope, podeVerRelatorio } from '@/lib/auth'
 import { resolvePeriod } from '@/lib/metrics/period'
 import { getCore, getLeadFunnel } from '@/lib/metrics/queries'
 import { getRelatorio } from '@/lib/metrics/relatorio'
+import { getResumoDeVendas, getVendas, descricaoDaVenda, ROTULO_DO_TIPO } from '@/lib/metrics/vendas'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, dinheiro, idsDasUnidades, nomesPorId, procedimentosDaUnidade, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 
@@ -43,7 +44,7 @@ export const indicadores: FerramentaDeLeitura<{
   nome: 'indicadores',
   tipo: 'leitura',
   modulo: 'reports', nivel: 'VIEW',
-  descricao: 'Os números da clínica num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos, novos clientes, comissões), financeiro (por unidade, forma de pagamento, categoria), agenda (por status, dia da semana, origem), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (funil). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate.',
+  descricao: 'Os números da clínica num período (os mesmos dos Relatórios). aba: overview (faturamento, a receber, despesas, atendimentos, novos clientes, comissões), financeiro (por unidade, forma de pagamento, categoria), vendas (cada venda: procedimento, pacote, pré-pago e plano, com o total por tipo), agenda (por status, dia da semana, origem), clientes (ativos, perfil, quem mais gasta), procedimentos, profissionais, estoque, comercial (funil). periodo: today, week, 7d, 15d, 30d, month (padrão), last_month, quarter, ou custom com de/ate.',
   parametros: z.object({
     aba: z.enum(REPORT_TABS).optional(),
     periodo: z.enum(PERIODOS).optional(),
@@ -97,12 +98,27 @@ export const indicadores: FerramentaDeLeitura<{
       return { dados: { ...cabecalho, funil: funil.map(e => ({ etapa: e.name, desfecho: e.outcome, oportunidades: e.leads, convertidas: e.converted })) } }
     }
 
+    if (aba === 'vendas') {
+      // A lista fecha no FIM do período, como na tela; o total vem do banco.
+      const recorte = { ...base, to: periodo.fullTo }
+      const [resumo, ultimas] = await Promise.all([getResumoDeVendas(recorte), getVendas({ ...recorte, limite: 30 })])
+      return {
+        dados: {
+          ...cabecalho,
+          total: dinheiro(resumo.geral.total), vendas: resumo.geral.quantidade,
+          porTipo: Object.entries(resumo.porTipo).map(([tipo, x]) => ({ tipo: ROTULO_DO_TIPO[tipo as keyof typeof ROTULO_DO_TIPO], vendas: x.quantidade, total: dinheiro(x.total) })),
+          ultimas: ultimas.map(v => ({ data: v.data, tipo: ROTULO_DO_TIPO[v.tipo], descricao: descricaoDaVenda(v), cliente: v.cliente, profissional: v.profissional, valor: dinheiro(v.valor) })),
+          nota: resumo.geral.quantidade > ultimas.length ? 'A lista traz as 30 mais recentes; a completa está em Relatórios → Vendas.' : undefined,
+        },
+      }
+    }
+
     const r = await getRelatorio({ ...base, prevFrom: periodo.prevFrom, prevTo: periodo.prevTo, aba, granularidade: periodo.granularity === 'hour' ? 'hour' : 'day' })
     const nomesDasUnidades = await nomesPorId(c, 'branches', [...r.receitaPorUnidade.map(x => x.branchId), ...r.agendaPorUnidade.map(x => x.branchId), ...r.estoque.porUnidade.map(x => x.branchId)])
     const unidade = (id: string) => nomesDasUnidades.get(id) ?? id
     const top = <T>(l: T[], n = 15) => l.slice(0, n)
 
-    const porAba: Record<Exclude<ReportTab, 'overview' | 'comercial'>, unknown> = {
+    const porAba: Record<Exclude<ReportTab, 'overview' | 'comercial' | 'vendas'>, unknown> = {
       financeiro: {
         porUnidade: r.receitaPorUnidade.map(x => ({ unidade: unidade(x.branchId), atual: dinheiro(x.atual), anterior: dinheiro(x.anterior) })),
         porFormaDePagamento: r.receitaPorForma.map(x => ({ forma: x.forma, valor: dinheiro(x.valor) })),

@@ -10,6 +10,11 @@ import { FunnelSelect } from '@/components/shared/funnel-select'
 import type { LinhaLote, LinhaParcela } from './reports-linhas'
 import type { Relatorio } from '@/lib/metrics/relatorio'
 import type { MetricsCore } from '@/lib/metrics'
+import type { DadosDeVendas } from './reports-bi-section'
+import {
+  TIPOS_DE_VENDA, ROTULO_DO_TIPO, POR_PAGINA, descricaoDaVenda,
+} from '@/lib/metrics/vendas-comum'
+import { Download } from 'lucide-react'
 import {
   HBarChart, WeekBarChart, DonutChart, MiniAreaChart,
   DreWaterfall, SimpleTable, Badge,
@@ -18,11 +23,12 @@ import {
 } from './reports-charts'
 
 // -- Types ---------------------------------------------------------------------
-type Tab = 'overview' | 'financeiro' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
+type Tab = 'overview' | 'financeiro' | 'vendas' | 'agenda' | 'clientes' | 'procedimentos' | 'profissionais' | 'estoque' | 'comercial'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview',       label: 'Visão Geral'    },
   { key: 'financeiro',     label: 'Financeiro'     },
+  { key: 'vendas',         label: 'Vendas'         },
   { key: 'agenda',         label: 'Agenda'         },
   { key: 'clientes',       label: 'Clientes'       },
   { key: 'procedimentos',  label: 'Procedimentos'  },
@@ -96,6 +102,8 @@ export interface ReportsBiProps {
   corePrev: MetricsCore
   /** Só vem preenchido quando a aba Comercial está aberta. */
   comercial?: DadosComerciais
+  /** Só vem preenchido quando a aba Vendas está aberta. */
+  vendas?: DadosDeVendas
 }
 
 // -- Animated number -----------------------------------------------------------
@@ -130,7 +138,7 @@ function AnimatedNum({ value, format = 'brl' }: {
 
 // -- KPI card ------------------------------------------------------------------
 function KpiCard({
-  label, value, format = 'brl', delta, accent, showDelta = false, deltaUnit = '%', hero = false,
+  label, value, format = 'brl', delta, accent, showDelta = false, deltaUnit = '%', hero = false, detalhe,
 }: {
   label: string
   value: number
@@ -149,6 +157,8 @@ function KpiCard({
    * iguais não têm hierarquia nenhuma: o olho não sabe onde pousar.
    */
   hero?: boolean
+  /** Uma linha embaixo do número, no lugar da variação ("12 vendas"). */
+  detalhe?: string
 }) {
   const hasDelta = delta != null
   return (
@@ -190,6 +200,13 @@ function KpiCard({
           color: hero ? 'color-mix(in srgb, var(--on-brand) 65%, transparent)' : 'var(--text-faint)',
         }}>
           — sem dados anteriores
+        </p>
+      ) : detalhe ? (
+        <p style={{
+          fontSize: 'var(--text-2xs)', margin: '4px 0 0', fontWeight: 600,
+          color: hero ? 'color-mix(in srgb, var(--on-brand) 82%, transparent)' : 'var(--text-muted)',
+        }}>
+          {detalhe}
         </p>
       ) : null}
     </div>
@@ -425,6 +442,143 @@ function TabFinanceiro(p: ReportsBiProps) {
           />
         </SCard>
       </div>
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// TAB: VENDAS
+// -----------------------------------------------------------------------------
+const vendasNoPlural = (n: number) => `${n.toLocaleString('pt-BR')} ${n === 1 ? 'venda' : 'vendas'}`
+
+const PLURAL_DO_TIPO = {
+  PROCEDIMENTO: 'Procedimentos', PACOTE: 'Pacotes', PRE_PAGO: 'Pré-pagos', PLANO: 'Planos',
+} as const
+
+/**
+ * Cada venda do período, uma linha (pedido do Heitor, 2026-10-14). A lista e
+ * o total vêm do banco (`metrics_vendas`): a tela não soma — o total do
+ * rodapé é o do resumo, no mesmo recorte da lista.
+ */
+function TabVendas(p: ReportsBiProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const v = p.vendas
+  if (!v) return null
+  const { resumo } = v
+  const nomeDaUnidade = nomesDasUnidades(p.branches)
+  const comUnidade = p.branches.length > 1
+  const doFiltro = v.tipo ? resumo.porTipo[v.tipo] : resumo.geral
+  const inicio = doFiltro.quantidade === 0 ? 0 : (v.pagina - 1) * POR_PAGINA + 1
+  const fim = (v.pagina - 1) * POR_PAGINA + v.linhas.length
+
+  const ir = (mudar: Record<string, string | null>) => router.push(mesclarParams(searchParams, mudar))
+
+  // A exportação leva o MESMO recorte da tela (período, unidade e tipo), sem
+  // página: todas as vendas.
+  const exportar = new URLSearchParams()
+  for (const chave of ['period', 'from', 'to'] as const) {
+    const valor = searchParams.get(chave)
+    if (valor) exportar.set(chave, valor)
+  }
+  if (!searchParams.get('period')) exportar.set('period', p.period)
+  const unidade = p.selectedBranchId ?? (p.showBranchFilter ? null : p.branches[0]?.id ?? null)
+  if (unidade) exportar.set('branch', unidade)
+  if (v.tipo) exportar.set('tipo', v.tipo)
+
+  const th = (align: 'left' | 'right' = 'left'): CSSProperties => ({
+    padding: '8px 12px', textAlign: align,
+    fontSize: 'var(--text-overline)', fontWeight: 700, color: 'var(--text-muted)',
+    textTransform: 'uppercase', letterSpacing: '0.06em',
+    borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap',
+  })
+  const td = (align: 'left' | 'right' = 'left'): CSSProperties => ({
+    padding: '10px 12px', textAlign: align, color: 'var(--text)',
+  })
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <KpiCard label="Total vendido" value={resumo.geral.total} hero detalhe={vendasNoPlural(resumo.geral.quantidade)} />
+        {TIPOS_DE_VENDA.map(t => (
+          <KpiCard key={t} label={PLURAL_DO_TIPO[t]} value={resumo.porTipo[t].total}
+            detalhe={vendasNoPlural(resumo.porTipo[t].quantidade)} />
+        ))}
+      </div>
+
+      <SCard title="Vendas do período">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <SegSelect
+            ariaLabel="Tipo de venda"
+            value={v.tipo ?? 'todas'}
+            onSelect={k => ir({ tipo: k === 'todas' ? null : k, pagina: null })}
+            options={[{ key: 'todas', label: 'Todas' }, ...TIPOS_DE_VENDA.map(t => ({ key: t, label: PLURAL_DO_TIPO[t] }))]}
+          />
+          <a className="btn-secondary" href={`/api/relatorios/vendas?${exportar.toString()}`} download>
+            <Download size={15} aria-hidden /> Exportar CSV
+          </a>
+        </div>
+
+        {v.linhas.length === 0 ? (
+          <EmptyMsg texto="Nenhuma venda no período." />
+        ) : (
+          <div className="table-wrap">
+            {/* Sete colunas não cabem em 390px: no celular cada venda vira um
+                bloco de rótulo e valor, em vez de a tabela rolar no card. */}
+            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm-sz)' }}>
+              <thead>
+                <tr>
+                  <th style={th()}>Data</th>
+                  <th style={th()}>Tipo</th>
+                  <th style={th()}>Descrição</th>
+                  <th style={th()}>Cliente</th>
+                  <th style={th()}>Profissional</th>
+                  {comUnidade && <th style={th()}>Unidade</th>}
+                  <th style={th('right')}>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {v.linhas.map((l, i) => (
+                  <tr key={`${l.tipo}-${l.id}`} data-venda={l.tipo}
+                    style={{ borderBottom: i < v.linhas.length - 1 ? '1px solid var(--hairline)' : 'none' }}>
+                    <td data-label="Data" data-par style={{ ...td(), whiteSpace: 'nowrap' }}>{new Date(l.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td>
+                    <td data-label="Tipo" data-par style={td()}><Badge label={ROTULO_DO_TIPO[l.tipo]} color={l.tipo === 'PROCEDIMENTO' ? 'gray' : l.tipo === 'PLANO' ? 'green' : 'blue'} /></td>
+                    <td data-label="" style={{ ...td(), fontWeight: 600, minWidth: 180 }}>{descricaoDaVenda(l)}</td>
+                    <td data-label="Cliente" style={td()}>{l.cliente ?? '—'}</td>
+                    <td data-label="Profissional" style={td()}>{l.profissional ?? '—'}</td>
+                    {comUnidade && <td data-label="Unidade" style={td()}>{nomeDaUnidade(l.branchId)}</td>}
+                    <td data-label="Valor" style={{ ...td('right'), fontWeight: 700, whiteSpace: 'nowrap' }}>{fmtBRLFull(l.valor)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+          marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--hairline)',
+        }}>
+          <p data-total-vendas style={{ margin: 0, fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+            {vendasNoPlural(doFiltro.quantidade)} · <strong style={{ color: 'var(--text)' }}>{fmtBRLFull(doFiltro.total)}</strong>
+          </p>
+          {v.paginas > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)' }}>
+                {inicio}–{fim} de {doFiltro.quantidade.toLocaleString('pt-BR')}
+              </span>
+              <button type="button" className="btn-ghost" disabled={v.pagina <= 1}
+                onClick={() => ir({ pagina: v.pagina - 1 > 1 ? String(v.pagina - 1) : null })}>Anterior</button>
+              <button type="button" className="btn-ghost" disabled={v.pagina >= v.paginas}
+                onClick={() => ir({ pagina: String(v.pagina + 1) })}>Próxima</button>
+            </div>
+          )}
+        </div>
+        <p style={{ margin: '8px 0 0', fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>
+          Profissional: quem atendeu; no pacote e no pré-pago, quem vendeu. A sessão de pacote,
+          de plano ou pré-paga não aparece de novo — já foi vendida.
+        </p>
+      </SCard>
     </div>
   )
 }
@@ -990,6 +1144,7 @@ export function ReportsBiView(props: ReportsBiProps) {
   const activeSection = {
     overview:       <TabOverview      {...props} />,
     financeiro:     <TabFinanceiro    {...props} />,
+    vendas:         <TabVendas        {...props} />,
     agenda:         <TabAgenda        {...props} />,
     clientes:       <TabClientes      {...props} />,
     procedimentos:  <TabProcedimentos {...props} />,

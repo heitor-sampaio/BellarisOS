@@ -156,6 +156,7 @@ export const ALL_REPORT_TABS: readonly ReportTab[] = REPORT_TABS
 export const REPORT_TAB_LABELS: Record<ReportTab, string> = {
   overview:      'Visão geral',
   financeiro:    'Financeiro',
+  vendas:        'Vendas',
   agenda:        'Agenda',
   clientes:      'Clientes',
   procedimentos: 'Procedimentos',
@@ -168,6 +169,7 @@ export const REPORT_TAB_LABELS: Record<ReportTab, string> = {
 export const REPORT_TAB_HINTS: Record<ReportTab, string> = {
   overview:      'Faturamento, lucro e o resumo do período inteiro.',
   financeiro:    'Receita, despesa, DRE, formas de pagamento e parcelas a vencer.',
+  vendas:        'Cada venda do período — procedimento, pacote, pré-pago e plano —, com cliente, profissional e valor.',
   agenda:        'Volume, cancelamentos, faltas e horários mais procurados.',
   clientes:      'Novos, retorno, gasto médio e perfil de quem frequenta.',
   procedimentos: 'Execuções, margem e custo por procedimento.',
