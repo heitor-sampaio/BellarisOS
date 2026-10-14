@@ -18,6 +18,7 @@ const marca = Date.now().toString(36)
 const db = () => banco()
 let outra: OutraRede
 let admin: MembroDeTeste
+let unidadeNorte: string
 const NOIVAS = `${PREFIXO} Noivas ${marca}`
 const COM_TAG = `${PREFIXO} Com tag ${marca}`
 const SEM_TAG = `${PREFIXO} Sem tag ${marca}`
@@ -27,6 +28,10 @@ test.beforeAll(async () => {
   test.setTimeout(240_000)
   outra = await criarOutraRede(`tgl${marca}`)
   admin = await criarMembro(`tgl${marca}`, { tenant: outra.tenantId, rotulo: 'Recepção', permissoes: [{ modulo: 'clients', nivel: 'MANAGE' }] })
+  // A segunda unidade: com ela, a lista ganha o filtro de unidade.
+  const un = await db().from('branches').insert({ tenant_id: outra.tenantId, name: `${PREFIXO} Norte ${marca}`, slug: `e2e-tgl-norte-${marca}` }).select('id').single<{ id: string }>()
+  expect(un.error).toBeNull()
+  unidadeNorte = un.data!.id
   const fone = () => '5548' + String(Date.now() + Math.floor(Math.random() * 1e6)).slice(-9)
   const r = await db().from('clients').insert([
     { tenant_id: outra.tenantId, branch_id: outra.branchId, name: COM_TAG, phone: fone(), tags: [NOIVAS], is_active: true },
@@ -40,6 +45,7 @@ test.afterAll(async () => {
     const { data: cs } = await db().from('clients').select('id').eq('tenant_id', outra.tenantId)
     if (cs?.length) await db().from('clients').delete().in('id', cs.map(c => c.id))
     await db().from('tags').delete().eq('tenant_id', outra.tenantId)
+    if (unidadeNorte) await db().from('branches').delete().eq('id', unidadeNorte)
   }
   await admin?.limpar()
   await outra?.limpar()
@@ -79,5 +85,33 @@ test('a lista filtra por situação e pelas tags da rede, sem o segmento fixo', 
     await expect(p.getByText(INATIVA)).toBeVisible()
     await expect(p.getByText(COM_TAG)).toHaveCount(0)
     await expect(p.getByRole('button', { name: 'Inativos', exact: true })).toBeVisible()
+  })
+})
+
+test('os seletores da barra têm o MESMO marcador (quadrado), e abrir as tags não empurra a lista', async ({ browser }) => {
+  await como(browser, admin, async p => {
+    await p.goto('/admin/clients')
+    const linha = p.locator('button', { hasText: COM_TAG })
+    await expect(linha).toBeVisible()
+    const antes = (await linha.boundingBox())!
+    const largura = p.viewportSize()!.width
+
+    for (const gatilho of ['Situação', 'Unidade', 'Tags']) {
+      await p.getByRole('button', { name: gatilho, exact: true }).click()
+      const marcadores = p.locator('[data-marcador]')
+      await expect(marcadores.first()).toBeVisible()
+      const raios = await marcadores.evaluateAll(els => els.map(e => getComputedStyle(e).borderRadius))
+      expect(new Set(raios), `marcadores de ${gatilho}`).toEqual(new Set(['4px']))
+
+      // O painel cabe na tela, e a lista não andou para o lado.
+      expect((await linha.boundingBox())!.x, `a lista com ${gatilho} aberto`).toBe(antes.x)
+      const caixa = (await p.locator('[data-painel-picker]').boundingBox())!
+      expect(caixa.x).toBeGreaterThanOrEqual(0)
+      expect(caixa.x + caixa.width).toBeLessThanOrEqual(largura)
+
+      const g = (await p.getByRole('button', { name: gatilho, exact: true }).boundingBox())!
+      await p.mouse.click(g.x + 5, g.y + 5)
+      await expect(p.locator('[data-painel-picker]')).toHaveCount(0)
+    }
   })
 })

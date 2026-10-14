@@ -14,7 +14,24 @@ import { Check, Search } from 'lucide-react'
  * - **Lista fechada.** Ninguém digita valor novo por aqui. Valor livre no meio
  *   do atendimento vira "botox", "Botox" e "botox " em três dias, e todo filtro
  *   construído sobre esse campo deixa de servir.
+ *
+ * E dois que a tela NÃO escolhe (pedido do Heitor, 2026-10-14):
+ * - **O marcador é sempre quadrado**, no único e no múltiplo. Era bolinha no
+ *   único, e a barra de filtros misturava os dois desenhos lado a lado.
+ * - **O painel abre para o lado que cabe.** Medido ao abrir contra a tela e o
+ *   contêiner que corta (a coluna da lista de clientes): `left: 0` de um
+ *   gatilho perto da borda saía para fora, e o foco na busca ROLAVA a coluna
+ *   para mostrá-lo, empurrando a lista para a esquerda.
  */
+
+/** O primeiro ancestral que corta o que transborda (a coluna, o card…). */
+function limiteQueCorta(el: HTMLElement | null): DOMRect | null {
+  for (let a = el?.parentElement ?? null; a; a = a.parentElement) {
+    const st = getComputedStyle(a)
+    if (st.overflowX !== 'visible' || st.overflow !== 'visible') return a.getBoundingClientRect()
+  }
+  return null
+}
 
 export interface OpcaoPicker {
   valor:  string
@@ -24,7 +41,7 @@ export interface OpcaoPicker {
 export function PickerCompacto({
   rotuloBotao, icone, opcoes, selecionadas, multiplo = false,
   textoListaVazia, larguraPainel = 232, disabled = false,
-  classeBotao = 'btn-ghost', estiloBotao, mantemAbertoEm = [], rodape, marcadorQuadrado = multiplo, onEscolher,
+  classeBotao = 'btn-ghost', estiloBotao, mantemAbertoEm = [], rodape, onEscolher,
 }: {
   rotuloBotao:      string
   /** Opcional: em barra de FILTRO o rótulo já diz o que é, e quatro ícones
@@ -46,15 +63,29 @@ export function PickerCompacto({
   mantemAbertoEm?:  string[]
   /** Abaixo da lista, no mesmo painel; recebe como fechá-lo. */
   rodape?:          (fechar: () => void) => React.ReactNode
-  /** O marcador: quadrado (padrão do múltiplo) ou bolinha (padrão do único).
-   *  Numa barra em que os vizinhos são múltiplos, o único usa o quadrado para
-   *  a barra ler como uma coisa só (pedido do Heitor, 2026-10-09). */
-  marcadorQuadrado?: boolean
   onEscolher:       (valor: string) => void
 }) {
   const [aberto, setAberto] = useState(false)
   const [busca,  setBusca]  = useState('')
   const campoRef = useRef<HTMLInputElement>(null)
+  const ancoraRef = useRef<HTMLDivElement>(null)
+  const [aDireita, setADireita] = useState(false)
+
+  function abrirOuFechar() {
+    if (!aberto) {
+      // Cabe à direita do gatilho? Senão, alinha pela borda direita dele.
+      const r = ancoraRef.current?.getBoundingClientRect()
+      if (r) {
+        const corte = limiteQueCorta(ancoraRef.current)
+        const fim = Math.min(window.innerWidth, corte?.right ?? Infinity) - 8
+        setADireita(r.left + larguraPainel > fim && r.right - larguraPainel >= Math.max(0, corte?.left ?? 0))
+      }
+    }
+    setAberto(a => !a)
+    setBusca('')
+    // Sem rolar: focar um campo fora da vista rola o contêiner até ele.
+    setTimeout(() => campoRef.current?.focus({ preventScroll: true }), 0)
+  }
 
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase()
@@ -76,14 +107,10 @@ export function PickerCompacto({
   if (disabled) return null
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={ancoraRef} style={{ position: 'relative' }}>
       <button
         type="button"
-        onClick={() => {
-          setAberto(a => !a)
-          setBusca('')
-          setTimeout(() => campoRef.current?.focus(), 0)
-        }}
+        onClick={abrirOuFechar}
         className={classeBotao === 'btn-ghost' ? 'btn-ghost picker-gatilho' : classeBotao}
         style={estiloBotao}
       >
@@ -95,9 +122,10 @@ export function PickerCompacto({
         <>
           <div style={{ position: 'fixed', inset: 0, zIndex: 30 }} onClick={() => setAberto(false)} />
 
-          <div style={{
-            position: 'absolute', top: 30, left: 0, zIndex: 31,
-            width: larguraPainel, background: 'var(--surface)',
+          <div data-painel-picker style={{
+            position: 'absolute', top: 30, zIndex: 31,
+            ...(aDireita ? { right: 0 } : { left: 0 }),
+            width: larguraPainel, maxWidth: 'calc(100vw - 16px)', background: 'var(--surface)',
             border: '1px solid var(--border)', borderRadius: 10, padding: 8,
           }}>
             {/* Busca só quando há o que garimpar: em cinco opções ela é ruído. */}
@@ -147,9 +175,9 @@ export function PickerCompacto({
                       textAlign: 'left',
                     }}
                   >
-                    <span style={{
+                    <span data-marcador style={{
                       width: 13, height: 13, flexShrink: 0,
-                      borderRadius: marcadorQuadrado ? 4 : 99,
+                      borderRadius: 4,
                       border: marcada ? 'none' : '1.5px solid var(--border)',
                       background: marcada ? 'var(--brand)' : 'transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',

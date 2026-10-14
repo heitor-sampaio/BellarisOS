@@ -185,7 +185,6 @@ export function ClientsSidebar({
             opcoes={situacoes}
             selecionadas={[filter]}
             textoListaVazia=""
-            marcadorQuadrado
             larguraPainel={180}
             classeBotao={classeGatilho(filter !== 'ativos')}
             onEscolher={v => setFilter(v as Filter)}

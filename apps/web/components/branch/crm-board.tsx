@@ -266,7 +266,6 @@ function FiltersBar({
         opcoes={SITUACOES}
         selecionadas={[filters.situation]}
         textoListaVazia=""
-        marcadorQuadrado
         classeBotao={classeGatilho(filters.situation !== 'all')}
         onEscolher={v => onFiltersChange({ ...filters, situation: v as FiltersState['situation'] })}
       />
@@ -276,7 +275,6 @@ function FiltersBar({
         opcoes={PERIODOS}
         selecionadas={[personalizado ? 'custom' : filters.period]}
         textoListaVazia=""
-        marcadorQuadrado
         classeBotao={classeGatilho(filters.period !== 'all')}
         mantemAbertoEm={['custom']}
         onEscolher={escolherPeriodo}

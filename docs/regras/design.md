@@ -27,6 +27,13 @@ Princípios inegociáveis:
   - **liga/desliga** de um filtro só → `.filtro-toggle` + `aria-pressed`;
   - filtro que **acumula** (tag, marcador) → `.chip-filtro` + `aria-pressed`.
     Se é exclusivo, não é chip: a pílula solta promete que dá para marcar duas.
+  - **Filtro que abre uma lista** (unidade, tags, situação, responsável…) é o
+    `<PickerCompacto>`, e duas coisas nele NÃO são escolha da tela (decisão
+    do Heitor, 2026-10-14, depois de a barra de clientes misturar bolinha e
+    quadrado): o marcador é **sempre quadrado**, no único e no múltiplo (a
+    prop que escolhia saiu), e o painel **abre para o lado que cabe** — mede a
+    tela e o contêiner que corta, e foca a busca sem rolar (`preventScroll`).
+    Painel escrito à mão para a mesma função é o defeito de volta.
   - **Seletor de texto não leva ícone** — o rótulo já diz, e o ícone repetido
     cinco vezes na mesma barra vira ruído. O toggle pode levar: ali o ícone é
     o assunto que se liga.

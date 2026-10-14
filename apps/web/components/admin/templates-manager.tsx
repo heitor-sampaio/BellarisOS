@@ -297,7 +297,6 @@ export function TemplatesManager({
             opcoes={[{ valor: '', rotulo: 'Todos os números' }, ...numeros.map(n => ({ valor: n.id, rotulo: n.label }))]}
             selecionadas={[filtroNumero]}
             textoListaVazia=""
-            marcadorQuadrado
             classeBotao={filtroNumero ? 'filtro-toggle is-ativo' : 'filtro-toggle'}
             onEscolher={setFiltroNumero}
           />
