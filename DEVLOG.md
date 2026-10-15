@@ -1300,6 +1300,25 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-15 — A comissão pelo procedimento: a mesma para todos ou por profissional
+
+Pedido do Heitor: cada procedimento pode ter uma comissão GERAL, igual para
+todo mundo, ou uma diferente para cada profissional. Até aqui a regra só
+nascia no profissional (Equipe: padrão + exceções), e "Botox paga 25% para
+qualquer um" exigia abrir a comissão de cada pessoa.
+
+Agora a tabela de Procedimentos tem a coluna **Comissão** (só para quem tem
+`financial: MANAGE` e é da rede), com o chip "25% para todos", "Por
+profissional · N" ou "Padrão de cada um". A janela escolhe entre os dois:
+- **A mesma para todos** — uma linha de `commission_rules` sem profissional. Vence
+  a exceção e o padrão de cada um; salvá-la tira os valores por profissional
+  do procedimento, e a Equipe deixa de oferecê-lo como exceção (o banco recusa).
+- **Por profissional** — as exceções de sempre, vistas pelo procedimento; quem
+  fica no "Padrão" segue a comissão padrão dele.
+
+A conclusão do atendimento (avulso, plano, pacote, pré-pago) lê as gerais
+junto. Migration `20261015000001`; regra em `docs/regras/comissoes.md`.
+
 ### 2026-10-14 — As categorias de procedimento da rede
 
 O Heitor não achava onde cadastrar categorias de procedimento: nunca houve —

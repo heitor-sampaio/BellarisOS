@@ -18,7 +18,7 @@ import { revalidatePath } from 'next/cache'
 import { getTenantContext, assertPermission, alcancaUnidade, ownerFilter, assertRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
-import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras } from '@/lib/comissoes/config'
+import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDaComissaoDoProcedimento } from '@/lib/comissoes/config'
 import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
 import { periodoDaChave } from '@/lib/comissoes/periodo'
 
@@ -28,6 +28,7 @@ function revalidar() {
   revalidatePath('/admin/settings')
   revalidatePath('/admin/team')
   revalidatePath('/[slug]/team', 'page')
+  revalidatePath('/admin/procedures')
 }
 
 export async function salvarConfigDeComissao(entrada: unknown): Promise<Resultado> {
@@ -89,6 +90,38 @@ export async function salvarRegrasDoProfissional(profissionalId: string, entrada
       p_tenant: ctx.tenantId!, p_profissional: profissionalId,
       p_padrao: padrao, p_excecoes: excecoes, p_ator: ctx.internalUserId ?? null,
     }), 'salvar as regras de comissão')
+    revalidar()
+    return { ok: true }
+  } catch (e) {
+    return { error: mensagemDoErro(e) }
+  }
+}
+
+/**
+ * A comissão de um procedimento (2026-10-15): a GERAL, a mesma para todos, ou
+ * um valor para cada profissional (as exceções; quem fica sem valor segue o
+ * padrão dele). Substitui o conjunto inteiro do procedimento — os valores de
+ * profissionais de todas as unidades —, então só quem é da rede muda, como o
+ * catálogo.
+ */
+export async function salvarComissaoDoProcedimento(procedimentoId: string, entrada: unknown): Promise<Resultado> {
+  try {
+    const ctx = await getTenantContext()
+    assertRecurso(ctx, 'comissoes')
+    assertPermission(ctx, 'financial', 'MANAGE')
+    if (ctx.branchId !== null) return { error: 'A comissão do procedimento vale para a rede inteira: quem muda é quem administra a rede.' }
+    if (typeof procedimentoId !== 'string' || !/^[0-9a-f-]{36}$/i.test(procedimentoId)) return { error: 'Procedimento não encontrado.' }
+    const lido = EntradaDaComissaoDoProcedimento.safeParse(entrada)
+    if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
+
+    // A função confere que o procedimento e cada profissional são da rede.
+    const e = lido.data
+    await gravar(createAdminClient().rpc('comissao_do_procedimento_definir', {
+      p_tenant: ctx.tenantId!, p_procedimento: procedimentoId,
+      p_geral: e.modo === 'GERAL' ? e.geral : null,
+      p_profissionais: e.modo === 'POR_PROFISSIONAL' ? e.profissionais : [],
+      p_ator: ctx.internalUserId ?? null,
+    }), 'salvar a comissão do procedimento')
     revalidar()
     return { ok: true }
   } catch (e) {

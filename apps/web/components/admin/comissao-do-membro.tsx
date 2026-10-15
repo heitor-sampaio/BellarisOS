@@ -10,7 +10,8 @@ import { rotuloDaRegra, type RegraDeComissao, type TipoDeRegra } from '@/lib/com
 /**
  * A comissão de um membro da equipe: o PADRÃO (percentual, valor fixo ou
  * nenhum) e as EXCEÇÕES por procedimento. Decisão do Heitor (2026-09-30): a
- * regra é do profissional; o procedimento só entra como exceção.
+ * regra é do profissional; o procedimento só entra como exceção — salvo o que
+ * tem comissão GERAL (2026-10-15, em Procedimentos), que fica fora daqui.
  *
  * O botão é o próprio chip com a regra padrão — a tabela da equipe mostra de
  * relance quem está sem comissão. Só aparece para quem tem `financial: MANAGE`
@@ -26,9 +27,9 @@ const TIPOS = [
   { key: 'NENHUMA',      label: 'Sem comissão' },
 ]
 
-const paraTexto = (n: number) => String(n).replace('.', ',')
+export const paraTexto = (n: number) => String(n).replace('.', ',')
 /** "1.250,50" e "12.5" valem: com vírgula, o ponto é de milhar; sem ela, é decimal. */
-const paraNumero = (t: string) => {
+export const paraNumero = (t: string) => {
   const s = t.trim()
   return Number(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s)
 }
@@ -175,6 +176,7 @@ function Formulario({ membroId, regras, procedimentos, onFim }: {
             </div>
           </div>
         ))}
+        <p style={ajuda}>Procedimento com comissão geral (a mesma para todos) não aceita exceção: muda em Procedimentos.</p>
         {livres.length > 0 && (
           <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Plus size={15} style={{ color: 'var(--brand)', flexShrink: 0 }} aria-hidden />
@@ -199,7 +201,7 @@ function Formulario({ membroId, regras, procedimentos, onFim }: {
   )
 }
 
-function CampoDeValor({ tipo, valor, onChange, rotulo }: {
+export function CampoDeValor({ tipo, valor, onChange, rotulo }: {
   tipo: TipoDeRegra; valor: string; onChange: (v: string) => void; rotulo: string
 }) {
   const pct = tipo === 'PERCENTAGE'

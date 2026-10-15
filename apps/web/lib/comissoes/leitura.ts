@@ -4,7 +4,7 @@ import { ler } from '@/lib/db'
 import {
   configDaLinha, linhasDaComissao, precoDaSessaoDePacote,
   type ConfigDeComissao, type RegraDeComissao, type TaxaDePagamento, type TipoDeRegra, type MetodoComTaxa,
-  type ItemExecutado, type LinhaDeComissao,
+  type ItemExecutado, type LinhaDeComissao, type ComissoesGerais,
 } from './config'
 
 /** A configuração de comissões da rede (os padrões, se ela nunca salvou). */
@@ -41,21 +41,76 @@ export async function profissionaisSemComissao(tenantId: string): Promise<{ id: 
 
 /**
  * Os procedimentos que podem virar exceção: o catálogo da rede e, para quem
- * tem unidade fixa, os locais da unidade; para quem é da rede, todos.
+ * tem unidade fixa, os locais da unidade; para quem é da rede, todos. O que
+ * tem comissão GERAL fica de fora — é a mesma para todos, e muda no
+ * procedimento.
  */
 export async function procedimentosParaComissao(tenantId: string, branchId: string | null): Promise<{ id: string; name: string }[]> {
   let q = createAdminClient().from('procedures').select('id, name')
     .eq('tenant_id', tenantId).eq('is_active', true)
   if (branchId) q = q.or(`branch_id.is.null,branch_id.eq.${branchId}`)
-  const linhas = await ler(q.order('name'), 'listar os procedimentos')
-  return (linhas ?? []).map(p => ({ id: p.id as string, name: p.name as string }))
+  const [linhas, gerais] = await Promise.all([ler(q.order('name'), 'listar os procedimentos'), comissoesGeraisDaRede(tenantId)])
+  return (linhas ?? []).filter(p => !gerais.has(p.id as string)).map(p => ({ id: p.id as string, name: p.name as string }))
+}
+
+/** A comissão GERAL de cada procedimento (a mesma para todos), por procedimento. */
+export async function comissoesGeraisDaRede(tenantId: string, procedimentos?: (string | null)[]): Promise<ComissoesGerais> {
+  let q = createAdminClient().from('commission_rules').select('procedure_id, type, value')
+    .eq('tenant_id', tenantId).eq('is_active', true).is('professional_id', null).not('procedure_id', 'is', null)
+  if (procedimentos) {
+    const ids = procedimentos.filter((p): p is string => !!p)
+    if (!ids.length) return new Map()
+    q = q.in('procedure_id', ids)
+  }
+  const linhas = await ler(q, 'ler as comissões gerais dos procedimentos')
+  return new Map((linhas ?? []).map(l => [l.procedure_id as string, { tipo: l.type as TipoDeRegra, valor: Number(l.value) }]))
+}
+
+export interface ComissaoDosProcedimentos {
+  gerais:        ComissoesGerais
+  /** As exceções de cada procedimento: o valor de cada profissional. */
+  porProfissional: Map<string, { professional_id: string; tipo: TipoDeRegra; valor: number }[]>
+  /** Quem atende (e quem já tem valor em algum procedimento), com o padrão dele. */
+  profissionais: { id: string; nome: string; padrao: RegraDeComissao | null }[]
+}
+
+/** Para Procedimentos: a geral e os valores por profissional de cada um. */
+export async function comissaoDosProcedimentos(tenantId: string): Promise<ComissaoDosProcedimentos> {
+  const admin = createAdminClient()
+  const [gerais, regras, quemAtende] = await Promise.all([
+    comissoesGeraisDaRede(tenantId),
+    regrasDaRede(tenantId),
+    ler(admin.from('users').select('id, name').eq('tenant_id', tenantId)
+      .eq('provides_services', true).eq('is_active', true).order('name'), 'listar quem atende'),
+  ])
+  const porProfissional: ComissaoDosProcedimentos['porProfissional'] = new Map()
+  for (const [profissional, lista] of regras) {
+    for (const r of lista) {
+      if (!r.procedure_id) continue
+      const doProc = porProfissional.get(r.procedure_id) ?? []
+      doProc.push({ professional_id: profissional, tipo: r.tipo, valor: r.valor })
+      porProfissional.set(r.procedure_id, doProc)
+    }
+  }
+  // Quem tem valor em algum procedimento entra mesmo sem atender hoje: a tela
+  // substitui o conjunto inteiro do procedimento, e o valor dele não pode sumir
+  // sem ninguém ver.
+  const ids = new Set((quemAtende ?? []).map(u => u.id as string))
+  const faltam = [...regras.keys()].filter(id => !ids.has(id) && regras.get(id)!.some(r => r.procedure_id))
+  const outros = faltam.length
+    ? await ler(admin.from('users').select('id, name').eq('tenant_id', tenantId).in('id', faltam), 'listar quem tem comissão')
+    : []
+  const profissionais = [...(quemAtende ?? []), ...(outros ?? [])]
+    .map(u => ({ id: u.id as string, nome: u.name as string, padrao: regras.get(u.id as string)?.find(r => r.procedure_id === null) ?? null }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+  return { gerais, porProfissional, profissionais }
 }
 
 /** As regras ativas de cada profissional da rede (padrão + exceções). */
 export async function regrasDaRede(tenantId: string, profissionalId?: string): Promise<Map<string, RegraDeComissao[]>> {
   let q = createAdminClient().from('commission_rules')
     .select('professional_id, procedure_id, type, value')
-    .eq('tenant_id', tenantId).eq('is_active', true)
+    .eq('tenant_id', tenantId).eq('is_active', true).not('professional_id', 'is', null)
   if (profissionalId) q = q.eq('professional_id', profissionalId)
   const linhas = await ler(q, 'ler as regras de comissão')
   const mapa = new Map<string, RegraDeComissao[]>()
@@ -81,7 +136,11 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
 }): Promise<LinhaDeComissao[]> {
   const admin = createAdminClient()
   const regras = (await regrasDaRede(tenantId, appt.professional_id)).get(appt.professional_id) ?? []
-  if (!regras.length) return []
+  // A geral do procedimento vale para quem não tem regra nenhuma: lida
+  // inteira (são poucas por rede), porque os procedimentos de uma sessão de
+  // plano ou de pacote só se conhecem abaixo.
+  const gerais = await comissoesGeraisDaRede(tenantId)
+  if (!regras.length && !gerais.size) return []
 
   if (appt.treatment_plan_id) {
     const sessao = await ler(admin.from('treatment_plan_sessions')
@@ -92,7 +151,7 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
     const itens: ItemExecutado[] = procs.length
       ? procs.map(p => ({ procedure_id: p.procedure_id, preco: Number(p.price) }))
       : [{ procedure_id: appt.procedure_id, preco: appt.price }]
-    return linhasDaComissao(itens, regras, 'PLANO', appt.treatment_plan_id)
+    return linhasDaComissao(itens, regras, 'PLANO', appt.treatment_plan_id, gerais)
   }
 
   const sessaoDePacote = await ler(admin.from('package_sessions')
@@ -117,7 +176,7 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
     return linhasDaComissao([{
       procedure_id: (sessaoDePacote.procedure_id as string | null) ?? pacote.procedure_id ?? appt.procedure_id,
       preco,
-    }], regras, 'PACOTE', null)
+    }], regras, 'PACOTE', null, gerais)
   }
 
   // Procedimento pré-pago: a parte desta UNIDADE no preço vendido (o banco liga
@@ -127,10 +186,10 @@ export async function linhasDoAtendimento(tenantId: string, appt: {
     .eq('appointment_id', appt.id).eq('status', 'DISPONIVEL').maybeSingle(), 'buscar a unidade pré-paga')
   if (unidadePrePaga) {
     const venda = unidadePrePaga.procedure_sales as unknown as { procedure_id: string }
-    return linhasDaComissao([{ procedure_id: venda.procedure_id, preco: Number(unidadePrePaga.preco) }], regras, 'PRE_PAGO', null)
+    return linhasDaComissao([{ procedure_id: venda.procedure_id, preco: Number(unidadePrePaga.preco) }], regras, 'PRE_PAGO', null, gerais)
   }
 
-  return linhasDaComissao([{ procedure_id: appt.procedure_id, preco: appt.price }], regras, 'AVULSO', null)
+  return linhasDaComissao([{ procedure_id: appt.procedure_id, preco: appt.price }], regras, 'AVULSO', null, gerais)
 }
 
 // ─── A tela de comissões (Financeiro → Comissões) ────────────────────────────

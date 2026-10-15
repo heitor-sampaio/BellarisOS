@@ -16,8 +16,20 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   `regraAplicavel` (`lib/comissoes/config.ts`) — a exceção, senão o padrão,
   senão nenhuma (o atendimento conclui sem comissão, e a tela avisa quem
   "atende" sem padrão).
-- **Só o servidor grava regra**: `comissao_regras_definir` (service_role, confere
-  profissional e procedimentos da rede). A sessão só LÊ — até 2026-09-30
+- **A comissão do PROCEDIMENTO** (2026-10-15; chip na coluna "Comissão" de
+  Procedimentos, `ComissaoDoProcedimento`): cada procedimento é "a mesma para
+  todos" (a GERAL: linha de `commission_rules` com `professional_id` NULO) ou
+  "por profissional" (as exceções acima, vistas pelo procedimento; quem fica no
+  "Padrão" segue o padrão dele). **A geral vence tudo** — exceção e padrão:
+  `regraAplicavel(regras, procedimento, gerais)`, e `linhasDoAtendimento` lê
+  as gerais junto (vale para quem não tem regra nenhuma). Procedimento com
+  geral não tem exceção: `comissao_do_procedimento_definir` substitui o
+  conjunto inteiro do procedimento, a Equipe não o oferece como exceção e
+  `comissao_regras_definir` recusa. Muda quem tem `financial: MANAGE` e é da
+  rede. Prova: `e2e/comissoes-por-procedimento.spec.ts`.
+- **Só o servidor grava regra**: `comissao_regras_definir` e
+  `comissao_do_procedimento_definir` (service_role, conferem profissional e
+  procedimentos da rede). A sessão só LÊ — até 2026-09-30
   qualquer funcionário gravava `commission_rules` pelo PostgREST.
 - **Configuração da REDE** (`commission_configs`, Configurações → Comissões,
   `financial: MANAGE` + abrangência de rede): `modo` (ATENDIMENTO, sobre o preço
@@ -117,6 +129,7 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
 
 ```
 ❌ Gravar em commissions fora de comissao_acertar_linha, ou calcular valor de comissão no TypeScript (a conta é comissao_alvo)
+❌ Decidir a regra de um procedimento sem as gerais (regraAplicavel sem o terceiro argumento ignora "a mesma para todos")
 ❌ Mandar ao banco a base de comissão que o navegador enviou (plano e pacote se leem em linhasDoAtendimento)
 ❌ Cancelar ou marcar falta num atendimento concluído — o que se desfaz é o pagamento (estorno)
 ❌ Recortar comissão por scheduled_at do atendimento (o período é o do lançamento, released_at)

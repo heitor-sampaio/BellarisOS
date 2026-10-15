@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   configDaLinha, CONFIG_PADRAO, EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras,
+  EntradaDaComissaoDoProcedimento, rotuloDaComissaoDoProcedimento,
   regraAplicavel, rotuloDaRegra, linhasDaComissao, precoDaSessaoDePacote,
   type RegraDeComissao, type TaxaDePagamento,
 } from '@/lib/comissoes/config'
@@ -103,5 +104,43 @@ describe('linhas de um atendimento', () => {
     expect(precoDaSessaoDePacote(400, 5)).toBe(80)
     expect(precoDaSessaoDePacote(1000, 3)).toBe(333.33)
     expect(precoDaSessaoDePacote(400, 0)).toBe(0)
+  })
+})
+
+describe('comissão do procedimento (2026-10-15): a geral, a mesma para todos', () => {
+  const padrao: RegraDeComissao = { procedure_id: null, tipo: 'PERCENTAGE', valor: 30 }
+  const excecao: RegraDeComissao = { procedure_id: 'p-botox', tipo: 'FIXED_AMOUNT', valor: 80 }
+  const gerais = new Map([['p-botox', { tipo: 'PERCENTAGE' as const, valor: 25 }], ['p-fios', { tipo: 'FIXED_AMOUNT' as const, valor: 0 }]])
+
+  it('a geral do procedimento vence a exceção e o padrão do profissional', () => {
+    expect(regraAplicavel([padrao, excecao], 'p-botox', gerais)).toEqual({ procedure_id: 'p-botox', tipo: 'PERCENTAGE', valor: 25 })
+    expect(regraAplicavel([padrao], 'p-fios', gerais)).toEqual({ procedure_id: 'p-fios', tipo: 'FIXED_AMOUNT', valor: 0 })
+  })
+  it('vale para quem não tem regra nenhuma', () => {
+    expect(regraAplicavel([], 'p-botox', gerais)).toEqual({ procedure_id: 'p-botox', tipo: 'PERCENTAGE', valor: 25 })
+  })
+  it('procedimento sem geral segue a exceção, senão o padrão', () => {
+    expect(regraAplicavel([padrao, excecao], 'p-limpeza', gerais)).toBe(padrao)
+    expect(regraAplicavel([padrao], null, gerais)).toBe(padrao)
+  })
+  it('as linhas do atendimento usam a geral', () => {
+    expect(linhasDaComissao([{ procedure_id: 'p-botox', preco: 900 }, { procedure_id: 'p-limpeza', preco: 200 }], [], 'PLANO', 'pl', gerais))
+      .toEqual([{ procedure_id: 'p-botox', origem: 'PLANO', treatment_plan_id: 'pl', regra_tipo: 'PERCENTAGE', regra_valor: 25, preco: 900 }])
+  })
+  it('a entrada: a mesma para todos OU uma por profissional, sem repetir', () => {
+    const a = '00000000-0000-4000-8000-000000000001'
+    expect(EntradaDaComissaoDoProcedimento.safeParse({ modo: 'GERAL', geral: { tipo: 'PERCENTAGE', valor: 25 } }).success).toBe(true)
+    expect(EntradaDaComissaoDoProcedimento.safeParse({ modo: 'GERAL', geral: { tipo: 'PERCENTAGE', valor: 125 } }).success).toBe(false)
+    expect(EntradaDaComissaoDoProcedimento.safeParse({ modo: 'POR_PROFISSIONAL', profissionais: [
+      { professional_id: a, tipo: 'FIXED_AMOUNT', valor: 50 },
+    ] }).success).toBe(true)
+    expect(EntradaDaComissaoDoProcedimento.safeParse({ modo: 'POR_PROFISSIONAL', profissionais: [
+      { professional_id: a, tipo: 'FIXED_AMOUNT', valor: 50 }, { professional_id: a, tipo: 'PERCENTAGE', valor: 5 },
+    ] }).success).toBe(false)
+  })
+  it('o rótulo do chip', () => {
+    expect(rotuloDaComissaoDoProcedimento({ tipo: 'PERCENTAGE', valor: 25 }, 0)).toBe('25% para todos')
+    expect(rotuloDaComissaoDoProcedimento(null, 2)).toBe('Por profissional · 2')
+    expect(rotuloDaComissaoDoProcedimento(null, 0)).toBe('Padrão de cada um')
   })
 })

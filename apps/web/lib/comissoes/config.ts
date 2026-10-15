@@ -91,12 +91,42 @@ export const EntradaDasRegras = z.object({
     .refine(l => new Set(l.map(e => e.procedure_id)).size === l.length, 'Há duas exceções para o mesmo procedimento.'),
 })
 
+// ─── A comissão do procedimento (2026-10-15) ────────────────────────────────
+
+/** A comissão GERAL de um procedimento, a mesma para todos (`commission_rules`
+ *  sem profissional), por id do procedimento. */
+export type ComissoesGerais = ReadonlyMap<string, Pick<RegraDeComissao, 'tipo' | 'valor'>>
+
 /**
- * A regra que vale para um procedimento: a exceção dele; senão, o padrão do
- * profissional; sem nenhuma, nulo (e o atendimento não gera comissão — a
- * tela avisa quem atende e não tem regra).
+ * A comissão de um procedimento, pelo procedimento: a mesma para todos OU um
+ * valor para cada profissional (as exceções de sempre; quem fica sem valor
+ * segue o padrão dele).
  */
-export function regraAplicavel(regras: RegraDeComissao[], procedureId: string | null): RegraDeComissao | null {
+export const EntradaDaComissaoDoProcedimento = z.discriminatedUnion('modo', [
+  z.object({ modo: z.literal('GERAL'), geral: Regra }),
+  z.object({
+    modo: z.literal('POR_PROFISSIONAL'),
+    profissionais: z.array(Regra.and(z.object({ professional_id: z.string().uuid() }))).max(500)
+      .refine(l => new Set(l.map(e => e.professional_id)).size === l.length, 'Há dois valores para o mesmo profissional.'),
+  }),
+])
+
+export function rotuloDaComissaoDoProcedimento(geral: Pick<RegraDeComissao, 'tipo' | 'valor'> | null, porProfissional: number): string {
+  if (geral) return `${rotuloDaRegra(geral)} para todos`
+  return porProfissional > 0 ? `Por profissional · ${porProfissional}` : 'Padrão de cada um'
+}
+
+/**
+ * A regra que vale para um procedimento: a GERAL dele (a mesma para todos);
+ * senão, a exceção do profissional; senão, o padrão do profissional; sem
+ * nenhuma, nulo (e o atendimento não gera comissão — a tela avisa quem
+ * atende e não tem regra).
+ */
+export function regraAplicavel(
+  regras: RegraDeComissao[], procedureId: string | null, gerais: ComissoesGerais = new Map(),
+): RegraDeComissao | null {
+  const geral = procedureId ? gerais.get(procedureId) : undefined
+  if (geral && procedureId) return { procedure_id: procedureId, tipo: geral.tipo, valor: geral.valor }
   return (procedureId ? regras.find(r => r.procedure_id === procedureId) : undefined)
     ?? regras.find(r => r.procedure_id === null)
     ?? null
@@ -121,16 +151,18 @@ export interface LinhaDeComissao {
 }
 
 /**
- * Uma linha por procedimento executado que tenha regra (a exceção dele, senão
- * o padrão do profissional). Procedimento sem regra não gera linha — o aviso
- * de "sem comissão" é da tela de configuração.
+ * Uma linha por procedimento executado que tenha regra (a geral do
+ * procedimento, senão a exceção do profissional, senão o padrão dele).
+ * Procedimento sem regra não gera linha — o aviso de "sem comissão" é da
+ * tela de configuração.
  */
 export function linhasDaComissao(
   itens: ItemExecutado[], regras: RegraDeComissao[], origem: OrigemDaComissao, planoId: string | null,
+  gerais: ComissoesGerais = new Map(),
 ): LinhaDeComissao[] {
   const linhas: LinhaDeComissao[] = []
   for (const item of itens) {
-    const regra = regraAplicavel(regras, item.procedure_id)
+    const regra = regraAplicavel(regras, item.procedure_id, gerais)
     if (!regra) continue
     linhas.push({
       procedure_id: item.procedure_id, origem, treatment_plan_id: origem === 'PLANO' ? planoId : null,

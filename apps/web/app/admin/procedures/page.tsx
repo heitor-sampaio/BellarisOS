@@ -1,10 +1,12 @@
-import { getTenantContext, assertPermission } from '@/lib/auth'
+import { getTenantContext, assertPermission, can, temRecurso } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCachedProductsReference } from '@/lib/cached-queries'
 import { ProcedureModal } from '@/components/admin/procedure-modal'
 import { CategoriasDeProcedimento } from '@/components/admin/categorias-de-procedimento'
 import { categoriasAtivasDaRede } from '@/lib/procedimentos/categorias'
 import { ToggleProcedureBtn } from '@/components/admin/toggle-procedure-btn'
+import { ComissaoDoProcedimento } from '@/components/admin/comissao-do-procedimento'
+import { comissaoDosProcedimentos } from '@/lib/comissoes/leitura'
 import { Pencil, Smartphone } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
 import { ler } from '@/lib/db'
@@ -17,16 +19,18 @@ function formatBRL(v: string | number) {
   return parseFloat(String(v)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-/** Largura fixa por coluna, compartilhada por todas as tabelas de categoria. */
-const COLUNAS = [
+/** Largura fixa por coluna, compartilhada por todas as tabelas de categoria.
+ *  A de comissão só existe para quem vê quanto cada um ganha. */
+const colunas = (comComissao: boolean) => [
   { titulo: 'Procedimento', largura: undefined },
   { titulo: 'Duração',      largura: 98 },
   { titulo: 'Preço',        largura: 116 },
   { titulo: 'Unidades',     largura: 132 },
   { titulo: 'App',          largura: 64 },
   { titulo: 'Situação',     largura: 108 },
+  ...(comComissao ? [{ titulo: 'Comissão', largura: 168 }] : []),
   { titulo: '',             largura: 172 },
-] as const
+]
 
 export default async function AdminProceduresPage({
   searchParams,
@@ -38,6 +42,10 @@ export default async function AdminProceduresPage({
   // `?q=` filtra a lista (a busca universal abre a tela por aqui).
   const termo = termoDaUrl((await searchParams).q)
   const canEdit = ctx.permissions.procedures === 'MANAGE'
+  // Quanto cada um ganha é do financeiro (§9.7): gerir o catálogo não basta.
+  // E a comissão do procedimento vale para a rede inteira.
+  const podeComissao = can(ctx, 'financial', 'MANAGE') && temRecurso(ctx, 'comissoes') && ctx.branchId === null
+  const COLUNAS = colunas(podeComissao)
 
   const admin = createAdminClient()
 
@@ -67,6 +75,7 @@ export default async function AdminProceduresPage({
     // O vocabulário da rede (Procedimentos → Categorias).
     categoriasAtivasDaRede(ctx.tenantId!),
   ])
+  const comissao = podeComissao ? await comissaoDosProcedimentos(ctx.tenantId!) : null
 
   const fichas = (fichaRows ?? []) as { id: string; name: string }[]
   // Termo e contrato que o procedimento pode ligar — só quem edita precisa.
@@ -178,7 +187,7 @@ export default async function AdminProceduresPage({
                 separada e, no modo automático, cada uma media as colunas pelo
                 próprio conteúdo — um nome comprido numa categoria desalinhava
                 ela inteira em relação às outras. */}
-            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: 860 }}>
+            <table className="cards-mobile" style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: comissao ? 1028 : 860 }}>
               <colgroup>
                 {COLUNAS.map(c => <col key={c.titulo} style={c.largura ? { width: c.largura } : undefined} />)}
               </colgroup>
@@ -264,6 +273,14 @@ export default async function AdminProceduresPage({
                           {p.is_active ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
+                      {comissao && (
+                        <td data-label="Comissão" data-par style={{ padding: '13px 16px' }}>
+                          <ComissaoDoProcedimento procedimento={{ id: p.id, nome: p.name }}
+                            geral={comissao.gerais.get(p.id) ?? null}
+                            porProfissional={comissao.porProfissional.get(p.id) ?? []}
+                            profissionais={comissao.profissionais} />
+                        </td>
+                      )}
                       <td data-label="" style={{ padding: '13px 16px' }}>
                         {canEdit && (
                           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
