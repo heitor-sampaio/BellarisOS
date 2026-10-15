@@ -12,6 +12,8 @@ import { chamarAcao } from './apoio/acao-direta'
  *    exceções do procedimento, e a Equipe deixa de oferecê-lo como exceção.
  *  - "Por profissional" são as exceções de sempre (as da Equipe), vistas pelo
  *    procedimento; quem fica sem valor segue o padrão dele.
+ *  - Também no modal de criar e de editar procedimento (pedido do Heitor, o
+ *    mesmo dia): a mesma janela, gravada junto com o procedimento.
  *  - Só quem tem `financial: MANAGE` vê e muda (a action confere de novo).
  *
  * Numa rede [e2e] própria: a regra é da rede.
@@ -27,6 +29,8 @@ let soVe: MembroDeTeste
 let procB = ''
 let cliente = ''
 const PROC_B = `${PREFIXO} Proc B ${marca}`
+const NOVO = `${PREFIXO} Proc Novo ${marca}`
+const FURO = `${PREFIXO} Proc Furo ${marca}`
 
 test.beforeAll(async () => {
   test.setTimeout(240_000)
@@ -47,7 +51,7 @@ test.beforeAll(async () => {
   gestor = await criarMembro(`cppg${marca}`, {
     tenant: rede.tenantId, rotulo: 'Gestor',
     permissoes: [
-      { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'VIEW' }, { modulo: 'team', nivel: 'VIEW' },
+      { modulo: 'financial', nivel: 'MANAGE' }, { modulo: 'procedures', nivel: 'MANAGE' }, { modulo: 'team', nivel: 'VIEW' },
       { modulo: 'agenda', nivel: 'MANAGE' }, { modulo: 'clients', nivel: 'MANAGE' }, { modulo: 'medical_records', nivel: 'MANAGE' },
       { modulo: 'stock', nivel: 'VIEW' }, { modulo: 'cashier', nivel: 'MANAGE' },
     ],
@@ -152,15 +156,79 @@ test('a Equipe não oferece exceção num procedimento com comissão geral (nem 
   expect(await regrasDo(rede.procedureId)).toEqual([{ professional_id: null, type: 'PERCENTAGE', value: 25 }])
 })
 
+const procPeloNome = async (nome: string) => (await db().from('procedures').select('id').eq('tenant_id', rede.tenantId).eq('name', nome).maybeSingle()).data?.id as string | undefined
+
+test('o modal de criar procedimento já define a comissão — a mesma para todos', async ({ browser }) => {
+  await como(browser, gestor, async p => {
+    await p.goto('/admin/procedures')
+    await p.getByRole('button', { name: 'Novo procedimento' }).first().click()
+    const dialogo = p.locator('dialog[open]')
+    await dialogo.locator('input[name="name"]').fill(NOVO)
+    await dialogo.locator('select[name="category"]').selectOption('Outros')
+    await dialogo.locator('input[name="duration_min"]').fill('40')
+    await dialogo.locator('input[name="price"]').fill('300,00')
+    const comissao = dialogo.locator('[aria-label="Comissão do procedimento"]')
+    await expect(comissao.getByRole('button', { name: 'Por profissional' })).toHaveAttribute('aria-pressed', 'true')
+    await comissao.getByRole('button', { name: 'A mesma para todos' }).click()
+    await comissao.getByRole('button', { name: 'Percentual' }).click()
+    await comissao.getByLabel('Valor da comissão geral').fill('30')
+    await dialogo.getByRole('button', { name: 'Criar procedimento' }).click()
+    await expect(dialogo).toBeHidden()
+  })
+  const id = await procPeloNome(NOVO)
+  expect(id, 'o procedimento nasceu').toBeTruthy()
+  expect(await regrasDo(id!)).toEqual([{ professional_id: null, type: 'PERCENTAGE', value: 30 }])
+})
+
+test('o modal de editar abre com a comissão atual e grava a mudança junto', async ({ browser }) => {
+  await como(browser, gestor, async p => {
+    await p.goto('/admin/procedures')
+    await p.locator('tr', { hasText: PROC_B }).getByRole('button', { name: 'Editar' }).click()
+    const dialogo = p.locator('dialog[open]')
+    const comissao = dialogo.locator('[aria-label="Comissão do procedimento"]')
+    await expect(comissao.getByRole('button', { name: 'Por profissional' })).toHaveAttribute('aria-pressed', 'true')
+    const prof = comissao.locator(`[data-profissional="${rede.professionalId}"]`)
+    await expect(prof.getByRole('button', { name: 'Valor fixo' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(prof.getByLabel(/^Valor de /)).toHaveValue('50')
+    await prof.getByRole('button', { name: 'Padrão' }).click()
+    const eu = comissao.locator(`[data-profissional="${gestor.userId}"]`)
+    await eu.getByRole('button', { name: 'Percentual' }).click()
+    await eu.getByLabel(/^Valor de /).fill('15')
+    await dialogo.getByRole('button', { name: 'Salvar alterações' }).click()
+    await expect(dialogo).toBeHidden()
+    await expect(p.locator(`[data-comissao-procedimento="${procB}"]`)).toHaveText('Por profissional · 1')
+  })
+  expect(await regrasDo(procB)).toEqual([{ professional_id: gestor.userId, type: 'PERCENTAGE', value: 15 }])
+})
+
 test('quem só vê o financeiro não vê nem muda a comissão do procedimento', async ({ browser }) => {
   await como(browser, soVe, async p => {
     await p.goto('/admin/procedures')
     await expect(p.getByRole('heading', { name: 'Procedimentos' })).toBeVisible()
     await expect(p.locator('[data-comissao-procedimento]')).toHaveCount(0)
+
+    await p.getByRole('button', { name: 'Novo procedimento' }).first().click()
+    const dialogo = p.locator('dialog[open]')
+    await expect(dialogo.locator('[aria-label="Comissão do procedimento"]')).toHaveCount(0)
+    await dialogo.locator('input[name="name"]').fill(FURO)
+    await dialogo.locator('select[name="category"]').selectOption('Outros')
+    await dialogo.locator('input[name="price"]').fill('100,00')
+    // O campo plantado à mão (a tela não o mostra): a action recusa antes de gravar.
+    await dialogo.locator('form').evaluate(form => {
+      const campo = document.createElement('input')
+      campo.type = 'hidden'; campo.name = 'comissao'
+      campo.value = JSON.stringify({ modo: 'GERAL', geral: { tipo: 'PERCENTAGE', valor: 90 } })
+      form.appendChild(campo)
+    })
+    await dialogo.getByRole('button', { name: 'Criar procedimento' }).click()
+    await expect(dialogo.getByText('Seu cargo não muda a comissão dos procedimentos.')).toBeVisible()
+    await expect.poll(() => procPeloNome(FURO)).toBeUndefined()
+    await p.keyboard.press('Escape')
+
     const r = await chamarAcao(p, 'actions/comissoes.ts', 'salvarComissaoDoProcedimento', '/admin/procedures', [procB, {
       modo: 'GERAL', geral: { tipo: 'PERCENTAGE', valor: 90 },
     }])
     expect(r.texto).not.toContain('"ok":true')
   })
-  expect(await regrasDo(procB)).toEqual([{ professional_id: rede.professionalId, type: 'FIXED_AMOUNT', value: 50 }])
+  expect(await regrasDo(procB)).toEqual([{ professional_id: gestor.userId, type: 'PERCENTAGE', value: 15 }])
 })

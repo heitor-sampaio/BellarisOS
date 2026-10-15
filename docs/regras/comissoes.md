@@ -17,7 +17,9 @@ Decisões do Heitor; o plano inteiro está no DEVLOG ("Comissões").
   senão nenhuma (o atendimento conclui sem comissão, e a tela avisa quem
   "atende" sem padrão).
 - **A comissão do PROCEDIMENTO** (2026-10-15; chip na coluna "Comissão" de
-  Procedimentos, `ComissaoDoProcedimento`): cada procedimento é "a mesma para
+  Procedimentos e seção "Comissão" do modal de criar/editar — o MESMO
+  `EditorDeComissao`; o modal só manda o campo `comissao` se ele mudou, e
+  `comissaoDoFormulario` confere a permissão ANTES de gravar o procedimento): cada procedimento é "a mesma para
   todos" (a GERAL: linha de `commission_rules` com `professional_id` NULO) ou
   "por profissional" (as exceções acima, vistas pelo procedimento; quem fica no
   "Padrão" segue o padrão dele). **A geral vence tudo** — exceção e padrão:

@@ -3,6 +3,9 @@
 import { useActionState, useState, useEffect, useEffectEvent } from 'react'
 import { Plus, Trash2, CheckCircle2, ChevronDown } from 'lucide-react'
 import { addProcedure, updateProcedure } from '@/actions/procedures'
+import {
+  EditorDeComissao, entradaDaComissao, estadoInicialDaComissao, type DadosDaComissao,
+} from '@/components/admin/comissao-do-procedimento'
 
 /**
  * As categorias vêm da REDE (Procedimentos → Categorias, 2026-10-14). Eram
@@ -78,6 +81,8 @@ interface ProcedureFormProps {
   modelos?: ModelosDoProcedimento
   /** As categorias ativas da rede. */
   categorias?: string[]
+  /** A comissão do procedimento — só para quem muda (financeiro da rede). Ausente, a seção nem aparece. */
+  comissao?: DadosDaComissao
 }
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
@@ -114,7 +119,19 @@ export function ProcedureForm(props: ProcedureFormProps) {
   return props.existing ? <EditProcedureForm {...props} /> : <CreateProcedureForm {...props} />
 }
 
-function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos, categorias }: InnerProps) {
+function ProcedureFormInner({ branches, products, fichas = [], existing, onSuccess, onCancel, isEdit, state, formAction, pending, pontosDeFidelidade = false, modelos, categorias, comissao }: InnerProps) {
+
+  // A comissão (2026-10-15): o mesmo editor do chip da tabela. Só vai ao
+  // servidor se MUDOU — editar a descrição não regrava a comissão.
+  const [estadoComissao, setEstadoComissao] = useState(() => comissao ? estadoInicialDaComissao(comissao) : null)
+  const [erroComissao, setErroComissao] = useState<string | null>(null)
+  const [comissaoInicial] = useState(() => {
+    if (!comissao) return null
+    const r = entradaDaComissao(estadoInicialDaComissao(comissao), comissao.profissionais)
+    return 'entrada' in r ? JSON.stringify(r.entrada) : null
+  })
+  const lidaComissao = comissao && estadoComissao ? entradaDaComissao(estadoComissao, comissao.profissionais) : null
+  const comissaoMudou = !!lidaComissao && 'entrada' in lidaComissao && JSON.stringify(lidaComissao.entrada) !== comissaoInicial
 
   const [selectedBranches, setSelectedBranches] = useState<string[]>(existing?.branch_ids ?? [])
   const [insumos, setInsumos] = useState<{ product_id: string; quantity: number; unit_cost: number }[]>(
@@ -254,7 +271,15 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
   const handleOtherCostsInput = makeCurrencyHandler(setOtherCosts)
 
   return (
-    <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
+      onSubmit={e => {
+        // Valor faltando na comissão: barra aqui, antes de criar o procedimento.
+        if (lidaComissao && 'erro' in lidaComissao) { e.preventDefault(); setErroComissao(lidaComissao.erro) }
+        else setErroComissao(null)
+      }}>
+      {comissaoMudou && lidaComissao && 'entrada' in lidaComissao && (
+        <input type="hidden" name="comissao" value={JSON.stringify(lidaComissao.entrada)} />
+      )}
       {isEdit && <input type="hidden" name="_procedureId" value={existing!.id} />}
       <input type="hidden" name="branch_ids"     value={JSON.stringify(selectedBranches)} />
       <input type="hidden" name="products"       value={JSON.stringify(insumos)} />
@@ -577,6 +602,20 @@ function ProcedureFormInner({ branches, products, fichas = [], existing, onSucce
                 )
               })}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* -- Comissão (só o financeiro da rede) -- */}
+      {comissao && estadoComissao && (
+        <div>
+          <p style={{ fontSize: 'var(--text-xs-sz)', fontWeight: 'var(--weight-bold)', color: 'var(--text-muted)', letterSpacing: '0.04em', marginBottom: 10 }}>
+            COMISSÃO
+          </p>
+          <EditorDeComissao estado={estadoComissao} onChange={e => { setEstadoComissao(e); setErroComissao(null) }}
+            profissionais={comissao.profissionais} inicialComValor={comissao.porProfissional.length} />
+          {erroComissao && (
+            <p role="alert" style={{ marginTop: 8, fontSize: 'var(--text-xs-sz)', color: 'var(--danger)', fontWeight: 'var(--weight-semibold)' }}>{erroComissao}</p>
           )}
         </div>
       )}

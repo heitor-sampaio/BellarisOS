@@ -1316,6 +1316,11 @@ profissional · N" ou "Padrão de cada um". A janela escolhe entre os dois:
 - **Por profissional** — as exceções de sempre, vistas pelo procedimento; quem
   fica no "Padrão" segue a comissão padrão dele.
 
+O mesmo editor está no modal de **criar e editar procedimento** (seção
+"Comissão", pedido do Heitor no mesmo dia): grava junto com o procedimento, só
+se mudou, e quem não tem o financeiro nem vê a seção — o campo plantado à mão
+é recusado antes de gravar o procedimento.
+
 A conclusão do atendimento (avulso, plano, pacote, pré-pago) lê as gerais
 junto. Migration `20261015000001`; regra em `docs/regras/comissoes.md`.
 

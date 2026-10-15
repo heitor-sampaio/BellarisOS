@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { getTenantContext, assertPermission } from '@/lib/auth'
+import { comissaoDoFormulario, gravarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 import { createClient as createSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
@@ -117,6 +118,10 @@ async function addProcedureInterno(
   if (!name || !category)                        return { error: 'Nome e categoria são obrigatórios.' }
   if (isNaN(durationMin) || durationMin < 1)     return { error: 'Duração inválida.' }
   if (isNaN(price) || price < 0)                 return { error: 'Preço inválido.' }
+  // A comissão do procedimento (2026-10-15) vem junto, mas é do financeiro:
+  // conferida aqui, antes de qualquer gravação.
+  const comissao = comissaoDoFormulario(ctx, formData)
+  if (comissao.error) return { error: comissao.error }
 
   const admin = createAdminClient()
   const recusa = await idsDoFormularioDaRede(admin, ctx.tenantId!, {
@@ -178,6 +183,15 @@ async function addProcedureInterno(
   // procedimento recém-criado sem eles descreveria um estado que durou
   // milissegundos e nunca existiu para o usuário.
   await procedimentoCriado(procedure.id as string, ctx)
+
+  // Por último: se falhar, o procedimento já existe — a tela diz, e a
+  // comissão se acerta pelo chip da tabela.
+  if (comissao.entrada) {
+    try { await gravarComissaoDoProcedimento(ctx, procedure.id as string, comissao.entrada) } catch (e) {
+      revalidatePath('/admin/procedures')
+      return { error: `Procedimento criado, mas a comissão não foi salva: ${mensagemDoErro(e)}` }
+    }
+  }
 
   revalidatePath('/admin/procedures')
   revalidateTag(`procedures:${ctx.tenantId!}`, 'max')
@@ -246,6 +260,8 @@ async function updateProcedureInterno(
 
   if (!name || !category)                    return { error: 'Nome e categoria são obrigatórios.' }
   if (isNaN(price) || price < 0)             return { error: 'Preço inválido.' }
+  const comissao = comissaoDoFormulario(ctx, formData)
+  if (comissao.error) return { error: comissao.error }
 
   const admin = createAdminClient()
   const recusa = await idsDoFormularioDaRede(admin, ctx.tenantId!, {
@@ -304,6 +320,13 @@ async function updateProcedureInterno(
   // Só quando o preço mudou de verdade. Editar a descrição e salvar é o uso
   // comum desta tela; emitir aí faria a automação de preço disparar à toa.
   if (precoMudou) await procedimentoPrecoAlterado(procedureId, ctx, precoAnterior)
+
+  if (comissao.entrada) {
+    try { await gravarComissaoDoProcedimento(ctx, procedureId, comissao.entrada) } catch (e) {
+      revalidatePath('/admin/procedures')
+      return { error: `Procedimento salvo, mas a comissão não: ${mensagemDoErro(e)}` }
+    }
+  }
 
   revalidatePath('/admin/procedures')
   revalidateTag(`procedures:${ctx.tenantId!}`, 'max')

@@ -4,6 +4,7 @@ import { useRef, useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Sparkles, X } from 'lucide-react'
 import { ProcedureForm, type ModelosDoProcedimento } from './procedure-form'
+import type { DadosDaComissao } from './comissao-do-procedimento'
 
 interface Branch  { id: string; name: string }
 interface Product { id: string; name: string; unit: string; branch_name: string; cost_price?: number | null }
@@ -38,9 +39,11 @@ interface ProcedureModalProps {
   modelos?: ModelosDoProcedimento
   /** As categorias ativas da rede (Procedimentos → Categorias). */
   categorias?: string[]
+  /** A comissão do procedimento — só para o financeiro da rede. */
+  comissao?: DadosDaComissao
 }
 
-export function ProcedureModal({ branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false, modelos, categorias }: ProcedureModalProps) {
+export function ProcedureModal({ branches, products, fichas = [], existing, trigger, pontosDeFidelidade = false, modelos, categorias, comissao }: ProcedureModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const router    = useRouter()
 
@@ -124,6 +127,7 @@ export function ProcedureModal({ branches, products, fichas = [], existing, trig
               pontosDeFidelidade={pontosDeFidelidade}
               modelos={modelos}
               categorias={categorias}
+              comissao={comissao}
               onSuccess={handleSuccess}
               onCancel={close}
             />

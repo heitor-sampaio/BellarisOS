@@ -5,7 +5,7 @@ import { ProcedureModal } from '@/components/admin/procedure-modal'
 import { CategoriasDeProcedimento } from '@/components/admin/categorias-de-procedimento'
 import { categoriasAtivasDaRede } from '@/lib/procedimentos/categorias'
 import { ToggleProcedureBtn } from '@/components/admin/toggle-procedure-btn'
-import { ComissaoDoProcedimento } from '@/components/admin/comissao-do-procedimento'
+import { ComissaoDoProcedimento, type DadosDaComissao } from '@/components/admin/comissao-do-procedimento'
 import { comissaoDosProcedimentos } from '@/lib/comissoes/leitura'
 import { Pencil, Smartphone } from 'lucide-react'
 import { RealtimeRefresher } from '@/components/shared/realtime-refresher'
@@ -76,6 +76,11 @@ export default async function AdminProceduresPage({
     categoriasAtivasDaRede(ctx.tenantId!),
   ])
   const comissao = podeComissao ? await comissaoDosProcedimentos(ctx.tenantId!) : null
+  // O que o chip e o modal de editar recebem; o de criar começa sem nada.
+  const dadosDaComissao = (id: string): DadosDaComissao | undefined => comissao ? {
+    geral: comissao.gerais.get(id) ?? null, porProfissional: comissao.porProfissional.get(id) ?? [], profissionais: comissao.profissionais,
+  } : undefined
+  const comissaoNova: DadosDaComissao | undefined = comissao ? { geral: null, porProfissional: [], profissionais: comissao.profissionais } : undefined
 
   const fichas = (fichaRows ?? []) as { id: string; name: string }[]
   // Termo e contrato que o procedimento pode ligar — só quem edita precisa.
@@ -156,7 +161,7 @@ export default async function AdminProceduresPage({
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {/* O catálogo é da rede: as categorias também (a mesma trava de criar procedimento). */}
             {ctx.branchId === null && <CategoriasDeProcedimento ativas={categorias.length} />}
-            <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} />
+            <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} comissao={comissaoNova} />
           </div>
         )}
       </div>
@@ -275,10 +280,7 @@ export default async function AdminProceduresPage({
                       </td>
                       {comissao && (
                         <td data-label="Comissão" data-par style={{ padding: '13px 16px' }}>
-                          <ComissaoDoProcedimento procedimento={{ id: p.id, nome: p.name }}
-                            geral={comissao.gerais.get(p.id) ?? null}
-                            porProfissional={comissao.porProfissional.get(p.id) ?? []}
-                            profissionais={comissao.profissionais} />
+                          <ComissaoDoProcedimento procedimento={{ id: p.id, nome: p.name }} dados={dadosDaComissao(p.id)!} />
                         </td>
                       )}
                       <td data-label="" style={{ padding: '13px 16px' }}>
@@ -292,6 +294,7 @@ export default async function AdminProceduresPage({
                               pontosDeFidelidade={pontosPorProcedimento}
                               modelos={modelos}
                               categorias={categorias}
+                              comissao={dadosDaComissao(p.id)}
                               trigger={
                                 <button type="button" className="btn-ghost" style={{ fontSize: 'var(--text-xs-sz)', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <Pencil size={13} /> Editar
@@ -319,7 +322,7 @@ export default async function AdminProceduresPage({
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm-sz)', marginBottom: 16 }}>
             Nenhum procedimento cadastrado na rede ainda.
           </p>
-          <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} />
+          <ProcedureModal branches={branchList} products={productList} fichas={fichas} pontosDeFidelidade={pontosPorProcedimento} modelos={modelos} categorias={categorias} comissao={comissaoNova} />
         </div>
       )}
     </div>

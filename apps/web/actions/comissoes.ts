@@ -20,6 +20,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { gravar, ler, mensagemDoErro } from '@/lib/db'
 import { EntradaDaConfigDeComissao, EntradaDasTaxas, EntradaDasRegras, EntradaDaComissaoDoProcedimento } from '@/lib/comissoes/config'
 import { configDeComissaoDaRede } from '@/lib/comissoes/leitura'
+import { gravarComissaoDoProcedimento } from '@/lib/comissoes/gravacao'
 import { periodoDaChave } from '@/lib/comissoes/periodo'
 
 type Resultado = { error?: string; ok?: true }
@@ -115,13 +116,7 @@ export async function salvarComissaoDoProcedimento(procedimentoId: string, entra
     if (!lido.success) return { error: lido.error.issues[0]?.message ?? 'Dados inválidos.' }
 
     // A função confere que o procedimento e cada profissional são da rede.
-    const e = lido.data
-    await gravar(createAdminClient().rpc('comissao_do_procedimento_definir', {
-      p_tenant: ctx.tenantId!, p_procedimento: procedimentoId,
-      p_geral: e.modo === 'GERAL' ? e.geral : null,
-      p_profissionais: e.modo === 'POR_PROFISSIONAL' ? e.profissionais : [],
-      p_ator: ctx.internalUserId ?? null,
-    }), 'salvar a comissão do procedimento')
+    await gravarComissaoDoProcedimento(ctx, procedimentoId, lido.data)
     revalidar()
     return { ok: true }
   } catch (e) {
