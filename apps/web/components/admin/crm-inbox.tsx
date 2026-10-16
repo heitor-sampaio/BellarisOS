@@ -576,6 +576,16 @@ function Bubble({
         {!soRotulo && (
           <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.content}</p>
         )}
+        {/* O porquê, quando o provedor disse: "sem forma de pagamento na Meta"
+            pede um cartão, não um reenvio (2026-10-15). */}
+        {falhou && msg.erro_texto && (
+          <p data-motivo-da-falha style={{
+            margin: '6px 0 0', fontSize: 'var(--text-xs-sz)', fontWeight: 600, lineHeight: 1.4,
+            color: 'var(--danger)',
+          }}>
+            {msg.erro_texto}
+          </p>
+        )}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end', marginTop: 4,
         }}>

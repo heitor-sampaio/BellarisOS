@@ -18,6 +18,7 @@ import { revalidatePath } from 'next/cache'
 import { resolverCanal } from '@/lib/channels/factory'
 import { estadoDaJanela } from '@/lib/channels/window'
 import { enviarNaConversa, ultimoInboundNaCaixa } from '@/lib/inbox/enviar'
+import { falhaDoEnvio, mensagemDeFalha } from '@/lib/inbox/falhas'
 import {
   urlDaMidia, guardarUpload, classificarArquivo, validarArquivo,
 } from '@/lib/inbox/media'
@@ -134,6 +135,8 @@ export interface Message {
   edited_at?:      string | null
   /** Anúncio de origem, quando a mensagem veio de um clique em anúncio. */
   anuncio?:        AnuncioDaMensagem | null
+  /** Por que não saiu (status `failed`): o texto de `lib/inbox/falhas`. */
+  erro_texto?:     string | null
 }
 
 /**
@@ -543,7 +546,7 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 
   const data = await ler(admin
     .from('messages')
-    .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at, media_type, media_path, external_id, reply_to_external_id, edited_at, ad_referral')
+    .select('id, conversation_id, direction, content, channel, status, sent_by_name, is_read, created_at, media_type, media_path, external_id, reply_to_external_id, edited_at, ad_referral, erro_texto')
     .eq('conversation_id', conversationId)
     .eq('tenant_id', ctx.tenantId!)
     .order('created_at', { ascending: true })
@@ -1634,27 +1637,6 @@ export async function createConversationForLead(
 }
 
 /**
- * Erro do provedor traduzido para quem atende.
- *
- * O texto cru da Graph API ('OAuthException', 'fbtrace_id'…) não diz nada para
- * a recepção e ainda expõe interno. O detalhe fica no log do servidor.
- */
-function mensagemDeFalha(err: unknown): string {
-  const texto = err instanceof Error ? err.message : String(err)
-
-  if (/OAuth|access token|190/i.test(texto)) {
-    return 'A conexão com o canal expirou. Reconecte em Configurações → Integrações.'
-  }
-  if (/outside.*window|24|messaging_type|10/i.test(texto)) {
-    return 'A janela de resposta fechou. O contato precisa escrever de novo.'
-  }
-  if (/rate limit|too many/i.test(texto)) {
-    return 'Muitas mensagens em pouco tempo. Tente de novo em instantes.'
-  }
-  return 'Não foi possível enviar a mensagem. Tente de novo; se persistir, confira a integração do canal.'
-}
-
-/**
  * O inbox existe nos dois portais. Revalidar só '/admin/inbox' deixava a
  * unidade com a lista de conversas velha depois de responder.
  */
@@ -1916,9 +1898,14 @@ export async function sendTemplateMessage(
     }
   } catch (sendErr) {
     console.error('[sendTemplateMessage]', sendErr)
-    await gravar(admin.from('messages').update({ status: 'failed' }).eq('id', criada.id), 'marcar a mensagem como falhada')
+    // O motivo fica na mensagem (a bolha o mostra) — o 131042, sem forma de
+    // pagamento na Meta, é o que mais chega aqui.
+    const falha = falhaDoEnvio(sendErr)
+    await gravar(admin.from('messages')
+      .update({ status: 'failed', erro_codigo: falha.codigo, erro_texto: falha.texto })
+      .eq('id', criada.id), 'marcar a mensagem como falhada')
     criada.status = 'failed'
-    return { ok: false, error: mensagemDeFalha(sendErr) }
+    return { ok: false, error: falha.texto }
   }
 
   revalidarInbox()
@@ -2072,7 +2059,7 @@ export async function sendMediaMessage(
     ?? (conv as { contact_external_id: string | null }).contact_external_id
   if (!destino) {
     return falhaComAnexo(admin, criada.id, msgRow as unknown as Message, guardado.path,
-      'Esta conversa não tem um destinatário identificado.')
+      { codigo: null, texto: 'Esta conversa não tem um destinatário identificado.' })
   }
 
   try {
@@ -2102,7 +2089,7 @@ export async function sendMediaMessage(
   } catch (sendErr) {
     console.error('[sendMediaMessage]', sendErr)
     return falhaComAnexo(admin, criada.id, msgRow as unknown as Message, guardado.path,
-      mensagemDeFalha(sendErr))
+      falhaDoEnvio(sendErr))
   }
 
   revalidarInbox()
@@ -2121,10 +2108,12 @@ async function falhaComAnexo(
   messageId: string,
   msg: Message,
   path: string,
-  error: string,
+  falha: { codigo: number | null; texto: string },
 ): Promise<{ ok: false; message: Message; error: string }> {
-  await gravar(admin.from('messages').update({ status: 'failed' }).eq('id', messageId), 'marcar a mensagem como falhada')
-  return { ok: false, error, message: { ...(await comUrl(msg, path)), status: 'failed' } }
+  await gravar(admin.from('messages')
+    .update({ status: 'failed', erro_codigo: falha.codigo, erro_texto: falha.texto })
+    .eq('id', messageId), 'marcar a mensagem como falhada')
+  return { ok: false, error: falha.texto, message: { ...(await comUrl(msg, path)), status: 'failed', erro_texto: falha.texto } }
 }
 
 /** A bolha precisa do link assinado; o banco só guarda o caminho. */

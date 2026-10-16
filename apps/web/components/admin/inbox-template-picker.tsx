@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
-import { X, Send, AlertCircle } from 'lucide-react'
+import { X, Send, AlertCircle, Receipt } from 'lucide-react'
 import {
   getTemplatesParaConversa, sendTemplateMessage,
   type TemplateDaConversa, type Message,
 } from '@/actions/inbox'
 import { interpolar } from '@/lib/templates/core'
+import { avisoDoTemplate } from '@/lib/whatsapp/cobranca'
 import { JanelaModal } from '@/components/shared/janela-modal'
 
 /**
@@ -119,6 +120,27 @@ export function InboxTemplatePicker({
 
               {sel && (
                 <>
+                  {/* Quanto a Meta cobra, ANTES de enviar — na conta da clínica,
+                      não na nossa (2026-10-15). Marketing com a janela aberta é
+                      o caso caro: uma resposta digitada diria o mesmo. */}
+                  {(() => {
+                    const aviso = avisoDoTemplate(sel.category, !janelaFechada)
+                    const alerta = aviso.tom === 'alerta'
+                    return (
+                      <p data-custo-do-template style={{
+                        margin: 0, display: 'flex', alignItems: 'flex-start', gap: 7,
+                        padding: '9px 12px', borderRadius: 8, lineHeight: 1.5,
+                        fontSize: 'var(--text-sm-sz)',
+                        background: alerta ? 'var(--warning-soft)' : 'var(--bg-app)',
+                        border: `1px solid ${alerta ? 'var(--warning-border)' : 'var(--border)'}`,
+                        color: alerta ? 'var(--warning)' : 'var(--text-muted)',
+                      }}>
+                        <Receipt size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+                        <span>{aviso.texto}</span>
+                      </p>
+                    )
+                  })()}
+
                   {sel.variaveis.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       <label className="overline" style={{ color: 'var(--text-muted)' }}>

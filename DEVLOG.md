@@ -1300,6 +1300,36 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-15 — O que a Meta cobra da clínica, dito antes e contado depois
+
+Pergunta do Heitor: template e mensagem fora da janela a Meta cobra — como
+lidar? Como somos **Tech Provider**, a conta do WhatsApp é da clínica e é ela
+quem paga a Meta, com o cartão cadastrado lá; sem ele, a Meta recusa todo
+template (131042). Desde 01/10/2026 a Meta cobra também a resposta digitada
+acima de 1.000 por número no mês (R$ 0,035; marketing R$ 0,3217, utilidade e
+autenticação R$ 0,035). O sistema não cobra nada — passa a INFORMAR:
+- **antes de enviar**: o seletor de template do inbox mostra categoria e
+  preço, e marketing com a janela aberta vira alerta (a resposta digitada sai
+  mais barata); a tela de templates mostra o preço da categoria e avisa que a
+  Meta reclassifica utilidade com cara de promoção; conectar um número oficial
+  avisa que a fatura é na conta da clínica e pede a forma de pagamento;
+- **depois**: cada mensagem guarda o que a Meta marcou no status (cobrada?
+  categoria) e o motivo da falha; Configurações → WhatsApp mostra, por número
+  oficial, o cobrado no mês com a estimativa em reais e as respostas grátis
+  usadas, e um aviso vermelho quando a Meta recusou por falta de pagamento,
+  com o link para o Gerenciador do WhatsApp.
+
+Achado no caminho: o motivo de uma falha era decidido por pedaços do texto
+("OAuth", "24", "10"). Todo erro da Cloud API traz `OAuthException`, então
+**qualquer recusa da Meta aparecia como "a conexão expirou"** — com o 131042,
+a clínica iria reconectar o número quando faltava um cartão. Agora decide pelo
+código (`lib/inbox/falhas.ts`), e a bolha que não saiu diz por quê.
+
+A tabela de preços é uma só (`lib/whatsapp/cobranca.ts`) e é cópia nossa da
+da Meta: muda quando a Meta mudar. O "cobrado" não depende dela — é o
+`billable` que a Meta manda em cada mensagem. Migration `20261015000002`;
+regra em `docs/regras/whatsapp-push.md` §9.8.2.
+
 ### 2026-10-15 — A comissão pelo procedimento: a mesma para todos ou por profissional
 
 Pedido do Heitor: cada procedimento pode ter uma comissão GERAL, igual para
@@ -6202,6 +6232,10 @@ verdade. O que vale:
   `smb_message_echoes`, conferir `app.bellarisos.com` nos domínios
   permitidos do app (sem isso a janela não abre), e o App Review.
   Instagram e Messenger seguem verificados só com payload simulado.
+- **A tabela de preços da Meta é cópia nossa** (`TABELA_DA_META`, vigente
+  desde 01/10/2026): conferir quando a Meta anunciar mudança. O `pricing` e o
+  131042 do status só foram provados com a Graph falsa — conferir na primeira
+  conexão real que o status chega com eles.
 - ~~`META_VERIFY_TOKEN` não está no Railway~~ **configurado em 2026-09-30**
   (Tech Provider): a rota do WhatsApp aceita o token do app no handshake e o
   segredo do app na assinatura. URL e token colados no painel pelo Heitor no

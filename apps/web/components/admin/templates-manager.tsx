@@ -15,6 +15,7 @@ import {
   CATEGORIAS, STATUS_META, LIMITES, extrairVariaveis, interpolar, normalizarNome,
   type TemplateButton, type TemplateCategoria, type TemplateStatus,
 } from '@/lib/templates/core'
+import { categoriaDoTemplate, precoDaCategoria, formatarPreco } from '@/lib/whatsapp/cobranca'
 
 const IDIOMAS = [
   { code: 'pt_BR', label: 'Português (Brasil)' },
@@ -482,6 +483,15 @@ export function TemplatesManager({
                   </div>
                   <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)', margin: 0, lineHeight: 1.5 }}>
                     {CATEGORIAS.find(c => c.value === form.category)?.hint}
+                  </p>
+                  {/* O preço da categoria, da tabela única (lib/whatsapp/cobranca).
+                      Utilidade com cara de promoção a Meta reclassifica — e cobra
+                      como marketing, quase dez vezes mais (2026-10-15). */}
+                  <p data-preco-da-categoria style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+                    A Meta cobra cerca de{' '}
+                    <strong>{formatarPreco(precoDaCategoria(categoriaDoTemplate(form.category)))}</strong>{' '}
+                    por mensagem entregue, na conta do WhatsApp da clínica.
+                    {form.category === 'UTILITY' && ' Texto com cara de promoção é reclassificado pela Meta como marketing — e cobrado como tal.'}
                   </p>
                 </div>
 

@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { InboundMsg, ChannelKind, SendProvider, CaixaReceptora } from '@/lib/channels/types'
+import type { InboundMsg, ChannelKind, SendProvider, CaixaReceptora, StatusUpdate } from '@/lib/channels/types'
+import { textoDaFalhaDaMeta } from '@/lib/inbox/falhas'
 import { guardarMidia } from '@/lib/inbox/media'
 import { resolveLeadSource } from '@estetica-os/utils'
 import { emitirEventoDeConversa } from '@/lib/events/conversa'
@@ -641,11 +642,24 @@ export async function updateMessageStatus(
   tenantId:   string,
   externalId: string,
   status:     string,
+  extras?:    Pick<StatusUpdate, 'cobranca' | 'erro'>,
 ) {
   const admin = createAdminClient()
+  const mudancas: Record<string, unknown> = { status }
+  // A cobrança e o erro só entram quando vêm — o "lido" chega sem `pricing` e
+  // não pode apagar o que o "entregue" gravou (2026-10-15).
+  if (extras?.cobranca) {
+    mudancas.cobranca_categoria = extras.cobranca.categoria
+    mudancas.cobranca_tipo      = extras.cobranca.tipo
+    mudancas.cobrada            = extras.cobranca.cobrada
+  }
+  if (extras?.erro) {
+    mudancas.erro_codigo = extras.erro.codigo
+    mudancas.erro_texto  = textoDaFalhaDaMeta(extras.erro.codigo, extras.erro.titulo)
+  }
   const { error } = await admin
     .from('messages')
-    .update({ status })
+    .update(mudancas)
     .eq('external_id', externalId)
     .eq('tenant_id', tenantId)
 

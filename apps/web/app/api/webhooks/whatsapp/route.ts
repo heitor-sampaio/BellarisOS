@@ -100,7 +100,8 @@ export async function POST(req: NextRequest) {
   // Status update
   const statusUpdate = provider.parseStatus(body)
   if (statusUpdate) {
-    await updateMessageStatus(tenantId, statusUpdate.externalId, statusUpdate.status)
+    // Com o que a Meta cobrou e o motivo da falha, quando vierem.
+    await updateMessageStatus(tenantId, statusUpdate.externalId, statusUpdate.status, statusUpdate)
     return NextResponse.json({ ok: true })
   }
 

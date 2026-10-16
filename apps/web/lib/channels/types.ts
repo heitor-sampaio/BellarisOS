@@ -96,6 +96,13 @@ export interface InboundMsg {
 export interface StatusUpdate {
   externalId: string
   status:     'sent' | 'delivered' | 'read' | 'failed'
+  /**
+   * O que a Meta cobrou por esta mensagem (`pricing` do status da Cloud API).
+   * Só vem no `sent`/`delivered`; o `read` chega sem ele e não o apaga.
+   */
+  cobranca?:  { cobrada: boolean; categoria: string; tipo: string | null }
+  /** Por que a Meta não entregou (`errors[0]` do status `failed`). */
+  erro?:      { codigo: number | null; titulo: string | null }
 }
 
 /**

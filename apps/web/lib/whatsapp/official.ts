@@ -29,7 +29,11 @@ export interface MensagemCloud {
 interface EntregaCloud {
   entry?: { changes?: { value?: {
     messages?: MensagemCloud[]
-    statuses?: { id?: string; status?: string }[]
+    statuses?: {
+      id?: string; status?: string
+      pricing?: { billable?: boolean; category?: string; type?: string }
+      errors?: { code?: number; title?: string }[]
+    }[]
     contacts?: { wa_id?: string; user_id?: string; profile?: { name?: string } }[]
   } }[] }[]
 }
@@ -284,7 +288,16 @@ export class OfficialAPIProvider implements WhatsAppProvider {
     if (!statusObj) return null
     const status = STATUS_MAP[statusObj.status as string]
     if (!status) return null
-    return { externalId: statusObj.id as string, status }
+    const out: StatusUpdate = { externalId: statusObj.id as string, status }
+    // O que a Meta cobrou (2026-10-15): é a fonte do "cobrado este mês" — a
+    // regra de cobrança muda, e o `billable` de cada mensagem não erra.
+    const preco = statusObj.pricing
+    if (preco?.category) {
+      out.cobranca = { cobrada: preco.billable === true, categoria: preco.category, tipo: preco.type ?? null }
+    }
+    const erro = statusObj.errors?.[0]
+    if (erro) out.erro = { codigo: typeof erro.code === 'number' ? erro.code : null, titulo: erro.title ?? null }
+    return out
   }
 
   // Verify webhook subscription (GET request from Meta)

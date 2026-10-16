@@ -280,6 +280,43 @@ servidor), e a escolha da tela vira o `featureType` —
   playwright.build.config e no workflow; porta fixa 3199). Prova:
   `e2e/whatsapp-cadastro-incorporado.spec.ts` — contra o build.
 
+### 9.8.2 O que a Meta cobra (2026-10-15)
+
+**Quem paga a Meta é a CLÍNICA**, na conta do WhatsApp dela (a WABA é dela; o
+BellarisOS é Tech Provider, não Solution Partner — não revende nem repassa).
+Sem forma de pagamento na conta, a Meta recusa todo template (código
+`131042`); a conversa livre continua. O sistema não cobra: INFORMA.
+- **A tabela é uma só**: `lib/whatsapp/cobranca.ts` (`TABELA_DA_META`, Brasil,
+  em reais, vigente desde 01/10/2026 — marketing R$ 0,3217; utilidade,
+  autenticação e resposta R$ 0,035; 1.000 respostas digitadas grátis por número
+  no mês). Mudou a tabela da Meta, muda ali — seletor de template, tela de
+  templates, aviso de conexão e estimativa do mês leem dela.
+- **Antes de enviar**: o seletor de template do inbox mostra a categoria e o
+  preço (`avisoDoTemplate`); marketing com a janela ABERTA vira alerta (a
+  resposta digitada diria o mesmo, mais barata). A tela de templates mostra o
+  preço da categoria e avisa que utilidade com cara de promoção a Meta
+  reclassifica. Conectar um número oficial mostra `AVISO_DE_COBRANCA`.
+- **Depois**: o status da Cloud API traz `pricing` (cobrada? categoria) e
+  `errors`; `parseStatus` os lê e `updateMessageStatus` grava em `messages`
+  (`cobrada`, `cobranca_categoria`, `cobranca_tipo`, `erro_codigo`,
+  `erro_texto`). O `read` chega sem `pricing` e NÃO apaga o que o `delivered`
+  gravou. O que foi cobrado é o que a Meta marcou (`billable`), nunca uma
+  regra nossa — a regra muda (em 01/10/2026 passou a cobrar resposta acima de
+  1.000), o `billable` não erra. Só os REAIS são estimados, pela tabela.
+- **Configurações → WhatsApp**, na linha de cada número oficial: o mês na Meta
+  (`metrics_whatsapp_cobranca`, contando só o ENTREGUE, via
+  `lib/metrics/whatsapp`) e o aviso de pagamento recusado
+  (`whatsapp_pagamento_recusado`: um 131042 nos últimos 7 dias sem template
+  entregue depois), com o link para o Gerenciador do WhatsApp da Meta.
+- **O motivo de uma falha decide pelo CÓDIGO** (`lib/inbox/falhas.ts`,
+  `falhaDoEnvio`), e fica na mensagem (`erro_texto`, que a bolha mostra). Até
+  2026-10-15 a regra procurava "OAuth", "24" e "10" no texto: todo erro da
+  Cloud API traz `"type":"OAuthException"`, então QUALQUER recusa virava "a
+  conexão expirou" — e o 131042 mandava a clínica reconectar o número quando
+  faltava um cartão.
+- Prova: `e2e/whatsapp-cobranca.spec.ts` (rede própria, Graph falsa com
+  `falharMensagens`) e `tests/whatsapp-cobranca.test.ts`.
+
 ---
 
 ## O que nunca fazer aqui
@@ -304,4 +341,7 @@ servidor), e a escolha da tela vira o `featureType` —
 ❌ Pedir o estado da conexão gerenciada sem dizer QUAL caixa (era o "Adicionar número" que reabria a conectada) — null é conexão nova
 ❌ Mostrar "uazapi" à clínica (tela, aviso, erro que chega à tela) — é "WhatsApp Web", por nomeDoProvedor; o nome fica no código e nos dados
 ❌ E2E que cria instância gerenciada contra a uazapi real (cada uma é cobrada) — é a falsa, UAZAPI_BASE_URL na porta 3197
+❌ Decidir o motivo de uma falha por pedaço do texto do erro ("OAuth", "24", "10") — é o código, em falhaDoEnvio
+❌ Escrever preço da Meta fora de TABELA_DA_META, ou contar "cobrado" por regra nossa em vez do pricing.billable do status
+❌ Gravar o pricing/erro do status por cima com nulo (o "read" chega sem pricing)
 ```

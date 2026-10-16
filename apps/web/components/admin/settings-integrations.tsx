@@ -21,6 +21,7 @@ import { SegSelect } from '@/components/shared/seg-select'
 import { MODOS_OFICIAIS, modoDaConfig, type ModoOficial } from '@/lib/whatsapp/modo-oficial'
 import { navegarInteira } from '@/lib/navegacao-inteira'
 import { ConectarWhatsAppPelaMeta } from '@/components/admin/conectar-whatsapp-meta'
+import { AVISO_DE_COBRANCA } from '@/lib/whatsapp/cobranca'
 
 /**
  * Origem do site, resolvida só depois de montar.
@@ -385,6 +386,18 @@ function OfficialForm({ numero, configIdDoCadastro, nomeDoNumero }: {
           aplicativo que está no celular da clínica hoje — e isso precisa ser
           sabido antes de alguém começar a colar credencial. */}
       <EscolhaDoModoOficial modo={modo} onEscolher={setModo} />
+
+      {/* Quem paga a Meta é a clínica, na conta dela — dito ANTES de conectar,
+          para o primeiro template recusado não ser surpresa (2026-10-15). */}
+      <p data-aviso-de-cobranca style={{
+        display: 'flex', alignItems: 'flex-start', gap: 7, margin: 0,
+        padding: '10px 12px', borderRadius: 8, lineHeight: 'var(--leading-normal)',
+        background: 'var(--warning-soft)', border: '1px solid var(--warning-border)',
+        fontSize: 'var(--text-sm-sz)', color: 'var(--warning)',
+      }}>
+        <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+        <span>{AVISO_DE_COBRANCA}</span>
+      </p>
 
       {/* O caminho normal: o cadastro da Meta numa janela, sem colar token. */}
       {configIdDoCadastro && !numero && (

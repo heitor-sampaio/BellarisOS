@@ -10,7 +10,8 @@ import type { AddressInfo } from 'node:net'
  * e o teste lê o que teria ido para a Meta. `graphBase` não é gravável pela tela
  * (fica fora das listas de chaves): só o teste o põe, direto no banco.
  *
- *  - POST `…/messages` → `{ messages: [{ id: 'wamid.falsa-N' }] }`
+ *  - POST `…/messages` → `{ messages: [{ id: 'wamid.falsa-N' }] }` (ou o 400
+ *    de `falharMensagens`, no formato em que a Meta recusa: `{ error: {…} }`)
  *  - POST `…/events`   → `{ events_received: 1 }`
  *  - GET que termina num sufixo de `responder` → o corpo registrado
  *  - qualquer outro    → `{}`
@@ -24,17 +25,21 @@ export interface GraphFalsa {
   terminadasEm(sufixo: string): ChamadaAGraph[]
   /** Resposta de um GET cujo caminho termina em `sufixo` (contas, pixels, campanhas). */
   responder(sufixo: string, corpo: unknown): void
+  /** Os próximos POST `…/messages` respondem 400 com este erro; `null` volta ao normal. */
+  falharMensagens(erro: { code: number; message: string } | null): void
   fechar(): Promise<void>
 }
 
 export async function subirGraphFalsa(porta = 0): Promise<GraphFalsa> {
   let contador = 0
   const respostas = new Map<string, unknown>()
+  let falha: { code: number; message: string } | null = null
   const estado: GraphFalsa = {
     url: '',
     chamadas: [],
     terminadasEm: sufixo => estado.chamadas.filter(c => c.caminho.endsWith(sufixo)),
     responder: (sufixo, corpo) => { respostas.set(sufixo, corpo) },
+    falharMensagens: erro => { falha = erro },
     fechar: () => new Promise(resolve => servidor.close(() => resolve())),
   }
   const servidor = http.createServer((req, res) => {
@@ -47,6 +52,10 @@ export async function subirGraphFalsa(porta = 0): Promise<GraphFalsa> {
       // Num GET, os parâmetros (o token, por exemplo) contam como o corpo.
       if (req.method === 'GET') corpo = Object.fromEntries(new URL(req.url ?? '/', 'http://x').searchParams)
       estado.chamadas.push({ metodo: req.method ?? '', caminho, corpo })
+      if (falha && req.method === 'POST' && caminho.endsWith('/messages')) {
+        res.writeHead(400, { 'content-type': 'application/json' })
+        return res.end(JSON.stringify({ error: { ...falha, type: 'OAuthException', fbtrace_id: 'e2e' } }))
+      }
       res.writeHead(200, { 'content-type': 'application/json' })
       if (req.method === 'GET') {
         // O sufixo mais longo vence: `/act_1/adspixels` antes de `/act_1`.

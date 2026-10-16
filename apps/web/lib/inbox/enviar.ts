@@ -4,6 +4,7 @@ import { estadoDaJanela } from '@/lib/channels/window'
 import { avisoDeCaixaDiferente } from '@/lib/whatsapp/escolha'
 import type { ChannelKind } from '@/lib/channels/types'
 import { gravar, ler, tentar } from '@/lib/db'
+import { falhaDoEnvio } from '@/lib/inbox/falhas'
 
 /**
  * Quando o contato falou pela última vez NESTA caixa.
@@ -260,7 +261,11 @@ export async function enviarNaConversa(
   } catch (e) {
     // A falha fica visível na conversa em vez de virar um "enviado" mentiroso.
     console.error('[enviarNaConversa]', e)
-    await gravar(admin.from('messages').update({ status: 'failed' }).eq('id', mensagemId), 'marcar a mensagem como falhada')
+    // O motivo fica na mensagem: a bolha diz por que não saiu, também depois.
+    const falha = falhaDoEnvio(e)
+    await gravar(admin.from('messages')
+      .update({ status: 'failed', erro_codigo: falha.codigo, erro_texto: falha.texto })
+      .eq('id', mensagemId), 'marcar a mensagem como falhada')
     return { ok: false, error: (e as Error).message, mensagemId }
   }
 }

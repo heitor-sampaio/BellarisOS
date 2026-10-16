@@ -10,6 +10,8 @@ import {
   type NumeroNaTela, type OpcoesDeVinculo,
 } from '@/actions/integrations'
 import { nomeDoProvedor } from '@/lib/whatsapp/nome-do-provedor'
+import { TABELA_DA_META, ROTULO_DA_CATEGORIA, type CobrancaDoNumero } from '@/lib/whatsapp/cobranca'
+import { formatBRL } from '@estetica-os/utils'
 
 /**
  * As caixas de WhatsApp da rede, uma por linha.
@@ -68,6 +70,76 @@ function Campo({ rotulo, children, dica }: {
       {dica && (
         <p style={{ fontSize: 'var(--text-2xs)', color: 'var(--text-faint)' }}>{dica}</p>
       )}
+    </div>
+  )
+}
+
+/** Onde a clínica cadastra o cartão: a conta do WhatsApp é dela, na Meta. */
+const GERENCIADOR_DO_WHATSAPP = 'https://business.facebook.com/wa/manage/home/'
+
+const quando = (iso: string) => new Date(iso).toLocaleString('pt-BR', {
+  timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+})
+
+/**
+ * O mês do número na Meta (2026-10-15). Quem paga é a clínica, na conta dela —
+ * isto é o espelho, para a fatura da Meta não chegar de surpresa. As contagens
+ * são as que a Meta marcou em cada mensagem (`lib/metrics/whatsapp`); só os
+ * reais são estimados, pela tabela.
+ */
+function CobrancaDoMes({ cobranca }: { cobranca: CobrancaDoNumero | null }) {
+  const porCategoria = cobranca?.porCategoria
+  const cobradas = (['marketing', 'utility', 'authentication'] as const)
+    .filter(c => (porCategoria?.[c].cobradas ?? 0) > 0)
+  const respostas = porCategoria?.service.entregues ?? 0
+  const respostasCobradas = porCategoria?.service.cobradas ?? 0
+  const gratis = TABELA_DA_META.respostasGratisPorMes
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {cobranca?.pagamentoRecusadoEm && (
+        <div data-pagamento-recusado style={{
+          display: 'flex', alignItems: 'flex-start', gap: 7,
+          padding: '9px 11px', borderRadius: 8,
+          background: 'var(--danger-soft)', border: '1px solid color-mix(in srgb, var(--danger) 20%, transparent)',
+          fontSize: 'var(--text-sm-sz)', color: 'var(--danger)', lineHeight: 1.45,
+        }}>
+          <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>
+            <strong>A Meta recusou templates deste número por falta de forma de pagamento</strong>{' '}
+            (último em {quando(cobranca.pagamentoRecusadoEm)}). Cadastre um cartão na conta do
+            WhatsApp da clínica, no{' '}
+            <a href={GERENCIADOR_DO_WHATSAPP} target="_blank" rel="noopener noreferrer"
+              style={{ color: 'inherit', fontWeight: 700, textDecoration: 'underline' }}>
+              Gerenciador do WhatsApp
+            </a>, e envie de novo.
+          </span>
+        </div>
+      )}
+
+      <div data-cobranca-do-mes style={{
+        display: 'flex', flexDirection: 'column', gap: 3,
+        padding: '8px 11px', borderRadius: 8,
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)',
+      }}>
+        <span className="overline" style={{ color: 'var(--text-faint)' }}>Cobrado pela Meta este mês</span>
+        <span style={{ color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
+          {cobradas.length === 0 && respostasCobradas === 0
+            ? 'Nada cobrado ainda.'
+            : <>
+                {[
+                  ...cobradas.map(c => `${porCategoria![c].cobradas} de ${ROTULO_DA_CATEGORIA[c]}`),
+                  ...(respostasCobradas > 0 ? [`${respostasCobradas} respostas`] : []),
+                ].join(' · ')}
+                {' · '}<strong>≈ {formatBRL(cobranca!.estimativa)}</strong>
+              </>}
+        </span>
+        <span style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>
+          Respostas digitadas: {respostas.toLocaleString('pt-BR')} de {gratis.toLocaleString('pt-BR')} grátis no mês.
+          Valores estimados pela tabela da Meta; a fatura sai na conta do WhatsApp da clínica.
+        </span>
+      </div>
     </div>
   )
 }
@@ -198,6 +270,8 @@ function LinhaDoNumero({ numero, opcoes, ocupadas, onMudou, onConfigurar }: {
           )}
         </div>
       </div>
+
+      {numero.cobranca !== undefined && <CobrancaDoMes cobranca={numero.cobranca} />}
 
       {aberto && (
         <div style={{

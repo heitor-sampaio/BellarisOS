@@ -15,6 +15,8 @@ import { acompanharCatalogos } from '@/lib/templates/catalogo'
 import { rotuloDaConexao } from '@/lib/whatsapp/rotulo'
 import { nomeDoNumeroNaMeta } from '@/lib/whatsapp/nome-na-meta'
 import { dispararHistoricoUazapi } from '@/lib/whatsapp/historico-uazapi'
+import { getCobrancaDoWhatsapp } from '@/lib/metrics/whatsapp'
+import type { CobrancaDoNumero } from '@/lib/whatsapp/cobranca'
 
 export interface IntegrationConfig {
   id:         string
@@ -198,6 +200,8 @@ export interface NumeroNaTela {
   wabaId:        string | null
   phoneNumberId: string | null
   config:    Record<string, unknown>
+  /** O mês na Meta (só número oficial): o que ela cobrou e o pagamento recusado. */
+  cobranca?: CobrancaDoNumero | null
 }
 
 export async function listarNumerosWhatsApp(): Promise<NumeroNaTela[]> {
@@ -205,12 +209,18 @@ export async function listarNumerosWhatsApp(): Promise<NumeroNaTela[]> {
   assertPermission(ctx, 'settings', 'MANAGE')
 
   const { getNumerosDaRede } = await import('@/lib/whatsapp/factory')
-  return (await getNumerosDaRede(ctx.tenantId!)).map(n => ({
+  const numeros = await getNumerosDaRede(ctx.tenantId!)
+  // Só a API oficial é cobrada pela Meta; sem número oficial, nem consulta.
+  const cobranca = numeros.some(n => n.provider === 'official')
+    ? await getCobrancaDoWhatsapp(ctx.tenantId!)
+    : new Map<string, CobrancaDoNumero>()
+  return numeros.map(n => ({
     id: n.id, provider: n.provider, label: n.label, phone: n.phone,
     isActive: n.isActive, isDefault: n.isDefault, managed: n.managed,
     branchId: n.branchId, userIds: n.userIds,
     wabaId: n.wabaId, phoneNumberId: n.phoneNumberId,
     config: mascararSegredos(semSegredoDoCadastro(n.config as unknown as Record<string, unknown>)),
+    cobranca: n.provider === 'official' ? (cobranca.get(n.id) ?? null) : undefined,
   }))
 }
 
