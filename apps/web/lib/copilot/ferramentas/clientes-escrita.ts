@@ -5,6 +5,9 @@ import { ler } from '@/lib/db'
 import { atualizarClienteCore } from '@/lib/clients/atualizar'
 import { darAcessoAoCliente } from '@/lib/clients/acesso'
 import { garantirClienteRapido, digitosDoTelefone } from '@/lib/clients/cliente-rapido'
+import { isUnitTag } from '@estetica-os/utils'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { temTag } from '@/lib/tags/escolha'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
 import { DATA, hojeEmBrasilia, resolverCliente, resolverUnidade, rota } from '@/lib/copilot/ferramentas/comum'
 
@@ -198,6 +201,72 @@ export const atualizarContato: FerramentaDeEscrita<ArgsContato, PayloadContato> 
     if (r.error) return { erro: r.error }
     return { mensagem: 'Dados atualizados.', href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha' }
   },
+}
+
+interface ArgsTags { cliente: string; adicionar?: string[]; remover?: string[] }
+interface PayloadTags { clientId: string; adicionar: string[]; remover: string[] }
+
+/**
+ * Marcar e desmarcar tags (o vocabulário da rede, 2026-10-13). Marca só o que
+ * EXISTE no vocabulário, com o nome dele ("vip" vira "VIP"); criar tag é de
+ * Configurações → Tags. As "Unidade: …" são do sistema e ficam como estão.
+ */
+export const marcarTags: FerramentaDeEscrita<ArgsTags, PayloadTags> = {
+  nome: 'marcar_tags',
+  tipo: 'escrita',
+  modulo: 'clients', nivel: 'MANAGE',
+  descricao: 'Marca e/ou desmarca tags de um cliente (id, nome ou telefone). Só tags que já existem no vocabulário da rede (sem diferença de maiúsculas); tag nova se cria em Configurações → Tags.',
+  parametros: z.object({
+    cliente: z.string().min(2).max(120),
+    adicionar: z.array(z.string().min(1).max(60)).max(10).optional(),
+    remover: z.array(z.string().min(1).max(60)).max(10).optional(),
+  }),
+  async preparar(c, a) {
+    const cl = await resolverCliente(c, a.cliente, { apenasAtivos: true })
+    if ('erro' in cl) return { erro: cl.erro }
+    if (!a.adicionar?.length && !a.remover?.length) return { erro: 'Quais tags marcar ou desmarcar?' }
+    const atuais = await tagsDoCliente(c, cl.id)
+    const vocabulario = await tagsAtivasDaRede(c.ctx.tenantId!)
+    const adicionar: string[] = []
+    for (const pedida of a.adicionar ?? []) {
+      if (isUnitTag(pedida)) return { erro: 'A tag de unidade é do sistema: ela segue a unidade que o cliente frequenta.' }
+      const nome = vocabulario.find(v => temTag([v], pedida))
+      if (!nome) return { erro: `A tag "${pedida}" não existe na rede — crie em Configurações → Tags. Tags: ${vocabulario.join(', ') || 'nenhuma'}.` }
+      if (!temTag(atuais, nome) && !temTag(adicionar, nome)) adicionar.push(nome)
+    }
+    const remover: string[] = []
+    for (const pedida of a.remover ?? []) {
+      if (isUnitTag(pedida)) return { erro: 'A tag de unidade é do sistema: ela segue a unidade que o cliente frequenta.' }
+      const tem = atuais.find(t => temTag([t], pedida))
+      if (tem && !temTag(remover, tem)) remover.push(tem)
+    }
+    if (!adicionar.length && !remover.length) return { erro: `Nada a mudar: ${cl.name} já está assim.` }
+    return {
+      resumo: {
+        titulo: 'Marcar tags',
+        linhas: [
+          { rotulo: 'Cliente', valor: cl.name },
+          ...(adicionar.length ? [{ rotulo: 'Marcar', valor: adicionar.join(', ') }] : []),
+          ...(remover.length ? [{ rotulo: 'Desmarcar', valor: remover.join(', ') }] : []),
+        ],
+      },
+      payload: { clientId: cl.id, adicionar, remover },
+    }
+  },
+  async efetivar(c, p) {
+    // Sobre as tags de AGORA: outra tela pode ter mexido desde o cartão.
+    const atuais = await tagsDoCliente(c, p.clientId)
+    const tags = [...atuais.filter(t => !temTag(p.remover, t)), ...p.adicionar.filter(t => !temTag(atuais, t))]
+    // O mesmo núcleo da ficha (lib/clients/atualizar.ts).
+    const r = await atualizarClienteCore(c.admin, c.ctx, p.clientId, { tags })
+    if (r.error) return { erro: r.error }
+    return { mensagem: 'Tags atualizadas.', href: rota(c, `/clients/${p.clientId}`), rotuloDoLink: 'Abrir a ficha' }
+  },
+}
+
+async function tagsDoCliente(c: ContextoDaFerramenta, clientId: string): Promise<string[]> {
+  const linha = await ler(c.admin.from('clients').select('tags').eq('id', clientId).eq('tenant_id', c.ctx.tenantId!).single(), 'ler as tags do cliente') as { tags: string[] | null }
+  return linha.tags ?? []
 }
 
 interface ArgsAcesso { cliente: string; email?: string; cpf?: string }

@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
             ? ler(admin.from('branches').select('name').eq('id', ctx.branchId).maybeSingle(), 'ler a unidade') as Promise<{ name: string } | null>
             : Promise.resolve(null),
         ])
-        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, pagina })
+        const instrucoes = instrucoesDoCopilot(ctx, { rede: rede?.nome ?? null, unidade: unidade?.name ?? null, pagina, slugDoPortal })
         const disponiveis = ferramentasDoCargo(ctx)
         const ferramentas = paraOModelo(disponiveis)
         const cf = { ctx, admin, pagina, slugDoPortal, conversaId: conversa.id }

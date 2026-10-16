@@ -89,6 +89,30 @@ sistema conversando — texto, voz, imagem e documento. O motor é a OpenAI
   tokens ao preço médio), sobre todas as que usaram, as de teste também.
   ⚠️ A admin key é da ORGANIZAÇÃO: sem `OPENAI_PROJECT_ID` (o `proj_…` do
   projeto do BellarisOS), o real soma os outros projetos da conta — a tela avisa.
+- **A par do sistema** (2026-10-16, pedido do Heitor: "o copilot a par de
+  todas as mudanças"):
+  - **As telas** que a pessoa abre vão nas instruções como links
+    (`telasDaPessoa`, `lib/copilot/prompt.ts`), tiradas de `paginasDaBusca`
+    — o menu e as abas de Configurações, com a régua de cargo e plano. Tela
+    ou aba nova entra SOZINHA; é por ela que o Copilot indica "isso é na tela
+    X" para o que não faz por ferramenta (importar, criar tag, comissão,
+    conectar WhatsApp, colher assinatura).
+  - **Tags** (o vocabulário da rede): a lista por tag é sem caixa
+    (`copilot_clientes_da_tag`) e a tag que não existe devolve o vocabulário;
+    `marcar_tags` marca só o que existe no vocabulário, com o nome dele, pelo
+    núcleo da ficha (`atualizarClienteCore`). Criar tag é da tela.
+  - **Recorte por unidade nas listas de clientes** só com mais de uma unidade:
+    na clínica única, o cliente sem a tag "Unidade: …" sumia da lista.
+  - **Oportunidade**: `criar_oportunidade` aceita valor e responsável (este só
+    com `podeTrocarResponsavel`, e como a tela: cria e troca em seguida);
+    `trocar_responsavel` pelo `trocarResponsavelCore`; a leitura diz se já é
+    cliente.
+  - **Documentos** (`documentos`): a situação de cada termo e contrato, pelas
+    funções da tela (`lib/metrics/documentos`) — sem o texto nem o motivo
+    livre da dispensa.
+  - **A cobrança da Meta** (`cobranca_do_whatsapp`): o mês de cada número
+    oficial (`getCobrancaDoWhatsapp`), com a trava da tela (Configurações em
+    Gerenciar).
 - **O resumo do cartão volta ao modelo com o CPF mascarado**
   (`resumoParaOModelo`); a pessoa vê inteiro no cartão. O que a equipe ANEXA
   vai inteiro à OpenAI — por isso o aviso fixo de não mandar material clínico,
@@ -130,4 +154,8 @@ completo e o dono. Os specs `copilot-*` são COMPARTILHADOS (porta fixa).
 ❌ Trocar OPENAI_MODEL / OPENAI_MODELO_DE_VOZ sem o preço do modelo em custo-do-copilot.ts (o custo some da tela)
 ❌ Devolver ao modelo documento (CPF) que ele não precisa reler — o resumo vai por resumoParaOModelo
 ❌ E2E falando com a OpenAI real (é a falsa, porta 3196)
+❌ Escrever a lista de telas à mão no prompt (é telasDaPessoa, do menu e das abas — à mão, a primeira tela nova fica de fora)
+❌ Comparar tag com caixa (contains exato): "VIP" e "vip" são a mesma tag da rede
+❌ Copilot criando tag fora do vocabulário (criar tag é de Configurações → Tags)
+❌ Funcionalidade nova na clínica sem perguntar o que o Copilot precisa saber dela (ferramenta, ou ao menos a tela na lista)
 ```

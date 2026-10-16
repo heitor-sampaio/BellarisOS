@@ -1300,6 +1300,38 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-16 — O Copilot a par do que o sistema ganhou depois dele
+
+Pedido do Heitor: o Copilot saber de tudo o que entrou depois da primeira
+entrega dele (2026-10-08). Revisto commit a commit; o que mudou nele:
+- **as telas da pessoa nas instruções**, tiradas do menu e das abas de
+  Configurações (a mesma fonte da busca universal, com cargo e plano). As
+  novas — Documentos, Tags, Importações, Ações em lote — entraram sem
+  ninguém escrevê-las, e a próxima entra igual. É por elas que ele indica a
+  tela do que não faz (importar planilha, criar tag, comissão, conectar o
+  WhatsApp);
+- **tags da rede**: a lista por tag não achava "vip" pedindo "Vip" (o filtro
+  era exato); agora é sem caixa (`copilot_clientes_da_tag`, migration
+  `20261016000001`), e marcar/desmarcar tag é pelo cartão (`marcar_tags`),
+  só do vocabulário;
+- **achado no caminho**: na rede de uma unidade, as listas de clientes
+  recortavam pela tag "Unidade: …" — e o cliente que chegou sem ela
+  (importação, dado antigo) sumia. Recorte só com mais de uma unidade;
+- **responsável da oportunidade**: criar com valor e responsável, e
+  `trocar_responsavel` (o "só os meus" não troca, como na tela); a leitura diz
+  se já é cliente;
+- **Documentos**: a situação de cada termo e contrato (`documentos`);
+- **a cobrança da Meta**: o mês de cada número oficial
+  (`cobranca_do_whatsapp`, quem gerencia Configurações).
+
+Já estava em dia: a aba Vendas (entrou com ela), a suspensão da escrita do
+suporte e o custo real da OpenAI. Sem mudança para o Copilot: categorias de
+procedimento (continua texto), comissão por procedimento (configuração; os
+números já vêm de `lib/metrics`), os seletores, o histórico do WhatsApp Web e
+as falhas do inbox (ele não lê nem manda conversa).
+
+Prova: `e2e/copilot-novidades.spec.ts` (6). Regra em `docs/regras/copilot.md`.
+
 ### 2026-10-15 — O que a Meta cobra da clínica, dito antes e contado depois
 
 Pergunta do Heitor: template e mensagem fora da janela a Meta cobra — como

@@ -6,8 +6,10 @@ import { cliente, clientes } from '@/lib/copilot/ferramentas/clientes'
 import { procedimentos, indicadores } from '@/lib/copilot/ferramentas/indicadores'
 import { lancamentos, estoque, oportunidades } from '@/lib/copilot/ferramentas/gestao'
 import { agendar, remarcar, cancelar, confirmarAgendamento, fazerCheckIn } from '@/lib/copilot/ferramentas/agenda-escrita'
-import { cadastrarCliente, atualizarContato, criarAcessoAoApp } from '@/lib/copilot/ferramentas/clientes-escrita'
-import { lancar, marcarPago, entradaDeEstoque, ajusteDeEstoque, criarOportunidade, moverEtapa } from '@/lib/copilot/ferramentas/gestao-escrita'
+import { cadastrarCliente, atualizarContato, criarAcessoAoApp, marcarTags } from '@/lib/copilot/ferramentas/clientes-escrita'
+import { documentos } from '@/lib/copilot/ferramentas/documentos'
+import { cobrancaDoWhatsapp } from '@/lib/copilot/ferramentas/whatsapp'
+import { lancar, marcarPago, entradaDeEstoque, ajusteDeEstoque, criarOportunidade, moverEtapa, trocarResponsavel } from '@/lib/copilot/ferramentas/gestao-escrita'
 
 /**
  * O catálogo do Copilot. Ferramenta nova entra aqui e declara o que exige
@@ -20,10 +22,11 @@ export const FERRAMENTAS: Ferramenta[] = [
   cliente, clientes,
   procedimentos, indicadores,
   lancamentos, estoque, oportunidades,
+  documentos, cobrancaDoWhatsapp,
   // Gravação (só com o Confirmar do cartão)
   agendar, remarcar, cancelar, confirmarAgendamento, fazerCheckIn,
-  cadastrarCliente, atualizarContato, criarAcessoAoApp,
+  cadastrarCliente, atualizarContato, criarAcessoAoApp, marcarTags,
   lancar, marcarPago,
   entradaDeEstoque, ajusteDeEstoque,
-  criarOportunidade, moverEtapa,
+  criarOportunidade, moverEtapa, trocarResponsavel,
 ]

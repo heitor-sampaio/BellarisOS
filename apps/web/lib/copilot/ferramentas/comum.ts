@@ -131,6 +131,23 @@ export async function resolverProfissional(
 }
 
 /**
+ * Acha um membro ATIVO da equipe da rede pelo id ou pelo nome — o responsável
+ * da oportunidade (a lista do modal: qualquer membro ativo, atenda ou não).
+ */
+export async function resolverMembro(
+  c: ContextoDaFerramenta, pedido: string,
+): Promise<{ id: string; name: string } | { erro: string }> {
+  const todos = (await ler(c.admin.from('users').select('id, name')
+    .eq('tenant_id', c.ctx.tenantId!).eq('is_active', true).limit(300), 'ler a equipe') as { id: string; name: string }[] | null) ?? []
+  const p = pedido.trim().toLowerCase()
+  const exatos = todos.filter(u => u.id === pedido || u.name.toLowerCase() === p)
+  const parecidos = exatos.length ? exatos : todos.filter(u => u.name.toLowerCase().includes(p))
+  if (parecidos.length === 1) return parecidos[0]!
+  if (!parecidos.length) return { erro: `Ninguém ativo na equipe com "${pedido}".` }
+  return { erro: `Mais de uma pessoa com "${pedido}": ${parecidos.slice(0, 10).map(u => u.name).join(', ')}. Qual?` }
+}
+
+/**
  * Os procedimentos ativos que a unidade OFERECE: os dela, os da rede sem
  * disponibilidade cadastrada, e os da rede com a unidade na disponibilidade
  * (`procedure_branch_availability` — a regra do quadro e da busca universal).

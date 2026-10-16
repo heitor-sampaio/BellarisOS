@@ -7,6 +7,8 @@ import { creditosDoCliente } from '@/lib/creditos/credito'
 import { configDaRede, saldoDoCliente } from '@/lib/fidelidade/leitura'
 import { getClientesParaReativar } from '@/lib/metrics/unidade'
 import { addDaysTZ } from '@/lib/datetime'
+import { tagsAtivasDaRede } from '@/lib/tags/vocabulario'
+import { temTag } from '@/lib/tags/escolha'
 import type { FerramentaDeLeitura } from '@/lib/copilot/ferramentas/tipos'
 import {
   BUSINESS_TZ, STATUS_DO_AGENDAMENTO, dinheiro, hojeEmBrasilia, nomesPorId, quandoLegivel, resolverCliente, resolverUnidade, rota, unidadesDaRede,
@@ -122,7 +124,7 @@ export const clientes: FerramentaDeLeitura<{
   nome: 'clientes',
   tipo: 'leitura',
   modulo: 'clients', nivel: 'VIEW',
-  descricao: 'Listas de clientes: "aniversariantes" (de um mês; padrão o atual), "sem_visita" (sem atendimento concluído há N dias; padrão 90), "novos" (cadastrados nos últimos N dias; padrão 30) ou "tag" (com uma tag). Até 50.',
+  descricao: 'Listas de clientes: "aniversariantes" (de um mês; padrão o atual), "sem_visita" (sem atendimento concluído há N dias; padrão 90), "novos" (cadastrados nos últimos N dias; padrão 30) ou "tag" (com uma tag do vocabulário da rede, sem diferença de maiúsculas). Até 50.',
   parametros: z.object({
     filtro: z.enum(['aniversariantes', 'sem_visita', 'novos', 'tag']),
     mes: z.number().int().min(1).max(12).optional(),
@@ -139,7 +141,10 @@ export const clientes: FerramentaDeLeitura<{
     // A unidade (a da pessoa, se fixa): as listas da unidade recortam pela tag dela.
     const u = await resolverUnidade(c, args.unidade)
     if ('erro' in u) return { dados: { erro: u.erro } }
-    const tagDaUnidade = u.unidade ? unitTag(u.unidade.name) : null
+    // Na rede de UMA unidade não há o que recortar — e o cliente que chegou sem
+    // a tag "Unidade: …" (importação, dado antigo) sumiria de toda lista.
+    const variasUnidades = (await unidadesDaRede(c)).length > 1
+    const tagDaUnidade = u.unidade && variasUnidades ? unitTag(u.unidade.name) : null
 
     if (args.filtro === 'sem_visita') {
       const alvo = u.unidade ? [u.unidade] : await unidadesDaRede(c)
@@ -162,8 +167,14 @@ export const clientes: FerramentaDeLeitura<{
         .map(x => ({ ...x, detalhe: `desde ${x.created_at.slice(0, 10)}` }))
     } else if (args.filtro === 'tag') {
       if (!args.tag) return { dados: { erro: 'Qual tag?' } }
-      lista = (await ler(c.admin.from('clients').select('id, name, phone').eq('tenant_id', tenant).eq('is_active', true)
-        .contains('tags', tagDaUnidade ? [args.tag, tagDaUnidade] : [args.tag]).order('name').limit(50), 'ler os clientes da tag') as Lin[] | null) ?? []
+      // O vocabulário da rede (Configurações → Tags): "VIP" e "vip" são a
+      // mesma; a que não está nele (nem em cliente nenhum) vira a lista certa.
+      const vocabulario = await tagsAtivasDaRede(tenant)
+      lista = (await ler(c.admin.rpc('copilot_clientes_da_tag', { p_tenant: tenant, p_tag: args.tag, p_tag_unidade: tagDaUnidade, p_limite: 50 }),
+        'ler os clientes da tag') as Lin[] | null) ?? []
+      if (!lista.length && !temTag(vocabulario, args.tag)) {
+        return { dados: { erro: `A tag "${args.tag}" não existe na rede. Tags: ${vocabulario.join(', ') || 'nenhuma'}.` } }
+      }
     } else {
       const mes = args.mes ?? Number(new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TZ, month: '2-digit' }).format(new Date()))
       // No banco (copilot_aniversariantes): ler a rede toda cortaria em mil linhas.

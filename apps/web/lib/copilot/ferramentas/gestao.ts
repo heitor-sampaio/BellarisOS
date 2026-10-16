@@ -176,7 +176,7 @@ export const oportunidades: FerramentaDeLeitura<{ funil?: string; etapa?: string
   tipo: 'leitura',
   modulo: 'crm', nivel: 'VIEW',
   recurso: 'oportunidades',
-  descricao: 'As oportunidades do funil comercial: nome, telefone, etapa, funil, valor e responsável. Filtros: funil (nome), etapa (nome), busca (nome/telefone). Por padrão só as em aberto. Até 50.',
+  descricao: 'As oportunidades do funil comercial: nome, telefone, etapa, funil, valor, responsável e se já é cliente. Filtros: funil (nome), etapa (nome), busca (nome/telefone). Por padrão só as em aberto. Até 50.',
   parametros: z.object({
     funil: z.string().max(80).optional(), etapa: z.string().max(80).optional(),
     busca: z.string().max(80).optional(), incluirFechadas: z.boolean().optional(),
@@ -201,7 +201,7 @@ export const oportunidades: FerramentaDeLeitura<{ funil?: string; etapa?: string
     if (!args.incluirFechadas) alvoEtapas = alvoEtapas.filter(e => !e.outcome || e.outcome === 'OPEN')
     if (!alvoEtapas.length) return { dados: { oportunidades: [] } }
 
-    let q = c.admin.from('leads').select('id, name, phone, value, owner_id, crm_stage_id, updated_at')
+    let q = c.admin.from('leads').select('id, name, phone, value, owner_id, crm_stage_id, client_id, updated_at')
       .eq('tenant_id', tenant).in('crm_stage_id', alvoEtapas.map(e => e.id))
       .order('updated_at', { ascending: false }).limit(50)
     // "Só os meus" do CRM: as suas e as sem dono (a regra do quadro, leadAoAlcance).
@@ -217,7 +217,7 @@ export const oportunidades: FerramentaDeLeitura<{ funil?: string; etapa?: string
         ? q.ilike('phone', `%${digitos.slice(-8)}%`)
         : q.ilike('name', `%${t}%`)
     }
-    const linhas = (await ler(q, 'ler as oportunidades') as { id: string; name: string; phone: string | null; value: number | null; owner_id: string | null; crm_stage_id: string }[] | null) ?? []
+    const linhas = (await ler(q, 'ler as oportunidades') as { id: string; name: string; phone: string | null; value: number | null; owner_id: string | null; crm_stage_id: string; client_id: string | null }[] | null) ?? []
     const donos = await nomesPorId(c, 'users', linhas.map(l => l.owner_id))
     const porEtapa = new Map(alvoEtapas.map(e => [e.id, e]))
     const itens = linhas.map(l => {
@@ -226,6 +226,8 @@ export const oportunidades: FerramentaDeLeitura<{ funil?: string; etapa?: string
         id: l.id, nome: l.name, telefone: l.phone, valor: l.value != null ? dinheiro(l.value) : null,
         etapa: e?.name ?? null, funil: e ? ativos.get(e.funnel_id)?.name ?? null : null,
         responsavel: l.owner_id ? (donos.get(l.owner_id) ?? null) : 'sem responsável',
+        // O filtro "Já é cliente / Ainda não é cliente" do quadro.
+        jaECliente: !!l.client_id,
         href: rotaOportunidade(c.pagina, c.slugDoPortal, l.id, e?.funnel_id),
       }
     })

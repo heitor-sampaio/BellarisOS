@@ -9,9 +9,10 @@ import { lancarCore, marcarPagoCore, lancamentoAoAlcance, CATEGORIAS_DE_DESPESA,
 import { entradaDeEstoqueCore, ajusteDeEstoqueCore } from '@/lib/estoque/movimentos'
 import { criarOportunidadeCore, moverEtapaCore } from '@/lib/crm/oportunidade'
 import { leadAoAlcance } from '@/lib/crm/alcance'
+import { podeTrocarResponsavel, trocarResponsavelCore } from '@/lib/crm/responsavel'
 import { rotaOportunidade } from '@/lib/rotas'
 import type { ContextoDaFerramenta, FerramentaDeEscrita } from '@/lib/copilot/ferramentas/tipos'
-import { DATA, UUID, dinheiro, resolverProcedimento, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
+import { DATA, UUID, dinheiro, resolverMembro, resolverProcedimento, resolverUnidade } from '@/lib/copilot/ferramentas/comum'
 
 /**
  * As GRAVAÇÕES de financeiro, estoque e oportunidades. O mesmo molde da
@@ -249,15 +250,18 @@ export const ajusteDeEstoque: FerramentaDeEscrita<{ produto: string; novoSaldo: 
   },
 }
 
-interface ArgsOportunidade { nome: string; telefone?: string; email?: string; origem?: string; interesse?: string[]; observacao?: string; funil?: string }
-interface PayloadOportunidade { nome: string; telefone: string | null; email: string | null; origem: string | null; procedureIds: string[]; observacoes: string | null; funnelId: string | null; tags: string[] }
+interface ArgsOportunidade { nome: string; telefone?: string; email?: string; origem?: string; interesse?: string[]; observacao?: string; funil?: string; valor?: number; responsavel?: string }
+interface PayloadOportunidade {
+  nome: string; telefone: string | null; email: string | null; origem: string | null; procedureIds: string[]; observacoes: string | null; funnelId: string | null; tags: string[]
+  valor?: number; responsavelId?: string
+}
 
 export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOportunidade> = {
   nome: 'criar_oportunidade',
   tipo: 'escrita',
   modulo: 'crm', nivel: 'MANAGE',
   recurso: 'oportunidades',
-  descricao: 'Cria uma oportunidade (lead) no funil: nome e ao menos um contato (telefone ou e-mail); origem, procedimentos de interesse, observação e funil (nome) opcionais. Nasce na primeira etapa, com você de responsável.',
+  descricao: 'Cria uma oportunidade (lead) no funil: nome e ao menos um contato (telefone ou e-mail); origem, procedimentos de interesse, observação, funil (nome), valor estimado em reais e responsável (nome de um membro da equipe) opcionais. Nasce na primeira etapa; sem responsável, você é o responsável.',
   parametros: z.object({
     nome: z.string().min(2).max(120),
     telefone: z.string().min(8).max(20).optional(),
@@ -266,9 +270,19 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
     interesse: z.array(z.string().max(80)).max(5).optional(),
     observacao: z.string().max(300).optional(),
     funil: z.string().max(80).optional(),
+    valor: z.number().positive().max(10_000_000).optional(),
+    responsavel: z.string().min(2).max(120).optional(),
   }),
   async preparar(c, a) {
     if (!a.telefone && !a.email) return { erro: 'Qual o telefone ou o e-mail?' }
+    // Escolher o responsável é a mesma trava da tela: CRM em Gerenciar, "todos".
+    let responsavel: { id: string; name: string } | null = null
+    if (a.responsavel) {
+      if (!podeTrocarResponsavel(c.ctx)) return { erro: 'O seu cargo não escolhe o responsável da oportunidade: ela nasce com você.' }
+      const r = await resolverMembro(c, a.responsavel)
+      if ('erro' in r) return { erro: r.erro }
+      responsavel = r
+    }
     // A origem é a da lista da tela: fora dela, o indicador por origem quebra.
     let origem: string | null = null
     if (a.origem) {
@@ -301,21 +315,33 @@ export const criarOportunidade: FerramentaDeEscrita<ArgsOportunidade, PayloadOpo
           ...(procs.length ? [{ rotulo: 'Interesse', valor: procs.map(p => p.name).join(', ') }] : []),
           ...(origem ? [{ rotulo: 'Origem', valor: origem }] : []),
           ...(funil ? [{ rotulo: 'Funil', valor: funil.name }] : []),
+          ...(a.valor ? [{ rotulo: 'Valor', valor: dinheiro(a.valor) }] : []),
+          ...(responsavel ? [{ rotulo: 'Responsável', valor: responsavel.name }] : []),
         ],
       },
       payload: {
         nome: a.nome.trim(), telefone: digitos ? maskPhone(digitos) : null, email: a.email?.trim().toLowerCase() || null,
         origem, procedureIds: procs.map(p => p.id), observacoes: a.observacao?.trim() || null, funnelId: funil?.id ?? null, tags,
+        ...(a.valor ? { valor: a.valor } : {}),
+        ...(responsavel ? { responsavelId: responsavel.id } : {}),
       },
     }
   },
   async efetivar(c, p) {
     const r = await criarOportunidadeCore(c.admin, c.ctx, {
       nome: p.nome, telefone: p.telefone, email: p.email, origem: p.origem, observacoes: p.observacoes,
-      procedureIds: p.procedureIds, funnelId: p.funnelId, tags: p.tags,
+      procedureIds: p.procedureIds, funnelId: p.funnelId, tags: p.tags, valor: p.valor ?? null,
     })
     if ('error' in r) return { erro: r.error }
     revalidar('oportunidades')
+    // Como a tela (createLead): nasce de quem criou, e o responsável escolhido
+    // troca em seguida — a linha do tempo diz de quem para quem.
+    if (p.responsavelId && podeTrocarResponsavel(c.ctx)) {
+      const t = await trocarResponsavelCore(c.admin, c.ctx.tenantId!, r.leadId, p.responsavelId, { actorUserId: c.ctx.internalUserId, actorName: c.ctx.userName || null })
+      if (!t.trocado && t.motivo) {
+        return { mensagem: `Oportunidade criada, mas o responsável não mudou: ${t.motivo}`, href: rotaOportunidade(c.pagina, c.slugDoPortal, r.leadId, p.funnelId), rotuloDoLink: 'Abrir no quadro' }
+      }
+    }
     return { mensagem: 'Oportunidade criada.', href: rotaOportunidade(c.pagina, c.slugDoPortal, r.leadId, p.funnelId), rotuloDoLink: 'Abrir no quadro' }
   },
 }
@@ -357,5 +383,50 @@ export const moverEtapa: FerramentaDeEscrita<{ oportunidade: string; etapa: stri
     if ('error' in r) return { erro: r.error }
     revalidar('oportunidades')
     return { mensagem: 'Oportunidade movida.', href: rotaOportunidade(c.pagina, c.slugDoPortal, p.leadId, p.funnelId), rotuloDoLink: 'Abrir no quadro' }
+  },
+}
+
+export const trocarResponsavel: FerramentaDeEscrita<{ oportunidade: string; responsavel: string | null }, { leadId: string; usuarioId: string | null; funnelId: string | null }> = {
+  nome: 'trocar_responsavel',
+  tipo: 'escrita',
+  modulo: 'crm', nivel: 'MANAGE',
+  recurso: 'oportunidades',
+  // A trava da tela: o "só os meus" vê o responsável, mas não troca.
+  pode: podeTrocarResponsavel,
+  descricao: 'Troca o responsável de uma oportunidade (id, da ferramenta oportunidades) por outro membro ativo da equipe (nome), ou tira o responsável (responsavel = null).',
+  parametros: z.object({ oportunidade: UUID, responsavel: z.string().min(2).max(120).nullable() }),
+  async preparar(c, a) {
+    if (!(await leadAoAlcance(c.admin, c.ctx, a.oportunidade))) return { erro: 'Oportunidade não encontrada.' }
+    const lead = await ler(c.admin.from('leads').select('name, owner_id, crm_stages(funnel_id)')
+      .eq('id', a.oportunidade).eq('tenant_id', c.ctx.tenantId!).single(), 'ler a oportunidade') as unknown as {
+        name: string; owner_id: string | null; crm_stages: { funnel_id: string } | null
+      }
+    let para: { id: string; name: string } | null = null
+    if (a.responsavel) {
+      const r = await resolverMembro(c, a.responsavel)
+      if ('erro' in r) return { erro: r.erro }
+      para = r
+    }
+    if ((para?.id ?? null) === lead.owner_id) return { erro: para ? `${para.name} já é o responsável.` : 'A oportunidade já está sem responsável.' }
+    const de = lead.owner_id
+      ? (await ler(c.admin.from('users').select('name').eq('id', lead.owner_id).maybeSingle(), 'ler o responsável') as { name: string } | null)?.name ?? '—'
+      : 'sem responsável'
+    return {
+      resumo: {
+        titulo: 'Trocar o responsável',
+        linhas: [
+          { rotulo: 'Oportunidade', valor: lead.name },
+          { rotulo: 'Responsável', valor: `${de} → ${para?.name ?? 'sem responsável'}` },
+        ],
+      },
+      payload: { leadId: a.oportunidade, usuarioId: para?.id ?? null, funnelId: lead.crm_stages?.funnel_id ?? null },
+    }
+  },
+  async efetivar(c, p) {
+    // O mesmo núcleo do modal da oportunidade e da automação (lib/crm/responsavel.ts).
+    const r = await trocarResponsavelCore(c.admin, c.ctx.tenantId!, p.leadId, p.usuarioId, { actorUserId: c.ctx.internalUserId, actorName: c.ctx.userName || null })
+    if (!r.trocado) return { erro: r.motivo ?? 'O responsável já era esse.' }
+    revalidar('oportunidades')
+    return { mensagem: 'Responsável trocado.', href: rotaOportunidade(c.pagina, c.slugDoPortal, p.leadId, p.funnelId ?? undefined), rotuloDoLink: 'Abrir no quadro' }
   },
 }
