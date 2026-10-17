@@ -6247,11 +6247,13 @@ verdade. O que vale:
 
 ### Depende do Heitor (fora do código)
 
-- **O site no ar** (2026-10-17): criar o serviço **Site** no Railway
-  (`BELLARIS_APP=site`, só `NEXT_PUBLIC_SUPABASE_URL`,
-  `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `CLINICA_URL` e `SITE_URL`), ligar os
-  domínios `bellarisos.com` e `www.bellarisos.com` e apontar o DNS — sem
-  tocar nos registros do Resend. Conferir no texto do site: o "combinamos o
+- **O DNS do site** (2026-10-17): o serviço **Site** já está no Railway
+  (as chaves por referência ao serviço Suporte; endereço provisório
+  `site-production-dc7f9.up.railway.app`), com `bellarisos.com` e
+  `www.bellarisos.com` ligados. Falta criar no DNS os CNAME (raiz →
+  `yaq42rjq.up.railway.app`, com ALIAS/flattening; `www` →
+  `hi6xtd21.up.railway.app`) e os TXT `_railway-verify` e
+  `_railway-verify.www` — sem tocar nos registros do Resend. Conferir no texto do site: o "combinamos o
   plano" do fim do teste, o app Android citado como disponível, e se a
   política de privacidade já tem razão social e CNPJ.
 - **O custo real da OpenAI no sistema** (2026-10-08): criar na OpenAI uma

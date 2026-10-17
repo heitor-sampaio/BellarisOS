@@ -118,7 +118,10 @@ Redirect URLs.
 
 **O Site** (2026-10-17, `docs/regras/site.md`) é a exceção ao comum: é
 página de apresentação, não opera nada, e leva só a chave PÚBLICA (lê os
-planos por `planos_do_site()`). O `www` redireciona para o domínio sem `www`
+planos por `planos_do_site()`). As duas chaves do Supabase e o
+`CLINICA_URL` são REFERÊNCIA às do serviço Suporte (`${{Suporte.…}}`): trocou
+lá, vale aqui. Ele tem o domínio `*.up.railway.app` (é página pública, não há
+muro a pular). O `www` redireciona para o domínio sem `www`
 no próprio app (`apps/site/proxy.ts`); os dois domínios vão no mesmo serviço.
 No DNS do `bellarisos.com` ficam os registros do Resend (MX, SPF, DKIM) — o
 apontamento do domínio raiz não os toca, e no domínio raiz o CNAME só vale com
