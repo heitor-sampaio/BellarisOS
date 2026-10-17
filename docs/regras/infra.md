@@ -27,7 +27,8 @@ SISTEMA_URL=https://admin.bellarisos.com     # o sistema (apps/sistema, só ADMI
 SUPORTE_URL=https://suporte.bellarisos.com   # o suporte (apps/suporte)
 INTERNO_SECRET=                    # 32+ caracteres, o MESMO nos três: /api/interno/expirar (lib/interno.ts)
 PLATAFORMA_IPS=                    # opcional (sistema e suporte): IPs permitidos, por vírgula; vazio = todos
-BELLARIS_APP=web                   # o app da imagem: web | sistema | suporte (build arg, ver o Dockerfile)
+BELLARIS_APP=web                   # o app da imagem: web | sistema | suporte | site (build arg, ver o Dockerfile)
+SITE_URL=https://bellarisos.com    # só no serviço Site (canonical, sitemap, imagem de compartilhamento)
 
 # Cobrança das assinaturas das redes (Asaas) — SÓ no serviço do sistema
 ASAAS_API_KEY=                     # só no servidor ($aact_hmlg_… no sandbox, $aact_prod_… em produção)
@@ -103,6 +104,7 @@ como build arg por estar declarada (`ARG`) no Dockerfile:
 | BellarisOS | `web` (padrão) | app.bellarisos.com | Meta, uazapi, OpenAI (Copilot), `CRON_SECRET` |
 | Sistema | `sistema` | admin.bellarisos.com | `ASAAS_*`, `PLATAFORMA_ADMIN_EMAIL` (só aqui), `CRON_SECRET`, `COTACAO_DOLAR`, `OPENAI_ADMIN_KEY` e `OPENAI_PROJECT_ID` (opcionais) |
 | Suporte | `suporte` | suporte.bellarisos.com | — |
+| Site | `site` | bellarisos.com e www.bellarisos.com | SÓ `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `CLINICA_URL` e `SITE_URL` — nada de service role, VAPID ou segredo (2026-10-17) |
 | Notification Cron / Automations Cron | `web` (imagem) | — | `APP_URL`, `SISTEMA_URL`, `CRON_SECRET` |
 
 O COMUM, nos três apps: as chaves do Supabase, `CLINICA_URL`, `SISTEMA_URL`,
@@ -113,6 +115,14 @@ serviços novos sobem SEM domínio `*.up.railway.app`: é um segundo endereço q
 ninguém precisa (e pularia um muro na frente do domínio, se um dia houver).
 No Supabase (Auth → URL Configuration) entram os dois hosts novos nas
 Redirect URLs.
+
+**O Site** (2026-10-17, `docs/regras/site.md`) é a exceção ao comum: é
+página de apresentação, não opera nada, e leva só a chave PÚBLICA (lê os
+planos por `planos_do_site()`). O `www` redireciona para o domínio sem `www`
+no próprio app (`apps/site/proxy.ts`); os dois domínios vão no mesmo serviço.
+No DNS do `bellarisos.com` ficam os registros do Resend (MX, SPF, DKIM) — o
+apontamento do domínio raiz não os toca, e no domínio raiz o CNAME só vale com
+ALIAS/"CNAME flattening".
 
 ## 14.1 Jobs agendados (cron)
 

@@ -127,7 +127,9 @@ const COMPARTILHADOS = [
 ]
 
 // O que não é código do app não pede teste nenhum.
-const IGNORADOS = [/\.md$/, /^\.github\//, /apps\/web\/scripts\/e2e-afetados\.mjs$/, /apps\/native\//, /\.claude\//]
+// O site (apps/site) e a câmera das telas dele têm configuração própria, fora
+// da suíte: playwright.site.config.ts e playwright.capturas.config.ts.
+const IGNORADOS = [/^apps\/site\//, /apps\/web\/e2e-(site|capturas)\//, /apps\/web\/playwright\.(site|capturas)\.config\.ts$/, /\.md$/,/^\.github\//, /apps\/web\/scripts\/e2e-afetados\.mjs$/, /apps\/native\//, /\.claude\//]
 
 // ─── Argumentos ─────────────────────────────────────────────────────────────
 const args   = process.argv.slice(2)

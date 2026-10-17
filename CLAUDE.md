@@ -30,6 +30,10 @@ host, fora da clínica (2026-10-06): o **sistema** (`apps/sistema`,
 admin.bellarisos.com: o ADMIN administra, o GERENTE só vê) e o **suporte** (`apps/suporte`,
 suporte.bellarisos.com). Regras em `docs/regras/plataforma.md`.
 
+E o **site** (`apps/site`, bellarisos.com — 2026-10-17): a página de quem
+ainda não conhece o sistema, com os preços do sistema e o teste grátis.
+Regras em `docs/regras/site.md`.
+
 ---
 
 ## 2. Stack
@@ -74,6 +78,7 @@ estetica-os/                          (raiz do monorepo)
 │   │   └── actions/                  Server Actions
 │   ├── sistema/                      a ADMINISTRAÇÃO da plataforma (admin.*, ADMIN; GERENTE vê)
 │   ├── suporte/                      o ATENDIMENTO da plataforma (suporte.*)
+│   ├── site/                         o SITE (bellarisos.com): a página de apresentação
 │   └── native/                       Capacitor — casca Android da clínica
 ├── packages/
 │   ├── nucleo/                       o que os três apps dividem (§7)
@@ -370,6 +375,7 @@ código ou no DEVLOG cita "CLAUDE.md §9.7" acha a seção pela tabela.
 | `automacoes.md` | §9.9 Eventos de domínio e automações | `domain_events`, `automation_*`, `lib/events/`, `lib/automacoes/`, `packages/types/src/eventos.ts`, campanhas |
 | `plataforma.md` | §6 Plataforma e suporte (os apps sistema e suporte, Asaas, "entrar como", chamados) | `apps/sistema`, `apps/suporte`, `lib/plataforma/`, `lib/suporte/`, `lib/redes/`, `lib/asaas/`, `/auth/suporte-*`, `/api/interno/`, `support_*`, `platform_*`, `tenant_subscriptions`, `subscription_invoices`, `buildContext`, `jwt_claim`, `/conta-suspensa`, Ajuda da topbar |
 | `copilot.md` | O Copilot (a secretária virtual, 2026-10-08) | `lib/copilot/`, `components/copilot/`, `/api/copilot`, `actions/copilot.ts`, `copilot_*`, ferramenta nova do Copilot, `lib/appointments/alteracoes.ts`, `lib/financeiro/lancamento.ts`, `lib/estoque/movimentos.ts`, `lib/crm/oportunidade.ts` |
+| `site.md` | O site (bellarisos.com, 2026-10-17) | `apps/site`, `planos_do_site`, `e2e-site/`, `e2e-capturas/`, `apps/site/public/telas/` |
 | `busca.md` | §6 Busca universal | `busca_universal`, `lib/busca/`, `actions/busca.ts`, `busca-universal.tsx` |
 | `design.md` | §13 Design System ("Rosé Vivo") | qualquer componente visual, `globals.css`, seletor, modal, popover, menu |
 | `indicadores.md` | §13.1 Indicadores | `lib/metrics/`, `metrics_*`, `lib/datetime.ts`, `resolvePeriod`, dashboard, relatórios (inclusive o de vendas), qualquer número na tela |

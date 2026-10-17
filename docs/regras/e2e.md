@@ -114,3 +114,14 @@ produção (decisão do Heitor, 2026-09-27), isolado pelo prefixo `[e2e]`:
 - Upload com arquivo não se reenvia (o Playwright não expõe o corpo
   multipart): o ataque se faz NA PÁGINA — `FormData.append` ou o input
   escondido adulterados antes de enviar (`e2e/prontuario.spec.ts`).
+- **O site e a câmera ficam FORA da suíte** (2026-10-17, `docs/regras/site.md`):
+  - `playwright.site.config.ts` + `e2e-site/`: o site (apps/site) contra o
+    build DELE (`pnpm --filter=site build`), em 127.0.0.4:3103, sem sessão nem
+    global-setup. Mexeu em `apps/site/`, roda este.
+  - `playwright.capturas.config.ts` + `e2e-capturas/`: não é teste, é a
+    câmera das telas reais do site. Herda o build da clínica (com a OpenAI
+    falsa), monta a "Clínica Aurora" fictícia numa rede `[e2e]` e grava em
+    `apps/site/public/telas/`. Roda à mão quando uma tela mostrada no site
+    mudou — e as fotos novas entram no commit.
+  - As duas pastas estão fora do `testDir` da suíte de propósito: a completa
+    não sobe o site, e a câmera não prova nada.

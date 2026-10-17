@@ -140,6 +140,9 @@ Três superfícies: **portal da rede** (`/admin`), **portal da unidade**
   ações, e **"Entrar como"** o membro (numa aba nova, na clínica, por código de uso único) — só com autorização da clínica, sem
   dado clínico salvo autorização que o inclua, nada saindo para o paciente, e
   tudo registrado "via suporte" e visível à clínica (Configurações → Suporte).
+- **Site** (app próprio, bellarisos.com — 2026-10-17): a página de apresentação,
+  com os preços dos planos do sistema, telas reais e o teste grátis de 14 dias.
+  O `/` da clínica só leva ao login ou ao portal.
 - **Administração do sistema** (app próprio, admin.bellarisos.com, só ADMIN da plataforma): painel do
   negócio (MRR, redes por situação), redes (criar, editar, desligar), planos,
   assinatura e cobrança pelo **Asaas** (webhook + regras de teste e carência),
@@ -1299,6 +1302,38 @@ próprio CSS, não escrito no teste —, e nenhum carrega padding, raio, fundo o
 borda em `style` inline. Essa segunda asserção é a que importa no longo prazo:
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
+
+### 2026-10-17 — O site: bellarisos.com, com o preço do sistema e as telas de verdade
+
+Pedido do Heitor: "uma landing page incrível para o projeto". Decisões dele:
+o site mora em **bellarisos.com**, num app próprio (`apps/site`); a chamada é
+o **teste grátis de 14 dias** (o `/register` que já existia); os **preços
+aparecem**, lidos dos planos do sistema; e o produto aparece em **telas reais**.
+
+- **O `/` da clínica virou porta**: com sessão, o portal; sem sessão, o
+  login (pelo `AuthRedirect`, por causa do cold start do Android). Achado no
+  caminho: o redirect para o portal estava dentro do try/catch, que engolia o
+  NEXT_REDIRECT — quem levava a pessoa logada era só o AuthRedirect.
+- **`apps/site`**: Next standalone, o mesmo Dockerfile (`BELLARIS_APP=site`),
+  sem sessão, sem SDK da Meta, CSP própria, sem `noindex`. As seções: o hero
+  (agenda + inbox no celular), o dia da clínica em cinco passos, oito
+  destaques com a tela de cada um, a grade do resto, segurança e LGPD, os
+  preços com o comparativo, as perguntas e a chamada final.
+- **Os preços**: `planos_do_site()` (migration `20261017000001`), pública,
+  só os ativos e sem a cota; o site lê com a chave pública e cache de 1 h, e
+  nunca mostra R$ 0 se o banco falhar. O comparativo subiu do sistema para o
+  núcleo (`packages/nucleo/src/lib/planos/comparativo.ts`): os dois desenham
+  a mesma tabela.
+- **As telas**: uma câmera (`apps/web/e2e-capturas/`) monta a "Clínica
+  Aurora", fictícia, numa rede `[e2e]`, fotografa dez telas e apaga tudo.
+- **O texto não inventa**: sem depoimento nem número de uso; Instagram e
+  Messenger ficaram de fora (dependem da análise do app na Meta).
+- SEO: canonical, robots, sitemap, imagem de compartilhamento gerada, ícones
+  do logo do app, JSON-LD com uma oferta por plano; `www` → sem `www`.
+
+Prova: `e2e/raiz-da-clinica.spec.ts` (2), `e2e-site/site.spec.ts` (8, contra o
+build do site) e `apps/site/tests/planos.test.ts` (8). Regras em
+`docs/regras/site.md`.
 
 ### 2026-10-16 — O Copilot a par do que o sistema ganhou depois dele
 
@@ -6200,6 +6235,13 @@ verdade. O que vale:
 
 ### Depende do Heitor (fora do código)
 
+- **O site no ar** (2026-10-17): criar o serviço **Site** no Railway
+  (`BELLARIS_APP=site`, só `NEXT_PUBLIC_SUPABASE_URL`,
+  `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `CLINICA_URL` e `SITE_URL`), ligar os
+  domínios `bellarisos.com` e `www.bellarisos.com` e apontar o DNS — sem
+  tocar nos registros do Resend. Conferir no texto do site: o "combinamos o
+  plano" do fim do teste, o app Android citado como disponível, e se a
+  política de privacidade já tem razão social e CNPJ.
 - **O custo real da OpenAI no sistema** (2026-10-08): criar na OpenAI uma
   chave de ADMINISTRAÇÃO da organização, só leitura (Settings → Organization →
   Admin keys; restrita à leitura da Usage API), e colar no serviço **Sistema**
