@@ -1303,6 +1303,18 @@ borda em `style` inline. Essa segunda asserção é a que importa no longo prazo
 `style` vence classe, então um padding esquecido desfaz a padronização inteira
 sem quebrar nada. Era exatamente o mecanismo que produziu os quatro desenhos.
 
+### 2026-10-17 — Reconectar o número que já está no ar não o derruba mais
+
+Visto no primeiro teste do Heitor com um número real: a janela da Meta lista
+os números do portfólio, inclusive o oficial que já atende. Escolhê-lo de novo
+DESLIGAVA a caixa antes de falar com a Meta e registrava o número com um PIN
+novo — que a Meta recusa quando há PIN de duas etapas; o número ficava fora do
+ar até alguém conectar outra vez. Agora a caixa no ar só inscreve o webhook e
+troca o token depois que a Meta aceitou, sem registrar de novo (o PIN fica o de
+antes); falhou, continua como estava (`lib/whatsapp/cadastro-incorporado.ts`).
+Prova: dois casos novos em `e2e/whatsapp-cadastro-incorporado.spec.ts` (a
+Graph falsa ganhou `falharPost`).
+
 ### 2026-10-17 — O site: bellarisos.com, com o preço do sistema e as telas de verdade
 
 Pedido do Heitor: "uma landing page incrível para o projeto". Decisões dele:

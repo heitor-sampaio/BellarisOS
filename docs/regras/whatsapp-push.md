@@ -256,6 +256,12 @@ servidor), e a escolha da tela vira o `featureType` —
   ele seria descartado. Depois: `subscribed_apps`; Cloud API → `register`
   com PIN de 6 dígitos (guardado em `config.pin`); coexistência → NÃO
   registra e pede `smb_app_data` (contatos, depois histórico — a Meta dá 24 h).
+- **Reconectar o número que JÁ ESTÁ NO AR é outro caminho** (2026-10-17): a
+  caixa ativa NÃO é desligada, o número NÃO é registrado de novo (o PIN fica o
+  de antes — um PIN novo a Meta recusa, e o número caía), e a credencial nova
+  só é gravada depois do `subscribed_apps` aceito. Falhou, fica como estava.
+  Antes, escolher de novo na janela da Meta o número oficial que atende
+  desligava a caixa e, com a recusa do `register`, a deixava fora do ar.
 - A caixa do cadastro tem `config.conexao = 'cadastro_incorporado'`, sem
   `verifyToken`/`appSecret` (vale o do app, §9.8.0). A tela NÃO recebe o
   token nem o PIN (`listarNumerosWhatsApp`), e o formulário manual só liga e
@@ -331,6 +337,7 @@ Sem forma de pagamento na conta, a Meta recusa todo template (código
 ❌ Pedir à Meta a sincronização da coexistência antes de gravar a caixa (o histórico chega uma vez só)
 ❌ Importar histórico ou mensagem do aplicativo emitindo evento de conversa (dispara automação para o passado) ou sem importada = true
 ❌ Gravar o formulário manual por cima da caixa do cadastro incorporado (apaga o token da Meta)
+❌ Reconectar número no ar desligando a caixa antes, ou registrando de novo com PIN novo (cai se a Meta recusar)
 ❌ Falar com a Meta sobre um template pela "config oficial da rede" — é configDaWaba(template.waba_id)
 ❌ Ligar, desligar ou remover um número oficial sem acompanharCatalogos (o catálogo fica de outra conta)
 ❌ Apagar template NA META ao desligar um número (só daqui; na Meta é o "Apagar" do template)

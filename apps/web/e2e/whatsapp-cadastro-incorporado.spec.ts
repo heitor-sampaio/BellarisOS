@@ -162,6 +162,48 @@ test.describe.serial('WhatsApp pelo cadastro incorporado da Meta', () => {
     expect(f!.graph.terminadasEm(`/${FONE_ID_CLOUD}/smb_app_data`)).toHaveLength(0)
   })
 
+  // Reconectar o número que JÁ ESTÁ NO AR (2026-10-17). Até aqui a caixa era
+  // desligada antes de falar com a Meta e o número era registrado de novo com
+  // um PIN novo: se a Meta recusasse (o PIN de duas etapas não bate), o número
+  // ficava fora do ar até alguém conectar outra vez. Era o risco do número
+  // oficial de uma clínica escolhido de novo na janela da Meta.
+  test('reconectar o número no ar: se a Meta recusa, ele continua no ar com a credencial de antes', async ({ browser }) => {
+    const antes = await caixa(FONE_ID_CLOUD)
+    expect(antes?.is_active).toBe(true)
+    f!.graph.responder('/oauth/access_token', { access_token: `${TOKEN}-novo` })
+    f!.graph.falharPost(`/${WABA_CLOUD}/subscribed_apps`, { code: 200, message: 'Permissions error' })
+    try {
+      const r = await como(browser, 'config', p =>
+        conectar(p, { code: 'cod-reconecta-falha', wabaId: WABA_CLOUD, phoneNumberId: FONE_ID_CLOUD, modo: 'cloud_api' }))
+      expect(r.texto).toContain('não aceitou')
+    } finally {
+      f!.graph.falharPost(`/${WABA_CLOUD}/subscribed_apps`, null)
+    }
+    const depois = await caixa(FONE_ID_CLOUD)
+    expect(depois?.is_active, 'o número continua no ar').toBe(true)
+    expect(depois?.config, 'a credencial de antes fica').toEqual(antes?.config)
+  })
+
+  test('reconectar o número no ar: troca o token sem registrar de novo nem trocar o PIN', async ({ browser }) => {
+    const antes = await caixa(FONE_ID_CLOUD)
+    const pin = (antes?.config as Record<string, string>).pin
+    const registros = f!.graph.terminadasEm(`/${FONE_ID_CLOUD}/register`).length
+    // Um PIN diferente seria recusado pela Meta: o teste o recusa também.
+    f!.graph.falharPost(`/${FONE_ID_CLOUD}/register`, { code: 133005, message: 'Two step verification PIN Mismatch' })
+    try {
+      const r = await como(browser, 'config', p =>
+        conectar(p, { code: 'cod-reconecta', wabaId: WABA_CLOUD, phoneNumberId: FONE_ID_CLOUD, modo: 'cloud_api' }))
+      expect(r.texto).toContain('numeroId')
+    } finally {
+      f!.graph.falharPost(`/${FONE_ID_CLOUD}/register`, null)
+    }
+    const depois = await caixa(FONE_ID_CLOUD)
+    expect(depois?.is_active).toBe(true)
+    expect(depois?.config).toMatchObject({ accessToken: `${TOKEN}-novo`, pin })
+    expect(f!.graph.terminadasEm(`/${FONE_ID_CLOUD}/register`), 'já registrado: não registra de novo').toHaveLength(registros)
+    f!.graph.responder('/oauth/access_token', { access_token: TOKEN })
+  })
+
   test('a tela não recebe o token, e o formulário manual não apaga a credencial', async ({ browser }) => {
     await como(browser, 'config', async p => {
       const lista = await chamarAcao(p, 'actions/integrations.ts', 'listarNumerosWhatsApp', '/admin/settings', [])

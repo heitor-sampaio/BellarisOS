@@ -29,6 +29,11 @@ import { nomeDaMeta, rotuloDaConexao } from './rotulo'
  *  6. ativa a caixa (e a faz padrão, se a rede não tinha).
  *
  * Falha antes do passo 6 deixa a caixa inativa: reconectar reaproveita a linha.
+ *
+ * O número que JÁ ESTÁ NO AR (caixa ativa) segue outro caminho: só inscreve o
+ * webhook e troca a credencial depois que a Meta aceitou — sem desligar a
+ * caixa e sem registrar de novo (o PIN fica o de antes). Falhou, o número
+ * continua como estava.
  */
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
@@ -127,10 +132,16 @@ export async function conectarPeloCadastro(
   //    o mesmo número em outra rede é recusado aqui, antes de mexer na Meta.
   const admin = createAdminClient()
   const existente = await ler(admin.from('whatsapp_numbers')
-    .select('id, tenant_id, is_active, label').eq('phone_number_id', pedido.phoneNumberId).maybeSingle(), 'buscar a caixa do número')
+    .select('id, tenant_id, is_active, label, config').eq('phone_number_id', pedido.phoneNumberId).maybeSingle(), 'buscar a caixa do número')
   if (existente && existente.tenant_id !== tenantId) {
     return { ok: false, error: 'Este número já está conectado a outra conta do BellarisOS.' }
   }
+  // RECONECTAR o número que já está no ar (2026-10-17) é outro caminho: a caixa
+  // existe, está ativa e recebe o webhook — não há o que preparar. Ela não é
+  // desligada, o número (que já atende pela API) não é registrado de novo — um
+  // PIN novo seria recusado pela Meta e o deixaria fora do ar —, e a credencial
+  // nova só entra depois que a Meta aceitou tudo.
+  const noAr = !!existente?.is_active
   // O nome escolhido; reconectar sem escolher mantém o que a clínica deu;
   // sem nada, o da conta na Meta (lib/whatsapp/rotulo.ts).
   const rotulo = rotuloDaConexao({
@@ -144,7 +155,13 @@ export async function conectarPeloCadastro(
     if (limite) return { ok: false, error: limite }
   }
 
-  const pin = pedido.modo === 'cloud_api' ? String(randomInt(0, 1_000_000)).padStart(6, '0') : undefined
+  // No ar, o PIN de duas etapas é o que já vale (o da conexão anterior, se foi
+  // por aqui); só o número novo ganha um, e só ele é registrado.
+  const pinAtual = (existente?.config as { pin?: unknown } | null)?.pin
+  const pin = pedido.modo !== 'cloud_api' ? undefined
+    : noAr ? (typeof pinAtual === 'string' ? pinAtual : undefined)
+    : String(randomInt(0, 1_000_000)).padStart(6, '0')
+  const registrar = pedido.modo === 'cloud_api' && !noAr
   const config: OfficialConfig = {
     provider:      'official',
     phoneNumberId: pedido.phoneNumberId,
@@ -160,8 +177,24 @@ export async function conectarPeloCadastro(
   const campos = {
     tenant_id: tenantId, provider: 'official', label: rotulo,
     phone_e164: telefone, phone_number_id: pedido.phoneNumberId, waba_id: pedido.wabaId,
-    config, is_active: false, updated_at: new Date().toISOString(),
+    config, is_active: noAr, updated_at: new Date().toISOString(),
   }
+
+  // No ar: a caixa fica como está até a Meta aceitar; aí entra tudo numa escrita.
+  if (noAr) {
+    const inscricao = await chamar(`${pedido.wabaId}/subscribed_apps`, { metodo: 'POST', token })
+    if (!inscricao.ok) {
+      console.error('[cadastro-incorporado] subscribed_apps (reconexão):', inscricao.erro)
+      return { ok: false, error: 'A Meta não aceitou ligar as mensagens deste número ao BellarisOS. O número continua conectado como estava.' }
+    }
+    const regravada = await admin.from('whatsapp_numbers').update(campos).eq('id', existente!.id as string)
+    if (regravada.error) {
+      console.error('[cadastro-incorporado] regravar a caixa:', regravada.error.message)
+      return { ok: false, error: 'Não consegui gravar a conexão. O número continua conectado como estava.' }
+    }
+    return { ok: true, numeroId: existente!.id as string, rotulo, avisos: await sincronizarCoexistencia(pedido, token) }
+  }
+
   const gravada = existente
     ? await admin.from('whatsapp_numbers').update(campos).eq('id', existente.id as string).select('id').single()
     : await admin.from('whatsapp_numbers').insert(campos).select('id').single()
@@ -181,8 +214,8 @@ export async function conectarPeloCadastro(
     return { ok: false, error: 'A Meta não aceitou ligar as mensagens deste número ao BellarisOS. Tente conectar de novo.' }
   }
 
-  // 5. Cloud API registra; coexistência sincroniza (depois de ativar).
-  if (pin) {
+  // 5. Cloud API registra (só o número novo); coexistência sincroniza (depois de ativar).
+  if (registrar && pin) {
     const registro = await chamar(`${pedido.phoneNumberId}/register`, {
       metodo: 'POST', token, corpo: { messaging_product: 'whatsapp', pin },
     })
@@ -208,8 +241,14 @@ export async function conectarPeloCadastro(
     await tentar(admin.from('whatsapp_numbers').update({ is_default: true }).eq('id', numeroId), 'fazer a caixa nova ser o padrão da rede')
   }
 
-  // Coexistência: contatos e histórico. Não derruba a conexão se falhar — o
-  // número já atende —, mas a tela avisa, porque a janela é de 24 h.
+  return { ok: true, numeroId, rotulo, avisos: await sincronizarCoexistencia(pedido, token) }
+}
+
+/**
+ * Coexistência: contatos e histórico. Não derruba a conexão se falhar — o
+ * número já atende —, mas a tela avisa, porque a janela é de 24 h.
+ */
+async function sincronizarCoexistencia(pedido: PedidoDeConexao, token: string): Promise<string[]> {
   const avisos: string[] = []
   if (pedido.modo === 'coexistencia') {
     for (const [tipo, nome] of [['smb_app_state_sync', 'os contatos'], ['history', 'o histórico de conversas']] as const) {
@@ -222,6 +261,5 @@ export async function conectarPeloCadastro(
       }
     }
   }
-
-  return { ok: true, numeroId, rotulo, avisos }
+  return avisos
 }

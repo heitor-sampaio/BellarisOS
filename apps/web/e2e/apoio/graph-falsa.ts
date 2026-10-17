@@ -27,6 +27,8 @@ export interface GraphFalsa {
   responder(sufixo: string, corpo: unknown): void
   /** Os próximos POST `…/messages` respondem 400 com este erro; `null` volta ao normal. */
   falharMensagens(erro: { code: number; message: string } | null): void
+  /** Os POST cujo caminho termina em `sufixo` (`/register`, `/subscribed_apps`) respondem 400 com este erro; `null` volta ao normal. */
+  falharPost(sufixo: string, erro: { code: number; message: string } | null): void
   fechar(): Promise<void>
 }
 
@@ -34,12 +36,14 @@ export async function subirGraphFalsa(porta = 0): Promise<GraphFalsa> {
   let contador = 0
   const respostas = new Map<string, unknown>()
   let falha: { code: number; message: string } | null = null
+  const falhasDePost = new Map<string, { code: number; message: string }>()
   const estado: GraphFalsa = {
     url: '',
     chamadas: [],
     terminadasEm: sufixo => estado.chamadas.filter(c => c.caminho.endsWith(sufixo)),
     responder: (sufixo, corpo) => { respostas.set(sufixo, corpo) },
     falharMensagens: erro => { falha = erro },
+    falharPost: (sufixo, erro) => { if (erro) falhasDePost.set(sufixo, erro); else falhasDePost.delete(sufixo) },
     fechar: () => new Promise(resolve => servidor.close(() => resolve())),
   }
   const servidor = http.createServer((req, res) => {
@@ -55,6 +59,11 @@ export async function subirGraphFalsa(porta = 0): Promise<GraphFalsa> {
       if (falha && req.method === 'POST' && caminho.endsWith('/messages')) {
         res.writeHead(400, { 'content-type': 'application/json' })
         return res.end(JSON.stringify({ error: { ...falha, type: 'OAuthException', fbtrace_id: 'e2e' } }))
+      }
+      const recusa = req.method === 'POST' ? [...falhasDePost.entries()].find(([s]) => caminho.endsWith(s)) : undefined
+      if (recusa) {
+        res.writeHead(400, { 'content-type': 'application/json' })
+        return res.end(JSON.stringify({ error: { ...recusa[1], type: 'OAuthException', fbtrace_id: 'e2e' } }))
       }
       res.writeHead(200, { 'content-type': 'application/json' })
       if (req.method === 'GET') {
