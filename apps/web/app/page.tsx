@@ -1,6 +1,5 @@
-﻿import { redirect } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { CalendarDays, Users, TrendingUp } from 'lucide-react'
 import { getTenantContext, getRedirectPath } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthRedirect } from '@/components/auth-redirect'
@@ -8,25 +7,20 @@ import { ler } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-const FEATURES = [
-  {
-    icon: CalendarDays,
-    title: 'Agenda inteligente',
-    desc: 'Agendamentos online e internos, sala por sala, com confirmações automáticas via WhatsApp.',
-  },
-  {
-    icon: Users,
-    title: 'CRM completo',
-    desc: 'Prontuário digital, histórico de procedimentos, fidelidade e mensagens em um só lugar.',
-  },
-  {
-    icon: TrendingUp,
-    title: 'Financeiro integrado',
-    desc: 'Caixa, comissões, DRE por filial e visão consolidada da rede em tempo real.',
-  },
-]
-
-export default async function LandingPage() {
+/**
+ * O `/` da clínica só decide a porta (2026-10-17): a página de quem ainda não
+ * conhece o BellarisOS mora em bellarisos.com (`apps/site`).
+ *  - Com sessão: o portal.
+ *  - Sem sessão: o login. Pelo `AuthRedirect`, e não por um redirect do
+ *    servidor: no cold start do app Android o primeiro pedido chega SEM os
+ *    cookies do WebView, e só a pergunta ao servidor depois da hidratação
+ *    distingue "sem sessão" de "cookies ainda não carregados".
+ */
+export default async function Entrada() {
+  // O destino se resolve no try e o redirect sai FORA dele: o redirect() lança
+  // NEXT_REDIRECT, e o catch o engolia — até 2026-10-17 quem levava a pessoa
+  // logada ao portal era só o AuthRedirect, uma volta a mais.
+  let destino: string | null = null
   try {
     const ctx = await getTenantContext()
     const admin = createAdminClient()
@@ -37,170 +31,33 @@ export default async function LandingPage() {
       if (client?.branch_id) {
         const br = await ler(admin
           .from('branches').select('slug').eq('id', client.branch_id).single(), 'buscar a unidade')
-        if (br?.slug) redirect(`/${br.slug}/cliente`)
+        if (br?.slug) destino = `/${br.slug}/cliente`
       }
     } else if (ctx.branchId) {
       const br = await ler(admin
         .from('branches').select('slug').eq('id', ctx.branchId).single(), 'buscar a unidade')
-      redirect(getRedirectPath(ctx.role, br?.slug ?? null))
+      destino = getRedirectPath(ctx.role, br?.slug ?? null)
     } else {
-      redirect(getRedirectPath(ctx.role, null))
+      destino = getRedirectPath(ctx.role, null)
     }
   } catch {
-    // Não autenticado — exibe landing page normalmente
+    // Sem sessão (ou ainda sem os cookies): quem decide é o AuthRedirect.
   }
+  if (destino) redirect(destino)
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-app)', fontFamily: 'var(--font-sans)' }}>
-      {/* Fallback client-side: detecta sessão após WebView carregar cookie store */}
-      <AuthRedirect />
-
-      {/* -- Header ---------------------------------------- */}
-      <header style={{
-        maxWidth: 1100,
-        margin: '0 auto',
-        padding: '0 24px',
-        height: 64,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <span style={{
-          fontSize: 20,
-          fontWeight: 'var(--weight-extrabold)',
-          color: 'var(--brand)',
-          letterSpacing: 'var(--tracking-tight)',
-        }}>
-          BellarisOS ✦
-        </span>
-
-        <nav style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/login"
-            style={{
-              fontSize: 'var(--text-sm-sz)',
-              fontWeight: 'var(--weight-semibold)',
-              color: 'var(--text-muted)',
-              textDecoration: 'none',
-              padding: '8px 16px',
-            }}
-          >
-            Entrar
-          </Link>
-          <Link href="/register" className="btn-primary" style={{ fontSize: 'var(--text-sm-sz)' }}>
-            Criar conta
-          </Link>
-        </nav>
-      </header>
-
-      {/* -- Hero ------------------------------------------ */}
-      <section style={{
-        maxWidth: 760,
-        margin: '0 auto',
-        padding: '80px 24px 72px',
-        textAlign: 'center',
-      }}>
-        <span className="overline" style={{ marginBottom: 16, display: 'block' }}>
-          Gestão para redes de estética
-        </span>
-
-        <h1 style={{
-          fontSize: 'clamp(2rem, 5vw, 3.25rem)',
-          fontWeight: 'var(--weight-extrabold)',
-          letterSpacing: 'var(--tracking-tight)',
-          color: 'var(--text)',
-          lineHeight: 1.15,
-          marginBottom: 20,
-        }}>
-          Tudo que sua rede de clínicas precisa, em um só lugar
-        </h1>
-
-        <p style={{
-          fontSize: 'var(--text-base-sz)',
-          color: 'var(--text-muted)',
-          lineHeight: 1.65,
-          maxWidth: 520,
-          margin: '0 auto 36px',
-        }}>
-          Agenda, CRM, financeiro, estoque e muito mais — desenhado para redes de 1 a 5 filiais que querem crescer com controle.
-        </p>
-
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link href="/register" className="btn-primary" style={{ fontSize: 'var(--text-base-sz)', padding: '12px 28px' }}>
-            Crie sua conta grátis
-          </Link>
-          <Link
-            href="/login"
-            style={{
-              fontSize: 'var(--text-base-sz)',
-              fontWeight: 'var(--weight-semibold)',
-              color: 'var(--text-muted)',
-              textDecoration: 'none',
-              padding: '12px 20px',
-              display: 'inline-flex',
-              alignItems: 'center',
-            }}
-          >
-            Já tenho conta
-          </Link>
-        </div>
-      </section>
-
-      {/* -- Features -------------------------------------- */}
-      <section style={{
-        maxWidth: 1100,
-        margin: '0 auto',
-        padding: '0 24px 96px',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: 20,
-      }}>
-        {FEATURES.map(f => {
-          const Icon = f.icon
-          return (
-            <div key={f.title} className="card" style={{ padding: '28px 24px' }}>
-              <div style={{
-                width: 40,
-                height: 40,
-                borderRadius: 'var(--radius-field-token)',
-                background: 'var(--brand-soft)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-              }}>
-                <Icon size={20} style={{ color: 'var(--brand)' }} />
-              </div>
-              <h3 style={{
-                fontSize: 'var(--text-card-title)',
-                fontWeight: 'var(--weight-extrabold)',
-                color: 'var(--text)',
-                letterSpacing: 'var(--tracking-tight)',
-                marginBottom: 8,
-              }}>
-                {f.title}
-              </h3>
-              <p style={{ fontSize: 'var(--text-sm-sz)', color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                {f.desc}
-              </p>
-            </div>
-          )
-        })}
-      </section>
-
-      {/* -- Footer ---------------------------------------- */}
-      <footer style={{
-        borderTop: '1px solid var(--border)',
-        padding: '24px',
-        textAlign: 'center',
-      }}>
-        <p style={{ fontSize: 'var(--text-xs-sz)', color: 'var(--text-faint)' }}>
-          © 2026 BellarisOS · Todos os direitos reservados ·{' '}
-          <Link href="/privacidade" style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-semibold)' }}>
-            Política de Privacidade
-          </Link>
-        </p>
-      </footer>
-    </div>
+    <main style={{
+      minHeight: '100vh', background: 'var(--bg-app)', fontFamily: 'var(--font-sans)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <AuthRedirect senaoPara="/login" />
+      <p style={{ fontSize: 'var(--text-name)', fontWeight: 'var(--weight-extrabold)', color: 'var(--brand)', letterSpacing: 'var(--tracking-tight)' }}>
+        BellarisOS ✦
+      </p>
+      {/* Sem JavaScript, o caminho fica à mão. */}
+      <noscript>
+        <Link href="/login">Entrar</Link>
+      </noscript>
+    </main>
   )
 }

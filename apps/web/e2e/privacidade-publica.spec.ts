@@ -40,7 +40,10 @@ test('diz o essencial: papel, dado sensível, direitos e retenção', async ({ p
 })
 
 test('é alcançável de fora, pelos dois caminhos de quem não tem conta', async ({ page }) => {
+  // O `/` da clínica leva ao login desde 2026-10-17 (a landing é o apps/site,
+  // que tem o link no rodapé): o link precisa estar onde ele chega.
   await page.goto('/')
+  await expect(page).toHaveURL(/\/login$/)
   await expect(page.getByRole('link', { name: 'Política de Privacidade' })).toBeVisible()
 
   await page.goto('/login')
